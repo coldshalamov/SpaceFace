@@ -1,0 +1,322 @@
+// Render-only craft pitch lean over CoreSystem's maintained ship/drone domain.
+// Every craft remains updated while far-culled so returning to presentation cannot reveal stale lean.
+//
+// Massline UVP: when combat reports status_tumbling or drive-disabled, bank/pitch are driven by
+// pure tumble body language (multi-axis thrash) instead of thrust lean. Physics is not written here.
+import {
+  readControlLossPresentation,
+  resolveThrownBodyTrailPlan,
+  resolveTumbleBodyLanguage,
+  resolveTumbleRecoverPose,
+} from './masslinePresentation.js';
+import { readExternalPhysicsFeedback } from '../core/physicsAuthority.js';
+
+// Epoch bumped when any craft writes active tumble / thrown-trail / recover
+// body-language. VFX consumers latch quiet walks against this so a tumble that
+// starts without an entityIndexVersion bump still wakes. Soft-GPU fps not claimed.
+let _pitchPresentationEpoch = 0;
+
+export function pitchPresentationEpoch() {
+  return _pitchPresentationEpoch;
+}
+
+function bumpPitchPresentationEpoch() {
+  _pitchPresentationEpoch = (_pitchPresentationEpoch + 1) | 0;
+}
+
+const CONTROL_LOSS_SCRATCH = {
+  mode: 'idle',
+  tumbling: false,
+  drifting: false,
+  startedAt: null,
+  until: null,
+  spin: 0,
+  elapsedS: 0,
+  remainS: 0,
+  cause: null,
+  attackerId: null,
+  playerCaused: false,
+};
+
+const THROWN_TRAIL_INPUT = {
+  mode: 'idle',
+  cause: null,
+  playerCaused: false,
+  isPlayer: false,
+  alive: false,
+  velocityX: 0,
+  velocityZ: 0,
+  radius: 0,
+  reduced: false,
+  targetRelevant: false,
+};
+
+// Reused option records for the massline presentation resolvers. The resolvers only read these,
+// and every field is rewritten per craft before each call; the resolver results stay fresh
+// allocations because `pres.tumble` retains them for VFX consumers. The idle-path record is
+// separate so a prior craft's tumble cause/attacker can never leak into an idle result.
+const TUMBLE_RECOVER_OPTS = {
+  ageS: 0,
+  windowS: 0.35,
+  fromBank: 0,
+  fromPitch: 0,
+  flightBank: 0,
+  flightPitch: 0,
+};
+
+const TUMBLE_BODY_OPTS = {
+  mode: 'idle',
+  cause: null,
+  attackerId: null,
+  playerCaused: false,
+  angVel: 0,
+  spin: 0,
+  simTime: 0,
+  elapsedS: 0,
+  remainS: 0,
+  motionReduce: false,
+  phaseBias: 0,
+  flightBank: 0,
+  flightPitch: 0,
+};
+
+const TUMBLE_IDLE_OPTS = {
+  mode: 'idle',
+  cause: null,
+  attackerId: null,
+  playerCaused: false,
+  flightBank: 0,
+  flightPitch: 0,
+};
+
+// Deliberately does NOT gate on `index.ready`: presentation only needs the marker+bucket, and
+// test fixtures (and boot-window states before the first reconcile) supply shipLike without a
+// ready flag. Callers keep their per-entity type predicate in both modes.
+export function shipPitchCandidates(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  return state && Array.isArray(state.entityList) ? state.entityList : [];
+}
+
+// Approximate engine drive for a ship/drone for VFX/feel purposes. Mirrors the logic in vfx.js
+// without importing it, keeping this render-only presentation owner decoupled from VFX internals.
+export function shipEngineDrive(entity) {
+  if (!entity.vel) return 0;
+  const speed = Math.hypot(entity.vel.x, entity.vel.z);
+  const maxSpd = Math.max(1, entity.maxSpeed || 1);
+  const hx = Math.cos(entity.rot), hz = Math.sin(entity.rot);
+  const align = speed > 1 ? (entity.vel.x * hx + entity.vel.z * hz) / speed : 0;
+  return Math.max(0, Math.min(1, (speed / maxSpd) * Math.max(0, align)));
+}
+
+function flightPitchTarget(entity) {
+  const boosting = !!(entity.flags && entity.flags.boosting);
+  const drive = shipEngineDrive(entity);
+  let target = 0;
+  if (boosting) target = -0.13;
+  else if (drive > 0.75) target = -0.055;
+  else if (drive > 0.35) target = -0.025;
+  if (!boosting && drive > 0.3 && entity.vel) {
+    const vx = entity.vel.x, vz = entity.vel.z;
+    const speed = Math.hypot(vx, vz);
+    if (speed > 8) {
+      const hx = Math.cos(entity.rot), hz = Math.sin(entity.rot);
+      const align = (vx * hx + vz * hz) / Math.max(1, speed);
+      if (align < -0.35) target = 0.07;
+    }
+  }
+  return target;
+}
+
+function ensurePresentation(entity) {
+  if (!entity.presentation || typeof entity.presentation !== 'object') {
+    entity.presentation = {};
+  }
+  return entity.presentation;
+}
+
+// A player keeps control of world-plane heading while real external momentum rolls
+// and pitches the displayed hull. A short damped spring takes signed admitted delta-V;
+// it cannot manufacture a shove from a weapon activation or move a physics body.
+function updatePlayerShovePose(state,entity,pres,now,motionReduce,flightPitch){
+  if(entity.id!==state.playerId)return false;
+  const receipt=readExternalPhysicsFeedback(entity),tick=Number(state.tick)||0;
+  let pose=pres.externalShove;
+  const fresh=receipt&&receipt.tick<=tick&&tick-receipt.tick<=2&&receipt.tick!==pose?.receiptTick;
+  if(!pose&&!fresh)return false;
+  if(!pose)pose=pres.externalShove={receiptTick:-1,time:now,bank:0,pitch:0,bv:0,pv:0};
+  if(now<pose.time){delete pres.externalShove;return false;}
+  if(fresh){
+    pose.receiptTick=receipt.tick;
+    const c=Math.cos(entity.rot),sn=Math.sin(entity.rot),scale=motionReduce?.14:1;
+    const lateral=-receipt.deltaX*sn+receipt.deltaZ*c,forward=receipt.deltaX*c+receipt.deltaZ*sn;
+    pose.bv+=lateral*.34*scale;pose.pv-=forward*.27*scale;
+    pose.bv=Math.max(-5,Math.min(5,pose.bv));pose.pv=Math.max(-4,Math.min(4,pose.pv));
+  }
+  const dt=Math.min(.05,Math.max(0,now-pose.time));pose.time=now;
+  // Closed-form critically damped response is stable during bursts and independent
+  // of render cadence. A paused simulation neither integrates nor replays the receipt.
+  const rate=9,decay=Math.exp(-rate*dt);
+  const bankTerm=pose.bv+rate*pose.bank,pitchTerm=pose.pv+rate*pose.pitch;
+  pose.bank=(pose.bank+bankTerm*dt)*decay;pose.bv=(pose.bv-rate*bankTerm*dt)*decay;
+  pose.pitch=(pose.pitch+pitchTerm*dt)*decay;pose.pv=(pose.pv-rate*pitchTerm*dt)*decay;
+  pose.bank=Math.max(-.42,Math.min(.42,pose.bank));pose.pitch=Math.max(-.31,Math.min(.31,pose.pitch));
+  if(!fresh&&Math.abs(pose.bank)+Math.abs(pose.pitch)+Math.abs(pose.bv)+Math.abs(pose.pv)<.001){
+    delete pres.externalShove;return false;
+  }
+  entity.bank=pose.bank;entity.pitch=flightPitch+pose.pitch;return true;
+}
+
+/**
+ * Update cosmetic pitch/bank. Thrust lean for normal flight; multi-axis thrash for tumble/drift.
+ * Attaches entity.presentation.tumble intent for VFX consumers (RCS thrash, dead thruster, ribbons).
+ */
+export function updateShipPitchPresentation(state, frameDt) {
+  const dt = Math.min(0.05, Math.max(0, frameDt));
+  const rate = 6.0;
+  let updated = 0;
+  let anyActiveBodyLanguage = false;
+  const now = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  const motionReduce = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+  const video = state && state.settings && state.settings.video;
+  const accessibility = state && state.settings && state.settings.accessibility;
+  const reduced = !!((video && (video.motionReduce || video.flashReduce))
+    || (accessibility && accessibility.flashReduce));
+
+  for (const entity of shipPitchCandidates(state)) {
+    if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+    if (!entity.alive || (entity.flags && entity.flags.docked)) {
+      const staleTrail = entity.presentation && entity.presentation.thrownTrail;
+      if (staleTrail) resolveThrownBodyTrailPlan(null, staleTrail);
+      continue;
+    }
+
+    const flightPitch = flightPitchTarget(entity);
+    if (entity.pitch == null) entity.pitch = 0;
+    if (entity.bank == null) entity.bank = 0;
+
+    const loss = readControlLossPresentation(state, entity, CONTROL_LOSS_SCRATCH);
+    const pres = ensurePresentation(entity);
+    const recover = pres.tumbleRecover;
+    const existingThrownTrail = pres.thrownTrail;
+    const thrownCandidate = loss.mode === 'tumbling'
+      && loss.cause === 'thrown'
+      && loss.playerCaused === true;
+    if (existingThrownTrail || thrownCandidate) {
+      const vel = entity.vel;
+      THROWN_TRAIL_INPUT.mode = loss.mode;
+      THROWN_TRAIL_INPUT.cause = loss.cause;
+      THROWN_TRAIL_INPUT.playerCaused = loss.playerCaused;
+      THROWN_TRAIL_INPUT.isPlayer = entity.id === state.playerId;
+      THROWN_TRAIL_INPUT.alive = entity.alive === true;
+      THROWN_TRAIL_INPUT.velocityX = vel && vel.x;
+      THROWN_TRAIL_INPUT.velocityZ = vel && vel.z;
+      THROWN_TRAIL_INPUT.radius = entity.radius;
+      THROWN_TRAIL_INPUT.reduced = reduced;
+      THROWN_TRAIL_INPUT.targetRelevant = !!(state.player
+        && state.player.targetId === entity.id);
+      pres.thrownTrail = resolveThrownBodyTrailPlan(
+        THROWN_TRAIL_INPUT,
+        existingThrownTrail || {},
+      );
+      if (pres.thrownTrail && pres.thrownTrail.active) anyActiveBodyLanguage = true;
+    }
+
+    if (recover && Number.isFinite(recover.until) && now < recover.until) {
+      const ageS = Math.max(0, now - finite(recover.startedAt, now));
+      TUMBLE_RECOVER_OPTS.ageS = ageS;
+      TUMBLE_RECOVER_OPTS.windowS = Math.max(0.05, finite(recover.until, now) - finite(recover.startedAt, now));
+      TUMBLE_RECOVER_OPTS.fromBank = finite(recover.fromBank, entity.bank);
+      TUMBLE_RECOVER_OPTS.fromPitch = finite(recover.fromPitch, entity.pitch);
+      TUMBLE_RECOVER_OPTS.flightBank = 0;
+      TUMBLE_RECOVER_OPTS.flightPitch = flightPitch;
+      const body = resolveTumbleRecoverPose(TUMBLE_RECOVER_OPTS);
+      entity.bank = body.bank;
+      entity.pitch = body.pitch;
+      pres.tumble = body;
+      if (!body.recovering) delete pres.tumbleRecover;
+      else anyActiveBodyLanguage = true;
+      updated++;
+      continue;
+    }
+
+    if (loss.mode === 'tumbling' || loss.mode === 'drifting') {
+      TUMBLE_BODY_OPTS.mode = loss.mode;
+      TUMBLE_BODY_OPTS.cause = loss.cause;
+      TUMBLE_BODY_OPTS.attackerId = loss.attackerId;
+      TUMBLE_BODY_OPTS.playerCaused = loss.playerCaused;
+      TUMBLE_BODY_OPTS.angVel = entity.angVel;
+      TUMBLE_BODY_OPTS.spin = loss.spin;
+      TUMBLE_BODY_OPTS.simTime = now;
+      TUMBLE_BODY_OPTS.elapsedS = loss.elapsedS;
+      TUMBLE_BODY_OPTS.remainS = loss.remainS;
+      TUMBLE_BODY_OPTS.motionReduce = motionReduce;
+      TUMBLE_BODY_OPTS.phaseBias = Number(entity.id) % 17;
+      TUMBLE_BODY_OPTS.flightBank = entity.bank;
+      TUMBLE_BODY_OPTS.flightPitch = flightPitch;
+      const body = resolveTumbleBodyLanguage(TUMBLE_BODY_OPTS);
+      // Own bank/pitch for the thrash window (last presentation writer before mesh pose apply).
+      entity.bank = body.bank;
+      entity.pitch = body.pitch;
+      // Remember thrash pose so recover can ease out when status clears next frames.
+      pres._lastTumbleBank = body.bank;
+      pres._lastTumblePitch = body.pitch;
+      pres.tumble = body;
+      anyActiveBodyLanguage = true;
+      if (loss.mode === 'tumbling') {
+        pres.wasTumbling = true;
+      }
+      updated++;
+      continue;
+    }
+
+    // Transition: was tumbling last frames, status cleared → start recover settle.
+    if (pres.wasTumbling) {
+      pres.wasTumbling = false;
+      pres.tumbleRecover = {
+        startedAt: now,
+        until: now + 0.35,
+        fromBank: finite(pres._lastTumbleBank, entity.bank),
+        fromPitch: finite(pres._lastTumblePitch, entity.pitch),
+      };
+      TUMBLE_RECOVER_OPTS.ageS = 0;
+      TUMBLE_RECOVER_OPTS.windowS = 0.35;
+      TUMBLE_RECOVER_OPTS.fromBank = pres.tumbleRecover.fromBank;
+      TUMBLE_RECOVER_OPTS.fromPitch = pres.tumbleRecover.fromPitch;
+      TUMBLE_RECOVER_OPTS.flightBank = 0;
+      TUMBLE_RECOVER_OPTS.flightPitch = flightPitch;
+      const body = resolveTumbleRecoverPose(TUMBLE_RECOVER_OPTS);
+      entity.bank = body.bank;
+      entity.pitch = body.pitch;
+      pres.tumble = body;
+      anyActiveBodyLanguage = true;
+      updated++;
+      continue;
+    }
+
+    if(updatePlayerShovePose(state,entity,pres,now,motionReduce,flightPitch)){
+      anyActiveBodyLanguage=true;updated++;continue;
+    }
+
+    // Normal thrust lean (pitch only; bank remains flight-owned).
+    entity.pitch += (flightPitch - entity.pitch) * (1 - Math.exp(-rate * dt));
+    if (Math.abs(entity.pitch) < 0.0005 && Math.abs(flightPitch) < 0.0005) entity.pitch = 0;
+    if (pres.tumble) {
+      TUMBLE_IDLE_OPTS.flightBank = entity.bank;
+      TUMBLE_IDLE_OPTS.flightPitch = entity.pitch;
+      pres.tumble = resolveTumbleBodyLanguage(TUMBLE_IDLE_OPTS);
+    }
+    updated++;
+  }
+
+  if (anyActiveBodyLanguage) bumpPitchPresentationEpoch();
+  return updated;
+}
+
+function finite(v, fb = 0) {
+  return Number.isFinite(v) ? v : fb;
+}

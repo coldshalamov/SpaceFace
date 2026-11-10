@@ -1,0 +1,72 @@
+{
+  "label": "arcade-structural-fx-quiet-live-skip",
+  "primary": "quiet-four-pool-live-zero-update",
+  "iters": 100000,
+  "capacity": {
+    "blades": 128,
+    "arcs": 48,
+    "shards": 64,
+    "plates": 32
+  },
+  "pairs": [
+    {
+      "beforeMs": 44.919,
+      "afterMs": 3.028,
+      "speedup": 14.837
+    },
+    {
+      "beforeMs": 44.757,
+      "afterMs": 2.828,
+      "speedup": 15.824
+    },
+    {
+      "beforeMs": 43.355,
+      "afterMs": 2.634,
+      "speedup": 16.459
+    },
+    {
+      "beforeMs": 43.183,
+      "afterMs": 2.539,
+      "speedup": 17.01
+    },
+    {
+      "beforeMs": 43.163,
+      "afterMs": 2.524,
+      "speedup": 17.099
+    },
+    {
+      "beforeMs": 41.478,
+      "afterMs": 2.397,
+      "speedup": 17.301
+    },
+    {
+      "beforeMs": 42.531,
+      "afterMs": 2.376,
+      "speedup": 17.899
+    },
+    {
+      "beforeMs": 45.002,
+      "afterMs": 2.49,
+      "speedup": 18.076
+    },
+    {
+      "beforeMs": 46.646,
+      "afterMs": 2.545,
+      "speedup": 18.329
+    },
+    {
+      "beforeMs": 51.191,
+      "afterMs": 2.292,
+      "speedup": 22.339
+    },
+    {
+      "beforeMs": 57.413,
+      "afterMs": 2.326,
+      "speedup": 24.685
+    }
+  ],
+  "medianSpeedup": 17.301,
+  "minSpeedup": 14.837,
+  "maxSpeedup": 24.685,
+  "note": "Picture unchanged: mesh.visible already gated on live>0."
+}

@@ -1,0 +1,202 @@
+{
+  "assetId": "shutter_vane",
+  "category": "ancient",
+  "description": "shutter vane; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_HINGE",
+      "position": [
+        -1.8,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.72,
+          0.11,
+          -0.0
+        ],
+        "size": [
+          0.22,
+          0.3,
+          1.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.07499999999999996,
+          0.11499999999999999,
+          0.43000000000000005
+        ],
+        "size": [
+          3.08,
+          0.15,
+          0.336
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.02499999999999991,
+          0.14,
+          0.11000000000000001
+        ],
+        "size": [
+          3.0,
+          0.15,
+          0.336
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.025000000000000022,
+          0.16499999999999998,
+          -0.21
+        ],
+        "size": [
+          2.9200000000000004,
+          0.15,
+          0.336
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.07500000000000007,
+          0.19,
+          -0.53
+        ],
+        "size": [
+          2.84,
+          0.15,
+          0.3360000000000001
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.940000057220459,
+      -0.10000000149011612,
+      -0.7400000095367432
+    ],
+    "max": [
+      1.9925799369812012,
+      0.3400000035762787,
+      0.7250000238418579
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "shutter_vane_lod0.glb",
+      "triangles": 1364,
+      "draws": 3,
+      "bytes": 79532,
+      "method": "source",
+      "sha256": "5398d7c5da61c5b54a64365d420d92ab8bbc94168e4547754c850134c6edd48c"
+    },
+    {
+      "level": 1,
+      "file": "shutter_vane_lod1.glb",
+      "triangles": 1364,
+      "draws": 3,
+      "bytes": 79584,
+      "method": "authored-topology",
+      "sha256": "6af0afe192c9f5a98ae288e03ba581c23e3739710fb9d7c122aac2755ece80ec"
+    },
+    {
+      "level": 2,
+      "file": "shutter_vane_lod2.glb",
+      "triangles": 1364,
+      "draws": 3,
+      "bytes": 79584,
+      "method": "authored-topology",
+      "sha256": "182181ff4ff2e63f8a4bbeaea2826efd205b81ad12eeae7fdc51742a2f6d92b0"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.validation-fast-gate.v1",
+  "generatedAt": "2026-07-31T11:09:37.361Z",
+  "routeDigest": "15961a9914d0a4d2239f589f7f78c5ff9041b00ac88e4a94afd89c19d93b04af",
+  "regressionDigest": "fc4fd14c6ca690e526eb175abe491b72704e9344e3b97375c433a238a9b580d2",
+  "productionDigest": "15961a9914d0a4d2239f589f7f78c5ff9041b00ac88e4a94afd89c19d93b04af",
+  "candidateDigest": "3b31ee47da771989ef583301b78169a577ab714b8d2deb1168ce3c1a95e6a82b",
+  "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+  "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "inputDigest": "a4eb3645471bbec170d7094b17f388da8b945544850365492100ed37c390ca1a",
+  "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+  "manifestDigest": "1cc804051db54dd4a3d40de72d2efb0595cb8d3386d0b2b6102fdf3ff23ee93a",
+  "acknowledgesFailureFingerprint": "5f18b0b4eeb875199fd903e8b1185e042bc83b936b6e55f957d14fe7e041fffb"
+}

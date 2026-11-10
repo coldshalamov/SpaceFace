@@ -1,0 +1,726 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  CombatDoctrineId,
+  CombatDoctrineRuntime,
+  DOCTRINE_TELEGRAPH_TICKS,
+} from '../src/ai/combatDoctrine.js';
+import { ContactKind, ObjectiveKind } from '../src/ai/contracts.js';
+import { specialistPlanByEnemyId } from '../src/ai/specialistPlans.js';
+import { createAttachmentService, effectiveTetherPolicy } from '../src/combat/attachments.js';
+import { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw } from '../src/combat/impulseKernel.js';
+import { createStatusService } from '../src/combat/statuses.js';
+import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
+import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
+import { ATTACHMENT_DEFS, DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../src/data/combatDefs.js';
+import { createSg02DynamicBodyOwner, createSg02CombatPhysicsPort } from '../src/core/sg02DynamicBodyOwner.js';
+import { kilnbackPhysicalBody } from '../src/data/kilnbackBody.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { MODULES } from '../src/data/modules.js';
+import { SHIPS } from '../src/data/ships.js';
+import { TECH_NODES } from '../src/data/tech.js';
+import { LEGACY47A_FEATURES, PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
+import { buildSlotList, fittingsFromDefaultModules, fits, getDerivedStats } from '../src/systems/ships.js';
+import {
+  tetherGameplay,
+  TWIN_BRIDLE_DEF_ID,
+  TWIN_BRIDLE_HEAD_ID,
+  TWIN_BRIDLE_SETUP_S,
+  validateTwinBridlePair,
+} from '../src/systems/tetherGameplay.js';
+import { tumbleStates } from '../src/systems/tumbleStates.js';
+import { masslineTetherStatus } from '../src/ui/hud.js';
+import { MASSLINE_HUD_CSS } from '../src/ui/masslineHud.js';
+import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
+
+const DT = 1 / 60;
+const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
+const BRIDLE_DEF = ATTACHMENT_DEFS.find((def) => def.id === TWIN_BRIDLE_DEF_ID);
+const BRIDLE_MODULE = MODULES.find((def) => def.id === 'mod_twin_bridle_m');
+const HITCH = SHIPS.find((def) => def.id === 'ship_kestrel');
+
+test('Twin Bridle is a normal default-route fitting with a dedicated non-winch rope', () => {
+  const fittings = fittingsFromDefaultModules('ship_drifter', [BRIDLE_MODULE.id]);
+  const derived = getDerivedStats('ship_drifter', fittings, null);
+  const production = effectiveTetherPolicy(STANDARD, { data: { derived } }, PRODUCTION_FEATURES);
+  const legacy = effectiveTetherPolicy(STANDARD, { data: { derived } }, LEGACY47A_FEATURES);
+  const tech = TECH_NODES.find((node) => node.id === BRIDLE_MODULE.requiresTech);
+
+  assert.ok(BRIDLE_DEF);
+  assert.equal(BRIDLE_DEF.massline, undefined, 'the world rope has no reel/winch controller');
+  assert.equal(DEFAULT_COMBAT_PROFILE_BY_TYPE.fieldEmitter, 'combat_profile_tether_anchor');
+  assert.ok(fittings.includes(BRIDLE_MODULE.id));
+  assert.ok(tech.unlocks.modules.includes(BRIDLE_MODULE.id));
+  assert.equal(derived.masslineHeadId, TWIN_BRIDLE_HEAD_ID);
+  assert.equal(PRODUCTION_FEATURES.massline2.masslineHeadTwinBridle, true);
+  assert.equal(LEGACY47A_FEATURES.massline2.masslineHeadTwinBridle, false);
+  assert.equal(production.headId, TWIN_BRIDLE_HEAD_ID);
+  assert.deepEqual(production.spring, STANDARD.spring,
+    'a defensive ordinary latch cannot turn the player ship into a bridle endpoint');
+  assert.equal(legacy.headId, undefined);
+  assert.match(statSnippet(BRIDLE_MODULE), /two-endpoint world tether/i);
+});
+
+test('Hitch cannot fit the Twin Bridle M head', () => {
+  assert.equal(HITCH.name, 'Hitch');
+  const utility = buildSlotList(HITCH).find((slot) => slot.type === 'utility');
+  assert.equal(utility.size, 'S');
+  assert.equal(fits(utility, BRIDLE_MODULE), false, 'an S utility cannot take the M bridle');
+  const fittings = fittingsFromDefaultModules(HITCH.id, [BRIDLE_MODULE.id]);
+  assert.ok(!fittings.includes(BRIDLE_MODULE.id), 'the starter loadout must not receive the bridle');
+  assert.equal(getDerivedStats(HITCH.id, fittings, null).masslineHeadId, null);
+});
+
+test('two public Massline presses create exactly one A-to-B rope and never write movement controls', () => {
+  const h = harness();
+  const before = motionSnapshot(h.player, h.source, h.target);
+
+  step(h, { aim: h.source.pos });
+  assert.equal(h.state.masslineAcquisition.selected.targetId, h.source.id);
+  step(h, { aim: h.source.pos, latch: true });
+
+  assert.equal(h.state.masslineBridle.sourceId, h.source.id);
+  assert.equal(h.state.player.remoteMassline, undefined,
+    'endpoint A is only a visible expiring selection, not a hidden partial tether');
+  assert.equal(Object.keys(h.state.combat.attachments.byId).length, 0);
+
+  step(h, { aim: h.target.pos, dt: 0.1 });
+  assert.equal(h.state.masslineAcquisition.selected.targetId, h.target.id);
+  step(h, { aim: h.target.pos, latch: true });
+
+  const active = Object.values(h.state.combat.attachments.byId).filter((entry) => entry.state === 'active');
+  assert.equal(active.length, 1);
+  assert.deepEqual([active[0].ownerId, active[0].targetId], [h.source.id, h.target.id]);
+  assert.equal(active[0].controllerId, h.player.id);
+  assert.equal(active[0].controlMode, TWIN_BRIDLE_HEAD_ID);
+  assert.ok(![active[0].ownerId, active[0].targetId].includes(h.player.id),
+    'the player is the cut owner, never a physical third endpoint');
+  assert.equal(h.state.player.remoteMassline.kind, TWIN_BRIDLE_HEAD_ID);
+  assert.equal(h.state.player.remoteMassline.active, true);
+  assert.equal(h.state.player.tether.active, false);
+  assert.deepEqual(h.physics.creates[0].sourceWorld, { x: h.source.pos.x, z: h.source.pos.z });
+  const targetAnchor = h.physics.creates[0].targetWorld;
+  assert.ok(Math.hypot(targetAnchor.x - h.target.pos.x, targetAnchor.z - h.target.pos.z) > 0,
+    'the fixed field endpoint keeps a visible surface anchor');
+  assert.ok(Math.hypot(targetAnchor.x - h.source.pos.x, targetAnchor.z - h.source.pos.z)
+    < Math.hypot(h.target.pos.x - h.source.pos.x, h.target.pos.z - h.source.pos.z),
+  'the fixed endpoint surface anchor faces the other body');
+  assert.deepEqual(motionSnapshot(h.player, h.source, h.target), before,
+    'selection and commit do not write thrust, braking, facing, speed, position, or velocity');
+
+  const attachedEvent = h.events.find((entry) => entry.type === 'tether:attached');
+  assert.equal(attachedEvent.payload.controllerId, h.player.id);
+  assert.equal(attachedEvent.payload.controlMode, TWIN_BRIDLE_HEAD_ID);
+
+  const physicsCreatesBeforeLoad = h.physics.creates.length;
+  h.bus.emit('save:loaded');
+  assert.equal(h.state.player.remoteMassline.active, false);
+  step(h);
+  assert.equal(h.state.player.remoteMassline.active, true,
+    'the gameplay owner re-adopts the saved controlled rope without recreating it');
+  assert.equal(h.physics.creates.length, physicsCreatesBeforeLoad);
+
+  step(h, { cut: true });
+  assert.equal(active[0].state, 'broken');
+  assert.equal(active[0].breakReason, 'tether_cut');
+  assert.equal(h.state.player.remoteMassline.active, false);
+  assert.deepEqual(motionSnapshot(h.player, h.source, h.target), before,
+    'cut preserves the real endpoint motion instead of injecting a release impulse');
+});
+
+test('two lights bridled within 3s of the first latch both lose the helm for a B11 second', (t) => {
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
+
+  assert.ok(TWIN_BRIDLE_SETUP_S <= 2, `the bolas is a throw, setup is ${TWIN_BRIDLE_SETUP_S}s`);
+
+  const h = harness({ twoLights: true });
+  const statuses = createStatusService({
+    state: h.state,
+    catalog: h.catalog,
+    bus: h.bus,
+    helpers: { combatPhysics: h.physics },
+  });
+  const kernel = { attachments: h.attachments, catalog: h.catalog, statuses };
+  h.system.registry = {
+    get(id) { return id === 'actions' || id === 'combat' ? { kernel } : null; },
+  };
+  const tumble = Object.create(tumbleStates);
+  tumble.init({
+    state: h.state,
+    bus: h.bus,
+    helpers: { combatPhysics: h.physics },
+    registry: h.system.registry,
+  });
+  t.after(() => tumble.destroy());
+
+  const firstLatchAt = (() => {
+    step(h, { aim: h.source.pos });
+    step(h, { aim: h.source.pos, latch: true });
+    return h.state.simTime;
+  })();
+  step(h, { aim: h.target.pos, dt: 0.1 });
+  const before = motionSnapshot(h.source, h.target);
+  step(h, { aim: h.target.pos, latch: true });
+  const elapsed = h.state.simTime - firstLatchAt;
+  console.log(`PQ-031.00 bolas elapsedS=${elapsed.toFixed(3)} setupS=${TWIN_BRIDLE_SETUP_S}`);
+
+  const active = Object.values(h.state.combat.attachments.byId).filter((entry) => entry.state === 'active');
+  assert.equal(active.length, 1);
+  assert.ok(elapsed <= 3, `two lights must be bridled within 3s, got ${elapsed}s`);
+  assert.deepEqual(motionSnapshot(h.source, h.target), before,
+    'the throw still never writes velocity; tumble is the B11 hitstun law');
+
+  const cruise = resolveGovernedCombatSpeed(h.source, h.state, 0);
+  const rel = Math.hypot(h.source.vel.x - h.target.vel.x, h.source.vel.z - h.target.vel.z);
+  const law = resolveHitstunLaw({
+    deltaV: rel,
+    victimCruise: cruise,
+    attackerMass: 16,
+    victimMass: 16,
+  });
+  console.log(`PQ-031.00 B11 bolas k=${law.k.toFixed(3)} durationS=${law.durationS.toFixed(3)} rel=${rel} cruise=${cruise}`);
+  assert.ok(law.k >= 0.30, `closing lights k=${law.k} must meet the B11 30% bar`);
+  assert.ok(law.durationS >= 1, `B11 lights lose helm ≥1s, got ${law.durationS}s`);
+
+  const a = readTumbleStatus(h.state, h.source);
+  const b = readTumbleStatus(h.state, h.target);
+  assert.ok(a, 'light A tumbles');
+  assert.ok(b, 'light B tumbles');
+  assert.ok((a.data && a.data.until) - h.state.simTime >= 1 - 1e-6);
+  assert.ok((b.data && b.data.until) - h.state.simTime >= 1 - 1e-6);
+});
+
+test('setup has explicit same-endpoint cancel and simulation-time expiry with no partial line', () => {
+  const cancel = harness();
+  step(cancel, { aim: cancel.source.pos });
+  step(cancel, { aim: cancel.source.pos, latch: true });
+  step(cancel, { aim: cancel.source.pos, dt: 0.1 });
+  step(cancel, { aim: cancel.source.pos, latch: true });
+  assert.equal(cancel.state.masslineBridle, undefined);
+  assert.equal(Object.keys(cancel.state.combat.attachments.byId).length, 0);
+
+  const expiry = harness();
+  step(expiry, { aim: expiry.source.pos });
+  step(expiry, { aim: expiry.source.pos, latch: true });
+  expiry.state.simTime += TWIN_BRIDLE_SETUP_S + DT;
+  expiry.state.tick += 1;
+  expiry.state.input.actions = { tetherFire: false, massline: null };
+  expiry.system.update(DT, expiry.state);
+  assert.equal(expiry.state.masslineBridle, undefined);
+  assert.equal(Object.keys(expiry.state.combat.attachments.byId).length, 0);
+  assert.ok(expiry.events.some((entry) => entry.type === 'massline:bridleSetupEnded'
+    && entry.payload.reason === 'setup_expired'));
+});
+
+test('pair admission rejects loops and two heavy anchors while allowing one fixed field endpoint', () => {
+  const h = harness();
+  const heavyA = entity(10, 'asteroid', 40, 0, { physicsBody: { dynamic: false, mass: 8000 } });
+  const heavyB = entity(11, 'station', 100, 0, { physicsBody: { dynamic: false, mass: 20000 } });
+  assert.equal(validateTwinBridlePair(h.system, h.state, h.player, heavyA, heavyB, BRIDLE_DEF), 'two_heavy_endpoints');
+  assert.equal(validateTwinBridlePair(h.system, h.state, h.player, h.source, h.target, BRIDLE_DEF), null,
+    'one moving craft plus one fixed field emitter is the authored hazard use case');
+
+  h.state.combat.attachments.byId.path_a = {
+    id: 'path_a', state: 'active', ownerId: h.source.id, targetId: 30,
+  };
+  h.state.combat.attachments.byId.path_b = {
+    id: 'path_b', state: 'active', ownerId: 30, targetId: h.target.id,
+  };
+  assert.equal(validateTwinBridlePair(h.system, h.state, h.player, h.source, h.target, BRIDLE_DEF), 'attachment_cycle');
+});
+
+// PQ-031.02 leftover: one cut and one ignore, both stepped through the route rather than asserted
+// on constructed numbers. Every input here comes from what the live spawn writes:
+//   * masses and radii from ENEMY_TYPES (src/systems/combat.js:133 copies def.mass onto the entity;
+//     src/core/physicsAuthority.js:126 derives physicsBody.mass from it),
+//   * NPC identity from data.lootTableId + data.ai.combatDoctrineId (combat.js:165,185) — the live
+//     spawn never writes data.enemyTypeId,
+//   * the cut phase from the live CombatDoctrineRuntime, relayed on the same 'ai:doctrinePhase'
+//     event tacticalAI.js:353 publishes, instead of a hand-typed phase string.
+// Ignore is mass, not an admission flag: the heavy takes the second latch. Helm-loss shrug is
+// proven in test/pq-031-02-npc-counterplay.test.mjs.
+test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => {
+  const ANCHOR = ENEMY_TYPES.find((row) => row.id === 'field_anchor_controller');
+  const RAIDER = ENEMY_TYPES.find((row) => row.id === 'tether_control_raider');
+  // Live heavies at or above 150 kg. The leftover admission floor is gone; this census still
+  // names who can shrug a bridle by mass. The Mirrorjaw Foreman (PQ-133.04, Foundry wave ten) and
+  // its Forge Regent crown (PQ-133.07, Foundry wave thirty) are heavy on purpose: both fly the
+  // Anchor's 420 kg Bastion body, their "mass and commitment are the fight"
+  // (CRUCIBLE_SURVIVAL_MASTER_PLAN.md §15.7), and their waves ask for escorts thrown into them.
+  // SWARM-07 phase B adds Brood heavies, and the Iron Kraken adds a 240 kg heavy plus a 900 kg
+  // colossus. The Anchor-mass proof covers heavier bodies by the same inverse-mass law; every
+  // sub-Anchor heavy is proven at its own live mass below.
+  const heavies = ENEMY_TYPES.filter((row) => Number(row.mass) >= 150);
+  assert.deepEqual(
+    heavies.map((row) => row.id),
+    ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent',
+      'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
+      'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk', 'last_argument', 'kilnback',
+      'enemy_iron_kraken', 'enemy_iron_kraken_colossus'],
+  );
+  assert.ok(heavies.every((row) => ['brood_tendril', 'casket_worm', 'kilnback', 'enemy_iron_kraken'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
+    'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');
+  // Each sub-Anchor heavy and the new Kraken profiles exercise their own live mass through the catch law.
+  for (const id of ['brood_tendril', 'casket_worm', 'enemy_iron_kraken', 'enemy_iron_kraken_colossus']) {
+    const heavyDef = ENEMY_TYPES.find((row) => row.id === id);
+    const QUEEN = ENEMY_TYPES.find((row) => row.id === 'brood_queen');
+    const previousImpulse = COMBAT_FLAGS.weaponImpulseConsequences;
+    COMBAT_FLAGS.weaponImpulseConsequences = true;
+    assert.equal(QUEEN.mass, 520, 'the Queen stays heavier than the Anchor she inherits the proof from');
+    // Each hull sits below the Anchor mass, so it is proven at its own live mass through the
+    // same live owners: a hull bridled against a 16 kg light keeps the helm (its catch
+    // share sits under the hitstun floor) while the light is yanked. No mass/thrust/weapon
+    // number is retuned; this only reads the live law at the live mass.
+    const heavyHarness = harness();
+    heavyHarness.source.vel = { x: 80, z: 0 };
+    heavyHarness.source.mass = 16;
+    heavyHarness.source.physicsBody = { dynamic: true, mass: 16 };
+    heavyHarness.source.data.role = 'fighter';
+    const heavy = entity(13, 'ship', 200, 0, {
+      team: 1,
+      mass: heavyDef.mass,
+      radius: heavyDef.collisionRadius,
+      maxSpeed: heavyDef.maxSpeed,
+      physicsBody: { dynamic: true, mass: heavyDef.mass },
+      data: {
+        name: heavyDef.name,
+        lootTableId: heavyDef.id,
+        ai: { combatDoctrineId: heavyDef.combatDoctrineId },
+      },
+    });
+    assert.equal(
+      validateTwinBridlePair(
+        heavyHarness.system, heavyHarness.state, heavyHarness.player,
+        heavyHarness.source, heavy, BRIDLE_DEF,
+      ),
+      null,
+      'a sub-Anchor heavy is still a legal endpoint; ignore is mass, not an admission flag',
+    );
+    heavyHarness.state.entities.set(heavy.id, heavy);
+    heavyHarness.state.entityList.push(heavy);
+    const heavyStatuses = createStatusService({
+      state: heavyHarness.state,
+      catalog: heavyHarness.catalog,
+      bus: heavyHarness.bus,
+      helpers: { combatPhysics: heavyHarness.physics },
+    });
+    heavyHarness.system.registry = {
+      get(id) {
+        return id === 'actions' || id === 'combat'
+          ? { kernel: { attachments: heavyHarness.attachments, catalog: heavyHarness.catalog, statuses: heavyStatuses } }
+          : null;
+      },
+    };
+    const heavyTumble = Object.create(tumbleStates);
+    heavyTumble.init({
+      state: heavyHarness.state,
+      bus: heavyHarness.bus,
+      helpers: { combatPhysics: heavyHarness.physics },
+      registry: heavyHarness.system.registry,
+    });
+    try {
+      const impulses = [];
+      const offHitstun = heavyHarness.bus.on(HITSTUN_IMPULSE_EVENT, (payload) => {
+        impulses.push(payload);
+      });
+      try {
+        step(heavyHarness, { aim: heavyHarness.source.pos });
+        step(heavyHarness, { aim: heavyHarness.source.pos, latch: true });
+        step(heavyHarness, { aim: heavy.pos, dt: 0.1 });
+        step(heavyHarness, { aim: heavy.pos, latch: true });
+      } finally {
+        offHitstun();
+      }
+      const heavyLine = Object.values(heavyHarness.state.combat.attachments.byId)
+        .find((entry) => entry.state === 'active');
+      assert.ok(heavyLine, `${heavyDef.name} accepts the second latch`);
+      assert.ok(readTumbleStatus(heavyHarness.state, heavyHarness.source), 'the light is yanked');
+      assert.equal(readTumbleStatus(heavyHarness.state, heavy), null,
+        `${heavyDef.name} keeps the helm at its live mass`);
+      const heavyShare = impulses.find((entry) => entry.victimId === heavy.id);
+      assert.ok(heavyShare, `${heavyDef.name} publishes its catch share through the live bridle owner`);
+      assert.equal(heavyShare.victimMass, heavyDef.mass,
+        `${heavyDef.name} uses its live mass`);
+      const heavyLaw = resolveHitstunLaw({
+        deltaV: heavyShare.deltaV,
+        victimCruise: resolveGovernedCombatSpeed(heavy, heavyHarness.state, 0),
+        attackerMass: heavyShare.attackerMass,
+        victimMass: heavyShare.victimMass,
+      });
+      assert.ok(!(heavyLaw.durationS > 0),
+        `the ${heavyDef.name} share must sit under the hitstun floor at its own mass, got ${heavyLaw.durationS}s`);
+    } finally {
+      heavyTumble.destroy();
+      COMBAT_FLAGS.weaponImpulseConsequences = previousImpulse;
+    }
+  }
+
+  // --- one ignore: the heavy takes the second latch on the stepped route ----------------------
+  const ignore = harness();
+  const heavyNpc = entity(12, 'ship', 200, 0, {
+    team: 1,
+    mass: ANCHOR.mass,
+    radius: ANCHOR.collisionRadius,
+    physicsBody: { dynamic: true, mass: ANCHOR.mass },
+    data: {
+      name: ANCHOR.name,
+      lootTableId: ANCHOR.id,
+      ai: { combatDoctrineId: ANCHOR.combatDoctrineId },
+    },
+  });
+  assert.equal(
+    validateTwinBridlePair(ignore.system, ignore.state, ignore.player, ignore.source, heavyNpc, BRIDLE_DEF),
+    null,
+    'moving terrain takes a bridle; mass decides whether it notices',
+  );
+
+  ignore.state.entities.set(heavyNpc.id, heavyNpc);
+  ignore.state.entityList.push(heavyNpc);
+  step(ignore, { aim: ignore.source.pos });
+  step(ignore, { aim: ignore.source.pos, latch: true });
+  assert.equal(ignore.state.masslineBridle.sourceId, ignore.source.id);
+  step(ignore, { aim: heavyNpc.pos, dt: 0.1 });
+  assert.equal(ignore.state.masslineAcquisition.selected.targetId, heavyNpc.id,
+    'the heavy is a selectable endpoint, so the rope below is the throw and not a selection miss');
+  step(ignore, { aim: heavyNpc.pos, latch: true });
+  const heavyLine = Object.values(ignore.state.combat.attachments.byId)
+    .find((entry) => entry.state === 'active');
+  assert.ok(heavyLine, 'a second press on a heavy becomes a rope');
+  assert.deepEqual([heavyLine.ownerId, heavyLine.targetId], [ignore.source.id, heavyNpc.id]);
+
+  // --- one cut: the specialist verb, carried by doctrine and not by hardware -----------------
+  const plan = specialistPlanByEnemyId(RAIDER.id);
+  assert.equal(plan.verb, 'cut_line');
+  assert.equal(RAIDER.combatDoctrineId, plan.doctrineId);
+  // Narrow on purpose: this pins the absence of a cutter *module*, not any module whose name
+  // happens to contain "cut". If one ever lands, the receipt's "verb, not hardware" line is stale.
+  assert.equal(MODULES.some((mod) => /line_cutter|cut_line/i.test(mod.id)), false,
+    'the cutter is a doctrine verb on the specialist plan; no fitted line-cutter module exists');
+
+  const h = harness({ twoLights: true });
+  step(h, { aim: h.source.pos });
+  step(h, { aim: h.source.pos, latch: true });
+  step(h, { aim: h.target.pos, dt: 0.1 });
+  step(h, { aim: h.target.pos, latch: true });
+  const active = Object.values(h.state.combat.attachments.byId).find((entry) => entry.state === 'active');
+  assert.ok(active, 'the throw still makes one player-controlled line');
+
+  const cutter = entity(9, 'ship', 120, 20, {
+    team: 1,
+    mass: RAIDER.mass,
+    radius: RAIDER.collisionRadius,
+    data: {
+      name: RAIDER.name,
+      lootTableId: RAIDER.id,
+      ai: { combatDoctrineId: RAIDER.combatDoctrineId },
+    },
+  });
+  h.state.entities.set(cutter.id, cutter);
+  h.state.entityList.push(cutter);
+
+  // Drive the live doctrine machine: flank -> spool_cue -> attach_window on its own clock.
+  const doctrine = new CombatDoctrineRuntime({ seed: 905 });
+  let phase = null;
+  for (const [tick, distance] of [[0, 320], [8, 120], [8 + DOCTRINE_TELEGRAPH_TICKS, 112]]) {
+    phase = doctrine.update({
+      tick,
+      entityId: cutter.id,
+      doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+      perception: raiderPerception(cutter.id, distance),
+      directive: raiderDirective(),
+    });
+  }
+  assert.equal(phase.phase, 'attach_window', 'the raider reaches its own attach window unaided');
+  assert.equal(phase.phaseChanged, true, 'tacticalAI only publishes the phase on the change tick');
+
+  h.bus.emit('ai:doctrinePhase', {
+    entityId: cutter.id,
+    targetId: phase.targetId,
+    doctrineId: phase.doctrineId,
+    flightProfile: phase.flightProfile,
+    phase: phase.phase,
+    fireWindow: phase.fireWindow,
+    tick: h.state.tick,
+  });
+  assert.equal(active.state, 'broken');
+  assert.equal(active.breakReason, 'specialist_cut');
+  assert.ok(h.events.some((entry) => entry.type === 'massline:npcCounterplay'
+    && entry.payload.verb === 'cut_bridle'
+    && entry.payload.role === 'specialist'));
+});
+
+test('the live 180-mass Kilnback accepts a real native bridle and its own inverse-mass catch law', async () => {
+  const def = ENEMY_TYPES.find(row => row.id === 'kilnback'); assert.ok(def);
+  const h = harness(), native = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences; COMBAT_FLAGS.weaponImpulseConsequences = true;
+  let tumble;
+  try {
+    h.source.mass = 16; h.source.physicsBody = { dynamic: true, shape: 'ball', radius: 8, mass: 16 };
+    h.source.vel = { x: -80, z: 0 }; h.source.data.role = 'fighter';
+    const tug = entity(13, 'ship', 200, 0, { team: 1, mass: def.mass, maxSpeed: def.maxSpeed,
+      radius: def.collisionRadius, physicsBody: kilnbackPhysicalBody(),
+      data: { lootTableId: def.id, shipClass: def.shipClass, ai: { combatDoctrineId: def.combatDoctrineId } } });
+    assert.equal(tug.physicsBody.mass, 180); assert.equal(def.mass, 180);
+    h.state.entities.set(tug.id, tug); h.state.entityList.push(tug);
+    native.syncFromEntities(h.state.entityList); native.step(DT, h.state.tick);
+    assert.equal(native.records.get(tug.id).colliders.length, 3);
+    const port = createSg02CombatPhysicsPort(native), helpers = { combatPhysics: port };
+    const attachments = createAttachmentService({ state: h.state, catalog: h.catalog, helpers, bus: h.bus });
+    const statuses = createStatusService({ state: h.state, catalog: h.catalog, helpers, bus: h.bus });
+    h.system.helpers = helpers; h.system.registry = { get(id) {
+      return id === 'actions' || id === 'combat' ? { kernel: { attachments, catalog: h.catalog, statuses } } : null;
+    } };
+    tumble = Object.create(tumbleStates); tumble.init({ state: h.state, bus: h.bus, helpers, registry: h.system.registry });
+    const impulses = []; h.bus.on(HITSTUN_IMPULSE_EVENT, p => impulses.push(p));
+    step(h, { aim: h.source.pos }); step(h, { aim: h.source.pos, latch: true });
+    step(h, { aim: tug.pos, dt: .1 }); step(h, { aim: tug.pos, latch: true });
+    const line = Object.values(h.state.combat.attachments.byId).find(a => a.state === 'active');
+    assert.ok(line, '180-mass industrial cargo is an admitted endpoint');
+    const nativeLine = native.attachments.get(line.id);
+    assert.equal(nativeLine?.ownerEntity, h.source); assert.equal(nativeLine?.targetEntity, tug,
+      'the real native spring owner binds the same current endpoints; no duplicate hard joint is required');
+    const share = impulses.find(p => p.victimId === tug.id); assert.ok(share); assert.equal(share.victimMass, 180);
+    const law = resolveHitstunLaw({ deltaV: share.deltaV, victimCruise: resolveGovernedCombatSpeed(tug, h.state, 0),
+      attackerMass: share.attackerMass, victimMass: share.victimMass });
+    assert.equal(!!readTumbleStatus(h.state, tug), law.durationS > 0,
+      'Kilnback receives the real 180-mass consequence, rather than inheriting the unrelated 420-mass shrug proof');
+    for (let i = 0; i < 12; i++) native.step(DT, h.state.tick + i);
+    assert.ok(Number.isFinite(tug.vel.x));
+    assert.notEqual(tug.vel.x, 0, 'native momentum moves the admitted furnace and supplies burnback counterplay');
+  } finally { tumble?.destroy(); native.dispose(); COMBAT_FLAGS.weaponImpulseConsequences = previous; }
+});
+
+test('unused system is hash-inert and the HUD names a non-reel A/B linked state', () => {
+  const state = { player: {}, entities: new Map(), playerId: null };
+  const system = Object.create(tetherGameplay);
+  system.init({ state, bus: immediateBus(), helpers: {}, registry: null });
+  assert.equal(state.masslineBridle, undefined);
+  assert.equal(state.player.remoteMassline, undefined);
+  assert.match(MASSLINE_HUD_CSS, /ml2-bridle-source/);
+  assert.match(MASSLINE_HUD_CSS, /ml2-bridle-target/);
+  assert.deepEqual(
+    masslineTetherStatus({
+      active: true,
+      kind: TWIN_BRIDLE_HEAD_ID,
+      headId: TWIN_BRIDLE_HEAD_ID,
+      phase: 'slack',
+      strain: 0,
+      load: 0,
+      automaticBreakAllowed: true,
+    }),
+    { text: 'TWIN BRIDLE · LINKED', warn: false },
+  );
+});
+
+function harness(options = {}) {
+  const twoLights = options.twoLights === true;
+  const player = entity(1, 'ship', 0, 0, {
+    team: 0,
+    data: { derived: { masslineHeadId: TWIN_BRIDLE_HEAD_ID } },
+    physicsBody: { dynamic: true, mass: 40 },
+  });
+  const source = entity(2, 'ship', 90, 0, {
+    team: 1,
+    mass: twoLights ? 16 : 55,
+    vel: twoLights ? { x: 80, z: 0 } : { x: 0, z: 0 },
+    data: {
+      name: 'Raider A',
+      role: twoLights ? 'fighter' : undefined,
+      intent: twoLights ? { fire: true, moveX: 1, moveZ: 0 } : undefined,
+      ai: { forcePlayerTarget: true },
+    },
+    physicsBody: { dynamic: true, mass: twoLights ? 16 : 55 },
+  });
+  const target = twoLights
+    ? entity(3, 'ship', 150, 40, {
+        team: 1,
+        mass: 16,
+        vel: { x: -80, z: 0 },
+        data: {
+          name: 'Raider B',
+          role: 'fighter',
+          intent: { fire: true, moveX: -1, moveZ: 0 },
+          ai: { forcePlayerTarget: true },
+        },
+        physicsBody: { dynamic: true, mass: 16 },
+      })
+    : entity(3, 'fieldEmitter', 150, 40, {
+        team: 0,
+        data: { name: 'Repulsor B', fieldEmitter: true },
+        physicsBody: { dynamic: false, mass: 2500 },
+      });
+  const entities = new Map([[player.id, player], [source.id, source], [target.id, target]]);
+  const state = {
+    mode: 'flight',
+    tick: 100,
+    simTime: 5,
+    playerId: player.id,
+    player: {},
+    input: {
+      aimWorld: { ...source.pos },
+      aimAngle: 0,
+      turnIntent: 0,
+      moveX: 0,
+      moveZ: 0,
+      actions: {},
+      tetherMode: null,
+    },
+    runtime: { features: PRODUCTION_FEATURES },
+    world: { currentSectorId: 'sector_test' },
+    entities,
+    entityList: [...entities.values()],
+  };
+  ensureCombatState(state);
+  const catalog = createCombatCatalog();
+  const physics = fakePhysics();
+  const events = [];
+  const bus = immediateBus(events);
+  const attachments = createAttachmentService({ state, catalog, helpers: { combatPhysics: physics }, bus });
+  const registry = {
+    get(id) {
+      return id === 'actions' ? { kernel: { attachments, catalog } } : null;
+    },
+  };
+  const system = Object.create(tetherGameplay);
+  system.init({ state, bus, helpers: { combatPhysics: physics }, registry });
+  return { state, player, source, target, physics, events, bus, attachments, system, catalog };
+}
+
+function step(h, { aim = null, latch = false, cut = false, dt = DT } = {}) {
+  h.state.tick += 1;
+  h.state.simTime += dt;
+  h.state.input.aimIntentActive = !!aim;
+  if (aim) {
+    h.state.input.aimWorld.x = aim.x;
+    h.state.input.aimWorld.z = aim.z;
+  }
+  h.state.input.actions = {
+    tetherFire: latch,
+    tetherCut: cut,
+    massline: latch || cut ? { latch, cut, lineControl: false, lineLength: 0 } : null,
+  };
+  h.state.input.tetherMode = null;
+  h.system.update(dt, h.state);
+}
+
+// The perception/directive shape aiPorts hands the doctrine runtime in production. Only the target
+// distance varies; the raider's phase clock does the rest.
+function raiderPerception(selfId, distanceWu) {
+  return {
+    self: {
+      id: selfId,
+      team: 1,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      activity: {
+        kind: 'attack_run',
+        reason: 'authorized_hostile_spawn',
+        anchor: { x: 0, z: 0 },
+        leashRadius: 2800,
+        preferredRange: 260,
+        startedTick: 0,
+      },
+      roe: 'weapons_free',
+    },
+    contacts: [{
+      id: 'player',
+      kind: ContactKind.SHIP,
+      alive: true,
+      valid: true,
+      visible: true,
+      hostile: true,
+      confidence: 1,
+      threat: 0.8,
+      pos: { x: distanceWu, z: 0 },
+      vel: { x: 0, z: 0 },
+      tethered: false,
+      operationalMassBand: 'heavy',
+      mobilityBand: 'medium',
+      cargoBand: 'rich',
+      tetherabilityBand: 'poor',
+      tags: [],
+    }],
+    events: [],
+  };
+}
+
+function raiderDirective() {
+  return Object.freeze({
+    objective: Object.freeze({ kind: ObjectiveKind.FOCUS, targetId: 'player', reason: 'fixture' }),
+    formation: Object.freeze({ breakFormation: false }),
+  });
+}
+
+function fakePhysics() {
+  return {
+    creates: [],
+    cuts: [],
+    createAttachment(spec) {
+      this.creates.push(structuredClone(spec));
+      return { id: `joint_${this.creates.length}` };
+    },
+    cutAttachment(spec) {
+      this.cuts.push(structuredClone(spec));
+      return true;
+    },
+    getAttachmentTelemetry() {
+      return { tension: 0, impulse: 0, yank: 0, phase: 'slack' };
+    },
+    setAttachmentReel() { return true; },
+  };
+}
+
+function entity(id, type, x, z, overrides = {}) {
+  return {
+    id,
+    type,
+    alive: true,
+    collides: true,
+    pos: { x, z },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    thrust: 0,
+    brake: false,
+    maxSpeed: 120,
+    radius: type === 'station' ? 24 : type === 'asteroid' ? 16 : 8,
+    mass: 50,
+    hull: 100,
+    hullMax: 100,
+    team: 2,
+    data: {},
+    ...overrides,
+  };
+}
+
+function motionSnapshot(...entities) {
+  return entities.map((value) => ({
+    id: value.id,
+    pos: { ...value.pos },
+    vel: { ...value.vel },
+    rot: value.rot,
+    thrust: value.thrust,
+    brake: value.brake,
+    maxSpeed: value.maxSpeed,
+  }));
+}
+
+function immediateBus(events = []) {
+  const listeners = new Map();
+  return {
+    on(type, fn) {
+      if (!listeners.has(type)) listeners.set(type, new Set());
+      listeners.get(type).add(fn);
+      return () => listeners.get(type)?.delete(fn);
+    },
+    emit(type, payload) {
+      events.push({ type, payload });
+      for (const fn of listeners.get(type) || []) fn(payload);
+    },
+  };
+}

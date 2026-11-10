@@ -1,0 +1,343 @@
+// src/ui/hudMeta.js — the HUD meta-arc (the three phases of complicity).
+//
+// CANONICAL SOURCE: docs/worldbuilding/story/HUD-META-ARC.md + STORY-SPINE-NARRATIVE-OVERLAY.
+//   Phase 1 (Protective, B0–B3): the HUD's lies read as malfunctions. CARGO shows "STABLE LOAD"
+//     after the cargo is gone. The civilian tag flickers 0.5s before the kill feed overwrites it.
+//   Phase 2 (Complicit, B4–B5): manifest self-corrects silently. No announcement.
+//   Phase 3 (Absent, B6–B7): tags freeze on last-known state. CONTRACT 47-A shows PENDING forever.
+//
+// This is a HUD SUB-COMPONENT: createHud() mounts it (like the death banner / cargo panel). It
+// listens to events the story system emits (hud:phase, hud:tagFlicker) and renders:
+//   - the persistent "STABLE LOAD" cargo lie line (top of the cargo stat / a dedicated HUD line)
+//   - a transient "CIVILIAN VESSEL — REGISTERED" tag that flickers, then gets overwritten
+//   - a small "PHASE n" readout in the corner that the player learns to distrust
+//
+// Pure DOM. Reads ctx.state. Never mutates sim state.
+
+import { commodityDisplayName } from './commodityNames.js';
+import { legacyFlightLine } from '../core/newGamePlus.js';
+
+
+function manifestCargoLabel(id) {
+  return commodityDisplayName(id).toUpperCase();
+}
+
+export const STABLE_LOAD_DIAL_CLEARANCE_PX = 44;
+
+export function seatStableLoadClearOfSpeedDial(line, doc) {
+  const view = doc && doc.defaultView;
+  const dial = doc && typeof doc.querySelector === 'function' ? doc.querySelector('.orr-speeddial') : null;
+  if (!line || !line.style || !view || !dial || typeof dial.getBoundingClientRect !== 'function'
+    || typeof line.getBoundingClientRect !== 'function') return null;
+  const dialRect = dial.getBoundingClientRect();
+  const ownRect = line.getBoundingClientRect();
+  const overlaps = dialRect.height > 0 && dialRect.left < ownRect.right && dialRect.right > ownRect.left;
+  line.style.bottom = overlaps
+    ? `max(248px, ${Math.round(view.innerHeight - dialRect.top + STABLE_LOAD_DIAL_CLEARANCE_PX)}px)`
+    : '';
+  return line.style.bottom;
+}
+
+export function createHudMeta(ctx) {
+  const { bus, state } = ctx;
+  const unsubscribers = [];
+  const on = (event, listener, options = undefined) => {
+    if (!bus || typeof bus.on !== 'function') return null;
+    const unsubscribe = bus.on(event, listener, options);
+    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    return unsubscribe;
+  };
+
+  // ── the STABLE LOAD line (the Chapter-01 prototype that stays on after cargo is gone) ─────
+  // Mounted into #hud. Hidden until Phase 1 begins (B0). Once shown, it PERSISTS — toggling it
+  // off hides it momentarily but the line returns. This is the HUD's first and most persistent lie.
+  const stableLoad = document.createElement('div');
+  stableLoad.className = 'sf-stableload';
+  stableLoad.id = 'sf-stableload';
+  stableLoad.setAttribute('aria-hidden', 'true');
+  stableLoad.innerHTML =
+    '<span class="sf-stableload__k mono">CARGO</span>' +
+    '<span class="sf-stableload__v mono">STABLE LOAD</span>';
+  document.getElementById('hud').appendChild(stableLoad);
+  let stableLoadArmed = false;     // Phase 1+ has begun → the line exists
+  let stableLoadHidden = false;    // player toggled it off (it returns)
+  const showStableLoad = () => {
+    stableLoad.classList.add('sf-stableload--visible');
+    seatStableLoadClearOfSpeedDial(stableLoad, document);
+  };
+  const onResize = () => {
+    if (stableLoad.classList.contains('sf-stableload--visible')) seatStableLoadClearOfSpeedDial(stableLoad, document);
+  };
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', onResize);
+  }
+
+  // ── the civilian-tag flicker (B2 / Elroy) ─────────────────────────────────────────────────
+  const tagFlicker = document.createElement('div');
+  tagFlicker.className = 'sf-tagflicker';
+  tagFlicker.id = 'sf-tagflicker';
+  tagFlicker.setAttribute('aria-hidden', 'true');
+  tagFlicker.innerHTML = '<span class="sf-tagflicker__tag mono"></span>';
+  document.getElementById('hud').appendChild(tagFlicker);
+  const tagFlickerLabel = tagFlicker.querySelector('.sf-tagflicker__tag');
+  let tagFlickerTimer = 0;
+
+  // ── the phase readout (small, corner, distrustful) ────────────────────────────────────────
+  const phaseReadout = document.createElement('div');
+  phaseReadout.className = 'sf-hudphase';
+  phaseReadout.id = 'sf-hudphase';
+  phaseReadout.setAttribute('aria-hidden', 'true');
+  phaseReadout.innerHTML = '<span class="sf-hudphase__k mono">SYS</span><span class="sf-hudphase__v mono">NOMINAL</span>';
+  phaseReadout.style.display = 'none';
+  document.getElementById('hud').appendChild(phaseReadout);
+  const phaseValue = phaseReadout.querySelector('.sf-hudphase__v');
+
+  // New Run+ receipt: the prior ending remains legible throughout the carried run. It is a quiet
+  // provenance line, not a second progression meter or an objective.
+  const legacyReadout = document.createElement('div');
+  legacyReadout.className = 'sf-hudlegacy mono';
+  legacyReadout.id = 'sf-hudlegacy';
+  legacyReadout.setAttribute('aria-hidden', 'true');
+  legacyReadout.style.display = 'none';
+  document.getElementById('hud').appendChild(legacyReadout);
+  let legacyKey = '';
+  let legacyPresent = false;
+  let metaVisible = true;
+
+  function syncLegacyReadout() {
+    const legacy = state.story && state.story.newGamePlus;
+    const key = legacy
+      ? [
+        legacy.sourceEnding,
+        legacy.keepsakeId,
+        legacy.leadGrudgeName,
+        legacy.hunterGrudgeCount,
+        (legacy.scars && legacy.scars.length) || 0,
+        (legacy.scars && legacy.scars[0] && legacy.scars[0].cause) || '',
+        (legacy.titles && legacy.titles[0] && legacy.titles[0].title) || '',
+        legacy.worldFacts && legacy.worldFacts.title || '',
+      ].join('|')
+      : '';
+    if (key === legacyKey) return;
+    legacyKey = key;
+    legacyPresent = !!legacy;
+    if (!legacy) {
+      legacyReadout.textContent = '';
+      legacyReadout.style.display = 'none';
+      return;
+    }
+    legacyReadout.textContent = legacyFlightLine(legacy);
+    legacyReadout.style.display = metaVisible ? '' : 'none';
+  }
+  on('story:newGamePlusStarted', syncLegacyReadout);
+
+  // ── the manifest self-correction log (Phase 2+) ───────────────────────────────────────────
+  // When the cargo manifest "silently corrects", we surface a one-line ghost of the old value that
+  // fades — the player notices the discrepancy only if they're paying attention. No notification.
+  const manifestGhost = document.createElement('div');
+  manifestGhost.className = 'sf-manifest-ghost';
+  manifestGhost.id = 'sf-manifest-ghost';
+  manifestGhost.setAttribute('aria-hidden', 'true');
+  document.getElementById('hud').appendChild(manifestGhost);
+  const lastCargoSnapshot = new Map();
+  let ghostTimer = 0;
+  syncCargoSnapshot(lastCargoSnapshot);
+
+  function cargoItems() {
+    return (state.player && state.player.cargo && state.player.cargo.items) || {};
+  }
+
+  function syncCargoSnapshot(snapshot) {
+    snapshot.clear();
+    const items = cargoItems();
+    for (const k in items) {
+      const qty = items[k] || 0;
+      if (qty > 0) snapshot.set(k, qty);
+    }
+  }
+
+  function maybeShowManifestGhost() {
+    const phase = (state.story && state.story.phase) || 1;
+    const diff = phase >= 2 ? diffCargo(lastCargoSnapshot, cargoItems()) : null;
+    syncCargoSnapshot(lastCargoSnapshot);
+    if (!diff) return;
+    manifestGhost.textContent = diff;
+    manifestGhost.classList.add('sf-manifest-ghost--show');
+    ghostTimer = 1.6;
+  }
+
+  // ── hud:phase handler ─────────────────────────────────────────────────────────────────────
+  on('hud:phase', ({ phase, beat, lie }) => {
+    // Phase readout: Phase 1 = "NOMINAL" (the lie), Phase 2 = "OPTIMIZED", Phase 3 = "STABLE".
+    const phaseLabel = phase >= 3 ? 'STABLE' : (phase === 2 ? 'OPTIMIZED' : 'NOMINAL');
+    phaseValue.textContent = phaseLabel;
+    phaseReadout.classList.toggle('sf-hudphase--p2', phase === 2);
+    phaseReadout.classList.toggle('sf-hudphase--p3', phase >= 3);
+    phaseReadout.style.display = phase > 1 ? '' : 'none';
+
+    if (phase >= 1) {
+      stableLoadArmed = true;
+      if (!stableLoadHidden) showStableLoad();
+    }
+
+    // specific lies
+    if (lie === 'stable_load') {
+      // ensure the STABLE LOAD line is showing even if the player toggled it off earlier — the HUD
+      // re-asserts its courtesy. (The doc: "The line stays.")
+      stableLoadHidden = false;
+      showStableLoad();
+    }
+    if (lie === 'civilian_tag_flicker') {
+      // armed; the actual flicker fires on hud:tagFlicker (the kill)
+    }
+    if (lie === 'manifest_silent_correct') {
+      // armed; the ghost fires when cargo contents change (detected in tick)
+    }
+    if (lie === 'phase3_freeze') {
+      // CONTRACT 47-A shows PENDING forever — surface a permanent HUD line.
+      stableLoad.classList.add('sf-stableload--p3');
+      stableLoad.querySelector('.sf-stableload__v').textContent = '47-A: PENDING';
+    }
+  });
+
+  // ── hud:tagFlicker handler (B2 kill) ──────────────────────────────────────────────────────
+  on('hud:tagFlicker', ({ tag, durationMs, note }) => {
+    tagFlickerLabel.textContent = tag || 'CIVILIAN VESSEL \u2014 REGISTERED';
+    tagFlicker.classList.add('sf-tagflicker--show');
+    tagFlickerTimer = durationMs || 500;
+    // The note is the truth the HUD won't show — stash it as the title so an inspecting player finds it.
+    tagFlicker.title = note || '';
+  });
+
+  // ── player can toggle the STABLE LOAD line off (it returns) ───────────────────────────────
+  const onStableLoadClick = () => {
+    if (!stableLoadArmed) return;
+    stableLoadHidden = true;
+    stableLoad.classList.remove('sf-stableload--visible');
+    // per the doc: "The player can toggle it off. The line stays." It returns on next cargo change.
+  };
+  stableLoad.addEventListener('click', onStableLoadClick);
+
+  on('cargo:changed', maybeShowManifestGhost);
+
+  // ── per-frame tick (called from hud.frame via the returned api) ───────────────────────────
+  let tagFlickerOverwriteTimer = 0;
+  function tick(dt) {
+    syncLegacyReadout();
+    // tag flicker countdown
+    if (tagFlickerTimer > 0) {
+      tagFlickerTimer -= (dt || 0.016) * 1000;
+      if (tagFlickerTimer <= 0) {
+        // the kill feed overwrites it — snap to the "neutralized" state then hide
+        tagFlickerLabel.textContent = 'THREAT NEUTRALIZED';
+        tagFlicker.classList.remove('sf-tagflicker--show');
+        tagFlicker.classList.add('sf-tagflicker--overwrite');
+        if (tagFlickerOverwriteTimer) clearTimeout(tagFlickerOverwriteTimer);
+        tagFlickerOverwriteTimer = setTimeout(() => {
+          tagFlicker.classList.remove('sf-tagflicker--overwrite');
+          tagFlickerOverwriteTimer = 0;
+        }, 600);
+      }
+    }
+
+    if (ghostTimer > 0) {
+      ghostTimer -= dt || 0.016;
+      if (ghostTimer <= 0) manifestGhost.classList.remove('sf-manifest-ghost--show');
+    }
+  }
+
+  function diffCargo(prev, cur) {
+    // returns a one-line "old → new" ghost if a key's qty dropped to 0 or a key was renamed-ish;
+    // else null. Deliberately subtle — the player notices only if watching.
+    for (const [k, qty] of prev) {
+      if ((qty || 0) > 0 && !(cur[k] > 0)) {
+        return `MANIFEST: ${labelOf(k)} \u2014 RECONCILED`;
+      }
+    }
+    return null;
+  }
+  function labelOf(id) {
+    return manifestCargoLabel(id);
+  }
+
+  function setVisible(v) {
+    metaVisible = !!v;
+    stableLoad.style.display = v ? '' : 'none';
+    tagFlicker.style.display = v ? '' : 'none';
+    const phase = (state.story && state.story.phase) || 1;
+    phaseReadout.style.display = (v && phase > 1) ? '' : 'none';
+    manifestGhost.style.display = v ? '' : 'none';
+    legacyReadout.style.display = v && legacyPresent ? '' : 'none';
+  }
+
+  return {
+    tick,
+    setVisible,
+    destroy() {
+      for (const unsubscribe of unsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
+      }
+      tagFlickerTimer = 0;
+      if (tagFlickerOverwriteTimer) {
+        clearTimeout(tagFlickerOverwriteTimer);
+        tagFlickerOverwriteTimer = 0;
+      }
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('resize', onResize);
+      }
+      stableLoad.removeEventListener('click', onStableLoadClick);
+      for (const node of [stableLoad, tagFlicker, phaseReadout, legacyReadout, manifestGhost]) {
+        if (node && node.parentNode) node.parentNode.removeChild(node);
+      }
+    },
+  };
+}
+
+// CSS is injected by uiRoot's HUD stylesheet block (added there to keep all HUD CSS in one place).
+// The classes used: .sf-stableload, .sf-tagflicker, .sf-hudphase, .sf-manifest-ghost.
+export const HUD_META_CSS = `
+  /* STABLE LOAD — the persistent cargo lie (Phase 1+). Quiet stencil, not a card. */
+  .sf-stableload { position:absolute; left:22px; bottom:248px; display:none; align-items:center; gap:8px;
+    padding:0; border:0;
+    pointer-events:auto; cursor:pointer; opacity:0; transition:opacity .5s ease; }
+  .sf-stableload--visible { display:flex; opacity:1; }
+  .sf-stableload__k { font-family:var(--k-display, var(--hud-display)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-stableload__v { font-family:var(--k-text, var(--hud-data)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-stableload--p3 .sf-stableload__v { color:var(--k-red, var(--visor-red));
+    animation:sf-stablepulse 2.5s ease-in-out infinite alternate; }
+  @keyframes sf-stablepulse { from { opacity:.7; } to { opacity:1; } }
+  /* civilian tag flicker (B2) — stencil, never a boxed toast */
+  .sf-tagflicker { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); pointer-events:none;
+    opacity:0; transition:opacity .12s ease; z-index:12; }
+  .sf-tagflicker--show { opacity:1; }
+  .sf-tagflicker__tag { font-family:var(--k-display, var(--mono)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--k-good, var(--good)); padding:0; border:0; }
+  .sf-tagflicker--overwrite .sf-tagflicker__tag { color:var(--k-red, var(--visor-red)); }
+  .sf-hudphase { position:absolute; top:96px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:7px; pointer-events:none; opacity:.85; }
+  .sf-hudphase__k { font-family:var(--k-display, var(--hud-display)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-hudphase__v { font-family:var(--k-text, var(--hud-data)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-hudphase--p2 .sf-hudphase__v { color:var(--k-signal, var(--accent-2)); }
+  .sf-hudphase--p3 .sf-hudphase__v { color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-hudlegacy { position:absolute; top:116px; left:50%; transform:translateX(-50%); max-width:min(680px,72vw);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none;
+    font-family:var(--k-text, var(--hud-data)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; color:var(--k-bone-62, var(--text-secondary)); opacity:.72; }
+  .sf-manifest-ghost { position:absolute; left:50%; top:54%; transform:translateX(-50%); pointer-events:none;
+    font-family:var(--k-text, var(--mono)); font-size:var(--k-fs-data, 12px); letter-spacing:.06em;
+    color:var(--k-bone-62, var(--text-secondary)); opacity:0; transition:opacity .4s ease; }
+  .sf-manifest-ghost--show { opacity:.6; }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-stableload--p3 .sf-stableload__v { animation:none; }
+    .sf-stableload, .sf-tagflicker, .sf-manifest-ghost { transition:none; }
+  }
+  @media (max-width: 760px) {
+    .sf-stableload { left:8px; bottom:248px; }
+    .sf-hudphase { top:48px; }
+    .sf-hudlegacy { top:68px; max-width:88vw; }
+  }
+`;

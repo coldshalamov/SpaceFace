@@ -1,0 +1,107 @@
+From fc9ff75bb4fd860ee8234ecd5d7b87670254f808 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:31:52 -0400
+Subject: [PATCH] =?UTF-8?q?perf(activity):=20cache=20classify=20physics=20?=
+ =?UTF-8?q?partition=20kind=20(~4.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet classifyWorld re-entered shouldSyncPhysicsBodyEntity →
+authoredPhysicsBody and isDynamicPhysicsBodyEntity → defaultDynamic on
+every visit. Cache 0/1/2 on the entity; refresh on simTier/pinnedExact
+flips in applyStamp and on first touch. Soft-GPU fps not claimed.
+---
+ src/world/activityRuntime.js | 44 +++++++++++++++++++++++++++++++-----
+ 1 file changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/src/world/activityRuntime.js b/src/world/activityRuntime.js
+index bba5e6b80..cd9086b88 100644
+--- a/src/world/activityRuntime.js
++++ b/src/world/activityRuntime.js
+@@ -455,9 +455,12 @@ function applyStamp(entity, classified, simTime) {
+   if (!rec) {
+     rec = makeStamp(classified, simTime);
+     attachStamp(entity, rec);
++    // Fresh stamp — physics partition depends on tier/pin; fill cache for classify.
++    refreshPhysicsPartition(entity);
+     return rec;
+   }
+   const prior = rec.simTier;
++  const priorPinned = rec.pinnedExact;
+   const wasExact = isExactTier(prior);
+   let tier = classified.simTier;
+   let nowExact = isExactTier(tier);
+@@ -483,6 +486,12 @@ function applyStamp(entity, classified, simTime) {
+   rec.lastObservedT = simTime;
+   if (classified.nextEventAtT != null) rec.nextEventAtT = classified.nextEventAtT;
+   else if (!Number.isFinite(rec.nextEventAtT) || rec.nextEventAtT < 0) rec.nextEventAtT = -1;
++  // entityNeedsPhysics / shouldSync partition follows simTier + pinnedExact. Refresh only
++  // when those flip so quiet revisits read the cached byte (profile shouldSyncPhysicsBodyEntity
++  // + isDynamicPhysicsBodyEntity under classifyWorld).
++  if (prior !== rec.simTier || priorPinned !== rec.pinnedExact || entity._physicsPartition == null) {
++    refreshPhysicsPartition(entity);
++  }
+   return rec;
+ }
+ 
+@@ -732,6 +741,7 @@ export function admitSameTickProjectiles(state, runtime, membership) {
+     const entity = unseen[i];
+     runtime.seenEntityIds.add(entity.id);
+     runtime.currentEntityIds.add(entity.id);
++    entity._physicsPartition = 2;
+     runtime.physicsDynamics.push(entity);
+     runtime.exactIds.push(entity.id);
+     runtime.counts.physics += 1;
+@@ -1082,13 +1092,15 @@ function classifyWorld(state, runtime) {
+       runtime.activeTrafficEntities.push(entity);
+     }
+ 
+-    if (!entityNeedsPhysics(entity)) continue;
+-    if (!shouldSyncPhysicsBodyEntity(entity)) continue;
+-    if (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') {
+-      dynamics.push(entity);
+-    } else {
+-      statics.push(entity);
++    // Physics partition cache: 0=skip, 1=static, 2=dynamic. applyStamp refreshes on
++    // tier/pin flips; first touch fills. Avoids re-entering authoredPhysicsBody/defaultDynamic
++    // on every quiet classify revisit.
++    let partition = entity._physicsPartition;
++    if (partition !== 0 && partition !== 1 && partition !== 2) {
++      partition = refreshPhysicsPartition(entity);
+     }
++    if (partition === 2) dynamics.push(entity);
++    else if (partition === 1) statics.push(entity);
+   }
+ 
+   if (runtime.classifyMode === 'incremental') {
+@@ -1313,6 +1325,26 @@ export function entityNeedsPhysics(entity) {
+   return isExactTier(activity.simTier);
+ }
+ 
++/**
++ * Cached classify physics partition: 0 = skip, 1 = static sync, 2 = dynamic sync.
++ * Mirrors entityNeedsPhysics + shouldSyncPhysicsBodyEntity + isDynamicPhysicsBodyEntity
++ * (projectile forced dynamic). Quiet revisits read the byte; applyStamp refreshes on
++ * simTier / pinnedExact flips.
++ */
++export function refreshPhysicsPartition(entity) {
++  if (!entity || entity.alive === false) {
++    if (entity) entity._physicsPartition = 0;
++    return 0;
++  }
++  if (!entityNeedsPhysics(entity) || !shouldSyncPhysicsBodyEntity(entity)) {
++    entity._physicsPartition = 0;
++    return 0;
++  }
++  const kind = (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') ? 2 : 1;
++  entity._physicsPartition = kind;
++  return kind;
++}
++
+ /**
+  * Exact/near craft keep the 60 Hz flight integrator. Abstract/dormant/aggregate craft are
+  * owned by catch-up / scheduled wakes — continuous drag on a shelved actor fights that
+-- 
+2.47.3
+

@@ -1,0 +1,1699 @@
+import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
+import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
+import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scannerReadModel.js';
+import { countermeasureReadiness } from '../systems/countermeasures.js';
+import { countArmedOwnerMines } from '../systems/mines.js';
+import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import { INK_SHADOW } from './hudBrackets.js';
+import {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  getOccupationalSilhouetteRule,
+  forceChannelForTelegraphKind,
+  getForcePaletteHex,
+} from '../data/palettes.js';
+
+export {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  getOccupationalSilhouetteRule,
+};
+
+/** Mark the screened hull (the warded id), and clear the mark when the ward drops. */
+export function applyWardScreenMark(host, state) {
+  const id = publishedWardTarget(state);
+  if (host && typeof host.setAttribute === 'function') {
+    if (id == null) host.removeAttribute('data-warded-id');
+    else host.setAttribute('data-warded-id', String(id));
+  }
+  return id == null ? null : id;
+}
+
+export function resolveEntityOccupationalRule(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const candidates = [
+    entity.occupationalRole,
+    data.occupationalRole,
+    entity.role,
+    data.role,
+    data.trafficRole,
+    data.jobRole,
+    data.craftId,
+    entity.ship,
+    data.ship,
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    if (c && typeof c === 'string') {
+      const rule = getOccupationalSilhouetteRule(c);
+      if (rule) return rule;
+    }
+  }
+  return null;
+}
+
+export function getThreatHaloSilhouetteToken(entity) {
+  const rule = resolveEntityOccupationalRule(entity);
+  return rule ? rule.silhouetteToken : 'token_silhouette_standard';
+}
+
+/** Leftover doctrine / mine / snare kinds the halo may paint. One cue, then it expires. */
+export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
+  'engine_flare',
+  'weapon_charge',
+  'attach_spool',
+  'wake_mines',
+  'detonator_fuse',
+  'field_spool',
+  'pd_curtain',
+  'sensor_ghost',
+  'broadside_charge',
+  'swarmer_vent',
+  'broadside_desperation',
+  'shield_lance',
+  'pirate_stalk',
+  'scan_sweep',
+  'return_fire_warning',
+  'pd_curtain_closing',
+  'warden_screen_closing',
+  'furnace_preheat',
+  'mothlight_iris',
+]);
+
+export const TELEGRAPH_CUE_TICKS = 30;
+export const TELEGRAPH_PAIR_MIN_TICKS = 30;
+export const TELEGRAPH_PAIR_MAX_TICKS = 60;
+
+// Continuous hazards (mines, snares, a lit fuse) stay lit from announcement to resolution
+// instead of pulsing once. Their event rows may declare durationTicks so death correlation
+// can tell "still lit" from a stale row no one can see anymore. The detonator's fuse announces
+// its whole armed window (cue + commit), so a dart that kills anywhere inside its own declared
+// run pairs instead of falling outside the one-shot window.
+export const CONTINUOUS_TELEGRAPH_KINDS = new Set(['wake_mines', 'attach_spool', 'detonator_fuse']);
+
+const TELEGRAPH_KIND_SET = new Set(LEFTOVER_TELEGRAPH_KINDS);
+const HARVEST_HEARTBEAT_S = 0.2;
+const COMPAT_ATTACK_KINDS = new Set(['attackRun', 'alphaStrike']);
+const SLOT_TELEGRAPH_CLASS = 'sf-threat-halo__slot--telegraph';
+const TETHER_CUT_DOCTRINE = 'tether_control_raider';
+const TETHER_CUT_PHASES = new Set(['spool_cue', 'attach_window']);
+// The kamikaze dart's fuse announce stays live through its armed phases; every other phase
+// (egress, reform, re-approach) retires the cue now instead of coasting on the declared window.
+const DETONATOR_RUN_DOCTRINE = 'detonator_run';
+const DETONATOR_ARMED_PHASES = new Set(['fuse_cue', 'commit']);
+const tetherPlan = specialistPlanById('tether_cutter');
+const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitTicks)
+  ? tetherPlan.commitTicks
+  : 45;
+
+export function hostileLabelFor(role, bucket, telegraphed, armedMines = 0) {
+  const raw = String(role || 'unknown').trim() || 'unknown';
+  const name = raw.toUpperCase().replace(/[_-]+/g, ' ');
+  let label;
+  if (telegraphed) label = `${name} — ATTACKING`;
+  else if (bucket >= 2) label = `${name} — CLOSING`;
+  else if (bucket === 1) label = `${name} — DRIFTING`;
+  else label = `${name} — HOLDING`;
+  // FIGHT-11 — the mine-layer's halo counts the screen it laid: armed mines only
+  // (an unarmed hull is cargo, never a counted threat). Plain words, no ids.
+  const mines = Math.max(0, Math.floor(Number(armedMines) || 0));
+  if (mines > 0) label += ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}`;
+  return label;
+}
+
+/**
+ * FIGHT-11 — which hulls may carry an armed-mine count on the halo: the mine-layer
+ * doctrine only. Read from the hull's live doctrine, never from a plan id.
+ */
+export function isMineLayerHaloEntity(entity) {
+  const data = (entity && entity.data) || {};
+  const ai = data.ai || {};
+  return (ai.combatDoctrineId || data.combatDoctrineId || (entity && entity.combatDoctrineId))
+    === 'mine_layer_wake';
+}
+
+/**
+ * Name the corsair's cut only while the tether raider's window is open and the
+ * visible silhouette / telegraph / verb uniquely match. Anything else stays quiet.
+ */
+export function tetherCutHaloLabel(read) {
+  if (!read || read.doctrineId !== TETHER_CUT_DOCTRINE || read.cutWindow !== true) return null;
+  return nameThreatFromVisibleRead(read);
+}
+
+/**
+ * Latch the live sentence on the slot, then drop it when the window closes so a
+ * later sort cannot keep the previous hull's name. aria-label is touched only
+ * when the slot (or slot.element) is an element.
+ */
+export function stepTetherCutHalo(slot, read) {
+  const label = tetherCutHaloLabel(read);
+  if (!slot || typeof slot !== 'object') return label;
+  if (label) {
+    slot._tetherCutLatch = true;
+    slot._tetherCutLabel = label;
+  } else if (slot._tetherCutLatch) {
+    slot._tetherCutLatch = false;
+    slot._tetherCutLabel = null;
+  }
+  const shown = slot._tetherCutLatch ? slot._tetherCutLabel : null;
+  const element = typeof slot.setAttribute === 'function'
+    ? slot
+    : (slot.element && typeof slot.element.setAttribute === 'function' ? slot.element : null);
+  if (element && typeof element.removeAttribute === 'function') {
+    if (shown) element.setAttribute('aria-label', shown);
+    else element.removeAttribute('aria-label');
+  }
+  return shown || null;
+}
+
+export function leftoverTelegraphKind(payload) {
+  if (!payload) return null;
+  const raw = String(payload.kind || payload.cue || '');
+  if (TELEGRAPH_KIND_SET.has(raw)) return raw;
+  if (raw === 'mine') return 'wake_mines';
+  if (raw === 'transverse_snare') return 'attach_spool';
+  if (COMPAT_ATTACK_KINDS.has(raw)) return 'engine_flare';
+  const doctrineId = String(payload.doctrineId || '');
+  if (doctrineId === 'interceptor_flyby' || doctrineId === 'brawler_commit' || doctrineId === 'escort_screen'
+      || doctrineId === 'pack_pursuit' || doctrineId === 'swarm_pack') {
+    return 'engine_flare';
+  }
+  if (doctrineId === 'capital_broadside' || doctrineId === 'capital_broadside_tollman'
+      || doctrineId === 'capital_broadside_ala') {
+    return 'broadside_charge';
+  }
+  if (doctrineId === 'tether_control_raider') return 'attach_spool';
+  if (doctrineId === 'field_anchor_controller') return 'field_spool';
+  if (doctrineId === 'ranged_disengager' || doctrineId === 'shield_breaker') return 'weapon_charge';
+  if (doctrineId === 'ranged_stalker') return 'sensor_ghost';
+  if (doctrineId === 'mine_layer_wake') return 'wake_mines';
+  if (doctrineId === 'detonator_run') return 'detonator_fuse';
+  // A specialist omitted from the hand list still publishes a telegraph on its plan.
+  // Read that kind. Do not invent a glyph, and do not key the mark off the hull name.
+  const plan = specialistPlanByDoctrine(doctrineId);
+  if (plan && TELEGRAPH_KIND_SET.has(plan.telegraphKind)) return plan.telegraphKind;
+  return null;
+}
+
+function telegraphIdsOf(payload) {
+  if (!payload) return [];
+  const ids = [];
+  if (payload.entityId != null) ids.push(payload.entityId);
+  if (payload.mineId != null) ids.push(payload.mineId);
+  if (payload.actorId != null) ids.push(payload.actorId);
+  if (payload.sourceId != null) ids.push(payload.sourceId);
+  if (payload.ownerId != null) ids.push(payload.ownerId);
+  return ids;
+}
+
+/**
+ * Pair a leftover player death with a leftover ai:telegraph 30–60 ticks earlier
+ * whose entityId / mineId matches the killer. Same-breath inject does not pair.
+ * Continuous hazards (wake_mines / attach_spool) may declare durationTicks: they pair when the
+ * announcement led the death by ≥ minLead and the cue was still lit inside the final
+ * maxLead window — a mine telegraphed 2 s ahead counts, a stale unlit placement does not.
+ */
+export function pairLeftoverDeathTelegraph(death, telegraphs, opts = {}) {
+  if (!death || !Array.isArray(telegraphs) || telegraphs.length === 0) return null;
+  const minLead = Number.isFinite(opts.minLeadTicks) ? opts.minLeadTicks : TELEGRAPH_PAIR_MIN_TICKS;
+  const maxLead = Number.isFinite(opts.maxLeadTicks) ? opts.maxLeadTicks : TELEGRAPH_PAIR_MAX_TICKS;
+  const deathTick = Number.isInteger(death.tick) ? death.tick : (death.tick | 0);
+  const killerId = death.killerId != null ? death.killerId
+    : (death.attackerId != null ? death.attackerId : null);
+  const mineId = death.mineId != null ? death.mineId
+    : (death.origin && death.origin.kind === 'mine' ? death.origin.id : null);
+  if (killerId == null && mineId == null) return null;
+
+  let best = null;
+  for (let i = 0; i < telegraphs.length; i++) {
+    const tg = telegraphs[i];
+    if (!tg) continue;
+    const tgTick = Number.isInteger(tg.tick) ? tg.tick : (Number.isFinite(tg.tick) ? (tg.tick | 0) : NaN);
+    if (!Number.isInteger(tgTick)) continue;
+    const kind = leftoverTelegraphKind(tg);
+    const lead = deathTick - tgTick;
+    if (CONTINUOUS_TELEGRAPH_KINDS.has(kind)) {
+      const duration = Number(tg.durationTicks);
+      const liveUntil = Number.isFinite(duration) && duration > 0 ? tgTick + duration : tgTick;
+      if (lead < minLead || tgTick > deathTick) continue;
+      if (liveUntil < deathTick - maxLead) continue;
+    } else if (lead < minLead || lead > maxLead) {
+      continue;
+    }
+    const ids = telegraphIdsOf(tg);
+    const matched = (killerId != null && ids.includes(killerId))
+      || (mineId != null && ids.includes(mineId));
+    if (!matched) continue;
+    if (!best || tgTick > best.tick) {
+      best = {
+        kind,
+        tick: tgTick,
+        leadTicks: lead,
+        entityId: tg.entityId != null ? tg.entityId : null,
+        mineId: tg.mineId != null ? tg.mineId : null,
+      };
+    }
+  }
+  return best;
+}
+
+function telegraphDurationTicks(payload) {
+  const raw = Number(payload && payload.durationTicks);
+  if (Number.isFinite(raw) && raw > 0) return Math.max(TELEGRAPH_CUE_TICKS, Math.floor(raw));
+  return TELEGRAPH_CUE_TICKS;
+}
+
+function liveHazardDurationTicks(tick, startedTick) {
+  const started = Number.isInteger(startedTick) ? startedTick : 0;
+  const age = Number.isInteger(tick) ? tick - started : 0;
+  return Math.max(TELEGRAPH_CUE_TICKS, Math.max(0, age) + 1);
+}
+
+function placedTickFromSimTime(state, placedAt) {
+  const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  if (!Number.isFinite(placedAt)) return tick;
+  const ageTicks = Math.round((now - placedAt) * 60);
+  return tick - Math.max(0, ageTicks);
+}
+
+
+const HOSTILE_LIMIT = 4;
+const MISSILE_LIMIT = 3;
+const TOTAL_LIMIT = HOSTILE_LIMIT + MISSILE_LIMIT;
+const HALO_RANGE = SCANNER_CONTACT_RANGE;
+const HALO_RANGE_SQ = HALO_RANGE * HALO_RANGE;
+
+const EDGE_BAND_PX = 24;
+const EDGE_CENTER_PX = EDGE_BAND_PX * 0.5;
+const EDGE_GAP_PX = 4;
+
+const ARC_SPAN_PX = 54;
+const ARC_DEPTH_PX = 18;
+const MISSILE_SIZE_PX = 22;
+
+// The countermeasure read (INF: the defense answer to the inbound-missile telegraph must be
+// readable at the threat itself, not behind a transient toast). It rides the existing missile
+// slots in this file's own token language: a thin currentColor ring (the same --k-signal amber
+// the chevron uses) that is the socket when full and the recharge sweep while refilling, plus a
+// one-word duration read while an effect is live. The extra along-edge room keeps the placement
+// solver honest about the word's footprint.
+const CM_LABEL_ALONG_PX = 64;
+const CM_RING_RADIUS_PX = 13;
+const CM_RING_CIRCUMFERENCE = 2 * Math.PI * CM_RING_RADIUS_PX;
+const CM_EFFECT_WORD = Object.freeze({ chaff: 'CHAFF', decoy: 'DECOY', ecm: 'JAMMING' });
+
+/**
+ * Pure slot-state for the countermeasure read (the DOM applier consumes this; exported so the
+ * focused test can drive the exact numbers). `readiness` is countermeasureReadiness(player)
+ * from systems/countermeasures.js; `threatPresent` is true while an inbound seeker holds a halo
+ * slot. Returns null when the read must not exist (no CM fitted, or no threat) — a contextual
+ * instrument, never a standing lamp — else { mode: 'cooling'|'effect'|'ready', frac, label }.
+ * frac is the recharge fill (1 = ready); label carries the live effect word + seconds ceiling.
+ */
+export function countermeasureSlotState(readiness, threatPresent) {
+  if (!readiness || !threatPresent) return null;
+  const cooldownS = Number(readiness.cooldownS) || 0;
+  const cooldownT = Math.min(Math.max(Number(readiness.cooldownT) || 0, 0), cooldownS > 0 ? cooldownS : Infinity);
+  const effectT = Math.max(Number(readiness.effectT) || 0, 0);
+  const frac = cooldownS > 0 ? clamp(1 - cooldownT / cooldownS, 0, 1) : 1;
+  if (effectT > 0) {
+    const secs = Math.max(1, Math.ceil(effectT - 1e-9));
+    return { mode: 'effect', frac, label: `${CM_EFFECT_WORD[readiness.kind] || 'COUNTERMEASURE'} ${secs}s` };
+  }
+  if (cooldownT > 0) return { mode: 'cooling', frac, label: null };
+  return { mode: 'ready', frac: 1, label: null };
+}
+
+const HOSTILE_OPACITY_BASE = 0.55;
+const HOSTILE_OPACITY_MAX = 0.9;
+const HOSTILE_CLOSING_FOR_MAX = 180;
+
+const EDGE_TOP = 'top';
+const EDGE_RIGHT = 'right';
+const EDGE_BOTTOM = 'bottom';
+const EDGE_LEFT = 'left';
+
+/** A hostile can shoot when it is alive and not explicitly unarmed. */
+export function hostileCanShoot(entity) {
+  if (!entity || entity.alive === false) return false;
+  const data = entity.data || {};
+  if (data.unarmed === true || data.canShoot === false) return false;
+  const weapons = data.weapons || entity.weapons;
+  if (Array.isArray(weapons)) return weapons.length > 0;
+  return true;
+}
+
+/**
+ * Wave G4 — one edge mark for a shooter outside the frame. In-frame, dead, and unarmed
+ * attackers get none. The side is the quadrant of the off-frame screen point.
+ */
+export function offscreenShooterMarker({
+  alive = true,
+  canShoot = false,
+  onScreen = false,
+  screenX = 0,
+  screenY = 0,
+  frameWidth = 1280,
+  frameHeight = 720,
+} = {}) {
+  if (!alive || !canShoot || onScreen) return null;
+  const w = Math.max(1, Number(frameWidth) || 1280);
+  const h = Math.max(1, Number(frameHeight) || 720);
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+  const dx = screenX - cx;
+  const dy = screenY - cy;
+  const nx = Math.abs(dx) / cx;
+  const ny = Math.abs(dy) / cy;
+  const side = nx >= ny
+    ? (dx < 0 ? EDGE_LEFT : EDGE_RIGHT)
+    : (dy < 0 ? EDGE_TOP : EDGE_BOTTOM);
+  return { side };
+}
+
+/**
+ * A kamikaze hull mounts no guns — the hull IS the shot. It earns the same edge-mark
+ * admission a shooter gets while either (a) its fuse announce is live (the doctrine lit a
+ * run at the player) or (b) it is simply a fused hull inside its own danger band — trigger
+ * range plus blast radius off the authored spec — because inside that ring it can hurt the
+ * player the moment anything trips it, announced or not.
+ */
+export function detonatorFuseThreat(entity, cue, distSq) {
+  if (cue && cue.kind === 'detonator_fuse') return true;
+  const spec = entity && entity.data && entity.data.detonator;
+  if (!spec || typeof spec !== 'object') return false;
+  const trigger = Number.isFinite(spec.triggerRange) ? spec.triggerRange : 56;
+  const blast = Number.isFinite(spec.blastRadius) ? spec.blastRadius : 96;
+  const band = Math.max(0, trigger + blast);
+  return Number.isFinite(distSq) && distSq <= band * band;
+}
+
+function clamp(value, min, max) {
+  return value < min ? min : (value > max ? max : value);
+}
+
+function rectsOverlap(ax, ay, aw, ah, rect) {
+  return ax < rect.x + rect.width
+    && ax + aw > rect.x
+    && ay < rect.y + rect.height
+    && ay + ah > rect.y;
+}
+
+function edgeToIndex(edge) {
+  if (edge === EDGE_TOP) return 0;
+  if (edge === EDGE_RIGHT) return 1;
+  if (edge === EDGE_BOTTOM) return 2;
+  return 3;
+}
+
+// INF-052 ranking. The set already had a small cap and a scanner-range knowledge gate; what it
+// ranked by was mass class and then RAW distance, rebuilt every overlay tick. A fighter burning
+// down on the player lost the slot to a bigger drifter, and two near-equidistant contacts traded
+// arcs tick after tick. Rank is now lexicographic with coarse keys so small jitter cannot
+// reshuffle: tier → an announced attacker → a closing bucket → a distance band → entity id.
+const CLOSING_BUCKET_AT_YOU = 90;   // WU/s relative closure: at/above this they are flying at you
+const CLOSING_BUCKET_CLOSING = 12;  // above this reads as drifting closed, below as station-keeping
+const DIST_BAND_WU = 650;           // ~1/8 of scanner range; ranking flips only on a real crossing
+
+function closingBucketOf(closing) {
+  if (closing >= CLOSING_BUCKET_AT_YOU) return 2;
+  if (closing >= CLOSING_BUCKET_CLOSING) return 1;
+  return 0;
+}
+
+function buildMissileGlyph() {
+  // Bordered + shaded chevron: two stroke chevrons over a filled plate (fill-opacity rides CSS).
+  // The plate is geometry, not a glow filter — the flight floor bans live filters on HUD vectors.
+  return '<svg class="sf-threat-halo__chev" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    + '<path class="sf-threat-halo__chev-plate" d="M3 5.4 L11 13.4 L19 5.4 L20.6 7 L11 16.6 L1.4 7 Z"/>'
+    + '<path d="M3 5 L11 13 L19 5"/>'
+    + '<path d="M5 11 L11 17 L17 11"/>'
+    + '</svg>';
+}
+
+// The CM ring rides the chevron: a faint full circle is the socket ("the answer exists"), the
+// stroke refills from empty as the recharge runs (dashoffset driven per tick by the slot state).
+// Same stroke/token language as the chevron itself — currentColor on the --k-signal amber.
+// Bloom is geometry, never a filter: a wider faint arc under the core stroke (the flight floor
+// bans live blur/drop-shadow filters on HUD surfaces).
+function buildCmRing() {
+  const el = document.createElement('div');
+  el.className = 'sf-threat-halo__cmring';
+  const r = CM_RING_RADIUS_PX;
+  const c = CM_RING_CIRCUMFERENCE.toFixed(2);
+  el.innerHTML = '<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    + `<circle cx="15" cy="15" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.18" stroke-width="2"/>`
+    + `<circle class="sf-threat-halo__cmring-bloom" cx="15" cy="15" r="${r}" fill="none" stroke="currentColor"`
+    + ` stroke-opacity="0.22" stroke-width="5" stroke-linecap="round" transform="rotate(-90 15 15)"`
+    + ` stroke-dasharray="${c}" stroke-dashoffset="0"/>`
+    + `<circle class="sf-threat-halo__cmring-fill" cx="15" cy="15" r="${r}" fill="none" stroke="currentColor"`
+    + ` stroke-opacity="0.8" stroke-width="2" stroke-linecap="round" transform="rotate(-90 15 15)"`
+    + ` stroke-dasharray="${c}" stroke-dashoffset="0"/></svg>`;
+  const s = el.style;
+  s.position = 'absolute';
+  s.left = '50%';
+  s.top = '50%';
+  s.width = '30px';
+  s.height = '30px';
+  s.margin = '-15px 0 0 -15px';
+  s.color = 'var(--k-signal, #e6b478)';
+  return el;
+}
+
+// The filled circles inside the ring SVG (bloom under core). Browsers parse the innerHTML above,
+// so this resolves once and caches; the DOM-mock test harness does not parse HTML, so it degrades
+// to null and the test reads the slot's data-cm-frac attribute instead (same number the circles
+// would draw).
+function cmRingCircles(ring) {
+  if (ring._sfCircles === undefined) {
+    const query = typeof ring.querySelector === 'function' ? ring.querySelector.bind(ring) : null;
+    ring._sfCircles = query
+      ? {
+        fill: query('.sf-threat-halo__cmring-fill'),
+        bloom: query('.sf-threat-halo__cmring-bloom'),
+      }
+      : { fill: null, bloom: null };
+  }
+  return ring._sfCircles;
+}
+
+// The live-effect word ('JAMMING 4s'): micro-label in the slot's own amber, positioned per edge
+// by applyCountermeasureRead (toward frame center, where the halo owns the band). Legibility
+// comes from the house black scrim (hudBrackets INK_SHADOW), the same per-glyph scrim every
+// chromeless flight readout wears — never a colour glow filter.
+function buildCmLabel() {
+  const el = document.createElement('div');
+  el.className = 'sf-threat-halo__cmlabel';
+  const s = el.style;
+  s.position = 'absolute';
+  s.left = '50%';
+  s.top = '50%';
+  s.display = 'none';
+  s.whiteSpace = 'nowrap';
+  s.fontSize = '12px';
+  s.letterSpacing = '0.08em';
+  s.color = 'var(--k-signal, #e6b478)';
+  s.textShadow = INK_SHADOW;
+  return el;
+}
+
+function setDisplay(el, visible, mode = 'block') {
+  const next = visible ? mode : 'none';
+  if (el._sfDisplay === next) return;
+  el._sfDisplay = next;
+  el.style.display = next;
+}
+
+function setOpacity(el, opacity) {
+  const next = String(opacity);
+  if (el._sfOpacity === next) return;
+  el._sfOpacity = next;
+  el.style.opacity = next;
+}
+
+// Quantized numeric early-out: settled chevrons rebuilt translate3d every overlay tick
+// just to strcmp _sfTransform. Cache tenths-of-a-px so a still cue skips toFixed + template.
+// Picture unchanged (same toFixed(1) rounding).
+function setHudTransform(el, x, y) {
+  const qx = Math.round(Number(x) * 10);
+  const qy = Math.round(Number(y) * 10);
+  if (el._sfHudTx === qx && el._sfHudTy === qy) return;
+  el._sfHudTx = qx;
+  el._sfHudTy = qy;
+  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) translate(-50%,-50%)`;
+  el._sfTransform = next;
+  el.style.transform = next;
+}
+
+function setEdge(el, edge) {
+  if (el._sfEdge === edge) return;
+  el._sfEdge = edge;
+  el.setAttribute('data-edge', edge);
+}
+
+// Cached data-* writer: identical values skip the DOM mutation entirely.
+function setAttr(el, name, value) {
+  const next = value == null ? null : String(value);
+  const cache = el._sfAttrs || (el._sfAttrs = {});
+  if (cache[name] === next) return;
+  cache[name] = next;
+  if (next === null) el.removeAttribute(name);
+  else el.setAttribute(name, next);
+}
+
+function createSlot(className, innerHtml) {
+  const el = document.createElement('div');
+  el.className = className;
+  el.setAttribute('aria-hidden', 'true');
+  el.style.display = 'none';
+  el.innerHTML = innerHtml;
+  return el;
+}
+
+export function createThreatHalo(root, busOrOpts) {
+  const noop = { update: () => {}, destroy: () => {}, noteTelegraph() {} };
+  if (!root) return noop;
+  const bus = busOrOpts && typeof busOrOpts.on === 'function'
+    ? busOrOpts
+    : (busOrOpts && busOrOpts.bus && typeof busOrOpts.bus.on === 'function' ? busOrOpts.bus : null);
+
+  const layer = document.createElement('div');
+  layer.className = 'sf-threat-halo';
+  layer.style.display = 'none';
+  root.appendChild(layer);
+
+  const missileGlyph = buildMissileGlyph();
+
+  const hostileSlots = new Array(HOSTILE_LIMIT);
+  for (let i = 0; i < HOSTILE_LIMIT; i++) {
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', missileGlyph);
+    const arc = document.createElement('div');
+    arc.className = 'sf-threat-halo__arc';
+    slot.appendChild(arc);
+    slot._sfArc = arc;
+    const mineCount = document.createElement('span');
+    mineCount.className = 'orr-value sf-threat-halo__minecount';
+    mineCount.setAttribute('aria-hidden', 'true');
+    Object.assign(mineCount.style, {
+      position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+      display: 'none', fontSize: '12px', lineHeight: '12px', fontVariationSettings: "'wdth' 82",
+      color: 'var(--k-red)',
+    });
+    slot.appendChild(mineCount);
+    slot._sfMineCount = mineCount;
+    layer.appendChild(slot);
+    hostileSlots[i] = slot;
+  }
+
+  const missileSlots = new Array(MISSILE_LIMIT);
+  for (let i = 0; i < MISSILE_LIMIT; i++) {
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--missile', missileGlyph);
+    slot._sfChev = slot.firstChild || null;
+    const cmRing = buildCmRing();
+    slot.appendChild(cmRing);
+    slot._sfCmRing = cmRing;
+    const cmLabel = buildCmLabel();
+    slot.appendChild(cmLabel);
+    slot._sfCmLabel = cmLabel;
+    layer.appendChild(slot);
+    missileSlots[i] = slot;
+  }
+
+  const hostileX = new Float64Array(HOSTILE_LIMIT);
+  const hostileY = new Float64Array(HOSTILE_LIMIT);
+  const hostileTier = new Int16Array(HOSTILE_LIMIT);
+  const hostileTele = new Int16Array(HOSTILE_LIMIT);
+  const hostileBucket = new Int16Array(HOSTILE_LIMIT);
+  const hostileBand = new Int16Array(HOSTILE_LIMIT);
+  const hostileOpacity = new Float64Array(HOSTILE_LIMIT);
+  const hostileRole = new Array(HOSTILE_LIMIT);
+  const hostileToken = new Array(HOSTILE_LIMIT);
+  const hostileFaction = new Array(HOSTILE_LIMIT);
+  const hostileId = new Array(HOSTILE_LIMIT);
+  const hostileLife = new Array(HOSTILE_LIMIT);
+  const hostileBehind = new Uint8Array(HOSTILE_LIMIT);
+  const hostileMines = new Int16Array(HOSTILE_LIMIT);
+  let hostileCount = 0;
+  const telegraphCues = [];
+  let busUnsub = null;
+  let phaseUnsub = null;
+  // Entity id → latch. Parallel hostile arrays are sorted; the label stays with the id.
+  const tetherCutLatches = new Map();
+  const tetherPhaseById = new Map();
+  let tetherPass = 0;
+  let haloTick = 0;
+  let haloSim = 0;
+  let haloPublication = 0;
+  let lastHarvestIndexVersion = null;
+  let lastHarvestAtS = -Infinity;
+
+
+  const missileX = new Float64Array(MISSILE_LIMIT);
+  const missileY = new Float64Array(MISSILE_LIMIT);
+  const missileDist = new Float64Array(MISSILE_LIMIT);
+  let missileCount = 0;
+
+  const projectionWorld = { x: 0, y: 0, z: 0 };
+  const projectionScreen = { x: 0, y: 0, onScreen: false };
+
+  let viewportW = 0;
+  let viewportH = 0;
+  const clearRect = { x: 0, y: 0, width: 0, height: 0 };
+  // Order: ORRERY cluster (rail + dial), right dock, one-voice floor, left context column,
+  // top-right band HUD, a deliberately empty sixth slot, and the live objective marker —
+  // re-projected every update, since it moves with the player.
+  const reservedRects = [
+    { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
+  ];
+  const OBJECTIVE_RECT_W = 104;
+  const OBJECTIVE_RECT_H = 60;
+
+  // Live ORRERY furniture anchors, mirrored from the owners' own constants so the layout pass
+  // stays DOM-free (RC-08). The Cluster's canvas is flightCluster.js W/H; its anchor and scale
+  // steps are orrery/hudAdapter.js HOST_CSS (left:18, 8 under 1400px; bottom:24; the
+  // --orr-cluster-scale .85/.7/.6 at >1700/>1300/else viewport width) multiplied by the
+  // small-window --sf-hud-edge-fit (.85/.75/.62) that scales the whole host from its bottom-left
+  // corner (hudStyles.js :744-806). The dock is --sf-dock-w (256, 220/204 at the small
+  // breakpoints) at right/bottom:--sf-hud-edge (clamp 16px..2.4vh..32px).
+  const CLUSTER_CANVAS_W = 760;
+  const CLUSTER_CANVAS_H = 540;
+  const CLUSTER_BOTTOM_PX = 24;
+  const CLUSTER_PAD_PX = 26;   // dial bloom above, crescent-key hang below, keytag glow right
+  const DOCK_PAD_PX = 20;
+  const DOCK_PAD_TOP_PX = 40;  // the radar bezel + the key row under it; cards higher are transient text
+  const CONTEXT_W_PX = 330;    // .sf-leftcontext — comms tape + tracker cards, ~272-330 wide
+  const CONTEXT_H_PX = 190;    // the corner band it always paints; deeper entries are transient
+  const BAND_HUD_W_PX = 240;   // .sf-band-hud — the band chip (min 176px button) + bezel margin
+  const BAND_HUD_H_PX = 100;   // one control row tall; reserving more starves the right edge
+
+  function updateObjectiveReservation(state, worldToScreen, width, height) {
+    const rect = reservedRects[6];
+    const waypoint = state && state.nav && state.nav.waypoint;
+    const pos = resolveWaypointPresentationPosition(state, waypoint);
+    if (!pos) { rect.width = 0; rect.height = 0; return; }
+    projectionWorld.x = pos.x;
+    projectionWorld.y = 0;
+    projectionWorld.z = pos.z;
+    const projected = worldToScreen(projectionWorld, projectionScreen);
+    if (!projected || !Number.isFinite(projected.x) || !Number.isFinite(projected.y)) {
+      rect.width = 0; rect.height = 0; return;
+    }
+    // The objective arrow clamps to the same screen edges the arcs patrol (hud.js clamps to
+    // 18..w-18 on-screen and hugs the edge band off-screen), so reserve around the clamped point.
+    const x = clamp(projected.x, 24, width - 24);
+    const y = clamp(projected.y, 24, height - 24);
+    rect.width = OBJECTIVE_RECT_W;
+    rect.height = OBJECTIVE_RECT_H;
+    rect.x = x - rect.width * 0.5;
+    rect.y = y - rect.height * 0.5;
+  }
+
+  const occupiedCount = new Int16Array(4);
+  const occupiedCoord = [
+    new Float64Array(TOTAL_LIMIT),
+    new Float64Array(TOTAL_LIMIT),
+    new Float64Array(TOTAL_LIMIT),
+    new Float64Array(TOTAL_LIMIT),
+  ];
+  const occupiedHalf = [
+    new Float64Array(TOTAL_LIMIT),
+    new Float64Array(TOTAL_LIMIT),
+    new Float64Array(TOTAL_LIMIT),
+    new Float64Array(TOTAL_LIMIT),
+  ];
+
+  const placement = {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    edge: EDGE_TOP,
+    along: 0,
+    halfAlong: 0,
+  };
+
+  function expireTelegraphCues(tick) {
+    let write = 0;
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (!cue || tick > cue.expiresAtTick) continue;
+      telegraphCues[write++] = cue;
+    }
+    telegraphCues.length = write;
+  }
+
+  function noteTelegraph(payload, tick) {
+    const kind = leftoverTelegraphKind(payload);
+    if (!kind) return null;
+    const entityId = payload.entityId != null ? payload.entityId
+      : (payload.actorId != null ? payload.actorId
+        : (payload.sourceId != null ? payload.sourceId
+          : (payload.ownerId != null ? payload.ownerId : null)));
+    const mineId = payload.mineId != null ? payload.mineId : null;
+    if (entityId == null && mineId == null) return null;
+    const startedTick = Number.isInteger(payload.tick) ? payload.tick
+      : (Number.isInteger(tick) ? tick : 0);
+    const expiresAtTick = startedTick + telegraphDurationTicks(payload);
+    if (Number.isInteger(tick) && tick > expiresAtTick) return null;
+
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (!cue) continue;
+      const sameEntity = entityId != null && cue.entityId === entityId;
+      const sameMine = mineId != null && cue.mineId === mineId;
+      if (sameEntity || sameMine) {
+        cue.kind = kind;
+        cue.entityId = entityId;
+        cue.mineId = mineId;
+        cue.startedTick = startedTick;
+        cue.expiresAtTick = expiresAtTick;
+        noteTetherPhase(payload, startedTick);
+        return cue;
+      }
+    }
+
+    const next = { kind, entityId, mineId, startedTick, expiresAtTick };
+    telegraphCues.push(next);
+    noteTetherPhase(payload, startedTick);
+    return next;
+  }
+
+  function noteTetherPhase(payload, tick) {
+    if (!payload || payload.entityId == null) return;
+    if (payload.doctrineId == null && payload.phase == null) return;
+    const open = payload.doctrineId === TETHER_CUT_DOCTRINE && TETHER_CUT_PHASES.has(payload.phase);
+    if (!open) {
+      tetherPhaseById.delete(payload.entityId);
+      return;
+    }
+    const started = Number.isInteger(tick) ? tick
+      : (Number.isInteger(payload.tick) ? payload.tick : 0);
+    tetherPhaseById.set(payload.entityId, { phase: payload.phase, tick: started });
+  }
+
+  function liveTetherPhase(entityId) {
+    const row = tetherPhaseById.get(entityId);
+    if (!row) return null;
+    if (Number.isInteger(haloTick) && haloTick - row.tick > TETHER_CUT_WINDOW_TICKS) {
+      tetherPhaseById.delete(entityId);
+      return null;
+    }
+    return row.phase;
+  }
+
+  // A dart that egresses, reforms, or re-acquires is done announcing: the fuse cue retires
+  // with the phase change rather than lingering to the end of its declared window. (A fused
+  // hull still inside its own blast ring keeps its mark through detonatorFuseThreat's
+  // proximity band — that part is a physics fact, not an announce.)
+  function dropDetonatorCueOnDisarm(payload) {
+    if (!payload || payload.entityId == null || payload.doctrineId !== DETONATOR_RUN_DOCTRINE) return;
+    if (DETONATOR_ARMED_PHASES.has(payload.phase)) return;
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (cue && cue.entityId === payload.entityId && cue.kind === 'detonator_fuse') {
+        telegraphCues.splice(i, 1);
+        return;
+      }
+    }
+  }
+
+  // Tokens come from the hull and the live window only — never from a plan id.
+  function tetherCutReadFor(entity, cue) {
+    const data = (entity && entity.data) || {};
+    const ai = data.ai || {};
+    const doctrineId = ai.combatDoctrineId || data.combatDoctrineId || entity.combatDoctrineId || null;
+    const phase = ai.doctrinePhase || data.doctrinePhase || liveTetherPhase(entity && entity.id) || null;
+    const explicit = entity.cutWindow === true || data.cutWindow === true || ai.cutWindow === true;
+    const phaseWindow = TETHER_CUT_PHASES.has(phase);
+    const telegraphLive = !!(cue && cue.kind === 'attach_spool');
+    const commitVisible = !!(data._cutterCommit) && (telegraphLive || phaseWindow);
+    const cutWindow = doctrineId === TETHER_CUT_DOCTRINE && (explicit || phaseWindow || commitVisible);
+    const silhouette = data.silhouette || entity.silhouette || null;
+    let telegraphKind = cue && cue.kind ? cue.kind : null;
+    if (cutWindow && telegraphKind !== 'attach_spool' && data.telegraph && data.telegraph.cue === 'attach_spool'
+        && (phaseWindow || explicit)) {
+      telegraphKind = 'attach_spool';
+    }
+    const verb = cutWindow && telegraphKind === 'attach_spool' && silhouette ? 'cut_line' : null;
+    return { doctrineId, cutWindow, silhouette, telegraphKind, verb };
+  }
+
+  function rememberTetherCut(entity, cue) {
+    const id = entity && entity.id;
+    if (id == null) return;
+    let latch = tetherCutLatches.get(id);
+    if (!latch) {
+      latch = {};
+      tetherCutLatches.set(id, latch);
+    }
+    latch._pass = tetherPass;
+    stepTetherCutHalo(latch, tetherCutReadFor(entity, cue));
+    if (!latch._tetherCutLatch) tetherCutLatches.delete(id);
+  }
+
+  function pruneTetherCutLatches() {
+    for (const [id, latch] of tetherCutLatches) {
+      if (latch._pass !== tetherPass) tetherCutLatches.delete(id);
+    }
+  }
+
+  function cueForIds(entityId, mineId) {
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (!cue) continue;
+      if (entityId != null && cue.entityId === entityId) return cue;
+      if (mineId != null && cue.mineId === mineId) return cue;
+    }
+    return null;
+  }
+
+  function harvestLeftoverTelegraphs(state, tick) {
+    const index = state && state.entityIndex;
+    // Gate on ready: ensureEntityIndex sets the version flag with empty buckets before the first
+    // reconcile, and repairEntityIndex can reset ready mid-run — scanning those empty buckets
+    // would drop live hazards entityList still holds.
+    const buckets = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      ? [index.mines, index.vectorMines, index.snares, index.shipLike, index.projectiles]
+      : [state && state.entityList];
+    for (let b = 0; b < buckets.length; b++) {
+      const list = buckets[b];
+      if (!Array.isArray(list)) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data || {};
+      if (entity.type === 'mine' || data.kind === 'mine' || data.mine === true) {
+        if (data.triggered) continue;
+        const placedTick = placedTickFromSimTime(state, data.placedAt);
+        noteTelegraph({
+          entityId: data.ownerId != null ? data.ownerId : entity.ownerId,
+          mineId: entity.id,
+          kind: 'wake_mines',
+          durationTicks: liveHazardDurationTicks(tick, placedTick),
+          tick: placedTick,
+        }, tick);
+        continue;
+      }
+      if (data.kind === 'transverse_snare_hazard') {
+        const placedTick = Number.isInteger(data.spawnTick)
+          ? data.spawnTick
+          : placedTickFromSimTime(state, data.placedAt);
+        noteTelegraph({
+          entityId: data.ownerId != null ? data.ownerId : entity.ownerId,
+          kind: 'attach_spool',
+          durationTicks: liveHazardDurationTicks(tick, placedTick),
+          tick: placedTick,
+        }, tick);
+        continue;
+      }
+      const pending = data.ai && data.ai._attackTelegraph;
+      if (pending && Number.isFinite(pending.until) && Number.isFinite(state.simTime)
+          && state.simTime < pending.until) {
+        noteTelegraph({
+          entityId: entity.id,
+          kind: pending.kind || 'engine_flare',
+          durationTicks: TELEGRAPH_CUE_TICKS,
+          tick,
+        }, tick);
+      }
+      }
+    }
+  }
+
+  if (bus) {
+    busUnsub = bus.on('ai:telegraph', (payload) => {
+      const tick = payload && Number.isInteger(payload.tick) ? payload.tick : 0;
+      noteTelegraph(payload || {}, tick);
+    });
+    phaseUnsub = bus.on('ai:doctrinePhase', (payload) => {
+      const tick = payload && Number.isInteger(payload.tick) ? payload.tick : haloTick;
+      noteTetherPhase(payload, tick);
+      dropDetonatorCueOnDisarm(payload);
+    });
+  }
+
+  function refreshLayout(width, height) {
+    if (width === viewportW && height === viewportH) return;
+    viewportW = width;
+    viewportH = height;
+
+    clearRect.x = width * 0.24;
+    clearRect.y = height * 0.12;
+    clearRect.width = width * 0.52;
+    clearRect.height = height * 0.56;
+
+    // Every constant below is the owning stylesheet's own geometry, mirrored — never measured
+    // per frame. Under ORRERY the bottom-centre band the old power-rail/drive/massline rects
+    // reserved is furniture-FREE at the marker band (receipts anchor at h-155, the travel tape
+    // at h-86 — neither reaches h-24): the rail itself moved into the bottom-left Cluster, so a
+    // stale centre rect only wedged markers against the real furniture.
+    const edge = Math.min(32, Math.max(16, height * 0.024));            // --sf-hud-edge
+    const edgeFit = (width <= 959 || height <= 599) ? 0.62
+      : (width <= 1099 || height <= 659) ? 0.75
+      : (width <= 1279 || height <= 719) ? 0.85 : 1;                    // --sf-hud-edge-fit
+    const safeInsetX = Math.max(0, (width - height * 16 / 9) / 2);      // ultrawide safe frame
+
+    // [0] The ORRERY Cluster — the live power rail: hull rings, the Speed Dial and the ordnance
+    // crescent all live in its 760x540 canvas, anchored left:18 (8 under 1400px), bottom:24 and
+    // scaled canvas*host from the bottom-left corner. Reserved whole, bottom edge to the frame.
+    const clusterScale = (width > 1700 ? 0.85 : (width > 1300 ? 0.7 : 0.6)) * edgeFit;
+    const clusterLeft = width <= 1400 ? 8 : 18;
+    const cluster = reservedRects[0];
+    cluster.x = 0;
+    cluster.width = clusterLeft + CLUSTER_CANVAS_W * clusterScale + CLUSTER_PAD_PX;
+    cluster.y = Math.max(0, height - CLUSTER_BOTTOM_PX - CLUSTER_CANVAS_H * clusterScale - CLUSTER_PAD_PX);
+    cluster.height = height - cluster.y;
+
+    // [1] .sf-rightdock — sector law, target, overview and the radar dial, right/bottom at the
+    // HUD edge on the --sf-dock-w column. The reservation covers the radar bezel (the dial —
+    // the box that must never carry a marker) and a card margin above it, capped so the right
+    // edge still holds the hostile cap; text cards higher in the column are transient reads a
+    // passing mark may cross, the same trade the pre-ORRERY layout made.
+    const dockW = (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256);
+    const right = reservedRects[1];
+    right.width = edge + dockW * edgeFit + DOCK_PAD_PX;
+    right.height = Math.min((dockW + DOCK_PAD_TOP_PX) * edgeFit + edge, height * 0.5);
+    right.x = width - safeInsetX - right.width;
+    right.y = height - right.height;
+
+    // [2] The one-voice floor rides top-centre — unchanged.
+    const voice = reservedRects[2];
+    voice.width = Math.min(440, Math.max(120, width - 24));
+    voice.height = 26;
+    voice.x = (width - voice.width) * 0.5;
+    voice.y = 18;
+
+    // [3] .sf-leftcontext — the comms tape plus mission/objective column pinned top-left. The
+    // column's full reach is content-driven; the reservation covers the corner band it always
+    // paints and leaves the left edge open below it so a marker still has somewhere to go.
+    const leftCol = reservedRects[3];
+    leftCol.x = 0;
+    leftCol.y = 0;
+    leftCol.width = safeInsetX + edge + CONTEXT_W_PX * edgeFit;
+    leftCol.height = edge + CONTEXT_H_PX * edgeFit;
+
+    // [4] .sf-band-hud — the band chip, top-right at the same edge. One control row; over-
+    // reserving here wedges the right edge's marker band against the dock reservation below.
+    const band = reservedRects[4];
+    band.width = safeInsetX + edge + BAND_HUD_W_PX * edgeFit;
+    band.height = edge + BAND_HUD_H_PX * edgeFit;
+    band.x = width - band.width;
+    band.y = 0;
+
+    // [5] Deliberately empty: nothing the live HUD paints reaches the bottom-centre marker
+    // band, and a phantom rect there wedges markers between itself and the Cluster or dock.
+    const free = reservedRects[5];
+    free.x = 0; free.y = 0; free.width = 0; free.height = 0;
+  }
+
+  function resetOccupancy() {
+    occupiedCount[0] = 0;
+    occupiedCount[1] = 0;
+    occupiedCount[2] = 0;
+    occupiedCount[3] = 0;
+  }
+
+  function registerOccupancy(edge, along, halfAlong) {
+    const edgeIndex = edgeToIndex(edge);
+    const n = occupiedCount[edgeIndex];
+    if (n >= TOTAL_LIMIT) return;
+    occupiedCoord[edgeIndex][n] = along;
+    occupiedHalf[edgeIndex][n] = halfAlong;
+    occupiedCount[edgeIndex] = n + 1;
+  }
+
+  function overlapsReservedOrClear(x, y, width, height) {
+    if (rectsOverlap(x, y, width, height, clearRect)) return true;
+    for (let i = 0; i < reservedRects.length; i++) {
+      if (rectsOverlap(x, y, width, height, reservedRects[i])) return true;
+    }
+    return false;
+  }
+
+  function resolvePlacement(projectedX, projectedY, missile, wide) {
+    if (!Number.isFinite(projectedX) || !Number.isFinite(projectedY)) return false;
+
+    const centerX = viewportW * 0.5;
+    const centerY = viewportH * 0.5;
+    let dx = projectedX - centerX;
+    let dy = projectedY - centerY;
+    if (Math.abs(dx) + Math.abs(dy) < 0.001) dy = -1;
+
+    const extentX = Math.max(1, centerX - EDGE_CENTER_PX);
+    const extentY = Math.max(1, centerY - EDGE_CENTER_PX);
+    const tx = Math.abs(dx) > 0.001 ? extentX / Math.abs(dx) : Infinity;
+    const ty = Math.abs(dy) > 0.001 ? extentY / Math.abs(dy) : Infinity;
+
+    let edge;
+    let along;
+    // The bearing belongs to the full viewport, as offscreenShooterMarker reports it.
+    // The chip inset only positions the glyph; using its smaller aspect ratio to choose
+    // a side flips near-corner shooters onto an adjacent edge on rectangular viewports.
+    if (Math.abs(dx) / Math.max(1, centerX) >= Math.abs(dy) / Math.max(1, centerY)) {
+      edge = dx < 0 ? EDGE_LEFT : EDGE_RIGHT;
+      along = centerY + dy * tx;
+    } else {
+      edge = dy < 0 ? EDGE_TOP : EDGE_BOTTOM;
+      along = centerX + dx * ty;
+    }
+
+    const horizontal = edge === EDGE_TOP || edge === EDGE_BOTTOM;
+    // A live countermeasure read adds the effect word beside the chevron ALONG the edge, so the
+    // occupancy/reserved-rect solver must see that footprint, not just the 22px glyph.
+    const alongGrow = missile && wide ? CM_LABEL_ALONG_PX : 0;
+    const width = missile ? MISSILE_SIZE_PX + (horizontal ? alongGrow : 0) : (horizontal ? ARC_SPAN_PX : ARC_DEPTH_PX);
+    const height = missile ? MISSILE_SIZE_PX + (horizontal ? 0 : alongGrow) : (horizontal ? ARC_DEPTH_PX : ARC_SPAN_PX);
+    const halfAlong = horizontal ? width * 0.5 : height * 0.5;
+    const halfCross = horizontal ? height * 0.5 : width * 0.5;
+
+    const axisLimit = horizontal ? viewportW : viewportH;
+    const minAlong = halfAlong + EDGE_GAP_PX;
+    const maxAlong = axisLimit - halfAlong - EDGE_GAP_PX;
+    if (!(maxAlong > minAlong)) return false;
+    along = clamp(along, minAlong, maxAlong);
+
+    const fixedCross = horizontal
+      ? (edge === EDGE_TOP ? EDGE_CENTER_PX : viewportH - EDGE_CENTER_PX)
+      : (edge === EDGE_LEFT ? EDGE_CENTER_PX : viewportW - EDGE_CENTER_PX);
+
+    for (let pass = 0; pass < 8; pass++) {
+      let moved = false;
+
+      for (let i = 0; i < reservedRects.length; i++) {
+        const rect = reservedRects[i];
+        const crossMin = fixedCross - halfCross;
+        const crossMax = fixedCross + halfCross;
+        const overlapsCross = horizontal
+          ? (crossMin < rect.y + rect.height && crossMax > rect.y)
+          : (crossMin < rect.x + rect.width && crossMax > rect.x);
+        if (!overlapsCross) continue;
+
+        const start = (horizontal ? rect.x : rect.y) - halfAlong - EDGE_GAP_PX;
+        const end = (horizontal ? rect.x + rect.width : rect.y + rect.height) + halfAlong + EDGE_GAP_PX;
+        if (along <= start || along >= end) continue;
+
+        const left = start - 0.25;
+        const right = end + 0.25;
+        const canLeft = left >= minAlong;
+        const canRight = right <= maxAlong;
+        if (!canLeft && !canRight) return false;
+        along = canLeft && canRight
+          ? (Math.abs(along - left) <= Math.abs(right - along) ? left : right)
+          : (canLeft ? left : right);
+        moved = true;
+      }
+
+      const edgeIndex = edgeToIndex(edge);
+      const occupiedN = occupiedCount[edgeIndex];
+      for (let i = 0; i < occupiedN; i++) {
+        const center = occupiedCoord[edgeIndex][i];
+        const otherHalf = occupiedHalf[edgeIndex][i];
+        const span = otherHalf + halfAlong + EDGE_GAP_PX;
+        const start = center - span;
+        const end = center + span;
+        if (along <= start || along >= end) continue;
+
+        const left = start - 0.25;
+        const right = end + 0.25;
+        const canLeft = left >= minAlong;
+        const canRight = right <= maxAlong;
+        if (!canLeft && !canRight) return false;
+        along = canLeft && canRight
+          ? (Math.abs(along - left) <= Math.abs(right - along) ? left : right)
+          : (canLeft ? left : right);
+        moved = true;
+      }
+
+      if (!moved) break;
+      along = clamp(along, minAlong, maxAlong);
+      if (pass === 7) return false;
+    }
+
+    const x = horizontal ? along : (edge === EDGE_LEFT ? EDGE_CENTER_PX : viewportW - EDGE_CENTER_PX);
+    const y = horizontal ? (edge === EDGE_TOP ? EDGE_CENTER_PX : viewportH - EDGE_CENTER_PX) : along;
+    const left = x - width * 0.5;
+    const top = y - height * 0.5;
+    if (overlapsReservedOrClear(left, top, width, height)) return false;
+
+    placement.x = x;
+    placement.y = y;
+    placement.width = width;
+    placement.height = height;
+    placement.edge = edge;
+    placement.along = along;
+    placement.halfAlong = halfAlong;
+    registerOccupancy(edge, along, halfAlong);
+    return true;
+  }
+
+  function clearSlotTelegraph(slot) {
+    if (!slot) return;
+    setAttr(slot, 'data-telegraph-kind', null);
+    setAttr(slot, 'data-entity-id', null);
+    setAttr(slot, 'data-armed-mines', null);
+    setDisplay(slot._sfMineCount, false);
+    setAttr(slot, 'aria-hidden', 'true');
+    setAttr(slot, 'role', null);
+    setAttr(slot, 'data-placement-read', null);
+    slot._sfPlacementRead = null;
+    if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
+      slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
+    }
+    setForceHue(slot, slot._sfArc, null, null);
+    setAttr(slot, 'aria-label', null);
+  }
+
+  // The cue paints itself from the authored force palette (PQ-161.02): channel attribute for the
+  // rules layer, inline colour + border so the palette hex drives the WHOLE instrument — the
+  // carriage's wash, hairline, ticks and bloom all read currentColor (hudStyles), so one inline
+  // write retints border and shading together.
+  function setForceHue(slot, arc, channel, hex) {
+    if (!slot) return;
+    const channelKey = channel || '';
+    if (slot._sfForceChannel !== channelKey) {
+      slot._sfForceChannel = channelKey;
+      if (channelKey) slot.setAttribute('data-force-channel', channelKey);
+      else slot.removeAttribute('data-force-channel');
+    }
+    if (!arc) return;
+    const colorKey = hex || '';
+    if (arc._sfForceColor !== colorKey) {
+      arc._sfForceColor = colorKey;
+      arc.style.borderColor = colorKey;
+      arc.style.color = colorKey;
+    }
+  }
+
+  function hideAllSlots() {
+    for (let i = 0; i < HOSTILE_LIMIT; i++) {
+      clearSlotTelegraph(hostileSlots[i]);
+      setDisplay(hostileSlots[i], false);
+      hostileSlots[i]._sfShownAt = 0;
+    }
+    for (let i = 0; i < MISSILE_LIMIT; i++) {
+      setDisplay(missileSlots[i], false);
+      missileSlots[i]._sfShownAt = 0;
+    }
+    setDisplay(layer, false);
+  }
+
+  // Full lexicographic rank over the parallel candidate arrays. Every key after tier is coarse
+  // (a boolean, a 3-step bucket, a 650 WU band) or the immutable id, so two candidates that swap
+  // raw distance inside one band keep their order — the arcs stop reshuffling.
+  function candidateOutranks(i, j) {
+    if (hostileTier[i] !== hostileTier[j]) return hostileTier[i] > hostileTier[j];
+    if (hostileTele[i] !== hostileTele[j]) return hostileTele[i] > hostileTele[j];
+    if (hostileBucket[i] !== hostileBucket[j]) return hostileBucket[i] > hostileBucket[j];
+    if (hostileBand[i] !== hostileBand[j]) return hostileBand[i] < hostileBand[j];
+    return String(hostileId[i]) < String(hostileId[j]);
+  }
+
+  function outranksSlot(i, tier, tele, bucket, band, id) {
+    if (tier !== hostileTier[i]) return tier > hostileTier[i];
+    if (tele !== hostileTele[i]) return tele > hostileTele[i];
+    if (bucket !== hostileBucket[i]) return bucket > hostileBucket[i];
+    if (band !== hostileBand[i]) return band < hostileBand[i];
+    return String(id) < String(hostileId[i]);
+  }
+
+  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null, life = null, behind = false, armedMines = 0) {
+    if (hostileCount < HOSTILE_LIMIT) {
+      const i = hostileCount++;
+      hostileX[i] = x;
+      hostileY[i] = y;
+      hostileTier[i] = tier;
+      hostileTele[i] = tele;
+      hostileBucket[i] = bucket;
+      hostileBand[i] = band;
+      hostileOpacity[i] = opacity;
+      hostileRole[i] = role;
+      hostileToken[i] = token;
+      hostileFaction[i] = faction;
+      hostileId[i] = id;
+      hostileLife[i] = life;
+      hostileBehind[i] = behind ? 1 : 0;
+      hostileMines[i] = armedMines;
+      return;
+    }
+
+    let worst = 0;
+    for (let i = 1; i < HOSTILE_LIMIT; i++) {
+      if (candidateOutranks(worst, i)) worst = i;
+    }
+    if (!outranksSlot(worst, tier, tele, bucket, band, id)) return;
+
+    hostileX[worst] = x;
+    hostileY[worst] = y;
+    hostileTier[worst] = tier;
+    hostileTele[worst] = tele;
+    hostileBucket[worst] = bucket;
+    hostileBand[worst] = band;
+    hostileOpacity[worst] = opacity;
+    hostileRole[worst] = role;
+    hostileToken[worst] = token;
+    hostileFaction[worst] = faction;
+    hostileId[worst] = id;
+    hostileLife[worst] = life;
+    hostileBehind[worst] = behind ? 1 : 0;
+    hostileMines[worst] = armedMines;
+  }
+
+  function pushMissileCandidate(x, y, dist) {
+    if (missileCount < MISSILE_LIMIT) {
+      const i = missileCount++;
+      missileX[i] = x;
+      missileY[i] = y;
+      missileDist[i] = dist;
+      return;
+    }
+
+    let worst = 0;
+    for (let i = 1; i < MISSILE_LIMIT; i++) {
+      if (missileDist[i] > missileDist[worst]) worst = i;
+    }
+    if (dist >= missileDist[worst]) return;
+
+    missileX[worst] = x;
+    missileY[worst] = y;
+    missileDist[worst] = dist;
+  }
+
+  function sortHostileCandidates() {
+    for (let i = 0; i < hostileCount - 1; i++) {
+      let best = i;
+      for (let j = i + 1; j < hostileCount; j++) {
+        if (candidateOutranks(j, best)) best = j;
+      }
+      if (best === i) continue;
+      const tx = hostileX[i];
+      const ty = hostileY[i];
+      const tt = hostileTier[i];
+      const tl = hostileTele[i];
+      const tb = hostileBucket[i];
+      const td = hostileBand[i];
+      const to = hostileOpacity[i];
+      const tr = hostileRole[i];
+      const tk = hostileToken[i];
+      const tf = hostileFaction[i];
+      const tid = hostileId[i];
+      const tLife = hostileLife[i];
+      const tBehind = hostileBehind[i];
+      const tMines = hostileMines[i];
+      hostileX[i] = hostileX[best];
+      hostileY[i] = hostileY[best];
+      hostileTier[i] = hostileTier[best];
+      hostileTele[i] = hostileTele[best];
+      hostileBucket[i] = hostileBucket[best];
+      hostileBand[i] = hostileBand[best];
+      hostileOpacity[i] = hostileOpacity[best];
+      hostileRole[i] = hostileRole[best];
+      hostileToken[i] = hostileToken[best];
+      hostileFaction[i] = hostileFaction[best];
+      hostileId[i] = hostileId[best];
+      hostileLife[i] = hostileLife[best];
+      hostileBehind[i] = hostileBehind[best];
+      hostileMines[i] = hostileMines[best];
+      hostileX[best] = tx;
+      hostileY[best] = ty;
+      hostileTier[best] = tt;
+      hostileTele[best] = tl;
+      hostileBucket[best] = tb;
+      hostileBand[best] = td;
+      hostileOpacity[best] = to;
+      hostileRole[best] = tr;
+      hostileToken[best] = tk;
+      hostileFaction[best] = tf;
+      hostileId[best] = tid;
+      hostileLife[best] = tLife;
+      hostileBehind[best] = tBehind;
+      hostileMines[best] = tMines;
+    }
+  }
+
+  function sortMissileCandidates() {
+    for (let i = 0; i < missileCount - 1; i++) {
+      let best = i;
+      for (let j = i + 1; j < missileCount; j++) {
+        if (missileDist[j] < missileDist[best]) best = j;
+      }
+      if (best === i) continue;
+      const tx = missileX[i];
+      const ty = missileY[i];
+      const td = missileDist[i];
+      missileX[i] = missileX[best];
+      missileY[i] = missileY[best];
+      missileDist[i] = missileDist[best];
+      missileX[best] = tx;
+      missileY[best] = ty;
+      missileDist[best] = td;
+    }
+  }
+
+  // Indexed buckets are a derived presentation cache. A same-length entity replacement can
+  // leave an old object in `ships` until the next index rebuild, and a worker mirror can briefly
+  // expose a row before its transported occupant token lands. Treat the bucket entry as an ID
+  // hint and resolve the current map object before any geometry/hostility work. Edge markers
+  // carry a publication identity that the player-truth reader binds exactly, so the current map
+  // entry must be a live ship with the safe generation explicitly transported by the sim lane.
+  function resolveIndexedHostileEntity(state, candidate) {
+    if (!state || !candidate || candidate.id == null) return null;
+    const entities = state.entities;
+    if (!entities || typeof entities.get !== 'function') return null;
+    const current = entities.get(candidate.id);
+    if (!current || current.id !== candidate.id
+      || current.alive === false || current.type !== 'ship' || !current.pos
+      || !Number.isSafeInteger(current.occupantGeneration)) return null;
+    return current;
+  }
+
+  function collectHostiles(player, state, worldToScreen) {
+    hostileCount = 0;
+    tetherPass += 1;
+    const index = state.entityIndex;
+    const indexedShips = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships);
+    const ships = indexedShips
+      ? index.ships
+      : (state.entityList || []);
+    const playerTeam = player.team;
+    const playerVelX = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
+    const playerVelZ = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
+
+    for (let i = 0; i < ships.length; i++) {
+      let entity = ships[i];
+      if (indexedShips && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
+      if (!entity || entity === player || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > HALO_RANGE_SQ) continue;
+      const hostile = isHostileToPlayer(entity, playerTeam, state);
+      if (!hostile) continue;
+
+      // The submitted root is frame-local and may trail the simulation by one fixed tick.
+      // Project that visible pose through the canonical global helper. Unavailable roots
+      // (including pooled hulls) keep the same authoritative global fallback as before.
+      const root = state.render?.meshes?.get?.(entity.id);
+      const pos = root?.visible === true && Number.isFinite(root.position?.x)
+        && Number.isFinite(root.position?.z) ? root.position : null;
+      const origin = state.world?.frameOrigin;
+      projectionWorld.x = pos ? pos.x + (Number.isFinite(origin?.x) ? origin.x : 0) : entity.pos.x;
+      projectionWorld.y = 0;
+      projectionWorld.z = pos ? pos.z + (Number.isFinite(origin?.z) ? origin.z : 0) : entity.pos.z;
+      const projected = worldToScreen(projectionWorld, projectionScreen);
+      const cue = cueForIds(entity.id, null);
+      const telegraphed = !!cue;
+      if (!projected) continue;
+      // Behind the camera the perspective divide mirrors both axes; un-mirror around the
+      // viewport centre so an edge mark crossed during a hard turn names the side the contact
+      // actually sits on instead of teleporting to the opposite edge.
+      const frameW = viewportW || 1280;
+      const frameH = viewportH || 720;
+      const sx = projected.behind === true ? frameW - projected.x : projected.x;
+      const sy = projected.behind === true ? frameH - projected.y : projected.y;
+      // G4: an in-frame attacker gets no edge mark, even when it is telegraphing.
+      // One mark per shooter, never one per projectile. The detonator dart mounts no
+      // weapons, so the shooter's contract alone would refuse it — a lit fuse, or a
+      // fused hull inside its own blast ring, counts as its shot.
+      const marker = offscreenShooterMarker({
+        alive: entity.alive !== false,
+        canShoot: hostileCanShoot(entity) || detonatorFuseThreat(entity, cue, distSq),
+        onScreen: projected.onScreen === true,
+        screenX: sx,
+        screenY: sy,
+        frameWidth: frameW,
+        frameHeight: frameH,
+      });
+      if (!marker) continue;
+      rememberTetherCut(entity, cue);
+
+      const dist = Math.sqrt(distSq);
+      const tier = contactThreatTier(entity, true);
+      const evx = entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
+      const evz = entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+      const relX = evx - playerVelX;
+      const relZ = evz - playerVelZ;
+      const closing = -((relX * dx + relZ * dz) / Math.max(1, dist));
+      const closure = clamp(closing / HOSTILE_CLOSING_FOR_MAX, 0, 1);
+      const opacity = HOSTILE_OPACITY_BASE + closure * (HOSTILE_OPACITY_MAX - HOSTILE_OPACITY_BASE);
+      const occRule = resolveEntityOccupationalRule(entity);
+      const role = occRule ? occRule.role : (entity.role || (entity.data && (entity.data.role || entity.data.trafficRole)) || 'unknown');
+      const token = occRule ? occRule.silhouetteToken : 'token_silhouette_standard';
+      const faction = entity.factionId || (entity.data && entity.data.factionId) || null;
+      // FIGHT-11 — the layer's live screen, counted where the label is read: armed
+      // hulls only, and only for the mine-layer doctrine. Every other hull passes 0,
+      // so its label never carries a count.
+      const armedMines = isMineLayerHaloEntity(entity) ? countArmedOwnerMines(state, entity.id) : 0;
+      pushHostileCandidate(
+        sx, sy, tier,
+        telegraphed ? 1 : 0, closingBucketOf(closing), Math.floor(dist / DIST_BAND_WU),
+        opacity, role, token, faction, entity.id, entity.occupantGeneration ?? null, projected.behind === true,
+        armedMines,
+      );
+    }
+
+    sortHostileCandidates();
+    pruneTetherCutLatches();
+  }
+
+  function collectMissiles(player, state, worldToScreen) {
+    missileCount = 0;
+    const index = state.entityIndex;
+    const projectiles = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
+      ? index.projectiles
+      : (state.entityList || []);
+
+    for (let i = 0; i < projectiles.length; i++) {
+      const entity = projectiles[i];
+      if (!entity || entity.alive === false || entity.type !== 'projectile' || !entity.pos) continue;
+      const data = entity.data;
+      if (!data || data.kind !== 'missile' || data.targetId !== player.id) continue;
+
+      projectionWorld.x = entity.pos.x;
+      projectionWorld.y = 0;
+      projectionWorld.z = entity.pos.z;
+      const projected = worldToScreen(projectionWorld, projectionScreen);
+      if (!projected || projected.onScreen) continue;
+
+      // Same behind-camera un-mirror as the hostile arcs (see collectHostiles).
+      const sx = projected.behind === true ? (viewportW || 1280) - projected.x : projected.x;
+      const sy = projected.behind === true ? (viewportH || 720) - projected.y : projected.y;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      pushMissileCandidate(sx, sy, dist);
+    }
+
+    sortMissileCandidates();
+  }
+
+  // The effect word sits between the chevron and the screen's center along the edge — the band
+  // toward the corners carries HUD furniture; toward center is where the halo owns space.
+  function cmLabelTransform(edge, along) {
+    const axisMax = (edge === EDGE_LEFT || edge === EDGE_RIGHT) ? viewportH : viewportW;
+    const towardCenter = along * 2 >= axisMax;
+    if (edge === EDGE_TOP || edge === EDGE_BOTTOM) {
+      return towardCenter ? 'translate(calc(-100% - 15px), -50%)' : 'translate(15px, -50%)';
+    }
+    return towardCenter ? 'translate(-50%, calc(-100% - 15px))' : 'translate(-50%, 15px)';
+  }
+
+  // The countermeasure read, applied to one visible missile slot: socket ring (full = the answer
+  // exists, sweeping back from empty while the recharge runs), dimmed chevron while the answer
+  // is unavailable, and the live-effect word with its seconds ceiling. All writes go through the
+  // cached setters so a settled read costs no DOM traffic.
+  function applyCountermeasureRead(slot, cmState, placement) {
+    setAttr(slot, 'data-cm', cmState ? cmState.mode : null);
+    setAttr(slot, 'data-cm-frac', cmState ? cmState.frac.toFixed(2) : null);
+    if (!cmState) {
+      setDisplay(slot._sfCmRing, false);
+      setDisplay(slot._sfCmLabel, false);
+      if (slot._sfChev) setOpacity(slot._sfChev, '1');
+      return;
+    }
+    setDisplay(slot._sfCmRing, true, 'block');
+    const circles = cmRingCircles(slot._sfCmRing);
+    const offset = Math.round(CM_RING_CIRCUMFERENCE * (1 - clamp(cmState.frac, 0, 1)) * 10);
+    const next = (offset / 10).toFixed(1);
+    for (const circle of [circles.fill, circles.bloom]) {
+      if (!circle) continue;
+      if (circle._sfDash !== offset) {
+        circle._sfDash = offset;
+        circle.setAttribute('stroke-dashoffset', next);
+      }
+    }
+    if (slot._sfChev) setOpacity(slot._sfChev, cmState.mode === 'cooling' ? '0.45' : '1');
+    const label = slot._sfCmLabel;
+    if (cmState.mode === 'effect' && cmState.label) {
+      setDisplay(label, true, 'block');
+      if (label.textContent !== cmState.label) label.textContent = cmState.label;
+      const side = cmLabelTransform(placement.edge, placement.along);
+      if (slot._sfCmSide !== side) {
+        slot._sfCmSide = side;
+        label.style.transform = side;
+      }
+    } else {
+      setDisplay(label, false);
+    }
+  }
+
+  // Solver-failure grace: a reserved rect sweeping through an arc's only viable band made the
+  // placement solver fail for a frame and the slot strobe off. A recently-shown slot holds its
+  // last placement through a short window; only a sustained failure retires it.
+  const SLOT_GRACE_MS = 250;
+  function slotInGrace(slot, at = performance.now()) {
+    return !!slot._sfShownAt && at - slot._sfShownAt < SLOT_GRACE_MS;
+  }
+
+  function applySlots(cmState) {
+    let shown = 0;
+    const publicationAt = performance.now();
+    haloPublication += 1;
+    setAttr(layer, 'data-placement-frame', haloPublication);
+
+    for (let i = 0; i < HOSTILE_LIMIT; i++) {
+      const slot = hostileSlots[i];
+      if (i >= hostileCount || !resolvePlacement(hostileX[i], hostileY[i], false)) {
+        // Grace belongs to a placement failure for this same eligible shooter. An actor
+        // entering the frame, dying or leaving the halo must retire its old arc now.
+        if (i < hostileCount && slot.getAttribute('data-entity-id') === String(hostileId[i])
+          && slot._sfPlacementRead?.generation === hostileLife[i] && slotInGrace(slot, publicationAt)) {
+          slot._sfPlacementRead.frame = haloPublication;
+          slot._sfPlacementRead.checkedAt = publicationAt;
+          setAttr(slot, 'data-placement-read', JSON.stringify(slot._sfPlacementRead));
+          shown++;
+          continue;
+        }
+        clearSlotTelegraph(slot);
+        setDisplay(slot, false);
+        continue;
+      }
+      slot._sfShownAt = publicationAt;
+      setDisplay(slot, true, 'block');
+      setEdge(slot, placement.edge);
+      setHudTransform(slot, placement.x, placement.y);
+      setAttr(slot, 'data-role', hostileRole[i] || 'unknown');
+      setAttr(slot, 'data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
+      setAttr(slot, 'data-entity-id', hostileId[i] != null ? hostileId[i] : null);
+      // Bind observer custody to the pose that placed this chip, rather than a newer sim
+      // point read between overlay ticks. Grace is bounded by the existing placement window.
+      const placedAt = slot._sfShownAt;
+      slot._sfPlacementRead = { version: 1, id: hostileId[i],
+        generation: hostileLife[i], tick: haloTick, sim: haloSim, at: placedAt,
+        expiresAt: placedAt + SLOT_GRACE_MS, x: hostileX[i], y: hostileY[i],
+        frame: haloPublication, checkedAt: publicationAt,
+        onScreen: false, behind: hostileBehind[i] === 1 };
+      setAttr(slot, 'data-placement-read', JSON.stringify(slot._sfPlacementRead));
+      const cue = cueForIds(hostileId[i], null);
+      setOpacity(slot, cue ? '1' : hostileOpacity[i].toFixed(2));
+      if (cue) {
+        setAttr(slot, 'data-telegraph-kind', cue.kind);
+        if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) === -1) {
+          slot.className = `${slot.className} ${SLOT_TELEGRAPH_CLASS}`;
+        }
+        const channel = forceChannelForTelegraphKind(cue.kind);
+        setForceHue(slot, slot._sfArc, channel, channel ? getForcePaletteHex(channel) : null);
+      } else {
+        setAttr(slot, 'data-telegraph-kind', null);
+        if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
+          slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
+        }
+        setForceHue(slot, slot._sfArc, null, null);
+      }
+      setAttr(slot, 'data-faction', hostileFaction[i] || null);
+      // An unannounced hostile burning down on the player reads as the same amber edge pulse
+      // as an incoming torpedo; announced attack runs keep their telegraph hue instead.
+      setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
+      const latch = tetherCutLatches.get(hostileId[i]);
+      const cutLabel = latch && latch._tetherCutLatch ? latch._tetherCutLabel : null;
+      // The lit fuse names what the mark means — a dart resolves no occupational role, so the
+      // generic label would only say "UNKNOWN — ATTACKING" and hide that this hull is the bomb.
+      const identityLabel = cue && cue.kind === 'detonator_fuse'
+        ? 'DETONATOR — FUSE LIT'
+        : hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue, hostileMines[i]);
+      const mines = hostileMines[i];
+      const mineLabel = mines > 0 ? ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}` : '';
+      setAttr(slot, 'aria-label', cutLabel ? cutLabel + mineLabel : identityLabel);
+      // Keep the numeral inside the arc's existing footprint and expose the whole named
+      // marker as one image; the decorative glyph and numeral need no duplicate reading.
+      setDisplay(slot._sfMineCount, mines > 0);
+      if (mines > 0 && slot._sfMineCount.textContent !== String(mines)) slot._sfMineCount.textContent = String(mines);
+      setAttr(slot, 'aria-hidden', mines > 0 ? 'false' : 'true');
+      setAttr(slot, 'role', mines > 0 ? 'img' : null);
+      setAttr(slot, 'data-armed-mines', mines > 0 ? mines : null);
+      shown++;
+    }
+
+    for (let i = 0; i < MISSILE_LIMIT; i++) {
+      const slot = missileSlots[i];
+      if (i >= missileCount || !resolvePlacement(missileX[i], missileY[i], true, !!cmState)) {
+        if (slotInGrace(slot)) {
+          shown++;
+          continue;
+        }
+        setDisplay(slot, false);
+        continue;
+      }
+      slot._sfShownAt = performance.now();
+      setDisplay(slot, true, 'block');
+      setEdge(slot, placement.edge);
+      setHudTransform(slot, placement.x, placement.y);
+      applyCountermeasureRead(slot, cmState, placement);
+      setOpacity(slot, '0.92');
+      shown++;
+    }
+
+    setDisplay(layer, shown > 0, 'block');
+  }
+
+  return {
+    noteTelegraph,
+    update(player, state, worldToScreen) {
+      if (state) refreshWardScreenPublication(state);
+      applyWardScreenMark(layer, state);
+      if (!player || !state || typeof worldToScreen !== 'function' || !player.pos) {
+        hideAllSlots();
+        return;
+      }
+      const tick = Number.isInteger(state.tick) ? state.tick : 0;
+      haloTick = tick;
+      haloSim = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
+      expireTelegraphCues(tick);
+      // Hazard harvest is a fallback for silently-stamped telegraph data, so it only needs to
+      // run when entity membership changed or on a slow heartbeat (in-place _attackTelegraph
+      // stamps do not bump the index version). Skipping it between those moments removes a
+      // five-bucket entity scan from the steady overlay cadence.
+      const index = state.entityIndex;
+      const version = index && index.__spacefaceEntityIndexV1 ? index.version : null;
+      const simT = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
+      if (version !== lastHarvestIndexVersion
+        || simT - lastHarvestAtS >= HARVEST_HEARTBEAT_S
+        || simT < lastHarvestAtS) {
+        harvestLeftoverTelegraphs(state, tick);
+        lastHarvestIndexVersion = version;
+        lastHarvestAtS = simT;
+      }
+      expireTelegraphCues(tick);
+      const width = (typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
+        ? window.innerWidth
+        : 1280;
+      const height = (typeof window !== 'undefined' && Number.isFinite(window.innerHeight))
+        ? window.innerHeight
+        : 720;
+      refreshLayout(width, height);
+      updateObjectiveReservation(state, worldToScreen, width, height);
+      resetOccupancy();
+      collectHostiles(player, state, worldToScreen);
+      collectMissiles(player, state, worldToScreen);
+      // The countermeasure read is bound to the missile slots: it exists only while an inbound
+      // seeker holds a halo slot AND a CM is fitted (countermeasureReadiness → null otherwise),
+      // so it is a contextual instrument over the exact threat the verb answers.
+      const cmState = countermeasureSlotState(countermeasureReadiness(player), missileCount > 0);
+      applySlots(cmState);
+    },
+    destroy() {
+      if (typeof busUnsub === 'function') {
+        busUnsub();
+        busUnsub = null;
+      }
+      if (typeof phaseUnsub === 'function') {
+        phaseUnsub();
+        phaseUnsub = null;
+      }
+      tetherCutLatches.clear();
+      tetherPhaseById.clear();
+      telegraphCues.length = 0;
+      if (layer && layer.parentNode) layer.parentNode.removeChild(layer);
+    },
+  };
+}

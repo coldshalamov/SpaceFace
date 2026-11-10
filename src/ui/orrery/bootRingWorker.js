@@ -1,0 +1,165 @@
+import { createLoadingProgressModel } from '../loadingProgressModel.js';
+
+// Self-contained worker runtime: serialized with the pure factory so source and esbuild bundles
+// use the SAME worker, without fragile worker URL rewrites or a second game dependency graph.
+export function bootRingWorkerRuntime(makeModel) {
+  const model = makeModel();
+  let canvas, ctx, scale = 1, timer = null, raf = null, running = false, reduced = false;
+  let fontReady = false, cellW = 0;
+  let frames = 0, lastReport = 0, epoch = 0, lastDrawAt = -Infinity;
+  const marks = new Set();
+  // Cadence: the worker owns its own vsync beat. requestAnimationFrame inside a worker that holds
+  // an OffscreenCanvas is display-synced and does not wait on the page's main thread, so a 700 ms
+  // main-thread stall (a shader link, a texture burst) no longer drops the ring to the old 10 Hz
+  // timer net and shows as a hop in the needle. The main thread's forwarded 'frame' beats stay as
+  // a harmless extra trigger (pump's interval guard collapses them), and the setTimeout net is only
+  // for reduced motion (a deliberately slow cadence) and hosts without worker rAF.
+  const beatInterval = () => reduced ? 240 : 14;
+  const netInterval = () => reduced ? 250 : 100;
+  const workerFrames = () => !reduced && typeof requestAnimationFrame === 'function';
+  // The reading is the interface's thin numeral: Archivo 300 once the face has loaded here (a worker does not
+  // inherit the page's fonts), the system face until then. Digits sit in fixed cells so 63.9 -> 64.0 never shivers.
+  function drawNumeral(text) {
+    const family = fontReady ? '"Archivo", system-ui, sans-serif' : 'system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `300 28px ${family}`;
+    if (!cellW) cellW = (ctx.measureText('0') || {}).width || 17;
+    const pctFont = `400 16px ${family}`;
+    const advance = (ch) => ch === '.' ? cellW * .5 : ch === '%' ? cellW * .95 : cellW;
+    let total = 0;
+    for (const ch of text) total += advance(ch);
+    let x = 88 - total / 2;
+    for (const ch of text) {
+      const pct = ch === '%';
+      ctx.font = pct ? pctFont : `300 28px ${family}`;
+      ctx.fillStyle = pct ? 'rgba(223,238,255,.55)' : '#dfeeff';
+      const w = advance(ch);
+      // centre each glyph in its own cell (the narrow ones too), so the dot and percent sign sit true
+      const gw = (ctx.measureText(ch) || {}).width || w;
+      ctx.fillText(ch, x + (w - gw) / 2, 198);
+      x += w;
+    }
+  }
+  function loadFace(url) {
+    try {
+      if (!url || typeof FontFace !== 'function' || typeof self === 'undefined' || !self.fonts) return;
+      const face = new FontFace('Archivo', `url(${url})`, { weight: '100 900', stretch: '62% 125%' });
+      face.load().then(() => {
+        self.fonts.add(face); fontReady = true; cellW = 0;
+        if (ctx) draw();
+      }).catch(() => { /* the system face stays: decoration never blocks boot */ });
+    } catch (_) { /* same */ }
+  }
+  function draw() {
+    if (!ctx) return;
+    const t = performance.now();
+    lastDrawAt = t;
+    const f = model.tick(t);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.clearRect(0, 0, 176, 208);
+    const start = -Math.PI / 2, end = start + f * Math.PI * 2;
+    const glow = Math.pow(f, 2);
+    ctx.lineCap = 'round';
+    if (f > 0) {
+      // A few narrow strokes on a 176px instrument, not a full-screen blur/compositor layer.
+      for (const [width, alpha] of [[10, .025 + .09 * glow], [5, .12 + .20 * glow], [1.8, .95]]) {
+        ctx.strokeStyle = `rgba(143,203,255,${alpha})`; ctx.lineWidth = width;
+        ctx.beginPath(); ctx.arc(88, 88, 60, start, end); ctx.stroke();
+      }
+      ctx.fillStyle = '#dfeeff'; ctx.beginPath();
+      ctx.arc(88 + 64 * Math.cos(end), 88 + 64 * Math.sin(end), 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(236,230,216,.8)'; ctx.lineWidth = 1;
+    for (const mark of marks) {
+      const a = mark / 200 * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath(); ctx.moveTo(88 + 57 * Math.cos(a), 88 + 57 * Math.sin(a));
+      ctx.lineTo(88 + 69 * Math.cos(a), 88 + 69 * Math.sin(a)); ctx.stroke();
+    }
+    drawNumeral(model.format());
+    frames++;
+    if (t - lastReport > 240) {
+      lastReport = t;
+      postMessage({ type: 'sample', shown: f, frames, epoch, at: performance.timeOrigin + t });
+    }
+  }
+  function pump(minInterval) {
+    if (performance.now() - lastDrawAt < minInterval) return;
+    draw();
+  }
+  function loop() {
+    timer = null; raf = null;
+    if (!running) return;
+    if (workerFrames()) {
+      pump(beatInterval());
+      raf = requestAnimationFrame(loop);
+    } else {
+      pump(netInterval());
+      timer = setTimeout(loop, netInterval());
+    }
+  }
+  function run() { running = true; if (timer === null && raf === null) loop(); }
+  function stop() {
+    running = false;
+    if (timer !== null) clearTimeout(timer);
+    if (raf !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+    timer = null; raf = null;
+  }
+  onmessage = ({ data }) => {
+    try {
+      if (data.type === 'init') {
+        canvas = data.canvas; scale = Math.max(1, Math.min(2, data.dpr || 1));
+        canvas.width = Math.round(176 * scale); canvas.height = Math.round(208 * scale);
+        // desynchronized: present each stroke without an extra compositor buffer swap.
+        ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+        if (!ctx) throw new Error('2D context unavailable');
+        canvas.addEventListener?.('contextlost', () => { stop(); postMessage({ type: 'failed' }); });
+        model.report(data.stage || { id: 'boot-modules', progress: 0 }, performance.now());
+        reduced = data.reduced === true; model.setReduced(reduced);
+        loadFace(data.fontUrl);
+        draw(); postMessage({ type: 'ready' }); run();
+      } else if (data.type === 'stage') {
+        if (data.reset) { marks.clear(); epoch = data.epoch ?? epoch + 1; }
+        model.report(data.stage, performance.now(), data.reset);
+        const value = Math.round((Number(data.stage.progress) || 0) * 200);
+        if (value > 0) marks.add(Math.min(200, value));
+        draw(); run();
+      } else if (data.type === 'set') { model.adopt(Number(data.value)); draw(); }
+      else if (data.type === 'mark') { marks.add(Math.max(0, Math.min(199, Math.round(Number(data.value) * 200) || 0))); draw(); }
+      else if (data.type === 'finish') { model.finish(); run(); }
+      else if (data.type === 'motion') { reduced = data.reduced; model.setReduced(reduced); draw(); }
+      else if (data.type === 'frame') { if (running) pump(beatInterval()); }
+      else if (data.type === 'pause') stop();
+      else if (data.type === 'resume') run();
+      else if (data.type === 'destroy') { stop(); close(); }
+    } catch (error) { stop(); postMessage({ type: 'failed', message: String(error) }); }
+  };
+}
+
+export function createBootRingWorker(canvas, { stage, reduced, fontUrl, onReady, onSample, onFailure } = {}) {
+  if (typeof globalThis.Worker !== 'function' || typeof canvas?.transferControlToOffscreen !== 'function') return null;
+  let worker = null, url = null, deadline = null, disposed = false;
+  function revoke() { if (url) URL.revokeObjectURL(url); url = null; }
+  function dispose() {
+    if (disposed) return;
+    disposed = true; clearTimeout(deadline); revoke(); worker?.terminate();
+  }
+  function fail(error) { dispose(); onFailure?.(error); }
+  try {
+    const source = `(${bootRingWorkerRuntime.toString()})(${createLoadingProgressModel.toString()});`;
+    url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+    worker = new Worker(url, { name: 'spaceface-boot-ring' });
+    worker.onerror = (event) => { event.preventDefault?.(); fail(event.message); };
+    worker.onmessageerror = () => fail('message error');
+    worker.onmessage = ({ data }) => {
+      if (disposed) return;
+      if (data.type === 'ready') { clearTimeout(deadline); revoke(); onReady?.(); }
+      else if (data.type === 'sample') onSample?.(data);
+      else if (data.type === 'failed') fail(data.message);
+    };
+    const offscreen = canvas.transferControlToOffscreen();
+    worker.postMessage({ type: 'init', canvas: offscreen, stage, reduced, fontUrl,
+      dpr: Math.min(2, globalThis.devicePixelRatio || 1) }, [offscreen]);
+    deadline = setTimeout(() => fail('worker handshake timeout'), 2000);
+    return { post(data) { if (!disposed) worker.postMessage(data); }, destroy: dispose };
+  } catch (error) { fail(error); return null; }
+}

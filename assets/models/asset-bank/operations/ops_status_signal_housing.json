@@ -1,0 +1,469 @@
+{
+  "assetId": "ops_status_signal_housing",
+  "category": "service",
+  "description": "status signal housing",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "power",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          0.8,
+          0.24,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.2525,
+          0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.28500000000000003,
+          0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.2525,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.28500000000000003,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.2525,
+          0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.28500000000000003,
+          0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.2525,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.28500000000000003,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.445,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.41000000000000003,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.7150000000000001,
+          -0.0
+        ],
+        "size": [
+          0.58,
+          0.13,
+          0.58
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.895,
+          -0.0
+        ],
+        "size": [
+          0.46,
+          0.22999999999999998,
+          0.46
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.1150000000000002,
+          -0.0
+        ],
+        "size": [
+          0.58,
+          0.13000000000000012,
+          0.58
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.2950000000000002,
+          -0.0
+        ],
+        "size": [
+          0.46,
+          0.22999999999999998,
+          0.46
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.5150000000000001,
+          -0.0
+        ],
+        "size": [
+          0.58,
+          0.1299999999999999,
+          0.58
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.695,
+          -0.0
+        ],
+        "size": [
+          0.46,
+          0.22999999999999998,
+          0.46
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8599999999999999,
+          -0.0
+        ],
+        "size": [
+          0.64,
+          0.07999999999999985,
+          0.64
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.25,
+          1.235,
+          -0.0
+        ],
+        "size": [
+          0.07,
+          1.17,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.25,
+          1.235,
+          -0.0
+        ],
+        "size": [
+          0.07,
+          1.17,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.4000000059604645,
+      0.0,
+      -0.4000000059604645
+    ],
+    "max": [
+      0.4000000059604645,
+      1.899999976158142,
+      0.4000000059604645
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_status_signal_housing_lod0.glb",
+      "triangles": 9524,
+      "draws": 7,
+      "bytes": 709124,
+      "method": "source",
+      "sha256": "dcae78579d9dbb1283bcd6663aa8b16db882ef6ac7727596d1d844dfa883951b"
+    },
+    {
+      "level": 1,
+      "file": "ops_status_signal_housing_lod1.glb",
+      "triangles": 2388,
+      "draws": 7,
+      "bytes": 356760,
+      "method": "Forge-decimation",
+      "sha256": "f5f58417efe887655942603e8f0f393de8060b656beca953f81329f53bcf2bd9"
+    },
+    {
+      "level": 2,
+      "file": "ops_status_signal_housing_lod2.glb",
+      "triangles": 914,
+      "draws": 6,
+      "bytes": 290668,
+      "method": "Forge-decimation",
+      "sha256": "fc7c4b436a8e21ea80b8dfae4442c3e1d011f14ce3cd6e7f5ef11fabae7de10d"
+    }
+  ]
+}

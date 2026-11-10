@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 140" role="img" aria-labelledby="t"><title id="t">BREAKAWAY machined instrument housing, without dynamic text</title>
+<defs><linearGradient id="rim" x2="0.18" y2="1"><stop stop-color="#747366"/><stop offset=".12" stop-color="#343a39"/><stop offset=".8" stop-color="#171d21"/><stop offset="1" stop-color="#626559"/></linearGradient><linearGradient id="glass" x2=".85" y2="1"><stop stop-color="#242825"/><stop offset="1" stop-color="#0b1117"/></linearGradient><pattern id="marks" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M0 0h3" stroke="#d1c6a6" stroke-opacity=".035"/></pattern></defs>
+<path d="M1 1H434L459 26V139H1Z" fill="#060a0e"/>
+<path d="M2 2H432L457 27V137H2Z" fill="url(#rim)" stroke="#92917b" stroke-width="1"/>
+<path d="M8 8H429L451 30V132H8Z" fill="#101719" stroke="#0a0d11" stroke-width="2"/>
+<path d="M12 12H424L445 33V128H12Z" fill="url(#glass)" stroke="#414841"/>
+<path d="M12 12H424L445 33V128H12Z" fill="url(#marks)"/>
+<path d="M13 13H423L443 33" fill="none" stroke="#aaa082" stroke-opacity=".25"/>
+<path d="M4 22h4v28H4Z" fill="#eda537"/><path d="M436 10l17 17-3 3-17-17Z" fill="#e4b251"/>
+<g fill="#4b514a" stroke="#090f12"><circle cx="7" cy="7" r="2.5"/><circle cx="7" cy="133" r="2.5"/><circle cx="452" cy="133" r="2.5"/></g>
+<g stroke="#9b967f" stroke-width=".7"><path d="M5 7h4M5 133h4M450 133h4"/></g>
+<path d="M403 116h28m-28 4h16m5 0h8" stroke="#746e54" opacity=".38"/>
+<path d="M17 130h46m9 0h5m6 0h11" stroke="#b0a582" stroke-opacity=".22"/>
+</svg>

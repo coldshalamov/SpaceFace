@@ -1,0 +1,167 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/hornet_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/hornet_production_v1",
+  "focus": [
+    0.0375,
+    0.0,
+    0.5072
+  ],
+  "boundsMin": [
+    -5.4,
+    -3.45,
+    -0.6656
+  ],
+  "boundsMax": [
+    5.475,
+    3.45,
+    1.68
+  ],
+  "size": [
+    10.875,
+    6.9,
+    2.3456
+  ],
+  "lightScale": 1.0069,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Accent_Port",
+      "triangles": 512,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_AntennaMast",
+      "triangles": 2472,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_AntennaTip",
+      "triangles": 3060,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Beacon_Aft",
+      "triangles": 180,
+      "materials": [
+        "Material_Warning"
+      ]
+    },
+    {
+      "name": "LOD0_Bell",
+      "triangles": 96,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Canard_Port",
+      "triangles": 204,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Canard_Stbd",
+      "triangles": 204,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_DirtCanard",
+      "triangles": 72,
+      "materials": [
+        "Material_Dirt"
+      ]
+    },
+    {
+      "name": "LOD0_DirtTE_Port",
+      "triangles": 372,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Flap_Port",
+      "triangles": 204,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Flap_Stbd",
+      "triangles": 204,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Glass",
+      "triangles": 12,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Hub",
+      "triangles": 348,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 1444,
+      "materials": [
+        "Material_Hull",
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_MarkingPlate",
+      "triangles": 108,
+      "materials": [
+        "Material_Marking"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_Dorsal_0",
+      "triangles": 2808,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Port",
+      "triangles": 496,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Stbd",
+      "triangles": 496,
+      "materials": [
+        "Material_Hull"
+      ]
+    }
+  ],
+  "triangles": 13292,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/hornet_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/hornet_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/hornet_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

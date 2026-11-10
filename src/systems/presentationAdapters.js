@@ -1,0 +1,1031 @@
+// SG-08 runtime adapters: consume normalized semantic presentation cues and fan them out to
+// existing camera, audio, UI, and accessibility buses. This stays DOM/Three/WebAudio-free so the
+// same contract is testable in headless replay.
+
+import { deriveVfxAdmissionMetadata } from '../presentation/vfxAdmissionPriority.js';
+import {
+  classifyImpactAudioEvent,
+  impactMaterialForTarget,
+  resolveImpactAudioCue,
+} from '../presentation/causalVfxGrammar.js';
+import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
+import { SECTOR_ARRIVAL_CUES } from '../data/audioRecipes.js';
+
+export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
+
+/**
+ * Minimum `playerRelevance` (cueSchema.js:109-122) for a cue to reach the three PLAYER-scoped
+ * lanes — HUD alert, accessibility caption, and camera trauma. Read off that function's own table:
+ * 1 = the player is the cue's target, 0.88 = the player is its source, and everything below is a
+ * pure distance falloff topping out at 0.72 for "within 80 units". 0.8 therefore means "the player
+ * is a participant" while excluding "this happened near the player". The vfx and audio lanes are
+ * world-scoped and deliberately not gated by this. See _applyCue.
+ */
+export const PLAYER_LANE_RELEVANCE_FLOOR = 0.8;
+
+export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
+  'travel.cruise.charging': 'presentation.travel.cruise_charge',
+  'travel.cruise.engaged': 'presentation.travel.lane_lock',
+  'travel.cruise.cancelled': 'presentation.travel.cancel',
+  'travel.cruise.interrupted': 'presentation.travel.fail',
+  'travel.gate.approach': 'presentation.travel.gate_approach',
+  'travel.corridor.continuity': 'presentation.travel.lane_lock',
+  'travel.jump.aligning': 'presentation.travel.gate_align',
+  'travel.jump.commit_window': 'presentation.travel.commit_window',
+  'travel.jump.committed': 'presentation.travel.commit',
+  'travel.transition.continuity': 'presentation.travel.transit',
+  'travel.arrival.oriented': 'presentation.travel.arrival',
+  'travel.arrival.sector_identity': 'presentation.travel.sector_identity',
+  'travel.discovery.mapped': 'presentation.travel.discovery',
+  'travel.interdiction.triggered': 'presentation.travel.interdiction',
+  'travel.jump.failed': 'presentation.travel.fail',
+  'travel.recovery.resumed': 'presentation.travel.recovery',
+  'travel.aftermath.clear': 'presentation.travel.settle',
+  'travel.aftermath.contested': 'presentation.travel.contested',
+  'mining.survey.pulse': 'presentation.mining.scan_pulse',
+  'mining.survey.resolved': 'presentation.mining.scan_return',
+  'mining.survey.classified': 'presentation.mining.scan_classified',
+  'mining.survey.tracked': 'presentation.mining.scan_tracked',
+  'mining.survey.investigated': 'presentation.mining.scan_investigated',
+  // FB-131 — the scanner speaks. Bearing/revealed reuse the existing scan voices (tracked,
+  // classified); the escape is the one new voice, a falling tone.
+  'mining.survey.escaped': 'presentation.mining.scan_escaped',
+  'mining.survey.bearing': 'presentation.mining.scan_bearing',
+  'mining.survey.revealed': 'presentation.mining.scan_revealed',
+  'mining.extraction.locked': 'presentation.mining.cutter_lock',
+  'mining.seam.quality': 'presentation.mining.hardness',
+  'mining.seam.reward': 'presentation.mining.seam_reward',
+  'mining.fracture.anticipation': 'presentation.mining.fracture_warning',
+  'mining.fracture.released': 'presentation.mining.fracture_break',
+  'mining.rich_core.exposed': 'presentation.mining.core_exposed',
+  'mining.rich_core.charge': 'presentation.mining.core_charge',
+  'mining.rich_core.completed': 'presentation.mining.core_reward',
+  'mining.rich_core.fizzle': 'presentation.mining.core_fizzle',
+  'mining.chunk.tether_required': 'presentation.mining.mass_required',
+  'mining.chunk.mass_engaged': 'presentation.mining.mass_engaged',
+  'mining.cargo.mass_settled': 'presentation.mining.cargo_settle',
+  'mining.cargo.full': 'presentation.mining.cargo_full',
+  'mining.field.aftermath': 'presentation.mining.field_settle',
+  'mining.heat.overheated': 'presentation.mining.heat_warning',
+  'mining.vent.ready': 'presentation.mining.vent_ready',
+  'mining.yield.collected': 'presentation.mining.yield',
+  'mining.drill.seismic_pulse': 'presentation.mining.seismic_pulse',
+  'mining.drill.contact': 'presentation.mining.drill_contact',
+  'mining.drill.break': 'presentation.mining.drill_break',
+  'mining.drill.yield': 'presentation.mining.drill_yield',
+  'mining.drill.gas_hazard': 'presentation.mining.gas_hazard',
+  'mining.drill.aborted': 'presentation.mining.drill_abort',
+  'mining.drill.retry': 'presentation.mining.drill_retry',
+  'combat.doctrine.setup': 'presentation.combat.doctrine_setup',
+  'combat.doctrine.telegraph': 'presentation.combat.doctrine_telegraph',
+  'combat.doctrine.action': 'presentation.combat.doctrine_commit',
+  'combat.doctrine.aftermath': 'presentation.combat.doctrine_aftermath',
+  'combat.doctrine.break': 'presentation.combat.doctrine_break',
+  'combat.doctrine.withdraw': 'presentation.combat.doctrine_withdraw',
+  'combat.damage.applied': 'presentation.combat.damage_applied',
+  // PQ-133.04 R4 — the ricochet continuation resolves to the authored armor-hit signature
+  // (recipe sfx.armorHit, whose designed sample binding is `impact_armor`). No new asset: a bank
+  // off a plate IS an armor impact, and the hull-hit voice below already owns plain damage.
+  'combat.bounce': 'presentation.combat.bounce',
+  'combat.near_miss': 'presentation.combat.near_miss',
+  'combat.player.hit': 'presentation.combat.player_hit',
+  'combat.player.kill': 'presentation.combat.player_kill',
+  'tether.attach': 'presentation.tether.attach',
+  'tether.line_on_you': 'presentation.tether.attach',
+  'tether.near_break': 'presentation.tether.near_break',
+  'tether.break': 'presentation.tether.break',
+  'tether.break.overload': 'presentation.tether.break',
+  'tether.break.severed': 'presentation.tether.break',
+  'tether.break.endpoint': 'presentation.tether.break',
+  'tether.whip_impact': 'presentation.tether.whip_impact',
+  'massline.threat': 'presentation.massline.threat',
+  'massline.threat.sweep_commit': 'presentation.massline.threat',
+  'massline.counter_tether.cut': 'presentation.massline.threat',
+  'massline.counter_tether.overload': 'presentation.massline.threat',
+  'tether.release.good': 'presentation.tether.release',
+  'tether.release.clean': 'presentation.tether.release',
+  'tether.release.razor': 'presentation.tether.release',
+  'shield.collapse': 'presentation.shield.collapse',
+  'subsystem.disabled': 'presentation.subsystem.disabled',
+  // Power coming back online reuses the authored shield-restore voice — a rising re-energize
+  // signature, deliberately NOT the subsystem_disabled pop, which means the opposite transition.
+  'subsystem.restored': 'sfx_shield_restore',
+  'scenario.signal.pulse': 'presentation.scenario.signal',
+  'scenario.comms.kessler': 'presentation.comms.kessler',
+  'scenario.comms.denial': 'presentation.comms.denial',
+  'scenario.objective.priority_split': 'presentation.objective.split',
+  'scenario.branch.resolved': 'presentation.branch.resolved',
+  // PQ-023 family (c). Every presentation recipe must map to a concrete authored audio recipe
+  // (check-sg08-mix-profile enforces this), so these reuse existing authored signatures rather than
+  // inventing assets: a site component failing under `physics:impact` is a structural break, and a
+  // restoration is the completion of industrial-beam work. Deliberately NOT
+  // presentation.subsystem.disabled -- that signature means the PLAYER's own subsystem died, and
+  // reusing it would blur two different mechanical facts. Dedicated site audio is a follow-up.
+  'world_site.damage': 'presentation.mining.fracture_break',
+  'world_site.recovery': 'presentation.mining.core_reward',
+  // The rated cluster moment shares one authored layered boom across both tiers; the cascade
+  // reads through its own banner tier instead of a second voice.
+  'fields.cluster_detonate': 'presentation.fields.cluster_detonate',
+  'fields.cluster_detonate.cascade': 'presentation.fields.cluster_detonate',
+  // A witnessed spill IS cargo going ballistic — the same authored voice the player's own
+  // jettison verb uses (dash_punch thunk), spatialized to the pod cloud. barkDirector owns the
+  // spoken owner-identity line for the same event, so the cue owns exactly one voice.
+  'freight.cargo_spilled': 'sfx_cargo_jettison',
+});
+
+const UI_CUES = Object.freeze({
+  'combat.player.kill': uiCue('presentation:combat:player-kill', 'info', 'TARGET DESTROYED', 1.4),
+  'tether.attach': uiCue('presentation:tether:attach', 'info', 'MASSLINE ATTACHED', 1.4),
+  'tether.line_on_you': uiCue('presentation:tether:line-on-you', 'warn', 'LINE ON YOU', 1.8),
+  'tether.near_break': uiCue('presentation:tether:near-break', 'warn', 'MASSLINE STRAIN', 1.2),
+  'tether.break': uiCue('presentation:tether:break', 'danger', 'MASSLINE BROKEN', 1.8),
+  'tether.break.overload': uiCue('presentation:tether:break-overload', 'warn', 'OVERLOAD BREAK', 1.8),
+  'tether.break.severed': uiCue('presentation:tether:break-severed', 'danger', 'LINE SEVERED', 1.8),
+  'tether.break.endpoint': uiCue('presentation:tether:break-endpoint', 'info', 'TARGET LOST', 1.4),
+  // Rung 14 — the whip payoff readout (the crack landed). Info tier: it's a reward, not a warning.
+  'tether.whip_impact': uiCue('presentation:tether:whip-impact', 'info', 'MASSLINE IMPACT', 1.4),
+  // Rung 10 — swing-danger warn (line-near-break / hostile-on-arc / collision-course).
+  'massline.threat': uiCue('presentation:massline:threat', 'warn', 'SWING THREAT', 1.4),
+  // SF-023 — a committed hostile blade is not generic swing danger; the warn names the cut.
+  'massline.threat.sweep_commit': uiCue('presentation:massline:threat-sweep-commit', 'danger', 'LINE UNDER BLADE', 1.6),
+  'massline.counter_tether.cut': uiCue('presentation:massline:counter-tether-cut', 'danger', 'LINE CUT', 1.4),
+  'massline.counter_tether.overload': uiCue('presentation:massline:counter-tether-overload', 'danger', 'OVERLOAD', 1.4),
+  // Prompt 03 — release-rated toasts. Severity/ttl escalate good -> clean -> razor so the razor
+  // cue is visibly stronger than good. Messy has no entry (no UI cue for messy releases).
+  'tether.release.good': uiCue('presentation:tether:release-good', 'info', 'CLEAN RELEASE', 1.1),
+  'tether.release.clean': uiCue('presentation:tether:release-clean', 'info', 'CLEAN CUT', 1.5),
+  'tether.release.razor': uiCue('presentation:tether:release-razor', 'warn', 'RAZOR CUT', 2.0),
+  'massline.release.missed': uiCue('presentation:massline:release-missed', 'info', 'MISSED WINDOW', 1.1),
+  'shield.collapse': uiCue('presentation:shield:collapse', 'danger', 'SHIELDS COLLAPSED', 1.8),
+  'subsystem.disabled': uiCue('presentation:subsystem:disabled', 'warn', 'SUBSYSTEM DISABLED', 1.8, true),
+  'subsystem.restored': uiCue('presentation:subsystem:restored', 'info', 'SUBSYSTEM RESTORED', 1.5, true),
+  'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2, true),
+  'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2, true),
+  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2, true),
+  'scenario.objective.priority_split': uiCue('presentation:scenario:priority-split', 'warn', 'OBJECTIVES SPLIT', 2.4, true),
+  'scenario.branch.resolved': uiCue('presentation:scenario:resolved', 'info', 'EVIDENCE ROUTE LOCKED', 2.4, true),
+  // Rated cluster detonations — the authored voice owns the moment so the alert stays silent.
+  'fields.cluster_detonate': uiCue('presentation:fields:cluster-detonate', 'info', 'CLUSTER DETONATION', 1.8, true),
+  'fields.cluster_detonate.cascade': uiCue('presentation:fields:cluster-cascade', 'warn', 'MASS CASCADE', 2.4, true),
+  // The witnessed-incident receipt: named so the player reads "the cargo I knocked loose", not a
+  // generic alert. audioOwnedByPresentation — the jettison thunk is this cue's voice already.
+  'freight.cargo_spilled': uiCue('presentation:freight:cargo-spilled', 'info', 'CARGO ADRIFT', 2.0, true),
+});
+
+const CAPTIONS = Object.freeze({
+  'combat.player.kill': 'Target destroyed.',
+  'tether.attach': 'Massline attached.',
+  'tether.line_on_you': 'A hostile line is on your hull.',
+  'tether.near_break': 'Massline strain rising.',
+  'tether.break': 'Massline broken.',
+  'tether.break.overload': 'Massline overloaded and parted.',
+  'tether.break.severed': 'Massline severed by an enemy action.',
+  'tether.break.endpoint': 'Massline target lost.',
+  'tether.whip_impact': 'Massline impact landed.',
+  'massline.threat': 'Swing threat detected.',
+  'massline.threat.sweep_commit': 'An enemy blade will reach your Massline at the marked point — move or cut first.',
+  'massline.counter_tether.cut': 'Enemy is preparing to cut the Massline.',
+  'massline.counter_tether.overload': 'Enemy is preparing a Massline overload break.',
+  'tether.release.good': 'Clean release.',
+  'tether.release.clean': 'Clean cut.',
+  'tether.release.razor': 'Razor cut.',
+  'massline.release.missed': 'Massline release window missed.',
+  'shield.collapse': 'Shield collapse.',
+  'subsystem.disabled': 'Subsystem disabled.',
+  'subsystem.restored': 'Subsystem restored.',
+  // PQ-133.04 R4 — the shot kept going: the causal fact a caption owes the player when their
+  // ricochet banks off an authored surface.
+  'combat.bounce': 'Shot banked off the surface — ricochet continues.',
+  'scenario.signal.pulse': 'Unregistered signal pulse.',
+  'scenario.comms.kessler': 'Priority communication from Kessler.',
+  'scenario.comms.denial': 'Official channel denies the shipment.',
+  'scenario.objective.priority_split': 'Civilian objective competing with evidence recovery.',
+  'scenario.branch.resolved': 'Evidence route resolved.',
+  'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
+  'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
+  'freight.cargo_spilled': 'Cargo adrift — check ownership before recovery.',
+  'travel.jump.committed': 'Jump committed.',
+  'travel.arrival.oriented': 'Arrived.',
+  'travel.interdiction.triggered': 'Interdicted.',
+});
+
+// ---------------------------------------------------------------------------------------------
+// Impact vocabulary seam. The contact lane authors a material id and an event class per accepted
+// impact (causalVfxGrammar). This adapter is the bus-facing half: it resolves exactly ONE cue id
+// and puts it on the existing presentation/audio lanes with the contact's world position,
+// distance, priority and reduced-motion metadata. Colour/geometry never enters here.
+// ---------------------------------------------------------------------------------------------
+
+function impactPayload(resolved, options = {}) {
+  const position = options.position
+    && Number.isFinite(options.position.x) && Number.isFinite(options.position.z)
+    ? { x: options.position.x, z: options.position.z }
+    : null;
+  return Object.freeze({
+    id: resolved.cueId,
+    cueId: options.cueId || resolved.cueId,
+    materialCueId: resolved.materialCueId,
+    eventCueId: resolved.eventCueId,
+    materialId: resolved.materialId,
+    eventClass: resolved.eventClass,
+    lane: options.lane || 'audio.impact',
+    position,
+    distance: Number.isFinite(options.distance) ? options.distance : null,
+    gain: round4(clamp01(finite(options.gain, 0.65))),
+    rate: round4(Math.max(0.5, Math.min(2, finite(options.rate, 1)))),
+    duck: options.duck === true,
+    importance: round4(clamp01(finite(options.importance, 0))),
+    playerRelevance: round4(clamp01(finite(options.playerRelevance, 0))),
+    reducedMotion: options.reducedMotion === true,
+    // The raw receipt owns the physical voice by default. The semantic cue still travels for
+    // observability/captions, exactly like shield.collapse and the causal family rows.
+    playbackOwnedByRaw: options.playbackOwnedByRaw !== false,
+  });
+}
+
+/** World-space distance from the player to a contact, for the payload's mix metadata. */
+function impactDistance(state, position) {
+  if (!position) return null;
+  const player = state && state.entities && state.playerId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || !player.pos) return null;
+  const dx = Number(position.x) - Number(player.pos.x);
+  const dz = Number(position.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return null;
+  return round4(Math.hypot(dx, dz));
+}
+
+function impactGainForLayer(layer) {
+  if (layer === 'shield') return 0.7;
+  if (layer === 'armor') return 0.8;
+  return 0.9;
+}
+
+/**
+ * Pure: the material/variant audio payload for one normalized presentation cue, or null when the
+ * cue is not an accepted impact. `combat.damage.applied` carries the target and the damage
+ * magnitude; the live body supplies the surface identity the layer alone cannot.
+ */
+export function impactAudioCueForCue(cue, state) {
+  if (!cue || cue.id !== 'combat.damage.applied') return null;
+  const lane = cue.lanes && cue.lanes.audio;
+  if (!lane || lane === 'audio.none') return null;
+  const target = state && state.entities && cue.targetId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(cue.targetId)
+    : null;
+  const layer = cue.material || cue.dominantLayer || null;
+  const materialId = impactMaterialForTarget(target, layer);
+  const magnitude = finite(cue.magnitude, 0);
+  const maxHull = Math.max(1, Number(target && target.hullMax) || Number(target && target.hull) || 100);
+  const eventClass = classifyImpactAudioEvent({
+    eventClass: cue.eventClass || cue.impactClass || cue.impactEventClass,
+    materialId,
+    severity: clamp01(magnitude / maxHull),
+    axisSigned: cue.axisSigned !== false,
+  });
+  const resolved = resolveImpactAudioCue({ eventClass, materialId });
+  const position = cue.position || (target && target.pos) || null;
+  return impactPayload(resolved, {
+    cueId: cue.id,
+    lane,
+    position,
+    distance: impactDistance(state, position),
+    gain: impactGainForLayer(layer),
+    importance: cue.importance,
+    playerRelevance: cue.playerRelevance,
+    duck: shouldDuckAudio(cue),
+    reducedMotion: !!(state && state.settings && state.settings.video
+      && state.settings.video.motionReduce),
+    playbackOwnedByRaw: true,
+  });
+}
+
+/**
+ * Bus emission seam for an accepted contact. A render/contact owner that has just admitted a
+ * material/event record calls this once; it resolves one cue and emits the existing presentation
+ * audio pair. `playbackOwnedByRaw` defaults true because the raw damage/collision receipt already
+ * speaks; an owner with no raw voice passes false to let this payload play. Never throws for an
+ * unknown material — `resolveImpactAudioCue` lands on `combat.impact.generic`.
+ */
+export function emitImpactAudioCue(bus, rec, options = {}) {
+  if (!bus || typeof bus.emit !== 'function') return null;
+  const resolved = resolveImpactAudioCue(rec, options);
+  const payload = impactPayload(resolved, options);
+  bus.emit('presentation:audioCue', payload);
+  // A raw-owned contact already speaks through combat:damage / the projectile chip. Sending its
+  // semantic id to `audio:cue` as well would re-enter the audio router for a cue that must not
+  // play; the presentation lane alone carries observability. An owner with no raw voice sets
+  // `playbackOwnedByRaw: false` and gets the playable lane too, exactly once.
+  if (payload.playbackOwnedByRaw !== true) bus.emit('audio:cue', payload);
+  return payload;
+}
+
+export const presentationAdapters = {
+  name: 'presentationAdapters',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this._applied = 0;
+    this._lastApplied = null;
+    this._lastRoleBriefingKey = null;
+    this._pendingRoleBriefing = null;
+    this._pendingRoleUndockTimer = null;
+    this._roleBriefings = 0;
+    this._subscriptions = [
+      this.bus.on('presentation:cue', (cue) => this._applyCue(cue || {})),
+      // M5 active-hull role briefing: ships publishes ship:roleContext; adapters own the toast.
+      this.bus.on('ship:roleContext', (context) => this._onShipRoleContext(context || {})),
+      this.bus.on('mode:changed', ({ mode } = {}) => this._onModeChanged(mode)),
+      this.bus.on('game:started', () => this._onGameStarted()),
+      this.bus.on('tutorial:finished', () => this._onTutorialFinished()),
+      this.bus.on('dock:undocked', () => this._onDockUndocked()),
+      this.bus.on('save:loaded', () => this._resetRuntime()),
+    ];
+  },
+
+  dispose() {
+    while (this._subscriptions && this._subscriptions.length) {
+      const unsub = this._subscriptions.pop();
+      try { unsub(); } catch (_err) {}
+    }
+    this._lastRoleBriefingKey = null;
+    this._pendingRoleBriefing = null;
+    if (this._pendingRoleUndockTimer != null) clearTimeout(this._pendingRoleUndockTimer);
+    this._pendingRoleUndockTimer = null;
+  },
+
+  inspect() {
+    return {
+      schema: 'spaceface.presentationAdaptersInspect.v1',
+      schemaVersion: PRESENTATION_ADAPTERS_SCHEMA_VERSION,
+      applied: this._applied || 0,
+      lastApplied: this._lastApplied,
+      roleBriefings: this._roleBriefings || 0,
+      lastRoleBriefingKey: this._lastRoleBriefingKey || null,
+      pendingRoleBriefingSource: this._pendingRoleBriefing && this._pendingRoleBriefing.source || null,
+    };
+  },
+
+  _resetRuntime() {
+    this._applied = 0;
+    this._lastApplied = null;
+    // Allow one Continue briefing after restore; do not re-fire without a new ship:roleContext.
+    this._lastRoleBriefingKey = null;
+    this._travelAudioTick = null;
+    this._travelAudioSources = new Set();
+    this._miningAudioTick = null;
+    this._miningAudioSources = new Set();
+    this._doctrineAudioTick = null;
+    this._doctrineAudioSources = new Set();
+    this._combatAftermathAudioTick = null;
+    this._combatAftermathAudioClaimed = false;
+  },
+
+  /**
+   * Production consumer for active-hull role continuity. Emits a concise non-diegetic toast only
+   * when ships marks the packet announce:true (New Game, Continue, real hull switch). Silent for
+   * queries, no-ops, recomputes, and reinit without a fresh publish.
+   */
+  _onShipRoleContext(context) {
+    if (!context || context.announce !== true) return null;
+    const source = context.source || '';
+    if (source !== 'new_game' && source !== 'save_loaded' && source !== 'active_ship_changed') {
+      return null;
+    }
+    const name = String(context.name || '').trim();
+    const roleLabel = String(context.roleLabel || '').trim();
+    const signatureVerb = String(context.signatureVerb || '').trim();
+    if (!name || !roleLabel || !signatureVerb) return null;
+
+    // New Game and Continue publish their role packet while the canonical authored-visual gate is
+    // still in loading mode. Starting the five-second toast there makes it expire behind the veil.
+    // Hold only that transition-time packet. Continue can surface at mode:changed(flight); New Game
+    // waits until game:started has finished so the UI's run-boundary reset cannot erase the toast.
+    // A later packet replaces an abandoned transition.
+    if (this.state && (this.state.mode === 'loading'
+      || this.state.ui?.docked === true
+      || tutorialOwnsOpeningPresentation(this.state))) {
+      // A live Crucible run never holds adventure fit narration for later.
+      if (!isSurvivalRunLive(this.state.run)) this._pendingRoleBriefing = { ...context };
+      return null;
+    }
+
+    return this._surfaceRoleBriefing(context);
+  },
+
+  _onModeChanged(mode) {
+    if (mode !== 'flight' || !this._pendingRoleBriefing) return null;
+    if (tutorialOwnsOpeningPresentation(this.state)) return null;
+    if (this._pendingRoleBriefing.source === 'new_game') return null;
+    const pending = this._pendingRoleBriefing;
+    this._pendingRoleBriefing = null;
+    return this._surfaceRoleBriefing(pending);
+  },
+
+  _onGameStarted() {
+    if (!this._pendingRoleBriefing || this._pendingRoleBriefing.source !== 'new_game') return null;
+    const pending = this._pendingRoleBriefing;
+    // presentationAdapters is initialized before UI listeners. Defer until every synchronous
+    // game:started consumer has reset its surface. Onboarding is also initialized after this
+    // adapter, so its listener establishes tutorial ownership later in the same event dispatch.
+    queueMicrotask(() => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.mode !== 'flight' || tutorialOwnsOpeningPresentation(this.state)) return;
+      this._pendingRoleBriefing = null;
+      this._surfaceRoleBriefing(pending);
+    });
+    return pending;
+  },
+
+  _onTutorialFinished() {
+    if (!this._pendingRoleBriefing) return null;
+    const pending = this._pendingRoleBriefing;
+    // Let every synchronous tutorial-handoff consumer retire its own opening surface first. The
+    // role card is informational and may follow that boundary; it never owns the tutorial interval.
+    queueMicrotask(() => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.mode !== 'flight'
+        || this.state.ui?.docked === true
+        || tutorialOwnsOpeningPresentation(this.state)) return;
+      this._pendingRoleBriefing = null;
+      this._surfaceRoleBriefing(pending);
+    });
+    return pending;
+  },
+
+  _onDockUndocked() {
+    if (!this._pendingRoleBriefing || this._pendingRoleBriefing.source !== 'active_ship_changed') {
+      return null;
+    }
+    const pending = this._pendingRoleBriefing;
+    const surfaceAfterStationCloses = () => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.mode !== 'flight'
+        || this.state.ui?.docked === true
+        || tutorialOwnsOpeningPresentation(this.state)) return;
+      this._pendingRoleBriefing = null;
+      this._pendingRoleUndockTimer = null;
+      this._surfaceRoleBriefing(pending);
+    };
+    // uiRoot commits the screen swap after its 400 ms launch fade. Wait beyond that canonical
+    // boundary before starting the five-second briefing clock; otherwise the toast expires behind
+    // the still-opaque station screen. Immediate delivery remains available to headless consumers.
+    queueMicrotask(() => {
+      if (!this.bus || !this.state || this._pendingRoleBriefing !== pending) return;
+      if (this.state.ui?.docked !== true) {
+        surfaceAfterStationCloses();
+        return;
+      }
+      if (this._pendingRoleUndockTimer != null) clearTimeout(this._pendingRoleUndockTimer);
+      this._pendingRoleUndockTimer = setTimeout(surfaceAfterStationCloses, 450);
+    });
+    return pending;
+  },
+
+  _surfaceRoleBriefing(context) {
+    const source = String(context.source || '').trim();
+    const name = String(context.name || '').trim();
+    const roleLabel = String(context.roleLabel || '').trim();
+    const signatureVerb = String(context.signatureVerb || '').trim();
+    if (!name || !roleLabel || !signatureVerb) return null;
+    // Adventure fit narration never reaches the Crucible flight glass.
+    if (isSurvivalRunLive(this.state && this.state.run)) return null;
+
+    const tick = currentTick(this.state);
+    const key = [source, context.defId || '', context.role || '', tick].join('|');
+    if (this._lastRoleBriefingKey === key) return null;
+    this._lastRoleBriefingKey = key;
+
+    const text = name + ' active · ' + roleLabel + ' — ' + signatureVerb;
+    const toast = {
+      text,
+      kind: 'info',
+      ttl: 5,
+      key: 'ship.role.briefing',
+      source,
+      defId: context.defId || null,
+      role: context.role || null,
+    };
+    this.bus.emit('toast', toast);
+    this.bus.emit('presentation:uiCue', {
+      key: 'presentation:ship:role-briefing',
+      sev: 'info',
+      text,
+      ttl: 5,
+      cueId: 'ship.role.briefing',
+      lane: 'ui.toast',
+      source,
+      defId: context.defId || null,
+    });
+    this._roleBriefings = (this._roleBriefings || 0) + 1;
+    this._applied = (this._applied || 0) + 1;
+    this._lastApplied = {
+      tick,
+      id: 'ship.role.briefing',
+      outputLanes: ['ui'],
+      source,
+    };
+    return toast;
+  },
+
+  _applyCue(cue) {
+    const outputs = {};
+    // Lane audience split (GDD 2.0 pillar 3, "one primary transient voice at a time").
+    //
+    // Three of these five lanes are statements ABOUT THE PLAYER'S SHIP: a HUD banner, its
+    // accessibility caption, and a kick to the player's camera. The other two describe the WORLD.
+    // Until now all five fired for any entity, so an NPC's shield breaking anywhere in the sector
+    // raised a red "SHIELDS COLLAPSED" banner, spoke it, and shook the player's camera while the
+    // player sat at full hull — which teaches players to ignore the highest-severity channel the
+    // HUD has, and that costs every legitimate warning behind it.
+    //
+    // No new schema field is needed: cueSchema.js:181 already computes playerRelevance for every
+    // cue (1 = player is the target, 0.88 = player is the source, then a distance falloff of
+    // 0.72/0.52/0.28/0.08), and it has been arriving here unread apart from one caption-assertiveness
+    // test. The 0.8 floor is read straight off that table: it admits "the player is a participant"
+    // and excludes "this happened somewhere near the player", which is exactly the line a red banner
+    // should sit on. 0.72 would readmit every nearby NPC brawl.
+    //
+    // vfx and audio stay WORLD-scoped on purpose. An NPC's shield popping should spark at the NPC —
+    // that is pillar 2, "read the battlefield at a glance" — and the audio lane is already
+    // spatialized and voice-budgeted, so gating it would deaden the world rather than declutter it.
+    // Breaking an enemy shield makes the player the source (relevance .88),
+    // but does not mean the player's shields failed. That alarm belongs to its
+    // recipient; world sparks and positional audio still play.
+    const warnsAboutRecipient = cue?.id === 'shield.collapse';
+    const playerScoped = warnsAboutRecipient
+      ? cue.targetId != null && cue.targetId === this.state?.playerId
+      : finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
+    const tutorialOwnsSignalAnnouncement = onboardingOwnsSignalAnnouncement(this.state, cue);
+    const camera = playerScoped ? this._applyCamera(cue) : null;
+    if (camera) outputs.camera = camera;
+    const vfx = this._applyVfx(cue);
+    if (vfx) outputs.vfx = vfx;
+    const audio = this._applyAudio(cue);
+    if (audio) outputs.audio = audio;
+    const ui = playerScoped && !tutorialOwnsSignalAnnouncement ? this._applyUi(cue) : null;
+    if (ui) outputs.ui = ui;
+    const accessibility = playerScoped && !tutorialOwnsSignalAnnouncement
+      ? this._applyAccessibility(cue)
+      : null;
+    if (accessibility) outputs.accessibility = accessibility;
+
+    const applied = {
+      schema: 'spaceface.presentationCueApplied.v1',
+      id: cue.id || null,
+      tick: currentTick(this.state),
+      simTimeMs: finite(cue.simTimeMs, finite(this.state && this.state.simTime, 0) * 1000),
+      sourceEvent: cue.sourceEvent || null,
+      dedupeKey: cue.dedupeKey || null,
+      lanes: copyObject(cue.lanes),
+      outputs,
+    };
+    this._applied++;
+    this._lastApplied = {
+      tick: applied.tick,
+      id: applied.id,
+      outputLanes: Object.keys(outputs).sort(),
+    };
+    this.bus.emit('presentation:cueApplied', applied);
+  },
+
+  _applyCamera(cue) {
+    const budget = cue && cue.budgets || {};
+    const base = clamp01(finite(budget.cameraTrauma, 0));
+    if (base <= 0) return null;
+    const motionReduced = !!(this.state && this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce);
+    const amount = round4(base * (motionReduced ? 0.25 : 1));
+    const payload = {
+      id: cue.id,
+      amount,
+      reason: 'presentation',
+      reducedMotion: motionReduced,
+      sourceId: cue.sourceId ?? null,
+      targetId: cue.targetId ?? null,
+      direction: cue.direction || null,
+    };
+    this.bus.emit('presentation:cameraCue', payload);
+    if (amount > 0) this.bus.emit('camera:shake', payload);
+    return { event: 'camera:shake', amount, reducedMotion: motionReduced };
+  },
+
+  _applyVfx(cue) {
+    const lane = cue && cue.lanes && cue.lanes.vfx || null;
+    if (!lane || lane === 'vfx.none') return null;
+    if (lane.startsWith('vfx.direct_')) {
+      return { event: 'direct_vfx_owner', lane, reconciled: true };
+    }
+    const budget = cue && cue.budgets || {};
+    const flashReduced = !!(this.state && this.state.settings && this.state.settings.accessibility && this.state.settings.accessibility.flashReduce);
+    const admission = deriveVfxAdmissionMetadata(cue, this.state);
+    const payload = {
+      id: cue.id,
+      lane,
+      particles: Math.max(0, Math.floor(finite(budget.particles, 0) * (flashReduced ? 0.5 : 1))),
+      lights: Math.max(0, Math.floor(finite(budget.lights, 0) * (flashReduced ? 0 : 1))),
+      flashReduced,
+      position: cue.position || null,
+      direction: cue.direction || null,
+      magnitude: finite(cue.magnitude, 1),
+      importance: admission.importance,
+      playerRelevance: admission.playerRelevance,
+      distance: Math.max(0, finite(cue.distance, 0)),
+      proximity: admission.proximity,
+      severity: admission.severity,
+      targetRelevance: admission.targetRelevance,
+      playerCaused: admission.playerCaused,
+      currentTarget: admission.currentTarget,
+      admissionPriority: admission.admissionPriority,
+      priorityComponents: {
+        importance: admission.importance,
+        playerRelevance: admission.playerRelevance,
+        proximity: admission.proximity,
+        severity: admission.severity,
+        targetRelevance: admission.targetRelevance,
+        playerCaused: admission.playerCaused,
+        currentTarget: admission.currentTarget,
+      },
+      material: cue.material || 'unknown',
+      sourceId: admission.sourceId,
+      targetId: admission.targetId,
+      // FB-072 — the declared severity shape tier (silhouette/layout/primitive) rides the cue
+      // into the render record, so a higher rung is identifiable by shape, not budget.
+      shape: cue.shape || null,
+      tags: Array.isArray(cue.tags) ? [...cue.tags] : [],
+    };
+    this.bus.emit('presentation:vfxCue', payload);
+    return {
+      event: 'presentation:vfxCue',
+      particles: payload.particles,
+      lights: payload.lights,
+      flashReduced,
+      admissionPriority: payload.admissionPriority,
+    };
+  },
+
+  _applyAudio(cue) {
+    const mappedAudioId = PRESENTATION_AUDIO_CUE_BY_ID[cue && cue.id];
+    if (!mappedAudioId) return null;
+    // WF-13 sector arrival identity: the sector id riding the cue (targetId) picks that sector's
+    // own arrival voice instead of the one shared identity cue; a first visit announces fuller
+    // than a return nod. Unknown sector keeps the original shared voice (mappedAudioId).
+    const arrival = sectorArrivalAudio(cue);
+    const audioId = arrival
+      ? arrival.id
+      : subsystemAudioId(cue, doctrineAudioId(cue, mappedAudioId));
+    if (cue.id.startsWith('travel.') && !this._claimTravelAudioFloor(cue)) return null;
+    if (cue.id.startsWith('mining.') && !this._claimMiningAudioFloor(cue)) return null;
+    if (cue.id.startsWith('combat.doctrine.') && !doctrineCueOwnsAudio(cue)) return null;
+    if (cue.id.startsWith('combat.doctrine.') && !this._claimDoctrineAudioFloor(cue)) return null;
+    if (isCombatAftermathCue(cue) && !combatAftermathCueOwnsAudio(cue, this.state)) return null;
+    if (cue.id === 'combat.near_miss' && !this._claimCombatAftermathAudioFloor(cue)) return null;
+    const payload = {
+      id: audioId,
+      cueId: cue.id,
+      lane: cue.lanes && cue.lanes.audio || null,
+      position: scenarioAudioPosition(cue),
+      gain: arrival ? arrival.gain : combatAftermathGain(cue),
+      rate: combatAftermathRate(cue),
+      duck: shouldDuckAudio(cue),
+      // Preserve the semantic audio route for observability while the earlier raw shieldDown event
+      // remains the sole physical shield-break voice.
+      playbackOwnedByRaw: cue.id === 'shield.collapse',
+    };
+    this.bus.emit('presentation:audioCue', payload);
+    this.bus.emit('audio:cue', payload);
+    return { event: 'audio:cue', id: audioId, duck: payload.duck };
+  },
+
+  _claimTravelAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._travelAudioTick !== tick) {
+      this._travelAudioTick = tick;
+      this._travelAudioSources = new Set();
+    }
+    // A single gameplay event can produce multiple structural presentation receipts (for example,
+    // jump committed + transition continuity). Keep those receipts for VFX/telemetry while only
+    // the first owns the audible floor. Distinct urgent events in the same tick still read.
+    const sourceEvent = cue.sourceEvent || cue.id;
+    if (this._travelAudioSources.has(sourceEvent)) return false;
+    this._travelAudioSources.add(sourceEvent);
+    return true;
+  },
+
+  _claimMiningAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._miningAudioTick !== tick) {
+      this._miningAudioTick = tick;
+      this._miningAudioSources = new Set();
+    }
+    const sourceEvent = cue.sourceEvent || cue.id;
+    // Each accepted bearing is a counted step toward a fix, not a restatement of one event —
+    // pitch rises with the count, so keying the floor on the raw event would silence the climb.
+    // True duplicates stay suppressed by the same sequence.
+    const floorKey = cue.id === 'mining.survey.bearing'
+      ? `${sourceEvent}:${cue.sequence ?? cue.magnitude ?? 0}`
+      : sourceEvent;
+    if (this._miningAudioSources.has(floorKey)) return false;
+    this._miningAudioSources.add(floorKey);
+    return true;
+  },
+
+  _claimDoctrineAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._doctrineAudioTick !== tick) {
+      this._doctrineAudioTick = tick;
+      this._doctrineAudioSources = new Set();
+    }
+    // Doctrine telegraphs are squad information: several actors changing together still speak once.
+    const key = cue.sourceEvent || cue.id;
+    if (this._doctrineAudioSources.has(key)) return false;
+    this._doctrineAudioSources.add(key);
+    return true;
+  },
+
+  _claimCombatAftermathAudioFloor(cue) {
+    const tick = currentTick(this.state);
+    if (this._combatAftermathAudioTick !== tick) {
+      this._combatAftermathAudioTick = tick;
+      this._combatAftermathAudioClaimed = false;
+    }
+    // Several projectiles can cross the player in one sim tick. Preserve every semantic/VFX receipt,
+    // but permit only one restrained flyby voice so crossfire never becomes a noise storm.
+    if (this._combatAftermathAudioClaimed) return false;
+    this._combatAftermathAudioClaimed = true;
+    return true;
+  },
+
+  _applyUi(cue) {
+    const def = UI_CUES[cue && cue.id];
+    if (!def) return null;
+    const impact = masslineImpactTier(cue);
+    const payload = {
+      key: def.key,
+      sev: impact ? impact.sev : def.sev,
+      text: playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || (impact ? impact.text : def.text),
+      ttl: impact ? impact.ttl : def.ttl,
+      cueId: cue.id,
+      lane: cue.lanes && cue.lanes.ui || null,
+      shape: shapeForCue(cue.id),
+      audioOwnedByPresentation: !!def.audioOwnedByPresentation,
+    };
+    this.bus.emit('presentation:uiCue', payload);
+    this.bus.emit('alert', payload);
+    return { event: 'alert', key: payload.key, sev: payload.sev, shape: payload.shape };
+  },
+
+  _applyAccessibility(cue) {
+    // PQ-023 family (e): an owner-supplied accessibilityText outranks the static table. The table
+    // can only say one fixed sentence per cue id, which cannot name WHICH component failed. Cues
+    // that supply nothing keep their existing table entry unchanged.
+    const impact = masslineImpactTier(cue);
+    const text = (cue && cue.accessibilityText) || playerSubsystemLine(cue, this.state) || enemySubsystemLine(cue, this.state) || (impact && impact.caption) || CAPTIONS[cue && cue.id];
+    if (!text) return null;
+    const payload = {
+      id: cue.id,
+      lane: cue.lanes && cue.lanes.accessibility || null,
+      text,
+      assertive: cue.playerRelevance >= 0.9 || finite(cue.importance, 0) >= 0.85,
+      shape: shapeForCue(cue.id),
+      highContrast: !!(this.state && this.state.settings && this.state.settings.accessibility && this.state.settings.accessibility.highContrast),
+      reducedMotion: !!(this.state && this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce),
+      flashReduced: !!(this.state && this.state.settings && this.state.settings.accessibility && this.state.settings.accessibility.flashReduce),
+    };
+    this.bus.emit('presentation:caption', payload);
+    return { event: 'presentation:caption', assertive: payload.assertive, shape: payload.shape };
+  },
+};
+
+/** The player's own part, named in a full sentence. */
+function playerSubsystemLine(cue, state) {
+  if (!cue || (cue.id !== 'subsystem.disabled' && cue.id !== 'subsystem.restored')) return null;
+  if (!state || cue.targetId == null || cue.targetId !== state.playerId) return null;
+  const id = String(cue.subsystemId || '').toLowerCase();
+  let part = null;
+  if (id.includes('clamp')) part = 'Clamp';
+  else if (id.includes('tether') || id.includes('spool')) part = 'Massline spool';
+  else if (id.includes('drive') || id.includes('engine') || id.includes('thrust')) part = 'Drive';
+  else if (id.includes('weapon') || id.includes('hardpoint') || id.includes('turret') || id.includes('gun')) part = 'Guns';
+  else if (id.includes('sensor') || id.includes('comms') || id.includes('scanner')) part = 'Sensors';
+  else if (id.includes('shield')) part = 'Shields';
+  else if (id.includes('life') || id.includes('support')) part = 'Life support';
+  else if (id.includes('power') || id.includes('reactor')) part = 'Reactor';
+  if (!part) return null;
+  if (cue.id === 'subsystem.restored') return `${part} back online`;
+  if (part === 'Drive') return 'Drive out — the ship is not pushing';
+  if (part === 'Massline spool') return 'Massline spool out — the rope will not hold';
+  if (part === 'Clamp') return 'Clamp out — the load is no longer held';
+  if (part === 'Guns') return 'Guns out — the battery is dark';
+  if (part === 'Sensors') return 'Sensors out — the board is blind';
+  if (part === 'Shields') return 'Shields out — the hull is bare';
+  if (part === 'Life support') return 'Life support out';
+  return 'Reactor out — the ship is starving';
+}
+
+/** Another hull's broken part, named. The player's own lines stay the long sentences above. */
+export function enemySubsystemLine(cue, state) {
+  if (!cue || cue.id !== 'subsystem.disabled') return null;
+  if (!state || cue.targetId == null || cue.targetId === state.playerId) return null;
+  const id = String(cue.subsystemId || '').toLowerCase();
+  let part = null;
+  if (id.includes('clamp')) part = 'CLAMP';
+  else if (id.includes('tether') || id.includes('spool')) part = 'SPOOL';
+  else if (id.includes('drive') || id.includes('engine') || id.includes('thrust')) part = 'DRIVE';
+  else if (id.includes('weapon') || id.includes('hardpoint') || id.includes('turret') || id.includes('gun')) part = 'GUNS';
+  else if (id.includes('sensor') || id.includes('comms') || id.includes('scanner')) part = 'SENSORS';
+  else if (id.includes('shield')) part = 'SHIELDS';
+  else if (id.includes('life') || id.includes('support')) part = 'LIFE SUPPORT';
+  else if (id.includes('power') || id.includes('reactor')) part = 'REACTOR';
+  return part ? `${part} DISABLED` : null;
+}
+
+function uiCue(key, sev, text, ttl, audioOwnedByPresentation = false) {
+  return Object.freeze({ key, sev, text, ttl, audioOwnedByPresentation });
+}
+
+// Glance, solid, and crushing already ride the whip record. One branch on that rating;
+// the MASSLINE IMPACT key stays the lane. Solid keeps the payoff info tier.
+function masslineImpactRating(cue) {
+  const named = cue && (cue.rating || (cue.payload && cue.payload.rating));
+  if (named === 'crushing' || named === 'solid' || named === 'glance') return named;
+  const tags = cue && cue.tags;
+  if (!Array.isArray(tags)) return null;
+  if (tags.includes('crushing')) return 'crushing';
+  if (tags.includes('solid')) return 'solid';
+  if (tags.includes('glance')) return 'glance';
+  return null;
+}
+
+function masslineImpactTier(cue) {
+  if (!cue || cue.id !== 'tether.whip_impact') return null;
+  const rating = masslineImpactRating(cue);
+  if (rating === 'crushing') {
+    return { sev: 'warn', text: 'MASSLINE CRUSHING', ttl: 2.2, caption: 'Crushing massline impact.' };
+  }
+  if (rating === 'solid') {
+    return { sev: 'info', text: 'MASSLINE IMPACT', ttl: 1.4, caption: 'Massline impact landed.' };
+  }
+  if (rating === 'glance') {
+    return { sev: 'info', text: 'MASSLINE GLANCE', ttl: 0.8, caption: 'Glancing massline impact.' };
+  }
+  return null;
+}
+
+function onboardingOwnsSignalAnnouncement(state, cue) {
+  const onboarding = state && state.onboarding;
+  return cue && cue.id === 'scenario.signal.pulse'
+    && !!(onboarding && onboarding.active && !onboarding.finished);
+}
+
+function shapeForCue(id) {
+  if (id === 'combat.player.kill') return 'cross';
+  // PQ-023: distinct non-colour glyphs so a forced-colors or greyscale player can tell a site
+  // failure from a restoration without reading the caption.
+  if (id === 'world_site.damage') return 'bracket';
+  if (id === 'world_site.recovery') return 'ring';
+  if (id === 'massline.release.missed') return 'arc';
+  if (id && (id.startsWith('tether.') || id.startsWith('massline.counter_tether.'))) return 'arc';
+  if (id === 'shield.collapse') return 'ring';
+  if (id === 'subsystem.disabled') return 'bracket';
+  // Restoration takes the recovery ring glyph — the same non-colour shape a greyscale player reads
+  // on world_site.recovery — so enable and disable edges never share a silhouette.
+  if (id === 'subsystem.restored') return 'ring';
+  if (id && id.startsWith('scenario.comms.')) return 'diamond';
+  if (id && id.startsWith('scenario.objective.')) return 'split';
+  // The field receipt family gets its own silhouette — a forced-colors player reads the diamond
+  // as a field moment, distinct from tether arcs and comms diamonds' scenario prefix.
+  if (id && id.startsWith('fields.cluster')) return 'diamond';
+  // The spill beacon is a ring — the caption glyph matches the shape the vfx lane actually draws.
+  if (id === 'freight.cargo_spilled') return 'ring';
+  return 'pulse';
+}
+
+function miningAudioRate(cue) {
+  if (!cue || !String(cue.id || '').startsWith('mining.')) return 1;
+  const tags = Array.isArray(cue.tags) ? cue.tags : [];
+  // FB-131 — a bearing counted toward a fix climbs a pitch step per accepted ping; the cue's
+  // magnitude carries the count (1..requiredPings). A lost contact slides down instead.
+  if (cue.id === 'mining.survey.bearing') {
+    const count = Math.max(1, Math.floor(finite(cue.magnitude, 1)));
+    return Math.min(1.4, 1 + 0.07 * (count - 1));
+  }
+  if (cue.id === 'mining.survey.escaped') return 0.9;
+  if (cue.id === 'mining.seam.quality') return tags.includes('on_seam') ? 1.16 : 0.84;
+  if (cue.id === 'mining.drill.contact') {
+    if (tags.includes('hard')) return 0.78;
+    if (tags.includes('soft')) return 1.12;
+  }
+  return 1;
+}
+
+function doctrineAudioId(cue, fallback) {
+  if (!cue || !String(cue.id || '').startsWith('combat.doctrine.')) return fallback;
+  const doctrineId = ['interceptor_flyby', 'brawler_commit', 'tether_control_raider', 'ranged_disengager',
+    'escort_screen']
+    .find((id) => Array.isArray(cue.tags) && cue.tags.includes(id));
+  if (!doctrineId) return fallback;
+  const stage = cue.id.endsWith('.setup') ? 'setup'
+    : cue.id.endsWith('.break') ? 'break'
+      : cue.id.endsWith('.withdraw') ? 'withdraw'
+        : null;
+  if (!stage) return fallback;
+  return `presentation.combat.${doctrineId}.${stage}`;
+}
+
+function subsystemAudioId(cue, fallback) {
+  if (!cue || cue.id !== 'subsystem.disabled') return fallback;
+  const subsystemId = String(cue.subsystemId || '').toLowerCase();
+  if (subsystemId.includes('drive') || subsystemId.includes('engine')) return 'presentation.subsystem.drive_disabled';
+  if (subsystemId.includes('sensor') || subsystemId.includes('comms')) return 'presentation.subsystem.sensor_disabled';
+  if (subsystemId.includes('weapon') || subsystemId.includes('hardpoint')) return 'presentation.subsystem.weapon_disabled';
+  return fallback;
+}
+
+// WF-13 sector arrival identity (see SECTOR_ARRIVAL_CUES in src/data/audioRecipes.js): the
+// orchestrator emits 'travel.arrival.sector_identity' with targetId = the sector just entered and
+// tags first_visit/return. A known sector gets its own arrival voice, a first visit louder than a
+// return nod; null keeps the original shared identity voice for unknown sectors.
+function sectorArrivalAudio(cue) {
+  if (!cue || cue.id !== 'travel.arrival.sector_identity') return null;
+  const recipeId = SECTOR_ARRIVAL_CUES[cue.targetId] || null;
+  if (!recipeId) return null;
+  const firstVisit = Array.isArray(cue.tags) && cue.tags.includes('first_visit');
+  return { id: recipeId, gain: firstVisit ? 0.78 : 0.52 };
+}
+
+function doctrineCueOwnsAudio(cue) {
+  if (finite(cue && cue.budgets && cue.budgets.voices, 0) <= 0) return false;
+  // Full flee already owns a faction bark/combat-outcome voice. Phase recovery has no such owner.
+  if (cue.id === 'combat.doctrine.withdraw' && cue.sourceEvent === 'ai:flee') return false;
+  return true;
+}
+
+function isCombatAftermathCue(cue) {
+  const id = String(cue && cue.id || '');
+  return id === 'combat.damage.applied'
+    || id === 'combat.near_miss'
+    || id === 'combat.player.hit'
+    || id === 'combat.player.kill'
+    || id === 'shield.collapse';
+}
+
+function combatAftermathCueOwnsAudio(cue, state) {
+  if (cue && cue.id === 'shield.collapse') return true;
+  if (finite(cue && cue.budgets && cue.budgets.voices, 0) <= 0) return false;
+  // shieldDown, combat:damage and entity:killed are the canonical physical voices. The only gap in
+  // that raw chain is a projectile passing close to the player without impact.
+  if (cue.id !== 'combat.near_miss') return false;
+  return cue.targetId != null && cue.targetId === (state && state.playerId);
+}
+
+function combatAftermathGain(cue) {
+  if (cue && cue.id === 'combat.near_miss') return 0.58;
+  return round4(0.45 + clamp01(finite(cue && cue.importance, 0.5)) * 0.35);
+}
+
+function combatAftermathRate(cue) {
+  if (cue && cue.id === 'combat.near_miss') return 1.06;
+  return miningAudioRate(cue);
+}
+
+function shouldDuckAudio(cue) {
+  if (isCombatAftermathCue(cue) || (cue && cue.id === 'subsystem.disabled')) return false;
+  if (cue && String(cue.id || '').startsWith('scenario.')) return String(cue.id).startsWith('scenario.comms.');
+  return (cue.tags || []).includes('comms') || finite(cue.importance, 0) >= 0.85;
+}
+
+function scenarioAudioPosition(cue) {
+  if (cue && String(cue.id || '').startsWith('scenario.comms.')) return null;
+  return cue && cue.position || null;
+}
+
+function copyObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return { ...value };
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function clamp01(value) {
+  const n = finite(value, 0);
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+function round4(value) {
+  return Math.round(finite(value, 0) * 10000) / 10000;
+}
+
+function currentTick(state) {
+  return state && Number.isFinite(state.tick) ? state.tick | 0 : 0;
+}
+
+function tutorialOwnsOpeningPresentation(state) {
+  const onboarding = state && state.onboarding;
+  return !!(onboarding && onboarding.active && !onboarding.finished);
+}

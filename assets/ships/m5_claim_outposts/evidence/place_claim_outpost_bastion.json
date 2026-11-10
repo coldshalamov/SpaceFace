@@ -1,0 +1,99 @@
+{
+  "schema": "spaceface.claimOutpostBuild.v1",
+  "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+  "family": "player_claim_growth_family",
+  "assetId": "place_claim_outpost_bastion",
+  "claimSpecId": "spec_bastion",
+  "title": "Defense Bastion Claim",
+  "source": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_bastion.glb",
+  "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_bastion.blend",
+  "bytes": 9472792,
+  "lod": {
+    "lod0": {
+      "triangles": 33212,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 12956,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 3648,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -47.0226,
+      -17.6696,
+      -47.0226
+    ],
+    "max": [
+      55.5,
+      39.55,
+      47.0226
+    ],
+    "size": [
+      102.5226,
+      57.2196,
+      94.0452
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_CLAIM_OUTPOST_BASTION",
+    "partId": "place_claim_outpost_bastion",
+    "liveId": "place_claim_outpost_bastion",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "player_claim_growth_family",
+    "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+    "role": "spec_bastion",
+    "title": "Defense Bastion Claim",
+    "kind": "claim_outpost",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 33212,
+    "lodTriangles": {
+      "lod0": 33212,
+      "lod1": 12956,
+      "lod2": 3648
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      102.5226,
+      57.2196,
+      94.0452
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_claim_outpost_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:57:21Z",
+  "sha256": "3362d2e412c81e6798b03ee048536d8520e8acf0351821ca7e04c2463daa74f5",
+  "canonical": "assets/ships/parts/places/place_claim_outpost_bastion.glb"
+}

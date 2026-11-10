@@ -1,0 +1,2372 @@
+import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
+import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
+import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
+import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
+import { commodityDisplayName } from '../commodityNames.js';
+import { localizeText } from '../../localization/sourceText.js';
+// Shared station-contact data, choices, replies, and map actions.
+// DOM rendering belongs to src/ui/station/screens/bar.js.
+
+// src/ui/screens/bar.js -- STATION "Bar" tab panel.
+// Dynamic, data-driven contact system. Generates 2-4 seeded NPCs per station
+// with role-specific dialog that pulls real game data (economy events, market
+// intel, mission boards, sector danger, asteroid fields). Read-only except for
+// the mission-accept button which emits ui:acceptMission.
+import { BORROWED_SUN } from '../../data/borrowedSun.js';
+import { lastShiftLocalReport } from '../../data/lastShift.js';
+import { ILEX_ARK } from '../../data/ilexArk.js';
+import { ilexGreenhouseFor, ilexGreenhouseReply } from '../../data/ilexGreenhouse.js';
+import { SORI_COMPARISON_CONTACT_ID, soriComparisonContact, soriComparisonReply } from '../../data/soriComparisonReturn.js';
+import { FACTION_META } from '../../data/factions.js';
+import { BINDINGS } from '../bindings.js';
+import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
+import { COMMODITIES }  from '../../data/commodities.js';
+import { missionPreflight } from '../missionPreflight.js';
+import { CONTACT_VOICE_REGISTERS, barGreetingBarkFor, barApproachBarkFor } from '../../data/barks.js';
+import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
+import { spineGreeting } from '../../story/campaign47a/storySpine.js';
+import { contactDeedMemory } from '../../data/contactDeedMemory.js';
+import {
+  stationContactMemoryFor,
+  stationContactMemoryLine,
+  stationContactStanding,
+} from '../../data/stationContacts.js';
+import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
+import {
+  AUTHORED_DOCK_RUMORS,
+  frontierRumorOffer,
+  frontierRumorOwned,
+  TETHYS_BLACK_MARKET_DISCOVERY,
+} from '../../data/frontierRumors.js';
+import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
+import {
+  DOSS_ARCHIVE_CONTACT_ID,
+  dossArchiveEvidence,
+  dossArchiveMapOffer,
+} from '../../data/dossArchive.js';
+import {
+  VONN_FREIGHT_CONTACT_ID,
+  vonnFreightLossDisposition,
+  vonnFreightLossFor,
+  vonnFreightLossMapOffer,
+} from '../../data/vonnFreightLoss.js';
+import {
+  ORRIN_WITNESS_CONTACT_ID,
+  ORRIN_WITNESS_STATION_ID,
+  ORRIN_WITNESS_SUBMISSION_EVENT,
+} from '../../data/orrinWitnessCase.js';
+// special-500 Phase 2 bar residents: the corridor's shroud painter (SP1-193) and the depot
+// bar's censer sommelier (SP2-065). Their settlements live in the sim legs; this module reads
+// the authored specs for the canonical rows and the reply branches.
+import { PORTRAIT_PAINTER } from '../../data/special500/portraitBuoyLine.js';
+import { SOMMELIER } from '../../data/special500/sommelier.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { contestedSectorForPair } from '../../data/conflictZones.js';
+import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
+import { hash32 } from '../../core/rng.js';
+import { barPressureAt, festivalAt } from '../../data/worldCalendar.js';
+import { deedLine } from '../../data/deedPhrases.js';
+import { mostCitedShipDeed } from '../../systems/shipLedger.js';
+import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
+import { getActiveAceRouteForSector } from '../../data/namedAces.js';
+import {
+  STORY_BUYER_CHOICE_PREFIX, STORY_BUYER_CONTACT_PREFIX, STORY_BUYER_DECLINE_CHOICE,
+  STORY_REWARD_BUYERS, storyBuyerOffersAt, storyBuyerRepDeltas, storyBuyerRow,
+} from '../../data/storyRewardBuyers.js';
+
+/* ── lookup tables ──────────────────────────────────────────────────── */
+
+const FACTION_BY_ID   = new Map(FACTION_META.map(f => [f.id, f]));
+const SECTOR_BY_ID    = new Map(SECTORS.map(s => [s.id, s]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map(c => [c.id, c]));
+
+const KURTZ_DESK_CHOICES = new Set(['takeLedger', 'openLedger', 'approach', 'desk']);
+
+function isKurtzDeskChoice(payload = {}) {
+  const key = payload.canonicalKey;
+  const id = payload.contactId;
+  const kurtz = key === 'kurtz'
+    || id === 'contact_kurtz'
+    || id === 'contact_station_ashcache_kurtz';
+  return kurtz && KURTZ_DESK_CHOICES.has(payload.choiceId);
+}
+
+function playerBarPos(state) {
+  const id = state && state.playerId;
+  const entities = state && state.entities;
+  const entity = id != null && entities && typeof entities.get === 'function' ? entities.get(id) : null;
+  if (entity && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) return entity.pos;
+  const player = state && state.player;
+  if (player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) return player.pos;
+  return null;
+}
+
+/** Nearest live station to the player. The convoy's own coordinates are never an input. */
+export function nearestBarStationId(state) {
+  const pos = playerBarPos(state);
+  let best = null;
+  let bestD = Infinity;
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const entity of entities.values()) {
+      if (!entity || entity.type !== 'station' || !entity.pos) continue;
+      if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) continue;
+      const id = (entity.data && (entity.data.stationId || entity.data.id)) || null;
+      if (!id) continue;
+      if (!pos) {
+        if (!best) best = id;
+        continue;
+      }
+      const d = (entity.pos.x - pos.x) ** 2 + (entity.pos.z - pos.z) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = id;
+      }
+    }
+  }
+  if (best) return best;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  const station = sector && Array.isArray(sector.stations) ? sector.stations[0] : null;
+  return station && station.id || null;
+}
+
+/** One rumour line for a station bar. Position fields on the payload are dropped. */
+export function ghostConvoyBarRumor(payload, stationId = null) {
+  if (!payload || !payload.line) return null;
+  return {
+    id: `ghost-convoy:${payload.laneKey || payload.sectorId || 'lane'}`,
+    text: String(payload.line),
+    sectorId: payload.sectorId || null,
+    stationId: stationId || null,
+  };
+}
+
+export function barGhostConvoyLines(state, stationId) {
+  const rows = state && state.ui && state.ui.barGhostConvoys;
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row) => row && row.text && (!stationId || row.stationId === stationId));
+}
+
+export function rememberGhostConvoyRumor(state, payload) {
+  const stationId = nearestBarStationId(state);
+  const rumor = ghostConvoyBarRumor(payload, stationId);
+  if (!state || !rumor) return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!Array.isArray(state.ui.barGhostConvoys)) state.ui.barGhostConvoys = [];
+  if (!state.ui.barGhostConvoys.some((row) => row && row.id === rumor.id)) {
+    state.ui.barGhostConvoys.push(rumor);
+  }
+  return rumor;
+}
+
+export function installGhostConvoyBarListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (state.ui && state.ui._ghostConvoyBarBound) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  state.ui._ghostConvoyBarBound = true;
+  return bus.on('rumor:ghostConvoy', (payload) => rememberGhostConvoyRumor(state, payload));
+}
+
+/** WORLD-39 — one bar line for a posted ore lot. Not a mission, and lot rules stay with the job runtime. */
+export function oreLotBarLine(payload) {
+  if (!payload || payload.lotId == null || !payload.sectorId) return null;
+  const sector = SECTOR_BY_ID.get(payload.sectorId);
+  const sectorName = sector && sector.name ? sector.name : String(payload.sectorId);
+  return {
+    id: `ore-lot:${payload.lotId}`,
+    lotId: String(payload.lotId),
+    sectorId: payload.sectorId,
+    text: `A posted ore lot is waiting in ${sectorName}. A hauler can take it.`,
+  };
+}
+
+export function rememberOreLotRumor(state, payload) {
+  const rumor = oreLotBarLine(payload);
+  if (!state || !rumor) return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!Array.isArray(state.ui.barOreLots)) state.ui.barOreLots = [];
+  state.ui.barOreLots = state.ui.barOreLots.filter((row) => (
+    row && row.sectorId !== rumor.sectorId && row.lotId !== rumor.lotId
+  ));
+  state.ui.barOreLots.push(rumor);
+  return rumor;
+}
+
+export function forgetOreLotRumor(state, payload) {
+  if (!state || !state.ui || !Array.isArray(state.ui.barOreLots)) return false;
+  const lotId = payload && payload.lotId != null ? String(payload.lotId) : '';
+  if (!lotId) return false;
+  const before = state.ui.barOreLots.length;
+  state.ui.barOreLots = state.ui.barOreLots.filter((row) => row && row.lotId !== lotId);
+  return state.ui.barOreLots.length !== before;
+}
+
+export function installOreLotBarListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._oreLotBarBound) return () => {};
+  state.ui._oreLotBarBound = true;
+  const offPosted = bus.on('npcjobs:lotPosted', (payload) => rememberOreLotRumor(state, payload));
+  const offClaimed = bus.on('npcjobs:lotClaimed', (payload) => forgetOreLotRumor(state, payload));
+  return () => {
+    if (typeof offPosted === 'function') offPosted();
+    if (typeof offClaimed === 'function') offClaimed();
+  };
+}
+
+/** Standing miner lots already in the world. A null slot is a claim. */
+export function standingOreLotRumors(state) {
+  const lots = state && state.npcJobs && state.npcJobs.lots;
+  if (!lots || typeof lots !== 'object' || Array.isArray(lots)) return null;
+  const rows = [];
+  for (const key of Object.keys(lots)) {
+    const lot = lots[key];
+    if (!lot || lot.lotId == null) continue;
+    if (lot.kind && lot.kind !== 'ore') continue;
+    const line = oreLotBarLine({ lotId: lot.lotId, sectorId: lot.sectorId || key });
+    if (line) rows.push(line);
+  }
+  return rows;
+}
+
+function oreLotRumorForReply(state) {
+  const live = standingOreLotRumors(state);
+  if (live) return live.filter((row) => row && row.text).pop() || null;
+  const lotRows = state && state.ui && state.ui.barOreLots;
+  if (!Array.isArray(lotRows)) return null;
+  return lotRows.filter((row) => row && row.text).pop() || null;
+}
+
+export function emitBarContactChoice(bus, payload = {}) {
+  if (!bus || typeof bus.emit !== 'function') return null;
+  if (payload.stationId === 'station_eris_margin' && payload.choiceId === 'eris_silence') return null;
+  if (isKurtzDeskChoice(payload)) {
+    bus.emit('ui:kurtzInteract', {
+      action: payload.choiceId,
+      stationId: payload.stationId,
+      contactId: payload.contactId,
+    });
+    return 'ui:kurtzInteract';
+  }
+  const event = payload.contactId === ORRIN_WITNESS_CONTACT_ID
+    && payload.stationId === ORRIN_WITNESS_STATION_ID
+    && payload.choiceId === 'evidence'
+    ? ORRIN_WITNESS_SUBMISSION_EVENT
+    : 'ui:talkContact';
+  bus.emit(event, payload);
+  return event;
+}
+
+// Flatten every station into a quick-lookup map: stationId -> { station, sector }
+const STATION_INDEX = new Map();
+for (const sec of SECTORS) {
+  for (const st of sec.stations) {
+    STATION_INDEX.set(st.id, { station: st, sector: sec });
+  }
+}
+
+// The visiting carrier publishes its current berth through the existing owner projection.
+// Metadata answers identity and local context only; it never grants docking or service access.
+function barStationInfo(stationId, state) {
+  if (stationId !== BORROWED_SUN.stationId) return STATION_INDEX.get(stationId);
+  const projected = state?.content?.sectors;
+  const sectors = Array.isArray(projected) ? projected
+    : projected && typeof projected === 'object' ? Object.values(projected) : [];
+  let found = null;
+  for (const sector of sectors) {
+    if (!sector || !Array.isArray(sector.stations)) continue;
+    for (const station of sector.stations) {
+      if (station?.id !== stationId) continue;
+      if (found) return null;
+      found = { station, sector };
+    }
+  }
+  return found;
+}
+
+/* ── deterministic RNG (FNV-1a hash + mulberry32 PRNG) ──────────── */
+
+function fnvHash(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
+}
+
+function mulberry32(seed) {
+  let t = (seed >>> 0) + 0x6d2b79f5;
+  return function next() {
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ── name pools ─────────────────────────────────────────────────────── */
+
+const FIRST_NAMES = [
+  'Orion','Kael','Voss','Mira','Juno','Sable','Ren','Thane','Lyra','Dax',
+  'Cira','Nev','Soren','Tova','Zara','Calder','Rhea','Vek','Inara','Koda',
+  'Maeve','Cassius','Lira','Draven','Ember','Tycho','Neve','Ash','Selene','Rook',
+  'Brynn','Orin','Callum','Vesper','Idris','Sully','Kira','Jace','Nova','Petra',
+];
+
+const LAST_NAMES = [
+  'Vance','Corsair','Ashford','Kellan','Drakon','Revik','Solari','Morrow',
+  'Quade','Theron','Aldric','Craine','Falken','Nyxos','Stroud','Varek',
+  'Holden','Rennick','Deckard','Torren','Briggs','Calloway','Sagan','Tull',
+  'Graves','Huxley','Kepler','Madsen','Oakes','Stark',
+];
+
+const ROLES = ['barkeep','merchant','pilot','smuggler','engineer','bounty_hunter','miner'];
+
+const ROLE_LABELS = {
+  barkeep:       'Barkeep',
+  merchant:      'Merchant',
+  pilot:         'Pilot',
+  smuggler:      'Smuggler',
+  engineer:      'Engineer',
+  bounty_hunter: 'Bounty Hunter',
+  miner:         'Miner',
+};
+
+const ROLE_LINES = {
+  barkeep:       'Pull up a stool. What can I do for you?',
+  merchant:      'Credits talk. What are you looking to move?',
+  pilot:         'Just docked. Got stories, if you\'ve got time.',
+  smuggler:      'Keep your voice down. You need something off-book?',
+  engineer:      'Rust and rivets. Everything on this station needs work.',
+  bounty_hunter: 'I hunt for a living. You look like you can handle yourself.',
+  miner:         'Rock dust and patience. That\'s the miner\'s life.',
+};
+
+const CANONICAL_CONTACTS = [
+  {
+    key: 'kessler',
+    stationIds: ['station_helios'],
+    name: 'Kessler',
+    role: 'merchant',
+    roleLabel: 'Cargo Registrar',
+    factionId: 'faction_scn',
+    line: '"Weight matches prior haul." Contract 47-A is still under review.',
+  },
+  {
+    key: 'rook',
+    stationIds: ['station_coalition'],
+    name: 'Rook',
+    role: 'bounty_hunter',
+    roleLabel: 'Bounty Broker',
+    factionId: 'faction_scn',
+    line: 'One name on the board, two payers in the back room.',
+  },
+  {
+    key: 'voss',
+    stationIds: ['station_beltout'],
+    name: 'Voss',
+    role: 'miner',
+    roleLabel: 'Claim Recorder',
+    factionId: 'faction_dmc',
+    line: '"Vein looks played out." His cutter is already warm.',
+  },
+  {
+    key: 'hale',
+    stationIds: ['station_customs'],
+    name: 'Hale',
+    role: 'pilot',
+    roleLabel: 'Customs Officer',
+    factionId: 'faction_scn',
+    line: 'Scan complete. No flags. The second fine is procedural.',
+  },
+  {
+    key: 'mira',
+    stationIds: ['station_tethys'],
+    name: 'Mira',
+    role: 'merchant',
+    roleLabel: 'Freight Seal Clerk',
+    factionId: 'faction_mts',
+    line: 'Route is clear. Payment on delivery. The seal stays closed.',
+  },
+  {
+    key: 'slate',
+    stationIds: ['station_forge'],
+    name: 'Slate',
+    role: 'engineer',
+    roleLabel: 'Shipyard Welder',
+    factionId: 'faction_dmc',
+    line: '"This will hold till the next gate." The weld knows which seam.',
+  },
+  {
+    key: 'drift',
+    stationIds: ['station_drift'],
+    name: 'Drift',
+    role: 'merchant',
+    roleLabel: 'Ore Ledger',
+    factionId: 'faction_mts',
+    line: 'Quota met. Credit transferred. The decimals can wait.',
+  },
+  {
+    key: 'quinn',
+    stationIds: ['station_smuggler', 'station_sker'],
+    name: 'Quinn',
+    role: 'barkeep',
+    roleLabel: 'Proprietor',
+    factionId: 'faction_quiet',
+    line: 'Same rates. Same management. Same drawer under the bar.',
+  },
+  {
+    key: 'sallow',
+    stationIds: ['station_io_merc'],
+    name: 'Sallow',
+    role: 'bounty_hunter',
+    roleLabel: 'Contract Broker',
+    factionId: 'faction_quiet',
+    line: 'Writs on the wall. The Quiet price is the quiet price.',
+  },
+  {
+    // Charon Expanse hunter exchange: the writ wall gets a face. Ferrow files the tags
+    // the board pays on and knows which distress squawks nobody will.
+    key: 'ferrow',
+    stationIds: ['station_expanse'],
+    name: 'Ferrow',
+    role: 'bounty_hunter',
+    roleLabel: 'Writ Clerk',
+    factionId: 'faction_dmc',
+    line: 'The writ wall tracks raiders, wrecks, and radiation lanes. Pick a name; the ledger does the rest.',
+  },
+  {
+    key: 'kurtz',
+    stationIds: ['station_ashcache'],
+    name: 'Kurtz',
+    role: 'merchant',
+    roleLabel: 'Ashfall Witness',
+    factionId: 'faction_vael',
+    line: 'Eleven years counting the same mass.',
+    choices: [
+      { id: 'openLedger', label: 'Open the desk ledger.' },
+      { id: 'takeLedger', label: 'Take the ledger.' },
+      { id: 'approach', label: 'Ask what he is counting.' },
+    ],
+  },
+  // W-FACES (row 543, 03 §4.1 + §4.2): the rest of the canon cast and the eleven new faces, each at
+  // the station their canon ties them to. First lines are the canon lines from 03 §4.2.
+  {
+    key: 'sula_dree',
+    stationIds: ['station_dione_customs'],
+    name: 'Inspector Sula Dree',
+    role: 'pilot',
+    roleLabel: 'Gate Inspector',
+    factionId: 'faction_scn',
+    line: 'Gate 3 is a weighing, not a court. An honest manifest keeps its fine unpaid.',
+  },
+  {
+    key: 'callum',
+    stationIds: ['station_dione'],
+    name: 'Callum Oakes',
+    role: 'merchant',
+    roleLabel: 'Futures Broker',
+    factionId: 'faction_mts',
+    line: 'Futures settle at the tone. Everything else is sentiment.',
+  },
+  {
+    key: 'wex',
+    stationIds: ['station_helios'],
+    name: 'Wex',
+    role: 'engineer',
+    roleLabel: 'Bay 7 Depot Keeper',
+    factionId: 'faction_scn',
+    line: 'Nineteen years of install-pending tags. I file them anyway.',
+  },
+  {
+    key: 'sump',
+    stationIds: ['station_ashcache'],
+    name: 'Sump',
+    role: 'engineer',
+    roleLabel: 'Sweeper',
+    factionId: 'faction_pitborn',
+    line: 'Dust goes this side, then it goes that side. Someone has to push it.',
+  },
+  {
+    key: 'ma_sprocket',
+    stationIds: ['station_ashcache'],
+    name: 'Ma Sprocket',
+    role: 'merchant',
+    roleLabel: 'Cull Announcer',
+    factionId: 'faction_pitborn',
+    line: "Heavy's honest, babies! COUNT 'EM!",
+  },
+  {
+    key: 'clatter',
+    stationIds: ['station_sker'],
+    name: 'Clatter',
+    role: 'pilot',
+    roleLabel: 'Cull Rival Ace',
+    factionId: 'faction_pitborn',
+    line: 'That rock had my name on it. It has your hull on it now.',
+  },
+  {
+    key: 'moss_keeps_moss',
+    stationIds: ['station_eunomia'],
+    name: 'Moss-Keeps-Moss',
+    role: 'merchant',
+    roleLabel: 'Garden Elder',
+    factionId: 'faction_understory',
+    line: 'Bring us what died. We will make it something.',
+  },
+  {
+    key: 'brother_index',
+    stationIds: ['station_orcus_shadow'],
+    name: 'Brother Index',
+    role: 'merchant',
+    roleLabel: 'Reading-Room Keeper',
+    factionId: 'faction_archive',
+    line: 'That entry is sealed. Unseal one of yours.',
+  },
+  {
+    key: 'addendum_seroy',
+    stationIds: ['station_phoebe_echo'],
+    name: 'Addendum Seroy',
+    role: 'merchant',
+    roleLabel: 'Contract Officer',
+    factionId: 'faction_vael',
+    line: 'Provided that you read it, the terms are fair.',
+  },
+  {
+    key: 'cantor_lise',
+    stationIds: ['station_depot3'],
+    name: 'Cantor Lise',
+    role: 'barkeep',
+    roleLabel: 'Shrine Keeper',
+    factionId: 'faction_choir',
+    line: 'The relic was never inert. Only waiting.',
+  },
+  {
+    key: 'mael_ost',
+    stationIds: ['station_sedna'],
+    name: 'Adjudicator Mael Ost',
+    role: 'pilot',
+    roleLabel: 'Audit Adjudicator',
+    factionId: 'faction_helix',
+    line: 'Lawful interdiction. Read the invoice.',
+  },
+  {
+    key: 'petra_lusk',
+    stationIds: ['station_dione_customs'],
+    name: 'Commander Petra Lusk',
+    role: 'pilot',
+    roleLabel: 'Relief Captain',
+    factionId: 'faction_scn',
+    line: 'Hold for weight. I will not ask twice.',
+  },
+  {
+    key: 'nine_finger_abe',
+    stationIds: ['station_hyperion_claim'],
+    name: 'Nine-Finger Abe',
+    role: 'miner',
+    roleLabel: 'Claim Boss',
+    factionId: 'faction_dmc',
+    line: "The rock took one. It won't take another.",
+  },
+  {
+    key: 'tamsin',
+    stationIds: ['station_reach'],
+    name: 'Tamsin',
+    role: 'pilot',
+    roleLabel: 'Homestead Pilot',
+    factionId: 'faction_free',
+    line: 'Still temporary. Tell me where to put the wall.',
+  },
+  {
+    key: 'clerk_0003',
+    stationIds: ['station_tethys'],
+    name: 'Clerk 0003',
+    role: 'merchant',
+    roleLabel: 'Routing Clerk',
+    factionId: 'faction_fulfillment',
+    line: 'Your order has always been important to us.',
+  },
+  // SP2-041 "The Previous Tenant's Mail": the cushion letter's author, drinking at Quinn's
+  // under the same management. Six owners is the hull's count, not Rets's patience.
+  {
+    key: 'rets',
+    stationIds: ['station_smuggler'],
+    name: 'Rets',
+    role: 'pilot',
+    roleLabel: 'Retired Watch Regular',
+    factionId: 'faction_quiet',
+    line: '"You are sitting in the chair. The cushion before yours held better arguments than most crews."',
+  },
+  // SP1-193 "The Portrait Buoys": the corridor's shroud painter, findable at Reach Station.
+  // The buoy line (src/data/special500/portraitBuoyLine.js) hangs her work; she takes
+  // commissions and refuses payment in anything but a good story (settled by
+  // src/systems/special500PortraitBuoys.js on ui:talkContact).
+  {
+    key: 'painter',
+    stationIds: ['station_reach'],
+    name: 'Vesper',
+    role: 'pilot',
+    roleLabel: 'Shroud Painter',
+    factionId: 'faction_free',
+    line: 'Your hull is the newest frame on the corridor line. It is not finished. It will be, if the story is worth the canvas.',
+    choices: [
+      { id: 'commission', label: 'Commission the portrait — pay in a story.' },
+      { id: 'ask_paint', label: 'Ask why nobody signs them.' },
+    ],
+  },
+  // SP2-065 "The Sommelier of Coolant": the depot bar's retired Choir censer machine, which
+  // has rebranded its incense burn as "beverage temperature control" (settled by
+  // src/systems/special500Sommelier.js on ui:talkContact).
+  {
+    key: 'sommelier',
+    stationIds: ['station_depot3'],
+    name: 'The Sommelier of Coolant',
+    role: 'barkeep',
+    roleLabel: 'Retired Censer',
+    factionId: 'faction_choir',
+    line: 'This cell — cast on a Thursday. You will taste the Thursday.',
+    choices: [
+      { id: 'the_thursday', label: 'Buy "the Thursday" — 12 cr.' },
+      { id: 'ask_vintages', label: 'Ask what else is on the rail.' },
+    ],
+  },
+];
+
+const CANONICAL_BY_STATION = new Map();
+for (const contact of CANONICAL_CONTACTS) {
+  for (const stationId of contact.stationIds) {
+    const list = CANONICAL_BY_STATION.get(stationId);
+    if (list) list.push(contact);
+    else CANONICAL_BY_STATION.set(stationId, [contact]);
+  }
+}
+
+/* ── contact generation ─────────────────────────────────────────────── */
+
+// Row 543: a station can keep more than one authored face (Wex shares Helios with Kessler; Sump,
+// Ma Sprocket and Kurtz all live at the Pit; Sula Dree and Petra Lusk share Gate 3's customs post).
+// List order is insertion order into the bar's line-up.
+function canonicalContactsForStation(stationId) {
+  const bases = CANONICAL_BY_STATION.get(stationId);
+  if (!bases || !bases.length) return [];
+  return bases.map((base) => ({
+    id: 'contact_' + stationId + '_' + base.key,
+    name: base.name,
+    role: base.role,
+    roleLabel: base.roleLabel,
+    factionId: base.factionId,
+    line: base.line,
+    canonicalKey: base.key,
+    choices: Array.isArray(base.choices) ? base.choices.slice() : undefined,
+  }));
+}
+
+export function authoredBarContactsForStation(stationId, state = {}) {
+  return depthContactsForStation(stationId, state).map((card) => {
+    const voice = CONTACT_VOICE_REGISTERS[card.id];
+    return {
+      id: card.id,
+      name: card.name,
+      role: card.role,
+      roleLabel: card.roleLabel,
+      factionId: card.factionId,
+      line: card.blurb,
+      canonicalKey: card.id,
+      trackerId: card.trackerId,
+      memoryGlyph: contactDeedMemory(card.id, state.player?.stationContactCounters)?.glyph,
+      depthProgram: card.programId,
+      voiceLines: voice ? voice.lines : [],
+      choices: voice && voice.firstContact
+        ? (card.id === 'contact_coldburn_rey'
+          ? voice.firstContact.choices.map((choice) => choice.id === 'settle'
+            ? { ...choice, label: 'Any work left for me?' } : choice)
+          : voice.firstContact.choices)
+        : [],
+      dialogueComplete: !!(voice && voice.dialogueComplete),
+      oneChoicePerVisit: card.id === 'contact_question',
+    };
+  });
+}
+
+// THE WORLD REMEMBERS (U-E): one contact at the bar opens with a deed from the Record. Pure read:
+// generateContacts runs on every render, so the pick is memoised in `deedSession` (a plain object
+// the screen owns for one dock) and the deed is marked told by the screen once the line has been
+// rendered (bar.js), never here. Only generated contacts and the fence may speak - an authored
+// contact's own line is never replaced.
+function deedOpenerSpeaker(contact) {
+  if (!contact) return false;
+  if (contact.fenceId) return true;
+  return !(contact.canonicalKey || contact.depthProgram || contact.endgameChoice
+    || contact.rumorSourceRef || contact.choirReliefMemory || contact.bay7Rumor
+    || contact.derelictRumorRef);
+}
+
+function pickDeedOpener(stationId, state, listed, info) {
+  if (!peekDeedRecord(state)) return null;
+  const speakers = listed.filter(deedOpenerSpeaker);
+  if (speakers.length === 0) return null;
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  const stationFactionId = info ? info.station.factionId : 'faction_scn';
+  const sectorId = info ? info.sector.id : null;
+  let best = null;
+  // A contact whose faction has an opinion speaks first; ties break by hash32, not order.
+  for (const contact of speakers) {
+    const factionId = contact.factionId || stationFactionId;
+    const deed = pickDeedToTell(state, { speakerFactionId: factionId, sectorId, seed });
+    if (!deed || deed.told > 0) continue;
+    const tone = deedToneFor(deed, factionId);
+    if (tone === 'neutral') continue;
+    const h = hash32(seed, 'bar-deed', stationId, deed.id, contact.id);
+    if (!best || h < best.h) best = { contact, deed, tone, h };
+  }
+  if (!best) {
+    // Nobody here has an opinion: the house (station faction) says it in its own voice.
+    const host = speakers.find((c) => c.factionId === stationFactionId) || speakers[0];
+    const deed = pickDeedToTell(state, { speakerFactionId: stationFactionId, sectorId, seed });
+    if (host && deed && !(deed.told > 0)) best = { contact: host, deed, tone: deedToneFor(deed, stationFactionId) };
+  }
+  if (!best) return null;
+  const line = deedLine(best.deed, { voice: best.tone });
+  return line ? { contactId: best.contact.id, deedId: best.deed.id, line } : null;
+}
+
+function stampDeedOpener(listed, stationId, state, info, session) {
+  let opener;
+  if (session && session.opener !== undefined) opener = session.opener;
+  else {
+    opener = pickDeedOpener(stationId, state, listed, info);
+    if (session) session.opener = opener;
+  }
+  if (!opener) return;
+  const host = listed.find((c) => c && c.id === opener.contactId);
+  if (!host) return;
+  host.line = opener.line;
+  host.deedId = opener.deedId;
+}
+
+/**
+ * The screen calls this when a contact's opener line has actually been drawn on a live screen.
+ * Marks the deed told once per `deedSession` (one dock); a re-render returns false.
+ */
+export function tellBarDeedOnce(state, contact, deedSession, stationId) {
+  if (!contact || !contact.deedId || !deedSession || deedSession.told) return false;
+  deedSession.told = true;
+  return !!markTold(state, contact.deedId, { by: `bar:${stationId}` });
+}
+
+// Shift-end and festival lines the bar swaps into greetings when the calendar says the room
+// changed (PULSE-TIME): the same patrons, visibly off-watch.
+const SHIFT_END_LINE = 'Shift just turned — the rail is three deep and the tabs are already open.';
+const FESTIVAL_MOOD_LINE = 'The whole berth is keeping the day. Tabs run light, voices run loud.';
+
+export function generateContacts(stationId, state = {}, opts = {}) {
+  const info = barStationInfo(stationId, state);
+  if (stationId === BORROWED_SUN.stationId && !info) return [];
+  const seed = fnvHash('bar_contacts_' + stationId);
+  const rng  = mulberry32(seed);
+  let count = 2 + Math.floor(rng() * 3); // 2-4 contacts
+  // PULSE-TIME: the world calendar's bar pressure — the post-shift swell and festival crowds —
+  // visibly fills the room. At shift end the floor crews come off-watch together; a festival
+  // keeps them all night. Both are deterministic reads of simTime + stationId.
+  const pressure = barPressureAt(stationId, state && state.simTime);
+  const festival = festivalAt(stationId, state && state.simTime,
+    info?.station?.type);
+  if (pressure >= 0.6 || festival) count = Math.min(count + 1, 5);
+
+  const stationFactionId = info ? info.station.factionId : 'faction_scn';
+  const sector = info ? info.sector : SECTORS[0];
+
+  // Gather nearby factions for variety
+  const nearbyFactions = [stationFactionId];
+  for (const nId of (sector.neighbors || [])) {
+    const ns = SECTOR_BY_ID.get(nId);
+    if (ns && !nearbyFactions.includes(ns.factionId)) nearbyFactions.push(ns.factionId);
+  }
+
+  const contacts = [];
+  const usedNames = new Set();
+
+  for (let i = 0; i < count; i++) {
+    // Pick unique name
+    let first, last, fullName;
+    do {
+      first = FIRST_NAMES[Math.floor(rng() * FIRST_NAMES.length)];
+      last  = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
+      fullName = first + ' ' + last;
+    } while (usedNames.has(fullName));
+    usedNames.add(fullName);
+
+    // First contact always barkeep; rest random
+    const role = i === 0
+      ? 'barkeep'
+      : ROLES[1 + Math.floor(rng() * (ROLES.length - 1))];
+
+    const factionId = (role === 'barkeep')
+      ? stationFactionId
+      : nearbyFactions[Math.floor(rng() * nearbyFactions.length)];
+
+    const contactId = 'contact_' + stationId + '_' + i;
+    contacts.push({
+      id: contactId,
+      name: fullName,
+      role,
+      factionId,
+      ilexGreenhouse: role === 'barkeep' && stationId === ILEX_ARK.stationId && !!ilexGreenhouseFor(state),
+      line: barGreetingBarkFor(factionId, role, fnvHash(contactId + '_line')) || ROLE_LINES[role],
+      approach: barApproachBarkFor(factionId, fnvHash(contactId + '_approach')),
+    });
+  }
+
+  // The room tells the hour: at shift end or on a festival the barkeep's greeting carries it.
+  if (contacts.length && festival) {
+    contacts[0].line = festival.barLine || FESTIVAL_MOOD_LINE;
+    contacts[0].calendarMood = 'festival';
+  } else if (contacts.length && pressure >= 0.55) {
+    contacts[0].line = SHIFT_END_LINE;
+    contacts[0].calendarMood = 'shift_end';
+  }
+
+  // Row 543: every authored face the station keeps is inserted in list order; each spliced face
+  // nudges a procedural patron out rather than crowding the bar past four.
+  let insertAt = 1;
+  for (const canonical of canonicalContactsForStation(stationId)) {
+    if (canonical.canonicalKey === 'kessler') {
+      const slipChoice = kesslerWeightSlipChoice(state, stationId);
+      const workChoice = kesslerStarterWorkChoice(state, stationId);
+      const freightChoice = kesslerFreightChoice(state, stationId);
+      const ceresChoice = kesslerCeresShiftChoice(state, stationId);
+      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+        const choices = getChoices(canonical.role, canonical);
+        const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
+        const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
+        if (slipChoice) choices.push(slipChoice);
+        if (workChoice) choices.push(workChoice);
+        if (freightChoice) choices.push(freightChoice);
+        if (ceresChoice) choices.push(ceresChoice);
+        if (dismissChoice) choices.push(dismissChoice);
+        canonical.choices = choices;
+      }
+    }
+    if (canonical.role === 'barkeep') {
+      contacts[0] = canonical;
+    } else {
+      contacts.splice(insertAt, 0, canonical);
+      insertAt += 1;
+      if (contacts.length > 4) contacts.pop();
+    }
+  }
+
+  const endingCourier = isChoiceECourierReady(state, stationId)
+    ? [{
+      id: 'contact_ashcache_next_run_courier',
+      name: 'Settlement Courier',
+      role: 'courier',
+      roleLabel: 'Contract Courier',
+      factionId: null,
+      line: "Contract settled. New one's open.",
+      canonicalKey: 'next_run_courier',
+      endgameChoice: 'E',
+      choices: [
+        { id: 'accept_next_run', label: 'Accept.' },
+        { id: 'not_yet', label: 'Not yet.' },
+      ],
+    }]
+    : [];
+  // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
+  const fence = fenceBarContact(stationId, state);
+  const sori = soriComparisonContact(state, stationId);
+  const erisChair = stationId === 'station_eris_margin'
+    && state?.story?.flags?.eris_choir_chair_claimed != null ? [{
+      id: 'contact_eris_choir_chair', canonicalKey: 'eris_choir_chair',
+      name: 'The Choir Chair', role: 'barkeep', roleLabel: 'Reserved chair',
+      factionId: 'faction_choir',
+      line: 'The chair at the window is yours. The room stands as you approach.',
+      approach: 'The barkeep waits beside your chair.',
+      erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
+        && state.story.flags.eris_choir_bar_service.served === true,
+    }] : [];
+  const listed = [
+    ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+  ];
+  stampUnheardBarRumor(listed, stationId, state);
+  stampHeliosBay7Rumor(listed, stationId, state);
+  stampDerelictRumor(listed, stationId, state);
+  stampChoirReliefMemory(listed, stationId, state);
+  stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
+  stampAceRouteRumor(listed, stationId, state);
+  stampLastShiftLocalReport(listed, stationId, state);
+  stampCollectiveHours(listed, stationId, state);
+  stampQuinnsStool(listed, stationId, state);
+  // The wake silences this room's ambient patrons, not its mission and service contacts.
+  const erisSilentUntil = Number(state?.story?.flags?.eris_choir_bar_silent_until);
+  if (stationId === 'station_eris_margin' && Number.isFinite(erisSilentUntil)
+      && erisSilentUntil > (Number(state?.simTime) || 0)) {
+    for (const contact of contacts) {
+      if (!contact.id.startsWith('contact_station_eris_margin_')) continue;
+      contact.erisChoirSilent = true;
+      contact.line = 'The room falls silent as you enter.';
+      contact.approach = 'The room stays silent.';
+      // A muted opener cannot consume a deed that nobody actually told.
+      delete contact.deedId;
+    }
+  }
+  return listed;
+}
+
+function signedRep(n) { return `${n > 0 ? '+' : '\u2212'}${Math.abs(n)}`; }
+function creditsText(n) { return `${Math.round(n).toLocaleString('en-US')} cr`; }
+
+/**
+ * A claimed story item's buyer sits at the bar of a berth that matches one of its authored
+ * choices (data/storyRewardBuyers.js). The choice says the price and who it costs; choosing
+ * emits ui:talkContact, which the sim owner (systems/uniqueWrecks.js) settles. Once sold the
+ * record carries a disposition and this contact is no longer generated.
+ */
+export function storyBuyerContacts(state, stationId) {
+  const out = [];
+  for (const offer of storyBuyerOffersAt(state, stationId)) {
+    const item = STORY_REWARD_BUYERS[offer.rewardId];
+    const first = item.choices[offer.choiceIds[0]];
+    const choices = offer.choiceIds.map((choiceId) => {
+      const row = item.choices[choiceId];
+      const terms = [
+        ...(row.credits > 0 ? [creditsText(row.credits)] : []),
+        ...storyBuyerRepDeltas(row, stationId).map((rep) => {
+          const meta = FACTION_BY_ID.get(rep.factionId);
+          return `${(meta && (meta.short || meta.name)) || rep.factionId} ${signedRep(rep.delta)}`;
+        }),
+      ];
+      return { id: STORY_BUYER_CHOICE_PREFIX + choiceId, label: `${row.label} (${terms.join(' · ')})` };
+    });
+    choices.push({ id: STORY_BUYER_DECLINE_CHOICE, label: 'Not yet. It stays in my hold.' });
+    out.push({
+      id: STORY_BUYER_CONTACT_PREFIX + offer.rewardId,
+      name: first.buyerName,
+      role: first.role,
+      roleLabel: first.roleLabel,
+      factionId: barStationInfo(stationId, state)?.station?.factionId || null,
+      line: first.line,
+      canonicalKey: 'story_buyer',
+      storyBuyer: { rewardId: offer.rewardId, itemName: offer.itemName, choiceIds: [...offer.choiceIds] },
+      choices,
+    });
+  }
+  return out;
+}
+
+function storyBuyerReply(contact, choiceId) {
+  const rewardId = contact.storyBuyer.rewardId;
+  if (contact.storyBuyer.soldLine) return { text: contact.storyBuyer.soldLine };
+  if (typeof choiceId === 'string' && choiceId.startsWith(STORY_BUYER_CHOICE_PREFIX)) {
+    const row = storyBuyerRow(rewardId, choiceId.slice(STORY_BUYER_CHOICE_PREFIX.length));
+    if (row) {
+      // The sold buyer stays on the rail for this visit with one closing word, so the reply is
+      // read next to the face that said it; the next visit regenerates without them.
+      return {
+        text: row.reply,
+        pinContact: {
+          ...contact,
+          storyBuyer: { ...contact.storyBuyer, soldLine: row.reply },
+          choices: [{ id: 'story_buyer_closed', label: 'Done.' }],
+        },
+      };
+    }
+  }
+  return { text: `Then keep the ${contact.storyBuyer.itemName} close. Someone else will ask.` };
+}
+
+// The existing refinery host can discuss a filed local record without replacing local work,
+// rumors, calendar greetings, named contacts, or their choices. Nothing is announced on arrival.
+function stampLastShiftLocalReport(contacts, stationId, state) {
+  if (stationId !== 'station_ceres' || !lastShiftLocalReport(state)) return;
+  const host = contacts.find(contact => contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.choices = [...getChoices(host.role, host), {
+    id: 'last_shift_report', label: 'What did the Last Shift record establish?',
+  }];
+}
+
+function lastShiftLocalReply(state, stationId, contact) {
+  if (stationId !== 'station_ceres' || contact?.id !== 'contact_station_ceres_0'
+    || contact.role !== 'barkeep') return { text: 'Ask the Ceres Refinery host about its filed local record.' };
+  const report = lastShiftLocalReport(state);
+  if (!report) return { text: 'No verified Last Shift report is filed. File what you learned with the archive first.' };
+  const custody = report.recorderReturned
+    ? (report.recorderStationId === stationId
+      ? 'The original tug recorder was accepted by this refinery\'s archive.'
+      : 'The original tug recorder was accepted by another archive, not this refinery.')
+    : 'The filed evidence does not confirm a physical recorder handoff.';
+  return { text: `Crews here need to know whether those lanes are safe. The filed account says: ${report.text} ${custody} Filing the account and returning the original are separate; it is a record, not a bounty.` };
+}
+
+/** WORLD-05 — a new game can hear a station's wreck rumor before the wreck is scanned. */
+function stampUnheardBarRumor(contacts, stationId, state) {
+  const rumor = uniqueWreckBarRumor(state, stationId, 'rumors');
+  if (!rumor || !rumor.sourceRef) return;
+  const host = contacts.find((contact) => contact && contact.role === 'barkeep') || contacts[0];
+  if (!host || host.rumorSourceRef) return;
+  host.rumorSourceRef = rumor.sourceRef;
+  const sentence = String(rumor.text || '').split(/(?<=\.)\s/)[0];
+  if (sentence && /silver-draft/i.test(sentence) && !host.canonicalKey) {
+    host.line = sentence;
+  }
+}
+
+function stampHeliosBay7Rumor(contacts, stationId, state) {
+  if (stationId !== 'station_helios') return;
+  const story = state && state.story;
+  if (!story || !story.flags || !story.flags.helios_bay7_available || story.flags.helios_bay7_scanned) return;
+  const kessler = contacts.find((contact) => contact && contact.canonicalKey === 'kessler');
+  if (!kessler) return;
+  kessler.line = 'Maintenance still files tickets about a smell in Bay 7. Nobody walks the pad.';
+  kessler.bay7Rumor = true;
+}
+
+// SP1-173 "The Hours": the stamped ledger number persists, and the Collective's host at the
+// Ceres refinery references it with respect proportional to its size. No stamp, no change —
+// the host does not ask about hours nobody filed.
+function stampCollectiveHours(contacts, stationId, state) {
+  if (stationId !== 'station_ceres') return;
+  const flags = state && state.story && state.story.flags;
+  const hours = flags ? Math.floor(Number(flags.collective_credit_hours)) || 0 : 0;
+  if (hours <= 0) return;
+  const host = contacts.find((contact) => contact
+    && contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.collectiveHours = hours;
+  host.line = hours >= 75
+    ? `The host reads your stamped ledger — ${hours} credit hours — and stands to pour. Nobody stands to pour.`
+    : hours >= 30
+      ? `"${hours} credit hours," the host says, and checks the tally twice. Belt crews do not check numbers that low twice.`
+      : `The host nods at the stamp on your ledger. ${hours} credit hours. Everyone starts somewhere; most stay there.`;
+}
+
+// SP2-053 "The Third Stool's Letter": after the stool letter, Quinn's greeting is permanent.
+function stampQuinnsStool(contacts, stationId, state) {
+  const flags = state && state.story && state.story.flags;
+  if (!flags || flags.quinns_stool == null) return;
+  const quinn = contacts.find((contact) => contact && contact.canonicalKey === 'quinn');
+  if (!quinn) return;
+  quinn.line = 'Your stool. Same one.';
+  quinn.stoolRegular = true;
+}
+
+// U6 — the plated derelicts have first contact on the glass, but the bar — the place that
+// sells directions — did not know any of them. One authored line per site at its home
+// berth, spoken until the pilot's own scan unlocks the plate: the discovery record retires
+// the rumor. Same shape as the Bay 7 smell — a stamped contact line, no new state bag.
+const DERELICT_BAR_RUMORS = Object.freeze([
+  Object.freeze({
+    stationId: 'station_helios', sectorId: 'sector_helios_prime', poiId: 'poi_helios_whistle',
+    line: 'Yard hands swear the old approach horn outside still sounds one note off the helm band. Dead equipment does not sing.',
+  }),
+  Object.freeze({
+    stationId: 'station_tethys', sectorId: 'sector_tethys_junction', poiId: 'poi_tethys_tally_rack',
+    line: 'The Tally desk still codes nine racks of seized freight pending. Third supervisor to inherit the count. Nobody has finished it.',
+  }),
+  Object.freeze({
+    stationId: 'station_forge', sectorId: 'sector_vesta_forge', poiId: 'poi_freighter',
+    line: 'Slag-Run Nineteen is still parked out beltward, holds open, drive cold. She keeps that name because nobody has ever paid to tow her.',
+  }),
+  Object.freeze({
+    stationId: 'station_drift', sectorId: 'sector_pallas_drift', poiId: 'poi_pwreck',
+    line: 'Drift cutters found a hull last week peeled open from the inside. Whatever won that fight took the cargo and left the plates.',
+  }),
+]);
+
+function stampDerelictRumor(contacts, stationId, state) {
+  const discovery = state && state.world && state.world.discovery;
+  for (const rumor of DERELICT_BAR_RUMORS) {
+    if (rumor.stationId !== stationId) continue;
+    const sectorRec = discovery && discovery[rumor.sectorId];
+    if (sectorRec && sectorRec.pois && sectorRec.pois[rumor.poiId]) continue; // already met
+    // The barkeep sells directions, but a berth whose barkeep is already telling the
+    // silver-draft story hands the line to a generated regular. Authored contacts and
+    // existing rumor-stamps are never overwritten.
+    const free = contacts.filter((contact) => contact && !contact.canonicalKey
+      && !contact.rumorSourceRef && !contact.bay7Rumor && !contact.derelictRumorRef
+      && !contact.choirReliefMemory);
+    const host = free.find((contact) => contact.role === 'barkeep') || free[0];
+    if (!host) return;
+    host.line = rumor.line;
+    host.derelictRumorRef = rumor.poiId;
+    return; // one direction per berth; the rest wait for another visit's roll
+  }
+}
+
+function stampChoirReliefMemory(contacts, stationId, state) {
+  if (stationId !== 'station_helios' && stationId !== 'station_coalition') return;
+  const relief = state && state.player && state.player.uniqueWrecks && state.player.uniqueWrecks.choirRelief;
+  if (!relief) return;
+  const host = contacts.find((contact) => contact && contact.role === 'barkeep') || contacts[0];
+  if (!host) return;
+  if (relief.evacuated) {
+    host.line = 'Mercy made the medical berth. The Choir paid in person this time.';
+    host.choirReliefMemory = 'evacuated';
+  } else if (relief.attendantLost || relief.patientLost) {
+    host.line = 'Last Light never came back. Helios logged the empty berth.';
+    host.choirReliefMemory = 'lost';
+  } else if (relief.driveRestored) {
+    host.line = 'Something Choir-flagged is crawling Mercy toward the medical pad.';
+    host.choirReliefMemory = 'returning';
+  }
+}
+
+function stampAceRouteRumor(contacts, stationId, state) {
+  const info = barStationInfo(stationId, state);
+  const sector = info ? info.sector : null;
+  const sectorId = sector ? sector.id : null;
+  if (!sectorId) return;
+  const simTime = Number(state?.simTime) || 0;
+  const activeRoute = getActiveAceRouteForSector(sectorId, simTime);
+  if (!activeRoute) return;
+  // A route rumor belongs to a generated regular, never a face with an authored voice — the
+  // fence's situational line is not a host for stamped rumors (same rule derelict's stamp
+  // documents for authored contacts). If every regular already speaks, the rumor waits.
+  const free = contacts.filter((contact) => contact && !contact.canonicalKey && !contact.fenceId
+    && !contact.rumorSourceRef && !contact.bay7Rumor && !contact.derelictRumorRef
+    && !contact.choirReliefMemory && !contact.deedId && !contact.aceRouteRumorRef);
+  const host = free.find((contact) => contact.role === 'barkeep') || free[0];
+  if (!host) return;
+  host.line = activeRoute.rumorLine;
+  host.aceRouteRumorRef = activeRoute.aceId;
+}
+
+/* ── dialog option builders (per role) ────────────────────────────── */
+
+export function getChoices(role, contact = null) {
+  if (contact?.erisChoirSilent) return [{ id: 'eris_silence', label: 'Leave them in peace.' }];
+  if (contact?.canonicalKey === 'eris_choir_chair') return contact.erisChoirServed
+    ? [{ id: 'free_drink', label: 'Served this visit', disabled: true, reason: 'Your free drink has already been served this visit.' }]
+    : [{ id: 'free_drink', label: 'Take your free drink.' }];
+  if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
+  switch (role) {
+    case 'barkeep':       return [
+      ...(contact?.ilexGreenhouse ? [{ id: 'ilex_greenhouse', label: 'How is the Ilex greenhouse doing?' }] : []),
+      { id: 'rumors',    label: 'Any rumors?' },
+      { id: 'word',      label: 'What\'s the word?' },
+      { id: 'drink',     label: 'Just a drink.' },
+    ];
+    case 'merchant':      return [
+      { id: 'routes',    label: 'Any good trade routes?' },
+      { id: 'market',    label: 'Market conditions?' },
+      { id: 'dismiss',   label: 'Not interested.' },
+    ];
+    case 'pilot':         return [
+      { id: 'work',      label: 'Heard of any work?' },
+      { id: 'outside',   label: 'What\'s it like out there?' },
+      { id: 'bye',       label: 'Safe flying.' },
+    ];
+    case 'smuggler':      return [
+      { id: 'black',     label: 'Know any black markets?' },
+      { id: 'contraband',label: 'Got any contraband?' },
+      { id: 'clean',     label: 'I\'m clean.' },
+    ];
+    case 'engineer':      return [
+      { id: 'tech',      label: 'Any tech recommendations?' },
+      { id: 'fix',       label: 'What needs fixing around here?' },
+      { id: 'thanks',    label: 'Thanks.' },
+    ];
+    case 'bounty_hunter': return [
+      { id: 'bounties',  label: 'Any bounties worth chasing?' },
+      { id: 'action',    label: 'Where\'s the action?' },
+      { id: 'low',       label: 'Keep your head down.' },
+    ];
+    case 'miner':         return [
+      { id: 'fields',    label: 'Where are the rich fields?' },
+      { id: 'ore_price', label: 'Ore prices looking good?' },
+      { id: 'rocks',     label: 'Back to the rocks.' },
+    ];
+    default:              return [
+      { id: 'dismiss', label: 'See you around.' },
+    ];
+  }
+}
+
+/* ── reply generators (pull real game state) ──────────────────────── */
+
+// Helpers to safely dig into ctx.state
+function getEconEvents(state) {
+  return (state && state.economy && state.economy.econEvents) || [];
+}
+function getMarketIntel(state) {
+  return (state && state.economy && state.economy.marketIntel) || {};
+}
+function getMissionBoard(state, stationId) {
+  if (!state || !state.missions || !state.missions.boards) return null;
+  return state.missions.boards[stationId] || null;
+}
+
+function rewardCredits(mission) {
+  const raw = mission && (mission.reward != null
+    ? mission.reward
+    : (mission.rewardCr != null ? mission.rewardCr : mission.reward_cr));
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+}
+
+function rewardCreditsText(mission) {
+  return rewardCredits(mission).toLocaleString('en-US');
+}
+
+function prettyType(t) {
+  if (!t) return 'Contract';
+  return String(t).split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function missionOfferTitle(offer) {
+  return (offer && (offer.title || prettyType(offer.type))) || 'Contract';
+}
+
+function missionOfferTrackCopy(offer) {
+  const type = offer && offer.type;
+  if (type === 'cargo_delivery' || type === 'bulk_trade' || type === 'smuggling_run') {
+    return 'Accept + Track puts the route in your Mission Log and keeps cargo readiness visible.';
+  }
+  if (type === 'bounty_hunt' || type === 'patrol_clear' || type === 'escort') {
+    return 'Accept + Track puts the target in your Mission Log and sets nav when the lead is known.';
+  }
+  return 'Accept + Track adds it to the Mission Log and sets nav guidance when a destination exists.';
+}
+
+function missionOfferAvailable(ctx, missionId) {
+  const boards = ctx && ctx.state && ctx.state.missions && ctx.state.missions.boards;
+  if (!missionId || !boards) return false;
+  for (const board of Object.values(boards)) {
+    const slots = board && board.slots;
+    if (Array.isArray(slots) && slots.some((offer) => offer && offer.id === missionId)) return true;
+  }
+  return false;
+}
+
+function missionLogLabel() {
+  return 'Mission Log (' + BINDINGS.missionLog.label + ')';
+}
+
+function getScreenManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+
+function openMissionLog(ctx) {
+  const mgr = getScreenManager(ctx);
+  if (mgr && typeof mgr.pushScreen === 'function') {
+    mgr.pushScreen('missionLog');
+    return true;
+  }
+  if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('ui:pushScreen', { id: 'missionLog' });
+    return true;
+  }
+  return false;
+}
+
+function commodityName(id) {
+  const c = COMMODITY_BY_ID.get(id);
+  return c ? c.name : commodityDisplayName(id);
+}
+function stationName(id, state) {
+  const info = barStationInfo(id, state);
+  return info ? info.station.name : id;
+}
+function sectorForStation(id, state) {
+  const info = barStationInfo(id, state);
+  return info ? info.sector : null;
+}
+
+function stationFor(stationId, state) {
+  const info = barStationInfo(stationId, state);
+  return info ? info.station : null;
+}
+
+/** Find the sector this stationId belongs to */
+function currentSector(stationId, state) {
+  const info = barStationInfo(stationId, state);
+  return info ? info.sector : stationId === BORROWED_SUN.stationId ? null : SECTORS[0];
+}
+
+function sectorDiscovered(state, sectorId) {
+  const disc = state && state.world && state.world.discovery && state.world.discovery[sectorId];
+  return !!(disc && disc.discovered);
+}
+
+export function availableSurveyOffer(state, stationId) {
+  const sec = currentSector(stationId, state);
+  if (!sec) return null;
+  const candidates = [];
+  for (const nId of (sec.neighbors || [])) {
+    const ns = SECTOR_BY_ID.get(nId);
+    if (!ns || ns.charted !== false) continue;
+    if (sectorDiscovered(state, ns.id)) continue;
+    candidates.push(ns);
+  }
+  candidates.sort((a, b) => (a.tier - b.tier) || a.name.localeCompare(b.name));
+  const sector = candidates[0];
+  return sector ? {
+    sectorId: sector.id,
+    sectorName: sector.name,
+    price: surveyDataPrice(sector),
+    tier: sector.tier,
+  } : null;
+}
+
+export function surveyOfferLabel(offer) {
+  return 'Survey Data: ' + (offer && offer.sectorName || 'Unknown Sector');
+}
+
+/** Find a dangerous neighbor sector */
+function dangerousSector(stationId, state) {
+  const sec = currentSector(stationId, state);
+  if (!sec) return null;
+  let worst = null;
+  for (const nId of (sec.neighbors || [])) {
+    const ns = SECTOR_BY_ID.get(nId);
+    if (ns && (!worst || ns.security < worst.security)) worst = ns;
+  }
+  return worst;
+}
+
+/** Find blackmarket stations across all sectors */
+function findBlackmarkets() {
+  const results = [];
+  for (const sec of SECTORS) {
+    for (const st of sec.stations) {
+      if (st.type === 'blackmarket') results.push({ station: st, sector: sec });
+    }
+  }
+  return results;
+}
+
+/** Find sectors with asteroid fields */
+function findMiningFields() {
+  const results = [];
+  for (const sec of SECTORS) {
+    if (sec.fields && sec.fields.length > 0) {
+      results.push({ sector: sec, fields: sec.fields });
+    }
+  }
+  return results;
+}
+
+/** Ore type human names */
+function fieldTypeName(type) {
+  const MAP = {
+    ast_metallic:     'metallic',
+    ast_common_rock:  'common rock',
+    ast_icy:          'ice',
+    ast_crystalline:  'crystalline',
+    ast_rare_exotic:  'rare exotic',
+    ast_gas_cloud:    'gas cloud',
+  };
+  return MAP[type] || type;
+}
+
+export function missionBoardSlots(state, stationId) {
+  const board = getMissionBoard(state, stationId);
+  return board && Array.isArray(board.slots) ? board.slots.filter(Boolean) : [];
+}
+
+function tethysBlackMarketContact(state, stationId) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (stationId !== discovery.stationId) return null;
+  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
+    && state.world.frontierRumors.byId[discovery.rumorId];
+  return record && record.phase === 'contacted' ? record : null;
+}
+
+function tethysCapsuleRunOffer(state, stationId) {
+  return missionBoardSlots(state, stationId).find((offer) => offer && offer.type === 'heist_intercept') || null;
+}
+
+// RC-30: this station's news or nothing — a Ceres event is not Helios gossip.
+export function localEconEvent(state, stationId) {
+  return getEconEvents(state).find((ev) => ev && ev.stationId === stationId) || null;
+}
+
+function securityLabel(sec) {
+  if (!sec) return 'unknown lane';
+  if (sec.security >= 0.72) return 'secure lane';
+  if (sec.security >= 0.45) return 'watchful lane';
+  if (sec.security >= 0.18) return 'rough lane';
+  return 'lawless lane';
+}
+
+function combatSlots(slots) {
+  return slots.filter((m) => m && (m.type === 'bounty_hunt' || m.type === 'patrol_clear' || m.type === 'escort'));
+}
+
+function blackmarketLead(stationId, state) {
+  const here = currentSector(stationId, state);
+  if (!here) return null;
+  const markets = findBlackmarkets();
+  return markets.find((m) => m.sector.id === here.id)
+    || markets.find((m) => (here.neighbors || []).includes(m.sector.id))
+    || markets[0]
+    || null;
+}
+
+function miningLead(stationId, state) {
+  const here = currentSector(stationId, state);
+  if (!here) return null;
+  const fields = findMiningFields();
+  return fields.find((m) => m.sector.id === here.id)
+    || fields.find((m) => (here.neighbors || []).includes(m.sector.id))
+    || fields.find((m) => m.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline'))
+    || fields[0]
+    || null;
+}
+
+function serviceSummary(stationId, state) {
+  const st = stationFor(stationId, state);
+  const services = st && Array.isArray(st.services) ? st.services : [];
+  if (!services.length) return 'field repairs only';
+  const names = [];
+  if (services.includes('shipyard')) names.push('shipyard');
+  if (services.includes('module_craft') || services.includes('refine')) names.push('fabrication');
+  if (services.includes('repair')) names.push('repair');
+  if (services.includes('refuel')) names.push('fuel');
+  if (services.includes('trade') || services.includes('black_market')) names.push('market');
+  return names.slice(0, 3).join(' / ') || services.slice(0, 3).join(' / ');
+}
+
+// THE HOUSE'S WAR (inf-bar-war-front): the arrival desk names the house's war once per dock and
+// the chart renders the front, but the bar conversation — the place you sit down and ask for the
+// word — answered "things have been quiet" while the house was at war. This is the conversation
+// reading the same conflict truth: a pure read of state.conflicts (factions stays the sole
+// writer), gated exactly like the desk on the record's own 'war' state — cold and tense pairs
+// stay quiet, and a faction with no record stays wordless.
+export function warRecordForFaction(state, factionId) {
+  const conflicts = state && state.conflicts;
+  if (!conflicts || typeof conflicts !== 'object' || !factionId) return null;
+  for (const pairKey of Object.keys(conflicts)) {
+    const rec = conflicts[pairKey];
+    if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+    const pair = String(pairKey).split(':');
+    if (!pair.includes(factionId)) continue;
+    const rivalId = pair.find((id) => id && id !== factionId);
+    if (!rivalId) continue;
+    return { pairKey, factionId, rivalId, rec };
+  }
+  return null;
+}
+
+function factionShortName(factionId) {
+  const meta = FACTION_BY_ID.get(factionId);
+  return (meta && (meta.short || meta.name)) || String(factionId || '').replace(/^faction_/, '');
+}
+
+function warFrontName(war) {
+  const sectorId = contestedSectorForPair(war && war.pairKey);
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  return sector ? sector.name : 'the contested lane';
+}
+
+/** Player-lean read from the queried faction's side: positive means the war is going their way. */
+function warLeanForFaction(war) {
+  const lean = Number(war && war.rec && war.rec.playerLean) || 0;
+  const first = String(war && war.pairKey || '').split(':')[0];
+  return first === war.factionId ? -lean : lean;
+}
+
+const WAR_RUMOR_LINES = Object.freeze([
+  'Rumors? The war is the news. This house is at war with {rival}, and the front sits at {front}. Every lane through there is leaning on it.',
+  'You want rumors — the only story worth a tab is the war with {rival}. The front at {front} decides who eats on this station next season.',
+]);
+const WAR_RUMOR_BLOCKADE = 'The only story is the war with {rival}. Someone has been strangling the supply lane at {front} — half the dock is idle because of it.';
+const WAR_RUMOR_SIEGE = 'The war with {rival}, what else. They set a heavy hull over the front at {front}, and somebody cracked it. This room has told the story every night since.';
+const WAR_WORD_LINES = Object.freeze([
+  'The word is the war. {rival} holds the front at {front}, and this house is in it — watch the lanes, and watch the flags they fly on them.',
+  'Same word as every night this week: the war with {rival}. The front at {front} is where this station\'s luck is being decided.',
+]);
+const WAR_LEAN_FOR = ' The house knows which side your work has been feeding. It is noticed here.';
+const WAR_LEAN_AGAINST = ' And some of the work banked on that front is yours — against this house. Drink light, and keep your back to the wall.';
+
+/**
+ * One bar line for the house's war, in the room's voice. Deterministic: the same (seed, pair,
+ * slot) always answers the same way, and the front's own ledger facts (a blockaded lane, a
+ * cracked bastion, the player's banked lean) pick the variant — nothing invented, the same
+ * truth the chart's war front renders.
+ */
+export function barWarTalkLine(state, war, slot = 'rumors') {
+  if (!war) return null;
+  const rival = factionShortName(war.rivalId);
+  const front = warFrontName(war);
+  const values = { rival, front };
+  const frontRec = war.rec && typeof war.rec.front === 'object' ? war.rec.front : null;
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  let line;
+  if (slot === 'word') {
+    line = WAR_WORD_LINES[hash32(seed, 'bar-war', war.pairKey, 'word') % WAR_WORD_LINES.length];
+  } else if (frontRec && frontRec.siege > 0) {
+    line = WAR_RUMOR_SIEGE;
+  } else if (frontRec && frontRec.blockade > 0) {
+    line = WAR_RUMOR_BLOCKADE;
+  } else {
+    line = WAR_RUMOR_LINES[hash32(seed, 'bar-war', war.pairKey, 'rumors') % WAR_RUMOR_LINES.length];
+  }
+  const lean = warLeanForFaction(war);
+  const clause = lean >= 0.2 ? WAR_LEAN_FOR : lean <= -0.2 ? WAR_LEAN_AGAINST : '';
+  return localizeText(line + clause, values);
+}
+
+export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
+  const role = contact.role || 'barkeep';
+  const sec = currentSector(stationId, state);
+  if (!sec) return [{ label: 'Station', text: 'No current Borrowed Sun berth record', kind: 'warn' }];
+  const slots = missionBoardSlots(state, stationId);
+  const tags = [];
+  const add = (label, text, kind = 'info') => {
+    if (!text) return;
+    tags.push({ label, text, kind });
+  };
+
+  // The house's war (inf-bar-war-front) is the loudest fact in the room: it leads the tags,
+  // naming the rival and the contested front the chart already renders. Contacts whose own
+  // house is the warring side carry their own war — a patron whose faction fights speaks for it.
+  const war = warRecordForFaction(state, contact.factionId);
+  if (war) add('War', `${factionShortName(war.rivalId)} — the front holds ${warFrontName(war)}`, 'bad');
+
+  const memory = stationContactMemoryFor(state, contact.id);
+  // Record before Contact: a two-tag row must never clip the live counter (War owns the first
+  // slot; Record owns the second when the contact has filed a deed).
+  const deedMemory = contactDeedMemory(contact.id, state.player?.stationContactCounters);
+  if (deedMemory && Number(deedMemory.value) !== 0) {
+    add('Record', `${deedMemory.glyph} ${deedMemory.band} · ${deedMemory.value}`, 'story');
+  }
+  if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
+  else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
+
+  // INF-074: the one remembered rescue. Barkeeps only, unacknowledged only — it sits beside
+  // the barkeep's standing Survey/service tags, pairing the recognition with the existing
+  // work on offer instead of dangling alone.
+  if (role === 'barkeep' && memory && memory.rescueMemory && !memory.rescueMemory.acknowledged) {
+    const heard = SECTOR_BY_ID.get(memory.rescueMemory.sectorId);
+    add('Rescue', `Word is you pulled crew out of a wreck${heard && heard.name ? ' in ' + heard.name : ''}. The bar remembers.`, 'story');
+  }
+
+  if (role === 'merchant') {
+    const route = bestTradeRoute(state, stationId);
+    if (route) add('Route', commodityName(route.cmdtyId) + ' → ' + stationName(route.sellStationId, state) + ' +' + Math.round(route.spread) + '/u', 'ok');
+    const ev = localEconEvent(state, stationId);
+    if (ev) add('Market', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
+  } else if (role === 'pilot') {
+    add('Board', slots.length ? slots.length + ' live contract' + (slots.length === 1 ? '' : 's') : 'board quiet', slots.length ? 'ok' : 'warn');
+    const danger = dangerousSector(stationId, state);
+    if (danger) add('Outside', danger.name + ' ' + securityLabel(danger), danger.security < 0.35 ? 'bad' : 'warn');
+  } else if (role === 'smuggler') {
+    const market = blackmarketLead(stationId, state);
+    if (market) add('Black Market', market.station.name + ' / ' + market.sector.name, market.sector.security < 0.2 ? 'bad' : 'warn');
+    add('Scan Risk', sec.security >= 0.6 ? 'high security customs' : 'patrol gaps', sec.security >= 0.6 ? 'bad' : 'ok');
+  } else if (role === 'engineer') {
+    add('Station', serviceSummary(stationId, state), 'ok');
+    add('Hull Note', sec.hazards && sec.hazards.length ? 'hazards tax armor' : 'routine wear', sec.hazards && sec.hazards.length ? 'warn' : 'info');
+  } else if (role === 'bounty_hunter') {
+    const combat = combatSlots(slots);
+    add('Targets', combat.length ? combat.length + ' combat posting' + (combat.length === 1 ? '' : 's') : 'no clean tags', combat.length ? 'ok' : 'warn');
+    const danger = dangerousSector(stationId, state);
+    if (danger) add('Heat', danger.name + ' density ' + Math.round((danger.enemyDensity || 0) * 100) + '%', (danger.enemyDensity || 0) > 0.45 ? 'bad' : 'warn');
+  } else if (role === 'miner') {
+    const field = miningLead(stationId, state);
+    if (field && field.fields.length) add('Field', field.sector.name + ' / ' + fieldTypeName(field.fields[0].type), field.sector.security < 0.4 ? 'warn' : 'ok');
+    const services = serviceSummary(stationId, state);
+    add('Buyer', services.includes('market') ? 'sell ore here' : 'find ore buyer', services.includes('market') ? 'ok' : 'warn');
+  } else {
+    const ev = localEconEvent(state, stationId);
+    if (ev) add('Rumor', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
+    else add('Lane', sec.name + ' / ' + securityLabel(sec), sec.security < 0.35 ? 'bad' : 'info');
+  }
+
+  if (role === 'barkeep') {
+    const survey = availableSurveyOffer(state, stationId);
+    if (survey) add('Survey', survey.sectorName + ' ' + survey.price.toLocaleString('en-US') + ' cr', 'warn');
+  }
+
+  if (!tags.length) add('Local', sec.name + ' / ' + securityLabel(sec), 'info');
+  return tags.slice(0, 2);
+}
+
+// BAR-REGULAR: a seeded patron you have talked to before is a regular, and a regular's line
+// advances each visit instead of repeating one hashed bark forever. Pure function of the
+// persisted stationContacts memory (the stationContacts system stays the sole writer) and the
+// same live sector facts the intel tags read; DOM-free so checks can walk the ladder directly.
+const REGULAR_SUBJECT_WORDS = Object.freeze({
+  routes: 'trade routes', market: 'market prices', work: 'contract work',
+  outside: 'the lanes out there', black: 'quiet markets', contraband: 'papers',
+  tech: 'fitting advice', fix: 'yard repairs', bounties: 'posted bounties',
+  action: 'where the fights are', fields: 'the rich fields', ore_price: 'ore prices',
+  rumors: 'the rumors', word: 'the word on the docks', drink: 'the drink',
+});
+
+export function barRegularStoryLine(contact = {}, state = {}, stationId = '') {
+  if (contact.erisChoirSilent) return contact.line;
+  const memory = stationContactMemoryFor(state, contact.id);
+  if (!memory || !memory.met || memory.talkCount < 1) return null;
+  const firstName = String(contact.name || '').trim().split(/\s+/)[0] || 'The regular';
+  const subject = REGULAR_SUBJECT_WORDS[memory.lastChoice]
+    || (memory.lastChoice ? memory.lastChoice.replace(/_/g, ' ') : 'local work');
+
+  if (memory.talkCount === 1) {
+    return localizeText('Met once before. Back already — last time it was {subject}.', { subject });
+  }
+
+  // The middle visits are the trouble beat: the regular tells you what changed while you
+  // were out, grounded in the same live facts their intel tags carry. Two variants per role
+  // alternate by visit, so consecutive visits never repeat even when the world has not moved.
+  const trouble = barRegularTroubleLine(contact, state, stationId, memory.talkCount);
+  if (trouble) return trouble;
+
+  // Past the story, the relationship settles — warmer once the contact's standing earned it.
+  if (memory.standing >= 2) {
+    return localizeText('{name} keeps your usual on the ledger now. Whatever the lanes do, this stool is yours.', { name: firstName });
+  }
+  return localizeText('{name} nods without turning around. Regulars long enough — friends not yet.', { name: firstName });
+}
+
+function barRegularTroubleLine(contact, state, stationId, talkCount) {
+  if (talkCount < 2 || talkCount > 3) return null;
+  const variant = (hash32(String(contact.id || ''), 'bar-regular', talkCount) % 2) === 0;
+  const role = String(contact.role || '').toLowerCase();
+  const danger = role === 'pilot' || role === 'bounty_hunter' || role === 'miner'
+    ? dangerousSector(stationId, state) : null;
+  const event = localEconEvent(state, stationId);
+  const sec = currentSector(stationId, state);
+
+  // The war is what changed while you were out (inf-bar-war-front): a regular whose own house
+  // is at war — or who drinks in a house at war — opens with the front, not the weather.
+  const war = warRecordForFaction(state, contact.factionId)
+    || warRecordForFaction(state, stationFor(stationId, state)?.factionId || null);
+  if (war) {
+    const values = { rival: factionShortName(war.rivalId), front: warFrontName(war) };
+    return variant
+      ? localizeText('Since your last drink, the war with {rival} moved the front at {front}. The regulars argue about nothing else.', values)
+      : localizeText('You were gone one bell and the war with {rival} got closer. The front at {front} is all anyone will talk about.', values);
+  }
+
+  if (role === 'barkeep') {
+    if (event) {
+      return localizeText('Since your last drink, the shelf ran thin on {commodity}. The regulars count everything here.',
+        { commodity: commodityName(event.commodityId) });
+    }
+    return variant
+      ? localizeText('The board has stayed quiet since you last sat down. Even the tollmen are bored.')
+      : localizeText('Same bar since you left. Quieter, if anything — and that worries the regulars.');
+  }
+  if (danger) {
+    return variant
+      ? localizeText('{sector} has turned into a {security} this week. Every stool here has a story about it.',
+        { sector: danger.name, security: securityLabel(danger) })
+      : localizeText('You were gone one bell and {sector} got louder. It is a {security} out there now.',
+        { sector: danger.name, security: securityLabel(danger) });
+  }
+  if (role === 'smuggler') {
+    return localizeText('Customs doubled its counts this week. The quiet ledger did not.');
+  }
+  if (role === 'merchant') {
+    if (event) {
+      return localizeText('Prices on {commodity} moved while you were out. Someone always pays for that.',
+        { commodity: commodityName(event.commodityId) });
+    }
+    const slots = missionBoardSlots(state, stationId).length;
+    return localizeText('{count} live contracts on the board since you were last in. Someone is always a day late on one.',
+      { count: slots });
+  }
+  if (role === 'engineer') {
+    if (sec && sec.hazards && sec.hazards.length) {
+      return localizeText('The rocks outside have been chewing armor since you left. My bench has not cooled.');
+    }
+    return localizeText('The yard list grew while you were gone: {services}. It always grows.',
+      { services: serviceSummary(stationId, state) });
+  }
+  const slots = missionBoardSlots(state, stationId).length;
+  return localizeText('{count} live contracts on the board since you were last in.',
+    { count: slots });
+}
+
+/** Find best trade spread from marketIntel */
+function bestTradeRoute(state, currentStationId) {
+  const intel = getMarketIntel(state);
+  const stations = Object.keys(intel);
+  if (stations.length < 2) return null;
+
+  let best = null;
+  const here = intel[currentStationId];
+  if (!here || !here.snapshot) return null;
+
+  for (const otherId of stations) {
+    if (otherId === currentStationId) continue;
+    const other = intel[otherId];
+    if (!other || !other.snapshot) continue;
+
+    for (const cmdtyId of Object.keys(here.snapshot)) {
+      const buyInfo  = here.snapshot[cmdtyId];
+      const sellInfo = other.snapshot[cmdtyId];
+      if (!buyInfo || !sellInfo) continue;
+      const buyPrice  = buyInfo.buy  || buyInfo.mid || 0;
+      const sellPrice = sellInfo.sell || sellInfo.mid || 0;
+      const spread = sellPrice - buyPrice;
+      if (spread > 0 && (!best || spread > best.spread)) {
+        best = { cmdtyId, buyStationId: currentStationId, sellStationId: otherId, spread, buyPrice, sellPrice };
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Build a reply for the given role + choiceId, pulling from ctx.state.
+ * Returns { text, missionOffer? }.
+ */
+export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (stationId === 'station_eris_margin' && contact?.canonicalKey === 'eris_choir_chair'
+      && choiceId === 'free_drink') {
+    const service = ctx?.state?.story?.flags?.eris_choir_bar_service;
+    if (!service?.active || !Number.isSafeInteger(service.visitId)) {
+      return { text: 'The barkeep checks your seat. One moment.' };
+    }
+    return { text: service?.active && service.served
+      ? 'Your drink for this visit has been served.'
+      : 'The barkeep checks your seat. One moment.' };
+  }
+  if (contact?.erisChoirSilent && stationId === 'station_eris_margin') {
+    return { text: 'The room stays silent.' };
+  }
+  if (contact && contact.endgameChoice === 'E') {
+    if (choiceId === 'accept_next_run') {
+      if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {
+        return { text: 'That settlement is already filed.', endgameResolved: true };
+      }
+      ctx.bus.emit('ui:endgameChoose', { choice: 'E', confirm: true, source: 'ashcache_courier' });
+      return {
+        text: '47-A closed. 47-B pending. The next manifest is already on the desk.',
+        endgameResolved: true,
+      };
+    }
+    return { text: "It stays open. The courier doesn't repeat the offer." };
+  }
+  const state = ctx.state || {};
+  if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
+    return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
+  }
+  if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
+  if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
+  if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
+  if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
+    const reply = buildVonnFreightLossReply(state);
+    if (reply) return reply;
+  }
+  if (choiceId === 'proteus_sounding_map') {
+    const offer = proteusFindingMapOffer(state, stationId, contact);
+    if (!offer) return { text: 'I cannot put that one on a chart from here.' };
+    const opened = openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, ...offer });
+    return { text: opened
+      ? 'Your sounding is marked on the system map. The course is yours to set.'
+      : 'The system map will not open right now. Your survey record is safe.' };
+  }
+  if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
+  if (contact && contact.depthProgram) {
+    // Reach's rival remembers the actual lane, not the number of times we clicked Talk.
+    // The board remains the sole offer owner; this conversation never settles a contract.
+    if (stationId === 'station_reach' && contact.id === 'contact_coldburn_rey'
+      && (contact.choices || []).some((choice) => choice.id === choiceId)) {
+      const remembered = spineGreeting(contact.id, state);
+      if (choiceId === 'lane') {
+        return { text: remembered || 'No shared lane on the record yet. I still hauled mine first.' };
+      }
+      if (choiceId === 'settle') {
+        const work = buildReply('pilot', 'work', ctx, stationId);
+        return { ...work, text: `${remembered ? `${remembered} ` : ''}Looking for work is not a concession. ${work.text}` };
+      }
+    }
+    return buildDepthContactReply(contact, choiceId, ctx);
+  }
+  if (role === 'barkeep' && choiceId === 'ilex_greenhouse' && stationId === ILEX_ARK.stationId) {
+    return { text: ilexGreenhouseReply(state) || 'No Ilex planting is recorded here.' };
+  }
+  if (role === 'barkeep' && choiceId === 'word') {
+    const deed = mostCitedShipDeed(state);
+    if (deed) return { text: `Your ship's ledger keeps coming back to this: ${deed.text}`, ledgerDeed: deed };
+  }
+  // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
+  // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
+  // and the contact's normal canonical dialogue resumes.
+  const ghostRows = barGhostConvoyLines(state, stationId);
+  const ghost = role === 'barkeep' && choiceId === 'rumors'
+    ? ghostRows.find((row) => row && row.text)
+    : null;
+  const oreLot = role === 'barkeep' && choiceId === 'rumors' ? oreLotRumorForReply(state) : null;
+  if (oreLot && ghost) return { text: `${oreLot.text} ${ghost.text}` };
+  if (oreLot) return { text: oreLot.text };
+  if (ghost) return { text: ghost.text };
+
+  // The Quiet desk's entrance receipt is actionable talk — it carries the run verdict and a live
+  // capsule offer — so it answers Rumors ahead of every ambient bar-talk line (ace routes, wreck
+  // leads, the authored dock rumor). Gate it exactly on the contacted record; nothing else moves.
+  const quietContact = role === 'barkeep' && choiceId === 'rumors'
+    ? tethysBlackMarketContact(state, stationId)
+    : null;
+  if (quietContact) {
+    const capsuleRun = tethysCapsuleRunOffer(state, stationId);
+    const run = quietContact.entranceRun;
+    const entranceLead = run?.phase === 'delivered'
+      ? 'Your entrance parcel arrived clean. Smuggler Den in Pallas Drift now trades with you. In Market, choose a nearby hot cargo pod and review its cut before washing its papers.'
+      : run?.phase === 'in_progress' && !run.parcel
+        ? 'The one supplied entrance parcel is gone. Smuggler Den access is still closed.'
+        : 'One entrance run waits just west of Smuggler Den in Pallas Drift: Massline the supplied parcel east past the customs cutter into the Quiet receiving barge. Its scanner faces east; move the contraband through before the scan finishes. A scanned or lost parcel will not open the market.';
+    if (capsuleRun) {
+      return {
+        text: `${entranceLead} The separate Capsule Run remains available: law response, confiscation, heat, or a lost capsule can leave you with no payout.`,
+        missionOffer: capsuleRun,
+        frontierRumorOffer: frontierRumorOffer(state, stationId) || null,
+      };
+    }
+    return {
+      text: `${entranceLead} No Capsule Run packet is live on the Tethys board.`,
+      frontierRumorOffer: frontierRumorOffer(state, stationId) || null,
+    };
+  }
+
+  // A one-shot authored wreck lead outranks a transient rotating ace sighting — the ace
+  // window repeats, the lead does not, so letting the ace answer first can starve the lead
+  // for the entire time a route stands in the sector (Sker opens with one at t=0).
+  const wreckRumor = role === 'barkeep'
+    ? uniqueWreckBarRumor(state, stationId, choiceId)
+    : null;
+  if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
+
+  const aceRoute = role === 'barkeep' && choiceId === 'rumors'
+    ? (() => {
+        const info = barStationInfo(stationId, state);
+        const sectorId = info && info.sector ? info.sector.id : null;
+        return getActiveAceRouteForSector(sectorId, Number(state?.simTime) || 0);
+      })()
+    : null;
+  if (aceRoute) return { text: aceRoute.rumorLine, aceRouteRumor: aceRoute };
+
+  const authoredDockRumor = role === 'barkeep' && choiceId === 'rumors'
+    ? AUTHORED_DOCK_RUMORS[stationId]
+    : null;
+
+  const canonical = contact && contact.canonicalKey
+    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
+    : null;
+  if (canonical) return canonical;
+
+  // THE HOUSE'S WAR (inf-bar-war-front): the desk names it on arrival and the chart renders the
+  // front; here the room's answers carry it. Rumor days: three days in four the war is the
+  // answer, outranking the keeper's repeating dock story; the other days the keeper sells the
+  // ledger, so the pitch never locks out for the war's whole life. One-shot leads above (a
+  // wreck bearing, a posted ore lot, a live entrance run, an ace sighting) and an authored
+  // keeper's own line still answer first.
+  const houseWar = role === 'barkeep'
+    ? warRecordForFaction(state, stationFor(stationId, state)?.factionId || null)
+    : null;
+  const warAnswersToday = houseWar
+    ? hash32(Number(state?.meta?.seed) || 0, 'bar-war-day', houseWar.pairKey,
+      Math.floor((Number(state?.simTime) || 0) / 600)) % 4 !== 0
+    : false;
+  if (role === 'barkeep' && choiceId === 'rumors' && houseWar && warAnswersToday) {
+    return { text: barWarTalkLine(state, houseWar, 'rumors'), warPosture: houseWar.rec };
+  }
+
+  if (authoredDockRumor) {
+    const rumor = frontierRumorOffer(state, stationId);
+    return {
+      text: authoredDockRumor,
+      frontierRumorOffer: rumor || null,
+    };
+  }
+
+  switch (role) {
+    /* ── BARKEEP ───────────────────────────────────────── */
+    case 'barkeep': {
+      if (choiceId === 'rumors') {
+        const rumor = frontierRumorOffer(state, stationId);
+        if (rumor) {
+          return {
+            text: rumor.text,
+            frontierRumorOffer: rumor,
+          };
+        }
+        const survey = availableSurveyOffer(state, stationId);
+        if (survey) {
+          return {
+            text: 'A courier dropped partial nav data for ' + survey.sectorName + '. It is not free, but it will put the sector on your nav chart.',
+            surveyOffer: survey,
+          };
+        }
+        if (houseWar) return { text: barWarTalkLine(state, houseWar, 'rumors'), warPosture: houseWar.rec };
+        const events = getEconEvents(state);
+        if (events.length > 0) {
+          const ev = events[0];
+          const cName = commodityName(ev.commodityId);
+          const sName = stationName(ev.stationId, state);
+          const dir = (ev.type === 'surplus' || ev.type === 'glut') ? 'down' : 'up';
+          return { text: 'Word is there\'s a ' + ev.type + ' affecting ' + cName + ' at ' + sName + '. Prices are ' + dir + '.' };
+        }
+        return { text: 'Things have been quiet lately. Too quiet, if you ask me. Keep your eyes open out there.' };
+      }
+      if (choiceId === 'word') {
+        // "What's the word?" — during a war the word IS the war; the survey pitch keeps its
+        // rumor days and the barkeep's Survey tag.
+        if (houseWar) return { text: barWarTalkLine(state, houseWar, 'word'), warPosture: houseWar.rec };
+        const survey = availableSurveyOffer(state, stationId);
+        if (survey) {
+          return {
+            text: survey.sectorName + ' is still off the public grid. Buy the survey packet and your nav chart will have enough of a fix to plot it.',
+            surveyOffer: survey,
+          };
+        }
+        const danger = dangerousSector(stationId, state);
+        if (danger) {
+          return { text: 'Watch the lanes near ' + danger.name + ' — security is thin out there. Patrols don\'t reach that far.' };
+        }
+        return { text: 'The usual. Ships come, ships go. Nobody says much around here.' };
+      }
+      return { text: 'Coming right up. Best synthale this side of the belt.' };
+    }
+
+    /* ── MERCHANT ──────────────────────────────────────── */
+    case 'merchant': {
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) {
+          return { text: 'Buy ' + commodityName(route.cmdtyId) + ' here, sell at ' + stationName(route.sellStationId, state) + ' — good margin right now. About ' + route.spread + ' credits per unit.' };
+        }
+        return { text: 'Markets are tight everywhere. Nothing jumps out right now. Check back after a supply event shakes things up.' };
+      }
+      if (choiceId === 'market') {
+        const events = getEconEvents(state);
+        const local = events.filter(e => e.stationId === stationId);
+        if (local.length > 0) {
+          const ev = local[0];
+          const cName = commodityName(ev.commodityId);
+          const dir = (ev.type === 'surplus' || ev.type === 'glut') ? 'dropping' : 'climbing';
+          return { text: cName + ' prices are ' + dir + ' here thanks to a local ' + ev.type + '. Plan accordingly.' };
+        }
+        return { text: 'Steady as she goes. No big swings at this station — supply and demand in balance for now.' };
+      }
+      return { text: 'Your loss. Credits don\'t earn themselves.' };
+    }
+
+    /* ── PILOT ─────────────────────────────────────────── */
+    case 'pilot': {
+      if (choiceId === 'work') {
+        const board = getMissionBoard(state, stationId);
+        if (board && board.slots && board.slots.length > 0) {
+          const offer = board.slots[0];
+          const reward = rewardCreditsText(offer);
+          return {
+            text: 'There\'s a ' + missionOfferTitle(offer) + ' contract on the board - pays ' + reward + ' cr. ' + missionOfferTrackCopy(offer),
+            missionOffer: offer,
+          };
+        }
+        return { text: 'Board\'s empty right now. Try a bigger station or come back later — jobs cycle regularly.' };
+      }
+      if (choiceId === 'outside') {
+        const danger = dangerousSector(stationId, state);
+        if (danger) {
+          const sec = danger.security < 0.3 ? 'lawless' : danger.security < 0.5 ? 'rough' : 'uneasy';
+          return { text: danger.name + ' is ' + sec + ' space. Hostiles patrol the lanes — don\'t fly without shields charged.' };
+        }
+        return { text: 'It\'s calm in the core sectors, but further out the patrols thin and the pirates thicken.' };
+      }
+      return { text: 'Clear skies, friend. Watch your six.' };
+    }
+
+    /* ── SMUGGLER ──────────────────────────────────────── */
+    case 'smuggler': {
+      if (choiceId === 'black') {
+        const bms = findBlackmarkets();
+        if (bms.length > 0) {
+          const pick = bms[0];
+          return { text: pick.station.name + ' in ' + pick.sector.name + ' — they\'ll move anything, no questions asked. Don\'t mention my name.' };
+        }
+        return { text: 'Nothing running right now. The Concord has been cracking down. Check back when things cool off.' };
+      }
+      if (choiceId === 'contraband') {
+        const bms = findBlackmarkets();
+        if (bms.length > 0) {
+          return { text: 'Narcotics, weapons, stolen goods — it all flows through the black markets. ' + bms[0].station.name + ' is your best bet. Margins are fat if you dodge the scans.' };
+        }
+        return { text: 'Supply lines are dry. Nobody\'s moving product with patrols this heavy.' };
+      }
+      return { text: 'Smart. Stay clean, stay alive. Mostly.' };
+    }
+
+    /* ── ENGINEER ──────────────────────────────────────── */
+    case 'engineer': {
+      if (choiceId === 'tech') {
+        const sec = currentSector(stationId, state);
+        if (sec.security < 0.5) {
+          return { text: 'Out here? Shield boosters and hull reinforcement. You\'ll take hits — make sure you can soak them. A good reactor helps everything run smoother too.' };
+        }
+        return { text: 'Cargo expanders if you\'re trading, mining lasers if you\'re cracking rock. Match the module to the mission. Don\'t waste slots on weapons in safe space.' };
+      }
+      if (choiceId === 'fix') {
+        const info = barStationInfo(stationId, state);
+        const stType = info ? info.station.type : 'station';
+        const typeDesc = {
+          trade_hub:   'Half the docking clamps need recalibration. Trade hubs run hard.',
+          refinery:    'The smelters overheat constantly. Refinery work never ends.',
+          mining:      'Drill rigs break down weekly out here. We patch what we can.',
+          fab:         'Fabrication arms drift out of alignment. Precision work, endless maintenance.',
+          military:    'Everything runs tight on a military station. Can\'t afford failures.',
+          blackmarket: 'Nothing works right because nothing was installed right. That\'s the price of off-grid.',
+          research:    'Sensor arrays need constant tuning. Research gear is delicate stuff.',
+        };
+        return { text: typeDesc[stType] || 'Everything. If it has bolts, it needs tightening.' };
+      }
+      return { text: 'Anytime. Keep your ship in one piece out there.' };
+    }
+
+    /* ── BOUNTY HUNTER ────────────────────────────────── */
+    case 'bounty_hunter': {
+      if (choiceId === 'bounties') {
+        const board = getMissionBoard(state, stationId);
+        if (board && board.slots) {
+          const bounty = board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear');
+          if (bounty) {
+            const reward = rewardCreditsText(bounty);
+            return {
+              text: 'Got one - "' + missionOfferTitle(bounty) + '." Pays ' + reward + ' cr. Dangerous work, but Accept + Track will keep the target in your Mission Log.',
+              missionOffer: bounty,
+            };
+          }
+        }
+        return { text: 'Board\'s dry for combat work. Try the frontier stations — more trouble out there means more bounties.' };
+      }
+      if (choiceId === 'action') {
+        const sec = currentSector(stationId, state);
+        let worst = null;
+        for (const nId of (sec.neighbors || [])) {
+          const ns = SECTOR_BY_ID.get(nId);
+          if (ns && (!worst || ns.enemyDensity > worst.enemyDensity)) worst = ns;
+        }
+        if (worst && worst.enemyDensity > 0.3) {
+          return { text: worst.name + ' is crawling with hostiles. Enemy density is high — good hunting if you can handle it.' };
+        }
+        return { text: 'Core sectors are too safe for real action. Push out toward the rim if you want a fight.' };
+      }
+      return { text: 'I never do. That\'s bad for business.' };
+    }
+
+    /* ── MINER ─────────────────────────────────────────── */
+    case 'miner': {
+      if (choiceId === 'fields') {
+        const miningData = findMiningFields();
+        // Prefer sectors with rare/exotic or crystalline fields
+        const exotic = miningData.find(m => m.fields.some(f => f.type === 'ast_rare_exotic'));
+        const crystal = miningData.find(m => m.fields.some(f => f.type === 'ast_crystalline'));
+        const pick = exotic || crystal || (miningData.length > 0 ? miningData[0] : null);
+        if (pick) {
+          const fieldType = pick.fields[0].type;
+          return { text: 'The ' + pick.sector.name + ' has good ' + fieldTypeName(fieldType) + ' deposits. Watch for rocks and raiders — the good fields attract both.' };
+        }
+        return { text: 'Slim pickings around here. You\'d have to range further out for decent ore.' };
+      }
+      if (choiceId === 'ore_price') {
+        const intel = getMarketIntel(state);
+        // Check if any station is buying ore well
+        const oreIds = COMMODITIES.filter(c => c.category === 'raw ore').map(c => c.id);
+        let bestOre = null;
+        for (const sid of Object.keys(intel)) {
+          const snap = intel[sid] && intel[sid].snapshot;
+          if (!snap) continue;
+          for (const oid of oreIds) {
+            if (!snap[oid]) continue;
+            const price = snap[oid].sell || snap[oid].mid || 0;
+            const base  = (COMMODITY_BY_ID.get(oid) || {}).basePrice || 1;
+            if (!bestOre || price / base > bestOre.ratio) {
+              bestOre = { oreId: oid, stationId: sid, price, ratio: price / base };
+            }
+          }
+        }
+        if (bestOre) {
+          return { text: commodityName(bestOre.oreId) + ' is fetching good prices at ' + stationName(bestOre.stationId, state) + ' — ' + Math.round(bestOre.price) + ' cr per unit. Worth the haul.' };
+        }
+        return { text: 'Ore prices are flat right now. Refineries aren\'t paying premium for anything. Just steady work.' };
+      }
+      return { text: 'Always. The belt doesn\'t mine itself.' };
+    }
+
+    default:
+      return { text: 'Suit yourself.' };
+  }
+}
+
+function dossSourceList(state) {
+  return dossArchiveEvidence(state).map((entry) => entry.copy);
+}
+
+function dossRecordCopy(state) {
+  const sources = dossSourceList(state);
+  if (!sources.length) return 'No verified primary source is in the archive yet.';
+  return `${sources.length} verified primary ${sources.length === 1 ? 'source' : 'sources'}: ${sources.join(' ')}`;
+}
+
+function buildDossArchiveReply(choiceId, state) {
+  const sources = dossSourceList(state);
+  const count = sources.length;
+  if (choiceId === 'document') {
+    if (!count) return { text: 'I cannot file a memory as a source. Bring a completed primary record, then I can cite it.' };
+    return { text: `Filed without alteration. ${dossRecordCopy(state)}` };
+  }
+  if (choiceId === 'changes') {
+    if (!count) return { text: 'Nothing in my copy has changed. The archive waits for a primary record, not a rumor.' };
+    return { text: `The record changes only where a durable source says it does. ${dossRecordCopy(state)}` };
+  }
+  if (choiceId === 'reward') {
+    const mapOffer = dossArchiveMapOffer(state);
+    if (!mapOffer) {
+      return {
+        text: `There is no credit allotment or mission attached. The Candle Fleet cross-reference opens after all three sources are verified. ${dossRecordCopy(state)}`,
+      };
+    }
+    return {
+      text: `There is no credit allotment or mission attached. All three sources are filed; the Candle Fleet is the archive's next public cross-reference. ${dossRecordCopy(state)}`,
+      dossArchiveMapOffer: mapOffer,
+    };
+  }
+  return { text: 'Primary sources, please. I will not turn a rumor into a record.' };
+}
+
+/** Optional, map-only Doss archive handoff. Revalidates current durable sources at click time. */
+export function openDossArchiveMap(ctx) {
+  const offer = dossArchiveMapOffer(ctx && ctx.state);
+  if (!offer) return false;
+  return openGalaxyMap(ctx, {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: offer.sectorId,
+    pos: offer.pos,
+    label: offer.label,
+    source: 'station-bar:doss-archive',
+  });
+}
+
+function buildVonnFreightLossReply(state) {
+  const caseFile = vonnFreightLossFor(state);
+  if (!caseFile) return null;
+  const custody = vonnFreightLossDisposition(caseFile);
+  if (caseFile.wreckStatus === 'completed') {
+    return {
+      text: `The Sker-Run freight loss is closed. ${custody} The wreck record is gone, so I will not point you at a ghost.`,
+    };
+  }
+  const mapOffer = vonnFreightLossMapOffer(state);
+  if (!mapOffer) {
+    return {
+      text: `I can corroborate the Sker-Run freight loss, but not a live wreck marker. ${custody}`,
+    };
+  }
+  return {
+    text: `The Sker-Run freight wreck is still where the aftermath record says it is. ${custody} I can show you the marker; it opens the map only and does not set a course.`,
+    vonnFreightLossMapOffer: mapOffer,
+  };
+}
+
+/** Optional, map-only Vonn handoff. The click rechecks the actual durable aftermath marker. */
+export function openVonnFreightLossMap(ctx) {
+  const offer = vonnFreightLossMapOffer(ctx && ctx.state);
+  if (!offer) return false;
+  return openGalaxyMap(ctx, {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: offer.sectorId,
+    pos: offer.pos,
+    label: offer.label,
+    source: 'station-bar:vonn-freight-loss',
+  });
+}
+
+function buildDepthContactReply(contact, choiceId, ctx) {
+  const choice = (contact.choices || []).find((entry) => entry.id === choiceId);
+  if (!choice) return { text: contact.line || 'No answer.' };
+  const indexes = Array.isArray(choice.lineIndexes) && choice.lineIndexes.length
+    ? choice.lineIndexes
+    : [choice.lineIndex];
+  const memory = stationContactMemoryFor(ctx.state || {}, contact.id);
+  const visit = Math.max(0, (memory && memory.talkCount || 1) - 1);
+  const index = indexes[visit % indexes.length];
+  return { text: contact.voiceLines[index] || contact.line || 'No answer.' };
+}
+
+function buildCanonicalReply(contact, choiceId, ctx, stationId) {
+  const state = ctx.state || {};
+
+  switch (contact.canonicalKey) {
+    case 'kessler': {
+      const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
+      if (slipReply) return slipReply;
+      const workReply = kesslerStarterWorkReply(state, stationId, choiceId);
+      if (workReply) return workReply;
+      const freightReply = kesslerFreightReply(state, stationId, choiceId);
+      if (freightReply) return freightReply;
+      const ceresReply = kesslerCeresShiftReply(state, stationId, choiceId);
+      if (ceresReply) return ceresReply;
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) {
+          return { text: 'Take ' + commodityName(route.cmdtyId) + ' to ' + stationName(route.sellStationId, state) + '. Keep the seal intact, let the spread explain itself, and do not ask why the weight changed.' };
+        }
+        return { text: 'No clean spread today. Contract 47-A is still the only line worth watching, and it is still pending.' };
+      }
+      if (choiceId === 'market') {
+        return { text: 'The board says balanced. My ledger says the same manifest weighs less after every handoff. Both records are official if the right clerk initials them.' };
+      }
+      if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
+      return null;
+    }
+
+    // SP1-193 "The Portrait Buoys": the shroud painter's commission verb. The bar reply is the
+    // read; the settlement (the story taken, the flag written) is the sim leg's on ui:talkContact.
+    case 'painter': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'commission') {
+        if (flags[PORTRAIT_PAINTER.commissionFlag]) {
+          return { text: 'The frame came down and went back up finished. You have seen it. The rest is weather now — the same weather as everyone\'s.' };
+        }
+        const record = peekDeedRecord(state);
+        if (!record || !record.deeds || !record.deeds.length) {
+          return { text: 'Nothing yet worth the canvas. Fly something first. I do not paint intentions, and I do not paint on credit.' };
+        }
+        return {
+          text: 'Vesper listens all the way through the best story in your record — the parts you did not say, too. Payment accepted, in the only currency she takes. Come back after the next pass; the frame finishes in the cold.',
+        };
+      }
+      if (choiceId === 'ask_paint') {
+        return { text: 'Because the paint is the signature. You put a name on a shroud and it stops being everyone\'s, and then it starts being somebody\'s to argue about.' };
+      }
+      return null;
+    }
+
+    // SP2-065 "The Sommelier of Coolant": the depot bar's censer machine and its vintage rail.
+    // The purchase settles in the sim leg (src/systems/special500Sommelier.js); this reply is
+    // the liturgy.
+    case 'sommelier': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'the_thursday') {
+        if (flags[SOMMELIER.pourFlag]) {
+          return { text: 'The Thursday is poured, and it was drunk at the correct temperature. There will not be another Thursday this cycle. The censer remembers patronage; it does not repeat it.' };
+        }
+        return {
+          text: 'The censer hums its incense burn down to beverage temperature and sets the vintage on the rail. "Cast on a Thursday. You will taste the Thursday." 12 cr, and two cells for the road — poured, not sold. The Choir remembers patronage.',
+        };
+      }
+      if (choiceId === 'ask_vintages') {
+        return { text: 'The rail holds Monday, which is sharp and industrial; Wednesday, which is apologetic; and the Thursday. The Thursday is the only one with a congregation.' };
+      }
+      return null;
+    }
+
+    case 'rook':
+      if (choiceId === 'bounties') {
+        const board = getMissionBoard(state, stationId);
+        const bounty = board && board.slots
+          ? board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear')
+          : null;
+        if (bounty) {
+          const reward = rewardCreditsText(bounty);
+          return {
+            text: 'Target is already posted: "' + missionOfferTitle(bounty) + '." Pays ' + reward + ' cr. The tag is clean enough for accounting; Accept + Track if your ship is ready.',
+            missionOffer: bounty,
+          };
+        }
+        return { text: 'No open tag I like. That means the trouble has not been entered yet, not that it is gone.' };
+      }
+      if (choiceId === 'action') return { text: 'Follow the invoice trail. The fight is usually one jump behind the person who paid twice.' };
+      if (choiceId === 'low') return { text: 'I never do. Low heads miss the posted names.' };
+      return null;
+
+    case 'voss':
+      if (choiceId === 'fields') {
+        const miningData = findMiningFields();
+        const pick = miningData.find(m => m.sector.id === 'sector_charon_expanse') || miningData[0];
+        if (pick) return { text: pick.sector.name + ' has the rich rock. File late and the claim will be exhausted before your cutter cools.' };
+        return { text: 'No fields worth filing. Funny how a claim can be empty before anyone works it.' };
+      }
+      if (choiceId === 'ore_price') return { text: 'Ore is the decoy. The claim is the money. Watch who files the exhaustion notice.' };
+      if (choiceId === 'rocks') return { text: 'The rock remembers who filed first. The board only remembers who filed last.' };
+      return null;
+
+    case 'hale':
+      if (choiceId === 'work') return { text: 'There is always inspection work. Hold position, show the manifest, pay the second fine if the first one was inconvenient.' };
+      if (choiceId === 'outside') {
+        const danger = dangerousSector(stationId, state);
+        const name = danger ? danger.name : 'the outer lanes';
+        return { text: name + ' is not lawless. It is documented poorly, which is worse.' };
+      }
+      if (choiceId === 'bye') return { text: 'Scan complete. No flags. That is not the same as cleared.' };
+      return null;
+
+    case 'mira':
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId, state) + '. Payment on delivery. The seal code should look familiar by then.' };
+        return { text: 'No route I would put my name on. Plenty I would put someone else on.' };
+      }
+      if (choiceId === 'market') return { text: 'Cargo insurance wants verified seals. Verification writes to the same database freight uses, so the seal becomes true when it arrives.' };
+      if (choiceId === 'dismiss') return { text: 'The seal was never yours. That is why it can protect you.' };
+      return null;
+
+    case 'slate':
+      if (choiceId === 'tech') return { text: 'Pulse Laser S keeps arguments short. Good shields keep repairs profitable. A bad weld keeps everybody employed.' };
+      if (choiceId === 'fix') return { text: 'Berth four needs a clean seam and will get a fast one. This will hold till the next gate.' };
+      if (choiceId === 'thanks') return { text: 'Do not thank the weld. Inspect it.' };
+      return null;
+
+    case 'drift':
+      if (choiceId === 'routes') {
+        const route = bestTradeRoute(state, stationId);
+        if (route) return { text: commodityName(route.cmdtyId) + ' moves well to ' + stationName(route.sellStationId, state) + '. Quota met, credit transferred, loss rounded down.' };
+        return { text: 'No margin today. Wait for the ledger to need a different answer.' };
+      }
+      if (choiceId === 'market') return { text: 'The exchange does not audit small losses. Enough small losses and a whole planet starts buying air.' };
+      if (choiceId === 'dismiss') return { text: 'The vein pays the hand that weighs it.' };
+      return null;
+
+    case 'quinn':
+      if (choiceId === 'rumors') return { text: 'Quinn\'s Place is under new management. Same rates. Funny how often new management knows where the old drawer is.' };
+      if (choiceId === 'word') return { text: 'Count the stack once under bar light, once under UV. If the totals match, somebody else already paid.' };
+      if (choiceId === 'drink') return { text: 'Rate is posted. No questions. The count ends when the drawer closes.' };
+      return null;
+
+    case 'ferrow':
+      if (choiceId === 'bounties') {
+        const board = getMissionBoard(state, stationId);
+        const bounty = board && board.slots
+          ? board.slots.find(m => m.type === 'bounty_hunt' || m.type === 'patrol_clear')
+          : null;
+        if (bounty) {
+          const reward = rewardCreditsText(bounty);
+          return {
+            text: 'Filed and stamped: "' + missionOfferTitle(bounty) + '." Pays ' + reward + ' cr. The tag clears payment at any intake desk; Accept + Track so the ledger follows you out.',
+            missionOffer: bounty,
+          };
+        }
+        return { text: 'Wall is bare this shift. That is not peace — that is paperwork catching up. Look again after the patrols file.' };
+      }
+      if (choiceId === 'action') return { text: 'The radiation lane east of the intake churns. Raiders den where patrols will not loiter, and the Lung swallows anything that stalls there.' };
+      if (choiceId === 'low') return { text: 'I never do. The wall remembers every name I did not post.' };
+      return null;
+
+    case 'kurtz':
+      if (choiceId === 'takeLedger' || choiceId === 'openLedger') {
+        return { text: 'The mass stays. The paper is yours. Do not ask me to count it twice.' };
+      }
+      if (choiceId === 'approach' || choiceId === 'desk') {
+        return { text: 'Eleven years. The mass stays. Only the manifest changes.' };
+      }
+      return { text: 'The count continues until you choose.' };
+
+    default:
+      return null;
+  }
+}
+
+/* ── main panel export ──────────────────────────────────────────────── */
+

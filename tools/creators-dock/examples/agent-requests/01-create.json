@@ -1,0 +1,140 @@
+{
+  "schema": "spaceface.creatorsDockRequest.v1",
+  "id": "agent.create-cross",
+  "ops": [
+    {
+      "op": "create",
+      "project": {
+        "id": "dock.agent-created-cross",
+        "title": "Agent created cross",
+        "description": "A cloud agent laid a cargo cross through the dock API.",
+        "composition": "agent-created-cross",
+        "seed": 22001,
+        "ticks": 180,
+        "grid": { "size": 10, "snap": false },
+        "notes": {
+          "composition": "agent-created-cross",
+          "expectedObservation": "Player thrust makes playerZ greater than 0.5."
+        }
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "player",
+        "kind": "actor",
+        "role": "player",
+        "profile": "ship.starter",
+        "x": 0,
+        "z": 0,
+        "heading": 1.570796,
+        "velX": 0,
+        "velZ": 0,
+        "angularVelocity": 0,
+        "team": 0,
+        "factionId": "faction_free",
+        "isPlayer": true,
+        "persistent": true,
+        "label": "agent hitch"
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "cargo",
+        "kind": "actor",
+        "role": "cargo",
+        "profile": "asteroid.light",
+        "x": 20,
+        "z": 40,
+        "heading": 0,
+        "velX": 12,
+        "velZ": 0,
+        "angularVelocity": 0,
+        "team": 2,
+        "persistent": true,
+        "label": "agent cargo"
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "cross",
+        "kind": "trigger",
+        "shape": "circle",
+        "x": 0,
+        "z": 30,
+        "radius": 12,
+        "labOnly": true,
+        "label": "cross",
+        "assertion": { "kind": "eventByTick", "signal": "playerZ", "op": ">", "value": 0.5, "byTick": 179 }
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "final_z",
+        "kind": "objective",
+        "x": 0,
+        "z": 30,
+        "metric": "trace.final",
+        "signal": "playerZ",
+        "op": ">",
+        "value": 0.5,
+        "labOnly": true,
+        "label": "final playerZ"
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "alive",
+        "kind": "trigger",
+        "shape": "circle",
+        "x": 0,
+        "z": 0,
+        "radius": 10,
+        "labOnly": true,
+        "label": "alive",
+        "assertion": { "kind": "holds", "signal": "playerAlive", "holdsTicks": 30 }
+      }
+    },
+    {
+      "op": "addObject",
+      "object": {
+        "id": "to_cargo",
+        "kind": "route",
+        "from": "player",
+        "to": "cargo",
+        "label": "intercept",
+        "gameplay": false
+      }
+    },
+    {
+      "op": "setFrames",
+      "frames": [
+        { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "boost": false, "fire": false } }
+      ]
+    },
+    {
+      "op": "setEncounter",
+      "encounter": {
+        "id": "dock_agent_created",
+        "order": 1011,
+        "tier": "minor",
+        "deck": "combat",
+        "weight": 1,
+        "zoneTypes": ["trade_lane"],
+        "script": "convoy",
+        "pressureCost": 12,
+        "cooldownS": 480,
+        "proximity": true,
+        "shape": { "situation": "convoy", "place": "trade_lane", "twist": "none", "actor": "mule_trader" },
+        "factionId": "faction_mts",
+        "context": "encounter",
+        "squad": { "archetypes": ["mule_trader"] },
+        "title": "Agent cross"
+      }
+    }
+  ]
+}

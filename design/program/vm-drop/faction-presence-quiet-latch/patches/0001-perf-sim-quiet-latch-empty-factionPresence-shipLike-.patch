@@ -1,0 +1,379 @@
+From bc2d417347053c2ea3faa57b499736575d65f47e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 16:04:46 -0400
+Subject: [PATCH] =?UTF-8?q?perf(sim):=20quiet-latch=20empty=20factionPrese?=
+ =?UTF-8?q?nce=20shipLike=20scans=20(~8=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight still walked shipLike every tick for fulfillment
+fixed-route anchors and pitborn-gone probes even with no markers.
+Quiet latch short-circuits those scans; wakes on membership / presence
+events / 0.5s rescan. Soft-GPU fps not claimed. Picture contract ON.
+---
+ src/systems/factionPresence.js             | 100 +++++++++++-
+ test/faction-presence-quiet-latch.test.mjs | 167 +++++++++++++++++++++
+ 2 files changed, 264 insertions(+), 3 deletions(-)
+ create mode 100644 test/faction-presence-quiet-latch.test.mjs
+
+diff --git a/src/systems/factionPresence.js b/src/systems/factionPresence.js
+index 9514b6064..504d6b158 100644
+--- a/src/systems/factionPresence.js
++++ b/src/systems/factionPresence.js
+@@ -4,7 +4,7 @@
+ // loss-ledger state are read-only.
+ 
+ import { hash32 } from '../core/rng.js';
+-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
++import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+ import { shouldRunOnTick } from '../core/activityScheduler.js';
+ import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
+ import { buildSlotList, makeShipEntitySpec } from './ships.js';
+@@ -28,6 +28,27 @@ import {
+   stableRecordId,
+ } from '../world/worldRecords.js';
+ 
++
++/** Bench A/B: production default ON. Quiet latch skips shipLike fulfillment-route +
++ * pitborn-bind scans when no fixed-route / pitborn presence remains. Soft-GPU fps not
++ * claimed. Fresh registry.step residual (#160). */
++let FACTION_PRESENCE_QUIET_LATCH = true;
++export function setFactionPresenceQuietLatchForBench(enabled) {
++  FACTION_PRESENCE_QUIET_LATCH = enabled !== false;
++}
++export function getFactionPresenceQuietLatchForBench() {
++  return FACTION_PRESENCE_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
++
++function publishPresenceQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.factionPresenceRuntime || (state.factionPresenceRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
+ const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+ const CERES_REFINERY_ACTIVITY = ceresActivityPocket('ceres_refinery_pocket');
+ const CERES_REFINERY_TENDER = CERES_REFINERY_ACTIVITY.actorSlots
+@@ -395,6 +416,8 @@ export const factionPresence = {
+     this.helpers = ctx.helpers || {};
+     this.registry = ctx.registry || null;
+     this._boardingRepairRequested = false;
++    this._presenceQuiet = null;
++    this._presenceWakeSeq = 0;
+     ensureOwnState(this.state);
+     this._unsub = [
+       this.bus.on('sector:enter', (payload) => this._onSectorEnter(payload || {})),
+@@ -413,6 +436,8 @@ export const factionPresence = {
+ 
+   newGame() {
+     this._boardingRepairRequested = false;
++    this._presenceQuiet = null;
++    this._presenceWakeSeq = 0;
+     this.state.factionPresence = {
+       active: {}, receipts: [], sequence: 0, boarding: null, processedDisable: {},
+       servicesByStation: {}, serviceReceipts: {},
+@@ -423,17 +448,77 @@ export const factionPresence = {
+     // Reconcile against the live entity set rather than consuming combat-death events here. This
+     // keeps the Understory strictly downstream of lossLedger:recorded while still promoting a
+     // surviving Concord patrol for Pitborn on the next deterministic simulation tick.
++    //
++    // Quiet open flight: every tick still walked shipLike for fulfillment fixed-route anchors
++    // and (via || short-circuit) pitborn-gone probes even when no fixed-route / pitborn markers
++    // existed. Quiet latch short-circuits those scans; wakes on membership, presence wake seq
++    // (sector enter / spawn / combat / boarding / save), or 0.5 s rescan. Soft-GPU fps not claimed.
++    const state = this.state;
++    const own = ensureOwnState(state);
++    if (FACTION_PRESENCE_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const tick = state.tick | 0;
++      const wakeSeq = this._presenceWakeSeq | 0;
++      const quiet = this._presenceQuiet;
++      if (!own.boarding
++        && quiet
++        && membership != null
++        && quiet.membership === membership
++        && quiet.wakeSeq === wakeSeq
++        && ((tick - (quiet.armedTick | 0)) < FACTION_PRESENCE_QUIET_RESCAN_TICKS)) {
++        publishPresenceQuiet(state, true);
++        return;
++      }
++    } else if (this._presenceQuiet) {
++      this._presenceQuiet = null;
++    }
++
+     if (
+-      shouldRunOnTick(this.state.tick, 'factionPresence:pitbornBind', 8)
++      shouldRunOnTick(state.tick, 'factionPresence:pitbornBind', 8)
+       || this._boundPitbornConcordIsGone()
+     ) {
+       this._bindPitbornConcordTargets();
+     }
+     this._updateFulfillmentRoutes();
+     this._updateBoarding();
++
++    if (FACTION_PRESENCE_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const census = this._censusPresenceWork();
++      if (membership != null && !own.boarding && !census.busy) {
++        this._presenceQuiet = {
++          membership,
++          armedTick: state.tick | 0,
++          wakeSeq: this._presenceWakeSeq | 0,
++        };
++        publishPresenceQuiet(state, true);
++      } else {
++        this._presenceQuiet = null;
++        publishPresenceQuiet(state, false);
++      }
++    }
++  },
++
++  _wakePresenceQuiet() {
++    this._presenceWakeSeq = (this._presenceWakeSeq | 0) + 1;
++    this._presenceQuiet = null;
++  },
++
++  /** Count live fixed-route / pitborn markers that force per-tick shipLike work. */
++  _censusPresenceWork() {
++    let fixedRoute = 0;
++    let pitborn = 0;
++    for (const entity of indexedShipLikeScan(this.state)) {
++      const marker = entity && entity.data && entity.data.factionPresence;
++      if (!marker) continue;
++      if (marker.fixedRoute) fixedRoute++;
++      if (marker.factionId === 'faction_pitborn') pitborn++;
++    }
++    return { fixedRoute, pitborn, busy: fixedRoute > 0 || pitborn > 0 };
+   },
+ 
+   _onSectorEnter(payload) {
++    this._wakePresenceQuiet();
+     const state = this.state;
+     const sectorId = payload.sectorId || (state.world && state.world.currentSectorId);
+     if (!sectorId) return;
+@@ -578,7 +663,12 @@ export const factionPresence = {
+     const entity = payload.entity || (payload.id != null && this.state.entities && this.state.entities.get
+       ? this.state.entities.get(payload.id)
+       : null);
+-    if (!entity || !['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
++    if (!entity) return;
++    const marker = entity.data && entity.data.factionPresence;
++    if (marker || ['faction_scn', 'faction_pitborn', 'faction_fulfillment'].includes(entity.factionId)) {
++      this._wakePresenceQuiet();
++    }
++    if (!['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
+     this._bindPitbornConcordTargets();
+   },
+ 
+@@ -586,6 +676,7 @@ export const factionPresence = {
+    *  seeded anchor so the flipped sector reads as fought-over the next time the player enters.
+    *  aftermathWrecks owns wreck state — this only emits its documented wreckField:source seam. */
+   _onConflictFlip(payload) {
++    this._wakePresenceQuiet();
+     const state = this.state;
+     const sectorId = payload && payload.sectorId;
+     const pairKey = payload && payload.pairKey;
+@@ -652,6 +743,7 @@ export const factionPresence = {
+   },
+ 
+   _onCombatDamage(payload) {
++    this._wakePresenceQuiet();
+     if (payload.attackerId !== this.state.playerId || payload.targetId == null || !(payload.applied > 0)) return;
+     const target = this.state.entities && this.state.entities.get
+       ? this.state.entities.get(payload.targetId)
+@@ -783,6 +875,7 @@ export const factionPresence = {
+   },
+ 
+   _onSaveLoaded() {
++    this._wakePresenceQuiet();
+     const sectorId = this.state.world && this.state.world.currentSectorId;
+     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+       const seed = ((this.state.meta && this.state.meta.seed) || 1) >>> 0;
+@@ -958,6 +1051,7 @@ export const factionPresence = {
+   },
+ 
+   _onSubsystemDisabled(payload) {
++    this._wakePresenceQuiet();
+     if (payload.dependencyDisabled === true) return;
+     if (payload.targetId !== this.state.playerId) return;
+     if (!['subsystem_drive', 'subsystem_power'].includes(payload.subsystemId)) return;
+diff --git a/test/faction-presence-quiet-latch.test.mjs b/test/faction-presence-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..ebebf0593
+--- /dev/null
++++ b/test/faction-presence-quiet-latch.test.mjs
+@@ -0,0 +1,167 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  factionPresence,
++  setFactionPresenceQuietLatchForBench,
++  getFactionPresenceQuietLatchForBench,
++} from '../src/systems/factionPresence.js';
++import { sampleFactionBehavior } from '../src/data/factionDoctrines.js';
++
++function boot() {
++  const state = createGameState(1603);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  state.runtime = { profileId: 'production' };
++  state.meta = { seed: 1603 };
++  state.world = { currentSectorId: 'sector_ceres_belt' };
++  state.sector = { id: 'sector_ceres_belt' };
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 }, rot: 0,
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0,
++    data: { ai: { passive: true } },
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  const ships = [player];
++  for (let i = 0; i < 24; i++) {
++    ships.push(helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 400 + i * 40, z: (i % 5) * 30 },
++      vel: { x: 0, z: 0 }, rot: 0,
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 0,
++      physicsSleeping: true,
++      data: { ai: { passive: true } },
++    }));
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = 1;
++  }
++  factionPresence.init({ state, bus, helpers, registry: null });
++  return { state, bus, helpers, ships, player };
++}
++
++function bumpIndex(state) {
++  if (state.entityIndex) {
++    state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  }
++}
++
++test('factionPresence quiet latch arms and skips empty shipLike work', () => {
++  assert.equal(getFactionPresenceQuietLatchForBench(), true);
++  setFactionPresenceQuietLatchForBench(true);
++  const { state } = boot();
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    state.simTime += 1 / 60;
++    factionPresence.update();
++  }
++  assert.equal(state.factionPresenceRuntime?.quietLatched, true);
++  assert.ok(factionPresence._presenceQuiet);
++  const armedTick = factionPresence._presenceQuiet.armedTick;
++  for (let i = 0; i < 10; i++) {
++    state.tick++;
++    state.simTime += 1 / 60;
++    factionPresence.update();
++  }
++  assert.equal(state.factionPresenceRuntime?.quietLatched, true);
++  assert.equal(factionPresence._presenceQuiet.armedTick, armedTick);
++});
++
++test('factionPresence quiet latch wakes on fixed-route presence spawn', () => {
++  setFactionPresenceQuietLatchForBench(true);
++  const { state, helpers, ships } = boot();
++  for (let i = 0; i < 4; i++) {
++    state.tick++;
++    factionPresence.update();
++  }
++  assert.equal(state.factionPresenceRuntime?.quietLatched, true);
++
++  const doctrine = sampleFactionBehavior('faction_fulfillment', 1603)[0];
++  const routeShip = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 120, z: 80 },
++    vel: { x: 0, z: 0 }, rot: 0,
++    radius: 10, mass: 40, hull: 120, hullMax: 120, collides: true, team: 2,
++    factionId: 'faction_fulfillment',
++    data: {
++      ai: {
++        passive: true,
++        factionPresenceDoctrine: doctrine,
++        activity: {},
++      },
++      factionPresence: {
++        factionId: 'faction_fulfillment',
++        fixedRoute: true,
++        routeId: 'fulfillment_tethys_helios',
++        routeStart: { x: 0, z: 0 },
++        routeEnd: { x: 400, z: 0 },
++        routePeriodS: 32,
++        formationIndex: 0,
++        formationCount: 1,
++        formationSpacing: 52,
++      },
++    },
++  });
++  ships.push(routeShip);
++  state.entityIndex.ships = ships;
++  state.entityIndex.shipLike = ships;
++  bumpIndex(state);
++  // Mimic bus spawn notification
++  factionPresence._onEntitySpawned({ entity: routeShip });
++  assert.equal(factionPresence._presenceQuiet, null);
++
++  state.tick++;
++  state.simTime += 1 / 60;
++  factionPresence.update();
++  assert.equal(state.factionPresenceRuntime?.quietLatched, false);
++  assert.equal(routeShip.data.ai.activity?.kind, 'transit');
++  assert.ok(routeShip.data.ai.activity?.anchor);
++  assert.equal(routeShip.data.ai.activity?.routeId, 'fulfillment_tethys_helios');
++});
++
++test('factionPresence quiet latch bench toggle restores always-update', () => {
++  setFactionPresenceQuietLatchForBench(false);
++  assert.equal(getFactionPresenceQuietLatchForBench(), false);
++  const { state } = boot();
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    factionPresence.update();
++  }
++  assert.equal(state.factionPresenceRuntime?.quietLatched, undefined);
++  assert.equal(factionPresence._presenceQuiet, null);
++  setFactionPresenceQuietLatchForBench(true);
++});
++
++test('factionPresence quiet latch wakes on boarding', () => {
++  setFactionPresenceQuietLatchForBench(true);
++  const { state } = boot();
++  for (let i = 0; i < 4; i++) {
++    state.tick++;
++    factionPresence.update();
++  }
++  assert.equal(state.factionPresenceRuntime?.quietLatched, true);
++  state.factionPresence.boarding = {
++    id: 'test_boarding',
++    phase: 'holding',
++    routeId: 'fulfillment_tethys_helios',
++    subsystemId: 'subsystem_drive',
++    startedAt: 0,
++    phaseStartedAt: 0,
++    holdingPos: { x: 1, z: 2 },
++    routed: true,
++  };
++  state.tick++;
++  factionPresence.update();
++  assert.equal(state.factionPresenceRuntime?.quietLatched, false);
++});
+-- 
+2.47.3
+

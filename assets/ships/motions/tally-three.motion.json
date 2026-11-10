@@ -1,0 +1,200 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "tally_three_instruments",
+  "sourceAssetId": "SF_PLACE_TALLY_3",
+  "sourceGlbSha256": "b0dfd8a8ea542221e9ea755b3768162f3bdb5f10fe71e4d184d0fb22728c705c",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "tally_arm_left",
+      "node": "MOTION_TALLY_ARM_LEFT",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          0,
+          0.5199999809265137,
+          -2.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tally_arm_right",
+      "node": "MOTION_TALLY_ARM_RIGHT",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          0,
+          0.5199999809265137,
+          2.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tally_scan",
+      "node": "MOTION_TALLY_SCAN",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          7.650000095367432,
+          0.5099999904632568,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tally_stamp",
+      "node": "MOTION_TALLY_STAMP",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          -7.070000171661377,
+          2.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "tally_arm_left",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "tally_arm_right",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "tally_scan",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "tally_stamp",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ],
+  "simulationAuthority": "Instrument owner reads current assessment, newly observed evidence and accepted economy receipt. No ambient or animation-owned custody."
+}

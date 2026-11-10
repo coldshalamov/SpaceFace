@@ -1,0 +1,48 @@
+{
+  "sourceBlob": "aba8b7cb9aa411907eb3d867f0f38892463484bd",
+  "sourceCommit": "5e5b619b57c53be410e90c7e5f21bbb2fd0127f5",
+  "limits": [
+    "Source-slice primitive geometry, not full renderer or live game camera.",
+    "Material scalar properties transferred to Blender; game lighting, tone mapping and animation are not reproduced.",
+    "Blink/animation setup suppressed for a static comparison; material-role metadata omitted.",
+    "No commodity or volatile flags on this encounter."
+  ],
+  "models": [
+    {
+      "name": "before_beacon",
+      "language": "route-nav-buoy",
+      "bounds": {
+        "min": [
+          -9.659999698400497,
+          -18.86000003427267,
+          -9.659999698400497
+        ],
+        "max": [
+          9.659999698400497,
+          25.299999876618386,
+          9.659999698400497
+        ]
+      },
+      "triangles": 304,
+      "meshCount": 5
+    },
+    {
+      "name": "after_payload",
+      "language": "sealed-cargo-canister",
+      "bounds": {
+        "min": [
+          -14.375,
+          -12.305000603199005,
+          -12.305000603199005
+        ],
+        "max": [
+          14.375,
+          14.489999917745589,
+          12.305000603199005
+        ]
+      },
+      "triangles": 336,
+      "meshCount": 4
+    }
+  ]
+}

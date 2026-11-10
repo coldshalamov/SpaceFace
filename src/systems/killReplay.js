@@ -1,0 +1,430 @@
+// §22 B9 — the last five seconds of a kill, from the positions the sim already stepped.
+// Round end plays that path back. Skip leaves the results model alone.
+// The ring is fixed-size. Nothing here writes velocity, credits, or the run.
+//
+// ADVENTURE TAPE — the flight side of the same instrument. The replay surface is a tape: it
+// needs ticks, a seed, an input ring to read boost burns from, and event marks. This producer
+// keeps the last TAPE window of flight ticks in fixed typed arrays (one Map.get + one byte per
+// tick, no per-tick allocation) and publishes it at state.replay.recording — the exact field
+// the Replay surface resolves when nothing else published a tape. Event marks are stored in the
+// window's own tick space so old marks age out with the tape instead of pointing past it.
+
+import { createForceTapeRecorder } from '../sim/forceTape.js';
+
+export const KILL_REPLAY_S = 5;
+export const KILL_REPLAY_DT = 1 / 60;
+const CAP = Math.round(KILL_REPLAY_S / KILL_REPLAY_DT);
+
+/** The Adventure tape window (the surface's own tape length). */
+export const ADVENTURE_TAPE_S = 30;
+const TAPE_CAP = Math.round(ADVENTURE_TAPE_S * 60);
+const TAPE_MAX_MARKS = 32;
+// Hull hits band-limit to one mark per 1.5 s of tape: under sustained fire the timeline paints a
+// bounded row of red ticks, never a smear, and a grind cannot flood the shared 32-mark budget.
+const TAPE_DAMAGE_MARK_GAP_TICKS = 90;
+export const ADVENTURE_POSE_STRIDE = 6;
+export const ADVENTURE_POSE_ACTORS = 12;
+const POSE_FRAME_CAP = Math.ceil(TAPE_CAP / ADVENTURE_POSE_STRIDE);
+const forceTape = createForceTapeRecorder(TAPE_CAP);
+
+const ring = {
+  count: 0,
+  head: 0,
+  px: new Float32Array(CAP),
+  pz: new Float32Array(CAP),
+  bx: new Float32Array(CAP),
+  bz: new Float32Array(CAP),
+};
+
+function liveRun(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'survival' && run.phase && run.phase !== 'inactive');
+}
+
+export function resetKillReplay() {
+  ring.count = 0;
+  ring.head = 0;
+}
+
+function pushSample(px, pz, bx, bz) {
+  const i = ring.head;
+  ring.px[i] = px;
+  ring.pz[i] = pz;
+  ring.bx[i] = bx;
+  ring.bz[i] = bz;
+  ring.head = (i + 1) % CAP;
+  if (ring.count < CAP) ring.count += 1;
+}
+
+function samplesFromRing() {
+  const n = ring.count;
+  const out = new Array(n);
+  const start = ring.count < CAP ? 0 : ring.head;
+  for (let i = 0; i < n; i += 1) {
+    const at = (start + i) % CAP;
+    out[i] = { x: ring.px[at], z: ring.pz[at], bx: ring.bx[at], bz: ring.bz[at] };
+  }
+  return out;
+}
+
+/** Test and system share this. One sample of where the bodies were. */
+export function noteKillReplaySample(px, pz, bx, bz) {
+  pushSample(Number(px) || 0, Number(pz) || 0, Number(bx) || 0, Number(bz) || 0);
+}
+
+function nearestOther(state, player) {
+  if (!state || !player || !player.pos) return null;
+  let best = null;
+  let bestD = Infinity;
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  // Plain inlined loop: this runs every sim tick over live ships (the replay ring samples
+  // at 60 Hz). A closer wreck must not steal the body track — captureKillReplay stamps the
+  // death sample onto the victim. First strict minimum in iteration order wins. The entity
+  // index's ships bucket is the live-hull walk; the fat list is only used when the index
+  // is not ready.
+  const consider = (ent) => {
+    if (!ent || ent === player || ent.alive === false || !ent.pos) return;
+    if (ent.type !== 'ship') return;
+    const dx = ent.pos.x - px;
+    const dz = ent.pos.z - pz;
+    const d = dx * dx + dz * dz;
+    if (d < bestD) { best = ent; bestD = d; }
+  };
+  const index = state.entityIndex;
+  const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.ships);
+  if (indexed) {
+    for (let i = 0; i < index.ships.length; i += 1) consider(index.ships[i]);
+    return best;
+  }
+  const list = state.entityList;
+  if (list && list.length) {
+    for (let i = 0; i < list.length; i += 1) consider(list[i]);
+  } else if (state.entities && typeof state.entities.forEach === 'function') {
+    state.entities.forEach(consider);
+  }
+  return best;
+}
+
+/**
+ * Freeze the ring plus the body that just died.
+ * `samples` is the path. The last sample is the death.
+ */
+export function captureKillReplay(state, victim) {
+  const run = state && state.run;
+  const seed = run && Number.isInteger(run.seed) ? run.seed : 0;
+  const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+  const player = state && state.entities && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+  if (victim && victim.pos) {
+    const px = player && player.pos ? player.pos.x : victim.pos.x;
+    const pz = player && player.pos ? player.pos.z : victim.pos.z;
+    pushSample(px, pz, victim.pos.x, victim.pos.z);
+  }
+  const samples = samplesFromRing();
+  const radius = victim && Number(victim.collisionRadius) > 0 ? victim.collisionRadius : 8;
+  if (!samples.length) return null;
+  return {
+    seed,
+    tick,
+    durationS: KILL_REPLAY_S,
+    hullLength: radius,
+    skipped: false,
+    samples,
+    body: samples[samples.length - 1],
+  };
+}
+
+/** Where the replay is at `elapsed` seconds. t = 5s is the death sample. */
+export function replaySampleAt(record, elapsedSeconds) {
+  const samples = record && record.samples;
+  if (!samples || !samples.length) return null;
+  const duration = record.durationS > 0 ? record.durationS : KILL_REPLAY_S;
+  const u = Math.max(0, Math.min(1, (Number(elapsedSeconds) || 0) / duration));
+  const index = Math.min(samples.length - 1, Math.round(u * (samples.length - 1)));
+  return samples[index];
+}
+
+export function killReplayActions(result) {
+  const replay = result && result.killReplay;
+  if (!replay || replay.skipped || !replay.samples || replay.samples.length < 2) return [];
+  return ['Replay the last kill', 'Skip the replay'];
+}
+
+export function skipKillReplay(result) {
+  if (!result || !result.killReplay) return result;
+  result.killReplay = { ...result.killReplay, skipped: true };
+  return result;
+}
+
+// ── the Adventure tape ──────────────────────────────────────────────────────
+
+const tape = {
+  count: 0,            // samples held (≤ TAPE_CAP)
+  total: 0,            // flight ticks stepped since the tape started
+  head: 0,             // next write slot
+  boost: new Uint8Array(TAPE_CAP),
+  marks: [],           // { at (absolute tape tick), type, label } — windowed on publish
+  marksVersion: 0,     // bumped only when marks change; the published list rebuilds then
+  publishedVersion: -1,
+  lastDamageAt: -Infinity, // tape tick of the newest 'damage' mark (band-limit, see above)
+};
+
+function resetAdventureTape() {
+  forceTape.clear();
+  tape.count = 0;
+  tape.total = 0;
+  tape.head = 0;
+  tape.marks.length = 0;
+  tape.marksVersion += 1;
+  tape.lastDamageAt = -Infinity;
+}
+
+function tapeBoostAt(absoluteTick) {
+  const base = tape.total - tape.count;
+  if (absoluteTick < base || absoluteTick >= tape.total) return 0;
+  return tape.boost[absoluteTick % TAPE_CAP];
+}
+
+function entityLabel(entity, fallback = 'Kill') {
+  const data = entity && entity.data || {};
+  const value = data.callsign || data.displayName || data.name
+    || (data.def && data.def.name) || data.defId || entity && entity.name;
+  const text = String(value || '').trim();
+  return text || fallback;
+}
+
+function recordTape(state) {
+  if (!state || state.mode !== 'flight') return;
+  const player = state.entities && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player) return;
+  const intent = player.data && player.data.intent || null;
+  forceTape.note(state, tape.total);
+  tape.boost[tape.head] = intent && intent.boost === true ? 1 : 0;
+  tape.head = (tape.head + 1) % TAPE_CAP;
+  if (tape.count < TAPE_CAP) tape.count += 1;
+  tape.total += 1;
+
+  const recording = state.replay && state.replay.recording;
+  if (!recording) return;
+  const ticks = tape.count;
+  recording.seed = state.meta?.seed ?? recording.seed;
+  recording.playerId = String(state.playerId);
+  recording.ticks = ticks;
+  recording.seconds = ticks * KILL_REPLAY_DT;
+  recording.base = tape.total - ticks;
+  recording.absoluteBaseTick = Math.max(0, state.tick - ticks + 1);
+  if (tape.marksVersion !== tape.publishedVersion) {
+    rebuildTapeMarks(recording, recording.base);
+  } else if (recording.events.length && tape.count >= TAPE_CAP) {
+    // The full window slides one tick; the published marks slide with it in place — no
+    // per-tick allocation. Aged-out marks go negative and the surface's own guards skip them.
+    for (let i = 0; i < recording.events.length; i += 1) recording.events[i].tick -= 1;
+  }
+  if (tape.total % ADVENTURE_POSE_STRIDE === 0) recordEntityPoses(state, player, recording);
+}
+
+function recordEntityPoses(state, player, recording) {
+  // 10 Hz, 30 seconds, at most twelve nearby actors. Never retain live entities.
+  const candidates = [];
+  const consider = (entity) => {
+    if (!entity || entity.alive === false || !entity.pos || entity.id == null) return;
+    const actualDistance = (entity.pos.x - player.pos.x) ** 2 + (entity.pos.z - player.pos.z) ** 2;
+    if (entity !== player && actualDistance > 1400 ** 2) return;
+    const data = entity.data || {};
+    const authored = data.worldOneOff || data.storyPropKind
+      || (data.worldSiteId && (data.placeId || data.archetypeGlb));
+    // A field of small rocks must not evict the visited landmark or the pilot.
+    const distance = actualDistance - (entity === player ? 2e12 : authored ? 1e12 : 0);
+    const at = candidates.findIndex((row) => row.distance > distance);
+    if (at < 0) { if (candidates.length < ADVENTURE_POSE_ACTORS) candidates.push({ entity, distance }); }
+    else { candidates.splice(at, 0, { entity, distance }); candidates.length = Math.min(candidates.length, ADVENTURE_POSE_ACTORS); }
+  };
+  if (state.entityList) for (const entity of state.entityList) consider(entity);
+  else state.entities?.forEach(consider);
+  for (const row of state.world?.dressing?.rows || []) consider(row);
+  const poses = candidates.map(({ entity }) => ({
+    tick: state.tick, id: String(entity.id), generation: entity.occupantGeneration || 0,
+    x: Number(entity.pos.x) || 0, z: Number(entity.pos.z) || 0,
+    heading: Number(entity.rot) || 0, type: String(entity.type || ''),
+    player: entity === player, team: entity.team || 0,
+    radius: entity.data?.visualRadius || entity.radius || entity.collisionRadius || 0,
+    visual: entity.data?.lootTableId || entity.data?.defId || entity.data?.hullDefId || null,
+    weaponId: entity.data?.weaponId || null,
+    silhouette: entity.data?.silhouette || null, factionId: entity.factionId || entity.data?.factionId || null,
+    visualData: replayVisualData(entity.data),
+  }));
+  const forces = forceTape.read(tape.total - 1);
+  const scene = { sectorId: state.world?.currentSectorId, simTime: state.simTime };
+  if (scene.sectorId === 'sector_the_bolus') {
+    scene.bolusFlags = {};
+    for (const [key, value] of Object.entries(state.world?.alienEcology?.sectorFlags || {})) {
+      if (key.startsWith('bolus:') && (Number.isFinite(value) || typeof value === 'boolean')) scene.bolusFlags[key] = value;
+    }
+  }
+  recording.poseFrames.push({ tick: state.tick, poses, scene, ...forces });
+  while (recording.poseFrames.length > POSE_FRAME_CAP) recording.poseFrames.shift();
+  // The worker bridge mirrors this one small serializable leaf, never the native tape.
+  state.replay.latestPoseSample = {
+    tick: state.tick, poses, scene, ...forces, seed: recording.seed, tickRate: 60,
+    boost: tape.boost[(tape.head + TAPE_CAP - 1) % TAPE_CAP] === 1,
+    events: recording.events.filter((event) => event.tick >= 0).map((event) => ({ ...event })),
+  };
+}
+
+const REPLAY_VISUAL_KEYS = ['placeId', 'archetypeGlb', 'landmarkGlb', 'assetId', 'assetRef',
+  'storyPropKind', 'worldSiteId', 'worldOneOff', 'oneOffId', 'landmark', 'poi',
+  'placeScale', 'placeRadius', 'placeTargetRadius', 'visualRadius', 'stationTypeId', 'isGate',
+  'isWormhole', 'kilnback', 'name', 'scanLabel', 'kind', 'homeSectorId'];
+function replayVisualData(data) {
+  const out = {};
+  for (const key of REPLAY_VISUAL_KEYS) {
+    const value = data?.[key];
+    if (typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value)) out[key] = value;
+  }
+  return out;
+}
+
+function rebuildTapeMarks(recording, base) {
+  recording.events.length = 0;
+  for (let i = 0; i < tape.marks.length; i += 1) {
+    const mark = tape.marks[i];
+    const at = mark.at - base;
+    if (at >= 0) recording.events.push({ tick: at, absoluteTick: mark.absoluteTick, type: mark.type, label: mark.label,
+      actors: mark.actors, position: mark.position });
+  }
+  tape.publishedVersion = tape.marksVersion;
+}
+
+function addTapeMark(state, type, label, subjectId = state.playerId) {
+  if (tape.total <= 0) return;
+  const subject = state.entities?.get(subjectId), actor = state.entities?.get(state.playerId);
+  const actors = [{ id: String(subjectId), generation: subject?.occupantGeneration || 0, role: 'subject' }];
+  if (subjectId !== state.playerId) actors.push({ id: String(state.playerId), generation: actor?.occupantGeneration || 0, role: 'actor' });
+  tape.marks.push({ at: tape.total - 1, absoluteTick: state.tick, type, label, actors,
+    position: subject?.pos ? { x: subject.pos.x, z: subject.pos.z } : null });
+  if (tape.marks.length > TAPE_MAX_MARKS) tape.marks.shift();
+  tape.marksVersion += 1;
+  // Publish eagerly: a pause right after the kill must not lose the mark.
+  const recording = state && state.replay && state.replay.recording;
+  if (recording) {
+    rebuildTapeMarks(recording, tape.total - tape.count);
+    if (state.replay.latestPoseSample) state.replay.latestPoseSample.events = recording.events.map((event) => ({ ...event }));
+  }
+}
+
+/** Test seam: the windowed tape in its published shape. */
+export function adventureTapeRecording(state) {
+  if (!state) return null;
+  state.replay = state.replay || {};
+  if (!state.replay.recording) {
+    state.replay.recording = {
+      seed: state.meta && state.meta.seed != null ? state.meta.seed : 0,
+      tickRate: 60,
+      playerId: state.playerId == null ? null : String(state.playerId),
+      ticks: 0,
+      seconds: 0,
+      base: 0,
+      absoluteBaseTick: 0,
+      poseFrames: [],
+      snapshotRing: null,
+      forceRing: {
+        read(winTick) {
+          return forceTape.read((state.replay.recording.base || 0) + winTick);
+        },
+      },
+      events: [],
+      inputRing: {
+        read(winTick) {
+          const boost = tapeBoostAt((state.replay.recording.base || 0) + winTick);
+          return { data: { boost: boost === 1 } };
+        },
+      },
+    };
+  }
+  return state.replay.recording;
+}
+
+export const killReplay = {
+  name: 'killReplay',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx && ctx.state;
+    resetKillReplay();
+    resetAdventureTape();
+    if (this.state) adventureTapeRecording(this.state);
+    const bus = ctx && ctx.bus;
+    if (bus && typeof bus.on === 'function') {
+      this._offTapeNew = bus.on('game:new', () => {
+        resetAdventureTape();
+        if (this.state) {
+          const recording = adventureTapeRecording(this.state);
+          recording.ticks = 0;
+          recording.seconds = 0;
+          recording.base = 0;
+          recording.events.length = 0;
+          recording.poseFrames.length = 0;
+          delete this.state.replay.latestPoseSample;
+        }
+      });
+      this._offTapeKill = bus.on('entity:killed', (p) => {
+        if (!p || p.killerId == null || !this.state) return;
+        if (p.killerId !== this.state.playerId) return;
+        const victim = this.state.entities
+          ? this.state.entities.get(p.id) : null;
+        addTapeMark(this.state, 'kill', entityLabel(victim), p.id);
+      });
+      this._offTapeTrick = bus.on('stunt:trickDetected', (p) => {
+        if (!this.state || !p) return;
+        const actor = p.actorId != null ? p.actorId : null;
+        if (actor != null && actor !== this.state.playerId) return;
+        addTapeMark(this.state, 'stunt', String(p.name || p.trickId || 'Stunt'), p.targetId ?? p.actorId ?? this.state.playerId);
+      });
+      // SEED-SE-15 — the player's own hull hits paint 'damage' ticks on the same tape. Only a
+      // settled hull strike marks (shield/armor chips stay quiet), band-limited so a grind is a
+      // row of ticks, not a smear. Read-only: the receipt is consumed, never written back.
+      this._offTapeDamage = bus.on('combat:damage', (p) => {
+        if (!this.state || !p || tape.total <= 0) return;
+        const isPlayerHit = p.isPlayer === true
+          || (p.targetId != null && p.targetId === this.state.playerId);
+        if (!isPlayerHit || p.hullHit !== true) return;
+        if (tape.total - tape.lastDamageAt < TAPE_DAMAGE_MARK_GAP_TICKS) return;
+        tape.lastDamageAt = tape.total;
+        const attacker = p.attackerId != null ? this.state.entities?.get(p.attackerId) : null;
+        addTapeMark(this.state, 'damage', entityLabel(attacker, 'Damage'), this.state.playerId);
+      });
+      // The chain-kill receipt paints its own mark: the tape shows the two kills as the one
+      // act they were, at the second victim's death point.
+      this._offTapeChain = bus.on('combat:chainKill', (p) => {
+        if (!this.state || !p) return;
+        const second = this.state.entities ? this.state.entities.get(p.secondId) : null;
+        addTapeMark(this.state, 'chain', `Chain: ${entityLabel(second, 'kill')}`, p.secondId);
+      });
+    }
+  },
+
+  update(_dt, state) {
+    const live = state || this.state;
+    recordTape(live);
+    if (liveRun(live)) {
+      const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : null;
+      if (!player || !player.pos) return;
+      const other = nearestOther(live, player);
+      const bx = other && other.pos ? other.pos.x : player.pos.x;
+      const bz = other && other.pos ? other.pos.z : player.pos.z;
+      pushSample(player.pos.x, player.pos.z, bx, bz);
+      return;
+    }
+  },
+  destroy() {
+    for (const key of ['_offTapeNew', '_offTapeKill', '_offTapeTrick', '_offTapeDamage', '_offTapeChain']) {
+      this[key]?.();
+      this[key] = null;
+    }
+  },
+};

@@ -1,0 +1,134 @@
+From 2e62210f4482b43cb0729015c17125d499de1905 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:37:29 -0400
+Subject: [PATCH] perf(world): tighten rock query discs; drop dead
+ decode-runway rock scan
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Call-site leftovers after integer cell keys:
+1. appendNearbyLedgerRows shared the far-actor promote disc (~4700 WU) with
+   static field rocks; rocks only need collect-horizon + player travel (~9.7×
+   fewer cell visits offline).
+2. requestDecodeRunwayPromote queried the field every tick only to set
+   rocksSeen — rocksPromoted is always 0 by design; drop the scan.
+3. Remove redundant d2<=r2 branch in queryAsteroidField (reach>=r).
+---
+ src/world/asteroidField.js                    |  4 +--
+ src/world/presentationSources.js              | 31 +++++++++++--------
+ ...teroid-query-callers-decode-rocks.test.mjs | 23 ++++++++++++++
+ 3 files changed, 43 insertions(+), 15 deletions(-)
+ create mode 100644 test/asteroid-query-callers-decode-rocks.test.mjs
+
+diff --git a/src/world/asteroidField.js b/src/world/asteroidField.js
+index 5aeea0071..0720438da 100644
+--- a/src/world/asteroidField.js
++++ b/src/world/asteroidField.js
+@@ -150,7 +150,6 @@ export function queryAsteroidField(state, pos, radius, out = []) {
+   const x = finite(pos.x);
+   const z = finite(pos.z);
+   const r = radius;
+-  const r2 = r * r;
+   const minC = Math.floor((x - r) / ASTEROID_FIELD_CELL);
+   const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
+   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
+@@ -167,7 +166,8 @@ export function queryAsteroidField(state, pos, radius, out = []) {
+         const dx = rec.pos.x - x;
+         const dz = rec.pos.z - z;
+         const reach = r + finite(rec.radius);
+-        if (dx * dx + dz * dz <= reach * reach || dx * dx + dz * dz <= r2) out.push(rec);
++        // reach >= r always, so the old d2 <= r2 branch was redundant.
++        if (dx * dx + dz * dz <= reach * reach) out.push(rec);
+       }
+     }
+   }
+diff --git a/src/world/presentationSources.js b/src/world/presentationSources.js
+index 09a7bf912..2b1fabbca 100644
+--- a/src/world/presentationSources.js
++++ b/src/world/presentationSources.js
+@@ -21,7 +21,6 @@ import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+ import { ENEMY_TYPES } from '../data/enemies.js';
+ 
+ const _farPromoteScratch = [];
+-const _rockQueryScratch = [];
+ const _farPromoteIds = [];
+ const _meshRockScratch = [];
+ const _meshFarScratch = [];
+@@ -180,17 +179,20 @@ function appendNearbyLedgerRows(state, out) {
+   const radius = presentationCollectRadius(state);
+   if (!(radius > 0)) return;
+   const travel = tableTravelSpeed(state);
+-  // The scan disc must hold every row that can still reach the glass inside the
+-  // longest admit window — hulls ride the promote horizon, which exceeds the
+-  // collect horizon, so sizing to collect would strand a fast inbound ship
+-  // between "scannable" and "admissible". The per-row time-to-glass test below
+-  // decides admission, so the disc leaning wide does not wake receding traffic.
+-  const scanRadius = radius
++  // Far actors (inbound hulls) need the promote horizon + fastest approach pad —
++  // sizing to collect would strand a fast ship between scannable and admissible.
++  // Field rocks are static (or ignore their own vel in the filter below): only the
++  // player's approach closes the disc, so the collect horizon is enough. Sharing
++  // the far disc was ~18× more asteroid cell visits at reference travel.
++  const farScanRadius = radius
+     + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_PROMOTE_HORIZON_SECONDS;
+-  if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
+-    queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
+-    queryFarActors(state, origin, scanRadius, _meshFarScratch);
+-    rememberMeshSpatialKey(state, origin, scanRadius);
++  const rockScanRadius = radius
++    + travel * TABLE_COLLECT_HORIZON_SECONDS
++    + 220; // one asteroid field cell of slack for radius + grid edge
++  if (!meshSpatialKeyMatches(state, origin, farScanRadius)) {
++    queryAsteroidField(state, origin, rockScanRadius, _meshRockScratch);
++    queryFarActors(state, origin, farScanRadius, _meshFarScratch);
++    rememberMeshSpatialKey(state, origin, farScanRadius);
+   }
+   const pvx = finite(player.vel && player.vel.x);
+   const pvz = finite(player.vel && player.vel.z);
+@@ -297,8 +299,11 @@ export function requestDecodeRunwayPromote(state, helpers) {
+       admitPromotedToRunwayFrame(state, ent.id);
+     }
+   }
+-  const rockHits = queryAsteroidField(state, origin, decodeR, _rockQueryScratch);
+-  result.rocksSeen = rockHits.length;
++  // Field rocks already draw from the ledger (collectMeshPresentationEntities).
++  // A per-tick queryAsteroidField here only fed rocksSeen telemetry — rocksPromoted
++  // is always 0 by design. Drop the spatial scan; report presence without walking cells.
++  const field = state.world && state.world.asteroidField;
++  result.rocksSeen = (field && Array.isArray(field.rocks) && field.rocks.length) ? field.rocks.length : 0;
+   return result;
+ }
+ 
+diff --git a/test/asteroid-query-callers-decode-rocks.test.mjs b/test/asteroid-query-callers-decode-rocks.test.mjs
+new file mode 100644
+index 000000000..cf36d46d2
+--- /dev/null
++++ b/test/asteroid-query-callers-decode-rocks.test.mjs
+@@ -0,0 +1,23 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { insertAsteroidFieldRock } from '../src/world/asteroidField.js';
++import { requestDecodeRunwayPromote } from '../src/world/presentationSources.js';
++
++test('decode-runway promote reports field presence without spatial rock query', () => {
++  const state = createGameState();
++  state.playerId = 1;
++  const player = {
++    id: 1, type: 'ship', alive: true, isPlayer: true,
++    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160, radius: 8, data: {},
++  };
++  state.entities = new Map([[1, player]]);
++  state.entityList = [player];
++  insertAsteroidFieldRock(state, {
++    id: 9001, pos: { x: 40, z: 0 }, radius: 8,
++    data: { typeId: 'ast_common_rock' },
++  });
++  const result = requestDecodeRunwayPromote(state, null);
++  assert.ok(result.rocksSeen >= 1, 'presence telegraph without cell walk');
++  assert.equal(result.rocksPromoted, 0);
++});
+-- 
+2.47.3
+

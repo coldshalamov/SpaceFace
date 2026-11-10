@@ -1,0 +1,233 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { createGameState } from '../src/core/gameState.js';
+import { qualityModeForVideo } from '../src/render/adaptiveQuality.js';
+import {
+  AUDIO_DEFAULT_MUTE_VERSION,
+  PROFILE_SETTINGS_KEY,
+  SHADOWS_DEFAULT_VERSION,
+  bootstrapProfileSettingsBeforeRegistry,
+  mergeProfileSettings,
+  readProfileSettings,
+} from '../src/core/graphicsProfileBootstrap.js';
+
+function storageWith(raw) {
+  let writes = 0;
+  return {
+    getItem(key) { return key === PROFILE_SETTINGS_KEY ? raw : null; },
+    setItem() { writes++; },
+    writes() { return writes; },
+  };
+}
+
+test('pre-registry bootstrap applies current graphics profile without rewriting raw bytes', () => {
+  const raw = JSON.stringify({
+    version: 1,
+    updatedAt: 'frozen',
+    settings: { video: { renderScale: 0.85, pixelRatioCap: 2, shadows: false, particleQuality: 'medium' } },
+  });
+  const storage = storageWith(raw);
+  const state = createGameState(1);
+
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storage), true);
+  assert.equal(state.settings.video.renderScale, 0.85);
+  assert.equal(state.settings.video.shadows, false);
+  assert.equal(state.settings.video.particleQuality, 'medium');
+  assert.equal(qualityModeForVideo(state.settings.video), 'manual',
+    'an older custom render scale remains a manual choice after merging current defaults');
+  assert.equal(storage.getItem(PROFILE_SETTINGS_KEY), raw);
+  assert.equal(storage.writes(), 0);
+});
+
+test('legacy Balanced settings adopt Auto while explicit quality modes retain authority', () => {
+  const balanced = createGameState(22);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(balanced, storageWith(JSON.stringify({
+    settings: { video: { renderScale: 1, pixelRatioCap: 2, qualityPreset: 'medium' } },
+  }))), true);
+  assert.equal(qualityModeForVideo(balanced.settings.video), 'auto');
+
+  for (const qualityMode of ['auto', 'manual']) {
+    const state = createGameState(23);
+    bootstrapProfileSettingsBeforeRegistry(state, storageWith(JSON.stringify({
+      settings: { video: { renderScale: 0.75, qualityPreset: 'low', qualityMode } },
+    })));
+    assert.equal(qualityModeForVideo(state.settings.video), qualityMode,
+      `explicit ${qualityMode} survives the profile merge`);
+  }
+});
+
+test('max profile reaches full runtime values with no quality cap, then current restores', () => {
+  const state = createGameState(2);
+  const max = mergeProfileSettings(state.settings, {
+    video: { renderScale: 2, pixelRatioCap: 4, shadows: true, particleQuality: 'high' },
+  });
+  assert.deepEqual(
+    {
+      renderScale: max.video.renderScale,
+      pixelRatioCap: max.video.pixelRatioCap,
+      shadows: max.video.shadows,
+      particleQuality: max.video.particleQuality,
+    },
+    { renderScale: 2, pixelRatioCap: 4, shadows: true, particleQuality: 'high' },
+  );
+
+  const current = mergeProfileSettings(max, {
+    video: { renderScale: 0.85, pixelRatioCap: 2, shadows: false, particleQuality: 'medium' },
+  });
+  assert.equal(current.video.renderScale, 0.85);
+  assert.equal(current.video.particleQuality, 'medium');
+});
+
+// 2026-09-21 owner report: the sun shadow-map read as crawling miscolored clumps, not depth.
+// Profiles written before this policy cannot tell a deliberate shadows:true from the old default,
+// so every unstamped profile receives one migration to off. A stamped profile keeps the player's
+// own choice — including a deliberate re-enable.
+test('pre-policy profiles are migrated to shadows off once while stamped choices survive', () => {
+  const legacyStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: { video: { shadows: true, particleQuality: 'medium' } },
+  }));
+  const migrated = createGameState(7);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(migrated, legacyStorage), true);
+  assert.equal(migrated.settings.video.shadows, false,
+    'a pre-policy shadows:true cannot tell owner choice from the retired default, so it migrates');
+  assert.equal(migrated.settings.video.shadowsDefaultVersion, SHADOWS_DEFAULT_VERSION);
+  assert.equal(legacyStorage.writes(), 0, 'boot migration must not rewrite the stored profile');
+
+  const optedInStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: {
+      video: { shadows: true, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION },
+    },
+  }));
+  const optedIn = createGameState(8);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(optedIn, optedInStorage), true);
+  assert.equal(optedIn.settings.video.shadows, true,
+    'an explicit shadows-on made under the current policy must remain a player choice');
+
+  const futureStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: { video: { shadows: true, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION + 1 } },
+  }));
+  const future = createGameState(9);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(future, futureStorage), true);
+  assert.equal(future.settings.video.shadows, true,
+    'a stamp from a newer policy version is left alone — its semantics belong to that version');
+
+  const fresh = createGameState(10);
+  assert.equal(fresh.settings.video.shadows, false, 'a fresh profile ships with shadows off');
+  assert.equal(fresh.settings.video.shadowsDefaultVersion, SHADOWS_DEFAULT_VERSION,
+    'a fresh profile carries the policy stamp');
+});
+
+test('bootstrap rejects malformed profiles and preserves locked runtime backends', () => {
+  assert.equal(readProfileSettings(storageWith('{broken')), null);
+
+  const state = createGameState(3);
+  const raw = JSON.stringify({
+    settings: {
+      gameplay: { physicsBackend: 'custom', aiBackend: 'legacy', flightBackend: 'legacy' },
+      video: { particleQuality: 'high' },
+    },
+  });
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storageWith(raw)), true);
+  assert.equal(state.settings.gameplay.physicsBackend, 'rapier-dynamic');
+  assert.equal(state.settings.gameplay.aiBackend, 'sg06-tactical');
+  assert.equal(state.settings.gameplay.flightBackend, 'v3');
+  assert.equal(state.settings.video.particleQuality, 'high');
+});
+
+// PQ-210.04 / PQ-158.06: action audio ships on by default. v1 of the migration policy force-muted
+// every older profile once (the procedural stack was opt-in); v2 reverses that default — older
+// profiles cannot distinguish a deliberate mute from the policy default, so they all receive one
+// unmute. A mute made under the current policy keeps the stamped version and is never touched.
+test('pre-v2 profiles are unmuted once before registry while post-policy choices survive', () => {
+  const legacyStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: { audio: { master: 0.9, muted: true } },
+  }));
+  const migrated = createGameState(4);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(migrated, legacyStorage), true);
+  assert.equal(migrated.settings.audio.muted, false,
+    'a v1 muted profile cannot tell policy-mute from player-mute, so the audible default wins once');
+  assert.equal(migrated.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION);
+  assert.equal(legacyStorage.writes(), 0, 'boot migration must not rewrite a profile behind the player');
+
+  const optedInStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: {
+      audio: {
+        master: 0.9,
+        muted: true,
+        defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
+      },
+    },
+  }));
+  const optedIn = createGameState(5);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(optedIn, optedInStorage), true);
+  assert.equal(optedIn.settings.audio.muted, true,
+    'an explicit mute made under the current policy must remain a player choice');
+
+  const futureStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: {
+      audio: { muted: true, defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION + 1 },
+    },
+  }));
+  const future = createGameState(6);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(future, futureStorage), true);
+  assert.equal(future.settings.audio.muted, true,
+    'a stamp from a newer policy version is left alone — its semantics belong to that version');
+  assert.equal(future.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION + 1);
+});
+
+// OWNER, 2026-09-20: "the vfx for the attacks is limp and a lot of times doesn't even move, it'll be
+// like a blue swirl and literally be a frozen frame moving and not spinning or anything." The
+// owner's Windows has "Animation effects" off, Chromium reports that as prefers-reduced-motion, and
+// the old silent 'system' default turned off hit-stop, trauma, event lights and field motion.
+test('a profile that never chose its motion setting boots with full combat effects', async () => {
+  const { GAME_MOTION_DEFAULT_VERSION, migrateGameMotionDefault } = await import('../src/core/graphicsProfileBootstrap.js');
+  const ownerProfile = JSON.stringify({
+    settings: {
+      accessibility: { motionPreference: 'system' },
+      video: { motionReduce: true },
+    },
+  });
+  const state = createGameState(11);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storageWith(ownerProfile)), true);
+  assert.equal(state.settings.accessibility.motionPreference, 'full',
+    'the silent OS-following default is migrated once to full effects');
+  assert.equal(state.settings.video.motionReduce, false,
+    'the mirrored OS flag does not survive as if the player had asked for it');
+  assert.equal(state.settings.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION);
+
+  const reduce = migrateGameMotionDefault({ accessibility: { motionPreference: 'reduce' }, video: { motionReduce: true } });
+  assert.equal(reduce.accessibility.motionPreference, 'reduce', 'an explicit Reduce is always kept');
+  assert.equal(reduce.video.motionReduce, true);
+
+  const ancient = migrateGameMotionDefault({ video: { motionReduce: true } });
+  assert.equal(ancient.accessibility.motionPreference, 'reduce',
+    'before motionPreference existed, the boolean was the explicit choice');
+
+  const chosenSystem = migrateGameMotionDefault({
+    accessibility: { motionPreference: 'system', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION },
+    video: { motionReduce: true },
+  });
+  assert.equal(chosenSystem.accessibility.motionPreference, 'system',
+    'a player who picks System after the migration keeps it');
+
+  const future = migrateGameMotionDefault({
+    accessibility: { motionPreference: 'system', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION + 1 },
+    video: { motionReduce: true },
+  });
+  assert.equal(future.accessibility.motionPreference, 'system',
+    'a future policy owns the meaning of its motion preference');
+  assert.equal(future.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION + 1,
+    'an older build must not downgrade a newer migration stamp');
+  assert.equal(future.video.motionReduce, true);
+
+  assert.equal(createGameState(12).settings.accessibility.motionPreference, 'full',
+    'a fresh profile starts with full effects and carries the version');
+  assert.equal(createGameState(12).settings.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION);
+});

@@ -1,0 +1,166 @@
+From ed1a4d6583e48afa6d883d9ea7a29dae467a42e5 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 18:24:07 -0400
+Subject: [PATCH] perf(render): embedded KTX2 sources sliced once off the GLB
+ body (#167)
+
+The embedded-KTX2 plugin took the parser's cached bufferView (a slice of the GLB
+body) and sliced it again for the transferring KTX2Loader: two main-thread copies
+of every embedded texture (~72% of all render-package bytes). A plain bufferView
+is exactly body[byteOffset, byteOffset+byteLength), so slicing that range directly
+gives the transcoder the same bytes with one copy and leaves the parser's
+bufferView cache untouched. Extension-decoded bufferViews keep the parser path.
+---
+ src/render/embeddedKtx2Textures.js   | 34 +++++++++--
+ test/embedded-ktx2-textures.test.mjs | 86 ++++++++++++++++++++++++++++
+ 2 files changed, 115 insertions(+), 5 deletions(-)
+
+diff --git a/src/render/embeddedKtx2Textures.js b/src/render/embeddedKtx2Textures.js
+index d7bd37ed5..db33d3e8e 100644
+--- a/src/render/embeddedKtx2Textures.js
++++ b/src/render/embeddedKtx2Textures.js
+@@ -99,11 +99,9 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
+     return parser.sourceCache[sourceIndex].then((texture) => texture.clone());
+   }
+ 
+-  const promise = parser.getDependency('bufferView', sourceDef.bufferView)
+-    .then((bufferView) => new Promise((resolve, reject) => {
+-      // KTX2Loader transfers its buffer to the transcoder worker, and the parser caches this bufferView,
+-      // so hand over a copy and keep the cached bytes intact. The stock path copied them into a Blob.
+-      loader.parse(bufferView.slice(0), resolve, reject);
++  const promise = transferableSourceBytes(parser, sourceDef.bufferView)
++    .then((bytes) => new Promise((resolve, reject) => {
++      loader.parse(bytes, resolve, reject);
+     }))
+     .then((texture) => {
+       if (sourceDef.extras !== undefined) {
+@@ -122,6 +120,32 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
+   return promise;
+ }
+ 
++// KTX2Loader transfers the buffer it is given to the transcoder worker, so it needs bytes nobody else
++// holds. The previous path took the parser's cached bufferView (itself a fresh slice of the GLB body)
++// and sliced it again: two main-thread copies of every embedded texture, the second ~0.2 s over 10 s of
++// flight streaming on the quiet VM. A plain bufferView (no extension decoding it) is exactly
++// body[byteOffset, byteOffset + byteLength), so slicing that range straight off the binary buffer gives
++// the transcoder the same bytes with one copy, and the parser's bufferView cache is never touched.
++// Extension-decoded bufferViews (e.g. EXT_meshopt_compression) keep the parser path.
++function transferableSourceBytes(parser, bufferViewIndex) {
++  const bufferViews = parser.json && parser.json.bufferViews;
++  const def = bufferViews && bufferViews[bufferViewIndex];
++  const plain = embeddedKtx2DirectSliceEnabled && def
++    && Number.isInteger(def.buffer) && Number.isInteger(def.byteLength) && def.byteLength >= 0
++    && !(def.extensions && Object.keys(def.extensions).length > 0);
++  if (!plain) {
++    return parser.getDependency('bufferView', bufferViewIndex).then((bufferView) => bufferView.slice(0));
++  }
++  return parser.getDependency('buffer', def.buffer).then((buffer) => {
++    const byteOffset = def.byteOffset || 0;
++    return buffer.slice(byteOffset, byteOffset + def.byteLength);
++  });
++}
++
++let embeddedKtx2DirectSliceEnabled = true;
++/** Bench/proof toggle: false restores the bufferView-then-copy path. Production default ON. */
++export function setEmbeddedKtx2DirectSliceForBench(on) { embeddedKtx2DirectSliceEnabled = on !== false; }
++
+ /** Stable callback for GLTFLoader.register(): the loader de-duplicates registrations by identity. */
+ export function registerEmbeddedKtx2Textures(parser) {
+   return new EmbeddedKtx2TexturePlugin(parser);
+diff --git a/test/embedded-ktx2-textures.test.mjs b/test/embedded-ktx2-textures.test.mjs
+index e7a2ba283..b71324af6 100644
+--- a/test/embedded-ktx2-textures.test.mjs
++++ b/test/embedded-ktx2-textures.test.mjs
+@@ -142,3 +142,89 @@ test('registered on the vendored GLTFLoader it replaces the built-in KHR_texture
+     'the parser resolves KHR_texture_basisu to this plugin',
+   );
+ });
++
++test('a plain bufferView is sliced once straight off the GLB body, without touching the bufferView cache', async () => {
++  const ktx2Loader = fakeKtx2Loader();
++  const body = new Uint8Array(64);
++  for (let i = 0; i < body.length; i += 1) body[i] = (i * 7 + 3) & 0xff;
++  const parser = fakeParser({
++    ktx2Loader,
++    images: [{ bufferView: 1, mimeType: 'image/ktx2' }],
++    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
++  });
++  parser.json.bufferViews = [
++    { buffer: 0, byteOffset: 0, byteLength: 8 },
++    { buffer: 0, byteOffset: 17, byteLength: 21 },
++  ];
++  const received = [];
++  ktx2Loader.parse = (buffer, onLoad) => {
++    received.push(new Uint8Array(buffer.slice(0)));
++    structuredClone(buffer, { transfer: [buffer] });
++    onLoad(new THREE.CompressedTexture([], 4, 4));
++  };
++  parser.getDependency = (type, index) => {
++    parser.dependencyCalls.push([type, index]);
++    assert.equal(type, 'buffer', 'only the binary body is requested');
++    return Promise.resolve(body.buffer);
++  };
++
++  await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
++
++  assert.deepEqual(parser.dependencyCalls, [['buffer', 0]]);
++  assert.deepEqual(received, [body.slice(17, 38)], 'the transcoder gets exactly body[byteOffset, byteOffset + byteLength)');
++  assert.equal(body.buffer.byteLength, 64, 'the parser-cached GLB body is not detached');
++});
++
++test('extension-decoded bufferViews keep the parser bufferView path and its copy', async () => {
++  const ktx2Loader = fakeKtx2Loader();
++  const parser = fakeParser({
++    ktx2Loader,
++    images: [{ bufferView: 0, mimeType: 'image/ktx2' }],
++    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
++  });
++  parser.json.bufferViews = [
++    { buffer: 0, byteLength: 5, extensions: { EXT_meshopt_compression: { buffer: 1, byteLength: 5 } } },
++  ];
++
++  await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
++
++  assert.deepEqual(parser.dependencyCalls, [['bufferView', 0]]);
++  assert.deepEqual(ktx2Loader.parsed, [5]);
++  assert.equal(parser.cachedBufferView(0).byteLength, 5, 'the parser-cached bufferView is not detached');
++});
++
++test('real render package: KTX2 bytes handed to the transcoder are identical with the direct slice on and off', async () => {
++  const { readFileSync } = await import('node:fs');
++  const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
++  const glbUrl = new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url);
++  const glb = readFileSync(glbUrl);
++  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
++  await MeshoptDecoder.ready;
++
++  async function collect(on) {
++    setEmbeddedKtx2DirectSliceForBench(on);
++    const seen = [];
++    const ktx2Loader = {
++      parse(buffer, onLoad) {
++        seen.push(Buffer.from(buffer.slice(0)).toString('base64'));
++        structuredClone(buffer, { transfer: [buffer] });
++        onLoad(new THREE.CompressedTexture([], 4, 4));
++      },
++    };
++    const loader = new GLTFLoader();
++    loader.setMeshoptDecoder(MeshoptDecoder);
++    loader.register(registerEmbeddedKtx2Textures);
++    loader.setKTX2Loader(ktx2Loader);
++    const ab = glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength);
++    await loader.parseAsync(ab, '');
++    return seen.sort();
++  }
++  try {
++    const off = await collect(false);
++    const on = await collect(true);
++    assert.ok(off.length > 0, 'the package carries embedded KTX2 images');
++    assert.deepEqual(on, off);
++  } finally {
++    setEmbeddedKtx2DirectSliceForBench(true);
++  }
++});
+-- 
+2.47.3
+

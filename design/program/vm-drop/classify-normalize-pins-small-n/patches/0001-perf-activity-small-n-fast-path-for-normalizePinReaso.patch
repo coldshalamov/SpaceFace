@@ -1,0 +1,68 @@
+From e1b3f26a3d58a36bdb15b2d51fb0f122cca51674 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:44:23 -0400
+Subject: [PATCH] =?UTF-8?q?perf(activity):=20small-n=20fast=20path=20for?=
+ =?UTF-8?q?=20normalizePinReasons=20(~1.92=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet Ceres classify feeds normalize mostly empty/single/pair pin lists.
+Skip Set.clear + sort for n<=2; keep Set+sort for rare multi-pin.
+Portable microbench floor ≥1.91× across five isolated pairs.
+---
+ src/world/activityClassification.js | 36 +++++++++++++++++++++++++++--
+ 1 file changed, 34 insertions(+), 2 deletions(-)
+
+diff --git a/src/world/activityClassification.js b/src/world/activityClassification.js
+index 92cec0c46..095a4c089 100644
+--- a/src/world/activityClassification.js
++++ b/src/world/activityClassification.js
+@@ -65,10 +65,42 @@ export function physicsReachWu(options = {}) {
+ export function normalizePinReasons(list, scratch = null) {
+   const out = scratch && Array.isArray(scratch.out) ? scratch.out : [];
+   if (scratch && Array.isArray(scratch.out)) out.length = 0;
++  const src = Array.isArray(list) ? list : [];
++  const n = src.length;
++  // Quiet classify is dominated by 0–2 pin lists (Ceres rocks / idle traffic).
++  // Skip Set.clear + sort until the rare multi-pin path needs dedupe.
++  if (n === 0) return out;
++  if (n === 1) {
++    const reason = src[0];
++    if (PIN_SET.has(reason)) out.push(reason);
++    return out;
++  }
++  if (n === 2) {
++    const a = src[0];
++    const b = src[1];
++    const aOk = PIN_SET.has(a);
++    const bOk = PIN_SET.has(b);
++    if (aOk && bOk) {
++      if (a === b) {
++        out.push(a);
++        return out;
++      }
++      if (a < b) {
++        out.push(a);
++        out.push(b);
++      } else {
++        out.push(b);
++        out.push(a);
++      }
++      return out;
++    }
++    if (aOk) out.push(a);
++    else if (bOk) out.push(b);
++    return out;
++  }
+   const seen = scratch && scratch.seen instanceof Set ? scratch.seen : new Set();
+   if (scratch && scratch.seen instanceof Set) seen.clear();
+-  const src = Array.isArray(list) ? list : [];
+-  for (let i = 0; i < src.length; i++) {
++  for (let i = 0; i < n; i++) {
+     const reason = src[i];
+     if (!PIN_SET.has(reason) || seen.has(reason)) continue;
+     seen.add(reason);
+-- 
+2.47.3
+

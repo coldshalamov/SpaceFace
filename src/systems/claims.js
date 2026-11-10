@@ -1,0 +1,3312 @@
+// Claimable bodies system (V2 §6 / M3; specializations M5 / SPEC3-F6-26). Owns state.claims — the
+// player's claimed bodies, the modules built on them, and each body's OPERATING IDENTITY (its
+// specialization). The "you own a place" fantasy, scoped as base-as-node (not a tile grid).
+//
+// Verbs:
+//   - CLAIM: fly near a claimable body POI, pay CLAIM_COST. Body becomes yours, with N module slots.
+//   - BUILD: pay a module's cost, fit it into a free slot. The module provides a passive effect.
+//   - COMMISSION: pay a specialization's cost to turn the claim into one of three working sites
+//     (Industrial Refinery / Trade Relay / Defense Bastion). One identity per body; switching
+//     requires empty site storage. See BODY_SPECIALIZATIONS in data/claimableBodies.js.
+//   - DELIVER / WITHDRAW / COLLECT: move goods between the player hold and the site stores
+//     (physical logistics — the base is a place you fly freight to, not a menu).
+//   - TELEPORT: if a teleporter module is built, instant travel between the body and its linked
+//     station (the V2 §8 lane-collapser — the milestone unlock that rewrites map geometry).
+//   - BUILD THROUGHLINE: an Industrial Refinery consumes carried industrial goods to align one
+//     permanent acceleration ring + nav relay toward a real station. Claims owns the durable
+//     construction receipt; travelLanes and traffic consume it without becoming save writers.
+//   - SENSOR POST: once per sector-day, emits one owned local-intel request. World validates and
+//     records the fuzzy rumor; scanner only consumes the post's presence for non-combat POI range.
+//
+// Specialization behavior ticks in update():
+//   - REFINERY runs the one claim recipe book (CLAIM_REFINERY_RECIPES: the site sm_refinery modes
+//     plus copper smelting) into an output store. Its output is forwarded to a same-sector active
+//     Trade Relay on a 30 s cadence, so the player's hold never has to carry it. A packed output
+//     store or missing feedstock parks the batch in flight — idle time is never banked into free
+//     conversions. Its risk: upkeep + stored goods draw raiders in low-sec space.
+//   - RELAY dispatches scheduled convoys to the linked station and sells at the destination's REAL
+//     market price less the fee (the proven outpost autosell −20%), pressing that market honestly.
+//     No economy peer / no market price → freight is held, never converted to fabricated profit.
+//   - BASTION contests raids: it raises this body's defense rating, lends coverage to every claim
+//     in the sector, and announces inbound raids (warning coverage). It never spawns combat, never
+//     aggros lawful traffic, and never writes heat/reputation — raids are the only threats it acts
+//     against, and only via the legacy raid dice it decomposes (see raidTripChance/repelChance).
+//
+// Raid model (moved from automation.js:824-846 — the same proven math, decomposed for receipts):
+//   legacy pRaid = clamp(danger*0.4 / defenseMult, 0, 0.5)  ==  pTrip × (1 − pRepel)
+//   where pTrip = clamp(danger*0.4, 0, 0.5) and pRepel = 1 − 1/max(1, defense/20).
+//   Raids only roll in sectors below RAID_SECURITY_FLOOR (lawful space never raids player bases),
+//   only against sites with stored goods, lose a bounded fraction (never the base), and freeze the
+//   site for a recoverable cooldown. Claims never tick offline, so there is no off-screen loss.
+//
+// Single-writer: claims owns only state.claims. Credits route through economy intents, cargo
+// through the cargo helpers; claims never writes credits/cargo caches/reputation/heat directly.
+// Determinism: all rolls draw from a dedicated seeded stream (state.claims.meta.rngSeed, created
+// lazily on first commission so unspecialized saves and the 47a golden keep their exact shape).
+// PERSISTENCE: serialize()/deserialize() capture state.claims (bodies + spec state + meta +
+// migration receipt) with a specVersion stamp; older saves default bodies to spec:null and run the
+// F6-owned legacy-outpost migration exactly once (see _migrateLegacyOutposts).
+import {
+  BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE, CLAIM_COST,
+  BODY_SPECIALIZATIONS, BODY_SPECIALIZATION_BY_ID,
+} from '../data/claimableBodies.js';
+import { CLAIM_REFINERY_INPUT_IDS } from '../data/sites.js';
+import {
+  OUTPUT_STORE_FULL_LINE, CLAIM_INPUT_SET, SPEC_RAID_EVERY_S, RAID_SECURITY_FLOOR,
+  DEPOT_SUPPORT_GRACE_S, DEPOT_PATROL_SHAPE_ID, DEPOT_PATROL_FACTION_ID,
+  DEPOT_PATROL_ANCHOR_FRAC, DEPOT_PATROL_ZONE_RADIUS_WU, DEPOT_PATROL_ID_PREFIX,
+  SECTOR_BY_ID, readyClaimRecipe, sumStore, raidTripChance, repelChance,
+  claimDefenseRating, claimsReadMethods, cachedRelayDestination,
+} from './claimsReadModel.js';
+export {
+  SPEC_RAID_EVERY_S, RAID_SECURITY_FLOOR, SPEC_RAID_LOSS_FRAC, DEPOT_SUPPORT_GRACE_S,
+  DEPOT_PATROL_SHAPE_ID, DEPOT_PATROL_FACTION_ID, DEPOT_PATROL_ANCHOR_FRAC,
+  DEPOT_PATROL_ZONE_RADIUS_WU, DEPOT_PATROL_ID_PREFIX, raidTripChance, repelChance,
+  claimDefenseRating, claimsReadView,
+} from './claimsReadModel.js';
+import { techDisplayName } from '../data/tech.js';
+import { addCargo, removeCargo } from './cargo.js';
+import { ensureShipment, shipmentQty, shipmentUsed, addToShipment, takeFromShipment } from './cargoCustody.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { drawSeeded, hash32 } from '../core/rng.js';
+import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
+import { SECTORS, dangerIndex, stationGrowthLadderFor, aceTrophyHeadByTier, aceTrophyHeadByModuleId, trophyFromFittings } from '../data/sectors.js';
+import { DRONES, OUTPOSTS } from '../data/automation.js';
+import { sectorLocalToGlobalForSector, sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { outpostOutputGoodId } from './automation.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { farActorTableRadius } from '../world/farActorTable.js';
+import { depotPatrolLine, stationFactionIdFor, stationGrowthReaction, endgamePullLine, aceTrophyNewsLine } from '../data/conflictReactions.js';
+import { aceById } from '../data/namedAces.js';
+import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { collidesFlipEpoch } from '../world/livingWorldViews.js';
+import { physicsPartitionEpoch } from '../world/activityRuntime.js';
+import { NEREID_ANNEX, reconcileNereidFreightAnnex } from '../world/nereidFreightAnnex.js';
+
+export const REFINABLE_ORE_IDS = CLAIM_REFINERY_INPUT_IDS.slice(); // still includes cmdty_ore_iron
+export const RELAY_FEED_EVERY_S = 30;   // refinery → same-sector relay forward cadence (s of simTime)
+export const CLAIM_RECIPE_BOOK = 1;     // spec.recipeBook stamp; absent = pre-row-402 save
+
+function claimBodyOrdinal(id) { const m = /^claim_(\d+)$/.exec(id || ''); return m ? parseInt(m[1], 10) : Infinity; }
+
+// Specialization cadences and raid contract (legacy outpost truth, claim-scoped).
+export const SPEC_UPKEEP_EVERY_S = 60;     // upkeep settles once a minute (outpost autosell cadence)
+export const SPEC_RAID_COOLDOWN_S = 300;   // raided site freeze (legacy raidCooldown)
+export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of halved pressure
+export const CLAIM_RAID_ATTACKER_RANGE = Object.freeze([4, 6]);
+export const CLAIM_DEFENSE_WARNING_S = 150; // travel window before off-screen fallback
+export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not merely its sector
+// A physical takeover that collapsed after the warning (aborted encounter, or a re-admission
+// refusal that can never commit) re-arms the fallback owner for this long — long enough to be
+// answered again, never long enough to strand the raid without a resolution owner.
+export const CLAIM_DEFENSE_REPRIEVE_S = 45;
+// NXI-139 — re-admission refusals that can never produce a live encounter: the request is
+// malformed, the seeded plan cannot field a squad, the shape/runtime is missing, or no director
+// answers at all. Anything else (wrong sector, a spent spawn budget, a synchronous resolve) is
+// lateness, not impossibility — those keep the durable retry, because a late render/sim asset is
+// never a reason to book the raid's loss.
+const CLAIM_DEFENSE_TERMINAL_REFUSALS = new Set([
+  'invalid_request', 'missing_shape', 'missing_runtime', 'empty_plan', 'no_director',
+]);
+export const CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA = 'claim_travel_sling_v1';
+const RELAY_LOSS_BASE = 0.05;              // convoy loss floor in unlawful space…
+const RELAY_LOSS_DANGER = 0.25;            // …plus danger scaling, capped:
+const RELAY_LOSS_CAP = 0.35;
+const MAX_RECEIPTS = 8;                    // per-body receipt ring (the ledger's memory)
+const SLING_BODY_CLEARANCE_WU = 160;
+const SLING_STATION_CLEARANCE_WU = 180;
+// Teleporter arrival berth: the same beside-the-station clearance the recovery dock pays.
+const TELEPORT_BERTH_CLEARANCE_WU = 180;
+const SLING_MIN_ROUTE_WU = 520;
+const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
+const CLAIM_DAY_SECONDS = 600;
+
+// NXB-036 — station growth ends in a route, not a counter. When player-supplied throughput
+// earns a station the FINAL rung of its ladder, the authority it charters surveys one permanent
+// approach corridor inbound from the sector's freight door (the nearest live gate, else the
+// nearest neighbor sector's bearing) down to the berth the deliveries built. The result is the
+// SAME durable claim_travel_sling_v1 record a claim Throughline writes — one consumed fact for
+// travelLanes, traffic and the chart — except it lives on the station's growth record and no
+// claim status can take it cold: a charted public approach stays live once aligned.
+const GROWTH_ROUTE_ALIGN_S = 20;
+const GROWTH_ROUTE_REACH_WU = 1600;     // ring stands this far out along the approach bearing
+const GROWTH_ROUTE_ANCHOR_CLEARANCE_WU = 300; // never aim a corridor through the anchor door itself
+const GROWTH_ROUTE_CORRIDOR_WU = 240;
+const GROWTH_ROUTE_CEILING_MULT = 1.6;  // charted-lane gain — real, below the claim Throughline's 2×
+const GROWTH_ROUTE_RAMP_MULT = 1.6;
+
+// PQ-170.01 — station growth and depot dependency.
+// A station gains an authored module because of PLAYER-supplied throughput: the sell side of the
+// player's own market trades plus the freight the player's Trade Relay convoys land there. The
+// ladder lives in data/sectors.js; claims owns the durable ledger (state.claims.stationGrowth,
+// created lazily on the first counted unit so untraded saves and goldens keep their exact shape).
+// A stocked Trade Relay is a DEPOT Concord's patrols depend on: while the player keeps freight in
+// it, claims asks the encounter director (its public authored-request seam, the same one traffic
+// uses for the depot pirate watch) to post a lawful patrol_beat rotation on the depot lane. Let the
+// stores run dry, go cold, or get raided and the rotation is withdrawn — the presence degrades
+// because the support did.
+export const STATION_GROWTH_SCHEMA = 'station_growth_v1';
+
+export const DEPOT_PATROL_ROTATION_GAP_S = 30;   // relief gap after a beat resolves (≈80% duty cycle)
+export const DEPOT_PATROL_RETRY_S = 10;          // director denied / off-sector poll cadence
+// A rotation only counts (and only earns Concord standing) after it actually held the lane for
+// half a beat. The beat also resolves 'completed' when the far-actor table virtualizes the hulls
+// seconds after the player flies off, so without a floor a post/leave/return loop would farm rep.
+export const DEPOT_PATROL_CREDIT_FLOOR_S = 60;
+
+// A rotation is a physical presence: it only posts while the player is inside the world's
+// near-residency radius of the lane anchor (capped here), otherwise the far-actor table would
+// virtualize the hulls two ticks after they spawned and the beat would churn spawns unseen.
+export const DEPOT_PATROL_PRESENCE_RANGE_WU = 1400;
+
+
+/**
+ * WORLD-37: pure projector for the chart's moving law presence. A supported depot whose
+ * patrol beat is live (encounterId set) publishes one marker; anything else yields null,
+ * so lapsed, resolving and off-window beats draw nothing. Position prefers the live hull
+ * (resolved by the caller, which owns the entity scan); the stored post anchor, then the
+ * depot body, are the deterministic fallbacks. Never serialized separately — depotSupport
+ * already persists on the claim body.
+ */
+export function depotPatrolMarker(body, livePos = null) {
+  const ds = body && body.depotSupport;
+  const encounterId = ds && ds.patrol && ds.patrol.encounterId;
+  if (!ds || ds.supported !== true || !encounterId) return null;
+  const anchor = ds.patrol.anchor;
+  const live = livePos && Number.isFinite(livePos.x) && Number.isFinite(livePos.z) ? livePos : null;
+  const fallback = anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)
+    ? anchor
+    : { x: Number(body.x) || 0, z: Number(body.z) || 0 };
+  const pos = live || fallback;
+  return { bodyId: body.id || null, encounterId, x: pos.x, z: pos.z };
+}
+export const ENDGAME_PULLS_SCHEMA = 'endgame_pulls_v1';
+export const LEGENDARY_HEADS_SCHEMA = 'legendary_heads_v1';
+export const ACE_TROPHY_TIER_MAX = 3;
+const ENDGAME_MEGA_HEIST_TAG = 'pq170-mega-heist';
+const ENDGAME_CAPITAL_BOSS_TAG = 'pq170-capital-boss';
+
+// NXB-027: receipt ids the growth ledger already consumed → the canonical lot they counted.
+// Null-prototype map so an adversarial id ('__proto__') can never alias inherited state.
+function normalizeSupplyReceipts(raw) {
+  const out = Object.create(null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const rid of Object.keys(raw)) {
+    const entry = raw[rid];
+    if (!rid || !entry || typeof entry !== 'object') continue;
+    out[rid] = {
+      qty: Math.max(0, Math.floor(Number(entry.qty) || 0)),
+      source: typeof entry.source === 'string' ? entry.source : 'market_sell',
+      goodId: typeof entry.goodId === 'string' ? entry.goodId : null,
+    };
+  }
+  return out;
+}
+
+export function fittedTrophyFromState(state) {
+  if (!state) return null;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const fittings = player && player.data && player.data.fittings;
+  const ledger = state.claims && state.claims.legendaryHeads;
+  const trophy = trophyFromFittings(fittings, ledger);
+  if (!trophy) return null;
+  if (!trophy.aceName) {
+    const ace = aceById(trophy.aceId);
+    trophy.aceName = ace && ace.name || trophy.aceId || 'an ace';
+  }
+  return trophy;
+}
+
+function endgamePullIdFromMission(payload) {
+  if (!payload) return null;
+  if (payload.causeTag === ENDGAME_MEGA_HEIST_TAG) {
+    return payload.megaHeistId || payload.params && payload.params.megaHeistId || null;
+  }
+  if (payload.causeTag === ENDGAME_CAPITAL_BOSS_TAG) {
+    return payload.capitalBossId || payload.params && payload.params.capitalBossId || null;
+  }
+  return null;
+}
+
+function nextOpenTrophyTier(taken) {
+  for (let tier = 1; tier <= ACE_TROPHY_TIER_MAX; tier++) {
+    if (!taken.has(tier)) return tier;
+  }
+  return null;
+}
+
+function playerOwnsModule(state, defId) {
+  const inventory = state && state.player && state.player.moduleInventory || [];
+  if (inventory.some((item) => item && item.defId === defId)) return true;
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const fittings = player && player.data && player.data.fittings;
+  return Array.isArray(fittings) && fittings.includes(defId);
+}
+
+function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  if (!(lengthSq > 0)) {
+    const ox = px - ax;
+    const oz = pz - az;
+    return ox * ox + oz * oz;
+  }
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / lengthSq));
+  const ox = px - (ax + dx * t);
+  const oz = pz - (az + dz * t);
+  return ox * ox + oz * oz;
+}
+
+
+const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
+// Authored station records by id (PQ-170.01 growth resolves type/faction/name through these).
+const STATION_DEF_BY_ID = (() => {
+  const map = new Map();
+  for (const sector of SECTORS) {
+    for (const station of sector.stations || []) {
+      if (station && station.id) map.set(station.id, { station, sector });
+    }
+  }
+  return map;
+})();
+// F6 unification: which operating identity a legacy abstract outpost becomes.
+const OUTPOST_TO_SPEC = {
+  outpost_refinery: 'spec_refinery',
+  outpost_fuelsynth: 'spec_refinery',
+  outpost_habhub: 'spec_relay',
+};
+
+let _nextClaimId = 1;
+
+function fmtCr(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
+}
+
+// words-authored-names: the authored commodity name ("Iron Ore"), never the de-snaked id
+// ("ore iron"); the id fallback survives only for a good the catalog no longer carries.
+const CLAIM_MATERIAL_NAME = new Map((COMMODITIES || []).map((row) => [row && row.id, row && row.name]));
+
+function materialName(id) {
+  const name = CLAIM_MATERIAL_NAME.get(id);
+  if (typeof name === 'string' && name.trim()) return name.trim();
+  return String(id || 'material').replace(/^cmdty_/, '').replace(/_/g, ' ');
+}
+
+// NXI-140 — a defense receipt names its real goods, not just a count: "10u ore iron, 2u alloys".
+function goodsDeltaLabel(goods) {
+  const parts = [];
+  for (const id of Object.keys(goods || {})) {
+    const qty = goods[id] || 0;
+    if (qty > 0) parts.push(`${qty}u ${materialName(id)}`);
+  }
+  return parts.join(', ');
+}
+
+function firstMissingModuleMaterial(mod, player) {
+  const recipe = mod && mod.materials;
+  if (!recipe || typeof recipe !== 'object') return null;
+  const items = player && player.cargo && player.cargo.items || {};
+  for (const id of Object.keys(recipe)) {
+    const need = Math.max(0, Math.floor(Number(recipe[id]) || 0));
+    const have = Math.max(0, Math.floor(Number(items[id]) || 0));
+    if (have < need) return { id, need, have, missing: need - have };
+  }
+  return null;
+}
+
+/** Departed freight is sold, returned, recovered, or explicitly lost. Nothing is invented. */
+export function listedMarketSell(entry) {
+  const listed = Number(entry && entry.lastSell);
+  return Number.isFinite(listed) && listed > 0 ? listed : null;
+}
+
+export function relayFreightLedger(departed, aboard, recoverable = 0) {
+  const left = Math.max(0, Math.floor(Number(departed) || 0));
+  const onHull = Math.max(0, Math.min(left, Math.floor(Number(aboard) || 0)));
+  const recovered = Math.max(0, Math.min(left - onHull, Math.floor(Number(recoverable) || 0)));
+  return { departed: left, aboard: onHull, recoverable: recovered, lost: left - onHull - recovered };
+}
+
+export const claims = {
+  ...claimsReadMethods,
+  name: 'claims',
+  // serialize() deep-copies every field it returns — the owned flag keeps saveSystem from
+  // re-cloning the bodies payload a second time inside the single-task autosave capture.
+  saveSnapshotOwned: true,
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.ctx = ctx;
+    // state.claims: { bodies: [{ id, sectorId, poiId, name, size, slots, modules:[modId|null],
+    //   linkedStationId, x, z, spec }], specVersion, meta?, legacyMigration? }
+    if (!this.state.claims) this.state.claims = { bodies: [] };
+    // World respawns POI entities on sector entry — re-stamp specialization identity on them.
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('sector:enter', () => { this._ensureRetiredRefineryShells(); this._applyAllPoiLabels(); });
+      // PQ-170.01: world respawns stations on sector entry — re-stamp the growth they earned.
+      this.bus.on('sector:enter', () => this._stampAllStationGrowth());
+      // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
+      this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {}));
+      // NXB-027: accepted contract freight is player-supplied throughput too — the same lot the
+      // economy just stocked. The committed receipt dedupes canonical retries (and only them).
+      this.bus.on('economy:freightAccepted', (payload) => this._onFreightAccepted(payload || {}));
+      this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {}));
+      // LAW-09: the raid marker's ignore verb — standing a claim down on purpose settles through
+      // the same 'ignored' column the deadline lapse pays.
+      this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
+      // FB-132: the flight prompt's other two doors. 'Go' re-affirms the alarm waypoint claims
+      // already owns; 'delegate' spends a same-sector supported depot's patrol rotation early —
+      // the depot answers instead of posting its scheduled beat.
+      this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {}));
+      this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {}));
+      this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
+      // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
+      this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
+      this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
+      // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
+      // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
+      // the sale; a hull kill arrives through the ordinary freight:loss ledger.
+      this.bus.on('claim:convoyManifested', (payload) => this._onConvoyManifested(payload || {}));
+      this.bus.on('claim:convoyDocked', (payload) => this._onConvoyDocked(payload || {}));
+      this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {}));
+    }
+    this._resumeDefenseIds = new Set();
+  },
+
+  // Claim the body at a POI. Validates credits + that it's unclaimed. POI def carries size/name/pos.
+  claim(poi) {
+    if (!poi || this.isClaimed(poi.id)) {
+      this.bus.emit('toast', { text: 'Already claimed or invalid', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const player = this.state.player;
+    if (player.credits < CLAIM_COST) {
+      const missing = CLAIM_COST - (Number(player.credits) || 0);
+      this.bus.emit('toast', { text: 'Need ' + fmtCr(missing) + ' more cr to claim ' + (poi.name || 'this body'), kind: 'error', ttl: 3 });
+      return false;
+    }
+    // charge via the canonical economy path
+    this.bus.emit('economy:chargeCredits', { amount: CLAIM_COST, reason: 'claim_body' });
+    const size = poi.size || 'M';
+    const body = {
+      id: 'claim_' + (_nextClaimId++),
+      sectorId: this.state.world && this.state.world.currentSectorId,
+      poiId: poi.id,
+      name: poi.name || 'Claimed Body',
+      size,
+      slots: BODY_SLOTS_BY_SIZE[size] || 3,
+      modules: [],          // array of modIds built so far
+      linkedStationId: null,
+      x: poi.pos ? poi.pos.x : 0,
+      z: poi.pos ? poi.pos.z : 0,
+      claimedAt: this.state.simTime || 0,
+      owned: true,          // canonical ownership truth used by map + authored place resolver
+      spec: null,           // operating identity (see specialize())
+    };
+    this.state.claims.bodies.push(body);
+    this._applyPoiLabel(body);
+    this.bus.emit('toast', { text: `Claimed ${body.name} — ${body.slots} module slots`, kind: 'good', ttl: 4 });
+    this.bus.emit('claim:claimed', { body });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    return true;
+  },
+
+  // Build a module on a claimed body. Validates cost, tech, free slot, not-already-built.
+  buildModule(bodyId, modId) {
+    const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
+    const mod = BODY_MODULE_BY_ID.get(modId);
+    if (!body || !mod) return false;
+    if (body.modules.includes(modId)) {
+      this.bus.emit('toast', { text: 'Already built: ' + mod.name, kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (body.modules.length >= body.slots) {
+      this.bus.emit('toast', { text: 'No free module slots on ' + body.name, kind: 'error', ttl: 3 });
+      return false;
+    }
+    const player = this.state.player;
+    if (mod.techReq && !player.researchedNodes.includes(mod.techReq)) {
+      this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(mod.techReq), kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (mod.requiresSpec && (!body.spec || body.spec.id !== mod.requiresSpec || body.spec.status !== 'active')) {
+      const spec = BODY_SPECIALIZATION_BY_ID.get(mod.requiresSpec);
+      this.bus.emit('toast', {
+        text: 'Commission ' + ((spec && spec.name) || mod.requiresSpec) + ' before building ' + mod.name,
+        kind: 'error', ttl: 4,
+      });
+      return false;
+    }
+    const missingMaterial = firstMissingModuleMaterial(mod, player);
+    if (missingMaterial) {
+      this.bus.emit('toast', {
+        text: 'Need ' + missingMaterial.missing + ' more ' + materialName(missingMaterial.id) + ' for ' + mod.name,
+        kind: 'error', ttl: 4,
+      });
+      return false;
+    }
+    // A sling is not freely placed. The claim system resolves one deterministic, clear line from
+    // this physical body to a real in-sector station before any credits or materials are spent.
+    const travelRoute = mod.effect === 'travel_sling'
+      ? this._prepareTravelInfrastructure(body, mod)
+      : null;
+    if (mod.effect === 'travel_sling' && !travelRoute) return false;
+    if (player.credits < mod.cost) {
+      const missing = mod.cost - (Number(player.credits) || 0);
+      this.bus.emit('toast', { text: 'Need ' + fmtCr(missing) + ' more cr for ' + mod.name, kind: 'error', ttl: 3 });
+      return false;
+    }
+    this.bus.emit('economy:chargeCredits', { amount: mod.cost, reason: 'build_module' });
+    for (const id of Object.keys(mod.materials || {})) {
+      removeCargo(this.state, id, mod.materials[id]);
+    }
+    body.modules.push(modId);
+    // teleporter auto-links to the nearest station on build (the lane it collapses)
+    if (mod.effect === 'teleport') {
+      body.linkedStationId = this._nearestStationId(body);
+      this.bus.emit('toast', { text: 'Teleporter linked to ' + (this._stationName(body.linkedStationId) || 'nearest station'), kind: 'good', ttl: 4 });
+    } else if (mod.effect === 'travel_sling') {
+      body.infrastructure = this._newTravelInfrastructure(body, mod, travelRoute);
+      this._receipt(body, 'throughline_fabricated', 'Throughline ring and nav relay fabricated — alignment underway', {
+        infrastructureId: body.infrastructure.id,
+        stationId: body.infrastructure.stationId,
+        distanceWU: body.infrastructure.distanceWU,
+        materials: { ...(mod.materials || {}) },
+      });
+      this.bus.emit('claim:infrastructureConstructed', {
+        bodyId: body.id,
+        infrastructureId: body.infrastructure.id,
+        stationId: body.infrastructure.stationId,
+        stage: body.infrastructure.stage,
+      });
+      this.bus.emit('toast', {
+        text: 'Throughline fabricated — ring and relay aligning to ' + (this._stationName(body.infrastructure.stationId) || 'station'),
+        kind: 'good', ttl: 5,
+      });
+    } else if (mod.effect === 'sensor_post') {
+      this.bus.emit('toast', {
+        text: 'Sensor Post online — sector POI coverage and one local rumor per day',
+        kind: 'good', ttl: 5,
+      });
+    } else {
+      this.bus.emit('toast', { text: 'Built ' + mod.name + ' on ' + body.name, kind: 'good', ttl: 3.5 });
+    }
+    this.bus.emit('claim:moduleBuilt', { bodyId, modId });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    this._applyPoiLabel(body);
+    return true;
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // SPECIALIZATION — commission the claim into one of three operating identities (M5).
+  // Deliberate action, exact cost, idempotent, and never inferred from UI state.
+  // ------------------------------------------------------------------------------------------
+  specialize(bodyId, specId) {
+    const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
+    const def = BODY_SPECIALIZATION_BY_ID.get(specId);
+    if (!body || !def) {
+      this.bus.emit('toast', { text: 'Unknown claim or specialization', kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (body.spec && body.spec.id === specId) {
+      this.bus.emit('toast', { text: 'Already commissioned: ' + def.name, kind: 'info', ttl: 3 });
+      return false;
+    }
+    if (body.spec && (sumStore(body.spec.store.input) + sumStore(body.spec.store.output) > 0 || body.spec.convoy)) {
+      this.bus.emit('toast', { text: `Clear the site's storage before re-commissioning ${body.name}`, kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (!body.modules.includes(def.requiresModule)) {
+      const mod = BODY_MODULE_BY_ID.get(def.requiresModule);
+      this.bus.emit('toast', { text: 'Build ' + ((mod && mod.name) || def.requiresModule) + ' first', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const player = this.state.player;
+    if (player.credits < def.cost) {
+      const missing = def.cost - (Number(player.credits) || 0);
+      this.bus.emit('toast', { text: 'Need ' + fmtCr(missing) + ' more cr to commission ' + def.name, kind: 'error', ttl: 3 });
+      return false;
+    }
+    this.bus.emit('economy:chargeCredits', { amount: def.cost, reason: 'claim_specialize' });
+    body.spec = this._freshSpec(def);
+    this._ensureMeta();
+    this._receipt(body, 'commissioned', 'Commissioned as ' + def.name);
+    this._emitDeploymentOnce(body, def);
+    this.bus.emit('claim:specialized', { bodyId: body.id, specId: def.id });
+    this.bus.emit('toast', {
+      text: def.short + ' online — ' + def.playerVerb,
+      kind: 'good', ttl: 5,
+    });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    this._applyPoiLabel(body);
+    return true;
+  },
+
+  // Campaign B6 observes the canonical `asset:deployed` event. A commissioned claim is a real
+  // player outpost, but the old claims path only emitted `claim:specialized`, leaving the story
+  // step disconnected. Persist the receipt on the body (not the replaceable specialization) so
+  // re-commissioning and save/reload cannot grant the deployment twice.
+  _emitDeploymentOnce(body, def) {
+    if (!body || body.deploymentReceipt) return false;
+    const simTime = this.state.simTime || 0;
+    const receipt = {
+      receiptId: 'claim-deploy:' + body.id,
+      kind: 'outpost',
+      id: body.id,
+      claimId: body.id,
+      claimSpecId: def.id,
+      sectorId: body.sectorId || null,
+      simTime,
+      source: 'claims',
+    };
+    body.deploymentReceipt = receipt;
+    this.bus.emit('asset:deployed', { ...receipt });
+    return true;
+  },
+
+  // Move goods from the player hold into the site store. Returns units actually moved.
+  // Refinery accepts refinable ore only; relay accepts any freight; bastion takes none.
+  deliverToClaim(bodyId, goodId, qty) {
+    const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
+    const def = body && body.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+    const ask0 = Math.floor(Number(qty) || 0);
+    if (!body || !def || ask0 <= 0) return 0;
+    if (def.id === 'spec_bastion') {
+      this.bus.emit('toast', { text: 'The bastion garrison accepts no freight', kind: 'info', ttl: 3 });
+      return 0;
+    }
+    if (def.id === 'spec_refinery' && !CLAIM_INPUT_SET.has(goodId)) {
+      this.bus.emit('toast', { text: 'Refinery takes raw ore only', kind: 'error', ttl: 3 });
+      return 0;
+    }
+    const cap = def.id === 'spec_refinery' ? def.inputCapU : def.storeCapU;
+    const room = Math.max(0, cap - sumStore(body.spec.store.input));
+    const ask = Math.min(ask0, room);
+    if (ask <= 0) {
+      this.bus.emit('toast', { text: 'Site storage full on ' + body.name, kind: 'error', ttl: 3 });
+      return 0;
+    }
+    const moved = removeCargo(this.state, goodId, ask);
+    if (moved > 0) {
+      body.spec.store.input[goodId] = (body.spec.store.input[goodId] || 0) + moved;
+      this._receipt(body, 'delivered', 'Received ' + moved + 'u of freight', { goodId, qty: moved });
+    }
+    return moved;
+  },
+
+  // Physical operation-owned handoffs. The canonical roster and a live hull authorize custody.
+  transferDroneFreight({ groupId, bodyId, direction, good, qty } = {}) {
+    const refuse = (reason) => ({ ok: false, moved: 0, reason });
+    const g = this.state.automation?.drones?.find((g) => g.id === groupId);
+    const body = this.state.claims?.bodies?.find((b) => b.id === bodyId);
+    const def = body?.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+    if (!g || !body || body.owned !== true) return refuse('Claim is not owned');
+    if (g.sectorId !== body.sectorId || g.sectorId !== this.state.world?.currentSectorId) return refuse('Claim is outside the active drone sector');
+    if (!def || body.spec.status !== 'active') return refuse('Claim is inactive');
+    if (!['collect', 'unload'].includes(direction)) return refuse('Unknown freight direction');
+    if (!COMMODITIES.some((c) => c.id === good)) return refuse('Unknown commodity');
+    const droneCap = Number(g.bufferCap || DRONES.find((d) => d.id === g.defId)?.bufferCap) || 40;
+    if (!Number.isInteger(qty) || qty <= 0 || qty > droneCap) return refuse('Invalid freight quantity');
+    if (def.id === 'spec_bastion') return refuse('Bastion accepts no freight');
+    if (direction === 'unload' && def.id === 'spec_refinery' && !CLAIM_INPUT_SET.has(good)) return refuse('Refinery accepts recipe feedstock only');
+    const poi = Array.from(this.state.entities.values()).find((e) => e.alive !== false && e.data?.poiId === body.poiId);
+    const radius = Math.max(60, (Number(poi?.radius) || 0) + 24);
+    const arrived = (g.entityIds || []).some((id) => {
+      const e = this.state.entities.get(id);
+      return e?.alive !== false && e?.type === 'drone' && e.data?.groupId === g.id
+        && Math.hypot(e.pos.x - body.x, e.pos.z - body.z) < radius;
+    });
+    if (!arrived) return refuse('Drone has not arrived at the claim');
+    const store = body.spec.store;
+    let moved;
+    if (direction === 'collect') {
+      const have = Math.max(0, Math.floor(Number(store.output[good]) || 0));
+      if (have === 0) return refuse('Claim output is empty');
+      ensureShipment(g);
+      if (shipmentUsed(g) >= droneCap) return refuse('Drone shipment is full');
+      moved = addToShipment(g, good, Math.min(qty, have), droneCap);
+      if (moved > 0) {
+        store.output[good] -= moved;
+        if (store.output[good] <= 0) delete store.output[good];
+        body.spec.outputFull = false;
+      }
+    } else {
+      const have = shipmentQty(g, good);
+      const cap = def.id === 'spec_refinery' ? def.inputCapU : def.storeCapU;
+      const room = Math.max(0, cap - sumStore(store.input));
+      if (!have) return refuse('Drone shipment has no selected freight');
+      if (room < 1) return refuse('Claim input is full');
+      moved = takeFromShipment(g, good, Math.min(qty, have, Math.floor(room)));
+      if (moved > 0) store.input[good] = (store.input[good] || 0) + moved;
+    }
+    if (moved > 0) this._receipt(body, direction === 'collect' ? 'drone_collected' : 'drone_delivered',
+      `${direction === 'collect' ? 'Drone collected' : 'Drone delivered'} ${moved}u of freight`, { groupId, goodId: good, qty: moved });
+    return { ok: moved > 0, moved, reason: moved > 0 ? null : 'No freight moved' };
+  },
+
+  // Pull unprocessed input back into the player hold. Returns units actually moved.
+  withdrawFromClaim(bodyId, goodId, qty) {
+    const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
+    if (!body || !body.spec) return 0;
+    const have = body.spec.store.input[goodId] || 0;
+    const ask = Math.min(Math.floor(Number(qty) || 0), have);
+    if (ask <= 0) return 0;
+    const accepted = addCargo(this.state, goodId, ask);
+    if (accepted > 0) {
+      body.spec.store.input[goodId] = have - accepted;
+      if (body.spec.store.input[goodId] <= 0) delete body.spec.store.input[goodId];
+      this._receipt(body, 'withdrawn', 'Released ' + accepted + 'u back to the hold', { goodId, qty: accepted });
+    }
+    return accepted;
+  },
+
+  // Move the whole output store into the player hold (partial when the hold is short on volume).
+  // A refinery also releases input the unified recipe book cannot refine (a pre-row-402 save's
+  // platinoid, say): this is the player's one collect route, so stranded goods stay recoverable
+  // here with their identity and quantity. Returns units actually moved.
+  collectFromClaim(bodyId) {
+    const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
+    if (!body || !body.spec) return 0;
+    const def = BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+    const output = body.spec.store.output;
+    let total = 0;
+    let shippedOutput = 0;
+    for (const id of Object.keys(output)) {
+      const accepted = addCargo(this.state, id, output[id]);
+      if (accepted > 0) {
+        output[id] -= accepted;
+        if (output[id] <= 0) delete output[id];
+        total += accepted;
+        shippedOutput += accepted;
+      }
+    }
+    let stranded = 0;
+    if (def && def.id === 'spec_refinery') {
+      const input = (body.spec.store && body.spec.store.input) || {};
+      for (const id of Object.keys(input).sort()) {
+        if (CLAIM_INPUT_SET.has(id)) continue;
+        const accepted = addCargo(this.state, id, input[id]);
+        if (accepted > 0) {
+          input[id] -= accepted;
+          if (input[id] <= 0) delete input[id];
+          total += accepted;
+          stranded += accepted;
+        }
+      }
+    }
+    if (total > 0) {
+      if (shippedOutput > 0) body.spec.outputFull = false;
+      this._receipt(body, 'collected', 'Shipped out ' + total + 'u of goods',
+        stranded ? { qty: total, strandedU: stranded } : { qty: total });
+    }
+    return total;
+  },
+
+  // Teleport the player from a claimed body (with a teleporter) to its linked station. The V2 §8
+  // lane-collapser in action. Returns true if the jump happened.
+  teleportFrom(bodyId) {
+    const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
+    if (!body || !body.modules.includes('mod_teleporter') || !body.linkedStationId) {
+      this.bus.emit('toast', { text: 'No active teleporter on this body', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // The jump is the world system's public same-sector relocation seam (the primitive authored
+    // incidents and boarding holds use): it zeroes velocity, keeps heading, snaps prevPos, and
+    // publishes world:playerRelocated so the render pose re-seeds. The entity index only holds
+    // the current sector, so a linked station in another sector resolves to nothing — refuse
+    // honestly instead of toasting a jump that never happens.
+    const station = this._stationEntity(body.linkedStationId);
+    if (!station || !station.pos) {
+      this.bus.emit('toast', { text: 'Linked station is not in this sector — jump refused', kind: 'error', ttl: 4 });
+      return false;
+    }
+    const world = this.ctx && this.ctx.registry && typeof this.ctx.registry.get === 'function'
+      ? this.ctx.registry.get('world')
+      : null;
+    if (!world || typeof world.relocatePlayerInSector !== 'function') {
+      this.bus.emit('toast', { text: 'No jump lane available — teleporter offline', kind: 'error', ttl: 4 });
+      return false;
+    }
+    // Arrive in a clear berth beside the station, not inside its collision origin — the same
+    // courtesy the recovery dock pays (combat.js RECOVERY_BERTH_CLEARANCE_WU).
+    const moved = world.relocatePlayerInSector(
+      { x: station.pos.x + TELEPORT_BERTH_CLEARANCE_WU, z: station.pos.z },
+      { reason: 'claim_teleporter' },
+    );
+    if (!moved) {
+      this.bus.emit('toast', { text: 'No hull in flight — quantum jump failed', kind: 'error', ttl: 4 });
+      return false;
+    }
+    this.bus.emit('toast', { text: 'Quantum jump engaged → ' + (this._stationName(body.linkedStationId) || 'station'), kind: 'info', ttl: 3 });
+    return true;
+  },
+
+  // The depot beacon position for a body (where automation drones drop off). Used by the alphabet's
+  // 'depot' beacon resolver via a future hook; for now returns the body's world pos.
+  depotPos(bodyId) {
+    const b = (this.state.claims.bodies || []).find((x) => x.id === bodyId);
+    return b ? { x: b.x, z: b.z } : null;
+  },
+
+  _prepareTravelInfrastructure(body, mod) {
+    const stationId = this._nearestStationId(body);
+    const station = this._stationEntity(stationId);
+    if (!station || !station.pos) {
+      this.bus.emit('toast', { text: 'Throughline needs a live in-sector station endpoint', kind: 'error', ttl: 4 });
+      return null;
+    }
+    const bx = Number(body.x);
+    const bz = Number(body.z);
+    const sx = Number(station.pos.x);
+    const sz = Number(station.pos.z);
+    if (![bx, bz, sx, sz].every(Number.isFinite)) return null;
+    const dx = sx - bx;
+    const dz = sz - bz;
+    const centerDistance = Math.hypot(dx, dz);
+    if (!(centerDistance >= SLING_MIN_ROUTE_WU)) {
+      this.bus.emit('toast', { text: 'Throughline endpoint is too close for a safe acceleration corridor', kind: 'error', ttl: 4 });
+      return null;
+    }
+    const axis = { x: dx / centerDistance, z: dz / centerDistance };
+    const normal = { x: -axis.z, z: axis.x };
+    const corridorRadiusWU = Math.max(1, Number(mod.corridorRadiusWU) || 240);
+    let route = null;
+    for (const lateral of SLING_LATERAL_OFFSETS_WU) {
+      const from = {
+        x: bx + axis.x * SLING_BODY_CLEARANCE_WU + normal.x * lateral,
+        z: bz + axis.z * SLING_BODY_CLEARANCE_WU + normal.z * lateral,
+      };
+      const to = {
+        x: sx - axis.x * SLING_STATION_CLEARANCE_WU + normal.x * lateral,
+        z: sz - axis.z * SLING_STATION_CLEARANCE_WU + normal.z * lateral,
+      };
+      if (!this._travelInfrastructurePointClear(from, body, station)
+        || !this._travelInfrastructurePointClear(to, body, station)
+        || !this._travelInfrastructureCorridorClear(from, to, corridorRadiusWU, body, station)) continue;
+      const routeDx = to.x - from.x;
+      const routeDz = to.z - from.z;
+      const distanceWU = Math.hypot(routeDx, routeDz);
+      if (distanceWU > 0) route = { from, to, routeDx, routeDz, distanceWU };
+      if (route) break;
+    }
+    if (!route) {
+      this.bus.emit('toast', { text: 'No clear Throughline corridor between this claim and station', kind: 'error', ttl: 4 });
+      return null;
+    }
+    // The support relay sits on the same saved line, far enough from both endpoints to be read as
+    // a second structure rather than decoration bolted onto the ring or station.
+    let support = null;
+    for (const fraction of [0.55, 0.42, 0.68, 0.3, 0.8]) {
+      const candidate = {
+        x: route.from.x + route.routeDx * fraction,
+        z: route.from.z + route.routeDz * fraction,
+      };
+      if (this._travelInfrastructurePointClear(candidate, body, station)) {
+        support = candidate;
+        break;
+      }
+    }
+    if (!support) {
+      this.bus.emit('toast', { text: 'No clear Throughline relay hardpoint along this route', kind: 'error', ttl: 4 });
+      return null;
+    }
+    return {
+      stationId,
+      from: route.from,
+      to: route.to,
+      support,
+      distanceWU: route.distanceWU,
+    };
+  },
+
+  _travelInfrastructureStaticCandidates() {
+    // The blocker domain is every entityList member the blocker accepts — index.statics is
+    // station|asteroid only, so an index-ready-but-no-hash middle branch would silently stop
+    // mines/bombs/props blocking a hardpoint.
+    return this.state.entityList || [];
+  },
+
+  // Blocker-passing bodies the spatial hash cannot cover: hash membership requires
+  // e.collides truthy, so a member with collides===undefined/0 still passes
+  // _travelInfrastructureStaticBlocker (only ===false fails it) yet never reaches a
+  // queryRadius result — and a collides-truthy member shelved out of the physics
+  // partition (_physicsPartition ∉ {1,2}) is hash-invisible the same way. The domain
+  // is the blocker domain — entityList minus the six excluded types — not index.statics.
+  // Rebuilt on index churn, a collides flip, or a physics-partition flip (shelf in/out).
+  _travelInfrastructureStaticsUncovered() {
+    const index = this.state && this.state.entityIndex;
+    const version = index && Number.isFinite(index.version) ? index.version : null;
+    const epoch = collidesFlipEpoch();
+    const partitionEpoch = physicsPartitionEpoch();
+    const cache = this._infraStaticsUncovered
+      || (this._infraStaticsUncovered = { version: -1, epoch: -1, partitionEpoch: -1, list: [] });
+    if (version === null || cache.version !== version || cache.epoch !== epoch
+      || cache.partitionEpoch !== partitionEpoch) {
+      cache.version = version == null ? -1 : version;
+      cache.epoch = epoch;
+      cache.partitionEpoch = partitionEpoch;
+      cache.list.length = 0;
+      const list = (this.state && this.state.entityList) || [];
+      for (const e of list) {
+        if (e && e.collides !== false
+          && (!e.collides || (e._physicsPartition !== 1 && e._physicsPartition !== 2))) {
+          cache.list.push(e);
+        }
+      }
+    }
+    return cache.list;
+  },
+
+  // The hash + uncovered pair only covers the blocker domain when the index provably
+  // covers every entity: hash members derive from index lanes, so an unindexed
+  // collides-truthy member would live in neither set.
+  _travelInfrastructureIndexCovers() {
+    const index = this.state && this.state.entityIndex;
+    const entities = this.state && this.state.entities;
+    return !!(
+      index
+      && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index._indexedIds instanceof Set
+      && entities
+      && entities.size === index._indexedIds.size
+    );
+  },
+
+  // Radius bound for the padded query: every covered blocker satisfies
+  // dist < base + e.radius <= base + maxR. The domain is every entityList member:
+  // blockers are not station/asteroid-only, and a collides===false member can only
+  // enter via a collides flip (epoch-bumped) or a radius growth (epoch-bumped at the
+  // single post-spawn growth site, alienEcology juvenile promotion).
+  _travelInfrastructureBlockerMaxRadius() {
+    const index = this.state && this.state.entityIndex;
+    const version = index && Number.isFinite(index.version) ? index.version : null;
+    const epoch = collidesFlipEpoch();
+    const cache = this._infraBlockerMaxR
+      || (this._infraBlockerMaxR = { version: -1, epoch: -1, max: 0 });
+    if (version === null || cache.version !== version || cache.epoch !== epoch) {
+      cache.version = version == null ? -1 : version;
+      cache.epoch = epoch;
+      cache.max = 0;
+      const list = (this.state && this.state.entityList) || [];
+      for (const e of list) {
+        const r = e && Math.max(0, Number(e.radius) || 0);
+        if (r > cache.max) cache.max = r;
+      }
+    }
+    return cache.max;
+  },
+
+  // Shared blocker probe over a candidate set. The blocker itself applies the domain
+  // (excludes ship/drone/projectile/pickup/payload/wreck) — any other type that passes it
+  // (mine, bomb, fx, place prop, ...) blocked under the original entityList walk and must
+  // keep blocking here.
+  _travelInfrastructureAnyBlocker(candidates, test) {
+    for (const entity of candidates) {
+      if (!entity) continue;
+      if (test(entity)) return true;
+    }
+    return false;
+  },
+
+  _travelInfrastructurePointClear(pos, body, station) {
+    const hash = this.state && this.state.spatialHash;
+    if (hasActiveSpatialHash(hash) && this._travelInfrastructureIndexCovers()) {
+      const out = this._infraPointScratch || (this._infraPointScratch = []);
+      out.length = 0;
+      hash.queryRadius(pos.x, pos.z, 72 + this._travelInfrastructureBlockerMaxRadius(), out);
+      const hits = (entity) => {
+        if (!this._travelInfrastructureStaticBlocker(entity, body, station)) return false;
+        const clearance = 72 + Math.max(0, Number(entity.radius) || 0);
+        return Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z) < clearance;
+      };
+      if (this._travelInfrastructureAnyBlocker(out, hits)) return false;
+      return !this._travelInfrastructureAnyBlocker(
+        this._travelInfrastructureStaticsUncovered(), hits,
+      );
+    }
+    const list = this._travelInfrastructureStaticCandidates();
+    for (const entity of list) {
+      // A passing craft cannot invalidate a permanent surveyed hardpoint. Only static world bodies
+      // participate in the build clearance test.
+      if (!this._travelInfrastructureStaticBlocker(entity, body, station)) continue;
+      const clearance = 72 + Math.max(0, Number(entity.radius) || 0);
+      if (Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z) < clearance) return false;
+    }
+    return true;
+  },
+
+  _travelInfrastructureCorridorClear(from, to, corridorRadiusWU, body, station) {
+    const hits = (entity) => {
+      if (!this._travelInfrastructureStaticBlocker(entity, body, station)) return false;
+      const radius = corridorRadiusWU + Math.max(0, Number(entity.radius) || 0);
+      return pointSegmentDistanceSquared(
+        entity.pos.x, entity.pos.z,
+        from.x, from.z,
+        to.x, to.z,
+      ) < radius * radius;
+    };
+    const hash = this.state && this.state.spatialHash;
+    if (hasActiveSpatialHash(hash) && this._travelInfrastructureIndexCovers()) {
+      // One union disc covers the corridor's Minkowski sum: any blocker within
+      // corridorRadius+e.radius of the segment sits inside it.
+      const midX = (from.x + to.x) / 2;
+      const midZ = (from.z + to.z) / 2;
+      const halfLen = Math.hypot(to.x - from.x, to.z - from.z) / 2;
+      const r = halfLen + corridorRadiusWU + this._travelInfrastructureBlockerMaxRadius();
+      const out = this._infraCorridorScratch || (this._infraCorridorScratch = []);
+      out.length = 0;
+      hash.queryRadius(midX, midZ, r, out);
+      if (this._travelInfrastructureAnyBlocker(out, hits)) return false;
+      return !this._travelInfrastructureAnyBlocker(
+        this._travelInfrastructureStaticsUncovered(), hits,
+      );
+    }
+    const list = this._travelInfrastructureStaticCandidates();
+    for (const entity of list) {
+      if (hits(entity)) return false;
+    }
+    return true;
+  },
+
+  _travelInfrastructureStaticBlocker(entity, body, station) {
+    if (!entity || entity.alive === false || entity === station || entity.collides === false) return false;
+    if (body && body.poiId && entity.data && entity.data.poiId === body.poiId) return false;
+    if (['ship', 'drone', 'projectile', 'pickup', 'payload', 'wreck'].includes(entity.type)) return false;
+    return !!entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
+  },
+
+  _newTravelInfrastructure(body, mod, route) {
+    const builtAt = Number(this.state.simTime) || 0;
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: `throughline:${body.id}`,
+      bodyId: body.id,
+      sectorId: body.sectorId,
+      name: `${body.name} Throughline`,
+      stationId: route.stationId,
+      stage: 'aligning',
+      operational: false,
+      builtAt,
+      alignUntil: builtAt + Math.max(0, Number(mod.alignTimeS) || 0),
+      from: { x: route.from.x, z: route.from.z },
+      to: { x: route.to.x, z: route.to.z },
+      support: { x: route.support.x, z: route.support.z },
+      distanceWU: route.distanceWU,
+      corridorRadiusWU: Math.max(1, Number(mod.corridorRadiusWU) || 240),
+      ceilingMult: Math.max(1, Number(mod.ceilingMult) || 1),
+      rampMult: Math.max(1, Number(mod.rampMult) || 1),
+      damagePolicy: 'claim_status',
+      fabricationReceipt: {
+        receiptId: `throughline-build:${body.id}`,
+        builtAt,
+        stationId: route.stationId,
+        costCr: Math.max(0, Number(mod.cost) || 0),
+        materials: { ...(mod.materials || {}) },
+      },
+    };
+  },
+
+  /** Visit durable Throughline records without allocating a per-frame array. */
+  visitTravelInfrastructure(sectorId, visitor) {
+    if (typeof visitor !== 'function') return 0;
+    let count = 0;
+    const claims = this.state.claims;
+    for (const body of (claims && claims.bodies) || []) {
+      const infrastructure = body && body.infrastructure;
+      if (!infrastructure || infrastructure.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
+      if (sectorId && body.sectorId !== sectorId) continue;
+      visitor(infrastructure, body);
+      count += 1;
+    }
+    // NXB-036: grown-station approach corridors are the same consumed record, hosted by the
+    // station's growth record rather than a claim body — one seam for every consumer.
+    const growth = claims && claims.stationGrowth;
+    if (growth) {
+      for (const stationId in growth) {
+        const rec = growth[stationId];
+        const route = rec && rec.growthRoute;
+        if (!route || route.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
+        if (sectorId && rec.sectorId !== sectorId) continue;
+        visitor(route, this._growthRouteHost(rec));
+        count += 1;
+      }
+    }
+    return count;
+  },
+
+  activeTravelInfrastructure(sectorId) {
+    const out = [];
+    this.visitTravelInfrastructure(sectorId, (infrastructure, body) => {
+      if (infrastructure.operational === true) out.push({ infrastructure, body });
+    });
+    return out;
+  },
+
+  travelInfrastructureHooks(sectorId) {
+    return this.activeTravelInfrastructure(sectorId).map(({ infrastructure, body }) => ({
+      id: infrastructure.id,
+      bodyId: body.id,
+      sectorId: body.sectorId,
+      stationId: infrastructure.stationId,
+      slingPos: { x: infrastructure.from.x, z: infrastructure.from.z },
+      label: `${infrastructure.name} service run`,
+      eligibleRoles: ['hauler', 'trader'],
+    }));
+  },
+
+  _tickTravelInfrastructure(body, state) {
+    const infrastructure = body && body.infrastructure;
+    if (!infrastructure || infrastructure.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) return;
+    const now = Number(state.simTime) || 0;
+    if (infrastructure.stage === 'aligning' && now >= (Number(infrastructure.alignUntil) || 0)) {
+      infrastructure.stage = 'active';
+      if (body.spec) {
+        this._receipt(body, 'throughline_active', 'Throughline aligned — physical corridor open to ' + (this._stationName(infrastructure.stationId) || infrastructure.stationId), {
+          infrastructureId: infrastructure.id,
+          stationId: infrastructure.stationId,
+          distanceWU: infrastructure.distanceWU,
+        });
+      }
+      this.bus.emit('claim:infrastructureActive', { bodyId: body.id, infrastructureId: infrastructure.id });
+      if (body.sectorId === (state.world && state.world.currentSectorId)) {
+        this.bus.emit('toast', { text: 'Throughline online · ' + body.name + ' ↔ ' + (this._stationName(infrastructure.stationId) || 'station'), kind: 'good', ttl: 5 });
+      }
+      this._applyPoiLabel(body);
+    }
+    const operational = infrastructure.stage === 'active'
+      && !!body.spec && body.spec.id === 'spec_refinery' && body.spec.status === 'active';
+    if (infrastructure.operational !== operational) {
+      infrastructure.operational = operational;
+      this._applyPoiLabel(body);
+      this.bus.emit('claim:infrastructureStatus', {
+        bodyId: body.id,
+        infrastructureId: infrastructure.id,
+        operational,
+        reason: operational ? 'active' : (body.spec && body.spec.status) || infrastructure.stage,
+      });
+    }
+  },
+
+  // Per-tick: specialization behavior + legacy passive effects. Bodies WITHOUT a specialization
+  // keep the original module behavior (refinery module refines from the player hold); a
+  // commissioned body runs its operating identity instead (store-based, physical logistics).
+  update(dt, state) {
+    // Grown-station approach corridors tick even when the player owns no claim bodies.
+    this._tickStationGrowthRoutes(state);
+    const bodies = state.claims && state.claims.bodies;
+    if (!bodies || !bodies.length) return;
+    let anySpec = false;
+    for (const body of bodies) {
+      this._tickSensorPost(body, state);
+      if (body.spec) {
+        anySpec = true;
+        this._tickSpec(body, dt, state);
+      } else if (body.modules.includes('mod_refinery')) {
+        const mod = BODY_MODULE_BY_ID.get('mod_refinery');
+        const rate = (mod.refineRate || 0.5) * dt; // ore-units this tick
+        this._tickRefinery(body, rate);
+      }
+      this._tickDepotSupport(body, state);
+      this._tickTravelInfrastructure(body, state);
+    }
+    this._tickRaidDefenses(bodies, state);
+    if (!anySpec) return;
+    const meta = this._ensureMeta();
+    meta.upkeepAccum = (meta.upkeepAccum || 0) + dt;
+    const upkeepDue = consumePeriodicClock(meta.upkeepAccum, 0, SPEC_UPKEEP_EVERY_S);
+    meta.upkeepAccum = upkeepDue.accumulator;
+    for (let i = 0; i < upkeepDue.steps; i++) this._settleUpkeep(bodies, state);
+    meta.raidAccum = (meta.raidAccum || 0) + dt;
+    const raidDue = consumePeriodicClock(meta.raidAccum, 0, SPEC_RAID_EVERY_S);
+    meta.raidAccum = raidDue.accumulator;
+    for (let i = 0; i < raidDue.steps; i++) this._rollRaids(bodies, state);
+  },
+
+  _tickSensorPost(body, state) {
+    if (!body || !Array.isArray(body.modules) || !body.modules.includes('mod_sensor_post')) return false;
+    const dayIndex = Math.max(0, Math.floor((Number(state.simTime) || 0) / CLAIM_DAY_SECONDS));
+    if (body.sensorPostLastRumorDay === dayIndex) return false;
+    body.sensorPostLastRumorDay = dayIndex;
+    this.bus.emit('claim:sensorPostRumor', { bodyId: body.id, sectorId: body.sectorId, dayIndex });
+    return true;
+  },
+
+  _tickSpec(body, dt, state) {
+    const spec = body.spec;
+    const def = BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    if (!def) return;
+    const t = state.simTime || 0;
+    if (spec.status === 'raided') {
+      if (t < (spec.statusUntil || 0)) return; // frozen: no work, no upkeep accrual
+      spec.status = 'active';
+      spec.statusUntil = 0;
+      this._receipt(body, 'site_recovered', 'Crews back to work after the raid');
+    }
+    // Upkeep accrues while staffed; a cold (unpaid) site stops accruing until it's paid off.
+    if (spec.status === 'active') {
+      spec.upkeepDebt = (spec.upkeepDebt || 0) + (def.upkeepPerMin / 60) * dt;
+      // A spec can arrive at the tick minimal ({id,status} — a restored stub or a planted
+      // body): heal the store shape once rather than letting every consumer deref a missing
+      // shelf. Mirrors _normalizeSpec's healing contract.
+      const store = spec.store && typeof spec.store === 'object' ? spec.store : (spec.store = {});
+      if (!store.input || typeof store.input !== 'object') store.input = {};
+      if (!store.output || typeof store.output !== 'object') store.output = {};
+    }
+    if (def.id === 'spec_refinery') {
+      this._tickSpecRefinery(body, def, dt);
+      this._tickRefineryFeed(body, state);
+    } else if (def.id === 'spec_relay') this._tickSpecRelay(body, def, state);
+    // spec_bastion has no per-tick production — its work happens in _rollRaids + the ledger.
+  },
+
+  _tickSpecRefinery(body, def, dt) {
+    const spec = body.spec;
+    if (spec.status !== 'active') return;
+    // A blocked site (packed output store, or no whole REFINE_RATIO of any ore) is
+    // parked, not working: its meter — partial progress or legitimately saved
+    // work — stays exactly where it was until freight moves.
+    const parked = this._refineryReadiness(spec, def);
+    if (!parked.working) {
+      if (parked.outputRoomU <= 0 && !spec.outputFull) {
+        spec.outputFull = true;
+        this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
+      }
+      return;
+    }
+    spec.acc = (spec.acc || 0) + def.refineRatePerS * dt;
+    let ready = this._refineryReadiness(spec, def);
+    while (ready.working && spec.acc >= ready.recipe.batchU) {
+      const r = ready.recipe;
+      for (const id of Object.keys(r.inputs).sort()) {
+        spec.store.input[id] -= r.inputs[id];
+        if (spec.store.input[id] <= 0) delete spec.store.input[id];
+      }
+      spec.store.output[r.outputId] = (spec.store.output[r.outputId] || 0) + r.outputU;
+      spec.totals.refinedTotalU += r.outputU;
+      spec.acc -= r.batchU;
+      // The batch that lands on the cap is the stop. A later attempt only
+      // repeats the note when a pickup cleared the flag and the store is still full.
+      if (sumStore(spec.store.output) >= def.outputCapU && !spec.outputFull) {
+        spec.outputFull = true;
+        this._receipt(body, 'output_full', OUTPUT_STORE_FULL_LINE);
+      }
+      // If that conversion exhausted the input or packed the store, the tick's
+      // work is done: whatever accrual remains arrived after the stall — discard
+      // it, even a sub-batch fraction.
+      ready = this._refineryReadiness(spec, def);
+      if (!ready.working) { spec.acc = 0; break; }
+    }
+  },
+
+  // Row 402: the refinery's output reaches a station through a claim relay with no player hold.
+  // Whole units, same sector, lowest-id ACTIVE relay with room; batched (≥ relay minLoadU or a full
+  // store) at most every RELAY_FEED_EVERY_S so the 8-receipt ring keeps the convoy receipts.
+  // Capacity is a hard filter: a full lowest-id relay must not shadow an empty one behind it.
+  _feedRelayFor(body) {
+    const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    const relayDef = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
+    return bodies
+      .filter((b) => b !== body && b.sectorId === body.sectorId && b.spec
+        && b.spec.id === 'spec_relay' && b.spec.status === 'active')
+      .filter((b) => {
+        const store = b.spec.store && typeof b.spec.store === 'object' ? b.spec.store : null;
+        const input = (store && store.input) || {};
+        return Math.floor(relayDef.storeCapU - sumStore(input)) >= 1;
+      })
+      .sort((a, b) => (claimBodyOrdinal(a.id) - claimBodyOrdinal(b.id)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] || null;
+  },
+
+  _tickRefineryFeed(body, state) {
+    const spec = body.spec;
+    if (!spec || spec.status !== 'active') return 0;
+    const t = state.simTime || 0;
+    if (t < (Number(spec.nextForwardAt) || 0)) return 0;
+    const output = (spec.store && spec.store.output) || {};
+    const ids = Object.keys(output).filter((id) => Math.floor(Number(output[id]) || 0) > 0).sort();
+    let held = 0; for (const id of ids) held += Math.floor(Number(output[id]) || 0);
+    const relayDef = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
+    if (!held || (held < relayDef.minLoadU && !spec.outputFull)) return 0;
+    const relay = this._feedRelayFor(body);
+    if (!relay) return 0;
+    const rStore = relay.spec.store && typeof relay.spec.store === 'object' ? relay.spec.store : (relay.spec.store = {});
+    if (!rStore.input || typeof rStore.input !== 'object') rStore.input = {};
+    if (!rStore.output || typeof rStore.output !== 'object') rStore.output = {};
+    let room = Math.max(0, Math.floor(relayDef.storeCapU - sumStore(rStore.input)));
+    const goods = {}; let moved = 0;
+    for (const id of ids) {
+      if (room <= 0) break;
+      const take = Math.min(Math.floor(Number(output[id]) || 0), room);
+      if (take <= 0) continue;
+      output[id] -= take; if (output[id] <= 0) delete output[id];
+      rStore.input[id] = (rStore.input[id] || 0) + take;
+      goods[id] = take; moved += take; room -= take;
+    }
+    if (moved <= 0) return 0;
+    spec.outputFull = false;
+    spec.nextForwardAt = t + RELAY_FEED_EVERY_S;
+    spec.totals.forwardedU = (spec.totals.forwardedU || 0) + moved;
+    relay.spec.totals.receivedU = (relay.spec.totals.receivedU || 0) + moved;
+    this._receipt(body, 'relay_forwarded', 'Forwarded ' + moved + 'u to ' + relay.name + ' relay',
+      { goods, qty: moved, toBodyId: relay.id });
+    this._receipt(relay, 'relay_received', 'Received ' + moved + 'u from ' + body.name + ' refinery',
+      { goods, qty: moved, fromBodyId: body.id });
+    return moved;
+  },
+
+  _tickSpecRelay(body, def, state) {
+    const spec = body.spec;
+    const t = state.simTime || 0;
+    // arrivals resolve even while cold — the convoy is already flying
+    if (spec.convoy && t >= spec.convoy.arriveAt) {
+      const convoy = spec.convoy;
+      // A manifested leg resolves on its hull: berth unload emits claim:convoyDocked, a kill
+      // emits freight:loss. While that carrier is still flying, the schedule does not touch it.
+      const ent = convoy.manifested === true && convoy.entityId != null && state.entities
+        && typeof state.entities.get === 'function' ? state.entities.get(convoy.entityId) : null;
+      const hullFlying = !!(ent && ent.alive !== false && ent.data
+        && ent.data.claimConvoy && ent.data.claimConvoy.convoyId === convoy.convoyId);
+      if (hullFlying) {
+        // still en route — the physical arrival is the arrival
+      } else if (convoy.manifested === true) {
+        // A launched hauler ends by docking or by freight loss. Being off the map
+        // is not an arrival, so the transit clock does not pay the sale or retire the leg.
+      } else {
+        spec.convoy = null;
+        if (convoy.convoyId) {
+          // No unseen dice deleting player property: a convoy that never manifested (nobody
+          // there to witness it) cannot be killed — it simply completes its transit.
+          this._settleConvoySale(body, spec, def, convoy, convoy.qty);
+        } else {
+          // Legacy convoy legs (saved before physical carriers) keep their original resolution.
+          const sector = SECTOR_BY_ID.get(body.sectorId);
+          const danger = sector ? dangerIndex(sector) : 0;
+          const lawful = !!sector && sector.security >= RAID_SECURITY_FLOOR;
+          const pLoss = lawful ? 0 : Math.min(RELAY_LOSS_BASE + danger * RELAY_LOSS_DANGER, RELAY_LOSS_CAP);
+          if (pLoss > 0 && this._rng() < pLoss) {
+            spec.totals.lostU += convoy.qty;
+            this._receipt(body, 'convoy_lost', 'Convoy lost en route — ' + convoy.qty + 'u gone',
+              { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+            this.bus.emit('toast', { text: 'Relay convoy lost near ' + body.name + ' (-' + convoy.qty + ' goods)', kind: 'warn', ttl: 4 });
+          } else {
+            this._settleConvoySale(body, spec, def, convoy, convoy.qty);
+          }
+        }
+      }
+    }
+    // scheduled dispatch — only while staffed, only with a real destination + market truth
+    if (!spec.convoy && spec.status === 'active' && t >= (spec.nextDispatchAt || 0)) {
+      spec.nextDispatchAt = t + def.dispatchEveryS;
+      const dest = this._relayDestination(body);
+      const economy = this._economyPeer();
+      if (dest && economy) {
+        let bestGood = null, bestQty = 0;
+        for (const id in spec.store.input) {
+          const q = spec.store.input[id] || 0;
+          if (q > bestQty) { bestQty = q; bestGood = id; }
+        }
+        if (bestGood && bestQty >= def.minLoadU) {
+          const qty = Math.min(def.convoyLoadU, bestQty);
+          spec.store.input[bestGood] -= qty;
+          if (spec.store.input[bestGood] <= 0) delete spec.store.input[bestGood];
+          const convoySeq = (spec.convoySeq || 0) + 1;
+          spec.convoySeq = convoySeq;
+          spec.convoy = {
+            goodId: bestGood, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS,
+            convoyId: body.id + ':cv' + convoySeq,
+            bodyId: body.id,
+            // Durable identity minted at dispatch: traffic materializes the carrier under this
+            // record id, so kill/shelf/relink paths all name the same ship.
+            worldRecordId: stableRecordId(
+              (state.meta && state.meta.seed) || 1,
+              body.sectorId || (state.world && state.world.currentSectorId) || 'sector',
+              RECORD_KIND.CONVOY,
+              'claim-convoy:' + body.id + ':' + convoySeq,
+            ),
+            manifested: false,
+            entityId: null,
+          };
+          this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
+            { goodId: bestGood, qty, destStationId: dest });
+        }
+      }
+    }
+  },
+
+  /**
+   * Sell or return one convoy leg's freight at the destination market. Shared by the physical
+   * berth unload (qty = what actually survived aboard) and the unwitnessed abstract transit.
+   * Never fabricates a price — no market truth means the freight comes home.
+   */
+  _settleConvoySale(body, spec, def, convoy, qty) {
+    // NXB-027: one leg settles once. Accepted on the convoy's own record BEFORE any synchronous
+    // publication, so a repeated berth/arrival callback can never re-pay or re-return the freight.
+    if (convoy.saleSettled === true) return;
+    convoy.saleSettled = true;
+    const economy = this._economyPeer();
+    const markets = this.state && this.state.economy && this.state.economy.markets;
+    const stationMarket = markets && markets[convoy.destStationId];
+    const entry = stationMarket && stationMarket[convoy.goodId];
+    const listed = listedMarketSell(entry);
+    const unit = listed != null && economy && economy.priceOf
+      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell')
+      : null;
+    if (!(listed > 0) || !(unit > 0)) {
+      spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
+      if (convoy.qtyLedger) convoy.qtyLedger.returned = qty;
+      this._receipt(
+        body,
+        'convoy_returned',
+        listed > 0 ? 'No buyer found — freight returned' : 'No market price — freight held',
+        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, missingPrice: !(listed > 0) },
+      );
+      return;
+    }
+    // PQ-170.01: a station the player's freight grew keeps less of the sale.
+    const saleFee = this._relaySaleFee(def, convoy.destStationId);
+    const revenue = Math.round(qty * unit * (1 - saleFee));
+    if (convoy.qtyLedger) convoy.qtyLedger.sold = qty;
+    this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
+    this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: qty });
+    spec.totals.soldTotalCr += revenue;
+    this._receipt(body, 'convoy_sold', 'Convoy sold ' + qty + 'u at ' + (this._stationName(convoy.destStationId) || convoy.destStationId),
+      { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, revenueCr: revenue, saleFee });
+    // Relay freight landing at a real market is player-supplied throughput for that station,
+    // keyed on the leg's durable id so a republished dock notice cannot recount it.
+    this._recordStationThroughput(convoy.destStationId, qty, 'relay_convoy', {
+      goodId: convoy.goodId, bodyId: body.id,
+      receiptId: convoy.convoyId ? 'relay-convoy:' + convoy.convoyId : null,
+    });
+  },
+
+  /** Traffic spawned the carrier for this leg — flip it onto the physical track. */
+  _onConvoyManifested(payload) {
+    const body = this._body(payload && payload.bodyId);
+    const convoy = body && body.spec && body.spec.convoy;
+    if (!convoy || convoy.convoyId !== payload.convoyId) {
+      // Leg already settled — the just-materialized hull is ownerless; retire it now.
+      if (payload && payload.convoyId) this.bus.emit('claim:convoyAbandoned', { ...payload, reason: 'leg_gone' });
+      return;
+    }
+    convoy.manifested = true;
+    convoy.entityId = payload.entityId;
+  },
+
+  /** Berth-side unload: settle the sale for what actually survived the run aboard the hull. */
+  _onConvoyDocked(payload) {
+    const body = this._body(payload && payload.bodyId);
+    const spec = body && body.spec;
+    const convoy = spec && spec.convoy;
+    if (!convoy || convoy.convoyId !== payload.convoyId) return;
+    if (payload.stationId && convoy.destStationId !== payload.stationId) return;
+    spec.convoy = null;
+    const ledger = relayFreightLedger(convoy.qty, payload.qty, payload.recoverableQty);
+    const departed = ledger.departed;
+    const aboard = ledger.aboard;
+    const recoverable = ledger.recoverable;
+    const spilled = ledger.lost;
+    if (recoverable > 0) {
+      spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + recoverable;
+      this._receipt(body, 'convoy_recovered', 'Recovered freight returned to the relay',
+        { goodId: convoy.goodId, qty: recoverable, destStationId: convoy.destStationId });
+    }
+    if (spilled > 0) {
+      spec.totals.lostU += spilled;
+      this._receipt(body, 'convoy_partial_loss', 'Freight that did not arrive and was not recovered is lost',
+        { goodId: convoy.goodId, qty: spilled, destStationId: convoy.destStationId });
+    }
+    convoy.qtyLedger = { departed, sold: 0, returned: 0, recoverable, lost: spilled };
+    if (aboard <= 0) {
+      this._receipt(body, 'convoy_lost', 'Convoy berthed empty — cargo spilled en route',
+        { goodId: convoy.goodId, qty: spilled, destStationId: convoy.destStationId });
+      this.bus.emit('toast', { text: 'Relay convoy arrived empty near ' + body.name, kind: 'warn', ttl: 4 });
+      return;
+    }
+    const def = spec.id && BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    this._settleConvoySale(body, spec, def, convoy, aboard);
+  },
+
+  /**
+   * A manifested convoy hull was destroyed — the ordinary freight:loss ledger already booked
+   * scarcity pressure and the headline; claims resolves the leg's own ledger exactly once.
+   */
+  _onConvoyFreightLoss(payload) {
+    const freighterKey = payload && payload.freighterKey;
+    if (typeof freighterKey !== 'string' || !freighterKey) return;
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      const spec = body && body.spec;
+      const convoy = spec && spec.convoy;
+      if (!convoy || convoy.worldRecordId !== freighterKey) continue;
+      spec.convoy = null;
+      spec.totals.lostU += convoy.qty;
+      this._receipt(body, 'convoy_lost', 'Convoy destroyed en route — ' + convoy.qty + 'u gone',
+        { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+      this.bus.emit('toast', { text: 'Relay convoy destroyed near ' + body.name + ' (-' + convoy.qty + ' goods)', kind: 'warn', ttl: 4 });
+    }
+  },
+
+  _settleUpkeep(bodies, state) {
+    for (const body of bodies) {
+      const spec = body.spec;
+      const def = spec && BODY_SPECIALIZATION_BY_ID.get(spec.id);
+      if (!spec || !def) continue;
+      if (spec.status === 'raided') continue;
+      const due = Math.round(spec.upkeepDebt || 0);
+      if (due <= 0) continue;
+      const credits = Math.round((state.player && state.player.credits) || 0);
+      if (credits >= due) {
+        this.bus.emit('economy:chargeCredits', { amount: due, reason: 'claim_upkeep' });
+        spec.upkeepDebt = 0;
+        spec.totals.upkeepPaidCr += due;
+        if (spec.status === 'cold') {
+          spec.status = 'active';
+          this._receipt(body, 'upkeep_recovered', 'Crews paid — site back online');
+          this.bus.emit('toast', { text: body.name + ' back online', kind: 'good', ttl: 3 });
+        }
+      } else if (spec.status === 'active') {
+        spec.status = 'cold';
+        this._receipt(body, 'upkeep_missed', 'Upkeep unpaid (' + fmtCr(due) + ' cr due) — site gone cold');
+        this.bus.emit('toast', { text: body.name + ' gone cold — upkeep unpaid', kind: 'warn', ttl: 4 });
+      }
+    }
+  },
+
+  // The claim raid window (every SPEC_RAID_EVERY_S). Lawful space never raids; empty sites are not
+  // targets; a raided site is frozen, never destroyed. Bastions warn (coverage), contest (repel
+  // roll), soften losses, and buy deterrence — all via receipts, never silent.
+  _rollRaids(bodies, state) {
+    const t = state.simTime || 0;
+    for (const body of bodies) {
+      const spec = body.spec;
+      if (!spec || spec.status === 'raided' || spec.defense) continue;
+      const sector = SECTOR_BY_ID.get(body.sectorId);
+      if (!sector || sector.security >= RAID_SECURITY_FLOOR) continue;
+      const bastion = bodies.find((b) => b !== body && b.sectorId === body.sectorId
+        && b.spec && b.spec.id === 'spec_bastion' && b.spec.status === 'active');
+      const playerPresent = state.world && state.world.currentSectorId === body.sectorId;
+      // No unseen dice deleting player property. Off-sector raids require an active bastion that
+      // owns warning coverage; otherwise the risk waits until the player returns to counter it.
+      if (!playerPresent && !bastion) continue;
+      const stored = sumStore(spec.store.input) + sumStore(spec.store.output);
+      if (stored <= 0) continue;
+      const deterred = (spec.deterrenceUntil || 0) > t;
+      const pTrip = raidTripChance(dangerIndex(sector), { deterred });
+      if (this._rng() >= pTrip) continue;
+      // raid inbound — warning coverage fires first
+      if (bastion) {
+        this._receipt(bastion, 'raid_warning', 'Raid warning — hostiles moving on ' + body.name);
+        this.bus.emit('claim:raidWarning', { bodyId: body.id, bastionId: bastion.id, sectorId: body.sectorId });
+      }
+      const rating = claimDefenseRating(body, bodies);
+      if (this._rng() < repelChance(rating)) {
+        spec.totals.raidsRepelled += 1;
+        spec.deterrenceUntil = t + SPEC_DETERRENCE_S;
+        this._receipt(body, 'raid_repelled', 'Raid repelled — batteries held the line');
+        this.bus.emit('claim:raidRepelled', { bodyId: body.id, defense: rating });
+        this.bus.emit('toast', { text: 'Raid repelled at ' + body.name, kind: 'good', ttl: 4 });
+      } else {
+        const [minAttackers, maxAttackers] = CLAIM_RAID_ATTACKER_RANGE;
+        this.beginRaidDefense(body.id, {
+          bastionId: bastion && bastion.id,
+          // Consume the existing dedicated raid-size draw, but map it onto the authored 4–6
+          // swarm range rather than the legacy two-or-three abstraction.
+          attackerCount: minAttackers + Math.floor(this._rng() * (maxAttackers - minAttackers + 1)),
+        });
+      }
+    }
+  },
+
+  // Turn a tripped abstract raid into a durable response contract. Claims owns the warning and
+  // settlement; the encounter director owns only the flyable combat set piece.
+  beginRaidDefense(bodyId, options = {}) {
+    const body = this._body(bodyId);
+    const spec = body && body.spec;
+    if (!body || !spec || spec.defense || spec.status === 'raided') return false;
+    if (sumStore(spec.store.input) + sumStore(spec.store.output) <= 0) return false;
+    const onboarding = this.state.onboarding;
+    if (onboarding && onboarding.active && !onboarding.finished) return false;
+
+    const meta = this._ensureMeta();
+    const seq = Math.max(1, meta.nextRaidId | 0);
+    meta.nextRaidId = seq + 1;
+    const now = this.state.simTime || 0;
+    const defenseId = `${body.id}:${seq}`;
+    const attackerCount = Math.max(1, Math.min(6, Math.round(options.attackerCount || 2)));
+    const previousWaypoint = this.state.nav && this.state.nav.waypoint
+      ? JSON.parse(JSON.stringify(this.state.nav.waypoint)) : null;
+    const defense = {
+      id: defenseId,
+      encounterId: `claim-defense:${defenseId}`,
+      phase: 'warning',
+      warnedAt: now,
+      deadlineAt: now + CLAIM_DEFENSE_WARNING_S,
+      requestedAt: null,
+      attackerFactionId: 'faction_reach',
+      attackerName: 'Reach scavengers',
+      attackerCount,
+      motive: `Stored freight at ${body.name} drew a Reach stripping crew to the seam.`,
+      bastionId: options.bastionId || null,
+      previousWaypoint,
+    };
+    spec.defense = defense;
+    this._setDefenseWaypoint(body, defense);
+    this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount === 1 ? '1 ship' : `${attackerCount} ships`}, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
+      defenseId, attackerFactionId: defense.attackerFactionId, attackerCount,
+    });
+    this.bus.emit('claim:defenseWarning', {
+      bodyId: body.id,
+      bodyName: body.name,
+      defenseId,
+      encounterId: defense.encounterId,
+      sectorId: body.sectorId,
+      pos: { x: body.x, z: body.z },
+      attackerFactionId: defense.attackerFactionId,
+      attackerName: defense.attackerName,
+      attackerCount,
+      motive: defense.motive,
+      deadlineAt: defense.deadlineAt,
+      countdownS: CLAIM_DEFENSE_WARNING_S,
+    });
+    this.bus.emit('toast', {
+      text: `CLAIM ALERT — ${defense.attackerName}, ${attackerCount} ships. Reach ${body.name} in ${CLAIM_DEFENSE_WARNING_S}s.`,
+      kind: 'warn', ttl: 7,
+    });
+    this.bus.emit('audio:cue', { id: 'warning' });
+    return true;
+  },
+
+  _tickRaidDefenses(bodies, state) {
+    const now = state.simTime || 0;
+    for (const body of bodies) {
+      const defense = body && body.spec && body.spec.defense;
+      if (!defense) continue;
+      if (defense.phase === 'warning') {
+        if (now >= defense.deadlineAt) {
+          this._settleDefense(body, 'ignored');
+          continue;
+        }
+        this._setDefenseWaypoint(body, defense, { quiet: true });
+        if (this._playerAtClaim(body, state)) this._requestDefenseEncounter(body, defense);
+      } else if (defense.phase === 'engaged' && this._resumeDefenseIds && this._resumeDefenseIds.has(defense.id)) {
+        // Continue can restore the claim while the player is still materializing in another
+        // sector. Keep the durable retry token until the director actually accepts the encounter;
+        // otherwise one wrong-sector/no-budget response would strand this defense forever.
+        if (!state.world || state.world.currentSectorId !== body.sectorId) continue;
+        if (now < (defense.retryAt || 0)) continue;
+        const verdict = this._requestDefenseEncounter(body, defense, { resume: true });
+        if (verdict && verdict.ok === true) {
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+        } else if (!body.spec || body.spec.defense !== defense || defense.phase !== 'engaged') {
+          // A resolve/abort emitted synchronously inside the request already moved this raid —
+          // the event owns it now, and the stale retry token goes with it.
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+        } else if (verdict && CLAIM_DEFENSE_TERMINAL_REFUSALS.has(verdict.reason)) {
+          // NXI-139 — the physical takeover can never commit. Sitting in 'engaged' would leave
+          // the raid with neither a physical result nor a fallback owner: no resolution event
+          // can arrive for an encounter that was never admitted, and the warning deadline no
+          // longer runs. Hand the raid back to the warning fallback exactly like an aborted
+          // encounter — it re-arms, gets answered again if the player is present, and still
+          // settles 'ignored' on schedule if nobody is.
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+          this._rearmDefenseWarning(body, defense);
+        } else {
+          defense.retryAt = now + 2;
+        }
+      }
+    }
+  },
+
+  _playerAtClaim(body, state) {
+    if (!state.world || state.world.currentSectorId !== body.sectorId) return false;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+    const dx = player.pos.x - body.x;
+    const dz = player.pos.z - body.z;
+    return dx * dx + dz * dz <= CLAIM_DEFENSE_ARRIVAL_R * CLAIM_DEFENSE_ARRIVAL_R;
+  },
+
+  _requestDefenseEncounter(body, defense, options = {}) {
+    const registry = this.ctx && this.ctx.registry;
+    const director = registry && typeof registry.get === 'function' ? registry.get('encounterDirector') : null;
+    const payload = {
+      encounterId: defense.encounterId,
+      claimId: body.id,
+      defenseId: defense.id,
+      sectorId: body.sectorId,
+      anchor: { x: body.x, z: body.z },
+      attackerFactionId: defense.attackerFactionId,
+      attackerName: defense.attackerName,
+      attackerCount: defense.attackerCount,
+      motive: defense.motive,
+      deadlineAt: defense.deadlineAt,
+      resume: !!options.resume,
+    };
+    let result = null;
+    if (director && typeof director.requestClaimDefense === 'function') result = director.requestClaimDefense(payload);
+    else this.bus.emit('claim:defenseEncounterRequested', payload);
+    // NXI-139 — the caller needs the admission verdict, not just a yes/no: a refusal reason says
+    // whether the physical takeover can still commit (retry it) or never will (hand the raid
+    // back to the fallback owner). 'engaged' is only ever set after an accepted admission.
+    if (!result || result.ok === false) {
+      return { ok: false, reason: (result && result.reason) || 'no_director' };
+    }
+    defense.phase = 'engaged';
+    defense.encounterId = result.encounterId || defense.encounterId;
+    defense.requestedAt = this.state.simTime || 0;
+    this.bus.emit('claim:defenseStarted', { ...payload, encounterId: defense.encounterId });
+    return { ok: true, encounterId: defense.encounterId };
+  },
+
+  // A fight that collapsed is not a settled raid. The stores are still the prize, and the
+  // fallback clock only helps a pilot who hears that the crew turned back.
+  _rearmDefenseWarning(body, defense) {
+    if (!body || !defense) return;
+    const now = this.state.simTime || 0;
+    defense.phase = 'warning';
+    defense.requestedAt = null;
+    defense.deadlineAt = Math.max(defense.deadlineAt || 0, now + CLAIM_DEFENSE_REPRIEVE_S);
+    this._setDefenseWaypoint(body, defense);
+    if (!this.bus) return;
+    const left = Math.max(1, Math.ceil((defense.deadlineAt || now) - now));
+    this.bus.emit('claim:defenseWarning', {
+      bodyId: body.id,
+      bodyName: body.name,
+      defenseId: defense.id,
+      encounterId: defense.encounterId,
+      sectorId: body.sectorId,
+      pos: { x: body.x, z: body.z },
+      attackerFactionId: defense.attackerFactionId,
+      attackerName: defense.attackerName,
+      attackerCount: defense.attackerCount,
+      motive: defense.motive,
+      deadlineAt: defense.deadlineAt,
+      countdownS: left,
+      rearm: true,
+    });
+    this.bus.emit('toast', {
+      text: `CLAIM STILL LIVE — ${defense.attackerName} turned back. Reach ${body.name} in ${left}s.`,
+      kind: 'warn',
+      ttl: 7,
+    });
+    this.bus.emit('audio:cue', { id: 'warning' });
+  },
+
+  _onDefenseEncounterResolved(payload) {
+    if (!payload || payload.shape !== 'claim_threat' || !payload.encounterId) return;
+    const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    const body = bodies.find((candidate) => candidate && candidate.spec && candidate.spec.defense
+      && candidate.spec.defense.encounterId === payload.encounterId);
+    if (!body) return;
+    if (String(payload.outcome || '').startsWith('aborted:')) {
+      this._rearmDefenseWarning(body, body.spec.defense);
+      return;
+    }
+    this._settleDefense(body, payload.outcome || 'timeout');
+  },
+
+  /** The body + live warning a defense intent names: claimId (or bodyId) + optional defenseId pin. */
+  _warningDefenseBody(payload) {
+    const body = this._body(payload && (payload.claimId || payload.bodyId));
+    const defense = body && body.spec && body.spec.defense;
+    if (!defense || defense.phase !== 'warning') return null;
+    if (payload && payload.defenseId && payload.defenseId !== defense.id) return null;
+    return { body, defense };
+  },
+
+  // LAW-09 — the player may stand a claim down on purpose. Only a live warning may be waived: an
+  // engaged defense is already committed, and a stale marker's defenseId no longer matches.
+  _onDefenseIgnore(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return false;
+    return this._settleDefense(found.body, 'ignored');
+  },
+
+  // FB-132 — 'go' commits to flying the answer: re-affirm the waypoint the warning set (the
+  // player may have pointed nav elsewhere while the card was up). Claims owns the defense nav.
+  _onDefenseGo(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return false;
+    this._setDefenseWaypoint(found.body, found.defense);
+    return true;
+  },
+
+  // FB-132 — 'delegate': a supported depot in the threatened sector spends its patrol rotation
+  // early to answer the alarm in the player's place. The depot pays with a delayed next relief;
+  // the defense then settles through the same 'defended' column a won fight would pay. Refusals
+  // always carry a machine-readable reason plus the line the player reads.
+  _onDefenseDelegate(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return this._refuseDefenseDelegate(payload, 'not_pending');
+    const { body, defense } = found;
+    const depot = this.supportedDepots(body.sectorId)[0] || null;
+    if (!depot) return this._refuseDefenseDelegate(payload, 'no_supported_depot');
+    const ds = depot.depotSupport;
+    const now = this.state.simTime || 0;
+    // The spend: the depot answers now, so its next relief posts a full rotation later than the
+    // cadence already owed — an early rotation burned on the alarm instead of the lane.
+    ds.patrol.nextAt = Math.max(ds.patrol.nextAt || 0, now + DEPOT_PATROL_ROTATION_GAP_S);
+    this._receipt(depot, 'depot_patrol_spent',
+      `Patrol rotation diverted — ${defense.attackerName} answered at ${body.name}`,
+      { claimId: body.id, defenseId: defense.id });
+    this.bus.emit('claim:depotPatrolSpent', {
+      depotId: depot.id, claimId: body.id, defenseId: defense.id,
+      sectorId: body.sectorId, nextPatrolAt: ds.patrol.nextAt,
+      factionId: DEPOT_PATROL_FACTION_ID,
+    });
+    return this._settleDefense(body, 'defended');
+  },
+
+  _refuseDefenseDelegate(payload, reason) {
+    const line = reason === 'no_supported_depot'
+      ? 'No supported depot on this seam — nothing to delegate to.'
+      : 'That alarm has already moved past the window.';
+    if (this.bus && this.bus.emit) {
+      this.bus.emit('claim:defenseDelegateRefused', {
+        claimId: payload && (payload.claimId || payload.bodyId) || null,
+        defenseId: payload && payload.defenseId || null,
+        reason,
+        text: line,
+      });
+      this.bus.emit('toast', { text: line, kind: 'warn', ttl: 4 });
+    }
+    return false;
+  },
+
+  _settleDefense(body, rawOutcome) {
+    const spec = body && body.spec;
+    const defense = spec && spec.defense;
+    if (!defense) return false;
+    if (!Array.isArray(spec.settledDefenseIds)) spec.settledDefenseIds = [];
+    const defenseKey = String(defense.id || defense.encounterId || '');
+    if (!defenseKey || spec.settledDefenseIds.includes(defenseKey)) return false;
+    spec.settledDefenseIds.push(defenseKey);
+    const outcome = ['defended', 'partial', 'retreated', 'timeout', 'destroyed', 'ignored'].includes(rawOutcome)
+      ? rawOutcome : 'timeout';
+    const settlement = {
+      defended:  { lossFrac: 0,    rep: 3,  danger: -0.05, repairMin: 0,   cooldown: 0 },
+      partial:   { lossFrac: 0.25, rep: 1,  danger: -0.01, repairMin: 0.5, cooldown: 120 },
+      retreated: { lossFrac: 0.50, rep: -2, danger: 0.03,  repairMin: 1,   cooldown: 240 },
+      timeout:   { lossFrac: 0.70, rep: -3, danger: 0.05,  repairMin: 1.5, cooldown: SPEC_RAID_COOLDOWN_S },
+      ignored:   { lossFrac: 0.70, rep: -1, danger: 0.05,  repairMin: 1.5, cooldown: SPEC_RAID_COOLDOWN_S },
+      destroyed: { lossFrac: 0.90, rep: -5, danger: 0.08,  repairMin: 3,   cooldown: SPEC_RAID_COOLDOWN_S * 2 },
+    }[outcome];
+    let lostU = 0;
+    // NXI-140 — reconcile the store per good and project that same delta into the raid result:
+    // the receipt identifies what the raid actually took and what it actually saved, so a
+    // partial physical loss can never read as a full warehouse held. Nothing is added or
+    // removed to match optimistic text — the maps are the mutation's own record.
+    const goodsLost = Object.create(null);
+    const goodsSaved = Object.create(null);
+    for (const bucket of [spec.store.input, spec.store.output]) {
+      for (const id of Object.keys(bucket)) {
+        const have = bucket[id] || 0;
+        const lost = Math.floor(have * settlement.lossFrac);
+        if (have - lost > 0) goodsSaved[id] = (goodsSaved[id] || 0) + (have - lost);
+        if (lost <= 0) continue;
+        bucket[id] -= lost;
+        lostU += lost;
+        goodsLost[id] = (goodsLost[id] || 0) + lost;
+        if (bucket[id] <= 0) delete bucket[id];
+      }
+    }
+    const def = BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    spec.upkeepDebt = (spec.upkeepDebt || 0) + ((def && def.upkeepPerMin) || 0) * settlement.repairMin;
+    spec.totals.lostU += lostU;
+    if (outcome === 'defended') {
+      spec.totals.raidsRepelled += 1;
+      spec.deterrenceUntil = (this.state.simTime || 0) + SPEC_DETERRENCE_S;
+    } else {
+      spec.totals.raidsSuffered += 1;
+      if (settlement.cooldown > 0) {
+        spec.status = 'raided';
+        spec.statusUntil = (this.state.simTime || 0) + settlement.cooldown;
+      }
+    }
+    const sector = SECTOR_BY_ID.get(body.sectorId);
+    if (sector && sector.factionId && settlement.rep) {
+      this.bus.emit('faction:repDelta', { factionId: sector.factionId, delta: settlement.rep, reason: `claim_defense:${outcome}` });
+    }
+    this.bus.emit('sectorsim:impulse', { kind: `claim_defense_${outcome}`, sectorId: body.sectorId, danger: settlement.danger });
+    // The text mirrors the reconciled delta — 'stores intact' is only ever printed when the
+    // delta is genuinely empty; a defended-with-loss would read the real taken/held split.
+    const takenList = goodsDeltaLabel(goodsLost);
+    const heldList = goodsDeltaLabel(goodsSaved);
+    const summary = outcome === 'defended'
+      ? (lostU <= 0
+        ? `Claim held — ${defense.attackerName} driven off; stores intact.`
+        : `Claim held — ${defense.attackerName} driven off, but the crew lost ${takenList || `${lostU}u`}; ${heldList || 'nothing'} held.`)
+      : `Claim defense ${outcome} — ${lostU}u lost${takenList ? ` (${takenList} taken)` : ''}${heldList ? `; ${heldList} held` : ''}; repair crews assigned.`;
+    this._receipt(body, `defense_${outcome}`, summary, {
+      defenseId: defense.id, encounterId: defense.encounterId, lostU,
+      goodsLost, goodsSaved,
+      repDelta: settlement.rep, dangerDelta: settlement.danger,
+    });
+    spec.defense = null;
+    this._restoreDefenseWaypoint(defense);
+    this.bus.emit('claim:defenseResolved', {
+      bodyId: body.id, defenseId: defense.id, encounterId: defense.encounterId,
+      sectorId: body.sectorId, outcome, lostU, goodsLost, goodsSaved,
+      repDelta: settlement.rep,
+      dangerDelta: settlement.danger,
+      repairDebtCr: Math.round(((def && def.upkeepPerMin) || 0) * settlement.repairMin),
+      text: summary,
+    });
+    this.bus.emit(outcome === 'defended' ? 'claim:raidRepelled' : 'claim:raided', {
+      bodyId: body.id, defenseId: defense.id, outcome, lostU,
+    });
+    this.bus.emit('toast', { text: summary, kind: outcome === 'defended' ? 'good' : 'warn', ttl: 6 });
+    return true;
+  },
+
+  _setDefenseWaypoint(body, defense, options = {}) {
+    if (!this.state.nav) this.state.nav = { waypoint: null };
+    const remaining = Math.max(0, Math.ceil((defense.deadlineAt || 0) - (this.state.simTime || 0)));
+    const waypoint = {
+      kind: 'claim_defense', markerKind: 'mission-objective', claimId: body.id, defenseId: defense.id,
+      ignoreDefense: defense.phase === 'warning',
+      sectorId: body.sectorId, pos: { x: body.x, z: body.z }, label: `DEFEND ${body.name}`,
+      reason: `${defense.attackerName} · ${defense.attackerCount === 1 ? '1 ship' : `${defense.attackerCount} ships`} · respond at ${body.name} (${remaining}s)`,
+      arrivalRadius: CLAIM_DEFENSE_ARRIVAL_R, deadline_s: defense.deadlineAt,
+    };
+    const current = this.state.nav.waypoint;
+    if (!current || current.defenseId === defense.id || defense.phase === 'warning') {
+      const changed = !current || current.defenseId !== defense.id || current.reason !== waypoint.reason;
+      this.state.nav.waypoint = waypoint;
+      if (changed && !options.quiet) this.bus.emit('nav:waypoint', waypoint);
+    }
+  },
+
+  _restoreDefenseWaypoint(defense) {
+    const nav = this.state.nav;
+    if (!nav || !nav.waypoint || nav.waypoint.defenseId !== defense.id) return;
+    nav.waypoint = defense.previousWaypoint || null;
+    this.bus.emit('nav:waypoint', nav.waypoint);
+  },
+
+  _body(bodyId) {
+    return ((this.state.claims && this.state.claims.bodies) || []).find((body) => body && body.id === bodyId) || null;
+  },
+
+  // Convert feedstock in cargo into refined materials at the given rate — the same claim recipe
+  // book the commissioned store path runs, first ready row in table order.
+  // LEGACY module behavior for unspecialized bodies — a commissioned refinery uses site stores.
+  _tickRefinery(body, oreUnits) {
+    const cargo = this.state.player.cargo;
+    if (!cargo || !cargo.items) return;
+    // accumulate fractional conversion per-body so slow rates still progress
+    body._refineAcc = (body._refineAcc || 0) + oreUnits;
+    for (let guard = 0; guard < 64; guard++) {
+      const r = readyClaimRecipe(cargo.items);
+      if (!r || body._refineAcc < r.batchU) return;
+      for (const id of Object.keys(r.inputs).sort()) removeCargo(this.state, id, r.inputs[id]);
+      addCargo(this.state, r.outputId, r.outputU);
+      body._refineAcc -= r.batchU;
+    }
+  },
+
+  _nearestStationId(body) {
+    let best = null, bestD = Infinity;
+    const stations = (this.state.entityIndex && this.state.entityIndex.dockStations) || this.state.entityList;
+    for (const e of stations) {
+      if (!e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
+      const d = (e.pos.x - body.x) ** 2 + (e.pos.z - body.z) ** 2;
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best && best.data && best.data.stationId;
+  },
+
+  _stationEntity(stationId) {
+    if (!stationId) return null;
+    const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
+    const indexed = byStationId && byStationId.get(stationId);
+    if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+    const stations = (this.state.entityIndex && this.state.entityIndex.stations) || this.state.entityList || [];
+    for (const entity of stations) {
+      if (entity && entity.alive !== false && entity.type === 'station'
+        && entity.data && entity.data.stationId === stationId) return entity;
+    }
+    return null;
+  },
+
+  // Where this relay ships to: the teleporter-linked station if one exists, else a destination
+  // resolved once — nearest station entity in-sector, falling back to the sector's authored
+  // station data (so relays in other sectors still ship somewhere real).
+  _relayDestination(body, opts = {}) {
+    const existing = cachedRelayDestination(body);
+    if (existing) return existing;
+    if (opts.resolve === false) return null;
+    let dest = this._nearestStationId(body) || null;
+    if (!dest) {
+      const sector = SECTOR_BY_ID.get(body.sectorId);
+      const st = sector && sector.stations && sector.stations[0];
+      dest = (st && st.id) || null;
+    }
+    if (dest && body.spec) body.spec.destStationId = dest;
+    return dest;
+  },
+
+  _economyPeer() {
+    const reg = this.ctx && this.ctx.registry;
+    return reg && typeof reg.get === 'function' ? reg.get('economy') : null;
+  },
+
+  _freshSpec(def) {
+    const t = this.state.simTime || 0;
+    return {
+      id: def.id,
+      since: t,
+      status: 'active',
+      statusUntil: 0,
+      store: { input: {}, output: {} },
+      convoy: null,
+      acc: 0,
+      nextDispatchAt: def.dispatchEveryS ? t + def.dispatchEveryS : 0,
+      nextForwardAt: 0,
+      destStationId: null,
+      upkeepDebt: 0,
+      deterrenceUntil: 0,
+      outputFull: false,
+      receipts: [],
+      defense: null,
+      recipeBook: CLAIM_RECIPE_BOOK,
+      totals: {
+        refinedTotalU: 0, soldTotalCr: 0, lostU: 0, upkeepPaidCr: 0, raidsRepelled: 0, raidsSuffered: 0,
+        forwardedU: 0, receivedU: 0,
+      },
+    };
+  },
+
+  _normalizeTravelInfrastructure(raw, body) {
+    if (!raw || typeof raw !== 'object' || !body || !Array.isArray(body.modules)
+      || !body.modules.includes('mod_throughline_sling')) return null;
+    const point = (value) => value && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.z))
+      ? { x: Number(value.x), z: Number(value.z) }
+      : null;
+    const from = point(raw.from);
+    const to = point(raw.to);
+    const support = point(raw.support);
+    const stationId = typeof raw.stationId === 'string' && raw.stationId ? raw.stationId : null;
+    if (!from || !to || !support || !stationId) return null;
+    const distanceWU = Math.hypot(to.x - from.x, to.z - from.z);
+    if (!(distanceWU > 0)) return null;
+    const stage = raw.stage === 'active' ? 'active' : 'aligning';
+    const builtAt = Number.isFinite(Number(raw.builtAt)) ? Number(raw.builtAt) : 0;
+    const savedReceipt = raw.fabricationReceipt && typeof raw.fabricationReceipt === 'object'
+      ? raw.fabricationReceipt
+      : {};
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: typeof raw.id === 'string' && raw.id ? raw.id : `throughline:${body.id}`,
+      bodyId: body.id,
+      sectorId: body.sectorId,
+      name: typeof raw.name === 'string' && raw.name ? raw.name : `${body.name} Throughline`,
+      stationId,
+      stage,
+      operational: stage === 'active' && !!body.spec
+        && body.spec.id === 'spec_refinery' && body.spec.status === 'active',
+      builtAt,
+      alignUntil: Number.isFinite(Number(raw.alignUntil)) ? Number(raw.alignUntil) : 0,
+      from,
+      to,
+      support,
+      distanceWU,
+      corridorRadiusWU: Math.max(1, Number(raw.corridorRadiusWU) || 240),
+      ceilingMult: Math.max(1, Number(raw.ceilingMult) || 2),
+      rampMult: Math.max(1, Number(raw.rampMult) || 2),
+      damagePolicy: 'claim_status',
+      fabricationReceipt: {
+        receiptId: typeof savedReceipt.receiptId === 'string' && savedReceipt.receiptId
+          ? savedReceipt.receiptId
+          : `throughline-build:${body.id}`,
+        builtAt: Number.isFinite(Number(savedReceipt.builtAt)) ? Number(savedReceipt.builtAt) : builtAt,
+        stationId,
+        costCr: Math.max(0, Number(savedReceipt.costCr) || 0),
+        materials: savedReceipt.materials && typeof savedReceipt.materials === 'object'
+          ? { ...savedReceipt.materials }
+          : {},
+      },
+    };
+  },
+
+  // Heal a deserialized spec to the full schema (legacy/partial saves).
+  _normalizeSpec(spec) {
+    if (!spec || typeof spec !== 'object' || !BODY_SPECIALIZATION_BY_ID.has(spec.id)) return null;
+    const def = BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    const fresh = this._freshSpec(def);
+    const out = Object.assign(fresh, spec);
+    out.store = spec.store && typeof spec.store === 'object'
+      ? { input: { ...(spec.store.input || {}) }, output: { ...(spec.store.output || {}) } }
+      : { input: {}, output: {} };
+    out.receipts = Array.isArray(spec.receipts) ? spec.receipts.slice(-MAX_RECEIPTS) : [];
+    out.defense = spec.defense && typeof spec.defense === 'object' ? { ...spec.defense } : null;
+    out.totals = Object.assign(fresh.totals, spec.totals || {});
+    if (!['active', 'cold', 'raided'].includes(out.status)) out.status = 'active';
+    return out;
+  },
+
+  // Row 402 migration: a pre-recipe-book refinery keeps EVERY stored good (output stays collectable,
+  // unaccepted input is released by collectFromClaim) and says once what changed. Normalize already
+  // stamped recipeBook.
+  _noteRecipeBook(body) {
+    const input = (body.spec.store && body.spec.store.input) || {};
+    const stranded = Object.keys(input).filter((id) => (input[id] || 0) > 0 && !CLAIM_INPUT_SET.has(id)).sort();
+    const copper = (input.cmdty_ore_copper || 0) > 0;
+    if (!stranded.length && !copper) return null;
+    const text = stranded.length
+      ? 'Recipe book unified — ' + stranded.map(materialName).join(', ') + ' no longer refines here; collect it from the site'
+      : 'Recipe book unified — copper now smelts to refined metals';
+    return this._receipt(body, 'recipe_book_unified', text, { stranded, copper });
+  },
+
+  _receipt(body, kind, text, data) {
+    const receipt = { t: this.state.simTime || 0, kind, text };
+    if (data) receipt.data = data;
+    body.spec.receipts.push(receipt);
+    if (body.spec.receipts.length > MAX_RECEIPTS) body.spec.receipts.splice(0, body.spec.receipts.length - MAX_RECEIPTS);
+    this.bus.emit('claim:receipt', { bodyId: body.id, receipt });
+    return receipt;
+  },
+
+  // Claims meta (rng stream + cadence accumulators) is created LAZILY on first commission so
+  // saves and goldens without specializations keep their exact state shape.
+  _ensureMeta() {
+    const claims = this.state.claims;
+    if (!claims.meta) claims.meta = { rngSeed: 0, upkeepAccum: 0, raidAccum: 0, nextRaidId: 1 };
+    if (!Number.isFinite(claims.meta.nextRaidId) || claims.meta.nextRaidId < 1) claims.meta.nextRaidId = 1;
+    return claims.meta;
+  },
+
+  _rng() {
+    const meta = this._ensureMeta();
+    return drawSeeded(meta, 'rngSeed', hash32((this.state.meta && this.state.meta.seed) || 1, 'claims'));
+  },
+
+  // Stamp the specialization onto the claim's live POI entity so every surface that reads
+  // entity data.name (local map, scanner, contacts) shows the operating identity. Display-only,
+  // idempotent, re-applied on sector entry (world respawns POIs from data).
+  _applyPoiLabel(body) {
+    const def = body.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
+    const infrastructure = body.infrastructure;
+    const throughline = infrastructure
+      ? ` · THROUGHLINE ${infrastructure.operational ? 'ONLINE' : String(infrastructure.stage || 'OFFLINE').toUpperCase()}`
+      : '';
+    const index = this.state && this.state.entityIndex;
+    const lists = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      ? [index.asteroids, index.stations]
+      : [this.state.entityList || []];
+    for (let l = 0; l < lists.length; l++) {
+      const list = lists[l];
+      if (!list) continue;
+      for (const e of list) {
+      if (!e || !e.alive || !e.data || e.data.poiId !== body.poiId) continue;
+      if (!e.data.claimBaseName) e.data.claimBaseName = e.data.name || body.name;
+      e.data.name = (def ? e.data.claimBaseName + ' — ' + def.name : e.data.claimBaseName) + throughline;
+      e.data.claimOwned = body.owned === true;
+      e.data.claimSpecId = def ? def.id : null;
+      e.data.claimRole = def ? def.short : 'CLAIM';
+      e.data.claimMapGlyph = def ? def.mapGlyph : '◆';
+      e.data.claimMapColor = def ? def.mapColor : '#ffd24a';
+      e.data.claimPlayerVerb = def ? def.playerVerb : 'Open the Base interface to build this claim.';
+      e.data.claimTravelInfrastructureId = infrastructure ? infrastructure.id : null;
+      e.data.claimTravelInfrastructureOperational = infrastructure ? infrastructure.operational === true : false;
+      e.data.claimSensorPostActive = Array.isArray(body.modules) && body.modules.includes('mod_sensor_post');
+      }
+    }
+  },
+
+  _applyAllPoiLabels() {
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      this._applyPoiLabel(body);
+    }
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // Row 402: current saves (including specVersion 1) also retire the duplicate producer.
+  // Automation removes its own instance; claims takes custody of the same stored goods.
+  migrateRetiredRefineries() {
+    const state = this.state, owner = this.ctx?.registry?.get?.('automation');
+    if (!owner?.decommissionOutpost) return 0;
+    const outposts = state.automation?.outposts || [], bodies = state.claims.bodies;
+    let migrated = 0;
+    for (const outpost of outposts.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))) {
+      const definition = OUTPOST_BY_ID.get(outpost.defId);
+      if (!definition?.retiredInto) continue;
+      if (bodies.some(body => body.retiredOutpostId === outpost.id)) {
+        owner.decommissionOutpost(outpost.id); continue;
+      }
+      const specialization = BODY_SPECIALIZATION_BY_ID.get(definition.retiredInto);
+      const hasPosition = Number.isFinite(outpost.pos?.x) && Number.isFinite(outpost.pos?.z);
+      const poi = hasPosition ? null : this._findFreeClaimablePoi(outpost.sectorId);
+      const origin = sectorGlobalOrigin(outpost.sectorId);
+      const pos = poi?.pos ? sectorLocalToGlobalForSector(poi.pos, outpost.sectorId)
+        : hasPosition ? outpost.pos
+        : { x: origin.x + 900, z: origin.z + 600 };
+      const size = poi?.size || 'M';
+      const body = { id: 'claim_' + _nextClaimId++, sectorId: outpost.sectorId,
+        poiId: poi?.id || `retired_refinery_${outpost.id}`, name: poi?.name || outpost.name || 'Re-chartered Refinery',
+        size, slots: BODY_SLOTS_BY_SIZE[size] || 3, modules: [specialization.requiresModule],
+        linkedStationId: null, x: pos.x, z: pos.z, claimedAt: state.simTime || 0, owned: true,
+        retiredOutpostId: outpost.id, retiredOutpostShell: !poi, spec: this._freshSpec(specialization) };
+      const amount = Math.max(0, Number(outpost.storage) || 0);
+      const goodId = outpost.storageGoodId || outpostOutputGoodId(definition);
+      if (amount > 0) body.spec.store.output[goodId] = amount;
+      // A nonempty old bank keeps its commodity identity, even when it exceeds a new cap.
+      body.spec.upkeepDebt = Math.max(0, Number(outpost.upkeepDebt) || 0);
+      if (outpost.status === 'raided') {
+        body.spec.status = 'raided'; body.spec.statusUntil = (state.simTime || 0) + Math.max(0, Number(outpost.raidCooldown) || 0);
+      } else if (outpost.status === 'distressed' && body.spec.upkeepDebt > 0) body.spec.status = 'cold';
+      if (!owner.decommissionOutpost(outpost.id)) continue;
+      bodies.push(body);
+      this._receipt(body, 'outpost_refinery_retired', 'Outpost re-chartered as an Industrial Refinery; stored goods retained',
+        { outpostId: outpost.id, goodId, qty: amount });
+      migrated++;
+    }
+    this._ensureRetiredRefineryShells(); this._applyAllPoiLabels();
+    return migrated;
+  },
+
+  _ensureRetiredRefineryShells() {
+    const state = this.state, spawn = this.ctx?.helpers?.spawnEntity;
+    if (!spawn) return;
+    for (const body of state.claims.bodies || []) {
+      if (!body.retiredOutpostShell || body.sectorId !== state.world?.currentSectorId) continue;
+      if ([...state.entities.values()].some(entity => entity.alive !== false && entity.data?.retiredRefineryClaimId === body.id)) continue;
+      spawn({ type: 'fx', pos: { x: body.x, z: body.z }, radius: 28, mass: 0, collides: false, ttl: Infinity,
+        data: { role: 'retired_refinery_claim', retiredRefineryClaimId: body.id,
+          poiId: body.poiId, poiType: 'colony', name: body.name, claimOwned: true, claimSpecId: 'spec_refinery',
+          placeId: 'place_claim_outpost_refinery', placeScale: 1, worldDressing: true,
+          sectorId: body.sectorId, homeSectorId: body.sectorId, visualRadius: 28, placeRadius: 28 } });
+    }
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // F6-owned legacy migration: abstract automation outposts become claim specializations at a
+  // free claimable body in their sector — or keep running untouched when none exists. Runs only
+  // when loading a save older than specVersion 1, exactly once per load, and never duplicates:
+  // an outpost is only converted after automation (its sole writer) confirms decommissioning.
+  // ------------------------------------------------------------------------------------------
+  _migrateLegacyOutposts() {
+    const state = this.state;
+    if (state.claims.legacyMigration) return;
+    const a = state.automation;
+    const automationSystem = this.ctx && this.ctx.registry && this.ctx.registry.get('automation');
+    const outposts = a && Array.isArray(a.outposts) ? a.outposts.slice() : [];
+    const receipt = { t: state.simTime || 0, migrated: 0, kept: 0, settledCr: 0 };
+    for (const o of outposts) {
+      const def = OUTPOST_BY_ID.get(o.defId);
+      if (def?.retiredInto) continue; // current and old saves use the lossless 402 migration above
+      const specDef = BODY_SPECIALIZATION_BY_ID.get(OUTPOST_TO_SPEC[o.defId] || 'spec_relay');
+      const poi = def && specDef ? this._findFreeClaimablePoi(o.sectorId) : null;
+      if (!poi) { receipt.kept += 1; continue; }
+      // Release through automation's public mutation method (fail-closed). An event here would be
+      // descriptive only: automation has no releaseOutpost subscriber and remains the sole writer.
+      const released = automationSystem && typeof automationSystem.decommissionOutpost === 'function'
+        ? automationSystem.decommissionOutpost(o.id)
+        : false;
+      if (!released) { receipt.kept += 1; continue; }
+      if (a.outposts.some((x) => x.id === o.id)) { receipt.kept += 1; continue; }
+      const size = poi.size || 'M';
+      const body = {
+        id: 'claim_' + (_nextClaimId++),
+        sectorId: o.sectorId,
+        poiId: poi.id,
+        name: poi.name || 'Reclaimed Outpost',
+        size,
+        slots: BODY_SLOTS_BY_SIZE[size] || 3,
+        modules: [specDef.requiresModule], // the outpost's hardware IS the module — free carryover
+        linkedStationId: null,
+        x: 0,
+        z: 0,
+        claimedAt: state.simTime || 0,
+        owned: true,
+        spec: null,
+      };
+      body.spec = this._freshSpec(specDef);
+      const qty = Math.round(o.storage || 0);
+      if (qty > 0) {
+        if (def.recipe && def.recipe.passive) {
+          // passive hubs banked credit-value, not goods — settle it once, the same way the
+          // outpost's own autosell would have (passive gross value == quantity).
+          this.bus.emit('economy:grantCredits', { amount: qty, reason: 'claim_migration' });
+          receipt.settledCr += qty;
+        } else {
+          // banked production carries over as the real output good (may exceed the new cap —
+          // grandfathered; caps gate new intake, migration never destroys goods)
+          body.spec.store.output[outpostOutputGoodId(def)] = qty;
+        }
+      }
+      state.claims.bodies.push(body);
+      this._receipt(body, 'migrated', 'Re-chartered from sector outpost');
+      receipt.migrated += 1;
+    }
+    state.claims.legacyMigration = receipt;
+    if (receipt.migrated > 0) {
+      this.bus.emit('claims:migrated', { migrated: receipt.migrated, kept: receipt.kept });
+      this.bus.emit('toast', { text: receipt.migrated + ' outpost' + (receipt.migrated === 1 ? '' : 's') + ' re-chartered as claim' + (receipt.migrated === 1 ? '' : 's'), kind: 'good', ttl: 5 });
+    }
+  },
+
+  _findFreeClaimablePoi(sectorId) {
+    const sector = SECTOR_BY_ID.get(sectorId);
+    if (!sector || !Array.isArray(sector.pois)) return null;
+    return sector.pois.find((p) => p && p.claimable && !this.isClaimed(p.id)) || null;
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // PQ-170.01 — STATION GROWTH. Player-supplied throughput → authored station modules.
+  // ------------------------------------------------------------------------------------------
+
+  // The sell side of the player's own market trade supplies that station. Buys drain it and count
+  // for nothing; a sealed Crucible run never grows the campaign's stations.
+  _onTradeCompleted(payload) {
+    if (!payload || payload.side !== 'sell' || !payload.stationId) return null;
+    const qty = Math.floor(Number(payload.qty) || 0);
+    if (qty <= 0) return null;
+    if (isRunSealed(this.state)) return null;
+    return this._recordStationThroughput(payload.stationId, qty, 'market_sell', {
+      goodId: payload.commodityId || null,
+      receiptId: payload.receiptId || null,
+    });
+  },
+
+  // NXB-027 — economy's canonical freight fact: the lot already landed in the market, so this is
+  // growth bookkeeping only. Tallied under market_sell (the player-supplied sell side), keyed on
+  // the committed receipt so a republished retry never counts the same delivery twice.
+  _onFreightAccepted(payload) {
+    if (!payload || !payload.stationId) return null;
+    const qty = Math.floor(Number(payload.qty) || 0);
+    if (qty <= 0) return null;
+    if (isRunSealed(this.state)) return null;
+    return this._recordStationThroughput(payload.stationId, qty, 'market_sell', {
+      goodId: payload.commodityId || null,
+      receiptId: payload.receiptId || null,
+    });
+  },
+
+  // Authored station record (type/faction/name/sector) with a live-entity fallback for stations the
+  // world spawned from somewhere other than SECTORS. Unknown stations grow nothing.
+  _stationDef(stationId) {
+    const authored = STATION_DEF_BY_ID.get(stationId);
+    if (authored) {
+      const station = authored.station;
+      return {
+        stationId,
+        type: station.type || 'trade_hub',
+        factionId: station.factionId || authored.sector.factionId || null,
+        name: station.name || stationId,
+        sectorId: authored.sector.id,
+      };
+    }
+    const entity = this._stationEntity(stationId);
+    const data = entity && entity.data;
+    if (!data || !data.stationTypeId) return null;
+    return {
+      stationId,
+      type: data.stationTypeId,
+      factionId: data.factionId || entity.factionId || null,
+      name: data.stationBaseName || data.name || stationId,
+      sectorId: data.sectorId || (this.state.world && this.state.world.currentSectorId) || null,
+    };
+  },
+
+  _ensureStationGrowth(stationId) {
+    const claims = this.state.claims;
+    if (!claims.stationGrowth) claims.stationGrowth = {};
+    let rec = claims.stationGrowth[stationId];
+    if (rec) return rec;
+    const def = this._stationDef(stationId);
+    if (!def) return null;
+    const t = this.state.simTime || 0;
+    rec = claims.stationGrowth[stationId] = {
+      schema: STATION_GROWTH_SCHEMA,
+      stationId,
+      sectorId: def.sectorId,
+      factionId: def.factionId,
+      name: def.name,
+      type: def.type,
+      throughputU: 0,
+      rung: 0,
+      modules: [],
+      sources: { market_sell: 0, relay_convoy: 0 },
+      appliedSupplyReceipts: Object.create(null),
+      firstSupplyAt: t,
+      lastSupplyAt: t,
+      // NXB-036: a route the last survey could not seat stays requested and is retried at every
+      // sector entry; the fabricated corridor itself is the durable travelLanes fact.
+      routeRequested: false,
+      growthRoute: null,
+    };
+    return rec;
+  },
+
+  /**
+   * Count `qty` units of player-supplied freight against `stationId`; gain every rung crossed.
+   * A stable supply receipt (trade receiptId, freightAccepted receiptId, relay convoyId) names
+   * one physical transaction: a matching republished retry returns the record untouched, a
+   * disagreeing payload under a consumed id is a collision — never new freight. Anonymous
+   * notifications keep the legacy always-count behavior.
+   */
+  _recordStationThroughput(stationId, qty, source, extra = {}) {
+    const units = Math.floor(Number(qty) || 0);
+    if (!stationId || units <= 0) return null;
+    const rec = this._ensureStationGrowth(stationId);
+    if (!rec) return null;
+    const receiptId = typeof extra.receiptId === 'string' && extra.receiptId ? extra.receiptId : null;
+    if (receiptId) {
+      if (!rec.appliedSupplyReceipts || typeof rec.appliedSupplyReceipts !== 'object'
+          || Array.isArray(rec.appliedSupplyReceipts)) {
+        rec.appliedSupplyReceipts = Object.create(null);
+      }
+      if (Object.hasOwn(rec.appliedSupplyReceipts, receiptId)) return rec;
+      // Mark before any output callback — a listener reacting to the emit below observes the
+      // receipt already consumed.
+      rec.appliedSupplyReceipts[receiptId] = { qty: units, source, goodId: extra.goodId || null };
+    }
+    rec.throughputU += units;
+    rec.sources[source] = (rec.sources[source] || 0) + units;
+    rec.lastSupplyAt = this.state.simTime || 0;
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    while (rec.rung < ladder.length && rec.throughputU >= ladder[rec.rung].throughputU) {
+      this._gainStationModule(rec, ladder[rec.rung], source, extra);
+    }
+    this.bus.emit('station:throughput', {
+      stationId, sectorId: rec.sectorId, factionId: rec.factionId,
+      qty: units, source, throughputU: rec.throughputU, rung: rec.rung,
+    });
+    return rec;
+  },
+
+  _gainStationModule(rec, rung, source, extra = {}) {
+    const t = this.state.simTime || 0;
+    rec.rung += 1;
+    const receiptId = `station-growth:${rec.stationId}:${rung.id}`;
+    const module = {
+      id: rung.id, name: rung.name, tag: rung.tag, rung: rec.rung,
+      at: t, throughputU: rec.throughputU, source, receiptId,
+    };
+    rec.modules.push(module);
+    let reaction = stationGrowthReaction({
+      stationId: rec.stationId, stationName: rec.name, factionId: rec.factionId,
+      moduleName: rung.name, throughputU: rec.throughputU, line: rung.line,
+    });
+    const projection = {};
+    this._stampStationGrowth(rec, projection);
+    if (rec.stationId === NEREID_ANNEX.stationId && rung.id === NEREID_ANNEX.moduleId && projection.ready !== true) {
+      // The benefit is earned now; an occupied or unloaded physical seat is not a built body.
+      reaction = stationGrowthReaction({
+        stationId: rec.stationId, stationName: rec.name, factionId: rec.factionId,
+        moduleName: rung.name, throughputU: rec.throughputU,
+        line: '{station} has earned its Bonded Freight Annex. It goes up as soon as the apron is clear.',
+      });
+    }
+    // The relay that fed it keeps the receipt too, so the Base ledger tells the same story.
+    if (extra && extra.bodyId) {
+      const body = this._body(extra.bodyId);
+      if (body && body.spec) {
+        this._receipt(body, 'station_grew', rec.name + ' gained ' + rung.name + ' on your convoys', {
+          stationId: rec.stationId, moduleId: rung.id, rung: rec.rung, receiptId,
+        });
+      }
+    }
+    this.bus.emit('station:moduleGained', {
+      stationId: rec.stationId, stationName: rec.name, sectorId: rec.sectorId, factionId: rec.factionId,
+      moduleId: rung.id, moduleName: rung.name, tag: rung.tag, rung: rec.rung,
+      throughputU: rec.throughputU, source, receiptId, text: reaction.text, dockLine: reaction.dockLine,
+    });
+    // Authored copy arrives verbatim on the ticker, the dock-arrival card and (through the news
+    // surface) the toast — one voice, no second toast from here. receiptId is the ticker citation.
+    this.bus.emit('news:publish', {
+      text: reaction.text,
+      kind: 'station_growth',
+      stationId: rec.stationId,
+      stationName: rec.name,
+      sectorId: rec.sectorId,
+      factionId: rec.factionId,
+      moduleId: rung.id,
+      receiptId,
+      sourceRef: receiptId,
+      eventId: receiptId,
+      source: 'claims',
+    });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    // NXB-036: topping out the ladder is the accepted growth event that changes a reachable
+    // route — the station surveys its permanent approach corridor now (or flags it for the
+    // next entry survey when no live endpoint is materialized this tick).
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    if (rec.rung >= ladder.length && !rec.growthRoute) {
+      rec.routeRequested = true;
+      this._fabricateStationGrowthRoute(rec);
+    }
+    return module;
+  },
+
+  // Stamp earned growth onto the live station entity so every surface that reads a station's
+  // data.name (contacts, target panel, local map, dock toasts) shows the module. Nereid also
+  // projects its earned annex into the existing dressing owner. Both projections are
+  // idempotent, re-applied on sector entry because world respawns stations from data.
+  _stampStationGrowth(rec, projection = null) {
+    if (!rec) return false;
+    const entity = this._stationEntity(rec.stationId);
+    const data = entity && entity.data;
+    if (!data) return false;
+    if (!data.stationBaseName) data.stationBaseName = data.name || rec.name || rec.stationId;
+    const top = rec.modules.length ? rec.modules[rec.modules.length - 1] : null;
+    data.name = top ? data.stationBaseName + ' · ' + top.tag : data.stationBaseName;
+    data.stationGrowth = {
+      rung: rec.rung,
+      throughputU: rec.throughputU,
+      label: top ? top.tag : null,
+      modules: rec.modules.map((m) => m.name),
+      lastReceiptId: top ? top.receiptId : null,
+    };
+    const ready = reconcileNereidFreightAnnex(this.ctx, rec, entity);
+    if (projection) projection.ready = ready;
+    return true;
+  },
+
+  _stampAllStationGrowth() {
+    const growth = this.state.claims && this.state.claims.stationGrowth;
+    reconcileNereidFreightAnnex(this.ctx, growth && growth.station_nereid, this._stationEntity('station_nereid'));
+    if (!growth) return 0;
+    let stamped = 0;
+    for (const stationId in growth) {
+      const rec = growth[stationId];
+      if (this._stampStationGrowth(rec)) stamped += 1;
+      // NXB-036: every sector entry is a fresh survey — a route the last materialization could
+      // not seat (no live station, obstructed corridor) is tried again, never re-fabricated.
+      if (rec && rec.routeRequested === true && !rec.growthRoute) {
+        this._fabricateStationGrowthRoute(rec);
+      }
+    }
+    return stamped;
+  },
+
+  /**
+   * NXB-036: where the grown station's corridor begins — the real freight door. Prefer the
+   * nearest non-wormhole gate in the live sector; when the gate table is not materialized
+   * (fabrication fired off a restored save or a test without live gates), the nearest neighbor
+   * sector's global origin gives the same deterministic bearing the gate was laid on.
+   */
+  _growthRouteAnchor(rec, station) {
+    const active = this.state.world && this.state.world.activeSector;
+    if (active && active.id === rec.sectorId && Array.isArray(active.gates)) {
+      let best = null;
+      let bestD = Infinity;
+      for (const gate of active.gates) {
+        if (!gate || gate.wormhole === true || !gate.pos) continue;
+        const gx = Number(gate.pos.x);
+        const gz = Number(gate.pos.z);
+        if (!Number.isFinite(gx) || !Number.isFinite(gz)) continue;
+        const d = (gx - station.pos.x) ** 2 + (gz - station.pos.z) ** 2;
+        if (d < bestD || (d === bestD && best && String(gate.to || '') < String(best.to || ''))) {
+          best = gate;
+          bestD = d;
+        }
+      }
+      if (best) return { x: Number(best.pos.x), z: Number(best.pos.z), kind: 'gate', anchorId: best.to || null };
+    }
+    const sector = SECTOR_BY_ID.get(rec.sectorId);
+    const neighbors = sector && Array.isArray(sector.neighbors) ? sector.neighbors : [];
+    let best = null;
+    let bestD = Infinity;
+    for (const neighborId of neighbors) {
+      const origin = sectorGlobalOrigin(neighborId);
+      const d = (origin.x - station.pos.x) ** 2 + (origin.z - station.pos.z) ** 2;
+      if (d < bestD || (d === bestD && best && String(neighborId) < String(best.id))) {
+        best = { id: neighborId, x: origin.x, z: origin.z };
+        bestD = d;
+      }
+    }
+    return best ? { x: best.x, z: best.z, kind: 'neighbor-bearing', anchorId: best.id } : null;
+  },
+
+  /**
+   * NXB-036: survey + fabricate the station's permanent approach corridor. Idempotent — the
+   * durable record is written once per growth record; a failed survey leaves routeRequested
+   * set so the next entry retries instead of burning the outcome. Emits the same constructed
+   * fact a claim Throughline does so travelLanes/traffic/chart consumers need no second seam.
+   */
+  _fabricateStationGrowthRoute(rec) {
+    if (!rec || rec.growthRoute || rec.routeRequested !== true) return null;
+    const station = this._stationEntity(rec.stationId);
+    if (!station || !station.pos) return null;
+    const anchor = this._growthRouteAnchor(rec, station);
+    if (!anchor) return null;
+    const sx = Number(station.pos.x);
+    const sz = Number(station.pos.z);
+    const dx = anchor.x - sx;
+    const dz = anchor.z - sz;
+    const span = Math.hypot(dx, dz);
+    if (!(span > 0)) return null;
+    const axis = { x: dx / span, z: dz / span };
+    const normal = { x: -axis.z, z: axis.x };
+    // The ring stands on the approach bearing, short of the anchor door but always far enough
+    // out to be a real route rather than a station-radius decoration.
+    const reachWU = Math.min(
+      GROWTH_ROUTE_REACH_WU,
+      Math.max(SLING_MIN_ROUTE_WU + SLING_STATION_CLEARANCE_WU, span - GROWTH_ROUTE_ANCHOR_CLEARANCE_WU),
+    );
+    let route = null;
+    for (const lateral of SLING_LATERAL_OFFSETS_WU) {
+      const from = {
+        x: sx + axis.x * reachWU + normal.x * lateral,
+        z: sz + axis.z * reachWU + normal.z * lateral,
+      };
+      const to = {
+        x: sx + axis.x * SLING_STATION_CLEARANCE_WU + normal.x * lateral,
+        z: sz + axis.z * SLING_STATION_CLEARANCE_WU + normal.z * lateral,
+      };
+      if (!this._travelInfrastructurePointClear(from, null, station)
+        || !this._travelInfrastructurePointClear(to, null, station)
+        || !this._travelInfrastructureCorridorClear(from, to, GROWTH_ROUTE_CORRIDOR_WU, null, station)) {
+        continue;
+      }
+      const routeDx = to.x - from.x;
+      const routeDz = to.z - from.z;
+      const distanceWU = Math.hypot(routeDx, routeDz);
+      if (distanceWU >= SLING_MIN_ROUTE_WU) route = { from, to, distanceWU };
+      if (route) break;
+    }
+    if (!route) return null;
+    let support = null;
+    for (const fraction of [0.55, 0.42, 0.68, 0.3, 0.8]) {
+      const candidate = {
+        x: route.from.x + (route.to.x - route.from.x) * fraction,
+        z: route.from.z + (route.to.z - route.from.z) * fraction,
+      };
+      if (this._travelInfrastructurePointClear(candidate, null, station)) {
+        support = candidate;
+        break;
+      }
+    }
+    if (!support) return null;
+    const builtAt = Number(this.state.simTime) || 0;
+    rec.growthRoute = {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: `growth-throughline:${rec.stationId}`,
+      bodyId: null,
+      sectorId: rec.sectorId,
+      name: `${rec.name} Approach Throughline`,
+      stationId: rec.stationId,
+      stage: 'aligning',
+      operational: false,
+      builtAt,
+      alignUntil: builtAt + GROWTH_ROUTE_ALIGN_S,
+      from: { x: route.from.x, z: route.from.z },
+      to: { x: route.to.x, z: route.to.z },
+      support: { x: support.x, z: support.z },
+      distanceWU: route.distanceWU,
+      corridorRadiusWU: GROWTH_ROUTE_CORRIDOR_WU,
+      ceilingMult: GROWTH_ROUTE_CEILING_MULT,
+      rampMult: GROWTH_ROUTE_RAMP_MULT,
+      damagePolicy: 'station_growth',
+      routeKind: 'station_growth',
+      routeRung: rec.rung,
+      anchorKind: anchor.kind,
+      anchorId: anchor.anchorId || null,
+      fabricationReceipt: {
+        receiptId: `station-growth-route:${rec.stationId}`,
+        builtAt,
+        stationId: rec.stationId,
+        costCr: 0,
+        materials: {},
+        rung: rec.rung,
+        throughputU: rec.throughputU,
+      },
+    };
+    rec.routeRequested = false;
+    this.bus.emit('claim:infrastructureConstructed', {
+      bodyId: null,
+      stationId: rec.stationId,
+      infrastructureId: rec.growthRoute.id,
+      stage: 'aligning',
+      routeKind: 'station_growth',
+      distanceWU: rec.growthRoute.distanceWU,
+    });
+    this.bus.emit('news:publish', {
+      text: `${rec.name} charts a permanent approach — the freight corridor your deliveries built now has a ring on it.`,
+      kind: 'station_growth',
+      stationId: rec.stationId,
+      stationName: rec.name,
+      sectorId: rec.sectorId,
+      factionId: rec.factionId,
+      receiptId: rec.growthRoute.fabricationReceipt.receiptId,
+      sourceRef: rec.growthRoute.fabricationReceipt.receiptId,
+      eventId: rec.growthRoute.fabricationReceipt.receiptId,
+      source: 'claims',
+    });
+    if (rec.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+      this.bus.emit('toast', {
+        text: `${rec.name} approach corridor aligning — your freight route is on the charts`,
+        kind: 'good',
+        ttl: 5,
+      });
+    }
+    return rec.growthRoute;
+  },
+
+  /** Growth-route host passed to travel infrastructure consumers (not serialized). */
+  _growthRouteHost(rec) {
+    const hosts = this._growthRouteHosts || (this._growthRouteHosts = new Map());
+    let host = hosts.get(rec.stationId);
+    if (!host || host.sectorId !== rec.sectorId) {
+      host = {
+        id: `station-growth:${rec.stationId}`,
+        sectorId: rec.sectorId,
+        name: rec.name,
+        stationGrowthHost: true,
+      };
+      hosts.set(rec.stationId, host);
+    }
+    return host;
+  },
+
+  /**
+   * NXB-036: a grown station's approach aligns on its own clock — there is no claim
+   * specialization to gate it on. Once active it stays operational (a charted public route
+   * does not go cold); serialize/restore carry stage + operational forward unchanged.
+   */
+  _tickStationGrowthRoutes(state) {
+    const growth = state.claims && state.claims.stationGrowth;
+    if (!growth) return;
+    const now = Number(state.simTime) || 0;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    for (const stationId in growth) {
+      const rec = growth[stationId];
+      const route = rec && rec.growthRoute;
+      if (!route || route.stage !== 'aligning') continue;
+      if (now < (Number(route.alignUntil) || 0)) continue;
+      route.stage = 'active';
+      route.operational = true;
+      this.bus.emit('claim:infrastructureActive', {
+        bodyId: null,
+        stationId: route.stationId,
+        infrastructureId: route.id,
+        routeKind: 'station_growth',
+      });
+      if (route.sectorId === currentSectorId) {
+        this.bus.emit('toast', {
+          text: `Approach Throughline online · ${rec.name || 'station'}`,
+          kind: 'good',
+          ttl: 5,
+        });
+      }
+    }
+  },
+
+  /** Relay sale fee at a station, less the cut a grown station gives the player's convoys. */
+  _relaySaleFee(def, stationId) {
+    const base = Math.max(0, Number(def && def.saleFee) || 0);
+    const rec = this.stationGrowth(stationId);
+    if (!rec || !(rec.rung > 0)) return base;
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    const step = ladder[rec.rung - 1];
+    const cut = step ? Math.max(0, Number(step.relayFeeCut) || 0) : 0;
+    // Fixed to four places so receipts and revenue never carry a binary-fraction artifact.
+    return Math.max(0, Math.round((base - cut) * 10000) / 10000);
+  },
+
+  /** Public read: the growth record for a station, or null when nothing was ever supplied. */
+  stationGrowth(stationId) {
+    const growth = this.state.claims && this.state.claims.stationGrowth;
+    return (growth && stationId && growth[stationId]) || null;
+  },
+
+  /** Public read: the authored ladder for a station id (type-resolved through SECTORS). */
+  stationGrowthLadder(stationId) {
+    const def = this._stationDef(stationId);
+    return def ? stationGrowthLadderFor({ type: def.type }) : [];
+  },
+
+  _normalizeStationGrowth(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const out = {};
+    let any = false;
+    for (const stationId of Object.keys(raw)) {
+      const rec = raw[stationId];
+      if (!rec || typeof rec !== 'object') continue;
+      const def = this._stationDef(stationId);
+      const type = (typeof rec.type === 'string' && rec.type) || (def && def.type) || null;
+      if (!type) continue;
+      const ladder = stationGrowthLadderFor({ type });
+      const throughputU = Math.max(0, Math.floor(Number(rec.throughputU) || 0));
+      const modules = Array.isArray(rec.modules)
+        ? rec.modules.filter((m) => m && typeof m.id === 'string').map((m) => ({
+          id: m.id,
+          name: typeof m.name === 'string' ? m.name : m.id,
+          tag: typeof m.tag === 'string' ? m.tag : String(m.name || m.id).toUpperCase(),
+          rung: Math.max(1, Math.floor(Number(m.rung) || 0)),
+          at: Number.isFinite(Number(m.at)) ? Number(m.at) : 0,
+          throughputU: Math.max(0, Math.floor(Number(m.throughputU) || 0)),
+          source: typeof m.source === 'string' ? m.source : 'market_sell',
+          receiptId: typeof m.receiptId === 'string' ? m.receiptId : `station-growth:${stationId}:${m.id}`,
+        }))
+        : [];
+      // The rung is the count of modules actually gained; the ladder can only add rungs later.
+      const rung = Math.min(ladder.length, modules.length);
+      modules.length = rung;
+      out[stationId] = {
+        schema: STATION_GROWTH_SCHEMA,
+        stationId,
+        sectorId: (typeof rec.sectorId === 'string' && rec.sectorId) || (def && def.sectorId) || null,
+        factionId: (typeof rec.factionId === 'string' && rec.factionId) || (def && def.factionId) || null,
+        name: (typeof rec.name === 'string' && rec.name) || (def && def.name) || stationId,
+        type,
+        throughputU,
+        rung,
+        modules,
+        sources: {
+          market_sell: Math.max(0, Math.floor(Number(rec.sources && rec.sources.market_sell) || 0)),
+          relay_convoy: Math.max(0, Math.floor(Number(rec.sources && rec.sources.relay_convoy) || 0)),
+        },
+        appliedSupplyReceipts: normalizeSupplyReceipts(rec.appliedSupplyReceipts),
+        firstSupplyAt: Number.isFinite(Number(rec.firstSupplyAt)) ? Number(rec.firstSupplyAt) : 0,
+        lastSupplyAt: Number.isFinite(Number(rec.lastSupplyAt)) ? Number(rec.lastSupplyAt) : 0,
+      };
+      // NXB-036: the durable route survives restore exactly; a requested-but-unseated survey
+      // stays requested so the next sector entry retries it — including legacy saves that
+      // topped the ladder before the route outcome existed.
+      const growthRoute = this._normalizeGrowthRoute(rec.growthRoute, out[stationId]);
+      // Same key order as _ensureStationGrowth, so a restore serializes byte-stable.
+      out[stationId].routeRequested = growthRoute ? false
+        : (rec.routeRequested === true || rung >= ladder.length);
+      out[stationId].growthRoute = growthRoute;
+      any = true;
+    }
+    return any ? out : null;
+  },
+
+  /** Heal a persisted station-growth approach corridor (same record family as body slings). */
+  _normalizeGrowthRoute(raw, rec) {
+    if (!raw || typeof raw !== 'object' || raw.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) return null;
+    const point = (value) => value && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.z))
+      ? { x: Number(value.x), z: Number(value.z) }
+      : null;
+    const from = point(raw.from);
+    const to = point(raw.to);
+    const support = point(raw.support);
+    if (!from || !to || !support) return null;
+    const distanceWU = Math.hypot(to.x - from.x, to.z - from.z);
+    if (!(distanceWU > 0)) return null;
+    const stage = raw.stage === 'active' ? 'active' : 'aligning';
+    const builtAt = Number.isFinite(Number(raw.builtAt)) ? Number(raw.builtAt) : 0;
+    const savedReceipt = raw.fabricationReceipt && typeof raw.fabricationReceipt === 'object'
+      ? raw.fabricationReceipt
+      : {};
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: typeof raw.id === 'string' && raw.id ? raw.id : `growth-throughline:${rec.stationId}`,
+      bodyId: null,
+      sectorId: rec.sectorId,
+      name: typeof raw.name === 'string' && raw.name ? raw.name : `${rec.name} Approach Throughline`,
+      stationId: rec.stationId,
+      stage,
+      // A charted station approach has no claim status to fail — aligned means operational.
+      operational: stage === 'active',
+      builtAt,
+      alignUntil: Number.isFinite(Number(raw.alignUntil)) ? Number(raw.alignUntil) : 0,
+      from,
+      to,
+      support,
+      distanceWU,
+      corridorRadiusWU: Math.max(1, Number(raw.corridorRadiusWU) || GROWTH_ROUTE_CORRIDOR_WU),
+      ceilingMult: Math.max(1, Number(raw.ceilingMult) || GROWTH_ROUTE_CEILING_MULT),
+      rampMult: Math.max(1, Number(raw.rampMult) || GROWTH_ROUTE_RAMP_MULT),
+      damagePolicy: 'station_growth',
+      routeKind: 'station_growth',
+      routeRung: Math.max(0, Math.floor(Number(raw.routeRung) || 0)),
+      anchorKind: raw.anchorKind === 'gate' ? 'gate' : 'neighbor-bearing',
+      anchorId: typeof raw.anchorId === 'string' && raw.anchorId ? raw.anchorId : null,
+      fabricationReceipt: {
+        receiptId: typeof savedReceipt.receiptId === 'string' && savedReceipt.receiptId
+          ? savedReceipt.receiptId
+          : `station-growth-route:${rec.stationId}`,
+        builtAt: Number.isFinite(Number(savedReceipt.builtAt)) ? Number(savedReceipt.builtAt) : builtAt,
+        stationId: rec.stationId,
+        costCr: Math.max(0, Number(savedReceipt.costCr) || 0),
+        materials: savedReceipt.materials && typeof savedReceipt.materials === 'object'
+          ? { ...savedReceipt.materials }
+          : {},
+        rung: Math.max(0, Math.floor(Number(savedReceipt.rung) || 0)),
+        throughputU: Math.max(0, Math.floor(Number(savedReceipt.throughputU) || 0)),
+      },
+    };
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // PQ-170.01 — DEPOT DEPENDENCY. A stocked Trade Relay is a depot Concord's patrols run on.
+  // ------------------------------------------------------------------------------------------
+
+  _freshDepotSupport() {
+    return {
+      supported: false,
+      since: 0,
+      stockedAt: 0,
+      dryAt: 0,
+      lapsedAt: 0,
+      lapseReason: null,
+      rotations: 0,
+      completedRotations: 0,
+      patrol: { encounterId: null, anchor: null, requestedAt: 0, nextAt: 0, lastDenied: null, announced: false },
+    };
+  },
+
+  _tickDepotSupport(body, state) {
+    const spec = body && body.spec;
+    const isRelay = !!spec && spec.id === 'spec_relay';
+    if (!isRelay) {
+      if (body && body.depotSupport && body.depotSupport.supported) this._lapseDepotSupport(body, 'decommissioned');
+      return;
+    }
+    const now = Number(state.simTime) || 0;
+    const ds = body.depotSupport || (body.depotSupport = this._freshDepotSupport());
+    if (this._depotStocked(body)) {
+      ds.stockedAt = now;
+      ds.dryAt = 0;
+      if (!ds.supported) this._beginDepotSupport(body, ds, now);
+    } else if (ds.supported) {
+      if (spec.status !== 'active') {
+        this._lapseDepotSupport(body, spec.status === 'raided' ? 'raided' : 'cold');
+      } else {
+        if (!ds.dryAt) ds.dryAt = now;
+        if (now - ds.dryAt >= DEPOT_SUPPORT_GRACE_S) this._lapseDepotSupport(body, 'withdrawn');
+      }
+    }
+    if (ds.supported) this._maintainDepotPatrol(body, ds, state, now);
+  },
+
+  _beginDepotSupport(body, ds, now) {
+    ds.supported = true;
+    ds.since = now;
+    ds.lapsedAt = 0;
+    ds.lapseReason = null;
+    ds.patrol.nextAt = now;
+    ds.patrol.lastDenied = null;
+    ds.patrol.announced = false;
+    this._receipt(body, 'depot_supported', 'Depot stocked — Concord patrol rotation requested for the lane');
+    this.bus.emit('claim:depotSupport', {
+      bodyId: body.id, sectorId: body.sectorId, supported: true, reason: 'stocked',
+      factionId: DEPOT_PATROL_FACTION_ID,
+    });
+  },
+
+  _lapseDepotSupport(body, reason) {
+    const ds = body && body.depotSupport;
+    if (!ds || !ds.supported) return false;
+    const now = this.state.simTime || 0;
+    ds.supported = false;   // set before the abort so the resolved handler never reschedules
+    ds.lapsedAt = now;
+    ds.lapseReason = reason;
+    ds.dryAt = 0;
+    ds.patrol.nextAt = 0;
+    const encounterId = ds.patrol.encounterId;
+    const liveMap = this.state.encounterDirector && this.state.encounterDirector.live;
+    const live = liveMap && encounterId ? liveMap[encounterId] : null;
+    const director = this._encounterDirector();
+    if (live && director && typeof director.abort === 'function') {
+      director.abort(live, 'depot_support_lapsed');
+    }
+    ds.patrol.encounterId = null;
+    ds.patrol.anchor = null;
+    const line = depotPatrolLine(reason, { depot: body.name });
+    if (body.spec) this._receipt(body, 'depot_lapsed', line, { reason });
+    this.bus.emit('claim:depotSupport', {
+      bodyId: body.id, sectorId: body.sectorId, supported: false, reason,
+      factionId: DEPOT_PATROL_FACTION_ID, encounterId,
+    });
+    if (body.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+      this.bus.emit('toast', { text: line, kind: 'warn', ttl: 5 });
+    }
+    return true;
+  },
+
+  // Keep one lawful patrol_beat rotation live on the depot lane while support holds. The director
+  // owns the set piece (spawn budget, doctrine, resolution); claims only asks, on a fixed cadence
+  // off simTime, and treats `reused` as "still live" — so a post-load wipe or a spawn-cap denial
+  // self-heals without reading director state.
+  _maintainDepotPatrol(body, ds, state, now) {
+    const patrol = ds.patrol;
+    if (now < (patrol.nextAt || 0)) return false;
+    patrol.nextAt = now + DEPOT_PATROL_RETRY_S;
+    if (!state.world || state.world.currentSectorId !== body.sectorId) return false;
+    const director = this._encounterDirector();
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') {
+      patrol.lastDenied = 'no_director';
+      return false;
+    }
+    const stationId = this._relayDestination(body);
+    const station = this._stationEntity(stationId);
+    const anchor = station && station.pos
+      ? {
+        x: body.x + (station.pos.x - body.x) * DEPOT_PATROL_ANCHOR_FRAC,
+        z: body.z + (station.pos.z - body.z) * DEPOT_PATROL_ANCHOR_FRAC,
+      }
+      : { x: body.x + 200, z: body.z };
+    if (!this._playerCanSeeLane(anchor, state)) {
+      patrol.lastDenied = 'player_far';
+      return false;
+    }
+    const rotation = patrol.encounterId ? ds.rotations : ds.rotations + 1;
+    const encounterId = patrol.encounterId || `${DEPOT_PATROL_ID_PREFIX}${body.id}:${rotation}`;
+    const result = director.requestAuthoredEncounter({
+      shapeId: DEPOT_PATROL_SHAPE_ID,
+      encounterId,
+      sectorId: body.sectorId,
+      anchor,
+      zoneId: `depot-lane:${body.id}`,
+      zoneName: `${body.name} depot lane`,
+      zoneType: 'patrol_corridor',
+      zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
+      force: true,
+      data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId: stationId || null },
+    });
+    if (!result || result.ok !== true) {
+      patrol.lastDenied = (result && result.reason) || 'denied';
+      return false;
+    }
+    patrol.lastDenied = null;
+    if (result.reused === true) return true;
+    // A new rotation was actually posted.
+    ds.rotations = rotation;
+    patrol.encounterId = encounterId;
+    // WORLD-37: the chart's moving marker needs a stable fallback when the live hull is
+    // momentarily unresolvable. Stored beside the encounter id it belongs to, cleared with it.
+    patrol.anchor = { x: anchor.x, z: anchor.z };
+    patrol.requestedAt = now;
+    this.bus.emit('claim:depotPatrolRotation', {
+      bodyId: body.id, sectorId: body.sectorId, encounterId, rotation,
+      factionId: DEPOT_PATROL_FACTION_ID, anchor, stationId: stationId || null,
+    });
+    // Announce once per support window; reliefs every couple of minutes stay quiet.
+    if (!patrol.announced) {
+      patrol.announced = true;
+      const line = depotPatrolLine('posted', { depot: body.name });
+      this._receipt(body, 'depot_patrol_posted', line, {
+        encounterId, rotation, factionId: DEPOT_PATROL_FACTION_ID,
+      });
+      this.bus.emit('toast', { text: line, kind: 'good', ttl: 5 });
+    }
+    return true;
+  },
+
+  _playerCanSeeLane(anchor, state) {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos || !anchor) return false;
+    let range = DEPOT_PATROL_PRESENCE_RANGE_WU;
+    try {
+      const radii = farActorTableRadius(state);
+      if (radii && Number.isFinite(radii.enter) && radii.enter > 0) range = Math.min(range, radii.enter);
+    } catch (_) { /* headless harness without activity runtime: keep the authored cap */ }
+    const dx = player.pos.x - anchor.x;
+    const dz = player.pos.z - anchor.z;
+    return dx * dx + dz * dz <= range * range;
+  },
+
+  _onDepotPatrolResolved(payload) {
+    const id = String((payload && payload.encounterId) || '');
+    if (!id.startsWith(DEPOT_PATROL_ID_PREFIX)) return false;
+    const bodyId = id.slice(DEPOT_PATROL_ID_PREFIX.length).split(':')[0];
+    const body = this._body(bodyId);
+    const ds = body && body.depotSupport;
+    if (!ds || ds.patrol.encounterId !== id) return false;
+    const now = this.state.simTime || 0;
+    const heldS = now - (Number(ds.patrol.requestedAt) || 0);
+    ds.patrol.encounterId = null;
+    ds.patrol.anchor = null;
+    const aborted = String(payload.outcome || '').startsWith('aborted:');
+    if (!aborted && heldS >= DEPOT_PATROL_CREDIT_FLOOR_S) {
+      ds.completedRotations += 1;
+      this.bus.emit('claim:depotPatrolCompleted', {
+        bodyId: body.id, sectorId: body.sectorId, encounterId: id, rotation: ds.rotations,
+        heldS, outcome: payload.outcome || 'completed', factionId: DEPOT_PATROL_FACTION_ID,
+      });
+    }
+    if (ds.supported) {
+      ds.patrol.nextAt = now + (aborted ? DEPOT_PATROL_RETRY_S : DEPOT_PATROL_ROTATION_GAP_S);
+    }
+    return true;
+  },
+
+  _normalizeDepotSupport(raw, body) {
+    if (!raw || typeof raw !== 'object' || !body || !body.spec || body.spec.id !== 'spec_relay') return null;
+    const fresh = this._freshDepotSupport();
+    const num = (value, fallback = 0) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
+    fresh.supported = raw.supported === true;
+    fresh.since = num(raw.since);
+    fresh.stockedAt = num(raw.stockedAt);
+    fresh.dryAt = num(raw.dryAt);
+    fresh.lapsedAt = num(raw.lapsedAt);
+    fresh.lapseReason = typeof raw.lapseReason === 'string' ? raw.lapseReason : null;
+    fresh.rotations = Math.max(0, Math.floor(num(raw.rotations)));
+    fresh.completedRotations = Math.max(0, Math.floor(num(raw.completedRotations)));
+    // Live encounters never survive a load (the director rebuilds fresh); the next maintain pass
+    // re-posts the rotation immediately when the depot is still stocked.
+    fresh.patrol.encounterId = null;
+    fresh.patrol.requestedAt = num(raw.patrol && raw.patrol.requestedAt);
+    fresh.patrol.nextAt = 0;
+    fresh.patrol.lastDenied = null;
+    fresh.patrol.announced = !!(raw.patrol && raw.patrol.announced === true);
+    return fresh;
+  },
+
+  /** Public read: bodies whose depot currently provisions a Concord rotation (optionally per sector). */
+  supportedDepots(sectorId = null) {
+    const out = [];
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      if (!body || !body.depotSupport || body.depotSupport.supported !== true) continue;
+      if (sectorId && body.sectorId !== sectorId) continue;
+      out.push(body);
+    }
+    return out;
+  },
+
+  _encounterDirector() {
+    const registry = this.ctx && this.ctx.registry;
+    return registry && typeof registry.get === 'function' ? registry.get('encounterDirector') : null;
+  },
+
+  // Public read API for the Base screen.
+  endgamePulls() {
+    return this.state.claims && this.state.claims.endgamePulls || null;
+  },
+
+  legendaryHeads() {
+    return this.state.claims && this.state.claims.legendaryHeads || null;
+  },
+
+  fittedTrophyHead() {
+    return fittedTrophyFromState(this.state);
+  },
+
+  _onEndgamePullCompleted(payload) {
+    if (isRunSealed(this.state)) return null;
+    const pullId = endgamePullIdFromMission(payload);
+    if (!pullId) return null;
+    const ledger = this._ensureEndgamePulls();
+    if (ledger.completed[pullId]) return ledger.completed[pullId];
+    const now = this.state.simTime || 0;
+    const rec = {
+      id: pullId,
+      kind: payload && payload.megaHeistId ? 'mega_heist' : 'capital_boss',
+      factionId: payload && payload.factionId || null,
+      victimFactionId: payload && payload.victimFactionId || null,
+      method: payload && payload.completionMethod || null,
+      completedAt: now,
+    };
+    ledger.completed[pullId] = rec;
+    ledger.completedOrder.push(pullId);
+    const text = endgamePullLine(pullId, { victim: rec.victimFactionId });
+    this.bus.emit('endgame:pullCompleted', {
+      pullId,
+      kind: rec.kind,
+      factionId: rec.factionId,
+      victimFactionId: rec.victimFactionId,
+      method: rec.method,
+      text,
+    });
+    this.bus.emit('news:publish', {
+      text,
+      kind: 'endgame_pull',
+      pullId,
+      factionId: rec.factionId,
+      victimFactionId: rec.victimFactionId,
+      receiptId: `endgame-pull:${pullId}`,
+      source: 'claims',
+    });
+    return rec;
+  },
+
+  _onAceTrophyDefeat(payload) {
+    if (!payload || payload.transition !== 'defeated') return null;
+    if (isRunSealed(this.state)) return null;
+    const aceId = payload.aceId || (payload.record && payload.record.aceId);
+    const ace = aceById(aceId) || { id: aceId, name: payload.aceName || 'an ace' };
+    if (!ace || !ace.id) return null;
+    const ledger = this._ensureLegendaryHeads();
+    const existing = (ledger.heads || []).find((row) => row && row.aceId === ace.id);
+    if (existing) return existing;
+    const preferred = Math.max(1, Math.min(ACE_TROPHY_TIER_MAX, (payload.record && payload.record.returnTier) | 0 || 1));
+    const taken = new Set((ledger.heads || []).map((row) => row.tier));
+    const tier = !taken.has(preferred) ? preferred : nextOpenTrophyTier(taken);
+    if (!tier) return null;
+    const def = aceTrophyHeadByTier(tier);
+    if (!def) return null;
+    if (ledger.byModuleId && ledger.byModuleId[def.id]) return ledger.byModuleId[def.id];
+    const ships = this.ctx && this.ctx.registry && this.ctx.registry.get('ships');
+    const alreadyOwned = playerOwnsModule(this.state, def.id);
+    const granted = alreadyOwned || !!(ships && typeof ships.grantModule === 'function'
+      && ships.grantModule({ defId: def.id, reason: `ace-trophy:${ace.id}:${tier}` }));
+    if (!granted) return null;
+    const rec = {
+      schema: LEGENDARY_HEADS_SCHEMA,
+      tier,
+      moduleId: def.id,
+      name: def.name,
+      masslineHeadId: def.masslineHeadId,
+      aceId: ace.id,
+      aceName: ace.name || def.defaultAceId,
+      grantedAt: this.state.simTime || 0,
+    };
+    ledger.heads.push(rec);
+    ledger.byModuleId[def.id] = rec;
+    const text = aceTrophyNewsLine({ ace: rec.aceName, head: rec.name, tier });
+    this.bus.emit('claim:trophyHeadGranted', rec);
+    this.bus.emit('news:publish', {
+      text,
+      kind: 'ace_trophy',
+      aceId: rec.aceId,
+      moduleId: rec.moduleId,
+      tier,
+      receiptId: `ace-trophy:${rec.aceId}:${tier}`,
+      source: 'claims',
+    });
+    this.bus.emit('toast', { text, kind: 'good', ttl: 6 });
+    return rec;
+  },
+
+  _ensureEndgamePulls() {
+    if (!this.state.claims) this.state.claims = { bodies: [] };
+    const claims = this.state.claims;
+    if (!claims.endgamePulls) {
+      claims.endgamePulls = {
+        schema: ENDGAME_PULLS_SCHEMA,
+        completed: {},
+        completedOrder: [],
+      };
+    }
+    return claims.endgamePulls;
+  },
+
+  _ensureLegendaryHeads() {
+    if (!this.state.claims) this.state.claims = { bodies: [] };
+    const claims = this.state.claims;
+    if (!claims.legendaryHeads) {
+      claims.legendaryHeads = {
+        schema: LEGENDARY_HEADS_SCHEMA,
+        heads: [],
+        byModuleId: {},
+      };
+    }
+    if (!Array.isArray(claims.legendaryHeads.heads)) claims.legendaryHeads.heads = [];
+    if (!claims.legendaryHeads.byModuleId || typeof claims.legendaryHeads.byModuleId !== 'object') {
+      claims.legendaryHeads.byModuleId = {};
+    }
+    return claims.legendaryHeads;
+  },
+
+  // Serialization (save system delegates via serialize/deserialize). state.claims is plain JSON.
+  // Bodies (including spec state) deep-copy so the snapshot can't alias live buffers. The
+  // module-level _nextClaimId counter is NOT serialized — deserialize re-derives it from the
+  // highest restored claim id, which is robust to saves made before serialization existed.
+  serialize() {
+    const claims = this.state.claims || { bodies: [] };
+    const out = {
+      specVersion: 1,
+      bodies: (claims.bodies || []).map((b) => JSON.parse(JSON.stringify(b))),
+    };
+    if (claims.meta) out.meta = JSON.parse(JSON.stringify(claims.meta));
+    if (claims.legacyMigration) out.legacyMigration = JSON.parse(JSON.stringify(claims.legacyMigration));
+    if (claims.stationGrowth) out.stationGrowth = JSON.parse(JSON.stringify(claims.stationGrowth));
+    if (claims.endgamePulls) out.endgamePulls = JSON.parse(JSON.stringify(claims.endgamePulls));
+    if (claims.legendaryHeads) out.legendaryHeads = JSON.parse(JSON.stringify(claims.legendaryHeads));
+    return out;
+  },
+
+  deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each body's normalize (spec/infrastructure/depot graph walks) is record-
+  // atomic, so yields sit only at body and section boundaries — order and RNG stay identical.
+  *deserializeChunked(data) {
+    if (!data || typeof data !== 'object') {
+      this.state.claims = { bodies: [], specVersion: 1 };
+      _nextClaimId = 1;
+      return;
+    }
+    const bodies = Array.isArray(data.bodies) ? data.bodies : [];
+    for (const b of bodies) {
+      // versioned default: bodies from older saves have no spec — they stay unspecialized
+      // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
+      b.owned = true;
+      const needsRecipeNote = !!(b.spec && typeof b.spec === 'object'
+        && b.spec.id === 'spec_refinery' && b.spec.recipeBook == null);
+      b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
+      if (needsRecipeNote && b.spec) this._noteRecipeBook(b);
+      const infrastructure = this._normalizeTravelInfrastructure(b.infrastructure, b);
+      if (infrastructure) b.infrastructure = infrastructure;
+      else delete b.infrastructure;
+      const depotSupport = this._normalizeDepotSupport(b.depotSupport, b);
+      if (depotSupport) b.depotSupport = depotSupport;
+      else delete b.depotSupport;
+      if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
+        this._resumeDefenseIds.add(b.spec.defense.id);
+      }
+      yield 'claims-body';
+    }
+    this.state.claims = { bodies, specVersion: 1 };
+    if (data.meta && typeof data.meta === 'object') {
+      this.state.claims.meta = { ...data.meta };
+      const meta = this.state.claims.meta;
+      if (meta.upkeepAccum != null) {
+        const normalized = normalizePeriodicAccumulator(meta.upkeepAccum, SPEC_UPKEEP_EVERY_S);
+        if (normalized !== meta.upkeepAccum) {
+          console.warn('[claims] save field meta.upkeepAccum was not a usable pending clock; repaired',
+            meta.upkeepAccum);
+          meta.upkeepAccum = normalized;
+        }
+      }
+      if (meta.raidAccum != null) {
+        const normalized = normalizePeriodicAccumulator(meta.raidAccum, SPEC_RAID_EVERY_S);
+        if (normalized !== meta.raidAccum) {
+          console.warn('[claims] save field meta.raidAccum was not a usable pending clock; repaired',
+            meta.raidAccum);
+          meta.raidAccum = normalized;
+        }
+      }
+    }
+    if (data.legacyMigration && typeof data.legacyMigration === 'object') {
+      this.state.claims.legacyMigration = { ...data.legacyMigration };
+    }
+    const stationGrowth = this._normalizeStationGrowth(data.stationGrowth);
+    if (stationGrowth) this.state.claims.stationGrowth = stationGrowth;
+    if (data.endgamePulls && typeof data.endgamePulls === 'object') {
+      this.state.claims.endgamePulls = JSON.parse(JSON.stringify(data.endgamePulls));
+    }
+    if (data.legendaryHeads && typeof data.legendaryHeads === 'object') {
+      this.state.claims.legendaryHeads = JSON.parse(JSON.stringify(data.legendaryHeads));
+      this._ensureLegendaryHeads();
+    }
+    // Re-derive _nextClaimId past any restored claim id so the next claim() can't collide. (We
+    // don't trust a serialized counter even if one is present — deriving from the bodies is the
+    // source of truth and survives legacy/partial saves.)
+    _nextClaimId = 1;
+    for (const b of this.state.claims.bodies) {
+      const m = /^claim_(\d+)$/.exec(b && b.id || '');
+      if (m) _nextClaimId = Math.max(_nextClaimId, (parseInt(m[1], 10) || 0) + 1);
+    }
+    yield 'claims-id-rescan';
+    // Saves older than specVersion 1 may still carry abstract automation outposts — the F6 path.
+    if (data.specVersion == null) this._migrateLegacyOutposts();
+    yield 'claims-migrated';
+    this._applyAllPoiLabels();
+    yield 'claims-poi-labels';
+    this._stampAllStationGrowth();
+  },
+
+  newGame() {
+    this.state.claims = { bodies: [], specVersion: 1 };
+    _nextClaimId = 1;
+  },
+};

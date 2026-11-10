@@ -1,0 +1,184 @@
+{
+  "schema": "spaceface.m4AshlineFamilyMetrics.v1",
+  "packet": "M4-ASHLINE-QUALITY-PARITY-002",
+  "familyId": "ashline",
+  "builtAt": "2026-07-12T20:41:15Z",
+  "elapsedSec": 231.31,
+  "ships": [
+    {
+      "key": "dart",
+      "id": "ashline_dart",
+      "role": "flyby_interceptor",
+      "totalTriangles": 20486,
+      "hullTriangles": 9188,
+      "lodTriangles": {
+        "lod0": 15452,
+        "lod1": 4796,
+        "lod2": 226
+      },
+      "lod0AabbSize": [
+        15.775000095367432,
+        2.297586143016815,
+        6.049999713897705
+      ],
+      "collisionBounds": {
+        "min": [
+          -7.256499767303467,
+          -1.0568896532058716,
+          -2.7829999923706055
+        ],
+        "max": [
+          7.256499767303467,
+          1.0568896532058716,
+          2.7829999923706055
+        ],
+        "size": [
+          14.512999534606934,
+          2.113779306411743,
+          5.565999984741211
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Red_Paint",
+        "Material_Warm"
+      ],
+      "sha256": "D6C1AEF862193505802D318B3576ED66AF33D5F37B9E1685C760AADB7F22943C",
+      "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_dart.glb",
+      "blend": "assets/ships/m4_ashline/blender/ashline_dart_production.blend"
+    },
+    {
+      "key": "lode",
+      "id": "ashline_lode",
+      "role": "heavy_brawler",
+      "totalTriangles": 25836,
+      "hullTriangles": 9516,
+      "lodTriangles": {
+        "lod0": 18868,
+        "lod1": 6822,
+        "lod2": 134
+      },
+      "lod0AabbSize": [
+        22.424999237060547,
+        4.330000042915344,
+        9.975000381469727
+      ],
+      "collisionBounds": {
+        "min": [
+          -10.315500259399414,
+          -1.9917999505996704,
+          -4.588500022888184
+        ],
+        "max": [
+          10.315500259399414,
+          1.9917999505996704,
+          4.588500022888184
+        ],
+        "size": [
+          20.631000518798828,
+          3.983599901199341,
+          9.177000045776367
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Red_Paint",
+        "Material_Warm"
+      ],
+      "sha256": "3956985882D4C7F430414AF3FAB67DEBD2FA3BB8A41B41BC8AD4571C1DAB37C5",
+      "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_lode.glb",
+      "blend": "assets/ships/m4_ashline/blender/ashline_lode_production.blend"
+    },
+    {
+      "key": "rig",
+      "id": "ashline_rig",
+      "role": "tether_control_raider",
+      "totalTriangles": 16206,
+      "hullTriangles": 6648,
+      "lodTriangles": {
+        "lod0": 11744,
+        "lod1": 4318,
+        "lod2": 132
+      },
+      "lod0AabbSize": [
+        17.71500015258789,
+        4.849999904632568,
+        4.974999904632568
+      ],
+      "collisionBounds": {
+        "min": [
+          -8.148900032043457,
+          -2.2309999465942383,
+          -2.2885000705718994
+        ],
+        "max": [
+          8.148900032043457,
+          2.2309999465942383,
+          2.2885000705718994
+        ],
+        "size": [
+          16.297800064086914,
+          4.461999893188477,
+          4.577000141143799
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Front",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Warm",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Red_Paint"
+      ],
+      "sha256": "C2ED5DB14ECDFE31FE862807563437A489671A7E4827F5C445BC5B3FA9F0DE51",
+      "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_rig.glb",
+      "blend": "assets/ships/m4_ashline/blender/ashline_rig_production.blend"
+    }
+  ],
+  "isolation": {
+    "root": "assets/ships/m4_ashline",
+    "touchesDefaultManifests": false,
+    "overwritesK0OrHelios": false,
+    "wiredDefaultPlay": false
+  }
+}

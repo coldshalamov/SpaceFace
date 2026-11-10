@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "revision": "chase_form_v17",
+  "cycle": 5,
+  "glb": "assets/ships/fleet_player_bodies_v1/hornet/source/wholeships/hornet_production_v1_lod0.glb",
+  "ship": "hornet",
+  "engine": "CYCLES_CPU",
+  "samples": 12,
+  "runtimeScale": 2.530574712643678,
+  "authoredX": 10.875,
+  "targetWU": 27.52,
+  "size": [27.52, 17.461, 5.9357],
+  "adversarial": "PASS at chase distance for the four C4 Hitch-plus notes (panel language, lettering, hull-wide dirt, hardware density). Geometry + Principled only.",
+  "hitchPlusChase": "closed",
+  "remainingCloseRange": [
+    "Hitch close still has a painted rivet field we will not clone with a megatex",
+    "Hitch close still has an English-word stencil (LAUNCHING); Hornet has HN / 07 letterforms"
+  ]
+}

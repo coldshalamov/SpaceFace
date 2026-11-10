@@ -1,0 +1,67 @@
+TAP version 13
+# Subtest: narcotics is a real contraband commodity; cone is heading+half-angle+range
+ok 1 - narcotics is a real contraband commodity; cone is heading+half-angle+range
+  ---
+  duration_ms: 1.417958
+  ...
+# Subtest: jettison stamps legality and owner on the field pod
+ok 2 - jettison stamps legality and owner on the field pod
+  ---
+  duration_ms: 6.00641
+  ...
+# PQ-148.02 drop-kick: entered=1 scanned=0 caught=1 transitS=0.400 cruise=95.0 ticks=91 netId=3 heat=0.000
+# PQ-148.02 scanned-pod: heatBefore=0.000 heatAfter=0.160 found=true entered=1 dwellS=0.700
+# Subtest: drop-kick at cruise transits the cone into a catch net without a scan
+ok 3 - drop-kick at cruise transits the cone into a catch net without a scan
+  ---
+  duration_ms: 144.222545
+  ...
+# Subtest: a parked contraband pod in the cone is scanned and heat rises
+ok 4 - a parked contraband pod in the cone is scanned and heat rises
+  ---
+  duration_ms: 15.778687
+  ...
+# Subtest: a hauler hull occludes the cone — parked pod behind it is not scanned
+ok 5 - a hauler hull occludes the cone — parked pod behind it is not scanned
+  ---
+  duration_ms: 15.488828
+  ...
+# Subtest: nets band is playable and names break_net as the escape
+ok 6 - nets band is playable and names break_net as the escape
+  ---
+  duration_ms: 1.202785
+  ...
+# Subtest: seed 15110: nets tier posts a lane net and a cutter from reserve
+ok 7 - seed 15110: nets tier posts a lane net and a cutter from reserve
+  ---
+  duration_ms: 13.130653
+  ...
+# Subtest: seed 15110: a light slow hull is held by the net, not broken
+ok 8 - seed 15110: a light slow hull is held by the net, not broken
+  ---
+  duration_ms: 1.923915
+  ...
+# Subtest: seed 15111: heavy hull contact breaks the net by mass
+ok 9 - seed 15111: heavy hull contact breaks the net by mass
+  ---
+  duration_ms: 3.404909
+  ...
+# Subtest: seed 15112: fast light hull contact breaks the net by speed
+ok 10 - seed 15112: fast light hull contact breaks the net by speed
+  ---
+  duration_ms: 2.310523
+  ...
+# Subtest: seed 15113: a thrown decoy in the scan cone breaks the net
+ok 11 - seed 15113: a thrown decoy in the scan cone breaks the net
+  ---
+  duration_ms: 2.586153
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 623.490837

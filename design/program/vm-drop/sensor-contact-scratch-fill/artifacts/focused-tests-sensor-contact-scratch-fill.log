@@ -1,0 +1,110 @@
+TAP version 13
+# Subtest: encounter telemetry honors the sensor hostility verdict instead of team mismatch
+ok 1 - encounter telemetry honors the sensor hostility verdict instead of team mismatch
+  ---
+  duration_ms: 3.868709
+  ...
+# Subtest: the real arena roster commits its whole pack instead of reserving all but two firing lanes
+ok 2 - the real arena roster commits its whole pack instead of reserving all but two firing lanes
+  ---
+  duration_ms: 21.422499
+  ...
+# Subtest: actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile
+ok 3 - actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile
+  ---
+  duration_ms: 22.658305
+  ...
+# Subtest: production roster carries deterministic activity metadata into tactical cadence
+ok 4 - production roster carries deterministic activity metadata into tactical cadence
+  ---
+  duration_ms: 1.165357
+  ...
+# Subtest: production sensor batches reuse ephemeral containers without changing durable sensor truth
+ok 5 - production sensor batches reuse ephemeral containers without changing durable sensor truth
+  ---
+  duration_ms: 3.401769
+  ...
+# Subtest: squad command aggregation leaves member-only hazard perception untouched
+ok 6 - squad command aggregation leaves member-only hazard perception untouched
+  ---
+  duration_ms: 0.388391
+  ...
+# Subtest: production firing adapter holds fire for an ally in the predicted lane and recovers cleanly
+ok 7 - production firing adapter holds fire for an ally in the predicted lane and recovers cleanly
+  ---
+  duration_ms: 2.115935
+  ...
+# Subtest: production firing scans the ready ship-like index instead of the full dense world
+ok 8 - production firing scans the ready ship-like index instead of the full dense world
+  ---
+  duration_ms: 0.779514
+  ...
+# Subtest: maneuver contact indexing preserves decisions while reducing repeated contact visits
+ok 9 - maneuver contact indexing preserves decisions while reducing repeated contact visits
+  ---
+  duration_ms: 11.174632
+  ...
+# Subtest: fresh snapshots rebuild safely across six sensor ticks
+ok 10 - fresh snapshots rebuild safely across six sensor ticks
+  ---
+  duration_ms: 1.310874
+  ...
+# Subtest: snapshot revision invalidates a retained index after same-array replacement and reclassification
+ok 11 - snapshot revision invalidates a retained index after same-array replacement and reclassification
+  ---
+  duration_ms: 1.029674
+  ...
+# Subtest: live perception snapshots advance their revision for every accepted sensor batch
+ok 12 - live perception snapshots advance their revision for every accepted sensor batch
+  ---
+  duration_ms: 1.143537
+  ...
+# Subtest: recycled tactical AI ids do not inherit the prior actor decision or fire revalidation
+ok 13 - recycled tactical AI ids do not inherit the prior actor decision or fire revalidation
+  ---
+  duration_ms: 43.525825
+  ...
+# Subtest: tactical AI lifecycle subscriptions are idempotent and teardown-safe
+ok 14 - tactical AI lifecycle subscriptions are idempotent and teardown-safe
+  ---
+  duration_ms: 0.869538
+  ...
+# Subtest: a deferred destroy receipt cannot invalidate a same-tick replacement decision
+ok 15 - a deferred destroy receipt cannot invalidate a same-tick replacement decision
+  ---
+  duration_ms: 8.47154
+  ...
+# Subtest: production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+ok 16 - production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+  ---
+  duration_ms: 1.410546
+  ...
+# Subtest: injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+ok 17 - injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+  ---
+  duration_ms: 0.205759
+  ...
+# Subtest: off-table passive tactical actors sleep while near and hostile actors stay awake
+ok 18 - off-table passive tactical actors sleep while near and hostile actors stay awake
+  ---
+  duration_ms: 40.825604
+  ...
+# Subtest: skipped decision ticks revoke cached fire immediately when the live target dies
+ok 19 - skipped decision ticks revoke cached fire immediately when the live target dies
+  ---
+  duration_ms: 16.138948
+  ...
+# Subtest: one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+ok 20 - one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+  ---
+  duration_ms: 7.758676
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 404.08935

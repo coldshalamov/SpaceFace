@@ -1,0 +1,1462 @@
+import { createPauseFrame } from '../views/menuFrames.js';
+// Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, pause, amended by Task B §1.4):
+// the world held, not hidden — the frozen game at 0 % scrim; "Paused" at screen-title size top-left;
+// the flight brief as one sentence beneath it; the actions as a column of words down the left edge;
+// the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
+// the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
+// Built on Deckplate (src/ui/deckplate/); this file owns no CSS beyond the photo deck's inline
+// seating (enterPhoto: the sheet had placed the bar mid-air, see the comment there). styles/pause.css is gone with the
+// 2026-09-22 migration: it existed to claw back the seam spacing that kept the EXIT keys 22px under
+// the pane's lower edge, and dp-frame's scrolling column is why that cannot happen any more.
+// ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
+// only pause-mode presentation and navigation intents.
+
+import { injectDeckplate } from '../deckplate/index.js';
+import { confirm } from '../confirm.js';
+import { BINDINGS } from '../bindings.js';
+import { SECTORS } from '../../data/sectors.js';
+import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { localizeText } from '../../localization/sourceText.js';
+import { coreText } from '../localizedCoreCopy.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { escapeHtml } from '../comms.js';
+import { canQuit, requestQuit } from '../quitGame.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
+import { IS_DEV } from '../../core/devMode.js';
+import { CREDITS } from '../../data/credits.js';
+import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
+import { el, words, settle, cue } from '../kit/index.js';
+import { createArcRail } from '../orrery/arcRail.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
+import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
+import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
+import { contract47aReadout } from '../sim/missionRecap.js';
+import { requestCodexTab } from '../codexRequests.js';
+import { writtenEndingArchive } from '../../story/endings/index.js';
+import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
+import {
+  PHOTO_EXPOSURE_DEFAULT,
+  PHOTO_EXPOSURE_MAX,
+  PHOTO_EXPOSURE_MIN,
+  PHOTO_FILTERS_DEFAULT,
+  applyPhotoPresentation,
+  createPhotoModeState,
+  cyclePhotoFilterLook,
+  restorePhotoPresentation,
+  isPhotoModeActive,
+} from '../../render/camera.js';
+
+const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+/** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
+const PHOTO_HINT_MS = 2000;
+export const PHOTO_LABEL = 'Photo';
+export const ACHIEVEMENTS_LABEL = 'Achievements';
+export const ENDING_ARCHIVE_LABEL = 'Ending Archive';
+export const PHOTO_CAPTURE_LABEL = 'Capture';
+export const PHOTO_STORE_KIND = 'store';
+/** Live store-page stills land here so PQ-159.03 captures are used for the store page. */
+export const STORE_PAGE_REL = 'assets/store/page';
+/** Canonical screenshot the store page consumes (PQ-033.03 uploads this slot). */
+export const STORE_PAGE_SCREENSHOT = 'spaceface-store-headed.png';
+
+export function storePagePath(filename) {
+  return `${STORE_PAGE_REL}/${filename || STORE_PAGE_SCREENSHOT}`;
+}
+
+export function storePageScreenshotPath() {
+  return storePagePath(STORE_PAGE_SCREENSHOT);
+}
+
+/** Remember a capture on the live game state so Capture always owns the store-page slot. */
+export function bindStorePageStill(state, rel, dataUrl) {
+  if (!state || !rel || !dataUrl) return false;
+  if (!state.render) state.render = {};
+  const slot = state.render.storePage || (state.render.storePage = {});
+  slot[rel] = dataUrl;
+  if (rel === storePageScreenshotPath() || String(rel).endsWith(STORE_PAGE_SCREENSHOT)) {
+    slot.screenshot = dataUrl;
+    slot.path = storePageScreenshotPath();
+    slot.usedFor = 'store-page';
+  }
+  return true;
+}
+
+function resolveStorePageWriter(host) {
+  const explicit = host && typeof host.writeStorePage === 'function' ? host.writeStorePage : null;
+  const state = host && host.state;
+  if (!explicit && !state) return null;
+  return (rel, dataUrl) => {
+    if (explicit) explicit(rel, dataUrl);
+    bindStorePageStill(state, rel, dataUrl);
+  };
+}
+
+/** Bind a photo-mode PNG onto the store page screenshot slot (and keep a dated archive). */
+export function publishStoreStill(capture, writer) {
+  if (!capture || capture.ok === false || !capture.dataUrl || typeof writer !== 'function') {
+    return { ok: false, reason: 'no-store-writer' };
+  }
+  const archiveName = capture.filename || photoCaptureFilename();
+  const archiveRel = storePagePath(archiveName);
+  const canonicalRel = storePageScreenshotPath();
+  writer(archiveRel, capture.dataUrl);
+  if (archiveRel !== canonicalRel) writer(canonicalRel, capture.dataUrl);
+  return {
+    ok: true,
+    path: canonicalRel,
+    archive: archiveRel,
+    filename: STORE_PAGE_SCREENSHOT,
+    usedFor: 'store-page',
+    slot: 'screenshot',
+  };
+}
+export { isPhotoModeActive, PHOTO_FILTERS_DEFAULT, PHOTO_EXPOSURE_DEFAULT };
+
+/** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
+ *  by asking the manager to push/pop/replace; if it is not reachable we degrade to
+ *  emitting ui:* navigation events that uiRoot can also honour. */
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+
+function nav(ctx, method, arg) {
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
+  // Fallback: let uiRoot handle navigation via events.
+  ctx.bus.emit('ui:' + method, { id: arg });
+}
+
+function prettyId(id) {
+  return String(id || '')
+    .replace(/^(mission|station|sector|cmdty|ship)_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function missionId(m) {
+  return m && (m.id != null ? m.id : m.missionId);
+}
+
+function missionTitle(m) {
+  return (m && (m.title || m.name)) || prettyId(m && m.type) || 'Contract';
+}
+
+function fmtTime(seconds) {
+  const s = Math.max(0, Math.floor(Number(seconds) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return h + 'h ' + m + 'm';
+  if (m > 0) return m + 'm';
+  return s + 's';
+}
+
+function missionProgress(m) {
+  const prog = Math.max(0, Number(m && m.objectiveProgress) || 0);
+  const tgt = Math.max(1, Number(m && m.objectiveTarget) || 1);
+  return Math.min(100, Math.round((prog / tgt) * 100)) + '% complete';
+}
+
+function deadlineText(state, mission) {
+  const deadline = Number(mission && mission.deadline_s);
+  const now = Number(state && state.simTime) || 0;
+  if (!Number.isFinite(deadline) || deadline <= now) return '';
+  return ' · ' + fmtTime(deadline - now) + ' left';
+}
+
+function missionDestination(m) {
+  return (m && (m.destName || m.destStationName || m.stationName)) ||
+    prettyId(m && (m.destStationId || m.destSectorId || m.dest)) || 'the objective';
+}
+
+function missionCommodity(m) {
+  const id = m && m.params && m.params.cmdtyId;
+  return id ? prettyId(id) : 'cargo';
+}
+
+function missionNextStep(m) {
+  const dest = missionDestination(m);
+  if (contract47aReadout(m)) return m.params.sampleRecovered === true
+    ? 'Next: deliver the recovered assay sample to Helios Station.'
+    : 'Next: recover the assay sample at the 47-A Recovery Site in Helios Prime.';
+  switch (m && m.type) {
+    case 'cargo_delivery':
+    case 'passenger_transport':
+    case 'escort':
+    case 'smuggling_run':
+    case 'salvage_retrieval':
+      return 'Next: follow tracked nav to ' + dest + ', then dock.';
+    case 'bulk_trade':
+      return 'Next: buy or carry ' + missionCommodity(m) + ', then sell at the destination market.';
+    case 'mining_quota':
+      return 'Next: mine ' + missionCommodity(m) + ' and keep cargo room free.';
+    case 'bounty_hunt':
+    case 'patrol_clear':
+      return 'Next: follow tracked nav. Expect a fight before the timer runs out.';
+    case 'recon_scan':
+      return 'Next: follow tracked nav and scan each marked site.';
+    default:
+      return 'Next: follow the tracked objective. Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' has the details.';
+  }
+}
+
+function waypointText(wp) {
+  if (!wp) return '';
+  return wp.label || wp.reason || wp.stationName || prettyId(wp.stationId || wp.sectorId || wp.kind) || 'Nav marker set';
+}
+
+function sectorDisplayName(sectorId, fallback) {
+  if (fallback) return String(fallback);
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  return (sector && sector.name) || prettyId(sectorId);
+}
+
+function routeCommitment(state, wp) {
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  const targetSectorId = wp && wp.sectorId || null;
+  const hasLocalFix = !!(wp && wp.pos);
+  const targetSectorName = targetSectorId ? sectorDisplayName(targetSectorId, wp && wp.sectorName) : '';
+  if (targetSectorId && !hasLocalFix && (!currentSectorId || targetSectorId !== currentSectorId)) {
+    return { kind: 'inter-system', objectiveLabel: 'INTER-SYSTEM ROUTE', targetSectorName };
+  }
+  if (hasLocalFix || (targetSectorId && currentSectorId && targetSectorId === currentSectorId)) {
+    return { kind: 'local', objectiveLabel: 'LOCAL ROUTE', targetSectorName };
+  }
+  return { kind: 'nav', objectiveLabel: 'NAV SET', targetSectorName: '' };
+}
+
+/** PRO-05 — Local Map copy with placeholders. en-US matches the old concatenation. */
+export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
+  if (isPhoneLayout()) {
+    return {
+      label: localizeText('Local Map'),
+      hint: inThisSystem
+        ? localizeText('Open Local Map for the live marker in this system.')
+        : localizeText('Open Local Map for the live marker{place}; no jump route is required.', { place }),
+      title: 'Open Local Map',
+    };
+  }
+  const label = localizeText('Local Map ({key})', { key });
+  const hint = inThisSystem
+    ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
+    : localizeText('Open Local Map ({key}) for the live marker{place}; no jump route is required.', { key, place });
+  return { label, hint, title: 'Open Local Map' };
+}
+
+export function pauseMapAction(state) {
+  const wp = state && state.nav && state.nav.waypoint;
+  if (!wp) return null;
+  const commitment = routeCommitment(state, wp);
+  const currentSectorId = state && state.world && state.world.currentSectorId || null;
+  if (commitment.kind !== 'inter-system') {
+    const place = commitment.targetSectorName ? ' in ' + commitment.targetSectorName : ' in this system';
+    const copy = commitment.kind === 'local'
+      ? localMapPauseCopy(BINDINGS.localmap.label, { place })
+      : localMapPauseCopy(BINDINGS.localmap.label, { inThisSystem: true });
+    const hint = copy.hint;
+    // One public map surface: galaxyMap + LOCAL focus (not dual-primary localmap/starmap).
+    const handoff = mapHandoffAction({
+      focus: MAP_FOCUS.LOCAL,
+      label: copy.label,
+      title: copy.title,
+      body: hint,
+      sectorId: wp.sectorId || currentSectorId || null,
+      stationId: wp.stationId || null,
+      pos: wp.pos || null,
+      missionId: wp.missionId || null,
+      source: 'pause',
+    });
+    return {
+      ...handoff,
+      hint,
+      commitment: commitment.kind,
+      objectiveLabel: commitment.objectiveLabel,
+    };
+  }
+  const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
+  const mapLabel = 'Star Map' + pauseKeyHint(BINDINGS.starmap);
+  const hint = 'Open ' + mapLabel + ' to review the inter-system route' + target + ' before committing a jump.';
+  // Inter-system review still uses the same galaxyMap surface with GALAXY focus.
+  const handoff = mapHandoffAction({
+    focus: MAP_FOCUS.GALAXY,
+    label: mapLabel,
+    title: 'Open Star Map',
+    body: hint,
+    sectorId: wp.sectorId || null,
+    stationId: wp.stationId || null,
+    pos: null,
+    missionId: wp.missionId || null,
+    source: 'pause',
+  });
+  return {
+    ...handoff,
+    hint,
+    commitment: commitment.kind,
+    objectiveLabel: commitment.objectiveLabel,
+  };
+}
+
+/** Open the pause map review CTA through mapAuthority (never pushScreen localmap|starmap). */
+function openPauseMapReview(ctx, mapAction) {
+  if (!mapAction) return false;
+  return openGalaxyMap(ctx, {
+    focus: mapAction.focus,
+    sectorId: mapAction.sectorId,
+    stationId: mapAction.stationId,
+    pos: mapAction.pos,
+    missionId: mapAction.missionId,
+    label: mapAction.label,
+    source: (mapAction.source) || 'pause',
+  });
+}
+
+function routeNextText(mapAction) {
+  if (!mapAction) return 'resume and follow the current marker; open the map if the route gets muddy.';
+  if (mapAction.commitment === 'inter-system') {
+    return mapAction.hint + ' Resume after the destination sector looks right.';
+  }
+  if (mapAction.commitment === 'local') {
+    return mapAction.hint + ' Resume and fly the marker in-system.';
+  }
+  return 'resume and follow the current marker; ' + mapAction.hint;
+}
+
+function pauseKeyHint(binding) {
+  return isPhoneLayout() ? '' : ' (' + binding.label + ')';
+}
+
+function slotLabel(id) {
+  if (!id) return '';
+  if (id === 'quick') return 'the quick slot';
+  if (id === 'autosave' || id === 'auto') return 'autosave';
+  return 'slot ' + id;
+}
+
+function fmtSavedAt(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime())) return '';
+  // a reading, not a machine timestamp: "just now", "12 min ago", "3 h ago", else "Sep 15"
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins >= 0 && mins < 1) return 'just now';
+  if (mins >= 1 && mins < 60) return mins + ' min ago';
+  if (mins >= 60 && mins < 24 * 60) return Math.round(mins / 60) + ' h ago';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+// What the autosave setting really does, in the pause brief's voice. The old line was a fixed list
+// of triggers that ignored the Autosave row: a player on 120 s was told something else, and a
+// player on Off was never warned that quitting loses the run. Off stops only the timer
+// (saveSystem.update): requestAutosave never reads the setting, so docking, jumping and finishing
+// a contract still save, and the Off line says exactly that rather than claiming nothing saves. Missing or corrupt settings read as
+// the shipped default (the save loader normalizes them to it).
+const SHIPPED_AUTOSAVE_INTERVAL_S = 120;
+
+function autosaveIntervalOf(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  const value = gameplay ? Number(gameplay.autosaveIntervalS) : NaN;
+  return Number.isFinite(value) && value >= 0 ? value : SHIPPED_AUTOSAVE_INTERVAL_S;
+}
+
+export function saveLine(state) {
+  // A Crucible run is ephemeral by contract and saving is refused for it (PQ-133 ruling 2).
+  // Telling the player to press F5 here would be instructing them to attempt the one thing the
+  // save system now blocks.
+  const run = state && state.run;
+  if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
+    return 'This run is not saved. Leaving the arena ends it. Your campaign save is untouched.';
+  }
+  const slot = state && state.save && state.save.currentSlot;
+  const savedAt = state && state.meta && state.meta.lastSavedAt;
+  const savedWhen = fmtSavedAt(savedAt);
+  if (savedWhen) {
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
+  }
+  const everyS = autosaveIntervalOf(state);
+  const saveControls = isPhoneLayout() ? 'Save' : 'Save or F5';
+  const autosaveSentence = everyS > 0
+    ? 'Use ' + saveControls + ' before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
+    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use ' + saveControls + ' before quitting.';
+  if (slot) {
+    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. ' + autosaveSentence;
+  }
+  return 'Unsaved run. ' + autosaveSentence;
+}
+
+// The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
+// scar list are the receipts that already record what hit the player. A gun's impulse row is
+// written after its damage row and must stay a gun — only a later receipt may replace it.
+const PAUSE_HIT_LINES = Object.freeze({
+  gun: 'A gun hit you.',
+  shove: 'A shove hit you.',
+  slam: 'A slam hit you.',
+  rock: 'A rock hit you.',
+});
+
+function causeFromScar(scar) {
+  if (!scar || typeof scar !== 'object') return '';
+  if (scar.cause === 'weapon') return 'gun';
+  if (scar.cause === 'slam') return scar.surface === 'terrain' ? 'rock' : 'slam';
+  return pauseImpactCause(scar.cause);
+}
+
+function newestTraceHit(state) {
+  const trace = state && state.combat && state.combat.trace;
+  const playerId = state && state.playerId;
+  if (!trace || playerId == null) return null;
+  const projected = trace.latestPlayerImpact;
+  if (trace.playerId === playerId && projected && typeof projected === 'object') {
+    const cause = pauseImpactCause(projected.cause);
+    if (cause && Number.isFinite(projected.tick)) {
+      return { tick: projected.tick, cause };
+    }
+  }
+  // Compatibility path for in-process state, diagnostics, and malformed or
+  // stale projected receipts. The authoritative full trace remains readable.
+  return latestPlayerImpactFromTrace(trace, playerId);
+}
+
+function hullScarLists(state) {
+  const lists = [];
+  const playerId = state && state.playerId;
+  const ent = playerId != null && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(playerId)
+    : null;
+  const entScars = ent && ent.data && ent.data.livingHull && ent.data.livingHull.scars;
+  if (Array.isArray(entScars)) lists.push(entScars);
+  const player = state && state.player;
+  const index = player && Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+  const ownedScars = owned && owned.livingHull && owned.livingHull.scars;
+  if (Array.isArray(ownedScars) && ownedScars !== entScars) lists.push(ownedScars);
+  return lists;
+}
+
+function newestScarHit(state) {
+  let best = null;
+  for (const list of hullScarLists(state)) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const cause = causeFromScar(list[i]);
+      if (!cause) continue;
+      const tick = Number.isFinite(list[i].tick) ? list[i].tick : 0;
+      if (!best || tick > best.tick) best = { tick, cause };
+      break;
+    }
+  }
+  return best;
+}
+
+/** One plain line for the newest thing that hit the player, or '' when nothing has. */
+export function pauseLastImpactLine(state) {
+  const traced = newestTraceHit(state);
+  const scarred = newestScarHit(state);
+  const hit = scarred && (!traced || scarred.tick > traced.tick) ? scarred : traced;
+  return hit ? (PAUSE_HIT_LINES[hit.cause] || '') : '';
+}
+
+export function pauseStatusLines(state) {
+  const active = (state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [])
+    .filter((m) => m && (!m.status || m.status === 'active'));
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
+  if (tracked) {
+    return {
+      hit: pauseLastImpactLine(state),
+      objective: 'TRACKED · ' + missionTitle(tracked) + ' · ' + missionProgress(tracked) + deadlineText(state, tracked),
+      objectiveMention: missionId(tracked)
+        ? { ref: 'contract:' + missionId(tracked), label: missionTitle(tracked), pre: 'TRACKED · ', post: ' · ' + missionProgress(tracked) + deadlineText(state, tracked) }
+        : null,
+      next: missionNextStep(tracked),
+      save: saveLine(state),
+    };
+  }
+  if (active.length) {
+    const candidate = active[0];
+    return {
+      hit: pauseLastImpactLine(state),
+      objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objectiveMention: missionId(candidate)
+        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
+        : null,
+      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and Track Nav on a contract.',
+      save: saveLine(state),
+    };
+  }
+  const wp = state && state.nav && state.nav.waypoint;
+  if (wp) {
+    const mapAction = pauseMapAction(state);
+    return {
+      hit: pauseLastImpactLine(state),
+      objective: ((mapAction && mapAction.objectiveLabel) || 'NAV SET') + ' · ' + waypointText(wp),
+      next: 'Next: ' + routeNextText(mapAction),
+      save: saveLine(state),
+    };
+  }
+  return {
+    hit: pauseLastImpactLine(state),
+    objective: 'NO ACTIVE CONTRACT',
+    next: 'Next: dock at a station, accept and track a job, then undock.',
+    save: saveLine(state),
+  };
+}
+
+// The exit gate carries facts, not coaching: one consequence sentence, the save fact, and the
+// loss line separate (`confirm`'s note). Objective and next-step guidance stay on the flight
+// brief behind the dialog — reading them here taught the player nothing they couldn't already see.
+function pauseSurvivalRunActive(state) {
+  const run = state?.run;
+  return run?.kind === 'survival' && !['inactive', 'ended', 'victory'].includes(run.phase);
+}
+
+export function pauseRetireToken(state) {
+  const run = state?.run;
+  if (!pauseSurvivalRunActive(state)) return null;
+  const token = run.retireToken;
+  return Number.isSafeInteger(token) && token > 0 ? token : null;
+}
+
+export function pauseExitSaveFact(state) {
+  const run = state && state.run;
+  if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
+    return 'Arena runs are never saved.';
+  }
+  const slot = state && state.save && state.save.currentSlot;
+  const savedWhen = fmtSavedAt(state && state.meta && state.meta.lastSavedAt);
+  if (savedWhen) {
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
+  }
+  if (slot) return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session.';
+  return 'Nothing saved this session.';
+}
+
+export function pauseExitConfirmNote(state) {
+  const run = state && state.run;
+  if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
+    return 'Leaving ends the run; your campaign save is untouched.';
+  }
+  const savedWhen = fmtSavedAt(state && state.meta && state.meta.lastSavedAt);
+  return savedWhen ? 'Progress since then will be lost.' : 'All progress this session will be lost.';
+}
+
+export function pauseExitConfirmBody(state, target = 'menu') {
+  const opening = target === 'load'
+    ? 'Opening Load lets you review saves; choosing a slot replaces this session.'
+    : 'Returning to the main menu ends this session.';
+  return opening + '\n' + pauseExitSaveFact(state);
+}
+
+// PRO-19 — the pause footer names the running session's seed beside the build mark so a bug
+// report can quote it. The session seed only: state.meta.seed, never rng internals
+// (state.rng continuation state / draws stay out of the DOM).
+export function pauseRunSeedOf(state) {
+  const raw = state && state.meta ? Number(state.meta.seed) : NaN;
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return (raw >>> 0) || 0;
+}
+
+export function pauseRunSeedLine(state) {
+  const seed = pauseRunSeedOf(state);
+  return seed ? 'Seed ' + seed : '';
+}
+
+/** Write the seed line onto its footer span. Sync: the seed is known at mount. */
+export function paintPauseRunSeed(target, state) {
+  if (!target) return '';
+  const line = pauseRunSeedLine(state);
+  const text = line ? ' · ' + line : '';
+  if (target.textContent !== text) target.textContent = text;
+  return text;
+}
+
+function syncPauseRunSeed(ctx) {
+  if (!els || !els.seedText) return;
+  paintPauseRunSeed(els.seedText, ctx && ctx.state);
+}
+
+let els = null;
+/** ORRERY: pause is the title's dial held mid-flight (design/frontend/ORRERY.md §6 Pause). */
+let pauseRail = null;
+
+// Dirty-checked brief writes: periodic refresh passes recompute the lines but only touch the DOM
+// when a value actually changed.
+const briefLast = { objective: undefined, next: undefined, save: undefined, hit: undefined };
+
+function ensurePauseHitLine() {
+  if (!els || els.briefHit || !els.briefObjective) return els && els.briefHit;
+  const parent = els.briefObjective.parentElement;
+  if (!parent) return null;
+  const node = el('p', 'dp-copy sf-muted');
+  node.dataset.role = 'last-hit';
+  node.hidden = true;
+  // a headless shim (the pause tests) may offer appendChild only: the line then simply joins the end
+  if (els.briefNext && els.briefNext.parentElement === parent && typeof parent.insertBefore === 'function') parent.insertBefore(node, els.briefNext);
+  else parent.appendChild(node);
+  els.briefHit = node;
+  return node;
+}
+
+function renderFlightBrief(ctx) {
+  if (!els || !els.briefObjective) return;
+  const lines = pauseStatusLines(ctx && ctx.state);
+  const hitLine = ensurePauseHitLine();
+  if (hitLine && lines.hit !== briefLast.hit) {
+    briefLast.hit = lines.hit;
+    hitLine.textContent = lines.hit || '';
+    hitLine.hidden = !lines.hit;
+  }
+  if (lines.objective !== briefLast.objective) {
+    briefLast.objective = lines.objective;
+    const mention = lines.objectiveMention;
+    if (mention && mention.ref) {
+      // ORRERY reading: the kind in engraved caps, the contract's name on its own line, and the
+      // progress on a small ring of ice with the time beside it. Same words, instrument form.
+      const kind = String(mention.pre || '').replace(/[\s·-]+$/, '');
+      const pct = /(\d+)% complete/.exec(String(mention.post || ''));
+      const rest = String(mention.post || '').replace(/^[\s·-]+/, '').replace(/\d+% complete\s*·?\s*/, '').trim();
+      const frac = pct ? Math.max(0, Math.min(1, Number(pct[1]) / 100)) : null;
+      const ring = frac == null ? '' : `<svg class="orr-brief__ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" class="orr-brief__track"/><circle cx="12" cy="12" r="9" class="orr-brief__fill" pathLength="1" stroke-dasharray="${frac.toFixed(3)} 1" transform="rotate(-90 12 12)"/></svg>`;
+      els.briefObjective.innerHTML = `<span class="orr-brief__kind">${escapeHtml(kind)}</span>`
+        + `<span class="orr-brief__name">${entitySpanHtml(mention.ref, escapeHtml(mention.label))}</span>`
+        + `<span class="orr-brief__read">${ring}${pct ? `<b>${pct[1]}%</b>` : ''}${rest ? `<span>${escapeHtml(rest)}</span>` : ''}</span>`;
+    } else {
+      els.briefObjective.textContent = lines.objective;
+    }
+  }
+  if (lines.next !== briefLast.next) {
+    briefLast.next = lines.next;
+    els.briefNext.textContent = lines.next;
+  }
+  if (lines.save !== briefLast.save) {
+    briefLast.save = lines.save;
+    // the quick keys are printed in the foot already; the brief keeps the save fact only
+    els.briefSave.textContent = String(lines.save).replace(/\s*F5 quick-saves; F9 loads quick\.?$/, '');
+  }
+}
+
+/* ---------- photo mode (Task B §1.7, sheet moment 12, PQ-159.03) ---------- */
+
+let photo = null;
+// FB-085: the pause route owns P (BINDINGS.photo) — the handler lives while this screen is top.
+let pausePhotoKeyHandler = null;
+// The Capture button's acknowledgement label reverts after this long (the result is a saved
+// file the page cannot show — photo mode hides the receipt rails, kit.css body.k-photo).
+const PHOTO_ACK_MS = 1400;
+let photoCaptureAckTimer = 0;
+let pauseRootEl = null;
+// The narrow-window switch (≤760 wide, or a narrow window too tall for the dial, takes the column).
+// mount reads it once, so a resize across it while pause is up must remount, or the sheet keeps the
+// wrong composition (review #499).
+const PAUSE_NARROW_QUERY = PAUSE_COLUMN_QUERY;
+let pauseNarrowWatch = null;
+function pauseNarrowQuery() {
+  const mm = (globalThis.window && globalThis.window.matchMedia) || globalThis.matchMedia;
+  if (typeof mm !== 'function') return null;
+  try { return mm.call(globalThis.window || globalThis, PAUSE_NARROW_QUERY); } catch (e) { return null; }
+}
+function pauseWantsColumn() {
+  if (isPhoneLayout()) return true;
+  const mql = pauseNarrowQuery();
+  if (mql && typeof mql.matches === 'boolean') return mql.matches;
+  const w = globalThis.window && globalThis.window.innerWidth;
+  return typeof w === 'number' && w > 0 && w <= 760;
+}
+function pauseVerbButton(rootEl, action) {
+  if (!rootEl || typeof rootEl.querySelectorAll !== 'function') return null;
+  for (const button of rootEl.querySelectorAll('button')) {
+    if (typeof button.getAttribute === 'function' && button.getAttribute('data-action') === action) return button;
+  }
+  return null;
+}
+function unwatchPauseNarrow() {
+  if (!pauseNarrowWatch) return;
+  const { mql, onChange } = pauseNarrowWatch;
+  try { if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', onChange); else if (typeof mql.removeListener === 'function') mql.removeListener(onChange); } catch (e) {}
+  pauseNarrowWatch = null;
+}
+
+function photoHintText() {
+  // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
+  if (isPhoneLayout()) return 'Capture saves the photo · Close returns to Pause';
+  return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
+}
+
+/** True when the keydown is the photo binding's key (the one binding the pause route owns). */
+function isPhotoBindingKey(ev) {
+  const binding = BINDINGS.photo;
+  if (!binding) return false;
+  return ev.key === binding.key || ev.key === binding.label || ev.code === binding.code;
+}
+
+export function photoCaptureFilename(kind = PHOTO_STORE_KIND, now = new Date()) {
+  const stamp = now && typeof now.toISOString === 'function'
+    ? now.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    : 'shot';
+  return 'spaceface-' + (kind || PHOTO_STORE_KIND) + '-' + stamp + '.png';
+}
+
+export function photoModeFlags(overrides = {}) {
+  return {
+    active: true,
+    hideHud: true,
+    freeCamera: overrides.freeCamera !== false,
+    filters: overrides.filters === true ? true : PHOTO_FILTERS_DEFAULT,
+    exposure: Number.isFinite(overrides.exposure) ? overrides.exposure : PHOTO_EXPOSURE_DEFAULT,
+    kind: overrides.kind || PHOTO_STORE_KIND,
+  };
+}
+
+export function enterPhotoMode(state, overrides = {}) {
+  const flags = photoModeFlags(overrides);
+  const photoState = createPhotoModeState(state, flags);
+  applyPhotoPresentation(state, photoState);
+  if (state && state.bus && typeof state.bus.emit === 'function') {
+    state.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo' });
+  }
+  return photoState;
+}
+
+export function exitPhotoMode(state) {
+  restorePhotoPresentation(state);
+  if (state && state.bus && typeof state.bus.emit === 'function') {
+    state.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo-exit' });
+  }
+  return state && state.render && state.render.photoMode;
+}
+
+export function capturePhotoPng(source, opts = {}) {
+  if (!source || typeof source.toDataURL !== 'function') {
+    return { ok: false, reason: 'no-canvas', mime: 'image/png', filename: photoCaptureFilename(opts.kind) };
+  }
+  let dataUrl;
+  try {
+    dataUrl = source.toDataURL('image/png');
+  } catch {
+    return { ok: false, reason: 'capture-failed', mime: 'image/png', filename: photoCaptureFilename(opts.kind) };
+  }
+  if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/png') !== 0) {
+    return { ok: false, reason: 'not-png', mime: 'image/png', filename: photoCaptureFilename(opts.kind) };
+  }
+  return {
+    ok: true,
+    mime: 'image/png',
+    dataUrl,
+    filename: photoCaptureFilename(opts.kind || PHOTO_STORE_KIND),
+    kind: opts.kind || PHOTO_STORE_KIND,
+  };
+}
+
+// Async twin of capturePhotoPng for click paths: canvas.toBlob moves the PNG readback
+// + encode off the calling task (toDataURL pays both synchronously), then a FileReader
+// makes the same data URL stampSlotCard expects. Falls back to the sync capture where
+// toBlob/FileReader are unavailable (non-DOM test hosts).
+export function capturePhotoPngAsync(source, opts = {}) {
+  const kind = opts.kind || PHOTO_STORE_KIND;
+  if (!source || typeof source.toBlob !== 'function' || typeof FileReader !== 'function') {
+    return Promise.resolve(capturePhotoPng(source, opts));
+  }
+  const filename = photoCaptureFilename(kind);
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (result) => { if (!settled) { settled = true; resolve(result); } };
+    try {
+      source.toBlob((blob) => {
+        if (!blob) {
+          done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = typeof reader.result === 'string' ? reader.result : null;
+          if (!dataUrl || dataUrl.indexOf('data:image/png') !== 0) {
+            done({ ok: false, reason: 'not-png', mime: 'image/png', filename });
+            return;
+          }
+          done({ ok: true, mime: 'image/png', dataUrl, filename, kind });
+        };
+        reader.onerror = () => done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+        try { reader.readAsDataURL(blob); }
+        catch { done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename }); }
+      }, 'image/png');
+    } catch {
+      done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+    }
+  });
+}
+
+export function writePhotoCapture(capture, host = globalThis) {
+  if (!capture || capture.ok === false || !capture.dataUrl) {
+    return { ok: false, reason: (capture && capture.reason) || 'no-image' };
+  }
+  const electron = host && (host.sfDesktop || host.electronAPI || host.spaceface);
+  const writer = resolveStorePageWriter(host);
+  const store = typeof host.publishStoreStill === 'function'
+    ? host.publishStoreStill(capture)
+    : (writer ? publishStoreStill(capture, writer) : null);
+  if (electron && typeof electron.savePhoto === 'function') {
+    const result = electron.savePhoto({ filename: capture.filename, dataUrl: capture.dataUrl });
+    return { ok: true, via: 'electron', filename: capture.filename, result, storePage: store };
+  }
+  const doc = host && host.document;
+  if (doc && typeof doc.createElement === 'function') {
+    const a = doc.createElement('a');
+    a.href = capture.dataUrl;
+    a.download = capture.filename;
+    a.rel = 'noopener';
+    if (typeof a.click === 'function') a.click();
+    else if (doc.body && typeof doc.body.appendChild === 'function') {
+      doc.body.appendChild(a);
+      if (typeof a.click === 'function') a.click();
+      if (a.remove) a.remove();
+    }
+    return { ok: true, via: 'download', filename: capture.filename, storePage: store };
+  }
+  if (store && store.ok) return { ok: true, via: 'store-page', filename: capture.filename, storePage: store };
+  return { ok: false, reason: 'no-host', filename: capture.filename };
+}
+
+function resolvePhotoCanvas(ctx) {
+  const state = ctx && ctx.state;
+  const renderer = state && state.render && state.render.renderer;
+  if (renderer && renderer.domElement) return renderer.domElement;
+  const doc = globalThis.document;
+  if (doc && typeof doc.querySelector === 'function') {
+    return doc.querySelector('canvas');
+  }
+  return null;
+}
+
+function syncPhotoExposure(ctx, value) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active) return;
+  const next = Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, Number(value)));
+  if (!Number.isFinite(next)) return;
+  photoState.exposure = next;
+  applyPhotoPresentation(state, photoState);
+  if (ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo' });
+  }
+}
+
+// FB-085 — the photo overlay owns the authored looks' SELECTION (the grades themselves live in
+// spaceRenderGraph.js PHOTO_FILTER_LOOKS): picking a look flips the filter flag on, and the
+// camera's per-frame sync hands the pair to the render graph. Exported for the focused pin.
+export function setPhotoLook(ctx, lookId) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active || typeof lookId !== 'string') return null;
+  photoState.filters = true;
+  photoState.filterLook = lookId;
+  return photoState.filterLook;
+}
+
+/** The Look control only exists when a live grade stage can honour it — the render
+ *  graph route is opt-in; on the default bloom route the button would do nothing. */
+export function photoLookAvailable(state) {
+  const graph = state && state.render && state.render.renderGraph;
+  return !!(graph && typeof graph.setPhotoFilters === 'function');
+}
+
+/** Advance the photo look to the next authored one (the overlay's Look control). */
+export function cyclePhotoLook(ctx) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active) return null;
+  return setPhotoLook(ctx, cyclePhotoFilterLook(photoState.filterLook));
+}
+
+/** FB-085 — photo FOV reads/writes the one video.fov setting the chase camera already reads. */
+export function syncPhotoFov(ctx, value) {
+  const state = ctx && ctx.state;
+  if (!state || !state.settings) return null;
+  const next = Math.max(35, Math.min(90, Math.round(Number(value))));
+  if (!Number.isFinite(next)) return null;
+  if (!state.settings.video) state.settings.video = {};
+  state.settings.video.fov = next;
+  if (ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('settings:changed', { section: 'video', key: 'fov', source: 'photo' });
+  }
+  return next;
+}
+
+export async function runPhotoCapture(ctx, host = globalThis) {
+  const state = ctx && ctx.state;
+  const render = ctx?.registry?.get?.('render');
+  const canvas = resolvePhotoCanvas(ctx);
+  // Pause retains the last composited picture, but WebGL may discard its drawing buffer after
+  // presentation. Submit the current prepared scene and begin readback in the same task.
+  if (!state?.render?.photoMode?.active || !canvas || !render
+    || render.state !== state || render.renderer !== state.render.renderer || render.renderer?.domElement !== canvas
+    || typeof render.drawPreparedFrame !== 'function') return { ok: false, reason: 'no-frame' };
+  try {
+    if (render.drawPreparedFrame() !== true) return { ok: false, reason: 'no-frame' };
+    const capture = await capturePhotoPngAsync(canvas, { kind: PHOTO_STORE_KIND });
+    return writePhotoCapture(capture, {
+      document: host.document, sfDesktop: host.sfDesktop, electronAPI: host.electronAPI,
+      spaceface: host.spaceface, writeStorePage: ctx.writeStorePage,
+      publishStoreStill: ctx.publishStoreStill, state,
+    });
+  } catch {
+    return { ok: false, reason: 'capture-failed' };
+  }
+}
+
+function bindPhotoKeys(photoState) {
+  return (ev) => {
+    if (!photo || !photoState) return;
+    const key = ev.key;
+    if (key === 'Escape') return; // owned by onKey
+    const down = ev.type === 'keydown';
+    const pressed = down ? 1 : 0;
+    if (key === 'w' || key === 'W' || key === 'ArrowUp') photoState.inputZ = down ? -pressed : (photoState.inputZ < 0 ? 0 : photoState.inputZ);
+    else if (key === 's' || key === 'S' || key === 'ArrowDown') photoState.inputZ = down ? pressed : (photoState.inputZ > 0 ? 0 : photoState.inputZ);
+    else if (key === 'a' || key === 'A' || key === 'ArrowLeft') photoState.inputX = down ? -pressed : (photoState.inputX < 0 ? 0 : photoState.inputX);
+    else if (key === 'd' || key === 'D' || key === 'ArrowRight') photoState.inputX = down ? pressed : (photoState.inputX > 0 ? 0 : photoState.inputX);
+    else if (down && (key === '+' || key === '=')) photoState.zoomInput = -1;
+    else if (down && (key === '-' || key === '_')) photoState.zoomInput = 1;
+    else if (down && (key === 'c' || key === 'C' || key === 'Enter')) {
+      ev.preventDefault();
+      runPhotoCapture(photo.ctx);
+    }
+  };
+}
+
+/** Enter photo mode: the pause root goes invisible, body.k-photo hides the HUD (kit.css), free
+ *  camera + exposure + capture for store assets. The screen stack — and so the sim pause — is
+ *  untouched. Filters stay off by default. */
+function enterPhoto(rootEl, ctx) {
+  if (photo) return;
+  const state = ctx && ctx.state;
+  const photoState = enterPhotoMode(state);
+  if (state && !state.bus && ctx.bus) state.bus = ctx.bus;
+  const host = rootEl.parentElement || document.body;
+  const hint = el('p', 'k-fine sf-photo-hint', photoHintText());
+  hint.setAttribute('role', 'status');
+  const bar = el('div', 'sf-photo-bar');
+  bar.setAttribute('role', 'region');
+  bar.setAttribute('aria-label', 'Photo mode');
+  // The scales ride the kit's .k-range instrument (bone hairline + tick thumb), the same slider
+  // the settings Scales use, with the same explicit slider ARIA (views/settingsControls.js).
+  const exposure = el('input', 'k-range');
+  exposure.type = 'range';
+  exposure.min = String(PHOTO_EXPOSURE_MIN);
+  exposure.max = String(PHOTO_EXPOSURE_MAX);
+  exposure.step = '0.05';
+  exposure.value = String(PHOTO_EXPOSURE_DEFAULT);
+  exposure.setAttribute('aria-label', 'Exposure');
+  exposure.setAttribute('role', 'slider');
+  exposure.setAttribute('aria-valuemin', String(PHOTO_EXPOSURE_MIN));
+  exposure.setAttribute('aria-valuemax', String(PHOTO_EXPOSURE_MAX));
+  const paintExposureAria = () => {
+    const v = Number(exposure.value);
+    exposure.setAttribute('aria-valuenow', String(v));
+    exposure.setAttribute('aria-valuetext', (Number.isFinite(v) ? v : PHOTO_EXPOSURE_DEFAULT).toFixed(2) + '×');
+  };
+  paintExposureAria();
+  exposure.addEventListener('input', () => {
+    paintExposureAria();
+    syncPhotoExposure(ctx, exposure.value);
+  });
+  // FB-085: the filter flag finally does something — the Look control cycles the three authored
+  // grades (the grade stage itself lives on the render graph; selection lives here). The graph
+  // route is opt-in: on the default bloom route no grade stage exists, so the control that can
+  // never change the picture stays off the bar instead of lying to the player.
+  const lookBtn = photoLookAvailable(state)
+    ? el('button', 'k-word k-word--fine fh-key fh-key--small', 'Look')
+    : null;
+  if (lookBtn) {
+    lookBtn.type = 'button';
+    lookBtn.setAttribute('aria-label', 'Cycle photo filter look');
+    lookBtn.addEventListener('click', () => {
+      const next = cyclePhotoLook(ctx);
+      if (next) lookBtn.textContent = `Look · ${next}`;
+    });
+  }
+  // Photo FOV rides the one video.fov setting the chase camera already reads (settings slider
+  // bounds 35–90); nothing new to persist — the settings route owns it.
+  const fov = el('input', 'k-range');
+  fov.type = 'range';
+  fov.min = '35';
+  fov.max = '90';
+  fov.step = '1';
+  const currentFov = state && state.settings && state.settings.video && Number(state.settings.video.fov);
+  fov.value = String(Number.isFinite(currentFov) ? Math.round(currentFov) : 50);
+  fov.setAttribute('aria-label', 'Photo field of view');
+  fov.setAttribute('role', 'slider');
+  fov.setAttribute('aria-valuemin', '35');
+  fov.setAttribute('aria-valuemax', '90');
+  const paintFovAria = () => {
+    fov.setAttribute('aria-valuenow', fov.value);
+    fov.setAttribute('aria-valuetext', fov.value + ' degrees');
+  };
+  paintFovAria();
+  fov.addEventListener('input', () => {
+    paintFovAria();
+    syncPhotoFov(ctx, fov.value);
+  });
+  const captureBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', PHOTO_CAPTURE_LABEL);
+  captureBtn.type = 'button';
+  // The capture's result is a saved file off-page (a download or the desktop photo folder), and
+  // photo mode hides the receipt rails — so the key itself names the outcome, then reverts.
+  captureBtn.addEventListener('click', async () => {
+    if (captureBtn.disabled) return;
+    captureBtn.disabled = true;
+    const result = await runPhotoCapture(ctx);
+    captureBtn.disabled = false;
+    if (photoCaptureAckTimer) clearTimeout(photoCaptureAckTimer);
+    captureBtn.textContent = result && result.ok ? 'Captured' : 'No frame';
+    photoCaptureAckTimer = setTimeout(() => {
+      photoCaptureAckTimer = 0;
+      captureBtn.textContent = PHOTO_CAPTURE_LABEL;
+    }, PHOTO_ACK_MS);
+  });
+  const exposureControl = el('label', 'sf-photo-control');
+  exposureControl.appendChild(el('span', 'k-t-fine', 'Exposure'));
+  exposureControl.appendChild(exposure);
+  bar.appendChild(exposureControl);
+  if (lookBtn) bar.appendChild(lookBtn);
+  const fovControl = el('label', 'sf-photo-control');
+  fovControl.appendChild(el('span', 'k-t-fine', 'FOV'));
+  fovControl.appendChild(fov);
+  bar.appendChild(fovControl);
+  bar.appendChild(captureBtn);
+  const closeBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Close');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close photo mode');
+  closeBtn.addEventListener('click', () => exitPhoto(rootEl, ctx));
+  bar.appendChild(closeBtn);
+  // The hint shares the deck's flow, so wrapped phone controls and 44px keys reserve their
+  // actual height instead of painting over an independently positioned bottom caption.
+  // Seat without a transform: kit settle animates transform back to none.
+  bar.style.position = 'absolute';
+  bar.style.left = 'var(--sf-safe-left, 0px)';
+  bar.style.right = 'var(--sf-safe-right, 0px)';
+  bar.style.width = 'fit-content';
+  bar.style.marginInline = 'auto';
+  bar.style.bottom = 'calc(var(--k-margin, 24px) + var(--sf-safe-bottom, 0px))';
+  bar.appendChild(hint);
+  host.appendChild(bar);
+  settle(hint, { from: 'bottom', state: 'photo-hint' });
+  settle(bar, { from: 'bottom', delay: 60, state: 'photo-bar' });
+  const onKey = (ev) => {
+    if (ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    exitPhoto(rootEl, ctx);
+  };
+  const onMove = bindPhotoKeys(photoState);
+  const onWheel = (ev) => {
+    if (!photoState) return;
+    photoState.zoomInput = ev.deltaY > 0 ? 1 : -1;
+  };
+  // Capture phase on window: runs ahead of uiInput's document-level handler, which would otherwise
+  // pop the pause screen (and unpause the sim) on the same Esc.
+  window.addEventListener('keydown', onKey, true);
+  window.addEventListener('keydown', onMove, true);
+  window.addEventListener('keyup', onMove, true);
+  window.addEventListener('wheel', onWheel, { passive: true });
+  const fade = setTimeout(() => { if (photo && photo.hint === hint) hint.classList.add('k-out'); }, PHOTO_HINT_MS);
+  document.body.classList.add('k-photo');
+  rootEl.style.visibility = 'hidden';
+  rootEl.setAttribute('aria-hidden', 'true');
+  photo = { hint, bar, onKey, onMove, onWheel, fade, rootEl, ctx, exposure };
+  cue('open');
+}
+
+function exitPhoto(rootEl, ctx) {
+  if (!photo) return;
+  clearTimeout(photo.fade);
+  if (photoCaptureAckTimer) { clearTimeout(photoCaptureAckTimer); photoCaptureAckTimer = 0; }
+  window.removeEventListener('keydown', photo.onKey, true);
+  if (photo.onMove) {
+    window.removeEventListener('keydown', photo.onMove, true);
+    window.removeEventListener('keyup', photo.onMove, true);
+  }
+  if (photo.onWheel) window.removeEventListener('wheel', photo.onWheel);
+  if (photo.hint && photo.hint.parentNode) photo.hint.parentNode.removeChild(photo.hint);
+  if (photo.bar && photo.bar.parentNode) photo.bar.parentNode.removeChild(photo.bar);
+  document.body.classList.remove('k-photo');
+  const root = photo.rootEl || rootEl;
+  root.style.removeProperty('visibility');
+  root.removeAttribute('aria-hidden');
+  exitPhotoMode(ctx && ctx.state);
+  photo = null;
+  cue('close');
+  if (els && els.bResume) try { els.bResume.focus(); } catch (e) {}
+  renderFlightBrief(ctx);
+}
+
+export const pauseScreen = {
+  id: 'pause',
+
+  mount(rootEl, ctx) {
+    injectDeckplate();
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
+    rootEl.classList.add('screen');
+    rootEl.dataset.screen = 'pause';
+    delete rootEl.dataset.stamp;
+    pauseRootEl = rootEl;
+
+    const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
+      titleText: coreText('paused'),
+    });
+    // The brief's kicker is this screen's copy and comes from the same localized core copy as the
+    // title and every verb (check:pause-brief asserts this call).
+    briefKicker.textContent = coreText('flightBrief');
+
+
+    // .k-stage — the verbs as ONE column of words down the left edge over the held world, which is
+    // what the sheet's pause line specifies ("the actions as a column of words down the left edge")
+    // and what Task B §1.4 lists. The approved title frame is the grammar this screen borrows: no
+    // boxes, words over the world, ONE lit row plate following focus (styles/kit.css §PAUSE). Every
+    // verb lives in this single list: an earlier build split four "core" choices from a disclosure
+    // labelled Operations, which hid Main Menu and Quit behind a second identically-labelled
+    // Operations row. The list keeps the kit's native roving keyboard model either way.
+    const stage = el('nav', 'dp-frame__col--tight');
+    stage.setAttribute('aria-label', coreText('paused'));
+    const items = [];
+    const handlers = new Map();
+    // Deckplate (FRONTEND_PROGRAM Wave 2): verbs are grouped under etched legends and carry a kit
+    // glyph; the order and every label are unchanged, so one roving list still reaches them all.
+    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false, hint = null, keys = null, bank = false } = {}) => {
+      const action = 'pause-' + items.length;
+      items.push({ label, action, primary, danger, current, group, icon, keycap, hint, keys, bank });
+      handlers.set(action, fn);
+      return action;
+    };
+    // `hint` draws a keycap at the row's right edge; only keys that are live over this modal get
+    // one — Esc resumes (this screen's own onKey), F5/F9 quick save/load through the modal input
+    // branch, and the flight bindings the label already names (J, M) come through `keycap`.
+    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right', hint: 'Esc', keys: 'Escape' });
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', bank: true, icon: 'settings' });
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', bank: true, icon: 'install', hint: 'F5', keys: 'F5' });
+    // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
+    mk(coreText('load'), async () => {
+      const ok = await confirm({
+        title: 'Open load screen?',
+        body: pauseExitConfirmBody(ctx && ctx.state, 'load'),
+        note: pauseExitConfirmNote(ctx && ctx.state),
+        confirmLabel: 'Open Load', danger: true,
+      });
+      if (ok) nav(ctx, 'pushScreen', 'saveLoad');
+    }, { group: 'Game', bank: true, icon: 'remove', hint: 'F9', keys: 'F9' });
+    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', bank: true, icon: 'missions', keycap: true });
+    // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
+    // with its pause-menu entry; the key case lives in the flight-only key router.
+    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
+    // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
+    // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
+    // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
+    // UI-polish scope this cycle; a first-class station tab would be promotion).
+    mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+    const mapAction = pauseMapAction(ctx && ctx.state);
+    if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
+    // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
+    mk(coreText('helpControls'), () => { if (isPhoneLayout() && ctx.bus && ctx.bus.emit) ctx.bus.emit('touch:guide', {}); else nav(ctx, 'pushScreen', 'help'); }, { group: 'Reference', bank: true, icon: 'help' });
+    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
+    // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
+    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
+    mk('Records Wall', () => nav(ctx, 'pushScreen', 'statistics'), { group: 'Reference', bank: true, icon: 'info' });
+    // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
+    // assets; filters off by default. Esc returns here. Do not restyle this sheet.
+    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });
+    // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
+    // presentation. Opens over this sheet; Esc or Exit returns to pause.
+    mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
+    // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
+    // Esc or Exit returns. This screen owns presentation only, not export encoding.
+    mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    // Ending Archive (B7): once the story owner has filed the written ending
+    // (state.story.writtenFinale — the same record its ui:endingArchiveOpen handler serves), the
+    // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
+    // re-emits `endgame:archive`, so the just-opened codex refreshes to the filed ending.
+    const endingArchive = writtenEndingArchive(ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null);
+    // The sheet stays mounted across pause opens, so the row's gate must be re-checkable later:
+    // onShow remounts once if a finale gets filed after this mount.
+    this._endingArchiveAtMount = !!endingArchive;
+    if (endingArchive) mk(ENDING_ARCHIVE_LABEL, () => {
+      requestCodexTab('Archive');
+      nav(ctx, 'pushScreen', 'codex');
+      if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
+    }, { group: 'Media', bank: true, icon: 'ledger' });
+    // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
+    // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
+    mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+    if (ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
+    if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
+    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
+    // Main Menu discards the current session entirely — confirm with the live run context first.
+    this._retireAtMount = pauseSurvivalRunActive(ctx && ctx.state);
+    mk(this._retireAtMount ? 'End run' : coreText('mainMenu'), async () => {
+      const token = pauseRetireToken(ctx && ctx.state);
+      if (pauseSurvivalRunActive(ctx && ctx.state)) {
+        if (token == null) { ctx.bus?.emit?.('ui:toast', { text: 'Run is still preparing. Try again shortly.', kind: 'info' }); return; }
+        const generation = ctx.helpers?.workerReadGeneration?.();
+        const ok = await confirm({
+          title: 'End this run?',
+          body: 'Retire and see your flight record. Only completed rounds count as cleared.',
+          note: 'Retired runs are unranked. Unbanked salvage does not carry back to the hangar.',
+          confirmLabel: 'Retire run', danger: true,
+        });
+        if (ok && pauseRetireToken(ctx && ctx.state) === token
+          && ctx.helpers?.workerReadGeneration?.() === generation) {
+          ctx.bus?.emit?.('run:retireRequested', { token });
+        }
+        return;
+      }
+      const ok = await confirm({
+        title: 'Return to main menu?',
+        body: pauseExitConfirmBody(ctx && ctx.state, 'menu'),
+        note: pauseExitConfirmNote(ctx && ctx.state),
+        confirmLabel: 'Main Menu', danger: true,
+      });
+      if (ok && !pauseSurvivalRunActive(ctx && ctx.state)) this._toMenu(ctx);
+    }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
+
+    // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
+    if (canQuit()) mk(coreText('quitGame'), async () => {
+      const ok = await confirm({
+        title: 'Quit game?',
+        body: 'Quitting closes the game.\n' + pauseExitSaveFact(ctx && ctx.state),
+        note: pauseExitConfirmNote(ctx && ctx.state),
+        confirmLabel: coreText('quitGame'), danger: true,
+      });
+      if (ok) requestQuit(ctx);
+    }, { danger: true, group: 'Exit', bank: true, icon: 'abandon' });
+
+    // One list, in the sheet's order. `current` lights Resume's row while focus is outside the
+    // list; the kit's roving focus then moves the same light down the column.
+    const list = words(items, {
+      ariaLabel: 'Pause',
+      // LIGHT, like the title and motion-ask. Pause was seventeen bevelled chips in six groups --
+      // the grid ONE_PHOTOGRAPH.md section 4.2 kills, and on the screen a player opens most often
+      // after flight. Nothing here changes the world; every verb opens something. So every verb is
+      // a word that lights, the groups keep their etched heads, and the runs that were chips bank
+      // into wrapping lines. RESUME stays the one primary because it is the only lit lamp.
+      system: 'light',
+      size: 'emph',
+      onPick: (action) => {
+        const run = handlers.get(action);
+        if (typeof run === 'function') run();
+      },
+    });
+    list.classList.add('sf-pause-words', 'dp-menu--banked');
+    // The column is one list read top to bottom, but its banked runs share rows left-aligned under a
+    // full-width RESUME: geometric d-pad picking sent Down from Resume to whatever word sat under
+    // Resume's centre (ACHIEVEMENTS at 700). Mark it linear so Up/Down step verb by verb in order.
+    // Set below once `phone` is known.
+    // ORRERY tiers: Resume is the lamp key; the interruption choices (Game) and the way out (Exit)
+    // are mid; the Ship, Reference, Media and Dev verbs are the quiet tier.
+    const LOW_TIER = new Set(['Ship', 'Reference', 'Media', 'Dev']);
+    for (const item of items) {
+      const button = list.querySelector(`[data-action="${item.action}"]`);
+      if (!button) continue;
+      if (item.dev) button.classList.add('k-38');
+      if (item.keys) button.setAttribute('aria-keyshortcuts', item.keys);
+      // parentElement, not closest(): the headless shims the pause tests mount on have no closest()
+      const li = button.parentElement;
+      if (li && li.dataset) li.dataset.tier = item.primary ? 'high' : (LOW_TIER.has(item.group) ? 'low' : 'mid');
+    }
+
+    stage.appendChild(list);
+    column.appendChild(stage);
+
+    // ORRERY: the verbs ride the emblem's dial like the title's, one tick per group (the group's
+    // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
+    // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
+    injectOrreryScreens();
+    injectPauseLayouts();
+    // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
+    // above them in it, like the title's phone composition.
+    // A narrow desktop window (≤760 wide) has no room for the dial either:
+    // its group banks ran off the right edge and the brief printed over RESUME, so it takes the column too.
+    const phone = pauseWantsColumn();
+    // add/remove, not toggle: the headless shims the pause tests mount on carry no classList.toggle.
+    // Both go first: a remount across 760 must not leave the other composition's class behind.
+    rootEl.classList.remove('orr-pause', 'orr-pause--phone');
+    rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
+    this._columnAtMount = phone;
+    if (phone) list.setAttribute('data-pad-linear', ''); else list.removeAttribute('data-pad-linear');
+    // The dial is two levels, like its foot strip says: the pad steps categories on Up/Down and verbs
+    // on Left/Right (ui-polish-94), not whichever word sits nearest under the last one.
+    if (phone) list.removeAttribute('data-pad-grouped'); else list.setAttribute('data-pad-grouped', '');
+    unwatchPauseNarrow();
+    const mql = pauseNarrowQuery();
+    if (mql) {
+      const onChange = () => {
+        if (pauseRootEl !== rootEl || pauseWantsColumn() === this._columnAtMount) return;
+        const active = globalThis.document ? globalThis.document.activeElement : null;
+        const hadFocus = !!(els && els.bResume && active && rootEl.contains && rootEl.contains(active));
+        // keep the player's place: the same verb (data-action survives the rebuild) takes focus again,
+        // not Resume (review #499 follow-up)
+        const keptAction = hadFocus && typeof active.getAttribute === 'function' ? active.getAttribute('data-action') : null;
+        this.mount(rootEl, ctx);
+        if (hadFocus && els && els.bResume) {
+          const again = keptAction ? pauseVerbButton(rootEl, keptAction) : null;
+          try { (again || els.bResume).focus(); } catch (e) {}
+        }
+        if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+      };
+      try {
+        if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onChange);
+        else if (typeof mql.addListener === 'function') mql.addListener(onChange);
+        pauseNarrowWatch = { mql, onChange };
+      } catch (e) {}
+    }
+    const brief = briefKicker.parentElement;
+    if (brief && !phone) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
+    if (pauseRail) { pauseRail.dispose(); pauseRail = null; }
+    // One stop per group (ORRERY 3.2: an arc carries at most nine): Resume leads, then each group is one
+    // tick with its name as the row's legend and its verbs on one line after it. The Hand swings to the row;
+    // within it only the awake verb lights. Up/down steps between rows, left/right along one.
+    // a smaller dial, higher: its lowest tick clears the key strip at every height
+    pauseRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56,
+      place: (W, H) => ({ pivot: { x: Math.min(112, Math.max(56, Math.round(W * 0.056))), y: Math.round(H * 0.55) }, re: Math.round(H * 0.3), centerDeg: 90 }) });
+
+    // The column ends in a legend strip, not an air gap: the keys that are live while this modal
+    // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot
+    // area is sized for.
+    const foot = el('footer', 'sf-pause-foot dp-frame__foot');
+    const keysLine = el('p', 'dp-bar sf-pause-foot__keys');
+    const keyHint = (cap, verb) => {
+      keysLine.appendChild(el('span', 'dp-kbd sf-pause-key', cap));
+      keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
+    };
+    keyHint('Esc', 'Resume');
+    keyHint('P', 'Photo');
+    keyHint('F5', 'Quick Save');
+    keyHint('F9', 'Quick Load');
+    // the dial is two levels deep, and the strip says so: up/down steps between the categories on
+    // the rim, left/right along the one you are in. Without this the arrow keys read as a mystery.
+    // The column has no dial: one flat list, up/down steps verb by verb and left/right does nothing,
+    // so its strip says just that instead of promising a category level it does not have.
+    if (phone) keyHint('↑↓', 'Move');
+    else { keyHint('↑↓', 'Category'); keyHint('←→', 'Item'); }
+    foot.appendChild(keysLine);
+    const version = el('p', 'dp-etch dp-bar--end');
+    version.dataset.role = 'version';
+    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
+    versionText.title = leftoverVersionLabel(CREDITS);
+    version.appendChild(versionText);
+    // PRO-19: the active run seed beside the build mark. Same etched line, no restyle —
+    // a plain span carrying only the session seed (never rng internals).
+    const seedText = el('span', '', '');
+    seedText.dataset.role = 'run-seed';
+    paintPauseRunSeed(seedText, ctx && ctx.state);
+    version.appendChild(seedText);
+    foot.appendChild(version);
+    rootEl.appendChild(foot);
+    rootEl.setAttribute('aria-keyshortcuts', 'Escape');
+
+    const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
+    els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText, seedText };
+    briefLast.objective = undefined;
+    briefLast.next = undefined;
+    briefLast.save = undefined;
+    briefLast.hit = undefined;
+    renderFlightBrief(ctx);
+    this._loadVersion();
+  },
+
+  _resume(ctx) {
+    if (ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
+    nav(ctx, 'popScreen');
+  },
+
+  _toMenu(ctx) {
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('game:exitToMenu', { source: 'pause' });
+    } else {
+      laneSetMode(ctx.state, ctx.bus, 'menu');
+    }
+    const mgr = getManager(ctx);
+    if (mgr) {
+      if (mgr.closeAll) mgr.closeAll();
+      if (mgr.replaceScreen) mgr.replaceScreen('mainMenu');
+      else if (mgr.pushScreen) mgr.pushScreen('mainMenu');
+    } else {
+      nav(ctx, 'replaceScreen', 'mainMenu');
+    }
+  },
+
+  onShow(ctx) {
+    if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
+    if (pauseRootEl && this._retireAtMount !== pauseSurvivalRunActive(ctx.state)) this.mount(pauseRootEl, ctx);
+    // the window may have crossed 760 while another screen was over this one
+    if (pauseRootEl && typeof this._columnAtMount === 'boolean' && pauseWantsColumn() !== this._columnAtMount) {
+      this.mount(pauseRootEl, ctx);
+    }
+    // The Ending Archive row was gated at mount; a finale filed in a later session of this
+    // mounted sheet must open the row. Remount once on the transition — mount owns the whole
+    // sheet build, and the focus/settle work below lands on the fresh frame.
+    if (!this._endingArchiveAtMount && pauseRootEl) {
+      const finale = ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null;
+      if (writtenEndingArchive(finale)) {
+        this._endingArchiveAtMount = true;
+        this.mount(pauseRootEl, ctx);
+      }
+    }
+    // The only load reachable from here is F9's 'quick' — start its envelope decode during
+    // the pause dwell instead of on the keypress.
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('save:loadSpeculationTarget', { slot: 'quick' });
+    }
+    renderFlightBrief(ctx);
+    syncPauseRunSeed(ctx);
+    if (els) {
+      if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });
+      if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
+      if (els.bResume) try { els.bResume.focus(); } catch (e) {}
+    }
+    // The world behind the pause is the live flight picture, not a mount of its own: the frame is
+    // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
+    if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+    // FB-085: P (BINDINGS.photo) opens photo mode over this screen — capture phase, ahead of the
+    // uiInput route that would read the same press as "open pause" again. The photo overlay's own
+    // Esc route returns here. Photo mode owns the keys while it is up, so a live session ignores it.
+    if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      pausePhotoKeyHandler = (ev) => {
+        if (photo || !isPhotoBindingKey(ev)) return;
+        const target = ev.target;
+        const tag = target && typeof target.tagName === 'string' ? target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return;
+        ev.preventDefault();
+        if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+        else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        if (pauseRootEl) enterPhoto(pauseRootEl, ctx);
+      };
+      window.addEventListener('keydown', pausePhotoKeyHandler, true);
+    }
+    this._loadVersion();
+    cue('open');
+  },
+
+  _loadVersion() {
+    if (!els) return;
+    const target = els.versionText;
+    void paintLeftoverVersion(target, () => els && els.versionText === target);
+  },
+
+  onHide(ctx) {
+    // Leaving the stack while in photo mode (a bus-driven exit) must not strand body.k-photo.
+    if (photo) exitPhoto(photo.rootEl, ctx);
+    // FB-085: the P route is live only while this screen is top.
+    if (pausePhotoKeyHandler) {
+      window.removeEventListener('keydown', pausePhotoKeyHandler, true);
+      pausePhotoKeyHandler = null;
+    }
+    // Replay/Clips are sibling overlays, not stacked screens — they must close with pause.
+    forceCloseReplay();
+    forceCloseClips();
+    cue('close');
+  },
+  refresh(ctx) { renderFlightBrief(ctx); syncPauseRunSeed(ctx); },
+};

@@ -1,0 +1,226 @@
+From 8b90ee87bbb89a46566b39bf018c9027eaeba4ef Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 09:05:56 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20well-disto?=
+ =?UTF-8?q?rtion=20empty=20sync=20(~2.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid a11y resolve + CAP slot zero +
+DistortionField.update (uTime write before live early-out) every tick
+with an empty fields.active bag. Latch after first empty sync; wake on
+active ref/len. Soft-GPU fps not claimed. Picture unchanged.
+---
+ src/render/weapons/presenter.js               |  30 +++-
+ ...well-distortion-quiet-empty-latch.test.mjs | 133 ++++++++++++++++++
+ 2 files changed, 162 insertions(+), 1 deletion(-)
+ create mode 100644 test/well-distortion-quiet-empty-latch.test.mjs
+
+diff --git a/src/render/weapons/presenter.js b/src/render/weapons/presenter.js
+index 8daa37d29..2b213c3ba 100644
+--- a/src/render/weapons/presenter.js
++++ b/src/render/weapons/presenter.js
+@@ -177,6 +177,13 @@ export class WeaponVfxPresenter {
+     this._graph = null;
+     this._disposed = false;
+     this._nearMissAcc = 0;
++    // Quiet settled flight: empty well bag still paid a11y resolve + CAP slot zero +
++    // DistortionField.update (uTime write before live early-out) every tick. Latch after
++    // first empty sync when fields.active is empty; wake on active ref/len. Soft-GPU fps
++    // not claimed. Picture unchanged (already empty/hidden).
++    this._wellDistortionQuietEmpty = false;
++    this._wellDistortionQuietActiveLen = -1;
++    this._wellDistortionQuietActiveRef = null;
+   }
+ 
+   attachGraph(graph) {
+@@ -489,10 +496,21 @@ export class WeaponVfxPresenter {
+ 
+   _syncWellDistortion() {
+     const field = this.wellDistortion;
++    const active = this.state && this.state.fields && this.state.fields.active;
++    const activeLen = active ? active.length : 0;
++    // Quiet empty-active residual: a11y resolve + CAP zero + DistortionField.update
++    // (uTime write before live early-out) every idle tick. Latch only when the active
++    // bag is empty so reduced-motion + live wells keep syncing. Soft-GPU fps not claimed.
++    if (this._wellDistortionQuietEmpty
++      && active === this._wellDistortionQuietActiveRef
++      && activeLen === this._wellDistortionQuietActiveLen
++      && field.live === 0
++      && !(field.mesh && field.mesh.count > 0)) {
++      return;
++    }
+     const slots = field.slots;
+     let live = 0;
+     if (!reducedMotionProfile(this._a11y())) {
+-      const active = this.state && this.state.fields && this.state.fields.active;
+       if (active) {
+         const cap = field.capacity;
+         for (let i = 0; i < active.length && live < cap; i++) {
+@@ -521,6 +539,13 @@ export class WeaponVfxPresenter {
+     // The well lens is re-synced from scratch each frame, so dt is 0; hand it the simulation clock
+     // directly or its shader has no time at all. Reduced motion already zeroes every well above.
+     field.update(0, this.state && this.state.simTime);
++    if (live === 0 && activeLen === 0) {
++      this._wellDistortionQuietEmpty = true;
++      this._wellDistortionQuietActiveLen = activeLen;
++      this._wellDistortionQuietActiveRef = active;
++    } else {
++      this._wellDistortionQuietEmpty = false;
++    }
+   }
+ 
+   _socketPose(ownerId, origin, angle) {
+@@ -774,6 +799,9 @@ export class WeaponVfxPresenter {
+   dispose() {
+     if (this._disposed) return;
+     this._disposed = true;
++    this._wellDistortionQuietEmpty = false;
++    this._wellDistortionQuietActiveLen = -1;
++    this._wellDistortionQuietActiveRef = null;
+     this._detachGraph(this._graph);
+     this._graph = null;
+     clearShieldContacts();
+diff --git a/test/well-distortion-quiet-empty-latch.test.mjs b/test/well-distortion-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..cd5467d83
+--- /dev/null
++++ b/test/well-distortion-quiet-empty-latch.test.mjs
+@@ -0,0 +1,133 @@
++/**
++ * #120 well-distortion-quiet-empty-latch — quiet empty fields.active skips
++ * a11y+CAP-zero+DistortionField.update; dirty-wake on active push / ref replace.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { FIELD_KINDS } from '../src/data/fields.js';
++import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
++
++function makePresenter(state) {
++  const presenter = new WeaponVfxPresenter({ scene: new THREE.Scene(), state });
++  return presenter;
++}
++
++function emptyState(active = []) {
++  return {
++    playerId: 1,
++    simTime: 1,
++    settings: { video: { motionReduce: false, flashReduce: false }, accessibility: {} },
++    fields: { active },
++    entities: new Map(),
++    entityList: [],
++    entityIndex: null,
++  };
++}
++
++function wellRec(id = 'w1') {
++  return {
++    id,
++    kind: FIELD_KINDS.WELL,
++    center: { x: 10, z: -4 },
++    distortionRadius: 190,
++    distortionStrength: 240,
++  };
++}
++
++test('quiet empty latch arms after first empty sync and skips subsequent updates', () => {
++  const active = [];
++  const state = emptyState(active);
++  const presenter = makePresenter(state);
++  const field = presenter.wellDistortion;
++  let updates = 0;
++  const orig = field.update.bind(field);
++  field.update = (...args) => {
++    updates += 1;
++    return orig(...args);
++  };
++
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._wellDistortionQuietEmpty, true);
++  assert.equal(field.live, 0);
++  assert.equal(updates, 1, 'first empty sync still publishes once');
++
++  updates = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(updates, 0, 'latched empty ticks skip DistortionField.update');
++  assert.equal(presenter._wellDistortionQuietEmpty, true);
++  presenter.dispose();
++});
++
++test('dirty-wake: fields.active push clears latch and resumes well sync', () => {
++  const active = [];
++  const state = emptyState(active);
++  const presenter = makePresenter(state);
++  const field = presenter.wellDistortion;
++  let updates = 0;
++  const orig = field.update.bind(field);
++  field.update = (...args) => {
++    updates += 1;
++    return orig(...args);
++  };
++
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._wellDistortionQuietEmpty, true);
++  updates = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(updates, 0);
++
++  active.push(wellRec());
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._wellDistortionQuietEmpty, false);
++  assert.equal(field.live, 1);
++  assert.ok(updates >= 1, 'length bump wakes sync');
++
++  // Drain — empty again re-latches.
++  active.length = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(field.live, 0);
++  assert.equal(presenter._wellDistortionQuietEmpty, true);
++  updates = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(updates, 0, 're-latches after drain');
++  presenter.dispose();
++});
++
++test('dirty-wake: replacing fields.active ref wakes even at same length', () => {
++  const state = emptyState([]);
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._wellDistortionQuietEmpty, true);
++
++  // Same length 0, new array identity.
++  state.fields.active = [];
++  const field = presenter.wellDistortion;
++  let updates = 0;
++  const orig = field.update.bind(field);
++  field.update = (...args) => {
++    updates += 1;
++    return orig(...args);
++  };
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.ok(updates >= 1, 'active ref replace wakes');
++  assert.equal(presenter._wellDistortionQuietEmpty, true, 're-arms on empty');
++  presenter.dispose();
++});
++
++test('no-active / missing fields refuses sticky false latch across state swap', () => {
++  const state = emptyState([]);
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._wellDistortionQuietEmpty, true);
++
++  // Swap to a state with a live well via brand-new fields object.
++  const live = emptyState([wellRec('live')]);
++  presenter.update(1 / 60, { state: live, interpolationAlpha: 1 });
++  assert.equal(presenter.wellDistortion.live, 1);
++  assert.equal(presenter._wellDistortionQuietEmpty, false);
++  presenter.dispose();
++});
+-- 
+2.47.3
+

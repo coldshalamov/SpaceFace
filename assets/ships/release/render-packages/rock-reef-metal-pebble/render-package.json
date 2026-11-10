@@ -1,0 +1,2741 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.41979560256004333,
+        -0.0853879451751709,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.41979560256004333,
+        -0.0853879451751709,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        -2.949308156967163,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        -2.949308156967163,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.588991165161133,
+        -0.0853879451751709,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.588991165161133,
+        -0.0853879451751709,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.2433998584747314,
+        -0.23538795113563538,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.2433998584747314,
+        -0.23538795113563538,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        -0.0853879451751709,
+        -1.8898342847824097,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        -0.0853879451751709,
+        -1.8898342847824097,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        -0.0853879451751709,
+        1.8898342847824097,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        -0.0853879451751709,
+        1.8898342847824097,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2399216890335083,
+        1.4142661094665527,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2399216890335083,
+        1.4142661094665527,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.888991117477417,
+        -0.0853879451751709,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.888991117477417,
+        -0.0853879451751709,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.888991117477417,
+        -0.0853879451751709,
+        -0.7874309420585632,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.888991117477417,
+        -0.0853879451751709,
+        -0.7874309420585632,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.888991117477417,
+        -0.0853879451751709,
+        0.7874309420585632,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.888991117477417,
+        -0.0853879451751709,
+        0.7874309420585632,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        2.7785322666168213,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022795677185058594,
+        2.7785322666168213,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.3433997631073,
+        -0.0853879451751709,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.3433997631073,
+        -0.0853879451751709,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-reef-metal-pebble",
+  "collisions": [
+    {
+      "id": "sf.render.rock-reef-metal-pebble.collision",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "91980d07044f3d8391e6d9cb2a90f0b0d25d75d5e4b2f6f0f3507e878c0fcf95",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.743290410900544,
+          2.2163792671593967,
+          2.7154955863952637
+        ],
+        "min": [
+          -2.6092793807034003,
+          -2.9994362415704074,
+          -3.149723768234253
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed36f4c6e40efe6184a3c269184966694fcc2c5f1b8ce0a8ee298796450fd785",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.collision-hull.primitive.0",
+      "indexCount": 822,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 762
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6372868803003162,
+          1.975947451545288,
+          2.474029064178467
+        ],
+        "min": [
+          -2.315387227819237,
+          -1.2742225646510619,
+          -1.4892890453338623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c003c1b44b7767650fe9dacdb61827f2bddfd3dc9dbae012160157f85790f0d1",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 1692,
+      "indexed": true,
+      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 522
+    },
+    {
+      "bounds": {
+        "max": [
+          0.03495366260612631,
+          1.9053983791639864,
+          2.2751760482788086
+        ],
+        "min": [
+          -1.9589044837673963,
+          -1.174210558729416,
+          -1.1731903553009033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4a8e0033a1bfd7db7ab765faebc81a6eac06f267d448b939fcbc91a016c56a78",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-lights-cyan.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6918020248413086,
+          1.1700753563618307,
+          2.6052014407055943
+        ],
+        "min": [
+          -2.5621891021728516,
+          -1.7953261727070455,
+          -2.529493766679105
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e059df403258629080eaea29cf659a4d9883d14cb82e3efbbbdeabacf0b10970",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-stone-strata.primitive.0",
+      "indexCount": 1521,
+      "indexed": true,
+      "materialHash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_strata",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod0-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 915
+    },
+    {
+      "bounds": {
+        "max": [
+          2.743290410900544,
+          2.2163792671593967,
+          2.7154955863952637
+        ],
+        "min": [
+          -2.6092793807034003,
+          -2.9994362415704074,
+          -3.149723768234253
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1de60f65bf83ae64704d2ee0f951e4d6bd4c69a78d734c08889a8780df4487e4",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-stone.primitive.0",
+      "indexCount": 4425,
+      "indexed": true,
+      "materialHash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 3027
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6362502626945339,
+          1.9749626069956312,
+          2.4734582901000977
+        ],
+        "min": [
+          -2.316008334593948,
+          -1.2716002613001356,
+          -1.4860506057739258
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "174dcb77b28a7b50c4bbe82d9df1fa6627f7802d405edb33ccb63b0b1418269a",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.03495366260612631,
+          1.8755105023789087,
+          2.2751760482788086
+        ],
+        "min": [
+          -1.9589044837673963,
+          -1.1443226819443384,
+          -1.1731903553009033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39e8f71fa3e7e51706b585443594cd9b40c19c2656d44e1d929d0b82f457cc83",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Cyan",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod1-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7433998584747314,
+          1.2988651150346227,
+          2.605264331294935
+        ],
+        "min": [
+          -2.5276126861572266,
+          -1.9431767815232701,
+          -2.51131930489723
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a190059bacb32db2e7f27f05820d67f09d61fd82eab5224d70fcbb19569d7339",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-stone-strata.primitive.0",
+      "indexCount": 393,
+      "indexed": true,
+      "materialHash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_strata",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod1-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 274
+    },
+    {
+      "bounds": {
+        "max": [
+          2.743290410900544,
+          2.2163792671593967,
+          2.7154955863952637
+        ],
+        "min": [
+          -2.6092793807034003,
+          -2.9994362415704074,
+          -3.149723768234253
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b03d1132b5ed58a711e5cc8d6d0e19f2a9828adcc51c4bbf72020d7133b10fb0",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-stone.primitive.0",
+      "indexCount": 2559,
+      "indexed": true,
+      "materialHash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1857
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6362264358492014,
+          2.0020998601936446,
+          2.4659509658813477
+        ],
+        "min": [
+          -2.2738031351060983,
+          -1.2894457464241131,
+          -1.4860506057739258
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "614864372151f3b4deec7c956a09230ef844140199e89d79cc2430fce4a9cdcc",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 54,
+      "indexed": true,
+      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          0.03495366260612631,
+          1.8755105023789087,
+          2.2751760482788086
+        ],
+        "min": [
+          -1.9589044837673963,
+          -1.1443226819443384,
+          -1.1731903553009033
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a585442e259bb9fca381b43474ab57c0bd3fc25d9167b838227bd49466311657",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-lights-cyan.primitive.0",
+      "indexCount": 9,
+      "indexed": true,
+      "materialHash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod2-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 9
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7144301659631513,
+          1.3733496708156432,
+          2.6639037132263184
+        ],
+        "min": [
+          -2.5868910080957197,
+          -2.0485706371547545,
+          -2.673907518386841
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c9531d5528576559f7ea408550b45d0e7860427f090a7e33205c6788f11cc660",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-stone-strata.primitive.0",
+      "indexCount": 183,
+      "indexed": true,
+      "materialHash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_strata",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod2-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 149
+    },
+    {
+      "bounds": {
+        "max": [
+          2.714580177107529,
+          2.2080255242856843,
+          2.732051134109497
+        ],
+        "min": [
+          -2.587041019240097,
+          -3.0354366990598542,
+          -3.149723768234253
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45c43bf27c715f7db439012d18496e8aa35743c627efd6aa80ef0076d31dd8c0",
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-stone.primitive.0",
+      "indexCount": 1137,
+      "indexed": true,
+      "materialHash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 842
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "id": "material:56145e710d0d685ce7e25def",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "id": "material:74b914c054ab2b7acf53bc78",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "id": "material:8e47ccb7104aae16d78c2a76",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "id": "material:fa3cc734dc2d886d3f09f4ae",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.collision-hull",
+      "localTransform": [
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0.06700551509857178,
+        -0.39152848720550537,
+        -0.21711409091949463,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0.06700551509857178,
+        -0.39152848720550537,
+        -0.21711409091949463,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1.9816590547561646,
+        0,
+        0,
+        0,
+        0,
+        1.9816590547561646,
+        0,
+        0,
+        0,
+        0,
+        1.9816590547561646,
+        0,
+        -0.33905017375946045,
+        0.35086244344711304,
+        0.49237000942230225,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1.9816590547561646,
+        0,
+        0,
+        0,
+        0,
+        1.9816590547561646,
+        0,
+        0,
+        0,
+        0,
+        1.9816590547561646,
+        0,
+        -0.33905017375946045,
+        0.35086244344711304,
+        0.49237000942230225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-lights-cyan",
+      "localTransform": [
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        -0.9619754105806351,
+        0.36559391021728516,
+        0.5509928464889526,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        -0.9619754105806351,
+        0.36559391021728516,
+        0.5509928464889526,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-stone",
+      "localTransform": [
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0.06700551509857178,
+        -0.39152848720550537,
+        -0.21711409091949463,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0.06700551509857178,
+        -0.39152848720550537,
+        -0.21711409091949463,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-stone-strata",
+      "localTransform": [
+        2.62699556350708,
+        0,
+        0,
+        0,
+        0,
+        2.62699556350708,
+        0,
+        0,
+        0,
+        0,
+        2.62699556350708,
+        0,
+        0.06480646133422852,
+        -0.3126254081726074,
+        0.03785383701324463,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_strata",
+      "nodeName": "LOD0_Stone_strata",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.62699556350708,
+        0,
+        0,
+        0,
+        0,
+        2.62699556350708,
+        0,
+        0,
+        0,
+        0,
+        2.62699556350708,
+        0,
+        0.06480646133422852,
+        -0.3126254081726074,
+        0.03785383701324463,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1.9797544479370117,
+        0,
+        0,
+        0,
+        0,
+        1.9797544479370117,
+        0,
+        0,
+        0,
+        0,
+        1.9797544479370117,
+        0,
+        -0.33987903594970703,
+        0.3516811728477478,
+        0.49370384216308594,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1.9797544479370117,
+        0,
+        0,
+        0,
+        0,
+        1.9797544479370117,
+        0,
+        0,
+        0,
+        0,
+        1.9797544479370117,
+        0,
+        -0.33987903594970703,
+        0.3516811728477478,
+        0.49370384216308594,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-lights-cyan",
+      "localTransform": [
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        -0.9619754105806351,
+        0.36559391021728516,
+        0.5509928464889526,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Cyan",
+      "nodeName": "LOD1_Lights_Cyan",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        -0.9619754105806351,
+        0.36559391021728516,
+        0.5509928464889526,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-stone",
+      "localTransform": [
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0.06700551509857178,
+        -0.39152848720550537,
+        -0.21711409091949463,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0,
+        0,
+        0,
+        2.9326096773147583,
+        0,
+        0.06700551509857178,
+        -0.39152848720550537,
+        -0.21711409091949463,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-stone-strata",
+      "localTransform": [
+        2.635506272315979,
+        0,
+        0,
+        0,
+        0,
+        2.635506272315979,
+        0,
+        0,
+        0,
+        0,
+        2.635506272315979,
+        0,
+        0.10789358615875244,
+        -0.32215583324432373,
+        0.04697251319885254,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_strata",
+      "nodeName": "LOD1_Stone_strata",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.635506272315979,
+        0,
+        0,
+        0,
+        0,
+        2.635506272315979,
+        0,
+        0,
+        0,
+        0,
+        2.635506272315979,
+        0,
+        0.10789358615875244,
+        -0.32215583324432373,
+        0.04697251319885254,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-brushedmetal",
+      "localTransform": [
+        1.9760007858276367,
+        0,
+        0,
+        0,
+        0,
+        1.9760007858276367,
+        0,
+        0,
+        0,
+        0,
+        1.9760007858276367,
+        0,
+        -0.3187883496284485,
+        0.3563270568847656,
+        0.48995018005371094,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1.9760007858276367,
+        0,
+        0,
+        0,
+        0,
+        1.9760007858276367,
+        0,
+        0,
+        0,
+        0,
+        1.9760007858276367,
+        0,
+        -0.3187883496284485,
+        0.3563270568847656,
+        0.48995018005371094,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-lights-cyan",
+      "localTransform": [
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        -0.9619754105806351,
+        0.36559391021728516,
+        0.5509928464889526,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan",
+      "nodeName": "LOD2_Lights_Cyan",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        0,
+        0,
+        0,
+        1.724183201789856,
+        0,
+        -0.9619754105806351,
+        0.36559391021728516,
+        0.5509928464889526,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-stone",
+      "localTransform": [
+        2.940887451171875,
+        0,
+        0,
+        0,
+        0,
+        2.940887451171875,
+        0,
+        0,
+        0,
+        0,
+        2.940887451171875,
+        0,
+        0.06376957893371582,
+        -0.41370558738708496,
+        -0.20883631706237793,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.940887451171875,
+        0,
+        0,
+        0,
+        0,
+        2.940887451171875,
+        0,
+        0,
+        0,
+        0,
+        2.940887451171875,
+        0,
+        0.06376957893371582,
+        -0.41370558738708496,
+        -0.20883631706237793,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-stone-strata",
+      "localTransform": [
+        2.6689056158065796,
+        0,
+        0,
+        0,
+        0,
+        2.6689056158065796,
+        0,
+        0,
+        0,
+        0,
+        2.6689056158065796,
+        0,
+        0.06376957893371582,
+        -0.33761048316955566,
+        -0.0050019025802612305,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_strata",
+      "nodeName": "LOD2_Stone_strata",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.rock-reef-metal-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        2.6689056158065796,
+        0,
+        0,
+        0,
+        0,
+        2.6689056158065796,
+        0,
+        0,
+        0,
+        0,
+        2.6689056158065796,
+        0,
+        0.06376957893371582,
+        -0.33761048316955566,
+        -0.0050019025802612305,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-pebble.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_REEF_METAL_PEBBLE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-pebble.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "80832b8fd515471d7516aa7af302be5bbd5135d37ecdc44a6ac82bb4c8836790"
+    },
+    "sourceGlb": {
+      "bytes": 256420,
+      "sha256": "e78613d31640247bc49b842356fe815a1bd6c4869eaf1b37e4287f782fbdbc51",
+      "uri": "place_rock_reef_metal_pebble.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 260996,
+    "sha256": "81d59b4d012904cd696b9421933a51ea671e693d86cde94b6b98f802e447ea28",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.06706023888566559,
+        -0.40952871595022877,
+        -0.20883631706237793
+      ],
+      "max": [
+        2.7433998584747314,
+        2.2163792671593967,
+        2.732051134109497
+      ],
+      "min": [
+        -2.6092793807034003,
+        -3.0354366990598542,
+        -3.149723768234253
+      ],
+      "size": [
+        5.352679239178132,
+        5.251815966219251,
+        5.88177490234375
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.41979560256004333,
+          -0.0853879451751709,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.022795677185058594,
+          -2.949308156967163,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.588991165161133,
+          -0.0853879451751709,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.2433998584747314,
+          -0.23538795113563538,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.022795677185058594,
+          -0.0853879451751709,
+          -1.8898342847824097,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.022795677185058594,
+          -0.0853879451751709,
+          1.8898342847824097,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.2399216890335083,
+          1.4142661094665527,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.888991117477417,
+          -0.0853879451751709,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.888991117477417,
+          -0.0853879451751709,
+          -0.7874309420585632,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.888991117477417,
+          -0.0853879451751709,
+          0.7874309420585632,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.022795677185058594,
+          2.7785322666168213,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.3433997631073,
+          -0.0853879451751709,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-reef-metal-pebble.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 7,
+      "mechanical": 3,
+      "signal": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 27,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.9816590547561646,
+          0,
+          0,
+          0,
+          0,
+          1.9816590547561646,
+          0,
+          0,
+          0,
+          0,
+          1.9816590547561646,
+          0,
+          -0.33905017375946045,
+          0.35086244344711304,
+          0.49237000942230225,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.724183201789856,
+          0,
+          0,
+          0,
+          0,
+          1.724183201789856,
+          0,
+          0,
+          0,
+          0,
+          1.724183201789856,
+          0,
+          -0.9619754105806351,
+          0.36559391021728516,
+          0.5509928464889526,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.9326096773147583,
+          0,
+          0,
+          0,
+          0,
+          2.9326096773147583,
+          0,
+          0,
+          0,
+          0,
+          2.9326096773147583,
+          0,
+          0.06700551509857178,
+          -0.39152848720550537,
+          -0.21711409091949463,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.62699556350708,
+          0,
+          0,
+          0,
+          0,
+          2.62699556350708,
+          0,
+          0,
+          0,
+          0,
+          2.62699556350708,
+          0,
+          0.06480646133422852,
+          -0.3126254081726074,
+          0.03785383701324463,
+          1
+        ],
+        "name": "LOD0_Stone_strata",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9797544479370117,
+          0,
+          0,
+          0,
+          0,
+          1.9797544479370117,
+          0,
+          0,
+          0,
+          0,
+          1.9797544479370117,
+          0,
+          -0.33987903594970703,
+          0.3516811728477478,
+          0.49370384216308594,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.724183201789856,
+          0,
+          0,
+          0,
+          0,
+          1.724183201789856,
+          0,
+          0,
+          0,
+          0,
+          1.724183201789856,
+          0,
+          -0.9619754105806351,
+          0.36559391021728516,
+          0.5509928464889526,
+          1
+        ],
+        "name": "LOD1_Lights_Cyan",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.9326096773147583,
+          0,
+          0,
+          0,
+          0,
+          2.9326096773147583,
+          0,
+          0,
+          0,
+          0,
+          2.9326096773147583,
+          0,
+          0.06700551509857178,
+          -0.39152848720550537,
+          -0.21711409091949463,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.635506272315979,
+          0,
+          0,
+          0,
+          0,
+          2.635506272315979,
+          0,
+          0,
+          0,
+          0,
+          2.635506272315979,
+          0,
+          0.10789358615875244,
+          -0.32215583324432373,
+          0.04697251319885254,
+          1
+        ],
+        "name": "LOD1_Stone_strata",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9760007858276367,
+          0,
+          0,
+          0,
+          0,
+          1.9760007858276367,
+          0,
+          0,
+          0,
+          0,
+          1.9760007858276367,
+          0,
+          -0.3187883496284485,
+          0.3563270568847656,
+          0.48995018005371094,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.724183201789856,
+          0,
+          0,
+          0,
+          0,
+          1.724183201789856,
+          0,
+          0,
+          0,
+          0,
+          1.724183201789856,
+          0,
+          -0.9619754105806351,
+          0.36559391021728516,
+          0.5509928464889526,
+          1
+        ],
+        "name": "LOD2_Lights_Cyan",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.940887451171875,
+          0,
+          0,
+          0,
+          0,
+          2.940887451171875,
+          0,
+          0,
+          0,
+          0,
+          2.940887451171875,
+          0,
+          0.06376957893371582,
+          -0.41370558738708496,
+          -0.20883631706237793,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.6689056158065796,
+          0,
+          0,
+          0,
+          0,
+          2.6689056158065796,
+          0,
+          0,
+          0,
+          0,
+          2.6689056158065796,
+          0,
+          0.06376957893371582,
+          -0.33761048316955566,
+          -0.0050019025802612305,
+          1
+        ],
+        "name": "LOD2_Stone_strata",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_reef_metal_pebble.glb"
+  },
+  "runtimeHash": "6abc7c834231e9aec2820fa46c09405cee276b3ffe282f863fa46a491eaaf9ad",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.7433998584747314,
+          2.2163792671593967,
+          2.732051134109497
+        ],
+        "min": [
+          -2.6092793807034003,
+          -3.0354366990598542,
+          -3.149723768234253
+        ]
+      },
+      "id": "sf.render.rock-reef-metal-pebble.body",
+      "nodeIds": [
+        "sf.render.rock-reef-metal-pebble.mesh.collision-hull",
+        "sf.render.rock-reef-metal-pebble.mesh.lod0-brushedmetal",
+        "sf.render.rock-reef-metal-pebble.mesh.lod0-lights-cyan",
+        "sf.render.rock-reef-metal-pebble.mesh.lod0-stone",
+        "sf.render.rock-reef-metal-pebble.mesh.lod0-stone-strata",
+        "sf.render.rock-reef-metal-pebble.mesh.lod1-brushedmetal",
+        "sf.render.rock-reef-metal-pebble.mesh.lod1-lights-cyan",
+        "sf.render.rock-reef-metal-pebble.mesh.lod1-stone",
+        "sf.render.rock-reef-metal-pebble.mesh.lod1-stone-strata",
+        "sf.render.rock-reef-metal-pebble.mesh.lod2-brushedmetal",
+        "sf.render.rock-reef-metal-pebble.mesh.lod2-lights-cyan",
+        "sf.render.rock-reef-metal-pebble.mesh.lod2-stone",
+        "sf.render.rock-reef-metal-pebble.mesh.lod2-stone-strata",
+        "sf.render.rock-reef-metal-pebble.root"
+      ]
+    }
+  ]
+}

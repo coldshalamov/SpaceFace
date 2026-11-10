@@ -1,0 +1,117 @@
+TAP version 13
+# Subtest: a stock (or missing) pad map keeps the authored dual-naming table byte for byte
+ok 1 - a stock (or missing) pad map keeps the authored dual-naming table byte for byte
+  ---
+  duration_ms: 2.332333
+  ...
+# Subtest: a pad remap re-labels the help rows: the moved verb names its new button
+ok 2 - a pad remap re-labels the help rows: the moved verb names its new button
+  ---
+  duration_ms: 0.80454
+  ...
+# Subtest: a deliberately unbound action names itself instead of printing a phantom button
+ok 3 - a deliberately unbound action names itself instead of printing a phantom button
+  ---
+  duration_ms: 0.306763
+  ...
+# Subtest: the Help screen feeds the section from the live resolved map, not literals
+ok 4 - the Help screen feeds the section from the live resolved map, not literals
+  ---
+  duration_ms: 2.051829
+  ...
+# Subtest: INF-098 disconnect under held fire releases everything and announces
+ok 5 - INF-098 disconnect under held fire releases everything and announces
+  ---
+  duration_ms: 5.370766
+  ...
+# Subtest: INF-098 reconnect with buttons down reports holds, never fresh presses
+ok 6 - INF-098 reconnect with buttons down reports holds, never fresh presses
+  ---
+  duration_ms: 0.872093
+  ...
+# Subtest: INF-098 a release plus re-press after reconnect is a real fresh edge
+ok 7 - INF-098 a release plus re-press after reconnect is a real fresh edge
+  ---
+  duration_ms: 0.413047
+  ...
+# Subtest: DOM input init is idempotent and destroy removes only owned listeners
+ok 8 - DOM input init is idempotent and destroy removes only owned listeners
+  ---
+  duration_ms: 3.675018
+  ...
+# Subtest: flight input fence neutralizes controls while a drill approach owns the handoff
+ok 9 - flight input fence neutralizes controls while a drill approach owns the handoff
+  ---
+  duration_ms: 0.196708
+  ...
+# Subtest: input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
+ok 10 - input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
+  ---
+  duration_ms: 1.317164
+  ...
+# Subtest: gamepad lifecycle quarantine waits for a connected neutral sample without blocking keyboard
+ok 11 - gamepad lifecycle quarantine waits for a connected neutral sample without blocking keyboard
+  ---
+  duration_ms: 0.285371
+  ...
+# Subtest: gamepad lifecycle quarantine protects the detonation edge after resume
+ok 12 - gamepad lifecycle quarantine protects the detonation edge after resume
+  ---
+  duration_ms: 0.324473
+  ...
+# Subtest: input release preserves the committed Massline packet before resetting grammar state
+ok 13 - input release preserves the committed Massline packet before resetting grammar state
+  ---
+  duration_ms: 0.392415
+  ...
+# Subtest: Massline grammar can block a physically held source until release
+ok 14 - Massline grammar can block a physically held source until release
+  ---
+  duration_ms: 0.162914
+  ...
+# PQ-164.00 seed=16400 kit-words pad-focusable=2 dpad-down=yes
+# PQ-164.00 seed=16400 catalog=29 defs=pause,settings,help,credits,gameOver,station
+# Subtest: PQ-164.00 seed 16400: shipped gamepad maps A to accept and B to cancel
+ok 15 - PQ-164.00 seed 16400: shipped gamepad maps A to accept and B to cancel
+  ---
+  duration_ms: 3.418331
+  ...
+# Subtest: PQ-164.00: the live screen catalog is real and pad UI is one shared modal route
+ok 16 - PQ-164.00: the live screen catalog is real and pad UI is one shared modal route
+  ---
+  duration_ms: 0.535533
+  ...
+# Subtest: PQ-164.00: accept confirms on every registered screen through createUiInput
+ok 17 - PQ-164.00: accept confirms on every registered screen through createUiInput
+  ---
+  duration_ms: 5.184137
+  ...
+# Subtest: PQ-164.00: cancel pops a normal screen and traps a locked one
+ok 18 - PQ-164.00: cancel pops a normal screen and traps a locked one
+  ---
+  duration_ms: 0.526806
+  ...
+# Subtest: PQ-164.00: dpad on a modal emits ui:navigate via the shared route
+ok 19 - PQ-164.00: dpad on a modal emits ui:navigate via the shared route
+  ---
+  duration_ms: 0.68883
+  ...
+# Subtest: PQ-164.00 seed 16400: kit words with roving tabindex stay pad-focusable
+ok 20 - PQ-164.00 seed 16400: kit words with roving tabindex stay pad-focusable
+  ---
+  duration_ms: 1.345619
+  ...
+# Subtest: PQ-164.00: shipped screen defs for the pad catalog exist
+ok 21 - PQ-164.00: shipped screen defs for the pad catalog exist
+  ---
+  duration_ms: 0.432076
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 995.102734

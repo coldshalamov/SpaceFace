@@ -1,0 +1,162 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: tumble body language is multi-axis and thrash-then-failing
+ok 1 - tumble body language is multi-axis and thrash-then-failing
+  ---
+  duration_ms: 2.665295
+  ...
+# Subtest: recover pose eases thrash toward flight lean
+ok 2 - recover pose eases thrash toward flight lean
+  ---
+  duration_ms: 0.503506
+  ...
+# Subtest: force neon scales force cues above hull-neutral baseline
+ok 3 - force neon scales force cues above hull-neutral baseline
+  ---
+  duration_ms: 0.446039
+  ...
+# Subtest: feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+ok 4 - feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+  ---
+  duration_ms: 0.405386
+  ...
+# Subtest: readControlLossPresentation never tumbles the player; ships get status/drifting
+ok 5 - readControlLossPresentation never tumbles the player; ships get status/drifting
+  ---
+  duration_ms: 0.358528
+  ...
+# Subtest: control-loss presentation exposes only active strict player-caused throw truth
+ok 6 - control-loss presentation exposes only active strict player-caused throw truth
+  ---
+  duration_ms: 0.37975
+  ...
+# Subtest: continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+ok 7 - continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+  ---
+  duration_ms: 0.375653
+  ...
+# Subtest: _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+ok 8 - _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+  ---
+  duration_ms: 0.591728
+  ...
+# Subtest: _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+ok 9 - _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+  ---
+  duration_ms: 0.416661
+  ...
+# Subtest: tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+ok 10 - tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+  ---
+  duration_ms: 0.878864
+  ...
+# Subtest: updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+ok 11 - updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+  ---
+  duration_ms: 0.896052
+  ...
+# Subtest: a late present skips one shadow refresh, then the map must update again
+ok 12 - a late present skips one shadow refresh, then the map must update again
+  ---
+  duration_ms: 1.807365
+  ...
+# Subtest: a clean shadow map stays idle while a late dirty map retains its one-frame recovery
+ok 13 - a clean shadow map stays idle while a late dirty map retains its one-frame recovery
+  ---
+  duration_ms: 0.217234
+  ...
+# Subtest: live shadow follow consults the late-present cadence
+ok 14 - live shadow follow consults the late-present cadence
+  ---
+  duration_ms: 13.473431
+  ...
+# Subtest: ship pitch uses the maintained ship-like domain and preserves exact craft cues
+ok 15 - ship pitch uses the maintained ship-like domain and preserves exact craft cues
+  ---
+  duration_ms: 2.073216
+  ...
+# Subtest: ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+ok 16 - ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+  ---
+  duration_ms: 0.240713
+  ...
+# Subtest: ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+ok 17 - ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+  ---
+  duration_ms: 1.121527
+  ...
+# Subtest: settled idle craft skip the thrust-lean integrator
+ok 18 - settled idle craft skip the thrust-lean integrator
+  ---
+  duration_ms: 0.326099
+  ...
+# Subtest: middle-band thrust lean shares entity closure cadence when view is supplied
+ok 19 - middle-band thrust lean shares entity closure cadence when view is supplied
+  ---
+  duration_ms: 0.341873
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 441.179223
+TAP version 13
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.478714
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 2 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.334743
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: thrown-body trail is a bounded actual-velocity plan with strict causal gates
+ok 3 - thrown-body trail is a bounded actual-velocity plan with strict causal gates
+  ---
+  duration_ms: 1.990702
+  ...
+# Subtest: reduced thrown-body marker remains directional and clears a resident plan in place
+ok 4 - reduced thrown-body marker remains directional and clears a resident plan in place
+  ---
+  duration_ms: 0.392643
+  ...
+# Subtest: VFX emits a cyan-white pooled streak behind the hull with truthful axis and carry
+ok 5 - VFX emits a cyan-white pooled streak behind the hull with truthful axis and carry
+  ---
+  duration_ms: 105.367065
+  ...
+# Subtest: reduced settings retain one shorter slower marker through low-quality trail suppression
+ok 6 - reduced settings retain one shorter slower marker through low-quality trail suppression
+  ---
+  duration_ms: 57.392955
+  ...
+# Subtest: thrown translation emits immediately and honors its own 8-12 Hz cadence beside 16 Hz spin
+ok 7 - thrown translation emits immediately and honors its own 8-12 Hz cadence beside 16 Hz spin
+  ---
+  duration_ms: 26.966113
+  ...
+# Subtest: hero thrown marker survives ambient saturation and loses to stronger residents
+ok 8 - hero thrown marker survives ambient saturation and loses to stronger residents
+  ---
+  duration_ms: 29.164592
+  ...
+# Subtest: thrown cadence and streak pools clear at boundaries and entity removal
+ok 9 - thrown cadence and streak pools clear at boundaries and entity removal
+  ---
+  duration_ms: 14.401527
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 631.353047

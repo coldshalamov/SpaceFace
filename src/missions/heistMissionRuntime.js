@@ -1,0 +1,1787 @@
+// PQ-019C — the mission-side runtime for the authored physical capsule heist.
+//
+// WHAT THIS IS: the CONSUMER of PQ-019B's pure arbiter. It maps physical facts published by owners
+// that already exist (facility custody contacts, tether latches, entity destruction, the run clock)
+// onto the arbiter's candidate vocabulary, then settles the one terminal receipt through the
+// mission owner's ordinary complete/fail paths.
+//
+// It lives outside `missions.js` so it can be unit-driven, but it is NOT a registered system: it
+// has no `update` of its own in UPDATE_ORDER, and `src/core/registry.js` is untouched. Every entry
+// point is called by `missions`, which is where the ordering guarantee comes from.
+//
+// ─── THE ORDERING GUARANTEE (arbiter precondition 1: submit before you step) ─────────────────────
+// Registration order in `src/core/registry.js` is
+//   lawSecurity(170) < physics(177) < tetherGameplay(197) < heistFacilities(222) < missions(246).
+// Every candidate-producing event for tick T — a Rapier impact, a tether latch, a facility custody
+// receipt, an entity destruction — is therefore emitted BEFORE `missions.update` runs for tick T.
+// Submission always precedes `stepArbiter` within a tick, structurally rather than by convention.
+//
+// ─── STAMPING (arbiter precondition 2) ──────────────────────────────────────────────────────────
+// `causalTick` is taken from the CAUSING EVENT: `receipt.tick` on a facility custody contact,
+// `launchedAtTick` on a launch, the live `state.tick` at the synchronous instant a tether latch or
+// destruction fires. Never a cached clock, and never "whenever the mission got around to it" — an
+// under-stamped late report would outrank a newer, truer fact, because the earliest causal fact
+// wins across ticks.
+//
+// ─── WHAT THIS MODULE MAY NOT DO ────────────────────────────────────────────────────────────────
+// It does not validate law (it asks `lawSecurity`), does not touch `player.heat` (only an accepted,
+// law-signed receipt opens that door), does not mutate cargo/credits/reputation (it asks the
+// mission owner, which asks economy and factions), does not spawn or steer anyone, and does not
+// consume the capsule (it asks the physical receiver, keyed by the terminal receipt).
+//
+// ─── PURSUIT: WHY THE MISSION TAKES LEASES BUT NEVER WRITES INTENT ──────────────────────────────
+// `scanner.js:1024` — `if (ai && ai.lawful) return ai.securityTargetId === playerId ||
+// isPlayerWanted(state)` — means the SHIPPED lawful AI already engages a WANTED player with no
+// dispatch marker at all. A witnessed theft reported to `lawSecurity` yields an accepted receipt,
+// the heat owner consumes it through its own private path, the player crosses the WANTED threshold,
+// and the existing tactical AI becomes the one steering writer with zero mission involvement.
+//
+// The lease's job is the OTHER half: `npcJobsRuntime.claimControl` suspends the patrol's own job
+// intent so its mining/patrol route does not drag the hull off an intercept the AI is flying. One
+// writer at a time, which is what the lease is for.
+//
+// Leases are taken ONLY when law reports `responderAvailability: 'available'` — i.e. only on an
+// accepted, witnessed, in-jurisdiction report, which is exactly the case where heat is applied and
+// the AI will in fact drive. A lease over a hull nobody steers is a frozen patrol, so the gate is
+// load-bearing, not decorative. `none_in_range` is a first-class recorded outcome and takes no
+// lease, per the packet: it is not permission to spawn a responder.
+
+import {
+  createArbiter,
+  submitCandidate,
+  stepArbiter,
+  prepareTerminal,
+  commitTerminal,
+  recordEffect,
+  effectApplied,
+  serializeArbiter,
+  restoreArbiter,
+  arbiterInvariants,
+  applyTransition,
+} from './heistArbiter.js';
+import {
+  BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
+  COUNTERWEIGHT_SCENE,
+  HEIST_CAPSULE_RUN_VARIANT_ID,
+  PQ019_CAPSULE,
+  PQ019_HEIST_SECTOR_ID,
+  heistLaunchVariant,
+} from '../data/heistFacilities.js';
+import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js';
+import {
+  BREAKAWAY_PRESSURE,
+  BREAKAWAY_WRECK_RECOVERY,
+  COUNTERWEIGHT_CUE_TEXT,
+  COUNTERWEIGHT_WATCH_TUNING,
+  PQ019C_HEIST_TUNING,
+  PQ019C_RECOVERABLE_OUTCOMES,
+  RETRY_WATCH_PRESSURE,
+  heistCaseFile,
+  heistMissionPolicy,
+} from '../data/heistMission.js';
+import { makeEnemySpawnSpec } from '../systems/combat.js';
+
+export const HEIST_RECORD_SCHEMA = 'spaceface.heistMission.v1';
+export const HEIST_LAW_KIND = 'payload_theft';
+export const HEIST_OFFENDER_STABLE_ID = 'player';
+/** One stable voice id for the whole run, so the countdown/pursuit/outcome lines coalesce in place. */
+export const HEIST_VOICE_ID = 'pq019c:capsule-run';
+export const HEIST_VOICE_CHANNEL = 'objective';
+// Theft truth is urgent but not life-critical: it must interrupt first-use tutorial speech (70)
+// without claiming the danger floor (110). Other heist progress remains ordinary objective voice.
+export const HEIST_THEFT_VOICE_PRIORITY = 80;
+// Terminal and recovery truth is load-bearing story: it must interrupt repeatable combat alerts
+// while still yielding to the life-critical danger floor.
+export const HEIST_TERMINAL_VOICE_PRIORITY = 100;
+const HEIST_TERMINAL_CUE_MOMENTS = new Set([
+  'fenced',
+  'confiscated',
+  'lawful_arrival',
+  'destroyed',
+  'expired',
+  'absent',
+  'abandoned',
+  'denied',
+  'recovery',
+  'receiver_refused',
+]);
+
+const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
+
+/** The payload identity a run arbitrates. Records without one are the historical Capsule Run. */
+export function heistPayloadStableIdFor(record) {
+  return (record && typeof record.payloadStableId === 'string' && record.payloadStableId)
+    || PQ019_CAPSULE.stableId;
+}
+
+/** A run's spoken line for one moment: its variant's copy where authored, else the capsule's. */
+export function heistCueTextFor(record, moment) {
+  const variantText = heistMissionPolicy(record?.variantId).cueText;
+  return (variantText && variantText[moment]) || HEIST_CUE_TEXT[moment] || null;
+}
+
+function intTick(value) {
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/** Stable per-mission schedule identity. The facility owner keys its whole schedule on this. */
+export function heistScheduleIdFor(missionId) {
+  return `pq019c:${String(missionId || 'mission')}`;
+}
+
+export function createHeistRecord({
+  missionId,
+  tick = 0,
+  attempt = 0,
+  launchWindowS = PQ019C_HEIST_TUNING.launchWindowS,
+  runWindowTicks = PQ019C_HEIST_TUNING.runWindowTicks,
+  unlaunchedWindowTicks = PQ019C_HEIST_TUNING.unlaunchedWindowTicks,
+  recoveryAllowed = PQ019C_HEIST_TUNING.recoveryEnabled,
+  variantId = null,
+} = {}) {
+  const variant = heistLaunchVariant(variantId);
+  const scoped = variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID;
+  return {
+    schema: HEIST_RECORD_SCHEMA,
+    missionId: String(missionId),
+    // The launch variant travels with the accepted contract. Conditional, so a Capsule Run record —
+    // and every save that carries one — keeps its exact historical shape.
+    ...(scoped ? { variantId: variant.id, payloadStableId: variant.payload.stableId } : {}),
+    attempt: attempt | 0,
+    scheduleId: heistScheduleIdFor(missionId),
+    acceptTick: intTick(tick),
+    launchWindowS,
+    runWindowTicks,
+    unlaunchedWindowTicks,
+    // Authored per-run policy rather than a read of the frozen tuning at settlement time, so the
+    // decision travels with the contract that was accepted and survives the save with it.
+    recoveryAllowed: !!recoveryAllowed,
+    // PQ-195.05: the bounded pressure element. `pressureSpawned` is durable (a reloaded run does
+    // not get a second element — its raiders were transient anyway); the entity ids are stripped
+    // on serialize like every other live handle.
+    ...(scoped || attempt > 0 ? { pressureSpawned: false, pressureEntityIds: [] } : {}),
+    // PQ-195.06: the ONE bounded wreck recovery a destroyed assembly may leave. Durable — the
+    // marker id recorded here is the idempotency key, so a duplicate destroy callback or a
+    // reloaded record can never offer the recovery twice.
+    ...(scoped ? { recoveryWreckMarkerId: null } : {}),
+    // PQ-195.07: leaving Tethys suspends a live run rather than failing it. `suspendedLoad` is
+    // the body snapshot the facility re-embodies on return — plain durable data riding the
+    // already-serialized record, so no new top-level save key is needed.
+    ...(scoped ? { suspended: false, suspendedAtTick: null, suspendedLoad: null } : {}),
+    scheduleRequested: false,
+    launchAtSimT: null,
+    launchTick: null,
+    capsuleEntityId: null,
+    capsuleSeen: false,
+    possessionEver: false,
+    possessed: false,
+    // SF-147: the second-act ledger. `unitsTotal` is the manifest the shell left with;
+    // `unitsFenced`/`unitsReturned` are custody the RECEIVERS physically logged for shed pods;
+    // `deliveredUnits` is what the shell itself still held at handoff. `pursuitEntityIds` are the
+    // responders law assigned — durable so a monitored re-scan can wake the same hulls again.
+    unitsTotal: Number.isFinite(variant.payload?.shipmentUnits) ? variant.payload.shipmentUnits : 0,
+    unitsFenced: 0,
+    unitsReturned: 0,
+    deliveredUnits: null,
+    monitorScans: [],
+    pursuitEntityIds: [],
+    suspendedUnits: null,
+    lawReportId: null,
+    lawIncidentReceiptId: null,
+    lawDenialReason: null,
+    responderAvailability: null,
+    leases: [],
+    pursuitStarted: false,
+    escapeHoldTicks: 0,
+    escaped: false,
+    absenceGraceTicks: 0,
+    cues: {},
+    settled: false,
+    settledOutcome: null,
+    reconciled: null,
+    arbiter: createArbiter({
+      missionId: String(missionId),
+      payloadStableId: variant.payload.stableId,
+      createdAtTick: intTick(tick),
+    }),
+  };
+}
+
+// ── Presentation ────────────────────────────────────────────────────────────────────────────────
+//
+// ONE VOICE. Every player-visible line in this feature goes through `helpers.voice.say` under the
+// single stable id above on the `objective` channel. Ordinary progress uses priority 60; the three
+// theft results use urgent priority 80 so witness/WANTED/pursuit cannot stale behind first-use
+// teaching; terminal/recovery truth uses load-bearing story priority 100 so repeatable combat alerts
+// cannot hide the result. `VoiceQueue` still coalesces same-id entries in place, so the whole run
+// occupies at most ONE floor slot. Life-critical danger (110) remains the top tier.
+//
+// Each moment fires AT MOST ONCE per run (`record.cues`), so this is bounded, not per-frame.
+// Every line states its subject and its consequence in words: no cue depends on hue, none adds
+// motion beyond the existing floor presentation, and each is legible with animation disabled.
+// Where `voiceArbiter` is not registered (headless sim, focused tests) `helpers.voice` is
+// undefined and the call is a strict no-op — the owner receipt below still fires, so the cue is
+// observable without a UI.
+
+export const HEIST_CUE_TEXT = Object.freeze({
+  accepted: 'Capsule run accepted — launcher arming, stay in Tethys Junction',
+  launched: 'Capsule away — intercept it before the Concord catcher takes it',
+  possessed: 'Capsule in tow — the Quiet fence is your only buyer now',
+  // WITNESS, WANTED and PURSUIT are ONE LINE, not three.
+  //
+  // All three facts are decided inside a single call to `reportTheft`, in one tick. Emitted as
+  // separate lines under one stable voice id they COALESCE IN PLACE — `VoiceQueue` replaces a
+  // same-id entry rather than stacking it — so the player would see only the last one written and
+  // the other two would be silently discarded. Verified by driving the real arbiter before this was
+  // composed. Emitting them under three DIFFERENT ids would instead put three pills on a floor that
+  // is supposed to hold one. Composing is the only option that is both one-voice compliant and
+  // truthful: one slot, and every fact the player needs is in it.
+  theft_witnessed_pursuit: 'Theft witnessed — WANTED, and Concord patrol units are inbound',
+  theft_witnessed_no_patrol: 'Theft witnessed — WANTED, but Concord has no patrol in range',
+  theft_unwitnessed: 'No witness in range — the theft is unlogged, for now',
+  escaped: 'Contact broken — run the capsule to the Quiet fence',
+  // SF-147: the monitored lane. One line per first crossing and one for a resumed chase — the
+  // posts are why "escaped" never means "safe".
+  monitored: 'Monitored crossing — a Concord post just logged the stolen shipment',
+  pursuit_resumed: 'The scan raised the patrol — Concord units are back on the load',
+  units_shed: 'The shell is shedding sealed units — every pod you lose is pay you lose',
+  fenced: 'Capsule fenced — the Quiet paid and forgot your face',
+  confiscated: 'Capsule confiscated — Concord recovered its cargo',
+  lawful_arrival: 'Capsule caught by Concord — the run is over, nothing was taken',
+  destroyed: 'Capsule destroyed — there is nothing left to sell',
+  expired: 'Run window closed — the capsule is no longer worth chasing',
+  absent: 'Capsule lost from the field — the contract cannot be settled',
+  abandoned: 'Capsule run abandoned',
+  denied: 'Launcher refused the schedule — no capsule run is available',
+  recovery: 'The Quiet will fund one more pass at a reduced rate — check the Tethys board',
+  // RC-MISSION-VOICE: the retry room is not the first room — the lane is staked out.
+  launched_retry: 'Capsule away — and the yard remembers: pickets already hold the corridor',
+  receiver_refused: 'Receiver could not take the capsule — no delivery, so nothing is paid',
+});
+
+/**
+ * Speak one authored moment, at most once per run. Emits an owner receipt regardless so headless
+ * harnesses can observe cue moments with no presenter attached.
+ */
+export function sayHeistCue(ctx, record, moment, textOverride = null) {
+  if (!record || record.cues[moment]) return null;
+  const text = textOverride || heistCueTextFor(record, moment);
+  if (!text) return null;
+  record.cues[moment] = true;
+  return speakHeistLine(ctx, record, {
+    cueId: `pq019c:cue:${record.missionId}:${moment}`, moment, text,
+  });
+}
+
+/**
+ * The single exit for every spoken heist line: one owner receipt, one stable voice id, one channel.
+ * Callers decide WHETHER to speak (at most once per run, or once per physical attempt); this decides
+ * only how.
+ */
+function speakHeistLine(ctx, record, { cueId, moment, text }) {
+  const receipt = Object.freeze({
+    cueId,
+    missionId: record.missionId,
+    moment,
+    variantId: record.variantId || null,
+    text,
+    voiceId: HEIST_VOICE_ID,
+    channel: HEIST_VOICE_CHANNEL,
+    source: 'heistMissionRuntime',
+  });
+  // Flight only, for the same reason PQ-019A's countdown is: while docked the Station OS is a
+  // fullscreen surface in front of the #alerts slot, so speaking there burns the one-voice floor on
+  // a pill nobody can see. The underlying run is world simulation and keeps going either way.
+  if (ctx?.state?.mode === 'flight') {
+    const say = ctx.helpers?.voice?.say;
+    if (typeof say === 'function') {
+      const priority = moment.startsWith('theft_')
+        ? HEIST_THEFT_VOICE_PRIORITY
+        : (HEIST_TERMINAL_CUE_MOMENTS.has(moment) ? HEIST_TERMINAL_VOICE_PRIORITY : undefined);
+      say({ channel: HEIST_VOICE_CHANNEL, id: HEIST_VOICE_ID, text, kind: 'info', ttl: 5, priority });
+    }
+  }
+  ctx?.bus?.emit?.('heist:missionCue', receipt);
+  return receipt;
+}
+
+// ── Candidate submission ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Submit one report. Every candidate in this feature goes through here, so the mission id, payload
+ * id, and source stamping are impossible to get inconsistent between call sites.
+ */
+export function submitHeistCandidate(record, { kind, causalTick, sourceStableId, proof = {} }) {
+  if (!record?.arbiter) return { accepted: false, reason: 'no_record' };
+  return submitCandidate(record.arbiter, {
+    missionId: record.missionId,
+    payloadStableId: heistPayloadStableIdFor(record),
+    kind,
+    causalTick: intTick(causalTick),
+    sourceStableId,
+    proof,
+  });
+}
+
+// ── Owner lookups ───────────────────────────────────────────────────────────────────────────────
+
+function ownerOf(ctx, name) {
+  const get = ctx?.registry?.get;
+  if (typeof get !== 'function') return null;
+  try {
+    return ctx.registry.get(name) || null;
+  } catch {
+    return null;
+  }
+}
+
+function liveEntity(ctx, id) {
+  if (id == null) return null;
+  const entity = ctx?.state?.entities?.get?.(id);
+  return entity && entity.alive !== false ? entity : null;
+}
+
+export const heistMissionRuntime = {
+  // ── Lifecycle ────────────────────────────────────────────────────────────────────────────────
+
+  /** Ask the facility owner for a launch window. Idempotent: one schedule per mission. */
+  requestSchedule(ctx, record) {
+    if (!record || record.scheduleRequested || record.settled) return null;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    const simT = Number(ctx?.state?.simTime) || 0;
+    const launchAtSimT = simT + record.launchWindowS;
+    record.scheduleRequested = true;
+    let receipt = null;
+    // The contract's launch variant rides the request, so the launcher throws the payload the player
+    // actually accepted. Absent for the Capsule Run, whose request keeps its historical shape.
+    const variantField = record.variantId ? { variantId: record.variantId } : {};
+    if (facilities && typeof facilities.requestLaunchSchedule === 'function') {
+      receipt = facilities.requestLaunchSchedule({
+        scheduleId: record.scheduleId, launchAtSimT, ...variantField,
+      });
+    } else {
+      ctx?.bus?.emit?.('heist:requestLaunchSchedule', {
+        scheduleId: record.scheduleId, launchAtSimT, ...variantField,
+      });
+    }
+    if (receipt && receipt.accepted === false) {
+      // A denial is a real, visible outcome — another schedule already owns the launcher. The run
+      // cannot start, so it resolves as absent rather than hanging on a capsule that never comes.
+      record.scheduleDenied = receipt.reason || 'denied';
+      // The facility receipt stays silent. This denied cue is the only spoken refusal, and a
+      // launcher that is already booked says so instead of the generic "no run" line.
+      sayHeistCue(ctx, record, 'denied', receipt.reason === 'active_schedule'
+        ? 'Launcher is already committed — wait for this throw'
+        : null);
+      submitHeistCandidate(record, {
+        kind: 'unresolved_absent',
+        causalTick: intTick(ctx?.state?.tick),
+        sourceStableId: 'heistFacilities:schedule',
+        proof: { reason: String(receipt.reason || 'denied') },
+      });
+      return receipt;
+    }
+    record.launchAtSimT = receipt && Number.isFinite(receipt.launchAtSimT)
+      ? receipt.launchAtSimT : launchAtSimT;
+    sayHeistCue(ctx, record, 'accepted');
+    return receipt;
+  },
+
+  /** `heist:capsuleLaunched` — the capsule is physically real. */
+  onCapsuleLaunched(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    record.launchTick = intTick(payload.launchedAtTick);
+    record.capsuleEntityId = payload.capsuleEntityId == null ? null : payload.capsuleEntityId;
+    record.capsuleSeen = true;
+    applyTransition(record.arbiter, 'launched');
+    this._spawnPressure(ctx, record, liveEntity(ctx, record.capsuleEntityId));
+    sayHeistCue(ctx, record, 'launched',
+      (record.attempt | 0) > 0 ? HEIST_CUE_TEXT.launched_retry : null);
+    return true;
+  },
+
+  /** `tether:latched` — existing Massline/tether physical state, normalized to one candidate. */
+  onTetherLatched(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    const capsule = liveEntity(ctx, payload.targetId);
+    if (!capsule || capsule.data?.heistPayloadStableId !== heistPayloadStableIdFor(record)) return false;
+    if (capsule.data?.launchScheduleId !== record.scheduleId) return false;
+    const tick = intTick(ctx?.state?.tick);
+    record.capsuleEntityId = capsule.id;
+    record.possessed = true;
+    const first = !record.possessionEver;
+    record.possessionEver = true;
+    submitHeistCandidate(record, {
+      kind: 'possession',
+      causalTick: tick,
+      sourceStableId: 'tetherGameplay',
+      proof: { holder: HEIST_OFFENDER_STABLE_ID },
+    });
+    if (first) {
+      sayHeistCue(ctx, record, 'possessed');
+      // PERMISSION IS NOT POSSESSION. A lawful recovery contract IS the permission to take the load,
+      // so its latch is never a reportable theft and can never raise WANTED. Only a policy that
+      // says the take is a crime asks the law owner to judge it.
+      if (heistMissionPolicy(record.variantId).reportsTheft) this.reportTheft(ctx, record, capsule, tick);
+    }
+    return true;
+  },
+
+  /** `tether:released` / `tether:cut` / `tether:broke`. Possession is history, not an outcome. */
+  onTetherReleased(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (record.capsuleEntityId == null || payload.targetId !== record.capsuleEntityId) return false;
+    record.possessed = false;
+    return true;
+  },
+
+  /**
+   * Report the theft to the law owner and take pursuit leases from what law says already exists.
+   *
+   * The mission asks; `lawSecurity` decides. An unwitnessed or out-of-jurisdiction theft is DENIED,
+   * and a denial is a real outcome the player is told about — not a silent success.
+   */
+  reportTheft(ctx, record, capsule, causalTick) {
+    if (!record || record.lawIncidentReceiptId) return null;
+    const law = ownerOf(ctx, 'lawSecurity');
+    if (!law || typeof law.reportIncident !== 'function') return null;
+    // Stable across replay and reload: one theft per mission, so a duplicate report returns the
+    // SAME receipt from law's own idempotency ledger rather than logging a second crime.
+    const reportId = `${record.missionId}:${HEIST_LAW_KIND}`;
+    record.lawReportId = reportId;
+    const receipt = law.reportIncident({
+      reportId,
+      kind: HEIST_LAW_KIND,
+      offenderStableId: HEIST_OFFENDER_STABLE_ID,
+      offenderEntityId: ctx?.state?.playerId,
+      payloadStableId: heistPayloadStableIdFor(record),
+      causalTick: intTick(causalTick),
+      pos: { x: capsule.pos.x, z: capsule.pos.z },
+    });
+    if (!receipt || receipt.accepted !== true) {
+      record.lawDenialReason = receipt?.reason || 'denied';
+      sayHeistCue(ctx, record, 'theft_unwitnessed');
+      return receipt;
+    }
+    record.lawIncidentReceiptId = receipt.incidentReceiptId;
+    record.responderAvailability = receipt.responderAvailability;
+    // Heat was consumed synchronously by its own owner on `law:reportIncidentReceipt`, through the
+    // private mutation path every other heat source uses. The mission never wrote heat and could
+    // not have: the only door needs a receipt it cannot sign. The WANTED half of the line below is
+    // therefore a report of what law and heat did, not a claim this module made anything happen.
+    if (receipt.responderAvailability === 'available') {
+      this.claimPursuitLeases(ctx, record, receipt.responderEntityIds || []);
+      sayHeistCue(ctx, record, 'theft_witnessed_pursuit');
+    } else {
+      // "No patrol in range" is a first-class outcome the player must be able to HEAR, rather than
+      // infer from silence.
+      sayHeistCue(ctx, record, 'theft_witnessed_no_patrol');
+    }
+    return receipt;
+  },
+
+  /** Borrow the JOB of each already-flying responder law named. Bounded by the authored cap. */
+  claimPursuitLeases(ctx, record, responderEntityIds) {
+    const jobs = ownerOf(ctx, 'npcJobsRuntime');
+    if (!jobs || typeof jobs.claimControl !== 'function') return 0;
+    let taken = 0;
+    // SF-147: each claim WAVE gets its own epoch in the claimId — a hull released on a leash
+    // break and re-claimed by a monitor scan must not trip the runtime's claimId dedupe.
+    const epoch = (record.leaseEpoch | 0);
+    let epochSpent = false;
+    for (const entityId of responderEntityIds) {
+      if (taken >= PQ019C_HEIST_TUNING.responderLeaseCap) break;
+      const entity = liveEntity(ctx, entityId);
+      const jobId = entity?.data?.jobId;
+      if (!jobId) continue;
+      if (record.leases.some((row) => row.jobId === jobId)) continue;
+      if (!epochSpent) { record.leaseEpoch = epoch + 1; epochSpent = true; }
+      const claimId = `pq019c:${record.missionId}:${jobId}:${epoch}`;
+      const claim = jobs.claimControl(jobId, { claimId, holder: record.missionId });
+      if (!claim || claim.granted !== true) continue;
+      record.leases.push({ jobId, claimId, entityId });
+      taken++;
+      record.pursuitStarted = true;
+      // SF-147: remember WHO law assigned — durable, so a monitored crossing later in the run can
+      // wake the same hulls again rather than conjuring new ones.
+      if (!record.pursuitEntityIds.includes(entityId)) record.pursuitEntityIds.push(entityId);
+    }
+    return taken;
+  },
+
+  /**
+   * Hand every borrowed hull back. Always safe to call, and called on EVERY exit path — which is
+   * what makes `activeJobControlClaimsAfterTerminal == 0` true rather than hoped for.
+   */
+  releaseAllLeases(ctx, record) {
+    const jobs = ownerOf(ctx, 'npcJobsRuntime');
+    const released = [];
+    for (const row of record.leases || []) {
+      if (jobs && typeof jobs.releaseControl === 'function') {
+        released.push(jobs.releaseControl(row.jobId, row.claimId));
+      }
+    }
+    record.leases = [];
+    return released;
+  },
+
+  // ── PQ-195.05: Someone else wants it ─────────────────────────────────────────────────────────
+  //
+  // ONE bounded pressure element per run, spawned the moment the assembly is physically loose.
+  // At most two light hulls plus ONE optional specialist — the third spawn-budget grant, when the
+  // sector can afford it, is the tether-control raider. Every hull goes through the ordinary
+  // arbiter (request → bindEntity → releaseSome on partial failure) and the existing tactical
+  // owner: an ATTACK_RUN activity naming the tug is an authoritative assignment the doctrine
+  // already honors, and its own disengage/retreat machinery owns abandoning a bad attack — no
+  // never-retreat flags are set here.
+  //
+  // The payload entity cannot be an AI target (engagementAuthority requires ship-to-ship), so the
+  // assignment names the tug and anchors on the assembly: the raider's run crosses the load's
+  // line whether it is loose or on the player's tether — "going for the spindle" reads the same.
+
+  /** Spawn the run's pressure element. Bounded once per run by `record.pressureSpawned`. */
+  _spawnPressure(ctx, record, capsule) {
+    if (!record || record.settled || !capsule) return 0;
+    const isBreakaway = heistLaunchVariant(record.variantId).id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID;
+    // The Third Shift's cased method is honest: a pilot who learned the crew's cadence
+    // (case file at or past casedAt) arrives between the pickets, so they never form.
+    if (isBreakaway
+      && heistCaseFile('third_shift', ctx?.state?.heistFacilities?.observed).cased) return 0;
+    // RC-MISSION-VOICE: the retry room remembers — a second lift on the capsule run launches into
+    // a staked-out lane. First attempts and unknown variants stay exactly as they always were.
+    const retryWatch = !isBreakaway && (record.attempt | 0) > 0;
+    if (!isBreakaway && !retryWatch) return 0;
+    if (record.pressureSpawned) return 0;
+    record.pressureSpawned = true;
+    const pool = retryWatch ? RETRY_WATCH_PRESSURE : BREAKAWAY_PRESSURE;
+    const helpers = ctx?.helpers || {};
+    const spawn = helpers.spawnEntity;
+    const budget = helpers.spawnBudget;
+    // Pressure goes through the ordinary arbiter BY CONTRACT — without it there is no element,
+    // not an unbudgeted one.
+    if (typeof spawn !== 'function' || !budget || typeof budget.request !== 'function') return 0;
+    const requester = `heist:${record.missionId}`;
+    const want = retryWatch ? RETRY_WATCH_PRESSURE.lightCount
+      : BREAKAWAY_PRESSURE.lightCount + 1; // two lights + the one optional specialist
+    const grant = budget.request(want, requester);
+    if (grant <= 0) return 0;
+    const rng = ctx?.state?.rng;
+    const bearing = typeof rng === 'function' ? rng() * Math.PI * 2 : Math.PI / 4;
+    const anchor = { x: capsule.pos.x, z: capsule.pos.z };
+    const spawned = [];
+    try {
+      for (let i = 0; i < grant; i++) {
+        const specialist = !retryWatch && i >= BREAKAWAY_PRESSURE.lightCount;
+        const typeId = specialist
+          ? BREAKAWAY_PRESSURE.specialistTypeId
+          : pool.lightPool[i % pool.lightPool.length];
+        const level = specialist ? BREAKAWAY_PRESSURE.specialistLevel : pool.lightLevel;
+        // Each hull enters on its own bearing around the assembly so the pressure reads as a run
+        // on the load, not a stacked formation.
+        const angle = bearing + (i * Math.PI * 2) / grant;
+        const pos = {
+          x: anchor.x + Math.cos(angle) * pool.spawnDistanceWu,
+          z: anchor.z + Math.sin(angle) * pool.spawnDistanceWu,
+        };
+        const spec = makeEnemySpawnSpec(typeId, level, pos, {
+          startedTick: intTick(ctx?.state?.tick),
+          motive: pool.motive,
+        });
+        spec.data = spec.data || {};
+        spec.data.missionTag = record.missionId;
+        const ent = spawn(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        // Authoritative assignment through the existing tactical owner: commit the approach on
+        // the tug, anchored on the assembly, weapons free. The doctrine's own disengage/retreat
+        // rules stay enabled — a raider still abandons a bad attack.
+        const ai = ent.data && ent.data.ai;
+        if (ai && ai.activity) {
+          ai.activity = {
+            ...ai.activity,
+            kind: 'attack_run',
+            reason: `heist:pressure:${record.missionId}`,
+            targetId: ctx?.state?.playerId == null ? null : ctx.state.playerId,
+            anchor: { x: anchor.x, z: anchor.z },
+            startedTick: intTick(ctx?.state?.tick),
+          };
+        }
+        spawned.push(ent.id);
+      }
+    } finally {
+      const shortfall = grant - spawned.length;
+      if (shortfall > 0 && budget && typeof budget.releaseSome === 'function') {
+        budget.releaseSome(requester, shortfall);
+      }
+    }
+    record.pressureEntityIds = spawned;
+    return spawned.length;
+  },
+
+  /**
+   * Hand the pressure element's budget slots back. Idempotent and safe on every exit path —
+   * `spawnBudget.release` is a no-op on an unknown requester. Surviving raiders simply become
+   * ordinary hostiles under their own AI lifecycle; they are never force-despawned mid-combat.
+   */
+  _releasePressure(ctx, record) {
+    const budget = ctx?.helpers?.spawnBudget;
+    if (budget && typeof budget.release === 'function') {
+      budget.release(`heist:${record?.missionId}`);
+    }
+    if (record) record.pressureEntityIds = [];
+  },
+
+  // ── PQ-195.06: Losing it leaves something to do ──────────────────────────────────────────────
+  //
+  // The aftermath owner records the wreck; this seam only translates the record's last-known live
+  // body state (tracked every live tick in `drive`) into its offer vocabulary. The marker — not
+  // the payload — is what the player salvages, and the durable `recoveryWreckMarkerId` on the
+  // record is the once-per-destruction bound.
+
+  /** Ask the aftermath owner for the destroyed assembly's one reduced-value recovery wreck. */
+  _offerWreckRecovery(ctx, record, receipt) {
+    const owner = ownerOf(ctx, 'aftermathWrecks');
+    if (!owner || typeof owner.offerRecoveryWreck !== 'function') return null;
+    return owner.offerRecoveryWreck({
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      victimId: heistPayloadStableIdFor(record),
+      pos: record.capsuleLastPos || null,
+      victimVel: record.capsuleLastVel || null,
+      victimMass: record.capsuleLastMass != null ? record.capsuleLastMass : null,
+      victimLabel: BREAKAWAY_WRECK_RECOVERY.victimLabel,
+      wreckClass: BREAKAWAY_WRECK_RECOVERY.wreckClass,
+      salvagePool: BREAKAWAY_WRECK_RECOVERY.salvagePool,
+      source: `heist:${record.missionId}`,
+      motiveId: 'bounded_recovery',
+    });
+  },
+
+  /** `heist:facilityCandidate` — a real Rapier contact at the catcher or the fence. */
+  onFacilityCandidate(ctx, record, receipt = {}) {
+    if (!record || record.settled) return false;
+    if (receipt.scheduleId !== record.scheduleId) return false;
+    if (receipt.payloadStableId !== heistPayloadStableIdFor(record)) return false;
+    const causalTick = intTick(receipt.tick);
+    // BREAKAWAY: a settled capture-fork receipt is the physical owner's proof that the load entered
+    // the receiver correctly and came to rest there. It is a lawful ARRIVAL whoever brought it — a
+    // Massline tow, a clean release and a hull shove are all the player's own flying, and the load
+    // cannot reach the fork on its launch arc. Whether an arrival PAYS is the variant's settlement
+    // table's decision, not this mapping's.
+    if (receipt.kind === 'capture_settled') {
+      submitHeistCandidate(record, {
+        kind: 'lawful_arrival_observed',
+        causalTick,
+        sourceStableId: `heistFacilities:${receipt.facilityId}:capture`,
+        proof: { custodyReceiptId: receipt.receiptId, possessionEver: !!record.possessionEver },
+      });
+      return true;
+    }
+    // MISSION POLICY, deliberately not the arbiter's: mapping a physical contact to a legal outcome
+    // is exactly what the arbiter refuses to know. `lawful_catch_contact` is a lawful ARRIVAL if
+    // nobody ever took the capsule, and a CONFISCATION if somebody did and lost it there.
+    if (receipt.kind === 'lawful_catch_contact') {
+      submitHeistCandidate(record, {
+        kind: record.possessionEver ? 'lawful_confiscation' : 'lawful_arrival_observed',
+        causalTick,
+        sourceStableId: `heistFacilities:${receipt.facilityId}`,
+        proof: { custodyReceiptId: receipt.receiptId, possessionEver: !!record.possessionEver },
+      });
+      return true;
+    }
+    if (receipt.kind === 'fence_contact') {
+      // A capsule cannot reach the fence on its launch arc; getting it there IS the heist. Refusing
+      // an unpossessed fence contact keeps a physics fluke from paying out a theft nobody committed.
+      if (!record.possessionEver) return false;
+      submitHeistCandidate(record, {
+        kind: 'fenced_success',
+        causalTick,
+        sourceStableId: `heistFacilities:${receipt.facilityId}`,
+        proof: { custodyReceiptId: receipt.receiptId },
+      });
+      return true;
+    }
+    // SF-147: per-UNIT custody. A shed pod that physically reaches a receiver is logged against
+    // the same run — the fence keeps what it got, the catcher recovered what it got.
+    if (receipt.kind === 'unit_fenced') {
+      if (!record.possessionEver) return false; // no theft, no buyer — same rule as the shell
+      record.unitsFenced = (record.unitsFenced | 0) + 1;
+      // The shell is gone and the pods are all that remain of the load — the fenced units ARE
+      // the delivery, paid at the unit fraction rather than the full manifest.
+      if (record.capsuleEntityId == null) {
+        submitHeistCandidate(record, {
+          kind: 'fenced_success',
+          causalTick,
+          sourceStableId: `heistFacilities:${receipt.facilityId}:units`,
+          proof: { custodyReceiptId: receipt.receiptId, unitsOnly: true },
+        });
+      }
+      return true;
+    }
+    if (receipt.kind === 'unit_returned') {
+      record.unitsReturned = (record.unitsReturned | 0) + 1;
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * `heist:monitorScan` — a Concord post pulsed a body carrying this run's provenance. Only a run
+   * that is actually HOT reads as the second act: the load must have been taken. The first
+   * crossing speaks; every crossing re-wakes the responders law already assigned — the same
+   * hulls, claimed again, never conjured replacements.
+   */
+  onMonitorScan(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (!record.possessionEver) return false; // lawful freight on the lane is not a second act
+    const monitorId = String(payload.monitorId || '');
+    const firstForPost = monitorId && !record.monitorScans.includes(monitorId);
+    if (firstForPost) {
+      record.monitorScans.push(monitorId);
+      while (record.monitorScans.length > 8) record.monitorScans.shift();
+    }
+    sayHeistCue(ctx, record, 'monitored');
+    // Re-raise the pursuit from what law already committed. `claimControl` dedupes by claimId —
+    // a hull still under the run's lease is a no-op, a released one picks the chase back up.
+    if (record.pursuitStarted && Array.isArray(record.pursuitEntityIds)) {
+      const taken = this.claimPursuitLeases(ctx, record, record.pursuitEntityIds);
+      if (taken > 0) sayHeistCue(ctx, record, 'pursuit_resumed');
+    }
+    return true;
+  },
+
+  /** `heist:shipmentUnit` — the shell physically shed a sealed unit. One spoken line per run. */
+  onShipmentUnit(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (payload.event !== 'unit_ejected') return false;
+    sayHeistCue(ctx, record, 'units_shed');
+    return true;
+  },
+
+  /**
+   * `heist:captureFork` — the fork's own mechanical truth (rails engaged, load slipped out, entry too
+   * fast / too sideways / off-centre), spoken so the player learns WHY the receiver took or refused
+   * the load. Bounded by physical attempts, not frames: the facility owner publishes these only when
+   * the load actually crosses the mouth near the rails. Never a candidate and never a settlement.
+   */
+  onCaptureFork(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (payload.payloadStableId !== heistPayloadStableIdFor(record)) return false;
+    const moment = payload.event === 'capture_refused'
+      ? `capture_refused_${payload.reason}`
+      : String(payload.event || '');
+    // Only a variant that authored the fork's copy speaks it; there is no capsule fallback line.
+    const text = heistMissionPolicy(record.variantId).cueText?.[moment];
+    if (!text) return false;
+    speakHeistLine(ctx, record, {
+      cueId: `pq019c:cue:${record.missionId}:${moment}:${intTick(payload.tick)}`, moment, text,
+    });
+    return true;
+  },
+
+  /**
+   * `sector:exit` for the heist sector.
+   *
+   * This is what tells destruction and ABSENCE apart, and it has to exist. `entity:destroyed` is
+   * the generic "this entity left the world" event — `coreSystem.lifetimeSweep` queues it for TTL
+   * expiry, for `despawnAt`, and for any `removeEntity` call, not only for a lethal hit. The
+   * facility owner removes its transient capsule on sector exit (PQ-019A: "removes the launched
+   * transient capsule without settlement, reward, or fabricated terminal outcome"), so without this
+   * marker a player who simply flew out of Tethys would be told their capsule was DESTROYED.
+   *
+   * `sector:exit` reaches this listener first: `entity:destroyed` is queued by the end-of-step
+   * sweep, while sector exit is emitted synchronously.
+   */
+  onSectorExit(ctx, record, sectorId) {
+    if (!record || record.settled) return false;
+    if (sectorId !== PQ019_HEIST_SECTOR_ID) return false;
+    if (record.sectorExitedAtTick == null) record.sectorExitedAtTick = intTick(ctx?.state?.tick);
+    // PQ-195.05: the pressure element's budget slots go back on the way out. The raider hulls
+    // themselves dematerialize with the sector like every other transient.
+    this._releasePressure(ctx, record);
+    // PQ-195.07: a live Third Shift run SUSPENDS at the boundary instead of failing — snapshot
+    // the body before the facility dematerializes it, then `drive` freezes the run's clocks and
+    // `onEntityDestroyed` below declines to classify the routine transient removal.
+    this._suspendRun(ctx, record);
+    return true;
+  },
+
+  /**
+   * PQ-195.07: park a launched, undecided run at the sector boundary. The snapshot IS the body —
+   * position, velocity, pose, spin and hull — and lives in the durable record, so a suspended
+   * run survives save/load without any facility-state capture. Capsule Run and unlaunched
+   * records keep their existing semantics (absent / permanently active).
+   */
+  _suspendRun(ctx, record) {
+    if (!record || record.suspended) return false;
+    const variant = heistLaunchVariant(record.variantId);
+    // SF-147: the hot-return act suspends too. A run whose load was TAKEN parks at the boundary
+    // like the assembly does — voluntary return is the whole second act — while an untouched
+    // capsule keeps its historical absent-on-exit rule.
+    const suspends = variant.id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID
+      || (record.possessionEver === true && Number.isFinite(variant.payload?.shipmentUnits));
+    if (!suspends) return false;
+    if (record.launchTick == null || record.capsuleEntityId == null) return false;
+    // The facility's own `sector:exit` listener registers first and marks the body dead before
+    // this sees the event — `liveEntity` would say it's already gone. The map entry still exists
+    // until the end-of-step sweep, so read it raw; the drive()-tracked last-known state is the
+    // same body truth if it was removed `immediate` or the exit raced a kill.
+    const entity = ctx?.state?.entities?.get?.(record.capsuleEntityId);
+    const pos = entity?.pos || record.capsuleLastPos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    const vel = entity?.vel || record.capsuleLastVel;
+    record.suspendedLoad = {
+      pos: { x: pos.x, z: pos.z },
+      vel: vel && Number.isFinite(vel.x) ? { x: vel.x, z: vel.z } : { x: 0, z: 0 },
+      rot: Number.isFinite(entity?.rot) ? entity.rot : 0,
+      angVel: Number.isFinite(entity?.angVel) ? entity.angVel : 0,
+      hull: Number.isFinite(entity?.hull) ? entity.hull : entity?.hullMax,
+      hullMax: entity?.hullMax,
+      mass: Number.isFinite(entity?.mass) ? entity.mass : record.capsuleLastMass,
+      // SF-147: the shell's remaining unit count is part of the body truth.
+      ...(Number.isFinite(entity?.data?.shipmentUnits)
+        ? {
+          shipmentUnits: entity.data.shipmentUnits,
+          shipmentUnitsTotal: Number.isFinite(entity.data.shipmentUnitsTotal)
+            ? entity.data.shipmentUnitsTotal : record.unitsTotal,
+        }
+        : {}),
+      // A capture approach in progress is part of the same run: the facility mirrors it onto the
+      // body for durable loads, so it rides the snapshot (deep-copied — the live object is about
+      // to be deleted with the dematerialized entity).
+      capture: entity?.data?.breakawayCapture
+        ? JSON.parse(JSON.stringify(entity.data.breakawayCapture))
+        : null,
+    };
+    // SF-147: pods shed before the boundary ride the run too — same raw-map read, same rule that
+    // snapshots are the bodies, not a refilled manifest.
+    const units = [];
+    for (const pod of ctx?.state?.entities?.values?.() || []) {
+      if (!pod || pod.data?.heistUnit !== true) continue;
+      if (pod.data?.launchScheduleId !== record.scheduleId) continue;
+      if (!pod.pos || !Number.isFinite(pod.pos.x)) continue;
+      units.push({
+        unitOf: pod.data.heistUnitOf,
+        unitIndex: pod.data.heistUnitIndex,
+        factionId: pod.factionId,
+        ownerId: pod.ownerId,
+        legalOwnerFactionId: pod.data.legalOwnerFactionId,
+        pos: { x: pod.pos.x, z: pod.pos.z },
+        vel: pod.vel && Number.isFinite(pod.vel.x) ? { x: pod.vel.x, z: pod.vel.z } : { x: 0, z: 0 },
+        rot: Number.isFinite(pod.rot) ? pod.rot : 0,
+        angVel: Number.isFinite(pod.angVel) ? pod.angVel : 0,
+        hull: Number.isFinite(pod.hull) ? pod.hull : pod.hullMax,
+      });
+      if (units.length >= 8) break;
+    }
+    record.suspendedUnits = units.length ? units : null;
+    record.suspended = true;
+    record.suspendedAtTick = intTick(ctx?.state?.tick);
+    record.possessed = false;
+    return true;
+  },
+
+  /**
+   * PQ-195.07: re-embody the parked body through the facility owner and resume the SAME run.
+   * The remaining window is preserved by shifting `launchTick` forward across the suspended
+   * stretch — the boundary never counted against the contract. A respawn refusal keeps the
+   * record suspended; a fabricated absence would be a lie the settlement would repeat.
+   */
+  _resumeSuspended(ctx, record) {
+    if (!record || !record.suspended) return false;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    if (!facilities || typeof facilities.respawnSuspendedCapsule !== 'function') return false;
+    const capsule = facilities.respawnSuspendedCapsule({
+      scheduleId: record.scheduleId,
+      variantId: record.variantId,
+      snapshot: record.suspendedLoad,
+    });
+    if (!capsule) return false;
+    // SF-147: the shed pods come back with the shell — the same physical manifest the run left.
+    if (Array.isArray(record.suspendedUnits) && record.suspendedUnits.length
+        && typeof facilities.respawnSuspendedUnits === 'function') {
+      facilities.respawnSuspendedUnits({
+        scheduleId: record.scheduleId,
+        snapshots: record.suspendedUnits,
+      });
+    }
+    record.suspendedUnits = null;
+    const tick = intTick(ctx?.state?.tick);
+    record.capsuleEntityId = capsule.id;
+    record.capsuleSeen = true;
+    const awayTicks = Math.max(0, tick - intTick(record.suspendedAtTick));
+    if (awayTicks > 0 && record.launchTick != null) record.launchTick += awayTicks;
+    record.suspended = false;
+    record.suspendedAtTick = null;
+    record.suspendedLoad = null;
+    record.sectorExitedAtTick = null;
+    record.absenceGraceTicks = 0;
+    return true;
+  },
+
+  /**
+   * `entity:destroyed` on the capsule. Classified against the fact above rather than assumed: a
+   * capsule that left with the sector is ABSENT, a capsule that stopped existing while the player
+   * was still there was destroyed. Both are non-paying, but they are different things and rank
+   * differently in the arbiter's precedence chain, so telling the player the wrong one is a lie the
+   * settlement would repeat in the receipt.
+   */
+  onEntityDestroyed(ctx, record, entityId) {
+    if (!record || record.settled) return false;
+    if (record.capsuleEntityId == null || entityId !== record.capsuleEntityId) return false;
+    // PQ-195.07: a suspended run EXPECTS this removal — the facility dematerialized the body for
+    // the boundary, not the world. Consume it silently; nothing is decided.
+    if (record.suspended) return true;
+    record.possessed = false;
+    const absent = record.sectorExitedAtTick != null;
+    // PQ-195.06: where the assembly died, journalled on the candidate's proof. `liveEntity`
+    // refuses the just-killed body, so it is read directly — and when the sweep already removed
+    // it, `capsuleLastPos` (tracked every live tick in `drive`) still says where it was.
+    const dead = ctx?.state?.entities?.get?.(entityId) || null;
+    const pos = dead && dead.pos ? { x: dead.pos.x, z: dead.pos.z }
+      : record.capsuleLastPos ? { x: record.capsuleLastPos.x, z: record.capsuleLastPos.z }
+      : null;
+    submitHeistCandidate(record, {
+      kind: absent ? 'unresolved_absent' : 'payload_destroyed',
+      causalTick: intTick(ctx?.state?.tick),
+      sourceStableId: 'entity:destroyed',
+      proof: {
+        entityId: String(entityId),
+        ...(pos ? { pos } : {}),
+        ...(absent ? { reason: 'sector_exit' } : {}),
+      },
+    });
+    return true;
+  },
+
+  /** The player gave up. Arbitrated like every other outcome instead of settling behind its back. */
+  onAbandoned(ctx, record) {
+    if (!record || record.settled) return false;
+    submitHeistCandidate(record, {
+      kind: 'abandoned',
+      causalTick: intTick(ctx?.state?.tick),
+      sourceStableId: 'ui:abandonMission',
+      proof: {},
+    });
+    return true;
+  },
+
+  // ── Per-tick drive ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * One tick of the run. Submits any clock-derived candidate, THEN steps the arbiter exactly once.
+   * Returns the terminal receipt when one is decided this tick, else null.
+   */
+  drive(ctx, record, { decisionTick = null } = {}) {
+    if (!record || record.settled) return null;
+    const tick = intTick(ctx?.state?.tick);
+
+    // PQ-195.07: a suspended run freezes every clock — it is parked at the boundary, not
+    // expiring. Back in the heist sector the first drive re-embodies the body through the
+    // facility owner; routing resume through `drive` (not the enter event) also covers a
+    // reload INTO the sector, where no `sector:enter` ever fires.
+    if (record.suspended) {
+      const sectorId = ctx?.state?.world?.currentSectorId;
+      if (sectorId !== PQ019_HEIST_SECTOR_ID) return null;
+      if (!this._resumeSuspended(ctx, record)) return null;
+      // Resumed this tick — fall through and drive normally from here.
+    }
+
+    if (!record.scheduleRequested) this.requestSchedule(ctx, record);
+    // Before any absence rule can read a missing capsule id as a lost load. A durable load is
+    // re-adopted for an undecided run AND for a decided-but-unconsumed one: unlike the transient
+    // capsule, its body is still there to hand over.
+    if (record.reconciled === 'readopt_load'
+      || (record.reconciled === 'resumed_receipt'
+        && heistLaunchVariant(record.variantId).durableLoad
+        && !effectApplied(record.arbiter, record.arbiter?.receipt?.effectKeys?.receiverCommit))) {
+      this._readoptRestoredLoad(ctx, record, tick);
+    }
+
+    if (record.launchTick == null) {
+      // BOUNDED EVEN IF NOTHING EVER FLIES. `heistFacilities.update` returns early outside Tethys
+      // and deliberately preserves an unlaunched schedule for re-entry, so a player who accepts and
+      // leaves the sector has no capsule, no mission deadline (the authored offer declares none) and
+      // nothing physical to arbitrate — a permanently active contract. The packet requires every
+      // route to reach a bounded `expired`/`unresolved_absent`; abandonment being AVAILABLE is not
+      // the same as the run being bounded, because it needs the player to act.
+      const deadline = record.acceptTick + record.unlaunchedWindowTicks;
+      if (tick >= deadline) {
+        submitHeistCandidate(record, {
+          kind: 'unresolved_absent',
+          causalTick: deadline,
+          sourceStableId: 'heistMissionRuntime:unlaunched',
+          proof: { unlaunchedWindowTicks: record.unlaunchedWindowTicks },
+        });
+      }
+    } else {
+      const capsule = liveEntity(ctx, record.capsuleEntityId);
+      if (capsule) {
+        record.absenceGraceTicks = 0;
+        // PQ-195.06: last-known live body state, so a destroy callback that finds the body
+        // already swept can still place the wreck recovery where — and how — the assembly died.
+        if (capsule.pos) record.capsuleLastPos = { x: capsule.pos.x, z: capsule.pos.z };
+        if (capsule.vel) record.capsuleLastVel = { x: capsule.vel.x, z: capsule.vel.z };
+        if (Number.isFinite(capsule.mass)) record.capsuleLastMass = capsule.mass;
+        this._updatePursuit(ctx, record, capsule, tick);
+      } else if (!record.arbiter.receipt) {
+        // ABSENCE, not destruction. A capsule can leave the field without dying — the player left
+        // the sector, or the facility owner dropped its transient. One tick of grace absorbs the
+        // ordinary case where `entity:destroyed` fires in the same tick and already spoke for it.
+        record.absenceGraceTicks++;
+        if (record.absenceGraceTicks > 1) {
+          submitHeistCandidate(record, {
+            kind: 'unresolved_absent',
+            causalTick: tick,
+            sourceStableId: 'heistMissionRuntime:absence',
+            proof: { lastKnownEntityId: String(record.capsuleEntityId) },
+          });
+        }
+      }
+      // Bounded run window. An `expired` CANDIDATE, never a mission deadline: the mission owner's
+      // own `_expireMission` would settle with zero terminal receipts.
+      const expiryTick = record.launchTick + record.runWindowTicks;
+      if (tick >= expiryTick) {
+        submitHeistCandidate(record, {
+          kind: 'expired',
+          causalTick: expiryTick,
+          sourceStableId: 'heistMissionRuntime:window',
+          proof: { runWindowTicks: record.runWindowTicks },
+        });
+      }
+    }
+
+    // ONE step, after every submission for this tick. See the ordering note in the module header.
+    //
+    // `decisionTick` is an explicit override used by exactly one caller: an abandonment issued from
+    // the docked Mission Log. `missions.update` returns early while docked, so without it the
+    // abandonment candidate would sit unarbitrated until the player undocked — a mission the player
+    // asked to drop staying live for an arbitrary wall-clock stretch. Stepping at `tick + 1` makes
+    // the just-submitted report eligible under the arbiter's own causalTick+1 rule rather than
+    // bypassing it, and any EARLIER physical fact becomes eligible at the same moment and still
+    // outranks it. Nothing here weakens selection; it only closes the window on time.
+    const stepped = stepArbiter(record.arbiter, decisionTick == null ? tick : intTick(decisionTick));
+    return stepped.receipt || null;
+  },
+
+  /**
+   * One attempt, on the first drive after a reload, to re-adopt the durable load the save kept.
+   * The facility owner matches the restored body by stable schedule and payload identity and rebuilds
+   * its launched schedule around it. Anything else is the ordinary bounded absence.
+   */
+  _readoptRestoredLoad(ctx, record, tick) {
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    const reply = facilities && typeof facilities.adoptRestoredLoad === 'function'
+      ? facilities.adoptRestoredLoad({ scheduleId: record.scheduleId, variantId: record.variantId })
+      : { adopted: false, reason: 'no_facility_owner' };
+    if (reply && reply.adopted) {
+      record.capsuleEntityId = reply.entityId;
+      record.capsuleSeen = true;
+      record.reconciled = 'readopted';
+      return true;
+    }
+    record.reconciled = 'absent_after_reload';
+    submitHeistCandidate(record, {
+      kind: 'unresolved_absent',
+      causalTick: Math.max(tick, intTick(record.arbiter?.decidedThroughTick) + 1),
+      sourceStableId: 'heistMissionRuntime:readopt',
+      proof: { reason: String(reply?.reason || 'readopt_failed') },
+    });
+    return false;
+  },
+
+  /**
+   * Leash and escape bookkeeping. Reads positions; writes nothing to any hull. The tactical AI owns
+   * the intercept, so "escape" here is an observation about distance, not a state it imposes.
+   */
+  _updatePursuit(ctx, record, capsule, tick) {
+    // Gated on whether a pursuit ever STARTED, not on whether a lease is still held. The lease-count
+    // guard this replaces made `escaped` unreachable in play: the leash branch below is what empties
+    // `leases`, so from the very next tick the guard returned before `escapeHoldTicks` could
+    // accumulate, and the counter froze at 1 forever. Breaking contact is the whole point of the
+    // escape route, so the one state it produced was the one state that could not latch.
+    if (!record.pursuitStarted) return;
+    const jobs = ownerOf(ctx, 'npcJobsRuntime');
+    let nearest = Infinity;
+    const kept = [];
+    for (const row of record.leases) {
+      const hull = liveEntity(ctx, row.entityId);
+      if (!hull) {
+        if (jobs?.releaseControl) jobs.releaseControl(row.jobId, row.claimId);
+        continue;
+      }
+      const d = Math.hypot(hull.pos.x - capsule.pos.x, hull.pos.z - capsule.pos.z);
+      if (d > PQ019C_HEIST_TUNING.responderLeashWu) {
+        // Past the leash the patrol stops being a pursuer and goes back to its own work.
+        if (jobs?.releaseControl) jobs.releaseControl(row.jobId, row.claimId);
+        continue;
+      }
+      nearest = Math.min(nearest, d);
+      kept.push(row);
+    }
+    record.leases = kept;
+    // No pursuer left in the leash IS the escaped condition, not a reason to stop counting.
+    if (!kept.length) nearest = Infinity;
+    if (nearest > PQ019C_HEIST_TUNING.escapeRadiusWu) record.escapeHoldTicks++;
+    else record.escapeHoldTicks = 0;
+    if (!record.escaped && record.escapeHoldTicks >= PQ019C_HEIST_TUNING.escapeHoldTicks) {
+      record.escaped = true;
+      // Progress only. Escaping locally does NOT clear heat — that stays the heat owner's, and it
+      // decays on its own schedule. The run is still a crime; it is merely unobserved right now.
+      applyTransition(record.arbiter, 'pursued');
+      applyTransition(record.arbiter, 'escaped');
+      sayHeistCue(ctx, record, 'escaped');
+    }
+  },
+
+  // ── Settlement ───────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Apply the terminal receipt's owner effects, each guarded by its own idempotency key in the
+   * arbiter's durable journal, then hand the mission to the ordinary complete/fail path.
+   *
+   * `settle` is supplied by `missions` and is the ONLY thing that pays, penalizes, or removes the
+   * mission. Economy, factions, receipts, navigation, and cleanup all stay where they already live.
+   */
+  settleTerminal(ctx, record, receipt, settle) {
+    if (!record || !receipt || record.settled) return null;
+    const arbiter = record.arbiter;
+    const keys = receipt.effectKeys;
+    const tick = intTick(ctx?.state?.tick);
+    const outcome = receipt.outcome;
+    const settlementTable = heistMissionPolicy(record.variantId).settlement;
+    const decidedPlan = settlementTable[outcome] || settlementTable.unresolved_absent;
+    // A paying outcome is a DELIVERY: something physical must actually change hands.
+    const delivery = decidedPlan.settlement === 'complete';
+
+    // 1. The physical receiver. PREPARE reserves and proves; COMMIT consumes. A prepare that cannot
+    //    be earned (no custody contact for this capsule and schedule) fails closed and the capsule
+    //    is left exactly where it is.
+    //
+    //    BREAKAWAY BW-01: a refusal is no longer ignored. The old path went on to release the
+    //    launcher and `settle('complete')` regardless, so a capsule destroyed the tick after it
+    //    touched the fence was paid for (test/pq019c-heist-receiver-refusal.test.mjs). The reply is
+    //    now run through the fail-closed gate: only a matching fresh commit, or the owner's own
+    //    matching committed record on an idempotent replay, lets a delivery settle.
+    let receiverRefusal = null;
+    if (!effectApplied(arbiter, keys.receiverCommit)) {
+      const facilityId = outcome === 'fenced_success' ? 'fence_receiver'
+        : (outcome === 'lawful_confiscation' || outcome === 'lawful_arrival_observed'
+          ? 'lawful_catcher' : null);
+      const facilities = facilityId ? ownerOf(ctx, 'heistFacilities') : null;
+      if (facilities && typeof facilities.prepareReceiverHandoff === 'function') {
+        const expected = {
+          receiptId: receipt.receiptId,
+          facilityId,
+          payloadStableId: heistPayloadStableIdFor(record),
+        };
+        const prepared = facilities.prepareReceiverHandoff(expected);
+        const reply = prepared && prepared.prepared
+          ? facilities.commitReceiverHandoff(receipt.receiptId)
+          : prepared;
+        const ownerCommittedRecord = prepared?.reason === 'already_committed' ? prepared.handoff : null;
+        const gate = receiverCommitGate(expected, reply, ownerCommittedRecord);
+        if (gate.maySettle) {
+          // The load's condition at the instant custody passed, for the variant's bounded quality
+          // quote. Measured by the physical owner before consumption; never inferred afterwards.
+          if (Number.isFinite(reply?.handoff?.condition01)) {
+            record.deliveredCondition = reply.handoff.condition01;
+          }
+          // SF-147: the sealed units physically inside the delivered shell — the custody the
+          // mission owner's payout scale reads. Missing means "not a multi-unit shell".
+          if (Number.isFinite(reply?.handoff?.shipmentUnits)) {
+            record.deliveredUnits = reply.handoff.shipmentUnits;
+          }
+          recordEffect(arbiter, keys.receiverCommit, {
+            effectId: reply?.receipt?.effectId || `pq019b:receiverCommit:${receipt.receiptId}`, tick,
+          });
+          recordEffect(arbiter, keys.capsuleProjection, { tick, note: 'consumed' });
+        } else {
+          if (prepared && prepared.prepared) {
+            facilities.abortReceiverHandoff(receipt.receiptId, 'commit_failed');
+          }
+          receiverRefusal = String(reply?.reason || 'receiver_refused');
+        }
+      } else if (delivery) {
+        receiverRefusal = 'no_receiver_owner';
+      }
+    }
+
+    // THE DOCUMENTED RELOAD RULE is the one exception. The Capsule Run's capsule and this owner's
+    // facility memory are not in the save capture plan, so a delivery DECIDED before a save cannot
+    // find its capsule after the load; `restore` resumes that receipt as decided (save point 6).
+    // That cut point is only reachable across a reload — in a live session the decision and the
+    // handoff happen inside one call. A DURABLE load never takes the exception: its body is saved
+    // and re-adopted, so it can still earn a physical commit, and a refusal means no delivery.
+    const refusedDelivery = delivery && receiverRefusal !== null
+      && (record.reconciled !== 'resumed_receipt' || heistLaunchVariant(record.variantId).durableLoad);
+
+    // 2. Law and heat already happened during the run, through their own owners. Journalling them
+    //    against the terminal receipt is what makes them COUNTABLE — the effect keys only exist
+    //    once a terminal is prepared, so the record is written here rather than at the time.
+    if (record.lawIncidentReceiptId && !effectApplied(arbiter, keys.lawIncident)) {
+      recordEffect(arbiter, keys.lawIncident, { effectId: record.lawIncidentReceiptId, tick });
+      recordEffect(arbiter, keys.heatApplication, { effectId: record.lawIncidentReceiptId, tick });
+    }
+
+    // 3. Every borrowed hull goes back before the mission leaves the active list.
+    if (!effectApplied(arbiter, keys.jobControlRelease)) {
+      this.releaseAllLeases(ctx, record);
+      recordEffect(arbiter, keys.jobControlRelease, { tick });
+    }
+
+    // 3b. Hand the launcher back. The facility owner holds exactly one schedule and refuses every
+    //     other key, so without this the FIRST run would own the launcher for the rest of the
+    //     session and every later contract — including a reduced-stake recovery, which is a new
+    //     mission by construction — would be denied `active_schedule` before it could launch.
+    //     Idempotent by the owner's own `no_schedule` answer; no journal key needed.
+    const facilityOwner = ownerOf(ctx, 'heistFacilities');
+    if (facilityOwner && typeof facilityOwner.releaseSchedule === 'function') {
+      facilityOwner.releaseSchedule(record.scheduleId);
+    }
+
+    // 3c. PQ-195.05: the pressure element's spawn-budget slots go back with the run. Idempotent
+    //     (`release` is a no-op on an unknown requester); no journal key needed — same precedent
+    //     as the schedule release above. Surviving raiders become ordinary hostiles.
+    this._releasePressure(ctx, record);
+
+    // 3d. SF-140: the launcher remembers what happened to its cargo. A fenced theft arms escorts
+    //     over the next routine transfers — a durable consequence the player watches next pass.
+    if (facilityOwner && typeof facilityOwner.noteScheduleOutcome === 'function') {
+      facilityOwner.noteScheduleOutcome({
+        scheduleId: record.scheduleId,
+        outcome,
+        unitsLost: Number.isFinite(record.unitsFenced) ? record.unitsFenced : 0,
+      });
+    }
+
+    // 3e. PQ-195.06: a genuinely destroyed assembly leaves ONE bounded reduced-value recovery —
+    //     its wreck through the ordinary aftermath owner, where `drive` last saw the body alive.
+    //     `record.recoveryWreckMarkerId` is the durable idempotency key (same precedent as
+    //     `pressureSpawned`): a duplicate destroy callback or a reloaded record can never offer
+    //     it twice, and the marker is never the original payload resurrected — it is a wreck
+    //     entity with a reduced commodity pool, salvageable through the stock scanner/salvage
+    //     path. Absent/expired/abandoned never reach here with this outcome.
+    if (outcome === 'payload_destroyed'
+        && heistLaunchVariant(record.variantId).id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID
+        && !record.recoveryWreckMarkerId) {
+      const marker = this._offerWreckRecovery(ctx, record, receipt);
+      if (marker && marker.markerId) record.recoveryWreckMarkerId = marker.markerId;
+    }
+
+    // 4. Mission settlement — exactly once, recorded BEFORE the call so a synchronous listener that
+    //    re-enters this path finds the key already taken and cannot settle a second time.
+    //
+    //    A refused delivery settles as a bounded FAILURE carrying the receiver's reason: no reward
+    //    key, no success cue, and no soft-lock waiting on a handoff that can no longer be earned.
+    //    The terminal receipt itself stays immutable — the arbiter decided the earliest physical
+    //    fact correctly; it is the physical world that could not honour it.
+    const plan = refusedDelivery
+      ? { settlement: 'fail', reason: 'receiver_refused' }
+      : decidedPlan;
+    let settlement = null;
+    if (!effectApplied(arbiter, keys.missionSettlement)) {
+      recordEffect(arbiter, keys.missionSettlement, { effectId: receipt.receiptId, tick });
+      if (plan.settlement === 'complete') {
+        // The payout and the rep both come out of `_completeMission`. This module never calls
+        // economy or factions itself.
+        recordEffect(arbiter, keys.economyReward, { effectId: receipt.receiptId, tick });
+        recordEffect(arbiter, keys.factionOutcome, { effectId: receipt.receiptId, tick });
+      } else {
+        recordEffect(arbiter, keys.factionOutcome, { effectId: receipt.receiptId, tick });
+      }
+      record.settled = true;
+      record.settledOutcome = outcome;
+      if (refusedDelivery) record.receiverRefusal = receiverRefusal;
+      commitTerminal(arbiter, receipt.receiptId);
+      if (refusedDelivery) sayHeistCue(ctx, record, 'receiver_refused');
+      else this.sayOutcomeCue(ctx, record, outcome);
+      settlement = typeof settle === 'function' ? settle(plan.settlement, plan.reason, outcome) : null;
+    }
+    return settlement;
+  },
+
+  sayOutcomeCue(ctx, record, outcome) {
+    const moment = {
+      fenced_success: 'fenced',
+      lawful_confiscation: 'confiscated',
+      lawful_arrival_observed: 'lawful_arrival',
+      payload_destroyed: 'destroyed',
+      expired: 'expired',
+      unresolved_absent: 'absent',
+      abandoned: 'abandoned',
+    }[outcome];
+    if (moment) sayHeistCue(ctx, record, moment);
+  },
+
+  /**
+   * May a reduced-stake retry follow this outcome? Authored policy, default OFF.
+   *
+   * Read from the RECORD rather than from the frozen tuning, so the policy that applies is the one
+   * the accepted contract carried. "At most one" is enforced here (attempt 0 only) and again by
+   * `_syncHeistOffer`/`_boardHeistRecovery` refusing to post onto a board that already has a row.
+   */
+  allowsRecovery(record, outcome) {
+    const allowed = record ? !!record.recoveryAllowed : PQ019C_HEIST_TUNING.recoveryEnabled;
+    return allowed && ((record?.attempt | 0) === 0) && RECOVERABLE.has(outcome);
+  },
+
+  // ── Save boundary ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Plain snapshot. Nests inside the mission owner's already-serialized active entry.
+   *
+   * TRANSIENT RUN FIELDS ARE STRIPPED, on the same precedent `missions.serialize` already uses for
+   * `targetEntityIds` and `_escorteeId`. Two of them matter beyond tidiness:
+   *
+   *   * `leases` — PQ-019B §2c: a job-control lease is DELIBERATELY not persisted. After a load
+   *     every job is virtualized and every `entityId` nulled, so a restored lease would name a hull
+   *     that does not exist and a controller that no longer does either — nobody left alive to
+   *     release it, i.e. a permanently frozen patrol. Writing the rows into the save even though
+   *     `restore` clears them would leave a record that invites exactly that mistake later.
+   *   * `capsuleEntityId` — a live entity id. Ids are recycled (`state.freeIds`), so a stale one
+   *     can name a DIFFERENT entity after a load.
+   */
+  serialize(record) {
+    if (!record) return null;
+    const {
+      leases, capsuleEntityId, possessed, escapeHoldTicks, absenceGraceTicks, pursuitStarted,
+      pressureEntityIds,
+      ...durable
+    } = record;
+    void leases; void capsuleEntityId; void possessed; void escapeHoldTicks; void absenceGraceTicks;
+    void pursuitStarted; void pressureEntityIds;
+    return { ...durable, arbiter: serializeArbiter(record.arbiter) };
+  },
+
+  /**
+   * Rebuild after a load, and reconcile against a world that no longer remembers the capsule.
+   *
+   * `state.heistFacilities` and `state.lawSecurity` are NOT in the save owner's capture plan
+   * (PQ-019B §4), and the capsule is a transient entity. After a reload there is no schedule, no
+   * capsule, no custody candidate, and no handoff. That is a design consequence, not a bug, and it
+   * is reconciled by an EXPLICIT rule rather than by pretending:
+   *
+   *   * a decided receipt        -> RESUME it. Selection never re-runs; only unapplied effect keys
+   *                                 are re-driven, because the journal says which already landed.
+   *   * phase `scheduled`, never launched -> RE-REQUEST the schedule. Nothing physical existed yet,
+   *                                 so this is a restart of a pending window, not a fabrication.
+   *   * launched or later, no capsule -> `unresolved_absent`. Never a payout, never a fake capsule.
+   *   * a record the arbiter refuses (half-decided: phase claims a decision, receipt unreadable)
+   *                              -> the same `unresolved_absent` case, from a fresh arbiter.
+   *
+   * Adding `heistFacilities`/`lawSecurity` to `_saveCapturePlan()` would make the capsule durable
+   * in its own right. That is a new top-level save key and an integrator decision — the packet's
+   * STOP RULE — and this rule is why it is not needed.
+   */
+  restore(record, { tick = 0 } = {}) {
+    if (!record || typeof record !== 'object') return null;
+    const restored = { ...record };
+    restored.arbiter = restoreArbiter(record.arbiter);
+
+    /**
+     * The tick a restore-time report must be stamped with.
+     *
+     * NOT simply the live clock. The arbiter restores its own `decidedThroughTick` from the save,
+     * and `submitCandidate` refuses anything at or below it as `stale_tick`. Whenever the caller's
+     * clock has not yet caught up to that value, a restore-time `unresolved_absent` is silently
+     * REFUSED — the run then has no terminal candidate at all and hangs active forever, which is
+     * exactly the invisible mission soft-lock the arbiter's rejection ledger exists to make
+     * diagnosable rather than acceptable.
+     *
+     * That gap is real rather than theoretical: `saveSystem` restores `state.tick` from the entity
+     * payload (saveSystem.js:2116), so whether the clock is caught up when `missions.deserialize`
+     * runs is an ORDERING property of the save owner, not something this module can assume. Taking
+     * the arbiter's own clock as a floor makes the stamp correct under either order, and it is
+     * truthful either way: the absence is discovered now, which is by definition after everything
+     * the arbiter had already decided through.
+     */
+    const restoreStamp = (arbiter) => Math.max(
+      intTick(tick), intTick(arbiter?.decidedThroughTick) + 1,
+    );
+    restored.leases = [];
+    restored.escapeHoldTicks = 0;
+    restored.absenceGraceTicks = 0;
+    restored.pursuitStarted = false;
+    restored.capsuleEntityId = null;
+    restored.possessed = false;
+    // PQ-195.05: the raider hulls were transient and are gone after a reload; the durable
+    // `pressureSpawned` flag (kept above) is what stops a second element spawning.
+    restored.pressureEntityIds = [];
+    restored.cues = { ...(record.cues || {}) };
+    // SF-147: the second-act ledger defaults cleanly onto records that predate it.
+    restored.unitsTotal = Number.isFinite(record.unitsTotal) ? record.unitsTotal
+      : (Number.isFinite(heistLaunchVariant(record.variantId).payload?.shipmentUnits)
+        ? heistLaunchVariant(record.variantId).payload.shipmentUnits : 0);
+    restored.unitsFenced = Number.isFinite(record.unitsFenced) ? record.unitsFenced : 0;
+    restored.unitsReturned = Number.isFinite(record.unitsReturned) ? record.unitsReturned : 0;
+    restored.deliveredUnits = Number.isFinite(record.deliveredUnits) ? record.deliveredUnits : null;
+    restored.monitorScans = Array.isArray(record.monitorScans) ? [...record.monitorScans] : [];
+    restored.pursuitEntityIds = Array.isArray(record.pursuitEntityIds) ? [...record.pursuitEntityIds] : [];
+    restored.leaseEpoch = Number.isFinite(record.leaseEpoch) ? record.leaseEpoch : 0;
+    if (!Array.isArray(restored.suspendedUnits)) restored.suspendedUnits = null;
+
+    if (!restored.arbiter) {
+      // Fail-closed refusal from `restoreArbiter`. Rebuild an empty arbiter and let the same
+      // absence rule below decide — there is no safe half-decided record.
+      restored.arbiter = createArbiter({
+        missionId: String(record.missionId),
+        payloadStableId: heistPayloadStableIdFor(record),
+        createdAtTick: intTick(tick),
+      });
+      restored.reconciled = 'arbiter_refused';
+      restored.settled = false;
+      submitHeistCandidate(restored, {
+        kind: 'unresolved_absent',
+        causalTick: restoreStamp(restored.arbiter),
+        sourceStableId: 'heistMissionRuntime:restore',
+        proof: { reason: 'arbiter_refused' },
+      });
+      return restored;
+    }
+
+    if (restored.arbiter.receipt) {
+      restored.reconciled = 'resumed_receipt';
+      restored.settled = false; // effects re-drive through the journal; keys already taken no-op.
+      return restored;
+    }
+
+    // SF-147: a run parked at the boundary IS its saved snapshot — `drive` re-embodies it on the
+    // next in-sector tick. Never re-adopted by id, never absent: the suspension record is the
+    // whole truth the restore needs.
+    if (restored.suspended === true && restored.suspendedLoad) {
+      restored.reconciled = 'resumed_suspension';
+      restored.settled = false;
+      return restored;
+    }
+
+    if (restored.launchTick == null) {
+      // Never launched. A pending window may legitimately be re-requested.
+      restored.reconciled = 'reschedule';
+      restored.scheduleRequested = false;
+      restored.settled = false;
+      return restored;
+    }
+
+    // BREAKAWAY: a DURABLE load's body is saved by the save owner itself, so a launched run is not
+    // absent after a reload — its mission re-adopts that exact body on the next drive. If the body
+    // is not there, or the launcher refuses, that drive falls through to the same bounded
+    // `unresolved_absent` rule below. Never a respawn and never a payout.
+    if (heistLaunchVariant(restored.variantId).durableLoad) {
+      restored.reconciled = 'readopt_load';
+      restored.settled = false;
+      return restored;
+    }
+
+    restored.reconciled = 'absent_after_reload';
+    restored.settled = false;
+    submitHeistCandidate(restored, {
+      kind: 'unresolved_absent',
+      causalTick: restoreStamp(restored.arbiter),
+      sourceStableId: 'heistMissionRuntime:restore',
+      proof: { reason: 'capsule_not_durable' },
+    });
+    return restored;
+  },
+
+  /** The packet's owner-invariant counters for one run, read from the arbiter's own journal. */
+  invariants(record) {
+    const base = arbiterInvariants(record?.arbiter);
+    return {
+      ...base,
+      activeJobControlClaimsAfterTerminal: record?.settled ? (record.leases?.length || 0) : 0,
+      playerCargoMutationCountForCapsule: 0,
+      sectorOwnershipMutationCount: 0,
+    };
+  },
+};
+
+// ── SF-143: the counterweight watch runtime ─────────────────────────────────────────────────────
+//
+// A deliberate sibling, NOT another arbiter run: the watch has no competing terminal candidates —
+// settlement is a count. The deterministic inputs are the facility's scene record (which crates
+// the pad physically logged, which the world physically lost, whether the tug still exists) and
+// the armed clock. What this runtime guarantees instead of ordering is HONEST ACCOUNTING: no code
+// path here counts a crate the receiver pad did not log, and a lost crate or a dead tug shrinks
+// the payable manifest rather than the record pretending it still exists.
+//
+// Sector suspension rides the same precedent as `_suspendRun`: the facility snapshots the scene's
+// loose bodies into its own record at the boundary, and this record parks the WINDOW clock —
+// `armedTick` is shifted forward across the suspended stretch so the boundary never counts
+// against the watch.
+
+export const COUNTERWEIGHT_RECORD_SCHEMA = 'spaceface.counterweightWatch.v1';
+export const COUNTERWEIGHT_VOICE_ID = 'pq019c:counterweight-watch';
+
+export function counterweightSceneIdFor(missionId) {
+  return `counterweight:${String(missionId || 'mission')}`;
+}
+
+export function createCounterweightRecord({ missionId, tick = 0 } = {}) {
+  const tuning = COUNTERWEIGHT_WATCH_TUNING;
+  return {
+    schema: COUNTERWEIGHT_RECORD_SCHEMA,
+    missionId: String(missionId),
+    sceneId: counterweightSceneIdFor(missionId),
+    acceptTick: intTick(tick),
+    armedTick: null,
+    windowTicks: tuning.windowTicks,
+    legsRequired: tuning.legsRequired,
+    rewardPerLegCr: tuning.rewardPerLegCr,
+    completionBonusCr: tuning.completionBonusCr,
+    cratesTotal: COUNTERWEIGHT_SCENE.crates.length,
+    sceneRequested: false,
+    sceneDenied: null,
+    legsDone: 0,
+    cratesLost: 0,
+    crewLost: false,
+    // The DURABLE manifest ledger. `legsDone` counts within a session; these stableIds are what a
+    // restore re-marks on the scene so a crate already paid can never be paid for twice.
+    deliveredStableIds: [],
+    lostStableIds: [],
+    // Parked at the sector boundary — the window waits, the scene's own snapshot is the manifest.
+    suspended: false,
+    suspendedAtTick: null,
+    cues: {},
+    settled: false,
+    settledOutcome: null,
+    payoutCr: 0,
+  };
+}
+
+/**
+ * One spoken moment for the watch — same one-voice rule as the heist lines: a stable id on the
+ * objective channel, at most once per moment per record, and a bus receipt a headless harness can
+ * read without a presenter.
+ */
+export function sayCounterweightCue(ctx, record, moment, textOverride = null) {
+  if (!record || record.cues[moment]) return null;
+  const text = textOverride || COUNTERWEIGHT_CUE_TEXT[moment] || null;
+  if (!text) return null;
+  record.cues[moment] = true;
+  const receipt = Object.freeze({
+    cueId: `pq019c:cue:${record.missionId}:cw:${moment}`,
+    missionId: record.missionId,
+    moment,
+    text,
+    voiceId: COUNTERWEIGHT_VOICE_ID,
+    channel: HEIST_VOICE_CHANNEL,
+    source: 'heistMissionRuntime',
+  });
+  if (ctx?.state?.mode === 'flight') {
+    const say = ctx.helpers?.voice?.say;
+    if (typeof say === 'function') {
+      say({ channel: HEIST_VOICE_CHANNEL, id: COUNTERWEIGHT_VOICE_ID, text, kind: 'info', ttl: 5 });
+    }
+  }
+  ctx?.bus?.emit?.('heist:missionCue', receipt);
+  return receipt;
+}
+
+export const counterweightRuntime = {
+
+  /** `heist:counterweight` — the scene's mechanical truth, spoken per physical event. */
+  onCounterweightEvent(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.sceneId !== record.sceneId) return false;
+    switch (payload.event) {
+      case 'gate_open':
+        sayCounterweightCue(ctx, record, 'gate_open');
+        return true;
+      case 'gate_closed':
+        sayCounterweightCue(ctx, record, 'gate_lost');
+        return true;
+      case 'crate_delivered':
+        // Each crate gets its own line — the manifest is two bodies, and each arrival is the pay.
+        if (payload.stableId && !record.deliveredStableIds.includes(payload.stableId)) {
+          record.deliveredStableIds.push(payload.stableId);
+        }
+        sayCounterweightCue(ctx, record, `crate_delivered_${payload.stableId || '?'}`, COUNTERWEIGHT_CUE_TEXT.crate_delivered);
+        return true;
+      case 'crate_lost':
+        if (payload.stableId && !record.lostStableIds.includes(payload.stableId)) {
+          record.lostStableIds.push(payload.stableId);
+        }
+        sayCounterweightCue(ctx, record, `crate_lost_${payload.stableId || '?'}`, COUNTERWEIGHT_CUE_TEXT.crate_lost);
+        return true;
+      case 'crew_lost':
+        sayCounterweightCue(ctx, record, 'crew_lost');
+        return true;
+      case 'pressure_inbound':
+        sayCounterweightCue(ctx, record, 'pressure');
+        return true;
+      default:
+        return false;
+    }
+  },
+
+  /** Sector exit parks the watch window — the yard's own snapshot carries the manifest. */
+  onSectorExit(ctx, record, sectorId) {
+    if (!record || record.settled) return false;
+    if (sectorId !== PQ019_HEIST_SECTOR_ID) return false;
+    if (record.suspended) return true;
+    record.suspended = true;
+    record.suspendedAtTick = intTick(ctx?.state?.tick);
+    return true;
+  },
+
+  /**
+   * One tick. Requests the scene once, re-arms after a boundary, syncs the honest count from the
+   * facility's scene record, and returns a settle decision — never settles behind its own back.
+   */
+  drive(ctx, record) {
+    if (!record || record.settled) return null;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    const tick = intTick(ctx?.state?.tick);
+
+    if (record.suspended) {
+      const sectorId = ctx?.state?.world?.currentSectorId;
+      if (sectorId !== PQ019_HEIST_SECTOR_ID) return null;
+      // Back inside — re-arm the SAME scene. The facility's suspended-body snapshot restores the
+      // manifest; `requestCounterweightScene` on the same sceneId is the idempotent adopt path.
+      if (!facilities || typeof facilities.requestCounterweightScene !== 'function') return null;
+      const reply = facilities.requestCounterweightScene({
+        sceneId: record.sceneId,
+        resume: {
+          legsDone: record.legsDone,
+          deliveredStableIds: record.deliveredStableIds,
+          lostStableIds: record.lostStableIds,
+        },
+      });
+      if (!reply || reply.accepted !== true) return null;
+      const awayTicks = Math.max(0, tick - intTick(record.suspendedAtTick));
+      if (awayTicks > 0 && record.armedTick != null) record.armedTick += awayTicks;
+      record.suspended = false;
+      record.suspendedAtTick = null;
+    }
+
+    if (!record.sceneRequested) {
+      record.sceneRequested = true;
+      const reply = facilities && typeof facilities.requestCounterweightScene === 'function'
+        ? facilities.requestCounterweightScene({
+          sceneId: record.sceneId,
+          resume: {
+            legsDone: record.legsDone,
+            deliveredStableIds: record.deliveredStableIds,
+            lostStableIds: record.lostStableIds,
+          },
+        })
+        : null;
+      if (reply && reply.accepted === true) {
+        // A restored watch keeps its serialized armedTick — the window position is durable truth,
+        // not a fresh grant on every load.
+        if (record.armedTick == null) record.armedTick = tick;
+        sayCounterweightCue(ctx, record, 'accepted');
+        sayCounterweightCue(ctx, record, 'armed');
+      } else {
+        record.sceneDenied = String(reply?.reason || 'no_scene_owner');
+      }
+    }
+    if (record.armedTick == null) {
+      // The yard was busy or absent — bounded patience, then the watch fails honestly rather
+      // than camping an unavailable scene forever.
+      if (tick - record.acceptTick > 600) {
+        return { settle: 'none', reason: 'scene_unavailable' };
+      }
+      return null;
+    }
+
+    const status = facilities && typeof facilities.counterweightSceneStatus === 'function'
+      ? facilities.counterweightSceneStatus()
+      : null;
+    if (status && status.sceneId === record.sceneId) {
+      // The durable ledger never REGRESSES — a status sync after a re-arm can only confirm what
+      // the events already journaled, never un-deliver a crate.
+      record.legsDone = Math.max(record.legsDone | 0, Math.max(0, status.legsDone | 0));
+      let lost = 0;
+      for (const [stableId, row] of Object.entries(status.crates || {})) {
+        if (row && row.state === 'lost') {
+          lost++;
+          if (!record.lostStableIds.includes(stableId)) record.lostStableIds.push(stableId);
+        }
+        if (row && row.state === 'delivered'
+          && !record.deliveredStableIds.includes(stableId)) {
+          record.deliveredStableIds.push(stableId);
+        }
+      }
+      record.cratesLost = Math.max(record.cratesLost | 0, lost);
+      if (status.crewPhase === 'lost') record.crewLost = true;
+    }
+
+    // The manifest is RESOLVED when every crate is delivered or gone — the watch ends early on
+    // truth, never on a timer it still owed the player.
+    if (record.legsDone + record.cratesLost >= record.cratesTotal) {
+      return { settle: record.legsDone >= record.legsRequired ? 'complete' : 'partial', reason: 'manifest_resolved' };
+    }
+    const deadline = record.armedTick + record.windowTicks;
+    if (tick >= deadline) {
+      return { settle: record.legsDone > 0 ? 'partial' : 'none', reason: 'window' };
+    }
+    return null;
+  },
+
+  /**
+   * Settle the watch through the ordinary mission paths. `settle` is supplied by `missions` and
+   * is the only thing that pays or removes the contract. The payout math is the offer's own
+   * terms over the count the pad logged: `complete` pays the full manifest plus the bonus,
+   * `partial` pays per delivered leg only, `none` pays nothing and fails.
+   */
+  settle(ctx, record, decision, settle) {
+    if (!record || record.settled) return null;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    if (facilities && typeof facilities.releaseCounterweightScene === 'function') {
+      facilities.releaseCounterweightScene({ sceneId: record.sceneId });
+    }
+    const legs = Math.max(0, record.legsDone | 0);
+    const full = decision.settle === 'complete';
+    record.payoutCr = Math.max(0, Math.round(
+      legs * record.rewardPerLegCr + (full ? record.completionBonusCr : 0),
+    ));
+    record.settled = true;
+    record.settledOutcome = decision.settle;
+    const moment = full ? 'complete'
+      : (decision.reason === 'window' ? 'expired' : 'partial');
+    sayCounterweightCue(ctx, record, moment);
+    const settlement = typeof settle === 'function'
+      ? settle(record.payoutCr > 0 ? 'complete' : 'fail', decision.reason || decision.settle, decision.settle)
+      : null;
+    return { settlement, payoutCr: record.payoutCr };
+  },
+
+  /** The player walked away — the yard still pays for what physically crossed. */
+  abandon(ctx, record, settle) {
+    return this.settle(ctx, record, { settle: 'partial', reason: 'abandoned' }, settle);
+  },
+
+  /** Plain snapshot inside the mission owner's serialized active entry — nothing live inside. */
+  serialize(record) {
+    if (!record) return null;
+    return { ...record };
+  },
+
+  restore(record, { tick = 0 } = {}) {
+    if (!record || typeof record !== 'object') return null;
+    const restored = { ...record };
+    restored.cues = { ...(record.cues || {}) };
+    void tick;
+    // An armed scene's arming was session state: the facility cleared it on restore. The record
+    // re-requests on the next drive — the scene's persistent bodies (saved by their own flags)
+    // are re-adopted through `adoptCounterweightScene` on that path.
+    if (restored.settled !== true) {
+      restored.sceneRequested = false;
+      restored.armedTick = restored.armedTick == null ? null : restored.armedTick;
+      // A parked watch keeps its snapshot and stays parked; the drive resumes it in-sector.
+      restored.suspended = !!restored.suspended;
+    }
+    return restored;
+  },
+};
+
+/** Re-exported so consumers do not have to reach into the arbiter for a single symbol. */
+export { prepareTerminal, PQ019_HEIST_SECTOR_ID };
+
+export default heistMissionRuntime;

@@ -1,0 +1,53 @@
+{
+  "schema": "spaceface.simScenario.v1",
+  "id": "flight.save-load.continuation",
+  "version": 1,
+  "title": "Flight save/load continuation",
+  "description": "Uninterrupted vs mid-run checkpoint/restore within deterministic-covered contract.",
+  "evidenceClass": "focused-fixture",
+  "runtimeProfile": "focused-lab",
+  "seed": 47,
+  "ticks": 80,
+  "world": {
+    "fixtureProfile": "empty-flight",
+    "sectorId": "sector_helios_prime",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "legacy",
+    "credits": 5000
+  },
+  "entities": [
+    {
+      "alias": "player",
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "factionId": "faction_free",
+      "isPlayer": true,
+      "pos": { "x": 0, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 1.5707963267948966,
+      "persistent": true
+    }
+  ],
+  "frames": [
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 1, "turnIntent": 0, "boost": false } },
+    { "tick": 40, "input": { "moveX": 0.25, "moveZ": 1, "turnIntent": 0.25, "boost": false } }
+  ],
+  "checkpoints": [
+    { "tick": 40, "kind": "save-load", "label": "mid-run" }
+  ],
+  "metrics": [
+    { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } }
+  ],
+  "assertions": [
+    { "kind": "equivalence", "equivalence": "uninterrupted-eq-save-load" }
+  ],
+  "trace": { "signals": ["playerX", "playerZ", "playerVelX", "playerVelZ"], "sampleEvery": 1 },
+  "fixtureExceptions": [
+    "save system included in focused flight bundle for serialize/loadEnvelope",
+    "compare uses deterministic-covered checkpoint contract"
+  ],
+  "observer": { "enabled": false }
+}

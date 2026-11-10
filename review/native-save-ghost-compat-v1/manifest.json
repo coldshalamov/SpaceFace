@@ -1,0 +1,358 @@
+{
+  "schema": "spaceface.nativeSaveGhostCompatibility.v1",
+  "status": "LOCAL SCOPED PASS; OPEN LIFETIME GATE; NOT PUBLISHED OR MERGED",
+  "pr": 221,
+  "head": "1c927e5508da7fff3f6d3ff3e65acd16e38a4e37",
+  "base": "dc142c0108ce7663bc03574349623c3fda1033fa",
+  "pinnedMaster": "c096bea251f1a835fd4690db3c42141ec771ee9f",
+  "scope": "Native three-file integration subset and regression tests only. Not a complete master integration. No expected telemetry edits. Ceres repeated-Restore lifetime failure remains open.",
+  "files": [
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "preimageGitBlob": "e0191f8f555244d673ee1f850f3d898960a2f4dd",
+      "preimageSha256": "7eedfa88e2dca21290ddf4e77aa66f6d189c22143bd12bbcbcc448d2ccbe457c",
+      "gitBlob": "24438cb29fe43c603ee0e86663e85355be392376",
+      "sha256": "3875b640eb9b148364ce1929f9cab6ac587231689906d9d15456ee1c9e6bc927",
+      "bytes": 232018
+    },
+    {
+      "path": "src/core/physics.js",
+      "preimageGitBlob": "987134d583ba6e8c01df3a709dc2355c285ff043",
+      "preimageSha256": "58612fab2c1ccd6de132cf4c8bf4392db9bcaeca77d5f8543426738ad13383d7",
+      "gitBlob": "bb4ed2b9b2e0715baf1a1c8c08b170da12cb98a1",
+      "sha256": "1260d6ac66329610a81c1c3d5d0651da5d0e141a5c02978783f074913752ba6a",
+      "bytes": 90929
+    },
+    {
+      "path": "src/save/saveSystem.js",
+      "preimageGitBlob": "824be20efa7774804fa42312d03d3137bb538aea",
+      "preimageSha256": "44f473f9038563d6dec96139c5ed810092ef14d23111b323327b457142a7fbdb",
+      "gitBlob": "5164eac0e72f5f2e9c0614956d19ecff85b62ce6",
+      "sha256": "923648e24d27900d6b3bf739294c6cbb5e6f898ad9bc9b9edb0d2e62f19a154c",
+      "bytes": 355932
+    },
+    {
+      "path": "test/sg02-native-save-reconciliation.test.mjs",
+      "preimageGitBlob": "5613dccaf721547a0410a26a33f30b92a474ffb5",
+      "preimageSha256": "b4f796a4e447935006c4d802b502d0e7366eef8ab63c485d6f5cd16247db1af3",
+      "gitBlob": "eed47d4087d5cd40d7e49a76cbed4696b11fab2a",
+      "sha256": "be14a7110fe026b295bd1a621716e8af7cc87b8de7f8e2dc97f58e99f838a843",
+      "bytes": 27035
+    },
+    {
+      "path": "test/sg02-planar-prism-restore.test.mjs",
+      "preimageGitBlob": "9c176da237f8ca33deb16f3de04b9e474c922c17",
+      "preimageSha256": "904b26ef2c80d6491c0df9d8bc3ee25c57ed584fd89b8a64ba941832a546680d",
+      "gitBlob": "5c66db15b209d948584ae2dc2f7ac37f32684ae5",
+      "sha256": "70c26ccd78d9c110c8f3271bd3b8febbe7d4a2de68e6ee37108395c3816afecb",
+      "bytes": 2562
+    },
+    {
+      "path": "test/sg02-native-live-save-ghost-pool.test.mjs",
+      "preimageGitBlob": null,
+      "preimageSha256": null,
+      "gitBlob": "6874fc190c64e100c6c647aaa5d9aca6f8aa6f5d",
+      "sha256": "6c06ebb5467e77db2a5b903fc3e9d5c892466e6ab6fcbf6c94746df7bf3adf9d",
+      "bytes": 12613
+    }
+  ],
+  "proof": {
+    "candidate-reload120.json": {
+      "repeat": 3,
+      "reloadAt": 120,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "candidate-reload240.json": {
+      "repeat": 3,
+      "reloadAt": 240,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "candidate-reload360.json": {
+      "repeat": 3,
+      "reloadAt": 360,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "candidate-reload480.json": {
+      "repeat": 3,
+      "reloadAt": 480,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "candidate-reload60.json": {
+      "repeat": 3,
+      "reloadAt": 60,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "candidate-reload600.json": {
+      "repeat": 3,
+      "reloadAt": 600,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "candidate-repeat20.json": {
+      "repeat": 20,
+      "reloadAt": 600,
+      "sha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "baselineSha256": "5bb44c205a748deab27b48ff5d57c127f7a7d70924102ddfe073a692d803e999",
+      "expectedTelemetry": null
+    },
+    "master-golden600.json": {
+      "repeat": 20,
+      "reloadAt": 600,
+      "sha256": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7",
+      "baselineSha256": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7",
+      "expectedTelemetry": "../pr221-check-review/candidate/test/47a.telemetry.v3.expected.json"
+    },
+    "proof/final-pinned/focused-and-adjacent.tap": {
+      "sha256": "e5d1704612a58bc0a46c0d9d44fae56d54a1691b714bf03ec68098e469c17632",
+      "bytes": 16710
+    },
+    "proof/final/native-full-pinned.tap": {
+      "sha256": "2088cc61d025517018043aa8efc077c3a8e08123601043a734347fcdd04a70d9",
+      "bytes": 7117
+    },
+    "proof/final/adjacent-pinned.tap": {
+      "sha256": "6f8f6686bc42a1ce6748b9be252901ed530c0591050080bac1958ee5f05c036e",
+      "bytes": 14150
+    },
+    "proof/final-pinned/source-audit.json": {
+      "sha256": "a994e3d7a7f14e4f82bd6f553105fe17ff687a187bdf3027c3c76f4b52d200fb",
+      "bytes": 747
+    },
+    "proof/candidate-compare240.json": {
+      "sha256": "aad45510193624d1ca19274ea45d418e1898fefc5a62b6e40a0f62c4d2c8bea1",
+      "bytes": 11486
+    },
+    "proof/candidate-compare240.err": {
+      "sha256": "2e596989698ac236fc7cf042445bc85722e4990a7e173a73bcb625f6f716d669",
+      "bytes": 2616
+    },
+    "canonicalize-compatibility.tap": {
+      "sha256": "7c926bb9873c486790f41687b3e8eb56589e5a69414c18f9a2ec899287e9cedd",
+      "bytes": 298
+    },
+    "three-way-result.json": {
+      "sha256": "429de1ada5b1d7c11bffcc526eda7ced9fa8e7ecc4eee7586748ba919dacab5e",
+      "bytes": 7007
+    },
+    "old-ci-runtime-identity.json": {
+      "sha256": "f9bacbda4a18d61e032490104bb440d2ebad2d0e205d0493b08527add9daf53b",
+      "bytes": 1377
+    },
+    "ci-current-0.json": {
+      "sha256": "1c448cff3f6c8ef494b16c81bcf760ccadd47d74453c921d6d83e41240ac4dbc",
+      "bytes": 6095
+    },
+    "ci-current-1.json": {
+      "sha256": "70ec735ad150567865276fca143f06a38cf203f39febb4d4e6454478c381fc1a",
+      "bytes": 26
+    },
+    "ci-current-2.json": {
+      "sha256": "58a6ff6475ff37e6fb1f3fc76b7fb22524c21a2321f1d48c6ab25de15f05f9e7",
+      "bytes": 18175
+    }
+  },
+  "runtimeOverlay": [
+    {
+      "path": "scripts/sf-sim-cli.mjs",
+      "sha256": "dab8fa70d3777e3e80b1f9401f3fb1682a0197beaca0395fcf00075eaab2e826",
+      "gitBlob": "db014c03f8119c0a29f7986c4a8f40376f5ef11c"
+    },
+    {
+      "path": "src/ai/engagementAuthority.js",
+      "sha256": "2f86303b7f7fd47c56316d9198474507836278f1e2dee0c61ef13b2d85bc7d0e",
+      "gitBlob": "4116402c8840dc27de63bbbabd25496734f0ad06"
+    },
+    {
+      "path": "src/audio/audioSystem.js",
+      "sha256": "19ce06f4cb743b174a2e391790cbd0f69507dd534c51b748c8b5316bfcf56c49",
+      "gitBlob": "342e60ff1123121bc87d7ef804bb92712e92ceb6"
+    },
+    {
+      "path": "src/contracts/evidenceSchemas.js",
+      "sha256": "e9995674fbb9414d12324ee2dcf7cfcfecaa8874b9ad6fc48106c634f5b2aff2",
+      "gitBlob": "eb6ee239f63a9b1d8949b8a2ac2fd57f018eecb8"
+    },
+    {
+      "path": "src/core/physics.js",
+      "sha256": "1260d6ac66329610a81c1c3d5d0651da5d0e141a5c02978783f074913752ba6a",
+      "gitBlob": "bb4ed2b9b2e0715baf1a1c8c08b170da12cb98a1"
+    },
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "sha256": "3875b640eb9b148364ce1929f9cab6ac587231689906d9d15456ee1c9e6bc927",
+      "gitBlob": "24438cb29fe43c603ee0e86663e85355be392376"
+    },
+    {
+      "path": "src/data/starterBuilds.js",
+      "sha256": "07ce69e7b0ed1e6e28f3adada7f19d41c7f33907acff7e71823596a5a736d461",
+      "gitBlob": "60cd755817c28698d92688edb8eb387a7a7e9763"
+    },
+    {
+      "path": "src/render/camera.js",
+      "sha256": "09335349bf721bc52be148d435cbb22253ec7b035b31aa857ea85678c19eadb1",
+      "gitBlob": "ee658f9d8e15011fbf012bc13f17ff6011e634d3"
+    },
+    {
+      "path": "src/render/partsLibrary.js",
+      "sha256": "98306782006c1ce13e40ecbb6e6bfd8bcdd09fdcba1d65ab64445b1bbdd97f86",
+      "gitBlob": "3e510be5bc76a09a5682908563d56937049b5990"
+    },
+    {
+      "path": "src/save/saveSystem.js",
+      "sha256": "923648e24d27900d6b3bf739294c6cbb5e6f898ad9bc9b9edb0d2e62f19a154c",
+      "gitBlob": "5164eac0e72f5f2e9c0614956d19ecff85b62ce6"
+    },
+    {
+      "path": "src/systems/asteroidSites.js",
+      "sha256": "6eadd872d5b7489074e4dcecaa0117dc1428ab2bb3e2c4fd1fe74d425fbfe54f",
+      "gitBlob": "f6b2f5d719a99c7191f54aa5f49c5bd6b34997c6"
+    },
+    {
+      "path": "src/systems/beacons.js",
+      "sha256": "9d428ac99e861c563d3da7a347bf20977115659b43bd27fe822485104bea9c26",
+      "gitBlob": "ab7262683914ad8a0807c54a8dbc4afd14e41e97"
+    },
+    {
+      "path": "src/systems/bountyHunt.js",
+      "sha256": "a1b832311eba1083a235f913841623bb909bcaca2a809640a50699bdb934ee59",
+      "gitBlob": "d03fc2414db248bea86dc0c2741b7be177f47e74"
+    },
+    {
+      "path": "src/systems/claims.js",
+      "sha256": "84c35589be8d08af99dd9f022eb5e042a66ac613c1e2b105dd93f2b0ac0c8e08",
+      "gitBlob": "be0d712cfed0bcb4f43505aaf544d022ba102e9c"
+    },
+    {
+      "path": "src/systems/combat.js",
+      "sha256": "37c275f872ee1537eac502c7a6527d1dc42e8faba035eafa9a4a1598587c7499",
+      "gitBlob": "ba54ffec580792e612fddf3d760b0614ee363c7f"
+    },
+    {
+      "path": "src/systems/cruise.js",
+      "sha256": "8dde56f30c746e537b0078b2b1b0be0d6ec44244bb1df216683598a312c64878",
+      "gitBlob": "251de7023fe341428c0915f34f8ed9d3986f8e97"
+    },
+    {
+      "path": "src/systems/economyCycles.js",
+      "sha256": "8153dec772395e7ed0a86d2255638485cdfb912e57646a4405e717b3348e8a4b",
+      "gitBlob": "0828baeda815c815fbcb518e2f3be4cfe696860d"
+    },
+    {
+      "path": "src/systems/fieldDepletion.js",
+      "sha256": "2388b42f3081cfc2fbf3ae795a5212024feb786a78899beb9ee60be3b70e4d08",
+      "gitBlob": "54968d88d9d2f54ac8458d33b1ab6bc6d0efdbf4"
+    },
+    {
+      "path": "src/systems/flightV3.js",
+      "sha256": "aefe145c966be20d3758ccd8226d26b0f2ae989df0c7f78944262e907b36c3ac",
+      "gitBlob": "379e46453feae5fe24075057ef04e07fde0b4998"
+    },
+    {
+      "path": "src/systems/gamepad.js",
+      "sha256": "d9d319f924133dd6968fcfae9f349b128b4a1263ee03677b93ca7098b028f9c7",
+      "gitBlob": "da8dddd10a4b0e0f833a9fa09758ab83527a291b"
+    },
+    {
+      "path": "src/systems/heistFacilities.js",
+      "sha256": "5dcccb77fe9c526b2834cfa5eb6340fe61eb56573058b9a3ccf667acdaa9d33e",
+      "gitBlob": "0dccbef781a3049a76234b11a851cdf313039b29"
+    },
+    {
+      "path": "src/systems/hullFracture.js",
+      "sha256": "31067fd79c6d7f768d3c2f58bd856b4e2b9d784d6bc8e39941d2f2cbe1859035",
+      "gitBlob": "33da8249b96aee47ff83b2f81441c104805c13ff"
+    },
+    {
+      "path": "src/systems/lawSecurity.js",
+      "sha256": "341583f3c014eb0fa52e7ab4d9ffefd569f857f83090fbe68991cb106cb8ab0f",
+      "gitBlob": "658cee83e256c5860af62faf6f55a93a25c36a16"
+    },
+    {
+      "path": "src/systems/masslineSnares.js",
+      "sha256": "e6c1a9c7aec7ddd0cfbc7350a0bcd6048d9a6301767c62d0707cb8b408be0352",
+      "gitBlob": "d0b4d0552b330b702be13a4eeb512d9c9871b8ab"
+    },
+    {
+      "path": "src/systems/routeFollower.js",
+      "sha256": "2e7781b8dcd8f06b1a922623297cf47bcaf745e5238794d49cecda68c6a5b462",
+      "gitBlob": "adbfed2a1e47ee4ca37d25ebac87b8439aaf33e2"
+    },
+    {
+      "path": "src/systems/scanner.js",
+      "sha256": "ab5188d2799cf64a912d7a6b00b3d139781e2521f9ab82a95fbf273cb2993e23",
+      "gitBlob": "c8e730f89b025e05ba0f1d2b87195191c2f9c311"
+    },
+    {
+      "path": "src/systems/tetherGameplay.js",
+      "sha256": "1b7d6faf3d16ac958478d4abd1fc55a893807310782a47e67433bd612a15e731",
+      "gitBlob": "daa45bbbdbea376e4c150fdd3bbc38e69832d93c"
+    },
+    {
+      "path": "src/systems/travelLanes.js",
+      "sha256": "24abbc7d2cfe70b7190c7642662cf4bb7eeb9b548017e206ce1b214b6a44c547",
+      "gitBlob": "e3b143f003ca28b894ed73a993110984aa894f55"
+    },
+    {
+      "path": "src/systems/weapons.js",
+      "sha256": "1a9228a3631db98342b3b131fd15d4d29b046154306fa3ccef6a5714eedb97b4",
+      "gitBlob": "30e11eba94a70c99a532bcf0b270acc3a29cf533"
+    },
+    {
+      "path": "src/ui/commsRadial.js",
+      "sha256": "62e00828a093e5bc78b249294f7d2d55751ff273eeedfb4d27c54b52fe9af9e6",
+      "gitBlob": "fc9f9e2f745f18bb9136e1dbefcb1159551017b1"
+    },
+    {
+      "path": "src/ui/effects/commsTrace.js",
+      "sha256": "999b1991fe8eae6a114d702ca3d8e7c8d2b675dbf6bc6270ca1c3b64f3fdf369",
+      "gitBlob": "3c5bccf42c0e8a5640ad77a297b3ae356e53ee23"
+    },
+    {
+      "path": "src/ui/hudAttention.js",
+      "sha256": "d09c31af215a5e9b8da061bb8b6b3953a9b12cdd5ca1b5eab765945ef993b5fa",
+      "gitBlob": "57870e4e673322a68af7589f9ae255febdbcbdf1"
+    },
+    {
+      "path": "src/ui/masslineHud.js",
+      "sha256": "cd26186a33faa0080c0c43c8f383ce3cea43021fbf91a16e76cf0338d5ad5b21",
+      "gitBlob": "2ab89bed5f6739d294430f2ec6ce08adba1a4ee3"
+    },
+    {
+      "path": "src/ui/swarmJuiceHud.js",
+      "sha256": "229beea97d56c0e9ed60871c3fb49b529496d63bbba7cd1cd4047152732dd4ff",
+      "gitBlob": "3d7f16543f0d93999e2fc1f07832f2fd80409804"
+    },
+    {
+      "path": "test/47a.telemetry.v3.expected.json",
+      "sha256": "ac1d7eb193ffd70393072ec68219133d3f55c064ff06cc8aaee20ecb997979ef",
+      "gitBlob": "109dca2062941272afc1d9207fb4a70cb436f040"
+    },
+    {
+      "path": "test/sg02-native-live-save-ghost-pool.test.mjs",
+      "sha256": "6c06ebb5467e77db2a5b903fc3e9d5c892466e6ab6fcbf6c94746df7bf3adf9d",
+      "gitBlob": "6874fc190c64e100c6c647aaa5d9aca6f8aa6f5d"
+    },
+    {
+      "path": "test/sg02-native-save-reconciliation.test.mjs",
+      "sha256": "be14a7110fe026b295bd1a621716e8af7cc87b8de7f8e2dc97f58e99f838a843",
+      "gitBlob": "eed47d4087d5cd40d7e49a76cbed4696b11fab2a"
+    },
+    {
+      "path": "test/sg02-planar-prism-restore.test.mjs",
+      "sha256": "70c26ccd78d9c110c8f3271bd3b8febbe7d4a2de68e6ee37108395c3816afecb",
+      "gitBlob": "5c66db15b209d948584ae2dc2f7ac37f32684ae5"
+    }
+  ],
+  "reviewedOwnerSha256": "3875b640eb9b148364ce1929f9cab6ac587231689906d9d15456ee1c9e6bc927"
+}

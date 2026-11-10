@@ -1,0 +1,49 @@
+{
+  "label": "stunt-threat-lock-prefilter",
+  "iters": 8000,
+  "quiet_120ships_0atk": {
+    "before": {
+      "ms": 28.462,
+      "hits": 0
+    },
+    "after": {
+      "ms": 13.941,
+      "hits": 0
+    },
+    "speedup": 2.042
+  },
+  "combat_80ships_3atk_active_tracks": {
+    "before": {
+      "ms": 21.416,
+      "hits": 1
+    },
+    "after": {
+      "ms": 17.08,
+      "hits": 1
+    },
+    "speedup": 1.254,
+    "lockOnlyEveryTick": {
+      "ms": 13.117,
+      "hits": 1,
+      "speedup": 1.633
+    },
+    "sameHits": true
+  },
+  "combat_with_projectiles": {
+    "before": {
+      "ms": 21.918,
+      "hits": 7
+    },
+    "after": {
+      "ms": 17.008,
+      "hits": 7
+    },
+    "speedup": 1.289,
+    "sameHits": true
+  },
+  "oracle": {
+    "quietSame": true,
+    "combatSame": true,
+    "projSame": true
+  }
+}

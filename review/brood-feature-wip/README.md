@@ -1,0 +1,9 @@
+# Brood technical feature sequence: review-only WIP
+
+The user rejected the current artwork and requested all work on a PR for another agent to finish. These ordered patches preserve the first-three behavior, shared convex/law prerequisite, actual finite Splitter mechanics, tests, CI registration, source-only presentation and subsequent wave25/static-rest corrections. They are deliberately **not applied to the normal runtime tree**, so the branch does not spawn new unapproved or missing Brood models.
+
+Apply in numbered order only after deciding how redesigned assets will be admitted. Intermediate body registration imports a module created by the later lifecycle packet; do not run/promote an incomplete prefix. The separately preserved resident-owner overlay is at `review/brood-resident-handoff-wip/`. Rejected A6 source/release candidates are at `review/brood-splitter-a6-v12/`, with editable inputs under `tools/blender/forge/source_assets/splitter_a6/`.
+
+Promotion requires redesigned accepted visual anatomy and source/release/package identities; matching physical compounds/COM/inertia; current default-route visibility without silent procedural fallback; first-visible resident ownership through partial failures/context loss/Retry; and applicable current-source tests. Static-rest A6 source cannot be treated as approved jaw animation. The finite-quota0..5 versus physical-seat0..4 grid remains to be completed.
+
+The sequence includes the late fix removing two accidental Splitter entries from incompatible authored act/champion recipes. Do not discard its final corrections when importing earlier lifecycle work. Its original non-debut assertion now passes, with seeds9/47/4242 through waves1–100. Separate real seventeen-wave replay and retained Retry proofs passed before the roster correction. Exact patch/file hashes are in packet-index.json. Brood technical results do not override the user’s visual rejection.

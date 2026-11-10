@@ -1,0 +1,253 @@
+{
+  "status": "Normal receiver and actual Continue passed; integration remains WIP with two explicitly identified red controls",
+  "baseLocalCommit": "21c4bbb6d01ff130ddbf53361ef761f3af4bc2fd",
+  "warning": "Local history is synthetic. Publish only verified exact-path changes, never this repository snapshot.",
+  "baseline935SourceHash": "3c2fbd2b28c02d9e74014047a961babbd749872b6f50a959ee514a4e07f83273",
+  "final935SourceHash": "8f395671706bfaf8fdb1320541e47c58b19d043d7f8dc1770fe5bc8dc0b536a5",
+  "files": [
+    {
+      "path": "docs/ceres-disturbance-wip.md",
+      "beforeSha256": null,
+      "sha256": "fdd6e355646e0ca1fa2dc7df8431fd2f90918f078ac84940c903fc08244d4a1c",
+      "bytes": 7840
+    },
+    {
+      "path": "docs/verification/ceres-disturbance-executed-source-pins.json",
+      "beforeSha256": null,
+      "sha256": "f179c312be63f0c709b1c1ba6d6846ffa2060812af17305d95c307880de5c08e",
+      "bytes": 251251
+    },
+    {
+      "path": "docs/verification/ceres-disturbance-observed-results.json",
+      "beforeSha256": null,
+      "sha256": "3141ada6552e3ad3f7f9c0cdb969e0b904e52d80e1c9fba1e13a00dc51ce795d",
+      "bytes": 7667
+    },
+    {
+      "path": "scripts/probe-ceres-reacquire-saved.mjs",
+      "beforeSha256": null,
+      "sha256": "d33ad5d1d05dce6311e3f619d186b11245e4a50bc1b0cbddef656e1a3a0857f8",
+      "bytes": 5343
+    },
+    {
+      "path": "src/data/ceresWorkfleetHardware.js",
+      "beforeSha256": "fa7296b34deab91243eed9f4969d6f2dbdf92b92ac2804e3cebc083aef2b2ba0",
+      "sha256": "e98a1477636e5f41a9450dda2c5b64cf1b5edac4cff73e3382816cf73c84ddc5",
+      "bytes": 6484
+    },
+    {
+      "path": "src/systems/ceresWorkfleet.js",
+      "beforeSha256": "f30416cb0ae8f0bc08bb7438307464c760c50acd2775cace5cad57e285ca1d33",
+      "sha256": "66cbce558b66f37d5624361b05956ed84ea085ebd42a1e675cb7bdd90f8ac532",
+      "bytes": 76082
+    },
+    {
+      "path": "src/systems/ceresWorkfleetRecovery.js",
+      "beforeSha256": "bc8eef53a4312933c907b00b0a210fca518f39dc0b4d5c47f491f98a2e6c6425",
+      "sha256": "4d6436f2c35524eb61adad348f5c6c9cd1a0b1ae030bcf6cb4cf1875cf5800a4",
+      "bytes": 20281
+    },
+    {
+      "path": "test/ceres-head-late-sweep.test.mjs",
+      "beforeSha256": null,
+      "sha256": "302152e8be8d2d794c801956d359e82c7bbdf3d55b4efcead48ffccb0fcbbb3a",
+      "bytes": 2058
+    },
+    {
+      "path": "test/ceres-head-relative-frame.test.mjs",
+      "beforeSha256": null,
+      "sha256": "26073c6a29c501463fcc4c636d967797abb14d2e35d310e23cf2c8de465187b3",
+      "bytes": 4394
+    },
+    {
+      "path": "test/ceres-reacquire-cycle.test.mjs",
+      "beforeSha256": null,
+      "sha256": "8be991f05b31aa11c9e423ab9d9b31c2c8c8d7342cbae31fdbf1afecb9030cdd",
+      "bytes": 3685
+    },
+    {
+      "path": "test/ceres-reacquire-harness.mjs",
+      "beforeSha256": null,
+      "sha256": "6768ee3ccf6718df95fdcd5414d34b8805f430401af9357203a7327a990b55ac",
+      "bytes": 4257
+    },
+    {
+      "path": "test/ceres-reacquire-safety.test.mjs",
+      "beforeSha256": null,
+      "sha256": "939e5cda81c10ad157491e2e71a66d8915d580f6504aa076ee38b6a4b14fe041",
+      "bytes": 5296
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-after-second-impact.json.gz",
+      "beforeSha256": null,
+      "sha256": "b16c18830bb1ab37390b5074d05a13535dc0c68728b19c0db06fd62ab6c3651a",
+      "bytes": 418690
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-head-return-entry.json.gz",
+      "beforeSha256": null,
+      "sha256": "933bdaf25b3c7b11b879e26adb6fc5e4efc89bcd721c6f8879ed7f9a698f5a39",
+      "bytes": 315414
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-mid-return.json.gz",
+      "beforeSha256": null,
+      "sha256": "3c5e6362083f2a48d8a32ecf3d8ade9b8620f9207e2ac5d1d23a00321a2128cc",
+      "bytes": 330628
+    },
+    {
+      "path": "docs/ceres-disturbance-followup.md",
+      "beforeSha256": null,
+      "sha256": "325b668ea389b909f24b93725eb734684a24787bf03377c7528ff3f0bd657026",
+      "bytes": 5869
+    },
+    {
+      "path": "docs/verification/ceres-disturbance-followup.json",
+      "beforeSha256": null,
+      "sha256": "cb238fa8c7f803567629acc99b88f89c97193aa09221e54fe554d5aabc9e9237",
+      "bytes": 149206
+    },
+    {
+      "path": "test/ceres-dock-binding.test.mjs",
+      "beforeSha256": null,
+      "sha256": "f787b781df99ae097a450bbdccba921d019315db8fe052bee1515a999275797b",
+      "bytes": 2934
+    },
+    {
+      "path": "test/ceres-return-deadline.test.mjs",
+      "beforeSha256": null,
+      "sha256": "d5def8e7a87c35a8ae821305d46fc92b78ed228394b55f58fa47f379b6a418ef",
+      "bytes": 4776
+    },
+    {
+      "path": "test/ceres-receiver-handoff.test.mjs",
+      "beforeSha256": "b975cd8f5e506d1f499e8eba6c6cda243cda9377a94cc6e3e32225c084646e4f",
+      "sha256": "76b01fd451099e8543ff470e8873792d2c7ef12a5b35aec9c6a1839bd01bf533",
+      "bytes": 15438
+    },
+    {
+      "path": "test/fixtures/ceres-handoff/current935-receiver-slack.json",
+      "beforeSha256": null,
+      "sha256": "906f52f3d6b41600f475f50888f9a7b8676599ca877294eacc8d67501edd4926",
+      "bytes": 6591
+    },
+    {
+      "path": "package.json",
+      "beforeSha256": "eb1545f37e0d14af54d9d52b652414d1c6424f5fd3b147c206eae02a676c2423",
+      "sha256": "70c5f1ddd636321463e6269eeadac92c972f34ec2d32b0cf1c3eb24715adb36f",
+      "bytes": 74940
+    }
+  ],
+  "patches": {
+    "combined.patch": "4db3589cd92ca23e70f33c113c4e39366e377100a59a48b39460a3017ce73a9e",
+    "receiver-only.patch": "bf5a7a28d571417732db8f2cf75759e7ca7b8b95ceea2de0cf168a6ddfc804a4",
+    "register-reacquisition.patch": "f635b7f4740af841cd2f18a2d88cc69cc91dc4057c643eebee64cd204f37a32d"
+  },
+  "verification": {
+    "normalFactory": {
+      "seed": 48,
+      "maxTicksUnchanged": 85000,
+      "securedTick": 57710,
+      "continueTick": 57950,
+      "massBefore": 1800,
+      "massAfter": 1800,
+      "nativeFailure": null,
+      "sourceUnchanged": true,
+      "sourceUnchangedAfterContinue": true,
+      "sourceCount": 935,
+      "sourceHash": "8f395671706bfaf8fdb1320541e47c58b19d043d7f8dc1770fe5bc8dc0b536a5",
+      "actualNodeFlags": [
+        "--max-old-space-size=192",
+        "--max-semi-space-size=4",
+        "--unhandled-rejections=strict"
+      ],
+      "note": "Test receipt oldSpaceBudgetMiB256 is a preexisting hardcoded label; actual execArgv establishes192/4. Acceptance test bytes unchanged."
+    },
+    "combinedFocused": {
+      "pass": 77,
+      "fail": 0
+    },
+    "runtimeLayout": {
+      "pass": 60,
+      "fail": 1,
+      "failure": "Preexisting seed47 commissioning expectation after7600 ticks: head_retract versus extract"
+    },
+    "registeredReacquisitionCycle": {
+      "pass": 1,
+      "fail": 1,
+      "failure": "Historical head-return-entry scalar fixture expects extraction but is safely waiting in reacquire-cargo-moving at0.2644208968WU/s; moving-load rendezvous is an open WIP capability"
+    },
+    "receiverSpecific": {
+      "pass": 5,
+      "fail": 0,
+      "covers": [
+        "normal transfer",
+        "rate-limited displaced receiver take-up",
+        "three typed Save/Continue roundtrips during take-up",
+        "real native foreign obstruction stall and resume",
+        "cut endpoint",
+        "lost cradle",
+        "direct stale endpoint generation before native cleanup"
+      ]
+    },
+    "terminatedAttempt": {
+      "exit": 137,
+      "lastObservedTick": 31800,
+      "gameplayOutcome": null,
+      "cause": "Unconfirmed external termination; preserved separately; successful retry had no concurrent test processes"
+    }
+  },
+  "interpretation": "Full normal test proves the combined reviewed recovery plus receiver source. The restored failed-receiver controls isolate the slack-take-up repair; normal-route timing changed with the recovery composition. No claim that the winch alone caused the normal full run improvement.",
+  "constraints": "No force constant, mass, geometry, collision group, gate, timeout, golden, teleport, or original-payload replacement changes. Existing1WU/s winch targets6.5 derived from canonical63 socket,56.5 keeper and55 plate/socket geometry, only after carrier clearance. Legacy layouts skipped; foreign blockers stall; exact generations required.",
+  "publication": "Sole remote publisher and parent decide publication. Do not merge/deploy or activate this as fully merge-ready while the native/master cohort and named red controls remain open.",
+  "evidence": {
+    "force-attribution.json": {
+      "sha256": "13d36fff2eb2c7e4385ebfc155231efb9a1f6faaaf56f584ccd0701c76619722",
+      "bytes": 1353
+    },
+    "receiver-preproof-review.json": {
+      "sha256": "33c475f9cdcf666fe4c89b4d11b3c70b29649c24ec04e0513eed9e5074a66bdd",
+      "bytes": 2600
+    },
+    "receiver-winch-composed-regressions.tap": {
+      "sha256": "3cc3b2de7b90472754f18cc66e13659ac39e7898a46bd78b1235e55e5a857f29",
+      "bytes": 8305
+    },
+    "receiver-winch-composed-v3.tap": {
+      "sha256": "3fc8fe573d4f8a4a3bf2f85e2958f828e44c806f3a8e4835261ff6b5b4be79eb",
+      "bytes": 716
+    },
+    "receiver-winch-final-registration.tap": {
+      "sha256": "3705826aaa59157047183b880c144bca30092b6ba8e09e7ef9a02405c52cd124",
+      "bytes": 4398
+    },
+    "receiver-winch-full-normal-v2.tap": {
+      "sha256": "f1480930283e377564b6803777d516cdc2b47798c278e7cd6ca9a40d56d5cf72",
+      "bytes": 13646
+    },
+    "receiver-winch-runtime-compat.tap": {
+      "sha256": "ad2e7f496446e78971dcb165707813d59e3a48f08faa748f5eac90ac7d18dcc3",
+      "bytes": 14978
+    },
+    "runtime-full-factory-events.jsonl.gz": {
+      "sha256": "e10d2e44fe250312dc83041943610f6176a6d13ada952e1145f572887803de2e",
+      "bytes": 3069688
+    },
+    "runtime-full-factory-live-samples-v1.jsonl.gz": {
+      "sha256": "ae6edd82bea73d850e7dba210e01fd27521301638374bf7f6b091c054ca72173",
+      "bytes": 68557
+    },
+    "runtime-full-factory-process.jsonl.gz": {
+      "sha256": "e3f668a8857c8c696f7cc4c021f9a81e1e61da4586ffd8d13853855a8845a986",
+      "bytes": 2039
+    },
+    "runtime-full-factory-secured-v1.json.gz": {
+      "sha256": "d04f517b4c2aa7fac2114326fe096cf15332da3e7c08a30fe1a95c94ba57d7c9",
+      "bytes": 181918
+    },
+    "runtime-full-factory-start-v1.json.gz": {
+      "sha256": "dc9c8679efce5d2cfca6e0eeb118c3bb9f7c2e785cbe79121ef002da5334e84b",
+      "bytes": 47669
+    }
+  }
+}

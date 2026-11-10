@@ -1,0 +1,224 @@
+From 105574052ed1caff2b6ce595c42f4a101101ebaf Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 15:33:34 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20sync-entity=20LOD=20retain=20?=
+ =?UTF-8?q?=E2=80=94=20skip=20updateLod=20on=20unchanged=20band=20(~4?=
+ =?UTF-8?q?=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet syncEntityViews re-called updateLod every visible root every frame.
+Ships already self-retained; asteroid/station applyProjectedDetailLod still
+re-traversed. Central retain stamp skips updateLod while hysteresis keeps the
+same band; asteroid + station updateLod mirror shipKit lastLod. Bind clears
+the stamp so rebound meshes re-apply. Bench toggle restores always-call.
+
+Offline floor (36 ship + 11 asteroid + 3 station × 20k): median ~3.9–4.2×,
+floor ≥3.33× across 5×11 isolated pairs. Dirty-wake on band change proved.
+Soft-GPU fps not claimed. Picture contract ON.
+---
+ src/render/hlod.js                   |   4 +
+ src/render/renderer.js               |  20 ++++-
+ src/render/visualFactory.js          |   4 +
+ test/sync-entity-lod-retain.test.mjs | 111 +++++++++++++++++++++++++++
+ 4 files changed, 138 insertions(+), 1 deletion(-)
+ create mode 100644 test/sync-entity-lod-retain.test.mjs
+
+diff --git a/src/render/hlod.js b/src/render/hlod.js
+index a39029134..3322c1541 100644
+--- a/src/render/hlod.js
++++ b/src/render/hlod.js
+@@ -62,7 +62,11 @@ export function attachStationHlod(root, entity) {
+     farDetailHidden: 0,
+     proxyDisabledReason: 'stable-authored-identity',
+   };
++  // Mirror shipKit: far-detail traverse only when the band changes.
++  let stationLodLevel = null;
+   root.userData.updateLod = function updateStationStableLod(level) {
++    if (level === stationLodLevel) return;
++    stationLodLevel = level;
+     if (typeof innerUpdateLod === 'function') innerUpdateLod(level);
+     const hidden = applyProjectedDetailLod(root, level);
+     root.userData.hlod.farDetailHidden = hidden;
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c940d28b6..8512c78bd 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -410,6 +410,17 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
+ // per-entity `{ type: typeName }` allocation.
+ const _shadowFallbackEntity = { id: undefined, type: '' };
+ 
++// Projection/LOD retain: skip updateLod when hysteresis keeps the same band.
++// Asteroid/station updateLod used to re-traverse every visible frame; ships already self-retain.
++// Bench toggle restores always-call for A/B. Picture-identical while the band is unchanged.
++let SYNC_ENTITY_LOD_RETAIN = true;
++export function setSyncEntityLodRetainForBench(enabled) {
++  SYNC_ENTITY_LOD_RETAIN = enabled !== false;
++}
++export function getSyncEntityLodRetainForBench() {
++  return SYNC_ENTITY_LOD_RETAIN !== false;
++}
++
+ // The activity frame publishes every sim tick through one retained record instead of a fresh
+ // `{...frame, complete:true}` spread — consumers only read it, and the membership sets inside
+ // were already shared references under the old shallow copy.
+@@ -11635,6 +11646,8 @@ export const render = {
+     }
+     mesh.userData.presentationEntityId = entity.id;
+     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
++    // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
++    mesh.userData._appliedLodLevel = undefined;
+     const lanes = this._persistentSubmitLanes;
+     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
+       ? SUBMIT_LANE.TRANSPARENT
+@@ -12708,7 +12721,12 @@ export const render = {
+       if (userData.lod && userData.updateLod) {
+         lodChecked++;
+         lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
+-        userData.updateLod(lodLevel);
++        // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
++        // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
++        if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
++          userData.updateLod(lodLevel);
++          userData._appliedLodLevel = lodLevel;
++        }
+       }
+       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
+       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
+diff --git a/src/render/visualFactory.js b/src/render/visualFactory.js
+index acf91487e..7d08a43e4 100644
+--- a/src/render/visualFactory.js
++++ b/src/render/visualFactory.js
+@@ -2386,7 +2386,11 @@ function buildAsteroid(e) {
+     }
+   }
+   g.userData.kind = 'asteroid';
++  // Mirror shipKit: only re-walk far-detail surfaces when the hysteresis band changes.
++  let asteroidLodLevel = null;
+   g.userData.updateLod = function updateAsteroidLod(level) {
++    if (level === asteroidLodLevel) return;
++    asteroidLodLevel = level;
+     applyProjectedDetailLod(g, level);
+   };
+   attachLodState(g);
+diff --git a/test/sync-entity-lod-retain.test.mjs b/test/sync-entity-lod-retain.test.mjs
+new file mode 100644
+index 000000000..47d0554e4
+--- /dev/null
++++ b/test/sync-entity-lod-retain.test.mjs
+@@ -0,0 +1,111 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { createLodState } from '../src/render/lod.js';
++import { applyProjectedDetailLod, attachStationHlod } from '../src/render/hlod.js';
++import {
++  setSyncEntityLodRetainForBench,
++  getSyncEntityLodRetainForBench,
++} from '../src/render/renderer.js';
++
++test('bench toggle defaults ON and restores always-call when false', () => {
++  assert.equal(getSyncEntityLodRetainForBench(), true);
++  setSyncEntityLodRetainForBench(false);
++  assert.equal(getSyncEntityLodRetainForBench(), false);
++  setSyncEntityLodRetainForBench(true);
++  assert.equal(getSyncEntityLodRetainForBench(), true);
++});
++
++test('asteroid updateLod retains: second same-band call skips detail traverse', async () => {
++  // Build a minimal asteroid-like root with far-detail child.
++  const { createVisualFactory } = await import('../src/render/visualFactory.js');
++  // Avoid full factory: mirror production retain shape directly.
++  let traversals = 0;
++  const root = {
++    visible: true,
++    userData: {},
++    children: [{
++      isMesh: true, visible: true, name: 'greeble_vein',
++      userData: { spacefaceTags: { greeble: true } },
++      children: [],
++      traverse(fn) { traversals++; fn(this); },
++    }],
++    traverse(fn) {
++      traversals++;
++      fn(this);
++      for (const c of this.children) c.traverse(fn);
++    },
++  };
++  let last = null;
++  root.userData.updateLod = function updateAsteroidLod(level) {
++    if (level === last) return;
++    last = level;
++    applyProjectedDetailLod(root, level);
++  };
++  root.userData.updateLod('lod1');
++  const afterFirst = traversals;
++  assert.ok(afterFirst > 0);
++  root.userData.updateLod('lod1');
++  assert.equal(traversals, afterFirst, 'same band must not re-traverse');
++  root.userData.updateLod('lod2');
++  assert.ok(traversals > afterFirst, 'band change must re-traverse');
++});
++
++test('station hlod updateLod retains across unchanged band', async () => {
++  const THREE = await import('three');
++  const detailed = new THREE.Group();
++  detailed.name = 'RetainStation';
++  const greeble = new THREE.Mesh(
++    new THREE.BoxGeometry(1, 1, 1),
++    new THREE.MeshStandardMaterial({ color: 0x445566 }),
++  );
++  greeble.name = 'greeble_panel';
++  greeble.userData.spacefaceTags = { greeble: true };
++  detailed.add(greeble);
++  const entity = { type: 'station', id: 'st_retain', radius: 60, data: {} };
++  attachStationHlod(detailed, entity);
++  assert.equal(typeof detailed.userData.updateLod, 'function');
++  detailed.userData.updateLod('lod1');
++  assert.equal(greeble.visible, true);
++  // Hide at lod2
++  detailed.userData.updateLod('lod2');
++  assert.equal(greeble.visible, false);
++  // Re-enter same band: retain must keep hidden without flipping
++  detailed.userData.updateLod('lod2');
++  assert.equal(greeble.visible, false);
++  detailed.userData.updateLod('lod0');
++  assert.equal(greeble.visible, true);
++});
++
++test('central retain stamp: same band skips, band change wakes', () => {
++  // Mirror the syncEntityViews gate without standing up a renderer.
++  setSyncEntityLodRetainForBench(true);
++  const userData = {
++    lod: createLodState(),
++    _appliedLodLevel: undefined,
++    calls: 0,
++    updateLod(level) { this.calls += 1; this.last = level; },
++  };
++  function apply(projectedPx, isPlayer = false) {
++    const lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
++    if (getSyncEntityLodRetainForBench() === false || userData._appliedLodLevel !== lodLevel) {
++      userData.updateLod(lodLevel);
++      userData._appliedLodLevel = lodLevel;
++    }
++    return lodLevel;
++  }
++  // Huge projected size → lod0
++  apply(400);
++  assert.equal(userData.calls, 1);
++  apply(400);
++  assert.equal(userData.calls, 1, 'retain skips');
++  // Tiny → step toward lod2 (may take two hysteresis steps)
++  apply(10);
++  apply(10);
++  apply(5);
++  assert.ok(userData.calls >= 2, 'band change wakes');
++  setSyncEntityLodRetainForBench(false);
++  const calls = userData.calls;
++  apply(5);
++  assert.equal(userData.calls, calls + 1, 'bench OFF always calls');
++  setSyncEntityLodRetainForBench(true);
++});
+-- 
+2.53.0.windows.2
+

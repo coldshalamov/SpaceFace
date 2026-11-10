@@ -1,0 +1,152 @@
+
+> spaceface@0.1.0 probe:smooth-flight
+> node scripts/probe-smooth-flight.mjs
+
+  fat event payloads:
+    bufferFullUpload@163.sourceData 0 KB
+    bufferFullUpload@163.sourceData 0 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+    bufferFullUpload@164.sourceData 4 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+  whole-machine CPU busy      75 % of 8 logical cores during the sample (the game alone is ~10-15 %)
+  route                       open flight, new game; at end: 20 other ships, 10 projectiles, 80 entities, 0 draw calls, 0k triangles
+  launch to flight            13.7 s
+  sample                      after 25 s of flight: 20 s, 199 frames, 11.1 fps mean
+  frame time p50/p95/p99      83.3 / 150.0 / 383.3 ms; worst 683 ms
+  frames over 33 / 50 / 100   199 (100.0 %) / 199 (100.0 %) / 19
+  typical frame costs (ms)    callback 22.9  sim 9.2  present 13.5  render 8.0  vfx 1.3  ui 4.1  feel 0.1  admission 0.1
+  before a LONG frame (ms)    callback 22.9  sim 9.2  present 13.5  render 8.0  vfx 1.3  ui 4.1  feel 0.1  admission 0.1
+  long frames paid in JS      175 of 198 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    #  95   683 <- callback   31  sim   11  present   20  (render 16, vfx 1, ui 2)  admission 0  — no wave event within 2s
+    # 135   383 <- callback   18  sim    7  present   11  (render 7, vfx 1, ui 2)  admission 0  — no wave event within 2s
+    #  26   217 <- callback  149  sim   15  present  134  (render 6, vfx 1, ui 127)  admission 0  — no wave event within 2s
+    #  51   183 <- callback   21  sim    7  present   14  (render 9, vfx 3, ui 2)  admission 0  — no wave event within 2s
+    # 112   167 <- callback   22  sim    8  present   13  (render 9, vfx 2, ui 3)  admission 0  — no wave event within 2s
+    #  39   167 <- callback   22  sim   12  present   10  (render 6, vfx 1, ui 2)  admission 0  — no wave event within 2s
+    #  66   167 <- callback  100  sim   33  present   51  (render 34, vfx 3, ui 14)  admission 0  — no wave event within 2s
+    #  58   150 <- callback   29  sim   14  present   15  (render 8, vfx 2, ui 5)  admission 0  — no wave event within 2s
+    # 132   150 <- callback   41  sim   21  present   20  (render 15, vfx 2, ui 3)  admission 9  — no wave event within 2s
+    # 171   150 <- callback   28  sim   14  present   14  (render 9, vfx 1, ui 4)  admission 0  — no wave event within 2s
+  wave events (s into sample)   none captured
+  wave arrival in window      NOT COVERED — no wave materialized in this window. The link/upload counts below say nothing about wave-arrival cost, and must not be compared against a run that was covered.
+  program links / buffer uploads shaderLinks +3, bufferFullUploads +184, bufferPartialUploads +16049
+  link placement                2 frame(s) paid a draw-time link; 1 link(s) landed off-frame (async compile); novelty: 3 NOVEL, 0 RELINK, 0 unkeyed
+  admissions queued at flight   pipelines 0, residency 0
+  roster prewarm at flight      no exemplar roots mounted
+  cook ledger                 opening.rockSurfaceLibrary 14ms resolved | opening.firstPresentAdmission 0ms resolved | opening.planWait 2334ms resolved | opening.residency 4ms resolved (subjects=67,textureRefs=79,textures=79) | opening.postResources 0ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms resolved | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 2355ms resolved
+    +0.5s  [NOVEL] ?  (67,68,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,3073,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {})  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  drew sf-retro-jets-forge-1  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+        Δ doubleSided:off→on
+        owners: ShaderMaterial@sf-retro-jets-forge-0  ShaderMaterial@sf-retro-jets-forge-1
+    +7.0s  [NOVEL] ?  (79,80,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,3073,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {}) (released before end)  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  drew SF_RibbonTrail  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +14.6s  [NOVEL] wreck:structure  (physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,8388688,132099,srgb,spaceface-illustrated-surface-v8)  via Group:wreck,wr:wr_convoy_e89cc08b,payload_PackagedBody,wr:wr
+        Δ metalnessMapUv:false→uv
+        owners: wreck:structure@Wreck_Batch_wreck:structure  wreck:plate@Wreck_Batch_wreck:plate  wreck:cut-edge@Wreck_HullPlate_4
+  boundary census at flight   authored×13 awaiting-authored-admission×5 loading×1
+  non-terminal at start       309(payload,awaiting-authored-admission,nopromise,never-req->authored) 330(wreck,awaiting-authored-admission,nopromise,never-req->authored) 333(payload,awaiting-authored-admission,nopromise,never-req->authored) 316(beacon,awaiting-authored-admission,nopromise,never-req->compiling-pipelines) 310(wreck,awaiting-authored-admission,nopromise,never-req->compiling-pipelines) 77(null,loading,no-entity-mesh,never-req->loading)
+  program-key drift (old -> new):
+    309
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    309
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    309
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    309
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    309
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    309
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    309
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    330
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+  mesh builds in sample:
+    +0.2s  build asteroid:ast_common_rock
+    +6.7s  build ship:ship_drifter
+    +8.9s  build ship:ship_warden
+    +12.5s  build fx:90
+    +14.5s  build wreck:350
+  buffer uploads in sample:
+    +0s  ×1    bufferData 72B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.position
+    +0s  ×1    bufferData 72B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.normal
+    +0s  ×1    bufferData 48B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.uv
+    +0s  ×1    bufferData 144B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.instanceOffset
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.instanceAxisScale
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.instanceParams
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.instanceDynamics
+    +0s  ×1    bufferData 144B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.instanceColor
+    +0s  ×1    bufferData 768B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:core.instanceMatrix
+    +0s  ×1    bufferData 72B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.position
+    +0s  ×1    bufferData 72B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.normal
+    +0s  ×1    bufferData 48B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.uv
+    +0s  ×1    bufferData 144B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.instanceOffset
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.instanceAxisScale
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.instanceParams
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.instanceDynamics
+    +0s  ×1    bufferData 144B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.instanceColor
+    +0s  ×1    bufferData 768B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:inner.instanceMatrix
+    +0s  ×1    bufferData 72B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:sheath.position
+    +0s  ×1    bufferData 72B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:sheath.normal
+    +0s  ×1    bufferData 48B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:sheath.uv
+    +0s  ×1    bufferData 144B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:sheath.instanceOffset
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:sheath.instanceAxisScale
+    +0s  ×1    bufferData 192B  via ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary  <- rcs-layer:sheath.instanceParams
+  SHIP LOST ITS PLACE         0 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             168 of 229 (world resumed two ticks on)
+  frames that shed sim time   161
+  game speed vs real time     45.2 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                0/0  0/0  0/2  0/0  0/0
+  player speed at end         203 WU/s
+  console errors              4
+    [log] [render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) software 1.00 1600 900
+    [warning] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found) (http://127.0.0.1:37351/__spaceface_player_store)
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found) (http://127.0.0.1:37351/__spaceface_player_store)
+

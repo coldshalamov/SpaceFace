@@ -1,0 +1,184 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "hawser-quiet-drift",
+  "description": "The live Hawser tug flies a lane where a Quiet Ghost drifts past a heavy mass. Both bodies use shipped profiles.",
+  "encounter": {
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "mystery",
+    "factionId": "faction_quiet",
+    "id": "dock_hawser_quiet_drift",
+    "order": 1008,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "salvageSignal",
+    "shape": {
+      "actor": "quiet_ghost",
+      "place": [
+        "anomaly_deep"
+      ],
+      "situation": "anomaly",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "quiet_ghost"
+      ]
+    },
+    "tier": "minor",
+    "title": "Quiet drift",
+    "weight": 1,
+    "zoneTypes": [
+      "anomaly_deep"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 1,
+        "turnIntent": 0
+      },
+      "tick": 0
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.hawser-quiet-drift",
+  "inputEvents": [],
+  "notes": {
+    "composition": "hawser-quiet-drift",
+    "creatorsDock": "1",
+    "expectedObservation": "ship_hawser thrust raises playerZ. quiet_ghost keeps its authored drift. The mass is asteroid.heavy."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 1.570796,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hawser",
+      "loadout": [
+        "mod_engine_ion_m"
+      ],
+      "persistent": true,
+      "profile": "ship_hawser",
+      "role": "player",
+      "team": 0,
+      "velX": 0,
+      "velZ": 0,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_quiet",
+      "heading": 0,
+      "id": "ghost",
+      "kind": "actor",
+      "label": "Quiet Ghost",
+      "persistent": true,
+      "profile": "quiet_ghost",
+      "role": "ghost",
+      "velX": 14,
+      "velZ": -4,
+      "x": 80,
+      "z": 40
+    },
+    {
+      "angularVelocity": 0,
+      "heading": 0,
+      "id": "mass",
+      "kind": "actor",
+      "label": "tow mass",
+      "persistent": true,
+      "profile": "asteroid.heavy",
+      "role": "mass",
+      "team": 2,
+      "velX": 0,
+      "velZ": 0,
+      "x": 40,
+      "z": -20
+    },
+    {
+      "id": "tug_z",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "tug moved +Z",
+      "metric": "trace.final",
+      "op": ">",
+      "signal": "playerZ",
+      "value": 0.5,
+      "x": -30,
+      "z": 40
+    },
+    {
+      "id": "speed",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "still moving",
+      "metric": "flight.finalSpeed",
+      "op": ">=",
+      "value": 0.5,
+      "x": -90,
+      "z": 10
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "alive_hawser",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive",
+      "radius": 12,
+      "shape": "circle",
+      "x": -90,
+      "z": -10
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_ghost",
+      "kind": "route",
+      "label": "read the drift",
+      "to": "ghost"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11008,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Hawser and the quiet drift",
+  "traceSignals": [],
+  "version": 1,
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "empty-flight",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

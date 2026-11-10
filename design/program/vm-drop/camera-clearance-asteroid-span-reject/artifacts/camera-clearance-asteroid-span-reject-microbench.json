@@ -1,0 +1,60 @@
+{
+  "label": "camera-clearance-asteroid-span-reject",
+  "asteroids": 60,
+  "stations": 3,
+  "frames": 8000,
+  "driftWu": 1.05,
+  "oracle": {
+    "capitalWithReject": 86,
+    "capitalWithoutReject": 86,
+    "capitalParity": true,
+    "stationParity": true,
+    "smallRejected": true
+  },
+  "runs": [
+    {
+      "beforeMs": 157.425,
+      "afterMs": 52.795,
+      "speedup": 2.982,
+      "beforeSink": 19704,
+      "afterSink": 19704
+    },
+    {
+      "beforeMs": 171.569,
+      "afterMs": 56.669,
+      "speedup": 3.028,
+      "beforeSink": 19704,
+      "afterSink": 19704
+    },
+    {
+      "beforeMs": 155.672,
+      "afterMs": 50.171,
+      "speedup": 3.103,
+      "beforeSink": 19704,
+      "afterSink": 19704
+    },
+    {
+      "beforeMs": 163.96,
+      "afterMs": 46.444,
+      "speedup": 3.53,
+      "beforeSink": 19704,
+      "afterSink": 19704
+    },
+    {
+      "beforeMs": 170.197,
+      "afterMs": 47.598,
+      "speedup": 3.576,
+      "beforeSink": 19704,
+      "afterSink": 19704
+    }
+  ],
+  "primary": {
+    "beforeMs": 155.672,
+    "afterMs": 50.171,
+    "speedup": 3.103,
+    "beforeSink": 19704,
+    "afterSink": 19704
+  },
+  "minSpeedup": 2.982,
+  "note": "Portable clearance floor. Soft-GPU fps not claimed. Before=setFromObject on every drifted miss; After=asteroid 2.5R hint reject."
+}

@@ -1,0 +1,895 @@
+// Receipts (design/HUD_FLIGHT_ATTENTION.md) — thin HUD-layer lines, never website cards.
+// Driven by the `toast` event {text,kind,ttl}. Max 2 rendered. Danger and Target: lines
+// are refused here; alerts.js owns the top-center voice.
+//
+// A11y: visual toast cards are interactive dismiss controls (role=button). Status text is
+// announced once through a dedicated polite live region (#toast-live) so assistive tech
+// hears the message without focus steal and without re-speaking the "dismiss" control name.
+// Danger/assertive interruptions belong to alerts.js — this channel stays polite always.
+//
+// One-voice (ONEVOICE-ALERT-DEDUPE / spec2/06):
+//   • Arbiter-origin mirrors (`_fromVoice`) never render — the floor is top-center only.
+//   • Short alert semantics owned by alerts.announce (cargo full / shields down / …) never
+//     render here either, even when a parallel emitter (floatingText) fires a plain toast.
+//   • Transaction ACKs, rep deltas, buy/sell, and other mechanical action toasts pass through.
+//
+// Focus lifecycle (dismiss only): arrival never steals focus. If a focused toast is keyboard-
+// dismissed or expires, focus moves to the nearest remaining toast, else a valid previous
+// control / active-screen fallback — never silently to body when a restorable target exists.
+
+import { setReceiptPresenter } from '../core/receiptPresenter.js';
+import { validCharonApproachReceipt } from '../world/charonSupplyReadout.js';
+import { isVoiceOwnedAlertToast } from './alerts.js';
+import { admitReceipt, markFirstUseHint, RECEIPT_MAX, shouldShowFirstUseHint, stuntDetectionReceipt } from './hudAttention.js';
+import { jumpAbortReceipt } from './jumpNotice.js';
+import { resolveObjectiveHudLayout } from './hud.js';
+import { glyphSvg } from './glyphs.js';
+import { bindAutomationPayoffUi } from './automationPayoff.js';
+import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
+import { bindReturningPilotSummary } from './dockArrival.js';
+import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
+
+const MAX = RECEIPT_MAX;
+// Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
+// font-specific glyph coverage and read as a different visual language from the HUD line set).
+const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', stunt: 'info', credits: 'credits', rep: 'rep', discovery: 'unknown' };
+
+/** The first successful autosave after a new game, once per profile. Never a per-write receipt. */
+export function progressSavedReceipt(state, timing) {
+  if (!state || !state.player || !timing || typeof timing !== 'object') return null;
+  if (timing.ok === false) return null;
+  const slot = String(timing.slot || '');
+  const autosave = timing.autosave === true || slot === 'auto' || slot === 'autosave';
+  if (!autosave) return null;
+  const gameplay = state.settings && state.settings.gameplay;
+  if (gameplay && gameplay.tutorialHints === false) return null;
+  if (!shouldShowFirstUseHint(state.player.hints, 'progressSaved')) return null;
+  const line = 'Progress saved';
+  if (!admitReceipt({ text: line, kind: 'info' }).admit) return null;
+  state.player.hints = markFirstUseHint(state.player.hints, 'progressSaved');
+  return line;
+}
+
+function bindProgressSavedReceipt(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('save:completed', (timing) => {
+    const state = typeof getState === 'function' ? getState() : null;
+    const line = progressSavedReceipt(state, timing);
+    if (!line || typeof bus.emit !== 'function') return;
+    bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
+  });
+}
+
+export function createToasts(ctx) {
+  const { bus } = ctx;
+  const root = document.getElementById('toasts');
+  const hud = typeof document !== 'undefined' ? document.getElementById('hud') : null;
+  if (root && hud && root.parentNode && root.parentNode !== hud) {
+    hud.appendChild(root);
+  }
+  if (root && root.classList) root.classList.add('sf-receipts');
+  let liveRegion = document.getElementById('toast-live');
+  const live = []; // { el, born, ttl }
+  let nextWakeAt = Infinity;
+  let lastAnnounced = '';
+  // Last focus outside the toast feed — restored when the final focused toast leaves.
+  let lastExternalFocus = null;
+
+  // createHud() wipes #hud with innerHTML='' AFTER this module moves the feed into it (uiRoot
+  // creates toasts before it builds the hud), which used to leave push() writing into a detached
+  // node — every receipt in the game silently invisible, live region included. Re-attach on first
+  // use and re-resolve the live region, then take the reserved receipt lane immediately so the
+  // first card never flashes at the CSS fallback position over the command deck.
+  function ensureConnected() {
+    if (root && !root.isConnected) {
+      (hud || document.body).appendChild(root);
+      liveRegion = document.getElementById('toast-live');
+      positionLane();
+    }
+  }
+
+  function positionLane() {
+    // Mirrors hud.js placeReceiptLane: the reserved receipt lane, bottom-anchored above the
+    // command-deck readout band so cards grow upward and never fight the speed/weapon row for
+    // hover. Imported lazily via the layout resolver to avoid pulling the whole hud module graph
+    // at boot.
+    if (!root) return;
+    const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    const lane = resolveObjectiveHudLayout(w, h).receipt;
+    if (!lane) return;
+    root.style.left = `${Math.round(lane.x)}px`;
+    root.style.top = 'auto';
+    root.style.width = `${Math.round(lane.width)}px`;
+    root.style.bottom = `${Math.round(lane.bottomInset)}px`;
+    root.style.right = 'auto';
+    root.style.transform = 'none';
+  }
+
+  function announceStatus(text, count = 1) {
+    if (!liveRegion || !text) return;
+    // Status text only — never "dismiss" / control chrome (that lives on the focusable card).
+    const msg = count > 1 ? text + ' (×' + count + ')' : text;
+    // Same-string re-announce: clear first so polite regions fire again after grouping bumps
+    // that collapse to an identical message, or after a later identical toast.
+    if (msg === lastAnnounced) {
+      liveRegion.textContent = '';
+    }
+    liveRegion.textContent = msg;
+    lastAnnounced = msg;
+  }
+
+  function isRestorableTarget(el) {
+    if (!el || el === document.body || el === document.documentElement) return false;
+    if (!el.isConnected || typeof el.focus !== 'function') return false;
+    if (el.disabled) return false;
+    if (el.hidden) return false;
+    if (el.getAttribute && el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.style && (el.style.display === 'none' || el.style.visibility === 'hidden')) return false;
+    let p = el.parentNode;
+    while (p && p !== document && p !== document.documentElement && p !== document.body) {
+      if (p.hidden) return false;
+      if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
+      if (p.style && (p.style.display === 'none' || p.style.visibility === 'hidden')) return false;
+      p = p.parentNode;
+    }
+    return true;
+  }
+
+  // Dismiss-path only — never call from push/group (no focus steal on toast arrival).
+  function tryFocus(el) {
+    if (!isRestorableTarget(el)) return false;
+    try {
+      el.focus({ preventScroll: true });
+    } catch (e) {
+      try { el.focus(); } catch (_) { return false; }
+    }
+    return document.activeElement === el;
+  }
+
+  function tryFocusActiveScreen() {
+    const screens = document.getElementById('screens');
+    if (!screens || screens.style.display === 'none') return false;
+    const kids = screens.children || [];
+    for (let i = 0; i < kids.length; i++) {
+      const screenEl = kids[i];
+      if (!screenEl || screenEl.style.display === 'none') continue;
+      const items = screenEl.querySelectorAll
+        ? screenEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+        : [];
+      for (let j = 0; j < items.length; j++) {
+        if (tryFocus(items[j])) return true;
+      }
+    }
+    return false;
+  }
+
+  function nearestRemainingToast(removedIndex) {
+    // Prefer the toast that shifted into the removed slot (older neighbor), then the newer one.
+    if (live[removedIndex]) return live[removedIndex];
+    if (removedIndex > 0 && live[removedIndex - 1]) return live[removedIndex - 1];
+    return live[0] || null;
+  }
+
+  function restoreFocusAfterDismiss(removedIndex) {
+    const nearest = nearestRemainingToast(removedIndex);
+    if (nearest && tryFocus(nearest.el)) return;
+    if (tryFocus(lastExternalFocus)) return;
+    if (tryFocusActiveScreen()) return;
+    // No restorable control — leave focus where the browser places it after removal; do not
+    // invent a body focus target. Callers that still hold focus on the exiting card blur it.
+    const active = document.activeElement;
+    if (active && active !== document.body && typeof active.blur === 'function') {
+      const stillToast = live.some((r) => r.el === active || (r.el && r.el.contains && r.el.contains(active)));
+      if (!stillToast && root && root.contains(active)) {
+        try { active.blur(); } catch (e) {}
+      }
+    }
+  }
+
+  function elementHoldsFocus(el) {
+    const active = document.activeElement;
+    if (!el || !active) return false;
+    return active === el || !!(el.contains && el.contains(active));
+  }
+
+  if (root) {
+    // Capture the pre-toast control when keyboard/AT moves into the feed (not on arrival).
+    root.addEventListener('focusin', (ev) => {
+      const from = ev.relatedTarget;
+      if (from && (!root.contains(from)) && isRestorableTarget(from)) {
+        lastExternalFocus = from;
+      }
+    });
+  }
+
+  let destroyed = false;
+  const approach = createCharonApproachToastGate(bus, () => ctx.state, payload => {
+    return pushNow(payload);
+  });
+  function push(payload = {}) {
+    if (destroyed) return false;
+    if (payload.charonApproach != null) { approach.enqueue(payload); return false; }
+    return pushNow(payload);
+  }
+  // Geometry changes only after the receipt owner actually changes the visible lane. Refused
+  // or deferred toast events never make the HUD walk and measure the flight overlays.
+  function invalidateReceiptGeometry() { bus?.emit?.('hud:receiptGeometryChanged', {}); }
+
+  // Returns true when the receipt was drawn (or folded into a live card) and false when it was
+  // refused, so a once-only notice sent through the presenter can tell it was never seen.
+  function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null } = {}) {
+    if (!root || !text) return false;
+    ensureConnected();
+    // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
+    // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
+    // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
+    // _fromVoice — buy/sell/errors/pickups) are unaffected: they are an allowed separate channel.
+    if (_fromVoice) return false;
+    // Parallel short-status mirrors of arbiter-owned alert keys (CARGO FULL, SHIELDS DOWN, …).
+    // floatingText and legacy bridges may still emit these; the floor already speaks them once.
+    // Long tutorial lines and transaction ACKs are not in the owned set and still render.
+    if (isVoiceOwnedAlertToast(text)) return false;
+    const job = typeof document !== 'undefined' && document.body && document.body.dataset
+      ? document.body.dataset.sfHudJob
+      : '';
+    const decision = admitReceipt({ text, kind, channel, _fromVoice, charonApproach, state: ctx.state, combat: job === 'fight' || job === 'hurt' });
+    if (!decision.admit) return false;
+    // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
+    // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
+    // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
+    // burst events (mining yields, repeated rep changes, cargo-full spam).
+    const GROUP_WINDOW = 2500;
+    const now = performance.now();
+    for (let i = 0; i < live.length; i++) {
+      const r = live[i];
+      if (r.text === text && r.kind === kind && (now - r.born) < GROUP_WINDOW) {
+        r.count = (r.count || 1) + 1;
+        r.born = now;                       // refresh so the grouped toast gets a fresh TTL window
+        r.ttl = normalizeTtlMs(ttl);
+        // A grouped toast gets a fresh TTL window: restart its decay bar with it.
+        if (r.el.style && typeof r.el.style.setProperty === 'function') {
+          r.el.style.setProperty('--sf-toast-ttl', `${(r.ttl / 1000).toFixed(2)}s`);
+        }
+        const decay = r.el.querySelector ? r.el.querySelector(':scope > .sf-toast__decay') : null;
+        if (decay && decay.style) {
+          if (typeof decay.getAnimations === 'function') {
+            // WAAPI restart — no forced reflow: cancel yanks the run, play re-arms it from full
+            // under the refreshed --sf-toast-ttl. Empty set (reduced motion hides the bar) no-ops.
+            const anims = decay.getAnimations();
+            for (const a of anims) { a.cancel(); a.play(); }
+          } else {
+            decay.style.animation = 'none';
+            void decay.offsetWidth; // reflow so the re-armed animation restarts from full
+            decay.style.animation = '';
+          }
+        }
+        // Fresh TTL window ends any tail fade early: hand opacity back to CSS for this window —
+        // tick re-arms --jsfade when (and only when) the ramp owns the property again.
+        r.el.style.opacity = '';
+        r._sfOpacity = null;
+        r.el.classList.remove('sf-toast--jsfade');
+        if (!r.badge) {
+          const badge = document.createElement('span');
+          badge.className = 'sf-toast__count';
+          r.el.appendChild(badge);
+          r.badge = badge;
+        }
+        r.badge.textContent = '×' + r.count;
+        r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
+        announceStatus(text, r.count);
+        recomputeNextWake();
+        invalidateReceiptGeometry();
+        return true;
+      }
+    }
+    const el = document.createElement('div');
+    el.className = `sf-toast sf-toast--${kind}`;
+    const icon = document.createElement('span');
+    icon.className = 'sf-toast__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = glyphSvg(KIND_ICON[kind] || 'info', 12);
+    const body = document.createElement('span');
+    body.className = 'sf-toast__text';
+    body.textContent = text;
+    // The decay hairline: the receipt's remaining life as light. CSS animates it from --sf-toast-ttl
+    // (compositor-only scaleX; the tick never touches it again). The text carries the meaning, so the
+    // bar hides under reduced motion rather than freezing mid-life.
+    const decay = document.createElement('span');
+    decay.className = 'sf-toast__decay';
+    decay.setAttribute('aria-hidden', 'true');
+    el.append(icon, body, decay);
+    // An offer receipt's one button (toastAction.js); the card is then a plain group, not a dismiss control.
+    const act = normalizeToastAction(action);
+    if (act) el.appendChild(createToastActionButton(act, () => { dismiss(rec); runToastAction(act); }));
+    // Guarded like lampKey: headless Mini-DOM harnesses stub style as a plain object.
+    if (el.style && typeof el.style.setProperty === 'function') {
+      el.style.setProperty('--sf-toast-ttl', `${(normalizeTtlMs(ttl) / 1000).toFixed(2)}s`);
+    }
+    // Click-to-dismiss is advertised by the cursor:pointer styling; expose the same affordance to
+    // keyboard users (Enter/Space) and to AT as a dismissible control.
+    // Do NOT put aria-live on the card — announcement is via #toast-live (status once).
+    // Do NOT call focus() — status must not steal keyboard focus from flight/UI.
+    if (act) {
+      el.setAttribute('role', 'group');
+      el.setAttribute('aria-label', text);
+    } else {
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', text + ' (dismiss)');
+    }
+    el.addEventListener('click', () => dismiss(rec));
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
+    });
+    // newest on top; #toast-live is sr-only and rides to the end of the flex stack via prepend
+    root.prepend(el);
+    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act };
+    live.unshift(rec);
+    announceStatus(text, 1);
+    recomputeNextWake();
+    // animate in next frame
+    requestAnimationFrame(() => el.classList.add('sf-toast--in'));
+    while (live.length > MAX) dismiss(pickEvictionVictim(live));
+    invalidateReceiptGeometry();
+    return true;
+  }
+
+  function dismiss(rec, opts = {}) {
+    if (!rec || rec._dismissing) return;
+    const i = live.indexOf(rec);
+    if (i < 0 && !rec.el) return;
+    const hadFocus = elementHoldsFocus(rec.el);
+    if (i >= 0) live.splice(i, 1);
+    rec._dismissing = true;
+    if (rec.el) {
+      if (opts.instant) {
+        // Session-boundary teardown: the scene is swapping underneath, so there is nothing
+        // to fade out over — drop the card synchronously instead of the exit beat.
+        if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      } else {
+        // The tick's inline opacity ramp would pin the card mid-fade; hand the exit to the class.
+        // --jsfade goes with it: its transition:none would kill the exit beat armed just below.
+        rec.el.style.opacity = '';
+        rec.el.classList.remove('sf-toast--jsfade');
+        rec.el.classList.remove('sf-toast--in');
+        rec.el.classList.add('sf-toast--out');
+        // The exit fade is real: removal waits one transition beat so a click-dismiss reads as a
+        // departure, not a snap. Expiry already fades via tick(); the beat there is invisible
+        // (opacity is ~0) and keeps one removal path. Focus restore below stays synchronous.
+        const el = rec.el;
+        setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 170);
+      }
+    }
+    if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
+    recomputeNextWake();
+    invalidateReceiptGeometry();
+  }
+
+  // Called from hud's frame(), but sleeps until a toast can fade or expire.
+  function tick() {
+    if (!live.length) return;
+    const now = performance.now();
+    if (now < nextWakeAt) return;
+    let next = Infinity;
+    for (let i = live.length - 1; i >= 0; i--) {
+      const rec = live[i];
+      const age = now - rec.born;
+      if (age > rec.ttl) { dismiss(rec); continue; }
+      const left = rec.ttl - age;
+      if (left < 300) {
+        const nextOpacity = String(Math.max(0, left / 300));
+        if (rec._sfOpacity !== nextOpacity) {
+          // The base class carries `transition: opacity .16s ease`, which would lag this per-frame
+          // ramp — on the first write of a fade window, sf-toast--jsfade (hudStyles) suspends it
+          // while JS owns opacity. Regroup in push() and the dismiss exit drop the class again.
+          if (rec._sfOpacity == null) rec.el.classList.add('sf-toast--jsfade');
+          rec._sfOpacity = nextOpacity;
+          rec.el.style.opacity = nextOpacity;
+        }
+        next = Math.min(next, now);
+      } else {
+        next = Math.min(next, rec.born + Math.max(0, rec.ttl - 300));
+      }
+    }
+    nextWakeAt = live.length ? next : Infinity;
+  }
+
+  function recomputeNextWake() {
+    nextWakeAt = Infinity;
+    for (let i = 0; i < live.length; i++) {
+      nextWakeAt = Math.min(nextWakeAt, fadeWakeAt(live[i], 300));
+    }
+  }
+
+  const offToast = bus.on('toast', push);
+  // Notices the wall clock raises (the retail error line, the slow-frame offer, the physics stall)
+  // come in here, not over the bus: sim listeners hear every bus toast (core/receiptPresenter.js).
+  // The audio system gives every bus toast a UI click; a presented one keeps it through `audio:cue`
+  // (a main-side type no sim system subscribes to), and only when the receipt really showed.
+  function present(spec) {
+    const shown = push(spec) === true;
+    if (shown && !(spec && (spec.silent === true || spec.audio === false))) {
+      try { bus.emit('audio:cue', { id: spec.kind === 'error' ? 'error' : 'click' }); } catch (_) { /* a missing cue is not a failure */ }
+    }
+    return shown;
+  }
+  const offPresenter = setReceiptPresenter(present);
+  bindPhysicsStallReceipt(bus, present);
+  bindProgressSavedReceipt(bus, () => ctx.state);
+  const offSession = [];
+  // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
+  // the pre-save session — dismiss them rather than letting their TTL finish over the restored
+  // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
+  // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
+  for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
+    offSession.push(bus.on(name, () => { while (live.length) dismiss(live[live.length - 1], { instant: true }); }));
+  }
+  bindStuntReceipts(bus);
+  bindCombatDenialToasts(bus, () => ctx.state);
+  bindJumpDenialToasts(bus, () => ctx.state);
+  bindExportRecoveryToasts(bus);
+  bindSlingPassReceipts(bus);
+  bindCounterplayReceipts(bus);
+  bindCapitalBossReceipts(bus, () => ctx.state);
+  bindAutomationPayoffUi(bus, () => ctx.state);
+  bindReturningPilotSummary(bus, ctx && ctx.state);
+
+  return { push, tick, destroy() {
+    destroyed = true;
+    offPresenter();
+    approach.destroy();
+    offToast?.();
+    for (const off of offSession) off?.();
+    while (live.length) dismiss(live[live.length - 1], { instant: true });
+  } };
+}
+
+function normalizeTtlMs(ttl) {
+  const n = Number(ttl);
+  if (!Number.isFinite(n) || n <= 0) return 4000;
+  return n > 60 ? n : n * 1000;
+}
+
+function fadeWakeAt(rec, fadeMs) {
+  return rec.born + Math.max(0, rec.ttl - fadeMs);
+}
+
+const REJECT_LINE = Object.freeze({
+  insufficient_capacitor: 'Not enough capacitor',
+  heat_limit: 'Too hot to act',
+  target_required: 'Need a target',
+  target_missing: 'Need a target',
+  target_out_of_range: 'Out of range',
+  target_not_hostile: 'Not a hostile',
+  attachment_missing: 'No line attached',
+  not_attachment_owner: 'Not your line',
+  unknown_action: "Can't do that",
+  actor_missing: "You can't act",
+});
+
+export function formatCombatActionRejectLine(reason) {
+  const raw = String(reason || '').trim();
+  if (!raw) return '';
+  if (REJECT_LINE[raw]) return REJECT_LINE[raw];
+  if (raw.startsWith('cooldown:')) return 'Not ready yet';
+  if (raw.startsWith('busy:')) return 'Still busy';
+  if (raw.startsWith('disabled:')) {
+    const named = disabledActionLine(raw.slice('disabled:'.length));
+    if (named) return named;
+    const part = raw.slice('disabled:'.length).replace(/_/g, ' ');
+    return part ? `${part} disabled` : 'System disabled';
+  }
+  if (raw.startsWith('physics_')) return "Can't do that now";
+  return raw.replace(/_/g, ' ');
+}
+
+/**
+ * Demo-prep polish seam (headless-testable): combat-denial toast plan.
+ * Pure helper — maps a rejected action into the exact receipt line plus
+ * a short hint, so a waved-off verb always teaches its fix. Unknown or
+ * empty reasons yield null (no toast), never a raw snake_case leak.
+ */
+const REJECT_HINT = Object.freeze({
+  insufficient_capacitor: 'Let the capacitor refill',
+  heat_limit: 'Ease off until heat falls',
+  target_required: 'Lock a contact first',
+  target_missing: 'Lock a contact first',
+  target_out_of_range: 'Close the range',
+  target_not_hostile: 'Pick a hostile contact',
+  attachment_missing: 'Attach a line first',
+  not_attachment_owner: 'Only your own line answers',
+});
+
+export function combatDenialToastSpec(payload) {
+  const reason = payload && payload.reason != null ? String(payload.reason) : '';
+  const text = formatCombatActionRejectLine(reason);
+  if (!text) return null;
+  if (/^[a-z0-9_]+$/.test(reason) && !REJECT_LINE[reason] && !reason.startsWith('cooldown:')
+    && !reason.startsWith('busy:') && !reason.startsWith('disabled:') && !reason.startsWith('physics_')) {
+    return null;
+  }
+  const hint = REJECT_HINT[reason] || disabledActionHint(reason) || '';
+  return { text, kind: 'error', ttl: 3.5, hint };
+}
+
+/**
+ * A refused verb names the gate that actually fired.
+ * `capability:*` is a dead part (checked before tags). `tag:dash` and `tag:tether` are a tumble.
+ * `tag:weapon` names the status or subsystem that blocked it when the reason carries one.
+ */
+function disabledActionLine(rest) {
+  const parts = String(rest || '').split(':');
+  const kind = parts[0];
+  const name = String(parts[1] || '').toLowerCase();
+  const cause = parts.slice(2).join(':');
+  if (kind === 'capability') {
+    if (name === 'tether') return 'Massline spool out — the rope will not hold';
+    if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'drive') return 'Drive out — the ship is not pushing';
+    if (name === 'weapon') return 'Guns out — the battery is dark';
+    if (name === 'power') return 'Reactor out — the ship is starving';
+    if (name === 'sensor') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  if (kind === 'tag') {
+    if (name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+    if (name === 'clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+    if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
+    if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
+    if (name === 'weapon' || name === 'burst') {
+      if (cause === 'status_tumbling') return 'Guns won\'t answer — the ship is tumbling';
+      if (cause === 'status_overheated') return 'Guns won\'t answer — cooked';
+      if (cause === 'subsystem_weapon') return 'Guns won\'t answer — the battery is dark';
+      return name === 'burst'
+        ? 'Guns won\'t answer — cooked or out'
+        : 'Guns won\'t answer — out, tumbling, or cooked';
+    }
+    if (name === 'sensor' || name === 'lock') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  return '';
+}
+
+function disabledActionHint(reason) {
+  if (!String(reason || '').startsWith('disabled:')) return '';
+  const rest = String(reason).slice('disabled:'.length);
+  if (!disabledActionLine(rest)) return '';
+  const parts = rest.split(':');
+  const kind = parts[0];
+  const name = String(parts[1] || '').toLowerCase();
+  const cause = parts.slice(2).join(':');
+  if (kind === 'tag' && (name === 'dash' || name === 'tether')) return 'Wait until the tumble stops';
+  if (kind === 'tag' && cause === 'status_tumbling') return 'Wait until the tumble stops';
+  if (kind === 'tag' && cause === 'status_overheated') return 'Ease off until heat falls';
+  if (kind === 'tag' && cause === 'subsystem_weapon') return 'Repair the battery';
+  if (kind === 'tag' && (name === 'weapon' || name === 'burst')) return 'Wait it out, or repair the battery';
+  if (name === 'sensor' || name === 'lock') return 'Wait out the jam, or repair the sensors';
+  return 'Repair it, or wait for the part to come back';
+}
+
+/**
+ * Demo-prep polish seam (headless-testable): arrival plan for the receipt lane.
+ * Pure helper — newest receipt rises first; grouped repeats carry their count
+ * so a burst (mining yields, rep ticks) reads as one line, not a stack.
+ */
+export function planReceiptArrival(items) {
+  const list = Array.isArray(items) ? items : [];
+  const seen = new Map();
+  const ordered = [];
+  for (const item of list) {
+    const text = String((item && item.text) || '').trim();
+    if (!text) continue;
+    const kind = String((item && item.kind) || 'info');
+    const key = `${kind}::${text}`;
+    const prior = seen.get(key);
+    if (prior) prior.count += 1;
+    else {
+      const rec = { text, kind, count: 1 };
+      seen.set(key, rec);
+      ordered.push(rec);
+    }
+  }
+  return ordered.slice(0, RECEIPT_MAX);
+}
+
+function isPlayerCombatActor(state, payload) {
+  if (!payload) return false;
+  const playerId = state && state.playerId;
+  if (playerId == null) return true;
+  return payload.actorId === playerId;
+}
+
+/** VERB-05 — `stunt:trickDetected` becomes one receipt carrying the trick name. */
+export function bindStuntReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  const seen = new Set();
+  bus.on('stunt:trickDetected', (trick) => {
+    const receipt = stuntDetectionReceipt(seen, trick);
+    if (!receipt || typeof bus.emit !== 'function') return;
+    bus.emit('toast', { text: receipt.text, kind: 'stunt', ttl: 3.2, channel: 'stunt' });
+  });
+}
+
+/** RC-47 — `travelLanes:slingRingPass` becomes one receipt naming the ride it gave. */
+export function bindSlingPassReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('travelLanes:slingRingPass', (payload) => {
+    if (!payload || typeof bus.emit !== 'function') return;
+    const speed = Math.round(Number(payload.exitSpeedWuS) || 0);
+    const text = payload.aligned === false
+      ? `Sling ring — thrown wide at ${speed} u/s.`
+      : `Sling ring — slung forward at ${speed} u/s.`;
+    bus.emit('toast', { text, kind: 'info', ttl: 4 });
+  });
+}
+
+export const COUNTERPLAY_RECEIPT_TTL_S = 4;
+
+/** RC-25 — `counterplay:encountered` becomes one short "title — counter" receipt.
+ *  The 8-second doctrine paragraph is dead: the receipt names the hull's plan and
+ *  the one counter move, nothing more. */
+export function counterplayReceipt(payload) {
+  const doctrine = payload && counterplayDoctrineById(payload.doctrineId);
+  if (!doctrine) return null;
+  const short = doctrine.counterShort || String(doctrine.counter || '').split('. ')[0];
+  return { text: `${doctrine.title} — ${short}`, kind: 'info', ttl: COUNTERPLAY_RECEIPT_TTL_S, channel: 'counterplay' };
+}
+
+export function bindCounterplayReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('counterplay:encountered', (payload) => {
+    const receipt = counterplayReceipt(payload);
+    if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
+  });
+}
+
+export const CAPITAL_BOSS_RECEIPT_TTL_S = 4;
+
+/** RC-24 — a capital cast's first telegraph becomes one "title — counter" receipt.
+ *  `capitalBoss:telegraph` re-fires every 6 ticks while tracking and once at lock;
+ *  the receipt is minted once per castId so the warning lands tellTicks (≥1.5s by
+ *  the shipped validator floor) before capitalBoss:attack. */
+export function capitalBossWarningReceipt(payload) {
+  const title = String(payload?.title || '').trim();
+  const counter = String(payload?.counter || '').split('. ')[0].trim();
+  if (!title || !counter || payload?.castId == null) return null;
+  return { text: `${title} — ${counter}`, kind: 'warn', ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss', castId: payload.castId, fightId: payload.fightId, simTime: payload.simTime };
+}
+
+export function capitalBossStartedReceipt(payload) {
+  const name = String(payload?.name || '').trim();
+  const lesson = String(payload?.lesson || '').trim();
+  if (!name || !lesson || payload?.fightId == null) return null;
+  return {
+    text: `${name} — ${lesson}`,
+    kind: 'info',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossActReceipt(payload) {
+  const title = String(payload?.title || '').trim();
+  if (!title || payload?.fightId == null || !Number.isInteger(payload.index)) return null;
+  return {
+    text: title,
+    kind: 'info',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+    index: payload.index,
+  };
+}
+
+export function capitalBossCounteredReceipt(payload) {
+  if (!payload || payload.reason !== 'subsystem_disabled') return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `${title} — the part you broke cancelled it`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossExposureReceipt(payload) {
+  if (!payload || payload.exposure == null) return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `EXPOSED — ${title}. Throw now`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossDisarmedReceipt(payload) {
+  if (!payload || payload.fightId == null) return null;
+  return {
+    text: 'Disarmed — finish it',
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+  };
+}
+
+export function capitalBossHitReceipt(payload, playerId) {
+  if (!payload || playerId == null || payload.targetId !== playerId) return null;
+  const title = String(payload.title || '').trim();
+  if (!title) return null;
+  return {
+    text: `${title} landed`,
+    kind: 'warn',
+    ttl: CAPITAL_BOSS_RECEIPT_TTL_S,
+    channel: 'capitalBoss',
+    fightId: payload.fightId,
+    castId: payload.castId,
+  };
+}
+
+export function bindCapitalBossReceipts(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  const seen = new Set();
+  const started = new Set();
+  const acts = new Set();
+  const disarmed = new Set();
+  const castTitles = new Map();
+  const toast = (receipt) => {
+    if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
+  };
+  const playerId = () => {
+    const state = typeof getState === 'function' ? getState() : null;
+    return state && state.playerId != null ? state.playerId : null;
+  };
+  bus.on('capitalBoss:telegraph', (payload) => {
+    if (!payload || seen.has(payload.castId) || typeof bus.emit !== 'function') return;
+    if (payload.castId != null && payload.title) {
+      castTitles.set(payload.castId, { fightId: payload.fightId, title: payload.title });
+      if (castTitles.size > 64) castTitles.delete(castTitles.keys().next().value);
+    }
+    const receipt = capitalBossWarningReceipt(payload);
+    if (!receipt) return;
+    seen.add(payload.castId);
+    if (seen.size > 64) seen.delete(seen.values().next().value);
+    bus.emit('toast', receipt);
+  });
+  bus.on('capitalBoss:started', (payload) => {
+    if (!payload || started.has(payload.fightId)) return;
+    const receipt = capitalBossStartedReceipt(payload);
+    if (!receipt) return;
+    started.add(payload.fightId);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:actChanged', (payload) => {
+    if (!payload) return;
+    const key = `${payload.fightId}:${payload.index}`;
+    if (acts.has(key)) return;
+    const receipt = capitalBossActReceipt(payload);
+    if (!receipt) return;
+    acts.add(key);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:countered', (payload) => toast(capitalBossCounteredReceipt(payload)));
+  bus.on('capitalBoss:recovery', (payload) => toast(capitalBossExposureReceipt(payload)));
+  bus.on('capitalBoss:disarmed', (payload) => {
+    if (!payload || disarmed.has(payload.fightId)) return;
+    const receipt = capitalBossDisarmedReceipt(payload);
+    if (!receipt) return;
+    disarmed.add(payload.fightId);
+    toast(receipt);
+  });
+  bus.on('capitalBoss:hit', (payload) => {
+    if (!payload) return;
+    const remembered = castTitles.get(payload.castId);
+    toast(capitalBossHitReceipt({
+      ...payload,
+      title: payload.title || remembered?.title,
+    }, playerId()));
+  });
+  bus.on('capitalBoss:ended', (payload) => {
+    const fightId = payload && payload.fightId;
+    if (fightId == null) return;
+    for (const [castId, row] of castTitles) {
+      if (row.fightId === fightId) castTitles.delete(castId);
+    }
+  });
+}
+
+export function bindCombatDenialToasts(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('combat:actionRejected', (payload) => {
+    const state = typeof getState === 'function' ? getState() : getState;
+    if (!isPlayerCombatActor(state, payload)) return;
+    const spec = combatDenialToastSpec(payload);
+    if (!spec) return;
+    // The hint rides the receipt line so a waved-off verb teaches its fix
+    // in the same beat (demo: no dead "can't do that" without a next step).
+    const text = spec.hint ? `${spec.text} — ${spec.hint}` : spec.text;
+    bus.emit('toast', { text, kind: spec.kind, ttl: spec.ttl });
+  });
+}
+
+/** WF-14 — `jump:chargeAbort` becomes one receipt naming the refusal's cause and fix. The
+ * Choice-C unfiled charge is excluded: its staged prompt owns that moment. */
+/** One line when an export had to use the previous-generation copy. Blank slots say nothing. */
+export function exportRecoveryToast(payload) {
+  const slot = payload && typeof payload.slot === 'string' ? payload.slot.trim() : '';
+  if (!slot) return null;
+  return {
+    text: `Recovery copy exported for ${slot}`,
+    kind: 'warn',
+    ttl: 4,
+  };
+}
+
+export function bindExportRecoveryToasts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('save:exportRecovery', (payload) => {
+    const spec = exportRecoveryToast(payload);
+    if (!spec || typeof bus.emit !== 'function') return;
+    bus.emit('toast', spec);
+  });
+}
+
+export const PHYSICS_STALL_RECEIPT = Object.freeze({
+  text: 'Flight systems are still starting. If your ship stays still, reload the game.',
+  kind: 'warn',
+  ttl: 10,
+});
+
+/**
+ * `physics:authorityStalled` becomes one receipt. It is shown directly rather than re-emitted as a
+ * bus `toast`: the stall is called by wall time, and every sim listener hears a bus toast.
+ */
+export function bindPhysicsStallReceipt(bus, show) {
+  if (!bus || typeof bus.on !== 'function' || typeof show !== 'function') return;
+  bus.on('physics:authorityStalled', () => { show({ ...PHYSICS_STALL_RECEIPT }); });
+}
+
+export function bindJumpDenialToasts(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  const seen = new Set();
+  bus.on('jump:chargeAbort', (payload) => {
+    if (payload && payload.unfiled === true) return;
+    const state = typeof getState === 'function' ? getState() : getState;
+    const receipt = jumpAbortReceipt(seen, state, payload);
+    if (!receipt || typeof bus.emit !== 'function') return;
+    bus.emit('toast', {
+      text: receipt.text,
+      kind: receipt.kind,
+      ttl: receipt.ttl,
+      channel: 'jump',
+    });
+  });
+}
+
+// Worker replay temporarily substitutes emit-time mode/enterSerial. Only this
+// optional cue waits one microtask to see the real post-batch state. No retries,
+// timers, saved acknowledgement, or queue survives a session/sector boundary.
+export function createCharonApproachToastGate(bus, getState, present) {
+  let epoch = 0, disposed = false, pending = false;
+  const off = ['save:loaded', 'game:new', 'game:newGame', 'sector:enter'].map(name =>
+    bus.on(name, () => { epoch++; pending = false; }));
+  return {
+    enqueue(payload) {
+      if (disposed || pending) return;
+      pending = true;
+      const ticket = epoch;
+      queueMicrotask(() => {
+        if (disposed || ticket !== epoch) return;
+        pending = false;
+        if (validCharonApproachReceipt(getState(), payload)) present(payload);
+      });
+    },
+    destroy() { disposed = true; epoch++; pending = false; for (const fn of off) fn?.(); },
+  };
+}

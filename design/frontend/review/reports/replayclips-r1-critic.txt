@@ -1,0 +1,150 @@
+REPLAY + CLIPS r1 CRITIC — ORRERY Wave 2 build-round review
+Critic: replayclips r1 critic. Stills opened with own eyes (1920 + 1280 each) + crops.
+Scoring law: design/frontend/review/CRITIC_BRIEF.md. PASS = overall >= 8.0 AND no axis < 7.0
+AND owner (a) band-weight/generic test AND owner (b) signature interaction.
+Axes: Composition / Hierarchy / Legibility / ORRERY fidelity / Craft-detail / Interaction clarity.
+Bench limit (per task): bench stages DORMANT states only. Scored: dormant instrument quality on
+pixels + populated structure verified by reading replay.js / clips.js (not demanded in stills).
+Px below are in the named shot's own pixels. 1920 shots are 1920x1080, 1280 shots 1280x720.
+Band ratios are WCAG-style (L+0.05) on sampled composited pixels; glass lum ~7-9.
+
+================================================================================
+REPLAY — 8.1 — PASSED (previous 2.4 FAIL-unbuilt)
+================================================================================
+Axes: C 8.0 / H 8.0 / L 8.5 / O 8.5 / D 7.5 / I 8.0. Previous: 2.0/3.0/6.0/1.5/2.0/2.0.
+What I see (dormant, both shots): EXIT bone word top-left (1920 x36-106 y33-60); thin
+bone Counter "0.0 / 30.0" + "SEED — · NO TAPE" codes top-right (x1640-1900 y27-154);
+readout line (x~115-700 y815-823); the tape scale low (band y914-921, x110-1700, 5s
+majors + 1s minors, sec labels ~y939+); amber playhead-Hand parked at 0 (arm y881-885,
+bead bloom y912-923); amber FLY TO RECORD Lamp Key centred (x~815-1055 y1008-1056).
+Held world behind, very dark. 1280 mirrors it; lamp y654-697 (23px above fold).
+
+Previous round (build brief §4) item by item:
+1. 30s tracing-beam timeline, lower third — DONE. Band y914-921 1920, ticks/majors in crop.
+2. 5s major / 1s minor ticks — DONE (crop rc1-tape-left: tall majors at 0/5, short minors).
+3. Event ticks (stunt glyph / kill+damage red / boost windows) — DONE in code
+   (buildTapeSvg replay.js:376-412; red orr-threat class; boost beams above band).
+4. Playhead IS the Hand + spring overshoot — DONE (arm+bead amber #f2b950 exact on pixels;
+   createSpring 'swing' + kick on event-cross replay.js:715,843).
+5. Elapsed/total thin Counter 96px-class bone + seed/tick mono codes — DONE (counter exact
+   bone 236 230 216, ~67px numerals; codes 12px mono; populated TICK n/N replay.js:493).
+6. PLAY/PAUSE Lamp Key under tape; step/speed dotted words flanking; Exit word top-left —
+   DONE (dormant FLY TO RECORD; populated transport replay.js:660-694; EXIT via words() kit,
+   bone — see note N1, no literal dots exist anywhere in the kit).
+7. Scrub drag + arrows; shoulders step events — DONE in code (replay.js:521-541 shoulders/
+   E-steps, 764-783 drag, 800-817 arrows/Home/End/space).
+8. Dormant = same instrument asleep (ghost ticks, head at 0, copy line, FLY TO RECORD) —
+   DONE, all four on pixels.
+9. Arrival §3.5 + reduced-motion keeps info — DONE in code (settle/decrypt 868-873;
+   instant springs, pulse hidden, tilt n/a, seeks instant under reducedMotion()).
+10. Palette/bands/type/contrast — DONE: amber audit exactly 2 clusters (Hand x~120 +
+    Lamp x800-1071); red 0 hits; band 2.7:1 measured (see M1); all type 12px; readout
+    5.7:1, codes ~6.7:1.
+11. Screenshot gate populated+dormant — HALF: dormant 1920+1280 shot, no overlap, above
+    fold; populated unshootable by the bench (limit, not builder debt) — code-verified.
+
+Owner (a) PASS: band core (87,85,82) lum 85 vs glass lum 7 = 2.7:1, 8px profile with
+bloom shoulders — body, not a wire. No generic elements: no chips/cards/boxes; Lamp Key
+is proper amber 45°-cut with dark ink; EXIT is kit words-vocabulary.
+Owner (b) PASS: signature "ride the tape" fully wired — drag scrub, arrow/Home/End seek,
+E/shift-E + gamepad-shoulder event stepping with spring kick, ice pulse while running,
+PLAY-IN-REPLAY cross-link seek (pendingSeekTick). No other screen scrubs time.
+
+RANKED FIXES (replay.js + styles/ui.css unless noted):
+R1. Dormant band is lean at 2.7:1 (1920 x110-1700 y914-921, core lum 85). Raise dormant
+    band alpha (--orr-band-a 0.18 -> ~0.24 in buildTapeSvg replay.js:346, or the orr-band
+    dormant rule) so the dormant core measures >= 3.5:1. One value; re-shoot the crop.
+R2. Mid-screen void: held world crushed to near-black (ship lum ~15-25, 1920 x1000-1500
+    y550-750; planet disk ~invisible x1400-1750 y150-380). Lift k-photo world exposure
+    one stop or add a faint far ring-field so y150-810 is a held world, not a void.
+R3. Dormant legend (legendFor replay.js:458, y815-823) names no act. Copy tweak:
+    "NO TAPE YET — FLY AND THE LAST 30 SECONDS LAND HERE" -> append "· THEN DRAG IT".
+    Pre-teaches the signature in the asleep state.
+R4. (Future gate, not owed now) When the bench can stage a populated tape: re-shoot and
+    confirm event-label solver rows, red kill ticks, boost beams, ice pulse, transport
+    words — all code-verified, never yet seen on pixels.
+N1. (Note, not a fix) EXIT (x36-106 y33-60) is words()-kit bare bone caps; no dotted
+    underline style exists in src/ui/deckplate/light.js. Brief's "dotted word" is met in
+    substance (bone word, no chip, no amber). Literal dots would be a kit-level change.
+Memorable if: the playhead scrubbed the held world itself — the frozen ship and planet
+visibly rocking back and forth with the tape. Nothing here attempts that yet; the
+backdrop is a static hold.
+
+================================================================================
+CLIPS — 8.0 — PASSED (previous 2.4 FAIL-unbuilt)
+================================================================================
+Axes: C 8.5 / H 8.0 / L 7.5 / O 8.0 / D 8.0 / I 8.0. Previous: 2.0/3.0/6.0/1.5/2.0/2.0.
+What I see (dormant, both shots): EXIT (same as replay); "0 CLIPS / 0.0 S TOTAL" counters
+top-right (x1770-1885 y~30-155); three ghost plates on an arc (stunt x~500-680 y~425-575,
+kill x~825-1010 y~350-480, save x~1180-1440 y~425-575: bone band ring + glyph + foot rule
++ name + sub); curved rail (y~630-665, x180-1660); amber Hand parked centre (x958-962,
+arrow y~600-640, bead y~650); readout + "0 / 0" (x677+ y~973-983); amber FLY TO MAKE ONE
+Lamp Key (x~800-1075 y1008-1056). 1280 mirrors it; lamp y654-697; no overlap, above fold.
+
+Previous round (build brief §5) item by item:
+1. Reel: curved rail + Tilt Plates mid-screen over held world — DONE (rail y~658-665
+   centre; plates arc above it; rail sampled on the same arc plates ride, clips.js:608).
+2. Plate = art/first-frame + Archivo name + corner Arc Gauge + window Beam — DONE in code
+   (plateArt 331, arcGauge 575, buildBeam 415; bounds + tickcode lines 565-568).
+3. Chosen forward, others recede/dim, Hand on chosen — DONE in code (scaleFor/opacity/
+   zIndex + hand spring layoutReel clips.js:595-675).
+4. Counters (count + runtime) — DONE on pixels ("0", "0.0 S TOTAL"; paintReelCounters 517).
+5. EXPORT Lamp Key (+hold-overwrite) / PLAY-IN-REPLAY / DELETE hold-confirm / Exit word /
+   format dial — DONE in code (buildExportLamp 746, buildVerbs 834, dial 882) with one
+   deliberate deviation: dial needle is BONE, not amber (clips.js:908-910 comment — the
+   rail Hand is this screen's one Hand; one-Hand law outranks the brief). Dormant shows
+   FLY TO MAKE ONE; dial renders only with clips (nothing to format without a moment).
+6. Signature "pull a moment open" (drag window edges, edge-frame preview, [ ] keys) —
+   DONE in code (thumbs + pointer drag 458-486, nudgeTrimEdge 492 w/ 0.5s min + clamps,
+   previewEdgeFrame 369, [ ]/arrows 1113-1136). Lawful: trim thumbs are instrument
+   controls, not stock sliders.
+7. Dormant = rail + 3 ghost plates (>=2:1 bands + ghost art) + parked cursor +
+   FLY TO MAKE ONE — DONE: rings ~4.2:1, glyphs present, Hand parked, Lamp present.
+8. Motion + reduced-motion — DONE in code (settle/decrypt 1141-1146; tilt off 1082,
+   instant springs, trims instant under reducedMotion()).
+9. Palette/bands/type/contrast — MOSTLY DONE: amber audit exactly 2 clusters (Hand +
+    Lamp); red 0 (correct — brief keeps red off clips); rail 4.0:1, rings ~4.2:1;
+    readout ~10:1. ONE BREAK: ghost sub-caption renders 9px effective (12px x 0.75
+    plate scale; caps ~7px at 1920 y566-572) — under the 12px law. See C1.
+10. Screenshot gate populated+dormant — HALF: same bench limit as replay; populated
+    reel/trim/dial/gauge code-verified, never yet seen on pixels.
+
+Owner (a) PASS: rail core (114,112,107) lum 112 vs glass lum 9 = 4.0:1 over a 7px
+profile; ghost-ring edges (118,116,112) ~4.2:1 over ~6px; right-side rail same 4.0:1.
+No cards/chips/dropdowns anywhere; ghost plates are bands + glyphs, not wire outlines.
+Owner (b) PASS: signature "pull a moment open" is complete and distinct — edge-drag trim
+with live beam repaint + bounds numerals + edge-frame preview swap, plus [ ] keys and
+rail riding. No other screen trims time.
+
+RANKED FIXES (clips.js + styles/ui.css):
+C1. Ghost sub-caption under 12px law: 12px at 0.75 plate scale = 9px effective (1920
+    stunt sub x~455-590 y566-572 caps ~7px; same on kill/save plates). Set
+    .orr-clip__plate.is-ghost .orr-clip__sub to 16px (16 x 0.75 = 12 effective) in
+    styles/ui.css near :2142. Ghost name (19px -> 14 effective) already passes.
+C2. Ghost glyphs are bare ~2px strokes (diamond/cross/ring, e.g. kill cross 1920
+    x~930-960 y~365-395). Give ghostArt glyphs (clips.js:318-326) a bloom under-stroke
+    (matching orr-bloom geometry) so they read as produced ghost art, not bare wire.
+C3. (Future gate, not owed now) When the bench can stage 3+ clips: re-shoot populated
+    reel and confirm plate overlap-free arc at 1280, gauge fills, beam+thumbs, dial
+    needle, EXPORT/verbs row — code-verified, never yet seen on pixels.
+N2. (Note, not a fix) Dial-needle-bone deviation (clips.js:908-910) is CORRECT — one-Hand
+    law outranks the brief's "dial with the Hand". Keep. Dormant dial absence is lawful.
+Memorable if: the chosen plate's window-beam extended a live ice thread up into its own
+art frame, so a trim visibly bites into the picture. Nothing here attempts that yet.
+
+================================================================================
+CROSS-SURFACE (brief §4-5 shared laws)
+================================================================================
+- Key-cap chrome purge: PASS both — zero dark chips; EXIT is words-kit bone on both.
+- Amber audit: PASS both — exactly one Hand + one Lamp Key per screen (pixel-scanned whole
+  frames: replay amber only x~120 arm + x800-1071 lamp; clips only hand + lamp; both amber
+  exactly #f2b950 rgb(242 185 80)).
+- 1280 gate: PASS both — lamps end y697 (23px margin); tape/rail/labels fully visible, no
+  overlap, nothing structural below y700.
+- Bands >=2:1: PASS both, measured — replay dormant tape 2.7:1 (lean, see R1); clips rail
+  4.0:1, ghost rings ~4.2:1.
+- Reduced-motion: PASS both in code — replay: instant springs/seeks, pulse display:none
+  (styles/ui.css:2079 + replay.js:499); clips: tilt listener off, instant springs/trims.
+- Bone/ice/red/type: PASS — counter bone exact rgb(236 230 216); ice only in
+  replay pulse-while-running + (populated) trim preview link; red 0 dormant hits both,
+  code-gated to kill/damage/death; all type >=12px except ghost sub (C1, the one break).

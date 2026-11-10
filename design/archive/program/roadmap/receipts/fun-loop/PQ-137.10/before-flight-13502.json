@@ -1,0 +1,349 @@
+{
+  "schema": "spaceface.funMeasure.v1",
+  "timestamp": "2026-09-03T22:27:35.772Z",
+  "bench": "flight",
+  "seed": 13502,
+  "bars": [
+    {
+      "id": "B1",
+      "key": "feel.earned_speed_kept",
+      "title": "Earned speed is kept",
+      "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+      "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.rope_swing_release — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B2",
+      "key": "feel.reversal_course",
+      "title": "Nimble regime",
+      "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+      "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "full 180° velocity reversal, ship_kestrel (worst of 1 result(s))",
+          "value": 4.483333333333333,
+          "unit": "s",
+          "met": false
+        }
+      ],
+      "met": false,
+      "notes": "verdict uses the starter hull (ship_kestrel); also measured: ship_atlas, ship_drifter, ship_wasp (context only). rest→cruise time and turn radius at cruise have no metric in the Motion Lab M1/M3 output yet (M1 exposes response windows, not a rest-to-cruise time; no scenario reports turn radius), so those clauses are unmeasured and coverage stays partial.",
+      "fedBy": [
+        "flight/flight-reversal/s13502",
+        "flight/flight-accel-brake/s13502"
+      ]
+    },
+    {
+      "id": "B3",
+      "key": "feel.screen_crossing",
+      "title": "The fight stays on screen",
+      "statement": "At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens so that a 2× cruise exit still shows ≥ 2 s of travel.",
+      "target": "≥ 1.2 s to cross the visible depth at cruise",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.stroke_speed — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B4",
+      "key": "feel.shove_magnitude",
+      "title": "Shove magnitude",
+      "statement": "The dedicated shove weapon changes a light hostile's velocity by ≥ 30 % of its cruise per hit. The starter gun changes it by ≥ 5 % per hit. A light hostile already at cruise gets faster when shoved along its motion.",
+      "target": "shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B5",
+      "key": "feel.shove_displacement",
+      "title": "Shove displacement",
+      "statement": "2 s after a shove-weapon hit, a light hostile is ≥ 1 screen depth off the line it was flying and has not fired.",
+      "target": "≥ 1 screen depth off the original line 2 s after the hit",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B6",
+      "key": "feel.terrain_slam",
+      "title": "Terrain is lethal",
+      "statement": "A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. A heavy at the same speed loses ≤ 15 % and keeps its helm.",
+      "target": "dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.terrain_slam — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B7",
+      "key": "feel.rope_swing_release",
+      "title": "The rope is a rope",
+      "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+      "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.rope_swing_release — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B8",
+      "key": "feel.stroke_speed",
+      "title": "Draw-to-fly rips",
+      "statement": "Mean speed along any hand-drawn stroke ≥ 70 % of cruise; the slowest point ≥ 35 % of cruise. Speed is the pass criterion; track is the constraint.",
+      "target": "mean stroke speed ≥ 70 % of cruise; slowest point ≥ 35 %",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.stroke_speed — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B9",
+      "key": "feel.impact_feedback",
+      "title": "Impacts answer",
+      "statement": "Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
+      "target": "hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "hitstop, camera trauma and audio are presentation-layer; the headless bench has no instrument for them. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B10",
+      "key": "world.reaction_trio",
+      "title": "The world reacts",
+      "statement": "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
+      "target": "patrol chooses within 10 s; salvor arrives ≤ 30 s; civilians turn within 3 s",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by world.cargo_spill — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B11",
+      "key": "feel.hitstun_curve",
+      "title": "Hitstun law is universal",
+      "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+      "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude / feel.terrain_slam — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B12",
+      "key": "proof.sixty_seconds",
+      "title": "The 60-second proof",
+      "statement": "At the reference site, the VISION.md sequence (op working → hauler leaves → pirates intercept → shove spins one → rope-swing-release makes a projectile → collateral → cargo spills → hauler flees → patrol arrives → grab pod → run WANTED) occurs in a deterministic scenario with ≥ 9 of the 11 beats, and in a headed capture at the shipping camera.",
+      "target": "≥ 9 of 11 beats in a deterministic scenario plus a headed capture at the shipping camera",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "needs the PQ-141 60-second proof scenario, which does not exist yet. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B13",
+      "key": "feel.knock_budget",
+      "title": "The player is never knocked around",
+      "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+      "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by crucible knock metrics (playerKnockEventsPerMin / maxPlayerKnockFraction) or verbs feel.knock_budget — not in this evaluation input.",
+      "fedBy": []
+    }
+  ],
+  "runs": [
+    {
+      "runRef": "flight flight-accel-brake seed 13502",
+      "bench": "flight",
+      "scenarioId": "flight-accel-brake",
+      "seed": 13502,
+      "runHash": "162d283629f154deb982ade04d56a8a38acb70e2d4ea01fc5964da31d5d5063f",
+      "bars": [
+        {
+          "id": "B2",
+          "key": "feel.reversal_course",
+          "title": "Nimble regime",
+          "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+          "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "full 180° velocity reversal, ship_kestrel (worst of 1 result(s))",
+              "value": 4.483333333333333,
+              "unit": "s",
+              "met": false
+            }
+          ],
+          "met": false,
+          "notes": "verdict uses the starter hull (ship_kestrel); also measured: ship_atlas, ship_drifter, ship_wasp (context only). rest→cruise time and turn radius at cruise have no metric in the Motion Lab M1/M3 output yet (M1 exposes response windows, not a rest-to-cruise time; no scenario reports turn radius), so those clauses are unmeasured and coverage stays partial.",
+          "fedBy": [
+            "flight/flight-reversal/s13502",
+            "flight/flight-accel-brake/s13502"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: flight trace has no action/consequence events",
+          "timeToFirstConsequenceS: flight trace has no action/consequence events",
+          "momentsPerMinute: flight trace has no action/consequence events",
+          "nothingHappenedSeconds: flight trace has no action/consequence events",
+          "deathsByCause: flight trace has no action/consequence events",
+          "knockBudget: no knock budget source for this bench"
+        ]
+      }
+    },
+    {
+      "runRef": "flight flight-slalom seed 13502",
+      "bench": "flight",
+      "scenarioId": "flight-slalom",
+      "seed": 13502,
+      "runHash": "2d0a89eec8d1006dac92e80898d80dad3b1f218dbdbda11f69a3d8b07b6e05a9",
+      "bars": [],
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: flight trace has no action/consequence events",
+          "timeToFirstConsequenceS: flight trace has no action/consequence events",
+          "momentsPerMinute: flight trace has no action/consequence events",
+          "nothingHappenedSeconds: flight trace has no action/consequence events",
+          "deathsByCause: flight trace has no action/consequence events",
+          "knockBudget: no knock budget source for this bench"
+        ]
+      }
+    },
+    {
+      "runRef": "flight flight-reversal seed 13502",
+      "bench": "flight",
+      "scenarioId": "flight-reversal",
+      "seed": 13502,
+      "runHash": "e0ae2fd2013e40e629fce89321fe21d00ccd17c86fb4b8e2158cde7444f13124",
+      "bars": [
+        {
+          "id": "B2",
+          "key": "feel.reversal_course",
+          "title": "Nimble regime",
+          "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+          "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "full 180° velocity reversal, ship_kestrel (worst of 1 result(s))",
+              "value": 4.483333333333333,
+              "unit": "s",
+              "met": false
+            }
+          ],
+          "met": false,
+          "notes": "verdict uses the starter hull (ship_kestrel); also measured: ship_atlas, ship_drifter, ship_wasp (context only). rest→cruise time and turn radius at cruise have no metric in the Motion Lab M1/M3 output yet (M1 exposes response windows, not a rest-to-cruise time; no scenario reports turn radius), so those clauses are unmeasured and coverage stays partial.",
+          "fedBy": [
+            "flight/flight-reversal/s13502",
+            "flight/flight-accel-brake/s13502"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: flight trace has no action/consequence events",
+          "timeToFirstConsequenceS: flight trace has no action/consequence events",
+          "momentsPerMinute: flight trace has no action/consequence events",
+          "nothingHappenedSeconds: flight trace has no action/consequence events",
+          "deathsByCause: flight trace has no action/consequence events",
+          "knockBudget: no knock budget source for this bench"
+        ]
+      }
+    },
+    {
+      "runRef": "flight collision-recovery seed 13502",
+      "bench": "flight",
+      "scenarioId": "collision-recovery",
+      "seed": 13502,
+      "runHash": "d64f68ec3bf6ddf06cdd581bb12c97c3ef16ec80bf7e69870d4753e6d3444ca8",
+      "bars": [],
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: flight trace has no action/consequence events",
+          "timeToFirstConsequenceS: flight trace has no action/consequence events",
+          "momentsPerMinute: flight trace has no action/consequence events",
+          "nothingHappenedSeconds: flight trace has no action/consequence events",
+          "deathsByCause: flight trace has no action/consequence events",
+          "knockBudget: no knock budget source for this bench"
+        ]
+      }
+    }
+  ]
+}

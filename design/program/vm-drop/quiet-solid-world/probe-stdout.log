@@ -1,0 +1,27 @@
+
+> spaceface@0.1.0 probe:solid-world
+> node scripts/probe-solid-world.mjs --headless
+
+
+PQ-210.03 solid-world audit — live glass keeps every resident
+  crucible: 307 frames sampled  onGlassDisposals=0 (diag 0)  worst on-glass pending=0.765 s  pending-on-glass frames=14 (peak roots 16)  geoQueue peak=16 urgent=14 drainingFrames=16  admitted=29 skipped=0 enq=29 dedup=89 batches=6 lastBatchMs=4  maxRafGap=1430ms rafGapAtPendingMax=298ms  stuck>2s={"308":1,"314":1,"319":4,"320":4,"321":4,"322":4,"323":4,"324":2,"326":4,"327":4,"328":4,"329":4,"330":4,"331":4,"332":4,"334":4,"335":4,"336":4} sample=["308:0.3:e:-","314:0.3:e:-"] queue=[314] stage={"yield:324":4,"compile:333":1} batchOpen=0 roots={"308":{"entityId":308,"slot":50,"worldEntityId":308,"entityIdField":308,"entityAlive":true,"boundMesh":true,"boundPending":true,"boundResident":false,"boundIsMeshesEntry":true,"entityMeshIsBound":true,"queue":{"exists":true,"inPending":false,"hasAdmission":true,"retries":0,"draining":true,"drainStage":"compile:333"},"mesh":true,"pending":true,"resident":false},"314":{"entityId":314,"slot":49,"wor  FAIL (5 frames over 0.25 s)
+  belt: 2331 frames sampled  onGlassDisposals=0 (diag 0)  worst on-glass pending=0.424 s  pending-on-glass frames=8 (peak roots 1)  geoQueue peak=1 urgent=0 drainingFrames=8  admitted=33 skipped=2 enq=35 dedup=95 batches=11 lastBatchMs=5  maxRafGap=1344ms rafGapAtPendingMax=421ms  stuck>2s={"308":1,"309":1,"315":1,"341":1} sample=["341:0.4:e:-"] queue=[] stage={"yield:355":1,"batch-yield:1":3} batchOpen=0 roots={"308":{"entityId":308,"slot":94,"worldEntityId":308,"entityIdField":308,"entityAlive":true,"boundMesh":true,"boundPending":true,"boundResident":false,"boundIsMeshesEntry":true,"entityMeshIsBound":true,"queue":{"exists":true,"inPending":false,"hasAdmission":true,"retries":0,"draining":true,"drainStage":"yield:355"},"mesh":true,"pending":true,"resident":false},"309":{"entityId":309,"slot":41,"world  FAIL (3 frames over 0.25 s)
+  page errors (21):
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found)
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found)
+    [info] [render] opening submission pre-submit gate holding pendingAdmissionHandles=4 refusedFrames=1
+    [info] [render] opening ledger 2471 ms: opening.rockSurfaceLibrary 18ms resolved | opening.firstPresentAdmission 557ms resolved | opening.planWait 1891ms resolved | opening.residency 3ms resolved (subjects=57,textureRefs=65,textures=65) | opening.postResources 1ms resolved (route=bloom) | opening.capturedP
+    [info] [render] first-visible-pass-residency geometries=104->104 programs=80->80 geometry-only-brick=false lateAdmissions={"newProgramKeys":[],"newProgramFamilyKeys":[],"lateAdmissions":[],"unattributedProgramKeys":[],"unattributedProgramFamilyKeys":[],"exemptedProgramFamilyKeys":[],"unexplained":false}
+    [warning] [render] first-flight build {id: 305, type: ship, typeId: null, name: ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary}
+    [warning] [render] first-flight build {id: 306, type: ship, typeId: null, name: ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary}
+    [warning] [render] first-flight build {id: 307, type: ship, typeId: null, name: ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary}
+    [warning] [render] first-flight build {id: 318, type: ship, typeId: null, name: ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary}
+    [warning] [render] first-flight build {id: 310, type: ship, typeId: null, name: ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary}
+    [info] [partsLibrary] authored admission aborted; owner left before publish {entity: 306, message: Authored ship pipeline admission failed, causes: Array(1)}
+    [error] [loop] vfx error: TypeError: Cannot read properties of undefined (reading 'pos')
+    at Object._updateProductionRcs (http://127.0.0.1:36405/src/render/vfx.js:12197:23)
+    at Object._updateEnergyPlume (http://127.0.0.1:36405/src/render/vfx.js:12103:10)
+    at Object._updateEnergy (http://127.0.0.1:3
+RESULT: FAIL
+EXIT:0
+Mon Sep 21 21:54:23 EDT 2026

@@ -1,0 +1,172 @@
+TAP version 13
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.415157
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 2 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.26529
+  ...
+# Subtest: pose-dirty retain skips full walk when TRANSFORM dirties stay visible
+ok 3 - pose-dirty retain skips full walk when TRANSFORM dirties stay visible
+  ---
+  duration_ms: 5.210553
+  ...
+# Subtest: pose-dirty retain hides a visible root that left the cull
+ok 4 - pose-dirty retain hides a visible root that left the cull
+  ---
+  duration_ms: 1.013176
+  ...
+# Subtest: pose-dirty retain fails open when a dirty root was not previously visible
+ok 5 - pose-dirty retain fails open when a dirty root was not previously visible
+  ---
+  duration_ms: 0.992639
+  ...
+# Subtest: bench toggle disables pose-dirty retain (dirty forces full walk)
+ok 6 - bench toggle disables pose-dirty retain (dirty forces full walk)
+  ---
+  duration_ms: 0.746261
+  ...
+# Subtest: zero-dirty retain still preferred when dirtyCount is 0
+ok 7 - zero-dirty retain still preferred when dirtyCount is 0
+  ---
+  duration_ms: 0.8375
+  ...
+# Subtest: zero-dirty identical cull rect retains visible set without transitions
+ok 8 - zero-dirty identical cull rect retains visible set without transitions
+  ---
+  duration_ms: 4.925293
+  ...
+# Subtest: bench toggle restores always-walk (transitions still correct)
+ok 9 - bench toggle restores always-walk (transitions still correct)
+  ---
+  duration_ms: 0.58198
+  ...
+# Subtest: retain-key pos quantize holds quiet chase drift inside a 0.25 WU cell
+ok 10 - retain-key pos quantize holds quiet chase drift inside a 0.25 WU cell
+  ---
+  duration_ms: 0.686124
+  ...
+# Subtest: bench toggle disables retain-key pos quantize (drift misses retain)
+ok 11 - bench toggle disables retain-key pos quantize (drift misses retain)
+  ---
+  duration_ms: 0.589285
+  ...
+# Subtest: crossing the origin cell boundary does not leave stale grid links
+ok 12 - crossing the origin cell boundary does not leave stale grid links
+  ---
+  duration_ms: 4.279257
+  ...
+# Subtest: the same holds on the z axis
+ok 13 - the same holds on the z axis
+  ---
+  duration_ms: 0.461212
+  ...
+# Subtest: retiring an entity parked in a negative origin cell fully unlinks it
+ok 14 - retiring an entity parked in a negative origin cell fully unlinks it
+  ---
+  duration_ms: 0.746667
+  ...
+# Subtest: multi-entity chains around the origin survive churn without cycles or duplicates
+ok 15 - multi-entity chains around the origin survive churn without cycles or duplicates
+  ---
+  duration_ms: 1.391154
+  ...
+# Subtest: absurd finite coordinates cannot corrupt the grid (clamped cell indices)
+ok 16 - absurd finite coordinates cannot corrupt the grid (clamped cell indices)
+  ---
+  duration_ms: 0.644412
+  ...
+# Subtest: presentation-world-unchanged-refresh-skip
+    # Subtest: skip is on by default and bench toggle restores always-write
+    ok 1 - skip is on by default and bench toggle restores always-write
+      ---
+      duration_ms: 0.895684
+      ...
+    # Subtest: unchanged refresh returns false and does not mark TRANSFORM dirty
+    ok 2 - unchanged refresh returns false and does not mark TRANSFORM dirty
+      ---
+      duration_ms: 1.720487
+      ...
+    # Subtest: pose change returns true, updates scalars, and marks TRANSFORM dirty
+    ok 3 - pose change returns true, updates scalars, and marks TRANSFORM dirty
+      ---
+      duration_ms: 0.479038
+      ...
+    # Subtest: radius / flag metadata change is observed without a pose delta
+    ok 4 - radius / flag metadata change is observed without a pose delta
+      ---
+      duration_ms: 0.495375
+      ...
+    # Subtest: entity ref replacement forces a refresh path
+    ok 5 - entity ref replacement forces a refresh path
+      ---
+      duration_ms: 0.277872
+      ...
+    # Subtest: toggle off agrees with toggle on for a mover+static mix (oracle)
+    ok 6 - toggle off agrees with toggle on for a mover+static mix (oracle)
+      ---
+      duration_ms: 6.312689
+      ...
+    1..6
+ok 17 - presentation-world-unchanged-refresh-skip
+  ---
+  duration_ms: 11.46963
+  type: 'suite'
+  ...
+# Subtest: PresentationWorld reuses dense slots without accepting stale handles
+ok 18 - PresentationWorld reuses dense slots without accepting stale handles
+  ---
+  duration_ms: 2.902185
+  ...
+# Subtest: PresentationWorld retains previous/current pose and settles interpolation from live state
+ok 19 - PresentationWorld retains previous/current pose and settles interpolation from live state
+  ---
+  duration_ms: 0.585863
+  ...
+# Subtest: PresentationPublisher applies journal ranges idempotently and rebuilds generations
+ok 20 - PresentationPublisher applies journal ranges idempotently and rebuilds generations
+  ---
+  duration_ms: 3.176898
+  ...
+# Subtest: PresentationQueries return deterministic visible handles and exact transitions
+ok 21 - PresentationQueries return deterministic visible handles and exact transitions
+  ---
+  duration_ms: 1.822085
+  ...
+# Subtest: PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+ok 22 - PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+  ---
+  duration_ms: 0.620573
+  ...
+# Subtest: PresentationWorld drops stale maximum radius after large-root churn
+ok 23 - PresentationWorld drops stale maximum radius after large-root churn
+  ---
+  duration_ms: 0.580231
+  ...
+# Subtest: dirtySlots list tracks mark/clear cardinality
+ok 24 - dirtySlots list tracks mark/clear cardinality
+  ---
+  duration_ms: 3.374196
+  ...
+# Subtest: dirty-slot list pack matches forceFull and walk-all
+ok 25 - dirty-slot list pack matches forceFull and walk-all
+  ---
+  duration_ms: 5.000314
+  ...
+# Subtest: retire removes slot from dirty list
+ok 26 - retire removes slot from dirty list
+  ---
+  duration_ms: 0.578034
+  ...
+1..26
+# tests 31
+# suites 1
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 224.948851

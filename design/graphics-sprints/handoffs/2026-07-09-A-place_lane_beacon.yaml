@@ -1,0 +1,31 @@
+handoff_version: 1
+thread: A
+sprint_id: 2026-07-09-top50-sliceA-landmark-beacon
+agent: top50-wonder-goal-session
+completed_at: 2026-07-09T19:06:00Z
+assets:
+  - id: place_lane_beacon
+    source_glb: assets/ships/parts/places/place_lane_beacon.glb
+    blend_path: assets/ships/parts/blender/place_lane_beacon_authored.blend
+    art_status: full_finish
+    iteration_count: 21
+    weighted_score: 4.79
+    evidence: assets/ships/parts/revamp-evidence/place_lane_beacon/
+    lifecycle: SOURCE_GLB
+    manifest_row: exists
+    runtimeSlots: place
+    blocked: false
+    notes: >
+      Helios landmark (rank 7) — Meridian cyan nav spire. Campaign 1–20 densify
+      + iter21 tight reframe (export_bar_ok true, weighted 4.79). finalize 8124 tris,
+      dims ~6×30.5×6. Wired as landmarkGlb on Helios tutorial POI.
+integrator_actions:
+  - finalize_part.mjs DONE
+  - npm run build:sg04:release-assets
+  - check:asset-reachability
+thread_c_actions: []
+checks_required:
+  - check:asset-reachability
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/place_lane_beacon/renders/2026-07-09_place_lane_beacon_iter21_lit_34_full.png
+  - .devshots/slice-A/landmark-beacon.png

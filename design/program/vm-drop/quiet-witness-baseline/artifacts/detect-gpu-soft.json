@@ -1,0 +1,7 @@
+{
+  "source": "in-game detectGpu via runtime-witness (Electron + ANGLE)",
+  "tier": "software",
+  "software": true,
+  "renderer": "ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5)",
+  "note": "Previous empty baseline used standalone SwiftShader Subzero probe; this re-run reached live renderer and reports Mesa llvmpipe. Both are soft-GPU / detectGpu tier software."
+}

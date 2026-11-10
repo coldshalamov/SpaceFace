@@ -1,0 +1,31 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: gas quiet-latches after first empty observe
+ok 1 - gas quiet-latches after first empty observe
+  ---
+  duration_ms: 108.865046
+  ...
+# Subtest: gas emit (liveCount) dirty-wakes the quiet latch
+ok 2 - gas emit (liveCount) dirty-wakes the quiet latch
+  ---
+  duration_ms: 20.730755
+  ...
+# Subtest: gas re-latches after bodies retire
+ok 3 - gas re-latches after bodies retire
+  ---
+  duration_ms: 21.369835
+  ...
+# Subtest: sector:enter clears gas quiet latch
+ok 4 - sector:enter clears gas quiet latch
+  ---
+  duration_ms: 22.170592
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 534.411175

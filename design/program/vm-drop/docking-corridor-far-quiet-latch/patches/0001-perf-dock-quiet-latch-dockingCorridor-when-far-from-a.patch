@@ -1,0 +1,346 @@
+From 4941523caf5443b254a27cf0452ba6ca3577546e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 11:16:22 -0400
+Subject: [PATCH] =?UTF-8?q?perf(dock):=20quiet-latch=20dockingCorridor=20w?=
+ =?UTF-8?q?hen=20far=20from=20all=20stations=20(~18=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still walked every docking-manifest station through
+corridorStateFor + proxy publish every tick while the player was far past
+the approach band. Latch after a probe shows nearest distCenter beyond
+max(600, mouth×scale×4); wake on player move, entityIndex.version, or a
+0.5 s rescan. Approach/capture/berthed never latch. Soft-GPU fps not claimed.
+---
+ src/systems/dockingCorridor.js                | 104 ++++++++++-
+ .../docking-corridor-far-quiet-latch.test.mjs | 164 ++++++++++++++++++
+ 2 files changed, 267 insertions(+), 1 deletion(-)
+ create mode 100644 test/docking-corridor-far-quiet-latch.test.mjs
+
+diff --git a/src/systems/dockingCorridor.js b/src/systems/dockingCorridor.js
+index 55daabe13..cae4f9ae0 100644
+--- a/src/systems/dockingCorridor.js
++++ b/src/systems/dockingCorridor.js
+@@ -30,6 +30,34 @@ import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+ 
+ export const DOCKING_CORRIDOR_SCHEMA_VERSION = 1;
+ 
++/** Bench A/B: production default ON. Far latch skips station corridor walk + publish. */
++let DOCKING_CORRIDOR_FAR_QUIET = true;
++export function setDockingCorridorFarQuietForBench(enabled) {
++  DOCKING_CORRIDOR_FAR_QUIET = enabled !== false;
++}
++export function getDockingCorridorFarQuietForBench() {
++  return DOCKING_CORRIDOR_FAR_QUIET !== false;
++}
++
++/** Rescan while latched (0.5 s @ 60 Hz) so a creeping approach still wakes. */
++const DOCKING_CORRIDOR_FAR_RESCAN_TICKS = 30;
++/** Wake when the player moves this far from the armed pose (WU²). */
++const DOCKING_CORRIDOR_FAR_WAKE_MOVE2 = 100 * 100;
++/**
++ * Far arm radius = max(floor, mouthRadius * scale * mult). Beyond this the corridor
++ * readout is approach-only noise — latch skips the station walk + proxy publish.
++ * Mouth*4 keeps a comfortable approach band before the latch drops.
++ */
++const DOCKING_CORRIDOR_FAR_MOUTH_MULT = 4;
++const DOCKING_CORRIDOR_FAR_FLOOR_WU = 600;
++
++function publishDockingCorridorQuiet(state, latched) {
++  const world = state && state.world;
++  if (!world) return;
++  const rt = world.dockingCorridorRuntime || (world.dockingCorridorRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
+ export const dockingCorridor = {
+   name: 'dockingCorridor',
+ 
+@@ -38,10 +66,29 @@ export const dockingCorridor = {
+     // Cache of static proxy geometry per station entity, keyed with pos/rot/proxy stamp. Geometry
+     // only recomputes when the station record actually changes (sector entry), never per frame.
+     this._proxyGeometryCache = new Map();
++    this._farQuiet = null;
++    for (const unsub of this._farQuietUnsubs || []) {
++      try { unsub(); } catch (_) { /* ignore */ }
++    }
++    this._farQuietUnsubs = [];
++    if (this.bus && typeof this.bus.on === 'function') {
++      const clear = () => { this._farQuiet = null; };
++      this._farQuietUnsubs = [
++        this.bus.on('sector:exit', clear),
++        this.bus.on('sector:entered', clear),
++        this.bus.on('game:new', clear),
++        this.bus.on('save:loaded', clear),
++      ];
++    }
+   },
+ 
+   destroy() {
+     if (this._proxyGeometryCache) this._proxyGeometryCache.clear();
++    this._farQuiet = null;
++    for (const unsub of this._farQuietUnsubs || []) {
++      try { unsub(); } catch (_) { /* ignore */ }
++    }
++    this._farQuietUnsubs = [];
+   },
+ 
+   update(dt, state) {
+@@ -49,20 +96,51 @@ export const dockingCorridor = {
+     const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+     if (!player || !player.alive || state.mode !== 'flight'
+       || (player.flags && player.flags.docked) || (state.ui && state.ui.docked === true)) {
++      this._farQuiet = null;
++      publishDockingCorridorQuiet(state, false);
+       this._publish(state, null, null);
+       return;
+     }
+ 
++    const tick = state.tick | 0;
++    const membership = state.entityIndex && Number.isFinite(state.entityIndex.version)
++      ? state.entityIndex.version
++      : -1;
++    const latchOn = DOCKING_CORRIDOR_FAR_QUIET !== false;
++    if (latchOn) {
++      const quiet = this._farQuiet;
++      if (quiet
++        && quiet.membership === membership
++        && ((tick - (quiet.armedTick | 0)) < DOCKING_CORRIDOR_FAR_RESCAN_TICKS)) {
++        const px = finite(player.pos && player.pos.x);
++        const pz = finite(player.pos && player.pos.z);
++        const mdx = px - quiet.x;
++        const mdz = pz - quiet.z;
++        if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
++          publishDockingCorridorQuiet(state, true);
++          return;
++        }
++      }
++    } else if (this._farQuiet) {
++      this._farQuiet = null;
++    }
++
+     // Nearest manifest station wins — only one corridor can reasonably engage at a time.
+     const stations = (state.entityIndex && (state.entityIndex.dockStations || state.entityIndex.stations)) || state.entityList || [];
+     let best = null;
++    let farArmR = DOCKING_CORRIDOR_FAR_FLOOR_WU;
+     for (const station of stations) {
+       if (!station || !station.alive || station.type !== 'station') continue;
+       const manifest = resolveCollisionProxyManifest(station);
+       if (!manifest || !manifest.docking) continue;
+       const corridor = corridorStateFor(manifest, station, player.pos, player.vel);
+       if (!corridor) continue;
+-      if (!best || corridor.distCenter < best.corridor.distCenter) best = { station, manifest, corridor };
++      if (!best || corridor.distCenter < best.corridor.distCenter) {
++        best = { station, manifest, corridor };
++        const scale = corridorScale(manifest, station);
++        const mouth = (manifest.docking.corridor.mouthRadius || 1) * scale;
++        farArmR = Math.max(DOCKING_CORRIDOR_FAR_FLOOR_WU, mouth * DOCKING_CORRIDOR_FAR_MOUTH_MULT);
++      }
+     }
+ 
+     // Pilot input magnitude for the assist blend. Read-only over the sim input contract.
+@@ -91,6 +169,30 @@ export const dockingCorridor = {
+     }
+ 
+     this._publish(state, best, assistApplied);
++
++    // Quiet far latch: after a probe shows the nearest docking station is beyond the
++    // approach band, skip the station walk + proxy publish until the player moves,
++    // membership bumps, or the 0.5 s rescan fires. Approach/capture/berthed never latch.
++    if (latchOn) {
++      const far = !best || best.corridor.distCenter > farArmR;
++      if (far) {
++        this._farQuiet = {
++          armedTick: tick,
++          membership,
++          x: finite(player.pos && player.pos.x),
++          z: finite(player.pos && player.pos.z),
++          wakeMove2: DOCKING_CORRIDOR_FAR_WAKE_MOVE2,
++          farArmR,
++        };
++        publishDockingCorridorQuiet(state, true);
++      } else {
++        this._farQuiet = null;
++        publishDockingCorridorQuiet(state, false);
++      }
++    } else {
++      this._farQuiet = null;
++      publishDockingCorridorQuiet(state, false);
++    }
+   },
+ 
+   _publish(state, best, assistApplied) {
+diff --git a/test/docking-corridor-far-quiet-latch.test.mjs b/test/docking-corridor-far-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..f74456e29
+--- /dev/null
++++ b/test/docking-corridor-far-quiet-latch.test.mjs
+@@ -0,0 +1,164 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  dockingCorridor,
++  setDockingCorridorFarQuietForBench,
++  getDockingCorridorFarQuietForBench,
++} from '../src/systems/dockingCorridor.js';
++
++function boot({ stationR = 1800, stationCount = 3 } = {}) {
++  const state = createGameState(23);
++  state.mode = 'flight';
++  state.meta.seed = 23;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    radius: 8,
++    mass: 12,
++    hull: 100,
++    hullMax: 100,
++    collides: true,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  const stations = [];
++  for (let i = 0; i < stationCount; i++) {
++    const ang = (i / Math.max(1, stationCount)) * Math.PI * 2;
++    const st = helpers.spawnEntity({
++      type: 'station',
++      pos: { x: Math.cos(ang) * stationR, z: Math.sin(ang) * stationR },
++      rot: 0,
++      radius: 120,
++      mass: 1000,
++      hull: 1000,
++      hullMax: 1000,
++      collides: true,
++      data: {
++        stationId: `latch_st_${i}`,
++        collisionProxy: 'station_ring_hub',
++        dockRadius: 120,
++      },
++    });
++    stations.push(st);
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.stations = stations;
++    state.entityIndex.dockStations = stations;
++    if (!Number.isFinite(state.entityIndex.version)) state.entityIndex.version = 1;
++  }
++  dockingCorridor.init({ state, bus, helpers, registry: null });
++  return { state, bus, helpers, player, stations };
++}
++
++function step(state, dt = 1 / 60) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + dt;
++  dockingCorridor.update(dt, state);
++  return state.world && state.world.dockingCorridorRuntime;
++}
++
++test('far quiet latch engages beyond approach band', () => {
++  setDockingCorridorFarQuietForBench(true);
++  assert.equal(getDockingCorridorFarQuietForBench(), true);
++  const { state } = boot({ stationR: 1800 });
++  const rt1 = step(state);
++  assert.equal(rt1 && rt1.quietLatched, true, 'arms after far probe');
++  assert.ok(dockingCorridor._farQuiet, 'internal quiet retained');
++  assert.equal(state.dockingCorridor.phase, 'approach');
++  assert.ok(state.dockingCorridor.distCenter > 900);
++  const rt2 = step(state);
++  assert.equal(rt2 && rt2.quietLatched, true, 'stays latched next tick');
++});
++
++test('near station prevents latch', () => {
++  setDockingCorridorFarQuietForBench(true);
++  const { state } = boot({ stationR: 200 });
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false, 'does not latch inside approach band');
++  assert.equal(dockingCorridor._farQuiet, null);
++  assert.ok(state.dockingCorridor.distCenter < 400);
++});
++
++test('dirty-wake on player move beyond wake disc', () => {
++  setDockingCorridorFarQuietForBench(true);
++  const { state, player } = boot({ stationR: 1800 });
++  step(state);
++  assert.equal(state.world.dockingCorridorRuntime.quietLatched, true);
++  // Move beyond wakeMove2 (100 WU)
++  player.pos.x = 250;
++  player.pos.z = 0;
++  const rt = step(state);
++  // After wake, re-probes; still far from stations at 1800 so may re-arm
++  assert.ok(state.dockingCorridor, 'readout refreshed after move wake');
++  assert.ok(
++    state.dockingCorridor.distCenter != null
++      || (rt && rt.quietLatched === true)
++      || dockingCorridor._farQuiet,
++    'corridor still classified after wake',
++  );
++});
++
++test('dirty-wake on membership bump', () => {
++  setDockingCorridorFarQuietForBench(true);
++  const { state, helpers } = boot({ stationR: 1800 });
++  step(state);
++  assert.equal(state.world.dockingCorridorRuntime.quietLatched, true);
++  const armed = dockingCorridor._farQuiet.armedTick;
++  state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  // Spawn a near docking station so wake must NOT re-latch
++  const near = helpers.spawnEntity({
++    type: 'station',
++    pos: { x: 150, z: 0 },
++    rot: 0,
++    radius: 120,
++    mass: 1000,
++    hull: 1000,
++    hullMax: 1000,
++    collides: true,
++    data: {
++      stationId: 'near_st',
++      collisionProxy: 'station_ring_hub',
++      dockRadius: 120,
++    },
++  });
++  state.entityIndex.stations.push(near);
++  state.entityIndex.dockStations.push(near);
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false, 'near station after membership wake prevents re-latch');
++  assert.ok(
++    !dockingCorridor._farQuiet
++      || dockingCorridor._farQuiet.armedTick !== armed
++      || state.dockingCorridor.distCenter < 400,
++    'quiet cleared or approach engaged',
++  );
++  assert.ok(state.dockingCorridor.distCenter < 400, 'nearest is the near station');
++});
++
++test('bench toggle off forces full walk', () => {
++  setDockingCorridorFarQuietForBench(false);
++  assert.equal(getDockingCorridorFarQuietForBench(), false);
++  const { state } = boot({ stationR: 1800 });
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false);
++  assert.equal(dockingCorridor._farQuiet, null);
++  setDockingCorridorFarQuietForBench(true);
++});
++
++test('capture/approach inside band never latches', () => {
++  setDockingCorridorFarQuietForBench(true);
++  const { state, player, stations } = boot({ stationR: 1800, stationCount: 1 });
++  // Place player near the station berth
++  player.pos.x = stations[0].pos.x + 40;
++  player.pos.z = stations[0].pos.z;
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false);
++  assert.ok(state.dockingCorridor.distCenter < 100);
++});
+-- 
+2.47.3
+

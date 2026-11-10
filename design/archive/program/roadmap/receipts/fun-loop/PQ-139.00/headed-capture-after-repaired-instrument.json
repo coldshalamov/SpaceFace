@@ -1,0 +1,89 @@
+{
+ "schema": "spaceface.impactCapture.v1",
+ "lane": "IMPACT",
+ "packet": "PQ-139",
+ "seed": 4242,
+ "camera": "shipping_chase",
+ "hudText": "off",
+ "screenLayer": "hidden",
+ "capturedAt": "2026-09-04T04:21:12.182Z",
+ "instrument": "lane-private .devshots/fun-loop/lanes/IMPACT/capture-impact.mjs, repaired 2026-09-04: trauma now sampled from state.camera (the controller has no trauma field); standoff proportional to closing speed so the slow runs actually reach the rock; page.screenshot({clip}) instead of elementHandle.screenshot, which waits for a live 3D canvas to hold still",
+ "note": "A still frame 110 ms from its neighbour cannot show a 40-54 ms hitstop. The proof is the per-rendered-frame clock trace below, read off the running game on the shipping route. The peak trauma is not ordered by closing speed because the capture runs inside a live Crucible swarm whose kills add trauma of their own; the clean isolated ramp is the real-path measurement in b9-after-real-path.json.",
+ "runs": [
+  {
+   "speed": 20,
+   "frameCount": 34,
+   "sampleCount": 301,
+   "impactEvents": 397,
+   "playerImpactEvents": 0,
+   "peakDp": 640,
+   "peakPlayerDp": 0,
+   "peakPlayerDeltaV": 0,
+   "playerSpeedStart": 9.19155502319336,
+   "playerSpeedMin": 0.0018055252730848285,
+   "hitstopFrames": 64,
+   "minTimeScale": 0.12,
+   "peakTrauma": 0.8265294245880824,
+   "peakFov": 53.27376732594814,
+   "baseFov": 50.06750191538568,
+   "target": {
+    "targetType": "asteroid",
+    "targetRadius": 42.80474354233593,
+    "targetMass": 73290
+   },
+   "playerMass": 39.0031,
+   "standoffWU": 94.8,
+   "framesDir": ".devshots/fun-loop/impact/adhoc/after-dv20"
+  },
+  {
+   "speed": 60,
+   "frameCount": 16,
+   "sampleCount": 134,
+   "impactEvents": 329,
+   "playerImpactEvents": 39,
+   "peakDp": 640,
+   "peakPlayerDp": 529.5784505208334,
+   "peakPlayerDeltaV": 13.577855363313,
+   "playerSpeedStart": 41.53528226712594,
+   "playerSpeedMin": 0.010715752762079624,
+   "hitstopFrames": 53,
+   "minTimeScale": 0.12,
+   "peakTrauma": 0.4500000000000002,
+   "peakFov": 52.68739222823013,
+   "baseFov": 50,
+   "target": {
+    "targetType": "asteroid",
+    "targetRadius": 42.80474354233593,
+    "targetMass": 73290
+   },
+   "playerMass": 39.0031,
+   "standoffWU": 166.8,
+   "framesDir": ".devshots/fun-loop/impact/adhoc/after-dv60"
+  },
+  {
+   "speed": 150,
+   "frameCount": 10,
+   "sampleCount": 92,
+   "impactEvents": 198,
+   "playerImpactEvents": 92,
+   "peakDp": 640,
+   "peakPlayerDp": 640,
+   "peakPlayerDeltaV": 16.40895210893493,
+   "playerSpeedStart": 145.06124973093395,
+   "playerSpeedMin": 0.2027760857367293,
+   "hitstopFrames": 50,
+   "minTimeScale": 0.12,
+   "peakTrauma": 0.9507392228230129,
+   "peakFov": 52.68739222823013,
+   "baseFov": 50.04049554405094,
+   "target": {
+    "targetType": "asteroid",
+    "targetRadius": 42.80474354233593,
+    "targetMass": 73290
+   },
+   "playerMass": 39.0031,
+   "standoffWU": 328.8,
+   "framesDir": ".devshots/fun-loop/impact/adhoc/after-dv150"
+  }
+ ]
+}

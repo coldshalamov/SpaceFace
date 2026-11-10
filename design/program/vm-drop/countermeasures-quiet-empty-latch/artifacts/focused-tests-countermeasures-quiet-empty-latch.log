@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: chaff writes a decoy off the hull and missiles steer toward it, not straight in
+ok 1 - chaff writes a decoy off the hull and missiles steer toward it, not straight in
+  ---
+  duration_ms: 4.119879
+  ...
+# Subtest: quiet latch engages when no CM/PDS interest
+ok 2 - quiet latch engages when no CM/PDS interest
+  ---
+  duration_ms: 2.689802
+  ...
+# Subtest: deploy edge wakes quiet latch
+ok 3 - deploy edge wakes quiet latch
+  ---
+  duration_ms: 0.432997
+  ...
+# Subtest: membership + fitted CM wakes quiet latch
+ok 4 - membership + fitted CM wakes quiet latch
+  ---
+  duration_ms: 0.449926
+  ...
+# Subtest: bench toggle restores always-walk
+ok 5 - bench toggle restores always-walk
+  ---
+  duration_ms: 0.375205
+  ...
+# Subtest: player with CM fitted never quiet-latches
+ok 6 - player with CM fitted never quiet-latches
+  ---
+  duration_ms: 0.260872
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 307.469081

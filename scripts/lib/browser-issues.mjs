@@ -1,0 +1,201 @@
+export function collectPageIssues(page, options = {}) {
+  const includeWarnings = options.includeWarnings === true;
+  const ignoreProbeWarnings = options.ignoreProbeWarnings === true;
+  const issues = [];
+  const ignoredIssues = [];
+  const activeRequests = new Set();
+  const expectedNavigationAborts = new Map();
+  const expectedNavigationTokens = new Map();
+  let nextExpectedNavigationToken = 1;
+
+  page.on('request', (request) => {
+    activeRequests.add(request);
+    if (expectedNavigationTokens.size > 0) {
+      const labels = expectedNavigationAborts.get(request) || new Set();
+      for (const label of expectedNavigationTokens.values()) labels.add(label);
+      expectedNavigationAborts.set(request, labels);
+    }
+  });
+  page.on('requestfinished', (request) => {
+    activeRequests.delete(request);
+    expectedNavigationAborts.delete(request);
+  });
+  page.on('console', (msg) => {
+    // msg.location() names the JS callsite for console entries that carry one — for driver-level
+    // GL warnings it identifies the source file/worker blob, which text alone cannot do.
+    let location = null;
+    try {
+      const raw = msg.location();
+      if (raw && (raw.url || raw.lineNumber || raw.columnNumber)) {
+        location = { url: raw.url || '', line: raw.lineNumber ?? raw.line ?? 0, column: raw.columnNumber ?? raw.column ?? 0 };
+      }
+    } catch (_) { /* location is best-effort */ }
+    const issue = { type: msg.type(), text: msg.text(), at: new Date().toISOString() };
+    if (location) issue.location = location;
+    if (isGenericResourceLoadConsoleError(issue)) return;
+    // The requestfailed twin of this class is already tagged via expectedNavigationAborts;
+    // GLTFLoader also logs a console error when its in-flight texture/blob fetch is aborted
+    // by the same deliberate navigation — it is not an error in the replacement document.
+    if (expectedNavigationTokens.size > 0
+      && /^THREE\.GLTFLoader: Couldn't load texture blob:/i.test(issue.text || '')) {
+      ignoredIssues.push({ ...issue, expectedNavigation: [...expectedNavigationTokens.values()] });
+      return;
+    }
+    if (isIgnorableWebglValidation(issue) || (ignoreProbeWarnings && isProbeInducedWarning(issue))) {
+      ignoredIssues.push(issue);
+      return;
+    }
+    if (issue.type === 'error' || (includeWarnings && issue.type === 'warning')) issues.push(issue);
+  });
+  page.on('response', (response) => {
+    const status = response.status();
+    if (status >= 400) {
+      // The shared Browser/Electron player save store is an optional route: dev servers
+      // without the store backend 404 it by design (see check-game-playable OPTIONAL_ROUTES).
+      if (status === 404 && response.url().endsWith('/__spaceface_player_store')) return;
+      issues.push({ type: 'error', text: `HTTP ${status} ${response.url()}`, at: new Date().toISOString() });
+    }
+  });
+  page.on('requestfailed', (request) => {
+    const failure = request.failure();
+    const expectedNavigation = expectedNavigationAborts.get(request);
+    activeRequests.delete(request);
+    expectedNavigationAborts.delete(request);
+    const issue = {
+      type: 'error',
+      text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
+      at: new Date().toISOString(),
+      // The method lets checks excuse only the boot store GET probe — a deadline abort the
+      // client handles by design — while an aborted PUT mirror stays fail-closed.
+      method: request.method(),
+    };
+    if (isPlayerStoreRequest(request)) issue.storeRequest = failedStoreRequestDetail(request);
+    if (expectedNavigation && isNavigationCancelledRequest(failure)) {
+      ignoredIssues.push({
+        ...issue,
+        expectedNavigation: [...expectedNavigation],
+      });
+      return;
+    }
+    // Chromium cancels media range fetches as a matter of course (seek, re-range, the title's
+    // intro video unmounting when a run starts). A missing clip still fails loudly as HTTP 404
+    // through the response handler above; only the cancelled stream is not an error.
+    if (isCancelledMediaRequest(request, failure)) {
+      ignoredIssues.push({ ...issue, cancelledMedia: true });
+      return;
+    }
+    // Store-less test servers deliberately leave this optional backend unmounted.
+    // Its client deadline falls back to localStorage; keep real-store failures visible.
+    // This suppresses ANY aborted request to the route — GET or PUT. Callers that need the
+    // GET-only excuse must check issue.method themselves (the station-tab check does).
+    if (options.playerStoreMounted === false && isNavigationCancelledRequest(failure)
+      && new URL(request.url()).pathname === '/__spaceface_player_store') {
+      ignoredIssues.push({ ...issue, absentPlayerStore: true });
+      return;
+    }
+    issues.push(issue);
+  });
+  page.on('pageerror', (err) => {
+    issues.push({ type: 'pageerror', text: String(err && err.message || err), at: new Date().toISOString() });
+  });
+
+  return {
+    issues,
+    ignoredIssues,
+    errorIssues() {
+      return issues.filter((issue) => issue.type === 'error' || issue.type === 'pageerror');
+    },
+    warningIssues() {
+      return issues.filter((issue) => issue.type === 'warning');
+    },
+    beginExpectedNavigation(label = 'expected-navigation') {
+      const token = nextExpectedNavigationToken++;
+      const normalizedLabel = String(label);
+      expectedNavigationTokens.set(token, normalizedLabel);
+      for (const request of activeRequests) {
+        const labels = expectedNavigationAborts.get(request) || new Set();
+        labels.add(normalizedLabel);
+        expectedNavigationAborts.set(request, labels);
+      }
+      return token;
+    },
+    endExpectedNavigation(token) {
+      return expectedNavigationTokens.delete(token);
+    },
+  };
+}
+
+function isPlayerStoreRequest(request) {
+  try { return new URL(request.url()).pathname === '/__spaceface_player_store'; }
+  catch { return false; }
+}
+
+function failedStoreRequestDetail(request) {
+  let startedAt = null;
+  let elapsedMs = null;
+  let bodyBytes = null;
+  let frameUrl = null;
+  try {
+    const start = request.timing().startTime;
+    if (Number.isFinite(start) && start > 0) {
+      startedAt = new Date(start).toISOString();
+      elapsedMs = Math.max(0, Date.now() - start);
+    }
+  } catch { /* Request timing can be unavailable after its context closes. */ }
+  try { bodyBytes = request.postDataBuffer()?.byteLength ?? 0; } catch { /* No payload contents are retained. */ }
+  try { frameUrl = request.frame()?.url()?.split(/[?#]/, 1)[0]?.slice(0, 512) || null; }
+  catch { /* A worker request need not have a frame. Do not infer an initiator. */ }
+  return { startedAt, elapsedMs, bodyBytes, frameUrl };
+}
+
+export function isNavigationCancelledRequest(failure) {
+  return /^net::ERR_ABORTED$/i.test(String(failure && failure.errorText || '').trim());
+}
+
+export function isCancelledMediaRequest(request, failure) {
+  let type = '';
+  try { type = typeof request?.resourceType === 'function' ? request.resourceType() : ''; } catch (_) { /* best-effort */ }
+  return type === 'media' && isNavigationCancelledRequest(failure);
+}
+
+export function isExpectedNavigationTextureAbort(text, phase) {
+  return String(phase || '') === 'harness-reload'
+    && /^THREE\.GLTFLoader: Couldn't load texture blob:/i.test(String(text || '').trim());
+}
+
+export function isGenericResourceLoadConsoleError(issue) {
+  if (!issue || issue.type !== 'error') return false;
+  return /^Failed to load resource: the server responded with a status of \d+ \([^)]+\)$/i
+    .test(String(issue.text || '').trim());
+}
+
+export function isIgnorableWebglValidation(issue) {
+  if (!issue || issue.type !== 'error') return false;
+  const text = String(issue.text || '').trim();
+  return /^(?:THREE\.)+WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
+    && /Program Info Log:\s*$/.test(text);
+}
+
+export function isProbeInducedWarning(issue) {
+  if (!issue || issue.type !== 'warning') return false;
+  const text = String(issue.text || '');
+  // Environmental warnings that are not code defects, filtered under --strict-warnings:
+  //  - "GPU stall due to ReadPixels": induced by the probe reading the framebuffer for screenshots.
+  //  - "KHR_parallel_shader_compile extension not supported": an OPTIONAL Three.js perf extension
+  //    absent under software rendering (SwiftShader) but present on hardware GPUs — a capability
+  //    notice, not a bug (it never appears on the real-GPU release path).
+  return /GPU stall due to ReadPixels/i.test(text)
+    || /KHR_parallel_shader_compile extension not supported/i.test(text);
+}
+
+export function summarizeIssues(issues) {
+  const MAX_ISSUES = 8;
+  const MAX_TEXT = 420;
+  return (issues || []).slice(0, MAX_ISSUES).map((issue) => {
+    const text = String(issue && issue.text || '');
+    return {
+      type: issue && issue.type || 'unknown',
+      text: text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}... [truncated ${text.length - MAX_TEXT} chars]` : text,
+    };
+  });
+}

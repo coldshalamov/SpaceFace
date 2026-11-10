@@ -1,0 +1,370 @@
+// PQ-178.00 — beat standard. Headless. No soak. No headed capture.
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import {
+  BEAT_SCHEMA,
+  BEAT_SHEET_DIR,
+  B0_CHAPTER_REL,
+  LEFTOVER_SPINE_LIVE_SETTLE_REL,
+  OPENER_47A_ID,
+  REQUIRED_47A_ACTORS,
+  SCENARIO_47A_REL,
+  load47aScenario,
+  loadBeatSheet,
+  leftover47aMechanics,
+  leftoverSpineMethods,
+  validateBeatCorpus,
+  validateBeatSheet,
+} from '../src/story/beatStandard.js';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const OPENER_PATH = join(BEAT_SHEET_DIR, '47a-opener.beat.json');
+const TEMPLATE_PATH = join(BEAT_SHEET_DIR, 'TEMPLATE.beat.json');
+const CHECK = join(ROOT, 'scripts', 'check-beat-standard.mjs');
+
+function runCheck(args = []) {
+  return spawnSync(process.execPath, [CHECK, ...args], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 20_000,
+    windowsHide: true,
+  });
+}
+
+function writeTempSheet(name, value) {
+  const dir = mkdtempSync(join(tmpdir(), 'pq178-'));
+  const path = join(dir, name);
+  writeFileSync(path, typeof value === 'string' ? value : `${JSON.stringify(value, null, 2)}\n`);
+  return path;
+}
+
+test('live corpus and leftover 47-A opener pass the standard without B0 collapse', () => {
+  const template = loadBeatSheet(TEMPLATE_PATH);
+  assert.equal(template.schema, BEAT_SCHEMA);
+  assert.equal(template.kind, 'template');
+
+  const opener = loadBeatSheet(OPENER_PATH);
+  assert.equal(opener.id, OPENER_47A_ID);
+  assert.equal(opener.leftoverSource.scenario, SCENARIO_47A_REL);
+  assert.equal(opener.leftoverSource.notTheOpener, B0_CHAPTER_REL);
+
+  const named = new Set(opener.setPiece.actors.map((actor) => actor.id));
+  for (const id of REQUIRED_47A_ACTORS) {
+    assert.ok(named.has(id), `47-A sheet must name leftover actor ${id}`);
+  }
+
+  const blob = JSON.stringify(opener);
+  assert.doesNotMatch(blob, /mine 10u|Veldspar/i);
+  assert.notEqual(String(opener.setPiece.headlineVerb).toLowerCase(), 'mine');
+
+  const scenario = load47aScenario();
+  const leftoverMech = leftover47aMechanics(scenario);
+  assert.ok(leftoverMech.has('massline.attach'));
+  assert.ok(leftoverMech.has('massline.cut'));
+  const solutionMech = opener.setPiece.solutions.map((row) => row.leftoverMechanic);
+  assert.ok(solutionMech.includes('massline.attach'), 'hitch leftover');
+  assert.ok(solutionMech.includes('massline.cut'), 'cut leftover');
+
+  const reports = validateBeatCorpus();
+  assert.ok(reports.length >= 2, 'template + opener');
+  for (const report of reports) {
+    assert.deepEqual(report.issues, [], report.rel);
+  }
+
+  const cli = runCheck();
+  assert.equal(cli.status, 0, cli.stderr || cli.stdout);
+  assert.match(cli.stdout, /check-beat-standard: PASS/);
+});
+
+test('shipped leftover sheets resolve the archived live-settle receipt', () => {
+  assert.ok(existsSync(join(ROOT, LEFTOVER_SPINE_LIVE_SETTLE_REL)), LEFTOVER_SPINE_LIVE_SETTLE_REL);
+  for (const report of validateBeatCorpus()) {
+    assert.ok(
+      !report.issues.some((row) => row.code === 'leftover_source' && row.path === 'leftoverSource.liveSettle'),
+      `${report.rel} cites the existing live-settle receipt path`,
+    );
+  }
+});
+
+test('validator fails prose-only, choice menu, cutscene, single solution, and no physical verb', () => {
+  const proseIssues = validateBeatSheet({
+    kind: 'prose',
+    prose: 'Mine 10u Veldspar and dock. The player reads a menu.',
+  });
+  assert.ok(proseIssues.some((row) => row.code === 'prose_only'), JSON.stringify(proseIssues));
+
+  const menuIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.menu',
+    title: 'Menu',
+    kind: 'choice_menu',
+    choiceMenu: true,
+    choices: [{ label: 'Talk', next: 'tree' }],
+    canon: { whoWantsWhat: [{ actorId: 'player_kestrel', wants: 'pick a line' }] },
+    register: { speakers: [{ id: 'npc', rule: 'talks', example: 'hello' }] },
+    setPiece: {
+      place: 'a room',
+      actors: [{ id: 'player_kestrel' }, { id: 'npc' }],
+      headlineVerb: 'choose',
+      twist: 'a fork',
+      solutions: [
+        { verb: 'hitch', leftoverMechanic: 'massline.attach', how: 'a' },
+        { verb: 'cut', leftoverMechanic: 'massline.cut', how: 'b' },
+      ],
+      provingFrame: 'a still',
+    },
+    barks: [{ line: 'Pick one.', consequence: 'a menu' }],
+    voiceNotes: { direction: 'none' },
+    seedCapture: { seed: 1, captureContract: 'none' },
+    forbidden: { dialogueTree: false, choiceMenu: true, cutsceneTakesStick: false },
+  });
+  assert.ok(menuIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(menuIssues));
+  assert.ok(menuIssues.some((row) => row.code === 'no_physical_verb'), JSON.stringify(menuIssues));
+
+  const stringMenuIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.string-menu',
+    choices: ['Open the hatch', 'Leave it sealed'],
+  });
+  assert.ok(stringMenuIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(stringMenuIssues));
+
+  const cutsceneIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.cutscene',
+    title: 'Watch',
+    kind: 'cutscene',
+    takesStick: true,
+    canon: { whoWantsWhat: [{ actorId: 'player_kestrel', wants: 'watch' }] },
+    register: { speakers: [{ id: 'npc', rule: 'orates', example: 'behold' }] },
+    setPiece: {
+      place: 'a theater',
+      actors: [{ id: 'player_kestrel' }, { id: 'npc' }],
+      headlineVerb: 'watch',
+      twist: 'credits',
+      solutions: [
+        { verb: 'hitch', leftoverMechanic: 'massline.attach', how: 'a' },
+        { verb: 'cut', leftoverMechanic: 'massline.cut', how: 'b' },
+      ],
+      provingFrame: 'a movie',
+    },
+    barks: [{ line: 'Sit still.', consequence: 'stick taken' }],
+    voiceNotes: { direction: 'none' },
+    seedCapture: { seed: 1, captureContract: 'none' },
+    forbidden: { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: true },
+  });
+  assert.ok(cutsceneIssues.some((row) => row.code === 'cutscene_takes_stick'), JSON.stringify(cutsceneIssues));
+
+  const singleIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.single',
+    title: 'One way',
+    canon: { whoWantsWhat: [{ actorId: 'player_kestrel', wants: 'hitch' }] },
+    register: { speakers: [{ id: 'kessler', rule: 'clerk', example: 'hitch it' }] },
+    setPiece: {
+      place: 'wreck field',
+      actors: [{ id: 'player_kestrel' }, { id: 'evidence_spindle_47a' }],
+      headlineVerb: 'hitch',
+      twist: 'false mass',
+      solutions: [{ verb: 'hitch', leftoverMechanic: 'massline.attach', how: 'attach only' }],
+      provingFrame: 'one attach',
+    },
+    barks: [{ line: 'Hitch it.', consequence: 'attached' }],
+    voiceNotes: { direction: 'clerk' },
+    seedCapture: { seed: 47, captureContract: 'headless' },
+    forbidden: { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false },
+  });
+  assert.ok(singleIssues.some((row) => row.code === 'single_solution'), JSON.stringify(singleIssues));
+
+  const noVerbIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.noverb',
+    title: 'Talk',
+    canon: { whoWantsWhat: [{ actorId: 'player_kestrel', wants: 'talk' }] },
+    register: { speakers: [{ id: 'npc', rule: 'talks', example: 'hello' }] },
+    setPiece: {
+      place: 'a corridor',
+      actors: [{ id: 'player_kestrel' }, { id: 'npc' }],
+      headlineVerb: '',
+      twist: 'words',
+      solutions: [
+        { verb: 'talk', leftoverMechanic: 'dialogue', how: 'tree' },
+        { verb: 'decide', leftoverMechanic: 'menu', how: 'menu' },
+      ],
+      provingFrame: 'subtitles',
+    },
+    barks: [{ line: 'Hello.', consequence: 'nothing physical' }],
+    voiceNotes: { direction: 'none' },
+    seedCapture: { seed: 1, captureContract: 'none' },
+    forbidden: { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false },
+  });
+  assert.ok(noVerbIssues.some((row) => row.code === 'no_physical_verb'), JSON.stringify(noVerbIssues));
+
+  const proseFile = writeTempSheet('prose-only.beat.json', { prose: 'Once upon a time the player mined Veldspar.' });
+  const proseCli = runCheck(['--file', proseFile]);
+  assert.notEqual(proseCli.status, 0);
+  assert.match(`${proseCli.stderr}\n${proseCli.stdout}`, /prose_only/);
+});
+
+test('a beat cannot claim template kind to skip the standard', () => {
+  // The template exemption is granted by filename. A hollow sheet that labels
+  // itself a template must still be measured against every content check.
+  const hollow = {
+    schema: BEAT_SCHEMA,
+    kind: 'template',
+    id: 'beat.template',
+    title: 'B1 wrecking-ball contract',
+    canon: { whoWantsWhat: [] },
+    register: { speakers: [] },
+    setPiece: {
+      place: '', actors: [], headlineVerb: '', twist: '', solutions: [], provingFrame: '',
+    },
+    barks: [],
+    voiceNotes: {},
+    seedCapture: {},
+    forbidden: {},
+  };
+
+  const bypassIssues = validateBeatSheet(hollow);
+  assert.ok(bypassIssues.some((row) => row.code === 'template'), JSON.stringify(bypassIssues));
+  assert.ok(bypassIssues.some((row) => row.code === 'no_physical_verb'), 'content checks still run');
+  assert.ok(bypassIssues.some((row) => row.code === 'single_solution'), 'content checks still run');
+
+  // The real template file keeps its exemption.
+  assert.deepEqual(validateBeatSheet(loadBeatSheet(TEMPLATE_PATH), { allowTemplate: true }), []);
+
+  const bypassFile = writeTempSheet('b1-wrecking-ball.beat.json', hollow);
+  const cli = runCheck(['--file', bypassFile]);
+  assert.notEqual(cli.status, 0, 'a mislabelled template must fail the gate');
+  assert.match(`${cli.stderr}\n${cli.stdout}`, /template/);
+});
+
+test('47-A barks are cited, not rewritten, and the seed is the leftover tape seed', () => {
+  const scenario = load47aScenario();
+  const opener = loadBeatSheet(OPENER_PATH);
+  const leftoverLines = new Map((scenario.dialogue || []).map((row) => [row.id, String(row.text || '')]));
+
+  // Every bark the sheet resolves to the scenario must read exactly as the game speaks it.
+  let compared = 0;
+  for (const bark of opener.barks) {
+    const leftover = leftoverLines.get(bark.id);
+    if (leftover === undefined) continue;
+    compared += 1;
+    assert.equal(bark.line.trim(), leftover.trim(), `bark ${bark.id} must not be rewritten`);
+  }
+  assert.ok(compared >= 5, `expected the leftover dialogue lines to be cited, compared ${compared}`);
+
+  const drifted = structuredClone(opener);
+  drifted.barks[0].line = 'Kestrel, go mine some Veldspar and dock.';
+  const driftIssues = validateBeatSheet(drifted, { scenario });
+  assert.ok(driftIssues.some((row) => row.code === 'rewritten_bark'), JSON.stringify(driftIssues));
+
+  const tape = JSON.parse(readFileSync(join(ROOT, opener.seedCapture.inputTape), 'utf8'));
+  assert.equal(opener.seedCapture.seed, tape.seed, 'sheet seed is the leftover tape seed');
+
+  const wrongSeed = structuredClone(opener);
+  wrongSeed.seedCapture.seed = tape.seed + 1;
+  const seedIssues = validateBeatSheet(wrongSeed, { scenario });
+  assert.ok(seedIssues.some((row) => row.code === 'seed'), JSON.stringify(seedIssues));
+});
+
+test('book-route beats fall back to their bookContracts solution vocabulary', () => {
+  // bigger_boat still reads its single leftover board contract.
+  assert.deepEqual(leftoverSpineMethods('bigger_boat'), ['tow_in', 'sling_in']);
+  // honest_work and first_blood post ordered book contracts instead — the union of
+  // each contract's two physical solutions is the live vocabulary the sheet must name.
+  assert.deepEqual(leftoverSpineMethods('honest_work'), [
+    'sealed_delivery', 'partial_settle', 'mites_then_furnace', 'furnace_then_mites',
+  ]);
+  assert.deepEqual(leftoverSpineMethods('first_blood'), [
+    'clear_and_tow', 'tow_under_fire', 'terminal_register_kill', 'custody_reel',
+  ]);
+});
+
+test('an undeclared reply list or stick-lock fails with the forbidden flags left false', () => {
+  const opener = loadBeatSheet(OPENER_PATH);
+  const hiddenTree = structuredClone(opener);
+  hiddenTree.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  hiddenTree.dialogue = {
+    nodes: [
+      {
+        id: 'ask',
+        speaker: 'contact_kessler',
+        text: 'Open it, or leave it sealed?',
+        replies: [
+          { label: 'Open the spindle', next: 'opened' },
+          { label: 'Leave it sealed', next: 'sealed' },
+        ],
+      },
+    ],
+  };
+  const treeIssues = validateBeatSheet(hiddenTree);
+  assert.ok(treeIssues.some((row) => row.code === 'dialogue_tree'), JSON.stringify(treeIssues));
+
+  const hiddenLock = structuredClone(opener);
+  hiddenLock.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  hiddenLock.presentation = { camera: 'cinematic', takesControl: true };
+  const lockIssues = validateBeatSheet(hiddenLock);
+  assert.ok(lockIssues.some((row) => row.code === 'cutscene_takes_stick'), JSON.stringify(lockIssues));
+
+  const topLevel = structuredClone(opener);
+  topLevel.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  topLevel.replies = [
+    { label: 'Open the spindle', next: 'opened' },
+    { label: 'Leave it sealed', next: 'sealed' },
+  ];
+  const topIssues = validateBeatSheet(topLevel);
+  assert.ok(topIssues.some((row) => row.code === 'dialogue_tree'), JSON.stringify(topIssues));
+
+  for (const key of ['takesControl', 'lockStick', 'lockPlayer']) {
+    const locked = structuredClone(opener);
+    locked.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+    locked[key] = true;
+    const lockedIssues = validateBeatSheet(locked);
+    assert.ok(
+      lockedIssues.some((row) => row.code === 'cutscene_takes_stick'),
+      `${key} at the top of the sheet must fail: ${JSON.stringify(lockedIssues)}`,
+    );
+  }
+
+  const nestedOptions = structuredClone(opener);
+  nestedOptions.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  nestedOptions.presentation = {
+    options: [
+      { label: 'Open the spindle', next: 'opened' },
+      { label: 'Leave it sealed', next: 'sealed' },
+    ],
+  };
+  const optionIssues = validateBeatSheet(nestedOptions);
+  assert.ok(optionIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(optionIssues));
+  assert.equal(nestedOptions.nodes, undefined);
+
+  const decoy = structuredClone(opener);
+  decoy.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  decoy.presentation = {
+    replies: [
+      { meta: 'not a choice', nested: { choices: [{ label: 'Open it', next: 'opened' }] } },
+    ],
+  };
+  const decoyIssues = validateBeatSheet(decoy);
+  assert.ok(decoyIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(decoyIssues));
+
+  const buried = structuredClone(opener);
+  buried.forbidden = {
+    dialogueTree: false,
+    choiceMenu: false,
+    cutsceneTakesStick: false,
+    hidden: { replies: [{ label: 'Open it', next: 'opened' }] },
+  };
+  const buriedIssues = validateBeatSheet(buried);
+  assert.ok(buriedIssues.some((row) => row.code === 'dialogue_tree'), JSON.stringify(buriedIssues));
+});
+
+test.after(() => {
+  setImmediate(() => process.exit(process.exitCode ?? 0));
+});

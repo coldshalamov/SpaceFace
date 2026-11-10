@@ -1,0 +1,256 @@
+{
+  "schema": "spaceface.waspProductionV1.build.v1",
+  "packet": "SF-WASP-PRODUCTION-V1-001",
+  "assetId": "SF_WASP_PRODUCTION_V1",
+  "status": "technical_candidate_no_promote",
+  "promoted": false,
+  "reportScope": "Current-file technical binding only. No Blender rebuild or source regeneration was run, and this report grants no visual, runtime, release, or acceptance status.",
+  "sourceUse": "Current untracked source GLBs were finalized through scripts/finalize_wasp_v1.mjs into isolated release_candidates outputs; no geometry was regenerated.",
+  "textureSourceHashes": {
+    "hull_basecolor.png": "20898063BB3FF76D68D72A86C8BFDF5A9F24A96684FAD9001816997F0BF8CA43",
+    "hull_normal.png": "C7B2BA2B829E33032C4FFA8239C65533EDA654A3688E82B1936DF51C3267A0ED",
+    "hull_orm.png": "0818D38FC2926D4113ADF607E3DB2CE17B36447CE72A927379E7280D4979F499",
+    "armor_dark_basecolor.png": "E43603145665D77FFF1DA0C0D96112A17D405C000BBC96E16E07A4BBA08DDA4F",
+    "armor_dark_normal.png": "530685F6C6FB885DCA92B866598D5E351F77D882B17A3C087EE682EB7183A218",
+    "armor_dark_orm.png": "BDD576610491BF1C1DB675716E6E0B37BEDD1528A3C481AA6CCED19C9933CD0B",
+    "mechanical_basecolor.png": "2F05EA260EA0063D67A2B2EC1DD41D7A4CF897A6744F6527A1B19C85513394B7",
+    "mechanical_normal.png": "E767DFBF00F7F79C0E012A5C0B29DB66BE74A010583BF864E8AC3BC9EDC1B157",
+    "mechanical_orm.png": "66C5B7FF047B658342AAE754BAFFEDABBED0935D6146F9F729C44AF8E8417715",
+    "frontier_cyan_basecolor.png": "C40E3AD27C9BA821CCD6E5955962081596149F79D41B0407052D317C080213EA",
+    "frontier_cyan_normal.png": "707A3B4B35E04784704F7FAB297A97A5F57BC2171FC208E567BD7D7711F5A54C",
+    "frontier_cyan_orm.png": "B349B43D66D7C20CD554A675D8AE51645ED91F2E5E7E2D46E4F78B1499E245B2",
+    "warning_orange_basecolor.png": "2D416CB20B1C41FF173A4E0D46B447AA5F742217F067CD286626405C2FCA51E0",
+    "warning_orange_normal.png": "3406FB09AA7DD654D21C5F480A18644B5BCBEA1FBA1E7EBD33964D2961F99900",
+    "warning_orange_orm.png": "C6D785BB86C39BACFBA6A6F9C76E017C5747B8CE2A56D49FFA559DABBBC4300B"
+  },
+  "productionBlendReference": {
+    "path": "blender/wasp_production_v1.blend",
+    "bytes": 12751842,
+    "sha256": "D2A4D2BBDB03D1461198B23225BF5928E95AE99FCBD6383633504F2CCBD54D41",
+    "relationToCurrentSource": "not re-established; no Blender run was authorized"
+  },
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 19070,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD0_Accent",
+        "LOD0_Armor",
+        "LOD0_Canopy",
+        "LOD0_Hull",
+        "LOD0_Mechanical",
+        "LOD0_Thruster",
+        "LOD0_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/wasp_production_v1_lod0.glb",
+      "bytes": 1560196,
+      "sha256": "A5B2D75EF61462B74C02E4DB095E320C6E4C666BEE0ED8D5FD54C73FF7744DA7"
+    },
+    {
+      "lod": 1,
+      "triangles": 9870,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD1_Accent",
+        "LOD1_Armor",
+        "LOD1_Canopy",
+        "LOD1_Hull",
+        "LOD1_Mechanical",
+        "LOD1_Thruster",
+        "LOD1_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/wasp_production_v1_lod1.glb",
+      "bytes": 648764,
+      "sha256": "F316039F9E50C712D0089C54CF1449C4F354D5C4C49C6423B35033F63EF7549C"
+    },
+    {
+      "lod": 2,
+      "triangles": 5394,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD2_Accent",
+        "LOD2_Armor",
+        "LOD2_Canopy",
+        "LOD2_Hull",
+        "LOD2_Mechanical",
+        "LOD2_Thruster",
+        "LOD2_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/wasp_production_v1_lod2.glb",
+      "bytes": 242792,
+      "sha256": "150CB359ACF08CAA6B29064B79A8DB5BC603D20A2EE364DDFD0578DFC6D69946"
+    }
+  ],
+  "candidateFinalization": {
+    "tool": "scripts/finalize_wasp_v1.mjs",
+    "report": "evidence/finalize_report.json",
+    "reportSha256": "A1248E8383E3BBAD24AF5F77F643206DC845467F0B945C31BFE169E06DD40E94",
+    "status": "technical_candidate_no_promote",
+    "promoted": false,
+    "lods": [
+      {
+        "lod": 0,
+        "sourceSha256": "A5B2D75EF61462B74C02E4DB095E320C6E4C666BEE0ED8D5FD54C73FF7744DA7",
+        "path": "release_candidates/wholeships/wasp_production_v1_lod0.glb",
+        "bytes": 13822904,
+        "sha256": "22FCB6C6EC360FFC45F3C07B262E3337D18248C7E19D38F3C022F32F61584860"
+      },
+      {
+        "lod": 1,
+        "sourceSha256": "F316039F9E50C712D0089C54CF1449C4F354D5C4C49C6423B35033F63EF7549C",
+        "path": "release_candidates/wholeships/wasp_production_v1_lod1.glb",
+        "bytes": 12911444,
+        "sha256": "D81CE2F26E8B7239A4E2527B8E4DA3585C81F888E803FDE38D35EE7E3538C14E"
+      },
+      {
+        "lod": 2,
+        "sourceSha256": "150CB359ACF08CAA6B29064B79A8DB5BC603D20A2EE364DDFD0578DFC6D69946",
+        "path": "release_candidates/wholeships/wasp_production_v1_lod2.glb",
+        "bytes": 12505480,
+        "sha256": "21DDAFED52E8DA568F07B3DC72BEB8C95FC64058485B1C0AE9B16D7323C2660D"
+      }
+    ]
+  },
+  "technicalValidation": {
+    "khronos": {
+      "validator": "Khronos glTF Validator 2.0.0-dev.3.10",
+      "sourceLods": {
+        "errors": 0,
+        "warnings": 0,
+        "infosPerLod": 14
+      },
+      "candidateLods": {
+        "errors": 0,
+        "warnings": 0,
+        "infosPerLod": 4
+      }
+    },
+    "textureChannelAudit": {
+      "sourceLods": {
+        "embeddedImagesPerLod": 0,
+        "boundImagesPerLod": 0,
+        "errors": 0,
+        "warnings": 0
+      },
+      "candidateLods": {
+        "embeddedImagesPerLod": 15,
+        "boundImagesPerLod": 15,
+        "errors": 0,
+        "warnings": 0
+      }
+    }
+  },
+  "renders": [],
+  "visualAcceptance": {
+    "status": "not_assessed",
+    "openGates": [
+      "G1 design and silhouette",
+      "G2 production geometry",
+      "G4 materials and surface story",
+      "G5 measured representative-scene cost",
+      "G6 runtime integration",
+      "G7 independent acceptance"
+    ],
+    "reason": "Historic images are intentionally excluded because they are not bound to the current source hashes. No visual, normal-route, runtime, release, or promotion claim is made."
+  },
+  "contracts": {
+    "forward": "+X",
+    "upAfterExport": "+Y",
+    "starboardAfterExport": "+Z",
+    "meters": true,
+    "embeddedPlume": false,
+    "semanticMaterials": [
+      "Material_Accent",
+      "Material_Armor",
+      "Material_Canopy",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Thruster",
+      "Material_Warning"
+    ],
+    "requiredSockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Trail_Port",
+      "SOCKET_Trail_Starboard",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "maxFileBytes": 104857600
+  }
+}

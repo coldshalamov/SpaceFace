@@ -1,0 +1,275 @@
+From 83d40629abdac23569ed13b70e6e4a89601350fc Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 18:24:07 -0400
+Subject: [PATCH] perf(render): zero-copy render-package digest lane (#166)
+
+Streamed GLB verification copied every package on the main thread (view.slice())
+before handing the copy to the digest worker: 3-9 ms bursts per package. The
+keeping lane transfers the fetched buffer to the worker and the worker transfers
+it straight back with the hex, so the main thread copies nothing. A worker lost
+while holding the buffer answers {hex:null} and the loader re-reads the package
+(as for a stale read); an error reply hands the buffer back for a calling-thread
+hash.
+---
+ src/render/renderPackageDigest.js       | 70 +++++++++++++++++++++-
+ src/render/renderPackageDigestWorker.js | 12 +++-
+ src/render/renderPackageLoader.js       | 17 +++++-
+ test/render-package-digest.test.mjs     | 79 +++++++++++++++++++++++++
+ 4 files changed, 172 insertions(+), 6 deletions(-)
+
+diff --git a/src/render/renderPackageDigest.js b/src/render/renderPackageDigest.js
+index 278174fe5..a4f8c0867 100644
+--- a/src/render/renderPackageDigest.js
++++ b/src/render/renderPackageDigest.js
+@@ -1,5 +1,13 @@
+ // SHA-256 for render package verification (renderPackageLoader.js), computed in a dedicated worker.
+ //
++// Zero-copy lane (sha256HexKeepingBytes): the copy below was the main-thread cost that remained — one
++// full memcpy of every streamed GLB, 3-9 ms per package and ~0.2 s over 10 s of flight streaming on the
++// quiet VM. The keeping lane transfers the caller's own buffer to the worker and the worker transfers it
++// straight back with the digest, so no byte is copied on either thread. The caller must use the bytes
++// it gets back (its original view is detached while the worker holds the buffer). If the worker dies or
++// goes silent while holding the buffer, the lane answers { hex: null, bytes: null } and the caller
++// re-reads the package; an error reply returns the buffer, which is then hashed on the calling thread.
++//
+ // Every render package is hashed once before it is parsed: ~125 MB of GLB per boot plus every package
+ // streamed in flight. On the calling thread that hashing showed up as ~0.27 s of main-thread `digest` over
+ // a jump to Ceres and 8 s there (2026-09-13 jump profile). The worker gets its own copy of the bytes (a
+@@ -67,7 +75,8 @@ export function createRenderPackageDigester(options = {}) {
+       const entry = pending.get(data.id);
+       if (!entry) return;
+       pending.delete(data.id);
+-      if (typeof data.hex === 'string') entry.resolve(data.hex);
++      if (typeof data.hex === 'string') entry.resolve(data.hex, data.buffer);
++      else if (data.buffer && typeof entry.returned === 'function') entry.returned(data.buffer);
+       else entry.fallback();
+     });
+     worker.addEventListener('error', (event) => {
+@@ -77,10 +86,66 @@ export function createRenderPackageDigester(options = {}) {
+     return worker;
+   };
+ 
+-  return {
++  const digester = {
+     get usingWorker() {
+       return !!worker && !unavailable;
+     },
++    /**
++     * Hash without copying: resolves { hex, bytes } where `bytes` is the caller's data (same contents,
++     * same length) on a buffer the worker handed back, or { hex: null, bytes: null } if the worker was
++     * lost while holding it. Views that do not own their whole buffer take the copying lane.
++     */
++    sha256HexKeepingBytes(bytes) {
++      const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++      const whole = view.byteOffset === 0 && view.byteLength === view.buffer.byteLength
++        && view.byteLength > 0
++        && !(typeof SharedArrayBuffer === 'function' && view.buffer instanceof SharedArrayBuffer);
++      const target = whole ? ensureWorker() : null;
++      if (!target) return digester.sha256Hex(view).then((hex) => ({ hex, bytes: view }));
++      return new Promise((resolve, reject) => {
++        const id = nextId++;
++        let timer = null;
++        const clear = () => {
++          if (timer != null) clearTimeout(timer);
++          timer = null;
++        };
++        const entry = {
++          resolve: (hex, buffer) => {
++            clear();
++            resolve({ hex, bytes: buffer ? new Uint8Array(buffer) : null });
++          },
++          // Worker error event, retirement, or timeout: the buffer is still over there (or gone).
++          fallback: () => {
++            clear();
++            resolve({ hex: null, bytes: null });
++          },
++          // Error reply that handed the buffer back: hash it here, as the copying lane would.
++          returned: (buffer) => {
++            clear();
++            const back = new Uint8Array(buffer);
++            sha256HexOnCallingThread(back, cryptoOf()).then((hex) => resolve({ hex, bytes: back }), reject);
++          },
++        };
++        pending.set(id, entry);
++        if (timeoutMs > 0) {
++          timer = setTimeout(() => {
++            if (!pending.has(id)) return;
++            pending.delete(id);
++            entry.fallback();
++          }, timeoutMs);
++        }
++        const buffer = view.buffer;
++        try {
++          target.postMessage({ id, buffer, keep: true }, [buffer]);
++        } catch (_) {
++          pending.delete(id);
++          clear();
++          // postMessage threw before the transfer happened: the caller still owns its bytes.
++          if (view.byteLength > 0) digester.sha256Hex(view).then((hex) => resolve({ hex, bytes: view }), reject);
++          else resolve({ hex: null, bytes: null });
++        }
++      });
++    },
+     sha256Hex(bytes) {
+       const target = ensureWorker();
+       if (!target) return sha256HexOnCallingThread(bytes, cryptoOf());
+@@ -123,4 +188,5 @@ export function createRenderPackageDigester(options = {}) {
+       retire();
+     },
+   };
++  return digester;
+ }
+diff --git a/src/render/renderPackageDigestWorker.js b/src/render/renderPackageDigestWorker.js
+index 414a4ba3c..d76706d8b 100644
+--- a/src/render/renderPackageDigestWorker.js
++++ b/src/render/renderPackageDigestWorker.js
+@@ -1,6 +1,8 @@
+ // Worker for src/render/renderPackageDigest.js: the SHA-256 of one render package per message, so hashing
+ // streamed GLB bytes never runs on the game's main thread.
+ // Protocol: in { id, buffer } (the buffer is transferred), out { id, hex } or { id, error }.
++// With { keep: true } the buffer is transferred back on either reply ({ id, hex, buffer } /
++// { id, error, buffer }) so the caller keeps its bytes without the main thread ever copying them.
+ self.addEventListener('message', (event) => {
+   const data = event.data || {};
+   const id = data.id;
+@@ -10,9 +12,15 @@ self.addEventListener('message', (event) => {
+       const bytes = new Uint8Array(digest);
+       let hex = '';
+       for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+-      self.postMessage({ id, hex });
++      if (data.keep === true && data.buffer) self.postMessage({ id, hex, buffer: data.buffer }, [data.buffer]);
++      else self.postMessage({ id, hex });
+     })
+     .catch((error) => {
+-      self.postMessage({ id, error: String((error && error.message) || error) });
++      const message = String((error && error.message) || error);
++      if (data.keep === true && data.buffer && data.buffer.byteLength > 0) {
++        self.postMessage({ id, error: message, buffer: data.buffer }, [data.buffer]);
++      } else {
++        self.postMessage({ id, error: message });
++      }
+     });
+ });
+diff --git a/src/render/renderPackageLoader.js b/src/render/renderPackageLoader.js
+index da271aef0..bd5f2cd42 100644
+--- a/src/render/renderPackageLoader.js
++++ b/src/render/renderPackageLoader.js
+@@ -883,9 +883,17 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
+   const digestOf = async (candidate) => (
+     candidate.byteLength === metadata.render.bytes ? sha256Hex(candidate) : null
+   );
++  // First read: zero-copy worker hash. The bytes come back on the same buffer, so the only main-thread
++  // copy of each streamed package (the worker's private copy) is gone. A worker lost mid-hash takes
++  // the buffer with it; that read is then treated like a stale read and re-fetched below.
+   let bytes = await read('no-cache');
+-  let digest = await digestOf(bytes);
+-  if (digest !== metadata.render.sha256) {
++  let digest = null;
++  if (bytes.byteLength === metadata.render.bytes) {
++    const kept = await sha256HexKeepingBytes(bytes);
++    bytes = kept.bytes;
++    digest = kept.hex;
++  }
++  if (!bytes || digest !== metadata.render.sha256) {
+     bytes = await read('reload');
+     digest = await digestOf(bytes);
+   }
+@@ -1044,3 +1052,8 @@ function sha256Hex(bytes) {
+   renderPackageDigester ||= createRenderPackageDigester();
+   return renderPackageDigester.sha256Hex(bytes);
+ }
++
++function sha256HexKeepingBytes(bytes) {
++  renderPackageDigester ||= createRenderPackageDigester();
++  return renderPackageDigester.sha256HexKeepingBytes(bytes);
++}
+diff --git a/test/render-package-digest.test.mjs b/test/render-package-digest.test.mjs
+index d3f7c5216..f78ae4cec 100644
+--- a/test/render-package-digest.test.mjs
++++ b/test/render-package-digest.test.mjs
+@@ -135,3 +135,82 @@ test('the render package loader verifies GLB bytes through the worker digester',
+   assert.match(source, /renderPackageDigester \|\|= createRenderPackageDigester\(\);\s*return renderPackageDigester\.sha256Hex\(bytes\);/);
+   assert.doesNotMatch(source, /globalThis\.crypto\.subtle\.digest\('SHA-256'/, 'no direct main-thread GLB digest left');
+ });
++
++test('zero-copy lane: the worker hashes the caller\'s own buffer and hands it back unchanged', async () => {
++  const crypto = spyCrypto();
++  class TransferWorker extends FileWorker {
++    postMessage(data, transfer) {
++      // Model a real transfer: the sender's view is detached, the worker owns the same bytes.
++      const moved = structuredClone(data, { transfer });
++      super.postMessage(moved, transfer);
++    }
++  }
++  const digester = createRenderPackageDigester({ WorkerImpl: TransferWorker, workerUrl: 'digest-worker.js', cryptoImpl: crypto });
++  const original = sample(96_000, 17);
++  const reference = original.slice();
++  const [kept, keptSmall] = await Promise.all([
++    digester.sha256HexKeepingBytes(original),
++    digester.sha256HexKeepingBytes(sample(4096, 5)),
++  ]);
++  assert.equal(kept.hex, expectedHex(reference));
++  assert.equal(keptSmall.hex, expectedHex(sample(4096, 5)));
++  assert.equal(original.byteLength, 0, 'the caller\'s view was transferred, not copied');
++  assert.ok(kept.bytes instanceof Uint8Array);
++  assert.equal(kept.bytes.byteLength, reference.byteLength);
++  assert.deepEqual(kept.bytes, reference, 'the returned bytes are the caller\'s bytes');
++  assert.equal(crypto.calls, 0, 'no hashing on the calling thread');
++  digester.dispose();
++});
++
++test('zero-copy lane: error reply returns the buffer, lost worker returns nothing, partial views copy', async () => {
++  class ErrorReturnWorker extends EventTargetWorker {
++    postMessage(data) {
++      queueMicrotask(() => this.emit('message', { data: { id: data.id, error: 'digest unsupported', buffer: data.buffer } }));
++    }
++  }
++  class SilentWorker extends EventTargetWorker {
++    postMessage() {}
++  }
++  class FailingWorker extends EventTargetWorker {
++    postMessage() {
++      queueMicrotask(() => this.emit('error', { message: 'blocked', preventDefault() {} }));
++    }
++  }
++  const bytes = sample(2048, 19);
++  const spy = spyCrypto();
++  const errored = await createRenderPackageDigester({ WorkerImpl: ErrorReturnWorker, workerUrl: 'w.js', cryptoImpl: spy })
++    .sha256HexKeepingBytes(bytes.slice());
++  assert.equal(errored.hex, expectedHex(bytes));
++  assert.deepEqual(errored.bytes, bytes);
++  assert.equal(spy.calls, 1, 'returned buffer is hashed on the calling thread');
++
++  const silent = createRenderPackageDigester({ WorkerImpl: SilentWorker, workerUrl: 'w.js', cryptoImpl: spyCrypto(), timeoutMs: 20 });
++  assert.deepEqual(await silent.sha256HexKeepingBytes(bytes.slice()), { hex: null, bytes: null });
++  silent.dispose();
++
++  const failing = createRenderPackageDigester({ WorkerImpl: FailingWorker, workerUrl: 'w.js', cryptoImpl: spyCrypto() });
++  assert.deepEqual(await failing.sha256HexKeepingBytes(bytes.slice()), { hex: null, bytes: null });
++
++  // A view into a larger buffer cannot be handed over whole: it takes the copying lane and keeps its view.
++  const big = sample(8192, 23);
++  const part = big.subarray(1024, 3072);
++  const copying = createRenderPackageDigester({ WorkerImpl: FileWorker, workerUrl: 'w.js', cryptoImpl: spyCrypto() });
++  const out = await copying.sha256HexKeepingBytes(part);
++  assert.equal(out.hex, expectedHex(part));
++  assert.equal(out.bytes, part);
++  assert.equal(big.byteLength, 8192);
++  copying.dispose();
++
++  // Without workers the lane hashes on the calling thread and returns the same view.
++  const none = createRenderPackageDigester({ WorkerImpl: undefined });
++  const same = sample(300, 29);
++  const plain = await none.sha256HexKeepingBytes(same);
++  assert.equal(plain.hex, expectedHex(same));
++  assert.equal(plain.bytes, same);
++});
++
++test('the render package loader verifies the first read through the zero-copy lane', () => {
++  const source = readFileSync(new URL('../src/render/renderPackageLoader.js', import.meta.url), 'utf8');
++  assert.match(source, /const kept = await sha256HexKeepingBytes\(bytes\);/);
++  assert.match(source, /if \(!bytes \|\| digest !== metadata\.render\.sha256\) \{\s*bytes = await read\('reload'\);/);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,1794 @@
+import {
+  WORLD_FEEL_SEAM_IDS,
+  admitWorldFeelSeam,
+  createWorldFeelBook,
+  worldFeelRelevant,
+  copySweptHullFeel,
+  worldFeelHaptic,
+  worldFeelTick,
+} from '../audio/worldFeelSeams.js';
+import { POWER_VERBS, POWER_VERB_ALIASES, savedCodesForPower } from './powerVerbs.js';
+// RC-FELT: the ONE data import this layer carries — the shared weapon-family classifier —
+// so accepted damage pulses read the same family vocabulary as the VFX they accompany.
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
+
+// Gamepad polling layer (goal P1-12).
+//
+// Polls navigator.getGamepads() once per tick and exposes normalized, deadzoned axes plus
+// per-action button state (pressed / released / held / analog value). The layer is intentionally
+// dumb: it only translates the raw standard-gamepad layout into game actions. Flight behavior is
+// merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
+//
+// Standard mapping (Xbox / PlayStation equivalent):
+//   0  A / Cross      -> accept / Massline thumb action in flight
+//   1  B / Circle      -> cancel / back; dock when the station prompt is up in flight
+//   2  X / Square      -> cycle target
+//   3  Y / Triangle    -> shove / repulsor
+//   4  LB / L1         -> brake / reverse thrust; station tab previous
+//   5  RB / R1         -> boost; station tab next
+//   6  LT / L2         -> mine beam (analog)
+//   7  RT / R2         -> fire (analog)
+//   8  View / Select   -> star map
+//   9  Menu / Start    -> pause
+//  10  L3              -> travel burn
+//  11  R3              -> countermeasure
+//  12  D-pad up        -> UI nav up; auto-target / draw-to-fly toggle in flight
+//  13  D-pad down      -> UI nav down; detonate armed bombs and charges
+//  14  D-pad left      -> UI nav left; cycle bomb-bay payload
+//  15  D-pad right     -> UI nav right; drop bomb
+//  16  Home / Guide    -> codex / journal (moved off Y; see GAMEPAD_DEFAULT_BINDINGS)
+//
+// FB-003 chord layer: the solo buttons above leave a dozen flight verbs keyboard-only. Holding
+// LB or RB and tapping a d-pad/face button is a second "shifted" layer — LB hosts survey and
+// deploy verbs under the brake hand, RB hosts combat-state verbs under the boost hand. A chord
+// name is '<modifier>+<button>' and lives in GAMEPAD_DEFAULT_BINDINGS like any other binding:
+// resolvable, rebindable, and labeled by the help sheet with every button it holds. While a
+// chord's KEY is held inside an active chord its solo verb is suppressed for the hold; the
+// modifier's own verb (brake/boost) keeps working — chords are additive, not a mode.
+
+const STD = {
+  accept: 0,
+  cancel: 1,
+  action: 2, // X / Square
+  alt: 3,    // Y / Triangle
+  l1: 4,
+  r1: 5,
+  l2: 6,
+  r2: 7,
+  view: 8,
+  menu: 9,
+  l3: 10,
+  r3: 11,
+  dUp: 12,
+  dDown: 13,
+  dLeft: 14,
+  dRight: 15,
+  home: 16,
+};
+
+/**
+ * A chord binding is '<modifier>+<button>' — both names standard buttons, modifier first. It is
+ * the ONE name shape that is not itself a button index: the action layer evaluates it as
+ * "modifier held while button edges", and the solo verb on the button is suppressed for the
+ * hold so a chord never double-fires its key. Returns [modifier, button] or null.
+ */
+export function parseGamepadChord(name) {
+  if (typeof name !== 'string') return null;
+  const at = name.indexOf('+');
+  if (at <= 0 || at === name.length - 1 || name.indexOf('+', at + 1) !== -1) return null;
+  const mod = name.slice(0, at);
+  const key = name.slice(at + 1);
+  if (STD[mod] == null || STD[key] == null || mod === key) return null;
+  return [mod, key];
+}
+
+/** True for a standard button name or a well-formed chord name. */
+export function isGamepadButtonName(name) {
+  return STD[name] != null || parseGamepadChord(name) != null;
+}
+
+// An action can be bound to multiple physical buttons (e.g. accept also fires in flight).
+// This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
+// settings.controls.gamepad.bindings — resolved per tick by resolveGamepadBindings().
+export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
+  fire: Object.freeze(['r2']),
+  mine: Object.freeze(['l2']),
+  boost: Object.freeze(['r1']),
+  brake: Object.freeze(['l1']),
+  // §22 E1: shove is its own face button. Y used to open the codex; the codex stays on the
+  // guide button and inside Pause, so a fight never needs a chord to drop the repulsor.
+  // The five powers (owner 2026-10-22, powerVerbs.js): SHOVE keeps Y and gains the old detonate
+  // D-pad down, because Shove now sets off armed ordnance too.
+  shove: Object.freeze(['alt', 'dDown']),
+  cycleTarget: Object.freeze(['action']),
+  autoTarget: Object.freeze(['dUp']),
+  map: Object.freeze(['view']),
+  steeringView: Object.freeze(['l1+view']), // LB+View: chase / overhead without opening the map
+  codex: Object.freeze(['home']),
+  pause: Object.freeze(['menu']),
+  countermeasure: Object.freeze(['r3']),
+  accept: Object.freeze(['accept']),
+  massline: Object.freeze(['accept']),
+  // Dock is B, which is cancel only while a screen is open. The rope keeps A in flight.
+  dock: Object.freeze(['cancel']),
+  cancel: Object.freeze(['cancel']),
+  tabPrev: Object.freeze(['l1']),
+  tabNext: Object.freeze(['r1']),
+  // Travel Burn latch (atlas D5 / W1-5). L3 (left stick click, STD index 10) was the only
+  // standard-layout button still unbound, and it is the right one on the merits: the left stick
+  // is the throttle hand, so "press the throttle stick in" reads as committing to a long burn.
+  // It is an edge (`.pressed`), never a hold — the latch owns the state, not the button.
+  travelBurn: Object.freeze(['l3']),
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). D-right releases the selected bomb; d-left
+  // cycles the payload. Both are edges; the bombs system owns cooldown/fuze/lifecycle. dUp stays
+  // auto-target; the free d-pad wings are exactly the deployable-shaped pair.
+  // BOMB throws the sticky charge while one is aboard, else the chosen drift bomb; D-left cycles it.
+  bomb: Object.freeze(['dRight']),
+  cycleBomb: Object.freeze(['dLeft']),
+  // FB-003 — the chord layer. Hold LB or RB and tap the second button; the modifier's own verb
+  // keeps working (you can brake while pinging), and the chorded button's solo verb is held off
+  // only while that button is down — releasing it re-arms the solo on the next press. LB is the
+  // survey/deploy layer (the brake hand steadies the ship for deliberate work); RB is the
+  // combat-state layer (the boost hand picks the fighting mode). autoFire needs no slot —
+  // D-pad up is already autoTarget/draw-to-fly — and reel is the left stick while the Massline
+  // line-control owns the axis. Every verb is rebindable under Settings → Controls.
+  scanPulse: Object.freeze(['l1+dUp']),           // LB layer: scanner ping, "look up"
+  pin: Object.freeze(['l1+dDown']),               // LB layer: PIN the anchor seed, "plant it"
+  pull: Object.freeze(['l1+dLeft']),              // LB layer: PULL, the well, left hand shape
+  rig: Object.freeze(['l1+dRight']),              // LB layer: RIG, the cone or the skim scoop
+  siteBeam: Object.freeze(['l1+action']),         // LB+X: the contextual world-site beam
+  bulletTime: Object.freeze(['r1+dUp']),          // RB layer: time dilation, "slow up"
+  cloak: Object.freeze(['r1+dDown']),             // RB layer: cloak engages, "drop out of sight"
+  cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
+  deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
+  deployShieldPylon: Object.freeze(['r1+dLeft']),  // RB+D-left: place / link / recall a shield pylon (the HUD pill names which)
+  jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
+  // The Gyre Snare is a HELD verb: RB+Y (the combat layer's last free chord — Y is the
+  // repulsor hand solo, and holding it under the boost finger reads as "grip the mass").
+  // Hold to beam and hold the clump; let go to bowl it.
+  gyreSnare: Object.freeze(['r1+alt']),           // RB+Y: hold the lash, release to bowl
+  // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
+  // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
+  // system polling the player's boost flag. There is nothing to bind.
+});
+const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
+
+// Quiet keyboard/mouse flight has no pad. Historically every disconnected poll rebuilt the
+// action map (21 fresh sample objects). Skip once the idle zero-state is already published.
+// Bench-only toggle restores the always-reset path for A/B.
+let GAMEPAD_IDLE_CLEAN_SKIP = true;
+export function setGamepadIdleCleanSkipForBench(enabled) {
+  GAMEPAD_IDLE_CLEAN_SKIP = enabled !== false;
+}
+export function getGamepadIdleCleanSkipForBench() {
+  return GAMEPAD_IDLE_CLEAN_SKIP !== false;
+}
+
+// Player-facing glyph per standard-layout button (PQ-164.01). Short primary names — the
+// Settings layout note and Help carry the dual Xbox/PlayStation naming.
+export const GAMEPAD_BUTTON_LABELS = Object.freeze({
+  accept: 'A',
+  cancel: 'B',
+  action: 'X',
+  alt: 'Y',
+  l1: 'LB',
+  r1: 'RB',
+  l2: 'LT',
+  r2: 'RT',
+  view: 'View',
+  menu: 'Menu',
+  l3: 'L3',
+  r3: 'R3',
+  dUp: 'D-Pad Up',
+  dDown: 'D-Pad Down',
+  dLeft: 'D-Pad Left',
+  dRight: 'D-Pad Right',
+  home: 'Home',
+});
+
+/**
+ * The dual Xbox/PlayStation spelling of each standard button — what the Help sheet has always
+ * taught, and the only register a brand-new player can act on. It lives beside
+ * GAMEPAD_BUTTON_LABELS rather than in the UI tree so the button vocabulary has exactly one owner:
+ * a second map under src/ui is how the four competing token roots started.
+ *
+ * `home` is deliberately 'Guide' here and 'Home' in GAMEPAD_BUTTON_LABELS. Both are correct in
+ * their own lane: 'Home' is the W3C Standard Gamepad button name, 'Guide' is what the button is
+ * called on the pad people actually own. Do not "reconcile" them.
+ *
+ * Keys that need no disambiguation (L3, R3, the D-pad) are absent and fall back to the short label.
+ */
+export const GAMEPAD_DUAL_LABELS = Object.freeze({
+  accept: 'A / Cross',
+  cancel: 'B / ○',
+  action: 'X / □',
+  alt: 'Y / △',
+  l1: 'LB / L1',
+  r1: 'RB / R1',
+  l2: 'LT / L2',
+  r2: 'RT / R2',
+  view: 'View / Select',
+  menu: 'Start / Options',
+  home: 'Guide',
+});
+
+// FB-117 glyph sets — the face-button vocabulary a prompt prints. 'xb' is the stock Xbox
+// spelling (GAMEPAD_BUTTON_LABELS); 'ds' is the DualShock symbol register; 'fh' is the
+// Field Hardware filled-letter register, the same filled-glyph language the Power Rail
+// speaks (src/ui/views/fhGlyphs.js). Only the four face buttons differ across sets —
+// shoulders, sticks, the D-pad and the menu pair read the same on every pad, so they
+// fall through to the stock label. The set lives at settings.controls.gamepad.glyphSet;
+// readers pass it through the { glyphSet } option on gamepadButtonLabels.
+export const GAMEPAD_DS_FACE_LABELS = Object.freeze({
+  accept: '✕',
+  cancel: '◯',
+  action: '□',
+  alt: '△',
+});
+export const GAMEPAD_FH_FACE_LABELS = Object.freeze({
+  accept: 'Ⓐ',
+  cancel: 'Ⓑ',
+  action: 'Ⓧ',
+  alt: 'Ⓨ',
+});
+export const GAMEPAD_GLYPH_SETS = Object.freeze(['xb', 'ds', 'fh']);
+const FACE_LABEL_SETS = Object.freeze({ ds: GAMEPAD_DS_FACE_LABELS, fh: GAMEPAD_FH_FACE_LABELS });
+export function normalizeGamepadGlyphSet(set) {
+  return set === 'ds' || set === 'fh' ? set : 'xb';
+}
+
+// PRO-22 — which prompt register the connected pad's family speaks, from the browser
+// Gamepad.id the frame already carries. 'ds' for the PlayStation family, 'xb' for the
+// Xbox family (also the stock default, so an Xbox pad never needs a swap), null for
+// anything else: Nintendo, generic and unknown pads must never re-label the prompts,
+// and 'fh' is the player's explicit fictional-register choice with no hardware family.
+// Pure and dependency-free — both realms call it on the same id string with no allocation
+// beyond the lowercased copy. Checked PlayStation-first: an id naming both vendors still
+// reads as the more specific DualShock/DualSense register.
+export function detectGamepadGlyphFamily(id) {
+  if (typeof id !== 'string' || !id) return null;
+  const s = id.toLowerCase();
+  if (s.includes('dualshock') || s.includes('dualsense')
+    || s.includes('playstation') || s.includes('sony') || s.includes('054c')) return 'ds';
+  if (s.includes('xbox') || s.includes('xinput') || s.includes('045e')) return 'xb';
+  return null;
+}
+/** The face-button label under the player's glyph set; non-face names keep the stock register. */
+export function gamepadFaceButtonLabel(name, glyphSet) {
+  const set = FACE_LABEL_SETS[normalizeGamepadGlyphSet(glyphSet)];
+  return (set && set[name]) || GAMEPAD_BUTTON_LABELS[name] || '';
+}
+
+/**
+ * Every standard button name bound to `action`, in binding order, with unknown names dropped.
+ *
+ * A binding is an ARRAY because one action may answer to more than one physical button; callers
+ * that read `[0]` silently truncate a chord. `gamepadGlyphForAction` (src/ui/bindings.js) keeps
+ * first-button-only on purpose — it feeds prompt-deck chips, where a chord cannot fit — so chord
+ * readers must ask for the whole list instead.
+ *
+ * UI-ONLY. These allocate and so may not be called from the per-tick path: `resolveGamepadBindings`
+ * carries the no-allocation contract.
+ */
+export function gamepadButtonNames(action, map) {
+  const list = map && map[action];
+  return Array.isArray(list) ? list.filter(isGamepadButtonName) : [];
+}
+
+/** Player text for one binding name — a chord prints every button it holds. `glyphSet`
+ *  overrides the face-button spelling ('ds' symbols, 'fh' filled letters); 'dual' keeps its
+ *  stock Xbox/PlayStation register and loses only when a face set is explicitly chosen. */
+function gamepadButtonLabel(name, dual, glyphSet) {
+  const chord = parseGamepadChord(name);
+  const label = (btn) => {
+    const set = normalizeGamepadGlyphSet(glyphSet);
+    if (set !== 'xb') return gamepadFaceButtonLabel(btn, set);
+    return dual ? GAMEPAD_DUAL_LABELS[btn] || GAMEPAD_BUTTON_LABELS[btn] : GAMEPAD_BUTTON_LABELS[btn];
+  };
+  if (!chord) return label(name);
+  return `${label(chord[0])} + ${label(chord[1])}`;
+}
+
+/**
+ * `gamepadButtonNames` mapped to player text. `dual` selects the Xbox/PlayStation register used by
+ * the stock Help sheet; a remapped map prints the short glyph, which is the same register the
+ * Settings remap row shows, so the two screens agree after a rebind. `glyphSet` ('xb'|'ds'|'fh')
+ * picks the face-button family the prompt prints — Settings → Controls owns the choice.
+ */
+export function gamepadButtonLabels(action, map, { dual = false, glyphSet = 'xb' } = {}) {
+  return gamepadButtonNames(action, map).map(name => gamepadButtonLabel(name, dual, glyphSet));
+}
+
+// FB-003: keyboard flight verbs whose pad route is a differently-named channel rather than a
+// binding of their own. The rope verb rides the Massline button; draw-to-fly is the auto-target
+// toggle; reel is the left stick while the Massline's line-control owns the axis. The help/test
+// coverage check reads this so a named route is a route, not a hand-waved "the stick does it".
+export const GAMEPAD_VERB_ALIASES = Object.freeze({
+  tether: 'massline',
+  autoFire: 'autoTarget',
+  reelIn: 'lineControl',
+  reelOut: 'lineControl',
+  // The five powers (owner 2026-10-22): an old power verb's pad route is its power's binding.
+  ...POWER_VERB_ALIASES,
+});
+
+// --- Remapping (PQ-164.01) -------------------------------------------------------------------
+// A button may serve two actions only when their contexts are disjoint — a modal-only verb
+// (cancel, station tab cycling) is inert in flight, and flight verbs are neutralized while a
+// modal owns input — or when the pair is a designed arbitration (A/Cross is the Massline and
+// also UI accept; B is dock in flight and cancel on a screen; brake/boost share LB/RB with
+// station tab cycling).
+const PAD_ACTION_CONTEXT = Object.freeze({
+  accept: 'both',
+  map: 'both',
+  steeringView: 'flight',
+  pause: 'both',
+  codex: 'flight',
+  fire: 'flight',
+  mine: 'flight',
+  boost: 'flight',
+  brake: 'flight',
+  cycleTarget: 'flight',
+  autoTarget: 'flight',
+  countermeasure: 'flight',
+  travelBurn: 'flight',
+  bomb: 'flight',
+  cycleBomb: 'flight',
+  massline: 'flight',
+  shove: 'flight',
+  dock: 'flight',
+  // FB-003 chord-layer verbs are all flight-only: a modal owns the stick and the bumpers, so no
+  // chord may reach through a screen.
+  scanPulse: 'flight',
+  pin: 'flight',
+  pull: 'flight',
+  rig: 'flight',
+  siteBeam: 'flight',
+  bulletTime: 'flight',
+  cloak: 'flight',
+  cruise: 'flight',
+  deployBeacon: 'flight',
+  deployShieldPylon: 'flight',
+  jettisonLot: 'flight',
+  gyreSnare: 'flight',
+  cancel: 'modal',
+  tabPrev: 'modal',
+  tabNext: 'modal',
+});
+const PAD_SHARE_PAIRS = new Set(['accept|massline']);
+
+export function gamepadShareAllowed(a, b) {
+  if (a === b) return true;
+  if (PAD_SHARE_PAIRS.has([a, b].sort().join('|'))) return true;
+  const ca = PAD_ACTION_CONTEXT[a] || 'both';
+  const cb = PAD_ACTION_CONTEXT[b] || 'both';
+  return (ca === 'flight' && cb === 'modal') || (ca === 'modal' && cb === 'flight');
+}
+
+/**
+ * The action that already owns `stdName` in `map` and may not share it with `action`, or null.
+ * Used by the Settings capture for conflict detection and by the resolver to drop illegal shares
+ * stored in a stale/hand-edited profile.
+ */
+export function findGamepadBindConflict(map, action, stdName) {
+  for (const other in map) {
+    if (other === action) continue;
+    const list = map[other];
+    if (!list || !list.includes(stdName)) continue;
+    if (!gamepadShareAllowed(action, other)) return other;
+  }
+  return null;
+}
+
+/**
+ * Resolved action -> [std button names] for the live settings. Player overrides at
+ * settings.controls.gamepad.bindings replace an action's whole list; unknown actions/buttons and
+ * illegal shares are dropped (canonical declaration order wins). With no overrides this returns
+ * the frozen default map — callers on the hot tick path must not allocate.
+ */
+export function resolveGamepadBindings(settings) {
+  const stored = settings && settings.controls && settings.controls.gamepad
+    ? settings.controls.gamepad.bindings : null;
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return ACTION_MAP;
+  // A pad remap saved before the five powers names the old verbs (deployWell, dropBomb, …).
+  // Carry each one to the power that owns its button now, unless the power has its own entry.
+  const custom = { ...stored };
+  for (const power of POWER_VERBS) {
+    if (Object.prototype.hasOwnProperty.call(custom, power)) continue;
+    const legacy = savedCodesForPower(stored, power);
+    if (legacy !== undefined) custom[power] = legacy;
+  }
+  const owners = {}; // std button name -> [actions holding it]
+  const claimable = (action, name) =>
+    (owners[name] || []).every((other) => gamepadShareAllowed(action, other));
+  const place = (action, names) => {
+    const kept = [];
+    for (const name of names) {
+      if (!claimable(action, name)) continue;
+      kept.push(name);
+      (owners[name] || (owners[name] = [])).push(action);
+    }
+    return kept;
+  };
+  const sanitize = (raw) => {
+    const names = Array.isArray(raw) ? raw : [raw];
+    const out = [];
+    for (const n of names) {
+      if (typeof n === 'string' && isGamepadButtonName(n) && !out.includes(n)) out.push(n);
+    }
+    return out;
+  };
+  const has = (a) => Object.prototype.hasOwnProperty.call(custom, a);
+  const out = {};
+  // Pass 1: untouched actions keep their shipped defaults (the stock map is internally legal).
+  for (const action in ACTION_MAP) {
+    if (has(action)) continue;
+    // This newly introduced chord was free before pylons. A valid saved remap already
+    // occupying it keeps its meaning; the new equipment action can be bound in Settings.
+    // Existing actions retain the established default/share policy below.
+    const defaults = action === 'deployShieldPylon'
+      ? ACTION_MAP[action].filter(name => !Object.keys(ACTION_MAP).some(other => has(other)
+        && sanitize(custom[other]).includes(name) && !gamepadShareAllowed(action, other)))
+      : ACTION_MAP[action];
+    out[action] = place(action, defaults);
+  }
+  // Pass 2: overrides claim buttons in canonical order. An override that loses every button to a
+  // disallowed share (corrupt or hand-edited profile) falls back to the action's default, so a
+  // stored map can never leave the pad worse than stock. An explicitly empty list is a deliberate
+  // unbind and stays empty.
+  for (const action in ACTION_MAP) {
+    if (!has(action)) continue;
+    const raw = custom[action];
+    if (Array.isArray(raw) && raw.length === 0) { out[action] = []; continue; }
+    const desired = sanitize(raw);
+    // An all-invalid or fully conflicted override is corrupt data, not a choice — restore the
+    // action's default rather than leave a dead verb.
+    let kept = desired.length ? place(action, desired) : [];
+    if (kept.length === 0) kept = place(action, ACTION_MAP[action]);
+    out[action] = kept;
+  }
+  return out;
+}
+
+const DEFAULT_DEADZONE = 0.12;
+
+// --- Haptics (PQ-164.03 + FB-005) ------------------------------------------------------------------
+// Line tension, slams and boost are carried on the pad's rumble motors. Intensity is a function of
+// the momentum in play: a loaded Massline, an impact and a boost all read stronger the faster the
+// player (or the struck body) is moving. Rumble has its OWN accessibility axis
+// (settings.accessibility.haptics: 'off' | 'low' | 'full') — reduce-motion is vestibular and no
+// longer silences it: a calmer screen often wants more haptic substitution, not less.
+export const HAPTIC_REF_MOMENTUM = 120;    // WU/s where momentum-scaled rumble is full
+export const HAPTIC_SLAM_REF_DP = 8000;    // physics impulse at a full-intensity slam
+export const HAPTIC_RUMBLE_MS = 120;       // actuator effect duration; refreshed each active tick
+export const HAPTIC_SLAM_DECAY_TICKS = 18; // ~0.3 s pulse at 60 Hz, decayed on sim ticks
+const HAPTIC_BOOST_FLOOR = 0.30;           // a boost at a standstill still hums
+
+// FB-005: discrete per-verb pulses. Each is a one-shot {strong, weak, ms} profile layered over the
+// continuous channels — a latch "clicks" differently than a cut "twang" differently than a razor
+// release "snap". The pulse table keys are the bus event names; release grades pulse by band.
+// At most one pulse may be live and a fresh one must wait HAPTIC_PULSE_MIN_GAP_TICKS (~80 ms) —
+// a chain of explosions does not turn the pad into a continuous buzz.
+export const HAPTIC_PULSE_MIN_GAP_TICKS = 5; // ~83 ms at 60 Hz — never more than ~12 pulses/s
+export const HAPTIC_VERB_PULSES = Object.freeze({
+  'tether:latched':       { strong: 0.45, weak: 0.30, ms: 90 },
+  'tether:cut':           { strong: 0.25, weak: 0.55, ms: 70 },
+  'massline:snareCaught': { strong: 0.80, weak: 0.95, ms: 150 },
+  'charge:detonated':     { strong: 0.90, weak: 0.65, ms: 170 },
+  'cloak:engaged':        { strong: 0.15, weak: 0.45, ms: 110 },
+  // FB-009 — the two Massline edges that reached every other sense but the pad. A hostile
+  // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
+  'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
+  'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
+  // Gyre Snare: the wake is a soft hum (the lash switching on), the snag a solid bite,
+  // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
+  'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
+  'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
+  // No `gyre:launched` pulse: it fires at the release edge in the SAME tick `gyre:windup`
+  // emits (`_launch` then the LAUNCH block decrements the coil), so its 5-tick min-gap
+  // silently ate the 140 ms draw rumble — the sling's richest beat — on every launch.
+  // `gyre:windup` marks coil-engage and `gyre:thrown` marks the throw; nothing is lost.
+  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 105 }, // the draw — a low rumble under the ~100 ms coil (up to ~155 after the +50·t mass grading, bleeding into thrown's beat)
+  'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
+  'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
+  'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
+  'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
+  // Pseudo-key (like droppedEmpty — not a bus event): a 'strained' gyre:dropped is
+  // the verb's biggest loss beat — between the strain rattle and the throw crack.
+  'gyre:torn':              { strong: 0.70, weak: 0.55, ms: 140 },
+  'gyre:strained':          { strong: 0.50, weak: 0.40, ms: 120 },
+  'gyre:full':              { strong: 0.65, weak: 0.55, ms: 150 },
+  // The capacitor's ~3 s warning — a low rolling pulse, gentler than the strain
+  // rattle: "the lash is about to fire itself" lands in the hands, not just the pill.
+  'gyre:fuseLow':           { strong: 0.30, weak: 0.55, ms: 170 },
+  // The thrown ball's quiet-TTL grave — a light dying tap that closes the arc:
+  // the katamari lived, flew, and is gone. Impact deaths rumble through collision.
+  'gyre:ballGrave':         { strong: 0.25, weak: 0.20, ms: 60 },
+  // First fill of the net — a whisper on the basinCatchLatched edge only.
+  // The +N ratchet stays audio-only or a dense belt feed would buzz the pad.
+  'gyre:caught':            { strong: 0.15, weak: 0.20, ms: 40 },
+  // Player beats (FB-005 family): the dash is a short shove, a hit taken is a
+  // sharp bite on the weak actuator, a kill scored is a satisfying thud, and a
+  // base kill is the biggest beat in the flight vocabulary. Subscriptions gate
+  // on the player's id — NPC dashes, NPC-on-NPC hits and NPC kills stay silent.
+  'ship:dash':              { strong: 0.40, weak: 0.55, ms: 80 },
+  'projectile:hit':         { strong: 0.55, weak: 0.85, ms: 100 },
+  'entity:killed':          { strong: 0.70, weak: 0.45, ms: 130 },
+  'combat:baseDestroyed':   { strong: 0.95, weak: 0.80, ms: 220 },
+});
+// Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
+export const HAPTIC_RELEASE_PULSES = Object.freeze({
+  razor: { strong: 0.50, weak: 1.00, ms: 180 },
+  clean: { strong: 0.40, weak: 0.70, ms: 130 },
+  good:  { strong: 0.30, weak: 0.50, ms: 100 },
+  messy: { strong: 0.20, weak: 0.25, ms: 60 },
+});
+// RC-FELT: the player's OWN accepted attacks read by weapon family — a plasma bolt taps the
+// weak actuator, a kinetic slug thuds on the strong, a missile impact rolls longest. Fed by
+// `combat:damage` (settled damage only — firing requests are never felt). Admission is
+// deferred to _stepHaptics so a same-tick kill keeps the heavier kill pulse, and the
+// candidate lives at most one tick: a bullet stream must not build a rumble backlog.
+export const HAPTIC_WEAPON_FAMILY_PULSES = Object.freeze({
+  plasma:  { strong: 0.15, weak: 0.55, ms: 65 },
+  kinetic: { strong: 0.65, weak: 0.20, ms: 95 },
+  missile: { strong: 0.80, weak: 0.45, ms: 160 },
+});
+// The authoritative holy-shit moment — bulletTime's detector already owns consequence,
+// visibility, cooldown and suppression; the pad only answers its verdict. The biggest beat
+// in the vocabulary (above the base kill's 0.95/0.80) with the longest tail.
+export const HAPTIC_MOMENT_PULSE = Object.freeze({ strong: 0.95, weak: 0.90, ms: 220 });
+const MOMENT_PENDING_MAX_TICKS = 12;   // bounded queue while another pulse owns the gap
+const MOMENT_ROOT_MAX_AGE_TICKS = 480; // dedupe window for one trick episode
+const MOMENT_ROOT_CAP = 32;
+
+/**
+ * RC-FELT gate + classifier for one `combat:damage` record. Only the player's own ACCEPTED
+ * attack on a hostile target is felt — NPC-on-NPC fire, self-damage, friendly hits,
+ * zero/whiffed packets and unclassifiable mounts all stay silent. Returns a fresh
+ * {family, strong, weak, ms} so callers never retain the pooled damage payload.
+ */
+export function weaponImpactHaptic(payload, playerId) {
+  if (playerId == null || !payload) return null;
+  if (payload.attackerId !== playerId) return null;
+  if (payload.targetId === playerId) return null;
+  if (payload.targetHostileToPlayer !== true) return null;
+  const applied = Number(payload.applied);
+  if (!Number.isFinite(applied) || applied <= 0) return null;
+  if (typeof payload.weaponId !== 'string' || payload.weaponId.length === 0) return null;
+  const classified = classifyWeaponFamily(payload.weaponId);
+  const family = classified && classified.family;
+  const spec = family ? HAPTIC_WEAPON_FAMILY_PULSES[family] : null;
+  if (!spec) return null;
+  return { family, strong: spec.strong, weak: spec.weak, ms: spec.ms };
+}
+
+export function normalizeHapticLevel(v) {
+  return v === 'off' || v === 'low' ? v : 'full';
+}
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return n < 0 ? 0 : (n > 1 ? 1 : n);
+}
+
+function round4(v) {
+  return Math.round(v * 10000) / 10000;
+}
+
+/**
+ * Pure haptic frame. `momentum` is world units/s; `lineLoad` and `slam` are already 0..1
+ * (line load from tetherGameplay.computeTetherLoad, slam from the physics impulse). `haptics` is
+ * the accessibility level ('off' | 'low' | 'full'); `pulse` is an optional one-shot
+ * {strong, weak} magnitudes object layered over the continuous channels. Returns the per-channel
+ * intensity plus the dual-rumble motor split (strong = low-freq/left, weak = high-freq/right).
+ * 'off' returns an all-zero, disabled frame before anything is scaled; 'low' halves both motors.
+ */
+export function computeHapticFrame(input = {}) {
+  const level = normalizeHapticLevel(input.haptics);
+  if (level === 'off') {
+    return {
+      enabled: false, haptics: 'off',
+      momentum: 0, line: 0, slam: 0, boost: 0, gyre: 0, weak: 0, strong: 0, pulse: null,
+    };
+  }
+  const motor = level === 'low' ? 0.5 : 1;
+  const momentum = clamp01(Number(input.momentum) / HAPTIC_REF_MOMENTUM);
+  const line = input.lineActive && input.lineLoad > 0 ? clamp01(input.lineLoad) : 0;
+  const boost = input.boost ? clamp01(HAPTIC_BOOST_FLOOR + (1 - HAPTIC_BOOST_FLOOR) * momentum) : 0;
+  const slam = clamp01(input.slam);
+  // Gyre strain: a CONTINUOUS channel under the held clump — "about to tear" is
+  // felt for the whole excursion, not only the 120 ms pulse at the boundary.
+  const gyre = input.gyreStrain > 0 ? clamp01(input.gyreStrain) : 0;
+  const pulse = input.pulse && (clamp01(input.pulse.strong) > 0 || clamp01(input.pulse.weak) > 0)
+    ? { strong: clamp01(input.pulse.strong), weak: clamp01(input.pulse.weak) }
+    : null;
+  const strong = Math.max(line, slam, boost * 0.5, gyre * 0.4, pulse ? pulse.strong : 0);
+  const weak = Math.max(boost, slam * 0.8, line * 0.5, gyre * 0.55, pulse ? pulse.weak : 0);
+  return {
+    enabled: true,
+    haptics: level,
+    momentum: round4(momentum),
+    line: round4(line),
+    slam: round4(slam),
+    boost: round4(boost),
+    gyre: round4(gyre),
+    pulse,
+    weak: round4(clamp01(weak * motor)),
+    strong: round4(clamp01(strong * motor)),
+  };
+}
+
+/** Diagnostic wall stamp only — never used for aim/helm arbitration (F4). */
+function nowMs() {
+  if (typeof performance !== 'undefined' && performance.now) return performance.now();
+  return Date.now();
+}
+
+function applyDeadzone(v, d) {
+  const a = Math.abs(v);
+  if (a < d) return 0;
+  const sign = v < 0 ? -1 : 1;
+  return sign * ((a - d) / (1 - d));
+}
+
+// --- Response curves (FB-004) ------------------------------------------------------------------
+// Curves apply ONLY to derived intents (turn/move/aim) inside input.js — never to the published
+// gp.axes, which stay the deadzoned raw truth the input contract guarantees. 'linear' with
+// sensitivity 1 reproduces the shipped numbers exactly; 'expo' blends a cubic term in so the
+// center of the stick is soft while the edge still reaches full deflection.
+export const GAMEPAD_AXIS_CURVES = Object.freeze(['linear', 'expo']);
+const PAD_EXPO_BLEND = 0.55; // cubic share of the expo response — soft center, unchanged edge
+
+export function normalizePadCurve(curve) {
+  return curve === 'expo' ? 'expo' : 'linear';
+}
+
+export function normalizePadSensitivity(v) {
+  return Number.isFinite(v) && v > 0 ? v : 1;
+}
+
+/** Shape one normalized axis by the response curve, then scale by sensitivity and clamp to ±1. */
+export function shapePadAxis(value, curve = 'linear', sensitivity = 1) {
+  const x = Number(value) || 0;
+  const shaped = curve === 'expo'
+    ? x * (1 - PAD_EXPO_BLEND) + x * x * x * PAD_EXPO_BLEND
+    : x;
+  const y = shaped * normalizePadSensitivity(sensitivity);
+  return y < -1 ? -1 : (y > 1 ? 1 : y);
+}
+
+/**
+ * Shape a stick vector (aim and the twin-stick drive): the curve reshapes the magnitude so the
+ * direction the pilot pointed survives untouched. For 'linear' the magnitude is passed through
+ * unclamped so diagonal stick values reproduce the shipped numbers exactly; each component is
+ * clamped to ±1 only after shaping, so a high sensitivity saturates a channel without skewing
+ * an unsaturated partner.
+ */
+export function shapePadVector(x, y, curve = 'linear', sensitivity = 1) {
+  const mag = Math.hypot(Number(x) || 0, Number(y) || 0);
+  if (!(mag > 1e-4)) return { x: 0, y: 0 };
+  const unit = Math.min(1, mag);
+  const shapedMag = curve === 'expo'
+    ? unit * (1 - PAD_EXPO_BLEND) + unit * unit * unit * PAD_EXPO_BLEND
+    : mag;
+  const k = (shapedMag * normalizePadSensitivity(sensitivity)) / mag;
+  const sx = x * k;
+  const sy = y * k;
+  return {
+    x: sx < -1 ? -1 : (sx > 1 ? 1 : sx),
+    y: sy < -1 ? -1 : (sy > 1 ? 1 : sy),
+  };
+}
+
+const PAD_SLOT_LIMIT = 8;
+
+function buttonDown(pad, name) {
+  const idx = STD[name];
+  if (idx == null || !pad || !pad.buttons) return false;
+  const b = pad.buttons[idx];
+  if (!b) return false;
+  const value = typeof b.value === 'number' ? b.value : (b.pressed ? 1 : 0);
+  return !!(b.pressed || value > 0.5);
+}
+
+function stickOutOf(pad, dz) {
+  if (!pad) return false;
+  const axes = pad.axes || [];
+  // Left stick is the movement takeover. The right stick is aim and must not acquire the helm.
+  return Math.hypot(applyDeadzone(axes[0] || 0, dz), applyDeadzone(axes[1] || 0, dz)) > 0;
+}
+
+function blankSlot() {
+  return {
+    generation: 0,
+    present: false,
+    id: '',
+    stickOut: false,
+    fresh: true,
+    buttons: Object.create(null),
+  };
+}
+
+function inheritedHold(pad, names, inherited) {
+  if (!inherited || !pad || !names) return false;
+  let any = false;
+  for (const name of names) {
+    if (!buttonDown(pad, name)) continue;
+    any = true;
+    if (!inherited[name]) return false;
+  }
+  return any;
+}
+
+/**
+ * Choose the one pad allowed to publish axes and buttons.
+ * Identity is slot generation plus id. A reused array index is a new device.
+ * Sub-deadzone noise and a stick already sitting past the deadzone do not acquire.
+ */
+function selectActivePad(gp, list, dz) {
+  gp.helmGestureEdge = false;
+  gp.deviceLostThisFrame = false;
+  const pads = list || [];
+  const seen = Math.min(pads.length, PAD_SLOT_LIMIT);
+  const slots = gp._slots || (gp._slots = []);
+  let lost = false;
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const pad = i < seen ? pads[i] : null;
+    const up = !!(pad && pad.connected);
+    if (slot && slot.present && !up) {
+      slot.present = false;
+      slot.generation += 1;
+      slot.stickOut = false;
+      slot.fresh = true;
+      slot.id = '';
+      slot.buttons = Object.create(null);
+      if (gp._active && gp._active.index === i) lost = true;
+    }
+  }
+  let gesture = null;
+  for (let i = 0; i < seen; i++) {
+    const pad = pads[i];
+    if (!pad || !pad.connected) continue;
+    while (slots.length <= i) slots.push(blankSlot());
+    const slot = slots[i];
+    const id = pad.id || '';
+    if (!slot.present || slot.id !== id) {
+      if (slot.present && slot.id !== id && gp._active && gp._active.index === i) lost = true;
+      if (slot.present && slot.id !== id) slot.generation += 1;
+      slot.present = true;
+      slot.id = id;
+      slot.fresh = true;
+      slot.stickOut = false;
+      slot.buttons = Object.create(null);
+    }
+    const out = stickOutOf(pad, dz);
+    let edgeName = null;
+    if (!slot.fresh) {
+      for (const name in STD) {
+        if (buttonDown(pad, name) && !slot.buttons[name]) {
+          edgeName = name;
+          break;
+        }
+      }
+    }
+    const stickEdge = !!(out && !slot.stickOut && !slot.fresh);
+    const nextButtons = Object.create(null);
+    for (const name in STD) nextButtons[name] = buttonDown(pad, name);
+    slot.buttons = nextButtons;
+    slot.stickOut = out;
+    const wasFresh = slot.fresh;
+    slot.fresh = false;
+    const isActive = !!(gp._active
+      && gp._active.index === i
+      && gp._active.generation === slot.generation
+      && gp._active.id === id);
+    if (!lost && !isActive && !wasFresh && (stickEdge || edgeName) && !gesture) {
+      gesture = { index: i, pad, id, generation: slot.generation, edgeName };
+    }
+  }
+  if (lost) {
+    gp._active = null;
+    gp.deviceLostThisFrame = true;
+    gp._sawDisconnect = true;
+    gp._armStickEdge = false;
+    gp._sampledStickOut = false;
+    gp._inheritedButtons = null;
+    return null;
+  }
+  if (gesture) {
+    beginPadGesture(gp, gesture.pad, gesture.edgeName, dz);
+    gp._active = { index: gesture.index, id: gesture.id, generation: gesture.generation };
+    return gesture.pad;
+  }
+  if (gp._active) {
+    const slot = slots[gp._active.index];
+    const pad = pads[gp._active.index];
+    if (pad && pad.connected && slot && slot.present
+      && slot.generation === gp._active.generation
+      && (pad.id || '') === gp._active.id) {
+      return pad;
+    }
+    gp._active = null;
+    gp.deviceLostThisFrame = true;
+    gp._sawDisconnect = true;
+    gp._armStickEdge = false;
+    gp._sampledStickOut = false;
+    gp._inheritedButtons = null;
+    return null;
+  }
+  if (!gp._sawDisconnect) {
+    for (let i = 0; i < seen; i++) {
+      const pad = pads[i];
+      if (!pad || !pad.connected) continue;
+      const slot = slots[i];
+      gp._active = {
+        index: i,
+        id: pad.id || '',
+        generation: slot ? slot.generation : 0,
+      };
+      return pad;
+    }
+  }
+  return null;
+}
+
+function beginPadGesture(gp, pad, edgeName, dz) {
+  const inherited = Object.create(null);
+  const prevButtons = gp._prevButtons || (gp._prevButtons = {});
+  for (const name in STD) {
+    const down = buttonDown(pad, name);
+    if (down && name !== edgeName) inherited[name] = true;
+    prevButtons[name] = !!(down && name !== edgeName);
+  }
+  gp._inheritedButtons = inherited;
+  const prev = gp._prev || (gp._prev = {});
+  for (const key in prev) prev[key] = false;
+  // A live chord's hold does not ride the swap; a deliberate re-press on the new pad re-arms it.
+  gp._chordHeld = Object.create(null);
+  gp._chordConsumed = Object.create(null);
+  if (Array.isArray(gp._pressQueue)) gp._pressQueue.length = 0;
+  // NXI-004: a half-formed remap gesture is cached input from the losing generation — a
+  // modifier still pending here must not chord with the new pad's presses under it.
+  if (gp._captureGesture) gp._captureGesture.length = 0;
+  gp._captureSpent = null;
+  gp._suppressEdgesOnce = false;
+  gp._sawDisconnect = false;
+  gp.helmGestureEdge = true;
+  gp._armStickEdge = true;
+  gp._sampledStickOut = stickOutOf(pad, dz);
+}
+
+function readButton(pad, name) {
+  const idx = STD[name];
+  if (idx == null || !pad || !pad.buttons) return null;
+  const b = pad.buttons[idx];
+  if (!b) return null;
+  const value = typeof b.value === 'number' ? b.value : (b.pressed ? 1 : 0);
+  return {
+    pressed: !!(b.pressed || value > 0.5),
+    value,
+  };
+}
+
+const ignoreHapticFailure = () => {};
+function observeHapticCompletion(request) {
+  // Browser actuators can reject asynchronously on disconnect or unsupported effects.
+  // Optional rumble must not become an unhandled runtime error.
+  if (request && typeof request.catch === 'function') request.catch(ignoreHapticFailure);
+}
+
+// The Gamepad API belongs to the main realm. Ship only cloneable physical samples;
+// both realms keep the existing reducer for deadzones, remaps and device generations.
+export function sampleGamepadFrame(captureMode = false) {
+  const list = typeof navigator !== 'undefined' && navigator.getGamepads
+    ? (navigator.getGamepads() || []) : [];
+  const pads = [];
+  for (let i = 0; i < Math.min(list.length, PAD_SLOT_LIMIT); i++) {
+    const pad = list[i];
+    pads.push(pad && pad.connected ? {
+      id: pad.id || '', connected: true, index: pad.index, mapping: pad.mapping,
+      axes: Array.from(pad.axes || []).slice(0, 4),
+      buttons: Array.from(pad.buttons || []).slice(0, 17).map(button => ({
+        pressed: !!button.pressed,
+        value: typeof button.value === 'number' ? button.value : (button.pressed ? 1 : 0),
+      })),
+    } : null);
+  }
+  return { pads, captureMode: captureMode === true };
+}
+
+export function createGamepad(ctx, { connectionEvents = true, laneHaptics = false } = {}) {
+  const bus = ctx && ctx.bus;
+  const state = ctx && ctx.state;
+
+  // PQ-164.03: latch the strongest recent slam from the physics authority. The pulse decays on sim
+  // ticks (never wall time) so the haptic is deterministic and replay-safe. Both impact receipts
+  // are read: `physics:impact` owns the raw impulse (`dp`) and `combat:collisionConsequence` owns
+  // the settled exchange (`exchangedMomentum`). Only contacts the player was part of rumble.
+  let slamPeak = 0;
+  let slamTicks = 0;
+  const registerSlam = (momentum) => {
+    const intensity = clamp01(Number(momentum) / HAPTIC_SLAM_REF_DP);
+    if (!(intensity > 0)) return;
+    slamPeak = Math.max(slamTicks > 0 ? slamPeak : 0, intensity);
+    slamTicks = HAPTIC_SLAM_DECAY_TICKS;
+  };
+  const playerIsInvolved = (p) => {
+    const pid = state && state.playerId != null ? state.playerId : null;
+    if (pid == null || !p) return false;
+    return p.playerInvolved === true
+      || p.aId === pid || p.bId === pid
+      || p.targetId === pid || p.otherId === pid
+      || !!(p.provenance && p.provenance.actorId === pid);
+  };
+  const onImpact = (p) => {
+    if (!playerIsInvolved(p)) return;
+    const momentum = Number.isFinite(p.dp) ? p.dp
+      : Number.isFinite(p.exchangedMomentum) ? p.exchangedMomentum
+      : p.impulse;
+    registerSlam(momentum);
+  };
+
+  // FB-005: per-verb one-shot pulses. Tether events are player-authored by construction (the
+  // player owns the rope the event describes); the snare is the player's deployed anchor; the
+  // cloak is the player's module. charge:detonated is shared with NPC ordnance (detonator
+  // darts, sympathetic cook-offs), so only the player's own verb triggers — manual detonation
+  // and the proximity trap — earn a pulse; everything else stays silent.
+  let pulseTicks = 0;
+  let pulseGapTicks = 0;
+  let pulseSpec = null;
+  // RC-FELT deferred candidates: combat:damage callbacks only QUEUE (payload records are
+  // pooled — scalars copied at emit), and _stepHaptics admits or drops them so a same-tick
+  // kill keeps the heavier kill pulse. The family candidate lives one tick; the moment
+  // queues behind a busy gap for up to MOMENT_PENDING_MAX_TICKS. A live moment pulse owns
+  // the channel for its whole tail — family candidates wait it out (and so usually drop).
+  let pendingFamily = null;
+  let pendingMoment = null;
+  let momentLiveTicks = 0;
+  const momentRoots = new Map(); // rootId -> tick; dedupes one trick episode, capped 32
+  let lastHapticTick = -1;       // backward-tick detector: a restore crosses this boundary
+  // Ownership of the LIVE pulse: an admitted weaponImpact:*/moment:holyShit is still this
+  // slice's feedback even after it leaves the queue, so transition boundaries must cancel
+  // it — a 0.95/0.90 moment rumbling through a restore describes a world that no longer
+  // exists. Other owners' live pulses (a kill crossing the boundary) keep their shipped
+  // behavior: clearPendingFeedback touches ONLY felt-owned live pulses.
+  let feltPulseLive = false;
+  const clearPendingFeedback = () => {
+    pendingFamily = null;
+    pendingMoment = null;
+    momentLiveTicks = 0;
+    momentRoots.clear();
+    if (feltPulseLive) {
+      pulseTicks = 0;
+      pulseSpec = null;
+      feltPulseLive = false;
+    }
+  };
+  const currentTick = () => (state && Number.isFinite(state.tick) ? state.tick | 0 : -1);
+  // Settings gates evaluated at emit time AND at admission: haptics 'off', the legacy
+  // gamepad haptics switch, or a disabled gamepad all refuse new candidates.
+  const hapticsAcceptingFeedback = () => {
+    const s = state && state.settings;
+    if (!s) return true;
+    const g = s.controls && s.controls.gamepad;
+    if (g && (g.enabled === false || g.haptics === false)) return false;
+    return normalizeHapticLevel(s.accessibility && s.accessibility.haptics) !== 'off';
+  };
+  const pruneMomentRoots = (t) => {
+    for (const [k, seen] of momentRoots) {
+      if (!Number.isFinite(seen) || t - seen > MOMENT_ROOT_MAX_AGE_TICKS) momentRoots.delete(k);
+    }
+  };
+  // `gp` is declared below; listeners can only fire after createGamepad returns it.
+  const startPulse = (spec, event, force) => {
+    if (!spec || (!force && pulseGapTicks > 0)) return false; // ≤ one pulse per ~80 ms, by sim ticks
+    pulseSpec = { strong: spec.strong, weak: spec.weak };
+    pulseTicks = Math.max(1, Math.round((Number(spec.ms) || 60) * 60 / 1000));
+    pulseGapTicks = HAPTIC_PULSE_MIN_GAP_TICKS;
+    // Ownership travels with the admission: a replacing non-felt pulse clears the tag,
+    // so reset boundaries only ever cancel feedback this slice admitted.
+    feltPulseLive = event === 'moment:holyShit'
+      || (typeof event === 'string' && event.startsWith('weaponImpact:'));
+    gp._lastVerbPulse = event;
+    return true;
+  };
+  const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
+  if (!laneHaptics && bus && typeof bus.on === 'function') {
+    bus.on('physics:impact', onImpact, { presentation: true });
+    bus.on('combat:collisionConsequence', onImpact);
+    bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
+    bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut'));
+    bus.on('tether:releaseRated', (p) => {
+      startPulse(HAPTIC_RELEASE_PULSES[(p && p.classification) || 'messy']
+        || HAPTIC_RELEASE_PULSES.messy, 'tether:releaseRated');
+    });
+    bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught'));
+    bus.on('charge:detonated', (p) => {
+      if (p && CHARGE_PLAYER_TRIGGERS.has(p.trigger)) {
+        startPulse(HAPTIC_VERB_PULSES['charge:detonated'], 'charge:detonated');
+      }
+    });
+    bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged'));
+    // FB-009: the cut-BY-an-NPC edge is the player's own line dying under them; the whip snap
+    // is the player's own stored release. Both pulse through the same one-live-pulse gate.
+    bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
+    bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
+    bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
+    bus.on('gyre:snagged', (payload) => {
+      // The grip beat grades by cored mass like the shake and voice do — a 6 t
+      // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
+      // shake's realistic-mass band (2400 is for katamaris, not cores).
+      // Pinned constant: /200 mirrors the gyreSnare.js snag-shake denominator —
+      // retune both together (only the shared weapon-family classifier is imported — retune stays manual).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
+      const base = HAPTIC_VERB_PULSES['gyre:snagged'];
+      startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
+    });
+    bus.on('gyre:windup', (payload) => {
+      // The coil draw grades by payload like the launch it precedes (ballMass /
+      // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
+      // heavier, matching the bigger pull-back the sim applies.
+      // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
+      // file (only the shared weapon-family classifier is imported — retune stays manual).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      // Emitted per coil tick: windW01 (0→1 over the draw) mirrors the audio
+      // twin's per-tick crescendo — a flat pulse left the arc ear-only.
+      const w = payload && Number.isFinite(payload.windW01) ? 0.4 + 0.6 * payload.windW01 : 1;
+      const base = HAPTIC_VERB_PULSES['gyre:windup'];
+      startPulse({ strong: (base.strong + 0.3 * t) * w, weak: (base.weak + 0.15 * t) * w, ms: base.ms + 50 * t }, 'gyre:windup');
+    });
+    bus.on('gyre:thrown', (payload) => {
+      // The throw crack grades by payload like snagged/windup — but on MASS, not
+      // speed (a capped moon throws slower; speed-lerping would invert intent).
+      // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
+      // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
+      // file (only the shared weapon-family classifier is imported — retune stays manual).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      const base = HAPTIC_VERB_PULSES['gyre:thrown'];
+      // Priority beat: the per-tick windup emits re-arm the 5-tick min-gap on
+      // every coil, so a launch landing inside the window swallowed the throw —
+      // the biggest beat in the pad vocabulary eaten on every real launch.
+      // Forced admission replaces the in-flight windup pulse like the audio
+      // twin's own layer cut (same class as gyre:launched's gap fix).
+      startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown', true);
+    });
+    bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
+    bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
+    bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
+    bus.on('gyre:caught', (payload) => {
+      // The first fill grades by the meal's heft like snagged/absorbTick — a
+      // pebble's net-fill whispers, a 200 t wreck entering lands on the hands.
+      // /200 matches the snag band (basin meals are pre-katamari mass).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
+      const base = HAPTIC_VERB_PULSES['gyre:caught'];
+      startPulse({ strong: base.strong + 0.15 * t, weak: base.weak + 0.1 * t, ms: base.ms + 20 * t }, 'gyre:caught');
+    });
+    // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
+    // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
+    const worldFeelBook = createWorldFeelBook(bus);
+    for (const eventName of WORLD_FEEL_SEAM_IDS) {
+      bus.on(eventName, (payload) => {
+        const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+        if (!worldFeelRelevant(state, eventName, snap)) return;
+        if (!admitWorldFeelSeam(worldFeelBook, eventName, snap, worldFeelTick(state))) return;
+        const spec = worldFeelHaptic(eventName, snap);
+        if (spec) startPulse(spec, eventName);
+      });
+    }
+    bus.on('gyre:absorbTick', (payload) => {
+      // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
+      // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
+      // The tick is sim-rate-gated (shares absorbCueMinGapS): a dense feed reads as
+      // discrete thumps, not a continuous buzz. gyre:absorbed stays per-meal for HUD.
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 80);
+      const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
+      startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbTick');
+    });
+    bus.on('gyre:dropped', (payload) => {
+      // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
+      // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
+      // full thud; an empty beam closing is a soft flick — audio already splits those voices.
+      if (payload && (payload.boundary || payload.quiet)) return;
+      let spec = payload && payload.coreId != null ? 'gyre:dropped' : 'gyre:droppedEmpty';
+      // A clump torn off the lash is the loss beat — heavier than a released drop,
+      // short of the throw crack: the tear lands in the hands like it does on screen.
+      // The reason wins over the id key — a launch-phase 'strained' emit carries
+      // coreId: null (the ball already flew), but a tear is never an empty drop.
+      // core_lost inherits the tear: a clump destroyed in the grip is a shatter —
+      // same glassier voice + snap close it already wears, same pulse in the hands.
+      if (payload && (payload.reason === 'strained' || payload.reason === 'core_lost')) spec = 'gyre:torn';
+      startPulse(HAPTIC_VERB_PULSES[spec], spec);
+    });
+    bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
+    // Player beats: a dash, a hit taken, a kill scored, a base dropped. Every payload
+    // is world-scoped, so the gate is the player's id — NPC events stay silent. The
+    // id must exist first: with no player spawned, an id-less payload (a wave-booked
+    // entity:killed carries no killerId) would read `undefined === undefined` true.
+    bus.on('ship:dash', (p) => {
+      if (state && state.playerId != null && p && p.shipId === state.playerId) startPulse(HAPTIC_VERB_PULSES['ship:dash'], 'ship:dash');
+    });
+    bus.on('projectile:hit', (p) => {
+      if (state && state.playerId != null && p && p.targetId === state.playerId) startPulse(HAPTIC_VERB_PULSES['projectile:hit'], 'projectile:hit');
+    });
+    bus.on('entity:killed', (p) => {
+      if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['entity:killed'], 'entity:killed');
+    });
+    bus.on('combat:baseDestroyed', (p) => {
+      if (state && state.playerId != null && p && p.killerId === state.playerId) startPulse(HAPTIC_VERB_PULSES['combat:baseDestroyed'], 'combat:baseDestroyed');
+    });
+    // RC-FELT: the player's own ACCEPTED attacks pulse by weapon family. `combat:damage`
+    // fires per settled packet (never combat:fire — a trigger pull is not a hit felt).
+    // The callback only queues; admission happens in _stepHaptics so a same-tick kill
+    // keeps the heavier kill pulse. First qualifying impact per tick wins — a bullet
+    // stream stays one tap, not a backlog.
+    bus.on('combat:damage', (p) => {
+      if (!hapticsAcceptingFeedback()) return;
+      const spec = weaponImpactHaptic(p, state && state.playerId);
+      if (!spec) return;
+      const t = currentTick();
+      if (pendingFamily && pendingFamily.queuedTick === t) return;
+      pendingFamily = { ...spec, queuedTick: t };
+    });
+    // The authoritative big-moment edge — bulletTime's detector already owns consequence,
+    // visibility, cooldown and per-minute suppression; the pad consumes its verdict and
+    // never re-detects. `moment:amended` (a rating upgrade inside a live episode) must not
+    // replay the pulse, and one rootId queues at most once.
+    bus.on('moment:holyShit', (p) => {
+      if (!hapticsAcceptingFeedback()) return;
+      const pid = state && state.playerId;
+      if (pid == null || !p || p.actorId !== pid) return;
+      const rootId = typeof p.rootId === 'string' && p.rootId.length ? p.rootId : null;
+      if (rootId == null) return;
+      const t = currentTick();
+      if (t < 0) return;
+      pruneMomentRoots(t);
+      if (momentRoots.has(rootId)) return;
+      if (momentRoots.size >= MOMENT_ROOT_CAP) {
+        momentRoots.delete(momentRoots.keys().next().value);
+      }
+      momentRoots.set(rootId, t);
+      pendingMoment = { rootId, queuedTick: t };
+    });
+    // Queued feedback never crosses a restore/run boundary — a pulse queued before the
+    // load describes a world that no longer exists.
+    for (const resetEvent of ['save:restoring', 'game:newGame', 'run:started']) {
+      bus.on(resetEvent, clearPendingFeedback);
+    }
+  }
+
+  const gp = {
+    connected: false,
+    id: '',
+    // F4/G9: (tick, sequence) activity for authoritative device arbitration (not wall-ms).
+    lastActiveTick: -1,
+    lastActiveSeq: -1,
+    _wasActive: false,
+    // NXB-001: one sampled pad. Generation + id, never the array index alone.
+    helmGestureEdge: false,
+    deviceLostThisFrame: false,
+    _active: null,
+    _slots: [],
+    _sawDisconnect: false,
+    _armStickEdge: false,
+    _sampledStickOut: false,
+    _inheritedButtons: null,
+    /** Diagnostic only — do not use for aim/helm selection. */
+    lastActiveMs: 0,
+
+    // PQ-164.03 + FB-005: last resolved haptic frame (pure data; the actuator is driven from
+    // tick). `haptics` is the accessibility level; `pulse` is the live one-shot spec or null.
+    haptics: { enabled: true, haptics: 'full', momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null },
+    _hapticActive: false,
+    _lastVerbPulse: null,
+
+    axes: {
+      leftX: 0,
+      leftY: 0,
+      rightX: 0,
+      rightY: 0,
+      l2: 0,
+      r2: 0,
+    },
+
+    // action -> { held, pressed, released, value }
+    actions: {},
+    _prev: {},
+
+    // PQ-164.01 remap: raw button edge queue + capture flag for the Settings rebind flow.
+    // While captureMode is set every action reports inert — neither the sim merge nor the UI
+    // layer may act on a button the player is in the middle of binding.
+    captureMode: false,
+    lastButton: null,
+    _prevButtons: {},
+    _pressQueue: [],
+    _mapCache: { source: undefined, map: ACTION_MAP },
+
+    /** Std button names pressed since the last drain (for the Settings pad-capture flow). */
+    drainButtonPresses() {
+      const q = this._pressQueue;
+      this._pressQueue = [];
+      return q;
+    },
+
+    isConnected() {
+      return this.connected;
+    },
+
+    getAxis(name) {
+      return this.axes[name] || 0;
+    },
+
+    getAction(name) {
+      return this.actions[name] || { held: false, pressed: false, released: false, value: 0 };
+    },
+
+    applyLaneFrame(frame) {
+      this._laneFrame = frame && Array.isArray(frame.pads) ? frame : { pads: [] };
+      this.captureMode = this._laneFrame.captureMode === true;
+    },
+
+    tick(/* dt */ _dt, tickState = null, inputHost = null) {
+      // Prefer live state passed from input.update so tick stamps stay authoritative.
+      const live = tickState || state;
+      const cfg =
+        (live && live.settings && live.settings.controls && live.settings.controls.gamepad) ||
+        {};
+      const enabled = cfg.enabled !== false;
+      const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : DEFAULT_DEADZONE;
+      // FB-004: the right stick's deadzone is its own axis — aim jitter should never force the
+      // fly hand to absorb a wider center than it wants. Absent inherits the shared value.
+      const dzRight = typeof cfg.deadzoneRight === 'number' ? cfg.deadzoneRight : dz;
+      const invertY = !!cfg.invertY;
+
+      const padList = !enabled ? [] : this._laneFrame ? this._laneFrame.pads
+        : (typeof navigator !== 'undefined' && navigator.getGamepads)
+          ? (navigator.getGamepads() || []) : [];
+      const pad = selectActivePad(this, padList, dz);
+
+      const wasConnected = this.connected;
+      if (this.deviceLostThisFrame || (!pad && wasConnected)) {
+        this.connected = false;
+        this.id = '';
+        // The dropped device publishes nothing this sample. Another occupied slot waits
+        // for its own later gesture. Boot-time first acquisition is unchanged (PQ-164.00).
+        this._sawDisconnect = true;
+        this._resetState();
+        this._idleClean = true;
+        this.helmGestureEdge = false;
+        this.deviceLostThisFrame = true;
+        if (connectionEvents && bus && bus.emit) {
+          bus.emit('gamepad:disconnected', {});
+          // The connect path toasts its scheme offer; a dropped device owes the player the
+          // same honesty — the controls they were flying by are gone.
+          bus.emit('toast', {
+            text: 'Controller disconnected — keyboard and mouse are live.',
+            kind: 'info',
+            ttl: 5,
+          });
+        }
+        return;
+      }
+      if (pad && !wasConnected) {
+        this.connected = true;
+        this.id = pad.id || 'gamepad';
+        // PRO-22: reconnecting as a DIFFERENT pad family swaps the prompt glyphs live.
+        // The swap lands on the settings address every glyph reader already follows
+        // (gamepadGlyphSetFor on the sim side, _padGlyphSet on the main side), so the
+        // dock prompt, verb speech, Help and Settings re-label on the same state object —
+        // no restart, no transport change. Only a genuine detected family CHANGE re-labels:
+        // the first known-family connect anchors the runtime (never clobbering a manual
+        // 'xb'/'ds'/'fh' choice at boot), an unknown pad is silent, 'fh' is the player's
+        // explicit register and never a hardware verdict, and nothing but the existing
+        // glyph register is written — no hardware id is persisted (NXI-004), no binding
+        // is touched. Boot arbitration runs on the worker lane (settings there are the
+        // sim-owned copy), reconnect arbitration on the main lane (settings there feed
+        // the prompt chips); the same helper runs both sides off the same id string.
+        // Connecting itself is not a helm gesture and does not touch the source rules.
+        const family = detectGamepadGlyphFamily(pad.id || '');
+        if (live && live.settings && family) {
+          if (live.settings.controls == null || typeof live.settings.controls !== 'object') {
+            live.settings.controls = {};
+          }
+          const ctl = live.settings.controls;
+          if (ctl.gamepad == null || typeof ctl.gamepad !== 'object') ctl.gamepad = {};
+          const gpSettingsForGlyph = ctl.gamepad;
+          const priorFamily = detectGamepadGlyphFamily(this._lastFamilyId || '');
+          if (!this._sawFamilyAnchor) {
+            // First known-family connect: anchor the runtime without clobbering. A stock
+            // or unset register takes the family's spelling (stock 'xb' IS the Xbox
+            // register); a differing choice is the player's and is kept until a genuinely
+            // different family appears.
+            if (gpSettingsForGlyph.glyphSet == null || gpSettingsForGlyph.glyphSet === family) {
+              gpSettingsForGlyph.glyphSet = family;
+            }
+            this._sawFamilyAnchor = true;
+          } else if (family !== priorFamily && gpSettingsForGlyph.glyphSet !== family && gpSettingsForGlyph.glyphSet !== 'fh') {
+            gpSettingsForGlyph.glyphSet = family;
+          }
+          this._lastFamilyId = pad.id || '';
+        }
+        // Connecting is not a helm gesture and does not bump lastActiveTick. A deliberate
+        // reacquire publishes only its new edge; buttons already held stay silent.
+        if (connectionEvents && bus && bus.emit) bus.emit('gamepad:connected', { id: this.id });
+        // PQ-164.04: offer the twin-stick scheme once per profile on pad connect — a toast,
+        // never a silent default change; 'drive' stays the shipping pad feel until picked.
+        const gpSettings = live && live.settings && live.settings.controls
+          && live.settings.controls.gamepad;
+        if (connectionEvents && gpSettings && gpSettings.scheme !== 'twinstick' && gpSettings.schemeSuggested !== true) {
+          gpSettings.schemeSuggested = true;
+          if (bus && bus.emit) {
+            bus.emit('toast', {
+              text: 'Controller connected — twin-stick flight (left stick drives, right stick aims) is available in Settings › Controls › Gamepad.',
+              kind: 'info',
+              ttl: 6,
+            });
+          }
+        }
+      }
+      if (!pad) {
+        // Already zeroed and published — do not reallocate the action map every poll.
+        if (!(GAMEPAD_IDLE_CLEAN_SKIP && this._idleClean === true)) {
+          this._resetState();
+          this._idleClean = true;
+        }
+        return;
+      }
+      this._idleClean = false;
+
+      this.axes.leftX = applyDeadzone(pad.axes[0] || 0, dz);
+      this.axes.leftY = applyDeadzone(pad.axes[1] || 0, dz);
+      this.axes.rightX = applyDeadzone(pad.axes[2] || 0, dzRight);
+      this.axes.rightY = applyDeadzone(pad.axes[3] || 0, dzRight) * (invertY ? -1 : 1);
+      this.axes.l2 = Math.max(0, pad.buttons[6] ? pad.buttons[6].value : 0);
+      this.axes.r2 = Math.max(0, pad.buttons[7] ? pad.buttons[7].value : 0);
+      this.id = pad.id || this.id || 'gamepad';
+      const stickOut = Math.hypot(this.axes.leftX, this.axes.leftY) > 0;
+      if (this._armStickEdge && stickOut && !this._sampledStickOut) this.helmGestureEdge = true;
+      this._sampledStickOut = stickOut;
+      this._armStickEdge = true;
+      if (this._inheritedButtons) {
+        for (const name in this._inheritedButtons) {
+          if (!buttonDown(pad, name)) delete this._inheritedButtons[name];
+        }
+      }
+
+      // PQ-164.01: resolved binding map, rebuilt only when the stored override object changes.
+      // The chord index rides the same cache so a remap swaps the shifted layer with it. The
+      // chords check matters on a stock profile: `source` initializes to `undefined`, the same
+      // value an override-free `cfg.bindings` reports, so without it the index would stay
+      // unbuilt and the whole shifted layer silent.
+      const customBindings = cfg.bindings;
+      if (this._mapCache.source !== customBindings || !this._mapCache.chords) {
+        this._mapCache.source = customBindings;
+        this._mapCache.map = resolveGamepadBindings(live && live.settings);
+        const chords = {};
+        for (const action in this._mapCache.map) {
+          for (const n of this._mapCache.map[action]) {
+            const parts = parseGamepadChord(n);
+            if (parts) chords[n] = { mod: parts[0], key: parts[1] };
+          }
+        }
+        this._mapCache.chords = chords;
+        this._chordConsumed = {};
+      }
+      const actionMap = this._mapCache.map;
+      const chordDefs = this._mapCache.chords || (this._mapCache.chords = {});
+
+      // Sample every standard button once — the press queue, the chord layer and the action
+      // loop all read the same snapshot this tick.
+      const downNow = this._downNow || (this._downNow = Object.create(null));
+      for (const name in STD) downNow[name] = buttonDown(pad, name);
+
+      // FB-003 chord layer. A chord completes when its KEY edges while its MODIFIER is held —
+      // press order matters: key-first means the solo verb was already live and stays live.
+      // While a chorded key is held its solo binding is suppressed for the hold (consumed), so
+      // "LB + D-pad up" is a scan ping and never an auto-target; releasing the key re-arms the
+      // solo for the next press. prevButtons still holds last tick's snapshot here.
+      const prevButtons = this._prevButtons;
+      const chordHeld = this._chordHeld || (this._chordHeld = Object.create(null));
+      const consumed = this._chordConsumed || (this._chordConsumed = Object.create(null));
+      for (const name in chordDefs) {
+        const c = chordDefs[name];
+        const complete = downNow[c.mod] && downNow[c.key] && !prevButtons[c.key];
+        if (downNow[c.mod] && downNow[c.key]) {
+          chordHeld[name] = complete || chordHeld[name] === true;
+        } else {
+          chordHeld[name] = false;
+        }
+        if (complete) consumed[c.key] = true;
+      }
+      for (const key in consumed) {
+        if (!downNow[key]) delete consumed[key];
+      }
+
+      // Raw button edges for the remap capture — recorded for every standard button, bound or
+      // not, so an unbound button can still be offered to the capture handler. In captureMode the
+      // press becomes a GESTURE (FB-003): a lone button commits on release, while an edge landing
+      // on a held button completes a '<modifier>+<button>' chord — without this the modifier's
+      // own edge would always reach the capture handler before the key it is meant to shift.
+      const capture = this.captureMode === true;
+      const gesture = capture
+        ? (this._captureGesture || (this._captureGesture = []))
+        : null;
+      const spent = capture
+        ? (this._captureSpent || (this._captureSpent = Object.create(null)))
+        : null;
+      if (!capture && this._captureGesture) {
+        this._captureGesture.length = 0;
+        this._captureSpent = null;
+      }
+      for (const name in STD) {
+        const pressed = downNow[name];
+        const was = prevButtons[name];
+        if (!capture) {
+          if (pressed && !was) {
+            if (this._pressQueue.length < 8) this._pressQueue.push(name);
+            this.lastButton = name;
+          }
+        } else if (pressed && !was) {
+          if (!spent[name]) {
+            if (gesture.length > 0) {
+              const mod = gesture.shift();
+              const chord = `${mod}+${name}`;
+              spent[mod] = true;
+              spent[name] = true;
+              if (this._pressQueue.length < 8) this._pressQueue.push(chord);
+              this.lastButton = chord;
+            } else {
+              // Another unspent button already down is the chord's modifier — press order is
+              // the truth a gesture capture commits to.
+              let mod = null;
+              for (const other in STD) {
+                if (other !== name && downNow[other] && !spent[other]) { mod = other; break; }
+              }
+              if (mod) {
+                const chord = `${mod}+${name}`;
+                spent[mod] = true;
+                spent[name] = true;
+                if (this._pressQueue.length < 8) this._pressQueue.push(chord);
+                this.lastButton = chord;
+              } else {
+                gesture.push(name);
+              }
+            }
+          }
+        } else if (!pressed && was) {
+          if (gesture.length && gesture[0] === name) {
+            gesture.length = 0;
+            if (this._pressQueue.length < 8) this._pressQueue.push(name);
+            this.lastButton = name;
+          }
+          delete spent[name];
+        }
+        prevButtons[name] = pressed;
+      }
+
+      let activity =
+        Math.abs(this.axes.leftX) > 0.001 ||
+        Math.abs(this.axes.leftY) > 0.001 ||
+        Math.abs(this.axes.rightX) > 0.001 ||
+        Math.abs(this.axes.rightY) > 0.001;
+
+      const actions = {};
+      const prev = this._prev;
+      for (const action in actionMap) {
+        const names = actionMap[action];
+        let held = false;
+        let value = 0;
+        for (const n of names) {
+          if (consumed[n]) continue; // this button is held inside a live chord — solo stays quiet
+          if (chordDefs[n]) {
+            // A chord binding reports held while the completed chord is held.
+            if (chordHeld[n]) held = true;
+            continue;
+          }
+          const btn = readButton(pad, n);
+          if (!btn) continue;
+          if (btn.pressed) held = true;
+          if (btn.value > value) value = btn.value;
+        }
+        const was = !!prev[action];
+        if (inheritedHold(pad, names, this._inheritedButtons)) {
+          // A trigger already down on the acquiring pad is not activity and not a press.
+          actions[action] = { held: false, pressed: false, released: false, value: 0 };
+          prev[action] = false;
+        } else {
+          if (held) activity = true;
+          actions[action] = {
+            held,
+            pressed: held && !was && !this._suppressEdgesOnce,
+            released: !held && was,
+            value,
+          };
+          prev[action] = held;
+        }
+      }
+      if (this.captureMode) {
+        // Remap capture: edges still reach the queue above, but every action reports inert so
+        // neither the sim merge nor the UI layer acts on a button mid-bind.
+        const inert = {};
+        for (const action in actions) {
+          inert[action] = { held: false, pressed: false, released: false, value: 0 };
+        }
+        this.actions = inert;
+      } else {
+        this.actions = actions;
+      }
+      // INF-098: the reconnect-frame edge suppression is consumed here — exactly one frame.
+      this._suppressEdgesOnce = false;
+
+      if (activity) {
+        // G9: update tick every held frame for cross-tick recency, but only bump the
+        // shared sequence on new activity edges (not continuous hold re-stamps).
+        const tick = live && Number.isFinite(live.tick) ? (live.tick | 0) : 0;
+        this.lastActiveTick = tick;
+        let edge = !this._wasActive;
+        if (!edge) {
+          for (const action in actions) {
+            if (actions[action] && actions[action].pressed) {
+              edge = true;
+              break;
+            }
+          }
+        }
+        if (edge) {
+          if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {
+            const stamp = inputHost._bumpActivityStamp(live);
+            this.lastActiveTick = stamp.tick;
+            this.lastActiveSeq = stamp.seq;
+          } else {
+            this.lastActiveSeq = (this.lastActiveSeq | 0) + 1;
+          }
+        }
+        this._wasActive = true;
+        this.lastActiveMs = nowMs(); // diagnostic only
+      } else {
+        this._wasActive = false;
+      }
+
+      this._stepHaptics(pad, live, cfg);
+    },
+
+    // PQ-164.03 + FB-005: resolve the frame from live momentum/tether/boost, the latched slam
+    // pulse and any live verb pulse, then drive the pad. Haptics are owned by
+    // `settings.accessibility.haptics` ('off' | 'low' | 'full') — independent of reduce-motion;
+    // the legacy `controls.gamepad.haptics === false` kill-switch still forces 'off'. An 'off'
+    // level yields an inert frame and resets the motors; the frame is always recorded on
+    // `this.haptics` for inspection.
+    _stepHaptics(pad, live, cfg) {
+      if (laneHaptics) {
+        // Velocity, line load and gyre mass belong to the sim, not the facade.
+        const frame = live && live.input && live.input.gamepadHaptics;
+        if (frame) { this.haptics = frame; this._applyHaptics(pad, frame); }
+        return;
+      }
+      const access = live && live.settings && live.settings.accessibility;
+      const level = (cfg && cfg.haptics === false)
+        ? 'off'
+        : normalizeHapticLevel(access && access.haptics);
+      const slam = slamTicks > 0 ? slamPeak * (slamTicks / HAPTIC_SLAM_DECAY_TICKS) : 0;
+      if (slamTicks > 0) slamTicks -= 1;
+      if (pulseGapTicks > 0) pulseGapTicks -= 1;
+      // RC-FELT pending admission — after the gap decrement, before the pulse snapshot, so
+      // an admitted candidate is live this same tick. Moment wins over family (the big beat
+      // outranks an ordinary hit); a live moment pulse holds the channel for its whole
+      // tail, so a family candidate arriving mid-moment waits it out and drops. Both are
+      // bounded: family ages out in one tick, a queued moment in twelve — never a backlog,
+      // never a stale pulse firing seconds after its cause. All clocks are sim ticks.
+      const hapticTick = live && Number.isFinite(live.tick) ? live.tick | 0 : -1;
+      if (hapticTick >= 0 && lastHapticTick >= 0 && hapticTick < lastHapticTick) {
+        clearPendingFeedback(); // backward sim tick — a restore or replay crossed
+      }
+      if (hapticTick >= 0) lastHapticTick = hapticTick;
+      if (momentLiveTicks > 0) momentLiveTicks -= 1;
+      if (level === 'off') {
+        // Switching haptics off discards queued feedback; re-enabling replays nothing.
+        pendingFamily = null;
+        pendingMoment = null;
+        // An ADMITTED felt pulse is still this slice's feedback — leaving it
+        // ticking through 'off' lets the moment resume the instant the level
+        // returns to full, replaying a beat the player already chose to mute.
+        // Cut only the felt-owned latch: another owner's live pulse (a kill
+        // crossing the same window) keeps its shipped tail.
+        if (feltPulseLive) {
+          pulseTicks = 0;
+          pulseSpec = null;
+          feltPulseLive = false;
+        }
+      } else {
+        if (pendingMoment) {
+          const momentAge = hapticTick >= 0 && pendingMoment.queuedTick >= 0
+            ? hapticTick - pendingMoment.queuedTick : 0;
+          if (momentAge > MOMENT_PENDING_MAX_TICKS) {
+            pendingMoment = null;
+          } else if (pulseGapTicks === 0) {
+            if (startPulse(HAPTIC_MOMENT_PULSE, 'moment:holyShit')) {
+              momentLiveTicks = Math.max(1, Math.round(HAPTIC_MOMENT_PULSE.ms * 60 / 1000));
+            }
+            pendingMoment = null;
+          }
+        }
+        if (pendingFamily) {
+          const famAge = hapticTick >= 0 && pendingFamily.queuedTick >= 0
+            ? hapticTick - pendingFamily.queuedTick : 0;
+          if (famAge > 1 || pulseGapTicks > 0 || momentLiveTicks > 0) {
+            pendingFamily = null;
+          } else {
+            startPulse(pendingFamily, `weaponImpact:${pendingFamily.family}`);
+            pendingFamily = null;
+          }
+        }
+      }
+      const pulse = pulseTicks > 0 ? pulseSpec : null;
+      if (pulseTicks > 0) {
+        pulseTicks -= 1;
+        if (pulseTicks <= 0) { pulseSpec = null; feltPulseLive = false; }
+      }
+
+      const player = live && live.entities && typeof live.entities.get === 'function'
+        ? live.entities.get(live.playerId)
+        : null;
+      const speed = player && player.vel
+        ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0)
+        : 0;
+      const tether = live && live.player && live.player.tether;
+      // The gyre mirror's HOLD channels: strain dominates, with a mass floor so a
+      // capped clump drags audibly even before the lash nears slipping.
+      const gyre = live && live.gyreSnare;
+      const frame = computeHapticFrame({
+        momentum: speed,
+        lineActive: !!(tether && tether.active),
+        lineLoad: tether ? tether.load : 0,
+        boost: !!(this.actions.boost && this.actions.boost.held),
+        slam,
+        gyreStrain: gyre && gyre.phase === 'holding'
+          ? Math.max(clamp01(Number(gyre.strain01) || 0),
+            // Mass floor scaled by strain: an uncapped calm capped-moon hold used to
+            // buzz 0.35 for minutes — now rests ~0.17 and swells back to 0.35 as the
+            // lash actually nears tearing.
+            clamp01((Number(gyre.clumpMass) || 0) / Math.max(1, Number(gyre.maxClumpMass) || 1))
+              * 0.35 * (0.5 + 0.5 * clamp01(Number(gyre.strain01) || 0)))
+          : 0,
+        pulse,
+        haptics: level,
+      });
+      this.haptics = frame;
+      this._applyHaptics(pad, frame);
+    },
+
+    // Dual-rumble where the browser exposes it; the older single-motor pulse() otherwise. Active
+    // frames are re-issued every tick (the effect is short), and the motors are reset once when the
+    // frame goes quiet so a disconnected/reduce-motion pad is never left buzzing.
+    _applyHaptics(pad, frame) {
+      const actuator = pad && (pad.vibrationActuator
+        || (Array.isArray(pad.hapticActuators) && pad.hapticActuators[0]));
+      if (!actuator) return;
+      const active = !!(frame && frame.enabled && (frame.strong > 0.001 || frame.weak > 0.001));
+      if (!active) {
+        if (this._hapticActive && typeof actuator.reset === 'function') {
+          try { observeHapticCompletion(actuator.reset()); } catch (_) { /* haptics are best-effort */ }
+        }
+        this._hapticActive = false;
+        return;
+      }
+      this._hapticActive = true;
+      try {
+        if (typeof actuator.playEffect === 'function') {
+          observeHapticCompletion(actuator.playEffect('dual-rumble', {
+            startDelay: 0,
+            duration: HAPTIC_RUMBLE_MS,
+            weakMagnitude: frame.weak,
+            strongMagnitude: frame.strong,
+          }));
+        } else if (typeof actuator.pulse === 'function') {
+          observeHapticCompletion(actuator.pulse(frame.strong, HAPTIC_RUMBLE_MS));
+        }
+      } catch (_) { /* haptics are best-effort */ }
+    },
+
+    _resetState() {
+      this.axes.leftX = 0;
+      this.axes.leftY = 0;
+      this.axes.rightX = 0;
+      this.axes.rightY = 0;
+      this.axes.l2 = 0;
+      this.axes.r2 = 0;
+      const actions = this.actions || (this.actions = {});
+      for (const action in ACTION_MAP) {
+        const sample = actions[action];
+        if (sample) {
+          sample.held = false;
+          sample.pressed = false;
+          sample.released = false;
+          sample.value = 0;
+        } else {
+          actions[action] = { held: false, pressed: false, released: false, value: 0 };
+        }
+      }
+      const prev = this._prev || (this._prev = {});
+      for (const key in prev) delete prev[key];
+      const prevButtons = this._prevButtons || (this._prevButtons = {});
+      for (const key in prevButtons) delete prevButtons[key];
+      this._chordHeld = Object.create(null);
+      this._chordConsumed = Object.create(null);
+      if (Array.isArray(this._pressQueue)) this._pressQueue.length = 0;
+      else this._pressQueue = [];
+      // NXI-004: same rejection inside a remap capture — a pending modifier or spent mark
+      // sampled from the lost connection must not survive into the next device's sample.
+      if (this._captureGesture) this._captureGesture.length = 0;
+      this._captureSpent = null;
+      pulseTicks = 0;
+      pulseGapTicks = 0;
+      pulseSpec = null;
+      clearPendingFeedback();
+      lastHapticTick = -1;
+      this.lastButton = null;
+      this._wasActive = false;
+    },
+  };
+
+  gp._resetState();
+  gp._idleClean = true;
+  return gp;
+}
+
+/**
+ * Portable microbench: disconnected (no pad) poll cost.
+ * Before = always rebuild action map each tick (legacy).
+ * After  = idle-clean skip after first zero publish.
+ */
+export function runGamepadIdlePollMicrobench(options = {}) {
+  const iterations = Math.max(1, options.iterations | 0 || 20000);
+  const restoreSkip = getGamepadIdleCleanSkipForBench();
+  const gp = createGamepad({ bus: { emit() {} } });
+  // Ensure navigator reports no pads.
+  const prevNav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { getGamepads: () => [] },
+    configurable: true,
+    writable: true,
+  });
+  const live = { tick: 1, settings: { controls: { gamepad: { enabled: true } } } };
+  const run = (idleSkip) => {
+    setGamepadIdleCleanSkipForBench(idleSkip);
+    gp._idleClean = false;
+    gp._resetState();
+    if (idleSkip) gp._idleClean = true;
+    else gp._idleClean = false;
+    // warm
+    for (let i = 0; i < 200; i++) {
+      if (!idleSkip) gp._idleClean = false;
+      gp.tick(1 / 60, live, null);
+    }
+    let resets = 0;
+    const orig = gp._resetState.bind(gp);
+    gp._resetState = () => { resets++; return orig(); };
+    const t0 = performance.now();
+    for (let i = 0; i < iterations; i++) {
+      if (!idleSkip) gp._idleClean = false;
+      live.tick = i + 2;
+      gp.tick(1 / 60, live, null);
+    }
+    const ms = performance.now() - t0;
+    gp._resetState = orig;
+    return { ms, resets, iterations };
+  };
+  try {
+    const before = run(false);
+    const after = run(true);
+    return {
+      beforeMs: before.ms,
+      afterMs: after.ms,
+      speedup: before.ms / Math.max(after.ms, 1e-9),
+      beforeResets: before.resets,
+      afterResets: after.resets,
+      iterations,
+    };
+  } finally {
+    setGamepadIdleCleanSkipForBench(restoreSkip);
+    if (prevNav) Object.defineProperty(globalThis, 'navigator', prevNav);
+    else delete globalThis.navigator;
+  }
+}

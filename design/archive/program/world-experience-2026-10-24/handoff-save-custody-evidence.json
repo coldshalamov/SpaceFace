@@ -1,0 +1,195 @@
+{
+  "baseline": "b7483b10139be75170258638c97c1aa714645a08",
+  "sourceSha256": "e0f2c74fdeb5850eb599e8bf859ad7d014c8b2b8ce63c610a0506eaa0af1e137",
+  "focused": {
+    "tests": 64,
+    "pass": 64
+  },
+  "nativeBoundary": {
+    "tests": 1,
+    "pass": 1
+  },
+  "publicOwners": {
+    "src/save/saveSystem.js": "3927c4b7f8dc195b99525cf51ea646be398999c0",
+    "src/systems/cargo.js": "e5b0639a911c5b14edaf7e954add147dd892d139",
+    "src/systems/economy.js": "395b329613a851a6f0c53db43634a4455a49be72",
+    "src/systems/lootShards.js": "07802963aed6baa870d64ca9c9901b3a901df736",
+    "src/systems/mining.js": "97e2567f933c5b75d9091f9dec94b846ffdfe6e0"
+  },
+  "measurement": {
+    "saveBoundary": true,
+    "accepted": {
+      "t": 6.099999999999984,
+      "playerId": 1,
+      "credits": 60,
+      "cargo": {
+        "items": {},
+        "usedVolume": 0,
+        "usedMass": 0,
+        "capVolume": 40,
+        "capMass": 60
+      },
+      "liveIds": [
+        "real_cast_handoff"
+      ],
+      "receipts": [],
+      "pod": {
+        "id": 4,
+        "data": {
+          "kind": "cargo",
+          "payloadType": "jettisoned_cargo",
+          "salvagePool": {
+            "cmdty_stolen_goods": 2
+          },
+          "ownerId": 1,
+          "factionId": "faction_quiet",
+          "ownership": {
+            "ownerId": 2,
+            "factionId": "faction_quiet"
+          },
+          "worldRecordId": null,
+          "transientSector": false,
+          "commodityId": "cmdty_stolen_goods",
+          "amount": 2,
+          "jettisonedCargo": true,
+          "legality": "contraband",
+          "ownerName": "BONDED \u2014 OFF-BOOK MANIFEST",
+          "cargoIdentity": {
+            "commodityId": "cmdty_stolen_goods",
+            "ownerId": "2",
+            "originId": null,
+            "destinationId": null,
+            "ownerName": "QUIET MANIFEST"
+          },
+          "bondedBy": "real_cast_handoff",
+          "committedTo": 1
+        }
+      }
+    },
+    "continued": {
+      "t": 6.099999999999984,
+      "playerId": 1,
+      "credits": 60,
+      "cargo": {
+        "items": {},
+        "usedVolume": 0,
+        "usedMass": 0,
+        "capVolume": 40,
+        "capMass": 60
+      },
+      "liveIds": [],
+      "receipts": [],
+      "pod": {
+        "id": 4,
+        "data": {
+          "kind": "cargo",
+          "payloadType": "jettisoned_cargo",
+          "salvagePool": {
+            "cmdty_stolen_goods": 2
+          },
+          "ownerId": 1,
+          "factionId": "faction_quiet",
+          "ownership": {
+            "ownerId": 2,
+            "factionId": "faction_quiet"
+          },
+          "worldRecordId": null,
+          "transientSector": false,
+          "commodityId": "cmdty_stolen_goods",
+          "amount": 2,
+          "jettisonedCargo": true,
+          "legality": "contraband",
+          "ownerName": "BONDED \u2014 OFF-BOOK MANIFEST",
+          "cargoIdentity": {
+            "commodityId": "cmdty_stolen_goods",
+            "ownerId": "2",
+            "originId": null,
+            "destinationId": null,
+            "ownerName": "QUIET MANIFEST"
+          },
+          "bondedBy": "real_cast_handoff",
+          "committedTo": 1
+        }
+      }
+    },
+    "pickup": [
+      {
+        "t": 39.49999999999904,
+        "pickupId": 4,
+        "collectorId": 1,
+        "kind": "cargo",
+        "amount": 2,
+        "commodityId": "cmdty_stolen_goods",
+        "pos": {
+          "x": 9069.004943847656,
+          "z": 9080.181640625
+        },
+        "acceptedAmount": 2,
+        "rejectedAmount": 0
+      }
+    ],
+    "afterPickup": {
+      "t": 41.49999999999893,
+      "playerId": 1,
+      "credits": 60,
+      "cargo": {
+        "items": {
+          "cmdty_narcotics": 2,
+          "cmdty_stolen_goods": 2
+        },
+        "usedVolume": 3.2,
+        "usedMass": 2,
+        "capVolume": 40,
+        "capMass": 60
+      },
+      "liveIds": [],
+      "receipts": [],
+      "pod": null
+    },
+    "afterPickupContinue": {
+      "t": 43.49999999999881,
+      "playerId": 1,
+      "credits": 60,
+      "cargo": {
+        "items": {
+          "cmdty_narcotics": 2,
+          "cmdty_stolen_goods": 2
+        },
+        "usedVolume": 3.2,
+        "usedMass": 2,
+        "capVolume": 40,
+        "capMass": 60
+      },
+      "liveIds": [],
+      "receipts": [],
+      "pod": null
+    },
+    "allPickupIds": [
+      5,
+      4
+    ]
+  },
+  "nativeFullGate": {
+    "tests": 13,
+    "pass": 13,
+    "summary": [
+      "exit 0",
+      "ok 1 - native fly-through rejects custody and native pod motion",
+      "ok 2 - native settled hold bonds original cargo and native pod motion",
+      "ok 3 - actual native hull/pod launch has no penetration at bearing 0 and extreme jitter",
+      "ok 4 - actual native hull/pod launch has no penetration at bearing 0.125 and extreme jitter",
+      "ok 5 - actual native hull/pod launch has no penetration at bearing 0.25 and extreme jitter",
+      "ok 6 - actual native hull/pod launch has no penetration at bearing 0.375 and extreme jitter",
+      "ok 7 - actual native hull/pod launch has no penetration at bearing 0.5 and extreme jitter",
+      "ok 8 - actual native hull/pod launch has no penetration at bearing 0.625 and extreme jitter",
+      "ok 9 - actual native hull/pod launch has no penetration at bearing 0.75 and extreme jitter",
+      "ok 10 - actual native hull/pod launch has no penetration at bearing 0.875 and extreme jitter",
+      "ok 11 - actual director/native hold finishes original clear manifest",
+      "ok 12 - actual director/native pass finishes original clear manifest",
+      "ok 13 - actual Save Continue preserves bonded original custody and ordinary pickup exactly once",
+      "# tests 13",
+      "# pass 13",
+      "# fail 0"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+// Runs inside the actual repository AFTER apply.mjs and native asset publication.
+// These are production-module tests, not a substitute for an ordinary flight/mobile route.
+import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';
+import {LAST_ARGUMENT as C,LAST_ARGUMENT_ENEMY} from '../src/data/lastArgument.js';
+import {ENEMY_TYPES} from '../src/data/enemies.js';
+import {SUBSYSTEM_DEFS,COMBAT_PROFILES} from '../src/data/combatDefs.js';
+import {makeEnemySpawnSpec} from '../src/systems/combat.js';
+import {createCapitalBossFight,stepCapitalBossFight,restoreCapitalBossFight} from '../src/combat/capitalBossScore.js';
+import {LAST_ARGUMENT_SCORE as S} from '../src/data/encounters/capital-boss/last-argument.js';
+import {CAPITAL_BOSS_ENCOUNTERS} from '../src/data/encounters/capital-boss.js';
+import {wholeShipVisualForEntity,wholeShipHullPlacement} from '../src/render/partsLibrary.js';
+const fight=()=>createCapitalBossFight({encounterId:C.scoreId,fightId:'last-argument:test:1',bossId:2,targetId:1});
+const obs=t=>({tick:t,simTime:t/60,active:true,boss:{id:2,alive:true,hull:C.hull,hullMax:C.hull,pos:{x:0,z:0},radius:C.radius,rot:0,disabled:[]},target:{id:1,alive:true,hull:140,hullMax:140,pos:{x:600,z:0},radius:14}});
+test('canonical enemy and score catalogs register one identity each',()=>{assert.equal(ENEMY_TYPES.filter(x=>x.id===C.enemyId).length,1);assert.equal(CAPITAL_BOSS_ENCOUNTERS[C.scoreId],S);});
+test('ordinary production enemy factory installs actual compound and fixed-scale heavy flight',()=>{const e=makeEnemySpawnSpec(C.enemyId,8,{x:1400,z:0});assert.equal(e.radius,C.radius);assert.equal(e.mass,C.mass);assert.equal(e.hull,C.hull);assert.equal(e.physicsBody.shape,'compound');assert.equal(e.physicsBody.inertiaY,210000000);assert.equal(e.flightModel.maxYawRate,.105);assert.equal(e.data.weapons.length,0);assert.equal(e.data.combatProfileId,'combat_profile_last_argument');});
+test('production combat profile resolves every independently destructible bank',()=>{const p=COMBAT_PROFILES.find(x=>x.id==='combat_profile_last_argument');assert.ok(p);for(const id of p.subsystemIds)assert.equal(SUBSYSTEM_DEFS.filter(s=>s.id===id).length,1);assert.ok(p.capabilities.lastArgumentPort);assert.ok(p.capabilities.lastArgumentStarboard);});
+test('native score honors intro, warning and per-cast hit deduplication',()=>{const r=fight(),out=[];for(let tick=0;tick<1000;tick++)out.push(...stepCapitalBossFight(r,obs(tick)));const damage=out.filter(x=>x.type==='damage');assert.equal(damage.length,1);assert.ok(damage[0].tick>=870);assert.equal(damage[0].packet.channels.ion,12);assert.equal(out.find(x=>x.type==='order').forward,.32);});
+test('native score never replaces an explicit empty authorized-target set',()=>{const r=fight(),out=[];for(let tick=0;tick<2500;tick++)out.push(...stepCapitalBossFight(r,{...obs(tick),targets:[]}));assert.ok(out.some(x=>x.type==='attack'));assert.equal(out.filter(x=>x.type==='damage').length,0);});
+test('native save continuation is deterministic through attack lock and recovery',()=>{const a=fight();for(let i=0;i<750;i++)stepCapitalBossFight(a,obs(i));const b=restoreCapitalBossFight(JSON.parse(JSON.stringify(a)));for(let i=750;i<1500;i++)assert.deepEqual(stepCapitalBossFight(a,obs(i)),stepCapitalBossFight(b,obs(i)));assert.deepEqual(a,b);});
+test('native score cancels an independently disabled charging bank',()=>{const r=fight();for(let i=0;i<670;i++)stepCapitalBossFight(r,obs(i));const o=obs(670);o.boss.disabled=['subsystem_last_argument_spine'];const out=stepCapitalBossFight(r,o);assert.ok(out.some(x=>x.type==='countered'));assert.equal(r.cast,null);});
+test('published release model is selected rather than a disguised Leviathan fallback',()=>{const e=makeEnemySpawnSpec(C.enemyId,1,{x:0,z:0}),selected=wholeShipVisualForEntity(e);assert.ok(selected,'Native publication must make the whole ship packaged-live');const placement=wholeShipHullPlacement({assetId:C.assetId,bounds:{size:[343,56,185]}});assert.ok(placement);assert.ok(Math.abs(placement.targetLength-343/C.radius)<1e-6);const bytes=readFileSync(new URL('../assets/ships/release/parts/wholeships/last_argument.glb',import.meta.url));assert.equal(bytes.readUInt32LE(0),0x46546c67);});

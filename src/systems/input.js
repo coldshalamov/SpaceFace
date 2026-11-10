@@ -1,0 +1,2561 @@
+import { isPlayerSaucer } from '../data/saucer.js';
+import { projectSaucerControls } from '../core/flight/saucerControl.js';
+// Input system: samples keyboard + mouse, projects the cursor to the world plane, and writes
+// state.input each tick. THREE control schemes, picked by settings.gameplay.controlScheme
+// ('pilot' default | 'helm-assist' | 'classic'):
+//
+//   PILOT (default) — KEYBOARD FLIES, MOUSE FIGHTS. The mouse never steers the nose: it aims
+//   weapons, picks targets and throws the Massline. W/↑ thrust, S/↓ brakes/reverses.
+//   A/D and ←/→ always YAW the nose, thrust held or not, so a turn is one clean arc. They must
+//   not become a strafe while W is held: that aimed the path about 45° off the hull, the nose
+//   stayed cocked out of the vapor trail for as long as the key was down, and it only evened
+//   out after the key came up. Q/E is the strafe in every state. LMB fire.
+//
+//   HELM ASSIST — the ship's NOSE FOLLOWS THE MOUSE CURSOR (rate-limited by the ship's
+//   own turn stats, so mass still reads). W thrusts, S/↓ brakes/reverses, A/D lateral strafe.
+//   Braking is computed through the normal thrust pipeline — heavy ships brake
+//   heavy). LMB fire. Arrows also fly: up/down thrust, left/right strafe while forward thrust is
+//   held; left/right arrows yaw the ship when forward thrust is not held so keyboard pilots still
+//   have direct nose control.
+//
+//   CLASSIC — the 1.x scheme: ↑/W throttle, A/D yaw the nose (bank into turns), Q/E strafe,
+//   mouse aims weapons independently, LMB fires. The arrow cluster keeps the same flight split:
+//   bare ←/→ yaw, W/↑ + ←/→ strafe.
+//
+//   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
+//   toggle (owned by autoTargetAssist — guns lead the lock and relative motion becomes a dynamic combat stick) ·
+//   Space/F Massline (tap latch/cut, hold line control) · Q charge throw (helm) · R detonate
+//   charges · C scanner pulse · V cruise.
+//   New verbs land on state.input.actions.* as edge-triggered flags (the LOCKED input contract in
+//   BUILD_PLAN_2_0 §0) — consumer systems (tetherGameplay, impulseCharges, scanner, cruise) read
+//   them; input never calls those systems directly.
+// Flight/combat keys are owned here; UI-owned global keys are handled in src/ui/input.js.
+// NOTE: NPC ships NEVER read state.input — they write e.data.intent directly (ai.js), so this
+// control remap does not affect them.
+//
+// REBINDING (V2 §12): flight actions are resolved through a bindings map keyed by action id. The
+// defaults below are mirrored as `settings.controls.bindings` on first run; the Settings/Controls
+// tab captures a new key per action and persists it. Input reads state.settings.controls.bindings
+// (falling back to DEFAULT_BINDINGS) so changes take effect immediately, no restart needed.
+
+// Action -> default KeyboardEvent.code. A binding may map to MULTIPLE codes (e.g. throttle uses
+// both KeyW and ArrowUp) so WASD-and-arrows both work out of the box. The settings layer stores an
+// array per action; the UI lets the player set a primary + keeps the arrow-cluster as a secondary
+// for movement so arrow-key players aren't stranded.
+import { emptyDrawFlightPath, emptyDrawFlightGesture } from './drawFlightInput.js';
+import { projectDynamicFlightStick, recordDynamicFlightStick, resetDynamicFlightStick } from './dynamicFlightStick.js';
+import {
+  createGamepad,
+  normalizePadCurve,
+  normalizePadSensitivity,
+  shapePadAxis,
+  shapePadVector,
+} from './gamepad.js';
+import { createTouch } from './touch.js';
+import { createMasslineInputGrammar } from './masslineInputGrammar.js';
+import { wrapAngle } from '../core/rng.js';
+import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
+import { isBeamTargetEligible } from './miningBeamTargetingRead.js';
+import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { resolveSteeringView } from './racingSteer.js';
+import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
+import { isSwarmControls } from '../data/swarmControls.js';
+import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
+import {
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
+} from './powerVerbs.js';
+
+// Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
+// so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
+const HELM_SOFT_ANGLE = 0.55;
+
+const WORLD_TOOL_HOLD_S = 0.28;
+const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
+const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
+
+
+// ---- Travel Burn latch (atlas D5 / W1-5) ------------------------------------------------------
+// The kernel is PURE and only ever shapes the governor cap; the state machine, its timers and its
+// bindings live here with the input owner (propulsionKernel.js:22-24). `TRAVEL_DRIVE_STATES` is
+// imported rather than redeclared so there is exactly one spelling of the axis in the tree.
+//
+// Spool is a deliberate commitment window, not a loading bar: engaging costs you ~1.6 s during
+// which you are still fully manoeuvrable but not yet gaining cap, so committing to a burn in a
+// hot sector is a real decision. Cooldown is the price of breaking it.
+const TRAVEL_SPOOL_S = 1.6;
+const TRAVEL_COOLDOWN_S = 3;
+// Below this the pilot is not really "braking" — it keeps a feathered retro-touch from dropping a
+// long haul, while a deliberate brake still breaks the latch instantly.
+const TRAVEL_BRAKE_BREAK_EPS = 0.08;
+
+function neutralTravelDrive() {
+  return {
+    // --- kernel-facing contract (propulsionKernel.js normalizeTravelDrive). Extra keys below are
+    // ignored by the kernel, so HUD/diagnostic fields can share this one published address.
+    state: 'off',
+    cap: 0,          // carried ramp state: the kernel advances it, we feed it straight back
+    rampMult: 1,     // lane infrastructure (D8) multiplies this; nothing does yet
+    // --- latch-owned timers and provenance (never read by the kernel)
+    spoolT: 0,
+    cooldownT: 0,
+    engagedT: 0,
+    breakReason: null,
+  };
+}
+
+/**
+ * True when the pilot is actively braking hard enough to break the latch.
+ *
+ * D5's feel rule is an ASYMMETRY and it is the whole point of the feature: **braking breaks the
+ * latch, steering does not.** So this reads the brake actuator and reverse throttle ONLY — it must
+ * never consult `turnIntent` or `moveX`. A pilot correcting course, carving, or spinning the nose
+ * mid-burn keeps the burn; a pilot who reaches for the brake has decided to stop travelling.
+ */
+function travelBrakeBreaks(inp) {
+  if (!inp) return false;
+  if (inp.brake) return true;
+  return finiteOr(inp.moveZ, 0) < -TRAVEL_BRAKE_BREAK_EPS;
+}
+
+/**
+ * Interdiction seam (D5: "Damage or lane disruption forces Cooldown — that is the interdiction
+ * hook"). Wired now, triggered by nothing yet: D8's lane prototype and the damage path are the
+ * intended writers. Both a level flag and a one-shot request are honoured so a future disruptor
+ * can either hold the drive down or knock it out once.
+ */
+function travelDisrupted(state) {
+  const p = state && state.player;
+  if (!p) return false;
+  const drive = p.travelDrive;
+  if (drive && (drive.disrupted === true || drive.disruptRequest === true)) return true;
+  return false;
+}
+
+function travelDisruptionReason(state) {
+  const p = state && state.player;
+  const drive = p && p.travelDrive;
+  if (!drive) return null;
+  if (drive.disruptRequest === true) return drive.disruptReason || 'disrupted';
+  if (drive.disrupted === true) return 'disrupted';
+  return null;
+}
+
+function clearTravelDisruptRequest(state) {
+  const drive = state && state.player && state.player.travelDrive;
+  if (drive && drive.disruptRequest === true) {
+    drive.disruptRequest = false;
+    drive.disruptReason = null;
+  }
+}
+
+function finiteOr(v, fallback) { return Number.isFinite(v) ? v : fallback; }
+
+/**
+ * Advance the travel-drive latch one tick and publish `state.input.travelDrive` for the kernel.
+ *
+ * THE CARRIED-CAP ROUND TRIP IS THE WHOLE RAMP. The kernel is pure: it consumes `travelDrive.cap`,
+ * advances it one step toward the ceiling, and republishes it at `result.telemetry.travelCap`
+ * (kernel :324-325, :871). Nobody persists it in between — we read last tick's published value back
+ * off the player's flight frame and hand it in again. `input` is first in UPDATE_ORDER and
+ * `flightSlot` is later, so "last tick" is exactly right; dropping this feedback would leave the
+ * cap pinned at its seed and the drive would do nothing at all.
+ *
+ * Everything here is gated on `travelFlag('travelBurn')` read at CALL TIME. Under node the flag is
+ * false, so not one key is written and the sim goldens cannot see this system.
+ */
+function stepTravelLatch(host, state, inp, dt, lineOwnsAxis = false) {
+  if (!travelFlag('travelBurn')) {
+    // Flag off: leave no trace at all, and drop any latch state a flag flip mid-session left behind.
+    if (inp.travelDrive) delete inp.travelDrive;
+    host._travel = null;
+    return;
+  }
+
+  const drive = host._travel || (host._travel = neutralTravelDrive());
+  const step = Math.max(0, finiteOr(dt, 0));
+  const pressed = host._travelEdge;
+  const disrupted = travelDisrupted(state);
+  const disruptionReason = travelDisruptionReason(state);
+  // Line control spends reverse on the rope. That axis is not a decision to drop the burn.
+  // A dedicated brake button still breaks it, because the caller leaves lineOwnsAxis false then.
+  const braking = lineOwnsAxis ? false : travelBrakeBreaks(inp);
+  // Forward the LEVEL flag on the published block, not just the one-shot latch transition: the
+  // kernel's normalizeTravelDrive consumes `disrupted` to hold the ramp down AND (D8) to treat
+  // the dead beacon as the environmental force that spends overspeed toward the falling ceiling.
+  drive.disrupted = disrupted;
+
+  // Feed the kernel's published ramp back in. Reading the frame the kernel actually wrote (rather
+  // than re-deriving a ramp here) keeps ONE owner of the ramp maths — the kernel.
+  const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  const frame = player && player._flightFrame;
+  if (frame && Number.isFinite(frame.travelCap)) drive.cap = Math.max(0, frame.travelCap);
+  if (frame && Number.isFinite(frame.travelCeiling)) drive.ceiling = frame.travelCeiling;
+
+  const toCooldown = (reason) => {
+    drive.state = 'cooldown';
+    drive.cooldownT = 0;
+    drive.engagedT = 0;
+    drive.spoolT = 0;
+    drive.breakReason = reason;
+  };
+
+  switch (drive.state) {
+    case 'off':
+      if (disrupted) { toCooldown(disruptionReason || 'disrupted'); break; }
+      if (pressed) { drive.state = 'spooling'; drive.spoolT = 0; drive.breakReason = null; }
+      break;
+
+    case 'spooling':
+      // Disruption and braking both kill a spool. A second press is a CANCEL, not a disengage:
+      // nothing was earned yet, so it costs no cooldown — the punishment is for breaking a burn.
+      if (disrupted) { toCooldown(disruptionReason || 'disrupted'); break; }
+      if (braking) { toCooldown('brake'); break; }
+      if (pressed) { drive.state = 'off'; drive.spoolT = 0; drive.breakReason = 'cancelled'; break; }
+      drive.spoolT += step;
+      if (drive.spoolT >= TRAVEL_SPOOL_S) {
+        drive.state = 'engaged';
+        drive.spoolT = TRAVEL_SPOOL_S;
+        drive.engagedT = 0;
+        drive.breakReason = null;
+      }
+      break;
+
+    case 'engaged':
+      if (disrupted) { toCooldown(disruptionReason || 'disrupted'); break; }
+      if (braking) { toCooldown('brake'); break; }
+      if (pressed) { toCooldown('pilot'); break; }
+      drive.engagedT += step;
+      break;
+
+    case 'cooldown':
+    default:
+      drive.cooldownT += step;
+      // A live disruption holds the drive down rather than letting the timer run out under it.
+      if (disrupted) drive.cooldownT = 0;
+      else if (drive.cooldownT >= TRAVEL_COOLDOWN_S) {
+        drive.state = 'off';
+        drive.cooldownT = 0;
+        // The break reason PERSISTS while the disengaged cap record decays: the kernel spends
+        // overspeed toward the falling ceiling only for a world-caused break (D8 disruption), and
+        // it must still know that after the ship has coasted clear of the dead segment. A pilot
+        // reason ('pilot'/'brake') keeps the settle-to-rest coast. The next press overwrites it.
+      }
+      break;
+  }
+
+  clearTravelDisruptRequest(state);
+  if (!TRAVEL_DRIVE_STATES.includes(drive.state)) drive.state = 'off';
+
+  // One published address, kernel-shaped. Extra keys are ignored by normalizeTravelDrive and are
+  // what the HUD reads, so the latch has a single source of truth.
+  inp.travelDrive = drive;
+}
+
+// Verb keys shared by both schemes (GDD 2.0 physics verbs + sensors).
+//
+// THE NUMBER ROW IS THE FIVE POWERS (owner 2026-10-22, src/systems/powerVerbs.js). Eight
+// overlapping verbs (Charge, Blast, Seed, Well, Repel, Cone, Skim, Bomb) became five, one job
+// each: 1 PULL · 2 SHOVE · 3 PIN · 4 BOMB · 5 RIG. The rank on the HUD (powerRail.js / the ORRERY
+// Cluster's ordnance crescent) reads the same five in the same order, so the shelf is one hotbar.
+// R stays a second Shove key (it was the detonate key, and Shove now detonates), and the bomb
+// verb keeps the old charge-throw letter in each scheme. The Line is Space/F only now: its old
+// Digit3 alias went to Pin.
+//
+// The old verb names are still the internal action flags the owners consume; input turns each
+// power press into them below. They are also lookup aliases (see binding()), so every surface
+// that asks for an old name's key reads the power's key.
+//
+// Prompt answers still win the row while a decision is live: contactHail/promptDeck/wingmanRadial
+// capture and swallow their digits on document capture, and flight input is neutralized under
+// modals (`modalInputActive`) — the same slot-claim contract the rail was designed around.
+const VERB_BINDINGS = {
+  siteBeam:       ['KeyB'],   // level: contextual beam for an explicitly selected World Site proxy
+  tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
+  // The five powers (edges). PULL deploys the Well; SHOVE the Repulsor plus a detonation of every
+  // armed charge and drift bomb; PIN the anchor Mass Seed; RIG the cone or, in a planet band, the
+  // skim scoop. BOMB is per scheme (the scheme tables below) because it inherits the old
+  // charge-throw letter, which differs between schemes.
+  pull:           ['Digit1'],
+  shove:          ['Digit2', 'KeyR'],
+  pin:            ['Digit3'],
+  rig:            ['Digit5'],
+  scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
+  cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
+  autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
+  // Linked shield pylons (Controlled Chaos packet 06): ONE labeled edge whose meaning is named by
+  // the HUD pill each time (PLACE FIRST ENDPOINT / LINK SECOND ENDPOINT / RECALL PAIR / CAPACITY
+  // REACHED) - it is not folded into another power. Digit6 is free repo-wide (checked against both
+  // scheme tables, ui/bindings.js, the UI key router and the prompt-digit claims). The shieldPylons
+  // system owns fitting, cost, placement and the pair lifecycle.
+  deployShieldPylon: ['Digit6'],
+  deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
+                              //   The UI router owns U only when a claimable body is in range; in open
+                              //   space it falls through to this flight verb (see check-claim-base-input).
+  // Massline Physics Identity (Wave M2). Every letter key is spoken for, so the two new verbs sit
+  // on the free left-pinky cluster next to WASD; both are rebindable like every other action.
+  bulletTime:     ['CapsLock'],   // level: hold for time dilation (bulletTime system owns meter)
+  cloak:          ['Backquote'],  // edge: toggle the cloak module (cloak system owns energy/gating)
+  // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state).
+  // Quote (') is free repo-wide (checked against both scheme tables, ui/bindings.js, and the
+  // UI key router): every letter is claimed, and 'o' in particular was triple-claimed
+  // (Band cycle on Shift+O + the overview-pin toggle on plain 'o'). Quote is right-pinky
+  // reachable, a natural hold verb, and carries no modifier alias or UI claim. Level verb:
+  // hold to beam + hold the clump, release to bowl it; hold-to-toggle latch opt-in via
+  // accessibility.holdToToggle.gyreSnare.
+  gyreSnare:          ['Quote'],    // level: hold to pull/snag/grow a ball, release to bowl it
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Comma is free repo-wide (checked against both
+  // scheme tables and ui/bindings.js) and is the bay's cycle key: it turns between the sticky
+  // impulse charge (the BOMB default while one is aboard) and the loaded drift bombs. The bombs
+  // system owns lifecycle/fuze/payload/selection.
+  cycleBomb: ['Comma'],  // edge: cycle the ordnance (the charge, then the loaded rack cells)
+  // VERB-13: one flight key dumps the selected hold lot as the payload body cargo already spawns.
+  // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
+  jettisonLot: ['Period'],
+  // The hull burst has NO verb of its own (owner principle 2026-09-30): the fitted boost upgrade
+  // rides the boost itself, and the hullBurst system polls the player's boost flag. There is no
+  // burst key to bind on keyboard, mouse or pad.
+  // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
+  // key on a full keyboard, it is never used for anything else in this game, and it carries a
+  // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
+  // key at all (or bury it behind Fn), so a second code ships in the SAME array — the existing
+  // multi-code idiom this table already uses for WASD-and-arrows, not a parallel laptop scheme.
+  // The fallback must not collide with an interface owner: the UI router opens Help on h/H
+  // (src/ui/input.js :523, settings.js RESERVED_LITERAL_CODES) and never suppresses flight, so
+  // a KeyH seat fired the drive AND opened Help — RC-05. F8 is the one F-key nobody owns
+  // (F1-F5/F7/F9 are claimed; checked against both scheme tables, ui/bindings.js and the router),
+  // sits in the same row on every chassis, and needs no Fn reach.
+  travelBurn:     ['NumLock', 'F8'],   // edge: toggle the travel drive (latch owns the state machine)
+};
+
+const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
+  forward:  ['KeyW', 'ArrowUp'],
+  reverse:  ['KeyS', 'ArrowDown'],
+  yawRight: ['KeyD', 'ArrowRight'],
+  yawLeft:  ['KeyA', 'ArrowLeft'],
+  strafeLeft:  ['KeyQ'],
+  strafeRight: ['KeyE'],
+  boost:    ['ShiftLeft', 'ShiftRight'],
+  fire:     [],                 // LMB fires; Space is the new-profile Massline action
+  brake:    ['Digit0'],         // full stop; S/Down commands governed reverse thrust
+  autoFire: ['KeyG'],
+  countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
+  bomb: ['Digit4', 'KeyY'],    // the BOMB power: Digit4 is its hotbar seat; Y is the old charge-throw letter (Q/E strafe, T is the tech tree)
+  // VERB-14: the winch needs keys every player has. BracketLeft/Right are free repo-wide
+  // (no flight verb, no UI shortcut, no help copy claims them) and sit as a natural in/out pair
+  // on any layout. Rebindable like every other flight verb; the hold-grammar line-control path stays.
+  reelIn:  ['BracketLeft'],
+  reelOut: ['BracketRight'],
+  ...VERB_BINDINGS,
+  // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
+  // constants. Keyboard equivalents (Space to fire) ARE remappable.
+};
+
+const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
+  forward:  ['KeyW', 'ArrowUp'],
+  reverse:  ['KeyS', 'ArrowDown'],
+  yawRight: [],                // nose follows cursor — yaw keys retired in this scheme
+  yawLeft:  [],
+  strafeLeft:  ['KeyA', 'ArrowLeft'],
+  strafeRight: ['KeyD', 'ArrowRight'],
+  boost:    ['ShiftLeft', 'ShiftRight'],
+  fire:     [],                // LMB only
+  brake:    ['Digit0'],        // full stop; S/Down commands governed reverse thrust
+  autoFire: ['KeyG'],
+  countermeasure: ['KeyX'],
+  bomb: ['Digit4', 'KeyQ'],    // helm: Q is free (A/D strafe), the old charge-throw letter here
+  reelIn:  ['BracketLeft'],
+  reelOut: ['BracketRight'],
+  ...VERB_BINDINGS,
+};
+
+export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
+  forward:  ['KeyW', 'ArrowUp'],
+  reverse:  ['KeyS', 'ArrowDown'],
+  yawRight: ['KeyD', 'ArrowRight'],  // yaw, including under thrust; Q/E is the strafe
+  yawLeft:  ['KeyA', 'ArrowLeft'],
+  strafeLeft:  ['KeyQ'],             // explicit strafe in every state (pursuit orbit-adjust)
+  strafeRight: ['KeyE'],
+  boost:    ['ShiftLeft', 'ShiftRight'],
+  fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
+  brake:    ['Digit0'],              // full stop; S/Down commands governed reverse thrust
+  autoFire: ['KeyG'],
+  countermeasure: ['KeyX'],
+  bomb: ['Digit4', 'KeyY'],                    // Q/E are strafe here, so the bomb's letter is Y (classic parity); Digit4 is the hotbar seat
+  reelIn:  ['BracketLeft'],
+  reelOut: ['BracketRight'],
+  ...VERB_BINDINGS,
+};
+
+const SCHEME_BINDINGS = { pilot: PILOT_BINDINGS, classic: DEFAULT_BINDINGS, 'helm-assist': HELM_BINDINGS };
+
+// Active control scheme; pilot is the default — flight physics is the game's toy, and the toy
+// is played with the keyboard while the mouse targets/fires/grapples. Helm-assist (mouse-nose)
+// remains selectable for players who prefer cursor steering.
+function activeScheme(state) {
+  const s = state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
+  return SCHEME_BINDINGS[s] ? s : 'pilot';
+}
+
+/**
+ * Pure Pilot keyboard projection after rebind resolution.
+ *
+ * The live input tick and deterministic public-control harness share this one semantic owner:
+ * A/D always yaws, Q/E always strafes, S reverses, and the dedicated brake stops. A/D must not strafe under
+ * thrust. Vectoring would then aim the path at nose + atan2(strafe, throttle), the hull would
+ * sit out of its trail while the key was held, and the lead bound would not see it.
+ */
+export function projectPilotFlightControls({
+  forward = false,
+  reverse = false,
+  brakeHeld = false,
+  yawLeft = false,
+  yawRight = false,
+  strafeLeft = false,
+  strafeRight = false,
+  boost = false,
+} = {}, out = null) {
+  const side = (yawRight ? 1 : 0) - (yawLeft ? 1 : 0);
+  const explicit = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
+  const projected = out && typeof out === 'object' ? out : {};
+  projected.moveX = explicit;
+  projected.moveZ = (forward ? 1 : 0) - (reverse ? 1 : 0);
+  projected.turnIntent = side;
+  projected.lineOrbit = side;
+  projected.boost = boost === true;
+  projected.brake = brakeHeld === true;
+  return projected;
+}
+
+// Resolve the live binding for an action: player rebinds (settings) win, then the active scheme's
+// table, then classic defaults. Always returns an array of codes.
+//
+// An old power verb name (deployWell, chargeDetonate, dropBomb, …) resolves to the power that now
+// owns its key, so every surface still asking "which key fires X" reads the live power key. A
+// custom code a player saved under an old name keeps driving its power (powerVerbs.js); settings
+// only ever stores the actions a player changed, so an untouched save simply reads the new row.
+function binding(state, action) {
+  const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
+  const scheme = SCHEME_BINDINGS[activeScheme(state)];
+  const power = powerVerbFor(action);
+  // X5 P0 — LABELS STAY HONEST. This resolver feeds the Help sheet, HUD prompts and the tick.
+  // Gating it by CONTEXT blanked every verb the player's current place refuses (a docked pilot
+  // read "-" for the whole flight sheet, a fighter lost Travel burn), so the Adventure contexts
+  // resolve the full binding here and the TICK gates in `_held` / `_heldExcept` / `_padEdge` /
+  // `_padHeld`. Swarm is the one exception: S5's compact arcade set IS the run's published
+  // contract, and `test/swarm-controls.test.mjs` pins that every Adventure-only verb is inert.
+  if (isSwarmControls(state) && !contextActionAllowed(state, power)) return [];
+  const saved = power === action ? (cfg && cfg[action]) : undefined;
+  const custom = saved || (POWER_VERBS.includes(power) ? savedCodesForPower(cfg, power) : undefined);
+  const list = custom
+    || (contextStockBindings(state)?.[power] || undefined)
+    || scheme[power] || DEFAULT_BINDINGS[power];
+  return Array.isArray(list) ? list : (list ? [list] : []);
+}
+
+export const DEFAULTS = { BINDINGS: DEFAULT_BINDINGS, SCHEMES: SCHEME_BINDINGS };
+
+const ARROW_GLYPHS = Object.freeze({
+  ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+});
+const ARROW_WORDS = Object.freeze({
+  ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+});
+
+/** Mouse buttons are not remappable; empty `fire` still means the left mouse button. */
+export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', mine: 'RMB' });
+
+/** Flight actions the default route teaches. Interface keys live in `src/ui/bindings.js`. */
+export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
+  'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
+  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut',
+  'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
+  'siteBeam', 'scanPulse', 'cruise', 'deployShieldPylon',
+]);
+
+/**
+ * Live bound KeyboardEvent.code list for a flight action.
+ * Player rebinds win, then the active scheme, then classic defaults.
+ */
+export function resolveActionCodes(state, action) {
+  return binding(state, action);
+}
+
+/** Short player-facing name for one KeyboardEvent.code. */
+export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
+  if (!code) return '';
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (/^Numpad\d$/.test(code)) return `Num ${code.slice(6)}`;
+  if (code.startsWith('Arrow')) {
+    const table = arrows === 'word' ? ARROW_WORDS : ARROW_GLYPHS;
+    return table[code] || code;
+  }
+  if (code === 'Space') return 'Space';
+  if (code === 'ShiftLeft') return 'L-Shift';
+  if (code === 'ShiftRight') return 'R-Shift';
+  if (code === 'ControlLeft') return 'L-Ctrl';
+  if (code === 'ControlRight') return 'R-Ctrl';
+  if (code === 'AltLeft') return 'L-Alt';
+  if (code === 'AltRight') return 'R-Alt';
+  if (code === 'NumLock') return 'Num Lock';
+  if (code === 'CapsLock') return 'Caps Lock';
+  if (code === 'Backquote') return '`';
+  if (code === 'Quote') return "'";
+  if (code === 'Backslash' || code === 'IntlBackslash') return '\\';
+  if (code === 'BracketLeft') return '[';
+  if (code === 'BracketRight') return ']';
+  if (code === 'Comma') return ',';
+  if (code === 'Period') return '.';
+  if (code === 'Minus') return '-';
+  if (code === 'Equal') return '=';
+  if (code === 'Semicolon') return ';';
+  if (code === 'Quote') return "'";
+  if (code === 'Slash') return '/';
+  if (code === 'MetaLeft') return 'L-Meta';
+  if (code === 'MetaRight') return 'R-Meta';
+  if (code === 'Enter') return 'Enter';
+  if (code === 'NumpadEnter') return 'Num Enter';
+  if (code === 'NumpadAdd') return 'Num +';
+  if (code === 'NumpadSubtract') return 'Num -';
+  if (code === 'NumpadMultiply') return 'Num *';
+  if (code === 'NumpadDivide') return 'Num /';
+  if (code === 'NumpadDecimal') return 'Num .';
+  if (code === 'PageUp') return 'Pg Up';
+  if (code === 'PageDown') return 'Pg Dn';
+  if (code === 'Insert') return 'Ins';
+  if (code === 'Delete') return 'Del';
+  if (code === 'Home') return 'Home';
+  if (code === 'End') return 'End';
+  if (code === 'Tab') return 'Tab';
+  if (code === 'Escape') return 'Esc';
+  if (code === 'Backspace') return 'Bksp';
+  if (code === 'PrintScreen') return 'PrtSc';
+  if (code === 'ScrollLock') return 'ScrLk';
+  if (code === 'Pause') return 'Pause';
+  if (code === 'ContextMenu') return 'Menu';
+  if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
+  if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
+  // Last resort is never the raw DOM code: strip the mechanical prefix and split the camel case
+  // ('NumpadEnter' never reaches here, 'IntlRo' → 'Ro', 'LaunchApp1' → 'Launch App').
+  return code.replace(/^(Key|Digit|Numpad)/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || code;
+}
+
+/**
+ * The label every HUD / help / prompt surface must print for a flight action.
+ * Empty `fire` is LMB (the mouse is not remappable). Other empty bindings print `empty`.
+ */
+export function resolveActionLabel(state, action, { sep = '/', arrows = 'glyph', empty = '' } = {}) {
+  const codes = binding(state, action);
+  if (!codes.length) {
+    if (action === 'fire') return MOUSE_ACTION_LABELS.fire;
+    return empty;
+  }
+  // Two codes that print the same glyph (Backslash / IntlBackslash) are one label, not "\/\\".
+  return Array.from(new Set(codes.map((c) => formatBindingCode(c, { arrows })).filter(Boolean))).join(sep);
+}
+
+const KEY_CODE_FALLBACKS = {
+  w: 'KeyW',
+  a: 'KeyA',
+  s: 'KeyS',
+  d: 'KeyD',
+  q: 'KeyQ',
+  e: 'KeyE',
+  f: 'KeyF',
+  c: 'KeyC',
+  x: 'KeyX',
+  g: 'KeyG',
+  r: 'KeyR',
+  v: 'KeyV',
+  t: 'KeyT',
+  '0': 'Digit0',
+  ' ': 'Space',
+  space: 'Space',
+  arrowup: 'ArrowUp',
+  arrowdown: 'ArrowDown',
+  arrowleft: 'ArrowLeft',
+  arrowright: 'ArrowRight',
+  shift: 'ShiftLeft',
+};
+
+const OPPOSING_ACTIONS = new Map([
+  ['forward', 'reverse'],
+  ['reverse', 'forward'],
+  ['yawRight', 'yawLeft'],
+  ['yawLeft', 'yawRight'],
+  ['strafeRight', 'strafeLeft'],
+  ['strafeLeft', 'strafeRight'],
+]);
+
+export function eventCode(e) {
+  if (e && e.code) return e.code;
+  const key = e && typeof e.key === 'string' ? e.key.toLowerCase() : '';
+  return KEY_CODE_FALLBACKS[key] || '';
+}
+
+function actionForCode(state, code) {
+  for (const action of Object.keys(DEFAULT_BINDINGS)) {
+    if (binding(state, action).includes(code)) return action;
+  }
+  return null;
+}
+
+function clearActionCodes(state, keys, action, exceptCode) {
+  for (const code of binding(state, action)) {
+    if (code !== exceptCode) keys[code] = false;
+  }
+}
+
+/**
+ * Deterministic keyboard event transition shared by the DOM listener and fixed-tick harnesses.
+ * Ordinary opposing axes retain last-input-wins; a player saucer keeps both for cancellation.
+ * Dedicated actions such as
+ * brake do not need an impossible simultaneous-axis state.
+ */
+export function transitionFlightKeyState(
+  state,
+  currentKeys = {},
+  {
+    code = '',
+    pressed = false,
+    blocked = false,
+  } = {},
+) {
+  const nextKeys = Object.assign(Object.create(null), currentKeys);
+  if (typeof code !== 'string' || code.length === 0) return nextKeys;
+  if (blocked || pressed !== true) {
+    nextKeys[code] = false;
+    return nextKeys;
+  }
+  const action = actionForCode(state, code);
+  const opposingAction = action && OPPOSING_ACTIONS.get(action);
+  // A disc averages physically held directions. Conventional ships retain last-input-wins.
+  const saucer = isPlayerSaucer(state?.entities?.get?.(state?.playerId));
+  if (opposingAction && !saucer) {
+    clearActionCodes(state, nextKeys, opposingAction, code);
+  }
+  nextKeys[code] = true;
+  return nextKeys;
+}
+
+function applyFlightKeyTransition(keys, nextKeys) {
+  for (const code of Object.keys(nextKeys)) keys[code] = nextKeys[code];
+}
+
+// Verbs that must not collapse into the key map. Movement stays on the map itself.
+const SAMPLED_EDGE_ACTIONS = new Set([
+  'tether', 'pull', 'shove', 'pin', 'bomb', 'rig', 'scanPulse', 'cruise', 'deployBeacon',
+  'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot', 'deployShieldPylon',
+]);
+
+// Pad verbs that must re-prove a deliberate press after a lifecycle reset (blur, dock, resume).
+// The first connected sample must be neutral before a held button can re-arm an edge verb — a
+// chord physically held across a dock or a tab-hide must not fire the moment the pad publishes
+// again. The bomb bay verbs always read this gate; adding them here repairs a silent no-op.
+// Continuous pad controls use the same fence. Their raw gamepad samples remain truthful, but a
+// held trigger, shoulder or stick must not become flight authority again until a connected neutral
+// sample proves the physical control was released. The modal/mode fence reapplies this set while
+// flight is unavailable, so a press made inside a screen cannot arm the next flight tick.
+const GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS = Object.freeze([
+  'fire', 'mine', 'boost', 'brake', 'leftStick', 'rightStick',
+]);
+
+const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
+  'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'shove',
+  'bomb', 'cycleBomb',
+  'scanPulse', 'cruise', 'deployBeacon', 'pin', 'pull', 'rig',
+  'siteBeam', 'bulletTime', 'cloak', 'jettisonLot', 'deployShieldPylon',
+  // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
+  // re-fire the beam the moment the pad publishes again.
+  'gyreSnare',
+  ...GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS,
+]);
+
+function freshGamepadLifecycleQuarantine({ continuous = false } = {}) {
+  // A plain object, not Object.create(null): the lifecycle suites deep-compare this map against
+  // an object literal, and the keys are a fixed internal table, never player-supplied names.
+  const q = {};
+  for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) {
+    q[action] = continuous || !GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS.includes(action);
+  }
+  return q;
+}
+
+// FB-113: hold verbs a player may opt into press-to-toggle latches for. `massline` is the
+// tether/Massline hold; reelIn/reelOut are the dedicated winch keys. Defaults are all off —
+// accessibility.holdToToggle[verb] flips one on. A latch survives until the next press edge or
+// a context change (dock, death, any screen/modal, lifecycle reset).
+export const HOLD_TO_TOGGLE_ACTIONS = Object.freeze([
+  'boost', 'brake', 'bulletTime', 'gyreSnare', 'massline', 'reelIn', 'reelOut',
+]);
+
+function holdToToggleEnabled(state) {
+  const map = state && state.settings && state.settings.accessibility
+    && state.settings.accessibility.holdToToggle;
+  return (verb) => !!(map && map[verb] === true);
+}
+
+/**
+ * FB-113: merge a physical hold with its opt-in latch. `held` is the merged physical sample this
+ * tick; `prev` tracks the previous physical sample so a fresh press edge flips the latch; `latch`
+ * owns the toggled state. A verb not enabled never latches (returns the physical value).
+ */
+function applyHoldToggle(latches, edges, verb, held, enabled) {
+  const prev = !!edges[verb];
+  edges[verb] = !!held;
+  if (!enabled) {
+    latches[verb] = false;
+    return !!held;
+  }
+  if (held && !prev) latches[verb] = !latches[verb];
+  return !!held || latches[verb] === true;
+}
+
+function resetHoldToggleLatches(latches, edges) {
+  if (latches) for (const verb of HOLD_TO_TOGGLE_ACTIONS) latches[verb] = false;
+  if (edges) for (const verb of HOLD_TO_TOGGLE_ACTIONS) edges[verb] = false;
+}
+const KEY_EDGE_CAP = 64;
+
+function flightEdgeQueue(host) {
+  return host._keyEdgeQueue || (host._keyEdgeQueue = []);
+}
+
+/**
+ * One keyboard transition in the order it was sampled. Repeat packets and a press that
+ * started under a modal, text field, or button are not flight edges. timeStamp is ignored.
+ */
+export function applyFlightKeyEvent(host, event = {}) {
+  if (!host || !host._keys) return false;
+  const code = event.code;
+  if (typeof code !== 'string' || code.length === 0) return false;
+  const keys = host._keys;
+  const pressed = event.pressed === true;
+  const blocked = event.blocked === true;
+  const swallowed = host._swallowedFlightKeys || (host._swallowedFlightKeys = Object.create(null));
+  // Repeats are not edges. A held movement key still has to mark the keyboard live, or a
+  // quiet pad steals the helm for the rest of the hold.
+  if (pressed && event.repeat === true) {
+    if (!blocked && !swallowed[code]) host._kbmActivityPending = true;
+    return false;
+  }
+  if (pressed && blocked) {
+    swallowed[code] = true;
+    keys[code] = false;
+    return false;
+  }
+  if (!pressed && swallowed[code]) {
+    delete swallowed[code];
+    keys[code] = false;
+    return false;
+  }
+  const wasDown = !!keys[code];
+  applyFlightKeyTransition(keys, transitionFlightKeyState(host.state, keys, {
+    code, pressed, blocked: false,
+  }));
+  if (!pressed && !wasDown) return false;
+  if (pressed) host._kbmActivityPending = true;
+  const action = actionForCode(host.state, code);
+  if (!SAMPLED_EDGE_ACTIONS.has(action)) return true;
+  if (!pressed && action !== 'tether') return true;
+  const queue = flightEdgeQueue(host);
+  queue.push({ code, pressed, action });
+  if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+  return true;
+}
+
+// Touch pylon presses share the bounded sampled queue with keys. A worker can drain
+// both the tap and its neutral frame before stepping; the final hold alone loses that tap.
+function discardSampledTouchPresses(host) {
+  const queue = host._keyEdgeQueue;
+  if (queue) for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].source === 'touch') queue.splice(i, 1);
+  }
+}
+
+function takeSampledPress(host, state, action) {
+  const queue = host._keyEdgeQueue;
+  if (!queue || queue.length === 0 || action === 'tether') return false;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].source === 'touch' && queue[i].sector !== state.world?.currentSectorId) queue.splice(i, 1);
+  }
+  const index = queue.findIndex((edge) => edge.pressed && edge.action === action);
+  if (index < 0) return false;
+  queue.splice(index, 1);
+  return true;
+}
+
+// Row 493: another press of this power is still waiting in the sampled queue, so the press taken
+// this update was let go before it (the queue records presses only; see _resolvePowerFire).
+function queuedPowerPress(host, power) {
+  const queue = host._keyEdgeQueue;
+  if (!queue || queue.length === 0) return false;
+  for (let i = 0; i < queue.length; i += 1) {
+    const queued = queue[i];
+    if (queued && queued.pressed && queued.action === power) return true;
+  }
+  return false;
+}
+
+function takeOldestTetherEdge(host) {
+  const queue = host._keyEdgeQueue;
+  if (!queue || queue.length === 0) return null;
+  const index = queue.findIndex((edge) => edge.action === 'tether');
+  if (index < 0) return null;
+  return queue.splice(index, 1)[0];
+}
+
+// Focus loss releases keys that are still down. Drop only the unmatched press for those
+// keys so the hold cannot latch after the window is gone. A tap that already released
+// stays queued and still reaches the next sim step.
+function dropUnreleasedHeldEdges(queue, keys) {
+  if (!queue || queue.length === 0 || !keys) return;
+  const lastPress = Object.create(null);
+  for (let i = 0; i < queue.length; i += 1) {
+    const edge = queue[i];
+    if (!edge || typeof edge.code !== 'string') continue;
+    lastPress[edge.code] = edge.pressed ? i : -1;
+  }
+  const drop = [];
+  for (const code in keys) {
+    if (!keys[code]) continue;
+    const index = lastPress[code];
+    if (index >= 0) drop.push(index);
+  }
+  if (drop.length === 0) return;
+  const skip = new Set(drop);
+  let write = 0;
+  for (let i = 0; i < queue.length; i += 1) {
+    if (skip.has(i)) continue;
+    queue[write] = queue[i];
+    write += 1;
+  }
+  queue.length = write;
+}
+
+export function isTextEntryTarget(target) {
+  if (!target || typeof target.closest !== 'function') return false;
+  return !!target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
+}
+
+export function isUiCommandTarget(target) {
+  if (!target || typeof target.closest !== 'function') return false;
+  return !!target.closest('button, [role="button"], a[href], input, textarea, select, [contenteditable="true"], [contenteditable=""], #ui-root, #screens');
+}
+
+// --- sim-lane overrides ------------------------------------------------------
+// When the whole sim runs in a worker (simLane=worker), DOM facts the reducer
+// needs — viewport size and the modal-body latch — cannot be read there. The
+// main lane ships them in as lane overrides; `null` keeps the DOM read for the
+// main lane. The fold arrives over the command channel before any tick applies
+// it, so both lanes reduce identical inputs.
+let _laneViewport = null;      // {width, height} — replaces innerWidth/innerHeight
+let _laneModalActive = null;   // boolean — replaces the document.body class read
+
+export function setLaneViewport(width, height) {
+  _laneViewport = Number.isFinite(width) && Number.isFinite(height)
+    ? { width, height }
+    : null;
+}
+
+export function setLaneModalActive(active) {
+  _laneModalActive = active === null || active === undefined ? null : active === true;
+}
+
+export function modalInputActive() {
+  if (_laneModalActive !== null) return _laneModalActive;
+  const body = typeof document !== 'undefined' ? document.body : null;
+  if (!body || !body.classList || typeof body.classList.contains !== 'function') return false;
+  // Pausing modals AND live overlays both own the keyboard: a screen over a running sim must not
+  // double as flight input (FRONTEND_DIRECTION §3.5 un-blinds the player, it does not hand the
+  // stick back while a map is open).
+  return body.classList.contains('ui-modal-open') || body.classList.contains('ui-live-screen');
+}
+
+function syncPointerScreen(state, x, y) {
+  if (!state || !state.input || !Number.isFinite(x) || !Number.isFinite(y)) return;
+  const pointerScreen = state.input.pointerScreen || (state.input.pointerScreen = { x: 0, y: 0, active: false });
+  pointerScreen.x = x;
+  pointerScreen.y = y;
+  pointerScreen.active = true;
+}
+
+function viewportSize() {
+  if (_laneViewport) return { width: _laneViewport.width, height: _laneViewport.height };
+  return {
+    width: typeof innerWidth === 'number' ? Math.max(1, innerWidth) : 1,
+    height: typeof innerHeight === 'number' ? Math.max(1, innerHeight) : 1,
+  };
+}
+
+function centeredPointer() {
+  const { width, height } = viewportSize();
+  return {
+    width,
+    height,
+    cx: width * 0.5,
+    cy: height * 0.5,
+  };
+}
+
+function neutralAutoTargetVector() {
+  return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+}
+
+export function shouldNeutralizeFlightInput(state, modalActive = false) {
+  const stack = state && state.ui && state.ui.screenStack;
+  return !state || state.mode !== 'flight' || !!(stack && stack.length)
+    || modalActive === true || !!(state.input && state.input.blocked);
+}
+
+function writeAutoTargetVector(
+  inp,
+  worldX = 0,
+  worldZ = 0,
+  active = false,
+  screenX = worldX,
+  screenY = worldZ,
+  magnitudeOverride = null,
+) {
+  const vector = inp.autoTargetVector && typeof inp.autoTargetVector === 'object'
+    ? inp.autoTargetVector
+    : (inp.autoTargetVector = neutralAutoTargetVector());
+  const x = Number.isFinite(worldX) ? worldX : 0;
+  const z = Number.isFinite(worldZ) ? worldZ : 0;
+  const magnitude = active
+    ? Math.min(1, Number.isFinite(magnitudeOverride) ? magnitudeOverride : Math.hypot(x, z))
+    : 0;
+  vector.active = magnitude > 0.001;
+  vector.screenX = Number.isFinite(screenX) ? Math.max(-1, Math.min(1, screenX)) : 0;
+  vector.screenY = Number.isFinite(screenY) ? Math.max(-1, Math.min(1, screenY)) : 0;
+  vector.worldX = vector.active ? x : 0;
+  vector.worldZ = vector.active ? z : 0;
+  vector.magnitude = vector.active ? magnitude : 0;
+  return vector;
+}
+
+function resetAutoTargetPath(host, state = host && host.state) {
+  host._autoTargetGesture = emptyDrawFlightGesture();
+  if (state?.input) {
+    state.input.autoTargetPath = emptyDrawFlightPath();
+    if (state.input.drawFlight) delete state.input.drawFlight;
+  }
+}
+
+// A map, a pause, or a focus loss used to keep the G-mode knob where the pilot left it.
+// The next flight tick then republished that shove as thrust. Discard the knob and the
+// vector it already published. The mode itself stays; only a fresh packet steers again.
+function discardCombatStick(host) {
+  host._combatStickPilotRun = null;
+  const { width, height } = centeredPointer();
+  resetDynamicFlightStick(host, width, height);
+  const inp = host && host.state && host.state.input;
+  if (inp) writeAutoTargetVector(inp);
+}
+
+function stickViewport() {
+  // Pass a collapsed window through as itself. viewportSize() floors at 1px for the pointer,
+  // which would turn a minimize into a real radius and keep commanding thrust.
+  if (_laneViewport) return { width: _laneViewport.width, height: _laneViewport.height };
+  const width = typeof innerWidth === 'number' ? innerWidth : 1;
+  const height = typeof innerHeight === 'number' ? innerHeight : 1;
+  return { width, height };
+}
+
+function recordAutoTargetStick(host, movementX, movementY) {
+  const { width, height } = stickViewport();
+  return recordDynamicFlightStick(host, movementX, movementY, width, height);
+}
+
+function publishAutoTargetStick(host, inp) {
+  const { width, height } = stickViewport();
+  const vector = projectDynamicFlightStick(host, width, height);
+  return writeAutoTargetVector(
+    inp,
+    vector.worldX,
+    vector.worldZ,
+    vector.active,
+    vector.screenX,
+    vector.screenY,
+    vector.magnitude,
+  );
+}
+
+/** Deterministic ms clock from simTime (gameplay paths). N2. */
+function simClockMs(state) {
+  const t = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+  return t * 1000;
+}
+
+// Presentation-relative intent only: raw device axes and the propulsion owner stay untouched.
+function stickWorldDirection(host, state, player, axes) {
+  const out = host._stickWorld || (host._stickWorld = { x: 0, z: 0 });
+  out.x = axes.x; out.z = axes.y;
+  if (resolveSteeringView(state) !== 'racing') return out;
+  const projected = host.helpers?.screenToWorldDirection?.(axes, out);
+  if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.z)) return projected;
+  // Input-only hosts have no rendered camera; the stern convention follows the hull.
+  const yaw = Number.isFinite(player.rot) ? player.rot : 0;
+  out.x = Math.cos(yaw) * axes.y - Math.sin(yaw) * axes.x;
+  out.z = Math.sin(yaw) * axes.y + Math.cos(yaw) * axes.x;
+  return out;
+}
+
+// --- normalized DOM-event reducers -------------------------------------------
+// One DOM event, one descriptor, one reducer — shared by the real DOM adapter
+// (descriptors built from live events on the presenting lane) and the sim-lane
+// path (descriptors shipped to the sim's realm via ingestLaneDomEvent). Field
+// names are the wire contract. `uiCommand`/`offCanvas`/`neutralize` are computed
+// on the realm that owns the DOM — the sim realm replays them verbatim.
+export function domKeyEvent(host, d = {}) {
+  applyFlightKeyEvent(host, {
+    code: d.code,
+    pressed: d.pressed === true,
+    repeat: d.repeat === true,
+    blocked: d.blocked === true,
+  });
+}
+
+export function domPointerMoveEvent(host, d = {}) {
+  if (!host || !Number.isFinite(d.clientX) || !Number.isFinite(d.clientY)) return;
+  const geometry = centeredPointer();
+  if (host.state && host.state.input && host.state.input.autoFire) {
+    if (d.neutralize === true || d.uiCommand === true) return;
+    // Dynamic combat-stick input records from the mousemove stream ONLY. Browsers
+    // dispatch a compatibility mousemove for every pointermove, so accepting both
+    // would double the stick displacement whenever pointer lock is absent.
+    if (d.type === 'pointermove') return;
+    const movementX = Number.isFinite(d.movementX) ? d.movementX : 0;
+    const movementY = Number.isFinite(d.movementY) ? d.movementY : 0;
+    if (movementX === 0 && movementY === 0) return;
+    const accepted = recordAutoTargetStick(host, movementX, movementY);
+    if (accepted && !swarmPilotHasActed(host.state)
+      && !shouldNeutralizeFlightInput(host.state, modalInputActive())) {
+      // Remember the device edge, not the persistent knob or the assist's later axes.
+      // Admission waits for input sampling and must still belong to this run/wave.
+      host._combatStickPilotRun = host.state.run;
+      host._combatStickPilotWave = host.state.run.wave;
+    }
+    host._screen.x = geometry.cx;
+    host._screen.y = geometry.cy;
+    host._screen.active = true;
+    host._ndc.x = 0;
+    host._ndc.y = 0;
+  } else {
+    host._screen.x = d.clientX;
+    host._screen.y = d.clientY;
+    host._screen.active = true;
+    host._ndc.x = (host._screen.x / geometry.width) * 2 - 1;
+    host._ndc.y = -(host._screen.y / geometry.height) * 2 + 1;
+  }
+  syncPointerScreen(host.state, host._screen.x, host._screen.y);
+  // noteFlightPointer equivalent — uiCommand already computed on the DOM realm.
+  if (d.uiCommand !== true) {
+    host._kbmActivityPending = true;
+    host._pointerHelmEdge = true;
+  }
+}
+
+export function domMouseDownEvent(host, d = {}) {
+  if (!host) return;
+  domPointerMoveEvent(host, d);
+  if (d.offCanvas === true || (!host._canvas && d.uiCommand === true)) {
+    host._m0 = false; host._m1 = false; host._m2 = false;
+    host._clearM2HoldClock();
+    return;
+  }
+  if (d.button === 0) host._m0 = true;
+  if (d.button === 1) host._m1 = true;
+  if (d.button === 2) {
+    host._m2 = true; host._m2HeldS = 0; host._m2ToolLane = null; host._m2SlingTargetId = null;
+    host._clearM2HoldClock();
+    const clockTarget = host._m2TimerTarget;
+    if (host._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
+      const epoch = host._m2HoldEpoch;
+      try {
+        host._m2HoldTimer = clockTarget.setTimeout(() => {
+          if (host._initialized && host._m2 === true && host._m2HoldEpoch === epoch) {
+            host._m2HoldReady = true;
+          }
+        }, WORLD_TOOL_HOLD_S * 1000);
+      } catch (_) { host._m2HoldTimer = null; }
+    }
+  }
+  host._kbmActivityPending = true;
+}
+
+export function domMouseUpEvent(host, d = {}) {
+  if (!host) return;
+  if (d.button === 0) host._m0 = false;
+  if (d.button === 1) host._m1 = false;
+  if (d.button === 2) { host._m2 = false; host._clearM2HoldClock(); }
+}
+
+export const input = {
+  name: 'input',
+  init(ctx) {
+    if (this._initialized || this._domAdapterAttached
+      || (Array.isArray(this._domBindings) && this._domBindings.length > 0)) {
+      this.destroy();
+    }
+    this._initialized = true;
+    this._inputContext = ctx;
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this._bindInterruptControlRelease();
+    this._domBindings = [];
+    const keys = (this._keys = Object.create(null));
+    this._ndc = { x: 0, y: 0 };
+    this._laneCursorProjection = null;
+    const initViewport = _laneViewport || null;
+    const viewportW = initViewport ? initViewport.width
+      : (typeof innerWidth === 'number' ? innerWidth : 0);
+    const viewportH = initViewport ? initViewport.height
+      : (typeof innerHeight === 'number' ? innerHeight : 0);
+    this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
+    resetAutoTargetPath(this, this.state);
+    resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
+    this._combatStickPilotRun = null;
+    this._m0 = false; this._m1 = false; this._m2 = false;
+    this._m2HeldS = 0;
+    this._m2ToolLane = null;
+    this._m2SlingTargetId = null;
+    this._m2HoldReady = false;
+    this._m2HoldTimer = null;
+    this._m2UsesUiClock = false;
+    this._m2TimerTarget = null;
+    this._cmHeld = false;
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
+    this._holdToggleLatches = Object.create(null);
+    this._holdToggleEdges = Object.create(null);
+    this._touchPylonQuarantined = false;
+    this._masslineGrammar = createMasslineInputGrammar();
+    // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
+    // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
+    // actual event order within a tick (not device-type priority).
+    this._lastKbmTick = -1;
+    this._lastKbmSeq = -1;
+    this._kbmActivityPending = false;
+    this._inputActivitySeq = 0;
+    this._lastInputWallMs = 0;
+    this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
+    // Worker realm (simLane=worker): no window/document, but self carries real timers —
+    // the m2 world-tool hold clock keeps its wall-duration semantics inside the sim realm.
+    if (typeof window === 'undefined' && typeof self !== 'undefined'
+        && typeof self.setTimeout === 'function' && typeof self.clearTimeout === 'function') {
+      this._m2UsesUiClock = true;
+      this._m2TimerTarget = self;
+    }
+
+    this.gamepad = createGamepad(ctx);
+    ctx.gamepad = this.gamepad;
+
+    // Touch layer (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch
+    // devices; the overlay is built lazily. Merged below alongside gamepad so gameplay is unchanged.
+    this.touch = createTouch(ctx);
+    ctx.touch = this.touch;
+    this.touch.autoDetect();
+
+    // H3: DOM adapter is browser-only. Deterministic grammar/key state initializes without window.
+    // Node hosts (lab production-manifest path) keep pure reducer state; tape driver writes keys.
+    if (typeof window === 'undefined' || !window || typeof window.addEventListener !== 'function') {
+      this._domAdapterAttached = false;
+      return;
+    }
+    this._domAdapterAttached = true;
+    this._attachDomInputAdapter(keys);
+  },
+
+  /**
+   * simLane=worker: apply one DOM-event descriptor shipped from the main lane.
+   * The descriptor is built by the same normalized functions the main adapter uses,
+   * so the reducer evolves identically on whichever realm hosts the sim.
+   */
+  ingestLaneDomEvent(d) {
+    if (!d || typeof d !== 'object') return;
+    switch (d.type) {
+      case 'keydown':
+      case 'keyup':
+        domKeyEvent(this, d);
+        break;
+      case 'cursorProjection':
+        if (Number.isFinite(d.x) && Number.isFinite(d.z)) {
+          const hit = this._laneCursorProjection || (this._laneCursorProjection = { x: 0, z: 0 });
+          hit.x = d.x; hit.z = d.z;
+        }
+        break;
+      case 'pointermove':
+      case 'mousemove':
+        domPointerMoveEvent(this, d);
+        break;
+      case 'mousedown':
+        domMouseDownEvent(this, d);
+        break;
+      case 'mouseup':
+        domMouseUpEvent(this, d);
+        break;
+      case 'blur':
+        this.releaseHeldControls('window-blur');
+        break;
+      case 'gestureCancel':
+        // worldObjectInteraction's main-side cancel call — the m2 gesture
+        // state lives on this (sim-owned) input system under the lane.
+        if (typeof this.cancelWorldObjectGesture === 'function') {
+          this.cancelWorldObjectGesture(typeof d.reason === 'string' ? d.reason : 'lane');
+        }
+        break;
+      case 'drillTick': {
+        // The drill screen's per-frame held-state — its clock is the screen's
+        // rAF, so frames ride the descriptor batch and apply in wire order.
+        const laneCtx = this._inputContext;
+        const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
+          ? laneCtx.registry.get('drill') : null;
+        if (drill && typeof drill.tickInput === 'function') drill.tickInput(d.held, d.dt, d.opts);
+        break;
+      }
+      case 'drillCall': {
+        const laneCtx = this._inputContext;
+        const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
+          ? laneCtx.registry.get('drill') : null;
+        if (!drill) break;
+        if (d.op === 'begin' && typeof drill.begin === 'function') {
+          const result = drill.begin(d.asteroidId, d.options);
+          if (result === false && d.options?.requestId != null) {
+            laneCtx.bus?.emit('drill:beginRejected', { requestId: d.options.requestId, asteroidId: d.asteroidId });
+          }
+        }
+        else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
+        else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
+        else if (d.op === 'armCharge' && typeof drill.armCharge === 'function') drill.armCharge();
+        else if (d.op === 'disarmCharge' && typeof drill.disarmCharge === 'function') drill.disarmCharge();
+        else if (d.op === 'setChargeAim' && typeof drill.setChargeAim === 'function') drill.setChargeAim(d.col, d.row);
+        else if (d.op === 'cycleChargePayload' && typeof drill.cycleChargePayload === 'function') drill.cycleChargePayload();
+        else if (d.op === 'plantCharge' && typeof drill.plantCharge === 'function') drill.plantCharge();
+        break;
+      }
+      case 'gamepadFrame':
+        if (this.gamepad && typeof this.gamepad.applyLaneFrame === 'function') {
+          this.gamepad.applyLaneFrame(d.frame);
+        }
+        if (this.state && this.state.input) {
+          this.state.input.promptDevice = d.promptDevice === 'gamepad' || d.promptDevice === 'touch'
+            ? d.promptDevice : 'kbm';
+        }
+        break;
+      case 'touchFrame': {
+        // The mobile deck runs on the main realm (DOM detector + view + model);
+        // its resolved frame lands here — the lane touch reducer applies axes,
+        // actions and cancelled-role resets into the sim-owned touch surface.
+        if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
+          const wasHeld = !!this.touch.actions?.deployShieldPylon?.held;
+          this.touch.applyLaneFrame(d.frame, this);
+          const held = !!this.touch.actions?.deployShieldPylon?.held;
+          if (d.frame?.active === false) {
+            discardSampledTouchPresses(this);
+            this._touchPylonQuarantined = false;
+          } else if (!held) {
+            this._touchPylonQuarantined = false;
+          } else if (!wasHeld && !this._touchPylonQuarantined) {
+            const queue = flightEdgeQueue(this);
+            queue.push({ action: 'deployShieldPylon', pressed: true, source: 'touch',
+              sector: this.state.world?.currentSectorId });
+            if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+          }
+        }
+        break;
+      }
+      case 'resize':
+        if (this.touch && typeof this.touch.autoDetect === 'function') this.touch.autoDetect();
+        break;
+      default:
+        break;
+    }
+  },
+
+  /**
+   * Browser-only: wire keyboard/pointer/gamepad listeners. Must not run under Node.
+   * @param {Record<string, boolean>} keys
+   */
+  _attachDomInputAdapter(keys) {
+    const windowTarget = typeof window !== 'undefined' ? window : null;
+    const bindings = (this._domBindings = []);
+    this._m2UsesUiClock = !!(windowTarget
+      && typeof windowTarget.setTimeout === 'function'
+      && typeof windowTarget.clearTimeout === 'function');
+    this._m2TimerTarget = this._m2UsesUiClock ? windowTarget : null;
+    const listen = (target, type, listener, options) => {
+      if (!target || typeof target.addEventListener !== 'function') return;
+      target.addEventListener(type, listener, options);
+      bindings.push({ target, type, listener, options });
+    };
+
+    // Re-evaluate on resize (phone rotate / tablet dock) unless the player set an explicit choice.
+    listen(windowTarget, 'resize', () => this.touch.autoDetect());
+
+    listen(windowTarget, 'keydown', (e) => {
+      domKeyEvent(this, {
+        type: 'keydown',
+        code: eventCode(e),
+        pressed: true,
+        repeat: e.repeat === true,
+        blocked: modalInputActive()
+          || isTextEntryTarget(e.target)
+          || isUiCommandTarget(e.target),
+      });
+    });
+    // Physical releases must reach the owner even when a modal consumes the event below
+    // window. Otherwise frozen menu ticks preserve a held thrust/fire command on resume.
+    listen(windowTarget, 'keyup', (e) => {
+      domKeyEvent(this, { type: 'keyup', code: eventCode(e), pressed: false });
+    }, { capture: true });
+    listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
+    const pointerSurface = this._canvas || windowTarget;
+    const pointerDescriptor = (e) => ({
+      type: e.type,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      movementX: e.movementX,
+      movementY: e.movementY,
+      uiCommand: isUiCommandTarget(e.target),
+      neutralize: shouldNeutralizeFlightInput(this.state, modalInputActive()),
+    });
+    const handlePointerMove = (e) => domPointerMoveEvent(this, pointerDescriptor(e));
+    // Capture pointer truth before overlays can consume the event. Electron focus/activation can
+    // otherwise leave the software cursor at its fallback center until a later unhandled move.
+    listen(windowTarget, 'mousemove', handlePointerMove, { capture: true });
+    listen(windowTarget, 'pointermove', handlePointerMove, { capture: true });
+    listen(pointerSurface, 'mousedown', (e) => {
+      const d = pointerDescriptor(e);
+      d.type = 'mousedown';
+      d.offCanvas = !!(this._canvas && e.target !== this._canvas);
+      d.button = e.button;
+      domMouseDownEvent(this, d);
+      if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault(); // no autoscroll cursor
+    });
+    listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }), { capture: true });
+    listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
+    const pointerLockTarget = typeof document !== 'undefined' ? document : null;
+    listen(pointerLockTarget, 'pointerlockchange', () => {
+      if (!pointerLockTarget || !pointerLockTarget.pointerLockElement) {
+        this.releaseHeldControls('pointerlock-released');
+      }
+    });
+    listen(pointerSurface, 'contextmenu', (e) => e.preventDefault());
+  },
+
+  destroy() {
+    this._releaseInterruptControlSubs();
+    const bindings = this._domBindings;
+    if (Array.isArray(bindings)) {
+      for (const { target, type, listener, options } of bindings) {
+        try {
+          target.removeEventListener(type, listener, options);
+        } catch (_) {
+          // A host may remove its DOM surface before registry teardown; remaining bindings still
+          // need to be forgotten so a later init cannot retain stale callbacks.
+        }
+      }
+      bindings.length = 0;
+    }
+
+    this.releaseHeldControls('destroy');
+    // A tap already released before teardown is preserved by the lifecycle release path so a
+    // focus blur cannot eat an input between fixed ticks. Destroy has no old-owner tick left to
+    // consume it, so never carry that pending edge into a later init of this input instance.
+    if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
+    this._m2UsesUiClock = false;
+    this._m2TimerTarget = null;
+    const touch = this.touch;
+    if (touch && typeof touch.setEnabled === 'function') {
+      try { touch.setEnabled(false); } catch (_) {}
+    }
+
+    const context = this._inputContext;
+    if (context && context.gamepad === this.gamepad) context.gamepad = null;
+    if (context && context.touch === this.touch) context.touch = null;
+    this._domAdapterAttached = false;
+    this._initialized = false;
+    this._inputContext = null;
+    this.state = null;
+    this.bus = null;
+    this.helpers = null;
+    this.gamepad = null;
+    this.touch = null;
+    this._canvas = null;
+  },
+
+  cancelWorldObjectGesture(reason = 'lifecycle') {
+    const inp = this.state && this.state.input;
+    const hadField = !!(inp && Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId'));
+    if ((this._m2 === true || hadField) && this.bus && typeof this.bus.emit === 'function') {
+      try { this.bus.emit('input:worldGestureCancelled', { reason }); } catch (_) {}
+    }
+    this._m2 = false;
+    this._m2HeldS = 0;
+    this._m2ToolLane = null;
+    this._m2SlingTargetId = null;
+    this._clearM2HoldClock();
+    if (hadField) delete inp.worldObjectTargetId;
+  },
+
+  _clearM2HoldClock() {
+    const target = this._m2TimerTarget;
+    if (this._m2HoldTimer != null && target && typeof target.clearTimeout === 'function') {
+      try { target.clearTimeout(this._m2HoldTimer); } catch (_) {}
+    }
+    this._m2HoldTimer = null;
+    this._m2HoldReady = false;
+    this._m2HoldEpoch = (this._m2HoldEpoch || 0) + 1;
+  },
+
+  _sampleMouseToolLane(state, inp) {
+    if (!inp || !Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId')) return 'legacy';
+    const lane = initialMouseToolLane(state, inp.worldObjectTargetId);
+    if (lane === 'sling') {
+      const tether = state.player && state.player.tether;
+      this._m2SlingTargetId = tether && tether.targetId != null ? tether.targetId : null;
+    }
+    return lane;
+  },
+
+  // Death and the recovery berth are not key-ups. A boost, thrust, or throw held across the
+  // wreck screen must not still be down when the hull is alive again. Focus loss already
+  // comes through releaseHeldControls('window-blur').
+  _bindInterruptControlRelease() {
+    this._releaseInterruptControlSubs();
+    const bus = this.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    const offs = [];
+    const onDeath = () => {
+      if (this._initialized) this.releaseHeldControls('player-death');
+    };
+    const onRespawn = () => {
+      if (this._initialized) this.releaseHeldControls('player-respawn');
+    };
+    const offDeath = bus.on('player:death', onDeath);
+    const offRespawn = bus.on('player:respawn', onRespawn);
+    const offMode = bus.on('mode:changed', () => { this._combatStickPilotRun = null; });
+    if (typeof offDeath === 'function') offs.push(offDeath);
+    if (typeof offRespawn === 'function') offs.push(offRespawn);
+    if (typeof offMode === 'function') offs.push(offMode);
+    this._interruptControlOffs = offs;
+  },
+
+  _releaseInterruptControlSubs() {
+    const offs = this._interruptControlOffs;
+    this._interruptControlOffs = null;
+    if (!offs) return;
+    for (const off of offs) {
+      try { off(); } catch (_) { /* teardown must not strand the next init */ }
+    }
+  },
+
+  // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.
+  // Pointer activity is also cleared from committed input so it cannot revive without a new event;
+  // other committed commands remain intact for the coherent restore snapshot.
+  releaseHeldControls(_reason = 'lifecycle') {
+    const keys = this._keys;
+    dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
+    discardSampledTouchPresses(this);
+    // Only a real neutral touch descriptor re-arms the worker deck after interruption.
+    this._touchPylonQuarantined ||= !!this.touch?.actions?.deployShieldPylon?.held;
+    // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
+    this._cancelPowerHolds(this.state);
+    if (this._swallowedFlightKeys) this._swallowedFlightKeys = Object.create(null);
+    if (keys) {
+      for (const code in keys) keys[code] = false;
+    }
+    this.cancelWorldObjectGesture(_reason);
+    this._m0 = false;
+    this._m1 = false;
+    this._m2 = false;
+    this._m2HeldS = 0;
+    this._m2ToolLane = null;
+    this._m2SlingTargetId = null;
+    if (this._screen) this._screen.active = false;
+    const committedInput = this.state && this.state.input;
+    if (committedInput?.autoFire || committedInput?.drawFlight) resetAutoTargetPath(this);
+    if (committedInput && committedInput.pointerScreen) {
+      committedInput.pointerScreen.active = false;
+    }
+    if (committedInput) {
+      committedInput.moveX = 0;
+      committedInput.moveZ = 0;
+      committedInput.turnIntent = 0;
+      committedInput.fire = false;
+      committedInput.boost = false;
+      committedInput.brake = false;
+    }
+    // Focus loss, death, and a hidden page. The knob is not a key, so clearing the
+    // buttons used to leave the shove in place for the tick flight resumed.
+    discardCombatStick(this);
+    if (committedInput
+      && Object.prototype.hasOwnProperty.call(committedInput, 'aimIntentActive')) {
+      committedInput.aimIntentActive = false;
+    }
+    this._kbmActivityPending = false;
+    this._travelEdge = false;
+    this._cmHeld = false;
+    // Keyboard transitions remain event-owned after restore. Only polled gamepad actions need a
+    // connected neutral sample before a hold can become authoritative again.
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine({ continuous: true });
+    resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
+    if (this._edgePrev) {
+      for (const action in this._edgePrev) this._edgePrev[action] = false;
+    }
+    const grammar = this._masslineGrammar;
+    const actions = committedInput && committedInput.actions;
+    if (grammar && actions && actions.massline === grammar.command
+      && typeof grammar.snapshot === 'function') {
+      actions.massline = grammar.snapshot();
+    }
+    if (grammar && typeof grammar.reset === 'function') grammar.reset();
+    if (this.gamepad && typeof this.gamepad._resetState === 'function') {
+      this.gamepad._resetState();
+    }
+    const touch = this.touch;
+    if (touch) {
+      touch.axes.leftX = 0;
+      touch.axes.leftY = 0;
+      touch.axes.rightX = 0;
+      touch.axes.rightY = 0;
+      touch._sticks = {};
+      touch._btnHeld = {};
+      touch._btnPulse = {};
+      touch._activityPending = false;
+      for (const action in touch.actions) {
+        touch.actions[action] = { held: false, pressed: false, released: false, value: 0 };
+      }
+      if (touch._overlay && typeof touch._overlay.querySelectorAll === 'function') {
+        for (const button of touch._overlay.querySelectorAll('.sf-touch-btn.held')) {
+          button.classList.remove('held');
+        }
+        for (const knob of touch._overlay.querySelectorAll('.sf-touch-knob')) {
+          knob.style.transform = '';
+        }
+      }
+    }
+  },
+
+  _refreshGamepadLifecycleQuarantine(gamepad) {
+    const quarantine = this._gamepadLifecycleQuarantine;
+    if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
+      || !gamepad.isConnected()) return;
+    for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) {
+      if (action === 'leftStick' || action === 'rightStick') continue;
+      const sample = gamepad.actions && gamepad.actions[action];
+      if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
+    }
+    const axes = gamepad.axes;
+    const axisNeutral = (value) => Number.isFinite(value) && Math.abs(value) <= 0.001;
+    if (quarantine.leftStick && axes
+      && axisNeutral(axes.leftX) && axisNeutral(axes.leftY)) {
+      quarantine.leftStick = false;
+    }
+    if (quarantine.rightStick && axes
+      && axisNeutral(axes.rightX) && axisNeutral(axes.rightY)) {
+      quarantine.rightStick = false;
+    }
+  },
+
+  _quarantineContinuousGamepadControls() {
+    const quarantine = this._gamepadLifecycleQuarantine;
+    if (!quarantine) return;
+    for (const action of GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS) quarantine[action] = true;
+  },
+
+  _gamepadLifecycleActionAllowed(action) {
+    const quarantine = this._gamepadLifecycleQuarantine;
+    return !quarantine || quarantine[action] !== true;
+  },
+
+  // Row 493 — which powers fire this update (see the call site). Grips live here, input-owned and
+  // never on state; the preview reads the newest live grip through powerVerbs.heldPower(state).
+  _resolvePowerFire(state, gp, presses) {
+    const fire = this._powerFire || (this._powerFire = { pull: false, shove: false, pin: false, bomb: false, rig: false });
+    const holds = this._powerHolds || (this._powerHolds = Object.create(null));
+    const instant = powersFireOnPress(state);
+    const sector = state.world ? state.world.currentSectorId : null;
+    let newest = null;
+    let newestPower = null;
+    for (const power of POWER_VERBS) {
+      fire[power] = false;
+      const press = presses[power] === true;
+      const keyHeld = this._held(state, power);
+      const padHeld = this._padHeld(gp, power);
+      const held = keyHeld || padHeld;
+      let hold = holds[power];
+      // The context moved under the grip — a new sector, a pad grip fenced on resume (its fenced button
+      // reads as not held), or a pad that vanished with the button down (no release will ever come, and
+      // the pilot did not let go). Cancel; the eventual release must not fire.
+      if (hold && (hold.sector !== sector
+        || (hold.pad && !keyHeld && (!this._gamepadLifecycleActionAllowed(power) || !(gp && gp.isConnected()))))) {
+        delete holds[power];
+        hold = null;
+      }
+      if (instant) { fire[power] = press; delete holds[power]; continue; }
+      // The sampled queue (applyFlightKeyEvent) keeps presses, not releases, and a catch-up runs
+      // several updates against the final key state. So a key press that lands on an open grip,
+      // or that has another press of the same power still queued behind it, was let go before
+      // that next press: one press then counts as one use however the updates were spaced
+      // (NXB-003). Pad edges are read fresh each update, so a repeated pad edge is the same press.
+      const keyPress = press && !this._padEdge(gp, power);
+      let pressNow = press;
+      if (pressNow && hold) {
+        if (!keyPress) {
+          pressNow = false;
+        } else {
+          fire[power] = true; // the open grip was released in between: use it
+          this._powerGripSeq = (this._powerGripSeq || 0) + 1;
+          hold = holds[power] = { since: state.simTime, sector, pad: false, order: this._powerGripSeq };
+          if (held && !queuedPowerPress(this, power) && (!newest || hold.order > newest.order)) {
+            newest = hold;
+            newestPower = power;
+          }
+          continue;
+        }
+      }
+      // A whole tap between updates (or a press already let go behind a queued one) fires now.
+      if (pressNow && !hold && (!held || (keyPress && queuedPowerPress(this, power)))) { fire[power] = true; continue; }
+      if (pressNow && !hold) {
+        this._powerGripSeq = (this._powerGripSeq || 0) + 1;
+        hold = holds[power] = { since: state.simTime, sector, pad: padHeld && !keyHeld, order: this._powerGripSeq };
+      }
+      if (hold && !held) { fire[power] = true; delete holds[power]; continue; } // let go: use it
+      if (hold) {
+        if (padHeld && !keyHeld) hold.pad = true;
+        if (!newest || hold.order > newest.order) { newest = hold; newestPower = power; }
+      }
+    }
+    setHeldPower(state, newestPower);
+    return fire;
+  },
+
+  /** Drop every power grip without firing it (screen, focus loss, death, dock). */
+  _cancelPowerHolds(state) {
+    const holds = this._powerHolds;
+    if (holds) for (const power in holds) delete holds[power];
+    if (state) setHeldPower(state, null);
+  },
+
+  /** Quarantine-gated pad action edge — FB-003 chord verbs merge through the same seam as stock. */
+  _padEdge(gp, action) {
+    return !!(gp && gp.isConnected() && contextActionAllowed(this.state, action)
+      && this._gamepadLifecycleActionAllowed(action)
+      && gp.actions[action] && gp.actions[action].pressed);
+  },
+
+  /** Quarantine-gated pad action hold — same seam for level verbs (bulletTime, siteBeam). */
+  _padHeld(gp, action) {
+    return !!(gp && gp.isConnected() && contextActionAllowed(this.state, action)
+      && this._gamepadLifecycleActionAllowed(action)
+      && gp.actions[action] && gp.actions[action].held);
+  },
+
+  _updateCountermeasureHold(held, inp) {
+    const active = !!held;
+    if (active) {
+      if (!this._cmHeld) inp.deployCountermeasure = true;
+      this._cmHeld = true;
+      return;
+    }
+    this._cmHeld = false;
+  },
+
+  // True if any of the bound codes for `action` is currently held. The CONTEXT gate lives here
+  // (the tick), never in `binding()` — see the label comment on `binding`.
+  _held(state, action) {
+    if (!contextActionAllowed(state, action)) return false;
+    const k = this._keys;
+    for (const code of binding(state, action)) if (k[code]) return true;
+    return false;
+  },
+
+  _heldExcept(state, action, exceptCode) {
+    if (!contextActionAllowed(state, action)) return false;
+    const k = this._keys;
+    for (const code of binding(state, action)) if (code !== exceptCode && k[code]) return true;
+    return false;
+  },
+
+  /**
+   * G9: bump the shared activity sequence and return the new stamp for this device event.
+   * Sequence is process-global on the input host so keyboard/gamepad/touch share order.
+   */
+  _bumpActivityStamp(state) {
+    const tick = state && Number.isFinite(state.tick) ? (state.tick | 0) : 0;
+    this._inputActivitySeq = (this._inputActivitySeq | 0) + 1;
+    if (state && state.input) state.input._activitySeq = this._inputActivitySeq;
+    // P7 input-to-photon telemetry: the wall stamp is measurement-only. It lives on the
+    // system instance and travels to the runner through publishInputCommand's stamp arg —
+    // never inside state.input, which is serialized and hashed (a wall-clock field would
+    // break save/load hash continuity). Device arbitration stays on the deterministic
+    // (tick, seq) pair, and no gameplay path may read this stamp.
+    this._lastInputWallMs = (typeof performance !== 'undefined'
+      && typeof performance.now === 'function') ? performance.now() : 0;
+    return { tick, seq: this._inputActivitySeq };
+  },
+
+  // P7: the stamp the simulation runner copies onto the completed-tick record so the
+  // presentation side can measure input-command -> first-presented-frame latency.
+  inputActivityStamp() {
+    return { seq: this._inputActivitySeq | 0, wallMs: this._lastInputWallMs || 0 };
+  },
+
+  update(dt, state) {
+    const combatStickPilotRun = this._combatStickPilotRun;
+    const combatStickPilotWave = this._combatStickPilotWave;
+    this._combatStickPilotRun = null;
+    // F4/G9: stamp kbm activity with (tick, sequence) when DOM events fired this interval.
+    if (this._kbmActivityPending) {
+      const stamp = this._bumpActivityStamp(state);
+      this._lastKbmTick = stamp.tick;
+      this._lastKbmSeq = stamp.seq;
+      this._kbmActivityPending = false;
+    }
+    const gp = this.gamepad;
+    if (gp) {
+      gp.tick(dt, state, this);
+      if (gp._laneFrame) state.input.gamepadHaptics = gp.haptics;
+      this._refreshGamepadLifecycleQuarantine(gp);
+    }
+    const tp = this.touch;
+    if (tp) tp.tick(dt, state, this);
+
+    const inp = state.input;
+    // Transient, input-owned provenance for consumers that need to distinguish deliberate
+    // precision aim from continuously derived/stale aimWorld coordinates. Stamp every tick so
+    // neutral input and modal/non-flight early returns cannot retain authority.
+    inp.aimIntentActive = false;
+    const autoTargetPointer = !!inp.autoFire;
+    if (autoTargetPointer !== !!this._autoTargetPointerMode) {
+      this._autoTargetPointerMode = autoTargetPointer;
+      const geometry = centeredPointer();
+      this._screen.x = geometry.cx;
+      this._screen.y = geometry.cy;
+      this._screen.active = autoTargetPointer;
+      this._ndc.x = 0;
+      this._ndc.y = 0;
+      resetAutoTargetPath(this, state);
+      const geometryForStick = centeredPointer();
+      resetDynamicFlightStick(this, geometryForStick.width, geometryForStick.height);
+      syncPointerScreen(state, this._screen.x, this._screen.y);
+      inp.pointerScreen.active = autoTargetPointer;
+      writeAutoTargetVector(inp);
+    }
+    // The LOCKED input contract (BUILD_PLAN_2_0 §0): consumer systems read these each tick.
+    const acts = inp.actions || (inp.actions = {
+      brake: false, cruise: false, tetherFire: false, tetherCut: false, reelDelta: 0, autoTargetToggle: false,
+      chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
+      bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
+      deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
+      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
+      jettisonLotAll: false, gyreSnare: false, deployShieldPylon: false,
+      // The five powers' read surface ({ held, pressed } once sampled; null = untouched).
+      pull: null, shove: null, pin: null, bomb: null, rig: null,
+    });
+    const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
+    const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
+    if (flightInputNeutralized) {
+      // Keep ordinary pad holds fenced for the whole non-flight interval. This covers direct
+      // mode/modal transitions as well as the presentation runner's blur release, and leaves the
+      // raw gamepad actions/axes untouched for UI ownership and reconnect detection.
+      this._quarantineContinuousGamepadControls();
+      this._screen.active = false;
+      if (inp.pointerScreen) inp.pointerScreen.active = false;
+      // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
+      inp.moveX = 0; inp.moveZ = 0; inp.turnIntent = 0;
+      inp.fire = false; inp.boost = false; inp.brake = false; inp.fireGroup = null;
+      acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
+      acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
+      acts.deployBeacon = false;
+      acts.deployShieldPylon = false;
+      if (tp?.actions?.deployShieldPylon?.held) this._touchPylonQuarantined = true;
+      acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
+      acts.siteBeam = false; acts.aimedMine = false;
+      acts.autoTargetToggle = false;
+      acts.deployMassSeed = false;
+      acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
+      acts.toggleSkimCollector = false;
+      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false; acts.jettisonLotAll = false;
+      // A screen, dock or death over a power grip cancels it: the key-up afterwards fires nothing.
+      this._cancelPowerHolds(state);
+      // The power read slots neutralize with the rest of the contract — a key still physically
+      // held through the modal must not keep a stale {held:true} on the other side.
+      acts.pull = acts.shove = acts.pin = acts.bomb = acts.rig = null;
+      // The gyre verb rides the same modal-preservation contract as massline: a screen
+      // opening must NOT synthesize a falling edge — zeroing it here would bowl the clump
+      // out from under a held key (and re-fire the beam on close). The lash stays held
+      // through the overlay exactly like the tether does.
+      const gyreHeldThroughModal = this._held(state, 'gyreSnare')
+        || !!(gp && gp.isConnected() && gp.actions.gyreSnare && gp.actions.gyreSnare.held);
+      acts.gyreSnare = gyreHeldThroughModal;
+      const masslineHeldThroughModal = this._held(state, 'tether')
+        || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
+      acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
+      inp.tetherMode = null;
+      resetAutoTargetPath(this, state);
+      discardCombatStick(this);
+      this.cancelWorldObjectGesture('neutralize');
+      this._m0 = false; this._m1 = false; this._m2 = false;
+      this._edgePrev = this._edgePrev || {};
+      // A tap sampled in the same gap the screen opened must not wait in the queue and fire
+      // on the way out. A key that stays down is already held, so it is not a new press later.
+      if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
+      for (const action of SAMPLED_EDGE_ACTIONS) {
+        if (action === 'tether') continue;
+        this._edgePrev[action] = this._held(state, action);
+      }
+      // Docking or opening a menu drops the travel drive, exactly like pursuit: you cannot be
+      // hand-flying a burn from a station screen. Reset outright rather than into cooldown — the
+      // pilot did not break the latch, the game mode changed underneath it.
+      this._travelEdge = false;
+      if (this._travel) this._travel = neutralTravelDrive();
+      if (inp.travelDrive) inp.travelDrive = this._travel || undefined;
+      // FB-113: a hold-to-toggle latch is a flight context, not a player preference — leaving
+      // flight (dock, death, any screen or modal) drops every latch outright. The pilot did not
+      // release it; the context did.
+      resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
+      // A key still physically held through the context change is held, not a fresh press —
+      // the same convention _edgePrev follows two lines up. Pin the toggle edges to the live
+      // physical sample so a held-through-dock key cannot re-latch itself on the way back.
+      const htEdges = this._holdToggleEdges;
+      if (htEdges) {
+        const padHeld = (action) => !!(gp && gp.isConnected()
+          && gp.actions && gp.actions[action] && gp.actions[action].held);
+        const tpHeld = (action) => !!(tp && tp.actions && tp.actions[action] && tp.actions[action].held);
+        htEdges.boost = this._held(state, 'boost') || padHeld('boost') || tpHeld('boost');
+        htEdges.brake = this._held(state, 'brake') || this._held(state, 'reverse')
+          || padHeld('brake') || tpHeld('brake');
+        htEdges.bulletTime = this._held(state, 'bulletTime') || padHeld('bulletTime');
+        htEdges.gyreSnare = gyreHeldThroughModal;
+        htEdges.massline = masslineHeldThroughModal;
+        htEdges.reelIn = this._held(state, 'reelIn');
+        htEdges.reelOut = this._held(state, 'reelOut');
+      }
+      return;
+    }
+
+    // --- direction: yaw the nose + throttle forward/reverse along the nose (rebindable) ---
+    const scheme = activeScheme(state);
+    const helm = scheme === 'helm-assist';
+    const pilot = scheme === 'pilot';
+    const up = this._held(state, 'forward');
+    const down = this._held(state, 'reverse');
+    const kbdBrakeHeld = this._held(state, 'brake');
+    const kbdBoostHeld = this._held(state, 'boost');
+    let kbdTurn = 0;
+    let kbdMoveX = 0;
+    let kbdLineOrbit = 0;
+    let pilotProjection = null;
+    if (pilot) {
+      // PILOT: A/D always yaws the nose, whether coasting, thrusting, or braking.
+      // Q/E is the only strafe. W+A/D must not strafe — that parked the hull off its trail
+      // for as long as the key was held.
+      const pilotProjectionInput = this._pilotProjectionInput
+        || (this._pilotProjectionInput = {});
+      pilotProjectionInput.forward = up;
+      pilotProjectionInput.reverse = down;
+      pilotProjectionInput.brakeHeld = kbdBrakeHeld;
+      pilotProjectionInput.yawLeft = this._held(state, 'yawLeft');
+      pilotProjectionInput.yawRight = this._held(state, 'yawRight');
+      pilotProjectionInput.strafeLeft = this._held(state, 'strafeLeft');
+      pilotProjectionInput.strafeRight = this._held(state, 'strafeRight');
+      pilotProjectionInput.boost = kbdBoostHeld;
+      pilotProjection = projectPilotFlightControls(
+        pilotProjectionInput,
+        this._pilotProjection || (this._pilotProjection = {}),
+      );
+      kbdLineOrbit = pilotProjection.lineOrbit;
+      kbdMoveX = pilotProjection.moveX;
+      kbdTurn = pilotProjection.turnIntent;
+    } else {
+      const arrowLeftHeld = !!this._keys.ArrowLeft;
+      const arrowRightHeld = !!this._keys.ArrowRight;
+      const arrowYaw = !up && (arrowLeftHeld || arrowRightHeld);
+      const arrowStrafe = up;
+      const right = helm
+        ? (arrowYaw && arrowRightHeld)
+        : (this._heldExcept(state, 'yawRight', 'ArrowRight') || (arrowYaw && arrowRightHeld));
+      const left = helm
+        ? (arrowYaw && arrowLeftHeld)
+        : (this._heldExcept(state, 'yawLeft', 'ArrowLeft') || (arrowYaw && arrowLeftHeld));
+      const strafeRight = helm
+        ? (this._heldExcept(state, 'strafeRight', 'ArrowRight') || (arrowStrafe && arrowRightHeld))
+        : (this._held(state, 'strafeRight') || (arrowStrafe && arrowRightHeld));
+      const strafeLeft = helm
+        ? (this._heldExcept(state, 'strafeLeft', 'ArrowLeft') || (arrowStrafe && arrowLeftHeld))
+        : (this._held(state, 'strafeLeft') || (arrowStrafe && arrowLeftHeld));
+      const arrowTurn = arrowYaw
+        ? ((arrowRightHeld ? 1 : 0) - (arrowLeftHeld ? 1 : 0))
+        : 0;
+      kbdTurn = arrowTurn || ((right ? 1 : 0) - (left ? 1 : 0));
+      kbdLineOrbit = kbdTurn;
+      kbdMoveX = (strafeRight ? 1 : 0) - (strafeLeft ? 1 : 0);
+    }
+    let kbdMoveZ = pilotProjection
+      ? pilotProjection.moveZ
+      : (up ? 1 : 0) - (down ? 1 : 0);
+    let kbdBoost = pilotProjection ? pilotProjection.boost : kbdBoostHeld;
+    const kbdFire = this._m0 || this._held(state, 'fire');
+
+    // --- gamepad merge (drive: left stick = yaw/throttle; twinstick: left = world-frame
+    //     drive vector; right stick = aim, RT/LT/RB fire/mine/boost) ---
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    // PQ-164.04: pad flight scheme is its own axis — 'drive' keeps the wheel map;
+    // 'twinstick' turns the left stick into a screen-frame drive vector while the right
+    // stick aims and steers the nose (the chase runs below once aimAngle exists).
+    const padCfg = (state.settings && state.settings.controls && state.settings.controls.gamepad) || {};
+    const padScheme = padCfg.scheme === 'twinstick' ? 'twinstick' : 'drive';
+    // FB-004: response shaping applies to derived intents only — gp.axes keep the raw deadzoned
+    // truth. 'linear' with sensitivity 1 reproduces the shipped numbers exactly.
+    const padCurve = normalizePadCurve(padCfg.curve);
+    const padSensFly = normalizePadSensitivity(padCfg.sensitivityFly);
+    const padSensAim = normalizePadSensitivity(padCfg.sensitivityAim);
+    let gpTurn = 0;
+    let gpMoveX = 0;
+    let gpMoveZ = 0;
+    let gpBoost = false;
+    let gpFire = false;
+    let gpMine = false;
+    let gpBrake = false;
+    let gpCountermeasure = false;
+    let gpAimActive = false;
+    if (gp && gp.isConnected()) {
+      const leftStickAllowed = this._gamepadLifecycleActionAllowed('leftStick');
+      const rightStickAllowed = this._gamepadLifecycleActionAllowed('rightStick');
+      if (leftStickAllowed && padScheme === 'twinstick' && p && p.pos) {
+        // The stick points where the ship pushes on screen — decomposed into the hull's
+        // forward/strafe axes the same way helm-assist decomposes a brake vector. The curve
+        // reshapes the magnitude so the pushed direction survives untouched.
+        const fly = shapePadVector(gp.axes.leftX, -gp.axes.leftY, padCurve, padSensFly);
+        const world = stickWorldDirection(this, state, p, fly);
+        const wx = world.x;
+        const wz = world.z;
+        const cf = Math.cos(p.rot || 0);
+        const sf = Math.sin(p.rot || 0);
+        gpMoveZ = wx * cf + wz * sf;
+        gpMoveX = wx * -sf + wz * cf;
+      } else if (leftStickAllowed) {
+        gpTurn = shapePadAxis(gp.axes.leftX, padCurve, padSensFly);
+        gpMoveZ = shapePadAxis(-gp.axes.leftY, padCurve, padSensFly); // stick up = forward
+      }
+      gpBoost = this._gamepadLifecycleActionAllowed('boost')
+        && gp.actions.boost && gp.actions.boost.held;
+      gpFire = this._gamepadLifecycleActionAllowed('fire')
+        && gp.actions.fire && gp.actions.fire.held;
+      gpMine = this._gamepadLifecycleActionAllowed('mine')
+        && gp.actions.mine && gp.actions.mine.held;
+      gpBrake = this._gamepadLifecycleActionAllowed('brake')
+        && gp.actions.brake && gp.actions.brake.held;
+      gpCountermeasure = this._gamepadLifecycleActionAllowed('countermeasure')
+        && gp.actions.countermeasure && gp.actions.countermeasure.held;
+      gpAimActive = rightStickAllowed
+        && (Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001);
+    }
+
+    // --- touch merge (P1-12): virtual dual-stick. Left stick = yaw/throttle (same as gamepad),
+    //     right stick = aim, on-screen buttons = fire/mine/boost. Touch writes movement only
+    //     while it owns the helm. An idle contact does not take it. ---
+    let tpTurn = 0, tpMoveZ = 0, tpMoveX = 0;
+    let tpBoost = false, tpFire = false, tpMine = false;
+    let tpAimActive = false;
+    const touchActive = !!(tp && tp.isConnected());
+    if (touchActive) {
+      tpTurn = tp.axes.leftX;
+      tpMoveZ = -tp.axes.leftY;
+      tpBoost = tp.actions.boost && tp.actions.boost.held;
+      tpFire = tp.actions.fire && tp.actions.fire.held;
+      tpMine = tp.actions.mine && tp.actions.mine.held;
+      tpAimActive = Math.abs(tp.axes.rightX) > 0.001 || Math.abs(tp.axes.rightY) > 0.001;
+    }
+
+    // F4/G9: last-active (tick, sequence) wins for aim — no device-type priority on ties.
+    // Never compare performance.now()/Date.now() — wall-clock is non-deterministic.
+    const gpTick = gp && Number.isFinite(gp.lastActiveTick) ? gp.lastActiveTick : -1;
+    const gpSeq = gp && Number.isFinite(gp.lastActiveSeq) ? gp.lastActiveSeq : -1;
+    const tpTick = tp && Number.isFinite(tp.lastActiveTick) ? tp.lastActiveTick : -1;
+    const tpSeq = tp && Number.isFinite(tp.lastActiveSeq) ? tp.lastActiveSeq : -1;
+    const kbmRecent = activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, gpTick, gpSeq)
+      && activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, tpTick, tpSeq);
+
+    // Even opposing keys claim keyboard control: cancelling all four means STOP, not
+    // fall back to a previously active joystick whose last sample is still nonzero.
+    const saucerKeys = isPlayerSaucer(p) && (up || down
+      || this._held(state, 'yawLeft') || this._held(state, 'yawRight')
+      || this._held(state, 'strafeLeft') || this._held(state, 'strafeRight'));
+    const kbdDrive = !!(saucerKeys || kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
+    const pointerOwnsHelm = !!(helm && kbmRecent && this._screen && this._screen.active);
+    const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);
+    this._pointerHelmEdge = false;
+    resolveMovementOwner(this, { kbdDrive, gp, tp, pointerHelmEdge, pointerOwnsHelm });
+    let keyboardBrake = !!kbdBrakeHeld;
+    // Ownership gates the drive vector only (turn/move axes). Boost and brake are modifiers,
+    // not drive authority — like fire and mine they merge from whichever device holds them,
+    // owner or not. Gating them by owner made a boot-claimed pad's boost unreachable whenever
+    // a stale source (e.g. keyboard) was latched.
+    if (this._movementSource === 'gamepad' || this._movementSource === 'touch') {
+      kbdTurn = 0; kbdMoveX = 0; kbdMoveZ = 0;
+      kbdLineOrbit = 0;
+    }
+    if (this._movementSource !== 'gamepad') {
+      gpTurn = 0; gpMoveX = 0; gpMoveZ = 0;
+    }
+    if (this._movementSource !== 'touch') {
+      tpTurn = 0; tpMoveZ = 0; tpMoveX = 0;
+    }
+
+    inp.turnIntent = kbdTurn || gpTurn || tpTurn;
+    inp.turnIntentFromAim = false;
+    inp.moveX = kbdMoveX || gpMoveX || tpMoveX;
+    // Twin-stick keeps the authored drive vector under the brake — LB decomposes counter-
+    // velocity below rather than forcing a flat reverse, and hard stick-down is a legit
+    // drive direction, not the drive scheme's brake gesture.
+    inp.moveZ = kbdMoveZ || (gpBrake && padScheme !== 'twinstick' ? -1 : gpMoveZ) || tpMoveZ;
+    // FB-113: opt-in press-to-toggle latches for the hold verbs. The raw samples above are
+    // untouched — the latch only adds an alternative "held" after a fresh press edge, until the
+    // next press or a context change (the neutralize branch drops every latch outright).
+    const toggleFor = holdToToggleEnabled(state);
+    const holdLatches = this._holdToggleLatches || (this._holdToggleLatches = Object.create(null));
+    const holdEdges = this._holdToggleEdges || (this._holdToggleEdges = Object.create(null));
+    // FB-113: death is a context change even in the frames before the death screen mounts —
+    // a dead pilot's latch is off the table and a still-held key reads as held, never as a
+    // fresh toggle edge. applyHoldToggle(disabled) both clears the latch and records the
+    // physical sample, which is exactly the suppression a dead ship needs.
+    const holdToggleDead = !!(state.player && state.player.alive === false);
+    const toggleLive = (verb) => toggleFor(verb) && !holdToggleDead;
+    const boostHeld = applyHoldToggle(holdLatches, holdEdges, 'boost',
+      kbdBoost || gpBoost || tpBoost, toggleLive('boost'));
+    // VERB-33: the jettison modifier reads the raw physical boost hold, never the
+    // hold-to-toggle latch — a player cruising on a toggled boost must not turn an
+    // ordinary jettison tap into a full-hold dump.
+    const boostHeldRaw = !!(kbdBoost || gpBoost || tpBoost);
+    const brakeHeld = applyHoldToggle(holdLatches, holdEdges, 'brake',
+      keyboardBrake || gpBrake, toggleLive('brake'));
+    inp.boost = boostHeld;
+    inp.brake = brakeHeld;
+    inp.fire = kbdFire || gpFire || tpFire;
+    // Explicit device input interrupts the drawn route without switching off gun targeting.
+    // Do not infer this from the auto pilot's axes one system later: those include reverse
+    // components while turning and used to silently press the player's brake.
+    if (inp.autoFire || Object.prototype.hasOwnProperty.call(inp, 'drawFlightManual')) {
+      inp.drawFlightManual = !!(inp.brake || kbdTurn || kbdMoveX || kbdMoveZ
+        || gpTurn || gpMoveZ || gpMoveX || tpTurn || tpMoveX || tpMoveZ);
+    }
+    // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
+    // (hostile ship/drone, fracture chunk, cargo mass), RMB is throwArm — mining yields and
+    // masslineThrow owns the solution/auto-cut. While latched to a mineable asteroid or wreck,
+    // RMB stays the mining beam so tether station-keeping works for extraction (the designed
+    // dance partner; see mining.activeMineableTetherTarget). Unlatched play is unchanged.
+    const selectedSite = selectedWorldSiteTarget(state);
+    const contextualSiteBeam = this._held(state, 'siteBeam') && !!selectedSite;
+    // FB-003: LB+X is the pad's dedicated site-beam channel; LT still doubles while a site is
+    // selected. Both claim the selected-site lane, never ordinary rock mining.
+    const gamepadSiteBeam = (gpMine || this._padHeld(gp, 'siteBeam')) && !!selectedSite;
+    const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
+    this._m2HeldS = this._m2 ? (this._m2HeldS || 0) + dt : 0;
+    // S5: in a live Swarm run RMB is the Line, not the world tool — the mine/sling/throw lane
+    // stays closed so every RMB hold feeds the tether grammar below instead.
+    const swarmLive = isSwarmControls(state);
+    const mouseToolHeld = !swarmLive && !!(this._m2 && (this._m2UsesUiClock
+      ? this._m2HoldReady === true
+      : this._m2HeldS >= WORLD_TOOL_HOLD_S));
+    if (!this._m2) { this._m2ToolLane = null; this._m2SlingTargetId = null; }
+    else if (this._m2ToolLane == null) this._m2ToolLane = this._sampleMouseToolLane(state, inp);
+    const mouseLane = this._m2ToolLane;
+    const anyMineHeld = !swarmLive && !!((mouseToolHeld && (mouseLane === 'beam' || mouseLane === 'legacy'))
+      || gpMine || tpMine);
+    // RMB and touch Mine are cursor-aimed even when a World Site remains selected. Only the
+    // explicit B action and gamepad LT claim the selected-site lane; preserving this provenance
+    // prevents a stale site selection from stealing ordinary rock mining.
+    const aimedMineHeld = anyMineHeld && !siteBeamHeld;
+    const mineHeld = siteBeamHeld || aimedMineHeld;
+    acts.siteBeam = siteBeamHeld;
+    acts.aimedMine = aimedMineHeld;
+    const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
+    const tether = state.player && state.player.tether;
+    const slingLaneLive = mouseLane === 'sling'
+      && !!(tether && tether.active && tether.targetId === this._m2SlingTargetId);
+    const slingHeld = mouseLane !== 'beam'
+      && (aimedMineHeld || (mouseToolHeld && !siteBeamHeld && slingLaneLive));
+    const throwArmHeld = massline2Flag('throw') && tetherLatched && slingHeld
+      && isThrowArmPayload(state);
+    inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
+
+    // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
+    // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
+    // logic + AI auto-deploy in one place.
+    this._updateCountermeasureHold(this._held(state, 'countermeasure') || gpCountermeasure, inp);
+
+    const gpOrTouchAim = gpAimActive || tpAimActive;
+    const aimAxes = tpAimActive ? tp.axes : (gpAimActive ? gp.axes : null);
+    const aimWorld = inp.aimWorld || (inp.aimWorld = { x: 0, z: 0 });
+    if (aimAxes && !kbmRecent && p && p.pos) {
+      inp.aimIntentActive = true;
+      // The aim point below is synthetic (300 wu along the stick), not a place the player
+      // pointed at; target acquisition reads this to keep stick aim on nearest-hostile picks.
+      // Minted only here so headless/mouse input objects keep their shape.
+      inp.aimFromStick = true;
+      // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
+      // FB-004: pad aim rides the shared response curve + aim sensitivity (touch keeps its own
+      // scale); the raw gp.axes stay untouched either way.
+      const aimIsPad = !!(gp && gp.isConnected() && aimAxes === gp.axes);
+      const shapedAim = aimIsPad
+        ? shapePadVector(aimAxes.rightX, -aimAxes.rightY, padCurve, padSensAim)
+        : { x: aimAxes.rightX, y: -aimAxes.rightY };
+      const ax = shapedAim.x;
+      const ay = shapedAim.y; // positive is screen-up; overhead keeps its legacy +Z mapping
+      const world = stickWorldDirection(this, state, p, shapedAim);
+      const worldX = world.x, worldZ = world.z;
+      const angle = Math.atan2(worldZ, worldX);
+      const dist = 300;
+      inp.aimAngle = angle;
+      aimWorld.x = p.pos.x + Math.cos(angle) * dist;
+      aimWorld.z = p.pos.z + Math.sin(angle) * dist;
+      inp.mouseNdc.x = ax;
+      inp.mouseNdc.y = ay;
+      const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
+      writeAutoTargetVector(inp, worldX, worldZ, controllerDrawToFly, ax, ay);
+    } else {
+      if (inp.aimFromStick) delete inp.aimFromStick;
+      // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
+      // FB-004: the raw _ndc stays the device truth; sensitivity and Y inversion apply to the
+      // derived aim channel only (amplified or flipped NDC still raycasts — the aim just points
+      // further out or mirrored across the horizon).
+      const mouseCfg = (state.settings && state.settings.controls && state.settings.controls.mouse) || {};
+      const mouseSens = normalizePadSensitivity(mouseCfg.sensitivity);
+      const aimNdc = this._aimNdc || (this._aimNdc = { x: 0, y: 0 });
+      aimNdc.x = this._ndc.x * mouseSens;
+      aimNdc.y = this._ndc.y * mouseSens * (mouseCfg.invertY ? -1 : 1);
+      const hit = this.helpers && this.helpers.raycastToPlane
+        ? this.helpers.raycastToPlane(aimNdc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
+        : this._laneCursorProjection;
+      const w = hit && Number.isFinite(hit.x) && Number.isFinite(hit.z) ? hit : { x: 0, z: 0 };
+      aimWorld.x = w.x; aimWorld.z = w.z;
+      if (p && p.pos) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
+      inp.mouseNdc.x = aimNdc.x; inp.mouseNdc.y = aimNdc.y;
+      const pointerScreen = inp.pointerScreen || (inp.pointerScreen = { x: 0, y: 0, active: false });
+      pointerScreen.x = this._screen.x;
+      pointerScreen.y = this._screen.y;
+      pointerScreen.active = this._screen.active;
+      inp.aimIntentActive = pointerScreen.active === true;
+      if (inp.autoFire) publishAutoTargetStick(this, inp);
+      else {
+        writeAutoTargetVector(inp);
+        resetAutoTargetPath(this, state);
+      }
+    }
+
+    // Middle-click has no flight authority (the hull burst's old middle-click trigger is gone; the
+    // upgrade rides the boost). G auto-target is owned by autoTargetAssist.
+
+    // D-pad up is unused by ordinary flight and remains UI navigation while a screen is open.
+    // In flight it requests the same explicit auto-target toggle as G; the next registered owner
+    // consumes this edge. Holding the right stick is the only controller draw-to-fly authority.
+    acts.autoTargetToggle = !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('autoTarget')
+      && gp.actions.autoTarget && gp.actions.autoTarget.pressed);
+
+    // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
+    const edges = this._edgePrev || (this._edgePrev = {});
+    const edge = (action) => {
+      const sampled = takeSampledPress(this, state, action);
+      // Worker touch pylon edges were captured at descriptor ingest. Keep its final
+      // raw hold truthful without deriving another press (or replaying one after blur).
+      const held = action === 'deployShieldPylon' && typeof tp?.applyLaneFrame === 'function'
+        ? input._held.call(this, state, action) : this._held(state, action);
+      const was = !!edges[action];
+      edges[action] = held;
+      // One press per update. A second press sampled in the same gap stays queued.
+      return sampled || (held && !was);
+    };
+    const tetherEdge = takeOldestTetherEdge(this);
+    // One alias releasing (F or 3) must not drop Space while Space is still down.
+    // The edge's own code is excluded, so a same-key re-press still counts as a release.
+    // S5: in Swarm the Line is RMB — the mouse button holds/releases it through the same grammar.
+    const tetherHeld = (!tetherEdge
+      ? this._held(state, 'tether')
+      : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code)))
+      || (swarmLive && this._m2 === true);
+    const gpMassline = gp && gp.isConnected() && gp.actions.massline;
+    // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
+    const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
+      && gpMassline && gpMassline.held);
+    // FB-113: the Massline hold is itself a toggleable verb — press once to stay on the line,
+    // press again to come off. The grammar still sees honest held/release edges on the merged
+    // value, so tap-to-cut physics never changes for players who leave the toggle off.
+    const masslineHeld = applyHoldToggle(holdLatches, holdEdges, 'massline',
+      tetherHeld || gpMasslineHeld, toggleLive('massline'));
+    const tetherActive = !!(state.player && (
+      (state.player.tether && state.player.tether.active)
+      || (state.player.remoteMassline && state.player.remoteMassline.active)
+    ));
+    const reelInHeld = applyHoldToggle(holdLatches, holdEdges, 'reelIn',
+      this._held(state, 'reelIn'), toggleLive('reelIn'));
+    const reelOutHeld = applyHoldToggle(holdLatches, holdEdges, 'reelOut',
+      this._held(state, 'reelOut'), toggleLive('reelOut'));
+    const dedicatedLineLength = (reelOutHeld ? 1 : 0) - (reelInHeld ? 1 : 0);
+    const rawLineLength = dedicatedLineLength || -inp.moveZ;
+    // In twin-stick, strafe is the orbit direction analog of the drive scheme's yaw stick.
+    const rawOrbitDirection = kbdLineOrbit || gpTurn || gpMoveX || tpTurn;
+    const masslineCommand = masslineGrammar.step(dt, {
+        attached: tetherActive,
+        held: masslineHeld,
+        lineLength: rawLineLength,
+        orbitDirection: rawOrbitDirection,
+        pump: inp.boost,
+        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
+        silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
+      });
+    const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
+    acts.massline = masslineCommand;
+    acts.tetherFire = masslineCommand.latch;
+    acts.tetherCut = masslineCommand.cut;
+    inp.tetherMode = masslineCommand.latch && nearestTetherMode ? 'nearest' : null;
+    // FB-003: every verb below also listens on its pad binding (stock chords or a player remap)
+    // through the same quarantine gate the stock pad verbs already used. `_padEdge`/`_padHeld`
+    // read gp.actions.<name>, which the chord layer resolves before this merge runs.
+    // THE FIVE POWERS (owner 2026-10-22, powerVerbs.js). Each power press becomes the internal
+    // flags the owners already consume, so fields/massSeed/bombs/impulseCharges/planetRuntime are
+    // unchanged:
+    //   PULL  → deployWell
+    //   SHOVE → deployRepulsor + chargeDetonate (every armed charge and drift bomb goes off)
+    //   PIN   → deployMassSeed
+    //   BOMB  → chargeThrow while an impulse charge is aboard (unless the ordnance cycle chose a
+    //           drift bomb), else dropBomb
+    //   RIG   → toggleClearingCone, or toggleSkimCollector in a planet band (resolveRigTarget)
+    const pullEdge = edge('pull') || this._padEdge(gp, 'pull');
+    const shoveEdge = edge('shove') || this._padEdge(gp, 'shove');
+    const pinEdge = edge('pin') || this._padEdge(gp, 'pin');
+    const bombEdge = edge('bomb') || this._padEdge(gp, 'bomb');
+    const rigEdge = edge('rig') || this._padEdge(gp, 'rig');
+    // Row 546: the merged hold lands on each power's own action slot so the held-key preview
+    // (data/powerPreview.powerHeld) and the first-ten-minute situations can see which power the
+    // pilot is gripping. The internal flags below stay the fire contract; these are the read
+    // surface only — { held, pressed }, same shape a touch/pad action publishes.
+    acts.pull = { held: this._held(state, 'pull') || this._padHeld(gp, 'pull'), pressed: pullEdge };
+    acts.shove = { held: this._held(state, 'shove') || this._padHeld(gp, 'shove'), pressed: shoveEdge };
+    acts.pin = { held: this._held(state, 'pin') || this._padHeld(gp, 'pin'), pressed: pinEdge };
+    acts.bomb = { held: this._held(state, 'bomb') || this._padHeld(gp, 'bomb'), pressed: bombEdge };
+    acts.rig = { held: this._held(state, 'rig') || this._padHeld(gp, 'rig'), pressed: rigEdge };
+    // Row 493 — hold to preview, release to use. A press grips the power (the preview draws what it
+    // will move); letting go fires it, and a whole tap between two updates fires at once. A screen,
+    // focus loss, a sector change or a fenced pad cancels the grip without firing. Settings →
+    // Gameplay "Powers: use on press" restores fire-on-press. Bomb's charge-or-bomb choice and
+    // Rig's cone-or-scoop target are read at the moment the power fires.
+    const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
+    const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
+    acts.chargeThrow = bombThrowsCharge;
+    // SEED-SW-01/03 — the stocked swarm charges (smart bomb, then lance) are the next ordnance
+    // in the fallback before the bay's own bomb. The director owns the resolution; this only
+    // routes the press, with no new power slot or key.
+    acts.swarmBombThrow = fire.bomb && !bombThrowsCharge && !!swarmBombSelection(state);
+    acts.dropBomb = fire.bomb && !bombThrowsCharge && !acts.swarmBombThrow;
+    acts.chargeDetonate = fire.shove;
+    acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
+    acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
+    acts.autopursuit = false;
+    acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
+    acts.deployShieldPylon = edge('deployShieldPylon') || this._padEdge(gp, 'deployShieldPylon');
+    acts.deployMassSeed = fire.pin;
+    acts.deployWell = fire.pull;
+    acts.deployRepulsor = fire.shove;
+    const rigTarget = fire.rig ? resolveRigTarget(state) : null;
+    acts.toggleClearingCone = rigTarget === 'cone';
+    acts.toggleSkimCollector = rigTarget === 'skim';
+    // Ordnance cycle (Comma / pad dLeft) behind the same lifecycle gate as travelBurn. The bombs
+    // system owns the selection, including the charge choice the BOMB power reads above.
+    acts.cycleBomb = edge('cycleBomb') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('cycleBomb')
+      && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);
+    // S5: Q fires a stocked call-in — the Swarm-only verb; inert everywhere else.
+    acts.callIn = edge('callIn') || this._padEdge(gp, 'callIn');
+    // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
+    // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
+    // beam routing is decided (single owner for the RMB arbitration). FB-003: RB+D-pad-down is the
+    // pad cloak edge; FB-113: bulletTime joins the hold-to-toggle verbs.
+    acts.bulletTime = applyHoldToggle(holdLatches, holdEdges, 'bulletTime',
+      this._held(state, 'bulletTime') || this._padHeld(gp, 'bulletTime'), toggleLive('bulletTime'));
+    acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
+    acts.throwArm = throwArmHeld;
+    // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
+    // clump; the falling edge is the bowl. Opt-in press-to-toggle latch rides the same FB-113 path.
+    acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
+      this._held(state, 'gyreSnare') || this._padHeld(gp, 'gyreSnare'), toggleLive('gyreSnare'));
+    // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
+    // press MEANS in each state (arm a spool, cancel a spool, disengage a burn). The pad press
+    // asks the SAME context allowance as the key: a healthy fight cannot arm the long burn, and
+    // a pilot under the low-hull line can flee on either device.
+    const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected()
+      && contextActionAllowed(state, 'travelBurn')
+      && this._gamepadLifecycleActionAllowed('travelBurn')
+      && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
+    this._travelEdge = travelPressed;
+    acts.travelBurn = travelPressed;
+    // VERB-33: the same key stays a one-unit tap; the boost grip held through the edge
+    // (Shift on the keyboard, the pad's boost button) dumps the whole selected lot.
+    // Chording through the bound codes means a rebinding of either verb moves the chord too.
+    const jettisonEdge = edge('jettisonLot') || this._padEdge(gp, 'jettisonLot');
+    acts.jettisonLot = jettisonEdge && !boostHeldRaw;
+    acts.jettisonLotAll = jettisonEdge && boostHeldRaw;
+    // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
+    acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
+    // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
+    // not also fire full thrust against the reel. Scale the flight channel to 25 % so the line
+    // grammar wins the axis and the ship keeps a finesse whisper instead of a second opposed force.
+    let lineOwnsTravelAxis = false;
+    if (masslineCommand.lineControl) {
+      inp.moveZ *= 0.25;
+      if (!(kbdBrakeHeld || gpBrake)) lineOwnsTravelAxis = true;
+    }
+    // The Massline key adds reel/orbit intent; it does not replace the flight controls. The same
+    // forward/turn chord remains ordinary thrust and yaw, which lets the orbit detector observe
+    // what the pilot is actually doing instead of manufacturing a second control mode.
+    acts.brake = inp.brake;
+    // Travel reads the same ordinary flight intent after the Massline adds its independent verbs.
+    stepTravelLatch(this, state, inp, dt, lineOwnsTravelAxis);
+
+    // --- Helm Assist steering (GDD §4.1): the nose chases the cursor unless direct yaw is held.
+    // Gamepad/touch players keep stick-yaw even in helm scheme (kbmRecent gates the override).
+    if (helm && p && kbmRecent && this._screen.active) {
+      const manualYaw = Math.abs(inp.turnIntent) > 0.001;
+      if (!manualYaw) {
+        const err = wrapAngle(inp.aimAngle - p.rot);
+        inp.turnIntent = Math.abs(err) < HELM_DEADBAND
+          ? 0
+          : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+        inp.turnIntentFromAim = true;
+      }
+      if (inp.brake) {
+        // Brake-to-stop: decompose the counter-velocity direction into the SAME ship axes
+        // stepTranslation uses (forward = cos/sin rot, right = -sin/cos rot) and feed it through
+        // the normal thrust pipeline — so braking respects per-class accel and reads as mass.
+        const speed = Math.hypot(p.vel.x, p.vel.z);
+        if (speed > 0.5) {
+          const nx = -p.vel.x / speed, nz = -p.vel.z / speed;
+          const cf = Math.cos(p.rot), sf = Math.sin(p.rot);
+          const k = Math.min(1, Math.max(0.4, speed / BRAKE_SOFT_SPEED));
+          inp.moveZ = (nx * cf + nz * sf) * k;
+          inp.moveX = (nx * -sf + nz * cf) * k;
+        } else {
+          inp.moveZ = 0; inp.moveX = 0;
+        }
+      }
+    }
+
+    // --- Twin-stick steering (PQ-164.04): in the pad's twin-stick scheme the right stick is
+    // facing too — the nose chases the aim at the helm scheme's soft-band gain so forward
+    // thrust and visuals follow the fight, while the left stick's world-frame drive vector
+    // (already written into moveX/moveZ above) keeps translation free. The brake decomposes
+    // counter-velocity through the same ship axes helm-assist uses.
+    if (padScheme === 'twinstick' && p && p.pos && gp && gp.isConnected()) {
+      if (gpAimActive && !tpAimActive && !kbmRecent && Number.isFinite(inp.aimAngle)) {
+        const err = wrapAngle(inp.aimAngle - (p.rot || 0));
+        inp.turnIntent = Math.abs(err) < HELM_DEADBAND
+          ? 0
+          : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+        inp.turnIntentFromAim = true;
+      }
+      if (inp.brake && p.vel) {
+        const speed = Math.hypot(p.vel.x, p.vel.z);
+        if (speed > 0.5) {
+          const nx = -p.vel.x / speed, nz = -p.vel.z / speed;
+          const cf = Math.cos(p.rot), sf = Math.sin(p.rot);
+          const k = Math.min(1, Math.max(0.4, speed / BRAKE_SOFT_SPEED));
+          inp.moveZ = (nx * cf + nz * sf) * k;
+          inp.moveX = (nx * -sf + nz * cf) * k;
+        } else {
+          inp.moveZ = 0; inp.moveX = 0;
+        }
+      }
+    }
+    if (isPlayerSaucer(p)) {
+      Object.assign(inp, projectSaucerControls({
+        keys: this._keys, source: this._movementSource,
+        left: this._held(state, 'yawLeft') || this._held(state, 'strafeLeft'),
+        right: this._held(state, 'yawRight') || this._held(state, 'strafeRight'),
+        up, down, pad: gp?.axes, touch: tp?.axes,
+        // Down is translation on a saucer, NEVER the ordinary reverse-brake shortcut.
+        brake: brakeHeld,
+      }));
+      inp.turnIntentFromAim = false;
+      inp.lineOrbit = 0;
+    }
+    // Capture deliberate verbs before their later consumers clear the one-shot edges.
+    // This observes the finalized input contract without changing axes or actions.
+    const run = state.run;
+    // drawFlightManual interrupts G steering, so a sampled pointer act has its own admission.
+    // Wallet commits replace run objects; the issued retire token preserves run identity.
+    const combatStickPilotAct = !!(combatStickPilotRun && inp.autoFire && kbmRecent
+      && inp.autoTargetVector?.active && run?.phase === 'active' && run.wave === combatStickPilotWave
+      && (run === combatStickPilotRun || (Number.isSafeInteger(combatStickPilotRun.retireToken)
+        && run.retireToken === combatStickPilotRun.retireToken)));
+    if (swarmPilotIsActing(state) || combatStickPilotAct) noteSwarmPilotAction(state);
+  },
+};
+
+function entityLabel(e) {
+  return (e && (e.name || (e.data && e.data.name))) || (e && e.type) || 'target';
+}
+
+export function selectedWorldSiteTarget(state) {
+  const id = state && state.player && state.player.targetId;
+  const entity = id != null && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id)
+    : null;
+  return entity && entity.alive !== false && entity.data && entity.data.worldSiteTargetable === true
+    ? entity
+    : null;
+}
+
+// Combat hull archetypes that stay throwable while their AI posture is standing down.
+// `ai.passive` is a fire-authority read (the hull will not open fire first), not a physical
+// property of the mass on the rope — an ambush pirate lying in wait is still a hull a pilot
+// can swing. Noncombat archetypes (trader/miner/civilian) are absent so unlisted hulls keep
+// the weld-beam default.
+const THROW_ARM_COMBAT_ARCHETYPES = new Set([
+  'pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer',
+  'hunter', 'mercenary', 'miniboss_capital',
+]);
+
+/**
+ * True when the active tether payload should steal RMB for throwArm.
+ * HOSTILE ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
+ * A non-hostile casualty keeps RMB as the mining beam: the WF-05 rope-and-weld latches a limping
+ * hull precisely so the beam can hold the weld (mining.weldableHullForBeam), and this function's
+ * own call-site contract at the RMB arbitration always said "hostile ship/drone" — the code below
+ * is what made it true. A latched hostile still throws exactly as before.
+ * Parent asteroids and wrecks keep RMB as the mining/salvage beam so latched extraction works.
+ */
+export function isThrowArmPayload(state) {
+  const tether = state && state.player && state.player.tether;
+  if (!tether || !tether.active || tether.targetId == null) return false;
+  const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
+  if (!target || target.alive === false) return false;
+  if (target.type === 'ship' || target.type === 'drone') {
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && isHostileToPlayer(target, player.team, state)) return true;
+    const data = target.data || {};
+    const ai = data.ai || null;
+    const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role))
+      || data.role || data.scenarioRole || '').toLowerCase();
+    return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
+  }
+  if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
+  if (target.type === 'payload') return true;
+  return false;
+}
+
+function pointerBeamLane(state, entity) {
+  if (isBeamTargetEligible(entity, state)) return true;
+  if (!entity) return false;
+  const profile = interactionProfileForEntity(entity);
+  return !!(profile.beamExtractable === true
+    && !(entity.data && entity.data.opticMaterial));
+}
+
+export function initialMouseToolLane(state, id) {
+  if (id != null) {
+    const entity = resolveWorldPresentationEntity(state, id);
+    if (entity && pointerBeamLane(state, entity)) return 'beam';
+  }
+  if (isThrowArmPayload(state)) return 'sling';
+  return 'inspect';
+}
+
+/**
+ * G9: compare shared (tick, sequence) activity stamps.
+ * Higher tick wins; on equal tick, higher sequence wins (strict — no device-type priority).
+ * @returns {boolean} true when A is strictly more recent than B
+ */
+/**
+ * Pointer motion over a control does not become helm activity. A flight-surface
+ * pointer still marks the keyboard/mouse device so aim can follow it.
+ */
+export function noteFlightPointer(host, target) {
+  if (!host) return false;
+  if (isUiCommandTarget(target)) return false;
+  host._kbmActivityPending = true;
+  host._pointerHelmEdge = true;
+  return true;
+}
+
+function touchHelmEdge(host, tp) {
+  if (!tp || typeof tp.isConnected !== 'function' || !tp.isConnected()) {
+    host._touchStickArmed = false;
+    host._touchStickOut = false;
+    return false;
+  }
+  const out = Math.hypot(tp.axes.leftX || 0, tp.axes.leftY || 0) > 0.001
+    || Math.hypot(tp.axes.rightX || 0, tp.axes.rightY || 0) > 0.001;
+  let edge = false;
+  if (host._touchStickArmed && out && !host._touchStickOut) edge = true;
+  // Boost/brake are helm-independent modifiers (like fire and mine): a solo press merges
+  // without needing ownership, and pressing one while another device drives must not steal
+  // the helm out from under its drive vector. Only a stick edge takes the helm.
+  host._touchStickOut = out;
+  host._touchStickArmed = true;
+  return edge;
+}
+
+// A stick cross or an acquire gesture is the pad's helm claim, but a deliberate press on a
+// pad-owned movement verb is one too — the same rule touch uses ("boost is a movement
+// action, so it can take it"). Fire, mine and the UI verbs stay independent of the helm:
+// they read the pad regardless of who is steering, so their edges never claim it.
+function gamepadHelmEdge(gp) {
+  if (!gp || typeof gp.isConnected !== 'function' || !gp.isConnected()) return false;
+  if (gp.helmGestureEdge) return true;
+  const actions = gp.actions || {};
+  const boost = actions.boost;
+  const brake = actions.brake;
+  return !!(boost && boost.pressed) || !!(brake && brake.pressed);
+}
+
+function resolveMovementOwner(host, {
+  kbdDrive, gp, tp, pointerHelmEdge = false, pointerOwnsHelm = false,
+}) {
+  let source = host._movementSource || null;
+  if (source === 'gamepad' && !(gp && typeof gp.isConnected === 'function' && gp.isConnected())) {
+    source = null;
+  }
+  if (source === 'touch' && !(tp && typeof tp.isConnected === 'function' && tp.isConnected())) {
+    source = null;
+  }
+  const gpEdge = gamepadHelmEdge(gp);
+  const tpEdge = touchHelmEdge(host, tp);
+  const kbdEdge = !!(kbdDrive && !host._kbdDrivePrev);
+  const gpStick = !!(gp && typeof gp.isConnected === 'function' && gp.isConnected()
+    && (Math.abs(gp.axes.leftX) > 0.001 || Math.abs(gp.axes.leftY) > 0.001));
+  const tpStick = !!(tp && typeof tp.isConnected === 'function' && tp.isConnected()
+    && Math.hypot(tp.axes.leftX || 0, tp.axes.leftY || 0) > 0.001);
+  let next = source;
+  if (gpEdge) next = 'gamepad';
+  else if (tpEdge) next = 'touch';
+  else if (kbdEdge || pointerHelmEdge) next = 'keyboard';
+  else if (next == null) {
+    if (kbdDrive || pointerOwnsHelm) next = 'keyboard';
+    else if (gpStick) next = 'gamepad';
+    else if (tpStick) next = 'touch';
+  }
+  if (next !== (host._movementSource || null)) {
+    host.movementSourceChanges = (host.movementSourceChanges | 0) + 1;
+  }
+  host._movementSource = next;
+  host.movementSource = next;
+  host._kbdDrivePrev = !!kbdDrive;
+}
+
+export function activityStampMoreRecent(tickA, seqA, tickB, seqB) {
+  const ta = Number.isFinite(tickA) ? tickA : -1;
+  const tb = Number.isFinite(tickB) ? tickB : -1;
+  if (ta !== tb) return ta > tb;
+  const sa = Number.isFinite(seqA) ? seqA : -1;
+  const sb = Number.isFinite(seqB) ? seqB : -1;
+  return sa > sb;
+}

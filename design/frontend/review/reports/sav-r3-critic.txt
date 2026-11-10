@@ -1,0 +1,102 @@
+SAVE/LOAD + GAME OVER -- independent critic, round 3 (commit dee99c21c)
+Stills: sav-r16-save-load-* (1920/1280/2560 + title, slot1, live, scrub), sav-r16rm-save-load-1920,
+sav-r16-game-over-* (+ rec, scrub, iron), sav-r16rm-game-over-rec-1920.
+All px are in the still's own pixels at 1920 unless marked. Pixel values are 0-255 sRGB from sharp .raw() samples.
+Per the coordinator's ruling, the Pelican's blockout render (ledger D72) is an asset job and is NOT scored as a screen
+defect here; it is noted in §6.
+
+=====================================================================================================
+SCREEN 1 -- SAVE / LOAD
+=====================================================================================================
+
+1. VERDICT: PASSED, overall 8.1 (previous 7.9). No axis under 7.0; owner criteria (a) PASS and (b) PASS.
+
+2. AXES (previous in brackets)
+   Composition        8.2 (7.9)  Each slot's name, line and credits now centre under its own pad, so the Hand, the pad
+                                 and the name share one x:
+                                 - Quick: pad centre 297, name centred on 296.
+                                 - Slot 3 in the scrub state: Hand 1292, pad 1292, name 1292.
+                                 The strip reads as five stations on one rail. The 1280 and 2560 layouts hold.
+   Hierarchy          8.0 (7.9)  CURRENT is now a quiet suffix on QUICK's baseline. The title follows the verb. The left
+                                 column is still dense in the filed-save state, which is acceptable for a save record.
+   Legibility         8.4 (8.4)  Weakest reading is still "Empty slot" at 4.96:1. Slot 1's sub-line reads 7.3:1 and the
+                                 CURRENT suffix 11.8:1.
+   ORRERY fidelity    8.2 (8.1)  One Hand, one Lamp Key, bone rest light, the berth as an instrument, the beam as a
+                                 band of light. Nothing hand-rolled or boxed.
+   Craft/detail       7.9 (7.3)  The strip typography is clean: one baseline, and the stray "·" after SLOT 1 is gone at
+                                 every width. The filed ships on the strip are brighter; the Pelican thumb's orange now
+                                 reads as a hull, not a silhouette. The hero floor is darker: mean 26.1 -> 23.3 over
+                                 1150-1580 x 575-640, and the world props no longer read through it.
+                                 Held under 8 by two small items, fixes 1 and 2.
+   Interaction clar.  8.1 (8.0)  In the scrub still the Hand, the lifted pad, the beam's landing point and the SLOT 3
+                                 name coincide at x=1292. The choice is unambiguous.
+
+3. PREVIOUS ROUND'S LIST, ITEM BY ITEM
+   1 Pelican hero poster .................. RULED OUT OF SCORE (asset job D72). Unchanged: still a blockout at hero size.
+   2 Slot labels centred on their station . DONE (numbers under Composition).
+   3 Badge baseline + stray dot ........... DONE. CURRENT is on QUICK's baseline as a suffix; no "·" after SLOT 1 at
+                                            1280, 1920 or 2560.
+   4 Hero floor shade ..................... DONE (mean 26.1 -> 23.3; the props are no longer legible through the floor).
+   5 Non-chosen thumbnails ................ DONE (the Pelican thumb at 565-700 x 828-855 is visibly brighter than in
+                                            r12).
+   6 Sector display name .................. NOT. The current-run reading (scrub and empty states, 191,441) still says
+                                            "Helios" where the saves say "Helios Prime". If this comes from the bench
+                                            fixture, ignore it.
+
+4. RANKED FIXES (none blocks the pass)
+   1. Beam landing, default and slot1 states: the beam ends in the air above the chosen thumbnail (297,771 in default;
+      628,795 in slot1), while in the scrub state it lands on the pad's rim (1290,850). Land it on the chosen pad's
+      rim in every state, so it always joins berth to berth.
+   2. Sector name in the current-run reading (191,441): use the display name ("Helios Prime").
+   3. "Empty slot" at 4.96:1 is the screen's weakest reading. Raise its bone alpha by about .12 (the glyph peak is
+      ~0.21 relative luminance now; ~0.28 gives ~6:1).
+
+5. MEMORABLE: couple the berth to the scrub like a turntable, so scrub speed turns the hull on its berth and each
+   save's hull lands with a settle. It is still the one unattempted step from good to memorable.
+
+6. NOTED, NOT SCORED: the Pelican hero render (slot1 state, 900-1540 x 240-650) is a flat-shaded blockout next to the
+   textured Hitch. The screen is only as good as this art in that state; ledger D72 should land before the demo.
+
+7. OWNER CRITERIA
+   (a) NO THIN WIREFRAME / GENERIC ELEMENTS: PASS. The berths, pads and beam keep the body measured in round 2. No
+       brackets, cards or stock controls.
+   (b) SIGNATURE INTERACTION: PASS. Scrubbing the filmstrip: the Hand runs the rail, the pad under it lifts in a pool
+       of light, the beam drops to it, and its save (or OPEN BERTH) comes up on the hero berth. It is distinct,
+       in-fiction, and now spatially exact in the stills.
+   BLOCKERS: none.
+
+=====================================================================================================
+SCREEN 2 -- GAME OVER (confirmation)
+=====================================================================================================
+
+1. VERDICT: STILL PASSED, overall 8.2 (previous 8.0). No axis under 7.0; (a) PASS, (b) PASS.
+
+2. AXES (previous in brackets)
+   Composition 8.1 (8.1) · Hierarchy 8.1 (7.8) · Legibility 8.5 (8.5) · ORRERY fidelity 8.2 (8.1) ·
+   Craft/detail 8.1 (7.8) · Interaction clarity 8.1 (8.0).
+   - The played part of the tape is now light, a ~14px band at x=700, y=953-966 in the scrub still: a 2px core at 212,
+     flanked by 2px bands at ~93, then a halo at 33.
+   - The unplayed part is only the ruler: a 2px baseline at 62 with ticks. It no longer reads as a media seek bar.
+   - One readout per moment: the hub shows the time ("12m 58s / INTO THE SORTIE"), the tape shows the event word.
+   - One time format ("21m 0s" everywhere).
+   - The Hand parks ~22px short of the kill blade (1768 vs 1790), so amber and red no longer blend.
+   - The no-record state is a plain 2px baseline at 62/255 with one caption, and NO RECORD stands alone at the hub.
+
+3. PREVIOUS ROUND'S LIST
+   1 Tape band as light ....... DONE.
+   2 One readout per moment ... DONE.
+   3 Hand off the kill blade .. DONE.
+   4 One time format .......... DONE.
+   5 No-record state .......... DONE.
+   6 1280 bottom margin ....... DONE (the readout is now the event word only, at y=676 of 720).
+   7 "hull" twice in the copy . DONE ("aft hull, main drive").
+
+4. SMALL POLISH (not blocking)
+   1. The parked Hand's lower needle (1768, 975-986) touches the "LOST · 21m 0s" tick label between "m" and "0"
+      (1690-1790, y=985-992). Shorten the needle's lower half by 6px, or drop that label 4px.
+   2. When the cursor sits on an event, its word appears twice: the marker label above the tape
+      (1100-1306, y=927) and the readout below it (1090-1312, y=1006). When the cursor is on a marker, dim that
+      marker's own label to .4, or hide the readout.
+
+7. OWNER CRITERIA: (a) PASS; (b) PASS. The black-box scrub with the ring answering is unchanged and remains the
+   strongest signature of the two screens.

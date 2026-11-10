@@ -1,0 +1,52 @@
+{
+  "schema": "spaceface.pq193-03.materialTruthPreflight.v1",
+  "leaf": "PQ-193.03 — lane buoy, lane beacon, cargo pod manufactured at chase size",
+  "passKind": "same-slot remaster of beacon + cargo pod; buoy retained from PQ-022 material-truth V2",
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "camera": "tools/blender/spaceface_chase_camera.py 60deg/FOV50 D=144 and D=58",
+  "componentReferenceDecision": "native_imagegen",
+  "referenceReason": "Beacon gantry and cargo pod were trapped as primitive stacks. Component-only construction studies generated for the L-gantry (plinth/mast/lattice/pod) and the ISO can (corrugation/hatch/corners). Buoy already had a passing lantern; reference recorded, geometry retained.",
+  "zoneRegister": [
+    {
+      "asset": "place_nav_buoy",
+      "zones": ["lantern head + panes + cap", "mast + hazard collar", "solar wings", "stabilizer cage", "service marking"],
+      "disposition": "retained_reviewed",
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+      "dominatesSupportedView": true,
+      "evidence": "Shipped PQ-022 lantern already reads manufactured at D=58; not a tube-plus-ring."
+    },
+    {
+      "asset": "place_lane_beacon",
+      "zones": ["folded plinth + hatch + gusset feet", "tapered mast + inset wells", "recessed cyan lamp fixture", "twin lattice I-rails", "outbound transponder well"],
+      "disposition": "billed",
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+      "dominatesSupportedView": true,
+      "bill": {
+        "function": "Helios trade-lane support gantry / signal point",
+        "substrate": "painted steel shell, machined alloy truss, bone enamel hatch, recessed cyan optic",
+        "process": "folded plate plinth, tapered hat-section mast, lattice chords with flanges, formed pod housing",
+        "forbiddenReads": ["tube plus ring", "two black pipes", "cube on a post", "Lego gantry"]
+      }
+    },
+    {
+      "asset": "pod_cargo_container",
+      "zones": ["closed dark shell", "roof hatch well + rim", "ISO corner castings", "door bar", "waist stripe + ID plate", "side corrugation"],
+      "disposition": "billed",
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+      "dominatesSupportedView": true,
+      "bill": {
+        "function": "standardized freight can on haulers and as a prize body",
+        "substrate": "dark painted steel, galvanized corner castings, faction-tint waist stripe",
+        "process": "ISO container: corrugated sheet, twist-lock corners, recessed roof hatch, door locking bar",
+        "forbiddenReads": ["pale Lego brick", "open-top fence", "unpainted clay box"]
+      }
+    }
+  ],
+  "allSupportedViewZonesClassified": true,
+  "workingScene": "tools/blender/build_pq193_03_manufactured.py; headless Blender 5.1",
+  "frozenIdentityChecks": {
+    "place_nav_buoy": { "root": "SF_M4_HELIOS_NAV_SPIRE_ROOT", "socket": "SOCKET_Structure_Core", "collision": "COLLISION_HULL", "keep": true },
+    "place_lane_beacon": { "root": "SF_M4_HELIOS_GANTRY_ROOT", "socket": "SOCKET_Structure_Core", "collision": "COLLISION_HULL" },
+    "pod_cargo_container": { "root": "pod_cargo_container", "mount": "MOUNT_Child", "forward": "+X" }
+  }
+}

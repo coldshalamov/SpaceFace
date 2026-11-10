@@ -1,0 +1,684 @@
+// BP-02.1/C9 Kills-Less-Central Outcomes.
+//
+// Observer-only combat receipts. Records one terminal outcome per hostile and emits seams that
+// future economy/rep systems can consume; it never writes credits, cargo, rep, AI, or combat state.
+// Kill records retain only compact semantic causality; the richer presentation receipt remains
+// transient and never enters GameState.
+import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoices.js';
+import { compactKillCausality, KillCause } from '../combat/killCausality.js';
+import { selectionIsRecycled } from '../combat/targetIdentity.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { validateRunState } from '../core/runState.js';
+import { isHostileToPlayer } from './scanner.js';
+import { shouldRunOnTick } from '../core/activityScheduler.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+
+/** Bench A/B: production default ON. Quiet latch skips the 4-tick shipLike flee-scan
+ * when no unrecalled flee candidates remain. Wakes on kill/flee/disable/surrender /
+ * spawn/destroy/save/sector/new-game / 0.5 s rescan. Soft-GPU fps not claimed.
+ * Fresh registry.step residual (#163). */
+let COMBAT_OUTCOME_QUIET_LATCH = true;
+export function setCombatOutcomeQuietLatchForBench(enabled) {
+  COMBAT_OUTCOME_QUIET_LATCH = enabled !== false;
+}
+export function getCombatOutcomeQuietLatchForBench() {
+  return COMBAT_OUTCOME_QUIET_LATCH !== false;
+}
+
+/** Rescan while latched (0.5 s). Sim-time based so scripted tests that advance
+ * simTime without matching tick cadence still re-evaluate forceFlee stamps. */
+const COMBAT_OUTCOME_QUIET_RESCAN_S = 0.5;
+
+/** Membership lanes for the quiet latch — the flee census reads shipLike only. */
+const COMBAT_OUTCOME_QUIET_LANES = ['shipLike'];
+
+function publishCombatOutcomeQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.combatOutcomeRuntime || (state.combatOutcomeRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+// The Crucible is not a sector: its arena runs with currentSectorId null and so do its kill
+// receipts, so null === null would read every arena kill as an Adventure field and mount the
+// aftermath card over the run's own keys 1–2. Same test as aftermathWrecks.liveSurvivalRunFor,
+// inlined so this observer does not load the wreck spawner.
+function liveSurvivalRun(state) {
+  const run = state && state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return false;
+  if (run.kind !== 'survival' || run.phase === 'inactive') return false;
+  return validateRunState(run).ok === true;
+}
+
+const STATE_VERSION = 2;
+const MAX_OUTCOMES = 64;
+const DISABLE_OUTCOME_SUBSYSTEMS = new Set([
+  'subsystem_drive',
+  'subsystem_weapon',
+  'subsystem_tether_spool',
+  'subsystem_power',
+]);
+
+function ensureState(state) {
+  if (!state.combatOutcome || typeof state.combatOutcome !== 'object') {
+    state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
+  }
+  if (!Array.isArray(state.combatOutcome.outcomes)) state.combatOutcome.outcomes = [];
+  if (!state.combatOutcome.byEntity || typeof state.combatOutcome.byEntity !== 'object') {
+    state.combatOutcome.byEntity = {};
+  }
+  state.combatOutcome.schemaVersion = STATE_VERSION;
+  return state.combatOutcome;
+}
+
+function playerTeam(state) {
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  return player && player.team != null ? player.team : 0;
+}
+
+function entityFor(state, entityId) {
+  return state && state.entities && state.entities.get ? state.entities.get(entityId) : null;
+}
+
+function isShipLike(entity, payload = null) {
+  const type = (entity && entity.type) || (payload && payload.type);
+  return type === 'ship' || type === 'drone';
+}
+
+function isCandidate(entity, state, payload = null) {
+  const id = entity && entity.id != null ? entity.id : payload && payload.id;
+  if (id == null || id === state.playerId) return false;
+  if (!isShipLike(entity, payload)) return false;
+  if (!entity) return !!(payload && payload.killerId === state.playerId);
+  const team = playerTeam(state);
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  if (isHostileToPlayer(entity, team, state)) return true;
+  if (ai.forceFlee || ai.fsm === 'flee' || ai.fsm === 'surrender') return true;
+  if (Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(team)) return true;
+  if (data.encounter) return true;
+  return false;
+}
+
+const THROWN_MASS_TAGS = new Set(['massline_throw', 'massline', 'rope_throw', 'massline_whip']);
+
+// The compact destruction record does not store a tag. The sentence reads the live
+// impact link at speak time and does not write a new causality field.
+function thrownMassImpact(payload) {
+  const presentation = payload && payload.presentation;
+  const link = presentation && presentation.impactLink;
+  const tags = [
+    link && link.tag,
+    presentation && presentation.tag,
+    payload && payload.tag,
+  ];
+  return tags.some((tag) => THROWN_MASS_TAGS.has(tag));
+}
+
+function killedOutcomeText(label, destruction, thrownMass) {
+  const cause = destruction && destruction.cause;
+  // A throw says so. A hull ram, and a crash with no throw tag, keep the old line.
+  // Attribution, cause, and surface stay as compactKillCausality wrote them.
+  if (thrownMass && destruction && destruction.playerCaused === true
+      && (cause === KillCause.SHIP_COLLISION || cause === KillCause.TERRAIN_COLLISION)) {
+    const stem = cause === KillCause.TERRAIN_COLLISION
+      ? `${label} smashed against terrain`
+      : `${label} destroyed in a collision`;
+    return `${stem}, wrecked by your thrown mass.`;
+  }
+  switch (cause) {
+    case KillCause.TERRAIN_COLLISION: return `${label} smashed against terrain.`;
+    case KillCause.SHIP_COLLISION: return `${label} destroyed in a collision.`;
+    case KillCause.EXPLOSIVE: return `${label} detonated.`;
+    case KillCause.KINETIC: return `${label} destroyed by weapons fire.`;
+    default: return `${label} destroyed.`;
+  }
+}
+
+function outcomeText(record, thrownMass) {
+  const label = record.label || record.victimClass || 'target';
+  switch (record.outcome) {
+    case 'fled': return `${label} fled the fight.`;
+    case 'disabled': return `${label} disabled; capture window open.`;
+    case 'surrendered': return `${label} surrendered.`;
+    case 'killed': return killedOutcomeText(label, record.destruction, thrownMass);
+    default: return `${label} resolved.`;
+  }
+}
+
+function sameOccupant(record, entity) {
+  if (!record || !entity) return false;
+  const live = occupantGenerationOf(entity);
+  // Unstamped fixtures have no token on either side. A stamped receipt only matches
+  // the body that still carries that token, so a recycled id is a different ship.
+  if (record.occupantGeneration == null && live == null) return true;
+  return record.occupantGeneration != null && record.occupantGeneration === live;
+}
+
+// A pick that still names a number now worn by a different living body follows the
+// wreck marker. A free id or a corpse stays put. The same occupant stays put.
+function retargetChosenOffRecycledHull(state, own, offer) {
+  const chosen = own && own.chosen;
+  if (!chosen || chosen.entityId == null) return;
+  const entity = entityFor(state, chosen.entityId);
+  if (!entity || entity.alive === false) return;
+  const prior = own.byEntity ? own.byEntity[chosen.entityId] : null;
+  if (prior && sameOccupant(prior, entity)) return;
+  const nextId = offer && offer.targets ? offer.targets[chosen.id] : null;
+  chosen.entityId = nextId != null && nextId !== entity.id ? nextId : null;
+}
+
+function sectorWreckIds(state, sectorId) {
+  const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  const list = bag && sectorId ? bag[sectorId] : null;
+  if (!Array.isArray(list)) return [];
+  const ids = [];
+  for (const marker of list) {
+    // Same player-hull exclusion as aftermathWrecks.isPlayerWreckMarker. Inlined so this
+    // observer does not load the wreck spawner.
+    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
+    const id = marker.markerId != null ? marker.markerId : marker.id;
+    if (id != null) ids.push(id);
+  }
+  return ids;
+}
+
+function wreckMarkerForVictim(state, sectorId, victimId) {
+  if (victimId == null) return null;
+  const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  const list = bag && sectorId ? bag[sectorId] : null;
+  if (!Array.isArray(list)) return null;
+  for (const marker of list) {
+    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
+    if (marker.victimId !== victimId) continue;
+    const id = marker.markerId != null ? marker.markerId : marker.id;
+    if (id != null) return id;
+  }
+  return null;
+}
+
+function compactRecord(state, entity, payload, outcome, reason) {
+  const data = entity && entity.data || {};
+  const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
+  return {
+    schemaVersion: STATE_VERSION,
+    entityId: id,
+    occupantGeneration: occupantGenerationOf(entity),
+    outcome,
+    reason: reason || outcome,
+    tick: state.tick || 0,
+    t: Number(state.simTime || 0),
+    sectorId: state.world && state.world.currentSectorId || null,
+    killerId: payload && payload.killerId != null ? payload.killerId : null,
+    factionId: (entity && entity.factionId) || (payload && payload.factionId) || data.factionId || null,
+    victimClass: (payload && payload.victimClass) || data.shipClass || data.class || (entity && entity.type) || null,
+    label: data.name || data.shipName || data.callsign || data.callSign || (payload && payload.label) || null,
+    bountyCr: Math.max(0, Math.round(Number((payload && payload.bountyCr) || data.bountyCr || 0) || 0)),
+    sourceEvent: payload && payload.sourceEvent || null,
+    destruction: outcome === 'killed' ? compactKillCausality(payload, state.playerId) : null,
+  };
+}
+
+export const combatOutcome = {
+  name: 'combatOutcome',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || {};
+    this._combatOutcomeQuiet = null;
+    this._combatOutcomeWakeSeq = 0;
+    this._choiceSig = '';
+    this._aftermathContextSig = '';
+    this._unsubs = [];
+    ensureState(this.state);
+
+    this._onKilled = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._killed(payload || {});
+    };
+    this._onFlee = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._flee(payload || {});
+    };
+    this._onDisabled = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._disabled(payload || {});
+    };
+    this._onSurrendered = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._surrendered(payload || {});
+    };
+    this._onAftermathChoose = (payload) => {
+      if (liveSurvivalRun(this.state)) return;
+      const id = payload && (payload.choiceId != null ? payload.choiceId : payload.id);
+      if (payload && Object.hasOwn(payload, 'targetIdentity')) this._publishAftermath('validate');
+      const offer = this.state?.combatOutcome?.aftermath;
+      if (payload && Object.hasOwn(payload, 'targetIdentity')) {
+        const current = this._aftermathIdentity?.[id];
+        if (!current || payload.targetIdentity !== current || !offer?.choices?.some(c => c.id === id)) {
+          this._publishAftermath('stale');
+          return;
+        }
+      }
+      const chosen = applyAftermathChoice(this.state, id);
+      if (!chosen) return;
+      this._speakChoice(chosen);
+      if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('combat:aftermathChosen', chosen);
+    };
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('entity:killed', this._onKilled);
+      this.bus.on('ai:flee', this._onFlee);
+      this.bus.on('combat:subsystemDisabled', this._onDisabled);
+      this.bus.on('combat:surrendered', this._onSurrendered);
+      this._unsubs = [
+        this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
+        this.bus.on('entity:destroyed', (payload) => this._onEntityDestroyed(payload)),
+        this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
+        // Run boundary: byEntity dedup must not leak into the next game — entity ids recycle
+        // (nextEntityId resets to 1), so stale dedup rows would silently drop new records.
+        this.bus.on('game:new', () => {
+          if (this.state) {
+            this.state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
+          }
+          this._choiceSig = '';
+          this._wakeCombatOutcomeQuiet();
+        }),
+        this.bus.on('game:newGame', () => {
+          if (this.state) {
+            this.state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
+          }
+          this._choiceSig = '';
+          this._wakeCombatOutcomeQuiet();
+        }),
+        this.bus.on('sector:enter', () => {
+          this._wakeCombatOutcomeQuiet();
+          this._publishAftermath('sector:enter');
+        }),
+        // A card mounted in Adventure before the Crucible door resolves the moment the run
+        // commits. Returning to Adventure republishes through the existing sector:enter hook.
+        this.bus.on('run:started', () => this._publishAftermath('run:started')),
+        this.bus.on('combat:aftermathChoose', this._onAftermathChoose),
+        this.bus.on('custody:aftermathChanged', () => this._publishAftermath('custody')),
+        // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
+        // escape, pacing pin release, pirate parley/disengage) — wake so the next 4-tick
+        // scan records them on the same cadence as before.
+        this.bus.on('combat:damage', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('ai:stateChange', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('surrender:escaped', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('difficulty:pinReleased', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('pirateParley:started', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('pirateParley:resolved', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('pirateDisengage:triggered', () => this._wakeCombatOutcomeQuiet()),
+      ].filter(Boolean);
+    }
+  },
+
+  update(_dt, state) {
+    // Quiet open flight: every 4 ticks still walked shipLike for forceFlee/fsm:flee
+    // stamps even when no unrecalled flee candidates remained (event path already
+    // covers ai:flee). Quiet latch short-circuits that scan; wakes on combat
+    // outcome seams / spawn·destroy / save·sector·new-game / 0.5 s rescan.
+    // Soft-GPU fps not claimed.
+    if (COMBAT_OUTCOME_QUIET_LATCH !== false) {
+      const quiet = this._combatOutcomeQuiet;
+      if (quiet) {
+        const laneVersion = entityIndexLaneVersion(state, COMBAT_OUTCOME_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+        const wakeSeq = this._combatOutcomeWakeSeq | 0;
+        const nowS = Number(state && state.simTime) || 0;
+        if (membership != null
+          && quiet.membership === membership
+          && quiet.wakeSeq === wakeSeq
+          && (nowS - (Number(quiet.armedSimT) || 0)) < COMBAT_OUTCOME_QUIET_RESCAN_S) {
+          publishCombatOutcomeQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._combatOutcomeQuiet) {
+      this._combatOutcomeQuiet = null;
+      publishCombatOutcomeQuiet(state, false);
+    }
+
+    if (state && state.ui && state.ui.docked === true) return;
+    if (state && state.mode && state.mode !== 'flight') return;
+    if (!shouldRunOnTick(state && state.tick, 'combatOutcome:scan', 4)) return;
+    const own = ensureState(state);
+    const list = indexedShipLikeScan(state);
+    let recorded = 0;
+    for (const entity of list) {
+      if (!entity || !entity.alive) continue;
+      // A recycled id still has the previous ship's receipt. Only that same occupant is settled.
+      const prior = own.byEntity[entity.id];
+      if (prior && sameOccupant(prior, entity)) continue;
+      const ai = entity.data && entity.data.ai;
+      if (ai && (ai.forceFlee || ai.fsm === 'flee') && isCandidate(entity, state)) {
+        this._record(entity, { entityId: entity.id, sourceEvent: 'forceFlee' }, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee');
+        recorded++;
+      }
+    }
+
+    if (COMBAT_OUTCOME_QUIET_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, COMBAT_OUTCOME_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      if (membership != null && recorded === 0) {
+        this._combatOutcomeQuiet = {
+          membership,
+          armedSimT: Number(state.simTime) || 0,
+          wakeSeq: this._combatOutcomeWakeSeq | 0,
+        };
+        publishCombatOutcomeQuiet(state, true);
+      } else {
+        this._combatOutcomeQuiet = null;
+        publishCombatOutcomeQuiet(state, false);
+      }
+    }
+  },
+
+  _wakeCombatOutcomeQuiet() {
+    this._combatOutcomeWakeSeq = (this._combatOutcomeWakeSeq | 0) + 1;
+    this._combatOutcomeQuiet = null;
+  },
+
+  _onEntitySpawned(payload) {
+    this._wakeCombatOutcomeQuiet();
+    const id = payload && payload.id != null ? payload.id : null;
+    const own = this.state && this.state.combatOutcome;
+    const prior = id != null && own && own.byEntity ? own.byEntity[id] : null;
+    if (!prior) return;
+    const entity = payload && payload.entity ? payload.entity : entityFor(this.state, id);
+    if (entity && !sameOccupant(prior, entity)) this._publishAftermath();
+  },
+
+  _onEntityDestroyed(payload) {
+    this._wakeCombatOutcomeQuiet();
+    const id = payload && payload.id != null ? payload.id : null;
+    const own = this.state && this.state.combatOutcome;
+    if (id == null || !own || !own.byEntity || !own.byEntity[id]) return;
+    // The remover already dropped the entity and set alive false. Republish so a chase
+    // or a rescue does not stay up for a ship that has left. Do not mark the body dead.
+    this._publishAftermath();
+  },
+
+  _killed(payload) {
+    const entity = entityFor(this.state, payload.id);
+    if (!isCandidate(entity, this.state, payload)) return;
+    this._record(entity, { ...payload, sourceEvent: 'entity:killed' }, 'killed', 'entity:killed');
+  },
+
+  _flee(payload) {
+    const entityId = payload.entityId != null ? payload.entityId : payload.id;
+    const entity = entityFor(this.state, entityId);
+    if (!entity || !isCandidate(entity, this.state, payload)) return;
+    this._record(entity, { ...payload, entityId, sourceEvent: 'ai:flee' }, 'fled', 'ai:flee');
+  },
+
+  _disabled(payload) {
+    // The combat kernel names the damaged combatant `targetId`; retain the older aliases for
+    // authored/test emitters that predate that live event contract.
+    const entityId = payload.targetId != null
+      ? payload.targetId
+      : payload.entityId != null ? payload.entityId : payload.id;
+    const subsystemId = String(payload.subsystemId || '');
+    if (!DISABLE_OUTCOME_SUBSYSTEMS.has(subsystemId)) return;
+    const entity = entityFor(this.state, entityId);
+    if (!entity || !isCandidate(entity, this.state, payload)) return;
+    this._record(entity, { ...payload, entityId, sourceEvent: 'combat:subsystemDisabled' }, 'disabled', subsystemId);
+  },
+
+  _surrendered(payload) {
+    const entityId = payload.entityId != null ? payload.entityId : payload.id;
+    const entity = entityFor(this.state, entityId);
+    if (!entity || !isCandidate(entity, this.state, payload)) return;
+    this._record(entity, { ...payload, entityId, sourceEvent: 'combat:surrendered' }, 'surrendered', 'combat:surrendered');
+  },
+
+  _record(entity, payload, outcome, reason) {
+    const state = this.state;
+    const own = ensureState(state);
+    const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
+    if (id == null) return null;
+    const prior = own.byEntity[id];
+    if (prior && entity && !sameOccupant(prior, entity)) {
+      // The number was recycled. The old receipt stays out of the new ship's verbs.
+      const priorIndex = own.outcomes.indexOf(prior);
+      if (priorIndex >= 0) own.outcomes.splice(priorIndex, 1);
+      delete own.byEntity[id];
+    } else if (prior) {
+      // A later death marks this same body. A despawn does not set dead.
+      // The receipt stays one object, but this death is now the latest salvage.
+      if (payload && payload.sourceEvent === 'entity:killed') {
+        prior.dead = true;
+        // A trimmed receipt is still in byEntity and would block this death. Put it
+        // back at the end so the latest destruction is the salvage again.
+        const priorIndex = own.outcomes.indexOf(prior);
+        if (priorIndex >= 0) own.outcomes.splice(priorIndex, 1);
+        own.outcomes.push(prior);
+        if (own.outcomes.length > MAX_OUTCOMES) {
+          own.outcomes.splice(0, own.outcomes.length - MAX_OUTCOMES);
+        }
+      }
+      this._publishAftermath();
+      return null;
+    }
+    const record = compactRecord(state, entity, payload, outcome, reason);
+    own.byEntity[id] = record;
+    own.outcomes.push(record);
+    if (own.outcomes.length > MAX_OUTCOMES) own.outcomes.splice(0, own.outcomes.length - MAX_OUTCOMES);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      // Transient receipt only: the mirror can retire the victim and clear its target before
+      // replaying this event. Preserve the selected exact life and both positions at the outcome,
+      // without changing the durable compact combat-outcome/save schema.
+      const player = entityFor(state, state.playerId), generation = occupantGenerationOf(entity);
+      const victimPos = entity?.pos, playerPos = player?.pos;
+      const selected = entity && state.entities?.get?.(entity.id) === entity
+        && state.player?.targetId === entity.id && !selectionIsRecycled(state, entity)
+        && Number.isSafeInteger(generation) && generation > 0
+        && [victimPos?.x, victimPos?.z, playerPos?.x, playerPos?.z].every(Number.isFinite);
+      const receipt = selected ? { ...record, observedSelection: {
+        entityId: entity.id, occupantGeneration: generation,
+        pos: { x: victimPos.x, z: victimPos.z }, playerPos: { x: playerPos.x, z: playerPos.z },
+      } } : record;
+      this.bus.emit('combat:outcome', receipt);
+      this.bus.emit('combat:outcomeConsequence', {
+        entityId: record.entityId,
+        outcome: record.outcome,
+        reason: record.reason,
+        factionId: record.factionId,
+        sectorId: record.sectorId,
+        t: record.t,
+        destruction: record.destruction,
+      });
+    }
+    this._speak(record, thrownMassImpact(payload));
+    this._publishAftermath();
+    return record;
+  },
+
+  _publishAftermath(reason) {
+    const state = this.state;
+    if (!state) return null;
+    const own = ensureState(state);
+    if (liveSurvivalRun(state)) {
+      own.aftermath = null;
+      if (this._choiceSig && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('combat:aftermathChoices', { sectorId: state.world && state.world.currentSectorId || null, paused: false, choices: [] });
+      }
+      this._choiceSig = '';
+      return null;
+    }
+    const sectorId = state.world && state.world.currentSectorId || null;
+    const wreckIds = sectorWreckIds(state, sectorId);
+    const outcomes = [];
+    for (const record of own.outcomes) {
+      if (!record || record.sectorId !== sectorId) continue;
+      const entity = entityFor(state, record.entityId);
+      const same = sameOccupant(record, entity);
+      const livingOther = !!(entity && entity.alive !== false && !same);
+      const killReceipt = record.outcome === 'killed' || record.dead === true;
+      // The number is not this body. A living reuse is never the focus. Once a wreck is
+      // here, destroying that body keeps salvage on that ship's own hulk, not the newest one.
+      const notThisBody = killReceipt && !same && (livingOther || wreckIds.length > 0);
+      const ownWreck = notThisBody ? wreckMarkerForVictim(state, sectorId, record.entityId) : null;
+      const entityId = notThisBody ? ownWreck : record.entityId;
+      outcomes.push({
+        outcome: record.outcome,
+        entityId,
+        sectorId: record.sectorId,
+        alive: !!(same && entity.alive !== false),
+        dead: record.dead === true,
+      });
+    }
+    const custodyRows = Object.values(state.player?.custodyLedger?.raidAftermath || {})
+      .filter((row) => row.sectorId === sectorId && row.status === 'open');
+    const custody = custodyRows.map((row) => ({
+      key: row.key, fingerprint: row.fingerprint,
+      freightRemaining: row.lines.reduce((sum, line) => sum + line.qty - line.returnedQty, 0),
+      survivorsPending: Object.values(row.survivors).filter((person) => person.outcome === 'pending').length,
+    }));
+    // Persistent pods can receive a different numeric id on Continue. The crew's memory id
+    // identifies the same survivor; a recycled hull number never does.
+    const survivorPods = custodyRows.length ? new Map(indexedTypeScan(state, 'payloads')
+      .filter((pod) => pod?.alive !== false && pod?.data?.survivorPodCausal?.memoryId)
+      .map((pod) => [pod.data.survivorPodCausal.memoryId, pod])) : new Map();
+    for (const row of custodyRows) {
+      for (const person of Object.values(row.survivors)) {
+        const pod = survivorPods.get(person.survivorId);
+        if (person.outcome !== 'pending' || !pod || pod.alive === false
+          || pod.data?.survivorPodCausal?.memoryId !== person.survivorId) continue;
+        outcomes.unshift({ outcome: 'disabled', entityId: pod.id, sectorId, alive: true, dead: false });
+      }
+    }
+    const baseOffer = aftermathChoices({
+      outcomes,
+      sectorId,
+      wreckIds,
+    });
+    const freightRemaining = custody.reduce((sum, row) => sum + row.freightRemaining, 0);
+    const offer = custody.length ? { ...baseOffer, custody, choices: baseOffer.choices.map((choice) => ({
+      ...choice,
+      label: choice.id === 'salvage' && freightRemaining > 0
+        ? `${choice.label} (${freightRemaining}u freight unreturned)`
+        : choice.id === 'escape' ? `${choice.label} (custody stays open)` : choice.label,
+    })) } : baseOffer;
+    // Before any fight or wreck in this sector there is nothing to choose. Escape-only is
+    // published once a fight receipt or a field wreck exists, not on an empty cruise.
+    const field = outcomes.length > 0 || offer.choices.some((choice) => choice.id === 'salvage');
+    if (!field) {
+      own.aftermath = null;
+      // A card can stay mounted on a field that drained in-sector: receipts persist, but
+      // wreck markers do not. An empty choice list is the resolve signal the deck adapter
+      // already honors — it unmounts the card and releases the borrowed answer digits.
+      // Resetting the signature also lets an identical re-formed field publish again.
+      if (this._choiceSig && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('combat:aftermathChoices', { sectorId, paused: false, choices: [] });
+      }
+      this._choiceSig = '';
+      return null;
+    }
+    // The answered pick follows the wreck. The card stays closed unless the verbs changed
+    // or the player entered the sector. A same-verb retarget must not reopen it.
+    retargetChosenOffRecycledHull(state, own, offer);
+    own.aftermath = offer;
+    const sig = `${sectorId}|${offer.choices.map((choice) => `${choice.id}:${choice.label}`).join(',')}`;
+    const verbsChanged = sig !== this._choiceSig;
+    // Presentation follows the actual selected target, never the nearby observation anchor.
+    // A missing body or an unverified wreck marker retains a generic noun.
+    const identities = {};
+    const presented = offer.choices.map((choice) => {
+      const target = offer.targets[choice.id] ?? null;
+      const entity = target == null ? null : entityFor(state, target);
+      const record = target == null ? null : own.byEntity[target];
+      const matches = record && sameOccupant(record, entity);
+      const generation = entity ? occupantGenerationOf(entity) : null;
+      const identity = JSON.stringify([sectorId, choice.id, target, generation,
+        matches ? record.tick : null, matches ? record.occupantGeneration : null]);
+      identities[choice.id] = identity;
+      const name = matches && Number.isSafeInteger(generation) && generation > 0 && record.label
+        ? String(record.label).replace(/\s+/g, ' ').slice(0, 80) : null;
+      const noun = choice.id === 'salvage' ? 'Wreck' : choice.id === 'pursuit' ? 'Fled' : choice.id === 'rescue' ? 'Survivor' : null;
+      return { id: choice.id, label: choice.label, targetIdentity: identity,
+        context: noun && name ? `${noun}: ${name}` : null };
+    });
+    this._aftermathIdentity = identities;
+    const contextSig = JSON.stringify(presented);
+    const contextChanged = contextSig !== this._aftermathContextSig;
+    this._aftermathContextSig = contextSig;
+    if ((verbsChanged || contextChanged || reason === 'sector:enter' || reason === 'stale') && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('combat:aftermathChoices', {
+        sectorId,
+        paused: false,
+        refreshOnly: !verbsChanged && reason !== 'sector:enter',
+        stale: reason === 'stale',
+        choices: presented,
+        ...(custody.length ? { custody } : {}),
+      });
+    }
+    if (verbsChanged) {
+      this._choiceSig = sig;
+      if (offer.choices.length >= 2) this._speakChoices(offer);
+    }
+    return offer;
+  },
+
+  _speakChoices(offer) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const names = offer.choices.map((choice) => choice.label.replace(/\.$/, '')).join(', ');
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: 'aftermathChoices',
+      text: `${names}. The field stays live.`,
+      ttl: 3,
+    });
+  },
+
+  _speakChoice(chosen) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function' || !chosen) return false;
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: 'aftermathChoice',
+      text: `${chosen.label} The field stays live.`,
+      ttl: 2,
+    });
+  },
+
+  _speak(record, thrownMass) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: `combatOutcome:${record.entityId}`,
+      text: outcomeText(record, thrownMass),
+      ttl: 2,
+    });
+  },
+
+  destroy() {
+    if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
+      if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
+      if (this._onDisabled) this.bus.off('combat:subsystemDisabled', this._onDisabled);
+      if (this._onSurrendered) this.bus.off('combat:surrendered', this._onSurrendered);
+      if (this._onAftermathChoose) this.bus.off('combat:aftermathChoose', this._onAftermathChoose);
+    }
+    for (const off of this._unsubs || []) {
+      if (typeof off === 'function') off();
+    }
+    this._unsubs = [];
+    this._combatOutcomeQuiet = null;
+    this._combatOutcomeWakeSeq = 0;
+    this._choiceSig = '';
+    this._onKilled = this._onFlee = this._onDisabled = this._onSurrendered = this._onAftermathChoose = null;
+  },
+};
+
+export function combatOutcomeForEntity(state, entityId) {
+  const own = ensureState(state);
+  return own.byEntity[entityId] || null;
+}
+
+export default combatOutcome;

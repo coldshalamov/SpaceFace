@@ -1,0 +1,50 @@
+TAP version 13
+# Subtest: aiEncounter quiet latch arms and skips empty shipLike work
+ok 1 - aiEncounter quiet latch arms and skips empty shipLike work
+  ---
+  duration_ms: 6.284681
+  ...
+# Subtest: aiEncounter quiet latch wakes on reinforcement-author spawn
+ok 2 - aiEncounter quiet latch wakes on reinforcement-author spawn
+  ---
+  duration_ms: 2.38798
+  ...
+# Subtest: aiEncounter quiet latch wakes on combat:damage bus
+ok 3 - aiEncounter quiet latch wakes on combat:damage bus
+  ---
+  duration_ms: 1.072406
+  ...
+# Subtest: aiEncounter quiet latch off restores always-scan
+ok 4 - aiEncounter quiet latch off restores always-scan
+  ---
+  duration_ms: 0.908321
+  ...
+# Subtest: spawn-time clearance slides arrivals out of the player bubble
+ok 5 - spawn-time clearance slides arrivals out of the player bubble
+  ---
+  duration_ms: 2.481583
+  ...
+# Subtest: the legacy call path spawns clear of a fast player and holds fire on arrival
+ok 6 - the legacy call path spawns clear of a fast player and holds fire on arrival
+  ---
+  duration_ms: 7.834628
+  ...
+# Subtest: a fresh arrival steers but holds fire; the beat ends in real gunnery
+ok 7 - a fresh arrival steers but holds fire; the beat ends in real gunnery
+  ---
+  duration_ms: 1.159895
+  ...
+# Subtest: ordinary hulls never carry the arrival marker
+ok 8 - ordinary hulls never carry the arrival marker
+  ---
+  duration_ms: 0.294524
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 284.558431

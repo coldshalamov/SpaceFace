@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "assetId": "vfx_combat_hit",
+  "classification": "missing_evidence",
+  "reasonCode": "evidence_incomplete",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/combat_hit_vfx_verify.json",
+    ".devshots/slice-A/combat-hit-pack-note.txt"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 0,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

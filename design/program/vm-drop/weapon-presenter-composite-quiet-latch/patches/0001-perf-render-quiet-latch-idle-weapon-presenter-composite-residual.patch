@@ -1,0 +1,416 @@
+From 5cd366f28395310926ec14d78baa2e51604a0316 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 09:43:50 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20weapon-pre?=
+ =?UTF-8?q?senter=20composite=20residual=20(~6.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid ageShieldContacts + a11y + setCamera/depth +
+empty syncBolts + nearMiss cadence + N pool.update calls every tick even
+after per-pool early-outs. Composite latch after first all-quiet observe;
+wake on pool live / quarks._quietEmpty / shields / fields.active /
+entityIndexVersion / projectiles. Soft-GPU fps not claimed. Picture ON.
+---
+ src/render/weapons/index.js                   |   1 +
+ src/render/weapons/presenter.js               |  97 +++++++-
+ src/render/weapons/shieldContacts.js          |   5 +
+ ...n-presenter-composite-quiet-latch.test.mjs | 224 ++++++++++++++++++
+ 4 files changed, 326 insertions(+), 1 deletion(-)
+ create mode 100644 test/weapon-presenter-composite-quiet-latch.test.mjs
+
+diff --git a/src/render/weapons/index.js b/src/render/weapons/index.js
+index 4dddb5083..6baac44c6 100644
+--- a/src/render/weapons/index.js
++++ b/src/render/weapons/index.js
+@@ -35,6 +35,7 @@ export {
+   ageShieldContacts,
+   readShieldContacts,
+   clearShieldContacts,
++  shieldContactsActiveCount,
+   SHIELD_HIT_SLOTS,
+ } from './shieldContacts.js';
+ export { WeaponVfxPresenter, createWeaponVfxPresenter } from './presenter.js';
+diff --git a/src/render/weapons/presenter.js b/src/render/weapons/presenter.js
+index 2b213c3ba..916c04acd 100644
+--- a/src/render/weapons/presenter.js
++++ b/src/render/weapons/presenter.js
+@@ -11,7 +11,7 @@ import { DistortionField } from './distortionField.js';
+ import { WeaponLightPool } from './weaponLights.js';
+ import { HullScorchPool, heatForWeaponVariant } from './contactMarks.js';
+ import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
+-import { addShieldContact, ageShieldContacts, clearShieldContacts } from './shieldContacts.js';
++import { addShieldContact, ageShieldContacts, clearShieldContacts, shieldContactsActiveCount } from './shieldContacts.js';
+ import {
+   shouldDrawTableVfx,
+   tableLookAtDelta,
+@@ -184,6 +184,16 @@ export class WeaponVfxPresenter {
+     this._wellDistortionQuietEmpty = false;
+     this._wellDistortionQuietActiveLen = -1;
+     this._wellDistortionQuietActiveRef = null;
++    // Quiet settled flight: even with per-pool early-outs, update() still paid
++    // ageShieldContacts + a11y + setCamera/depth + empty syncBolts + nearMiss
++    // cadence + N pool.update calls every tick. Composite latch after first
++    // all-quiet observe; wake on pool live / quarks._quietEmpty / bolts /
++    // shields / fields.active / entityIndexVersion / projectiles. Soft-GPU
++    // fps not claimed. Picture unchanged.
++    this._presenterQuietEmpty = false;
++    this._presenterQuietIndexVersion = -1;
++    this._presenterQuietFieldsRef = null;
++    this._presenterQuietFieldsLen = -1;
+   }
+ 
+   attachGraph(graph) {
+@@ -344,6 +354,10 @@ export class WeaponVfxPresenter {
+     this.state = context.state || this.state;
+     this.helpers = context.helpers || this.helpers;
+     if (typeof context.toLocalXZ === 'function') this.toLocalXZ = context.toLocalXZ;
++    // Composite quiet latch: skip residual when every weapon surface is idle.
++    // Soft-GPU fps not claimed.
++    if (this._presenterQuietEmpty && !this._presenterQuietMaybeAwake()) return;
++    this._presenterQuietEmpty = false;
+     const camera = context.camera;
+     const alpha = Number.isFinite(context.interpolationAlpha) ? context.interpolationAlpha : 1;
+     const viewportHeight = context.viewportHeight || 1000;
+@@ -369,6 +383,83 @@ export class WeaponVfxPresenter {
+     this.ribbons.setCamera(camera, viewportHeight);
+     this.ribbons.update(dt, camera && camera.position);
+     if (this.quarks) this.quarks.update(dt);
++    if (this._presenterAllQuiet(entities)) this._presenterQuietLatch();
++  }
++
++  _presenterProjectileEntities() {
++    const index = this.state && this.state.entityIndex;
++    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
++      return index.projectiles;
++    }
++    return (this.state && this.state.entityList) || [];
++  }
++
++  _presenterEntityIndexVersion() {
++    const index = this.state && this.state.entityIndex;
++    return index && Number.isFinite(index.version) ? index.version : null;
++  }
++
++  _presenterAllQuiet(entities = this._presenterProjectileEntities()) {
++    if (this.discharges.activeCount > 0) return false;
++    if (this.scorches.live > 0 || (this.scorches.mesh && this.scorches.mesh.count > 0)) return false;
++    if (this.distortion.live > 0 || (this.distortion.mesh && this.distortion.mesh.count > 0)) return false;
++    if (this.lights.live > 0) return false;
++    if (this.ribbons.live > 0) return false;
++    if (!this.bolts._quietEmpty || this.bolts.live > 0) return false;
++    if (this.quarks && !this.quarks._quietEmpty) return false;
++    if (this.wellDistortion.live > 0
++      || (this.wellDistortion.mesh && this.wellDistortion.mesh.count > 0)) return false;
++    if (shieldContactsActiveCount() > 0) return false;
++    if (!this._wellDistortionQuietEmpty) return false;
++    if (entities && entities.length > 0) {
++      // Typed projectiles lane may be empty while entityList fallback still holds ships.
++      const index = this.state && this.state.entityIndex;
++      if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
++        if (index.projectiles.length > 0) return false;
++      } else {
++        for (let i = 0; i < entities.length; i++) {
++          const e = entities[i];
++          if (e && e.alive && e.type === 'projectile') return false;
++        }
++      }
++    }
++    return true;
++  }
++
++  _presenterQuietLatch() {
++    const active = this.state && this.state.fields && this.state.fields.active;
++    this._presenterQuietEmpty = true;
++    this._presenterQuietIndexVersion = this._presenterEntityIndexVersion();
++    this._presenterQuietFieldsRef = active || null;
++    this._presenterQuietFieldsLen = active ? active.length : 0;
++  }
++
++  // Cheap dirty wake while composite-latched. Pool live counters catch external
++  // quarks.spawn* / addShieldContact / well pushes; entityIndexVersion catches
++  // projectile spawns. Soft-GPU fps not claimed.
++  _presenterQuietMaybeAwake() {
++    if (this.discharges.activeCount > 0) return true;
++    if (this.scorches.live > 0) return true;
++    if (this.distortion.live > 0) return true;
++    if (this.lights.live > 0) return true;
++    if (this.ribbons.live > 0) return true;
++    if (!this.bolts._quietEmpty || this.bolts.live > 0) return true;
++    if (this.quarks && !this.quarks._quietEmpty) return true;
++    if (this.wellDistortion.live > 0) return true;
++    if (shieldContactsActiveCount() > 0) return true;
++    const version = this._presenterEntityIndexVersion();
++    if (version !== this._presenterQuietIndexVersion) return true;
++    const active = this.state && this.state.fields && this.state.fields.active;
++    const activeLen = active ? active.length : 0;
++    if (active !== this._presenterQuietFieldsRef || activeLen !== this._presenterQuietFieldsLen) {
++      return true;
++    }
++    const index = this.state && this.state.entityIndex;
++    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
++      && index.projectiles.length > 0) {
++      return true;
++    }
++    return false;
+   }
+ 
+   _syncBolts(entities, alpha, camera, dt = 0, accessibilityProfile = this._a11y()) {
+@@ -802,6 +893,10 @@ export class WeaponVfxPresenter {
+     this._wellDistortionQuietEmpty = false;
+     this._wellDistortionQuietActiveLen = -1;
+     this._wellDistortionQuietActiveRef = null;
++    this._presenterQuietEmpty = false;
++    this._presenterQuietIndexVersion = -1;
++    this._presenterQuietFieldsRef = null;
++    this._presenterQuietFieldsLen = -1;
+     this._detachGraph(this._graph);
+     this._graph = null;
+     clearShieldContacts();
+diff --git a/src/render/weapons/shieldContacts.js b/src/render/weapons/shieldContacts.js
+index b4e534251..ca99620ed 100644
+--- a/src/render/weapons/shieldContacts.js
++++ b/src/render/weapons/shieldContacts.js
+@@ -171,3 +171,8 @@ export function clearShieldContacts(entityId) {
+   if (entityId == null) hits.clear();
+   else hits.delete(entityId);
+ }
++
++/** O(1) live bag size — weapon-presenter composite quiet-wake reads this. */
++export function shieldContactsActiveCount() {
++  return hits.size;
++}
+diff --git a/test/weapon-presenter-composite-quiet-latch.test.mjs b/test/weapon-presenter-composite-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..d828d7a7a
+--- /dev/null
++++ b/test/weapon-presenter-composite-quiet-latch.test.mjs
+@@ -0,0 +1,224 @@
++/**
++ * #126 weapon-presenter-composite-quiet-latch — quiet all-pools residual skips
++ * ageShield+a11y+setCamera+syncBolts+nearMiss+N pool.update; dirty-wake on
++ * pool live / quarks._quietEmpty / shields / fields.active / entityIndexVersion.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { FIELD_KINDS } from '../src/data/fields.js';
++import {
++  addShieldContact,
++  clearShieldContacts,
++  WeaponVfxPresenter,
++} from '../src/render/weapons/index.js';
++
++function makePresenter(state) {
++  return new WeaponVfxPresenter({ scene: new THREE.Scene(), state });
++}
++
++function quietState(overrides = {}) {
++  return {
++    playerId: 1,
++    simTime: 1,
++    settings: { video: { motionReduce: false, flashReduce: false }, accessibility: {} },
++    fields: { active: [] },
++    entities: new Map([[1, { id: 1, alive: true, pos: { x: 0, z: 0 } }]]),
++    entityList: [],
++    entityIndex: {
++      ready: true,
++      version: 1,
++      projectiles: [],
++      __spacefaceEntityIndexV1: true,
++    },
++    ...overrides,
++  };
++}
++
++test('composite quiet latch arms after first all-quiet update and skips residual', () => {
++  clearShieldContacts();
++  const state = quietState();
++  const presenter = makePresenter(state);
++  let boltBegins = 0;
++  const origBegin = presenter.bolts.beginFrame.bind(presenter.bolts);
++  presenter.bolts.beginFrame = (...args) => {
++    boltBegins += 1;
++    return origBegin(...args);
++  };
++  let dischargeUpdates = 0;
++  const origDisc = presenter.discharges.update.bind(presenter.discharges);
++  presenter.discharges.update = (...args) => {
++    dischargeUpdates += 1;
++    return origDisc(...args);
++  };
++
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true, 'arms composite latch');
++  assert.equal(presenter.bolts._quietEmpty, true);
++  assert.ok(presenter.quarks._quietEmpty, 'quarks quiet after first empty update');
++  assert.ok(boltBegins >= 1, 'first tick still runs syncBolts begin');
++  assert.ok(dischargeUpdates >= 1, 'first tick still runs discharges.update');
++
++  boltBegins = 0;
++  dischargeUpdates = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(boltBegins, 0, 'latched ticks skip syncBolts begin');
++  assert.equal(dischargeUpdates, 0, 'latched ticks skip discharges.update');
++  assert.equal(presenter._presenterQuietEmpty, true);
++  presenter.dispose();
++  clearShieldContacts();
++});
++
++test('dirty-wake: quarks.spawn clears latch via _quietEmpty', () => {
++  clearShieldContacts();
++  const state = quietState();
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true);
++
++  let boltBegins = 0;
++  const origBegin = presenter.bolts.beginFrame.bind(presenter.bolts);
++  presenter.bolts.beginFrame = (...args) => {
++    boltBegins += 1;
++    return origBegin(...args);
++  };
++
++  presenter.quarks.spawnMuzzle(0, 0.3, 0, 1, 0, 0, 0, false);
++  assert.equal(presenter.quarks._quietEmpty, false);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.ok(boltBegins >= 1, 'quarks spawn wakes composite');
++  // Drain particles across a few frames then re-latch.
++  for (let i = 0; i < 120; i++) presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter.quarks._quietEmpty, true);
++  assert.equal(presenter._presenterQuietEmpty, true, 're-latches after quarks drain');
++  boltBegins = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(boltBegins, 0, 'stays latched after re-arm');
++  presenter.dispose();
++  clearShieldContacts();
++});
++
++test('dirty-wake: addShieldContact wakes composite', () => {
++  clearShieldContacts();
++  const state = quietState();
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true);
++
++  let disc = 0;
++  const orig = presenter.discharges.update.bind(presenter.discharges);
++  presenter.discharges.update = (...args) => {
++    disc += 1;
++    return orig(...args);
++  };
++
++  addShieldContact(1, 1, 0, 0, 1);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.ok(disc >= 1, 'shield contact wakes');
++  assert.equal(presenter._presenterQuietEmpty, false);
++
++  // Age out contacts.
++  for (let i = 0; i < 40; i++) presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true, 're-latches after shield drain');
++  presenter.dispose();
++  clearShieldContacts();
++});
++
++test('dirty-wake: fields.active push wakes (well path)', () => {
++  clearShieldContacts();
++  const active = [];
++  const state = quietState({ fields: { active } });
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true);
++
++  let wellUpdates = 0;
++  const field = presenter.wellDistortion;
++  const orig = field.update.bind(field);
++  field.update = (...args) => {
++    wellUpdates += 1;
++    return orig(...args);
++  };
++
++  active.push({
++    id: 'w1',
++    kind: FIELD_KINDS.WELL,
++    center: { x: 10, z: -4 },
++    distortionRadius: 190,
++    distortionStrength: 240,
++  });
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.ok(wellUpdates >= 1, 'well push wakes composite + well sync');
++  assert.equal(field.live, 1);
++  assert.equal(presenter._presenterQuietEmpty, false);
++
++  active.length = 0;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(field.live, 0);
++  assert.equal(presenter._presenterQuietEmpty, true);
++  presenter.dispose();
++  clearShieldContacts();
++});
++
++test('dirty-wake: entityIndexVersion / projectiles lane wakes', () => {
++  clearShieldContacts();
++  const projectiles = [];
++  const state = quietState({
++    entityIndex: {
++      ready: true,
++      version: 3,
++      projectiles,
++      __spacefaceEntityIndexV1: true,
++    },
++  });
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true);
++
++  let begins = 0;
++  const orig = presenter.bolts.beginFrame.bind(presenter.bolts);
++  presenter.bolts.beginFrame = (...args) => {
++    begins += 1;
++    return orig(...args);
++  };
++
++  state.entityIndex.version = 4;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.ok(begins >= 1, 'index version bump wakes');
++  // Empty projectiles → re-latch.
++  assert.equal(presenter._presenterQuietEmpty, true);
++
++  begins = 0;
++  projectiles.push({
++    id: 99, type: 'projectile', alive: true,
++    pos: { x: 1, z: 2 }, prevPos: { x: 0, z: 0 },
++    vel: { x: 10, z: 0 }, data: { weaponId: 'pulse-cannon' },
++  });
++  state.entityIndex.version = 5;
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.ok(begins >= 1, 'projectile push wakes');
++  assert.equal(presenter._presenterQuietEmpty, false);
++
++  projectiles.length = 0;
++  state.entityIndex.version = 6;
++  // Ribbon linger keeps live>0 for a few frames after release; drain then re-latch.
++  for (let i = 0; i < 30; i++) presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter.ribbons.live, 0, 'ribbon linger drained');
++  assert.equal(presenter._presenterQuietEmpty, true);
++  presenter.dispose();
++  clearShieldContacts();
++});
++
++test('dispose clears composite latch', () => {
++  clearShieldContacts();
++  const state = quietState();
++  const presenter = makePresenter(state);
++  presenter.update(1 / 60, { state, interpolationAlpha: 1 });
++  assert.equal(presenter._presenterQuietEmpty, true);
++  presenter.dispose();
++  assert.equal(presenter._presenterQuietEmpty, false);
++  clearShieldContacts();
++});
+-- 
+2.47.3
+

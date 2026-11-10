@@ -1,0 +1,10 @@
+{
+  "label": "after-568d",
+  "ms": 138.21,
+  "queries": 8000,
+  "rows": 400,
+  "hits": 3120000,
+  "cellKeyType": "number",
+  "cellKeySample": 2199024304128,
+  "FAR_ACTOR_CELL": 400
+}

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="/">
+<title>SpaceFace · combat feel bench</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050911;color:#e4edf4;font:14px system-ui,sans-serif}
+canvas{display:block;width:100%;height:100%}
+header{position:fixed;left:26px;top:20px;max-width:560px;pointer-events:none;text-shadow:0 2px 14px #02050c}
+small{font-size:10px;letter-spacing:.2em;color:#93b5c8}
+h1{font-size:25px;font-weight:450;letter-spacing:-.035em;margin:7px 0 4px}
+p{max-width:520px;margin:0;color:#b0c3d0;font-size:12px;line-height:1.5}
+#readout{position:fixed;right:24px;top:20px;text-align:right;white-space:pre-line;color:#b5c8d3;font:11px/1.65 ui-monospace,monospace;text-shadow:0 2px 14px #02050c}
+#status{position:fixed;left:26px;bottom:88px;color:#acc1cb;font:10px ui-monospace,monospace}
+#status.error,#error{color:#ff9b7f}
+#error{position:fixed;left:26px;right:26px;bottom:132px;max-height:120px;overflow:auto;font:11px/1.5 ui-monospace,monospace;white-space:pre-wrap}
+nav{position:fixed;left:26px;right:26px;bottom:22px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+button,select{border:1px solid #496175;background:#101e2c;color:#dbeaf3;border-radius:3px;padding:8px 11px;font:inherit;cursor:pointer}
+button[aria-pressed=true]{background:#c2e8ef;color:#0c1720;border-color:#c2e8ef}
+button:hover,select:hover{border-color:#c2e8ef}
+label{color:#b8c8d1;font-size:11px;padding:0 3px}
+#truth{position:fixed;right:24px;bottom:28px;color:#8ca4b4;font-size:9px;letter-spacing:.13em}
+</style>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/addons/","three.quarks":"/node_modules/three.quarks/dist/three.quarks.esm.js","quarks.core":"/node_modules/quarks.core/dist/quarks.core.esm.js","three-mesh-bvh":"/node_modules/three-mesh-bvh/src/index.js","@elemaudio/web-renderer":"/node_modules/@elemaudio/web-renderer/dist/index.js","@elemaudio/core":"/node_modules/@elemaudio/core/dist/index.js","shallowequal":"/vendor/elemaudio-deps/shallowequal.mjs","invariant":"/vendor/elemaudio-deps/invariant.mjs","eventemitter3":"/vendor/elemaudio-deps/eventemitter3.mjs","@dimforge/rapier3d-compat":"/vendor/rapier3d-compat/rapier.mjs","@floating-ui/dom":"/node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs","@floating-ui/core":"/node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs","@floating-ui/utils":"/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs","stats-gl":"/node_modules/stats-gl/dist/main.js"}}</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<header>
+  <small>SPACEFACE / COMBAT FEEL BENCH / FIXED SEED</small>
+  <h1 id="title">Combat feel / enemy reaction</h1>
+  <p id="description">Released Kestrel and Wasp hulls, the production weapon presenter, hull micro-motion, production hitstun tumble body language, shield response and bloom. No asteroid stand-in and no second VFX renderer.</p>
+</header>
+<div id="readout">LOADING PRODUCTION OWNERS</div>
+<div id="status">Preparing renderer, release hulls, and weapon presenter…</div>
+<div id="error"></div>
+<nav id="nav"></nav>
+<div id="truth">DIAGNOSTIC BENCH · PRODUCTION PRESENTATION OWNERS · SIM NOT MOUNTED</div>
+<script>
+window.__combatFeelBenchError = null;
+window.__combatFeelBenchErrors = [];
+window.__combatFeelRecordError = function (error) {
+  window.__combatFeelBenchError = String(error && (error.stack || error.message) || error);
+  window.__combatFeelBenchErrors.push(window.__combatFeelBenchError);
+  var box = document.getElementById('error');
+  if (box) box.textContent = window.__combatFeelBenchError;
+  var status = document.getElementById('status');
+  if (status) { status.textContent = 'STARTUP FAILED'; status.classList.add('error'); }
+};
+addEventListener('error', (event) => window.__combatFeelRecordError(event.error || event.message || 'page error'));
+addEventListener('unhandledrejection', (event) => window.__combatFeelRecordError(event.reason));
+</script>
+<script type="module">
+import { bootCombatFeelBench } from '/scripts/combat-feel/bench.js';
+import { SCENARIOS, VIEWS, DEFAULT_SEED } from '/scripts/combat-feel/catalog.mjs';
+
+const canvas = document.getElementById('view');
+const statusElement = document.getElementById('status');
+const errorElement = document.getElementById('error');
+const readout = document.getElementById('readout');
+const title = document.getElementById('title');
+const description = document.getElementById('description');
+const nav = document.getElementById('nav');
+let bench = null;
+let playing = false;
+let raf = 0;
+let lastTick = 0;
+
+function formatReadout(info) {
+  return [
+    `${info.label.toUpperCase()}`,
+    `seed ${info.seed} · ${info.time.toFixed(2)} s / ${info.durationSeconds.toFixed(2)} s · frame ${info.frame}`,
+    `${info.render.calls} draws · ${info.render.triangles.toLocaleString()} triangles`,
+    `stage ${info.scene.stage} · lights ${info.scene.counts.lights} (peak ${info.scene.counts.lightPeak})`,
+    `tumble ${info.reaction.tumbleActive ? 'ACTIVE' : (info.reaction.tumbleLaw ? 'DONE' : 'NONE')} · yaw ${info.reaction.tumbleYaw.toFixed(2)} rad`,
+    `contact ${info.contact ? `${info.contact.kind} @ ${info.contact.atS.toFixed(2)} s` : 'pending'}`,
+  ].join('\n');
+}
+
+function refresh(info) {
+  if (!info) return;
+  title.textContent = info.label;
+  description.textContent = SCENARIOS.find((scenario) => scenario.id === info.scenario)?.note || '';
+  readout.textContent = formatReadout(info);
+  const failed = info.checks.filter((check) => !check.ok);
+  const missing = Object.entries(info.evidence).filter(([, seen]) => !seen).map(([name]) => name);
+  statusElement.classList.toggle('error', failed.length > 0);
+  statusElement.textContent = failed.length
+    ? `EVIDENCE INCOMPLETE · ${failed.map((check) => check.id).join(', ')}`
+    : `READY · ${info.requiredEvidence.join(' / ')}${missing.length ? ` · optional missing ${missing.join(', ')}` : ''}`;
+  for (const button of nav.querySelectorAll('button[data-case]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.case === info.scenario));
+  }
+}
+
+function selectScenario(id) {
+  if (!bench) return;
+  playing = false;
+  lastTick = 0;
+  refresh(bench.select(id, { seed: Number(document.getElementById('seed').value) || DEFAULT_SEED }));
+}
+
+function loop(now) {
+  raf = requestAnimationFrame(loop);
+  if (!bench || !playing) return;
+  if (!lastTick) lastTick = now;
+  const dt = Math.min(0.05, (now - lastTick) / 1000);
+  lastTick = now;
+  const info = bench.inspect();
+  const next = info.time + dt;
+  const sampled = bench.sample(next > info.durationSeconds ? 0 : next);
+  if (next > info.durationSeconds) bench.select(info.scenario, { seed: Number(document.getElementById('seed').value) || DEFAULT_SEED });
+  refresh(sampled);
+}
+
+async function start() {
+  try {
+    bench = await bootCombatFeelBench({ canvas, statusElement, errorElement });
+    window.__combatFeelBench = bench;
+    for (const scenario of SCENARIOS) {
+      const button = document.createElement('button');
+      button.dataset.case = scenario.id;
+      button.textContent = scenario.label;
+      button.onclick = () => selectScenario(scenario.id);
+      nav.append(button);
+    }
+    const playButton = document.createElement('button');
+    playButton.textContent = 'Play';
+    playButton.onclick = () => {
+      playing = !playing;
+      lastTick = 0;
+      playButton.textContent = playing ? 'Pause' : 'Play';
+      playButton.setAttribute('aria-pressed', String(playing));
+      if (playing && bench.inspect().time >= bench.inspect().durationSeconds) selectScenario(bench.inspect().scenario);
+    };
+    nav.append(playButton);
+    const seedLabel = document.createElement('label');
+    seedLabel.textContent = 'seed';
+    const seedInput = document.createElement('input');
+    seedInput.id = 'seed';
+    seedInput.type = 'number';
+    seedInput.value = String(DEFAULT_SEED);
+    seedInput.min = '0';
+    seedInput.step = '1';
+    seedInput.onchange = () => selectScenario(bench.inspect().scenario);
+    seedLabel.append(seedInput);
+    nav.append(seedLabel);
+    const viewLabel = document.createElement('label');
+    viewLabel.textContent = 'view';
+    const viewSelect = document.createElement('select');
+    viewSelect.id = 'view-mode';
+    for (const view of VIEWS) {
+      const option = document.createElement('option');
+      option.value = view;
+      option.textContent = view;
+      if (view === 'normal') option.selected = true;
+      viewSelect.append(option);
+    }
+    viewSelect.onchange = () => {
+      bench.configure({ seed: Number(seedInput.value) || DEFAULT_SEED, view: viewSelect.value });
+      refresh(bench.inspect());
+    };
+    viewLabel.append(viewSelect);
+    nav.append(viewLabel);
+    refresh(bench.inspect());
+    raf = requestAnimationFrame(loop);
+  } catch (error) {
+    window.__combatFeelRecordError(error);
+    throw error;
+  }
+}
+
+start();
+</script>
+</body>
+</html>

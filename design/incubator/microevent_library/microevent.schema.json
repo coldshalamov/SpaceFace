@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "spaceface.microevent.v1",
+  "title": "SpaceFace ambient microevent",
+  "description": "One short ambient situation (10 s - 2 min) expressible as state-machine choreography over EXISTING systems. The catalog is additive data; nothing imports it until a later integration task. Design rule: the event must read to a player who never opens a mission log — every phase names what is VISIBLE, not what a variable does.",
+  "type": "object",
+  "required": [
+    "id", "title", "category", "durationS", "participants", "environment",
+    "arrangement", "startConditions", "visibleCue", "phases", "completion",
+    "interruptions", "playerInterference", "criminalOpportunity", "aftermath",
+    "systems", "fallback", "tier"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^ev_[a-z0-9_]+$" },
+    "title": { "type": "string", "maxLength": 60 },
+    "category": { "enum": ["work", "logistics", "law", "crime", "accident", "construction", "civilian", "environmental"] },
+    "durationS": {
+      "type": "array", "prefixItems": [{ "type": "number", "minimum": 5 }, { "type": "number", "maximum": 180 }],
+      "minItems": 2, "maxItems": 2,
+      "description": "[min,max] seconds; events should usually complete with no player input"
+    },
+    "participants": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "required": ["role", "count"], "additionalProperties": false,
+        "properties": {
+          "role": { "enum": [
+            "miner", "hauler", "courier", "patrol", "escort", "smuggler", "pirate",
+            "rescue", "express", "surveyor", "salvor", "tender",
+            "tanker", "tug", "customs", "construction_rig", "sweeper", "prospector",
+            "ore_barge", "liner",
+            "station", "wreck", "asteroid", "pickup", "drone", "player"
+          ],
+          "description": "First 12 are LIVE traffic roles; tanker..liner are roles whose distinct hulls exist only as npc_activity_pack donors — events using them MUST declare a live-hull fallback in notes or run on the role's current modular hull" },
+          "count": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "optional": { "type": "boolean" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "environment": {
+      "type": "array", "items": { "type": "string" },
+      "description": "Required world objects (asteroid seam, wreck of class X, station berth, lane, everyday_space_kit prop as OPTIONAL dressing...)"
+    },
+    "arrangement": { "type": "string", "description": "Spatial layout in world units, authored against the R1 camera bands (0-95 always visible, 95-125 normal play, 125-165 speed-revealed)" },
+    "startConditions": { "type": "string" },
+    "visibleCue": { "type": "string", "description": "What a watching player sees BEFORE the event proper - the tell" },
+    "phases": {
+      "type": "array", "minItems": 2, "maxItems": 9,
+      "items": {
+        "type": "object", "required": ["name", "durationS", "visible"], "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "durationS": { "type": "number", "minimum": 1 },
+          "visible": { "type": "string", "description": "What is on screen during this phase - motion, signals, props" },
+          "signals": { "type": "array", "items": { "$ref": "#/$defs/signal" } }
+        }
+      }
+    },
+    "completion": { "type": "string", "description": "Normal end state, visible" },
+    "interruptions": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["trigger", "outcome"], "additionalProperties": false,
+        "properties": { "trigger": { "type": "string" }, "outcome": { "type": "string" } }
+      }
+    },
+    "playerInterference": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "criminalOpportunity": { "type": ["string", "null"] },
+    "aftermath": { "type": ["string", "null"], "description": "Optional persistence: wreck left behind, pickup spawned, market blip, reputation memory" },
+    "systems": {
+      "type": "array", "minItems": 1,
+      "items": { "enum": [
+        "npcJobs.phaseGraph", "npcJobsRuntime.assign", "traffic.spawnRole", "traffic.manifest",
+        "traffic.escort", "signatureVfx", "signatureVfx.reaction", "signatureVfx.deploy",
+        "stationSideEvents.hauler_dock", "stationSideEvents.patrol_launch",
+        "stationSideEvents.repair_drone", "stationSideEvents.cargo_tractor",
+        "encounterDirector.distress", "encounterDirector.convoy", "encounterDirector.toll",
+        "encounterDirector.ambush", "encounterDirector.whisper", "encounterDirector.squad",
+        "wrecks.spawn", "salvage.strip", "pickups.spawn", "scanner.roleReadout",
+        "sectorZones.slot", "spawnBudget", "comms.ambientToast", "vfx.substrate",
+        "encounterDirector.pressure", "ai.passive",
+        "donor.activityPackHull", "donor.everydaySpaceProp", "donor.laneFurnitureProp",
+        "future.towLink", "future.laneClosure", "future.contrabandModel",
+        "future.structureWeapons", "future.gravityField", "future.berthQueue",
+        "future.droneSwarm", "future.moduleDockAnim"
+      ] },
+      "description": "Existing systems by audit; donor.* = incubator dressing only; future.* = mechanics that do not exist (event must be tier=blocked if a future.* system is REQUIRED)"
+    },
+    "fallback": { "type": "string", "description": "What happens if an actor despawns/dies mid-event - every event must degrade to something sensible" },
+    "tier": { "enum": ["first15", "next20", "standard", "blocked"] },
+    "blockedOn": { "type": ["string", "null"], "description": "Required when tier=blocked: the named missing mechanic" },
+    "notes": { "type": "string" },
+    "diagramMermaid": { "type": "string", "description": "Optional deterministic sequence diagram source for the bible" }
+  },
+  "$defs": {
+    "signal": { "enum": [
+      "spine_wake", "heavy_burn", "clean_burn", "stacking", "blind_cone", "on_the_pin",
+      "mouth_open", "spilling_the_count", "home_under_rock", "breaking_the_pattern",
+      "reading_the_dark", "picking_the_bones", "hull_open"
+    ] }
+  }
+}

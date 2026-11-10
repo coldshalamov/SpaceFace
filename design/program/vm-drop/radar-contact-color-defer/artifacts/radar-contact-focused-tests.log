@@ -1,0 +1,55 @@
+TAP version 13
+# Subtest: radar range ring follows the active entity live loadout without a stale aggregate field
+ok 1 - radar range ring follows the active entity live loadout without a stale aggregate field
+  ---
+  duration_ms: 1.319092
+  ...
+# Subtest: radar range ring ignores invalid live ranges and retains the no-tool fallback
+ok 2 - radar range ring ignores invalid live ranges and retains the no-tool fallback
+  ---
+  duration_ms: 0.162943
+  ...
+# Subtest: primary tactical identities use unique shapes, redundant channels, and executable contrast
+ok 3 - primary tactical identities use unique shapes, redundant channels, and executable contrast
+  ---
+  duration_ms: 1.617265
+  ...
+# Subtest: radar projection matches the chase view, rejects corrupt coordinates, and keeps large rim glyphs inside
+ok 4 - radar projection matches the chase view, rejects corrupt coordinates, and keeps large rim glyphs inside
+  ---
+  duration_ms: 0.823294
+  ...
+# Subtest: objective guidance degrades gracefully under threat and general contact density
+ok 5 - objective guidance degrades gracefully under threat and general contact density
+  ---
+  duration_ms: 0.364703
+  ...
+# Subtest: the full chart teaches the exact vocabulary and brackets the actual live objective
+ok 6 - the full chart teaches the exact vocabulary and brackets the actual live objective
+  ---
+  duration_ms: 1.861901
+  ...
+# Subtest: the public radar is a native crisp renderer, not a blurred legacy canvas copy
+ok 7 - the public radar is a native crisp renderer, not a blurred legacy canvas copy
+  ---
+  duration_ms: 0.81203
+  ...
+# Subtest: every pushed menu, map, log, and future screen freezes through ScreenManager itself
+ok 8 - every pushed menu, map, log, and future screen freezes through ScreenManager itself
+  ---
+  duration_ms: 0.767474
+  ...
+# Subtest: changed map UI obeys the repository-wide 12px text floor
+ok 9 - changed map UI obeys the repository-wide 12px text floor
+  ---
+  duration_ms: 1.899312
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 712.988796

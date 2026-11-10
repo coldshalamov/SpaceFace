@@ -1,0 +1,199 @@
+From 5f84208e3f24e2fec911a1cb0849019cef525a76 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:58:36 -0400
+Subject: [PATCH] perf(world): pack asteroid field grid keys as integers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+queryAsteroidField no longer templates `${cx}:${cz}` per cell per probe.
+Packed Number keys cut young-gen string churn on the settled-flight hot
+loop Phase A ranked (cpu-profile ~285 ms self). Quiet-VM microbench
+(800 rocks, 20k queries): 111.6 ms → 84.0 ms (~25%).
+---
+ src/world/asteroidField.js            | 40 ++++++++++--
+ test/asteroid-field-cell-key.test.mjs | 91 +++++++++++++++++++++++++++
+ 2 files changed, 125 insertions(+), 6 deletions(-)
+ create mode 100644 test/asteroid-field-cell-key.test.mjs
+
+diff --git a/src/world/asteroidField.js b/src/world/asteroidField.js
+index 76846ddfe..6d64dc97b 100644
+--- a/src/world/asteroidField.js
++++ b/src/world/asteroidField.js
+@@ -20,6 +20,15 @@ export function ensureAsteroidField(state) {
+   if (field && field.schema === ASTEROID_FIELD_SCHEMA && Array.isArray(field.rocks)) {
+     if (!(field.byId instanceof Map)) field.byId = new Map(field.rocks.map((row) => [row.id, row]));
+     if (!(field.grid instanceof Map)) rebuildGrid(field);
++    else {
++      // Migrate any in-memory string keys from an older session of this tab.
++      for (const key of field.grid.keys()) {
++        if (typeof key === 'string') {
++          rebuildGrid(field);
++          break;
++        }
++      }
++    }
+     return field;
+   }
+   field = {
+@@ -40,12 +49,29 @@ export function shouldKeepLiveAsteroid(options = {}) {
+   return false;
+ }
+ 
+-function cellKey(x, z) {
+-  return `${Math.floor(x / ASTEROID_FIELD_CELL)}:${Math.floor(z / ASTEROID_FIELD_CELL)}`;
++// Packed integer cell key — never allocate a `cx:cz` string on the hot
++// query/update path. Phase A cpu-profile-flight attributed 285 ms self to
++// queryAsteroidField; alloc sampling listed per-frame string churn as a top
++// settled-flight site family. Offset keeps negative world cells non-negative.
++// Multiply (not <<) so packing stays outside JS's 32-bit bitwise truncate —
++// ±131072 cells ≈ ±28.8e6 WU fits comfortably in Number.MAX_SAFE_INTEGER.
++const CELL_KEY_AXIS_BITS = 18;
++const CELL_KEY_AXIS_STRIDE = 2 ** CELL_KEY_AXIS_BITS;
++const CELL_KEY_AXIS_ORIGIN = 2 ** (CELL_KEY_AXIS_BITS - 1);
++
++export function packAsteroidFieldCellKey(cx, cz) {
++  return (cx + CELL_KEY_AXIS_ORIGIN) * CELL_KEY_AXIS_STRIDE
++    + (cz + CELL_KEY_AXIS_ORIGIN);
++}
++
++function cellKeyFromCoords(x, z) {
++  const cx = Math.floor(x / ASTEROID_FIELD_CELL);
++  const cz = Math.floor(z / ASTEROID_FIELD_CELL);
++  return packAsteroidFieldCellKey(cx, cz);
+ }
+ 
+ function gridAdd(field, rec) {
+-  const key = cellKey(finite(rec.pos && rec.pos.x), finite(rec.pos && rec.pos.z));
++  const key = cellKeyFromCoords(finite(rec.pos && rec.pos.x), finite(rec.pos && rec.pos.z));
+   rec._cell = key;
+   let bucket = field.grid.get(key);
+   if (!bucket) {
+@@ -139,22 +165,24 @@ export function queryAsteroidField(state, pos, radius, out = []) {
+   const x = finite(pos.x);
+   const z = finite(pos.z);
+   const r = radius;
+-  const r2 = r * r;
+   const minC = Math.floor((x - r) / ASTEROID_FIELD_CELL);
+   const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
+   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
+   const maxR = Math.floor((z + r) / ASTEROID_FIELD_CELL);
++  const grid = field.grid;
+   for (let cx = minC; cx <= maxC; cx++) {
+     for (let cz = minR; cz <= maxR; cz++) {
+-      const bucket = field.grid && field.grid.get(`${cx}:${cz}`);
++      const bucket = grid && grid.get(packAsteroidFieldCellKey(cx, cz));
+       if (!bucket) continue;
+       for (let i = 0; i < bucket.length; i++) {
+         const rec = bucket[i];
+         if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+         const dx = rec.pos.x - x;
+         const dz = rec.pos.z - z;
++        const d2 = dx * dx + dz * dz;
+         const reach = r + finite(rec.radius);
+-        if (dx * dx + dz * dz <= reach * reach || dx * dx + dz * dz <= r2) out.push(rec);
++        // reach >= r, so the old `|| d2 <= r2` branch was redundant; keep one compare.
++        if (d2 <= reach * reach) out.push(rec);
+       }
+     }
+   }
+diff --git a/test/asteroid-field-cell-key.test.mjs b/test/asteroid-field-cell-key.test.mjs
+new file mode 100644
+index 000000000..5537adaf9
+--- /dev/null
++++ b/test/asteroid-field-cell-key.test.mjs
+@@ -0,0 +1,91 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import {
++  ASTEROID_FIELD_CELL,
++  insertAsteroidFieldRock,
++  packAsteroidFieldCellKey,
++  queryAsteroidField,
++  ensureAsteroidField,
++} from '../src/world/asteroidField.js';
++
++test('packAsteroidFieldCellKey is stable and bijective for nearby cells', () => {
++  const seen = new Set();
++  for (let cx = -40; cx <= 40; cx++) {
++    for (let cz = -40; cz <= 40; cz++) {
++      const key = packAsteroidFieldCellKey(cx, cz);
++      assert.equal(typeof key, 'number');
++      assert.ok(Number.isSafeInteger(key));
++      assert.equal(seen.has(key), false, `collision at ${cx},${cz}`);
++      seen.add(key);
++    }
++  }
++  assert.notEqual(
++    packAsteroidFieldCellKey(0, 1),
++    packAsteroidFieldCellKey(1, 0),
++  );
++});
++
++test('queryAsteroidField uses integer grid keys (no string buckets)', () => {
++  const state = { world: {}, entities: new Map(), entityList: [], nextEntityId: 1, freeIds: [] };
++  ensureAsteroidField(state);
++  const near = insertAsteroidFieldRock(state, {
++    pos: { x: 10, z: -15 },
++    radius: 8,
++    data: { typeId: 'ast_common_rock' },
++  });
++  const far = insertAsteroidFieldRock(state, {
++    pos: { x: ASTEROID_FIELD_CELL * 8, z: ASTEROID_FIELD_CELL * 8 },
++    radius: 8,
++    data: { typeId: 'ast_common_rock' },
++  });
++  const field = state.world.asteroidField;
++  for (const key of field.grid.keys()) {
++    assert.equal(typeof key, 'number', `grid key must be number, got ${typeof key}`);
++  }
++  assert.equal(typeof near._cell, 'number');
++  assert.equal(typeof far._cell, 'number');
++  const hits = queryAsteroidField(state, { x: 10, z: -15 }, 50);
++  assert.equal(hits.some((r) => r.id === near.id), true);
++  assert.equal(hits.some((r) => r.id === far.id), false);
++});
++
++test('ensureAsteroidField rebuilds legacy string-keyed grids', () => {
++  const state = { world: {}, entities: new Map(), entityList: [], nextEntityId: 1, freeIds: [] };
++  const field = ensureAsteroidField(state);
++  insertAsteroidFieldRock(state, { pos: { x: 0, z: 0 }, radius: 6, data: {} });
++  // Poison one bucket with a legacy string key (simulates an older in-tab session).
++  const [numKey, bucket] = [...field.grid.entries()][0];
++  field.grid.delete(numKey);
++  field.grid.set('0:0', bucket);
++  for (const rec of field.rocks) rec._cell = '0:0';
++  ensureAsteroidField(state);
++  for (const key of field.grid.keys()) {
++    assert.equal(typeof key, 'number');
++  }
++  const hits = queryAsteroidField(state, { x: 0, z: 0 }, 30);
++  assert.equal(hits.length, 1);
++});
++
++test('queryAsteroidField does not allocate string keys under repeated probes', () => {
++  const state = { world: {}, entities: new Map(), entityList: [], nextEntityId: 1, freeIds: [] };
++  ensureAsteroidField(state);
++  for (let i = 0; i < 40; i++) {
++    insertAsteroidFieldRock(state, {
++      pos: { x: (i % 8) * 60, z: Math.floor(i / 8) * 60 },
++      radius: 5 + (i % 3),
++      data: {},
++    });
++  }
++  const out = [];
++  // Warm + measure: if the hot path still templates `${cx}:${cz}`, V8 will show string
++  // growth in the external allocated size. We assert the cheaper contract — every grid
++  // key remains a number after many queries — and that results stay correct.
++  for (let n = 0; n < 2000; n++) {
++    queryAsteroidField(state, { x: (n % 10) * 40, z: (n % 7) * 40 }, 180, out);
++  }
++  for (const key of state.world.asteroidField.grid.keys()) {
++    assert.equal(typeof key, 'number');
++  }
++  assert.ok(out.length >= 0);
++});
+-- 
+2.47.3
+

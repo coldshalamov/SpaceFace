@@ -1,0 +1,16 @@
+[
+  {
+    "model": "charger",
+    "manifest": "FINAL_HANDOFF_MANIFEST.json",
+    "manifestSHA256": "4f919a31d465c2353310b3ab73d14bf44e391b6205bb071e954a4ecc29393e85",
+    "filesChecked": 174,
+    "mismatches": []
+  },
+  {
+    "model": "mite",
+    "manifest": "FINAL_REVIEW_MANIFEST.json",
+    "manifestSHA256": "d07cb9143451b0f3905d6d714b1713038c9bf0d78d4523916d55f8b4d2bfd834",
+    "filesChecked": 39,
+    "mismatches": []
+  }
+]

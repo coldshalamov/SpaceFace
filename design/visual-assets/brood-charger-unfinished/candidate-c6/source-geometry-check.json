@@ -1,0 +1,338 @@
+[
+  {
+    "lod": 0,
+    "sourceSHA256": "6d1a1d583528237215b58f41ed67c9336fa7ecad3f6bdcf6aeb6beefbcdc794c",
+    "meshes": [
+      {
+        "name": "CHARGER_fixed_keel",
+        "triangles": 380,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_unified_ramming_carapace",
+        "triangles": 860,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_central_pronotal_crown",
+        "triangles": 304,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_port_ram_shield",
+        "triangles": 304,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_starboard_ram_shield",
+        "triangles": 304,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_stabilizer_support_PORT",
+        "triangles": 220,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_folding_paddle_PORT",
+        "triangles": 188,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_stabilizer_support_STARBOARD",
+        "triangles": 220,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_folding_paddle_STARBOARD",
+        "triangles": 188,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_posterior",
+        "triangles": 156,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_middle",
+        "triangles": 156,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_anterior",
+        "triangles": 156,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_oral_corner_PORT",
+        "triangles": 92,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_oral_corner_STARBOARD",
+        "triangles": 92,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_labrum",
+        "triangles": 92,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      }
+    ],
+    "topologyPassed": true
+  },
+  {
+    "lod": 1,
+    "sourceSHA256": "71a4f10a6df23848b4e63863fadf1eb386bb275b29b06de409e44e2a4028f95e",
+    "meshes": [
+      {
+        "name": "CHARGER_fixed_keel",
+        "triangles": 236,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_unified_ramming_carapace",
+        "triangles": 536,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_central_pronotal_crown",
+        "triangles": 192,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_port_ram_shield",
+        "triangles": 192,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_starboard_ram_shield",
+        "triangles": 192,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_stabilizer_support_PORT",
+        "triangles": 136,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_folding_paddle_PORT",
+        "triangles": 116,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_stabilizer_support_STARBOARD",
+        "triangles": 136,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_folding_paddle_STARBOARD",
+        "triangles": 116,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_posterior",
+        "triangles": 96,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_middle",
+        "triangles": 96,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_anterior",
+        "triangles": 96,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_oral_corner_PORT",
+        "triangles": 56,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_oral_corner_STARBOARD",
+        "triangles": 56,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_labrum",
+        "triangles": 56,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      }
+    ],
+    "topologyPassed": true
+  },
+  {
+    "lod": 2,
+    "sourceSHA256": "e6f57e59e697ad4e714b7944d1a62c3e5d32320ac3b3643400b4925dc5d16214",
+    "meshes": [
+      {
+        "name": "CHARGER_fixed_keel",
+        "triangles": 140,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_unified_ramming_carapace",
+        "triangles": 320,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_central_pronotal_crown",
+        "triangles": 136,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_port_ram_shield",
+        "triangles": 136,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_starboard_ram_shield",
+        "triangles": 136,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_stabilizer_support_PORT",
+        "triangles": 80,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_folding_paddle_PORT",
+        "triangles": 68,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_stabilizer_support_STARBOARD",
+        "triangles": 80,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_folding_paddle_STARBOARD",
+        "triangles": 68,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_posterior",
+        "triangles": 56,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_middle",
+        "triangles": 56,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_telescoping_anterior",
+        "triangles": 56,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_oral_corner_PORT",
+        "triangles": 32,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_oral_corner_STARBOARD",
+        "triangles": 32,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      },
+      {
+        "name": "CHARGER_labrum",
+        "triangles": 32,
+        "nonManifoldEdges": 0,
+        "zeroAreaFaces": 0,
+        "finite": true
+      }
+    ],
+    "topologyPassed": true
+  }
+]

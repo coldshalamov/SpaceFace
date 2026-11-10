@@ -1,0 +1,401 @@
+TAP version 13
+# Subtest: a live player still receives a flight physics command
+ok 1 - a live player still receives a flight physics command
+  ---
+  duration_ms: 8.173227
+  ...
+# Subtest: a dead player wreck does not receive a flight physics command
+ok 2 - a dead player wreck does not receive a flight physics command
+  ---
+  duration_ms: 0.428967
+  ...
+# Subtest: a recovered hull flies again once alive and not defeated
+ok 3 - a recovered hull flies again once alive and not defeated
+  ---
+  duration_ms: 0.600208
+  ...
+# Subtest: turning left and right produce opposite-signed yaw demand on opposite channels
+ok 4 - turning left and right produce opposite-signed yaw demand on opposite channels
+  ---
+  duration_ms: 7.9689
+  ...
+# Subtest: strafing port and starboard produce opposite-signed lateral demand on opposite channels
+ok 5 - strafing port and starboard produce opposite-signed lateral demand on opposite channels
+  ---
+  duration_ms: 1.404266
+  ...
+# Subtest: main thrust demand is forward-positive and lands on the main channel
+ok 6 - main thrust demand is forward-positive and lands on the main channel
+  ---
+  duration_ms: 0.817795
+  ...
+# Subtest: braking from forward motion demands reverse, never main thrust
+ok 7 - braking from forward motion demands reverse, never main thrust
+  ---
+  duration_ms: 1.365803
+  ...
+# Subtest: braking is reported physically for every family, and the pilot brake actuator where published
+ok 8 - braking is reported physically for every family, and the pilot brake actuator where published
+  ---
+  duration_ms: 1.288021
+  ...
+# Subtest: assisted speed governor reports engagement and overspeed as applied-versus-requested authority
+ok 9 - assisted speed governor reports engagement and overspeed as applied-versus-requested authority
+  ---
+  duration_ms: 0.452288
+  ...
+# Subtest: drive-state, boost and coast-helm flags cross the seam so presentation stops reading keys
+ok 10 - drive-state, boost and coast-helm flags cross the seam so presentation stops reading keys
+  ---
+  duration_ms: 5.255345
+  ...
+# Subtest: a fired pulse-plate impulse is published as actuator demand
+ok 11 - a fired pulse-plate impulse is published as actuator demand
+  ---
+  duration_ms: 1.714557
+  ...
+# Subtest: every drive family yields an identical actuator key set with finite numbers
+ok 12 - every drive family yields an identical actuator key set with finite numbers
+  ---
+  duration_ms: 3.421308
+  ...
+# Subtest: a null control yields a fully zeroed actuator block rather than undefined or NaN
+ok 13 - a null control yields a fully zeroed actuator block rather than undefined or NaN
+  ---
+  duration_ms: 0.590958
+  ...
+# Subtest: the actuator block is purely additive to the telemetry contract
+ok 14 - the actuator block is purely additive to the telemetry contract
+  ---
+  duration_ms: 0.370909
+  ...
+# SpaceFace Flight V3 generated checks: PASS
+# Subtest: /workspace/spaceface-scratch/hostile-for-ai-earlyout/test/flightV3.spec.mjs
+ok 3 - /workspace/spaceface-scratch/hostile-for-ai-earlyout/test/flightV3.spec.mjs
+  ---
+  duration_ms: 327.238112
+  ...
+# Subtest: the default new game spawns a ship that resolves to a REAL catalogue drive
+ok 16 - the default new game spawns a ship that resolves to a REAL catalogue drive
+  ---
+  duration_ms: 4.489583
+  ...
+# Subtest: the player ship accelerates and stops 15% faster than its catalogue drive
+ok 17 - the player ship accelerates and stops 15% faster than its catalogue drive
+  ---
+  duration_ms: 0.37406
+  ...
+# Subtest: spawned derived propulsion keeps the unbounded solver sentinel out of serializable state
+ok 18 - spawned derived propulsion keeps the unbounded solver sentinel out of serializable state
+  ---
+  duration_ms: 2.204017
+  ...
+# Subtest: assisted translation publishes a finite control-made speed bound on the real player ship
+ok 19 - assisted translation publishes a finite control-made speed bound on the real player ship
+  ---
+  duration_ms: 1.172276
+  ...
+# Subtest: the kernel body carries the ship's DERIVED stats, not invented fixture numbers
+ok 20 - the kernel body carries the ship's DERIVED stats, not invented fixture numbers
+  ---
+  duration_ms: 0.413915
+  ...
+# Subtest: every player-purchasable hull resolves its authored drive and engine tiers preserve its family
+ok 21 - every player-purchasable hull resolves its authored drive and engine tiers preserve its family
+  ---
+  duration_ms: 12.452047
+  ...
+# Subtest: the travel ceiling honours an authored per-drive override — the upgrade hook is live
+ok 22 - the travel ceiling honours an authored per-drive override — the upgrade hook is live
+  ---
+  duration_ms: 0.32249
+  ...
+# Subtest: fitted engine tiers raise Travel Burn V-MAX and advance thrust without touching the cap
+ok 23 - fitted engine tiers raise Travel Burn V-MAX and advance thrust without touching the cap
+  ---
+  duration_ms: 0.61272
+  ...
+# Subtest: bounded authored drives retain engine-tier scaling beneath their solver envelope
+ok 24 - bounded authored drives retain engine-tier scaling beneath their solver envelope
+  ---
+  duration_ms: 0.858817
+  ...
+# Subtest: assisted flight governs the REAL player ship to throttle x combatSpeed
+ok 25 - assisted flight governs the REAL player ship to throttle x combatSpeed
+  ---
+  duration_ms: 25.937915
+  ...
+# Subtest: Travel Burn raises the REAL ship above its assisted cap, and only while engaged
+ok 26 - Travel Burn raises the REAL ship above its assisted cap, and only while engaged
+  ---
+  duration_ms: 86.560332
+  ...
+# Subtest: RC-4 on the real player ship: held boost above the cap never commands reverse
+ok 27 - RC-4 on the real player ship: held boost above the cap never commands reverse
+  ---
+  duration_ms: 0.585197
+  ...
+# Subtest: held boost raises the real ship’s terminal speed rather than lowering it
+ok 28 - held boost raises the real ship’s terminal speed rather than lowering it
+  ---
+  duration_ms: 17.54734
+  ...
+# Subtest: the real ship spawns with a funded, bounded boost/dash pool
+ok 29 - the real ship spawns with a funded, bounded boost/dash pool
+  ---
+  duration_ms: 0.432539
+  ...
+# Subtest: propulsion resource demand on the real ship is finite, non-negative and load-bearing
+ok 30 - propulsion resource demand on the real ship is finite, non-negative and load-bearing
+  ---
+  duration_ms: 0.604605
+  ...
+# Subtest: the braking solution tells the truth about the real ship’s stopping distance
+ok 31 - the braking solution tells the truth about the real ship’s stopping distance
+  ---
+  duration_ms: 0.949829
+  ...
+# Subtest: OVERSHOOT REMAINS POSSIBLE: ignoring BRAKE NOW in a manual burn sails past the arrival radius
+ok 32 - OVERSHOOT REMAINS POSSIBLE: ignoring BRAKE NOW in a manual burn sails past the arrival radius
+  ---
+  duration_ms: 23.4896
+  ...
+# Subtest: a manual full brake still stops the real ship in a bounded time
+ok 33 - a manual full brake still stops the real ship in a bounded time
+  ---
+  duration_ms: 8.670662
+  ...
+# Subtest: a saturated burn on the real ship stays finite and never tunnels its own hull
+ok 34 - a saturated burn on the real ship stays finite and never tunnels its own hull
+  ---
+  duration_ms: 39.310801
+  ...
+# Subtest: the kernel refuses to produce NaN from hostile state on the real ship
+ok 35 - the kernel refuses to produce NaN from hostile state on the real ship
+  ---
+  duration_ms: 1.263525
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+ok 36 - a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+  ---
+  duration_ms: 37.115039
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the field itself changes, every family
+ok 37 - a stationary firing ship shows moving exhaust: the field itself changes, every family
+  ---
+  duration_ms: 7.973782
+  ...
+# Subtest: reduced motion calms the exhaust without freezing it
+ok 38 - reduced motion calms the exhaust without freezing it
+  ---
+  duration_ms: 2.560789
+  ...
+# Subtest: the hot core never ends short of the cold sheath wrapped around it
+ok 39 - the hot core never ends short of the cold sheath wrapped around it
+  ---
+  duration_ms: 1.880002
+  ...
+# Subtest: creases darken the interior but never open a hole between sheets (B19)
+ok 40 - creases darken the interior but never open a hole between sheets (B19)
+  ---
+  duration_ms: 4.550315
+  ...
+# Subtest: per-instance extent varies and can only ever shorten (B18, B9)
+ok 41 - per-instance extent varies and can only ever shorten (B18, B9)
+  ---
+  duration_ms: 1.027317
+  ...
+# Subtest: two ships of one family do not animate in lockstep
+ok 42 - two ships of one family do not animate in lockstep
+  ---
+  duration_ms: 2.611851
+  ...
+# Subtest: every live family pair differs on several construction axes
+ok 43 - every live family pair differs on several construction axes
+  ---
+  duration_ms: 0.887265
+  ...
+# Subtest: disciplined and loaded drives are opposites, not neighbours
+ok 44 - disciplined and loaded drives are opposites, not neighbours
+  ---
+  duration_ms: 0.789202
+  ...
+# Subtest: the unusual families do not read as reaction drives
+ok 45 - the unusual families do not read as reaction drives
+  ---
+  duration_ms: 0.666969
+  ...
+# Subtest: the three-silhouette prototype record is complete and one candidate is wired per group
+ok 46 - the three-silhouette prototype record is complete and one candidate is wired per group
+  ---
+  duration_ms: 0.626278
+  ...
+# Subtest: construction values are clamped to their stated limits
+ok 47 - construction values are clamped to their stated limits
+  ---
+  duration_ms: 0.910677
+  ...
+# Subtest: an RCS pulse throws a packet: the head leaves while the collar shuts
+ok 48 - an RCS pulse throws a packet: the head leaves while the collar shuts
+  ---
+  duration_ms: 0.519627
+  ...
+# Subtest: an RCS jet holds its reach and does not retract into its nozzle
+ok 49 - an RCS jet holds its reach and does not retract into its nozzle
+  ---
+  duration_ms: 15.095686
+  ...
+# Subtest: two RCS taps carry two independent clocks
+ok 50 - two RCS taps carry two independent clocks
+  ---
+  duration_ms: 1.669039
+  ...
+# Subtest: a shutting valve blows down rather than dimming at a constant rate
+ok 51 - a shutting valve blows down rather than dimming at a constant rate
+  ---
+  duration_ms: 0.611794
+  ...
+# Subtest: the brake bites on engagement and relaxes into the held jet
+ok 52 - the brake bites on engagement and relaxes into the held jet
+  ---
+  duration_ms: 0.84849
+  ...
+# Subtest: the bite is heat and collimation, never reach: the jet-likeness contract holds
+ok 53 - the bite is heat and collimation, never reach: the jet-likeness contract holds
+  ---
+  duration_ms: 1.25115
+  ...
+# Subtest: lighting a drive is an event, not the first part of a ramp
+ok 54 - lighting a drive is an event, not the first part of a ramp
+  ---
+  duration_ms: 0.834903
+  ...
+# Subtest: the ignition transient is spent on structure, so reduced flash still sees the engine commit
+ok 55 - the ignition transient is spent on structure, so reduced flash still sees the engine commit
+  ---
+  duration_ms: 3.190568
+  ...
+# Subtest: boost drives the arrangement harder rather than just brighter
+ok 56 - boost drives the arrangement harder rather than just brighter
+  ---
+  duration_ms: 5.550122
+  ...
+# Subtest: the fold clock is integrated, so a throttle change can never scrub the creases
+ok 57 - the fold clock is integrated, so a throttle change can never scrub the creases
+  ---
+  duration_ms: 65.443444
+  ...
+# Subtest: fleet drives follow their sockets through turns, stops and restarts
+ok 58 - fleet drives follow their sockets through turns, stops and restarts
+  ---
+  duration_ms: 7.030397
+  ...
+# Subtest: a crowd of ships all draw, all differ, and cost no per-frame allocation
+ok 59 - a crowd of ships all draw, all differ, and cost no per-frame allocation
+  ---
+  duration_ms: 2.549909
+  ...
+# Subtest: the GLSL mirror carries every term the JS law does
+ok 60 - the GLSL mirror carries every term the JS law does
+  ---
+  duration_ms: 0.528717
+  ...
+# Subtest: each family binds its own construction, and the distortion encoder stays flat
+ok 61 - each family binds its own construction, and the distortion encoder stays flat
+  ---
+  duration_ms: 5.134674
+  ...
+# Subtest: the shell arc never exceeds the span the vertex stage can place
+ok 62 - the shell arc never exceeds the span the vertex stage can place
+  ---
+  duration_ms: 0.599595
+  ...
+# Subtest: the fold profile bake is deterministic and tells the families apart
+ok 63 - the fold profile bake is deterministic and tells the families apart
+  ---
+  duration_ms: 6.446875
+  ...
+# Subtest: the nozzle shock train stays near the lip instead of laddering the jet
+ok 64 - the nozzle shock train stays near the lip instead of laddering the jet
+  ---
+  duration_ms: 0.523646
+  ...
+# Subtest: the jet/history boundary is allocation-free and tracks the live jet
+ok 65 - the jet/history boundary is allocation-free and tracks the live jet
+  ---
+  duration_ms: 1.18295
+  ...
+# Subtest: live ENGINE_PROFILES ids each resolve to a validated main+RCS pack
+ok 66 - live ENGINE_PROFILES ids each resolve to a validated main+RCS pack
+  ---
+  duration_ms: 4.928558
+  ...
+# Subtest: accepted Kestrel substrate remains the ion_small family identity
+ok 67 - accepted Kestrel substrate remains the ion_small family identity
+  ---
+  duration_ms: 0.179589
+  ...
+# Subtest: live families differ by structure and timing, not tint alone
+ok 68 - live families differ by structure and timing, not tint alone
+  ---
+  duration_ms: 0.995842
+  ...
+# Subtest: throttle continuum responds continuously for every family (length/width/flow)
+ok 69 - throttle continuum responds continuously for every family (length/width/flow)
+  ---
+  duration_ms: 0.464904
+  ...
+# Subtest: drive modes communicate idle/accel/cruise/boost/brake/reverse through structure
+ok 70 - drive modes communicate idle/accel/cruise/boost/brake/reverse through structure
+  ---
+  duration_ms: 0.422567
+  ...
+# Subtest: pool samples carry continuum mode without per-frame allocation
+ok 71 - pool samples carry continuum mode without per-frame allocation
+  ---
+  duration_ms: 2.401202
+  ...
+# Subtest: family pools produce distinct layer geometry at equal throttle
+ok 72 - family pools produce distinct layer geometry at equal throttle
+  ---
+  duration_ms: 1.818863
+  ...
+# Subtest: RCS impulse direction and lifecycle are truthful and bounded
+ok 73 - RCS impulse direction and lifecycle are truthful and bounded
+  ---
+  duration_ms: 25.740855
+  ...
+# Subtest: accessibility preserves family feedback for every pack
+ok 74 - accessibility preserves family feedback for every pack
+  ---
+  duration_ms: 24.34129
+  ...
+# Subtest: socket axis truth: exhaust follows socket forward (negated for shader convention)
+ok 75 - socket axis truth: exhaust follows socket forward (negated for shader convention)
+  ---
+  duration_ms: 6.279842
+  ...
+# Subtest: family GPU batches bind textures and dispose cleanly
+ok 76 - family GPU batches bind textures and dispose cleanly
+  ---
+  duration_ms: 13.133512
+  ...
+# Subtest: drive integration is continuous (no binary boost snap)
+ok 77 - drive integration is continuous (no binary boost snap)
+  ---
+  duration_ms: 5.686611
+  ...
+# Subtest: pairwise family distinction helper rejects tint-only clones
+ok 78 - pairwise family distinction helper rejects tint-only clones
+  ---
+  duration_ms: 0.600333
+  ...
+1..78
+# tests 78
+# suites 0
+# pass 78
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 537.597124

@@ -1,0 +1,1109 @@
+// ORRERY composition for Settings and Credits (design/frontend/ORRERY.md §6 Meta).
+//
+// SETTINGS — three columns on one line of sight: the five categories on a Ladder (a ruled rail, a
+// tick per category, the notched Hand on the open one), the open category's rows as instruments (a
+// slider is a graduated Scale with a bone light cursor and a thin numeral; a switch is two words and a
+// lit bar; a choice is its value on a line; a binding is its key), and beside
+// them the live preview (settingsPreview.js). No plate, no card, no table rule: the rows hang off a
+// rail of light. The one amber on the screen follows focus — the Hand on the category ladder while
+// the player is in it, the focused control's cursor or word once they step into the rows.
+//
+// CREDITS — a reel that scrolls over the drift field: every section on one continuous scroll, each
+// line resolving as it rises into view (Scroll Reveal), the emblem turning slowly behind, the section
+// ladder's Hand following the reel and a progress arc reading how far through it you are.
+//
+// It styles the screens' existing nodes (checks read their classes and data-actions) and pins nothing.
+import { injectOrrery } from './tokens.js';
+import { syncScrollExtent, SCROLL_EXTENT_CSS } from './scrollExtent.js';
+import { svg, arcD, ticksD, polar } from './svg.js';
+import { reducedMotion, onFrame, createSpring } from './motion.js';
+import { decrypt } from './text.js';
+
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
+const STYLE_ID = 'sf-orrery-settings-layouts';
+const S = 'html body #screens > .k-screen.of-settings.orr-settings';
+const C = 'html body #screens > .k-screen.of-credits.orr-credits';
+const CD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-credits.orr-credits';
+const SD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-settings.orr-settings';
+const BONE = '236 230 216';
+const HOT = '248 244 234';
+const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
+const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; outline:none !important; border-radius:0 !important;';
+const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 30% 50%) !important;';
+
+/** The rail of light down a list: a 1.5px line, minor ticks every 8px, a faint band. */
+const RAIL_BG = `linear-gradient(90deg, transparent 7px, rgb(${BONE} / .3) 7px, rgb(${BONE} / .3) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 5px, rgb(${BONE} / .06) 5px, rgb(${BONE} / .06) 10px, transparent 10px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .26) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat`;
+
+/**
+ * A Ladder with the notched Hand: `list` is the ruled list, `item` the button on each rung, `chosen`
+ * the rung's chosen state. At rest the Hand is warm bone; while focus or the pointer is in the list it
+ * is the amber Hand (the one amber on the screen).
+ */
+const ladder = (scope, list, item, chosen, { numbered = false } = {}) => `
+${scope} ${list} { ${PLAIN} position:relative !important; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; gap:0 !important;
+  margin:0 !important; padding:4px 0 !important; ${numbered ? 'counter-reset:orrlad;' : ''} background:${RAIL_BG} !important; }
+${scope} ${list} > li { position:relative !important; ${numbered ? 'counter-increment:orrlad;' : ''} width:100% !important; list-style:none !important; margin:0 !important; }
+${numbered ? `${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
+  ${LABEL} font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }` : `${scope} ${list} > li::before { content:none !important; display:none !important; }`}
+${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
+  width:100% !important; min-height:48px !important; padding:0 8px 0 ${numbered ? '74px' : '44px'} !important; cursor:pointer !important; ${LABEL} font-size:13.5px !important;
+  letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap !important; transition:color .16s linear; }
+${scope} ${list} ${item}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important;
+  height:1.5px !important; margin:0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .55) !important;
+  box-shadow:none !important; border:0 !important; clip-path:none !important; border-radius:0 !important; opacity:1 !important; }
+${scope} ${list} ${item}::after { content:none !important; display:none !important; }
+${scope} ${list} ${item}:is(:hover, :focus-visible) { color:rgb(${HOT}) !important; }
+${scope} ${list} ${item}:focus-visible:not(${chosen})::before { left:6.5px !important; width:2.5px !important; height:18px !important; margin-top:-9px !important;
+  background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 250 236 / .5) !important; }
+${scope} ${list} ${item}:is(${chosen}) { color:rgb(${HOT}) !important; text-shadow:0 0 14px rgb(255 250 236 / .18); }
+/* the Hand: a stem off the rail and a notched chevron at the word, bone at rest */
+${scope} ${list} ${item}:is(${chosen})::after { content:"" !important; display:block !important; position:absolute !important; left:7px !important; top:50% !important;
+  width:22px !important; height:1.5px !important; margin:-.75px 0 0 !important; background:rgb(${HOT} / .85) !important; translate:none !important; scale:none !important;
+  transform:none !important; border:0 !important; border-radius:0 !important; clip-path:none !important; box-shadow:none !important; opacity:1 !important; }
+${scope} ${list} ${item}:is(${chosen})::before { left:28px !important; width:9px !important; height:11px !important; margin-top:-5.5px !important; ${HAND}
+  background:rgb(${HOT}) !important; filter:drop-shadow(0 0 5px rgb(255 250 236 / .45)); }
+${scope} ${list}:is(:focus-within, :hover) ${item}:is(${chosen})::after { background:var(--dp-hand, #f2b950) !important; }
+${scope} ${list}:is(:focus-within, :hover) ${item}:is(${chosen})::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 6px rgb(255 217 140 / .7)); }`;
+
+const SETTINGS_CSS = `
+/* ------------------------------------------------ the frame ------------------------------------ */
+${S} { grid-template-columns:minmax(148px, 196px) minmax(600px, 660px) minmax(0, 1fr) !important;
+  grid-template-rows:auto minmax(0, 1fr) auto !important;
+  grid-template-areas:"title title title" "hang stage preview" "foot foot foot" !important;
+  column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important; }
+${S}::before { background:
+  radial-gradient(90% 70% at 72% 48%, rgb(8 12 18 / .38), transparent 62%),
+  radial-gradient(120% 95% at 18% 36%, rgb(5 7 10 / .92), rgb(5 7 10 / .76) 52%, rgb(5 7 10 / .52)) !important; }
+${S} > .k-title { align-self:end; }
+${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size: 12px !important; letter-spacing:.26em !important; color:rgb(${BONE} / .6) !important;
+  display:flex; align-items:center; gap:14px; }
+${S} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
+${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:stretch; min-height:0; }
+/* The focused channel owns the mixer's caption. Inner ring spacing becomes smaller than a
+   label at laptop sizes; keep every ring, and reveal its name as its control is focused. */
+${S} .orr-set-mixer .orr-set-ch:not(.is-focus) .orr-set-mixer__lab { visibility:hidden; }
+
+/* ------------------------------------------------ the category ladder -------------------------- */
+${S} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
+${S} > .k-hang .of-settings-rail { display:none !important; }
+${ladder(S, '.sf-tabbar', '.sf-tab', '[aria-selected="true"], .active', { numbered: false })}
+
+/* ------------------------------------------------ the rows ------------------------------------- */
+${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; width:auto !important; max-width:none !important;
+  justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
+  padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
+${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
+/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip below the stage's bottom edge while rows continue */
+${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:5px 13px 6px !important; cursor:pointer;
+  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .78) !important; background:rgb(8 10 14 / .88) !important;
+  border:0 !important; border-radius:0 !important; }
+${S} > .orr-set-more::after { content:""; display:inline-block; width:8px; height:5px; margin-left:8px; vertical-align:2px;
+  background:rgb(${BONE} / .6); clip-path:polygon(0 0, 100% 0, 50% 100%); }
+${S} > .orr-set-more:hover::after { background:rgb(${BONE} / .95); }
+${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
+${S} > .orr-set-more:hover { color:rgb(${BONE}) !important; }
+@keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
+@media (prefers-reduced-motion:reduce) { ${S} > .orr-set-more.is-on { animation:none; } }
+${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
+  mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
+${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
+${S} #sf-settings-pane > p.k-sentence.orr-set-check { display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr); column-gap:22px; align-items:center;
+  min-height:34px; margin:0 0 0 30px !important; max-width:none !important; }
+${S} #sf-settings-pane .orr-set-check__label { ${LABEL} font-size:12px; letter-spacing:.13em; color:rgb(${BONE} / .8); }
+${S} #sf-settings-pane .orr-set-check__sep { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+${S} #sf-settings-pane .orr-set-check__state { position:relative; padding-left:14px; ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(${BONE} / .62); font-weight:650; }
+${S} #sf-settings-pane .orr-set-check__state::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .3); }
+${S} #sf-settings-pane .orr-set-check__state[data-state="ready"], ${S} #sf-settings-pane .orr-set-check__state[data-state="on"] { color:rgb(${HOT}); }
+${S} #sf-settings-pane .orr-set-check__state[data-state="ready"]::before, ${S} #sf-settings-pane .orr-set-check__state[data-state="on"]::before { width:6px; height:6px; margin-top:-3px;
+  background:rgb(${HOT}); box-shadow:0 0 7px rgb(255 250 236 / .6); }
+${S} #sf-settings-pane::before, ${S} #sf-settings-pane::after { content:none !important; display:none !important; }
+${S} #sf-settings-pane .k-rows { ${PLAIN} position:relative; margin:0 !important; padding:2px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
+${S} #sf-settings-pane .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important;
+  align-items:center !important; column-gap:22px !important; row-gap:3px !important; min-height:50px !important; height:auto !important; padding:7px 0 7px 30px !important;
+  border-bottom:1px solid rgb(${BONE} / .09) !important;
+  color:rgb(${BONE} / .82) !important; }
+${S} #sf-settings-pane .k-row::after { content:none !important; display:none !important; }
+${S} #sf-settings-pane .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
+  height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .58) !important; translate:none !important; scale:none !important; transform:none !important;
+  box-shadow:none !important; border:0 !important; clip-path:none !important; }
+${S} #sf-settings-pane .k-row:hover::before { width:15px !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 250 236 / .35) !important; }
+${S} #sf-settings-pane .k-row:focus-within::before { left:6.5px !important; width:2.5px !important; height:20px !important; margin-top:-10px !important; background:rgb(${HOT}) !important;
+  box-shadow:0 0 8px rgb(255 250 236 / .5) !important; }
+${S} #sf-settings-pane .k-row:focus-within {
+  background:linear-gradient(90deg, rgb(${BONE} / .07), rgb(${BONE} / .03) 42%, transparent 78%) !important;
+}
+${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !important; width:3px !important; height:24px !important; margin-top:-12px !important;
+  background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
+/* a short category spreads its rows over the column: the scales carry it, not a hole under them */
+@media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } ${S} #sf-settings-pane.is-roomy.is-sparse .k-row { min-height:76px !important; } }
+${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 13px !important; letter-spacing:.04em !important; line-height:1.35 !important;
+  color:rgb(${BONE} / .9) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
+${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(255 253 248) !important; text-shadow:0 0 18px rgb(255 250 236 / .16); }
+
+/* a slider is a graduated Scale: the ruled line, a tick every 5 %, majors at the quarters, the fill to
+   the value, a bone light cursor, the value as a thin numeral. The cursor is the Hand while it has focus. */
+${S} #sf-settings-pane .k-row > div.k-words--row { ${PLAIN} display:grid !important; grid-template-columns:var(--orr-scale-w, 254px) 64px !important; align-items:center !important;
+  column-gap:14px !important; justify-content:start !important; width:auto !important; }
+${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:100% !important; max-width:var(--orr-scale-w, 254px) !important; min-width:0 !important;
+  height:32px !important; margin:0 !important; padding:0 !important; cursor:pointer !important;
+  background:
+    linear-gradient(rgb(255 253 248 / .98) 0 0) 7px 12.5px / calc((100% - 14px) * var(--orr-v, .5)) 3.5px no-repeat,
+    linear-gradient(rgb(${HOT} / .22) 0 0) 7px 9px / calc((100% - 14px) * var(--orr-v, .5)) 10px no-repeat,
+    linear-gradient(rgb(${BONE} / .5) 0 0) 7px 13.25px / calc(100% - 14px) 1.5px no-repeat,
+    linear-gradient(rgb(${BONE} / .1) 0 0) 7px 9px / calc(100% - 14px) 10px no-repeat,
+    linear-gradient(90deg, rgb(${BONE} / .55) 0 1px, transparent 1px) 7px 22px / calc((100% - 14px) / 20) 5px repeat-x,
+    linear-gradient(90deg, rgb(${BONE} / .78) 0 1.5px, transparent 1.5px) 7px 22px / calc((100% - 14px) / 4) 9px repeat-x !important; }
+${S} #sf-settings-pane input.k-range::-webkit-slider-runnable-track { -webkit-appearance:none; height:30px; background:transparent; border:0; box-shadow:none; }
+${S} #sf-settings-pane input.k-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:26px; margin-top:2px; border:0; border-radius:0; box-shadow:none;
+  background:
+    linear-gradient(90deg, transparent 6px, rgb(255 253 248) 6px 10px, transparent 10px) 0 0 / 16px 26px no-repeat,
+    linear-gradient(90deg, transparent 2px, rgb(${HOT} / .32) 2px 14px, transparent 14px) 0 4px / 16px 18px no-repeat; }
+${S} #sf-settings-pane input.k-range:hover::-webkit-slider-thumb {
+  background:
+    linear-gradient(90deg, transparent 6px, rgb(255 255 252) 6px 10px, transparent 10px) 0 0 / 16px 26px no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(${HOT} / .42) 1px 15px, transparent 15px) 0 3px / 16px 20px no-repeat; }
+${S} #sf-settings-pane input.k-range:focus::-webkit-slider-thumb { height:28px; margin-top:0;
+  background:
+    linear-gradient(90deg, transparent 5px, var(--dp-hand-hot, #ffd98c) 5px 9px, transparent 9px) 0 0 / 14px 28px no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(242 185 80 / .36) 1px 13px, transparent 13px) 0 4px / 14px 18px no-repeat; }
+${S} #sf-settings-pane input.k-range:focus { outline:none !important; }
+${S} #sf-settings-pane .k-row > div.k-words--row > span { ${PLAIN} font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important;
+  font-variation-settings:"wdth" 100, "wght" 320 !important; font-weight:320 !important; font-size:24px !important; line-height:1 !important; letter-spacing:-.01em !important;
+  text-transform:none !important; font-variant-numeric:tabular-nums lining-nums; text-align:right !important; width:auto !important; margin:0 !important; color:rgb(255 253 248) !important;
+  text-shadow:0 0 16px rgb(255 250 236 / .18); }
+
+/* a switch / a choice: the words on the line, the chosen one lit with a bead of light; focus stands the
+   Hand beside the word (a vertical segment of amber) */
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:flex !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important;
+  gap:4px 22px !important; width:auto !important; height:auto !important; min-width:0 !important; padding:2px 0 6px !important; justify-self:start !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
+/* a switch / a choice: ONE segmented control — a hairline box whose chosen side is lit. The state
+   reads from the fill, not from a bead the player has to decode (STATION_STANDARD §4: a stepper or
+   a segmented pair, not loose words). */
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:inline-flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:stretch !important;
+  gap:0 !important; width:auto !important; height:auto !important; min-width:0 !important; padding:0 !important; justify-self:start !important;
+  background:rgb(6 8 11 / .6) !important; border:1px solid rgb(${BONE} / .32) !important; border-radius:2px !important; overflow:hidden !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-flex !important; align-items:center !important;
+  cursor:pointer !important; padding:7px 16px 8px !important; ${LABEL} font-size: 13px !important; letter-spacing:.05em !important; line-height:1 !important;
+  color:rgb(${BONE} / .58) !important; transition:color var(--dp-d-cut, 80ms) linear, background var(--dp-d-cut, 80ms) linear; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::after { content:none !important; display:none !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:none !important; display:none !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word + .k-word { border-left:1px solid rgb(${BONE} / .22) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:hover { color:rgb(${BONE} / .95) !important; background:rgb(${BONE} / .06) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"] { color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${HOT} / .85) 0 2px, transparent 2px), rgb(${BONE} / .12) !important;
+  text-shadow:0 0 12px rgb(255 250 236 / .28); }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]:hover { background:linear-gradient(0deg, rgb(${HOT} / .85) 0 2px, transparent 2px), rgb(${BONE} / .16) !important; }
+
+/* a choice from a list: the chosen word in the label face, its options engraved beneath as a short tick
+   scale (one tick per option, the chosen one lit); it opens as the instrument column below */
+${S} #sf-settings-pane select.k-select { all:unset !important; -webkit-appearance:none !important; appearance:none !important; box-sizing:border-box !important; display:inline-block !important;
+  justify-self:start !important; align-self:end !important; max-width:100% !important; min-width:0 !important; cursor:pointer !important; padding:6px 0 4px !important;
+  ${LABEL} font-size:13px !important; letter-spacing:.05em !important; line-height:1.2 !important; color:rgb(255 253 248) !important; background:none !important;
+  text-overflow:ellipsis; white-space:nowrap; overflow:hidden; text-shadow:0 0 14px rgb(255 250 236 / .28); }
+${S} #sf-settings-pane select.k-select:hover { color:rgb(255 253 248) !important; }
+${S} #sf-settings-pane select.k-select:focus-visible, ${S} #sf-settings-pane select.k-select:focus { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="select"] { grid-template-rows:auto auto; }
+${S} #sf-settings-pane .k-row[data-orr-kind="select"] > :is(label, span.k-t-body) { grid-row:1 / span 2; }
+${S} #sf-settings-pane .orr-set-stops { grid-column:2; grid-row:2; justify-self:start; position:relative; display:flex; justify-content:space-between; align-items:flex-end;
+  width:calc((var(--n, 3) - 1) * 16px); height:9px; margin:1px 0 2px; font-style:normal; pointer-events:none; }
+${S} #sf-settings-pane .orr-set-stops::before { content:""; position:absolute; left:0; right:0; bottom:0; height:1.5px; background:rgb(${BONE} / .3); }
+${S} #sf-settings-pane .orr-set-stops > b { position:relative; width:1.5px; height:5px; margin-bottom:0; background:rgb(${BONE} / .5); }
+${S} #sf-settings-pane .orr-set-stops > b.is-on { width:3px; height:9px; margin:0 -.75px; background:rgb(${HOT}); box-shadow:0 0 6px rgb(255 250 236 / .55); }
+${S} #sf-settings-pane .k-row:has(select:focus) .orr-set-stops > b.is-on { background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 6px rgb(255 217 140 / .6); }${S} #sf-settings-pane select.k-select option { background:#0b0e13; color:rgb(${HOT}); }
+/* the list it opens is an instrument too (a customizable select): a column of light on deep glass, a rail
+   down its edge, the chosen option lit; the native control stays the control (keys, pad, probes) */
+${S} #sf-settings-pane select.k-select, ${S} #sf-settings-pane select.k-select::picker(select) { appearance:base-select !important; }
+${S} #sf-settings-pane select.k-select::picker-icon { display:none; }
+${S} #sf-settings-pane select.k-select::picker(select) { border:0; border-radius:0; padding:14px 0; margin-top:6px; margin-left:-12px; width:max-content; min-width:240px; max-width:440px; right:auto;
+  background:linear-gradient(90deg, transparent 13px, rgb(${BONE} / .34) 13px 15px, transparent 15px), rgb(6 8 12);
+  /* opaque glass; only its top and bottom breathe out (inside its own padding), so nothing beneath reads through */
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); mask-image:linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
+  box-shadow:0 18px 40px rgb(0 0 0 / .7); color:rgb(${HOT}); }
+${S} #sf-settings-pane select.k-select option { position:relative; display:flex; align-items:center; min-height:36px; padding:0 30px 0 34px;
+  background:none; border:0; outline:none !important; box-shadow:none; color:rgb(${BONE} / .78); font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:14px; font-weight:500; cursor:pointer;
+  text-transform:none !important; letter-spacing:0 !important; font-variation-settings:normal !important; font-stretch:100% !important; }
+${S} #sf-settings-pane select.k-select option::checkmark { display:none; }
+${S} #sf-settings-pane select.k-select option::before { content:""; position:absolute; left:10px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
+${S} #sf-settings-pane select.k-select option:is(:hover, :focus, :focus-visible) { color:rgb(255 253 248); background:linear-gradient(90deg, rgb(${BONE} / .1), rgb(${BONE} / 0)); outline:none !important; }
+${S} #sf-settings-pane select.k-select option:checked { color:rgb(${HOT}); background:none; border:0; outline:none; }
+${S} #sf-settings-pane select.k-select option:checked::before { left:24px; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:var(--dp-hand-hot, #ffd98c);
+  box-shadow:0 0 6px rgb(255 217 140 / .7); }
+
+/* a binding is its key in label caps; focus stands the Hand beside it; listening runs ice */
+${S} #sf-settings-pane .sf-bind-btn { all:unset !important; box-sizing:border-box !important; position:relative !important; justify-self:start !important; cursor:pointer !important;
+  padding:7px 0 7px 14px !important; min-width:28px !important; ${LABEL} font-size:12.5px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${HOT}) !important;
+  background:none !important; white-space:nowrap !important; text-shadow:0 0 12px rgb(255 250 236 / .2); }
+${S} #sf-settings-pane .sf-bind-btn::after { content:none !important; display:none !important; }
+${S} #sf-settings-pane .sf-bind-btn::before { content:"" !important; display:block !important; position:absolute !important; left:1px !important; top:50% !important; width:4px !important;
+  height:4px !important; margin-top:-2px !important; border-radius:50% !important; background:rgb(${BONE} / .4) !important; transform:none !important; box-shadow:none !important; border:0 !important; }
+${S} #sf-settings-pane .sf-bind-btn:hover { color:rgb(255 253 248) !important; }
+${S} #sf-settings-pane .sf-bind-btn:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
+${S} #sf-settings-pane .sf-bind-btn:focus-visible::before { left:1.5px !important; width:3px !important; height:16px !important; margin-top:-8px !important; border-radius:0 !important;
+  background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+${S} #sf-settings-pane .sf-bind-btn:is(.sf-bind-btn--capture, [aria-pressed="true"]) { color:var(--dp-ice, #8fcbff) !important; text-shadow:0 0 12px rgb(143 203 255 / .4); }
+${S} #sf-settings-pane .sf-bind-btn:is(.sf-bind-btn--capture, [aria-pressed="true"])::before { left:1.5px !important; width:3px !important; height:16px !important; margin-top:-8px !important;
+  border-radius:0 !important; background:var(--dp-ice, #8fcbff) !important; box-shadow:0 0 8px rgb(143 203 255 / .7) !important; animation:orr-set-listen-seg 1s ease-in-out infinite; }
+@keyframes orr-set-listen-seg { 50% { opacity:.35; } }
+/* a fixed shortcut shares the row grammar: its name in label caps over its note, the key in the bind column */
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] { grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important; align-items:start !important; padding-top:9px !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important; color:rgb(${BONE} / .84) !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__sub { display:block; margin-top:4px; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size: 12px !important;
+  line-height:1.4 !important; color:rgb(${BONE} / .64) !important; white-space:normal !important; text-transform:none !important; letter-spacing:0 !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] > .k-t-emph { ${LABEL} justify-self:start !important; padding-left:14px !important; font-size:12.5px !important; letter-spacing:.16em !important;
+  color:rgb(${HOT}) !important; text-align:left !important; margin-top:1px; }
+/* a section head in the rows, and a quiet sentence between lists */
+${S} #sf-settings-pane .k-row[data-orr-kind="head"] { min-height:0 !important; padding:28px 0 8px 30px !important; grid-template-columns:minmax(0, 1fr) !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="head"]::before { top:auto !important; bottom:12px !important; width:12px !important; background:rgb(${BONE} / .7) !important; }
+${S} #sf-settings-pane .k-row .k-caps { ${PLAIN} ${LABEL} display:flex !important; align-items:center; gap:14px; padding:0 !important; font-size: 12px !important;
+  letter-spacing:.26em !important; color:rgb(${BONE} / .66) !important; }
+${S} #sf-settings-pane .k-row .k-caps::after { content:""; flex:1 1 auto; max-width:120px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)); }
+${S} #sf-settings-pane > p.k-sentence { ${PLAIN} font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.55 !important;
+  color:rgb(${BONE} / .74) !important; max-width:58ch !important; margin:10px 0 14px 30px !important; padding:0 !important; text-transform:none !important; letter-spacing:0 !important; }
+${S} #sf-settings-pane > .k-words { ${PLAIN} display:flex !important; flex-wrap:wrap; align-items:baseline; gap:6px 16px !important; margin:10px 0 12px 30px !important; padding:0 !important; }
+${S} #sf-settings-pane > .k-words > .k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; padding:5px 0 !important; ${LABEL} font-size: 12px !important;
+  letter-spacing:.18em !important; color:rgb(${HOT}) !important; }
+${S} #sf-settings-pane > .k-words > .k-word::before { content:"›  " !important; color:rgb(${BONE} / .6); }
+${S} #sf-settings-pane > .k-words > .k-word::after { content:none !important; display:none !important; }
+${S} #sf-settings-pane > .k-words > .k-word:hover { color:rgb(255 253 248) !important; }
+${S} #sf-settings-pane > .k-words > .k-word:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
+${S} #sf-settings-pane > .k-words > .k-t-fine { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+${S} #sf-settings-pane > .orr-extent::before { left:7px; }
+/* a category arrives row by row */
+${S} #sf-settings-pane .orr-set-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+html.sf-reduce-motion ${S} #sf-settings-pane .orr-set-rise { animation:none !important; }
+/* the screens stand above their spotlight */
+${S} > :is(.k-title, .k-hang, .orr-set-preview, .k-foot) { position:relative; z-index:1; }
+${S} #sf-settings-pane { z-index:1; }
+
+/* ------------------------------------------------ the way back --------------------------------- */
+${S} > .k-foot { align-items:center !important; }
+${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
+${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
+${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
+${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
+
+@media (min-width:1501px) { ${S} #sf-settings-pane.is-roomy { --orr-scale-w:294px; } }
+/* UI polish: at 1080p the label column fits every label on one or two lines, and the composition reads at 1.12 so 12px legends are not tiny on a 24in screen */
+@media (min-width:1501px) { ${S} { --orr-label-w:236px; } }
+@media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${S}, ${C} { zoom:1.12; } }
+@media (max-width:1500px) {
+  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(144px, 156px) minmax(516px, 560px) minmax(0, 1fr) !important; }
+  ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.09em !important; text-wrap:balance; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size: 12px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 174px) 56px !important; column-gap:10px !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:19px !important; }
+  ${S} .sf-tabbar .sf-tab { min-height:40px !important; }
+}
+/* 901–1100 (960×540, 1024×768): the ≤1500 rule kept stage at 516–560px, so the preview
+   collapsed to ~63–122px and the HUD fan / HULL·SHIELD·ARMOR ran off the right edge.
+   Give the preview a real track and let the stage flex; tighten label/scale so rows still fit. */
+@media (min-width:901px) and (max-width:1100px) {
+  /* Hang fits GAMEPLAY / CONTROLS without fake 01..05 prefixes; preview gets ≥250px so the HUD fan and
+     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable scale + numeral. */
+  ${S} { --orr-scale-w:140px; --orr-label-w:144px;
+    grid-template-columns:minmax(138px, 146px) minmax(0, 1fr) minmax(250px, 270px) !important;
+    column-gap:clamp(16px, 2vw, 24px) !important; }
+  ${S} #sf-settings-pane { padding-right:10px !important; }
+  ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:12px !important; letter-spacing:.07em !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
+  /* the scale gives way before the readout: input.k-range is width:100% of its track so it shrinks cleanly */
+  ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
+  ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
+  /* the mixer shrinks to ~220px here but its hub kept the 1280 numeral, so 55 % and MASTER · OUT sat
+     across the rings: a smaller numeral, a tighter caption, and a dark well under both */
+  ${S} .orr-set-mixer__hub { gap:4px; padding:10px 12px; background:radial-gradient(closest-side, rgb(5 7 10 / .88) 62%, rgb(5 7 10 / 0)); }
+  ${S} .orr-set-mixer__out { font-size:34px; }
+  ${S} .orr-set-mixer__outlab { letter-spacing:.12em; }
+}
+
+/* a 1440p screen shows the 1080p composition at 1.25 (the kit scale folded into the zoom), as the station does */
+@media (min-width:2200px) and (min-height:1200px) { ${S}, ${C} { zoom:1.25; --k-s:1; } }
+@media (min-width:3400px) and (min-height:1900px) { ${S}, ${C} { zoom:1.85; --k-s:1; } }
+@media (max-height:800px) {
+  ${S} #sf-settings-pane .k-row { min-height:40px !important; padding-top:3px !important; padding-bottom:3px !important; }
+}
+@media (max-width:900px) {
+  /* Row tracks must follow the areas: hang is auto (the ladder keeps its height), stage takes
+     the 1fr (the pane scrolls inside). The base auto/1fr/auto track list put the squeeze on the
+     hang row instead — at 390px the 208px tab list overflowed a ~30px track and painted over the
+     settings rows (D112). */
+  ${S} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important;
+    grid-template-rows:auto auto minmax(0, 1fr) auto !important; }
+  ${S} > .orr-set-preview { display:none !important; }
+}
+@media (max-width:560px) {
+  /* A 390px window: label + graduated scale + numeral must all fit the single column. The rail
+     and the Hand stay; the tracks shrink so nothing prints under the row above. (The scale cap
+     has to actually bind: 40vw of 390 is 156px, so a 150px cap never fires — at 136px the
+     104+12+136+10+46 track lands inside the ~312px content box with air to spare.) */
+  ${S} { --orr-label-w:104px; --orr-scale-w:min(136px, 36vw); }
+  ${S} #sf-settings-pane { padding-right:8px !important; }
+  ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }
+}
+/* a very short desktop window (844×390 / ≤540 densify): stacked ≤900 put the five-rung category
+   ladder in an auto row (~208px) so the stage track collapsed to ~34px and MUTE ALL printed through
+   MORE and ‹ BACK. The prior ≤460 band missed the polish densify heights (700×461 / 801×461) by
+   one pixel. Lay the tabs sideways (credits-style) and compress chrome so the pane gets a real
+   band. Real phones in landscape use data-sf-mobile and stay out. No width floor: at 641–650
+   (and narrower) a short desktop window had the same 34px pane. */
+@media (max-width:900px) and (max-height:540px) {
+  ${SD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important; }
+  ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
+  ${SD} > .k-hang { min-width:0 !important; width:100% !important; }
+  ${SD} .sf-tabbar { flex-direction:row !important; width:100% !important; gap:4px !important; padding:0 !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; overscroll-behavior-x:contain;
+    background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
+  ${SD} .sf-tabbar::-webkit-scrollbar { display:none; }
+  ${SD} .sf-tabbar > li { width:auto !important; flex:0 0 auto; }
+  ${SD} .sf-tabbar > li::before { display:none !important; }
+  ${SD} .sf-tabbar .sf-tab { width:auto !important; min-height:32px !important; padding:6px 10px !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${SD} .sf-tabbar .sf-tab::before { display:none !important; }
+  ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::after { left:10px !important; right:10px !important;
+    top:auto !important; bottom:0 !important; width:auto !important; height:2px !important; margin:0 !important;
+    clip-path:none !important; background:rgb(${HOT} / .85) !important; transform:none !important; }
+  ${SD} .sf-tabbar .sf-tab:is([aria-selected="true"], .active)::before { display:none !important; }
+  ${SD} #sf-settings-pane { padding-bottom:28px !important; }
+  ${SD} #sf-settings-pane .k-row { min-height:36px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -32px 140px !important; padding:4px 12px 5px !important; }
+  ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
+}
+/* short three-column desktop (1024×440 / 901–1100 × ≤460): hang stays beside the pane, and MORE parks
+   below the stage in the footer band (to the right of ‹ BACK) so it never covers the bottom row or readout. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:460px) {
+  ${SD} { padding-top:14px !important; padding-bottom:8px !important; row-gap:10px !important; }
+  ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(28px, 7vh, 38px) !important; line-height:1 !important; }
+  ${SD} .sf-tabbar .sf-tab { min-height:32px !important; padding-top:4px !important; padding-bottom:4px !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${SD} #sf-settings-pane { padding-bottom:28px !important; }
+  ${SD} > .orr-set-more { margin:0 0 -32px 24px !important; padding:4px 12px 5px !important; }
+  ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
+}
+/* Horizontal categories keep a visible focus cue even on the selected tab: the compact
+   strip hides the ladder's focus tick, so selection color alone cannot identify keyboard focus. */
+${S} .sf-tabbar { scroll-padding-inline:12px; }
+${S} .sf-tabbar .sf-tab:focus-visible {
+  outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important;
+}
+html.sf-reduce-motion ${S} #sf-settings-pane .sf-bind-btn { animation:none !important; }
+@media (forced-colors: active) {
+  ${S} #sf-settings-pane input.k-range { background:CanvasText !important; height:2px !important; }
+  ${S} #sf-settings-pane .sf-bind-btn, ${S} #sf-settings-pane select.k-select { border-bottom:1px solid CanvasText !important; }
+  ${S} #sf-settings-pane :is(.k-word, .sf-bind-btn):focus-visible { outline:2px solid Highlight !important; }
+}
+`;
+
+const EMBLEM = new URL('../../../assets/ui/generated/emblem/emblem.webp', import.meta.url).href;
+
+const CREDITS_CSS = `
+/* ------------------------------------------------ credits: the frame ---------------------------- */
+${C} { grid-template-columns:minmax(200px, 268px) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+  grid-template-areas:"title title" "hang stage" "foot foot" !important; column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important;
+  isolation:isolate; overflow:hidden !important; }
+${C}::before { background:linear-gradient(90deg, rgb(5 7 10 / .92) 0%, rgb(5 7 10 / .84) 42%, rgb(5 7 10 / .6) 72%, rgb(5 7 10 / .5)) !important; z-index:0 !important; }
+${C} > :is(.k-title, .k-hang, .k-stage, .k-foot) { position:relative; z-index:2; }
+${C} > .k-title { max-width:none !important; align-self:end; }
+${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !important; font-size: 12px !important; letter-spacing:.26em !important; line-height:1.4 !important;
+  color:rgb(${BONE} / .86) !important; display:flex; align-items:center; gap:14px; }
+${C} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .62), rgb(${BONE} / 0)); }
+/* the drift field and the emblem stand behind everything */
+${C} > .orr-cr-drift { position:absolute; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; overflow:hidden; }
+/* the orrery: the emblem (produced art) the reel turns; the sections ride its orbit as bodies and the amber
+   Hand catches the one being read. The art sits at rest light; a second, lit copy shows only round the Hand. */
+${C} > .orr-cr-orrery { position:absolute; z-index:1; right:max(-4vw, -80px); top:50%; width:min(80vh, 880px); height:min(80vh, 880px); margin-top:calc(min(80vh, 880px) / -2);
+  pointer-events:none; }
+${C} .orr-cr-orrery > * { position:absolute; inset:0; width:100%; height:100%; }
+${C} .orr-cr-orrery__art { display:block; background:url("${EMBLEM}") center / contain no-repeat; opacity:.3; transform:rotate(var(--orr-cr-turn, 0deg)); will-change:transform; }
+${C} .orr-cr-orrery__lit { display:block;
+  -webkit-mask-image:radial-gradient(circle at 16% 50%, #000 0, #000 16%, rgb(0 0 0 / .45) 30%, transparent 46%);
+  mask-image:radial-gradient(circle at 16% 50%, #000 0, #000 16%, rgb(0 0 0 / .45) 30%, transparent 46%); }
+${C} .orr-cr-orrery__lit > .orr-cr-orrery__art { opacity:.92; }
+${C} .orr-cr-orrery__svg { overflow:visible; }
+${C} .orr-cr-orrery__svg path, ${C} .orr-cr-orrery__svg circle { vector-effect:none !important; }
+${C} .orr-cr-body__disc { fill:rgb(10 13 18); stroke:rgb(${BONE} / .7); transition:stroke .3s linear, fill .3s linear; }
+${C} .orr-cr-body__halo { fill:rgb(${BONE} / .08); transition:fill .3s linear; }
+${C} .orr-cr-body.is-current .orr-cr-body__disc { fill:rgb(${HOT}); stroke:rgb(255 253 248); }
+${C} .orr-cr-body.is-current .orr-cr-body__halo { fill:rgb(255 250 236 / .2); }
+${C} .orr-cr-body text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; letter-spacing:.2em; text-transform:uppercase; fill:rgb(${BONE} / .84); }
+${C} .orr-cr-body text.orr-cr-body__num { font-size:17px; letter-spacing:.14em; }
+${C} .orr-cr-body text.orr-cr-body__name { font-size:19px; opacity:0; transition:opacity .3s linear; }
+${C} .orr-cr-body.is-current text { fill:rgb(${HOT}); }
+${C} .orr-cr-body.is-current text.orr-cr-body__name { opacity:1; }
+${C} .orr-cr-orrery__hand path, ${C} .orr-cr-orrery__hand circle { stroke-linecap:round; }
+@media (min-width:1501px) { ${C} .orr-cr-orrery__svg text { paint-order:stroke; stroke:rgb(5 7 10 / .9); stroke-width:6px; stroke-linejoin:round; } }
+/* ------------------------------------------------ credits: the section ladder + progress -------- */
+${C} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
+${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]', { numbered: true })}
+/* the ladder on Credits stays bone at every state: the one amber here is the Hand on the orrery */
+${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::after { background:rgb(${HOT} / .85) !important; }
+${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::before { background:rgb(${HOT}) !important; filter:drop-shadow(0 0 5px rgb(255 250 236 / .45)); }
+/* a long section name breaks at its space onto a second line of its rung, never under the next */
+${C} .k-hang > .k-words .k-word { white-space:normal !important; line-height:1.35 !important; padding-top:7px !important; padding-bottom:7px !important;
+  color:rgb(${BONE} / .78) !important; }
+${C} .k-hang > .k-words .k-word[aria-current="true"] { color:rgb(${HOT}) !important; }
+${C} .k-hang > li::before { color:rgb(${BONE} / .78) !important; }
+${C} .k-hang > li:has(> .k-word[aria-current="true"])::before { color:rgb(${HOT}) !important; }
+${C} .orr-cr-progress { display:grid; grid-template-columns:84px auto; align-items:center; column-gap:16px; margin:30px 0 0 6px; pointer-events:none; }
+${C} .orr-cr-progress svg { width:84px; height:84px; overflow:visible; }${C} .orr-cr-progress__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 280 !important; font-weight:280 !important; font-size:32px;
+  line-height:.9; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
+${C} .orr-cr-progress__n small { font-size:.46em; margin-left:2px; color:rgb(${BONE} / .82); }
+${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .88); }
+
+/* ------------------------------------------------ credits: the reel ---------------------------- */
+${C} > .k-stage { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; max-width:none !important; width:100% !important; min-height:0 !important;
+  padding:0 !important; margin:0 !important; overflow:hidden auto !important; scrollbar-width:none; animation:none !important;
+  -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 10%, #000 80%, transparent 100%) !important;
+  mask-image:linear-gradient(180deg, transparent 0, #000 10%, #000 80%, transparent 100%) !important; }
+${C} > .k-stage::-webkit-scrollbar { display:none; }
+${C} > .k-stage::before, ${C} > .k-stage::after { content:none !important; display:none !important; }
+${C} > .k-stage:focus-visible { outline:none !important; }
+${C} .orr-cr-reel { position:relative; max-width:min(660px, 100%); padding:9vh 0 52vh; }
+${C} .orr-cr-sec { position:relative; scroll-margin-top:9vh; }
+${C} .orr-cr-sec + .orr-cr-sec { margin-top:86px; }
+${C} .orr-cr-head { ${LABEL} display:flex; align-items:center; gap:16px; margin:0 0 24px !important; font-size:12px !important; letter-spacing:.28em !important; color:rgb(${HOT}) !important; }
+${C} .orr-cr-head > i { display:none !important; font-style:normal; font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+${C} .orr-cr-head::after { content:""; flex:0 1 180px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
+/* the maker: the name at display size, the build and the trade in labels, one sentence */
+${C} .of-credits-made { margin:0 0 20px !important; }
+${C} .of-credits-kicker { display:none !important; }
+${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230 !important;
+  font-weight:230 !important; font-size:clamp(58px, 8.8vh, 100px) !important; line-height:.9 !important; white-space:nowrap; letter-spacing:.02em !important; text-transform:uppercase !important;
+  color:rgb(${HOT}) !important; text-shadow:none !important; }${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size: 12px !important; letter-spacing:.24em !important;
+  color:rgb(${BONE} / .88) !important; }
+${C} .of-credits-ver { color:var(--dp-phos, #dfeeff) !important; }
+${C} .orr-cr-sec > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; line-height:1.55 !important; max-width:44ch !important;
+  color:rgb(${BONE} / .92) !important; margin:6px 0 0 !important; text-transform:none !important; letter-spacing:0 !important; }
+/* a credit list hangs off the rail: a tick per name, the name in reading type, its role in labels */
+${C} .of-credits-rows { ${PLAIN} position:relative; margin:0 !important; padding:4px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
+${C} .of-credits-rows .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; align-items:baseline !important;
+  column-gap:28px !important; min-height:0 !important; height:auto !important; padding:12px 0 12px 30px !important; }
+${C} .of-credits-rows .k-row::after { content:none !important; display:none !important; }
+${C} .of-credits-rows .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:22px !important; width:8px !important;
+  height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .72) !important; transform:none !important; translate:none !important; scale:none !important;
+  box-shadow:none !important; border:0 !important; }
+${C} .of-credits-rows .k-row__name { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:17px !important; font-weight:500 !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(${HOT}) !important; }
+/* the line under a name reads as text (versions, makers, addresses keep their case) */
+${C} .of-credits-rows .k-row__sub { display:block; margin-top:5px !important; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important;
+  font-weight:400 !important; letter-spacing:.01em !important; text-transform:none !important; line-height:1.45 !important; color:rgb(${BONE} / .82) !important; white-space:normal !important; overflow-wrap:anywhere; }
+${C} .of-credits-rows .k-row__num { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
+/* a licence: its name, its terms in labels, its text as quiet reading */
+${C} .of-credits-notice { ${PLAIN} padding:0 0 0 30px !important; margin:0 0 40px !important; position:relative; max-width:none !important; }
+${C} .of-credits-notice::before { content:"" !important; position:absolute; left:4px; top:10px; width:8px; height:1.5px; background:rgb(${BONE} / .55); }
+${C} .of-credits-notice::after { content:none !important; display:none !important; }
+${C} .of-credits-notice > h2 { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; font-weight:600 !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(${HOT}) !important; margin:0 !important; }
+${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .8) !important;
+  background:none !important; padding:0 !important; }
+${C} .of-credits-notice > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.6 !important; max-width:66ch !important;
+  color:rgb(${BONE} / .86) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
+${C} .of-credits-notice .orr-cr-copy { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.5 !important; color:rgb(${BONE} / .9) !important;
+  margin:0 0 8px !important; max-width:66ch; }
+${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${HOT}); }
+${C} .of-credits-notice .orr-cr-unfold::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .55); }
+${C} .of-credits-notice .orr-cr-unfold:hover { color:rgb(255 253 248); }
+${C} .of-credits-notice .orr-cr-unfold:focus-visible { color:rgb(255 253 248); outline:none !important; box-shadow:none !important; }
+${C} .of-credits-notice .orr-cr-unfold:focus { outline:none !important; }
+/* on Credits the one amber is the orrery's Hand: focus is a vertical segment of bone light */
+${C} .of-credits-notice .orr-cr-unfold:focus-visible::before { width:3px; height:16px; margin-top:-8px; left:2px; border-radius:0; background:rgb(255 253 248); box-shadow:0 0 8px rgb(255 250 236 / .6); }
+${C} .of-credits-notice .orr-cr-full { margin-top:10px; }
+${C} .of-credits-notice .orr-cr-full[hidden] { display:none !important; }
+${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size: 12px; letter-spacing:.3em; color:rgb(${BONE} / .84); }
+${C} .orr-cr-end::before { content:""; width:28px; height:1px; background:rgb(${BONE} / .4); }
+/* Scroll Reveal: each line rises out of the dark as the reel brings it up */
+${C} .orr-cr-line { opacity:0; transform:translateY(16px); transition:opacity 640ms var(--dp-ease-out, ease-out), transform 760ms var(--dp-ease-out, ease-out); }
+${C} .orr-cr-line.is-in { opacity:1; transform:none; }
+${C} .orr-cr-head.orr-cr-line { filter:blur(3px); transition:opacity 640ms var(--dp-ease-out, ease-out), transform 760ms var(--dp-ease-out, ease-out), filter 640ms linear; }
+${C} .orr-cr-head.orr-cr-line.is-in { filter:none; }
+html.sf-reduce-motion ${C} .orr-cr-line { opacity:1 !important; transform:none !important; filter:none !important; transition:none !important; }
+
+
+/* ------------------------------------------------ credits: the way back (‹ BACK + ESC keycap, matches settings/save-load/help) - */
+${C} > .k-foot { align-items:center !important; }
+${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .08) !important; border:0 !important; border-radius:0 !important;
+  box-shadow:none !important; vertical-align:baseline !important; }
+${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+
+@media (max-width:1500px) {
+  ${C} { grid-template-columns:minmax(180px, 210px) minmax(0, 1fr) !important; }
+  ${C} .k-hang > .k-words .k-word { font-size:12px !important; letter-spacing:.14em !important; }
+  ${C} .orr-cr-reel { max-width:min(520px, 100%); }
+  ${C} > .orr-cr-orrery { width:80vh; height:80vh; margin-top:-40vh; right:max(-14vw, -190px); }
+  /* a short window: the reel starts high and its foot fades late, so a list shows more than one row */
+  ${C} .orr-cr-reel { padding-top:4vh; }
+  ${C} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 5%, #000 90%, transparent 100%) !important;
+    mask-image:linear-gradient(180deg, transparent 0, #000 5%, #000 90%, transparent 100%) !important; }
+  ${C} .orr-cr-sec { scroll-margin-top:4vh; }
+  ${C} .orr-cr-sec + .orr-cr-sec { margin-top:44px; }
+  ${C} .of-credits-rows .k-row__name { font-size:15.5px !important; }
+  ${C} .of-credits-name { font-size:clamp(44px, 7.4vh, 64px) !important; }
+  ${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { margin-top:10px !important; }
+  ${C} .orr-cr-sec > .k-sentence { font-size:14.5px !important; }
+  ${C} .orr-cr-head { margin-bottom:14px !important; }
+  ${C} .of-credits-rows .k-row { padding-top:8px !important; padding-bottom:8px !important; }
+  ${C} .of-credits-rows .k-row::before { top:18px !important; }
+}
+@media (max-height:820px) {
+  /* short window: orrery body nums were clipping their discs at 720p — hide nums, keep current name */
+  ${C} .orr-cr-body text.orr-cr-body__num { font-size:0 !important; opacity:0 !important; }
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:15px; }
+  ${C} .orr-cr-progress { margin-top:16px; }
+  ${C} .orr-cr-progress svg { width:64px; height:64px; }
+  ${C} .orr-cr-progress__n { font-size:26px; }
+}
+/* 901–1100 wide (960×540, 1024×768): an 80vh orrery reached into the reel and its body label sat on the
+   sentence. Size it by width, park its left edge past a narrower reel, and keep the Hand on screen. */
+@media (min-width:901px) and (max-width:1100px) {
+  ${C} .orr-cr-reel { max-width:min(380px, 100%); }
+  ${C} .orr-cr-sec > .k-sentence { max-width:34ch !important; }
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(72vh, 34vw); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.44); }
+  /* the smaller emblem keeps its current body's name readable (SVG units scale with it) */
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:26px !important; }
+}
+/* 960×540-class: even parked, the Hand's MADE BY sat on the reel head line — keep the disc, drop the name;
+   the ladder and the reel head already name the section. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:600px) {
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:0 !important; opacity:0 !important; }
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(68vh, 32vw); right:calc(var(--orr-cr-d) * -.5); }
+}
+/* a window under 600 tall: the reel-progress dial (decoration) dropped onto ‹ BACK */
+@media (min-width:901px) and (max-height:600px) { ${C} .orr-cr-progress { display:none; } }
+@media (max-width:900px) {
+  /* four stacked areas need four row tracks, or the ladder lands in a 0px row and prints over the reel */
+  ${C} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
+  ${C} > .orr-cr-orrery { display:none; }
+  /* stacked, the five-rung ladder and its dial took the whole height (the reel got 0px at 800×600; on a
+     phone the ladder sat in a 0px row over the reel). The rungs scroll sideways like the phone Settings rail. */
+  ${C} > .k-hang { min-width:0 !important; width:100% !important; }
+  ${C} .k-hang > .k-words { flex-direction:row !important; width:100% !important; gap:4px !important; padding:0 !important; overflow-x:auto !important;
+    overflow-y:hidden !important; scrollbar-width:none; overscroll-behavior-x:contain;
+    background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
+  ${C} .k-hang > .k-words::-webkit-scrollbar { display:none; }
+  ${C} .k-hang > .k-words > li { width:auto !important; flex:0 0 auto; }
+  ${C} .k-hang > .k-words > li::before { display:none !important; }
+  ${C} .k-hang > .k-words .k-word { width:auto !important; min-height:44px !important; padding:8px 10px !important; white-space:nowrap !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${C} .k-hang > .k-words .k-word::before { display:none !important; }
+  ${C} .k-hang > .k-words .k-word[aria-current="true"]::after { left:10px !important; right:10px !important; top:auto !important; bottom:0 !important;
+    width:auto !important; height:2px !important; margin:0 !important; }
+  ${C} .orr-cr-progress { display:none !important; }
+  ${C} .orr-cr-reel { max-width:min(660px, 100%) !important; padding-top:2vh !important; }
+  ${C} .of-credits-name { font-size:clamp(36px, 12.5vw, 64px) !important; }
+}
+/* phone-narrow: a credit's maker drops under its name instead of printing over a long one */
+@media (max-width:560px) {
+  ${C} .of-credits-rows .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:3px !important; }
+  ${C} .of-credits-rows .k-row > * { grid-column:1 !important; grid-row:auto !important; min-width:0; }
+  ${C} .of-credits-rows .k-row__num { text-align:left !important; white-space:normal !important; line-height:1.4 !important; }
+  /* the six section words ran off the right edge as a sideways strip (only the A of ASSETS showed at 390):
+     two rows of three keep every section in view; the tagline balances instead of orphaning "ON." */
+  ${C} .k-hang > .k-words { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:space-between; row-gap:0 !important; overflow:visible !important; }
+  ${C} > .k-title > p { text-wrap:balance; }
+  /* the reel head's word kept shrinking for its trailing rule, so MADE BY broke in two at 375 */
+  ${C} .orr-cr-head > b { flex:none; white-space:nowrap; }
+}
+/* a very short desktop window (844×390 / ≤460): the five-rung section ladder (and on ≤900 the
+   stacked MADE BY reel head) ran into ‹ BACK. Compress title, hang, reel head and foot so CLOSE
+   clears and MADE BY / SPACEFACE stay readable. Real phones in landscape use data-sf-mobile and stay out. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+  ${CD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important;
+    column-gap:clamp(16px, 2.4vw, 40px) !important; }
+  ${CD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
+  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:12px !important; letter-spacing:.06em !important; gap:10px; }
+  ${CD} > .k-title > p::after { width:48px; }
+  /* hang stays in its row: scroll if needed instead of painting through ‹ BACK */
+  ${CD} > .k-hang { align-self:stretch !important; max-height:100% !important; min-height:0 !important;
+    overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${CD} .k-hang > .k-words { padding:2px 0 !important; }
+  ${CD} .k-hang > .k-words .k-word { min-height:26px !important; padding-top:3px !important; padding-bottom:3px !important;
+    font-size:12px !important; letter-spacing:.12em !important; line-height:1.25 !important; }
+  ${CD} .k-hang > .k-words > li::before { font-size:12px !important; }
+  ${CD} .k-hang > .k-words .k-word:is([aria-current="true"])::before { height:9px !important; margin-top:-4.5px !important; }
+  ${CD} .orr-cr-progress { display:none !important; }
+  ${CD} .orr-cr-reel { padding:2vh 0 28vh !important; }
+  ${CD} .orr-cr-sec { scroll-margin-top:2vh; }
+  ${CD} .orr-cr-sec + .orr-cr-sec { margin-top:28px; }
+  ${CD} .orr-cr-head { margin-bottom:8px !important; gap:10px; font-size:12px !important; }
+  ${CD} .of-credits-name { font-size:clamp(28px, 9vh, 48px) !important; }
+  ${CD} .of-credits-made { margin:0 0 10px !important; }
+  ${CD} .of-credits-ver, ${CD} .of-credits-made .k-row__sub { margin-top:6px !important; font-size:12px !important; }
+  ${CD} .orr-cr-sec > .k-sentence { font-size:13px !important; line-height:1.4 !important; }
+  ${CD} .of-credits-rows .k-row { padding-top:6px !important; padding-bottom:6px !important; }
+  ${CD} .of-credits-rows .k-row::before { top:14px !important; }
+  ${CD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
+  ${CD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; font-size:12px !important; }
+  /* park the orrery further right so its Hand/name cannot sit on the reel head */
+  ${CD} > .orr-cr-orrery { --orr-cr-d:min(64vh, 30vw); width:var(--orr-cr-d); height:var(--orr-cr-d);
+    margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.52); }
+  ${CD} .orr-cr-body.is-current text.orr-cr-body__name { font-size:0 !important; opacity:0 !important; }
+}
+/* stacked hang (≤900): the horizontal section rail + SPACEFACE head also need less chrome so the
+   reel does not print through ‹ BACK */
+@media (min-width:651px) and (max-width:900px) and (max-height:460px) {
+  ${CD} .k-hang > .k-words .k-word { min-height:28px !important; padding:4px 8px !important;
+    font-size:12px !important; letter-spacing:.1em !important; }
+  ${CD} .of-credits-name { font-size:clamp(26px, 8.5vh, 42px) !important; }
+  ${CD} .orr-cr-reel { padding-top:1vh !important; padding-bottom:18vh !important; }
+  ${CD} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important;
+    mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important; }
+}
+/* 1101–1500 wide, not short: the same rule as the wide window below — the dial was sized 80vh and pushed
+   190px past the right edge, so body 04 (ASSETS, 3 o'clock) was cut off and the "01 MADE BY" caption
+   printed across the ring. Keep the whole ring in the window, its rim just past the edge. */
+@media (min-width:1101px) and (max-width:1500px) and (min-height:821px) {
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(68vh, 590px); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.04); }
+}
+/* a wide window: body 04 at 3 o'clock stays inside the window (it was cut by the edge), and the reel and the
+   SPACEFACE wordmark end short of the ring's outer rim instead of running onto it */
+@media (min-width:1501px) {
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(70vh, 760px); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.04); }
+  ${C} .orr-cr-reel { max-width:min(540px, 100%); }
+  ${C} .of-credits-name { font-size:clamp(56px, 7vh, 80px) !important; }
+}
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${C} { zoom:1.12; }
+}
+@media (forced-colors: active) { ${C} > .orr-cr-orrery, ${C} > .orr-cr-drift { display:none; } }
+`;
+
+/**
+ * Drift Field (ORRERY §4 #17): slow points of light on one canvas behind the credits, in three depths,
+ * drifting up and shifted by the reel's scroll (parallax). It runs only while its screen is shown and
+ * stands still under reduced motion (one drawn frame). Returns null on a shim document.
+ */
+export function createDriftField(host, { count = 90 } = {}) {
+  const doc = host && host.ownerDocument;
+  if (!doc || typeof doc.createElement !== 'function') return null;
+  const canvas = doc.createElement('canvas');
+  const ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d', { alpha: true }) : null;
+  if (!ctx) return null;
+  canvas.className = 'orr-cr-drift';
+  canvas.setAttribute('aria-hidden', 'true');
+  // the field's own seeded generator (mulberry32): the same drift every time, and never Math.random, so the
+  // sim's determinism contract has nothing to classify here
+  let seed = 0x5f3759df;
+  const rand = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const motes = Array.from({ length: count }, () => {
+    const z = 0.25 + rand() * 0.75;
+    return { x: rand(), y: rand(), z, r: 0.6 + z * 1.2, a: 0.14 + z * 0.42, vx: (rand() - 0.5) * 3 * z, vy: -(4 + rand() * 10) * z };
+  });
+  // Budget: the motes are slow (a few pixels a second), so the field draws at 20 Hz into a backing store
+  // at half the layout size; the drawing is cheap enough to leave the menu its frame rate on an iGPU.
+  const HZ_MS = 50;
+  const SCALE = 0.5;
+  let w = 0; let h = 0; let scroll = 0; let off = null; let last = 0; let lastDraw = 0;
+  const size = () => {
+    w = Math.max(1, host.offsetWidth || 0); h = Math.max(1, host.offsetHeight || 0);
+    canvas.width = Math.max(1, Math.round(w * SCALE)); canvas.height = Math.max(1, Math.round(h * SCALE));
+    canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
+  };
+  const draw = () => {
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    for (const m of motes) {
+      const y = ((m.y * h - scroll * m.z * 0.18) % h + h) % h;
+      const x = ((m.x * w) % w + w) % w;
+      ctx.globalAlpha = m.a;
+      ctx.fillStyle = m.z > 0.8 ? '#f8f4ea' : '#ece6d8';
+      ctx.beginPath(); ctx.arc(x, y, Math.max(1.1, m.r), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+  const step = (now) => {
+    if (lastDraw && now - lastDraw < HZ_MS) return true;
+    const dt = last ? Math.min(0.2, (now - last) / 1000) : 0;
+    last = now; lastDraw = now;
+    for (const m of motes) { m.x += (m.vx * dt) / Math.max(1, w); m.y += (m.vy * dt) / Math.max(1, h); }
+    draw();
+    return true;
+  };
+  let ro = null;
+  if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => { size(); draw(); }); ro.observe(host); }
+  return {
+    el: canvas,
+    start() {
+      size();
+      draw();
+      if (off || reducedMotion() || typeof requestAnimationFrame !== 'function') return;
+      last = 0; lastDraw = 0;
+      off = onFrame(step);
+    },
+    stop() { if (off) { off(); off = null; } },
+    setScroll(y) { scroll = Number(y) || 0; if (!off) draw(); },
+    dispose() { if (off) { off(); off = null; } ro?.disconnect?.(); },
+  };
+}
+
+/**
+ * The Credits orrery (the screen's signature): the emblem, produced art, is turned by the reel. Each section
+ * is a body on one of its orbits, 72 degrees apart; the amber Hand is fixed, pointing back at the reel, and
+ * the orrery turns so the body being read comes round under it. `setPosition(s)` takes the reel's
+ * position in sections (0 = the first, fractional between them) and swings there on the Hand's spring;
+ * reduced motion goes there at once. Returns null on a document without SVG.
+ */
+export function createCreditsOrrery(doc = globalThis.document, sections = []) {
+  if (!doc || typeof doc.createElementNS !== 'function' || typeof doc.createElement !== 'function') return null;
+  const el = doc.createElement('div');
+  el.className = 'orr-cr-orrery';
+  el.setAttribute('aria-hidden', 'true');
+  const art = doc.createElement('i');
+  art.className = 'orr-cr-orrery__art';
+  const litWrap = doc.createElement('i');
+  litWrap.className = 'orr-cr-orrery__lit';
+  const litArt = doc.createElement('i');
+  litArt.className = 'orr-cr-orrery__art';
+  litWrap.appendChild(litArt);
+  const C0 = 500;
+  const ORBIT = 400;
+  // the sections share the whole orbit, so a sixth body does not land on the first (72° held five)
+  const STEP = 360 / Math.max(5, sections.length);
+  const HAND = 270;
+  const s = svg('svg', { class: 'orr-svg orr-cr-orrery__svg', viewBox: '0 0 1000 1000' });
+  const rotor = svg('g', { class: 'orr-cr-orrery__rotor' });
+  // the orbit the sections ride: an annulus of light with its ticks cut through, a rim core over its bloom
+  rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT, fill: 'none', stroke: 'rgb(236 230 216 / .3)', 'stroke-width': 16 }));
+  rotor.appendChild(svg('path', { d: ticksD(C0, C0, ORBIT + 8, 90, { len: 16, major: 0 }), stroke: 'rgb(5 7 10)', 'stroke-width': 2.5, fill: 'none' }));
+  rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT + 8, fill: 'none', stroke: 'rgb(236 230 216 / .14)', 'stroke-width': 10 }));
+  rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT + 8, fill: 'none', stroke: 'rgb(236 230 216 / .62)', 'stroke-width': 2.5 }));
+  const bodies = sections.map((sec, i) => {
+    const a = HAND + STEP * i;
+    const [bx, by] = polar(C0, C0, ORBIT, a);
+    const g = svg('g', { class: 'orr-cr-body' });
+    g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r: 30, class: 'orr-cr-body__halo' }));
+    g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r: 14, class: 'orr-cr-body__disc', 'stroke-width': 3 }));
+    const label = svg('g', { class: 'orr-cr-body__label' });
+    const num = svg('text', { x: bx.toFixed(1), y: (by - 34).toFixed(1), 'text-anchor': 'middle', class: 'orr-cr-body__num' });
+    num.textContent = String(i + 1).padStart(2, '0');
+    const nm = svg('text', { x: bx.toFixed(1), y: (by + 54).toFixed(1), 'text-anchor': 'middle', class: 'orr-cr-body__name' });
+    nm.textContent = sec.label;
+    label.append(num, nm);
+    g.appendChild(label);
+    rotor.appendChild(g);
+    return { g, label, bx, by };
+  });
+  s.appendChild(rotor);
+  // the Hand: fixed, from the hub back toward the reel, holding the current body at its tip
+  // the stretch of orbit under the Hand is lit (fixed while the plate turns under it)
+  const catchArc = svg('g', { class: 'orr-cr-orrery__catch' });
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT, HAND - 20, HAND + 20), stroke: 'rgb(248 244 234 / .44)', 'stroke-width': 16, fill: 'none', 'stroke-linecap': 'butt' }));
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT + 8, HAND - 20, HAND + 20), stroke: 'rgb(255 253 248 / .95)', 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
+  catchArc.appendChild(svg('path', { d: arcD(C0, C0, ORBIT, HAND - 20, HAND + 20), stroke: 'rgb(255 250 236 / .16)', 'stroke-width': 34, fill: 'none', 'stroke-linecap': 'butt' }));
+  s.insertBefore(catchArc, rotor);
+  const hand = svg('g', { class: 'orr-cr-orrery__hand' });
+  const [h0x, h0y] = polar(C0, C0, 34, HAND);
+  const [h1x, h1y] = polar(C0, C0, ORBIT - 24, HAND);
+  hand.appendChild(svg('path', { d: `M ${h0x} ${h0y} L ${h1x} ${h1y}`, stroke: 'rgb(242 185 80 / .3)', 'stroke-width': 14, fill: 'none' }));
+  hand.appendChild(svg('path', { d: `M ${h0x} ${h0y} L ${h1x} ${h1y}`, stroke: 'var(--dp-hand, #f2b950)', 'stroke-width': 4, fill: 'none' }));
+  hand.appendChild(svg('path', { d: `M ${h1x + 12} ${h1y - 11} L ${h1x} ${h1y} L ${h1x + 12} ${h1y + 11}`, stroke: 'var(--dp-hand-hot, #ffd98c)', 'stroke-width': 4, fill: 'none', 'stroke-linejoin': 'miter' }));
+  hand.appendChild(svg('circle', { cx: C0, cy: C0, r: 26, fill: 'rgb(8 10 14 / .9)', stroke: 'var(--dp-hand, #f2b950)', 'stroke-width': 4 }));
+  hand.appendChild(svg('circle', { cx: C0, cy: C0, r: 8, fill: 'var(--dp-hand-hot, #ffd98c)' }));
+  s.appendChild(hand);
+  el.append(art, litWrap, s);
+
+  let current = -1;
+  const apply = (deg) => {
+    const t = `${deg.toFixed(2)}deg`;
+    el.style.setProperty('--orr-cr-turn', t);
+    rotor.setAttribute('transform', `rotate(${deg.toFixed(2)} ${C0} ${C0})`);
+    // the words on each body stay upright while the orrery turns
+    for (const b of bodies) b.label.setAttribute('transform', `rotate(${(-deg).toFixed(2)} ${b.bx.toFixed(1)} ${b.by.toFixed(1)})`);
+  };
+  const spring = createSpring({ value: 0, preset: 'swing', onUpdate: apply });
+  apply(0);
+  const mark = (i) => {
+    if (i === current) return;
+    current = i;
+    bodies.forEach((b, k) => b.g.classList.toggle('is-current', k === i));
+  };
+  mark(0);
+  return {
+    el,
+    setPosition(pos, { instant = false } = {}) {
+      const p = Math.max(0, Math.min(bodies.length - 1, Number(pos) || 0));
+      spring.set(-STEP * p, { instant });
+      mark(Math.round(p));
+    },
+    dispose() { spring.stop(); },
+  };
+}
+/** The reel's progress as an arc: how far through the credits the reel has rolled. */
+export function createReelProgress(doc = globalThis.document) {
+  if (!doc || typeof doc.createElementNS !== 'function') return null;
+  const el = doc.createElement('div');
+  el.className = 'orr-cr-progress';
+  el.setAttribute('aria-hidden', 'true');
+  const s = svg('svg', { class: 'orr-svg', viewBox: '0 0 84 84' });
+  s.appendChild(svg('path', { d: ticksD(42, 42, 41, 40, { len: 3, major: 10, majorLen: 6 }), class: 'orr-core orr-rest', 'stroke-width': 1.2, 'stroke-linecap': 'butt' }));
+  s.appendChild(svg('path', { d: arcD(42, 42, 31, 0, 360), stroke: 'rgb(236 230 216 / .27)', fill: 'none', 'stroke-width': 6 }));
+  const bloom = svg('path', { d: arcD(42, 42, 31, 0, 360), class: 'orr-bloom orr-phos', 'stroke-width': 8, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt', opacity: '.4' });
+  const arc = svg('path', { d: arcD(42, 42, 31, 0, 360), class: 'orr-core orr-phos', 'stroke-width': 3, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+  s.append(bloom, arc);  const read = doc.createElement('div');
+  const n = doc.createElement('b');
+  n.className = 'orr-cr-progress__n';
+  const l = doc.createElement('span');
+  l.className = 'orr-cr-progress__l';
+  l.textContent = 'Of reel';
+  read.append(n, l);
+  el.append(s, read);
+  let shown = -1;
+  return {
+    el,
+    set(frac) {
+      const v = Math.max(0, Math.min(1, Number(frac) || 0));
+      const pct = Math.round(v * 100);
+      if (pct === shown) return;
+      shown = pct;
+      const dash = `${v.toFixed(4)} 1`;
+      arc.setAttribute('stroke-dasharray', dash);
+      bloom.setAttribute('stroke-dasharray', dash);
+      n.textContent = String(pct);
+      const unit = doc.createElement('small');
+      unit.textContent = '%';
+      n.appendChild(unit);
+    },
+  };
+}
+
+/**
+ * Scroll Reveal: lines in `root` (a scroll container) gain `.is-in` as they rise into view, and a
+ * section head decrypts the first time it arrives. Under reduced motion, or with no observer, every
+ * line is simply shown.
+ */
+export function revealReel(root, lines) {
+  const all = [...(lines || [])];
+  const showAll = () => { for (const n of all) n.classList.add('is-in'); };
+  if (reducedMotion() || typeof IntersectionObserver !== 'function' || !root) { showAll(); return { dispose() {} }; }
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const n = e.target;
+      io.unobserve(n);
+      n.classList.add('is-in');
+      if (n.classList.contains('orr-cr-head')) {
+        const word = n.querySelector('b');
+        if (word) decrypt(word, word.dataset.text || word.textContent, { duration: 320 });
+      }
+    }
+  }, { root, threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+  for (const n of all) io.observe(n);
+  return { dispose() { io.disconnect(); } };
+}
+
+const SPOT_CSS = `
+/* Spotlight (ORRERY §4 #13): a soft inspection light rides under the pointer, behind the words */
+:is(${S}, ${C}) > .orr-spot { position:absolute; left:0; top:0; width:100%; height:100%; z-index:0; pointer-events:none; opacity:0; transition:opacity .35s linear;
+  background:radial-gradient(300px circle at var(--x, 50%) var(--y, 50%), rgb(${BONE} / .075), rgb(${BONE} / .03) 42%, rgb(${BONE} / 0) 72%); }
+:is(${S}, ${C}) > .orr-spot.is-on { opacity:1; }
+html.sf-reduce-motion :is(${S}, ${C}) > .orr-spot { transition:none; }
+@media (forced-colors: active) { :is(${S}, ${C}) > .orr-spot { display:none; } }
+`;
+
+const CSS = `${SPOT_CSS}
+${SETTINGS_CSS}
+${CREDITS_CSS}
+${SCROLL_EXTENT_CSS}`;
+
+export function injectOrrerySettings(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
+  if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
+  injectOrrery(doc);
+  if (doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}
+
+/**
+ * Dress a freshly rendered settings pane: tag every row with its kind (for the sheet), drive each
+ * Scale's fill from its value, and seat the rail's light cursor.
+ * Idempotent per node; safe on a shim document (every DOM call is guarded).
+ */
+export function dressSettingsPane(pane, { arrive = false } = {}) {
+  if (!pane || typeof pane.querySelectorAll !== 'function') return;
+  for (const row of pane.querySelectorAll('.k-row')) {
+    if (!row.dataset) continue;
+    let kind = 'row';
+    if (row.querySelector(':scope > .k-caps')) kind = 'head';
+    else if (row.querySelector('input.k-range')) kind = 'slider';
+    else if (row.querySelector('select')) kind = 'select';
+    else if (row.querySelector('.sf-bind-btn')) kind = 'key';
+    else if (row.querySelector('.k-words--row > li')) kind = 'choice';
+    else if (row.querySelector(':scope > div > .k-row__name')) kind = 'shortcut';
+    row.dataset.orrKind = kind;
+  }
+  // a long label breaks after its slashes, never inside a word: <wbr> keeps the text (and the label's
+  // accessible name) exactly as it was
+  for (const label of pane.querySelectorAll('.k-row > label, .k-row > span.k-t-body')) {
+    const text = label.textContent || '';
+    if (!text.includes('/') || label.children.length || typeof label.append !== 'function') continue;
+    const doc = label.ownerDocument;
+    const parts = text.split('/');
+    label.textContent = '';
+    parts.forEach((part, i) => { label.append(part); if (i < parts.length - 1) { label.append('/'); label.append(doc.createElement('wbr')); } });
+  }
+  for (const input of pane.querySelectorAll('input.k-range')) {
+    if (input.dataset.orrScale === '1') continue;
+    input.dataset.orrScale = '1';
+    const paint = () => {
+      const min = Number(input.min) || 0;
+      const max = Number(input.max);
+      const span = Number.isFinite(max) && max > min ? max - min : 1;
+      const v = Math.max(0, Math.min(1, (parseFloat(input.value) - min) / span));
+      input.style.setProperty('--orr-v', v.toFixed(4));
+    };
+    input.addEventListener('input', paint);
+    input.addEventListener('change', paint);
+    paint();
+  }
+  // a short choice engraves its options beneath it: one tick per option, the chosen one lit
+  const doc = pane.ownerDocument || globalThis.document;
+  for (const sel of pane.querySelectorAll('select.k-select')) {
+    const row = typeof sel.closest === 'function' ? sel.closest('.k-row') : null;
+    const n = sel.options ? sel.options.length : 0;
+    if (!row || n < 2 || n > 6 || row.querySelector('.orr-set-stops') || !doc) continue;
+    const stops = doc.createElement('i');
+    stops.className = 'orr-set-stops';
+    stops.setAttribute('aria-hidden', 'true');
+    stops.style.setProperty('--n', String(n));
+    const marks = [];
+    for (let i = 0; i < n; i += 1) { const b = doc.createElement('b'); stops.appendChild(b); marks.push(b); }
+    row.appendChild(stops);
+    const paint = () => marks.forEach((b, i) => b.classList.toggle('is-on', i === sel.selectedIndex));
+    paint();
+    sel.addEventListener('change', paint);
+  }
+  const controls = pane.querySelectorAll('.k-row:not([data-orr-kind="head"])').length;
+  pane.classList.toggle('is-roomy', controls > 0 && controls <= 10);
+  pane.classList.toggle('is-sparse', controls > 0 && controls <= 8);
+  // the accessibility checklist reads as rows: its item in label caps, its state a word with a bead
+  // (the sentence's text stays exactly what it was: "Contrast: ready")
+  for (const p of pane.querySelectorAll(':scope > p.k-sentence:not(.orr-set-check)')) {
+    const m = /^(.{2,40}):\s*(ready|off|on)$/i.exec(String(p.textContent || '').trim());
+    if (!m || !doc || p.children.length) continue;
+    const label = doc.createElement('span');
+    label.className = 'orr-set-check__label';
+    label.textContent = m[1];
+    const sep = doc.createElement('span');
+    sep.className = 'orr-set-check__sep';
+    sep.textContent = ': ';
+    const state = doc.createElement('b');
+    state.className = 'orr-set-check__state';
+    state.dataset.state = m[2].toLowerCase();
+    state.textContent = m[2];
+    p.textContent = '';
+    p.append(label, sep, state);
+    p.classList.add('orr-set-check');
+  }
+  // the top edge fades once the list has scrolled; a focused row is brought clear of both fades
+  if (!pane.dataset.orrScroll) {
+    pane.dataset.orrScroll = '1';
+    const edge = () => pane.classList.toggle('is-scrolled', (pane.scrollTop || 0) > 4);
+    pane.addEventListener('scroll', edge, { passive: true });
+    // A pointer focuses its button between down and up. Scrolling at that point can move the
+    // button out from under the pointer, so let the pointer complete without moving the pane.
+    let pointerFocus = false;
+    pane.addEventListener('pointerdown', () => { pointerFocus = true; }, true);
+    pane.addEventListener('pointerup', () => { pointerFocus = false; }, true);
+    pane.addEventListener('pointercancel', () => { pointerFocus = false; }, true);
+    pane.addEventListener('keydown', () => { pointerFocus = false; }, true);
+    pane.addEventListener('focusin', (ev) => {
+      const fromPointer = pointerFocus;
+      pointerFocus = false;
+      if (fromPointer) return;
+      const row = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.k-row') : null;
+      if (row && typeof row.getBoundingClientRect === 'function' && typeof pane.getBoundingClientRect === 'function') {
+        // Scroll only this pane vertically. scrollIntoView also scrolls horizontal ancestors and
+        // can move a whole segmented control while focus is being assigned.
+        const box = row.getBoundingClientRect();
+        const viewport = pane.getBoundingClientRect();
+        const above = box.top - (viewport.top + 40);
+        const below = box.bottom - (viewport.bottom - 80);
+        const delta = above < 0 ? above : below > 0 ? below : 0;
+        if (delta) pane.scrollTop += delta;
+      }
+    });
+    edge();
+  }
+  try { syncScrollExtent(pane); } catch (e) { /* a shim document has no layout */ }
+  if (arrive && !reducedMotion()) {
+    let i = 0;
+    for (const node of pane.children) {
+      const rows = node.classList && node.classList.contains('k-rows') ? [...node.children] : [node];
+      for (const row of rows) {
+        if (!row.classList || i > 22) continue;
+        row.classList.add('orr-set-rise');
+        row.style.setProperty('--orr-delay', `${60 + i * 26}ms`);
+        i += 1;
+      }
+    }
+    setTimeout(() => { for (const row of pane.querySelectorAll('.orr-set-rise')) row.classList.remove('orr-set-rise'); }, 1400);
+  }
+}
+
+/** Spotlight: a soft light that follows the pointer across the screen, behind its words. */
+export function attachSpotlight(root) {
+  const doc = root && root.ownerDocument;
+  if (!doc || typeof root.addEventListener !== 'function' || typeof root.insertBefore !== 'function') return null;
+  const spot = doc.createElement('i');
+  spot.className = 'orr-spot';
+  spot.setAttribute('aria-hidden', 'true');
+  root.insertBefore(spot, root.firstChild);
+  let frame = 0;
+  let px = 0;
+  let py = 0;
+  const paint = () => {
+    frame = 0;
+    const r = root.getBoundingClientRect();
+    const zoom = root.offsetWidth ? r.width / root.offsetWidth : 1;
+    spot.style.setProperty('--x', `${Math.round((px - r.left) / (zoom || 1))}px`);
+    spot.style.setProperty('--y', `${Math.round((py - r.top) / (zoom || 1))}px`);
+    spot.classList.add('is-on');
+  };
+  const onMove = (ev) => {
+    px = ev.clientX; py = ev.clientY;
+    if (frame) return;
+    if (typeof requestAnimationFrame === 'function') frame = requestAnimationFrame(paint); else paint();
+  };
+  const onLeave = () => spot.classList.remove('is-on');
+  root.addEventListener('pointermove', onMove, { passive: true });
+  root.addEventListener('pointerleave', onLeave);
+  return {
+    el: spot,
+    dispose() {
+      if (frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+      root.removeEventListener('pointermove', onMove);
+      root.removeEventListener('pointerleave', onLeave);
+      spot.remove();
+    },
+  };
+}

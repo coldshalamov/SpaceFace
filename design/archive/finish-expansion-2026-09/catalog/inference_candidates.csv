@@ -1,0 +1,97 @@
+id,title,program_id,scope,candidate_state,depends_on,candidate_paths,document
+SFQ-I001,Default-backend guidance,SFQ-P01,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,,docs/MODULE_MAP.md,inference/SFQ-I001.md
+SFQ-I002,Already-true cruise row,SFQ-P01,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,,docs/TUNING_JOBS.md,inference/SFQ-I002.md
+SFQ-I003,Alien branch status label,SFQ-P01,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,,design/alien-ecology-program/README.md,inference/SFQ-I003.md
+SFQ-I004,Task-to-player route link,SFQ-P01,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,,design/program/roadmap/active/,inference/SFQ-I004.md
+SFQ-I005,Stick reset on focus return,SFQ-P02,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/systems/dynamicFlightStick.js,inference/SFQ-I005.md
+SFQ-I006,Actual brake cue,SFQ-P02,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/vfx.js,inference/SFQ-I006.md
+SFQ-I007,Loaded-turn preview label,SFQ-P02,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/screens/,inference/SFQ-I007.md
+SFQ-I008,G hint names the live mechanic,SFQ-P02,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/systems/onboarding.js,inference/SFQ-I008.md
+SFQ-I009,Denied latch names the actual reason,SFQ-P03,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/combat/attachments.js,inference/SFQ-I009.md
+SFQ-I010,Clean cut does not fake a snap,SFQ-P03,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/render/vfx.js,inference/SFQ-I010.md
+SFQ-I011,Tethered pickup survives collector tick,SFQ-P03,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/mining.js,inference/SFQ-I011.md
+SFQ-I012,Anchor highlight matches real eligibility,SFQ-P03,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/render/,inference/SFQ-I012.md
+SFQ-I013,Bomb refusal is truthful,SFQ-P04,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B021,src/ui/orrery/hudAdapter.js,inference/SFQ-I013.md
+SFQ-I014,Goo expiry clears active force,SFQ-P04,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B021,src/systems/bombs.js,inference/SFQ-I014.md
+SFQ-I015,One cause one detonation cue,SFQ-P04,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B021,src/systems/bombs.js,inference/SFQ-I015.md
+SFQ-I016,Heavy target response label,SFQ-P04,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B021,src/ui/orrery/hudAdapter.js,inference/SFQ-I016.md
+SFQ-I017,Cancelled attack clears its tell,SFQ-P05,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/render/actionVfx.js,inference/SFQ-I017.md
+SFQ-I018,Patrol respects current hostility,SFQ-P05,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/ai/engagementAuthority.js,inference/SFQ-I018.md
+SFQ-I019,Flee route keeps the actor,SFQ-P05,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/missions.js,inference/SFQ-I019.md
+SFQ-I020,Threat glyph follows role,SFQ-P05,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/ui/,inference/SFQ-I020.md
+SFQ-I021,Run seed visible on results,SFQ-P06,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B031; SFQ-B041,src/systems/survivalResults.js,inference/SFQ-I021.md
+SFQ-I022,Empty rack refusal,SFQ-P06,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B031; SFQ-B041,src/ui/orrery/hudAdapter.js,inference/SFQ-I022.md
+SFQ-I023,Retry clears one stale loop,SFQ-P06,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B031; SFQ-B041,src/render/vfx.js,inference/SFQ-I023.md
+SFQ-I024,Reward receipt follows true cause,SFQ-P06,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B031; SFQ-B041,src/systems/survivalRewards.js,inference/SFQ-I024.md
+SFQ-I025,Next objective names a physical action,SFQ-P07,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/missions.js,inference/SFQ-I025.md
+SFQ-I026,Completed tutorial stops repeating,SFQ-P07,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/onboarding.js,inference/SFQ-I026.md
+SFQ-I027,Reward has a usable fit route,SFQ-P07,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/ships.js,inference/SFQ-I027.md
+SFQ-I028,Chapter denial explains prerequisite,SFQ-P07,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/story.js,inference/SFQ-I028.md
+SFQ-I029,Objective follows moved target,SFQ-P08,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B061,src/systems/missions.js,inference/SFQ-I029.md
+SFQ-I030,Capacity checked before payment,SFQ-P08,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B061,src/systems/missions.js,inference/SFQ-I030.md
+SFQ-I031,Physical finish does not pay twice,SFQ-P08,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B061,src/systems/missions.js,inference/SFQ-I031.md
+SFQ-I032,Timeout leaves a meaningful object,SFQ-P08,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B061,src/systems/world.js,inference/SFQ-I032.md
+SFQ-I033,Quote shows its timestamp,SFQ-P09,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/screens/market.js,inference/SFQ-I033.md
+SFQ-I034,Empty hold explanation,SFQ-P09,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/market/tradeLogic.js,inference/SFQ-I034.md
+SFQ-I035,One custody flag survives a split,SFQ-P09,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/systems/cargo.js,inference/SFQ-I035.md
+SFQ-I036,Cancelled offer clears its escrow once,SFQ-P09,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/systems/economy.js,inference/SFQ-I036.md
+SFQ-I037,Beam contact follows the seam,SFQ-P10,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B081,src/render/vfx.js,inference/SFQ-I037.md
+SFQ-I038,Rich-core cue has a termination,SFQ-P10,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B081,src/render/vfx.js,inference/SFQ-I038.md
+SFQ-I039,Work-order label names the object,SFQ-P10,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B081,src/systems/npcJobsRuntime.js,inference/SFQ-I039.md
+SFQ-I040,Salvage preview distinguishes intact yield,SFQ-P10,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B081,src/systems/salvage.js,inference/SFQ-I040.md
+SFQ-I041,Map marker uses discovered position,SFQ-P11,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/ui/,inference/SFQ-I041.md
+SFQ-I042,Landmark has a quiet approach,SFQ-P11,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/render/visualFactory.js,inference/SFQ-I042.md
+SFQ-I043,Route refusal identifies a remedy,SFQ-P11,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/world.js,inference/SFQ-I043.md
+SFQ-I044,Wreck identity survives revisit,SFQ-P11,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B011,src/systems/aftermathWrecks.js,inference/SFQ-I044.md
+SFQ-I045,Incident shows the responsible event,SFQ-P12,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B071,src/systems/lawSecurity.js,inference/SFQ-I045.md
+SFQ-I046,Rescued contact does not pay twice,SFQ-P12,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B071,src/systems/stationContacts.js,inference/SFQ-I046.md
+SFQ-I047,Bark suppresses duplicate cause,SFQ-P12,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B071,src/systems/barkDirector.js,inference/SFQ-I047.md
+SFQ-I048,Ship history avoids stale hull IDs,SFQ-P12,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B071,src/systems/provenanceLedger.js,inference/SFQ-I048.md
+SFQ-I049,Fauna label respects knowledge,SFQ-P13,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/alienEcology.js,inference/SFQ-I049.md
+SFQ-I050,Purge clears the same attachment,SFQ-P13,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/alienEcology.js,inference/SFQ-I050.md
+SFQ-I051,Captured specimen cannot be double-collected,SFQ-P13,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/alienEcology.js,inference/SFQ-I051.md
+SFQ-I052,Relay-off text matches live behavior,SFQ-P13,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/alienEcology.js,inference/SFQ-I052.md
+SFQ-I053,Goo residue ends on status expiry,SFQ-P14,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B031,src/render/vfx/statusMatterVfx.js,inference/SFQ-I053.md
+SFQ-I054,Sac warning follows its host,SFQ-P14,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B031,src/systems/impulseCharges.js,inference/SFQ-I054.md
+SFQ-I055,Sprayer inherits shooter velocity,SFQ-P14,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B031,src/systems/weapons.js,inference/SFQ-I055.md
+SFQ-I056,Purge distinguishes sterile residue,SFQ-P14,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B031,src/systems/alienEcology.js,inference/SFQ-I056.md
+SFQ-I057,Courier token has one custody owner,SFQ-P15,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/precursorMachines.js,inference/SFQ-I057.md
+SFQ-I058,HOLD shows the relevant drift,SFQ-P15,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/precursorMachines.js,inference/SFQ-I058.md
+SFQ-I059,Repair light reads actual work,SFQ-P15,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/render/machineVisuals.js,inference/SFQ-I059.md
+SFQ-I060,Executor warning names affected cargo,SFQ-P15,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B003; SFQ-B021,src/systems/precursorMachines.js,inference/SFQ-I060.md
+SFQ-I061,Plane cue matches finite extent,SFQ-P16,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B141; SFQ-B031,src/render/vfx.js,inference/SFQ-I061.md
+SFQ-I062,Shutdown clears only its field source,SFQ-P16,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B141; SFQ-B031,src/systems/fields.js,inference/SFQ-I062.md
+SFQ-I063,Selective refusal has a material tell,SFQ-P16,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B141; SFQ-B031,src/render/vfx.js,inference/SFQ-I063.md
+SFQ-I064,Field center remains finite,SFQ-P16,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B141; SFQ-B031,src/systems/fields.js,inference/SFQ-I064.md
+SFQ-I065,Evidence names its actual source,SFQ-P17,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B101,src/systems/alienEcology.js,inference/SFQ-I065.md
+SFQ-I066,Suppressed is not sterile,SFQ-P17,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B101,src/systems/alienEcology.js,inference/SFQ-I066.md
+SFQ-I067,Report sale retains knowledge,SFQ-P17,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B101,src/systems/economy.js,inference/SFQ-I067.md
+SFQ-I068,Site return states its change,SFQ-P17,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B121; SFQ-B101,src/systems/alienEcology.js,inference/SFQ-I068.md
+SFQ-I069,Nozzle socket follows authored engine,SFQ-P18,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,tools/blender/forge/ships/,inference/SFQ-I069.md
+SFQ-I070,One model loses a floating part,SFQ-P18,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,tools/blender/forge/ships/,inference/SFQ-I070.md
+SFQ-I071,LOD preserves one gameplay feature,SFQ-P18,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,tools/blender/forge/ships/,inference/SFQ-I071.md
+SFQ-I072,Prop collision matches its visible gap,SFQ-P18,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,tools/blender/forge/,inference/SFQ-I072.md
+SFQ-I073,Release stops new emission,SFQ-P19,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/vfx.js,inference/SFQ-I073.md
+SFQ-I074,Effect anchor survives origin shift,SFQ-P19,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/vfx.js,inference/SFQ-I074.md
+SFQ-I075,Paused material stops advancing,SFQ-P19,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/vfx.js,inference/SFQ-I075.md
+SFQ-I076,Minor impact keeps its own scale,SFQ-P19,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/vfx.js,inference/SFQ-I076.md
+SFQ-I077,Loop dies with its emitter,SFQ-P20,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/audio/audioSystem.js,inference/SFQ-I077.md
+SFQ-I078,Denied action differs from success,SFQ-P20,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/audio/audioSystem.js,inference/SFQ-I078.md
+SFQ-I079,Caption names the actual warning,SFQ-P20,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/audio/audioSystem.js,inference/SFQ-I079.md
+SFQ-I080,Volume change reaches both shells,SFQ-P20,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/audio/audioSystem.js,inference/SFQ-I080.md
+SFQ-I081,Disabled action states its reason,SFQ-P21,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/orrery/,inference/SFQ-I081.md
+SFQ-I082,Focus returns to its origin,SFQ-P21,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/orrery/,inference/SFQ-I082.md
+SFQ-I083,One leader label stops overlapping,SFQ-P21,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/orrery/,inference/SFQ-I083.md
+SFQ-I084,Reduced motion reaches the final state,SFQ-P21,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/orrery/,inference/SFQ-I084.md
+SFQ-I085,Empty effect owner takes its quiet path,SFQ-P22,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/vfx.js,inference/SFQ-I085.md
+SFQ-I086,One shared material is not reallocated,SFQ-P22,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/partsLibrary.js,inference/SFQ-I086.md
+SFQ-I087,Cancelled load releases its own handle,SFQ-P22,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/render/assetLoader.js,inference/SFQ-I087.md
+SFQ-I088,UI label only writes when changed,SFQ-P22,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/,inference/SFQ-I088.md
+SFQ-I089,Transient handle does not enter save,SFQ-P23,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/save/saveSystem.js,inference/SFQ-I089.md
+SFQ-I090,Disconnect clears held action,SFQ-P23,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/systems/input.js,inference/SFQ-I090.md
+SFQ-I091,Large text preserves primary action,SFQ-P23,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/orrery/,inference/SFQ-I091.md
+SFQ-I092,Error path has a safe return,SFQ-P23,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/ui/screens/,inference/SFQ-I092.md
+SFQ-I093,Scope row links to a playable route,SFQ-P24,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,design/program/03_LIVE_ACCEPTANCE_MATRIX.md,inference/SFQ-I093.md
+SFQ-I094,Fixed ledger row is actually removed,SFQ-P24,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,design/program/DEMO_READINESS_2026-09-20.md,inference/SFQ-I094.md
+SFQ-I095,One optional dependency leaves the critical path,SFQ-P24,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,design/program/roadmap/program-queue.json,inference/SFQ-I095.md
+SFQ-I096,Build identity is visible in support output,SFQ-P24,BOUNDED_PRODUCTION_AFTER_CURRENT_OWNER_RESOLUTION,NOT_ADMITTED,SFQ-B001,src/main.js,inference/SFQ-I096.md

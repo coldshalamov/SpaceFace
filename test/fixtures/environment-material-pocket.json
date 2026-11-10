@@ -1,0 +1,3394 @@
+{
+  "source": "Ordinary Contender Foundry seed 73311, wave 3, source 03b9e46336f756b3196abb85bd48f84cac6749a2; paused tick 13750, native solved tick 13693. Full native checkpoint retained in ignored native-pocket-authority.json. This is the observed post-birth pocket, not an invented pre-birth replay.",
+  "tick": 13750,
+  "playerId": 1,
+  "frameOrigin": {
+    "x": 0,
+    "z": 0
+  },
+  "attachments": [],
+  "rows": [
+    {
+      "generation": 1,
+      "entity": {
+        "id": 1,
+        "type": "ship",
+        "pos": {
+          "x": -1953.4688720703125,
+          "y": 0,
+          "z": -2142.30615234375
+        },
+        "vel": {
+          "x": 6.082354545593262,
+          "y": 0,
+          "z": 10.5631103515625
+        },
+        "rot": 1.8202517980101782,
+        "angVel": 0,
+        "radius": 16,
+        "mass": 69.0031,
+        "hull": 260,
+        "hullMax": 260,
+        "collides": true,
+        "collisionMask": 31,
+        "physicsBody": {
+          "schemaVersion": 1,
+          "mass": 69.0031,
+          "inertiaY": 5417.375429870298,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 16,
+          "shape": "capsule",
+          "dynamic": true,
+          "ccd": true,
+          "material": "ship",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [
+            {
+              "id": "drive-port",
+              "forward": 1,
+              "reverse": 0.8,
+              "strafe": 0.45,
+              "yaw": 0.8,
+              "health": 1
+            },
+            {
+              "id": "drive-starboard",
+              "forward": 1,
+              "reverse": 0.8,
+              "strafe": 0.45,
+              "yaw": 0.8,
+              "health": 1
+            },
+            {
+              "id": "rcs-port",
+              "forward": 0.35,
+              "reverse": 0.55,
+              "strafe": 1,
+              "yaw": 1,
+              "health": 1
+            },
+            {
+              "id": "rcs-starboard",
+              "forward": 0.35,
+              "reverse": 0.55,
+              "strafe": 1,
+              "yaw": 1,
+              "health": 1
+            }
+          ],
+          "revision": 11
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false
+        },
+        "data": {
+          "defId": "ship_hornet",
+          "collisionProxy": "skin:ship_kestrel"
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1953.4688720703125,
+          "y": 0,
+          "z": -2142.30615234375
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.7895810008049011,
+          "z": 0,
+          "w": 0.6136463284492493
+        },
+        "velocity": {
+          "x": 6.082354545593262,
+          "y": 0,
+          "z": 10.5631103515625
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userForce": {
+          "x": -1307.9171142578125,
+          "y": 0,
+          "z": -3925.407958984375
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 10
+      }
+    },
+    {
+      "generation": 2425,
+      "entity": {
+        "id": 690,
+        "type": "asteroid",
+        "pos": {
+          "x": -1985.76806640625,
+          "y": 0,
+          "z": -2197.94091796875
+        },
+        "vel": {
+          "x": 0.4982902705669403,
+          "y": 0,
+          "z": 0.08951316773891449
+        },
+        "rot": 3.0235553290949073,
+        "angVel": -1.0550947189331055,
+        "radius": 7.272547346539795,
+        "mass": 2433,
+        "hull": 65.12221643520844,
+        "hullMax": 462,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 9.96338986475952,
+          "schemaVersion": 1,
+          "mass": 247,
+          "inertiaY": 12259.7384932533,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false
+        },
+        "data": {
+          "typeId": "ast_metallic",
+          "placeId": "place_rock_reef_metal_pebble",
+          "collisionProxy": "skin:place_rock_reef_metal_pebble",
+          "material": "metal",
+          "substance": "reef_metal",
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 144.828316633061,
+            "reacted": false
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 9,
+          "oreHP": 65,
+          "oreHPMax": 462,
+          "size": 7.272547346539795,
+          "tier": 1,
+          "breakSpeed": 120
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1985.76806640625,
+          "y": 0,
+          "z": -2197.94091796875
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.9982589483261108,
+          "z": 0,
+          "w": -0.058984413743019104
+        },
+        "velocity": {
+          "x": 0.4982902705669403,
+          "y": 0,
+          "z": 0.08951316773891449
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 1.0550947189331055,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2462,
+      "entity": {
+        "id": 608,
+        "type": "station",
+        "pos": {
+          "x": -1965.12890625,
+          "y": 0,
+          "z": -2209.491943359375
+        },
+        "vel": {
+          "x": 0,
+          "y": 0,
+          "z": -0.014648436568677425
+        },
+        "rot": -1.5680153529004373,
+        "angVel": 0,
+        "radius": 50.888210815472775,
+        "mass": 1690,
+        "hull": 100252.04977777781,
+        "hullMax": 101040,
+        "collides": true,
+        "collisionMask": 175,
+        "physicsBody": {
+          "schemaVersion": 1,
+          "radius": 50.888210815472775,
+          "mass": 1690,
+          "inertiaY": 456976,
+          "dynamic": false,
+          "ccd": false,
+          "material": "station",
+          "revision": 0,
+          "collisionProxyManifest": {
+            "schemaVersion": 1,
+            "id": "foundry:bank-plate",
+            "referenceRadius": "radius",
+            "flags": {
+              "collides": true,
+              "renderable": false,
+              "targetable": false,
+              "radarVisible": false
+            },
+            "primitives": [
+              {
+                "kind": "obb",
+                "x": 0,
+                "z": 0,
+                "angleDeg": 0,
+                "hx": 0.9432440093846922,
+                "hz": 0.3321004949708604
+              }
+            ]
+          },
+          "useMeasuredSkin": false,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "anchorRecoil": {
+            "rest": {
+              "x": -1965.1010177072415,
+              "z": -2209.569395765011
+            },
+            "x": -0.027905309215549245,
+            "z": 0.07741376257609259,
+            "vx": -5.551115123125783e-17,
+            "vz": -2.636779683484747e-16,
+            "settled": false
+          }
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false
+        },
+        "data": {
+          "roomOwner": "survival-arena",
+          "roomToyId": "foundry_plate_1"
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1965.12890625,
+          "y": 0,
+          "z": -2209.491943359375
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.706122875213623,
+          "z": 0,
+          "w": 0.708089292049408
+        },
+        "velocity": {
+          "x": 0,
+          "y": 0,
+          "z": -0.014648436568677425
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2465,
+      "entity": {
+        "id": 787,
+        "type": "station",
+        "pos": {
+          "x": -1979.427001953125,
+          "y": 0,
+          "z": -2060.333740234375
+        },
+        "vel": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rot": 0,
+        "angVel": 0,
+        "radius": 16,
+        "mass": 640,
+        "hull": 100640,
+        "hullMax": 100640,
+        "collides": true,
+        "collisionMask": 175,
+        "physicsBody": {
+          "schemaVersion": 1,
+          "radius": 16,
+          "mass": 640,
+          "inertiaY": 65536,
+          "dynamic": false,
+          "ccd": false,
+          "material": "station",
+          "revision": 0,
+          "collisionProxyManifest": {
+            "schemaVersion": 1,
+            "id": "foundry:furniture-gate",
+            "referenceRadius": "radius",
+            "flags": {
+              "collides": true,
+              "renderable": false,
+              "targetable": false,
+              "radarVisible": false
+            },
+            "primitives": [
+              {
+                "kind": "obb",
+                "id": "post-envelope",
+                "x": 0,
+                "z": 0,
+                "angleDeg": 0,
+                "hx": 0.17320508075688773,
+                "hz": 0.2
+              }
+            ],
+            "compactHull": [
+              {
+                "x": 0,
+                "z": 0.2
+              },
+              {
+                "x": 0.17320508075688773,
+                "z": 0.10000000000000003
+              },
+              {
+                "x": 0.17320508075688776,
+                "z": -0.09999999999999996
+              },
+              {
+                "x": 2.4492935982947065e-17,
+                "z": -0.2
+              },
+              {
+                "x": -0.17320508075688767,
+                "z": -0.10000000000000009
+              },
+              {
+                "x": -0.17320508075688773,
+                "z": 0.10000000000000003
+              }
+            ]
+          },
+          "useMeasuredSkin": false,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "anchorRecoil": {
+            "rest": {
+              "x": -1979.429573136778,
+              "z": -2060.271247825825
+            },
+            "x": 0.0025749845407418,
+            "z": -0.06260991810153936,
+            "vx": 6.5052130349130266e-18,
+            "vz": -2.3592239273284576e-16,
+            "settled": false
+          }
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false
+        },
+        "data": {
+          "roomOwner": "survival-arena",
+          "roomToyId": "foundry_gate_a"
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1979.427001953125,
+          "y": 0,
+          "z": -2060.333740234375
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "velocity": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2470,
+      "entity": {
+        "id": 597,
+        "type": "asteroid",
+        "pos": {
+          "x": -1984.23193359375,
+          "y": 0,
+          "z": -2194.19775390625
+        },
+        "vel": {
+          "x": -0.10872846841812134,
+          "y": 0,
+          "z": 0.5325160622596741
+        },
+        "rot": 2.7440884210929912,
+        "angVel": -0.036112114787101746,
+        "radius": 8.520011101849377,
+        "mass": 3920,
+        "hull": 240.88119310729445,
+        "hullMax": 479,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 11.672415209533648,
+          "schemaVersion": 1,
+          "mass": 398,
+          "inertiaY": 27112.810087926733,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false
+        },
+        "data": {
+          "typeId": "ast_metallic",
+          "placeId": "place_rock_metallic_ore_pebble",
+          "collisionProxy": "skin:place_rock_metallic_ore_pebble",
+          "material": "metal",
+          "substance": "metallic_ore",
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 154.65747832880746,
+            "reacted": false
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 9,
+          "oreHP": 241,
+          "oreHPMax": 479,
+          "size": 8.520011101849377,
+          "tier": 1,
+          "breakSpeed": 130
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1984.23193359375,
+          "y": 0,
+          "z": -2194.19775390625
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.980313777923584,
+          "z": 0,
+          "w": 0.19744619727134705
+        },
+        "velocity": {
+          "x": -0.10872846841812134,
+          "y": 0,
+          "z": 0.5325160622596741
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.036112114787101746,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2515,
+      "entity": {
+        "id": 168,
+        "type": "asteroid",
+        "pos": {
+          "x": -1986.9210205078125,
+          "y": 0,
+          "z": -2195.476806640625
+        },
+        "vel": {
+          "x": 0.29263564944267273,
+          "y": 0,
+          "z": 0.8190367221832275
+        },
+        "rot": -1.628933535384834,
+        "angVel": -1.344549298286438,
+        "radius": 4.03490746953598,
+        "mass": 25.75,
+        "hull": 36.68383491916367,
+        "hullMax": 112.5,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 4.680492664661737,
+          "mass": 25.75,
+          "schemaVersion": 1,
+          "inertiaY": 282.0527741433862,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_slag_pebble",
+          "collisionProxy": "skin:place_rock_slag_pebble",
+          "material": "calcite",
+          "substance": "slag",
+          "asteroidSlotId": "589:shard:1",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 123.93961722177994,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2.25,
+          "yieldRemainingU": 2.25,
+          "oreHP": 37,
+          "oreHPMax": 112.5,
+          "size": 4.03490746953598,
+          "tier": 0,
+          "breakSpeed": 95
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1986.9210205078125,
+          "y": 0,
+          "z": -2195.476806640625
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.7273597717285156,
+          "z": 0,
+          "w": -0.686256468296051
+        },
+        "velocity": {
+          "x": 0.29263564944267273,
+          "y": 0,
+          "z": 0.8190367221832275
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 1.344549298286438,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2516,
+      "entity": {
+        "id": 618,
+        "type": "asteroid",
+        "pos": {
+          "x": -1983.00390625,
+          "y": 0,
+          "z": -2199.16552734375
+        },
+        "vel": {
+          "x": -0.17659372091293335,
+          "y": 0,
+          "z": -0.4908732771873474
+        },
+        "rot": 2.313518474388309,
+        "angVel": 0.4715971350669861,
+        "radius": 4.03490746953598,
+        "mass": 25.75,
+        "hull": 8.929258611505684,
+        "hullMax": 112.5,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 4.680492664661737,
+          "mass": 25.75,
+          "schemaVersion": 1,
+          "inertiaY": 282.0527741433862,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_slag_pebble",
+          "collisionProxy": "skin:place_rock_slag_pebble",
+          "material": "calcite",
+          "substance": "slag",
+          "asteroidSlotId": "589:shard:2",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 95.64447242506809,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2.25,
+          "yieldRemainingU": 2.25,
+          "oreHP": 9,
+          "oreHPMax": 112.5,
+          "size": 4.03490746953598,
+          "tier": 0,
+          "breakSpeed": 95
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1983.00390625,
+          "y": 0,
+          "z": -2199.16552734375
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.9155041575431824,
+          "z": 0,
+          "w": -0.4023086130619049
+        },
+        "velocity": {
+          "x": -0.17659372091293335,
+          "y": 0,
+          "z": -0.4908732771873474
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.4715971350669861,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2517,
+      "entity": {
+        "id": 670,
+        "type": "asteroid",
+        "pos": {
+          "x": -1982.9891357421875,
+          "y": 0,
+          "z": -2201.112060546875
+        },
+        "vel": {
+          "x": -0.016027625650167465,
+          "y": 0,
+          "z": -0.412468820810318
+        },
+        "rot": -2.2958015956279145,
+        "angVel": 0.05134276673197746,
+        "radius": 4.03490746953598,
+        "mass": 25.75,
+        "hull": 52.315475922093256,
+        "hullMax": 112.5,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 4.680492664661737,
+          "mass": 25.75,
+          "schemaVersion": 1,
+          "inertiaY": 282.0527741433862,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_slag_pebble",
+          "collisionProxy": "skin:place_rock_slag_pebble",
+          "material": "calcite",
+          "substance": "slag",
+          "asteroidSlotId": "589:shard:3",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 100.96773223751828,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2.25,
+          "yieldRemainingU": 2.25,
+          "oreHP": 52,
+          "oreHPMax": 112.5,
+          "size": 4.03490746953598,
+          "tier": 0,
+          "breakSpeed": 95
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1982.9891357421875,
+          "y": 0,
+          "z": -2201.112060546875
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.9119044542312622,
+          "z": 0,
+          "w": -0.41040265560150146
+        },
+        "velocity": {
+          "x": -0.016027625650167465,
+          "y": 0,
+          "z": -0.412468820810318
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.05134276673197746,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2518,
+      "entity": {
+        "id": 667,
+        "type": "asteroid",
+        "pos": {
+          "x": -2052.939208984375,
+          "y": 0,
+          "z": -2177.935302734375
+        },
+        "vel": {
+          "x": -1.6139774322509766,
+          "y": 0,
+          "z": -2.8587393760681152
+        },
+        "rot": -2.2769517913149278,
+        "angVel": -0.2198820263147354,
+        "radius": 28.97818414758208,
+        "mass": 9495.75,
+        "hull": 251,
+        "hullMax": 251,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 33.614693611195214,
+          "mass": 9495.75,
+          "schemaVersion": 1,
+          "inertiaY": 5364850.087522539,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "714:shard:0",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 99.2859795444015,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 6,
+          "yieldRemainingU": 6,
+          "oreHP": 251,
+          "oreHPMax": 251,
+          "size": 28.97818414758208,
+          "tier": 3,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -2052.939208984375,
+          "y": 0,
+          "z": -2177.935302734375
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.9079959988594055,
+          "z": 0,
+          "w": 0.41897889971733093
+        },
+        "velocity": {
+          "x": -1.6139774322509766,
+          "y": 0,
+          "z": -2.8587393760681152
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.2198820263147354,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2519,
+      "entity": {
+        "id": 719,
+        "type": "asteroid",
+        "pos": {
+          "x": -2013.3968505859375,
+          "y": 0,
+          "z": -2226.87646484375
+        },
+        "vel": {
+          "x": -0.680140495300293,
+          "y": 0,
+          "z": -1.1633434295654297
+        },
+        "rot": 2.9207218368866408,
+        "angVel": -0.22030651569366455,
+        "radius": 28.97818414758208,
+        "mass": 9495.75,
+        "hull": 251,
+        "hullMax": 251,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 33.614693611195214,
+          "mass": 9495.75,
+          "schemaVersion": 1,
+          "inertiaY": 5364850.087522539,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "714:shard:1",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 56.24494082858585,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 6,
+          "yieldRemainingU": 6,
+          "oreHP": 251,
+          "oreHPMax": 251,
+          "size": 28.97818414758208,
+          "tier": 3,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -2013.3968505859375,
+          "y": 0,
+          "z": -2226.87646484375
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.9939082264900208,
+          "z": 0,
+          "w": 0.1102110743522644
+        },
+        "velocity": {
+          "x": -0.680140495300293,
+          "y": 0,
+          "z": -1.1633434295654297
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.22030651569366455,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2520,
+      "entity": {
+        "id": 720,
+        "type": "asteroid",
+        "pos": {
+          "x": -1916.3934326171875,
+          "y": 0,
+          "z": -2169.001220703125
+        },
+        "vel": {
+          "x": 0.1485675573348999,
+          "y": 0,
+          "z": 1.2719295024871826
+        },
+        "rot": 0.2708266662652137,
+        "angVel": -0.009373367764055729,
+        "radius": 28.97818414758208,
+        "mass": 9495.75,
+        "hull": 251,
+        "hullMax": 251,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 33.614693611195214,
+          "mass": 9495.75,
+          "schemaVersion": 1,
+          "inertiaY": 5364850.087522539,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "714:shard:2",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 513.3,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 6,
+          "yieldRemainingU": 6,
+          "oreHP": 251,
+          "oreHPMax": 251,
+          "size": 28.97818414758208,
+          "tier": 3,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1916.3934326171875,
+          "y": 0,
+          "z": -2169.001220703125
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.13499987125396729,
+          "z": 0,
+          "w": 0.9908456206321716
+        },
+        "velocity": {
+          "x": 0.1485675573348999,
+          "y": 0,
+          "z": 1.2719295024871826
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.009373367764055729,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2521,
+      "entity": {
+        "id": 564,
+        "type": "asteroid",
+        "pos": {
+          "x": -1920.7249755859375,
+          "y": 0,
+          "z": -2228.964599609375
+        },
+        "vel": {
+          "x": -0.40578100085258484,
+          "y": 0,
+          "z": 0.9070587754249573
+        },
+        "rot": -1.346954491623034,
+        "angVel": 0.034484997391700745,
+        "radius": 28.97818414758208,
+        "mass": 9495.75,
+        "hull": 251,
+        "hullMax": 251,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 33.614693611195214,
+          "mass": 9495.75,
+          "schemaVersion": 1,
+          "inertiaY": 5364850.087522539,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "714:shard:3",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 6,
+          "yieldRemainingU": 6,
+          "oreHP": 251,
+          "oreHPMax": 251,
+          "size": 28.97818414758208,
+          "tier": 3,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1920.7249755859375,
+          "y": 0,
+          "z": -2228.964599609375
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.6237077713012695,
+          "z": 0,
+          "w": -0.7816575765609741
+        },
+        "velocity": {
+          "x": -0.40578100085258484,
+          "y": 0,
+          "z": 0.9070587754249573
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.034484997391700745,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2706,
+      "entity": {
+        "id": 772,
+        "type": "asteroid",
+        "pos": {
+          "x": -1983.126708984375,
+          "y": 0,
+          "z": -2197.005615234375
+        },
+        "vel": {
+          "x": -0.25234925746917725,
+          "y": 0,
+          "z": 0.44662731885910034
+        },
+        "rot": -0.31334561760737184,
+        "angVel": 1.0870047807693481,
+        "radius": 4.03490746953598,
+        "mass": 25.75,
+        "hull": 83.42250766453596,
+        "hullMax": 112.5,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 4.680492664661737,
+          "mass": 25.75,
+          "schemaVersion": 1,
+          "inertiaY": 282.0527741433862,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_slag_pebble",
+          "collisionProxy": "skin:place_rock_slag_pebble",
+          "material": "calcite",
+          "substance": "slag",
+          "asteroidSlotId": "684:shard:0",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2.25,
+          "yieldRemainingU": 2.25,
+          "oreHP": 83,
+          "oreHPMax": 112.5,
+          "size": 4.03490746953598,
+          "tier": 0,
+          "breakSpeed": 95
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1983.126708984375,
+          "y": 0,
+          "z": -2197.005615234375
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.15603263676166534,
+          "z": 0,
+          "w": 0.9877519011497498
+        },
+        "velocity": {
+          "x": -0.25234925746917725,
+          "y": 0,
+          "z": 0.44662731885910034
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -1.0870047807693481,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2707,
+      "entity": {
+        "id": 716,
+        "type": "asteroid",
+        "pos": {
+          "x": -1983.17578125,
+          "y": 0,
+          "z": -2240.35791015625
+        },
+        "vel": {
+          "x": -1.6768879890441895,
+          "y": 0,
+          "z": -3.798511028289795
+        },
+        "rot": -0.19594524773490893,
+        "angVel": 0.6152719855308533,
+        "radius": 4.03490746953598,
+        "mass": 25.75,
+        "hull": 81.20524113695548,
+        "hullMax": 112.5,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 4.680492664661737,
+          "mass": 25.75,
+          "schemaVersion": 1,
+          "inertiaY": 282.0527741433862,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_slag_pebble",
+          "collisionProxy": "skin:place_rock_slag_pebble",
+          "material": "calcite",
+          "substance": "slag",
+          "asteroidSlotId": "684:shard:1",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2.25,
+          "yieldRemainingU": 2.25,
+          "oreHP": 81,
+          "oreHPMax": 112.5,
+          "size": 4.03490746953598,
+          "tier": 0,
+          "breakSpeed": 95
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1983.17578125,
+          "y": 0,
+          "z": -2240.35791015625
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.09781596064567566,
+          "z": 0,
+          "w": -0.9952045679092407
+        },
+        "velocity": {
+          "x": -1.6768879890441895,
+          "y": 0,
+          "z": -3.798511028289795
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.6152719855308533,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2709,
+      "entity": {
+        "id": 623,
+        "type": "asteroid",
+        "pos": {
+          "x": -1988.554931640625,
+          "y": 0,
+          "z": -2196.751953125
+        },
+        "vel": {
+          "x": 0.5987730622291565,
+          "y": 0,
+          "z": 0.15389229357242584
+        },
+        "rot": 2.5802948057712514,
+        "angVel": -0.04109470918774605,
+        "radius": 4.03490746953598,
+        "mass": 25.75,
+        "hull": 62.89276963066332,
+        "hullMax": 112.5,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 4.680492664661737,
+          "mass": 25.75,
+          "schemaVersion": 1,
+          "inertiaY": 282.0527741433862,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_slag_pebble",
+          "collisionProxy": "skin:place_rock_slag_pebble",
+          "material": "calcite",
+          "substance": "slag",
+          "asteroidSlotId": "684:shard:3",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 10.830238723137732,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2.25,
+          "yieldRemainingU": 2.25,
+          "oreHP": 63,
+          "oreHPMax": 112.5,
+          "size": 4.03490746953598,
+          "tier": 0,
+          "breakSpeed": 95
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1988.554931640625,
+          "y": 0,
+          "z": -2196.751953125
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.960875928401947,
+          "z": 0,
+          "w": -0.2769792675971985
+        },
+        "velocity": {
+          "x": 0.5987730622291565,
+          "y": 0,
+          "z": 0.15389229357242584
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.04109470918774605,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2767,
+      "entity": {
+        "id": 684,
+        "type": "asteroid",
+        "pos": {
+          "x": -2001.6307373046875,
+          "y": 0,
+          "z": -2176.451171875
+        },
+        "vel": {
+          "x": -0.45321348309516907,
+          "y": 0,
+          "z": 0.020818548277020454
+        },
+        "rot": -1.3429127581209217,
+        "angVel": -0.04626164212822914,
+        "radius": 20.158736798317967,
+        "mass": 3196.75,
+        "hull": 202,
+        "hullMax": 202,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 23.384134686048842,
+          "mass": 3196.75,
+          "schemaVersion": 1,
+          "inertiaY": 874019.8291725363,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "534:shard:0",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 4.75,
+          "yieldRemainingU": 4.75,
+          "oreHP": 202,
+          "oreHPMax": 202,
+          "size": 20.158736798317967,
+          "tier": 2,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -2001.6307373046875,
+          "y": 0,
+          "z": -2176.451171875
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.6221268773078918,
+          "z": 0,
+          "w": 0.7829163670539856
+        },
+        "velocity": {
+          "x": -0.45321348309516907,
+          "y": 0,
+          "z": 0.020818548277020454
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.04626164212822914,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2768,
+      "entity": {
+        "id": 659,
+        "type": "asteroid",
+        "pos": {
+          "x": -2019.95947265625,
+          "y": 0,
+          "z": -2136.297607421875
+        },
+        "vel": {
+          "x": -0.48579639196395874,
+          "y": 0,
+          "z": -1.6237834692001343
+        },
+        "rot": -1.0722707123376354,
+        "angVel": 0.0477307066321373,
+        "radius": 20.158736798317967,
+        "mass": 3196.75,
+        "hull": 202,
+        "hullMax": 202,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 23.384134686048842,
+          "mass": 3196.75,
+          "schemaVersion": 1,
+          "inertiaY": 874019.8291725363,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "534:shard:1",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 45.410729162277484,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 4.75,
+          "yieldRemainingU": 4.75,
+          "oreHP": 202,
+          "oreHPMax": 202,
+          "size": 20.158736798317967,
+          "tier": 2,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -2019.95947265625,
+          "y": 0,
+          "z": -2136.297607421875
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.5108174085617065,
+          "z": 0,
+          "w": 0.8596892952919006
+        },
+        "velocity": {
+          "x": -0.48579639196395874,
+          "y": 0,
+          "z": -1.6237834692001343
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.0477307066321373,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2769,
+      "entity": {
+        "id": 588,
+        "type": "asteroid",
+        "pos": {
+          "x": -1979.3359375,
+          "y": 0,
+          "z": -2138.471923828125
+        },
+        "vel": {
+          "x": 0.5301474332809448,
+          "y": 0,
+          "z": 0.5258009433746338
+        },
+        "rot": 1.856540790033309,
+        "angVel": -0.07026669383049011,
+        "radius": 20.158736798317967,
+        "mass": 3196.75,
+        "hull": 202,
+        "hullMax": 202,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 23.384134686048842,
+          "mass": 3196.75,
+          "schemaVersion": 1,
+          "inertiaY": 874019.8291725363,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "534:shard:2",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 721.4797498743176,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 4.75,
+          "yieldRemainingU": 4.75,
+          "oreHP": 202,
+          "oreHPMax": 202,
+          "size": 20.158736798317967,
+          "tier": 2,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1979.3359375,
+          "y": 0,
+          "z": -2138.471923828125
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.8005847334861755,
+          "z": 0,
+          "w": 0.5992196202278137
+        },
+        "velocity": {
+          "x": 0.5301474332809448,
+          "y": 0,
+          "z": 0.5258009433746338
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.07026669383049011,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2770,
+      "entity": {
+        "id": 750,
+        "type": "asteroid",
+        "pos": {
+          "x": -1939.8819580078125,
+          "y": 0,
+          "z": -2120.437744140625
+        },
+        "vel": {
+          "x": -2.314373254776001,
+          "y": 0,
+          "z": 0.9874245524406433
+        },
+        "rot": -0.43403216020536844,
+        "angVel": 0.24283476173877716,
+        "radius": 20.158736798317967,
+        "mass": 3196.75,
+        "hull": 202,
+        "hullMax": 202,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 23.384134686048842,
+          "mass": 3196.75,
+          "schemaVersion": 1,
+          "inertiaY": 874019.8291725363,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "homeSectorId": "sector_helios_prime",
+        "data": {
+          "typeId": "ast_common_rock",
+          "collisionProxy": "skin:ast_common_rock",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "534:shard:3",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [
+            "survival-arena-w3"
+          ],
+          "materialCondition": {
+            "heat": 3265.951095970298,
+            "reacted": true
+          },
+          "despawnAt": 228.86666666674014,
+          "yieldU": 4.75,
+          "yieldRemainingU": 4.75,
+          "oreHP": 202,
+          "oreHPMax": 202,
+          "size": 20.158736798317967,
+          "tier": 2,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1939.8819580078125,
+          "y": 0,
+          "z": -2120.437744140625
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.21531663835048676,
+          "z": 0,
+          "w": 0.9765443801879883
+        },
+        "velocity": {
+          "x": -2.314373254776001,
+          "y": 0,
+          "z": 0.9874245524406433
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.24283476173877716,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2817,
+      "entity": {
+        "id": 695,
+        "type": "asteroid",
+        "pos": {
+          "x": -1968.00341796875,
+          "y": 0,
+          "z": -2160.7119140625
+        },
+        "vel": {
+          "x": -3.6351473331451416,
+          "y": 0,
+          "z": -0.0752205103635788
+        },
+        "rot": -2.7694422477848315,
+        "angVel": 0.025296799838542938,
+        "radius": 3.3632047359850192,
+        "mass": 14.75,
+        "hull": 65.37498665549539,
+        "hullMax": 108.75,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 3.901317493742622,
+          "mass": 14.75,
+          "schemaVersion": 1,
+          "inertiaY": 112.24955162899383,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_silicate_pebble",
+          "collisionProxy": "skin:place_rock_silicate_pebble",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "788:shard:0",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 153,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2,
+          "yieldRemainingU": 2,
+          "oreHP": 65,
+          "oreHPMax": 108.75,
+          "size": 3.3632047359850192,
+          "tier": 0,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1968.00341796875,
+          "y": 0,
+          "z": -2160.7119140625
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.9827378988265991,
+          "z": 0,
+          "w": 0.18500328063964844
+        },
+        "velocity": {
+          "x": -3.6351473331451416,
+          "y": 0,
+          "z": -0.0752205103635788
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.025296799838542938,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2818,
+      "entity": {
+        "id": 514,
+        "type": "asteroid",
+        "pos": {
+          "x": -1969.7081298828125,
+          "y": 0,
+          "z": -2160.634521484375
+        },
+        "vel": {
+          "x": -3.664738416671753,
+          "y": 0,
+          "z": 0.13351914286613464
+        },
+        "rot": -0.6901107537464204,
+        "angVel": -0.4825088381767273,
+        "radius": 3.3632047359850192,
+        "mass": 14.75,
+        "hull": 68.0968852829572,
+        "hullMax": 108.75,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 3.901317493742622,
+          "mass": 14.75,
+          "schemaVersion": 1,
+          "inertiaY": 112.24955162899383,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_silicate_pebble",
+          "collisionProxy": "skin:place_rock_silicate_pebble",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "788:shard:1",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2,
+          "yieldRemainingU": 2,
+          "oreHP": 68,
+          "oreHPMax": 108.75,
+          "size": 3.3632047359850192,
+          "tier": 0,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1969.7081298828125,
+          "y": 0,
+          "z": -2160.634521484375
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.3382487893104553,
+          "z": 0,
+          "w": -0.9410567283630371
+        },
+        "velocity": {
+          "x": -3.664738416671753,
+          "y": 0,
+          "z": 0.13351914286613464
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.4825088381767273,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2819,
+      "entity": {
+        "id": 734,
+        "type": "asteroid",
+        "pos": {
+          "x": -1971.5107421875,
+          "y": 0,
+          "z": -2160.646240234375
+        },
+        "vel": {
+          "x": 1.0728031396865845,
+          "y": 0,
+          "z": 0.12355141341686249
+        },
+        "rot": 1.6798268462649362,
+        "angVel": -3.2342796325683594,
+        "radius": 3.3632047359850192,
+        "mass": 14.75,
+        "hull": 79.7075221039743,
+        "hullMax": 108.75,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 3.901317493742622,
+          "mass": 14.75,
+          "schemaVersion": 1,
+          "inertiaY": 112.24955162899383,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_silicate_pebble",
+          "collisionProxy": "skin:place_rock_silicate_pebble",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "788:shard:2",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2,
+          "yieldRemainingU": 2,
+          "oreHP": 80,
+          "oreHPMax": 108.75,
+          "size": 3.3632047359850192,
+          "tier": 0,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1971.5107421875,
+          "y": 0,
+          "z": -2160.646240234375
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.7445853352546692,
+          "z": 0,
+          "w": -0.6675273776054382
+        },
+        "velocity": {
+          "x": 1.0728031396865845,
+          "y": 0,
+          "z": 0.12355141341686249
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 3.2342796325683594,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 2820,
+      "entity": {
+        "id": 730,
+        "type": "asteroid",
+        "pos": {
+          "x": -1973.2266845703125,
+          "y": 0,
+          "z": -2160.62060546875
+        },
+        "vel": {
+          "x": 0.20906966924667358,
+          "y": 0,
+          "z": 0.09729144722223282
+        },
+        "rot": -0.48831054015735353,
+        "angVel": 1.6949204206466675,
+        "radius": 3.3632047359850192,
+        "mass": 14.75,
+        "hull": 65.44738396838217,
+        "hullMax": 108.75,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 3.901317493742622,
+          "mass": 14.75,
+          "schemaVersion": 1,
+          "inertiaY": 112.24955162899383,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_common_rock",
+          "placeId": "place_rock_silicate_pebble",
+          "collisionProxy": "skin:place_rock_silicate_pebble",
+          "material": "rock",
+          "substance": "silicate",
+          "asteroidSlotId": "788:shard:3",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 76.5,
+            "reacted": true
+          },
+          "despawnAt": 1034.8333333333328,
+          "yieldU": 2,
+          "yieldRemainingU": 2,
+          "oreHP": 65,
+          "oreHPMax": 108.75,
+          "size": 3.3632047359850192,
+          "tier": 0,
+          "breakSpeed": 110
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1973.2266845703125,
+          "y": 0,
+          "z": -2160.62060546875
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0.24173672497272491,
+          "z": 0,
+          "w": 0.9703419208526611
+        },
+        "velocity": {
+          "x": 0.20906966924667358,
+          "y": 0,
+          "z": 0.09729144722223282
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -1.6949204206466675,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 3618,
+      "entity": {
+        "id": 754,
+        "type": "pickup",
+        "pos": {
+          "x": -2021.3900146484375,
+          "y": 0,
+          "z": -2161.52587890625
+        },
+        "vel": {
+          "x": 67.9194020987,
+          "y": 0,
+          "z": 18.557851465986452
+        },
+        "rot": -2.5608763117498445,
+        "angVel": -0.09277474135160446,
+        "radius": 2.2,
+        "mass": 0.1,
+        "hull": 1,
+        "hullMax": 1,
+        "collides": true,
+        "collisionMask": 33,
+        "physicsBody": {
+          "schemaVersion": 1,
+          "mass": 0.1,
+          "inertiaY": 0.24200000000000005,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "radius": 2.2,
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "sensor",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false
+        },
+        "data": {
+          "despawnAt": 279.9333333333766
+        }
+      },
+      "native": {
+        "position": {
+          "x": -2021.3900146484375,
+          "y": 0,
+          "z": -2161.52587890625
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.9581413865089417,
+          "z": 0,
+          "w": -0.28629541397094727
+        },
+        "velocity": {
+          "x": 67.91939544677734,
+          "y": 0,
+          "z": 18.557851791381836
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.09277474135160446,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 3669,
+      "entity": {
+        "id": 645,
+        "type": "asteroid",
+        "pos": {
+          "x": -1958.5159912109375,
+          "y": 0,
+          "z": -2141.054443359375
+        },
+        "vel": {
+          "x": 0.41761893033981323,
+          "y": 0,
+          "z": 0.27322739362716675
+        },
+        "rot": -1.4955144018250794,
+        "angVel": -0.7091624736785889,
+        "radius": 5.559897275706275,
+        "mass": 160,
+        "hull": 121,
+        "hullMax": 121,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 8.617840777344727,
+          "mass": 160,
+          "schemaVersion": 1,
+          "inertiaY": 5941.374373093245,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_crystalline",
+          "placeId": "place_rock_crystal_pebble",
+          "collisionProxy": "skin:place_rock_crystal_pebble",
+          "material": "crystal",
+          "substance": "crystal",
+          "asteroidSlotId": "691:shard:0",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 283.13333333337914,
+          "yieldU": 2.5,
+          "yieldRemainingU": 2.5,
+          "oreHP": 121,
+          "oreHPMax": 121,
+          "size": 5.559897275706275,
+          "tier": 0,
+          "breakSpeed": 80
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1958.5159912109375,
+          "y": 0,
+          "z": -2141.054443359375
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.6799960136413574,
+          "z": 0,
+          "w": -0.733215868473053
+        },
+        "velocity": {
+          "x": 0.41761893033981323,
+          "y": 0,
+          "z": 0.27322739362716675
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 0.7091624736785889,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 3670,
+      "entity": {
+        "id": 544,
+        "type": "asteroid",
+        "pos": {
+          "x": -1995.43017578125,
+          "y": 0,
+          "z": -2153.403076171875
+        },
+        "vel": {
+          "x": 0.6897966861724854,
+          "y": 0,
+          "z": -0.15355214476585388
+        },
+        "rot": 0.2452075922555221,
+        "angVel": 0.31872445344924927,
+        "radius": 5.559897275706275,
+        "mass": 160,
+        "hull": 121,
+        "hullMax": 121,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 8.617840777344727,
+          "mass": 160,
+          "schemaVersion": 1,
+          "inertiaY": 5941.374373093245,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_crystalline",
+          "placeId": "place_rock_crystal_pebble",
+          "collisionProxy": "skin:place_rock_crystal_pebble",
+          "material": "crystal",
+          "substance": "crystal",
+          "asteroidSlotId": "691:shard:1",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 283.13333333337914,
+          "yieldU": 2.5,
+          "yieldRemainingU": 2.5,
+          "oreHP": 121,
+          "oreHPMax": 121,
+          "size": 5.559897275706275,
+          "tier": 0,
+          "breakSpeed": 80
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1995.43017578125,
+          "y": 0,
+          "z": -2153.403076171875
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.12229686230421066,
+          "z": 0,
+          "w": 0.9924936294555664
+        },
+        "velocity": {
+          "x": 0.6897966861724854,
+          "y": 0,
+          "z": -0.15355214476585388
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.31872445344924927,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 3671,
+      "entity": {
+        "id": 517,
+        "type": "asteroid",
+        "pos": {
+          "x": -1998.29296875,
+          "y": 0,
+          "z": -2153.017333984375
+        },
+        "vel": {
+          "x": 3.5762786865234375,
+          "y": 0,
+          "z": -0.20367373526096344
+        },
+        "rot": 2.1474870626609435,
+        "angVel": 0.288843035697937,
+        "radius": 5.559897275706275,
+        "mass": 160,
+        "hull": 121,
+        "hullMax": 121,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 8.617840777344727,
+          "mass": 160,
+          "schemaVersion": 1,
+          "inertiaY": 5941.374373093245,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_crystalline",
+          "placeId": "place_rock_crystal_pebble",
+          "collisionProxy": "skin:place_rock_crystal_pebble",
+          "material": "crystal",
+          "substance": "crystal",
+          "asteroidSlotId": "691:shard:2",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 283.13333333337914,
+          "yieldU": 2.5,
+          "yieldRemainingU": 2.5,
+          "oreHP": 121,
+          "oreHPMax": 121,
+          "size": 5.559897275706275,
+          "tier": 0,
+          "breakSpeed": 80
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1998.29296875,
+          "y": 0,
+          "z": -2153.017333984375
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.8789917230606079,
+          "z": 0,
+          "w": 0.47683706879615784
+        },
+        "velocity": {
+          "x": 3.5762786865234375,
+          "y": 0,
+          "z": -0.20367373526096344
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": -0.288843035697937,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    },
+    {
+      "generation": 3672,
+      "entity": {
+        "id": 534,
+        "type": "asteroid",
+        "pos": {
+          "x": -1958.5225830078125,
+          "y": 0,
+          "z": -2143.908447265625
+        },
+        "vel": {
+          "x": 0.9655641317367554,
+          "y": 0,
+          "z": -2.9314093589782715
+        },
+        "rot": 0.7158517780752186,
+        "angVel": -1.0110867023468018,
+        "radius": 5.559897275706275,
+        "mass": 160,
+        "hull": 121,
+        "hullMax": 121,
+        "collides": true,
+        "collisionMask": 41,
+        "physicsBody": {
+          "radius": 8.617840777344727,
+          "mass": 160,
+          "schemaVersion": 1,
+          "inertiaY": 5941.374373093245,
+          "centerOfMass": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "shape": "ball",
+          "dynamic": true,
+          "ccd": true,
+          "material": "rock",
+          "attachmentPoints": {
+            "massline": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          },
+          "thrusters": [],
+          "revision": 0
+        },
+        "flags": {
+          "boosting": false,
+          "docked": false,
+          "invuln": false,
+          "noInterp": false,
+          "persistent": true
+        },
+        "data": {
+          "typeId": "ast_crystalline",
+          "placeId": "place_rock_crystal_pebble",
+          "collisionProxy": "skin:place_rock_crystal_pebble",
+          "material": "crystal",
+          "substance": "crystal",
+          "asteroidSlotId": "691:shard:3",
+          "materialFragment": true,
+          "isChunk": true,
+          "fractured": true,
+          "tetherPayload": true,
+          "terrainAnchorEncounterIds": [],
+          "swarmArenaDebris": true,
+          "materialCondition": {
+            "heat": 0,
+            "reacted": true
+          },
+          "despawnAt": 283.13333333337914,
+          "yieldU": 2.5,
+          "yieldRemainingU": 2.5,
+          "oreHP": 121,
+          "oreHPMax": 121,
+          "size": 5.559897275706275,
+          "tier": 0,
+          "breakSpeed": 80
+        }
+      },
+      "native": {
+        "position": {
+          "x": -1958.5225830078125,
+          "y": 0,
+          "z": -2143.908447265625
+        },
+        "rotation": {
+          "x": 0,
+          "y": -0.3503323197364807,
+          "z": 0,
+          "w": 0.9366254806518555
+        },
+        "velocity": {
+          "x": 0.9655641317367554,
+          "y": 0,
+          "z": -2.9314093589782715
+        },
+        "angularVelocity": {
+          "x": 0,
+          "y": 1.0110867023468018,
+          "z": 0
+        },
+        "userForce": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "userTorque": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "colliderCount": 1
+      }
+    }
+  ],
+  "contacts": [
+    {
+      "targetId": 534,
+      "targetLife": 3672,
+      "separation": -1.5020813414708671
+    },
+    {
+      "targetId": 534,
+      "targetLife": 3672,
+      "separation": -1.5020813414708671
+    },
+    {
+      "targetId": 534,
+      "targetLife": 3672,
+      "separation": -1.5705984100459005
+    },
+    {
+      "targetId": 534,
+      "targetLife": 3672,
+      "separation": -1.5705984100459005
+    },
+    {
+      "targetId": 534,
+      "targetLife": 3672,
+      "separation": -1.5705979419541973
+    },
+    {
+      "targetId": 588,
+      "targetLife": 2769,
+      "separation": -3.3789416664738843
+    },
+    {
+      "targetId": 588,
+      "targetLife": 2769,
+      "separation": -3.3789416664738843
+    },
+    {
+      "targetId": 588,
+      "targetLife": 2769,
+      "separation": -3.224447075188988
+    },
+    {
+      "targetId": 588,
+      "targetLife": 2769,
+      "separation": -3.224446442091217
+    },
+    {
+      "targetId": 588,
+      "targetLife": 2769,
+      "separation": -4.459282882604359
+    },
+    {
+      "targetId": 720,
+      "targetLife": 2520,
+      "separation": -2.6005677332280097
+    },
+    {
+      "targetId": 720,
+      "targetLife": 2520,
+      "separation": -2.6005677332280097
+    },
+    {
+      "targetId": 720,
+      "targetLife": 2520,
+      "separation": -2.3079630747167488
+    },
+    {
+      "targetId": 720,
+      "targetLife": 2520,
+      "separation": -2.30796354463831
+    },
+    {
+      "targetId": 720,
+      "targetLife": 2520,
+      "separation": -2.6005677332280097
+    },
+    {
+      "targetId": 750,
+      "targetLife": 2770,
+      "separation": 0.03846651309627763
+    },
+    {
+      "targetId": 750,
+      "targetLife": 2770,
+      "separation": -2.3123753157548075
+    },
+    {
+      "targetId": 750,
+      "targetLife": 2770,
+      "separation": -2.3123753157548075
+    },
+    {
+      "targetId": 750,
+      "targetLife": 2770,
+      "separation": -0.019443458092617966
+    },
+    {
+      "targetId": 750,
+      "targetLife": 2770,
+      "separation": -0.01944336074410219
+    },
+    {
+      "targetId": 750,
+      "targetLife": 2770,
+      "separation": -2.312374887359238
+    }
+  ]
+}

@@ -1,0 +1,464 @@
+{
+  "char_0": {
+    "h": 96,
+    "name": "char_0",
+    "w": 64,
+    "x": 80,
+    "y": 408
+  },
+  "char_1": {
+    "h": 96,
+    "name": "char_1",
+    "w": 64,
+    "x": 152,
+    "y": 408
+  },
+  "char_2": {
+    "h": 96,
+    "name": "char_2",
+    "w": 64,
+    "x": 224,
+    "y": 408
+  },
+  "char_3": {
+    "h": 96,
+    "name": "char_3",
+    "w": 64,
+    "x": 296,
+    "y": 408
+  },
+  "char_4": {
+    "h": 96,
+    "name": "char_4",
+    "w": 64,
+    "x": 368,
+    "y": 408
+  },
+  "char_5": {
+    "h": 96,
+    "name": "char_5",
+    "w": 64,
+    "x": 440,
+    "y": 408
+  },
+  "char_6": {
+    "h": 96,
+    "name": "char_6",
+    "w": 64,
+    "x": 512,
+    "y": 408
+  },
+  "char_7": {
+    "h": 96,
+    "name": "char_7",
+    "w": 64,
+    "x": 584,
+    "y": 408
+  },
+  "char_8": {
+    "h": 96,
+    "name": "char_8",
+    "w": 64,
+    "x": 656,
+    "y": 408
+  },
+  "char_9": {
+    "h": 96,
+    "name": "char_9",
+    "w": 64,
+    "x": 728,
+    "y": 408
+  },
+  "char_A": {
+    "h": 96,
+    "name": "char_A",
+    "w": 64,
+    "x": 800,
+    "y": 408
+  },
+  "char_B": {
+    "h": 96,
+    "name": "char_B",
+    "w": 64,
+    "x": 872,
+    "y": 408
+  },
+  "char_C": {
+    "h": 96,
+    "name": "char_C",
+    "w": 64,
+    "x": 944,
+    "y": 408
+  },
+  "char_D": {
+    "h": 96,
+    "name": "char_D",
+    "w": 64,
+    "x": 1016,
+    "y": 408
+  },
+  "char_E": {
+    "h": 96,
+    "name": "char_E",
+    "w": 64,
+    "x": 1088,
+    "y": 408
+  },
+  "char_F": {
+    "h": 96,
+    "name": "char_F",
+    "w": 64,
+    "x": 1160,
+    "y": 408
+  },
+  "char_G": {
+    "h": 96,
+    "name": "char_G",
+    "w": 64,
+    "x": 1232,
+    "y": 408
+  },
+  "char_H": {
+    "h": 96,
+    "name": "char_H",
+    "w": 64,
+    "x": 1304,
+    "y": 408
+  },
+  "char_I": {
+    "h": 96,
+    "name": "char_I",
+    "w": 64,
+    "x": 1376,
+    "y": 408
+  },
+  "char_J": {
+    "h": 96,
+    "name": "char_J",
+    "w": 64,
+    "x": 1448,
+    "y": 408
+  },
+  "char_K": {
+    "h": 96,
+    "name": "char_K",
+    "w": 64,
+    "x": 1520,
+    "y": 408
+  },
+  "char_L": {
+    "h": 96,
+    "name": "char_L",
+    "w": 64,
+    "x": 1592,
+    "y": 408
+  },
+  "char_M": {
+    "h": 96,
+    "name": "char_M",
+    "w": 64,
+    "x": 1664,
+    "y": 408
+  },
+  "char_N": {
+    "h": 96,
+    "name": "char_N",
+    "w": 64,
+    "x": 1736,
+    "y": 408
+  },
+  "char_O": {
+    "h": 96,
+    "name": "char_O",
+    "w": 64,
+    "x": 1808,
+    "y": 408
+  },
+  "char_P": {
+    "h": 96,
+    "name": "char_P",
+    "w": 64,
+    "x": 1880,
+    "y": 408
+  },
+  "char_Q": {
+    "h": 96,
+    "name": "char_Q",
+    "w": 64,
+    "x": 1952,
+    "y": 408
+  },
+  "char_R": {
+    "h": 96,
+    "name": "char_R",
+    "w": 64,
+    "x": 8,
+    "y": 544
+  },
+  "char_S": {
+    "h": 96,
+    "name": "char_S",
+    "w": 64,
+    "x": 80,
+    "y": 544
+  },
+  "char_T": {
+    "h": 96,
+    "name": "char_T",
+    "w": 64,
+    "x": 152,
+    "y": 544
+  },
+  "char_U": {
+    "h": 96,
+    "name": "char_U",
+    "w": 64,
+    "x": 224,
+    "y": 544
+  },
+  "char_V": {
+    "h": 96,
+    "name": "char_V",
+    "w": 64,
+    "x": 296,
+    "y": 544
+  },
+  "char_W": {
+    "h": 96,
+    "name": "char_W",
+    "w": 64,
+    "x": 368,
+    "y": 544
+  },
+  "char_X": {
+    "h": 96,
+    "name": "char_X",
+    "w": 64,
+    "x": 440,
+    "y": 544
+  },
+  "char_Y": {
+    "h": 96,
+    "name": "char_Y",
+    "w": 64,
+    "x": 512,
+    "y": 544
+  },
+  "char_Z": {
+    "h": 96,
+    "name": "char_Z",
+    "w": 64,
+    "x": 584,
+    "y": 544
+  },
+  "fac_choir": {
+    "h": 128,
+    "name": "fac_choir",
+    "w": 128,
+    "x": 1856,
+    "y": 8
+  },
+  "fac_dmc": {
+    "h": 128,
+    "name": "fac_dmc",
+    "w": 128,
+    "x": 8,
+    "y": 272
+  },
+  "fac_free": {
+    "h": 128,
+    "name": "fac_free",
+    "w": 128,
+    "x": 144,
+    "y": 272
+  },
+  "fac_mts": {
+    "h": 128,
+    "name": "fac_mts",
+    "w": 128,
+    "x": 280,
+    "y": 272
+  },
+  "fac_quiet": {
+    "h": 128,
+    "name": "fac_quiet",
+    "w": 128,
+    "x": 416,
+    "y": 272
+  },
+  "fac_reach": {
+    "h": 128,
+    "name": "fac_reach",
+    "w": 128,
+    "x": 552,
+    "y": 272
+  },
+  "fac_scn": {
+    "h": 128,
+    "name": "fac_scn",
+    "w": 128,
+    "x": 688,
+    "y": 272
+  },
+  "fac_vael": {
+    "h": 128,
+    "name": "fac_vael",
+    "w": 128,
+    "x": 824,
+    "y": 272
+  },
+  "serv_fuel_port_ring": {
+    "h": 256,
+    "name": "serv_fuel_port_ring",
+    "w": 256,
+    "x": 8,
+    "y": 8
+  },
+  "serv_inspection_tag": {
+    "h": 128,
+    "name": "serv_inspection_tag",
+    "w": 256,
+    "x": 1064,
+    "y": 8
+  },
+  "serv_lift_here_down": {
+    "h": 64,
+    "name": "serv_lift_here_down",
+    "w": 64,
+    "x": 1312,
+    "y": 544
+  },
+  "serv_lift_here_left": {
+    "h": 64,
+    "name": "serv_lift_here_left",
+    "w": 64,
+    "x": 1384,
+    "y": 544
+  },
+  "serv_lift_here_right": {
+    "h": 64,
+    "name": "serv_lift_here_right",
+    "w": 64,
+    "x": 1456,
+    "y": 544
+  },
+  "serv_lift_here_up": {
+    "h": 64,
+    "name": "serv_lift_here_up",
+    "w": 64,
+    "x": 1528,
+    "y": 544
+  },
+  "serv_panel_labelframe": {
+    "h": 128,
+    "name": "serv_panel_labelframe",
+    "w": 256,
+    "x": 1328,
+    "y": 8
+  },
+  "serv_tow_brackets": {
+    "h": 128,
+    "name": "serv_tow_brackets",
+    "w": 128,
+    "x": 960,
+    "y": 272
+  },
+  "serv_umbilical_socket": {
+    "h": 128,
+    "name": "serv_umbilical_socket",
+    "w": 128,
+    "x": 1096,
+    "y": 272
+  },
+  "warn_chevron_strip": {
+    "h": 64,
+    "name": "warn_chevron_strip",
+    "w": 512,
+    "x": 656,
+    "y": 544
+  },
+  "warn_high_voltage_bolt": {
+    "h": 128,
+    "name": "warn_high_voltage_bolt",
+    "w": 64,
+    "x": 8,
+    "y": 408
+  },
+  "warn_intake_triangle": {
+    "h": 128,
+    "name": "warn_intake_triangle",
+    "w": 128,
+    "x": 1232,
+    "y": 272
+  },
+  "warn_no_step_frame": {
+    "h": 128,
+    "name": "warn_no_step_frame",
+    "w": 256,
+    "x": 1592,
+    "y": 8
+  },
+  "warn_radiation_trefoil": {
+    "h": 128,
+    "name": "warn_radiation_trefoil",
+    "w": 128,
+    "x": 1368,
+    "y": 272
+  },
+  "warn_stripe_block": {
+    "h": 256,
+    "name": "warn_stripe_block",
+    "w": 256,
+    "x": 272,
+    "y": 8
+  },
+  "wear_chips_stamp1": {
+    "h": 128,
+    "name": "wear_chips_stamp1",
+    "w": 128,
+    "x": 1504,
+    "y": 272
+  },
+  "wear_chips_stamp2": {
+    "h": 128,
+    "name": "wear_chips_stamp2",
+    "w": 128,
+    "x": 1640,
+    "y": 272
+  },
+  "wear_chips_stamp3": {
+    "h": 128,
+    "name": "wear_chips_stamp3",
+    "w": 128,
+    "x": 1776,
+    "y": 272
+  },
+  "wear_kill_tally": {
+    "h": 64,
+    "name": "wear_kill_tally",
+    "w": 128,
+    "x": 1176,
+    "y": 544
+  },
+  "wear_patch_outline": {
+    "h": 128,
+    "name": "wear_patch_outline",
+    "w": 128,
+    "x": 1912,
+    "y": 272
+  },
+  "wear_scorch_ring": {
+    "h": 256,
+    "name": "wear_scorch_ring",
+    "w": 256,
+    "x": 536,
+    "y": 8
+  },
+  "wear_weld_ring": {
+    "h": 256,
+    "name": "wear_weld_ring",
+    "w": 256,
+    "x": 800,
+    "y": 8
+  }
+}

@@ -1,0 +1,294 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { CREDIT_CHIP_KIND } from '../src/data/killRewards.js';
+import { isMasslineLatchedPickup, mining } from '../src/systems/mining.js';
+
+test('isMasslineLatchedPickup identifies Massline-latched pickups across authorities', () => {
+  const state = createGameState(123);
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 5,
+  };
+  state.entities.set(player.id, player);
+  state.playerId = player.id;
+
+  const chip = {
+    id: 10,
+    type: 'pickup',
+    alive: true,
+    pos: { x: 10, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { kind: CREDIT_CHIP_KIND, amount: 250 },
+  };
+
+  // Initially unlatched
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+
+  // Latched via state.player.tether mirror
+  state.player.tether = { active: true, targetId: chip.id };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+  state.player.tether = null;
+
+  // Latched via player entity tether mirror
+  player.tether = { active: true, targetId: String(chip.id) };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+  player.tether = null;
+
+  // Latched via combat.attachments authority
+  state.combat = state.combat || {};
+  state.combat.attachments = {
+    byId: {
+      att1: {
+        id: 'att1',
+        ownerId: player.id,
+        targetId: chip.id,
+        state: 'active',
+      },
+    },
+  };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+
+  // Broken attachment does not block
+  state.combat.attachments.byId.att1.state = 'broken';
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+
+  // Detached attachment does not block
+  state.combat.attachments.byId.att1.state = 'detached';
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+
+  // Attachment owned by another ship does not latch for player
+  state.combat.attachments.byId.att1.state = 'active';
+  state.combat.attachments.byId.att1.ownerId = 999;
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+  state.combat.attachments.byId = {};
+
+  // Latched via masslineTelemetry
+  state.player.masslineTelemetry = { targetId: chip.id };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+  state.player.masslineTelemetry = null;
+
+  // Latched via entity.data flag
+  chip.data.masslineLatched = true;
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+  chip.data.masslineLatched = false;
+
+  chip.data.latched = true;
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+  chip.data.latched = false;
+
+  chip.data.tetherPayload = true;
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true, 'a bare tow payload is not scrap');
+  chip.data.salvagePool = { cmdty_salvage_electronics: 3 };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false, 'a salvage pod is cargo until a rope is on it');
+  chip.data.tetherPayload = false;
+  delete chip.data.salvagePool;
+});
+
+test('isMasslineLatchedPickup refuses a recycled id the generation stamp disproves', () => {
+  const state = createGameState(123);
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 5,
+  };
+  state.entities.set(player.id, player);
+  state.playerId = player.id;
+
+  // Occupant B holds id 10 now; the rope was stamped while occupant A held it.
+  const chip = {
+    id: 10,
+    type: 'pickup',
+    alive: true,
+    pos: { x: 10, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { kind: CREDIT_CHIP_KIND, amount: 250 },
+    occupantGeneration: 'gen-B',
+  };
+
+  state.combat = state.combat || {};
+  state.combat.attachments = {
+    byId: {
+      att1: {
+        id: 'att1',
+        ownerId: player.id,
+        targetId: chip.id,
+        targetGeneration: 'gen-A',
+        state: 'active',
+      },
+    },
+  };
+  // The recorded generation names occupant A; the live occupant is B — a recycled id must not
+  // make the new body read as tether-bound before the authority sweeps the stale rope.
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+
+  // The same record still binds the occupant it was stamped against.
+  chip.occupantGeneration = 'gen-A';
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+
+  // The tether mirror validates through its own attachment record.
+  chip.occupantGeneration = 'gen-B';
+  state.player.tether = { active: true, targetId: chip.id, attachmentId: 'att1' };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+  chip.occupantGeneration = 'gen-A';
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+
+  // Dead-alias reads stay dead: attachedId/targetEntityId/bodyBId have no writers — a fixture
+  // that fakes them must not pretend to arm the predicate.
+  chip.occupantGeneration = 'gen-B';
+  state.player.tether = { active: true, attachedId: chip.id, targetEntityId: chip.id };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+  state.combat.attachments.byId.att1 = {
+    id: 'att1', ownerId: player.id, attachedId: chip.id, bodyBId: chip.id,
+    targetEntityId: chip.id, state: 'active',
+  };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+});
+
+test('mining _updatePickups skips Massline-latched pickup while vacuuming unlatched pickup', () => {
+  const state = createGameState(456);
+  const bus = createBus();
+  const player = {
+    id: 1,
+    type: 'ship',
+    team: 0,
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 6,
+    data: { derived: { magnetRange: 400 } },
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+
+  // Unlatched pickup near player (within magnet range, e.g. 50 WU away)
+  const freeChip = {
+    id: 101,
+    type: 'pickup',
+    alive: true,
+    pos: { x: 50, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 2,
+    data: { kind: CREDIT_CHIP_KIND, amount: 100 },
+  };
+  state.entities.set(freeChip.id, freeChip);
+  state.entityList.push(freeChip);
+
+  // Massline-latched pickup near player (e.g. 40 WU away, attached to player's rope)
+  const latchedChip = {
+    id: 102,
+    type: 'pickup',
+    alive: true,
+    pos: { x: 40, z: 0 },
+    vel: { x: 0, z: 10 },
+    radius: 2,
+    data: { kind: CREDIT_CHIP_KIND, amount: 300 },
+  };
+  state.entities.set(latchedChip.id, latchedChip);
+  state.entityList.push(latchedChip);
+
+  // Set Massline attachment on latchedChip
+  state.combat = state.combat || {};
+  state.combat.attachments = {
+    byId: {
+      rope1: {
+        id: 'rope1',
+        ownerId: player.id,
+        targetId: latchedChip.id,
+        state: 'active',
+        defId: 'tether_standard',
+      },
+    },
+  };
+
+  let collectedReceipts = [];
+  bus.on('pickup:collected', (p) => collectedReceipts.push(p));
+
+  const ctx = { state, bus, helpers: {}, registry: null };
+  mining.init(ctx);
+
+  const initialLatchedVel = { ...latchedChip.vel };
+
+  // Step mining update
+  mining._updatePickups(1 / 60, state);
+
+  // 1. Free chip was magnetized (vel modified toward player)
+  assert.notEqual(freeChip.vel.x, 0, 'free chip must be magnetized by vacuum');
+
+  // 2. Latched chip was NOT magnetized (its velocity was untouched by updatePickups)
+  assert.equal(latchedChip.vel.x, initialLatchedVel.x, 'latched chip x velocity must be untouched');
+  assert.equal(latchedChip.vel.z, initialLatchedVel.z, 'latched chip z velocity must be untouched');
+
+  // 3. Latched chip remains alive
+  assert.equal(latchedChip.alive, true, 'latched chip must remain alive in world on the rope');
+
+  // Now place both inside direct collect radius (e.g. 2 WU away)
+  freeChip.pos.x = 2;
+  latchedChip.pos.x = 2;
+
+  collectedReceipts = [];
+  mining._updatePickups(1 / 60, state);
+
+  // Free chip was collected
+  assert.ok(collectedReceipts.some((r) => r.pickupId === freeChip.id), 'free chip must be collected on overlap');
+
+  // Latched chip was NOT collected
+  assert.ok(!collectedReceipts.some((r) => r.pickupId === latchedChip.id), 'latched chip must NOT be collected while on rope');
+  assert.equal(latchedChip.alive, true, 'latched chip must remain alive and not swallowed into hold');
+
+  // Release/cut Massline attachment
+  state.combat.attachments.byId.rope1.state = 'broken';
+
+  // Now update pickups again
+  mining._updatePickups(1 / 60, state);
+
+  // Now that it is unlatched, it can be collected
+  assert.ok(collectedReceipts.some((r) => r.pickupId === latchedChip.id), 'once unlatched, chip can be collected');
+
+  if (typeof mining.destroy === 'function') mining.destroy();
+  mining.bus = null;
+});
+
+test('a tethered salvage pod is collected on overlap and a bare tow payload is not', () => {
+  const state = createGameState(515);
+  const bus = createBus();
+  const player = {
+    id: 1, type: 'ship', team: 0, alive: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 6,
+    data: { derived: { magnetRange: 0 } },
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  const pod = {
+    id: 40, type: 'payload', alive: true,
+    pos: { x: 2, z: 0 }, vel: { x: 0, z: 0 }, radius: 4,
+    data: { tetherPayload: true, salvagePool: { cmdty_salvage_electronics: 3 } },
+  };
+  const rock = {
+    id: 41, type: 'payload', alive: true,
+    pos: { x: 2, z: 1 }, vel: { x: 0, z: 0 }, radius: 4,
+    data: { tetherPayload: true },
+  };
+  state.entities.set(pod.id, pod);
+  state.entities.set(rock.id, rock);
+  state.entityList.push(pod, rock);
+  const collected = [];
+  bus.on('pickup:collected', (payload) => collected.push(payload));
+  mining.init({ state, bus, helpers: {}, registry: null });
+  mining._updatePickups(1 / 60, state);
+  assert.ok(collected.some((row) => row.pickupId === pod.id && row.commodityId === 'cmdty_salvage_electronics'),
+    'overlap puts the pod goods into the collect path');
+  assert.equal(collected.some((row) => row.pickupId === rock.id), false, 'a bare tow payload stays in the world');
+  if (typeof mining.destroy === 'function') mining.destroy();
+  mining.bus = null;
+});

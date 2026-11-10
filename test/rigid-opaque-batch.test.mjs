@@ -1,0 +1,1796 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+import { ShaderChunk } from 'three';
+import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
+
+import {
+  createRetainedRigidOpaqueBatchController,
+  RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES,
+  retireDisposedRigidOpaqueBatchBeforeSceneDraw,
+} from '../src/render/rigidOpaqueBatch.js';
+import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { warmScenePipelinesForRenderTarget } from '../src/render/bloom.js';
+import { createShadowDepthStagingSession } from '../src/render/shadowDepthAdmission.js';
+import { createPackageDetachManifest, detachPackageGeometry, rehydrateDetachedGeometries,
+  resetPackageDetachManifestsForTests } from '../src/render/packageCpuDetach.js';
+import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
+import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
+import { render as renderSystem, applyFirstPlayablePaintRelease, freezeOpeningGraphPublication,
+  releaseOpeningGraphPublication } from '../src/render/renderer.js';
+import {
+  collectOpeningSubmissionLeaves,
+  combineOpeningProducerCensuses,
+  createOpeningProducerCensus,
+  createOpeningSubmissionPlan,
+} from '../src/render/openingSubmissionPlan.js';
+import { acceptClearanceMesh, clearanceNeighborhoodRaw } from '../src/render/clearanceQuery.js';
+import {
+  collectPresentedBodyLeaves,
+  createWorldObjectPicker,
+} from '../src/render/worldObjectPicking.js';
+import {
+  isPlayerTruthInstrumentation,
+  measurePlayerTruthBodyOcclusion,
+  playerTruthOpaqueBounds,
+} from '../src/testing/playerTruth/reader.js';
+
+function makeRoot() {
+  const root = new THREE.Group();
+  const materialA = new THREE.MeshStandardMaterial({ color: 0x345678, roughness: 0.42, metalness: 0.18 });
+  installIllustratedSurface(materialA);
+  const materialB = materialA.clone();
+  materialB.onBeforeCompile = materialA.onBeforeCompile;
+  materialB.customProgramCacheKey = materialA.customProgramCacheKey;
+  const a = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), materialA);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), materialB);
+  a.position.x = -2;
+  b.position.x = 2;
+  root.add(a, b);
+  root.updateMatrixWorld(true);
+  return { root, a, b };
+}
+
+for (const retirement of ['dispose', 'construction-failure', 'precommit-rollback']) {
+  test(`retired cast-lane batches leave the real shadow registry after ${retirement}`, async () => {
+    // Production's import map gives the controller the vendored Object3D accessor. Install the
+    // same accessor on npm Three's prototype so this controller fixture uses the real registry.
+    const prototype = THREE.Object3D.prototype;
+    const originalCastShadow = Object.getOwnPropertyDescriptor(prototype, 'castShadow');
+    Object.defineProperty(prototype, 'castShadow',
+      Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
+    const originalAddGeometry = THREE.BatchedMesh.prototype.addGeometry;
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    a.castShadow = true;
+    b.castShadow = true;
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    let batch;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: (batches) => {
+        [batch] = batches;
+        assert.equal(batch.castShadow, true, 'a live cast-lane batch keeps its shadows');
+        batch.visible = true;
+        assert.ok(spacefaceShadowCastersIn(scene).includes(batch));
+        batch.visible = false;
+        if (retirement === 'precommit-rollback') a.visible = false;
+        return { ready: true };
+      },
+    });
+    try {
+      if (retirement === 'construction-failure') {
+        THREE.BatchedMesh.prototype.addGeometry = function failAfterCreation() {
+          batch = this;
+          throw new Error('fixture: candidate geometry failed');
+        };
+      }
+      const result = await controller.sync([root]);
+      if (retirement === 'dispose') {
+        assert.equal(result.status, 'active');
+        assert.equal(a.layers.mask, 0);
+        assert.equal(b.layers.mask, 0);
+        controller.dispose();
+      } else {
+        assert.equal(result.lastReason, retirement === 'construction-failure'
+          ? 'candidate-build-failed' : 'source-state-changed-before-commit');
+      }
+      assert.ok(batch, 'the real controller created a batch');
+      assert.equal(batch.parent, null);
+      assert.equal(batch._matricesTexture, null, 'the retired batch was disposed');
+      assert.equal(batch._indirectTexture, null);
+      assert.equal(a.layers.mask, 1, 'the authored source remains available');
+      assert.equal(b.layers.mask, 1);
+      assert.equal(a.castShadow, true);
+      assert.equal(b.castShadow, true);
+      a.visible = true;
+      // Reattach the retired object only to query registry membership: the vendor's normal
+      // scene-filtered reader hides detached entries even if its strong Set still owns them.
+      batch.visible = true;
+      scene.add(batch);
+      const casters = spacefaceShadowCastersIn(scene);
+      assert.ok(casters.includes(a));
+      assert.ok(casters.includes(b));
+      assert.ok(!casters.includes(batch), 'the registry must release the retired batch');
+      assert.equal(batch.castShadow, false);
+    } finally {
+      THREE.BatchedMesh.prototype.addGeometry = originalAddGeometry;
+      controller.dispose();
+      if (batch) { batch.castShadow = false; batch.removeFromParent(); }
+      a.castShadow = false;
+      b.castShadow = false;
+      a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+      if (originalCastShadow) Object.defineProperty(prototype, 'castShadow', originalCastShadow);
+      else delete prototype.castShadow;
+    }
+  });
+}
+
+test('retained batch clones texture metadata without serializing it and preserves shader hooks', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  const texture = new THREE.Texture();
+  texture.toJSON = () => { throw new Error('texture serialization must not run'); };
+  a.material.userData.retainedFixture = { texture, marker: 'authored' };
+  b.material.userData.retainedFixture = { texture, marker: 'authored' };
+  assert.throws(() => a.material.clone(), /texture serialization must not run/,
+    'the original Material.clone path invokes texture serialization');
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch, 'the prepared candidate promotes');
+    assert.strictEqual(batch.material.userData.retainedFixture.texture, texture);
+    assert.equal(batch.material.userData.retainedFixture.marker, 'authored');
+    assert.strictEqual(batch.material.onBeforeCompile, a.material.onBeforeCompile);
+    assert.strictEqual(batch.material.customProgramCacheKey, a.material.customProgramCacheKey);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    texture.dispose();
+  }
+});
+
+test('retained batch copies marked package normals and UVs after CPU retirement', async () => {
+  resetPackageDetachManifestsForTests();
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  b.geometry.dispose();
+  b.geometry = a.geometry;
+  const geometry = a.geometry;
+  const normals = [...geometry.attributes.normal.array];
+  const uvs = [...geometry.attributes.uv.array];
+  createPackageDetachManifest({ contentHash: 'fixture.rigid-retained-copy', resources: [geometry] }, {
+    redecode: async () => new THREE.BoxGeometry(1, 1, 1), collectResources: donor => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  assert.equal(geometry.attributes.normal.array.length, 0);
+  assert.equal(geometry.attributes.uv.array.length, 0);
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch);
+    assert.deepEqual([...batch.geometry.attributes.normal.array.slice(0, normals.length)], normals);
+    assert.deepEqual([...batch.geometry.attributes.uv.array.slice(0, uvs.length)], uvs);
+    assert.equal(detachPackageGeometry(geometry, {}), true, 'the CPU copy lease is released after construction');
+  } finally {
+    controller.dispose(); geometry.dispose(); a.material.dispose(); b.material.dispose();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('retained batch deduplicates a held refill and releases its lease when cancelled', async () => {
+  resetPackageDetachManifestsForTests();
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  b.geometry.dispose(); b.geometry = a.geometry;
+  const geometry = a.geometry;
+  let releaseDecode, calls = 0;
+  createPackageDetachManifest({ contentHash: 'fixture.rigid-cancelled-refill', resources: [geometry] }, {
+    redecode: () => { calls++; return new Promise(resolve => { releaseDecode = resolve; }); },
+    collectResources: donor => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    const first = controller.sync([root]);
+    const second = controller.sync([root]);
+    assert.strictEqual(second, first, 'the same candidate joins its pending source refill');
+    await Promise.resolve();
+    assert.equal(calls, 1);
+    controller.rollback('cancel-refill');
+    releaseDecode(new THREE.BoxGeometry(1, 1, 1));
+    await first;
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(detachPackageGeometry(geometry, {}), true, 'cancellation releases the CPU read lease');
+  } finally {
+    controller.dispose(); geometry.dispose(); a.material.dispose(); b.material.dispose();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('retained batch releases a failed refill lease and preserves direct sources', async () => {
+  resetPackageDetachManifestsForTests();
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  b.geometry.dispose(); b.geometry = a.geometry;
+  const geometry = a.geometry;
+  let fail = true;
+  createPackageDetachManifest({ contentHash: 'fixture.rigid-failed-refill', resources: [geometry] }, {
+    redecode: async () => {
+      if (fail) throw new Error('fixture decode failure');
+      return new THREE.BoxGeometry(1, 1, 1);
+    },
+    collectResources: donor => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().lastReason, 'source-refill-failed');
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    fail = false;
+    const receipt = await rehydrateDetachedGeometries([geometry]);
+    assert.deepEqual(receipt.errors, []);
+    assert.equal(detachPackageGeometry(geometry, {}), true, 'a failed refill releases the CPU read lease');
+  } finally {
+    controller.dispose(); geometry.dispose(); a.material.dispose(); b.material.dispose();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('a queued exact-target touch rejects a batch retired before admission', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync(root);
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch);
+    let draws = 0;
+    const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {}, render() { draws++; } };
+    let release;
+    const wait = new Promise(resolve => { release = resolve; });
+    const queued = wait.then(() => touchSubjectOnExactTarget(renderer, null, batch, new THREE.PerspectiveCamera(), scene));
+    controller.rollback('retired-before-queued-touch');
+    assert.throws(() => touchSubjectOnExactTarget(renderer, null, batch, new THREE.PerspectiveCamera(), scene),
+      error => error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE');
+    release();
+    await assert.rejects(queued, error => error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE');
+    assert.equal(draws, 0);
+    assert.equal(batch.parent, null);
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+    const live = touchSubjectOnExactTarget(renderer, null, a, new THREE.PerspectiveCamera(), scene);
+    assert.equal(live.skipped, false);
+    assert.equal(draws, 1);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+  }
+});
+
+test('exact-target touch rechecks a batch retired after entry and before mounting', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync(root);
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    let draws = 0;
+    const renderer = { autoClear: true, getRenderTarget() {
+      controller.rollback('retired-after-touch-entry'); return null;
+    }, setRenderTarget() {}, render() { draws++; } };
+    assert.throws(() => touchSubjectOnExactTarget(renderer, null, batch, new THREE.PerspectiveCamera(), scene),
+      error => error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE');
+    assert.equal(batch.parent, null);
+    assert.equal(draws, 0);
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+  }
+});
+
+for (const phase of ['pending', 'active']) {
+  test(`bloom warmup cannot restore a ${phase} rigid batch retired in its draw`, async () => {
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    let finishPreparation;
+    const controller = createRetainedRigidOpaqueBatchController({ scene,
+      prepare: () => phase === 'pending'
+        ? new Promise(resolve => { finishPreparation = resolve; }) : { ready: true } });
+    try {
+      const request = controller.sync(root);
+      if (phase === 'pending') await Promise.resolve(); else await request;
+      const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.ok(batch);
+      const renderer = { getRenderTarget: () => null, setRenderTarget() {}, render() {
+        controller.rollback('retired-during-bloom-warm');
+        assert.equal(batch.parent, null);
+      } };
+      await warmScenePipelinesForRenderTarget(renderer, null, batch, new THREE.PerspectiveCamera(), scene);
+      assert.equal(batch.parent, null, 'a retired batch must not be reattached to its old scene');
+      assert.equal(scene.children.includes(batch), false);
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+      if (phase === 'pending') { finishPreparation({ ready: true }); await request; }
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    }
+  });
+}
+
+for (const phase of ['pending', 'active']) {
+  test(`retiring a ${phase} rigid batch during shadow staging cannot restore a disposed batch`, async () => {
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    const survivor = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    survivor.castShadow = true;
+    light.castShadow = true;
+    scene.add(root, survivor, light, light.target);
+    scene.updateMatrixWorld(true);
+    let finishPreparation;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => phase === 'pending'
+        ? new Promise((resolve) => { finishPreparation = resolve; })
+        : { ready: true },
+    });
+    let request;
+    try {
+      request = controller.sync(root);
+      if (phase === 'pending') await Promise.resolve();
+      else await request;
+      const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.ok(batch);
+      const renderer = {
+        shadowMap: { enabled: true, needsUpdate: false },
+        getRenderTarget: () => null, setRenderTarget() {}, renderBufferDirect() {},
+        render(staging) {
+          if (batch.parent !== staging) return; // session's initial lights-only census
+          controller.rollback('retired-in-shadow-draw');
+          assert.equal(batch.parent, null, 'retirement removes it from its actual staging parent');
+        },
+      };
+      const session = createShadowDepthStagingSession({
+        renderer, light, camera: new THREE.PerspectiveCamera(), lightingScene: scene, THREE,
+        captureObjectHome: (object) => ({ object, parent: object.parent, index: object.parent?.children.indexOf(object) }),
+        restoreObjectHome: ({ object, parent }) => { if (parent) parent.add(object); },
+      });
+      assert.ok(session);
+      session.slice([batch, survivor], { forceEnable: true });
+      session.close();
+      assert.equal(batch.parent, null, 'staging must not resurrect the disposed batch');
+      assert.equal(scene.children.includes(batch), false);
+      assert.equal(survivor.parent, scene, 'an unrelated live caster returns to its original home');
+      assert.equal(a.layers.mask, 1, 'canonical source layers are restored');
+      assert.equal(b.layers.mask, 1);
+      if (phase === 'pending') { finishPreparation({ ready: true }); await request; }
+      assert.notEqual(controller.getDiagnostics().status, 'active');
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+      survivor.geometry.dispose(); survivor.material.dispose();
+    }
+  });
+}
+
+for (const phase of ['pending', 'active']) {
+  test(`exact-target parking does not restore a ${phase} batch retired during its draw`, async () => {
+    const scene = new THREE.Scene();
+    const foreignHome = new THREE.Group();
+    const { root, a, b } = makeRoot();
+    const survivor = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    scene.add(root);
+    foreignHome.add(survivor);
+    scene.updateMatrixWorld(true);
+    let finishPreparation;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => phase === 'pending'
+        ? new Promise((resolve) => { finishPreparation = resolve; })
+        : { ready: true },
+    });
+    let request;
+    try {
+      request = controller.sync(root);
+      if (phase === 'pending') await Promise.resolve();
+      else await request;
+      const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.ok(batch);
+      foreignHome.add(batch);
+      batch.visible = true;
+      const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {},
+        render() { controller.rollback('retired-in-exact-target-draw'); } };
+      touchSubjectOnExactTarget(renderer, null, [batch, survivor], new THREE.PerspectiveCamera(), scene);
+      assert.equal(batch.parent, null, 'park cleanup must not reattach the retired batch');
+      assert.equal(survivor.parent, foreignHome, 'a live parked subject returns to its original home');
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+      if (phase === 'pending') { finishPreparation({ ready: true }); await request; }
+      assert.notEqual(controller.getDiagnostics().status, 'active');
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+      survivor.geometry.dispose(); survivor.material.dispose();
+    }
+  });
+}
+
+function verifiedSourcePackage(root, contentHash = 'a'.repeat(64)) {
+  root.userData.flightRenderPackage = {
+    schema: 'spaceface.flightRenderPackage.v1',
+    assetId: 'test-retained-source',
+    contentHash,
+    contentHashVerified: true,
+  };
+}
+
+function strictOpeningPlan(root) {
+  const census = combineOpeningProducerCensuses([
+    createOpeningProducerCensus(root, { includeOffscreen: true }),
+  ]);
+  return createOpeningSubmissionPlan({
+    candidates: [{ root, role: 'retained-rigid-opaque-batch' }],
+    includeOffscreen: true,
+    globalProgramKeys: census.globalProgramKeys,
+    openingProgramKeys: census.openingProgramKeys,
+    requiredContentHashes: census.requiredContentHashes,
+    producerCensus: census,
+    producerResourceIdentitySets: census.resourceIdentitySets,
+  });
+}
+
+function makeDefaultKestrelOwner(compile) {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot();
+  a.name = 'LOD0_MechanicalDark'; b.name = 'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark';
+  b.userData.spacefaceTags = { motionGroup: true };
+  root.userData.authoredAssetState = 'authored';
+  verifiedSourcePackage(root);
+  scene.add(root);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+  camera.position.set(0, 10, 10); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+  scene.updateMatrixWorld(true);
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: { defId: 'ship_kestrel' } };
+  const state = { mode: 'loading', playerId: 1, entities: new Map([[1, player]]),
+    world: { enterSerial: 1, currentSectorId: 'test' }, contextRestoreSeq: 0,
+    render: { admissionRunGeneration: 1, compileObjectPipelines: compile } };
+  const owner = Object.assign(Object.create(renderSystem), { scene, state, cam: { obj: camera },
+    _opaqueBatchSupported: true, _meshes: new Map([[1, root]]), _authoredInstanceSyncOptions: {},
+    _entityFrame: { authored: [] }, _shadowSettingOn: false });
+  owner._enableRigidOpaqueBatch(true);
+  return { owner, state, scene, root, a, b, dispose() {
+    owner._rigidOpaqueBatchController?.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  } };
+}
+
+test('default batch waits for the first picture and promotes only a current prepared candidate', async () => {
+  const pending = [];
+  const fixture = makeDefaultKestrelOwner((batch, options) => {
+    assert.equal(batch.isBatchedMesh, true);
+    assert.equal(batch.userData.openingSubmissionPackage?.contentHashVerified, true,
+      'the producer publishes the derived package before pipeline preparation');
+    return new Promise(resolve => pending.push({ resolve, options }));
+  });
+  const { owner, scene, root, a, b, state } = fixture;
+  const hotIris = new THREE.Mesh(new THREE.BoxGeometry(), a.material);
+  hotIris.name = 'Retro_Iris_Port'; root.add(hotIris);
+  const npc = new THREE.Mesh(new THREE.BoxGeometry(), a.material);
+  npc.name = a.name; scene.add(npc);
+  owner._meshes.set(2, npc); state.entities.set(2, { id: 2, data: { defId: 'ship_kestrel' } });
+  scene.updateMatrixWorld(true);
+  try {
+    // An old stamp must not authorize a new loading/frozen picture.
+    state.render.firstPlayableFrameAt = 5;
+    freezeOpeningGraphPublication(owner);
+    owner._syncAuthoredInstanceSubmission(100);
+    assert.equal(owner._syncRigidOpaqueBatchProbe(), undefined);
+    assert.equal(pending.length, 0, 'loading never mints the optional batch');
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    assert.deepEqual(owner._openingFirstPictureUpgradePromises(), []);
+    const leaves = collectOpeningSubmissionLeaves(root, { includeOffscreen: true });
+    assert.ok(leaves.includes(a) && leaves.includes(b), 'the first-picture census uses the real direct leaves');
+    assert.equal(strictOpeningPlan(root).complete, true, 'direct authored content owns a complete opening plan');
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+
+    // The actual first paint sets the new latch; the publication owner still controls its hold.
+    state.render.firstPlayableFrameAt = null;
+    state.mode = 'flight';
+    applyFirstPlayablePaintRelease(owner);
+    assert.ok(Number.isFinite(state.render.firstPlayableFrameAt));
+    assert.equal(owner._syncRigidOpaqueBatchProbe(), undefined, 'the frozen graph remains protected after paint');
+    releaseOpeningGraphPublication(owner);
+    const first = owner._syncRigidOpaqueBatchProbe();
+    await Promise.resolve();
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].options.strict, true);
+    assert.equal(pending[0].options.explicit, true);
+    assert.equal(pending[0].options.joinOutstanding, true);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+
+    // A new frozen picture invalidates the old candidate even if released before its promise.
+    freezeOpeningGraphPublication(owner);
+    releaseOpeningGraphPublication(owner);
+    pending[0].resolve({ pipelines: {}, gpuResidency: {} });
+    await first;
+    assert.notEqual(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    const second = owner._syncRigidOpaqueBatchProbe();
+    await Promise.resolve();
+    assert.equal(pending.length, 2);
+    pending[1].resolve({ pipelines: {}, gpuResidency: {} });
+    await second;
+    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    assert.equal(a.layers.mask, 0); assert.equal(b.layers.mask, 0);
+    assert.equal(hotIris.layers.mask, 1, 'the player hot iris stays direct');
+    assert.equal(npc.layers.mask, 1, 'an identically named NPC stays direct');
+    const batch = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(owner._collectOpeningDerivedPoolRoots().includes(batch));
+    assert.deepEqual(collectOpeningSubmissionLeaves(batch), [batch]);
+    assert.equal(createOpeningProducerCensus(batch, { includeOffscreen: true }).drawLeafIds.length, 1);
+    const plan = strictOpeningPlan(batch);
+    assert.equal(plan.roots[0].productionBoundary.contentHashVerified, true);
+    assert.equal(plan.complete, true, 'the retained copy has a complete verified producer plan');
+    state.entities.get(1).data.defId = 'ship_other';
+    await owner._syncRigidOpaqueBatchProbe();
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+  } finally { fixture.dispose(); hotIris.geometry.dispose(); npc.geometry.dispose(); }
+});
+
+test('retained batch package identity binds source content, selection, lane, geometry and material semantics', async () => {
+  async function identity(change = () => {}) {
+    const fixture = makeRoot();
+    const { root, a, b } = fixture;
+    verifiedSourcePackage(root);
+    const extra = new THREE.Mesh(a.geometry.clone(), a.material);
+    root.add(extra);
+    const scene = new THREE.Scene();
+    scene.add(root);
+    const selected = new Set([a, b]);
+    change({ ...fixture, extra, selected });
+    scene.updateMatrixWorld(true);
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene, selectSource: source => selected.has(source), prepare: () => ({ ready: true }),
+    });
+    try {
+      await controller.sync(root);
+      const batch = scene.children.find(child => child.isBatchedMesh);
+      assert.ok(batch);
+      const plan = strictOpeningPlan(batch);
+      assert.equal(plan.complete, true);
+      assert.equal(plan.roots[0].productionBoundary.contentHashVerified, true);
+      return plan.roots[0].productionBoundary.contentHash;
+    } finally {
+      controller.dispose();
+      a.geometry.dispose(); b.geometry.dispose(); extra.geometry.dispose();
+      a.material.dispose(); b.material.dispose();
+    }
+  }
+
+  const original = await identity();
+  assert.equal(await identity(), original, 'equivalent source recipes have the same derived identity');
+  const variants = [
+    ({ root }) => verifiedSourcePackage(root, 'b'.repeat(64)),
+    ({ a, b, extra, selected }) => { selected.delete(b); selected.add(extra); extra.position.copy(a.position); },
+    ({ a, b }) => { a.castShadow = true; b.castShadow = true; },
+    ({ a }) => { a.geometry.getAttribute('position').setX(0, 4); a.geometry.getAttribute('position').needsUpdate = true; },
+    ({ a, b }) => { a.material.roughness = 0.7; b.material.roughness = 0.7; },
+  ];
+  for (const change of variants) assert.notEqual(await identity(change), original);
+});
+
+test('retained copies cannot turn missing or unverified source provenance into a strict opening pass', async () => {
+  for (const provenance of ['missing', 'unverified', 'verified-sibling-only']) {
+    const { root, a, b } = makeRoot();
+    if (provenance === 'unverified') {
+      root.userData.flightRenderPackage = {
+        assetId: 'unverified-source', contentHash: 'unverified-digest', contentHashVerified: false,
+      };
+    } else if (provenance === 'verified-sibling-only') {
+      verifiedSourcePackage(a);
+    }
+    const scene = new THREE.Scene();
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+    try {
+      await controller.sync(root);
+      const batch = scene.children.find(child => child.isBatchedMesh);
+      assert.ok(batch, 'direct batching remains available without inventing provenance');
+      assert.equal(batch.userData.openingSubmissionPackage, undefined);
+      const plan = strictOpeningPlan(batch);
+      assert.equal(plan.complete, false);
+      assert.equal(plan.roots[0].productionBoundary.contentHashVerified, false);
+      assert.ok(plan.blockingReasons.some(reason => reason.reason === 'missing-or-unverified-blocking-content-hash'));
+    } finally {
+      controller.dispose();
+      a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+    }
+  }
+});
+
+test('default renderer never suppresses sources after skipped or rejected preparation', async () => {
+  for (const outcome of ['skipped', 'partial', 'rejected', 'missing']) {
+    const fixture = makeDefaultKestrelOwner(outcome === 'missing' ? undefined : () => {
+      if (outcome === 'rejected') return Promise.reject(new Error('driver failure'));
+      return outcome === 'skipped' ? { skipped: true, reason: 'unavailable' }
+        : { pipelines: {}, gpuResidency: { partial: true } };
+    });
+    try {
+      fixture.state.mode = 'flight';
+      applyFirstPlayablePaintRelease(fixture.owner);
+      await fixture.owner._syncRigidOpaqueBatchProbe();
+      assert.notEqual(fixture.owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+      assert.equal(fixture.a.layers.mask, 1); assert.equal(fixture.b.layers.mask, 1);
+      assert.equal(fixture.scene.children.some(child => child.isBatchedMesh), false);
+    } finally { fixture.dispose(); }
+  }
+});
+
+test('default renderer preparation cannot activate across a replaced run or context', async () => {
+  for (const replacement of ['run', 'world', 'context']) {
+    let finish, isActive;
+    const fixture = makeDefaultKestrelOwner((_batch, options) => {
+      isActive = options.isActive; return new Promise(resolve => { finish = resolve; });
+    });
+    try {
+      fixture.state.mode = 'flight';
+      applyFirstPlayablePaintRelease(fixture.owner);
+      const pending = fixture.owner._syncRigidOpaqueBatchProbe(); await Promise.resolve();
+      if (replacement === 'run') fixture.state.render.admissionRunGeneration += 1;
+      else if (replacement === 'world') fixture.state.world = { ...fixture.state.world };
+      else fixture.state.contextRestoreSeq += 1;
+      assert.equal(isActive(), false);
+      finish({ pipelines: {}, gpuResidency: {} }); await pending;
+      assert.equal(fixture.a.layers.mask, 1); assert.equal(fixture.b.layers.mask, 1);
+      assert.equal(fixture.scene.children.some(child => child.isBatchedMesh), false);
+    } finally { fixture.dispose(); }
+  }
+});
+
+test('retained rigid batches wait for residency before suppressing direct source draws', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let resolvePreparation;
+  let markPreparationStarted;
+  const preparation = new Promise((resolve) => { resolvePreparation = resolve; });
+  const preparationStarted = new Promise((resolve) => { markPreparationStarted = resolve; });
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: async (batches, context) => {
+      assert.equal(batches.length, 1);
+      assert.equal(context.isActive(), true);
+      context.reportProgress('compiling', 1, 0, batches.length);
+      assert.equal(context.reportLeg('residency'), true);
+      markPreparationStarted();
+      await preparation;
+      context.reportProgress('group-ready', 1, 1, batches.length);
+      context.reportProgress('ready', 0, 1, 1);
+      return { ready: true };
+    },
+  });
+
+  const pending = controller.sync([root]);
+  await preparationStarted;
+  assert.equal(a.visible, true, 'source remains drawable while pipeline/residency is pending');
+  assert.equal(b.visible, true, 'source remains drawable while pipeline/residency is pending');
+  const inProgress = controller.getDiagnostics();
+  assert.equal(inProgress.status, 'preparing');
+  assert.equal(inProgress.lastReason, 'preparation-running');
+  assert.equal(inProgress.preparationStage, 'compiling');
+  assert.equal(inProgress.preparationLeg, 'residency');
+  assert.equal(inProgress.preparationCurrentGroup, 1);
+  assert.equal(inProgress.preparationCompletedGroups, 0);
+  assert.equal(inProgress.preparationGroupCount, 1);
+
+  resolvePreparation();
+  const result = await pending;
+  assert.equal(result.status, 'active');
+  assert.equal(result.preparationStage, 'active');
+  assert.equal(result.preparationLeg, null);
+  assert.equal(result.preparationCompletedGroups, 1);
+  assert.equal(a.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
+  assert.equal(b.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
+  assert.equal(a.layers.mask, 0, 'the active retained copy suppresses direct source submission');
+  assert.equal(b.layers.mask, 0, 'the active retained copy suppresses direct source submission');
+  assert.equal(result.batches, 1);
+  assert.equal(result.instances, 2);
+  assert.equal(result.potentialDrawReduction, 1);
+  const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(batch);
+  assert.equal(batch.material.onBeforeCompile, materialOnBeforeCompile(a.material));
+  assert.equal(batch.material.customProgramCacheKey(), a.material.customProgramCacheKey());
+  assert.equal(batch.material.color.getHex(), a.material.color.getHex(),
+    'a non-vertex-colored retained batch keeps the shared material albedo');
+  assert.equal(batch.castShadow, false);
+  assert.equal(batch.receiveShadow, false);
+
+  controller.dispose();
+  assert.equal(a.visible, true, 'dispose restores source visibility');
+  assert.equal(b.visible, true, 'dispose restores source visibility');
+  assert.equal(a.layers.mask, 1, 'dispose restores the authored source layer');
+  assert.equal(b.layers.mask, 1, 'dispose restores the authored source layer');
+  assert.equal(scene.children.includes(batch), false);
+  a.geometry.dispose();
+  b.geometry.dispose();
+  a.material.dispose();
+  b.material.dispose();
+});
+
+test('context restore retires disposed retained batches and canonical sync rebuilds them', async () => {
+  const { root, a, b } = makeRoot();
+  const scene = new THREE.Scene();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  try {
+    await controller.sync(root);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const retired = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(retired);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+
+    // Mirrors Three's dispose contract: a retired BatchedMesh nulls its internal data textures,
+    // while an external scene owner may still hold its Object3D until canonical cleanup runs.
+    retired.dispose();
+    assert.equal(retired.parent, scene);
+    const renderState = {};
+    assert.equal(retireDisposedRigidOpaqueBatchBeforeSceneDraw(controller, renderState), true);
+    assert.equal(renderState.rigidOpaqueBatch.status, 'idle', 'the live diagnostic follows owner retirement');
+    assert.equal(retired.parent, null, 'the retained owner removes the unusable scene child');
+    assert.equal(a.layers.mask, 1, 'authored source A returns to its original draw layer');
+    assert.equal(b.layers.mask, 1, 'authored source B returns to its original draw layer');
+    assert.equal(controller.getDiagnostics().status, 'idle');
+
+    await controller.sync(root);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const rebuilt = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(rebuilt);
+    assert.notEqual(rebuilt, retired);
+    assert.ok(rebuilt._matricesTexture?.image?.data);
+    assert.ok(rebuilt._indirectTexture?.image?.data);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('admission retires a disposed retained batch before warming its authored sources', async () => {
+  const { root, a, b } = makeRoot();
+  const scene = new THREE.Scene();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  try {
+    await controller.sync(root);
+    const retired = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(retired);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+
+    // The retained textures can be disposed while the scene still references the mesh,
+    // before its canonical batch owner reaches the next retirement boundary.
+    retired.dispose();
+    const draws = [];
+    const renderer = {
+      autoClear: true,
+      getRenderTarget() { return null; },
+      setRenderTarget() {},
+      render(targetScene) {
+        targetScene.traverse(object => {
+          if (object.visible === false || object.layers.mask === 0) return;
+          if (object === retired) {
+            retired.onBeforeRender(renderer, targetScene, new THREE.PerspectiveCamera(),
+              retired.geometry, retired.material);
+          }
+          if (object === a || object === b) draws.push(object);
+        });
+      },
+    };
+
+    // This is Three r184's native BatchedMesh hook, not a stubbed null-image check.
+    assert.throws(() => touchSubjectOnExactTarget(renderer, null, scene, new THREE.PerspectiveCamera(), scene),
+      /reading 'image'/);
+    const renderState = {};
+    assert.equal(retireDisposedRigidOpaqueBatchBeforeSceneDraw(controller, renderState), true);
+    const receipt = touchSubjectOnExactTarget(renderer, null, scene, new THREE.PerspectiveCamera(), scene);
+    assert.equal(receipt.skipped, false, 'the ordinary exact-target warm still runs');
+    assert.equal(scene.children.includes(retired), false, 'the dead retained child leaves before the touch');
+    assert.ok(draws.includes(a) && draws.includes(b), 'restored authored surfaces are warmed');
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose();
+    a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('a source albedo change demotes only that leaf and never leaves a stale sibling', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+
+  const result = await controller.sync(root);
+  assert.equal(result.status, 'active');
+  a.material.color.setHex(0xe0a040);
+  const afterMutation = await controller.sync(root);
+  // A and B are separate material clones with matching color at admission. A's new albedo is
+  // rendered by A's direct draw; B's retained copy still carries the admitted color, so the
+  // shared batch material is not stale for B. A whole-cohort rollback here relinked the batch
+  // program after warm-up and was the stress-gate's new-program failure.
+  assert.equal(afterMutation.status, 'active');
+  assert.equal(afterMutation.rollbacks | 0, 0, 'the cohort was not rolled back');
+  assert.equal(a.layers.mask, 1, 'the changed leaf is direct');
+  assert.equal(b.layers.mask, 0, 'the unchanged sibling stays retained');
+
+  controller.dispose();
+  a.geometry.dispose();
+  b.geometry.dispose();
+  a.material.dispose();
+  b.material.dispose();
+});
+
+test('actual retro heat changes retire stale retained material copies before the next draw', async () => {
+  const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
+  attachRetroMounts(root, { data: { defId: 'ship_kestrel' } });
+  scene.updateMatrixWorld(true);
+  const iris = root.getObjectByName('Retro_Iris_Port');
+  const geometry = iris.geometry, material = iris.material;
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  assert.equal((await controller.sync(root)).status, 'active');
+  const initialVersion = material.version;
+  material.emissiveIntensity += 1;
+  assert.equal(material.version, initialVersion, 'live heat is a uniform change, not a shader recompile');
+  const after = await controller.sync(root);
+  assert.equal(after.status, 'active', 'unchanged retro materials can retain their batching');
+  assert.equal(after.instances, 8, 'the two now-mutable iris sources stay direct');
+  assert.equal(iris.layers.mask, 1, 'the authored source returns to the normal draw path');
+  assert.equal(iris.geometry, geometry); assert.equal(iris.material, material);
+  assert.equal(material.emissiveIntensity, 1.1, 'rollback preserves the live owner value');
+  assert.equal(scene.children.filter(node => node.isBatchedMesh).length, 4);
+  material.emissiveIntensity += 1;
+  const next = await controller.sync(root);
+  assert.equal(next.activations, after.activations, 'another heat tick never re-admits the mutable iris');
+  assert.equal(iris.layers.mask, 1);
+  controller.dispose();
+});
+
+test('live uniform component and texture-transform changes retire the retained copy', async () => {
+  for (const mutate of [material => { material.emissive.r = 0.8; },
+    material => { material.roughness = 0.7; }, material => { material.normalScale.x = 2; },
+    material => { material.map.offset.x = 0.5; }]) {
+    const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
+    const material = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), roughness: 0.4 });
+    const a = new THREE.Mesh(new THREE.BoxGeometry(), material), b = new THREE.Mesh(new THREE.BoxGeometry(), material);
+    root.add(a,b); scene.updateMatrixWorld(true);
+    const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+    assert.equal((await controller.sync(root)).status, 'active');
+    mutate(material);
+    assert.equal((await controller.sync(root)).status, 'idle');
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); material.map.dispose(); material.dispose();
+  }
+});
+
+test('shared material uniform stability is scanned once per validation and still catches mutation', async () => {
+  const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
+  const material = new THREE.MeshStandardMaterial({ color: 0x345678, roughness: 0.4 });
+  const a = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  root.add(a, b); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  const descriptor = Object.getOwnPropertyDescriptor(material, 'roughness');
+  let reads = 0;
+  Object.defineProperty(material, 'roughness', {
+    configurable: true,
+    enumerable: descriptor.enumerable,
+    get() { reads += 1; return descriptor.value; },
+    set(value) { descriptor.value = value; },
+  });
+  try {
+    assert.equal((await controller.sync(root)).status, 'active');
+    reads = 0;
+    assert.equal((await controller.sync(root)).status, 'active');
+    assert.equal(reads, 1, 'one shared material snapshot is scanned per active validation');
+    material.roughness = 0.7;
+    reads = 0;
+    const afterMutation = await controller.sync(root);
+    assert.equal(afterMutation.status, 'idle');
+    assert.equal(reads, 1, 'the next validation rescans the shared snapshot and catches mutation');
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+  } finally {
+    controller.dispose();
+    Object.defineProperty(material, 'roughness', descriptor);
+    a.geometry.dispose();
+    b.geometry.dispose();
+    material.dispose();
+  }
+});
+
+test('uniform mutation while residency awaits cannot commit a stale retained material', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot(); scene.add(root); scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = controller.sync(root); await Promise.resolve();
+  a.material.emissiveIntensity = 3;
+  finish({ ready: true });
+  const after = await pending;
+  assert.equal(after.status, 'idle'); assert.equal(after.lastReason, 'source-state-changed-before-commit');
+  assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+  controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+});
+
+test('an exact source selector narrows the cohort and remains binding during residency and activation', async () => {
+  for (const retireDuringPrepare of [false, true]) {
+    const scene = new THREE.Scene(), { root, a, b } = makeRoot(); scene.add(root);
+    const unrelated = new THREE.Mesh(a.geometry,a.material); root.add(unrelated); scene.updateMatrixWorld(true);
+    let selected = true, finish;
+    const controller = createRetainedRigidOpaqueBatchController({ scene,
+      selectSource: source => selected && source !== unrelated,
+      prepare: () => new Promise(resolve => { finish = resolve; }) });
+    const pending = controller.sync(root); await Promise.resolve();
+    if (retireDuringPrepare) selected = false;
+    finish({ ready: true });
+    const ready = await pending;
+    if (retireDuringPrepare) assert.equal(ready.status,'idle');
+    else {
+      assert.equal(ready.status,'active'); assert.equal(ready.instances,2);
+      assert.equal(unrelated.layers.mask,1,'unselected leaves retain their ordinary draws');
+      selected = false;
+      assert.equal((await controller.sync(root)).status,'idle');
+    }
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1); assert.equal(unrelated.layers.mask,1);
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('qualified rigid pivots publish the current pose at activation and track it until qualification retires', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot(), pivot = new THREE.Group();
+  pivot.userData.spacefaceTags = { motionGroup: true };
+  a.userData.spacefaceTags = { motionGroup: true }; b.userData.spacefaceTags = { motionGroup: true };
+  pivot.add(a, b); root.add(pivot); scene.add(root); scene.updateMatrixWorld(true);
+  const originalGeometry = a.geometry, originalMaterial = a.material;
+  let qualified = true, finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    isTransformOnlySource: source => qualified && (source === a || source === b),
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = controller.sync(root); await Promise.resolve();
+  pivot.position.set(8, 2, -4); pivot.rotation.y = 0.7; scene.updateMatrixWorld(true);
+  finish({ ready: true });
+  assert.equal((await pending).status, 'active');
+  const batch = scene.children.find(child => child.isBatchedMesh), matrix = new THREE.Matrix4();
+  batch.getMatrixAt(0, matrix);
+  assert.ok(matrix.elements.every((value, index) => Math.abs(value - a.matrixWorld.elements[index]) < 1e-6),
+    'the first retained draw uses the pose after preparation, not the old admission pose');
+  pivot.rotation.y = 1.2; pivot.position.x = 12; scene.updateMatrixWorld(true);
+  const moved = await controller.sync(root); batch.getMatrixAt(0, matrix);
+  assert.equal(moved.status, 'active');
+  assert.ok(matrix.elements.every((value, index) => Math.abs(value - a.matrixWorld.elements[index]) < 1e-6));
+  assert.equal(a.parent, pivot); assert.equal(a.geometry, originalGeometry); assert.equal(a.material, originalMaterial);
+  qualified = false;
+  assert.equal((await controller.sync(root)).status, 'idle');
+  assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1); assert.equal(a.parent, pivot);
+  controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+});
+
+test('qualified rigid pivots restore direct draws when fan ownership or unsafe transforms appear', async () => {
+  for (const change of ['preparing-fan', 'active-mirrored', 'active-singular']) {
+    const scene = new THREE.Scene(), { root, a, b } = makeRoot(), pivot = new THREE.Group();
+    pivot.userData.spacefaceTags = { motionGroup: true };
+    pivot.add(a, b); root.add(pivot); scene.add(root); scene.updateMatrixWorld(true);
+    let finish;
+    const controller = createRetainedRigidOpaqueBatchController({ scene, isTransformOnlySource: () => true,
+      prepare: () => new Promise(resolve => { finish = resolve; }) });
+    const pending = controller.sync(root); await Promise.resolve();
+    if (change === 'preparing-fan') pivot.userData.spacefaceTags.fan = true;
+    finish({ ready: true });
+    const prepared = await pending;
+    if (change === 'preparing-fan') assert.equal(prepared.status, 'idle');
+    else {
+      assert.equal(prepared.status, 'active');
+      pivot.scale.x = change === 'active-mirrored' ? -1 : 0; scene.updateMatrixWorld(true);
+      assert.equal((await controller.sync(root)).status, 'idle');
+    }
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('illustrated retained batches keep local hull data while Three applies the batch pose', async () => {
+  // The illustration hook samples sfHullPosition in object-local coordinates. Three's
+  // BatchedMesh chunks must apply the per-instance matrix to positions, normals, world position,
+  // and shadows around that local sample; a custom hook that multiplied modelMatrix directly
+  // would silently drop the retained instance pose.
+  assert.match(ShaderChunk.project_vertex, /#ifdef USE_BATCHING[\s\S]*batchingMatrix \* mvPosition/);
+  assert.match(ShaderChunk.worldpos_vertex, /#ifdef USE_BATCHING[\s\S]*batchingMatrix \* worldPosition/);
+  assert.match(ShaderChunk.defaultnormal_vertex, /#ifdef USE_BATCHING[\s\S]*mat3 bm = mat3\( batchingMatrix \)/);
+
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  const materialA = new THREE.MeshStandardMaterial({ color: 0x345678, roughness: 0.42 });
+  installIllustratedSurface(materialA);
+  const materialB = materialA.clone();
+  materialB.onBeforeCompile = materialA.onBeforeCompile;
+  materialB.customProgramCacheKey = materialA.customProgramCacheKey;
+  const meshes = [];
+  for (const [material, x] of [[materialA, -2], [materialB, 2]]) {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const position = geometry.getAttribute('position');
+    geometry.setAttribute('sfHullPosition', position.clone());
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.x = x;
+    root.add(mesh);
+    meshes.push(mesh);
+  }
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+
+  const result = await controller.sync([root]);
+  assert.equal(result.status, 'active');
+  const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(batch);
+  const retainedHull = batch.geometry.getAttribute('sfHullPosition');
+  assert.ok(retainedHull, 'the custom local hull attribute survives BatchedMesh geometry packing');
+  assert.ok(retainedHull.count >= meshes[0].geometry.getAttribute('sfHullPosition').count);
+  assert.equal(meshes[0].layers.mask, 0);
+  assert.equal(meshes[1].layers.mask, 0);
+
+  // Exercise the exact shared hook contract with the minimum Three shader needles it requires.
+  const shader = {
+    uniforms: {},
+    vertexShader: '#include <common>\n#include <begin_vertex>',
+    fragmentShader: [
+      '#include <common>',
+      '#include <envmap_physical_pars_fragment>',
+      '#include <color_fragment>',
+      '#include <normal_fragment_maps>',
+      '#include <lights_physical_fragment>',
+      '#include <lights_fragment_end>',
+      'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
+    ].join('\n'),
+  };
+  materialA.onBeforeCompile(shader, {});
+  assert.match(shader.vertexShader, /attribute vec3 sfHullPosition/);
+  assert.match(shader.vertexShader, /vSfHullPosition = sfHullPosition/);
+  assert.match(shader.fragmentShader, /vSfHullPosition/);
+  assert.match(shader.fragmentShader, /sfRockSurface/);
+
+  controller.dispose();
+  for (const mesh of meshes) {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+});
+
+test('root removal restores only departed sources and retains the surviving batch', async () => {
+  const scene = new THREE.Scene();
+  const first = makeRoot();
+  const second = makeRoot();
+  verifiedSourcePackage(first.root);
+  const departedHash = 'b'.repeat(64);
+  verifiedSourcePackage(second.root, departedHash);
+  scene.add(first.root, second.root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+
+  await controller.sync([first.root, second.root]);
+  const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(batch);
+  const originalHash = batch.userData.openingSubmissionPackage.contentHash;
+  assert.ok(JSON.stringify(batch.userData.openingSubmissionPackage.manifest).includes(departedHash));
+  assert.equal(first.a.layers.mask, 0);
+  assert.equal(second.a.layers.mask, 0);
+  const activations = controller.getDiagnostics().activations;
+
+  scene.remove(second.root);
+  await controller.sync([first.root]);
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(scene.children.includes(batch), true, 'the surviving cohort keeps its retained batch');
+  assert.equal(diagnostics.status, 'active');
+  assert.equal(diagnostics.activations, activations, 'a removal does not recompile the surviving cohort');
+  assert.equal(diagnostics.rollbacks, 0, 'a removal does not roll back the surviving cohort');
+  assert.equal(diagnostics.instances, 2);
+  assert.equal(first.a.layers.mask, 0);
+  assert.equal(first.b.layers.mask, 0);
+  assert.equal(second.a.layers.mask, 1, 'the departed source returns to its authored layer');
+  assert.equal(second.b.layers.mask, 1);
+  assert.equal(strictOpeningPlan(batch).complete, true);
+  assert.notEqual(batch.userData.openingSubmissionPackage.contentHash, originalHash,
+    'the retained producer republishes its changed source selection');
+  assert.equal(JSON.stringify(batch.userData.openingSubmissionPackage.manifest).includes(departedHash), false,
+    'the surviving package no longer claims departed source content');
+
+  controller.dispose();
+  for (const { a, b } of [first, second]) {
+    a.geometry.dispose();
+    b.geometry.dispose();
+    a.material.dispose();
+    b.material.dispose();
+  }
+});
+
+test('new roots stay direct for the active cohort lifetime', async () => {
+  const scene = new THREE.Scene();
+  const first = makeRoot();
+  const second = makeRoot();
+  scene.add(first.root, second.root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+
+  await controller.sync([first.root]);
+  const originalBatch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(originalBatch);
+  assert.equal(controller.getDiagnostics().activations, 1);
+
+  // Additions stay direct instead of triggering a quiet-window full replan. That replan disposed
+  // and relinked the batch program every few seconds in live traffic.
+  for (let i = 0; i < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES * 3; i++) {
+    await controller.sync([first.root, second.root]);
+    assert.equal(second.a.layers.mask, 1, 'new roots remain on the direct path');
+    assert.equal(second.b.layers.mask, 1);
+    assert.equal(first.a.layers.mask, 0, 'the original cohort stays retained');
+    assert.equal(scene.children.includes(originalBatch), true);
+    assert.equal(controller.getDiagnostics().activations, 1);
+    assert.equal(controller.getDiagnostics().rollbacks, 0);
+  }
+
+  // Once the original cohort has no roots left, it reforms from the current roots.
+  const rebuilt = await controller.sync([second.root]);
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(rebuilt.status, 'active');
+  assert.equal(diagnostics.rollbacks, 1, 'one empty-cohort rebuild replaces the retired cohort');
+  assert.equal(diagnostics.activations, 2);
+  assert.equal(diagnostics.instances, 2);
+  assert.equal(first.a.layers.mask, 1);
+  assert.equal(first.b.layers.mask, 1);
+  assert.equal(second.a.layers.mask, 0, 'the current root enters after residency preparation');
+  assert.equal(second.b.layers.mask, 0);
+  assert.equal(scene.children.includes(originalBatch), false);
+
+  controller.dispose();
+  for (const { a, b } of [first, second]) {
+    a.geometry.dispose();
+    b.geometry.dispose();
+    a.material.dispose();
+    b.material.dispose();
+  }
+});
+
+test('active retained sources remain readable to clearance, picking, and opaque ownership readers', async () => {
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  root.userData.kind = 'station';
+  root.userData.authoredAssetState = 'authored';
+  root.userData.sfBoundEntityId = 901;
+  root.position.y = 20;
+  const source = new THREE.Mesh(
+    new THREE.BoxGeometry(48, 16, 48),
+    new THREE.MeshBasicMaterial({ color: 0x8796aa }),
+  );
+  const peer = new THREE.Mesh(source.geometry, source.material);
+  peer.position.x = 48;
+  root.add(source, peer);
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+
+  await controller.sync(root);
+  const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(batch);
+  assert.equal(source.visible, true);
+  assert.equal(source.isMesh, true);
+  assert.equal(source.layers.mask, 0, 'only direct renderer submission is suppressed');
+  assert.equal(peer.layers.mask, 0);
+  assert.equal(new THREE.Layers().test(source.layers), false,
+    'the default camera layer no longer submits the source directly');
+  assert.equal(acceptClearanceMesh(source), true, 'camera roof traversal still accepts the authored source');
+
+  const pickedLeaves = [];
+  collectPresentedBodyLeaves(root, pickedLeaves);
+  assert.ok(pickedLeaves.includes(source), 'world picking still sees the canonical source leaf');
+  assert.ok(pickedLeaves.includes(peer), 'world picking still sees every canonical source leaf');
+
+  const box = {
+    minX: -24, minY: 12, minZ: -24,
+    maxX: 72, maxY: 28, maxZ: 24,
+  };
+  const roof = clearanceNeighborhoodRaw(root, box, 0, 0);
+  assert.equal(roof.failed, false);
+  assert.equal(roof.empty, false, 'camera roof traversal still sees opaque authored triangles');
+  assert.ok(Number.isFinite(roof.raw));
+
+  const camera = new THREE.PerspectiveCamera(60, 4 / 3, 0.1, 500);
+  camera.position.set(0, 20, 100);
+  camera.lookAt(0, 20, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  const opaqueBounds = playerTruthOpaqueBounds(THREE, root, camera, 800, 600);
+  assert.ok(opaqueBounds, 'player-truth still gets canonical opaque bounds');
+  const player = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 2, 2),
+    new THREE.MeshBasicMaterial({ color: 0xddeeff }),
+  );
+  player.position.set(0, 20, 0);
+  scene.add(player);
+  scene.updateMatrixWorld(true);
+  const maskLayers = [];
+  const renderer = {
+    info: { autoReset: true, render: { calls: 0, triangles: 0 } },
+    shadowMap: { autoUpdate: true },
+    getRenderTarget: () => null,
+    getClearColor: (target) => target.set(0x000000),
+    getClearAlpha: () => 1,
+    setClearColor() {},
+    setRenderTarget() {},
+  };
+  const silhouette = new Uint8Array(4);
+  const ownership = new Uint8Array(4);
+  const maskReceipt = measurePlayerTruthBodyOcclusion({
+    THREE, renderer, scene, camera, playerMesh: player,
+    bodies: [{ id: 901, mesh: root }], playerBox: [0, 0, 800, 600],
+    vw: 800, vh: 600, width: 1, height: 1,
+    silhouette, ownership,
+    draw(buffer) {
+      maskLayers.push(source.layers.mask);
+      if (buffer === silhouette) buffer.fill(255);
+    },
+  });
+  assert.equal(maskReceipt.extraDraws, 2, 'opaque ownership still performs both native mask draws');
+  assert.deepEqual(maskLayers, [1, 1], 'ownership masks temporarily include layer-suppressed sources');
+  assert.equal(source.layers.mask, 0, 'ownership mask restores the active suppression layer');
+  const pickState = { entities: new Map([[901, { id: 901, type: 'station', alive: true }]]) };
+  const picker = createWorldObjectPicker({
+    state: pickState,
+    getCamera: () => camera,
+    getMeshes: () => new Map([[901, root]]),
+    getScene: () => scene,
+    getViewport: () => ({ width: 800, height: 600 }),
+  });
+  const picked = picker.pick(400, 300);
+  assert.equal(picked?.entity?.id, 901, 'screen picking still returns the authored owner');
+  assert.ok(picked?.leaf === source || picked?.leaf === peer);
+  assert.equal(isPlayerTruthInstrumentation(batch), true,
+    'the retained copy is excluded from unowned opaque ownership masks');
+
+  controller.dispose();
+  assert.equal(source.visible, true);
+  assert.equal(source.layers.mask, 1, 'dispose restores the authored layer mask');
+  assert.equal(peer.layers.mask, 1);
+  source.geometry.dispose();
+  source.material.dispose();
+  player.geometry.dispose();
+  player.material.dispose();
+});
+
+function materialOnBeforeCompile(material) {
+  return material.onBeforeCompile;
+}
+
+test('retained batches update translated matrices and roll back on reparent or geometry mutation', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  await controller.sync(root);
+  const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(batch);
+  const before = new THREE.Matrix4();
+  batch.getMatrixAt(0, before);
+
+  root.position.x += 7;
+  root.updateMatrixWorld(true);
+  await controller.sync(root);
+  const after = new THREE.Matrix4();
+  batch.getMatrixAt(0, after);
+  assert.equal(after.elements[12] - before.elements[12], 7);
+  assert.equal(controller.getDiagnostics().status, 'active');
+
+  const replacementParent = new THREE.Group();
+  scene.add(replacementParent);
+  replacementParent.add(a);
+  await controller.sync(root);
+  assert.equal(a.visible, true, 'reparent restores direct fallback visibility');
+  assert.equal(controller.getDiagnostics().status, 'idle');
+  assert.equal(scene.children.includes(batch), false);
+
+  // Rebuild from the intact sibling, then mutate its geometry in place. The mutation invalidates
+  // the retained copy and forces a fresh admission before either source is suppressed again.
+  replacementParent.remove(a);
+  root.add(a);
+  root.updateMatrixWorld(true);
+  await controller.sync(root);
+  assert.equal(controller.getDiagnostics().status, 'active');
+  b.geometry.getAttribute('position').setX(0, 4);
+  b.geometry.getAttribute('position').needsUpdate = true;
+  await controller.sync(root);
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, true);
+  assert.equal(a.layers.mask, 0);
+  assert.equal(b.layers.mask, 0);
+  assert.equal(controller.getDiagnostics().status, 'active');
+
+  controller.dispose();
+  a.geometry.dispose();
+  b.geometry.dispose();
+  a.material.dispose();
+  b.material.dispose();
+});
+
+test('late child mounts under an admitted parent invalidate the retained copy', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  const shell = new THREE.Group();
+  root.remove(a, b);
+  shell.add(a, b);
+  root.add(shell);
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  await controller.sync(root);
+  const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(batch);
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, true);
+  assert.equal(a.layers.mask, 0);
+  assert.equal(b.layers.mask, 0);
+
+  const late = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x778899 }));
+  shell.add(late);
+  await controller.sync(root);
+  const diagnostics = controller.getDiagnostics();
+  assert.equal(diagnostics.status, 'active', 'the changed root is replanned in the same sync');
+  assert.equal(diagnostics.rollbacks, 1, 'the stale retained copy is retired before replanning');
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, true);
+  assert.equal(a.layers.mask, 0);
+  assert.equal(b.layers.mask, 0);
+  assert.equal(late.visible, true, 'newly mounted unsupported geometry remains direct');
+  assert.equal(scene.children.includes(batch), false);
+  controller.dispose();
+  for (const object of [a, b, late]) {
+    object.geometry.dispose();
+    object.material.dispose();
+  }
+});
+
+test('late child mounts while residency is pending never hide a stale retained plan', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let release;
+  const wait = new Promise((resolve) => { release = resolve; });
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: async () => {
+      await wait;
+      return { ready: true };
+    },
+  });
+  const pending = controller.sync(root);
+  root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x778899 })));
+  release();
+  const result = await pending;
+  assert.equal(result.status, 'idle');
+  assert.equal(result.lastReason, 'source-topology-changed-before-commit');
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, true);
+  assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+  controller.dispose();
+  root.traverse((object) => {
+    object.geometry?.dispose?.();
+    object.material?.dispose?.();
+  });
+});
+
+test('incomplete residency preparation never suppresses source draws', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ skipped: true, reason: 'not-resident' }),
+  });
+  const result = await controller.sync(root);
+  assert.equal(result.status, 'idle');
+  assert.equal(result.lastReason, 'preparation-incomplete');
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, true);
+  assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+  controller.dispose();
+  a.geometry.dispose();
+  b.geometry.dispose();
+  a.material.dispose();
+  b.material.dispose();
+});
+
+test('rejected residency preparation retries once after a quiet window and can activate', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let attempts = 0;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('transient residency failure');
+      return { ready: true };
+    },
+  });
+  try {
+    const failed = await controller.sync(root);
+    assert.equal(failed.lastReason, 'preparation-failed');
+    for (let frame = 1; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES; frame += 1) {
+      await controller.sync(root);
+      assert.equal(attempts, 1, 'failure does not retry on each frame');
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+    }
+    const recovered = await controller.sync(root);
+    assert.equal(attempts, 2);
+    assert.equal(recovered.status, 'active');
+    assert.equal(recovered.hiddenSources, 2);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+  }
+});
+
+test('permanent preparation rejection parks an unchanged cohort after one retry', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let attempts = 0;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => { attempts += 1; throw new Error('permanent residency failure'); },
+  });
+  try {
+    await controller.sync(root);
+    for (let frame = 0; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES * 5; frame += 1) {
+      await controller.sync(root);
+    }
+    assert.equal(attempts, 2, 'a persistent failure cannot start a preparation loop');
+    assert.equal(controller.getDiagnostics().lastReason, 'preparation-failed');
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+  }
+});
+
+test('departure and disposal cancel rejected preparation retries and ignore late rejections', async () => {
+  for (const stop of ['departure', 'dispose']) {
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    let attempts = 0, rejectPending;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error('first rejection');
+        return new Promise((resolve, reject) => { rejectPending = reject; });
+      },
+    });
+    try {
+      await controller.sync(root);
+      for (let frame = 1; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES; frame += 1) {
+        await controller.sync(root);
+      }
+      const retry = controller.sync(root);
+      await Promise.resolve();
+      assert.equal(attempts, 2);
+      if (stop === 'dispose') controller.dispose();
+      else await controller.sync([]);
+      const stopped = controller.getDiagnostics();
+      rejectPending(new Error('late rejected retry'));
+      await retry;
+      for (let frame = 0; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES * 2; frame += 1) {
+        await controller.sync(stop === 'dispose' ? root : []);
+      }
+      assert.equal(attempts, 2, `${stop} cancels further work`);
+      assert.equal(controller.getDiagnostics().status, stopped.status);
+      assert.equal(controller.getDiagnostics().lastReason, stopped.lastReason);
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+      assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    }
+  }
+});
+
+test('superseded preparation resolve or reject cannot overwrite a newer active cohort', async () => {
+  for (const outcome of ['resolve', 'reject']) {
+    const scene = new THREE.Scene();
+    const first = makeRoot(), second = makeRoot();
+    scene.add(first.root, second.root);
+    scene.updateMatrixWorld(true);
+    let attempts = 0, settleOld, reportOldLeg;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: (_batches, context) => {
+        if (++attempts > 1) return { ready: true };
+        reportOldLeg = context.reportLeg;
+        return new Promise((resolve, reject) => {
+          settleOld = () => outcome === 'resolve'
+            ? resolve({ ready: true }) : reject(new Error('superseded preparation'));
+        });
+      },
+    });
+    try {
+      const old = controller.sync(first.root);
+      await Promise.resolve();
+      const arrival = controller.sync([first.root, second.root]);
+      assert.equal(arrival, old, 'pure arrivals reuse the pending plan rather than restarting compilation');
+      assert.equal(attempts, 1);
+      for (const source of [first.a, first.b, second.a, second.b]) assert.equal(source.layers.mask, 1);
+      assert.equal(reportOldLeg('residency'), true, 'the original preparation remains live through arrivals');
+      const replacement = controller.sync(second.root);
+      assert.notEqual(replacement, old, 'removing the original root supersedes its pending preparation');
+      await replacement;
+      const current = controller.getDiagnostics();
+      const batches = scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.equal(current.status, 'active');
+      assert.equal(current.hiddenSources, 2);
+      assert.equal(reportOldLeg('exact-target'), false, 'retired preparation cannot publish a stale leg');
+      settleOld();
+      await old;
+      const after = controller.getDiagnostics();
+      assert.equal(after.status, 'active', `late ${outcome} preserves current status`);
+      assert.equal(after.lastReason, current.lastReason);
+      assert.equal(after.lastError, current.lastError);
+      assert.equal(after.preparationLeg, null);
+      assert.equal(after.activations, 1);
+      assert.equal(after.hiddenSources, 2);
+      assert.deepEqual(scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch), batches);
+      for (const source of [first.a, first.b]) assert.equal(source.layers.mask, 1);
+      for (const source of [second.a, second.b]) assert.equal(source.layers.mask, 0);
+    } finally {
+      controller.dispose();
+      for (const source of [first.a, first.b, second.a, second.b]) {
+        source.geometry.dispose(); source.material.dispose();
+      }
+    }
+  }
+});
+
+test('unsupported BatchedMesh capability leaves the direct path untouched', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    supported: false,
+    prepare: () => ({ ready: true }),
+  });
+  const result = await controller.sync(root);
+  assert.equal(result.status, 'disabled');
+  assert.equal(result.lastReason, 'unsupported-batched-mesh-capability');
+  assert.equal(a.visible, true);
+  assert.equal(b.visible, true);
+  assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+  controller.dispose();
+  a.geometry.dispose();
+  b.geometry.dispose();
+  a.material.dispose();
+  b.material.dispose();
+});
+
+test('a shadow-lane flip restores only its owner while a shared batch retains other roots', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  // Three leaves make the affected owner large enough to share one group with the second root.
+  const cMaterial = b.material.clone();
+  cMaterial.onBeforeCompile = b.material.onBeforeCompile;
+  cMaterial.customProgramCacheKey = b.material.customProgramCacheKey;
+  const c = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cMaterial);
+  c.position.x = 4;
+  root.add(c);
+  const other = makeRoot();
+  other.root.position.x = 12;
+  scene.add(root, other.root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  try {
+    const first = await controller.sync([root, other.root]);
+    assert.equal(first.status, 'active');
+    assert.equal(first.instances, 5);
+    const sharedBatch = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(sharedBatch);
+
+    // The shadow-policy pass changes one owner’s lane between syncs. Its primitives return to
+    // direct draws, while instances from the same batch that belong to the other owner survive.
+    a.castShadow = true;
+    const ejected = await controller.sync([root, other.root]);
+    assert.equal(ejected.rollbacks, 0);
+    assert.equal(ejected.status, 'active');
+    assert.equal(ejected.instances, 2);
+    assert.equal(ejected.batches, 1);
+    assert.equal(ejected.lastReason, 'shadow-owner-direct-fallback');
+    assert.match(ejected.lastDetail || '', /^cast-shadow@/);
+    assert.equal(a.layers.mask, 1, 'the changed owner returns to direct draws');
+    assert.equal(b.layers.mask, 1);
+    assert.equal(c.layers.mask, 1);
+    assert.equal(other.a.layers.mask, 0, 'the unaffected owner remains batched');
+    assert.equal(other.b.layers.mask, 0);
+    assert.equal(sharedBatch.instanceCount, 2, 'deleted slots leave exactly the two surviving instances');
+    assert.equal(sharedBatch._instanceInfo.filter(instance => instance.active).length, 2,
+      'slot compaction does not duplicate or lose the retained owner’s instances');
+
+    // The direct-fallback owner may keep changing its live policy without disturbing neighbors.
+    a.castShadow = false;
+    const afterTouch = await controller.sync([root, other.root]);
+    assert.equal(afterTouch.status, 'active');
+    assert.equal(afterTouch.rollbacks, 0, 'a direct-path lane touch cannot churn the cohort');
+    assert.equal(afterTouch.instances, 2);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose();
+    b.geometry.dispose();
+    c.geometry.dispose();
+    a.material.dispose();
+    b.material.dispose();
+    cMaterial.dispose();
+    other.a.geometry.dispose();
+    other.b.geometry.dispose();
+    other.a.material.dispose();
+    other.b.material.dispose();
+  }
+});
+
+test('a shadow-lane flip during residency ejects only its owner before shared-batch commit', async () => {
+  const scene = new THREE.Scene();
+  const ownerA = makeRoot();
+  const ownerB = makeRoot();
+  ownerB.root.position.x = 12;
+  scene.add(ownerA.root, ownerB.root);
+  scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }),
+  });
+  try {
+    const completion = controller.sync([ownerA.root, ownerB.root]);
+    await Promise.resolve();
+    assert.equal(typeof finish, 'function', 'the shared candidate is preparing residency');
+    ownerA.a.castShadow = true;
+    finish({ ready: true });
+
+    const committed = await completion;
+    assert.equal(committed.status, 'active');
+    assert.equal(committed.instances, 2);
+    assert.equal(committed.batches, 1);
+    assert.equal(committed.rollbacks, 0);
+    assert.equal(committed.lastReason, 'shadow-owner-direct-fallback');
+    assert.equal(ownerA.a.layers.mask, 1);
+    assert.equal(ownerA.b.layers.mask, 1);
+    assert.equal(ownerB.a.layers.mask, 0);
+    assert.equal(ownerB.b.layers.mask, 0);
+    const batch = scene.children.find(child => child.isBatchedMesh);
+    assert.equal(batch?.instanceCount, 2);
+  } finally {
+    controller.dispose();
+    for (const source of [ownerA.a, ownerA.b, ownerB.a, ownerB.b]) {
+      source.geometry.dispose();
+      source.material.dispose();
+    }
+  }
+});
+
+test('proven disabled depth ignores raw shadow churn, and transition restores direct sources synchronously', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot();
+  scene.add(root); scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  try {
+    controller.setShadowDepthDisabled(true);
+    const pending = controller.sync([root]);
+    await Promise.resolve();
+    a.castShadow = true; b.receiveShadow = true;
+    finish({ ready: true });
+    assert.equal((await pending).instances, 2);
+    const batch = scene.children.find(x => x.isBatchedMesh);
+    assert.equal(batch.castShadow, false); assert.equal(batch.receiveShadow, false);
+    a.castShadow = false; b.receiveShadow = false;
+    assert.equal((await controller.sync([root])).instances, 2);
+    assert.equal(a.layers.mask, 0);
+    controller.setShadowDepthDisabled(false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some(x => x.isBatchedMesh), false);
+    a.castShadow = b.castShadow = true;
+    const next = controller.sync([root]); await Promise.resolve();
+    assert.equal(scene.children.find(x => x.isBatchedMesh)?.castShadow, true);
+    finish({ ready: true }); assert.equal((await next).instances, 2);
+  } finally {
+    controller.dispose(); for (const x of [a,b]) { x.geometry.dispose(); x.material.dispose(); }
+  }
+});
+
+test('depth mode transition cancels pending normalized preparation', async () => {
+  const scene = new THREE.Scene(), {root,a,b} = makeRoot(); scene.add(root); scene.updateMatrixWorld(true);
+  let finish; const controller = createRetainedRigidOpaqueBatchController({scene,
+    prepare: () => new Promise(resolve => { finish = resolve; })});
+  try {
+    controller.setShadowDepthDisabled(true);
+    const pending = controller.sync([root]); await Promise.resolve();
+    controller.setShadowDepthDisabled(false);
+    finish({ready:true}); await pending;
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+    assert.equal(controller.getDiagnostics().instances,0);
+  } finally { controller.dispose(); for (const x of [a,b]) { x.geometry.dispose(); x.material.dispose(); } }
+});

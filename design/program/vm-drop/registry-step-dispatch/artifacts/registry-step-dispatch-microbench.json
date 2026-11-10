@@ -1,0 +1,55 @@
+{
+  "schema": "spaceface.registry-step-dispatch-microbench.v1",
+  "iters": 60000,
+  "packageIds": [
+    "capitalBossEncounters",
+    "chronicler",
+    "cloak",
+    "difficultyDirector",
+    "environmentalMachinery",
+    "heat",
+    "masslineImpacts",
+    "masslineSnares",
+    "masslineTelemetry",
+    "masslineThreats",
+    "masslineThrow",
+    "npcJobsRuntime",
+    "pirateDisengage",
+    "pirateDisguise",
+    "pirateParley",
+    "planetRuntime",
+    "stationServices",
+    "survivalArena",
+    "survivalRun",
+    "survivalWave",
+    "swarmArena",
+    "swarmChain",
+    "titles",
+    "traffic",
+    "wingmen"
+  ],
+  "rows": [
+    {
+      "sector": "sector_ceres_belt",
+      "masterCombat": 71,
+      "quietLen": 47,
+      "wake": 128,
+      "baseMs": 63.463,
+      "afterMs": 36.533,
+      "speedup": 1.737
+    },
+    {
+      "sector": "sector_deep_black",
+      "masterCombat": 71,
+      "quietLen": 46,
+      "wake": 0,
+      "baseMs": 70.323,
+      "afterMs": 24.451,
+      "speedup": 2.876
+    }
+  ],
+  "headline": {
+    "ceresSpeedup": 1.737,
+    "deepSpeedup": 2.876
+  }
+}

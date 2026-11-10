@@ -1,0 +1,199 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "sable_patchwork_service_arm",
+  "sourceAssetId": "SF_SHIP_SABLE_PATCHWORK",
+  "sourceGlbSha256": "65901daa1d913606283b04d4867134583e5e39724a3e4164ed8eedbc317ded1e",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "sable_arm_base",
+      "node": "MOTION_SABLE_ARM_BASE",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          2.5999999046325684,
+          11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "sable_arm_elbow",
+      "node": "MOTION_SABLE_ARM_ELBOW",
+      "parent": "sable_arm_base",
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          5,
+          0.8500001430511475,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "sable_clamp_port",
+      "node": "MOTION_SABLE_CLAMP_PORT",
+      "parent": "sable_arm_elbow",
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -4.199999809265137,
+          0.1699998378753662,
+          -0.6800003051757812
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "sable_clamp_starboard",
+      "node": "MOTION_SABLE_CLAMP_STARBOARD",
+      "parent": "sable_arm_elbow",
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -4.199999809265137,
+          0.1699998378753662,
+          0.6800003051757812
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "sable_arm_base",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "sable_arm_elbow",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "sable_clamp_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "sable_clamp_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}
