@@ -59,6 +59,8 @@ Standings stay as keys to places and work. Paint, accents and titles are **earne
 - Loose cargo you are towing counts and is shown.
 - Plain labels throughout. One screen called Ledger.
 
+**Also written out, 2026-11-10:** the eight classes by name, what each holds, the new move at each, the money table and what each hour of play is working toward are in [17 — The ladder, the prices and the long game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/17_THE_LADDER_AND_THE_LONG_GAME.md).
+
 ## How to build this and check your own work
 
 1. **Before:** shoot the hold panel, the ship screen and the tech screen on the bench (`node scripts/ui-bench.mjs --shot=<id> --walk`) and write down, from the pictures only, how a player gets stronger. That paragraph is your "before".
