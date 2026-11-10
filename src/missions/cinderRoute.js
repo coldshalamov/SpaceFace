@@ -1,3 +1,4 @@
+import { isPlayerWanted } from '../systems/heat.js';
 // Book 2's finite Cinder squad. Missions remembers evidence/slots; aftermathWrecks alone
 // owns hull pose, damage, custody, materialization and retirement. Never pin or mint a wreck.
 import { ROOK_BOOTH } from '../data/rook.js';
@@ -281,7 +282,8 @@ function cinderIntakeReason(state, hull) {
   const action = check.speed > ROOK_BOOTH.restSpeed ? 'BRAKE THE HULL'
     : check.inZone ? 'Inside and slow enough — hold for Rook' : 'Bring the hull into the ring';
   const displayedSpeed = (Math.ceil(check.speed * 10) / 10).toFixed(1);
-  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}.`;
+  const wanted = isPlayerWanted(state) ? ' ROOK REFUSES WHILE WANTED. Keep this hull; Quiet Line payment is not Rook proof.' : '';
+  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}.${wanted}`;
 }
 export function cinderRouteFocus(m, state) {
   if (!authoredCinderRoute(m)) return null;

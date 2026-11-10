@@ -20,7 +20,7 @@ export function furnaceDetailChoices(state, stationId, contact) {
   return [{ id: `${PREFIX}read:${signature}`, label: read.settled
     ? 'What did my Furnace Detail actually settle?' : read.handling.overclass
       ? `My Line is rated for ${read.handling.limitT} t. Those pods are ${read.handling.podMassT} t.` : 'The old refinery is my next job.' },
-  { id: `${PREFIX}log:${signature}`, label: read.active ? 'Track the quarantine detail.' : 'Open Mission Log for the next leg.' }];
+  { id: `${PREFIX}log:${signature}`, label: read.active ? 'Track the quarantine detail.' : 'Open my settled Furnace Detail.' }];
 }
 
 export function isFurnaceDetailChoice(id) { return typeof id === 'string' && id.startsWith(PREFIX); }

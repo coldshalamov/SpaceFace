@@ -1864,10 +1864,10 @@ export function storyActionForBeat(beat, state) {
       }
       return {
         tone: 'primary',
-        label: 'COMBAT',
-        title: 'Arm for a bounty',
-        body: 'Fit the Hitch for a low-risk bounty, track the target, and cash the first kill.',
-        meta: 'Bounty',
+        label: 'CINDER CONTRACT',
+        title: 'Three clearances, one real hull',
+        body: 'Read Rook’s Cinder posting at Tethys. In Charon, clear Cinder One, Two and Three and tow one actual marked hull to Rook’s 100-WU ring at Expanse at 8 WU/s or slower. Quiet Line payment is not Rook proof; losing every hull closes clearance for no contract pay.',
+        meta: 'Tethys desk → Charon lane → Expanse ring',
       };
     }
     case 3:

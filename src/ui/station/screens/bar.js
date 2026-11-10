@@ -1,3 +1,4 @@
+import { cinderDepartureChoices, isCinderDepartureChoice, cinderDepartureOfferCurrent } from '../cinderDepartureConversation.js';
 import { furnaceDetailChoices, isFurnaceDetailChoice } from '../furnaceDetailConversation.js';
 import { tethysScaleChoices, isTethysScaleChoice } from '../tethysScaleConversation.js';
 import { heliosCampaignChoices, heliosCampaignActionCurrent, takeHeliosCampaignAction } from '../heliosCampaignHandoff.js';
@@ -178,6 +179,8 @@ export function createBarScreen(ctx) {
   let firstShiftAnswer = false;
   let tethysScaleAnswer = false;
   let furnaceDetailAnswer = false;
+  let cinderDepartureAnswer = false;
+  let pendingCinderOffer = null;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
@@ -319,7 +322,8 @@ export function createBarScreen(ctx) {
     }
     const offer = pendingMissionOffer;
     if (!offer || !missionOfferAvailable(state, offer.id)
-      || campaignHandoffAnswer && !heliosCampaignActionCurrent(state, sid(), pendingCampaignHandoff)) return '';
+      || campaignHandoffAnswer && !heliosCampaignActionCurrent(state, sid(), pendingCampaignHandoff)
+      || cinderDepartureAnswer && !cinderDepartureOfferCurrent(state, sid(), selected(state), pendingCinderOffer)) return '';
     const preflight = missionPreflight(offer, state);
     const consequences = missionConsequenceSummary(offer);
     const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
@@ -613,7 +617,7 @@ export function createBarScreen(ctx) {
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
-    if (reply && saidText && saidText !== spokenText && !reducedMotion() && !firstShiftAnswer && !tethysScaleAnswer && !furnaceDetailAnswer) {
+    if (reply && saidText && saidText !== spokenText && !reducedMotion() && !firstShiftAnswer && !tethysScaleAnswer && !furnaceDetailAnswer && !cinderDepartureAnswer) {
       spokenText = saidText;
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
@@ -704,7 +708,7 @@ export function createBarScreen(ctx) {
   // ---------- interactions ----------
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
-    handoffEpoch++; selectedId = id; saidText = null; tethysScaleAnswer = false; furnaceDetailAnswer = false; pendingCampaignHandoff = null; campaignHandoffAnswer = false; pendingMissionOffer = null; pendingFirstShiftMarket = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    handoffEpoch++; selectedId = id; saidText = null; tethysScaleAnswer = false; furnaceDetailAnswer = false; cinderDepartureAnswer = false; pendingCinderOffer = null; pendingCampaignHandoff = null; campaignHandoffAnswer = false; pendingMissionOffer = null; pendingFirstShiftMarket = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (focus) {
@@ -874,6 +878,14 @@ export function createBarScreen(ctx) {
     if (accept && !accept.disabled) {
       const missionId = accept.getAttribute('data-accept-mission');
       if (!visible || acceptancePending || pendingMissionOffer?.id !== missionId) return;
+      const cinderAccept = cinderDepartureAnswer;
+      const cinderCurrent = () => !cinderAccept || (visible
+        && cinderDepartureOfferCurrent(ctx.state, sid(), selected(ctx.state || {}), pendingCinderOffer));
+      if (!cinderCurrent()) {
+        pendingMissionOffer = null; pendingCinderOffer = null;
+        saidText = 'The posting changed. Ask Rook for its current terms before signing.';
+        renderStage(ctx.state || {}); return;
+      }
       const acceptingEpoch = handoffEpoch;
       const campaignAccept = campaignHandoffAnswer;
       if (campaignAccept && (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler'
@@ -889,6 +901,7 @@ export function createBarScreen(ctx) {
       const acceptingContact = selectedId;
       const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      if (!cinderCurrent() || cinderAccept && handoffEpoch !== acceptingEpoch) return;
       // The worker-lane rpc returns the authoritative verdict; the emitted path
       // (main lane) has no ack, so acceptance is verified by re-reading the offer.
       acceptancePending = true;
@@ -931,6 +944,8 @@ export function createBarScreen(ctx) {
       renderStage(st);
       return;
     }
+    const cinderChoice = isCinderDepartureChoice(choiceId);
+    if (cinderChoice && (!visible || !choiceBtns().includes(b) || !cinderDepartureChoices(st, sid(), c).some(choice => choice.id === choiceId))) return;
     const detailChoice = isFurnaceDetailChoice(choiceId);
     if (detailChoice && (!visible || !furnaceDetailChoices(st, sid(), c).some(choice => choice.id === choiceId))) return;
     const scaleChoice = isTethysScaleChoice(choiceId);
@@ -940,9 +955,9 @@ export function createBarScreen(ctx) {
     const choiceStationId = sid();
     // A synchronous intent can hide/reopen the Bar, restore a save or change its contact.
     // Do not execute or commit an answer belonging to the visit that just ended.
-    const scaleChoiceCurrent = () => (!scaleChoice && !detailChoice) || (visible && handoffEpoch === choiceEpoch
+    const scaleChoiceCurrent = () => (!scaleChoice && !detailChoice && !cinderChoice) || (visible && handoffEpoch === choiceEpoch
       && ctx.state === st && sid() === choiceStationId && selected(st)?.id === c.id
-      && (detailChoice ? furnaceDetailChoices(st, choiceStationId, c) : tethysScaleChoices(st, choiceStationId)).some(choice => choice.id === choiceId));
+      && (cinderChoice ? cinderDepartureChoices(st, choiceStationId, c) : detailChoice ? furnaceDetailChoices(st, choiceStationId, c) : tethysScaleChoices(st, choiceStationId)).some(choice => choice.id === choiceId));
     if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
     if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
@@ -970,16 +985,21 @@ export function createBarScreen(ctx) {
     } else if (result && result.pinContact) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
-    saidText = (result && result.text) || 'They shrug.';
+    let answerText = (result && result.text) || 'They shrug.';
     if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
-      saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
+      answerText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
         : 'The barkeep cannot pour just now. Try again shortly.';
     }
     if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
       id: `bar-lead:${c.id}:${result.missionOffer.id || choiceId}`,
-      sender: c.name || 'Contact', contactId: c.id, text: saidText,
-      category: 'story', ttl: Math.max(8, Math.ceil(saidText.length / 18)), persist: true,
+      sender: c.name || 'Contact', contactId: c.id, text: answerText,
+      category: 'story', ttl: Math.max(8, Math.ceil(answerText.length / 18)), persist: true,
     });
+    // Popup listeners can synchronously end this visit too. Keep the answer local
+    // until that boundary has returned; lifecycle cleanup cannot clear an answer
+    // whose Cinder/receipt ownership flags have not been committed yet.
+    if (!scaleChoiceCurrent()) return;
+    saidText = answerText;
     pendingCampaignHandoff = result?.campaignHandoff || null;
     campaignHandoffAnswer = result?.campaignHandoffAnswer === true;
     pendingMissionOffer = result && result.missionOffer || null;
@@ -987,6 +1007,8 @@ export function createBarScreen(ctx) {
     firstShiftAnswer = !!result?.firstShiftReceipt;
     tethysScaleAnswer = result?.tethysScaleAnswer === true;
     furnaceDetailAnswer = result?.furnaceDetailAnswer === true;
+    cinderDepartureAnswer = result?.cinderDepartureAnswer === true;
+    pendingCinderOffer = result?.cinderDepartureOffer || null;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
     awaitingPointerMove = true;
@@ -1045,6 +1067,8 @@ export function createBarScreen(ctx) {
       if (campaignHandoffAnswer) { saidText = null; pendingMissionOffer = null; campaignHandoffAnswer = false; }
       if (tethysScaleAnswer) { saidText = null; tethysScaleAnswer = false; }
       if (furnaceDetailAnswer) { saidText = null; furnaceDetailAnswer = false; }
+      if (cinderDepartureAnswer) { saidText = null; cinderDepartureAnswer = false; }
+      pendingCinderOffer = null;
       if (visible) renderAll(ctx.state || {});
     };
     ctx.bus?.on(event, clear);
@@ -1086,6 +1110,8 @@ export function createBarScreen(ctx) {
       if (firstShiftAnswer) { saidText = null; firstShiftAnswer = false; }
       if (tethysScaleAnswer) { saidText = null; tethysScaleAnswer = false; }
       if (furnaceDetailAnswer) { saidText = null; furnaceDetailAnswer = false; }
+      if (cinderDepartureAnswer) { saidText = null; cinderDepartureAnswer = false; }
+      pendingCinderOffer = null;
       erisOpenAnnounced = false;
       const leavingVisitId = erisVisitId();
       // A station overlay hides the shell but leaves this tab mounted. Only a real tab

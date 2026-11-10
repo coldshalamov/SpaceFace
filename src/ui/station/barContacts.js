@@ -1,3 +1,4 @@
+import { cinderDepartureChoices, cinderDepartureReply, cinderDepartureContact } from './cinderDepartureConversation.js';
 import { furnaceDetailChoices, furnaceDetailReply } from './furnaceDetailConversation.js';
 import { tethysScaleChoices, tethysScaleReply } from './tethysScaleConversation.js';
 import { heliosCampaignChoices, heliosCampaignReply } from './heliosCampaignHandoff.js';
@@ -899,7 +900,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
         && state.story.flags.eris_choir_bar_service.served === true,
     }] : [];
+  const cinderDesk = cinderDepartureContact(state, stationId);
   const listed = [
+    ...(cinderDesk ? [cinderDesk] : []),
     ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
@@ -913,6 +916,10 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   if (furnaceHost) {
     const choices = furnaceDetailChoices(state, stationId, furnaceHost);
     if (choices.length) furnaceHost.choices = [...choices, ...getChoices(furnaceHost.role, furnaceHost)];
+  }
+  for (const contact of listed) {
+    const choices = cinderDepartureChoices(state, stationId, contact);
+    if (choices.length) contact.choices = [...choices, ...getChoices(contact.role, contact)];
   }
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
@@ -1771,6 +1778,8 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  const cinderReply = cinderDepartureReply(ctx, stationId, contact, choiceId);
+  if (cinderReply) return cinderReply;
   const furnaceReply = furnaceDetailReply(ctx, stationId, contact, choiceId);
   if (furnaceReply) return furnaceReply;
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
