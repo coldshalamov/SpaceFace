@@ -127,3 +127,13 @@ Written by the lead designer so that nobody has to invent it:
 - [13 — Jobs and heists](13_JOBS_AND_HEISTS.md) — the five towns: every job, heist and street moment, beat by beat; and the long game.
 - `design/program/INFERENCE_PLANTS.md` on master — sixty chance events, secrets and radio lines for INFERENCE agents to build as written.
 - **Two more commissions:** EC-G20 — The Rig, one loadout screen for both doors, [#1032](https://github.com/coldshalamov/SpaceFace/pull/1032); EC-G21 — The Chart, the map as a navigation instrument, [#1033](https://github.com/coldshalamov/SpaceFace/pull/1033).
+
+## Added 2026-11-10 — the rest of the written content
+
+- [14 — Outposts and waystations](14_OUTPOSTS_AND_WAYSTATIONS.md) — jobs for the six outposts and all fourteen frontier stops.
+- [15 — The seven arena floors](15_ARENA_FLOORS.md) — where the guns hang, where the freight runs, doors, traps, the loop, the secret and the round-thirty boss for every arena.
+- [16 — The story, shown](16_THE_STORY_SHOWN.md) — the eight books staged as things that happen in front of the ship; the cast with faces; the five endings.
+- [17 — The ladder, the prices and the long game](17_THE_LADDER_AND_THE_LONG_GAME.md) — the eight rope classes, money, Swarm prices, the hours, Kiln's Dares, the yard.
+- [18 — Sound, look, and how we know it is finished](18_SOUND_LOOK_AND_DONE.md) — and the owner's ten-minute card.
+
+Sector cards S04, S06, S08–S25 and arena cards A02–A07 do not yet carry a pointer to 14 and 15; builders of those should read them directly.
