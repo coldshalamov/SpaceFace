@@ -12,6 +12,12 @@ import {
 const NPC_JOB_CUT_BEAM_FALLBACK = 26;
 // Beyond this authored reach, a beam would claim contact across several visible frames.
 const NPC_JOB_CUT_BEAM_MAX_REACH = 110;
+// WORK is the crew's schedule, not proof that its tool is powered. The existing
+// vitals projection carries this actual Helios cutting state into the render lane.
+const heliosCuttingPaused = (ent, job) => job?.kind === 'miner' && job.phase === 'work'
+  && ent.data?.minerShiftActive === false && ent.data.jobId === job.id
+  && (ent.data.activityActorSlotId === 'helios_seam_miner'
+    || ent.data.activityActorSlotId === 'helios_starter_cutter');
 // Entity type to entity-index bucket, used by exact work/contact target resolution.
 const INDEX_BUCKET_BY_TYPE = {
   ship: 'ships',
@@ -303,6 +309,7 @@ export function createNpcJobSignatureMethods({
     },
 
     _emitNpcJobContact(slot, profile, ent, job, reducedMotion) {
+      if (heliosCuttingPaused(ent, job)) return 0;
       const kind = job.kind;
       const role = (job.payload && job.payload.role) || kind;
       const working = job.phase === 'work' || job.phase === 'load' || job.phase === 'unload';
@@ -670,54 +677,56 @@ export function createNpcJobSignatureMethods({
           // The blind cone. Three things at once, because extraction is the loudest thing a civilian
           // hull ever does: a beam onto the face, spall coming off it, and a red flank lamp walking
           // the arc nobody may enter. The beam is the one place a stretched quad is the right shape.
-          const rock = this._npcJobWorkTarget(job);
-          const noseX = x + dx * r * 0.8;
-          const noseZ = z + dz * r * 0.8;
-          let bx = dx;
-          let bz = dz;
-          let reach = NPC_JOB_CUT_BEAM_FALLBACK;
-          if (rock && rock.pos) {
-            const rx = rock.pos.x - noseX;
-            const rz = rock.pos.z - noseZ;
-            const dist = Math.hypot(rx, rz);
-            // The range gate matters as much as the aim. A barge in WORK holds position wherever it
-            // happened to arrive — the kernel's route position is advisory, not a teleport — so it can
-            // legitimately be hundreds of units short of the rock its route names. Measured live: a
-            // working barge 434 units from its own seam, which would draw a 423-unit lance across the
-            // whole frame and well past it. That is not a cut, it is a targeting line. Past the gate
-            // the hull keeps its work code and its flank strobe but shows the short local beam, which
-            // reads as "rigged and running" rather than claiming a contact it does not have.
-            if (dist > 1e-3 && dist <= NPC_JOB_CUT_BEAM_MAX_REACH) {
-              bx = rx / dist;
-              bz = rz / dist;
-              // Stop at the rock's surface, not its centre — a beam that vanishes inside the body
-              // reads as a bug, and the spall belongs on the face.
-              reach = Math.max(2, dist - (Number(rock.radius) || 6));
+          if (!heliosCuttingPaused(ent, job)) {
+            const rock = this._npcJobWorkTarget(job);
+            const noseX = x + dx * r * 0.8;
+            const noseZ = z + dz * r * 0.8;
+            let bx = dx;
+            let bz = dz;
+            let reach = NPC_JOB_CUT_BEAM_FALLBACK;
+            if (rock && rock.pos) {
+              const rx = rock.pos.x - noseX;
+              const rz = rock.pos.z - noseZ;
+              const dist = Math.hypot(rx, rz);
+              // The range gate matters as much as the aim. A barge in WORK holds position wherever it
+              // happened to arrive — the kernel's route position is advisory, not a teleport — so it can
+              // legitimately be hundreds of units short of the rock its route names. Measured live: a
+              // working barge 434 units from its own seam, which would draw a 423-unit lance across the
+              // whole frame and well past it. That is not a cut, it is a targeting line. Past the gate
+              // the hull keeps its work code and its flank strobe but shows the short local beam, which
+              // reads as "rigged and running" rather than claiming a contact it does not have.
+              if (dist > 1e-3 && dist <= NPC_JOB_CUT_BEAM_MAX_REACH) {
+                bx = rx / dist;
+                bz = rz / dist;
+                // Stop at the rock's surface, not its centre — a beam that vanishes inside the body
+                // reads as a bug, and the spall belongs on the face.
+                reach = Math.max(2, dist - (Number(rock.radius) || 6));
+              }
             }
-          }
-          const midX = noseX + bx * reach * 0.5;
-          const midZ = noseZ + bz * reach * 0.5;
-          emitted += this._spawnStationSideEventStreak(
-            midX, 0.40, midZ,
-            reducedMotion ? 0.34 : 0.20, r * 0.10, reach, 0.62, '#ffcf7a', 0, 0, bx, bz,
-          );
-          // Spall off the face: thrown BACK along the beam, spreading. Contact is the channel that
-          // proves the link is doing work rather than merely pointing.
-          const hitX = noseX + bx * reach;
-          const hitZ = noseZ + bz * reach;
-          if (!reducedMotion) {
-            const spread = (beat - 1.5) * 0.34;
-            const sx = -bx * Math.cos(spread) + bz * Math.sin(spread);
-            const sz = -bz * Math.cos(spread) - bx * Math.sin(spread);
+            const midX = noseX + bx * reach * 0.5;
+            const midZ = noseZ + bz * reach * 0.5;
             emitted += this._spawnStationSideEventStreak(
-              hitX, 0.36, hitZ,
-              0.62, r * 0.035, r * 0.28, 0.55, '#d8b083', sx * 11, sz * 11, sx, sz,
+              midX, 0.40, midZ,
+              reducedMotion ? 0.34 : 0.20, r * 0.10, reach, 0.62, '#ffcf7a', 0, 0, bx, bz,
             );
+            // Spall off the face: thrown BACK along the beam, spreading. Contact is the channel that
+            // proves the link is doing work rather than merely pointing.
+            const hitX = noseX + bx * reach;
+            const hitZ = noseZ + bz * reach;
+            if (!reducedMotion) {
+              const spread = (beat - 1.5) * 0.34;
+              const sx = -bx * Math.cos(spread) + bz * Math.sin(spread);
+              const sz = -bz * Math.cos(spread) - bx * Math.sin(spread);
+              emitted += this._spawnStationSideEventStreak(
+                hitX, 0.36, hitZ,
+                0.62, r * 0.035, r * 0.28, 0.55, '#d8b083', sx * 11, sz * 11, sx, sz,
+              );
+            }
+            if (this._spawnSprite(
+              SPR_FLASH, hitX, 0.42, hitZ,
+              0.16, r * 0.10, r * 0.26, 0.62, 0, '#ffe0a8', 0, 0, 1.2, Math.atan2(bz, bx),
+            )) emitted++;
           }
-          if (this._spawnSprite(
-            SPR_FLASH, hitX, 0.42, hitZ,
-            0.16, r * 0.10, r * 0.26, 0.62, 0, '#ffe0a8', 0, 0, 1.2, Math.atan2(bz, bx),
-          )) emitted++;
           // "Do not enter this arc." The red lamp walks the forbidden flank, one quarter per beat.
           const arc = (beat / 4) * Math.PI - Math.PI * 0.5;
           const ax = dx * Math.cos(arc) - dz * Math.sin(arc);

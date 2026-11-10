@@ -307,6 +307,13 @@ function hasPallasSeamWorkLight(e) {
 function pallasSeamStandbyTick(e) {
   return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
 }
+function hasHeliosCuttingLight(e) {
+  return e.type === 'ship' && (e.data?.activityActorSlotId === 'helios_seam_miner'
+    || e.data?.activityActorSlotId === 'helios_starter_cutter');
+}
+function heliosCuttingValue(e) {
+  return typeof e.data?.minerShiftActive === 'boolean' ? e.data.minerShiftActive : null;
+}
 
 function mawPresentationRadius(e) {
   if (!isIntactMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
@@ -376,6 +383,13 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
   if (hasPallasSeamWorkLight(e)) {
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
+  }
+  if (hasHeliosCuttingLight(e)) {
+    fields.heliosCuttingActive = heliosCuttingValue(e);
+    fields.heliosCuttingLife = e.occupantGeneration ?? null;
+    fields.heliosCuttingJobId = e.data.jobId ?? null;
+    fields.heliosCuttingRecordId = e.data.worldRecordId ?? null;
+    fields.heliosCuttingSlotId = e.data.activityActorSlotId;
   }
   const wardLife = lanternWardPresentationLife(e);
   if (wardLife != null) {
@@ -527,6 +541,12 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
   const seam = hasPallasSeamWorkLight(e);
   if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const helios = hasHeliosCuttingLight(e);
+  if ((helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((helios ? e.data.jobId ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((helios ? e.data.worldRecordId ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((helios ? e.data.activityActorSlotId : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const wardLife = lanternWardPresentationLife(e);
   const wardShadow = shadow[i++];
   if (wardLife == null) {
@@ -599,6 +619,12 @@ function writeVitalShadow(e, shadow, krakenFrame, state) {
   const seam = hasPallasSeamWorkLight(e);
   shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
   shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  const helios = hasHeliosCuttingLight(e);
+  shadow[i++] = helios ? heliosCuttingValue(e) : VITAL_SHADOW_MISSING;
+  shadow[i++] = helios ? e.occupantGeneration ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = helios ? e.data.jobId ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = helios ? e.data.worldRecordId ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = helios ? e.data.activityActorSlotId : VITAL_SHADOW_MISSING;
   const wardLife = lanternWardPresentationLife(e);
   // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
   if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
