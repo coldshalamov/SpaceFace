@@ -18,6 +18,8 @@
 
 **Build first (Slice 1):** Enough to Get Back. No hidden traps: the player always knows what is not on offer before they leave.
 
+**Also written out, 2026-11-10:** this place's job and its street moments are written beat by beat in [14 — Outposts and waystations](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/14_OUTPOSTS_AND_WAYSTATIONS.md). Build those as written; where a job there shares a name with one in the brief below, they are the same job.
+
 ### How to build this town and check your own work
 
 Work in this order. Each step ends with something you looked at.
