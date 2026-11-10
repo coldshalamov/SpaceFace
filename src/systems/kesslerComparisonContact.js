@@ -37,7 +37,7 @@ export function tickKesslerComparison(state,bus,pad) {
  }
  if(watch?.version===1&&!watch.firstSpoken&&!watch.second&&t-watch.firstAt>=4){
   watch.firstSpoken=true;
-  say(bus,'kessler_first_comparison',LOG_SENDER,'One short reading is not a pattern. Bring a load with a different stamped mass back to Scale 4 and I can keep the slips side by side. Same stamp, no new comparison. Use freight you already have.',true);return;
+  say(bus,'kessler_first_comparison',LOG_SENDER,'One short reading is not a pattern. Bring a load with a different stamped mass back to Scale 4 and I can keep the slips side by side. Same stamp, no new comparison. Use freight you already have. This first reading is already on your copy; Mira at Tethys can read it with you. A second load is optional.',true);return;
  }
  if(!f.kessler_comparison_arrival&&!watch){
   f.kessler_comparison_arrival=true;

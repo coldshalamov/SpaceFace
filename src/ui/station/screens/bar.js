@@ -1,3 +1,4 @@
+import { tethysScaleChoices, isTethysScaleChoice } from '../tethysScaleConversation.js';
 import { heliosCampaignChoices, heliosCampaignActionCurrent, takeHeliosCampaignAction } from '../heliosCampaignHandoff.js';
 import { firstShiftMarketCurrent, openFirstShiftMarket } from '../heliosFirstShiftConversation.js';
 import { barFrameHtml } from '../../views/stationFrames.js';
@@ -174,6 +175,7 @@ export function createBarScreen(ctx) {
   let handoffEpoch = 0;
   let acceptancePending = false;
   let firstShiftAnswer = false;
+  let tethysScaleAnswer = false;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
@@ -609,7 +611,7 @@ export function createBarScreen(ctx) {
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
-    if (reply && saidText && saidText !== spokenText && !reducedMotion() && !firstShiftAnswer) {
+    if (reply && saidText && saidText !== spokenText && !reducedMotion() && !firstShiftAnswer && !tethysScaleAnswer) {
       spokenText = saidText;
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
@@ -700,7 +702,7 @@ export function createBarScreen(ctx) {
   // ---------- interactions ----------
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
-    handoffEpoch++; selectedId = id; saidText = null; pendingCampaignHandoff = null; campaignHandoffAnswer = false; pendingMissionOffer = null; pendingFirstShiftMarket = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    handoffEpoch++; selectedId = id; saidText = null; tethysScaleAnswer = false; pendingCampaignHandoff = null; campaignHandoffAnswer = false; pendingMissionOffer = null; pendingFirstShiftMarket = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (focus) {
@@ -927,7 +929,16 @@ export function createBarScreen(ctx) {
       renderStage(st);
       return;
     }
-    handoffEpoch++;
+    const scaleChoice = isTethysScaleChoice(choiceId);
+    if (scaleChoice && (!visible || c.canonicalKey !== 'mira'
+      || !tethysScaleChoices(st, sid()).some(choice => choice.id === choiceId))) return;
+    const choiceEpoch = ++handoffEpoch;
+    const choiceStationId = sid();
+    // A synchronous intent can hide/reopen the Bar, restore a save or change its contact.
+    // Do not execute or commit an answer belonging to the visit that just ended.
+    const scaleChoiceCurrent = () => !scaleChoice || (visible && handoffEpoch === choiceEpoch
+      && ctx.state === st && sid() === choiceStationId && selected(st)?.id === c.id
+      && tethysScaleChoices(st, choiceStationId).some(choice => choice.id === choiceId));
     if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
     if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
@@ -941,8 +952,10 @@ export function createBarScreen(ctx) {
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
+    if (!scaleChoiceCurrent()) return;
     let result = null;
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
+    if (!scaleChoiceCurrent()) return;
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
     if (result && result.endgameResolved) {
       pinnedContact = {
@@ -968,6 +981,7 @@ export function createBarScreen(ctx) {
     pendingMissionOffer = result && result.missionOffer || null;
     pendingFirstShiftMarket = result && result.firstShiftMarket || null;
     firstShiftAnswer = !!result?.firstShiftReceipt;
+    tethysScaleAnswer = result?.tethysScaleAnswer === true;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
     awaitingPointerMove = true;
@@ -1024,6 +1038,7 @@ export function createBarScreen(ctx) {
       pendingMissionOffer = null;
       pendingCampaignHandoff = null;
       if (campaignHandoffAnswer) { saidText = null; pendingMissionOffer = null; campaignHandoffAnswer = false; }
+      if (tethysScaleAnswer) { saidText = null; tethysScaleAnswer = false; }
       if (visible) renderAll(ctx.state || {});
     };
     ctx.bus?.on(event, clear);
@@ -1063,6 +1078,7 @@ export function createBarScreen(ctx) {
       pendingCampaignHandoff = null;
       if (campaignHandoffAnswer) { saidText = null; campaignHandoffAnswer = false; pendingMissionOffer = null; }
       if (firstShiftAnswer) { saidText = null; firstShiftAnswer = false; }
+      if (tethysScaleAnswer) { saidText = null; tethysScaleAnswer = false; }
       erisOpenAnnounced = false;
       const leavingVisitId = erisVisitId();
       // A station overlay hides the shell but leaves this tab mounted. Only a real tab

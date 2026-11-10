@@ -1,3 +1,4 @@
+import { tethysScaleChoices, tethysScaleReply } from './tethysScaleConversation.js';
 import { heliosCampaignChoices, heliosCampaignReply } from './heliosCampaignHandoff.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './heliosFirstShiftConversation.js';
@@ -849,6 +850,14 @@ export function generateContacts(stationId, state = {}, opts = {}) {
         if (ceresChoice) choices.push(ceresChoice);
         if (dismissChoice) choices.push(dismissChoice);
         canonical.choices = choices;
+      }
+    }
+    if (canonical.canonicalKey === 'mira') {
+      const scaleChoices = tethysScaleChoices(state, stationId);
+      if (scaleChoices.length) {
+        const ordinary = getChoices(canonical.role, canonical);
+        canonical.choices = [...scaleChoices, ...ordinary];
+        canonical.line = 'Your receiving copy is ready. Compare it with the seal you brought.';
       }
     }
     if (canonical.role === 'barkeep') {
@@ -2308,7 +2317,9 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'bye') return { text: 'Scan complete. No flags. That is not the same as cleared.' };
       return null;
 
-    case 'mira':
+    case 'mira': {
+      const scaleReply = tethysScaleReply(ctx, stationId, choiceId);
+      if (scaleReply) return scaleReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId, state) + '. Payment on delivery. The seal code should look familiar by then.' };
@@ -2317,6 +2328,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'market') return { text: 'Cargo insurance wants verified seals. Verification writes to the same database freight uses, so the seal becomes true when it arrives.' };
       if (choiceId === 'dismiss') return { text: 'The seal was never yours. That is why it can protect you.' };
       return null;
+
+    }
 
     case 'slate':
       if (choiceId === 'tech') return { text: 'Pulse Laser S keeps arguments short. Good shields keep repairs profitable. A bad weld keeps everybody employed.' };
