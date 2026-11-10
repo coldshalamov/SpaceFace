@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-mortal-blow",
-      "date": "2026-11-02",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The shot that empties a hull now punches through with a white core and its own light, so in a furball you can tell which hit ended them.",
-      "fingerprint": "verb=pierce,subject=mortal-blow-contact,sector=combat,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "212d29beeb05",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-shield-reknit",
       "date": "2026-11-02",
       "wf": "WF-12",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "c2f370e71685",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-grouped-credits",
+      "date": "2026-11-10",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The money a player reads away from the dock printed raw - the jump toll, customs fine, bounty warrant and PAY verbs, impound bill and shift lines, chart sell offers, watch band line, sortie receipt - each now reads grouped like every station receipt.",
+      "fingerprint": "verb=groups-credit-amounts,subject=flight-legal-chart-money,sector=jump+law-desk+chart,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "3108a23b969b",
       "verification": "focused_green"
     }
   ],
