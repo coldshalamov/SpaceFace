@@ -1,8 +1,9 @@
 // The Bank is an opening composition, using the arena's existing throwable stones.
 // It never repositions terrain or live bodies, and spends no random stream or population.
-import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { physicsBodyNativeReady, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { isSwarmBossWave } from '../data/swarmMode.js';
+import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
 import { findSwarmArrival, swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 
 // The first Charger starts 90 WU behind the pilot and can dash at most 210 WU.
@@ -42,17 +43,26 @@ export function planSwarmBank(state, run, wave, plan, candidate = null) {
   // then try other candidates if its approaches or one escape flank are occupied.
   const rocks = [];
   function consider(e) {
-    if (e?.type !== 'asteroid' || e.alive === false || e.collides === false
-        || !bodyEnabled(e) || !e.data?.swarmArenaDebris || !e.pos
+    const offcut = wave === 7 && isFoundryWreckKept(state, e)
+      && physicsBodyNativeReady(e)
+      && !Number.isFinite(e.data?.despawnAt)
+      && Number.isFinite(e.vel?.x) && Number.isFinite(e.vel?.z)
+      && Math.hypot(e.vel.x, e.vel.z) <= 6;
+    if ((!offcut && (e?.type !== 'asteroid' || !e.data?.swarmArenaDebris))
+        || e.alive === false || e.collides === false || !bodyEnabled(e) || !e.pos
         || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)
         || !(e.radius > 0 && e.radius <= 9)) return;
     const d = Math.hypot(e.pos.x - ax, e.pos.z - az);
-    if (d < BANK_STONE_MIN_DISTANCE || d > BANK_STONE_MAX_DISTANCE || !resolvePhysicsBodySpec(e)?.dynamic) return;
-    rocks.push({ e, d });
+    const body = resolvePhysicsBodySpec(e);
+    if (d < BANK_STONE_MIN_DISTANCE || d > BANK_STONE_MAX_DISTANCE || !body?.dynamic
+      || (offcut && (!(body.radius > 0 && body.radius <= 9) || !(body.mass > 0)))) return;
+    rocks.push({ e, d, offcut });
   }
   for (const e of state.entities.values()) consider(e);
   if (candidate) consider(candidate);
-  rocks.sort((a, b) => a.d - b.d || (String(a.e.id) < String(b.e.id) ? -1
+  // Use the original the pilot kept in reach before an anonymous pebble. If its
+  // approaches fail, the existing stone search still owns the ordinary fallback.
+  rocks.sort((a, b) => Number(b.offcut) - Number(a.offcut) || a.d - b.d || (String(a.e.id) < String(b.e.id) ? -1
     : String(a.e.id) > String(b.e.id) ? 1 : 0));
   for (const { e, d } of rocks) {
     const ux = (e.pos.x - ax) / d, uz = (e.pos.z - az) / d;

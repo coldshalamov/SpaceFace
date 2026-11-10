@@ -47,6 +47,8 @@
 // renderer consumes the same retained buffers through the published view.
 
 import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
+import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -202,6 +204,8 @@ function cellKey(cx, cz) {
 
 // mover/rock caches — rebuilt into retained arrays every tick, never reallocated
 const ROCK_CACHE_MAX = 64;
+// One original Foundry offcut has a cover seat without displacing ordinary stones.
+const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + 1;
 const MOVER_CACHE_MAX = 96;
 // Champion mass never displaces the original hull/remain budget.
 const BOSS_CHUNK_CACHE_MAX = 8;
@@ -297,15 +301,15 @@ export function createBroodEngine(deps = {}) {
   const gridCellZ = new Int32Array(CAP);
 
   // caches
-  const rockEntities = new Array(ROCK_CACHE_MAX).fill(null);
+  const rockEntities = new Array(ROCK_STORAGE_MAX).fill(null);
   const linkMoverEntities = new Array(MOVER_STORAGE_MAX).fill(null);
   let linkMassHistory = new WeakMap();
-  const rockX = new Float32Array(ROCK_CACHE_MAX);
-  const rockZ = new Float32Array(ROCK_CACHE_MAX);
-  const rockR = new Float32Array(ROCK_CACHE_MAX);
-  const rockVX = new Float32Array(ROCK_CACHE_MAX);
-  const rockVZ = new Float32Array(ROCK_CACHE_MAX);
-  const rockCredited = new Uint8Array(ROCK_CACHE_MAX);
+  const rockX = new Float32Array(ROCK_STORAGE_MAX);
+  const rockZ = new Float32Array(ROCK_STORAGE_MAX);
+  const rockR = new Float32Array(ROCK_STORAGE_MAX);
+  const rockVX = new Float32Array(ROCK_STORAGE_MAX);
+  const rockVZ = new Float32Array(ROCK_STORAGE_MAX);
+  const rockCredited = new Uint8Array(ROCK_STORAGE_MAX);
   let rockCount = 0;
   const movX = new Float32Array(MOVER_STORAGE_MAX);
   const movZ = new Float32Array(MOVER_STORAGE_MAX);
@@ -1309,6 +1313,8 @@ export function createBroodEngine(deps = {}) {
     for (let i = 0; i < list.length && rockCount < ROCK_CACHE_MAX; i++) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos) continue;
+      // A pending Foundry Bank cannot turn an idle pilot into credited terrain.
+      if (e.id === state.playerId && bank?.readPending && !swarmPilotHasActed(state)) continue;
       // The broad fallback must not also treat champion movers as terrain.
       if (e.type === 'wreck' && e.data?.swarmBossChunk === true) continue;
       if (e.collides === false) continue;
@@ -1325,6 +1331,30 @@ export function createBroodEngine(deps = {}) {
       rockVZ[rockCount] = finite(e.vel && e.vel.z);
       rockCount += 1;
     }
+    // The same original can be left as shelter instead of thrown. Slow drift
+    // uses the room's existing slide/slam law; fast flight stays exclusively in
+    // the champion mover pass with its matched observation interval.
+    const offcut = state.entities?.get?.(state.run?.telemetry?.foundryMawOffcut?.id);
+    if (state.run?.wave < 6 || !isFoundryWreckKept(state, offcut)
+      || !swarmPilotHasActed(state) || offcut.collides === false || offcut.physicsBody === false
+      || !physicsBodyNativeReady(offcut) || Number.isFinite(offcut.data?.despawnAt)
+      || !Number.isFinite(offcut.pos?.x) || !Number.isFinite(offcut.pos?.z)
+      || !Number.isFinite(offcut.vel?.x) || !Number.isFinite(offcut.vel?.z)) return;
+    const body = resolvePhysicsBodySpec(offcut);
+    if (!body?.dynamic || body.material === 'sensor' || body.material === 'massline_sensor'
+      || PHYSICS_MATERIALS[body.material]?.ghost === true
+      || !(body.radius > 0) || !(body.mass >= BROOD_PLOW_MIN_MASS)) return;
+    const history = observeBossChunk(offcut, state.tick, offcut.pos.x, offcut.pos.z,
+      body.radius, offcut.vel.x, offcut.vel.z);
+    const travel = history.swept ? Math.hypot(offcut.pos.x - history.fromX,
+      offcut.pos.z - history.fromZ) / DT : 0;
+    if (Math.max(travel, Math.hypot(offcut.vel.x, offcut.vel.z)) >= BROOD_PLOW_MIN_SPEED) return;
+    rockEntities[rockCount] = offcut;
+    rockX[rockCount] = offcut.pos.x; rockZ[rockCount] = offcut.pos.z;
+    rockR[rockCount] = body.radius;
+    rockVX[rockCount] = offcut.vel.x; rockVZ[rockCount] = offcut.vel.z;
+    rockCredited[rockCount] = playerOwnsBody(state, offcut) ? 1 : 0;
+    rockCount += 1;
   }
 
   function cacheMovers(state) {
@@ -1339,6 +1369,8 @@ export function createBroodEngine(deps = {}) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos || !e.vel) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;
+      // Native motion continues, but this held Bank has not admitted player rams yet.
+      if (e.id === playerId && bank?.readPending && !swarmPilotHasActed(state)) continue;
       // The Tendril's head is the wave's champion hull — a real entity found by its catalog
       // stamp, the same read-only seam every other system uses to recognize a named hull.
       const isHead = e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID;

@@ -76,17 +76,17 @@ function crowd(h) {
     radius: 4, mass: 10, hull: 100, collides: true, data: {} });
 }
 
-test('the same offcut takes one of forty slots through round six, then ordinary culling resumes', t => {
+test('the same offcut takes one of forty slots through round seven, then ordinary culling resumes', t => {
   const h = fixture(t); crowd(h);
   const original = h.offcut;
-  for (const wave of [5, 6]) {
+  for (const wave of [5, 6, 7]) {
     if (wave === 6) h.owner.detach(h.record.fightId);
     h.state.run.wave = wave; h.arena._cullWrecks();
     assert.equal(original.data.despawnAt, undefined);
     assert.equal(h.state.entityList.filter(e => e.type === 'wreck' && e.alive
       && !Number.isFinite(e.data?.despawnAt)).length, SWARM_WRECK_KEEP);
   }
-  h.state.run.wave = 7;
+  h.state.run.wave = 8;
   h.sim.spawn({ type: 'wreck', pos: { x: 0, z: 60 }, radius: 4, hull: 100, data: {} });
   h.arena._cullWrecks();
   assert.ok(Number.isFinite(original.data.despawnAt)); assert.equal(h.state.entities.get(original.id), original);

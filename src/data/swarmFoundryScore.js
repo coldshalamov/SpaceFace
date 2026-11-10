@@ -7,7 +7,7 @@ const rows = [
   ['throw_then_move', 'Throw, then move', 'Release through the pack, then leave the acid mark.', 360, 720, 0, 0],
   ['break_the_maw', 'Break Iron Maw', 'Read the Maw first. Acid and fuse-lit reinforcements arrive later.', 0, 720, 360, 480],
   ['use_the_wreck', 'Make the wreck work', 'Use surviving wreckage as cover or ammunition; watch the Jackal mines.', 0, 480, 0, 0],
-  ['spend_the_charge', 'Let the charge spend itself', 'Bait the charge into cover and leave by the clear side.', 480, 0, 0, 0],
+  ['spend_the_charge', 'Let the charge spend itself', 'Leave the Maw offcut as cover, or throw it. Bait the charge and sidestep.', 480, 0, 0, 0],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,

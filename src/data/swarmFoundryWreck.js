@@ -2,7 +2,7 @@ import { swarmFoundryRound } from './swarmFoundryScore.js';
 
 // One of the first champion's existing fragments is hand-sized ammunition. The
 // other fragments keep their large cover bodies. This is not an extra drop.
-export const FOUNDRY_MAW_OFFCUT = Object.freeze({ radius: 7, mass: 35, throughWave: 6 });
+export const FOUNDRY_MAW_OFFCUT = Object.freeze({ radius: 7, mass: 35, throughWave: 7 });
 
 export function foundryWreckRound(run) {
   if (run?.kind !== 'survival' || run.ruleset !== 'swarm'
