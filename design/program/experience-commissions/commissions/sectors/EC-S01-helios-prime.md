@@ -1,5 +1,45 @@
 # EC-S01 — Helios Prime — A harbor worth coming home to
 
+## Director's card — read this first
+
+*From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
+
+**One line:** the harbor where every family keeps a lamp lit, and one is dark.
+
+**Landmark:** the Candle Fleet — a crescent of forty lived-in hulls, each with one big lamp; the clean white Tower behind it with every light on. **Shift:** Lamps-Up. The harbor horn sounds, shuttles flip direction, the crescent lights lamp by lamp. **Toy:** the Slipway — a curved rail tugs use to sling loads across the harbor; fly into it and it slings you.
+
+**Faces:** **Orla Venn**, lamp-crew chief, checks every clip twice — *"Clip. Then clip again."* · **Pell Arroway**, front desk, hands out the first job and remembers if you finished it — *"Sign here. No, with the ship."* · **Late Benny** (Road Cast) and his bus *Patience*, always behind, always arrives — *"We leave when we leave."*
+
+**Argument:** when power runs short the Fleet's lamps dim and the Tower's never do. **Your mark:** the Venns hang a small lamp for you on the crescent. It is lit whenever you are in the system. That lamp is "home".
+
+**First 90 seconds:** you undock into somebody else's morning — a tug crosses your nose, a shuttle yields to it, the horn goes, the crescent lights up and you can see the gap. Orla hails: *"You've got a rope. We've got a lamp on the wrong side of the harbor."*
+
+**Build first (Slice 1):** The Empty Plinth, with the Slipway, the three faces and your lamp. This is the pilot town: the shared Place Kit (faces, shift, toy, mark, berth board) is built here and lifted out for every other town.
+
+### How to build this town and check your own work
+
+Work in this order. Each step ends with something you looked at.
+
+1. **Look first.** Arrive by the ordinary route and capture what a stranger sees today (`node scripts/capture-sector-identity.mjs` covers Helios and Ceres; for other sectors copy it for yours until the `look` tool from EC-G17 exists). Write the five Stranger Test answers for the place *as it is now* in the PR. That is your "before".
+2. **Build the toy alone**, in the no-boot simulation lab (`node scripts/agent-loop.mjs sim <scenario> --trace`), until it is fun with nothing else in the scene. The jobs lean on it.
+3. **Then faces, then the shift, then your mark** — each through the system that already owns it (contacts, broadcasts, world records). Do not start a parallel one.
+4. **After every step:** the one narrow test (`node --test test/<file>`), then `npm run test:fast`. Never run the full `npm run check` while something is red, and never use the long playthrough battery as a per-change check.
+5. **Does it still boot and fly:** `node scripts/check-game-playable.mjs`.
+6. **Did it cost frames:** `node scripts/check-hitch-budget.mjs --out=<file>` before and after, back to back in one sitting (this machine swings from 60 to 40 with background load, so a comparison across sessions means nothing).
+7. **Stranger Test:** give a fresh agent only your captures — not this file, not the code — and the five questions. Put its answers in the PR, unedited.
+
+**The ways agents have fooled themselves on this project. Check each before you say done.**
+- *Green test, nothing on screen.* The thing is defined in data and never appears in play. Go and find it in the running game.
+- *Reachable only by a flag, a debug spawn or a test fixture.* A player cannot get there. It is not built.
+- *Decoration without behaviour.* A lit window nobody is behind. A crane that does not lift.
+- *The working folder passes and the commit does not.* Commit exact paths, then check what you committed, not what is on disk.
+- *A reference result edited to make a check pass.* Never.
+- *"Done" on a partial.* Say what works, what does not, and what you could not look at.
+
+**How to use this card.** Bold names are fixed so the world stays consistent; everything else is yours to invent — decide, build, look. If an existing character already fills a face's role, keep their name and give them this want and this line. If an idea here plays badly, replace it with something that fills the same line of the Town Recipe and say so in the PR. **This PR is ready when Slice 1 passes the Stranger Test.** The brief's remaining jobs follow in a second PR on the same place.
+
+---
+
 **Direct execution commission · Sector completion**  
 **Native parents:** `W2`, `W3`, `W4`, `W5`, `LW-01`, `LW-02`  
 **Source-review baseline:** `f95de0eb1ba7560839209936afba48c7b96fe41a` · 2026-11-08  
