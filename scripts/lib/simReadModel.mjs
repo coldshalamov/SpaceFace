@@ -895,6 +895,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'npcJobs.lanternWard',
   // Kessler's return needs the current finite lift outcome, never its motion/recovery arrays.
   'npcJobs.ceresWorkfleet.phase',
+  'ceresWinchingOffer',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -965,6 +966,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   'npcJobs.lanternWard': 6,
   'npcJobs.ceresWorkfleet.phase': 1,
+  ceresWinchingOffer: 1,
   sites: 10,
   salvageOutfits: 10,
   cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,
@@ -1103,7 +1105,7 @@ export function configureDomainMirroring(config = {}) {
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
   if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
-  if (segs.length === 1 && ['dockingPresentation', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
+  if (segs.length === 1 && ['dockingPresentation', 'ceresWinchingOffer', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'planet.player') return { project: 'planetPlayer', hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'planet.center') return { project: 'planetCenter', hotPresentation: true };

@@ -1,3 +1,4 @@
+import { createCeresWinchingPrompt } from '../ui/ceresWinchingPrompt.js';
 import { createRigWorkshopView } from './rigWorkshop/view.js';
 // The production browser's existing UI and prepared-frame owners drive these adapters.
 // There is no gameplay owner here: decisions are intents and all views read sim facts.
@@ -37,6 +38,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
   const cinderglass = registeredCinderglass || createCinderglassJobPromptSystem();
   if (!registeredCinderglass) cinderglass.init(ctx);
   const outfits = mountSalvageOutfitsPresentation(ctx);
+  const ceresWinching = createCeresWinchingPrompt(ctx);
   const off = [];
   let disaster = null, rig = null, breakwaterWorld = null, scene = null, renderer = null, destroyed = false;
   let uiElapsed = 0, tenderSignature, circuitSignature, breakwaterSignature;
@@ -75,6 +77,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
   const api = {
     frame(dt, currentState = state, hudVisible = true) {
       if (destroyed || currentState !== state) return;
+      ceresWinching.frame();
       outfits?.draw(currentState, hudVisible);
       cinderglass.frame(dt, currentState, hudVisible);
       // Domain mirrors recover offers across a worker attach or UI remount. Ordinary
@@ -122,6 +125,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
       if (registeredCircuit) circuit.close(); else circuit.destroy();
       if (registeredBreakwater) breakwater.close(); else breakwater.destroy();
       if (registeredCinderglass) cinderglass.close(); else cinderglass.destroy();
+      ceresWinching.destroy();
       outfits?.destroy(); releaseWorld();
       if (OWNERS.get(state) === api) OWNERS.delete(state);
     },

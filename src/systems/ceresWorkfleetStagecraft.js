@@ -78,6 +78,7 @@ export function stepCeresWorkfleetStagecraft(owner, record) {
   // Do not spend the one arrival call while the pilot is passing at travel speed.
   // It stays available as soon as the ship actually slows near the worksite.
   if (Math.hypot(player.vel?.x || 0, player.vel?.z || 0) > 35) return;
+  if (state.npcJobs?.ceresAnchorSwing?.status === 'swinging') return;
   const job = state.npcJobs?.ceresWorkfleet;
   const blocked = job?.phase === 'head_cut' && job.blockedReason === 'physical-cutter-not-ready';
   if (blocked && visit.blockedAt == null) visit.blockedAt = now;
