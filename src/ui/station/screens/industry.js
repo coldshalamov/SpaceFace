@@ -220,7 +220,7 @@ export function createIndustryScreen(ctx) {
       ladderRo = new ResizeObserver(queueLadderFit);
       ladderRo.observe(listEl);
       if (listEl.parentElement) ladderRo.observe(listEl.parentElement);
-      listEl.addEventListener('animationend', queueLadderFit);
+      if (typeof listEl.addEventListener === 'function') listEl.addEventListener('animationend', queueLadderFit);
       try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueLadderFit, () => {}); } catch (_) { /* no font set */ }
     }
     const rungs = listEl.querySelector('.sx-ind-spindle');
@@ -716,8 +716,10 @@ export function createIndustryScreen(ctx) {
     dispose() {
       disposed = true;
       visible = false;
-      if (ladderRo) { ladderRo.disconnect(); ladderRo = null; ladderRungs = null; }
-      listEl.removeEventListener('animationend', queueLadderFit);
+      if (ladderRo) {
+        ladderRo.disconnect(); ladderRo = null; ladderRungs = null;
+        if (typeof listEl.removeEventListener === 'function') listEl.removeEventListener('animationend', queueLadderFit);
+      }
       if (ctx.bus && ctx.bus.off) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
