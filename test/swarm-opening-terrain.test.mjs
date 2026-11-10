@@ -41,6 +41,26 @@ test('variants, upgraded lines and later rounds retain their established directo
   assert.equal(plan({ ...options(1), want: 2 }).length, 2);
 });
 
+test('occupiedSlots reserves departed banks without minting clones or accepting garbage', () => {
+  const first = plan(options(1));
+  const held = plan({ ...options(1), occupiedSlots: [0] });
+  assert.equal(held.length, 7);
+  assert.ok(held.every(p => p.openingTerrainSlot !== 0), 'a reserved station is not a vacancy');
+  // Only integers are identities: lookalikes cannot hold a station.
+  for (const noise of [['0'], [0.5], [null], [NaN], [{}]]) {
+    const spots = plan({ ...options(1), occupiedSlots: noise });
+    assert.equal(spots.length, 8, JSON.stringify(noise));
+    assert.equal(spots[0].openingTerrainSlot, first[0].openingTerrainSlot);
+  }
+  assert.deepEqual(plan({ ...options(1), occupiedSlots: 'nope' }), [], 'non-array census refused');
+  // The reservation list merges with slot identity already on surviving bodies.
+  const merged = plan({ ...options(2), existing: first, occupiedSlots: [8] });
+  assert.deepEqual(merged.map(p => p.openingTerrainSlot).sort((a, b) => a - b), [9, 10],
+    'round two adds three banks; the departed body still owns the eighth');
+  // A census bigger than the guard is invalid input, not a cleared court.
+  assert.deepEqual(plan({ ...options(1), occupiedSlots: Array(4097).fill(0) }), []);
+});
+
 // Execute the actual arena module and its registered event callback. External physics,
 // field and material owners are ports here, not a claim about a rendered browser run.
 // Keeping imports as injected ports avoids requiring WebGL/Rapier for this narrow test.
