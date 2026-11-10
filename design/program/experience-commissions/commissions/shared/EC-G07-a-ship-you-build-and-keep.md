@@ -10,6 +10,8 @@
 
 **Director's amendment, 2026-11-10** — see [10 — The game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/10_THE_GAME.md), decision D3, and EC-G19. The table that maps parts to places on the hull already exists and is not connected. Connect it before authoring anything new. A part the player cannot see on the ship and cannot feel within thirty seconds of flying is cut or merged. The starter ship has only small slots while its obvious next upgrades are medium; fix that trap first.
 
+**Written out, 2026-11-10:** the ships, gun families, the Kick stat, power bends, Line heads, mods and the ten builds are in [11 — The Armory](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/11_THE_ARMORY.md). The screen they appear on is EC-G20.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
