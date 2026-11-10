@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "46ba6ac1ee2cb0bfcb05b96d381b67974614434a58491d8d10fbac892e6a0a82",
+  "uiSourceDigest": "090dd8d998d544f840d4d3cca91616d2e0e757dd4bb03b8475b4067be33f2ae2",
   "uiSourceFiles": {
     "index.html": "9675d8b65c4623cc9aa48ad94c670479f78ce1b0f2d05166fa9a52b44d509e04",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -332,7 +332,7 @@
     "src/ui/screens/replay.js": "4cdf7e4af11fcb8d2380c493cf1d9e070b269f68319fe26df99f69ea105547c3",
     "src/ui/screens/resultsSheet.js": "7650d44ed2f6e8a0b93ef2888fd02f7e89e9473e24e20dd26091c2dbe915d6d4",
     "src/ui/screens/sandbox.js": "b825ea93500a10a099cc63f5806263f16a93cbc3c92329c5cb8393de7915cf89",
-    "src/ui/screens/saveLoad.js": "13d72a4c585be9ae7fec85e0df310254495828fceb9f8becf74467f19bd7fbaa",
+    "src/ui/screens/saveLoad.js": "176ebbb4f6a54f0a3188d48753af84367bc7cfb196530e05f4a4cb9fcf7d908d",
     "src/ui/screens/saveNotices.js": "b623346ec32679415aa4d2666137a619833cf72f2feafd8448319ed0db4d901b",
     "src/ui/screens/settings.js": "7b03f29776434c74d24ed0bc4eade816bcdd17b74030c460a3bfecbbaadd91f0",
     "src/ui/screens/shareCode.js": "72181bd36cae4ade30a43478a95119d7ad8b1b3ee93360d312659c76cba6fe2a",
