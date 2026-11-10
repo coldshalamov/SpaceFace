@@ -33,7 +33,7 @@ import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
 import { createReplyDial } from '../../orrery/barReplyDial.js';
 import { injectOrreryStationBar } from '../../orrery/station-barLayouts.js';
-import { typewriter, decrypt } from '../../orrery/text.js';
+import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -158,12 +158,10 @@ export function createBarScreen(ctx) {
   let erisServedVisitId = null;
   let erisLastReply = null;
   let saidText = null;   // what the selected contact just said
-  // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
-  // spoken with a Waveform breathing under the name, the words resolving on arrival.
+  // The waveform accompanies a complete answer; only the role and choice labels resolve on arrival.
   let wave = null;
   let dial = null;   // the replies as a dial on her voice arc (barReplyDial.js); the list mirrors it
   let spokenText = null;   // the line the waveform has already voiced
-  let stopType = null;
   const stopDecrypt = [];
   let pendingMissionOffer = null;
   let pendingFrontierRumorOffer = null;
@@ -511,11 +509,10 @@ export function createBarScreen(ctx) {
     composeStage(c);
   }
 
-  /** The waveform under the name; a fresh line is typed while the bars speak; labels resolve. */
+  /** The waveform under the name; answers stay complete while the labels resolve. */
   function composeStage(c) {
     if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
     if (wave) { wave.dispose(); wave = null; }
-    if (stopType) { stopType(); stopType = null; }
     for (const stop of stopDecrypt.splice(0)) stop();
     const idEl = stageEl.querySelector('.sx-talk__id');
     const nameEl = stageEl.querySelector('.sx-talk__name');
@@ -587,7 +584,8 @@ export function createBarScreen(ctx) {
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
       if (wave) wave.speak(ms);
-      stopType = typewriter(reply, text, { cps: 46, onDone: () => { if (wave) wave.idle(); stopType = null; } });
+      // Consequences must be readable immediately. Typing changed this paragraph's height
+      // after focus/scroll had settled, moving the remaining words and choices out of view.
     } else if (!saidText) spokenText = null;
     if (reducedMotion()) return;
     const targets = [...stageEl.querySelectorAll('.sx-talk__role, .sx-choice')].filter(Boolean);
@@ -709,6 +707,7 @@ export function createBarScreen(ctx) {
     if (btn && typeof btn.focus === 'function' && document.activeElement !== btn) {
       try { btn.focus({ preventScroll: true }); } catch (_) { btn.focus(); }
     }
+    btn?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }
   // a farewell or a refusal cools her; a question or an order warms her. Deterministic, from the
   // reply's own id and words; the dial leans her standing tick with it.
@@ -737,6 +736,7 @@ export function createBarScreen(ctx) {
     if (!b) return;
     setCurrentChoice(b);
     if (dial) dial.focus(choiceBtns().indexOf(b));
+    b.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   });
   // a reply's numeral turns the dial first (the cursor swings, the reply previews); a second press says it
   stageEl.addEventListener('keydown', (ev) => {
@@ -987,7 +987,6 @@ export function createBarScreen(ctx) {
       if (typeof offErisUndock === 'function') offErisUndock();
       if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
       if (wave) { wave.dispose(); wave = null; }
-      if (stopType) { stopType(); stopType = null; }
       for (const stop of stopDecrypt.splice(0)) stop();
     },
   };
