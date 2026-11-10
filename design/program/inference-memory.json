@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-shield-reknit",
-      "date": "2026-11-02",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A shield coming back online after a break breathes once through its lattice, so you can see the shell is back before the next hit lands.",
-      "fingerprint": "verb=reknit,subject=shield-shell,sector=combat,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "af5d3d3bbd8c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-bar-regular",
-      "date": "2026-11-02",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A bar regular whose story advances each visit: recognition names your last exchange, the trouble beat names what changed in the live lanes or the shelf while you were out, and the relationship settles as standing earns it.",
-      "fingerprint": "verb=remember,subject=bar-regular-arc,sector=station-bar,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "c0f7eb02056b",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-wing-casualty-fold",
-      "date": "2026-11-02",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Pick off a wingman and the enemy wing visibly folds in around the gap instead of flying a phantom slot, and a replacement releasing the fold is readable",
-      "fingerprint": "verb=fold,subject=wing formation,sector=squad frame,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "f8b04d2c3ca3",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-scar-history",
       "date": "2026-11-02",
       "wf": "WF-12",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "3108a23b969b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "a11y-threat-halo-strobe",
+      "date": "2026-11-10",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The inbound-missile and closing-boost edge tells hard-stepped ~4 luminance jumps per second forever under Reduce motion - both reduced-motion switches now hold the tells steady at the telegraph's legible level, glyph and channel colour intact (stretch, never silence).",
+      "fingerprint": "verb=holds-steady,subject=threat-halo-edge-tells,sector=flight-hud,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "91380953df3e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-miner-cycle-line",
+      "date": "2026-11-10",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The miner's closed-cycle note read 'cut 1u, sold 1u · upkeep -0 cr · fuel 1u → net 3 cr' - it now reads whole counted sentences with grouped money, a clause only when it happened, and 'broke even' at zero net, shared by the screen-reader summary.",
+      "fingerprint": "verb=recounts,subject=miner-cycle-note,sector=automation-panel,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "825b900a47fc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-recovery-phase-counts",
+      "date": "2026-11-10",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "'Reel to 1 units' survived in the recovery prompt's other phases - the drive-disabled and surrendered details, tow clause, custody/receipt metas and the screen-reader timer now all count to one.",
+      "fingerprint": "verb=recounts,subject=recovery-prompt-phases,sector=recovery-deck,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "4d1621d19163",
       "verification": "focused_green"
     }
   ],
