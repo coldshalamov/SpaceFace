@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier A — one of the five towns.** Full recipe, finished standard. This town also holds a *weight gate* (EC-G19): something visible from the first visit that the player cannot move yet, and can once their Line Class is high enough. It moves or it does not; no lock, no level text.
+
 **One line:** a pirate town with rules, and a butcher's window full of stolen ships.
 
 **Landmark:** the Chop Line — hulls hanging under hard worklights, being taken apart in the open. **Shift:** Market Night. The gate closes, the lights go red, the auction horn sounds. **Toy:** the Chop Line's claws — drop any wreck or hull into them and it is stripped in front of you, parts popping out as real objects.
