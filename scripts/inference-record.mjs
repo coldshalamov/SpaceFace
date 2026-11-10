@@ -10,6 +10,7 @@
  * - rejected/cut units require a causal root reason for anti-resurrection memory.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,6 +55,18 @@ function loadMemory() {
 function saveMemory(memory) {
   writeFileSync(MEMORY_PATH, `${JSON.stringify(memory, null, 2)}\n`, 'utf8');
   console.log(`inference-record: wrote ${MEMORY_PATH}`);
+}
+
+/** Shipped paths a commit touches, or null when git cannot answer (never blocks on tooling). */
+function shippedPathsIn(sha) {
+  try {
+    const out = execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', '-m', sha], {
+      cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split(/\r?\n/).filter((p) => /^(src|styles|assets|electron)\//.test(p) || p === 'index.html');
+  } catch {
+    return null;
+  }
 }
 
 function existingOptionalPath(name) {
@@ -109,6 +122,47 @@ if (command === 'unit') {
     }
   }
 
+  // Director's rule, 2026-11-09 (INFERENCE_LANES.md §0.0). A live production unit says which of
+  // the three kinds it is, says what a player would notice, and — unless it is honestly recorded
+  // as unproven — points at something a person can look at. These are refusals, not paperwork:
+  // each one is a flag on this command.
+  const kind = flag('kind');
+  const player = flag('player');
+  const check = existingOptionalPath('check');
+  if (productionVerdict && integration === 'live') {
+    if (!['class', 'finish', 'remove'].includes(kind || '')) {
+      fail(
+        'production units require --kind class|finish|remove '
+        + '(class: fix one defect everywhere and add the check that stops it returning; '
+        + 'finish: make a half-working thing work on the ordinary route; '
+        + 'remove: delete noise, duplicates or unreachable content). '
+        + 'A new stand-alone feature belongs to a commission PR, not to INFERENCE.',
+      );
+    }
+    if (!player || player.trim().length < 20) {
+      fail('production units require --player "<the sentence a player would say about the difference>"');
+    }
+    if (verification !== 'unproven') {
+      if (!evidence) {
+        fail(
+          'a unit that claims more than unproven requires --evidence <before/after bench still, '
+          + 'sim-lab trace or receipt>. If you could not look, record --verification unproven; '
+          + 'unproven units are welcome but do not count toward N.',
+        );
+      }
+      if (/^(test|tests|scripts|src)[\\/]/.test(evidence)) {
+        fail('--evidence must be something a person can look at (picture, clip, trace, receipt), not a test or source file');
+      }
+    }
+    if (kind === 'class' && !check) {
+      fail('--kind class requires --check <the script or test that now fails on this defect class>');
+    }
+    const shipped = shippedPathsIn(commit);
+    if (shipped && shipped.length === 0) {
+      fail('that commit changes no shipped file (src/, styles/, assets/, electron/, index.html). Support work is not a unit.');
+    }
+  }
+
   if (verdict === 'implemented') {
     if (!['unproven', 'focused_green'].includes(verification)) {
       fail('implemented units require --verification unproven|focused_green');
@@ -152,6 +206,9 @@ if (command === 'unit') {
     verification,
     evidence,
     review,
+    kind: kind || undefined,
+    player: player || undefined,
+    check: check || undefined,
     sector: flag('sector') || undefined,
   });
   saveMemory(memory);
@@ -205,11 +262,21 @@ if (command === 'unit') {
     '',
     'Commands: unit | run | defect',
     '',
+    'Every live production unit also needs:',
+    '  --kind class|finish|remove      which of the three kinds of work this was',
+    '  --player "<sentence>"           what a player would say about the difference',
+    '  --evidence <path>               before/after bench still, sim trace or receipt',
+    '                                  (omit only with --verification unproven; those do not count)',
+    '  --check <path>                  for --kind class: the check that now catches the defect',
+    '',
     'Implemented unit:',
-    '  node scripts/inference-record.mjs unit --id refinery-shift-whistle --wf WF-13 \\',
-    '    --mode starved --verdict implemented --verification focused_green \\',
-    '    --commit abc1234 --reason "live shift-change audio" \\',
-    '    --fp "verb=hear,subject=refinery,sector=ceres,domain=wf-13"',
+    '  node scripts/inference-record.mjs unit --id counts-read-as-words --wf WF-09 \\',
+    '    --mode repair --verdict implemented --verification focused_green \\',
+    '    --kind class --check scripts/check-player-counts.mjs \\',
+    '    --player "It never says 1 units any more, anywhere." \\',
+    '    --evidence design/program/receipts/counts-before-after.md \\',
+    '    --commit abc1234 --reason "one shared counted() helper; lint bans raw counts" \\',
+    '    --fp "verb=read,subject=counts,layer=copy,domain=wf-09"',
     '',
     'Accepted unit:',
     '  node scripts/inference-record.mjs unit --id refinery-shift-whistle --wf WF-13 \\',
