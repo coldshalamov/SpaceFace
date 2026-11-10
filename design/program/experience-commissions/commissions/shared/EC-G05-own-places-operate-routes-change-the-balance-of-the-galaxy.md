@@ -10,6 +10,8 @@
 
 **Written out, 2026-11-10:** the direction for owning and building is the last section of [13 — Jobs and heists](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/13_JOBS_AND_HEISTS.md): a rock you drill becomes a yard you can fly up to, and a raid on it is a Swarm round on your own ground. One drill, one hopper, one turret, one raid.
 
+**Also written out, 2026-11-10:** the yard, step by step — claim, hopper, line, works, walls, turrets, raid — is in [17 — The ladder, the prices and the long game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/17_THE_LADDER_AND_THE_LONG_GAME.md) §6.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
