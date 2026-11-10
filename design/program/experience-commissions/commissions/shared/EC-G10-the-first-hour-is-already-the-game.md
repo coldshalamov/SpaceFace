@@ -23,6 +23,8 @@
 
 Shooting drills, the extra verbs (`missingThree.js`) and the five powers (`powerSituations.js`) move to minutes fifteen to forty, one about every ninety seconds, taught by situations or at the Dione range. The title screen shows two doors, **Adventure** and **Swarm**, side by side. New game asks nothing: defaults, with Custom behind one button. The first trip is Tethys, not Ceres.
 
+**Also written out, 2026-11-10:** the opening is Book 0 of [16 — The story, shown](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/16_THE_STORY_SHOWN.md); the first-evening basics it must meet are in [19 — What players expect](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/19_WHAT_PLAYERS_EXPECT.md).
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
