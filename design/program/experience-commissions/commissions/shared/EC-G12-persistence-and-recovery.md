@@ -8,6 +8,10 @@
 
 **Build first:** the Helios lamp and board, through save, quit and Continue.
 
+**Director's amendment, 2026-11-10** — see [10 — The game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/10_THE_GAME.md), decision D8. **Dying makes a job, not a loading screen.** Today death takes your cargo, may charge insurance and wakes you at a berth (`src/systems/combat.js`). Instead: your wreck and your spilled cargo stay where you died, as real objects. You wake at the nearest berth with a line to them on the map, and somebody else — Juno, a salvor, a scavenger — is already heading there. Getting it back is a tow.
+
+**Build this alongside the line above:** the wreck and cargo persisting through Continue, and one rival heading for them.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
