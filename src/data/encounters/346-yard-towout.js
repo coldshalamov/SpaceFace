@@ -26,13 +26,15 @@ export const trigger = deepFreeze({
   tier: 'minor',
   deck: 'civilian',
   weight: 1.5,
-  zoneTypes: ['civilian_core'],
-  // The premise is a REAL machine: only sectors whose civilian core sits within
+  zoneTypes: ['civilian_core', 'mining_belt'],
+  // The premise is a REAL machine: only sectors whose zone anchor sits within
   // MACHINE_REACH_WU of an authored kill machine may schedule it (helios claim
-  // cracker, rift fissure cracker, tethys weigh clamp — measured on the live data).
-  // Everywhere else there is no yard jaw, so there is no offer.
+  // cracker, rift fissure cracker, tethys weigh clamp, hyperion yard winch —
+  // measured on the live data). Everywhere else there is no yard jaw, so there
+  // is no offer.
   gates: {
-    sectorIds: ['sector_helios_prime', 'sector_haumea_rift', 'sector_tethys_junction'],
+    sectorIds: ['sector_helios_prime', 'sector_haumea_rift', 'sector_tethys_junction',
+      'sector_hyperion_cut'],
   },
   // Self-registered runtime (below) dispatches by shapeId; the legacy script labels must name
   // real ENCOUNTER_SCRIPTS keys for check tooling — 'salvage' is not one. Sibling modules leave
