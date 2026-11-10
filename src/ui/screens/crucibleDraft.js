@@ -853,6 +853,26 @@ export function foundryWardenIntermission(run) {
   return 'Round 8 cleared. A Warden guards the next Lancer: attack the guard or circle its screen. A glowing Cyst follows before the crowd; burst it away from your hull. Repair, check Fortify ammunition, or save your purse before launch.';
 }
 
+/** First extraction is a choice at the bench, never an automatic victory. */
+export function foundryFirstExitIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm'
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 10,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 9 && run.phase === 'draft')
+    return 'Round 9 cleared. Face the Corsair, then the event in your forecast and the crowd. Check repairs and Fortify ammunition. After round 10, the bench offers extraction or another round.';
+  if (run.wave !== 10 || !['draft', 'refit'].includes(run.phase)) return null;
+  const purse = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
+  return run.phase === 'draft'
+    ? `Round 10 cleared. ${purse} cr remains in your run purse. Buy only what you want to take onward, then open the exit bench to refit, bank or extract. Spending here reduces what you take home.`
+    : `First exit reached. Fit earned spares${purse > 1 ? ', bank part of your purse,' : ''} or extract. Launch round 11 to keep this run and its field going; this is not the end of Swarm.`;
+}
+
+export function swarmArmoryExitLabel(run) {
+  return run?.wave === 10 && run.phase === 'draft' && foundryFirstExitIntermission(run)
+    ? 'Open exit bench' : `Launch round ${(run?.wave || 0) + 1}`;
+}
+
 /** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
 export function swarmNextLine(next) {
   if (!next) return '';
@@ -1542,6 +1562,7 @@ export const crucibleDraftScreen = {
     this._sub.textContent = foundryAftermathIntermission(context.state?.run, offers)
       ?? foundryLancerIntermission(context.state?.run)
       ?? foundryWardenIntermission(context.state?.run)
+      ?? foundryFirstExitIntermission(context.state?.run)
       ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
@@ -1714,7 +1735,7 @@ export const crucibleDraftScreen = {
         : circuitOwed
           ? (circuitError ? 'Circuit data invalid — start a new run'
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
-          : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
+          : shop ? swarmArmoryExitLabel(context.state?.run) : (offers.length ? 'Keep current loadout' : 'Continue'),
       'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
@@ -2155,8 +2176,10 @@ export const crucibleRefitScreen = {
     const h = el('h1', 'k-display k-t-title', 'Refit');
     h.id = 'sf-crucible-refit-title';
     title.appendChild(h);
-    title.appendChild(el('p', 'k-t-emph k-62 sf-cru-sub',
-      'Strip a hardpoint, or choose any spare the run has earned and fit it.'));
+    const sub = el('p', 'k-t-emph k-62 sf-cru-sub',
+      'Strip a hardpoint, or choose any spare the run has earned and fit it.');
+    title.appendChild(sub);
+    this._sub = sub;
     rootEl.appendChild(title);
     // The owner's word on a refused fit or strip, under the title where the eye starts.
     const note = el('p', 'k-sentence sf-cru-note', '');
@@ -2482,6 +2505,8 @@ export const crucibleRefitScreen = {
   _syncFoot(context) {
     const run = context && context.state ? context.state.run : null;
     const lines = refitFootLines(run);
+    if (this._sub) this._sub.textContent = foundryFirstExitIntermission(run)
+      ?? 'Strip a hardpoint, or choose any spare the run has earned and fit it.';
     const setNote = (node, text) => {
       if (!node) return;
       if (node.textContent !== text) node.textContent = text;

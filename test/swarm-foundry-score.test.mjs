@@ -86,7 +86,7 @@ for (let wave = 1; wave <= 7; wave++) test(`round ${wave} owns one score without
 test('other arenas, altered rooms, Circuit, Gauntlet and later waves retain their owners', () => {
   for (const options of [{ arenaId: 'the_hive' }, { mutators: ['heavies_only'] },
     { circuitRound: { kind: 'survive' } }]) assert.equal(planFor(6, options).swarm.foundry, undefined);
-  assert.equal(planFor(10).swarm.foundry, undefined);
+  assert.equal(planFor(11).swarm.foundry, undefined);
   assert.equal(planFor(7).swarm.character, undefined, 'the Bank is the round-seven foreground');
   assert.ok(planFor(19).swarm.character, 'later Kraken seats remain');
   assert.ok(planFor(7, { arenaId: 'the_hive' }).swarm.character);

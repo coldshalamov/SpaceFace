@@ -10,6 +10,7 @@ const rows = [
   ['spend_the_charge', 'Let the charge spend itself', 'Leave the Maw offcut as cover, or throw it. Bait the charge and sidestep.', 480, 0, 0, 0],
   ['slip_the_lance', 'Slip the rail shot', 'The Lancer opens alone. When it charges, strafe sideways, then close while it resets. The crowd follows.', 480, 1, 480, 480],
   ['break_the_guard', 'Break the guard', 'A Warden guards a Lancer. Attack the guard or circle its screen; dodge the rail charge. A lone glowing Cyst follows: burst it away from your hull to scatter the pack.', 840, 1, 840, 840],
+  ['reach_the_exit', 'Reach the first exit', 'The Corsair opens alone. Dodge its charged lance, then return fire as it peels away. The forecast event follows, then the crowd. Clear the round to refit, bank or extract.', 840, 1, 840, 840],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
@@ -20,12 +21,13 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   // competes with the wreck payoff on round six.
   arenaPhase: index === 4 ? 'boss' : 'loose_plate',
   massGap: false,
-  events: 'quiet',
+  events: index === 9 ? 'seeded' : 'quiet',
   broodPacketSize: 18,
   broodPacketGapS: 0.75,
   bankReadS: index === 6 ? 8 : 0,
   ...(index === 7 ? { debutAtTick: 0 } : {}),
   ...(index === 8 ? { debutAtTick: 0, cystAtTick: 480 } : {}),
+  ...(index === 9 ? { debutAtTick: 0, eventReadTicks: 480 } : {}),
 })));
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {
