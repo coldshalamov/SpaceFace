@@ -49,6 +49,8 @@ Interact and Map keep one key each. **Everything else goes on one context wheel*
 
 Feedback comes last. If the throw is not satisfying with all of it switched off, fix the throw.
 
+**Also written out, 2026-11-10:** controller parity, the Line's latch cone, the four first prompts and the motion settings are in [19 — What players expect](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/19_WHAT_PLAYERS_EXPECT.md).
+
 ## How to build this and check your own work
 
 1. **Before:** fly the same thirty-second scene in each door and keep the traces — `node scripts/agent-loop.mjs sim <scenario> --trace` for Adventure, `npm run player-truth -- --mode=swarm --rounds=3` for Swarm.
