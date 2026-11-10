@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-berth-remembers",
-      "date": "2026-11-04",
-      "wf": "WF-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Docking at a station you berthed at before reads one keeper line — days since your last visit — derived from the persisted dock-provenance stamps, never from feed knowledge",
-      "fingerprint": "verb=remember,subject=station-berth,sector=station,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "8905cfb8f385",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-quiet-berth",
       "date": "2026-11-04",
       "wf": "WF-14",
@@ -1694,6 +1681,22 @@
       "kind": "class",
       "player": "Every count in the game reads one entry / two entries — the ledger, prompts, HUD chips, station tabs and system messages no longer say '1 entries' or '2 unit'.",
       "check": "test/player-counts.test.mjs"
+    },
+    {
+      "id": "PL-56",
+      "date": "2026-11-10",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Plant row built as written: line:classChanged opens player.line_class_up; static_75 airs once per save.",
+      "fingerprint": "verb=reports,subject=line-class-up,sector=the-static,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "1490116f31c3",
+      "verification": "focused_green",
+      "evidence": "design/program/receipts/pl-56-line-class-static.md",
+      "kind": "plant",
+      "player": "Class the Line up and the Static reports it: 'New rope in the lanes. Mind your cargo.' — the lane notices a bigger rope."
     }
   ],
   "knownDefects": [
