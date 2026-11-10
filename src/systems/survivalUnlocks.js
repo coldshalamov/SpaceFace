@@ -8,6 +8,7 @@
 // account clause in numbers — fully earned and empty profiles return the same
 // zeros. Option-set size is what changes.
 
+import { isAuthoredCourseVictory } from '../data/survivalCourse.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import {
   SURVIVAL_POWER_AXES,
@@ -37,15 +38,7 @@ function earnMin(earn) {
   return Infinity;
 }
 
-function isAuthoredVictory(result) {
-  if (!result || result.outcome !== 'victory') return false;
-  const waves = Number.isInteger(result.wavesCleared) ? result.wavesCleared : 0;
-  const deepest = Number.isInteger(result.deepestWave) ? result.deepestWave : 0;
-  const wave = Number.isInteger(result.wave) ? result.wave : 0;
-  return waves >= SURVIVAL_ARC_LENGTH || deepest >= SURVIVAL_ARC_LENGTH || wave >= SURVIVAL_ARC_LENGTH;
-}
-
-export function meetsUnlockCondition(earn, result) {
+export function meetsUnlockCondition(earn, result, run = {}) {
   if (!earn || !result) return false;
   const waves = Number.isInteger(result.wavesCleared) ? result.wavesCleared : 0;
   const deepest = Number.isInteger(result.deepestWave) ? result.deepestWave : 0;
@@ -56,11 +49,11 @@ export function meetsUnlockCondition(earn, result) {
     case 'deepest_wave':
       return deepest >= earnMin(earn);
     case 'authored_victory':
-      return isAuthoredVictory(result);
+      return isAuthoredCourseVictory(result, run);
     case 'pick_and_waves':
       return verbs.has(earn.verb) && waves >= earnMin(earn);
     case 'victory_and_physics_pick':
-      return isAuthoredVictory(result) && [...verbs].some((verb) => PHYSICS_SET.has(verb));
+      return isAuthoredCourseVictory(result, run) && [...verbs].some((verb) => PHYSICS_SET.has(verb));
     default:
       return false;
   }
@@ -120,7 +113,7 @@ export function sumProfilePower(profile, catalog = SURVIVAL_UNLOCK_CATALOG) {
   return sum;
 }
 
-export function evaluateUnlocks(profile, result, catalog = SURVIVAL_UNLOCK_CATALOG) {
+export function evaluateUnlocks(profile, result, catalog = SURVIVAL_UNLOCK_CATALOG, run = {}) {
   const previous = profile && profile.unlocks && typeof profile.unlocks === 'object'
     ? profile.unlocks
     : {};
@@ -137,7 +130,7 @@ export function evaluateUnlocks(profile, result, catalog = SURVIVAL_UNLOCK_CATAL
   for (const entry of catalog) {
     if (entry.defaultUnlocked) continue;
     if (Object.prototype.hasOwnProperty.call(unlocks, entry.id)) continue;
-    if (!meetsUnlockCondition(entry.earn, result)) continue;
+    if (!meetsUnlockCondition(entry.earn, result, run)) continue;
     unlocks[entry.id] = {
       condition: entry.earn && entry.earn.kind ? entry.earn.kind : 'unknown',
       seed: Number.isInteger(result.seed) ? result.seed : 0,
