@@ -69,7 +69,7 @@ import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival, swarmPilotHasActed } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
-import { planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
+import { planSwarmOpeningDodge, planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
 import { planSwarmOpeningCrossfire } from './swarmOpeningCrossfire.js';
 import { planSwarmOpeningWreck } from './swarmOpeningWreck.js';
 import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
@@ -1078,8 +1078,10 @@ export function createBroodEngine(deps = {}) {
         publish();
         return 4;
       }
-      const debut = spitter == null ? null : planSwarmOpeningSpitter(
+      const stoneDebut = spitter == null ? null : planSwarmOpeningSpitter(
         openingState, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]);
+      const debut = stoneDebut || (spitter == null ? null : planSwarmOpeningDodge(
+        openingState, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]));
       const debutSlot = debut ? findFreeSlot() : -1;
       if (debut && debutSlot >= 0) {
         spawnAt(debutSlot, spitter, debut.pos.x, debut.pos.z);
@@ -1087,6 +1089,7 @@ export function createBroodEngine(deps = {}) {
         // One ordinary marked lob gets room to speak. Killing this life releases
         // the crowd early; otherwise the existing six active-second beat does.
         openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
+          standOff: stoneDebut ? null : { slot: debutSlot, life: serial[debutSlot] },
           lives: [{ slot: debutSlot, life: serial[debutSlot] }] };
         attackAfter[debutSlot] = Infinity;
         openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: { ...debut.course, player: state.entities.get(state.playerId) } };
@@ -1921,7 +1924,15 @@ export function createBroodEngine(deps = {}) {
         // a salvager runs down wreckage. Flocking forces above still apply — the squad
         // reads inside the room, not beside it.
         const machineSteer = def && (def.formation || def.linkShield || def.repairs || def.assembles);
-        if (!machineSteer && dp > 24 && dp > 1e-4) {
+        const openingReach = openingBeat?.standOff;
+        if (openingReach?.slot === i && openingReach.life === serial[i] && dp > 1e-4) {
+          // The lone no-stone debut keeps its acid distance for this one beat.
+          // Ordinary acceleration/drag, fields and contacts still move it; no
+          // frozen pose or new motion owner. Killing it or leaving the beat retires this.
+          const seek = Math.max(-9, Math.min(9, (dp - 140) * 0.5));
+          ax += (dxp / dp) * seek - vx[i] * 2;
+          az += (dzp / dp) * seek - vz[i] * 2;
+        } else if (!machineSteer && dp > 24 && dp > 1e-4) {
           const diveT = simTime * 0.42 + seedPhase[i];
           // A commander-flagged body presses the signature the strain's own factor
           // harder — same dive clock, a hotter seek.
