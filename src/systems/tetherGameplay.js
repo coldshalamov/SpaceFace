@@ -46,6 +46,7 @@ import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechn
 // FB-013 — the copy owner for first-use lines. Pure data (no DOM, no Three.js), the same module
 // onboarding's _showHint speaks through, so a head's line and a rail line share one vocabulary.
 import { firstUseLine } from '../ui/hudAttention.js';
+import { swarmReelRateScale } from './playerModifiers.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
@@ -1721,7 +1722,12 @@ export const tetherGameplay = {
     // threshold early. Factors come from the lineProgression bag (1 when under class).
     const strain = state && state.lineProgression ? state.lineProgression : null;
     const baseReelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
-    const reelRate = baseReelRate * (Number.isFinite(strain && strain.overClassReelFactor) ? strain.overClassReelFactor : 1);
+    // A01-05 Long Reel take: the winch's reel cadence reads the run ledger's own
+    // multiplier — player-owned reel only, folded beside the strain factor.
+    const modReel = player && player.id === (state && state.playerId) ? swarmReelRateScale(state) : 1;
+    const reelRate = baseReelRate
+      * (Number.isFinite(strain && strain.overClassReelFactor) ? strain.overClassReelFactor : 1)
+      * modReel;
     const maxStep = positive(reelRate, 0) * Math.max(0, finite(dt));
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const minLength = positive(def.minLength, 0);

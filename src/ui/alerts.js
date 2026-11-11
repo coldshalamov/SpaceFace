@@ -32,7 +32,8 @@ import {
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
 
-const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
+// Exported for stage.js (G16-01): the shared severity ranking orders a slot's queue.
+export const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
 
 // ── Mechanical one-voice ownership (ONEVOICE-ALERT-DEDUPE) ─────────────────────────────────────
 // Short status lines that THIS module always routes through the arbiter (announce → voice:say).
@@ -177,6 +178,11 @@ export function dockPromptText(state, stationId, keyLabel) {
 export function createAlerts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('alerts');
+  // G16-01 the Stage: the banner slot owns this host's mount point (index.html). When a stage
+  // exists and #alerts landed outside it — a host page without the markup — move it inside its
+  // named slot; nothing about the pills' styling or ids changes.
+  const bannerHost = ctx.stage && typeof ctx.stage.slotEl === 'function' ? ctx.stage.slotEl('banner') : null;
+  if (root && bannerHost && root.parentNode !== bannerHost) bannerHost.appendChild(root);
   const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, expiresAt, el, wasShown }
   const expiredKeys = [];
   let nextExpiryAt = Infinity;

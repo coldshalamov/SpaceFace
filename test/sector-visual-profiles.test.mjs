@@ -231,19 +231,20 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
   const state = createGameState(0x046);
   const profiles = Object.values(SECTOR_VISUAL_PROFILES);
   const expected = {
-    // DEFAULT_BLOOM_STRENGTH 0.40 (owner 2026-10-27 bloom discipline) x each profile's scale.
-    helios_core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.99 },
-    core: { bloomStrength: 0.416, bloomThreshold: 0.98, exposure: 0.96 },
-    belt: { bloomStrength: 0.44, bloomThreshold: 0.94, exposure: 0.95 },
-    fringe: { bloomStrength: 0.432, bloomThreshold: 0.96, exposure: 0.94 },
-    anomaly: { bloomStrength: 0.464, bloomThreshold: 0.90, exposure: 0.95 },
-    tethys: { bloomStrength: 0.424, bloomThreshold: 0.96, exposure: 0.93 },
+    // DEFAULT_BLOOM_STRENGTH 0.40 (owner 2026-10-27 bloom discipline) x each profile's scale (1.0 for
+    // every sector since 2026-11-11: identity shapes light, not extra bloom; no threshold bias).
+    helios_core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.02 },
+    core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.99 },
+    belt: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    fringe: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    anomaly: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    tethys: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
     // Per-sector rigs inherit their palette family's post block.
-    ceres_belt: { bloomStrength: 0.44, bloomThreshold: 0.94, exposure: 0.95 },
-    vesta_forge: { bloomStrength: 0.44, bloomThreshold: 0.94, exposure: 0.95 },
-    pallas_drift: { bloomStrength: 0.432, bloomThreshold: 0.96, exposure: 0.94 },
-    sker_haven: { bloomStrength: 0.432, bloomThreshold: 0.96, exposure: 0.94 },
-    viscera: { bloomStrength: 0.408, bloomThreshold: 0.88, exposure: 0.91 },
+    ceres_belt: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    vesta_forge: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    pallas_drift: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    sker_haven: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    viscera: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.94 },
   };
 
   assert.equal(DEFAULT_BLOOM_STRENGTH, 0.40);
