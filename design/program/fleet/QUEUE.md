@@ -28,8 +28,9 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 
 | ID | Tier | Job | State |
 |---|---|---|---|
-| STAB-01-launchers-always-start | D | Both launchers reach the menu 10/10; plain-sentence errors | TAKEN devin1 |
-| STAB-02-stability-gate | D | `npm run gate` = Adventure boot + Swarm boot + deterministic replay | TAKEN devin2 |
+| STAB-01-launchers-always-start | D | Both launchers reach the menu 10/10; plain-sentence errors | BUILT e33d7154 |
+| STAB-04-worker-bundle-never-503 | D | Sim worker bundle retries/falls back instead of 503 while files change | TAKEN devin1 |
+| STAB-02-stability-gate | D | `npm run gate` = Adventure boot + Swarm boot + deterministic replay | BUILT ae8333d9 |
 | KNOWN-REDS | D | Already failing on master (not caused by fleet work): `deep-sky-plate-pipeline` #9, `performance-dirty-ranges` (4), `render-target-pipeline-warmup` #25, `pq-204-advanced-perf` #13/#19, `anvil-orchard-motor`, `ceres-five-minute-acceptance` (2), `physics-sandbox-routes` (2), `pq-163-04-cliff` (2). Fix each cause or retire a test whose claim is obsolete, with a one-line reason | NEEDS-PACKET |
 | STAB-03-import-and-boot-lint | D | Static check: every relative import resolves cleanly (the `.//` boot break); first gate step | TAKEN devin2 |
 | G11-01-never-freeze | L | The freeze-and-blip: measure on a quiet machine, then one clock, adaptive playout, then a cheaper sim | READY |
