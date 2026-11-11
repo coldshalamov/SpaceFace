@@ -243,7 +243,30 @@ try {
     // handle -> {name, cacheKey} every frame: a link whose key was seen before resolves even
     // after the program is released, separating "novel variant" from "released and relinked".
     record.programsSeen = new Map();
+    // PERF-02a: the player hull's DRAWN position every presented frame — the same mesh.position
+    // the chase camera follows — projected onto the ship's velocity in the summary below. World
+    // units (local pose + frame origin) so a floating-origin rebase cannot read as a ship step.
+    record.playerDrawn = [];
     const tick = (now) => {
+      try {
+        const st = window.SF && window.SF.state;
+        const pm = st && st.render && st.render.meshes && typeof st.render.meshes.get === 'function'
+          ? st.render.meshes.get(st.playerId) : null;
+        const pe = st && st.entities && typeof st.entities.get === 'function'
+          ? st.entities.get(st.playerId) : null;
+        const fo = st && st.world && st.world.frameOrigin;
+        const ox = fo && Number.isFinite(fo.x) ? fo.x : 0;
+        const oz = fo && Number.isFinite(fo.z) ? fo.z : 0;
+        record.playerDrawn.push(pm && pm.position
+          && Number.isFinite(pm.position.x) && Number.isFinite(pm.position.z)
+          ? [
+            pm.position.x + ox,
+            pm.position.z + oz,
+            pe && pe.vel && Number.isFinite(pe.vel.x) ? pe.vel.x : 0,
+            pe && pe.vel && Number.isFinite(pe.vel.z) ? pe.vel.z : 0,
+          ]
+          : null);
+      } catch { record.playerDrawn.push(null); }
       if (record.last) {
         record.dts.push(now - record.last);
         record.ats.push(now);
@@ -742,8 +765,77 @@ try {
     const projectiles = (state.entityList || []).filter((e) => e && e.alive !== false && e.type === 'projectile').length;
     const info = state.render && state.render.renderer && state.render.renderer.info && state.render.renderer.info.render;
     const player = state.entities && state.entities.get(state.playerId);
+    // PERF-02a drawn-path audit: per presented frame, the drawn hull's displacement projected on
+    // the ship's own velocity direction. playerDrawn[j] was captured on the same rAF tick whose
+    // interval produced dts[j], so the step between entries j and j+1 pairs with dts[j]; the
+    // slice(30) warmup applies to the step index the same way.
+    const playerContinuity = (() => {
+      const path = (window.__SF_SMOOTH__ && Array.isArray(window.__SF_SMOOTH__.playerDrawn)
+        ? window.__SF_SMOOTH__.playerDrawn : []);
+      const steps = [];
+      const stepDts = [];
+      const dtsRaw = window.__SF_SMOOTH__ && Array.isArray(window.__SF_SMOOTH__.dts)
+        ? window.__SF_SMOOTH__.dts : [];
+      for (let j = 30; j + 1 < path.length; j++) {
+        const a = path[j];
+        const b = path[j + 1];
+        if (!a || !b) continue;
+        let vx = b[2];
+        let vz = b[3];
+        if (!(vx * vx + vz * vz > 1e-6)) { vx = a[2]; vz = a[3]; }
+        const speed = Math.hypot(vx, vz);
+        if (!(speed > 1e-6)) continue; // a standing hull has no 'backwards'
+        steps.push(((b[0] - a[0]) * vx + (b[1] - a[1]) * vz) / speed);
+        stepDts.push(Number.isFinite(dtsRaw[j]) ? dtsRaw[j] : 0);
+      }
+      // The forward-step median only counts steps at the packet's own significance bar:
+      // pose-continuity healing intentionally leaves sub-perceptual ±<0.5 WU creep between
+      // presented moments, and letting those collapse the median would flag every real step.
+      const forward = steps.filter((s) => s > 0.5).sort((p, q) => p - q);
+      const medianStep = forward.length ? forward[Math.floor(forward.length / 2)] : 0;
+      let worstBack = 0;
+      let backSteps = 0;
+      let forwardJumps = 0;
+      for (const s of steps) {
+        if (s < -0.5) { backSteps++; if (s < worstBack) worstBack = s; }
+        else if (medianStep > 0 && s > 2.5 * medianStep) forwardJumps++;
+      }
+      // The largest forward steps with the presented delta that produced each — a forward
+      // jump on a 300 ms freeze-frame is a different suspect than one on a 16 ms frame.
+      const topSteps = steps
+        .map((s, i) => ({ s, ms: stepDts[i] }))
+        .sort((a, b) => b.s - a.s)
+        .slice(0, 6)
+        .map((t) => `${t.s.toFixed(1)}@${t.ms.toFixed(0)}ms`);
+      // The largest backward steps with their presented deltas — a back-step that lands on
+      // a giant freeze-frame is a different suspect than one on an ordinary frame.
+      const worstBackSteps = steps
+        .map((s, i) => ({ s, ms: stepDts[i] }))
+        .sort((a, b) => a.s - b.s)
+        .slice(0, 4)
+        .map((t) => `${t.s.toFixed(1)}@${t.ms.toFixed(0)}ms`);
+      // Position+velocity trace around the single worst back-step — the difference between
+      // a smoothing slide and a real stream event (bounce/teleport) is in these numbers.
+      let backTrace = null;
+      {
+        let wi = -1;
+        for (let i = 0; i < steps.length; i++) if (steps[i] === worstBack && worstBack < -0.5) wi = i;
+        if (wi >= 0) {
+          const j0 = Math.max(30, wi + 30 - 3);
+          const j1 = Math.min(path.length - 1, wi + 30 + 4);
+          backTrace = [];
+          for (let j = j0; j <= j1; j++) {
+            const p = path[j];
+            if (!p) { backTrace.push(null); continue; }
+            backTrace.push(`${j}:${p[0].toFixed(1)},${p[1].toFixed(1)}|v=${p[2].toFixed(0)},${p[3].toFixed(0)}`);
+          }
+        }
+      }
+      return { frames: steps.length, backSteps, worstBack, forwardJumps, medianStep, topSteps, worstBackSteps, backTrace };
+    })();
     return {
       after: { ...after },
+      playerContinuity,
       frames: dts.length,
       meanMs: dts.reduce((sum, dt) => sum + dt, 0) / Math.max(1, dts.length),
       p50: pick(0.5),
@@ -1339,6 +1431,13 @@ try {
     ...(buildEvents.length ? ['  mesh builds in sample:', ...buildEvents.slice(0, 30)] : []),
     ...(uploadLines.length ? ['  buffer uploads in sample:', ...uploadLines] : []),
     `  SHIP LOST ITS PLACE         ${(a.duplicateMomentPresents || 0) - (before.duplicateMomentPresents || 0)} presents redrew an already-drawn moment (must be 0)`,
+    `  player back-steps           ${(() => {
+      const pc = result.playerContinuity;
+      if (!pc || !pc.frames) return 'n/a (no drawn-path samples)';
+      return `${pc.backSteps} of ${pc.frames} frames drew the hull backwards >0.5 WU along its velocity (worst ${pc.worstBack.toFixed(2)} WU; ${pc.worstBackSteps && pc.worstBackSteps.length ? pc.worstBackSteps.join(', ') : '—'}); median forward step ${pc.medianStep.toFixed(2)} WU`;
+    })()}`,
+    `  player forward jumps        ${result.playerContinuity ? result.playerContinuity.forwardJumps : 'n/a'} frames drew a forward step >2.5x the median step${result.playerContinuity && result.playerContinuity.topSteps && result.playerContinuity.topSteps.length ? ` (top ${result.playerContinuity.topSteps.join(', ')})` : ''}`,
+    ...(result.playerContinuity && result.playerContinuity.backTrace ? [`  worst back-step trace       ${result.playerContinuity.backTrace.join('  ')}`] : []),
     `  hitch callbacks             ${(a.hitchCappedFrameCount || 0) - (before.hitchCappedFrameCount || 0)} of ${executed} (world resumed two ticks on)`,
     `  frames that shed sim time   ${(a.shedBacklogFrames || 0) - (before.shedBacklogFrames || 0)}`,
     `  game speed vs real time     ${(100 * (result.simTime - clockBefore.sim) / Math.max(0.001, (result.wallNow - clockBefore.wall) / 1000)).toFixed(1)} % (hit-stop and hitches are the only things allowed to lower it)`,

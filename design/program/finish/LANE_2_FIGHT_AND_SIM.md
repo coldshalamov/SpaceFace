@@ -470,3 +470,24 @@ cell — owner of the swarmMode.js work should re-run these before landing it.
   verified DONE+IMPORT with zero live dead-location reads in the 2026-10-07 check. On a future
   `design/program/vm-drop/` import, drop hunks using writerless `player.data.*` or `state.comms.*`
   locations; the remote-authoritative drop remains read-only here.
+
+## INFERENCE 20+20 pass (2026-11-08/09, controller + implementer agents)
+
+Implemented and focused-tested (one commit each, recorded in `design/program/inference-memory.json`);
+fight/sim slice:
+- fix-boss-round-debut (WF-02 repair): S14 moved the champions onto 5/15/25 without moving the debut
+  clock - the round slam names the newcomer (NEW THREAT) on a shared round and the wave intro keeps
+  the debut namecheck after the champion; the 19-red wave-10 cluster diagnosed as stale pins and
+  re-pinned, not regression (0bc829c5c2).
+- fix-mine-field-voice (WF-16 repair): the specialist mine layer says when it thins - one line per
+  episode via mines' own receipts, sector-exit cleanup silent, the per-wave budget still applies
+  (f0678e4a2c).
+- inf-ram-mass-law (WF-05): below the heavy boundary the ram reads the victim's mass-ratio share
+  of the pre-solve closing speed into the same energy proxy and cap, only ever raising the bounded
+  read - heavy wrecks light, equals crumple both ways, light bounces off hurt (2179c3deea).
+- inf-overdrive-mark (WF-14 integration): the chain hero's mix line reads OVERDRIVE · GUNS ×rate
+  for the whole window until the chain break spends it (4b2c5168fd).
+- inf-chain-star (WF-16): the zone chain star lands the moment the live chain reaches its target,
+  once per zone per run, ladder runs only (8f10d88762).
+- inf-vent-press (WF-02): your gun vent invites a push - up to three attackers tighten their hold
+  to 55% for the vent window and the nearest calls it on the band (3a2438ccc5).

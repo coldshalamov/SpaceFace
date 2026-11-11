@@ -131,6 +131,19 @@ export function readingOf(entry) {
         kicker: kick(type, redeemed ? 'redeemed' : 'minted'),
       };
     }
+    case 'frenzy': {
+      // CH-43 — the frenzy page's hero is the net, signed like trade: did the mess pay.
+      const net = Number(t.netCr);
+      return {
+        hero: Number.isFinite(net)
+          ? `${net >= 0 ? '+' : '\u2212'}${Math.abs(net).toLocaleString('en-US')}`
+          : '',
+        unit: 'cr net',
+        title: [t.fencedCr != null ? `${str(t.fencedCr)} fenced` : '', t.costCr != null ? `${str(t.costCr)} out` : '']
+          .filter(Boolean).join(' · '),
+        kicker: kick(type, cycle, t.bountyCr ? 'a price stands' : ''),
+      };
+    }
     default: {
       const digits = cycleDigits(cycle);
       return { hero: digits, unit: 'cycle', title: '', kicker: kick(type) };
@@ -170,6 +183,8 @@ export function createLedgerScreen(ctx) {
     let amount = null;
     if (type === 'trade' && Number.isFinite(credits)) amount = (t.verbPast === 'sold' ? 1 : -1) * credits;
     else if (type === 'witness' && Number.isFinite(credits)) amount = -credits;
+    // CH-43 — the frenzy page rides the tape at its net, signed (tokens.netCr is a plain integer).
+    else if (type === 'frenzy' && t.netCr != null) amount = Number(t.netCr) || 0;
     return { id: entry.id, type, at: Number(entry.at) || 0, cycleLabel: entry.cycleLabel || '', amount };
   }
   function syncTape(selectedId) {

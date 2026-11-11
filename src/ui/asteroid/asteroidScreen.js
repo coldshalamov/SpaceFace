@@ -38,6 +38,8 @@ import { spillConfirmWarning } from '../../systems/asteroidSites.js';
 import { industryReadoutFromState } from '../screens/industryReadout.js';
 import { miningNextStep } from './progressionGuide.js';
 import { firstTunnelControl } from './miningEntryFeedback.js';
+import { pluralWord } from '../numberFormat.js';
+
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -161,7 +163,7 @@ export function anchoredClaimAnnouncement(claim) {
   if (!committed) return 'Claim staked. This asteroid is now a permanent site.';
   const cells = Array.isArray(survey.cells)
     ? survey.cells.length : Math.max(0, Math.trunc(Number(survey.cells) || 0));
-  const count = cells > 0 ? `${cells} formation ${cells === 1 ? 'cell' : 'cells'} are` : 'the formation is';
+  const count = cells > 0 ? `${cells} formation ${pluralWord(cells, 'cell', 'cells')} are` : 'the formation is';
   return `Claim staked. Survey committed: ${count} now part of this permanent site.`;
 }
 
@@ -1846,7 +1848,10 @@ export const asteroidScreen = {
         if (res.ok) {
           projDirty = true;
           pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved}u ${name}.`);
-          announce(`${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
+          // words-field-counts: the announcement can count to one (the ledger keeps its own u).
+          announce(res.moved === 1
+            ? `1 unit of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`
+            : `${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
         } else {
           announce(transferRefusalText(res));
         }

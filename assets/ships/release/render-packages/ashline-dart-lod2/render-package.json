@@ -565,22 +565,22 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42",
+  "contentHash": "ab0399328d49858dcd1b987097f942d84ca3e18f515368f64454fdae775fa8a2",
   "dynamicGroups": [
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core.dynamic",
       "kind": "moving-part",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core"
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core"
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port.dynamic",
       "kind": "moving-part",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port"
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port"
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard.dynamic",
       "kind": "moving-part",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard"
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard"
     }
   ],
   "geometry": [
@@ -624,13 +624,13 @@
       },
       "drawMode": 4,
       "geometryHash": "cddbcfc93c3394fbfbed8fade4f368e89ec423e9b0894aacdb6cb761613a2dad",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-armor.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 1992,
       "indexed": true,
       "materialHash": "8d4dd9f85e120f7b933880a49573fd10a730e176c84930835a0cc0ee284bda22",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Armor",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-armor",
+      "meshName": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-armor",
       "primitiveIndex": 0,
       "vertexCount": 631
     },
@@ -649,13 +649,13 @@
       },
       "drawMode": 4,
       "geometryHash": "00fd342426a78fdbca7c289ee9f9b7fce7e0355d0ab70deac30d86c6a800cb6e",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-beacon-amber",
+      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-beacon-amber",
       "primitiveIndex": 0,
       "vertexCount": 120
     },
@@ -674,13 +674,13 @@
       },
       "drawMode": 4,
       "geometryHash": "342d115ca50c559021cc658e817e0958a299994fc99c0c1b63d096558794f233",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-brushedmetal.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "60f26c857f395e7babbd1cc44652e8cd6a6e73f5f654cd002523ce393204c350",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-brushedmetal",
+      "meshName": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-brushedmetal",
       "primitiveIndex": 0,
       "vertexCount": 106
     },
@@ -699,13 +699,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4cb331cd97ed8398d79d6889213b0529e1e206462e8c6c81201fe6d4aeb2098c",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-canopy.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-canopy.primitive.0",
       "indexCount": 438,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
-      "meshName": "LOD0_MOTION_HULL_CORE_CANOPY",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-canopy",
+      "meshName": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-canopy",
       "primitiveIndex": 0,
       "vertexCount": 123
     },
@@ -724,13 +724,13 @@
       },
       "drawMode": 4,
       "geometryHash": "cc554d81afb2a272faf040849bd91ae04ad7075b59b6c03d146662d40232ab6c",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 615,
       "indexed": true,
       "materialHash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 219
     },
@@ -749,13 +749,13 @@
       },
       "drawMode": 4,
       "geometryHash": "3413bb8b12c01411ead5f2fafe6bccece1dc178f6bde3c6aa360db261788324e",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -774,13 +774,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e53176878ba4d7fd6220c15a8063165133ec17733b077baecfda14ddb8360231",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -799,13 +799,13 @@
       },
       "drawMode": 4,
       "geometryHash": "841f9581dc5b84275c70fdb900ee2621e594c9bab58a91fcc22b94e998860635",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hull.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 807,
       "indexed": true,
       "materialHash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Hull",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hull",
+      "meshName": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hull",
       "primitiveIndex": 0,
       "vertexCount": 272
     },
@@ -824,13 +824,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e1fea165a27f82ea7ef5b58e0aa96bef87bcf2e5c971457ebf7d075efbbbe3f9",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-cyan-sodium.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 120,
       "indexed": true,
       "materialHash": "accc96276be1d8579e44cc57ad81cf26f424c442f1928d6272b458105e0b8e61",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-cyan-sodium",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-cyan-sodium",
       "primitiveIndex": 0,
       "vertexCount": 54
     },
@@ -849,13 +849,13 @@
       },
       "drawMode": 4,
       "geometryHash": "778e04d9bb0e83f0191b7a2c2488c7f51bbc4c0b18e2c9bf154fe239c6df36f4",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-warm.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-warm",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-warm",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -874,13 +874,13 @@
       },
       "drawMode": 4,
       "geometryHash": "3c87d34364bd72c200987b366ee601d15947f5dcee0b7bf7d42f334228c8c856",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-livery.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-livery.primitive.0",
       "indexCount": 60,
       "indexed": true,
       "materialHash": "6964fe8e4109c4f9f01c8072647a7b5f8954520df93426e56d22a82dbf1ece4a",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Livery",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-livery",
+      "meshName": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-livery",
       "primitiveIndex": 0,
       "vertexCount": 29
     },
@@ -899,13 +899,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a0cb9fee65a585ef465828f15d8ef3bd4604c6ab016949d2aca82e14b60f02cf",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanical.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 4722,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanical",
+      "meshName": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 1715
     },
@@ -924,13 +924,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a03e51e59b8d15d54cbb0b6bfabe3e7ee35b8de57386cdad03565f5ee430940e",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 2157,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanicaldark",
+      "meshName": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
       "vertexCount": 832
     },
@@ -949,13 +949,13 @@
       },
       "drawMode": 4,
       "geometryHash": "47d00c33cb7c3b38f3133a7e1b28fc3c671052b566c96851cdac8395aaf31a73",
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-warning.primitive.0",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-warning.primitive.0",
       "indexCount": 252,
       "indexed": true,
       "materialHash": "f7ab29a8754d4f9ff7bb1479203da31d15cb1b7711620aecc9f8d2e885a5abba",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Warning",
-      "nodeId": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-warning",
+      "meshName": "LOD2_MOTION_HULL_CORE_Warning",
+      "nodeId": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-warning",
       "primitiveIndex": 0,
       "vertexCount": 144
     }
@@ -1289,7 +1289,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-armor",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-armor",
       "localTransform": [
         7.249335765838623,
         0,
@@ -1309,8 +1309,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Armor",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Armor",
       "nodePath": [
         0,
         1,
@@ -1339,7 +1339,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-beacon-amber",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-beacon-amber",
       "localTransform": [
         1.675000011920929,
         0,
@@ -1359,8 +1359,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
       "nodePath": [
         0,
         1,
@@ -1389,7 +1389,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-brushedmetal",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-brushedmetal",
       "localTransform": [
         5.072861075401306,
         0,
@@ -1409,8 +1409,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_BrushedMetal",
-      "nodeName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+      "nodeName": "LOD2_MOTION_HULL_CORE_BrushedMetal",
       "nodePath": [
         0,
         1,
@@ -1439,7 +1439,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-canopy",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-canopy",
       "localTransform": [
         1.3002157807350159,
         0,
@@ -1459,8 +1459,8 @@
         1
       ],
       "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
-      "nodeName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD2_MOTION_HULL_CORE_CANOPY",
       "nodePath": [
         0,
         1,
@@ -1489,7 +1489,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core",
       "localTransform": [
         1.017249882221222,
         0,
@@ -1509,8 +1509,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
       "nodePath": [
         0,
         1,
@@ -1539,7 +1539,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port",
       "localTransform": [
         0.059999942779541016,
         0,
@@ -1559,8 +1559,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
       "nodePath": [
         0,
         1,
@@ -1589,7 +1589,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard",
       "localTransform": [
         0.059999942779541016,
         0,
@@ -1609,8 +1609,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
       "nodePath": [
         0,
         1,
@@ -1639,7 +1639,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hull",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hull",
       "localTransform": [
         7.143905878067017,
         0,
@@ -1659,8 +1659,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Hull",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Hull",
       "nodePath": [
         0,
         1,
@@ -1689,7 +1689,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-cyan-sodium",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-cyan-sodium",
       "localTransform": [
         2.699965089559555,
         0,
@@ -1709,8 +1709,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
       "nodePath": [
         0,
         1,
@@ -1739,7 +1739,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-warm",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-warm",
       "localTransform": [
         0.05999999865889549,
         0,
@@ -1759,8 +1759,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Warm",
       "nodePath": [
         0,
         1,
@@ -1789,7 +1789,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-livery",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-livery",
       "localTransform": [
         7.097701787948608,
         0,
@@ -1809,8 +1809,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Livery",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Livery",
       "nodePath": [
         0,
         1,
@@ -1839,7 +1839,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanical",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanical",
       "localTransform": [
         4.73454624414444,
         0,
@@ -1859,8 +1859,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Mechanical",
       "nodePath": [
         0,
         1,
@@ -1889,7 +1889,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanicaldark",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanicaldark",
       "localTransform": [
         4.784512281417847,
         0,
@@ -1909,8 +1909,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD2_MOTION_HULL_CORE_MechanicalDark",
       "nodePath": [
         0,
         1,
@@ -1939,7 +1939,7 @@
       ]
     },
     {
-      "id": "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-warning",
+      "id": "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-warning",
       "localTransform": [
         3.2456623315811157,
         0,
@@ -1959,8 +1959,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Warning",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Warning",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Warning",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Warning",
       "nodePath": [
         0,
         1,
@@ -2676,22 +2676,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "c6738632fb69f7850f52b4518c0282f173f01a87af781db37dcc845e3709585a"
+      "sha256": "377814db4d00322fab1ea7df57407b0ef4f43b1b37024abb5ed3af9443e6b0c9"
     },
     "sourceGlb": {
       "bytes": 404784,
-      "sha256": "1cbadd483fe70294097dfa6021b4b881dc65499284beae77491cc66c71996b13",
+      "sha256": "9b938687bedd39b54f2330b89a80cbde90fc15cdd43fa34d5f1787cc00eb07be",
       "uri": "ashline_dart_lod2.glb"
     },
     "sourceManifest": {
       "bytes": 344570,
-      "sha256": "f8e4f32becb52a89e1f3513781fca874f2af845bac7b8877b652c2bd91147d9f",
+      "sha256": "1d188cba03064083a66f5496d1976f598c10c2f18e33867ab56c728b966affab",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 411936,
-    "sha256": "f139764cd39bc02689c4f51264fd179c16305e05914cdef4d7afb4d4c63eece5",
+    "sha256": "7c342568c7eca882d37d1c68ee5648c65b632243194fb133c40cbf626ebe0b97",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2806,22 +2806,22 @@
           -4.6798959374427795e-8,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
         "planIndex": 9,
         "tags": {
           "drive": "core",
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         },
         "userData": {
-          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
           "spaceface": {
             "drive": "core"
           },
           "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
             "recordIds": [
-              "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core"
+              "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2846,19 +2846,19 @@
           -3.359999895095825,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
         "planIndex": 11,
         "tags": {
           "damageRole": "navLight",
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         },
         "userData": {
-          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
           "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
             "recordIds": [
-              "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port"
+              "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2883,19 +2883,19 @@
           3.359999895095825,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
         "planIndex": 13,
         "tags": {
           "damageRole": "navLight",
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         },
         "userData": {
-          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
           "spacefaceRenderPackageSemantic": {
-            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
             "recordIds": [
-              "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard"
+              "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3640,11 +3640,11 @@
           1.1920928955078125e-7,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Warning",
+        "name": "LOD2_MOTION_HULL_CORE_Warning",
         "planIndex": 4,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3668,11 +3668,11 @@
           0.0015714764595031738,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Armor",
+        "name": "LOD2_MOTION_HULL_CORE_Armor",
         "planIndex": 5,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3696,11 +3696,11 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
         "planIndex": 6,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3724,11 +3724,11 @@
           -2.980232238769531e-7,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+        "name": "LOD2_MOTION_HULL_CORE_BrushedMetal",
         "planIndex": 7,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3752,11 +3752,11 @@
           -0.0002919137477874756,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "name": "LOD2_MOTION_HULL_CORE_CANOPY",
         "planIndex": 8,
         "tags": {
           "canopy": true,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3780,7 +3780,7 @@
           -4.6798959374427795e-8,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -3803,7 +3803,7 @@
             -4.6798959374427795e-8,
             1
           ],
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3827,12 +3827,12 @@
           -3.359999895095825,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
         "planIndex": 12,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3856,12 +3856,12 @@
           3.359999895095825,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
         "planIndex": 14,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3885,11 +3885,11 @@
           0.0004278421401977539,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Hull",
+        "name": "LOD2_MOTION_HULL_CORE_Hull",
         "planIndex": 15,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3913,11 +3913,11 @@
           0.000004112720489501953,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
         "planIndex": 16,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3941,11 +3941,11 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Warm",
         "planIndex": 17,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3969,11 +3969,11 @@
           -0.3624335490167141,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Livery",
+        "name": "LOD2_MOTION_HULL_CORE_Livery",
         "planIndex": 18,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -3997,11 +3997,11 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "name": "LOD2_MOTION_HULL_CORE_Mechanical",
         "planIndex": 19,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       },
@@ -4025,11 +4025,11 @@
           0.0005674362182617188,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "name": "LOD2_MOTION_HULL_CORE_MechanicalDark",
         "planIndex": 20,
         "tags": {
           "canopy": false,
-          "lod": "lod0",
+          "lod": "lod2",
           "motionGroup": true
         }
       }
@@ -4038,7 +4038,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart_lod2.glb"
   },
-  "runtimeHash": "a460a61a7484a822babb4237d7a4256e9cd2b551391e939a2a304187ed24d4ed",
+  "runtimeHash": "07262248bd8f41e0f68a7d7fcf8e7fa7378d794b0f1764ae6c359b838253c9ec",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4057,20 +4057,20 @@
       "id": "sf.render.ashline-dart-lod2.body",
       "nodeIds": [
         "sf.render.ashline-dart-lod2.node.collision-hull",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-armor",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-beacon-amber",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-brushedmetal",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-canopy",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-drive-core",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-port",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hook-nav-starboard",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-hull",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-cyan-sodium",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-lights-warm",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-livery",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanical",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-mechanicaldark",
-        "sf.render.ashline-dart-lod2.node.lod0-motion-hull-core-warning",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-armor",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-beacon-amber",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-brushedmetal",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-canopy",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-drive-core",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-port",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hook-nav-starboard",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-hull",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-cyan-sodium",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-lights-warm",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-livery",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanical",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-mechanicaldark",
+        "sf.render.ashline-dart-lod2.node.lod2-motion-hull-core-warning",
         "sf.render.ashline-dart-lod2.node.motion-hull-core",
         "sf.render.ashline-dart-lod2.node.sf-m4-ashline-dart-root",
         "sf.render.ashline-dart-lod2.node.socket-camera-focus",
