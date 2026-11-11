@@ -277,7 +277,7 @@ ${P} .sx-dock :is(button, a):is(:hover, :focus-visible) { color:rgb(${BONE}) !im
 ${P} .sx-dock :is(button, a)[aria-selected="true"], ${P} .sx-dock :is(button, a)[aria-current], ${P} .sx-dock :is(button, a).is-active {
   color:#fff !important; border-bottom-color:rgb(${AMBER}) !important; }
 ${P} .sxb-help, ${P} .sx-comms__toggle { text-transform:none !important; letter-spacing:.02em !important; font-size:13px !important; font-family:${UI} !important;
-  min-height:32px !important; padding:0 12px !important; border:${LINE} !important; border-radius:2px !important; background:${PANEL} !important; clip-path:none !important; }
+  min-height:32px !important; padding:0 12px !important; border:${LINE} !important; border-radius:6px !important; background:${PANEL} !important; clip-path:none !important; }
 ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em !important; }
 /* Under 581 wide the orbital sheet hides Help's word and the Standard sheet hides its icon, so the ruled key beside
    Comms painted as an empty box: put the word back so both foot keys read as labelled controls. */
@@ -466,9 +466,9 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
 
 /* ==== MARKET ================================================================================ */
 /* the two columns are ruled panels over a scrim, so no figure sits on the busy world plate */
-${P} .sx-mkt__list { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important;
+${P} .sx-mkt__list { box-sizing:border-box; border:${LINE} !important; border-radius:8px; background:${PANEL} !important;
   padding:12px 14px 6px !important; }
-${P} .sx-mkt__stage { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important; padding:16px 20px !important; }
+${P} .sx-mkt__stage { box-sizing:border-box; border:${LINE} !important; border-radius:8px; background:${PANEL} !important; padding:16px 20px !important; }
 ${P} .sx-mkt .orr-extent { display:none !important; }
 ${P} .sx-mkt :is(.k-caps, .fh-legend, .sx-mkt-drivers__k) { font-family:${UI} !important; font-stretch:100% !important;
   font-variation-settings:normal !important; font-weight:600 !important; font-size:13px !important; letter-spacing:.03em !important;
@@ -482,7 +482,7 @@ ${P} .sx-mkt .sx-mkt-browser__filters { display:flex !important; flex-wrap:wrap 
 ${P} .sx-mkt .sx-mkt-browser__filters > li { padding:0 !important; margin:0 !important; background:none !important; background-image:none !important; }
 ${P} .sx-mkt .sx-mkt-browser__filters > li::before, ${P} .sx-mkt .sx-mkt-browser__filters > li::after { content:none !important; display:none !important; }
 ${P} .sx-mkt .sx-mkt-filter { display:inline-flex !important; align-items:center; justify-content:center; min-height:28px !important; height:auto !important;
-  width:auto !important; padding:0 10px !important; border:${LINE} !important; border-radius:2px !important; background:transparent !important;
+  width:auto !important; padding:0 10px !important; border:${LINE} !important; border-radius:6px !important; background:transparent !important;
   clip-path:none !important; font-family:${UI} !important; font-size:13px !important; font-weight:600 !important; letter-spacing:.01em !important;
   text-transform:none !important; color:rgb(${BONE} / .85) !important; cursor:pointer; }
 ${P} .sx-mkt .sx-mkt-filter::before, ${P} .sx-mkt .sx-mkt-filter::after { content:none !important; display:none !important; }
@@ -493,7 +493,7 @@ ${P} .sx-mkt .sx-mkt-filter:is([aria-pressed="true"], [aria-selected="true"], [a
 ${P} .sx-mkt .orr-mkt-find { position:static !important; display:block !important; width:100% !important; margin:0 0 10px !important; padding:0 !important;
   background:none !important; background-image:none !important; }
 ${P} .sx-mkt .sx-mkt-search { box-sizing:border-box !important; width:100% !important; height:32px !important; padding:0 10px !important;
-  border:${LINE} !important; border-radius:2px !important; background:rgb(0 0 0 / .35) !important; box-shadow:none !important;
+  border:${LINE} !important; border-radius:6px !important; background:rgb(0 0 0 / .35) !important; box-shadow:none !important;
   font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important; color:rgb(${BONE}) !important; }
 ${P} .sx-mkt .sx-mkt-search:focus { border-color:rgb(${AMBER}) !important; box-shadow:none !important; outline:none !important; }
 ${P} .sx-mkt .orr-mkt-find__cursor { display:none !important; }
@@ -549,7 +549,7 @@ ${P} .sx-mkt .sx-qty { display:flex !important; flex-wrap:wrap !important; align
 ${P} .sx-mkt .sx-qty .orr-qdial { display:none !important; }
 ${P} .sx-mkt .sx-qty__k { flex:0 0 100% !important; position:static !important; transform:none !important; margin:0 0 4px !important; text-align:left !important; width:auto !important; }
 ${P} .sx-mkt .sx-qty__in { order:2; position:static !important; transform:none !important; width:68px !important; height:36px !important; box-sizing:border-box !important;
-  text-align:center !important; font-size:20px !important; font-weight:500 !important; line-height:36px !important; padding:0 !important; border:${LINE} !important; border-radius:2px !important;
+  text-align:center !important; font-size:20px !important; font-weight:500 !important; line-height:36px !important; padding:0 !important; border:${LINE} !important; border-radius:6px !important;
   background:rgb(0 0 0 / .35) !important; color:var(--dp-phos, #dfeeff) !important; }
 ${P} .sx-mkt .sx-qty__in:focus { border-color:rgb(${AMBER}) !important; outline:none !important; }
 ${P} .sx-mkt .sx-qty__words { display:contents !important; }
@@ -558,7 +558,7 @@ ${P} .sx-mkt .sx-qty__words > li:nth-child(1) > button { order:1; }
 ${P} .sx-mkt .sx-qty__words > li:nth-child(2) > button { order:3; }
 ${P} .sx-mkt .sx-qty__words > li:nth-child(3) > button { order:4; }
 ${P} .sx-mkt :is(.sx-qty__b, .sx-qty__max, .sx-trade__words > li:not(:first-child) > .sx-trade__go) { display:inline-flex !important; align-items:center; justify-content:center;
-  min-height:36px !important; height:36px !important; padding:0 11px !important; border:${LINE} !important; border-radius:2px !important; background:transparent !important;
+  min-height:36px !important; height:36px !important; padding:0 11px !important; border:${LINE} !important; border-radius:6px !important; background:transparent !important;
   clip-path:none !important; font-family:${UI} !important; font-size:13px !important; font-weight:600 !important; letter-spacing:.01em !important; text-transform:none !important;
   color:rgb(${BONE} / .95) !important; cursor:pointer; width:auto !important; }
 ${P} .sx-mkt :is(.sx-qty__b, .sx-qty__max, .sx-trade__words > li:not(:first-child) > .sx-trade__go):is(:hover, :focus-visible) { border-color:rgb(${BONE} / .8) !important; background:rgb(${BONE} / .1) !important; outline:none !important; }
@@ -572,7 +572,7 @@ ${P} .sx-mkt .sx-trade__words > li { display:block !important; }
 
 /* the decision options (repair / fly damaged): real buttons with the consequence underneath */
 ${P} .sx-mkt .sx-decision__opt { display:block !important; width:100%; box-sizing:border-box; text-align:left !important; margin:0 0 8px !important; padding:9px 12px !important;
-  border:${LINE} !important; border-radius:2px !important; background:rgb(${BONE} / .04) !important; clip-path:none !important; height:auto !important; min-height:0 !important; cursor:pointer; }
+  border:${LINE} !important; border-radius:8px !important; background:rgb(${BONE} / .04) !important; clip-path:none !important; height:auto !important; min-height:0 !important; cursor:pointer; }
 ${P} .sx-mkt .sx-decision__opt::before, ${P} .sx-mkt .sx-decision__opt::after { content:none !important; display:none !important; }
 ${P} .sx-mkt .sx-decision__opt:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .1) !important; outline:none !important; }
 ${P} .sx-mkt .sx-decision__opt .k-row__name { display:block !important; font-family:${UI} !important; font-size:14px !important; font-weight:600 !important; letter-spacing:.01em !important;
