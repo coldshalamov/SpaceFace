@@ -1424,6 +1424,7 @@ export const fields = {
     const tick = (state && state.tick) | 0;
     let wantOn = !!(plan && plan.action === 'on' && plan.kind === 'cone');
     if (!wantOn && live && live.industrial !== true && plan?.industrial !== true
+      && plan?.reason !== 'combat_stood_down'
       && live.kind === 'cone' && tick < live.holdUntilTick) wantOn = true;
     if (wantOn && entity.flags && entity.flags.docked) wantOn = false;
     if (wantOn) {
@@ -1502,6 +1503,13 @@ export const fields = {
       });
       this.bus.emit('fields:coneToggled', { active: true, fieldId, sourceId: entity.id, npc: true });
       this._emitDeployCue('cone', center.x, center.z, radius);
+      // A deployment callback can stand the pirate down synchronously. Do not
+      // leave a just-published combat cone armed until the following tick.
+      if (!industrial && rt.npcFields[entity.id]?.fieldId === fieldId
+        && planNpcFieldDeploy(entity, state)?.reason === 'combat_stood_down') {
+        this._setNpcCone(state, rt, entity, false);
+        return null;
+      }
       return fieldId;
     }
     if (!live) return null;

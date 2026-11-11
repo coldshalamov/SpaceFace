@@ -189,6 +189,12 @@ export function planNpcFieldDeploy(entity, state, opts = {}) {
       radius: work.radius, strength: Math.min(tuning.strength,
         Math.max(0, tuning.clearingSpeed - work.alongSpeed) / tuning.responseS) };
   }
+  // This is a combat tool even when its immediate target is debris. A pirate
+  // that stood down must not keep throwing somebody's tow through the field.
+  // Civilian single-workpiece clearing was handled above and stays available.
+  const ai = entity.data?.ai;
+  if (ai?.pirateDisengaged === true || ai?.passive === true || ai?.roe === 'hold_fire')
+    return { action: 'off', kind: 'cone', role, reason: 'combat_stood_down' };
   const radius = Number.isFinite(opts.radius) && opts.radius > 0 ? opts.radius : 260;
   const mass = nearbyLooseMass(entity, state, radius);
   if (!mass) return { action: 'off', kind: 'cone', role, reason: 'no_loose_mass' };

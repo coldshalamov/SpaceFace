@@ -204,6 +204,7 @@ import { moistureLoss } from '../systems/moistureLoss.js';
 import { rookBooth } from '../systems/rookBooth.js';
 import { kesslerScale } from '../systems/kesslerScale.js';
 import { kesslerDeckDamping } from '../systems/kesslerDeckDamping.js';
+import { rookReceivingBrake } from '../systems/rookReceivingBrake.js';
 import { furnaceIntake } from '../systems/furnaceIntake.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
@@ -482,6 +483,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['rookBooth', rookBooth],
     ['kesslerScale', kesslerScale],
     ['kesslerDeckDamping', kesslerDeckDamping],
+    ['rookReceivingBrake', rookReceivingBrake],
     ['furnaceIntake', furnaceIntake],
     ['gateThreeWeir', gateThreeWeir],
     ['slateColumn', slateColumn],

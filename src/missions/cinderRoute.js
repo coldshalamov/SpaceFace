@@ -2,6 +2,7 @@ import { isPlayerWanted } from '../systems/heat.js';
 // Book 2's finite Cinder squad. Missions remembers evidence/slots; aftermathWrecks alone
 // owns hull pose, damage, custody, materialization and retirement. Never pin or mint a wreck.
 import { ROOK_BOOTH } from '../data/rook.js';
+import { rookReceivingBrakeReadout } from '../systems/rookReceivingBrake.js';
 import { rookPadPosition, rookDeliveryCheck, rookBoothEligible } from '../characters/rookRules.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -345,7 +346,9 @@ function cinderIntakeReason(state, hull) {
   const handling = cinderTowHandling(state, hull);
   const swing = handling?.kind === 'swing'
     ? ` SIDEWAYS AROUND TUG ${motionSpeed(handling.motion.swingSpeed)} WU/s; tug ${motionSpeed(handling.motion.tugSpeed)}. Settle the swing outside the rings; do not reel it short.` : '';
-  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}${wanted ? '' : '.'}${swing}`;
+  const receiver = rookReceivingBrakeReadout(state);
+  const receiving = receiver?.targetId === hull.id ? ` ${receiver.text}` : '';
+  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}${wanted ? '' : '.'}${swing}${receiving}`;
 }
 export function cinderRouteFocus(m, state) {
   if (!authoredCinderRoute(m)) return null;

@@ -27,7 +27,7 @@ export function syncCinderReceivingScene(state, bus, quietStand) {
     kind = isPlayerWanted(state) ? 'wanted' : 'rook'; sender = ROOK_BOOTH.sender;
     text = kind === 'wanted'
       ? 'That is the marked hull, but the pad stays dark while you are WANTED. Keep it outside the other ring; Quiet Line will buy away this proof. Resolve your status through the law’s choices, then bring the same hull back. My desk cannot clear your fines.'
-      : `The marked hull, not your ship: inside my ${ROOK_BOOTH.padRadius}-WU ring at ${ROOK_BOOTH.restSpeed} WU/s or slower. My booth pays its hull price once. The Cinder contract pays separately only after three clearances and a matching delivery. The book may say it twice; your account does not.`;
+      : `The marked hull, not your ship: inside my ${ROOK_BOOTH.padRadius}-WU ring at ${ROOK_BOOTH.restSpeed} WU/s or slower. Inside 280 WU of my ring center, hold your brake to ask the receiving magnets to slow the attached hull. The beam needs a clear path from the ring. Keep the Line long until it settles, then reel it in. My booth pays its hull price once. The Cinder contract pays separately only after three clearances and a matching delivery. The book may say it twice; your account does not.`;
   }
   const markerId = hull.data.markerId;
   const current = flags.cinder_receiving_scene;
