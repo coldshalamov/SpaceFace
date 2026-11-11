@@ -52,6 +52,10 @@ export const SLICES = Object.freeze([
   { action: 'jettisonLot',      label: 'Jettison',     icon: 'cargo',    phase: 'tap' },
   { action: 'deployBeacon',     label: 'Beacon',       icon: 'beacon',   phase: 'tap' },
   { action: 'deployShieldPylon', label: 'Pylon',       icon: 'energy',   phase: 'tap' },
+  // Swarm only: deploys the next bought called charge (turret, wing, dome, decoy). The slice
+  // exists only while the swarmCallins director holds a pending call — the allowlist alone
+  // would show it in every Swarm round, charged or not.
+  { action: 'callIn',           label: 'Call-in',      icon: 'hail',     phase: 'tap', needsCallin: true },
 ]);
 
 function polarX(r, a) { return C + r * Math.cos(a); }
@@ -64,16 +68,17 @@ function sectorPath(a0, a1) {
 }
 
 /** Is this slice usable in the place the player is standing? Mirrors the tick's gates. */
-function sliceAllowed(state, slice) {
+function sliceAllowed(state, slice, callinPending = 0) {
   if (slice.mineSlice) return !isSwarmControls(state);
   if (!contextActionAllowed(state, slice.action)) return false;
   if (slice.needsSite && !selectedWorldSiteTarget(state)) return false;
+  if (slice.needsCallin && callinPending <= 0) return false;
   return true;
 }
 
 /** The live slices, in ring order. Exported so tests can pin reachability. */
-export function contextWheelSlices(state) {
-  return SLICES.filter((slice) => sliceAllowed(state, slice));
+export function contextWheelSlices(state, callinPending = 0) {
+  return SLICES.filter((slice) => sliceAllowed(state, slice, callinPending));
 }
 
 export function createContextWheel(ctx) {
@@ -120,6 +125,10 @@ export function createContextWheel(ctx) {
   // A pointer choice closes the dial while the key is still held — don't reopen on the next
   // tick until the hold actually ends.
   let awaitRelease = false;
+  // Swarm call-in depth, mirrored from the director's swarm:callinQueued publishes — the
+  // queue itself is sim-owned, so the slice gates on this signal rather than reaching in.
+  let callinPending = 0;
+  const busOffs = [];
 
   function simInput() {
     const registry = ctx && ctx.registry;
@@ -139,7 +148,7 @@ export function createContextWheel(ctx) {
   // The slices usable right now. A wheel that re-sorts while held would move the aim off the
   // pilot's slice, so the layout is captured at open and only the ON lamps refresh per tick.
   function liveSlices() {
-    return SLICES.filter((slice) => sliceAllowed(state, slice));
+    return SLICES.filter((slice) => sliceAllowed(state, slice, callinPending));
   }
 
   function buildWedges() {
@@ -327,14 +336,25 @@ export function createContextWheel(ctx) {
     destroyed = true;
     if (open) close();
     if (state.ui) state.ui.contextWheelOpen = false;
+    for (const off of busOffs) {
+      try { if (typeof off === 'function') off(); } catch (_) {}
+    }
+    busOffs.length = 0;
     overlay.remove();
   }
 
   // Flight is left (dock / death / screen) → the verb drops with it, same contract as the
   // neutralized flight input the wheel feeds.
   if (bus && typeof bus.on === 'function') {
-    bus.on('mode:changed', () => { if (open && state.mode !== 'flight') close(); });
-    bus.on('dock:docked', () => close());
+    busOffs.push(bus.on('mode:changed', () => { if (open && state.mode !== 'flight') close(); }));
+    busOffs.push(bus.on('dock:docked', () => close()));
+    // The Call-in slice is gated on a charge actually waiting for deploy — a new run starts
+    // with an empty pile even if the last one ended charged.
+    busOffs.push(bus.on('swarm:callinQueued', (p) => {
+      callinPending = Math.max(0, (p && Number.isFinite(p.pending) ? p.pending : 0) | 0);
+    }));
+    busOffs.push(bus.on('run:started', () => { callinPending = 0; }));
+    busOffs.push(bus.on('run:ended', () => { callinPending = 0; }));
   }
 
   return { tick, destroy, get isOpen() { return open; }, choose, open: openWheel, close };

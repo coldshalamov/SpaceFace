@@ -8,9 +8,10 @@ import { addEnvironmentHeat } from './environmentMaterials.js';
 // PQ-205.03: the bay is a fitted rack (state.bombs.rack/stock), not eight free consumables.
 // This system owns rack/stock/cooldown state and serializes it; credits stay inside the
 // economy owner's transaction seam (economy:chargeCredits / economy:grantCredits emits).
-import { BOMB_CHARGE_CHOICE, BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef } from '../data/bombs.js';
+import { BOMB_CHARGE_CHOICE, BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef, resolvedBombDef } from '../data/bombs.js';
 import { playerImpulseCharges } from './powerVerbs.js';
 import { shipworksStationAccess } from './ships.js';
+import { swarmFieldCooldownScale, swarmFieldRadiusScale } from './playerModifiers.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import {
@@ -1069,7 +1070,7 @@ export const bombs = {
       for (const e of state.entityList || EMPTY) pushBombTarget(this._targets, e);
     }
     for (const bomb of this._active) {
-      const def = bombDef(bomb.data?.bombId);
+      const def = resolvedBombDef(bomb.data);
       if (!def) continue;
       for (const body of queryPhysicalBodies(state, bomb.pos, def.radius, this.helpers, [])) if (!this._targets.includes(body)) this._targets.push(body);
     }
@@ -1122,13 +1123,17 @@ export const bombs = {
       return null; // no cooldown, no eviction, no free explosion
     }
     const def = bombDef(payloadId);
+    // A01-05 Wide Bore: the player's Bomb blast reaches x1.4 and cools x1.35, stamped on the bomb
+    // at the drop so the effect, the preview and the presentation all read one resolved radius.
+    const radiusScale = isPlayer ? swarmFieldRadiusScale(state) : 1;
+    const cooldownScale = isPlayer ? swarmFieldCooldownScale(state) : 1;
     const { pos, vx, vz, heading } = bombDropPlan(owner);
     const bomb = this.helpers.spawnEntity({
       type: BOMB_TYPE, pos, vel: { x: vx, z: vz }, rot: heading,
       radius: BOMB_PROXY_RADIUS, mass: 2, collides: true, physicsBody: false,
       collisionMask: Masks.PROJECTILE, team: owner.team, ownerId: owner.id,
       data: {
-        kind: 'bomb', bombId: def.id, ownerId: owner.id, phase: 'drift', armed: false,
+        kind: 'bomb', bombId: def.id, ownerId: owner.id, phase: 'drift', armed: false, radiusScale,
         armedAt: now + BOMB_DRIFT.armS, detonateAt: now + def.fuzeS,
         spawnedAt: now, fieldStartedAt: 0, fieldEndsAt: 0, nextFieldTick: 0,
         triggered: false, spinRadS: 0, sectorId: state.world?.currentSectorId || null,
@@ -1139,7 +1144,7 @@ export const bombs = {
     adaptBombProjectileProxy(bomb);
     bomb.data.spinRadS = (Math.abs(Math.trunc(bomb.id)) % 2 ? 1 : -1) * BOMB_DRIFT.maxSpinRadS;
     bay.cooldownUntil = now + BOMB_DRIFT.releaseIntervalS;
-    bay.cooldowns[payloadId] = now + def.cooldownS;
+    bay.cooldowns[payloadId] = now + def.cooldownS * cooldownScale;
     if (cell) {
       // A dropped unit leaves the magazine. The cell keeps its payload id at 0 — the socket
       // stays fitted, dock-side restock refills it. If the selection just ran dry the bay
@@ -1164,7 +1169,7 @@ export const bombs = {
       this.bus.emit('bombs:stockChanged', { payloadId, loaded: cell.count, delta: -1 });
     }
     syncBombTargetInteraction(bomb);
-    this.bus.emit('bombs:dropped', { bombId: bomb.id, payloadId, ownerId: owner.id, pos, vel: { x: vx, z: vz }, radius: def.radius });
+    this.bus.emit('bombs:dropped', { bombId: bomb.id, payloadId, ownerId: owner.id, pos, vel: { x: vx, z: vz }, radius: def.radius * radiusScale });
     this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: pos, gain: 0.5 });
     return bomb;
   },
@@ -1193,7 +1198,7 @@ export const bombs = {
     this.bus.emit('bombs:primed', {
       bombId: bomb.id, payloadId: d.bombId, ownerId: d.ownerId, trigger,
       chainFrom: chainFrom == null ? null : chainFrom,
-      pos: { x: bomb.pos.x, z: bomb.pos.z }, resolveAt: d.resolveAt, radius: bombDef(d.bombId).radius,
+      pos: { x: bomb.pos.x, z: bomb.pos.z }, resolveAt: d.resolveAt, radius: resolvedBombDef(d).radius,
     });
     return true;
   },
@@ -1240,7 +1245,7 @@ export const bombs = {
     this._gooCoverage.fill(0);
     for (const bomb of this._active) {
       if (!bomb.alive || bomb.data.phase !== 'field' || bomb.data.fieldStartedAt >= now) continue;
-      const def = bombDef(bomb.data.bombId);
+      const def = resolvedBombDef(bomb.data);
       if (def.field?.kind !== 'goo') continue;
       for (let i = 0; i < this._targets.length; i++) {
         const ent = this._targets[i];
@@ -1254,7 +1259,7 @@ export const bombs = {
 
   _findTriggerVictim(state, bomb, d, x0 = bomb.pos.x, z0 = bomb.pos.z, dt = 0, minT = 0) {
     let best = null, bestT = Infinity;
-    const def = bombDef(d.bombId);
+    const def = resolvedBombDef(d);
     for (const e of this._targets) {
       if (!proximityTriggerEligible(e, bomb, d.ownerId)) continue;
       const t = sweptBombContact(e.pos.x - x0, e.pos.z - z0,
@@ -1268,7 +1273,7 @@ export const bombs = {
 
   _detonate(bomb, d, state, trigger) {
     if (!bomb.alive || !d || d.retired || d.triggered || (d.phase !== 'drift' && d.phase !== 'warning')) return false;
-    const def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
+    const def = resolvedBombDef(d), pos = { x: bomb.pos.x, z: bomb.pos.z };
     d.triggered = true; d.detonatedTick = state.tick;
     const result = def.field?.kind === 'singularity' ? null
       : this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger });
@@ -1519,7 +1524,7 @@ export const bombs = {
 
   _tickField(bomb, state, dt) {
     if (!(dt > 0)) return;
-    const d = bomb.data, def = bombDef(d.bombId), f = def.field;
+    const d = bomb.data, def = resolvedBombDef(d), f = def.field;
     if (!f) return;
     const envelope = bombFieldEnvelope(simNow(state), d.fieldStartedAt, f.durationS, f.endStrength ?? 1);
     const applyStatusTick = state.tick >= d.nextFieldTick;
@@ -1565,7 +1570,7 @@ export const bombs = {
 
   _endField(bomb, state, reason) {
     if (!bomb.alive || bomb.data.phase !== 'field') return;
-    const d = bomb.data, def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
+    const d = bomb.data, def = resolvedBombDef(d), pos = { x: bomb.pos.x, z: bomb.pos.z };
     bomb.alive = false; d.phase = 'spent'; d.retired = true;
     if (def.field?.kind === 'goo') this._shedGooFieldStatus(bomb, state, def);
     if (reason === 'expired' && def.field?.kind === 'singularity') {
@@ -1603,7 +1608,7 @@ export const bombs = {
         if (other === bomb || !other.alive) continue;
         const od = other.data;
         if (!od || od.retired || od.phase !== 'field' || od.fieldStartedAt >= now) continue;
-        const odef = bombDef(od.bombId);
+        const odef = resolvedBombDef(od);
         if (odef.field?.kind !== 'goo') continue;
         const odist = Math.hypot(ent.pos.x - other.pos.x, ent.pos.z - other.pos.z);
         if (bombSurfaceFalloff(odist, ent.radius, odef.radius) > 0) { covered = true; break; }
