@@ -522,13 +522,15 @@ html body #screens #sf-automation.au-orrery .au-shop .nm > .au-locked--mark {
     background: Canvas; color: CanvasText; border-color: CanvasText;
   }
 }
-/* ---- ORRERY r1 (A2): ONE borderless glass surface. Every rule keys off .au-orrery so it beats
+/* ---- ORRERY r1 (A2): ONE glass surface inside one hairline edge. Every rule keys off .au-orrery so it beats
    the LEGACY AU overrides in deckplate/screens.js. Palette law: bone rgb(236 230 216) rest light,
    ice rgb(223 238 255) motion only, one amber Hand + one amber Lamp Key, red threat only. */
 html body #screens #sf-automation.au-orrery {
   --au-bone: 236 230 216;
   --au-ice: 223 238 255;
-  border: 0; border-radius: 0;
+  /* ui-polish-460: a 1px bone hairline at 10px radius frames the glass like the menus' other cards;
+     the four loose corner brackets it wore are gone. */
+  border: 1px solid rgb(var(--au-bone) / .22); border-radius: 10px;
   background: linear-gradient(180deg, rgb(10 13 18 / .94) 0%, rgb(6 8 12 / .94) 100%);
   box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
   position: relative;
@@ -536,18 +538,7 @@ html body #screens #sf-automation.au-orrery {
   height: auto; max-height: min(88vh, 860px);
 }
 html body #screens #sf-automation.au-orrery::before,
-html body #screens #sf-automation.au-orrery::after {
-  content: ""; position: absolute; left: 10px; right: 10px; height: 15px; z-index: 5;
-  pointer-events: none; background-repeat: no-repeat;
-  background-image:
-    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
-    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
-    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
-    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6));
-  background-size: 2px 15px, 15px 2px, 2px 15px, 15px 2px;
-}
-html body #screens #sf-automation.au-orrery::before { top: 8px; background-position: left top, left top, right top, right top; }
-html body #screens #sf-automation.au-orrery::after { bottom: 8px; background-position: left bottom, left bottom, right bottom, right bottom; }
+html body #screens #sf-automation.au-orrery::after { content: none; }
 /* O2 header: amber audit — title pip goes bone, purse is a bone Counter, CLOSE is a dotted word. */
 html body #screens #sf-automation.au-orrery .au-head { padding: 14px 26px 10px; gap: 8px; border-bottom: 0; background: none; }
 html body #screens #sf-automation.au-orrery .au-title::before {
