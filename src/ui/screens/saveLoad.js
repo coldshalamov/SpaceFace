@@ -19,6 +19,7 @@ import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { rankFromRep } from '../../systems/factions.js';
 import { localizeText } from '../../localization/sourceText.js';
+import { pluralWord } from '../numberFormat.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { boundSlotThumbnail } from '../../save/slotStill.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
@@ -668,10 +669,10 @@ function buildScarsField(livingHull, meta) {
   return { count: 0, open: 0, patched: 0, line: portraitLine(meta && meta.scars, 'Clean plates') };
 }
 
-function countPhrase(n, singular, plural) {
+function wordedCount(n, singular, plural) {
   const count = Math.max(0, Math.floor(Number(n) || 0));
   const word = count < COUNT_WORDS.length ? COUNT_WORDS[count] : String(count);
-  return word + ' ' + (count === 1 ? singular : plural);
+  return word + ' ' + pluralWord(count, singular, plural);
 }
 
 /** Yard repairs are the living hull's repair count, plus scars the yard already covered. */
@@ -690,8 +691,8 @@ function buildRepairsField(livingHull, meta) {
     return { repairPatches: 0, patchedScars: 0, line: 'No yard repairs' };
   }
   const parts = [];
-  if (patches) parts.push(countPhrase(patches, 'yard repair', 'yard repairs'));
-  if (patched.length) parts.push(countPhrase(patched.length, 'scar patched', 'scars patched'));
+  if (patches) parts.push(wordedCount(patches, 'yard repair', 'yard repairs'));
+  if (patched.length) parts.push(wordedCount(patched.length, 'scar patched', 'scars patched'));
   return { repairPatches: patches, patchedScars: patched.length, line: parts.join(' · ') };
 }
 
@@ -748,7 +749,10 @@ const FACTION_NAME_BY_ID = new Map(FACTION_META.map((row) => [row.id, row.short 
 const SECTOR_NAME_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
 
 function factionCardName(factionId) {
-  return FACTION_NAME_BY_ID.get(factionId) || String(factionId || '').replace(/^faction_/, '');
+  // A house the current catalog no longer lists (a retired id riding in an old save) reads
+  // as an honest generic noun (words-standing-house-fallback) — never the mangled remnant
+  // a prefix-strip leaves behind, dressed up as a proper name.
+  return FACTION_NAME_BY_ID.get(factionId) || 'an unlisted house';
 }
 
 function frontCardName(sectorId) {

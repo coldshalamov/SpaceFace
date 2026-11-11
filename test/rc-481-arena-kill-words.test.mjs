@@ -280,79 +280,47 @@ function calloutState() {
   };
 }
 
-test('arena-renamed physics words land on the stunt line; gun kills and friendly fire stay quiet', () => {
+// Versioned for Swarm S2 "quiet glass" (dba0710c14b3): a live Swarm round draws only the fight
+// voice. The juice lane (swarm:killPopup at the kill point, the multi-kill announcer) already
+// speaks every kill in the room's own words, so the Adventure-side stunt register never draws
+// them (stuntCallout.onSwarmKill returns on isSwarmGlass). The two pins below used to assert
+// the pre-S2 register. They now assert the S2 law the shipped glass enforces: the arena words
+// stay on the juice popup, and the register stays dark through a kill storm.
+test('S2 quiet glass: arena-renamed kill words stay on the juice popup, never the stunt register', () => {
   const bus = createBus();
   const owner = createStuntCallout({ state: calloutState(), bus, doc: fakeDocument() });
-
-  // A renamed terrain word is gated by its CAUSE, not by a word list.
-  bus.emit('swarm:killPopup', {
-    pos: { x: 0, z: 0 }, word: 'SWALLOWED', cause: 'terrain', friendlyFire: false, wave: 2,
-  });
-  owner.update(0);
-  let text = calloutTextFor(owner.root);
-  assert.match(text, /SWALLOWED/, 'the Hive word reaches the lane');
-
-  // A repeat rolls the count on the same line.
-  bus.emit('swarm:killPopup', {
-    pos: { x: 0, z: 0 }, word: 'SWALLOWED', cause: 'terrain', friendlyFire: false, wave: 2,
-  });
-  owner.update(10);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /SWALLOWED\s*×2/, 'a repeat rolls the count');
-
-  // Friendly fire carries a physics cause too — the flag excludes it, not the word.
-  bus.emit('swarm:killPopup', {
-    pos: { x: 0, z: 0 }, word: 'FRIENDLY FIRE', cause: 'collision', friendlyFire: true, wave: 2,
-  });
-  // A renamed structure word still teaches (BANKED became WEBBED in the Hive).
-  bus.emit('swarm:killPopup', {
-    pos: { x: 0, z: 0 }, word: 'WEBBED', cause: 'terrain', surface: 'structure', friendlyFire: false, wave: 2,
-  });
-  // Guns never needed teaching, whatever the room calls them.
-  bus.emit('swarm:killPopup', {
-    pos: { x: 0, z: 0 }, word: 'BITTEN', cause: 'direct', friendlyFire: false, wave: 2,
-  });
-  owner.update(20);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /WEBBED/, 'the renamed structure word lands');
-  assert.ok(!/FRIENDLY FIRE/.test(text), 'the announcer owns friendly fire, not the teaching lane');
-  assert.ok(!/BITTEN/.test(text), 'gun kills stay quiet');
+  const words = [
+    { word: 'SWALLOWED', cause: 'terrain' },
+    { word: 'SWALLOWED', cause: 'terrain' },
+    { word: 'WEBBED', cause: 'terrain', surface: 'structure' },
+    { word: 'FRIENDLY FIRE', cause: 'collision', friendlyFire: true },
+    { word: 'BITTEN', cause: 'direct' },
+  ];
+  for (const [i, w] of words.entries()) {
+    bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, friendlyFire: false, wave: 2, ...w });
+    owner.update(i * 10);
+  }
+  const text = calloutTextFor(owner.root);
+  for (const { word } of words) {
+    assert.ok(!text.includes(word), `${word} never reaches the register in a live Swarm round`);
+  }
   owner.destroy();
 });
 
-test('the ARENA register rolls a kill storm on its one slot instead of flashing words', () => {
+test('S2 quiet glass: a kill storm rolls on the juice lane, not as register lines', () => {
   const bus = createBus();
   const owner = createStuntCallout({ state: calloutState(), bus, doc: fakeDocument() });
   const kill = (word) => bus.emit('swarm:killPopup', {
     pos: { x: 0, z: 0 }, word, cause: 'terrain', friendlyFire: false, wave: 2,
   });
-
-  // The single-kill path is unchanged: one kill files one plain register line.
-  kill('SWALLOWED');
+  for (let i = 0; i < 4; i++) kill('SWALLOWED');
+  kill('WEBBED');
+  kill('WEBBED');
   owner.update(0);
-  let text = calloutTextFor(owner.root);
-  assert.match(text, /ARENA: SWALLOWED/, 'the register files the arena word');
-  assert.ok(!/ARENA: SWALLOWED ×/.test(text), 'a lone kill carries no count');
-
-  // The storm rolls the word's own count on the same register slot.
-  kill('SWALLOWED');
-  kill('SWALLOWED');
-  kill('SWALLOWED');
-  owner.update(10);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /ARENA: SWALLOWED ×4/, 'the register counts the storm');
-
-  // A different word files fresh — one slot supersedes — with its own run,
-  // and the earlier word's count is remembered, not restarted.
-  kill('WEBBED');
-  kill('WEBBED');
-  owner.update(20);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /ARENA: WEBBED ×2/, 'a new word files fresh with its own run');
-  kill('SWALLOWED');
   owner.update(30);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /ARENA: SWALLOWED ×5/, 'the earlier word keeps its count');
+  const text = calloutTextFor(owner.root);
+  assert.ok(!/ARENA:/.test(text), 'no ARENA register line files during a live Swarm round');
+  assert.ok(!/×\d/.test(text), 'no register count rolls — the announcer owns the storm');
   owner.destroy();
 });
 

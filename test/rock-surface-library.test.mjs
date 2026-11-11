@@ -283,7 +283,7 @@ test('opening GPU admission waits for the rock maps, and rocks that went out bar
   assert.match(source, /import \{ preloadRockSurfaceLibrary \} from '\.\/rockSurfaceLibrary\.js'/);
   assert.match(source, /this\.rockSurfaceLibraryReady = preloadRockSurfaceLibrary\(renderer\)/);
   assert.match(source, /state\.render\.rockSurfaceLibraryReady = this\.rockSurfaceLibraryReady/);
-  assert.match(source, /prepareOpeningGpuResources = async \(\) => \{[\s\S]{0,600}?await Promise\.race\(\[\s*this\.rockSurfaceLibraryReady/,
+  assert.match(source, /prepareOpeningGpuResources = async \(options = \{\}\) => \{[\s\S]{0,1200}?await Promise\.race\(\[\s*this\.rockSurfaceLibraryReady/,
     'the loading presenter waits for common-rock maps up to its opening budget before first publication');
   assert.match(source, /upgradeBareRockMaterials/, 'the renderer imports the bare-rock re-skin');
   const readyCallback = source.match(/this\.rockSurfaceLibraryReady\.then\((?:async\s+)?\(\) => \{([\s\S]*?)\n\s*\}\)\.catch/);
