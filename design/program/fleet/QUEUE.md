@@ -18,7 +18,7 @@ finished, then the first hour, then the five towns. Take rows top-down within yo
 | Devin SWE-2 Max (acct2) | G08-01 enemy sheet looks | 7 min | DONE — right seam, pure helper + test; not seen on screen |
 | Devin SWE-2 Max (acct3) | G17-01 start at round N | ~35 min | DONE — and found + fixed a master boot break (`.//` import) |
 | Gemini 3.8 Flash (agy) | PL-05 road rage | 16 min | DONE — wired correctly; left an unused duplicate block |
-| DeepSeek v4.1 Flash | PL-08 applause | — | prints nothing until exit; slow |
+| DeepSeek v4.1 Flash | PL-08 applause | 90 min | NOTHING — timed out, no commit, no receipt; out of rotation |
 
 Sizing that follows: Devin takes medium-to-large packets that name the seam and the files (2–6
 files, a test, a plain receipt). Flash and DeepSeek take one written plant at a time. Nobody but the
@@ -36,6 +36,31 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | G11-01-never-freeze | L | The freeze-and-blip: measure on a quiet machine, then one clock, adaptive playout, then a cheaper sim | READY |
 | G11 one clock | L | Step 1 landed: speed-gauge ring (3167d8f6) and backdrop/parallax/post time (next commit) follow the drawn world. Still on the wall clock: per-ship idle spins, shader `uTime` uniforms outside the post route — grep `performance.now\|clock.getElapsedTime` in `src/render` | BUILT |
 | PARK-01-land-overnight-lane-b | D | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
+
+## Performance (program B — read `PLAYBOOK.md` §3B first)
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| PERF-01-where-the-frame-goes | D | Seven on/off experiments on the main thread (HUD, post, render scale, shadows, skip-render, ACK limit, trace); numbers only | READY (quiet machine) |
+| PERF-02 decouple the sim | L | The sim's pace must not depend on the main thread's frame rate; decide from PERF-01's ACK/skip-render rows | HOLD on PERF-01 |
+| PERF-03 biggest main-thread owner | L→D | Cut whatever PERF-01 names as the largest waste; lead writes the packet from the numbers | HOLD on PERF-01 |
+| PERF-04 late shader compiles | D | NEEDS-PACKET: 3 programs compile mid-flight (`perf:renderer-info`); prewarm them with the opening cohort | NEEDS-PACKET |
+
+## Mobile (program C)
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| MOB-01 pinch zoom | D | NEEDS-PACKET: pinch zooms the flight camera out to desktop framing; default phone zoom wider | NEEDS-PACKET |
+| MOB-02 phone HUD | D | NEEDS-PACKET: flight HUD covers ≤ 25 % of a 390×844 screen (`ui-bench --phone`) | NEEDS-PACKET |
+| MOB-03 touch controls you can read | D | NEEDS-PACKET: every touch control labelled on first use; what a tap does is shown | NEEDS-PACKET |
+| MOB-04 phone quality tier | D | NEEDS-PACKET: phones default to the low tier; 30 fps steady in the opening | NEEDS-PACKET |
+
+## The look (program D)
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| LOOK-01 one grade | L | Bright, warm, readable: global exposure/grade/bloom budget, judged on five places side by side | READY |
+| LOOK-02 sectors on the grade | D | HOLD on LOOK-01: each sector's lights and palette onto the one grade | HOLD |
 
 ## Wave 0 — the floor
 
@@ -78,5 +103,5 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 |---|---|---|---|
 | PLANT-NEXT | S | Build the next OPEN world reaction in `INFERENCE_PLANTS.md` (96 open) | READY (repeat) |
 | PRX-NEXT | D | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955); the rest wait for wave 4–5 | READY (repeat) |
-| PL-08-applause | S | Station lamps flash at a slingshot kill (row CLAIMED in the plant list) | TAKEN deepseek |
+| PL-08-applause | S | Station lamps flash at a slingshot kill — DeepSeek timed out with nothing; back to READY | READY |
 | PL-05-road-rage | S | A twice-shoved civilian shoves back, then runs | BUILT b34318dd |
