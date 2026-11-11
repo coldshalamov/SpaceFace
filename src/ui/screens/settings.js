@@ -239,10 +239,10 @@ function publishFrameCap(ctx) {
 // input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
 // saved custom keys so "reset to defaults" means the defaults for the selected scheme.
 const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
-// Flight actions the player may rebind. Mouse buttons stay out of the grid; Space is the
-// new-profile Massline primary and F remains its permanent alias.
+// Flight actions the player may rebind. Mouse buttons stay out of the grid; the Line defaults
+// to RMB and the overflow verbs to wheel slices — every one can take a dedicated key back.
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
-  'brake', 'siteBeam', 'tether',
+  'brake', 'siteBeam', 'tether', 'contextWheel',
   // The five powers (owner 2026-10-22, src/systems/powerVerbs.js), in number-row order.
   'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
   'scanPulse', 'cruise', 'reelIn', 'reelOut', 'bulletTime', 'cloak', 'travelBurn',
@@ -259,9 +259,10 @@ export const REBIND_LABELS = {
   strafeRight: 'Lateral thrust right',
   boost: 'Boost / dash',
   autoFire: 'Toggle auto-target / draw-to-fly',
-  brake: 'Brake (0; S / Down also reverse)',
+  brake: 'Brake / full stop (wheel latch by default)',
   siteBeam: 'World Site beam (selected target)',
-  tether: 'Massline: tap latch/cut; hold line control',
+  tether: 'Massline / the Line (RMB by default): tap latch/cut; hold line control',
+  contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   pull: 'Pull: gravity well at your aim',
   shove: 'Shove: outward blast + set off armed ordnance',
   pin: 'Pin: anchor seed for the Line',
@@ -290,7 +291,8 @@ export const REBIND_LABELS = {
 // the chord layer: every keyboard flight verb has a pad route, and capture accepts a held
 // modifier + a tapped key as a 'mod+key' chord.
 export const GAMEPAD_REBINDABLE = [
-  'accept', 'cancel', 'massline', 'dock', 'shove', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
+  'accept', 'cancel', 'massline', 'dock', 'contextWheel', 'shove', 'fire', 'mine', 'boost', 'brake',
+  'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'bomb', 'cycleBomb', 'tabPrev', 'tabNext',
   'scanPulse', 'cruise', 'bulletTime', 'cloak', 'siteBeam', 'pin', 'pull',
   'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon',
@@ -300,9 +302,10 @@ export const GAMEPAD_REBIND_LABELS = {
   dock: 'Dock (when prompted)',
   shove: 'Shove: outward blast + set off armed ordnance',
   cancel: 'Back / cancel',
-  massline: 'Massline: tap latch/cut; hold line control',
+  massline: 'Massline / the Line: tap latch/cut; hold line control',
+  contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   fire: 'Fire',
-  mine: 'Mine beam (analog trigger)',
+  mine: 'Mine beam (wheel latch by default)',
   boost: 'Boost',
   brake: 'Brake / reverse thrust',
   cycleTarget: 'Cycle target',

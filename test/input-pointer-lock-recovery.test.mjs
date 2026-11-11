@@ -51,6 +51,9 @@ function fixture({ pending = false } = {}) {
   const state = createGameState(821);
   state.mode = 'flight';
   state.ui.screenStack = [];
+  // G18-02: combat-stick mode is a wheel action by default; a saved custom seat on G is what
+  // drives this fixture — the rebind keeps working even though the verb left the default table.
+  state.settings.controls.bindings = { autoFire: ['KeyG'] };
   const host = Object.create(autoTargetAssist);
   host.init({ state, bus: createBus() });
   return {
