@@ -55,16 +55,23 @@ export function nestWaypoint(state) {
   const live = own?.status === 'active' ? state?.encounterDirector?.live?.[own.encounterId] : null;
   const anchor = own?.status === 'active' ? finitePos(own.snapshot?.carrier?.pos) || own.anchor : nestPosition();
   const carrier = live?.data?.nest?.carrierId != null ? state.entities?.get(live.data.nest.carrierId) : null;
-  const compact = (live?.data?.nest?.broodVariant || own?.snapshot?.broodVariant) === 'nursery_compact_v1';
+  const cast = live?.data?.nest || own?.snapshot;
+  const compact = cast?.broodVariant === 'nursery_compact_v1';
+  const spent = compact && cast?.remaining === 0 && cast?.launched === 6;
+  const launchRead = spent
+    ? 'All six nursery Wasps have actually launched. The empty coupling assemblies stay EXPOSED; the surviving Wasps are still dangerous. No further brood is supplied.'
+    : cast?.launchDeferred
+    ? 'Launch deferred: brood is still aboard. No new exposure window has occurred. Watch for a real launch.'
+    : 'Watch GUARDED change to EXPOSED COUPLING.';
   const handling = compact
     ? 'The compact 16t nursery Wasps fit Class I and a bare Line'
     : 'These standard 16t Wasps need Class I capacity AND current Line rating T1';
-  return { label: own?.status === 'active' ? 'The Nest — cycling bays' : 'The Nest — south radiation-lane approach',
+  return { label: own?.status === 'active' ? (spent ? 'The Nest — spent nursery, exposed couplings' : 'The Nest — cycling bays') : 'The Nest — south radiation-lane approach',
     reason: own?.status === 'waiting' && state.encounterDirector.nestVisit.waitReason
       ? 'Nursery signal acquired. Other lane traffic must clear first. Hold at the outside approach; do not fly into the berth. No victory or progress is being credited while admission waits.'
       : own?.status === 'active'
-      ? `Watch GUARDED change to EXPOSED COUPLING. ${handling}: use the Line to drive one into the exposed coupling. Real contact is required; holding it nearby does nothing. The 400t salvaged blast baffles need Class III capacity AND current Line rating T1; guns or withdrawing alive remain valid.`
-      : 'The garden growth is recorded. Approach the south-lane nursery from the east. A Reach carrier launches six compact 16t nursery Wasps; watch the exposed couplings, fight or withdraw alive. Ripping the salvaged blast baffles is optional, not a required upgrade.',
+      ? `${launchRead} ${handling}: use the Line to drive one into the exposed coupling. Real contact is required; holding it nearby does nothing. The 400t salvaged blast baffles need Class III capacity AND current Line rating T1; guns or withdrawing alive remain valid.`
+      : 'The garden growth is recorded. Approach the south-lane nursery from the east. A Reach carrier launches six compact 16t nursery Wasps; watch the exposed couplings, fight or withdraw alive. After the sixth real launch, the empty nursery assemblies stay exposed for a Line-driven return. Ripping the salvaged blast baffles is optional, not a required upgrade.',
     stationId: null, sectorId: NEST_VISIT.sectorId,
     // Keep navigation outside the hull even during combat; selection remains an explicit action.
     targetEntityId: null, pos: carrier?.pos

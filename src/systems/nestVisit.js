@@ -97,15 +97,27 @@ export function tickNestVisit(d) {
   d._nestVisitNextTry = now + 2;
   const adoptions = resume ? nestSnapshotAdoptions(s, snapshot, own.encounterId) : { ok: true, actors: new Map() };
   if (!adoptions.ok) return { ok: false, reason: 'ambiguous_saved_actor' };
-  // Generic persistence can restore only some launched cast members. Their exact saved
-  // poses belong to the already-validated close assembly, not foreign berth obstacles.
-  // A divergent restored pose is uncertain: never spawn a missing member through it.
+  // Generic persistence can restore launched Wasps before the director's next
+  // scheduled tick. Their physical motion is authoritative; never rewind it or
+  // leave the nursery absent merely because an already-restored Wasp has flown.
+  // Only the unchanged close assembly may be ignored for missing-site clearance.
+  // A moved Wasp remains a real obstacle to every actor we still need to spawn.
   const admittedCast = new Set();
   for (const [slot, actor] of adoptions.actors) {
     const row = [snapshot.carrier, ...snapshot.doors, ...snapshot.wasps].find(a => a.slot === slot);
     if (!row || !Number.isFinite(actor.pos?.x) || !Number.isFinite(actor.pos?.z)
-        || Math.hypot(actor.pos.x - row.pos.x, actor.pos.z - row.pos.z) > 0.01
-        || Math.abs((Number(actor.rot) || 0) - row.rot) > 0.001) {
+        || !Number.isFinite(actor.rot)) return { ok: false, reason: 'divergent_saved_actor' };
+    const samePose = Math.hypot(actor.pos.x - row.pos.x, actor.pos.z - row.pos.z) <= 0.01
+      && Math.abs(actor.rot - row.rot) <= 0.001;
+    if (!samePose) {
+      const cause = actor.data?.encounterCausality;
+      const sameNursery = cause?.encounterId === own.encounterId && cause.shapeId === 'the_nest'
+        && cause.sectorId === own.sectorId && typeof cause.fingerprint === 'string' && cause.fingerprint.length > 0
+        && actor.data?.encounterFingerprint === cause.fingerprint && actor.data?.defId === 'ship_wasp';
+      const movingBody = actor.physicsBody?.dynamic === true && actor.physicsBody.mass === 16
+        && actor.physicsBody.radius === actor.radius && shouldSyncPhysicsBodyEntity(actor)
+        && Number.isFinite(actor.vel?.x) && Number.isFinite(actor.vel?.z) && Number.isFinite(actor.angVel);
+      if (slot.startsWith('wasp:') && sameNursery && movingBody) continue;
       return { ok: false, reason: 'divergent_saved_actor' };
     }
     admittedCast.add(actor);

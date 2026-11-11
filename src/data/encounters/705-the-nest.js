@@ -222,7 +222,7 @@ function resolveNest(d, live, outcome) {
   const rec = live.data.nest;
   if (!rec || live.phase === 'done') return;
   if (['carrier_down', 'carrier_gutted', 'nest_emptied'].includes(outcome)) {
-    hangTrophy(d, live, `NEST CARRIER — ${outcome === 'nest_emptied' ? 'EMPTIED' : 'GUTTED'}`);
+    hangTrophy(d, live, `NEST CARRIER — ${outcome === 'nest_emptied' ? 'EMPTIED' : outcome === 'carrier_gutted' ? 'GUTTED' : 'DESTROYED'}`);
   }
   if (outcome === 'carrier_escapes') {
     const story = d.state.story || (d.state.story = {});
@@ -290,9 +290,16 @@ function rollback(d, live, reason) {
   return d.abort(live, reason);
 }
 
-function bayOpen(rec, now) { return rec.tornDoors > 0 || now < rec.bayOpenUntil; }
+// A compact nursery has finished its physical launch cycle after its sixth real
+// admission. The empty coupling assemblies stay exposed, so the Class I return
+// option remains usable after observing/catching the finite brood. This is not a
+// timer, a victory or a refill. Standard/random carriers retain their old cycle.
+function spentNursery(rec) {
+  return rec.broodVariant === COMPACT_BROOD && rec.remaining === 0 && rec.launched === NEST_SIZE;
+}
+function bayOpen(rec, now) { return spentNursery(rec) || rec.tornDoors > 0 || now < rec.bayOpenUntil; }
 function bayIndexOpen(rec, bound, index, now) {
-  return now < rec.bayOpenUntil || bound.doors[index]?.data?.torn === true || bound.deadDoors[index]?.torn === true;
+  return spentNursery(rec) || now < rec.bayOpenUntil || bound.doors[index]?.data?.torn === true || bound.deadDoors[index]?.torn === true;
 }
 function contactHitsOpenFlank(rec, bound, carrier, pos, now) {
   const angle = Number(carrier.rot) || 0, c = Math.cos(angle), s = Math.sin(angle);
@@ -305,6 +312,7 @@ function contactHitsOpenFlank(rec, bound, carrier, pos, now) {
     && bayIndexOpen(rec, bound, z < 0 ? 0 : 1, now);
 }
 function publishBayState(rec, bound, now) {
+  bound.carrier.data.nestNurserySpent = spentNursery(rec);
   bound.carrier.data.nestBayOpen = bayOpen(rec, now);
   bound.carrier.data.nestBayOpenUntil = rec.bayOpenUntil;
   let offsets = bound.carrier.data.nestBayOffsets;
@@ -392,9 +400,15 @@ function launchWasps(d, live, count, now, restoreRows = null) {
   if (!restoreRows) {
     rec.remaining -= admitted; rec.launched += admitted;
     if (admitted) {
+      rec.launchDeferred = false;
       rec.bayOpenUntil = now + BAY_OPEN_S;
       d.emit('nest:waspsLaunched', { encounterId: live.id, count: admitted, vented: rec.vented, t: now });
-      d.emit('comms:log', { from: 'NEST CARRIER', text: 'COUPLINGS EXPOSED — two-second return window.', kind: 'encounter' });
+      d.emit('comms:log', { from: rec.broodVariant === COMPACT_BROOD ? 'CHARON LANE WATCH' : 'NEST CARRIER', text: spentNursery(rec)
+        ? 'Six launched. The nursery is spent; both coupling assemblies remain exposed. The Wasps already out are still dangerous. A real Line-driven impact can breach a coupling; no more brood will be supplied.'
+        : 'COUPLINGS EXPOSED — two-second return window.', kind: 'encounter' });
+    } else if (rec.broodVariant === COMPACT_BROOD && rec.remaining > 0 && !rec.launchDeferred) {
+      rec.launchDeferred = true;
+      d.emit('comms:log', { from: 'CHARON LANE WATCH', text: 'Launch deferred. The remaining brood is still aboard; there has been no new exposure window. Any torn flank remains exposed. Watch the actual launch, or keep the eastern lane open for withdrawal.', kind: 'encounter' });
     }
   }
   return admitted;
@@ -474,8 +488,11 @@ export const runtime = Object.freeze({
     rec.contactEstablished = true;
     publishBayState(rec, bound, d.now());
     live.phase = 'conflict';
-    d.say(live, 'alert', saved ? 'NEST CARRIER: the same baffles and remaining brood. Your damage still shows. Check your Line connection before returning another Wasp.'
-      : `NEST CARRIER: six ${rec.broodVariant === COMPACT_BROOD ? 'small nursery Wasps aboard. Class I can catch this 16t brood' : 'Wasps aboard. These 16t Wasps require Class I capacity and live Line T1'}; ram one into an exposed coupling during launch. The 400t blast baffles require Class III capacity and live Line T1. Guns work. The open lane behind you is your way out.`,
+    d.say(live, 'alert', saved
+      ? rec.broodVariant !== COMPACT_BROOD ? 'NEST CARRIER: the same baffles and remaining brood. Your damage still shows. Check your Line connection before returning another Wasp.' : `CHARON LANE WATCH: the same carrier, baffles and remaining brood. ${spentNursery(rec) ? 'All six have launched; the empty nursery couplings are still exposed.' : 'Your damage still shows.'} Check your Line connection before returning another Wasp.`
+      : rec.broodVariant === COMPACT_BROOD
+      ? 'CHARON LANE WATCH: a Reach nursery is working this lane. Six small 16t Wasps aboard; Class I and a bare Line can catch them. Watch the launch couplings. After the last real launch, the empty assemblies stay exposed. Guns work too. The eastern lane behind you is your way out.'
+      : 'NEST CARRIER: six Wasps aboard. These 16t Wasps require Class I capacity and live Line T1; ram one into an exposed coupling during launch. The 400t blast baffles require Class III capacity and live Line T1. Guns work. The open lane behind you is your way out.',
     null, { primary: true, literal: true });
   },
 
@@ -559,7 +576,7 @@ export const runtime = Object.freeze({
     } else if (rec.remaining > 0 && now >= rec.nextLaunchS) {
       rec.nextLaunchS = now + LAUNCH_S; launchWasps(d, live, 1, now);
     }
-    carrier.data.scanLabel = bayOpen(rec, now) ? 'NEST CARRIER — COUPLINGS EXPOSED / RAM A WASP' : 'NEST CARRIER — COUPLINGS GUARDED / WATCH THE LAUNCH';
+    carrier.data.scanLabel = spentNursery(rec) ? 'NURSERY SPENT — COUPLINGS EXPOSED / RETURN A WASP' : bayOpen(rec, now) ? 'NEST CARRIER — COUPLINGS EXPOSED / RAM A WASP' : 'NEST CARRIER — COUPLINGS GUARDED / WATCH THE LAUNCH';
     publishBayState(rec, bound, now);
     for (let i = 0; i < bound.wasps.length && live.phase !== 'done'; i++) {
       const wasp = canonical(state, bound.wasps[i]);
