@@ -8,8 +8,11 @@ row names) and the code facts (which files, which functions, which tests). You s
 so the lead only has to add names and numbers.
 
 ## Pick your row
-The first `NEEDS-PACKET` row (top to bottom) with no file at `design/program/fleet/drafts/<ID>.md`.
-Create the draft file immediately (one line: `# <ID> — draft in progress`) so nobody else takes it.
+In `design/program/fleet/QUEUE.md`, Lane 1, take the first row whose ID starts with **`WRITE `** and
+whose draft file does not exist yet: `design/program/fleet/drafts/<ID without "WRITE ", spaces → ->.md`
+(e.g. `WRITE G20 the Rig` → `drafts/G20-the-Rig.md`). **Immediately** create that file with one line
+(`# <ID> — draft in progress`) and commit it alone, so no other worker takes the same row. If every
+`WRITE` row has a draft, take the first `NEEDS-PACKET` row in any lane instead.
 
 ## Read
 - The row's spec. Docs live on another branch; read them without switching branches:

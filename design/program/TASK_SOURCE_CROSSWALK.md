@@ -1,4 +1,7 @@
 <!-- LIFETIME: VOLATILE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Task-source crosswalk — one board, many banks
 
 The owner is funneling several externally-produced task banks into the repo. This file is the
