@@ -1,3 +1,7 @@
+import { getDeepReachOperation } from '../../story/campaign47a/embodiedMissions.js';
+import { reckoningCallbacks } from '../../story/campaign47a/reckoningCallbacks.js';
+import { deepReachBriefing } from '../../story/campaign47a/deepReachBriefing.js';
+import { hasAshCacheStoryClearance } from '../../story/campaign47a/ashCacheAccess.js';
 import { cinderDepartureChoices, cinderDepartureReply, cinderDepartureContact } from './cinderDepartureConversation.js';
 import { furnaceDetailChoices, furnaceDetailReply } from './furnaceDetailConversation.js';
 import { tethysScaleChoices, tethysScaleReply } from './tethysScaleConversation.js';
@@ -449,8 +453,8 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_vael',
     line: 'Eleven years counting the same mass.',
     choices: [
-      { id: 'openLedger', label: 'Open the desk ledger.' },
-      { id: 'takeLedger', label: 'Take the ledger.' },
+      { id: 'deepReach', label: 'What is waiting on the approach?' },
+      { id: 'takeLedger', label: 'Take the desk ledger (1 unit).' },
       { id: 'approach', label: 'Ask what he is counting.' },
     ],
   },
@@ -2390,6 +2394,20 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       return null;
 
     case 'kurtz':
+      if (choiceId === 'deepReach') {
+        const flags = state.story?.flags || {};
+        if (state.story?.endgameResolved || state.story?.endgameChoice || flags.sandboxContinued) return { text: 'Your final disposition is recorded. The desk ledger keeps the names; no new operation is being offered.' };
+        if (flags.deep_reach_operation_complete) return { text: 'Your operation is recorded. The desk can review the final dispositions; the choice remains yours.' };
+        if (flags.elroy_outcome_legacy) return { text: 'Your older charter has its own conditions. Check your Journal for the remaining requirement.' };
+        if (state.story?.beatIndex !== 7 || !flags.empire_seed_asset_id) return { text: 'No Deep Reach operation is filed to your seed. Check your Journal before accepting other work.' };
+        const operation = getDeepReachOperation(flags.elroy_outcome, state.story.branch);
+        const active = state.missions?.active?.find(m => m.status === 'active'
+          && m.storyOperation === operation.id && m.params?.assetId === flags.empire_seed_asset_id);
+        const job = active?.params?.reckoning;
+        const callbacks = active ? (job?.rows || []).filter(row => !job?.bodies?.[row.id]?.destroyed && (row.id !== 'b2_crew' || !job?.bodies?.b2_crew_tug?.destroyed)) : reckoningCallbacks(state);
+        const briefing = deepReachBriefing(operation, callbacks, { active: !!active, clearance: hasAshCacheStoryClearance(state, 'station_ashcache') });
+        return { text: `${briefing.brief} ${active ? 'Your contract is active. Continue the marked operation from your Journal.' : `Accept ${operation.label} on Ash Cache Missions first.`}` };
+      }
       if (choiceId === 'takeLedger' || choiceId === 'openLedger') {
         return { text: 'The mass stays. The paper is yours. Do not ask me to count it twice.' };
       }

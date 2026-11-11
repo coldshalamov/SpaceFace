@@ -1,3 +1,6 @@
+import { hasAshCacheStoryClearance } from '../story/campaign47a/ashCacheAccess.js';
+import { deepReachBriefing } from '../story/campaign47a/deepReachBriefing.js';
+import { getDeepReachOperation } from '../story/campaign47a/embodiedMissions.js';
 import { isWeighingOperation } from '../missions/weighingWorksite.js';
 import { starterWorkSite, STARTER_WORKDAY_VERSION } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
@@ -896,6 +899,23 @@ export const missionBoardOps = {
           params: { ...existing.params, weighingVersion: 1 } };
         board.slots = board.slots.map(row => row === existing ? fresh : row);
         return true;
+      }
+      // Cached B7 rows keep their accepted terms and callback bodies. Only repair
+      // presentation, and never borrow newly earned callbacks from the live state.
+      if (offer.source === 'campaign47a.deep_reach'
+          && existing.source === offer.source && existing.stationId === offer.stationId
+          && existing.type === offer.type && existing.storyOperation === offer.storyOperation
+          && existing.destStationId === offer.destStationId && existing.destSectorId === offer.destSectorId
+          && existing.params?.assetId === offer.params.assetId) {
+        const operation = getDeepReachOperation(campaign47aOutcomeKey(this.state), branch);
+        const rows = existing.params?.reckoning?.rows;
+        const presentation = deepReachBriefing(operation, Array.isArray(rows) ? rows : [], { clearance: hasAshCacheStoryClearance(this.state, 'station_ashcache') });
+        const title = presentation.title.toUpperCase();
+        if (existing.title !== title || existing.brief !== presentation.brief) {
+          const fresh = { ...existing, title, brief: presentation.brief };
+          board.slots = board.slots.map(row => row === existing ? fresh : row);
+          return true;
+        }
       }
       return board.slots.length !== before;
     }

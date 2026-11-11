@@ -2758,6 +2758,22 @@ export const missionObjectiveOps = {
       if (!m || m.status !== 'active') continue;
       if (m.type === AUTHORED_SET_PIECE_TYPE) {
         const victim = this.state.entities.get(p.victimId);
+        if (m.storyOperation === 'ashfall_blockade') {
+          const hulk = this.state.entities.get(p.targetId);
+          // The native receipt names the moving mass as target, not victim. Both
+          // bodies must belong to this contract; callback ballast is not its hulk.
+          // Damage subscribers can already have killed the wedge this same emit.
+          const playerImpact = ['actorId', 'ownerId', 'controllerId', 'sourceId']
+            .every(key => p[key] == null || p[key] === this.state.playerId);
+          if ((rating === 'solid' || rating === 'crushing') && playerImpact
+            && hulk && victim && hulk.id !== victim.id
+            && m.targetEntityIds?.includes(hulk.id) && m.targetEntityIds.includes(victim.id)
+            && hulk.data?.missionTag === m.id && victim.data?.missionTag === m.id
+            && physicalRoleOf(hulk) === 'jam_hulk' && physicalRoleOf(victim) === 'approach_wedge') {
+            this._tryCompleteAuthored(m, i, 'whip', 'jam_hulk', hulk);
+          }
+          continue;
+        }
         if (this._tryCompleteAuthored(m, i, 'whip', physicalRoleOf(victim), victim)) continue;
       }
       if (isCapitalBossMission(m)) {

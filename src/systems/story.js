@@ -1,3 +1,4 @@
+import { ashfallElroyLedgerNote } from '../story/campaign47a/ashfallLedger.js';
 import { normalizeSeedCharter, seedCharterPaidReceipt, seedRemittanceComparison } from '../missions/empireSeedCharter.js';
 // src/systems/story.js — the narrative overlay system.
 //
@@ -1751,7 +1752,7 @@ export const story = {
       s.kurtzLedgerRows = [
         { column: 'BENEFICIARY', name: 'VALE, D.', note: 'ADMINISTRATIVE COUNTERPARTY' },
         { column: 'COUNTERPARTY', name: callsign, note: `PRIOR TRANSPONDER ${priorXponder} — FILED PRE-B0` },
-        { column: 'COUNTERPARTY', name: 'ELROY', note: 'DECEASED (B2) — MAINTENANCE / PIT ENGINEERING' },
+        { column: 'COUNTERPARTY', name: 'ELROY', note: ashfallElroyLedgerNote(s) },
       ];
     }
     if (action === 'takeLedger' || action === 'openLedger') {

@@ -16,10 +16,10 @@ export function reckoningCallbacks(input) {
   }
   if (method === 'wrecking_ball') rows.push({ id: 'b1_ram', label: 'Your first wreck returns as a swinging hammer', kind: 'hammer', mass: 180 });
   if (Number(story.flags?.reckoning_b2_saved_pods) >= 2) rows.push({ id: 'b2_crew', label: 'Two rescued crews hold a tug line for you', kind: 'crew', mass: 240 });
+  // The chapter's final method can belong to Foreman Feud, not the core delivery.
+  // Keep the earned physical callback without claiming an unrecorded delivery method.
   const tow = solved['3']?.method;
-  if (tow === 'tow_in' || tow === 'sling_in') rows.push({ id: `b3_${tow}`, label: tow === 'tow_in'
-    ? 'Your recovered core waits beside the siege tower'
-    : 'Your slung core returns as a heavy throwing mass', kind: 'core', mass: tow === 'tow_in' ? 48 : 96 });
+  if (tow === 'tow_in' || tow === 'sling_in') rows.push({ id: `b3_${tow}`, label: 'Your yard work leaves a movable ballast mass', kind: 'core', mass: tow === 'tow_in' ? 48 : 96 });
   const asset = solved['6']?.asset;
   if (['drone', 'trader', 'outpost'].includes(asset)) rows.push({ id: `b6_${asset}`, label: {
     drone: 'Your drone seed delivers a movable cutter shield',
