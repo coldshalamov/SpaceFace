@@ -290,26 +290,27 @@ test('right-button down selects immediately — before any sim tick runs', () =>
   });
 });
 
-test('a tap never mines; a 0.28s hold beams the captured subject only', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, rock, miner, player }) => {
+test('an RMB hold never mines — the captured subject is beamed by the aimed-mine wheel latch', () => {
+  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, rock, miner, player, host }) => {
     const pt = pointOn(rock);
-    clickDownAt(pt.x, pt.y);
-    tick(10);
-    assert.notEqual(state.input.fireGroup, 2, 'short hold must not start the beam');
-    clickUp();
-    tick(2);
-    assert.notEqual(state.input.fireGroup, 2);
-
+    // G18-02: RMB is the Line in every context. No hold length turns it into a beam.
     clickDownAt(pt.x, pt.y);
     tick(19);
-    assert.equal(state.input.fireGroup, 2, 'the held button is the tool after the gate');
-    assert.equal(state.input.worldObjectTargetId, rock.id);
+    assert.notEqual(state.input.fireGroup, 2, 'RMB never produces the beam');
+    assert.equal(state.input.worldObjectTargetId, rock.id, 'the click still captures the subject');
+    // The beam now rides the context wheel's aimed-mine latch — it fires on the captured rock.
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(1);
+    assert.equal(state.input.fireGroup, 2, 'the wheel latch is the beam now');
     const acquired = miner._acquireTarget(player, 200, state);
     assert.equal(acquired && acquired.id, rock.id, 'the beam acts on exactly the clicked rock');
     clickUp();
     tick(1);
-    assert.notEqual(state.input.fireGroup, 2, 'release stops the tool');
+    assert.equal(state.input.fireGroup, 2, 'the latch outlives the click — it is a toggle');
     assert.equal(state.player.targetId, rock.id, 'selection outlives the gesture');
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(1);
+    assert.notEqual(state.input.fireGroup, 2, 'the toggle releases the beam');
   });
 });
 
@@ -359,30 +360,40 @@ test('empty-space right-click frees aim without touching the tether', () => {
   });
 });
 
-test('a latched hostile does not steal the beam from a clicked rock', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, miner, player, rock, hostile }) => {
+test('a latched hostile arms the sling on RMB — the wheel beam stays on the clicked rock', () => {
+  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, miner, player, rock, hostile, host }) => {
     state.player.tether = { active: true, targetId: hostile.id };
     const pt = pointOn(rock);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.fireGroup, 2, 'deliberate click on a beam subject beams even tethered');
-    assert.equal(state.input.actions.throwArm, false, 'the sling must not arm over the click');
-    assert.equal(miner._acquireTarget(player, 200, state).id, rock.id);
+    tick(3);
+    // G18-02: while the rope carries a throwable payload RMB is the sling arm — the click
+    // captures the beam subject, it does not decide what RMB does.
+    assert.equal(state.input.actions.throwArm, true, 'the rope owns RMB while it is throwable');
+    assert.notEqual(state.input.fireGroup, 2, 'the beam is not RMB\'s job anymore');
+    assert.equal(state.input.worldObjectTargetId, rock.id);
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(1);
+    assert.notEqual(state.input.fireGroup, 2, 'the armed sling pre-empts the wheel beam while held');
+    assert.equal(miner._acquireTarget(player, 200, state).id, rock.id,
+      'the captured rock is still what the beam resolves');
     clickUp();
+    tick(1);
+    assert.equal(state.input.actions.throwArm, false, 'the arm spent itself on release');
+    assert.equal(state.input.fireGroup, 2, 'with RMB up the wheel beam runs');
   });
 });
 
-test('a quick enemy click while tethered never arms or throws the sling', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, hostile, thrower }) => {
+test('an RMB press while roped to a throwable is the sling arm — release is the throw', () => {
+  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, hostile }) => {
     state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     const pt = pointOn(hostile);
     clickDownAt(pt.x, pt.y);
-    tick(8);
-    assert.equal(state.input.actions.throwArm, false, 'a tap is never a sling arm');
-    assert.equal(thrower._pendingSnap, null);
+    tick(2);
+    // G18-02: the Line IS the sling — holding RMB aims, releasing throws. There is no gate.
+    assert.equal(state.input.actions.throwArm, true, 'holding RMB on the rope arms the throw');
     clickUp();
     tick(2);
-    assert.equal(thrower._pendingSnap, null, 'nothing pending after release');
+    assert.equal(state.input.actions.throwArm, false, 'release disarms the arm');
   });
 });
 
@@ -445,27 +456,28 @@ test('a modal or open screen never selects or fires behind the UI', () => {
   });
 });
 
-test('a depleted beam subject never drifts into sling with a hostile on the rope', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, miner, player, rock, hostile, thrower }) => {
+test('a depleted rock under the click cannot disarm the rope — RMB follows the Line', () => {
+  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, miner, player, rock, hostile, thrower, host }) => {
     state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     const pt = pointOn(rock);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.fireGroup, 2, 'precondition: beam lane is live');
+    tick(3);
+    assert.equal(state.input.actions.throwArm, true, 'the rope owns RMB — the click cannot disarm it');
     rock.data.respawnAt = state.simTime + 999;
-    tick(5);
-    assert.equal(state.input.fireGroup, 2, 'the lane stays beam — never re-sampled as sling');
-    assert.equal(state.input.actions.throwArm, false,
-      'the tethered hostile must not arm when the rock dies');
+    tick(3);
+    assert.equal(state.input.actions.throwArm, true, 'still the sling — nothing drifts');
     assert.equal(miner._acquireTarget(player, 200, state), null,
-      'the beam simply finds no target — no fallback, no throw');
-    assert.equal(thrower._armAuthorized, false);
+      'a depleted rock offers the captured beam nothing');
     clickUp();
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(2);
+    assert.equal(state.input.fireGroup, 2, 'the wheel beam runs after release');
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
   });
 });
 
-test('a weld completing mid-hold stays non-destructive on the rope', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, hostile, thrower }) => {
+test('a damaged friendly welds under the wheel beam — never under the rope\'s sling', () => {
+  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, hostile, thrower, host }) => {
     state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     const friend = {
       id: 80, type: 'ship', alive: true, team: 1,
@@ -481,15 +493,18 @@ test('a weld completing mid-hold stays non-destructive on the rope', () => {
     state.render.meshes.set(friend.id, friendRoot);
     const pt = pointOn(friend);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.fireGroup, 2, 'precondition: the weld lane is beaming');
-    friend.hull = friend.hullMax;
-    tick(5);
-    assert.equal(state.input.fireGroup, 2, 'the lane is still the captured beam, not sling');
-    assert.equal(state.input.actions.throwArm, false,
-      'the tethered hostile never arms when the weld completes');
-    assert.equal(thrower._armAuthorized, false);
+    tick(2);
+    // G18-02: the rope owns RMB — clicking a friend is a select, not a shield for the hostile.
+    assert.equal(state.input.actions.throwArm, true, 'the rope arms on RMB, not the click subject');
     clickUp();
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(2);
+    assert.equal(state.input.fireGroup, 2, 'the weld rides the wheel beam');
+    assert.equal(state.input.actions.throwArm, false, 'the sling released with the button');
+    friend.hull = friend.hullMax;
+    tick(3);
+    assert.equal(state.input.fireGroup, 2, 'the beam stays on the wheel, never the rope');
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
   });
 });
 
@@ -536,7 +551,7 @@ test('a visible pending NPC hull hovers and selects; its capability hint stays h
   });
 });
 
-test('a sling lane dies with its rope — a fresh tether needs a fresh press', () => {
+test('the sling arm dies with its rope — a different catch in the same hold re-arms', () => {
   withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, station, hostile, thrower }) => {
     const pod = {
       id: 90, type: 'payload', alive: true,
@@ -548,24 +563,26 @@ test('a sling lane dies with its rope — a fresh tether needs a fresh press', (
     state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     const pt = pointOn(station);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.actions.throwArm, true, 'precondition: sling armed on the captured lane');
+    tick(3);
+    assert.equal(state.input.actions.throwArm, true, 'precondition: the rope arms the held Line');
 
     state.player.tether = { active: false, targetId: null };
     tick(3);
     assert.equal(state.input.actions.throwArm, false, 'the arm dies with the rope');
 
+    // G18-02: the held Line owns whatever it has caught — a fresh rope to a throwable
+    // payload arms inside the same hold; the release slings it.
     state.player.tether = { active: true, targetId: pod.id, phase: 'taut' };
     tick(5);
-    assert.equal(state.input.actions.throwArm, false,
-      'a different tether cannot arm inside the old gesture');
-    assert.equal(thrower._pendingSnap, null, 'nothing can release without a fresh press');
+    assert.equal(state.input.actions.throwArm, true,
+      'the held Line arms on its new catch — the throw follows the rope');
     clickUp();
     tick(1);
+    assert.equal(state.input.actions.throwArm, false, 'release disarms');
 
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.actions.throwArm, true, 'a fresh press arms the new rope');
+    tick(3);
+    assert.equal(state.input.actions.throwArm, true, 'a fresh press arms the same way');
     clickUp();
   });
 });
@@ -590,17 +607,19 @@ test('document hidden without window blur still cancels a held sling', () => {
   });
 });
 
-test('leaving the canvas keeps the held tool but paints nothing and never repicks', () => {
-  withWorldObjectHarness(({ state, canvas, tick, clickDownAt, pointOn, woi, rock, hostile }) => {
+test('leaving the canvas keeps the captured subject and its beam, paints nothing, never repicks', () => {
+  withWorldObjectHarness(({ state, canvas, tick, clickDownAt, pointOn, woi, rock, hostile, host }) => {
     const pt = pointOn(rock);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.fireGroup, 2, 'precondition: beam lane is live');
+    tick(2);
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(1);
+    assert.equal(state.input.fireGroup, 2, 'precondition: the wheel beam is live on the rock');
     canvas.dispatch('pointerleave');
     tick(2);
     let diag = woi.diagnostics();
     assert.equal(diag.hoverId, null, 'hover preview clears outside the canvas');
-    assert.equal(diag.gestureTargetId, rock.id, 'the captured tool stays on the rock');
+    assert.equal(diag.gestureTargetId, rock.id, 'the captured subject stays on the rock');
     assert.equal(state.input.fireGroup, 2, 'the beam keeps running while the cursor is off-canvas');
     const over = pointOn(hostile);
     canvas.dispatch('mousemove', { clientX: over.x, clientY: over.y });
@@ -608,6 +627,7 @@ test('leaving the canvas keeps the held tool but paints nothing and never repick
     diag = woi.diagnostics();
     assert.equal(diag.hoverId, rock.id,
       're-entering over another body still shows the captured subject, not a repaint behind it');
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
   });
 });
 
@@ -630,27 +650,30 @@ test('a depleted beam noun never advertises sling in the preview hint', () => {
   });
 });
 
-test('a rope acquired during an inspect hold never arms mid-hold', () => {
+test('a rope acquired mid-hold arms — the held Line owns the catch it lands', () => {
   withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, station, hostile, thrower }) => {
     const pt = pointOn(station);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.actions.throwArm, false, 'precondition: inspect lane, no rope');
+    tick(3);
+    assert.equal(state.input.actions.throwArm, false, 'precondition: select only, no rope');
+    // G18-02: RMB is the Line — while it is held, whatever it catches is yours to sling.
     state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     tick(5);
-    assert.equal(state.input.actions.throwArm, false,
-      'the gesture was captured as inspect; a later rope stays inert until re-press');
-    assert.equal(thrower._armAuthorized, false);
+    assert.equal(state.input.actions.throwArm, true,
+      'the rope landing inside the hold arms the throw — press → latch → aim → release');
     clickUp();
+    tick(1);
+    assert.equal(state.input.actions.throwArm, false, 'release disarms the arm');
   });
 });
 
 test('a dead captured subject cancels through input before the field is removed', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, pointOn, rock, emitted, woi }) => {
+  withWorldObjectHarness(({ state, tick, clickDownAt, pointOn, rock, emitted, woi, host, miner, player }) => {
     const pt = pointOn(rock);
     clickDownAt(pt.x, pt.y);
-    tick(19);
-    assert.equal(state.input.fireGroup, 2, 'precondition: beam lane is live');
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+    tick(2);
+    assert.equal(state.input.fireGroup, 2, 'precondition: the wheel beam is live on the rock');
     rock.alive = false;
     tick(1);
     assert.equal(Object.hasOwn(state.input, 'worldObjectTargetId'), false,
@@ -659,106 +682,54 @@ test('a dead captured subject cancels through input before the field is removed'
       'the cancel ran through the input owner, not a silent field delete');
     const diag = woi.diagnostics();
     assert.equal(diag.gestureActive, false);
-    tick(3);
-    assert.notEqual(state.input.fireGroup, 2, 'no zombie beam after the subject dies');
+    assert.equal(diag.gestureTargetId, null, 'the dead subject leaves no target behind');
+    host.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
   });
 });
 
-test('the physical UI clock owns the hold gate — a starved sim still beams the clicked rock', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, rock, advanceUiClock, host }) => {
+test('RMB is the Line from the first tick — there is no hold gate to wait out', () => {
+  withWorldObjectHarness(({ state, win, tick, clickDownAt, clickUp, pointOn, rock, host }) => {
     const pt = pointOn(rock);
+    // G18-02: the m2 tool lane and its 280ms gate are gone. The press feeds the Line's
+    // grammar immediately; no physical or sim clock ever turns RMB into a beam.
     clickDownAt(pt.x, pt.y);
-    tick(2);
-    assert.notEqual(state.input.fireGroup, 2, 'two slow sim ticks is only 0.033 sim-s held');
-    advanceUiClock(280);
     tick(1);
-    assert.equal(state.input.fireGroup, 2,
-      '280 physical ms engages the beam even when the sim only ticked 3 times');
-    assert.equal(state.input.worldObjectTargetId, rock.id);
-    assert.equal(host._m2UsesUiClock, true, 'the FakeWindow scheduler is the bound clock source');
-    clickUp();
-  }, { uiClock: true });
-});
-
-test('a fast sim cannot beat the physical hold gate while the device clock is bound', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, rock, advanceUiClock }) => {
-    const pt = pointOn(rock);
-    clickDownAt(pt.x, pt.y);
+    assert.equal(state.input.actions.tetherFire, true, 'the Line fires on the first tick');
+    assert.notEqual(state.input.fireGroup, 2, 'and it is never the beam');
+    assert.ok(!win.__timers || win.__timers.every((t) => t.ms !== 280),
+      'no tool-hold timer exists for the retired lane');
     tick(19);
-    assert.notEqual(state.input.fireGroup, 2,
-      '19 sim ticks inside 280 physical ms must remain tap-only');
-    advanceUiClock(280);
-    tick(1);
-    assert.equal(state.input.fireGroup, 2, 'the physical 280ms then engages');
-    assert.equal(state.input.worldObjectTargetId, rock.id);
+    assert.notEqual(state.input.fireGroup, 2, 'no hold length turns RMB into the beam');
     clickUp();
   }, { uiClock: true });
 });
 
-test('release, cancel, destroy, and stale timer deliveries can never arm the hold late', () => {
-  withWorldObjectHarness(({ state, win, tick, clickDownAt, clickUp, pointOn, rock, advanceUiClock, host, ctx }) => {
-    const pt = pointOn(rock);
-    const holdTimers = () => win.__timers.filter((t) => t.ms === 280);
-
+test('release, blur, and destroy leave no sling arm behind', () => {
+  withWorldObjectHarness(({ state, win, tick, clickDownAt, clickUp, pointOn, hostile, ctx, host, emitted }) => {
+    state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
+    const pt = pointOn(hostile);
     clickDownAt(pt.x, pt.y);
-    const stale = holdTimers().pop();
-    assert.ok(stale, 'the press queued its own 280ms timer');
-    advanceUiClock(100);
-    clickUp();
-    stale.cb();
     tick(2);
-    assert.equal(host._m2HoldReady, false, 'a released press cannot turn ready late');
-    assert.notEqual(state.input.fireGroup, 2);
-
-    clickDownAt(pt.x, pt.y);
-    stale.cb();
-    tick(2);
-    assert.notEqual(state.input.fireGroup, 2,
-      'a zombie callback from press 1 must not arm press 2');
-    advanceUiClock(280);
-    tick(1);
-    assert.equal(state.input.fireGroup, 2, 'the fresh press needs and gets its own 280ms');
+    assert.equal(state.input.actions.throwArm, true, 'precondition: the held Line arms');
     clickUp();
     tick(1);
+    assert.equal(state.input.actions.throwArm, false, 'release disarms');
 
     clickDownAt(pt.x, pt.y);
-    advanceUiClock(100);
+    tick(2);
+    assert.equal(state.input.actions.throwArm, true);
     win.dispatch('blur');
-    advanceUiClock(300);
     tick(2);
-    assert.notEqual(state.input.fireGroup, 2, 'a canceled gesture cannot arm late');
-    assert.equal(host._m2HoldReady, false);
+    assert.equal(state.input.actions.throwArm, false, 'blur cannot leave an arm behind');
+    assert.ok(emitted.some((e) => e.name === 'input:worldGestureCancelled'));
 
     clickDownAt(pt.x, pt.y);
-    const deadTimer = holdTimers().filter((t) => !t.fired).pop();
-    advanceUiClock(100);
-    host.destroy();
-    deadTimer.cb();
-    assert.equal(host._m2HoldReady, false, 'the dead host cannot be armed');
-    host.init(ctx);
-    clickDownAt(pt.x, pt.y);
-    deadTimer.cb();
-    tick(2);
-    assert.notEqual(state.input.fireGroup, 2,
-      'a pre-destroy callback cannot arm a post-reinit press');
-    advanceUiClock(280);
     tick(1);
-    assert.equal(state.input.fireGroup, 2, 're-init + a real 280ms still engages');
-    clickUp();
-  }, { uiClock: true });
-});
-
-test('a host without a UI scheduler keeps the deterministic sim-tick hold', () => {
-  withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, rock, host }) => {
-    assert.ok(!host._m2UsesUiClock, 'no scheduler bound — the sim-time gate stays');
-    const pt = pointOn(rock);
-    clickDownAt(pt.x, pt.y);
-    tick(10);
-    assert.notEqual(state.input.fireGroup, 2);
-    tick(9);
-    assert.equal(state.input.fireGroup, 2, '19 ticks at 60Hz = the deterministic 0.28s gate');
-    assert.equal(state.input.worldObjectTargetId, rock.id);
-    clickUp();
+    host.destroy();
+    assert.equal(host._m2, false, 'teardown releases the button');
+    host.init(ctx);
+    tick(2);
+    assert.equal(state.input.actions.throwArm, false, 'a dead owner cannot arm the next one');
   });
 });
 
