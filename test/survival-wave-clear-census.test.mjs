@@ -46,19 +46,19 @@ test('Gauntlet clear publishes the final dead cohort member before a delayed lif
   owner.destroy();
 });
 
-test('Swarm progress names the ship quota, and the live wave owner waits for the wave-ten boss', () => {
-  const plan = planWave({ seed: 4242, arenaId: 'helios_core', wave: 10, ruleset: 'swarm', mutators: [] });
+test('Swarm progress names the ship quota, and the live wave owner waits for the wave-five boss', () => {
+  const plan = planWave({ seed: 4242, arenaId: 'helios_core', wave: 5, ruleset: 'swarm', mutators: [] });
   assert.equal(plan.mode, 'swarm');
   assert.equal(plan.objective.kind, 'boss');
   assert.equal(plan.objective.population, 'ships');
   assert.equal(plan.objective.supplementalPopulation, 'brood');
-  assert.equal(plan.swarm.bossScoreId, 'capital_boss_hulk', 'the opening first-ten boss is the authored Iron Maw encounter');
+  assert.equal(plan.swarm.bossScoreId, 'capital_boss_hulk', 'the first champion round is the authored Iron Maw encounter');
   assert.equal(threatPopulationLabel('swarm', plan.objective), 'HOSTILE SHIPS');
   assert.equal(threatPopulationLabel('swarm', { kind: 'boss' }), 'HOSTILES', 'legacy plans keep their explicit fallback');
 
   const state = createGameState(4242);
   state.run = createRunState({ kind: 'survival' });
-  Object.assign(state.run, { phase: 'active', ruleset: 'swarm', wave: 10, arenaId: 'helios_core' });
+  Object.assign(state.run, { phase: 'active', ruleset: 'swarm', wave: 5, arenaId: 'helios_core' });
   state.playerId = 1;
   const player = { id: 1, alive: true, pos: { x: 0, z: 0 } };
   state.entities = new Map([[1, player]]);

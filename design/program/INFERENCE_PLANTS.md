@@ -28,12 +28,12 @@ or does not.
 
 | ID | What happens | What the player can do | State |
 |---|---|---|---|
-| PL-01 | **Near miss.** Pass a civilian within a ship-length at speed: they swerve, flash their lamps and say *"Lane's not yours, pal!"* | Do it again; the third time they report you | OPEN |
+| PL-01 | **Near miss.** Pass a civilian within a ship-length at speed: they swerve, flash their lamps and say *"Lane's not yours, pal!"* | Do it again; the third time they report you | SHIPPED 894706179784 |
 | PL-02 | **Fender bender.** Bump a parked ship: an alarm lamp strobes and the owner undocks to look at the dent | Stay and get shouted at, or leave and be described to the dock | OPEN |
-| PL-03 | **Rubberneckers.** After any wreck, two passing civilians slow down to look; a scavenger arrives within a minute | Shoo them, or take the wreck first | OPEN |
+| PL-03 | **Rubberneckers.** After any wreck, two passing civilians slow down to look; a scavenger arrives within a minute | Shoo them, or take the wreck first | SHIPPED aecf72a93682 |
 | PL-04 | **Scramble.** When cargo spills in a lane, nearby civilians each grab a pod and scatter; the owner hails for help | Help the owner, join the scramble, or grab the thieves | OPEN |
-| PL-05 | **Road rage.** Shove the same civilian twice and they shove back once, badly, then run | Laugh; or it knocks you into something | OPEN |
-| PL-06 | **Tailgater.** Cut off a loaded hauler and it follows you for twenty seconds with its horn down | Outrun it, or lead it somewhere it will regret | OPEN |
+| PL-05 | **Road rage.** Shove the same civilian twice and they shove back once, badly, then run | Laugh; or it knocks you into something | SHIPPED b34318ddee21 |
+| PL-06 | **Tailgater.** Cut off a loaded hauler and it follows you for twenty seconds with its horn down | Outrun it, or lead it somewhere it will regret | SHIPPED 4fb8e0a3fb72 |
 | PL-07 | **Witness.** A crime seen by the bus is mentioned by Benny on open radio and the fine is waiting at your next dock | Stop the bus leaving, or do not be seen | OPEN |
 | PL-08 | **Applause.** A slingshot kill within sight of a station makes its dock lamps flash twice | Do it on purpose | OPEN |
 | PL-09 | **The recovery tug.** A wreck left in a lane is collected by a real tug that comes from the nearest dock | Race it for the wreck; or cut its line | OPEN |
@@ -101,13 +101,13 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | ID | When | Static says | State |
 |---|---|---|---|
 | PL-51 | You ring the Ceres Bell twice in a minute | *"Somebody rang the Ceres Bell. Twice."* | OPEN |
-| PL-52 | You throw a ship into a station | *"Whoever parked that in the dock: bold."* | OPEN |
+| PL-52 | You throw a ship into a station | *"Whoever parked that in the dock: bold."* | SHIPPED 028d546081ef |
 | PL-53 | You ride a freight string out of a sector | *"Stowaway on the noon freight. We see you."* | OPEN |
 | PL-54 | Ten near misses in one minute | *"Traffic advisory: there's one of those out today."* | OPEN |
-| PL-55 | You are killed by traffic | *"Lane lights exist. Just saying."* | OPEN |
-| PL-56 | Your Line goes up a class | *"New rope in the lanes. Mind your cargo."* | OPEN |
+| PL-55 | You are killed by traffic | *"Lane lights exist. Just saying."* | SHIPPED 22f4977395b2 |
+| PL-56 | Your Line goes up a class | *"New rope in the lanes. Mind your cargo."* | SHIPPED 1490116 |
 | PL-57 | The Fridge changes sector | *"Fridge update."* and the sector's name | OPEN |
-| PL-58 | You win the Pit | *"Lights came up at the Pit last night."* | OPEN |
+| PL-58 | You win the Pit | *"Lights came up at the Pit last night."* | SHIPPED 86ea9fb8b546 |
 | PL-59 | You lose a search while wanted | *"Concord would like a word with a certain rope."* | OPEN |
 | PL-60 | You finish a town's first job | the town's name, and *"says thanks, whoever you are."* | OPEN |
 

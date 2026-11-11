@@ -42,6 +42,7 @@ export const ALLOWED_SECTOR_RESTAMP_FILES = new Map([
   ['src/systems/mothlight.js', 'tender bind stamps home sector on live entity'],
   ['src/systems/palletJack.js', 'begin() stamps actor+cargo; escape restamps both to route endpoint'],
   ['src/world/asteroidField.js', 'promoted rock gets record homeSectorId post-spawn'],
+  ['src/world/spillVultures.js', 'spill-vulture skiff stamps its spawn sector post-spawn, then funnels'],
   ['src/world/farActorTable.js', 'promoted far actor gets record homeSectorId post-spawn'],
   ['src/systems/npcJobsRuntime.js', 'occupational scavenger/target adoption stamps ceres sector'],
   ['src/world/worldRecords.js', 'bindEntityToRecord restamps record sector — callers funnel'],

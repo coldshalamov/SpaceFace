@@ -40,6 +40,8 @@
 
 import { NPC_JOB_KIND, NPC_JOB_PHASE } from '../../systems/npcJobs.js';
 import { entityExists, entityLabel, entitySpanHtml } from '../entityResolver.js';
+import { counted } from '../numberFormat.js';
+
 
 // ─── Phrase banks (enumerated; keyed by the kernel's frozen vocabularies) ──────────────────────
 // Derived from the enums so the bank cannot outlive its vocabulary: every key is computed from
@@ -201,7 +203,7 @@ export function careersForSector(state, sectorId) {
   if (!rows.length && corruptCount) {
     return Object.freeze({
       status: 'error', sectorId, rows: [], corruptCount,
-      reason: `${corruptCount} career record${corruptCount > 1 ? 's' : ''} unreadable — the pocket's working hulls will list as their records recover.`,
+      reason: `${counted(corruptCount, 'career record', 'career records')} unreadable — the pocket's working hulls will list as their records recover.`,
     });
   }
   if (!rows.length) {
@@ -212,7 +214,7 @@ export function careersForSector(state, sectorId) {
   }
   return Object.freeze({
     status: 'ready', sectorId, rows, corruptCount,
-    reason: `${rows.length} career${rows.length > 1 ? 's' : ''} at work in this pocket.`,
+    reason: `${counted(rows.length, 'career', 'careers')} at work in this pocket.`,
   });
 }
 
@@ -249,7 +251,7 @@ function careerRowHtml(row) {
         <div class="gm-career__head">
           <span class="gm-career__role">${escapeHtml(row.role)}</span>
           ${phase}
-          <span class="gm-career__fig">${row.loopCount} circuit${row.loopCount === 1 ? '' : 's'}</span>
+          <span class="gm-career__fig">${counted(row.loopCount, 'circuit', 'circuits')}</span>
         </div>
         ${place ? `<div class="gm-career__place">${place}</div>` : ''}
         ${who ? `<div class="gm-career__who">${who}</div>` : ''}
@@ -274,7 +276,7 @@ export function careersTabHtml(state, sectorId) {
     : escapeHtml(roster.sectorId);
   const corruptLine = roster.corruptCount
     ? `<div class="gm-ins-note">${escapeHtml(
-      `${roster.corruptCount} career record${roster.corruptCount > 1 ? 's' : ''} unreadable — not listed.`)}</div>`
+      `${counted(roster.corruptCount, 'career record', 'career records')} unreadable — not listed.`)}</div>`
     : '';
   return `
       <div class="gm-ins-section">
@@ -309,6 +311,6 @@ export function careersOverviewLineHtml(state, sectorId) {
       <div class="gm-ins-section">
         <div class="gm-ins-title">Working this pocket</div>
         <div class="gm-career__place">${door} · ${escapeHtml(trades.join(' · '))}</div>
-        <div class="gm-ins-note">${roster.rows.length} career${roster.rows.length > 1 ? 's' : ''} on record — the Careers tab lists role, place and each worker.</div>
+        <div class="gm-ins-note">${counted(roster.rows.length, 'career', 'careers')} on record — the Careers tab lists role, place and each worker.</div>
       </div>`;
 }

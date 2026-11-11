@@ -672,6 +672,56 @@ async function boot() {
         }, 300);
       }
     }
+    // Dev-only Swarm round jump (G17-01): `?swarmRound=N` skips the title and launches a
+    // Swarm run whose first wave is round N — the workbench route builders use to see round
+    // 20+ without playing twenty rounds. `?swarmArena=<id or door name>` picks the room; the
+    // run rides the real SWARM-04 checkpoint seam, so the opening armory is funded by the
+    // checkpoint purse a player-earned mid-ladder start would pay. Absent: nothing happens.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined'
+      && new URLSearchParams(location.search).has('swarmRound')) {
+      const devSwarmQuery = new URLSearchParams(location.search);
+      const { swarmStartAtRound, swarmArcadeSeedFor } = await import('./data/swarmLadder.js');
+      const {
+        crucibleSetupFor, requestCrucibleRun, crucibleArenaIdForName, freshSeed,
+        CRUCIBLE_DEFAULT_STARTER_ID, CRUCIBLE_ARENA_ID,
+      } = await import('./ui/crucibleLaunch.js');
+      const { SWARM_RULESET } = await import('./data/swarmMode.js');
+      const start = swarmStartAtRound(devSwarmQuery.get('swarmRound'));
+      const arenaId = crucibleArenaIdForName(devSwarmQuery.get('swarmArena')) || CRUCIBLE_ARENA_ID;
+      const setup = crucibleSetupFor({
+        starterId: CRUCIBLE_DEFAULT_STARTER_ID,
+        seed: swarmArcadeSeedFor(arenaId) || freshSeed(),
+        arenaId,
+        ruleset: SWARM_RULESET,
+        startWave: start.startWave,
+      });
+      if (!setup.ok) {
+        console.error('[SpaceFace] dev swarm route: setup invalid',
+          (setup.issues || []).map((issue) => `${issue.path}: ${issue.message}`).join('; '));
+      } else {
+        console.log(`[SpaceFace] dev swarm route armed: round ${start.startWave} in ${arenaId} (checkpoint purse ${start.purse})`);
+        // The checkpoint start lands in the opening armory, but crucibleDraft is a deferred-wave
+        // screen: launching before registration settles strands the draft phase on an "unknown
+        // screen" warning. Wait for the same uiRoot registry the ordinary door rides, then fire.
+        let waited = 0;
+        const launchWhenArmoryKnown = () => {
+          const ui = registry.get('ui');
+          const manager = ui && (ui.screenManager || ui.manager);
+          if (manager && typeof manager.hasScreen === 'function' && manager.hasScreen('crucibleDraft')) {
+            // Like the screen route, emulate a returning player so First Light cannot raise
+            // its confirm over the armory the launch is about to open.
+            const access = state && state.settings && state.settings.accessibility;
+            if (access && typeof access === 'object') access.firstLightOffered = true;
+            requestCrucibleRun(bus, setup, SWARM_RULESET);
+            return;
+          }
+          waited += 1;
+          if (waited < 1200) setTimeout(launchWhenArmoryKnown, 100); // ~2 min, then the log speaks
+          else console.error('[SpaceFace] dev swarm route gave up waiting for the crucibleDraft screen to register');
+        };
+        setTimeout(launchWhenArmoryKnown, 300);
+      }
+    }
   } catch (err) {
     showBootError(err);
     throw err;

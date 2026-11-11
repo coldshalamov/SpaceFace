@@ -108,6 +108,8 @@ import { endingStationTradeMults } from '../story/endings/worldAfter.js';
 import { LONG_BERTH_STATION_ID, berthStageDef } from '../data/longBerth.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { counted } from '../core/numberFormat.js';
+
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
@@ -5631,7 +5633,7 @@ export const economy = {
       this.bus.emit('service:completed', {
         type: 'redeem_rights', rights: want, payout, stationId, atT: Number(state.simTime) || 0,
       });
-      this.bus.emit('toast', { text: `Redeemed ${want} salvage right${want === 1 ? '' : 's'} (+${payout} cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Redeemed ${counted(want, 'salvage right', 'salvage rights')} (+${payout} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'insurance') {
       const ins = state.player.insurance || (state.player.insurance = {
         rate: INSURANCE_DEFAULTS.rate,

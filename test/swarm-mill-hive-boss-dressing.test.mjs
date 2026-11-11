@@ -4,9 +4,13 @@
 //
 // Done when: LAW_ARENA_BOSS_ROLES resolves both library rows on the same hull+role+law
 // contract; BOSS_DRESSING_KINDS/BOSS_BUILDERS hang real geometry on both kinds; a real
-// survivalWave run in each arena materializes the wave-10 dreadnought wearing its stamp;
-// the four original arenas resolve unchanged; and the dressing is presentation-only — the
+// survivalWave run in each arena materializes the first champion's dreadnought wearing its
+// stamp; the four original arenas resolve unchanged; and the dressing is presentation-only — the
 // stamped boss's hull, shield and weapons read byte-identical to an undressed one.
+//
+// Versioned for S14 (483dff172351): the first champion moved from wave 10 to wave 5
+// (SWARM_BOSS_FIRST), and wave 10 is now an ordinary round. These runs retarget the same
+// rotation step — the Iron Maw — at the wave that fields it.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,7 +23,7 @@ import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
 import { swarmJuice } from '../src/systems/swarmJuice.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
-import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { SWARM_BOSS_FIRST, SWARM_RULESET } from '../src/data/swarmMode.js';
 import { HIVE_BOSS_ROLE, MILL_BOSS_ROLE } from '../src/data/arenaModuleLibrary.js';
 import { MILL_ARENA_ID } from '../src/systems/asteroidMillArena.js';
 import { HIVE_ARENA_ID } from '../src/systems/theHiveArena.js';
@@ -32,6 +36,8 @@ import { lawArenaBossDressing, SURVIVAL_COHORT_TAG } from '../src/systems/waveMa
 
 const DT = 1 / 60;
 const SEED = 4242;
+/** S14: the first champion (the Iron Maw) fields at wave 5. */
+const FIRST_CHAMPION_WAVE = SWARM_BOSS_FIRST;
 
 // The whole law-arena dressing table: arena id -> role row -> dressing kind.
 const LAW_ARENAS = [
@@ -109,10 +115,10 @@ function startWave(h, wave, arenaId) {
   return plan;
 }
 
-function waveTenBoss(h) {
+function firstChampionBoss(h) {
   const boss = h.spawned.find((e) => e.data && e.data.lootTableId === 'dreadnought_boss'
     && e.data.runCohort === SURVIVAL_COHORT_TAG);
-  assert.ok(boss, 'the wave-10 dreadnought champion materialized');
+  assert.ok(boss, 'the first champion\'s dreadnought materialized');
   return boss;
 }
 
@@ -182,11 +188,11 @@ test('the B4 dressing contract stays exact — wrong hull, wrong role, wrong are
 
 // ---- live materialization ----
 
-test('the Asteroid Mill wave-10 boss materializes wearing seam_crusher through the real run', () => {
-  const h = boot(10, MILL_ARENA_ID);
-  const plan = startWave(h, 10, MILL_ARENA_ID);
-  assert.equal(plan.swarm.bossId, 'iron_maw', 'wave 10 is the first rotation row');
-  const boss = waveTenBoss(h);
+test('the Asteroid Mill first champion materializes wearing seam_crusher through the real run', () => {
+  const h = boot(FIRST_CHAMPION_WAVE, MILL_ARENA_ID);
+  const plan = startWave(h, FIRST_CHAMPION_WAVE, MILL_ARENA_ID);
+  assert.equal(plan.swarm.bossId, 'iron_maw', 'the first champion wave is the first rotation row');
+  const boss = firstChampionBoss(h);
   assert.equal(boss.data.swarmChampion, true, 'the boss is an owed champion');
   assert.equal(boss.data.missionTag, 'capital_boss', 'the score binds the dressed hull');
   assert.equal(boss.data.runRole, MILL_BOSS_ROLE.role, 'the elite package slot rode in');
@@ -194,10 +200,10 @@ test('the Asteroid Mill wave-10 boss materializes wearing seam_crusher through t
     'the authored dressing stamp is exactly { kind, law }');
 });
 
-test('the Hive wave-10 boss materializes wearing queen_warden through the real run', () => {
-  const h = boot(10, HIVE_ARENA_ID);
-  startWave(h, 10, HIVE_ARENA_ID);
-  const boss = waveTenBoss(h);
+test('the Hive first champion materializes wearing queen_warden through the real run', () => {
+  const h = boot(FIRST_CHAMPION_WAVE, HIVE_ARENA_ID);
+  startWave(h, FIRST_CHAMPION_WAVE, HIVE_ARENA_ID);
+  const boss = firstChampionBoss(h);
   assert.equal(boss.data.swarmChampion, true);
   assert.equal(boss.data.runRole, HIVE_BOSS_ROLE.role);
   assert.deepEqual(boss.data.bossDressing, { kind: 'queen_warden', law: HIVE_ARENA_ID });
@@ -206,15 +212,15 @@ test('the Hive wave-10 boss materializes wearing queen_warden through the real r
 test('the four original law arenas still stamp their authored dressings live', () => {
   // One full run per arena would be slow; the lookup and one live materialization prove the
   // shared path is undisturbed — the other three are pinned by the table test above.
-  const h = boot(10, LAGRANGE_ARENA_ID);
-  startWave(h, 10, LAGRANGE_ARENA_ID);
-  const boss = waveTenBoss(h);
+  const h = boot(FIRST_CHAMPION_WAVE, LAGRANGE_ARENA_ID);
+  startWave(h, FIRST_CHAMPION_WAVE, LAGRANGE_ARENA_ID);
+  const boss = firstChampionBoss(h);
   assert.deepEqual(boss.data.bossDressing, { kind: 'tidal_engine', law: LAGRANGE_ARENA_ID });
 });
 
 test('chaff inside a law arena never wears the boss dressing', () => {
-  const h = boot(10, MILL_ARENA_ID);
-  startWave(h, 10, MILL_ARENA_ID);
+  const h = boot(FIRST_CHAMPION_WAVE, MILL_ARENA_ID);
+  startWave(h, FIRST_CHAMPION_WAVE, MILL_ARENA_ID);
   const cohort = h.spawned.filter((e) => e.data && e.data.runCohort === SURVIVAL_COHORT_TAG);
   assert.ok(cohort.length > 1, 'the boss wave fields its reduced swarm too');
   const dressed = cohort.filter((e) => e.data.bossDressing != null);
@@ -223,15 +229,15 @@ test('chaff inside a law arena never wears the boss dressing', () => {
 });
 
 test('the dressing is presentation-only — a dressed boss reads stat-identical to a bare one', () => {
-  const bare = boot(10, 'helios_core');
-  startWave(bare, 10, 'helios_core');
-  const bareBoss = waveTenBoss(bare);
+  const bare = boot(FIRST_CHAMPION_WAVE, 'helios_core');
+  startWave(bare, FIRST_CHAMPION_WAVE, 'helios_core');
+  const bareBoss = firstChampionBoss(bare);
   assert.equal(bareBoss.data.bossDressing, undefined, 'helios is not a law arena');
 
   for (const arenaId of [MILL_ARENA_ID, HIVE_ARENA_ID]) {
-    const h = boot(10, arenaId);
-    startWave(h, 10, arenaId);
-    const boss = waveTenBoss(h);
+    const h = boot(FIRST_CHAMPION_WAVE, arenaId);
+    startWave(h, FIRST_CHAMPION_WAVE, arenaId);
+    const boss = firstChampionBoss(h);
     assert.ok(boss.data.bossDressing != null, `${arenaId} boss is dressed`);
     assert.deepEqual(
       combatStatSnapshot(boss),

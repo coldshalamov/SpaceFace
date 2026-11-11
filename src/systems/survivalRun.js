@@ -32,8 +32,10 @@ import {
 } from './survivalCircuit.js';
 import { isEndlessRuleset } from './survivalEndless.js';
 import {
+  SWARM_DEEP_WAVE_MAX,
   SWARM_REFIT_EVERY,
   SWARM_WAVE_MAX,
+  isSwarmDeepRun,
   isSwarmDraftWave,
   isSwarmRefitWave,
   isSwarmRuleset,
@@ -145,6 +147,7 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
     this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
     this._unsubs.push(this.bus.on('run:partialBankRequested', () => this._onPartialBankRequested()));
+    this._unsubs.push(this.bus.on('run:swarmDeepRequested', () => this._onSwarmDeepRequested()));
     // SWARM-08 B5 — Circuit choices travel the ordinary draft-pick intent, then this internal
     // simulation event. This owner is the sole writer of `run.telemetry.circuit`.
     this._unsubs.push(this.bus.on('run:circuitChoiceRequested', (payload) => this._onCircuitChoiceRequested(payload)));
@@ -851,7 +854,7 @@ export const survivalRun = {
     const swarm = isSwarmRuleset(run.ruleset);
     const block = isBlockRuleset(run.ruleset);
     const waveCap = swarm
-      ? SWARM_WAVE_MAX
+      ? (isSwarmDeepRun(run) ? SWARM_DEEP_WAVE_MAX : SWARM_WAVE_MAX)
       : (circuit
         ? SURVIVAL_BOSS_CIRCUIT_LENGTH
         : (endless
@@ -935,6 +938,12 @@ export const survivalRun = {
   },
 
   _requestCleanupExit(run) {
+    // C01-01 — clearing the Pit's last round IS the win: no armory and no bench stand between
+    // the Forge Regent's fall and the results screen.
+    if (isSwarmRuleset(run && run.ruleset) && this._isLastWave(run)) {
+      this._requestTransition('cleanup', 'victory', REASON_ACT_COMPLETE);
+      return;
+    }
     // A swarm run takes its CARD FIRST on a wave that is both. `draft -> refit` is a legal edge,
     // so a wave-10 stop is draft then bench rather than a bench instead of the draft the player
     // came for. The arc keeps its own shape: there, wave 10 has always been a bench and nothing
@@ -979,8 +988,11 @@ export const survivalRun = {
 
   _isLastWave(run) {
     const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
-    // A swarm run has no victory screen to reach. It ends when you die, and only then.
-    if (isSwarmRuleset(run && run.ruleset)) return wave >= SWARM_WAVE_MAX;
+    // C01-01 — the Pit is finite: clearing round thirty wins the run. C01-03 — a run that
+    // Kept going has no last wave: the old endless course plays on until it ends the pilot.
+    if (isSwarmRuleset(run && run.ruleset)) {
+      return wave >= SWARM_WAVE_MAX && !isSwarmDeepRun(run);
+    }
     if (isEndlessRuleset(run && run.ruleset)) return wave >= SURVIVAL_ENDLESS_WAVE_MAX;
     if (isBossCircuitRuleset(run && run.ruleset)) return wave >= SURVIVAL_BOSS_CIRCUIT_LENGTH;
     // PQ-133.04 R4: a block run's whole point is the ten-wave ending — wave ten is victory.
@@ -1048,6 +1060,53 @@ export const survivalRun = {
       secured,
       remaining: paid.credits,
       wave: Number.isInteger(paid.wave) ? paid.wave : 0,
+      tick: this._runTick,
+    });
+  },
+
+  /**
+   * C01-03 — `Keep going` on the round-30 win. The victory already published: the record is
+   * written and the purse is banked, so the run may not simply hand the wallet back to the
+   * same waves. The phase table has no `victory -> wave_intro` edge, so the resume rides the
+   * legal teardown-and-reboard path — `victory -> inactive -> loadout -> draft`, the same
+   * armory entry every swarm run takes — which drops the run back into the ordinary
+   * between-round flow with wave, build and seed intact. Landing in `draft` also re-opens
+   * the spend gate, so the banked purse leaves the wallet here: post-win earnings then
+   * answer to the ending's own fraction, exactly the death rule's promise.
+   */
+  _onSwarmDeepRequested() {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.kind !== 'survival' || !isSwarmRuleset(run.ruleset)) return;
+    if (run.phase !== 'victory') return;
+    if (!Number.isInteger(run.wave) || run.wave < SWARM_WAVE_MAX) return;
+    const telemetry = run.telemetry || (run.telemetry = {});
+    if (telemetry.deepContinued === true) return;
+    telemetry.deepContinued = true;
+    this._emit('run:transitionRequested', {
+      expectedPhase: 'victory', nextPhase: 'inactive', reason: 'swarm_deep_continue', tick: this._runTick,
+    });
+    this._emit('run:transitionRequested', {
+      expectedPhase: 'inactive', nextPhase: 'loadout', reason: 'swarm_deep_continue', tick: this._runTick,
+    });
+    this._emit('run:transitionRequested', {
+      expectedPhase: 'loadout', nextPhase: 'draft', reason: 'swarm_deep_continue', tick: this._runTick,
+    });
+    const live = liveSurvivalRun(this.state);
+    if (!live || live.phase !== 'draft') {
+      // A hop was refused — the stamp must not outlive the run it was promised to.
+      if (live && live.telemetry) live.telemetry.deepContinued = false;
+      return;
+    }
+    if (Number.isFinite(live.credits) && live.credits > 0) {
+      this._emit('run:spendRequested', { credits: live.credits, reason: 'swarm_win_bank' });
+    }
+    // The win's settle already paid every secured credit home; the stamp is spent. Left in
+    // place it would bank the same salvage again on the next ending. The spend just cloned
+    // the run — write through the live handle, never the spent snapshot.
+    const settled = liveSurvivalRun(this.state);
+    if (settled && settled.telemetry) settled.telemetry.securedBounty = 0;
+    this._emit('run:swarmDeepContinued', {
+      wave: Number.isInteger(settled && settled.wave) ? settled.wave : live.wave,
       tick: this._runTick,
     });
   },

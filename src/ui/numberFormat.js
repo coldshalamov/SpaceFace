@@ -7,5 +7,7 @@ export {
   resolveNumberLocale,
   formatNumber,
   formatCount,
+  counted,
+  pluralWord,
   localeGroupsThousands,
 } from '../core/numberFormat.js';
