@@ -706,6 +706,9 @@ function loadKestrelThrusterTextures() {
 
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
 const PARTICLE_CAP = { low: 1500, med: 2000, medium: 2000, high: 4000 };
+// A01-02 freight lane lights: runway dashes along the Foundry's haul lane.
+const FREIGHT_LANE_DASHES = 11;
+const FREIGHT_LANE_QUADS = 16;
 const PARTICLE_POSITION = 0;
 const PARTICLE_COLOR = 1;
 const PARTICLE_SIZE = 2;
@@ -2187,6 +2190,8 @@ export const vfx = {
     this._masslineChainReadout = null;
     this._dockingCradle = null;
     this._dockApproach = null;
+    this._freightLane = null;
+    this._freightLaneState = null;
     this._apronFlood = null;
     this._salvageLamp = null;
     this._stormPresence = {};
@@ -2541,6 +2546,7 @@ export const vfx = {
     this._initMonofilamentBlade();
     this._initDockingCradle();
     this._initDockApproach();
+    this._initFreightLane();
     this._initStormZones();
     this._initApexFlare();
     this._initSelectionSigil();
@@ -2858,6 +2864,7 @@ export const vfx = {
       });
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
+      add(name, () => { this._freightLaneState = null; });
       add(name, () => this._resetDamagedPortVfx());
     }
     const clearTumbleCadenceFor = (p) => {
@@ -2887,6 +2894,10 @@ export const vfx = {
     add('combat:damage', (p) => this._onDamage(p));
     add('combat:weakPointHit', (p) => this._onWeakPointHit(p));
     add('physics:impact', (p) => { this._onPhysicsImpact(p); this._onChainPhysicsImpact(p); });
+    // A01-02 — the Foundry freight lane publishes its endpoints on warning; the lane lights
+    // burn from that truth until freight:clear (last container past) or a world reset.
+    add('freight:warning', (p) => this._onFreightLaneWarning(p));
+    add('freight:clear', () => { this._freightLaneState = null; });
     add('collision', (p) => this._onCollision(p));
     // SF-10: the PQ-009 collision-consequence receipts (a hull slammed into terrain — the concussion
     // cannon's kill move) had no renderer. Wire the wall-impact payoff on pooled substrates: consumes
@@ -8464,6 +8475,14 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _dockApproach: null,
 
+  // -------------------------------------------------------------------------
+  // Freight lane lights (A01-02): the Foundry's hauler lane gets amber runway
+  // dashes from `freight:warning` until `freight:clear` — one additive mesh,
+  // deterministic 2 Hz blink off simTime, reduced-motion settles to a steady burn.
+  // -------------------------------------------------------------------------
+  _freightLane: null,
+  _freightLaneState: null,
+
   _initDockApproach() {
     if (!this._scene) return;
     const scratch = createDockApproachGeometry();
@@ -8574,6 +8593,116 @@ export const vfx = {
     da.mesh.geometry.attributes.color.needsUpdate = true;
     da.mesh.material.opacity = Math.min(0.8, gain);
     da.mesh.visible = true;
+    return true;
+  },
+
+  _initFreightLane() {
+    if (!this._scene) return;
+    const scratch = createDockApproachGeometry(FREIGHT_LANE_QUADS);
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-freight-lane';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._freightLane = { mesh, scratch };
+  },
+
+  _onFreightLaneWarning(p) {
+    if (!p) return;
+    this._freightLaneState = {
+      x0: Number.isFinite(p.x0) ? p.x0 : 0,
+      z0: Number.isFinite(p.z0) ? p.z0 : 0,
+      x1: Number.isFinite(p.x1) ? p.x1 : 0,
+      z1: Number.isFinite(p.z1) ? p.z1 : 0,
+      litSince: Number.isFinite(p.t) ? p.t : null,
+      blinkHz: Number.isFinite(p.blinkHz) ? p.blinkHz : 2,
+    };
+  },
+
+  _updateFreightLane() {
+    const lane = this._freightLane;
+    if (!lane) return false;
+    const st = this._freightLaneState;
+    const state = this.state;
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    // Stale-truth guard: a missed clear can never leave a dead lane lit.
+    if (st && st.litSince != null && now - st.litSince > 45) this._freightLaneState = null;
+    const scratch = lane.scratch;
+    scratch.indexCount = 0;
+    if (!this._freightLaneState) {
+      if (lane.mesh.visible) {
+        lane.mesh.visible = false;
+        lane.mesh.material.opacity = 0;
+        lane.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const active = this._freightLaneState;
+    const reduced = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state && state.settings).flashOpacityScale;
+    const period = active.blinkHz > 0 ? 1 / active.blinkHz : 0.5;
+    const u01 = st.litSince != null ? (((now - st.litSince) / period) % 1 + 1) % 1 : 0;
+    // 2 Hz square-ish caution blink with a dark floor — a dead lamp reads as broken, not off.
+    const bright = reduced ? 0.8 : (u01 < 0.5 ? 1.35 : 0.08);
+    const cr = 1.0, cg = 0.62, cb = 0.14; // hauler amber
+    const positions = scratch.positions, colors = scratch.colors;
+    const dirX = active.x1 - active.x0, dirZ = active.z1 - active.z0;
+    const len = Math.hypot(dirX, dirZ) || 1;
+    const ax = dirX / len, az = dirZ / len;
+    const px = -az, pz = ax;
+    const margin = 40;
+    const span = Math.max(0, len - margin * 2);
+    const deckY = 0.35, halfLen = 12, halfW = 2.4;
+    for (let k = 0; k < FREIGHT_LANE_DASHES; k++) {
+      const f = margin + span * ((k + 0.5) / FREIGHT_LANE_DASHES);
+      const cx = active.x0 + ax * f, cz = active.z0 + az * f;
+      const hx = ax * halfLen, hz = az * halfLen;
+      const ox = px * halfW, oz = pz * halfW;
+      const o = k * 12;
+      positions[o] = cx - hx - ox; positions[o + 1] = deckY; positions[o + 2] = cz - hz - oz;
+      positions[o + 3] = cx + hx - ox; positions[o + 4] = deckY; positions[o + 5] = cz + hz - oz;
+      positions[o + 6] = cx + hx + ox; positions[o + 7] = deckY; positions[o + 8] = cz + hz + oz;
+      positions[o + 9] = cx - hx + ox; positions[o + 10] = deckY; positions[o + 11] = cz - hz + oz;
+      for (let v = 0; v < 4; v++) {
+        colors[o + v * 3] = cr * bright;
+        colors[o + v * 3 + 1] = cg * bright;
+        colors[o + v * 3 + 2] = cb * bright;
+      }
+    }
+    scratch.indexCount = FREIGHT_LANE_DASHES * 6;
+    for (let vertex = 0; vertex < FREIGHT_LANE_DASHES * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    lane.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    lane.mesh.geometry.attributes.position.needsUpdate = true;
+    lane.mesh.geometry.attributes.color.needsUpdate = true;
+    lane.mesh.material.opacity = Math.min(0.9, gain * (bright > 1 ? 1 : 0.9));
+    lane.mesh.visible = true;
     return true;
   },
 
@@ -11170,6 +11299,7 @@ export const vfx = {
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    sub.freightLane = this._updateFreightLane() ? 1 : 0;
     // inf-storm-crossing: sustained hull static while a hazard storm works the hull.
     sub.stormRead = this._updateStormRead(dt) ? 1 : 0;
     // inf-storm-body: the hazard zones' own skin, density keyed to live intensity.

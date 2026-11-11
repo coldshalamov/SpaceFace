@@ -44,7 +44,9 @@ const CANCELS = {
   'a screen opens (pause)': { apply: (t) => { t.state.ui = { screenStack: ['pause'] }; }, undo: (t) => { t.state.ui = { screenStack: [] }; } },
   'the window loses focus': { apply: (t) => t.host.releaseHeldControls('window-blur'), undo: () => {} },
   'the pointer is cancelled': { apply: (t) => t.host.releaseHeldControls('pointercancel'), undo: () => {} },
-  'the ship docks': { apply: (t) => { t.state.mode = 'station'; }, undo: (t) => { t.state.mode = 'flight'; } },
+  // Docking freezes the flight input tick outright (docked mode dispatches no queue) and the
+  // lifecycle seam releases every held control — the grip is cancelled by the release, not a key-up.
+  'the ship docks': { apply: (t) => { t.state.mode = 'station'; t.host.releaseHeldControls('docked'); }, undo: (t) => { t.state.mode = 'flight'; } },
   'the sim is blocked (a cinematic or pause latch)': { apply: (t) => { t.state.input.blocked = true; }, undo: (t) => { t.state.input.blocked = false; } },
   'the sector changes': { apply: (t) => { t.state.world.currentSectorId = 'sector_b'; }, undo: () => {} },
 };
@@ -119,7 +121,8 @@ test('releasing one held key fires only that key; the other keeps its preview an
 });
 
 test('a power bound to two keys fires once per use from either key, and the other key stays a different key', () => {
-  const t = boot();
+  // G18-02 seats each power on its digit alone; a saved remap may still give a power two keys.
+  const t = boot({ bindings: { shove: ['Digit2', 'KeyR'] } });
   // Shove answers to both 2 and R. Gripping and releasing R uses it once; the unused key adds nothing.
   t.key('KeyR', true);
   assert.deepEqual(t.step(), []);
@@ -156,25 +159,31 @@ test('an explicitly unbound power stays unbound, and a legacy saved alias keeps 
 });
 
 test('selecting a bomb type never fires it, even with the Bomb key held or a charge aboard', () => {
+  // G18-02: the ordnance cycle lives on the Q context wheel — a tap edge for the bombs
+  // system, never a power press. A saved Comma binding keeps the old route working too.
   const t = boot();
-  // The ordnance cycle (Comma): an edge for the bombs system, never a power press.
-  t.key('Comma', true);
+  t.host.applyWheelVerb({ action: 'cycleBomb' });
   assert.deepEqual(t.step(), []);
   assert.equal(t.state.input.actions.cycleBomb, true, 'the cycle edge reaches the bombs system');
-  t.key('Comma', false);
   assert.deepEqual(t.step(), []);
   // Cycling while the Bomb key is gripped neither fires nor loses the grip.
   t.key('Digit4', true);
   t.step();
-  t.key('Comma', true);
-  assert.deepEqual(t.step(), [], 'a cycle during a Bomb grip fires nothing');
-  t.key('Comma', false);
+  t.host.applyWheelVerb({ action: 'cycleBomb' });
+  assert.deepEqual(t.step(), [], 'a wheel cycle during a Bomb grip fires nothing');
   t.step();
   assert.equal(heldPower(t.state), 'bomb', 'the Bomb grip survives a cycle');
   t.key('Digit4', false);
   const flags = t.step();
   assert.equal(flags.length, 1, 'the Bomb key-up fires exactly one ordnance action');
   assert.ok(['chargeThrow', 'dropBomb', 'swarmBombThrow'].includes(flags[0]));
+  // A deliberately rebound key cycles through the same edge path.
+  const remap = boot({ bindings: { cycleBomb: ['Comma'] } });
+  remap.key('Comma', true);
+  assert.deepEqual(remap.step(), []);
+  assert.equal(remap.state.input.actions.cycleBomb, true, 'a custom Comma binding still cycles');
+  remap.key('Comma', false);
+  remap.step();
 });
 
 function workerTouch() {
@@ -281,9 +290,11 @@ test('touch pylon buffering keeps the existing 64-edge bound and cannot replay o
   t.drain(t.frame()); t.step(); assert.equal(t.deployed(), false);
 });
 
-test('keyboard pylon taps honor remaps and deliberate unbinding alongside buffered touch taps', () => {
+test('pylon taps honor remaps and deliberate unbinding alongside buffered touch taps', () => {
+  // G18-02: deploy has no default keyboard seat — the wheel slice carries it, and a tap
+  // edge from the wheel lands in the same sampled queue a bound key would.
   const t = workerTouch();
-  t.key('Digit6', true); t.key('Digit6', false); t.pulse();
+  t.host.applyWheelVerb({ action: 'deployShieldPylon' }); t.pulse();
   for (const expected of [true, true, false]) { t.step(); assert.equal(t.deployed(), expected); }
   const remap = boot({ bindings: { deployShieldPylon: ['KeyP'] } });
   remap.key('Digit6', true); remap.key('Digit6', false); remap.step();
@@ -292,11 +303,15 @@ test('keyboard pylon taps honor remaps and deliberate unbinding alongside buffer
   assert.equal(remap.state.input.actions.deployShieldPylon, true);
   remap.step(); assert.equal(remap.state.input.actions.deployShieldPylon, false);
   const unbound = boot({ bindings: { deployShieldPylon: [] } });
-  unbound.key('Digit6', true); unbound.key('Digit6', false); unbound.step();
-  assert.equal(unbound.state.input.actions.deployShieldPylon, false);
+  unbound.key('KeyP', true); unbound.key('KeyP', false); unbound.step();
+  assert.equal(unbound.state.input.actions.deployShieldPylon, false,
+    'an explicit unbind stays unbound on keys');
+  unbound.host.applyWheelVerb({ action: 'deployShieldPylon' }); unbound.step();
+  assert.equal(unbound.state.input.actions.deployShieldPylon, true,
+    'the wheel slice needs no key seat — no action becomes unreachable');
 });
 
-test('the real controller pylon chord deploys once without cycling ordnance on modifier release', () => {
+test('the real controller holds Y for the wheel and a wheel choice deploys the pylon once', () => {
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const pad = { id: 'input-pylon-standard', index: 0, connected: true, mapping: 'standard',
     axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
@@ -305,16 +320,16 @@ test('the real controller pylon chord deploys once without cycling ordnance on m
     const t = boot();
     t.state.settings.controls.gamepad.enabled = true;
     const button = (i, held) => { pad.buttons[i] = { pressed: held, value: held ? 1 : 0 }; };
-    t.step(); button(5, true); t.step(); // RB, then left: pylon, not ordnance cycle.
-    button(14, true); t.step();
+    t.step();
+    button(3, true); t.step(); // hold Y: the context wheel is live.
+    assert.equal(t.state.input.actions.contextWheel, true, 'hold-Y owns the wheel');
+    t.host.applyWheelVerb({ action: 'deployShieldPylon' });
+    t.step();
     assert.equal(t.state.input.actions.deployShieldPylon, true);
     assert.equal(t.state.input.actions.cycleBomb, false);
     t.step(); assert.equal(t.state.input.actions.deployShieldPylon, false);
-    button(5, false); t.step();
-    assert.equal(t.state.input.actions.cycleBomb, false, 'a consumed chord key stays consumed until released');
-    button(14, false); t.step(); button(14, true); t.step();
-    assert.equal(t.state.input.actions.cycleBomb, true, 'the next solo press still cycles');
-    assert.equal(t.state.input.actions.deployShieldPylon, false);
+    button(3, false); t.step();
+    assert.equal(t.state.input.actions.contextWheel, false, 'releasing Y closes the wheel');
   } finally {
     if (prior) Object.defineProperty(globalThis, 'navigator', prior); else delete globalThis.navigator;
   }

@@ -37,21 +37,24 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 const SEED = 4242;
 const settingsFor = (scheme, bindings = null) => ({ settings: { controls: { bindings }, gameplay: { controlScheme: scheme } } });
 
-test('the five powers keep 1-5, pylons take 6, and the Line keeps Space/F in every scheme', () => {
+test('the five powers keep 1-5 and the digits are their only seats in every scheme', () => {
   for (const scheme of ['pilot', 'classic', 'helm-assist']) {
     const st = settingsFor(scheme);
     assert.deepEqual(resolveActionCodes(st, 'pull'), ['Digit1'], `${scheme} pull`);
-    assert.deepEqual(resolveActionCodes(st, 'shove'), ['Digit2', 'KeyR'], `${scheme} shove`);
+    assert.deepEqual(resolveActionCodes(st, 'shove'), ['Digit2'], `${scheme} shove`);
     assert.deepEqual(resolveActionCodes(st, 'pin'), ['Digit3'], `${scheme} pin`);
     assert.equal(resolveActionCodes(st, 'bomb')[0], 'Digit4', `${scheme} bomb seat`);
     assert.deepEqual(resolveActionCodes(st, 'rig'), ['Digit5'], `${scheme} rig`);
-    assert.deepEqual(resolveActionCodes(st, 'tether'), ['Space', 'KeyF'], `${scheme} line has no digit`);
-    assert.deepEqual(resolveActionCodes(st, 'cycleBomb'), ['Comma']);
+    // G18-02: the Line left the keyboard (RMB in every door); the letter aliases moved to
+    // the one context wheel — the digits are the ONLY power seats.
+    assert.deepEqual(resolveActionCodes(st, 'tether'), [], `${scheme} line has no keyboard seat`);
+    assert.deepEqual(resolveActionCodes(st, 'cycleBomb'), [], `${scheme} ordnance cycle is a wheel slice`);
+    assert.deepEqual(resolveActionCodes(st, 'contextWheel'), ['KeyQ'], `${scheme} the wheel is held on Q`);
   }
-  // The bomb keeps the old charge-throw letter of each scheme.
-  assert.deepEqual(resolveActionCodes(settingsFor('pilot'), 'bomb'), ['Digit4', 'KeyY']);
-  assert.deepEqual(resolveActionCodes(settingsFor('helm-assist'), 'bomb'), ['Digit4', 'KeyQ']);
-  // Pylons have their own equipment key; no two flight actions share a number-row digit.
+  // The bomb carries no old charge-throw letter in any scheme.
+  assert.deepEqual(resolveActionCodes(settingsFor('pilot'), 'bomb'), ['Digit4']);
+  assert.deepEqual(resolveActionCodes(settingsFor('helm-assist'), 'bomb'), ['Digit4']);
+  // Exactly five digit seats — one per power; the pylon verb is a wheel slice, not a sixth key.
   for (const [name, table] of Object.entries(DEFAULTS.SCHEMES)) {
     const seen = new Map();
     for (const [action, codes] of Object.entries(table)) {
@@ -61,8 +64,8 @@ test('the five powers keep 1-5, pylons take 6, and the Line keeps Space/F in eve
         seen.set(code, action);
       }
     }
-    assert.deepEqual([...seen.keys()].sort(), ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'], `${name} digit seats`);
-    assert.equal(seen.get('Digit6'), 'deployShieldPylon', `${name}: the sixth key is the dedicated shield verb`);
+    assert.deepEqual([...seen.keys()].sort(), ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'], `${name} digit seats`);
+    assert.equal(seen.get('Digit6'), undefined, `${name}: Digit6 stays free — the pylon is a wheel slice`);
   }
   for (const power of POWER_VERBS) assert.ok(TAUGHT_FLIGHT_ACTIONS.includes(power), `${power} is taught`);
 });
@@ -82,12 +85,14 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: ['KeyB'] }), 'shove'), ['KeyV', 'KeyB']);
   assert.deepEqual(resolveActionCodes(settingsFor('pilot', { chargeDetonate: [] }), 'shove'), []);
   assert.deepEqual(resolveActionCodes(settingsFor('pilot', { deployRepulsor: ['KeyV'], chargeDetonate: [] }), 'shove'), ['KeyV']);
-  // Pad: defaults and an old remap.
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['alt', 'dDown']);
+  // Pad: defaults and an old remap. G18-02: bumpers pull/shove, d-pad pin/bomb, B rigs,
+  // hold-Y owns the wheel the old power chords used to ride.
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.shove], ['r1']);
   assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.bomb], ['dRight']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pull], ['l1+dLeft']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['l1+dDown']);
-  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['l1+dRight']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pull], ['l1']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['dDown']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['cancel']);
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.contextWheel], ['alt']);
   for (const legacy of Object.keys(POWER_VERB_ALIASES)) assert.equal(GAMEPAD_DEFAULT_BINDINGS[legacy], undefined, `${legacy} has no pad seat of its own`);
   // An older remap can already own the new pylon default; introducing equipment cannot steal it.
   const pad = resolveGamepadBindings({ controls: { gamepad: { bindings: { deployWell: ['r1+dLeft'] } } } });
@@ -140,7 +145,8 @@ test('real key codes drive exactly the internal flags each power owns', () => {
   const on = (a) => FLAGS.filter((f) => a[f] === true).sort();
   assert.deepEqual(on(press('Digit1')), ['deployWell']);
   assert.deepEqual(on(press('Digit2')), ['chargeDetonate', 'deployRepulsor']);
-  assert.deepEqual(on(press('KeyR')), ['chargeDetonate', 'deployRepulsor']);
+  // G18-02: the old letter aliases are gone — only the digit seats fire a power.
+  assert.deepEqual(on(press('KeyR')), [], 'the old Shove letter is a wheel seat now, not a key');
   assert.deepEqual(on(press('Digit3')), ['deployMassSeed']);
   state.bombs = { selectedId: 'bomb_frag' };
   state.player.cargo = { items: { cmdty_impulse_charge: 0 } };
@@ -148,11 +154,11 @@ test('real key codes drive exactly the internal flags each power owns', () => {
   state.player.cargo.items.cmdty_impulse_charge = 3;
   assert.deepEqual(on(press('Digit4')), ['chargeThrow'], 'a charge aboard leads');
   state.bombs.bombChosen = true;
-  assert.deepEqual(on(press('KeyY')), ['dropBomb'], 'the cycle chose the drift bomb');
+  assert.deepEqual(on(press('KeyY')), [], 'the old bomb letter is free — Digit4 owns BOMB alone');
   assert.deepEqual(on(press('Digit5')), ['toggleClearingCone']);
   state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim, collectorOn: false } };
   assert.deepEqual(on(press('Digit5')), ['toggleSkimCollector']);
-  assert.deepEqual(on(press('Comma')), ['cycleBomb']);
+  assert.deepEqual(on(press('Comma')), [], 'the ordnance cycle is a wheel tap, not the comma key');
   assert.deepEqual(on(press('Digit6')), [], 'the old Repulsor digit is free');
   assert.deepEqual(on(press('Digit9')), [], 'the old bomb digit is free');
 });
@@ -298,10 +304,10 @@ test('resetting or rebinding a power row clears the keys saved under its old nam
   assert.deepEqual(resolveActionCodes(state, 'pull'), ['Digit1'], 'reset restores the shipped key, not the old remap');
   host._commitBind(ctx, 'bomb', 'KeyB', {}, PILOT_BINDINGS);
   assert.equal(state.settings.controls.bindings.chargeThrow, undefined, 'a rebind retires the old name');
-  assert.deepEqual(resolveActionCodes(state, 'bomb'), ['KeyB', 'KeyY']);
+  assert.deepEqual(resolveActionCodes(state, 'bomb'), ['KeyB']);
   host._commitPadBind(ctx, 'pull', null);
   assert.equal(state.settings.controls.gamepad.bindings, null, 'the pad reset clears the old Well remap');
-  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['l1+dLeft']);
+  assert.deepEqual(resolveGamepadBindings(state.settings).pull, ['l1']);
 });
 
 test('the field power roster points each verb at the rail socket of the power that fires it', async () => {
