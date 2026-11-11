@@ -222,20 +222,58 @@ export function createIndustryScreen(ctx) {
   let visible = false, disposed = false, generation = 0, landingTimer = 0;
 
   // the ladder's window ends on a whole rung: measured after paint, the list's height is snapped to the last rung
-  // that fits, so no rung is ever half-dissolved
+  // that fits, so no rung is ever half-dissolved. Rungs are read at their resting place (an arriving rung still
+  // carries the rise offset), and a snap that would hold no whole rung is not taken.
+  function rungBox(row) {
+    const r = row.getBoundingClientRect();
+    let dy = 0;
+    try {
+      const t = getComputedStyle(row).transform;
+      if (t && t !== 'none' && typeof DOMMatrixReadOnly === 'function') dy = new DOMMatrixReadOnly(t).m42 || 0;
+    } catch (_) { /* no transform to undo */ }
+    return { top: r.top - dy, bottom: r.bottom - dy };
+  }
   function fitLadderWindow() {
     try {
       listEl.style.maxHeight = '';
       listEl.removeAttribute('data-snapped');
-      const top = listEl.getBoundingClientRect().top;
-      const limit = top + listEl.clientHeight;
-      let cut = 0;
+      const box = listEl.getBoundingClientRect();
+      const top = box.top;
+      // the panel's share of the column, read unrounded (a rung that ends on the window's last pixel is whole)
+      const limit = top + box.height - Math.max(0, listEl.offsetHeight - listEl.clientHeight);
+      let cut = 0, whole = 0;
       for (const row of listEl.querySelectorAll('.sx-ind-row')) {
-        const r = row.getBoundingClientRect();
-        if (r.bottom <= limit - 2) cut = r.bottom;
-        else { if (cut) { listEl.style.maxHeight = `${Math.round(Math.min(cut + 4, r.top) - top)}px`; listEl.setAttribute('data-snapped', '1'); } return; }
+        const r = rungBox(row);
+        if (r.bottom <= limit + 0.25) { cut = r.bottom; if (r.top >= top - 0.5) whole += 1; }
+        else { if (cut && whole) { listEl.style.maxHeight = `${Math.round(Math.min(cut + 4, r.top) - top)}px`; listEl.setAttribute('data-snapped', '1'); } return; }
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
+  }
+  // the window's height is only known once the panel around it has laid out (the blueprint card, the phone
+  // column, the header's wrap once the faces load), so the fit is re-taken a frame after the list, its panel or
+  // its rungs change size, and once the arrival rise has come to rest; every re-fit starts from the panel's own
+  // share (the snap is cleared first), so the window never ratchets down and lands on the same rung each time
+  let ladderRo = null, ladderRaf = 0, ladderRungs = null;
+  function queueLadderFit() {
+    if (ladderRaf || disposed) return;
+    const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f) => setTimeout(f, 16);
+    ladderRaf = raf(() => { ladderRaf = 0; if (!disposed) fitLadderWindow(); });
+  }
+  function watchLadderWindow() {
+    if (disposed || !listEl || typeof ResizeObserver !== 'function') return;
+    if (!ladderRo) {
+      ladderRo = new ResizeObserver(queueLadderFit);
+      ladderRo.observe(listEl);
+      if (listEl.parentElement) ladderRo.observe(listEl.parentElement);
+      if (typeof listEl.addEventListener === 'function') listEl.addEventListener('animationend', queueLadderFit);
+      try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueLadderFit, () => {}); } catch (_) { /* no font set */ }
+    }
+    const rungs = listEl.querySelector('.sx-ind-spindle');
+    if (rungs !== ladderRungs) {
+      if (ladderRungs) ladderRo.unobserve(ladderRungs);
+      ladderRungs = rungs;
+      if (rungs) ladderRo.observe(rungs);
+    }
   }
 
   function renderList(state) {
@@ -249,6 +287,7 @@ export function createIndustryScreen(ctx) {
     }
     syncScrollExtent(listEl);
     fitLadderWindow();
+    watchLadderWindow();
   }
   function renderListBody(state) {
     const stn = stationType(ctx);
@@ -727,6 +766,10 @@ export function createIndustryScreen(ctx) {
     dispose() {
       disposed = true;
       visible = false;
+      if (ladderRo) {
+        ladderRo.disconnect(); ladderRo = null; ladderRungs = null;
+        if (typeof listEl.removeEventListener === 'function') listEl.removeEventListener('animationend', queueLadderFit);
+      }
       if (ctx.bus && ctx.bus.off) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
