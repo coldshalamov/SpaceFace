@@ -917,6 +917,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'dockingPresentation',
   // Hail and the Ward's contact readers need a bounded account of the actual work history.
   'npcJobs.lanternWard',
+  // Docked law desk reads only its current assessed warrant and shift progress.
+  'lawSecurity.fineOffer',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored

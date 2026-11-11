@@ -3511,8 +3511,11 @@ export const lawSecurity = {
     // tier always writes a fresh row — the reply resolves the fine actually on the counter.
     const priorOffer = own.fineOffer && own.fineOffer.causeId === causeId ? own.fineOffer : null;
     if (!priorOffer || priorOffer.status === 'paid' || priorOffer.status === 'left') {
+      this._fineOfferSerial = Math.max(Number(this._fineOfferSerial) || 0,
+        Number(own.fineOffer?.offerSerial) || 0) + 1;
       own.fineOffer = {
         stationId, amount: fine, causeId, status: 'offered', choice: null,
+        offerSerial: this._fineOfferSerial,
         heatLevel: level, wantedTier: tier,
         ...(state.ui?.docked === true ? { productionDock: true } : {}),
       };
@@ -6459,6 +6462,45 @@ export const lawSecurity = {
     if (!offer || offer.status === 'paid' || String(offer.stationId) !== String(stationId)) {
       this._emit('law:fineRefused', { reason: 'no_open_fine', stationId: stationId || null });
       return { accepted: false, reason: 'no_open_fine' };
+    }
+    // A mounted station control names the assessed bill, not permission to settle any future
+    // bill at this berth. Validate after transport delay against both the offer and live heat.
+    // Older prompt adapters omit expectedFine and retain their existing intent contract.
+    const bound = Object.prototype.hasOwnProperty.call(payload, 'expectedFine');
+    const reject = (reason) => {
+      this._emit('law:fineRefused', { reason, stationId: stationId || null });
+      return { accepted: false, reason };
+    };
+    const heatValue = Number(state.player && state.player.heat) || 0;
+    const tier = wantedTierFor(heatValue);
+    if (state.playerId == null || !(heatValue > 0)
+      || (tier !== WANTED_TIER.SCAN && tier !== WANTED_TIER.BOUNTY)
+      || (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive')) {
+      return reject('no_applicable_fine');
+    }
+    const station = entityById(state, stationId) || stationByPublicId(state, stationId);
+    if (!station || !isLawful(station)) return reject('not_lawful_berth');
+    if (bound) {
+      const expected = payload.expectedFine;
+      const fine = LAW_DOCK_FINE_BASE_CR + LAW_DOCK_FINE_PER_LEVEL_CR * heatLevelFor(heatValue);
+      if (state.ui?.docked !== true || String(state.ui.dockedStationId) !== String(stationId)) {
+        return reject('not_at_berth');
+      }
+      if (offer.wantedTier !== tier || offer.amount !== fine) {
+        const refused = reject('stale_fine');
+        // Heat can change while berthed. Offer the current bill, but never spend against
+        // the superseded click; the pilot must answer the freshly assessed amount.
+        this._handleDockedLawfulClearance({ stationId });
+        return refused;
+      }
+      if (!expected || typeof expected !== 'object' || Array.isArray(expected)
+        || offer.status !== 'offered'
+        || expected.causeId !== offer.causeId || expected.stationId !== offer.stationId
+        || expected.offerSerial !== offer.offerSerial
+        || expected.amount !== offer.amount || expected.wantedTier !== offer.wantedTier
+        || expected.wantedTier !== tier || expected.amount !== fine) {
+        return reject('stale_fine');
+      }
     }
     return this._handleDockedLawfulClearance({ ...payload, stationId, fineChoice: choice });
   },

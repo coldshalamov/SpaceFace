@@ -15,6 +15,7 @@ import { createKiteCornerScreen } from '../orrery/kiteCornerProgram.js';
 //   · First-dock handoff   → the opening docked route shows the 3-step guidance as a row of words.
 import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
+import { mountLawFineDesk } from './lawFineDesk.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el } from '../kit/index.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
@@ -324,6 +325,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const eventEl = app.querySelector('.sxb-event');
   const titleBlock = app.querySelector('.sxb-berth');
   const vitalsEl = app.querySelector('.sxb-vitals');
+  const lawFineDesk = mountLawFineDesk(app.querySelector('.sxb-crown'), ctx);
   const creditsEl = app.querySelector('.sxb-purse__value');
   const launchEl = app.querySelector('.sxb-launch');
   const launchStateEl = app.querySelector('.sxb-launch__state');
@@ -1613,6 +1615,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // churn nobody sees. onShow renders everything from live state, so resume needs no catch-up.
     if (!shown) return;
     renderStatus();
+    lawFineDesk.refresh();
     effects.syncPolicy();
     if (kiteOpen && !kiteHere()) closeKite(state().ui?.docked === true);
     applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic && !kiteOpen });
@@ -1679,6 +1682,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     navigate,
     onShow() {
       shown = true; commands.setEnabled(true); effects.show();
+      lawFineDesk.setActive(true);
       // Fresh dock session: allow one auto-open for the highest-priority physical station action.
       attentionAutoOpenedThisDock = false;
       bodyEl.classList.remove('k-out');
@@ -1725,6 +1729,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      lawFineDesk.setActive(false);
       lifePresenter.hide();
       arrivalPresenter.hide();
       finishReturnSummary(state());
@@ -1745,6 +1750,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       else if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      lawFineDesk.dispose();
       kiteButton.removeEventListener('click', openKite);
       kiteScreen?.dispose();
       lifePresenter.dispose();
