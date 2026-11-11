@@ -66,19 +66,23 @@ test('the seven gap verbs are the ones that were missing, and they render live b
   }
   // Live bindings, not literals: a rebind moves the printed key (the ladder renders
   // resolveActionLabel — help.js keyLabel), the pad sheet keeps its own resolution.
-  assert.equal(resolveActionCodes(state, 'scanPulse')[0], 'KeyC', 'PILOT default scanner key');
+  // G18-02: the gap verbs ship on the Q context wheel — unbound by default but rebindable.
+  assert.deepEqual(resolveActionCodes(state, 'scanPulse'), [], 'the scanner defaults to the wheel');
+  assert.equal(resolveActionCodes(state, 'contextWheel')[0], 'KeyQ', 'the wheel holds the verbs');
   state.settings.controls.bindings = { scanPulse: ['KeyJ'] };
   assert.equal(formatBindingCode(resolveActionCodes(state, 'scanPulse')[0]), 'J');
   assert.equal(resolveActionLabel(state, 'scanPulse'), 'J', 'a remap re-labels the help row');
 });
 
-test('the rail names the scanner tool at the seam beat, and Help answers with the live key', () => {
+test('the rail names the scanner tool at the seam beat, and Help answers with the wheel', () => {
   const seam = BEATS.find((b) => b.key === 'seam');
   assert.ok(seam, 'the first-hour rail has a seam beat');
   assert.match(seam.line, /scanner/i, `the seam beat teaches the scanner tool (got: ${seam.line})`);
   const state = createGameState(SEED);
-  assert.equal(resolveActionLabel(state, 'scanPulse'), 'C',
-    'the scanner moment is answerable: Help shows C, the live PILOT binding');
+  // G18-02: the scanner verb lives on the Q wheel — the answer is reachable, not a stray key.
+  assert.equal(resolveActionLabel(state, 'scanPulse'), '');
+  assert.equal(resolveActionLabel(state, 'contextWheel'), 'Q',
+    'the scanner moment is answerable: hold Q, pick SCAN PULSE');
 });
 
 test('every live bound verb has a keyboard remap row and label (the bomb-bay law, generalized)', () => {

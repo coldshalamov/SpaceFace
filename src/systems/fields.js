@@ -2262,7 +2262,13 @@ export const fields = {
       attackerMass: owner ? resolvePhysicsBodySpec(owner).mass : 16,
       victimMass: resolvePhysicsBodySpec(entity).mass,
       deltaV: Math.hypot(rec.dx, rec.dz), dirX: rec.dx, dirZ: rec.dz, hitSide: side,
-      provenance: { actorId: field.ownerId, tag: `field_${field.kind}`, appliedTick: state.tick },
+      provenance: {
+        actorId: field.ownerId,
+        tag: `field_${field.kind}`,
+        appliedTick: state.tick,
+        fieldId: field.id,
+        deploymentId: field.id,
+      },
       tick: state.tick,
     });
     rec.dx = rec.dz = rec.seconds = 0;
