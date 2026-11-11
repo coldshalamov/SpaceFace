@@ -139,7 +139,7 @@ export function createContactHailPrompt(ctx) {
     if (panel.contains(document.activeElement)) hailButton.focus?.();
     closeBtn.hidden = true;
     panel.hidden = true;
-    panel.classList.remove('sf-contact-hail__panel--detail');
+    panel.classList.remove('sf-contact-hail__panel--detail', 'sf-contact-hail__panel--resident');
     panel.removeAttribute('tabindex');
     linesEl.replaceChildren();
     actionsEl.replaceChildren();
@@ -155,6 +155,14 @@ export function createContactHailPrompt(ctx) {
     hidePanel();
   }
 
+  function closeChannel() {
+    const closed = active;
+    hidePanel();
+    if (closed?.residentChannel) bus.emit('contactHail:cancel', {
+      requestId: closed.requestId, targetId: closed.targetId,
+    });
+  }
+
   function render(payload) {
     if (!payload || payload.targetId !== state.player.targetId) return false;
     active = { ...payload };
@@ -162,8 +170,11 @@ export function createContactHailPrompt(ctx) {
     // Retain a read-only reply for reading, never extend simulation receipts or actions.
     routeReadUntil = detail && !(payload.actions?.length)
       ? (Number(state.simTime) || 0) + ROUTE_READING_GRACE_S : null;
-    closeBtn.hidden = !detail;
+    closeBtn.hidden = !detail && payload.residentChannel !== true;
+    closeBtn.setAttribute('aria-label', payload.residentChannel ? 'Close resident conversation' : 'Close route details');
+    closeBtn.textContent = payload.residentChannel ? 'CLOSE CHANNEL' : 'CLOSE DETAILS';
     panel.classList.toggle('sf-contact-hail__panel--detail', detail);
+    panel.classList.toggle('sf-contact-hail__panel--resident', payload.residentChannel === true);
     // Keyboard users can focus and scroll a long chosen route.
     if (detail) panel.setAttribute('tabindex', '0');
     else panel.removeAttribute('tabindex');
@@ -207,9 +218,9 @@ export function createContactHailPrompt(ctx) {
   function applyAvailability(payload) {
     availability = payload || { enabled: false, targetId: null, kind: null, label: 'HAIL' };
     hailButton.disabled = !availability.enabled;
-    hailButton.textContent = 'HAIL';   // unavailable reads as a disabled key (and its aria-label), not a dash
+    hailButton.textContent = availability.enabled && availability.workGlyph ? `${availability.workGlyph} HAIL` : 'HAIL';
     hailButton.setAttribute('aria-label', availability.enabled
-      ? availability.label
+      ? [availability.label, availability.workLabel].filter(Boolean).join('. ')
       : 'Hail unavailable for selected contact');
     root.classList.toggle('sf-contact-hail--ready', !!availability.enabled);
     if (active && (!availability.enabled || availability.targetId !== active.targetId)) hidePanel();
@@ -292,13 +303,13 @@ export function createContactHailPrompt(ctx) {
     for (const [event, handler] of busBindings) bus.off(event, handler);
     document.removeEventListener('keydown', onKeyDown, true);
     deckBtn.removeEventListener('click', onDeckClick);
-    closeBtn.removeEventListener('click', hidePanel);
+    closeBtn.removeEventListener('click', closeChannel);
     try { freqMorph.dispose(); } catch (_) {}
     panel.remove();
     root.remove();
   }
 
-  closeBtn.addEventListener('click', hidePanel);
+  closeBtn.addEventListener('click', closeChannel);
   hailButton.addEventListener('click', () => request('pointer'));
   panel.addEventListener('click', onPanelClick);
   deckBtn.addEventListener('click', onDeckClick);
@@ -379,7 +390,7 @@ function injectStyle() {
   .sf-contact-hail__lines { display:grid; gap:2px; }
   .sf-contact-hail__line { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-size:12px; line-height:1.35; letter-spacing:.02em; }
-  .sf-contact-hail__panel--detail { max-height:min(480px, calc(100dvh - 90px));
+  .sf-contact-hail__panel--detail, .sf-contact-hail__panel--resident { max-height:min(480px, calc(100dvh - 90px));
     overflow-y:auto; overscroll-behavior:contain; }
   .sf-contact-hail__close { margin-top:8px; min-height:30px; width:100%;
     border:1px solid var(--sf-edge); border-radius:3px; background:var(--sf-surface);
@@ -388,6 +399,7 @@ function injectStyle() {
   .sf-contact-hail__close:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
   .sf-contact-hail__panel--detail:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
   .sf-contact-hail__panel--detail .sf-contact-hail__line,
+  .sf-contact-hail__panel--resident .sf-contact-hail__line,
   .sf-contact-hail__line.sf-contact-hail__tow-advice { white-space:normal;
     overflow:visible; overflow-wrap:anywhere; text-overflow:clip; }
   .sf-contact-hail__line + .sf-contact-hail__line { color:var(--sf-calm); }

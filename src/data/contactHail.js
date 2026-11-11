@@ -1,5 +1,8 @@
 import { playerBearingHyphen } from '../core/playerCompass.js';
-import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
+import { CONTACT_HAIL_RANGE, CONTACT_HAIL_REQUEST_TTL_S, CONTACT_HAIL_RECEIPT_TTL_S } from './contactHailConstants.js';
+export { CONTACT_HAIL_RANGE, CONTACT_HAIL_REQUEST_TTL_S, CONTACT_HAIL_RECEIPT_TTL_S } from './contactHailConstants.js';
+import { lanternWardHailOffer, lanternWardHailResponse, lanternWardLiveNessa } from './lanternWardHail.js';
+import { stationResidentChannel, createStationResidentOffer } from './stationContactPresence.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { pallasShiftStatus } from './pallasWorkShift.js';
 import { heliosFreightHailLine } from './heliosFreightHail.js';
@@ -69,9 +72,6 @@ function hailAsteroidsOf(state) {
   return cache.list;
 }
 
-export const CONTACT_HAIL_RANGE = 5200;
-export const CONTACT_HAIL_REQUEST_TTL_S = 8;
-export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
 export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 export const CONTACT_HAIL_ACTION_HELP = 'help';
 export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
@@ -664,6 +664,19 @@ export function contactHailAvailability(state) {
   }
   if (!target) return unavailable('unresolved_target');
   if (target.alive === false) return unavailable('dead_target');
+  if (target.data?.lanternWardActor === 'tug' && lanternWardLiveNessa(state) !== target) {
+    return unavailable('unresolved_target');
+  }
+  if (target.type === 'station') {
+    if (!player || player.alive === false) return unavailable('no_player');
+    const distance = distanceBetween(player, target);
+    if (distance > CONTACT_HAIL_RANGE) return unavailable('out_of_reveal_range');
+    const channel = stationResidentChannel(state, target);
+    if (!channel) return unavailable('unsupported_contact');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'resident',
+      label: `HAIL ${channel.stationName}`, distance, entity: target,
+      stationId: channel.stationId, hasResidents: channel.residents.length > 0 };
+  }
   if (target.data?.redKiteActorId === RED_KITE.actorId || target.data?.redKiteMark === 'poi_red_kite_start') {
     if (!player?.alive) return unavailable('no_player');
     if (state.world?.currentSectorId !== RED_KITE.sectorId || distanceBetween(player, target) > RED_KITE.hailRange) return unavailable('out_of_reveal_range');
@@ -1099,6 +1112,7 @@ function patrolGrievanceHail(state, entity) {
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  if (availability.kind === 'resident') return createStationResidentOffer(state, availability, requestId);
   const lantern = lanternWardHailOffer(state, availability, requestId, expiresAt);
   if (lantern) return lantern;
   if (availability.kind === 'variance_adjustment') {

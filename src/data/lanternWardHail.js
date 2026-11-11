@@ -4,16 +4,31 @@ import { selectLanternWardDialogue } from '../missions/lanternWardStory.js';
 import { LANTERN_WARD_ID, LANTERN_WARD_SECTOR } from './lanternWardLayout.js';
 import { LANTERN_WARD_RECORD_IDS as IDS } from './lanternWardHardware.js';
 import { lanternWardWorkGuidance } from './lanternWardGuidance.js';
+import { LANTERN_WARD_CONTACT_ID } from './stationResidents.js';
+import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 export const LANTERN_WARD_REPAIR_ACTION = 'lantern_repair';
 
 export function isLanternWardNessa(state, entity) {
   return state?.world?.currentSectorId === LANTERN_WARD_SECTOR
+    && state?.npcJobs?.lanternWard?.objects?.tug?.lost !== true
     && entity?.type === 'ship' && entity.alive !== false && entity.hull > 0
     && state.entities?.get(entity.id) === entity
     && entity.data?.worldRecordId === IDS.tug
     && entity.data.lanternWardId === LANTERN_WARD_ID
     && entity.data.lanternWardActor === 'tug';
+}
+
+export function lanternWardLiveNessa(state) {
+  const ward = state?.npcJobs?.lanternWard;
+  if (ward?.version !== 1 || !ward.initialized || ward.objects?.tug?.lost) return null;
+  let actor = null;
+  for (const candidate of indexedShipLikeOrEntitiesScan(state)) {
+    if (!isLanternWardNessa(state, candidate)) continue;
+    if (actor) return null;
+    actor = candidate;
+  }
+  return actor;
 }
 
 export function lanternWardDialogueFacts(state) {
@@ -33,11 +48,15 @@ export function lanternWardDialogueFacts(state) {
 }
 
 export function lanternWardHailOffer(state, availability, requestId, expiresAt) {
-  if (!isLanternWardNessa(state, availability?.entity)) return null;
+  if (!isLanternWardNessa(state, availability?.entity)
+    || lanternWardLiveNessa(state) !== availability.entity) return null;
   const status = lanternWardDialogueFacts(state);
   const revisit = (state.missions?.lanternWardConversation?.visits || 0) > 1;
   const line = selectLanternWardDialogue(status, { revisit });
   return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+    contactId: LANTERN_WARD_CONTACT_ID, stationId: 'station_helios',
+    residentName: 'Nessa Venn', residentRole: 'Last Watch Electrical',
+    residentFactionId: availability.entity.factionId || availability.entity.data?.factionId || 'faction_free',
     lanternWardHail: true, worldRecordId: IDS.tug,
     // The scanner intentionally transports two lines; keep the live briefing in its body.
     lines: ['NESSA VENN · LAST WATCH ELECTRICAL', `${line.text} ${lanternWardWorkGuidance(state).status}.`],
@@ -49,7 +68,8 @@ export function lanternWardHailOffer(state, availability, requestId, expiresAt) 
 export function lanternWardHailResponse(state, offer, choice, repairResult = null) {
   const target = state?.entities?.get(offer?.targetId), id = String(choice || '').toLowerCase();
   if (offer?.lanternWardHail !== true || offer.worldRecordId !== IDS.tug
-      || !isLanternWardNessa(state, target) || !offer.actions?.some(action => action.id === id)) return null;
+      || !isLanternWardNessa(state, target) || lanternWardLiveNessa(state) !== target
+      || !offer.actions?.some(action => action.id === id)) return null;
   const status = lanternWardDialogueFacts(state);
   let line;
   if (id === LANTERN_WARD_REPAIR_ACTION) {

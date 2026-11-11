@@ -28,6 +28,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'cinderglassJob:presentationReady',
   'claim:defenseIgnore',
   'combat:aftermathChoose',
+  'contactHail:cancel',
   'contactHail:choice',
   'contactHail:request',
   'counterweightCircuit:action',

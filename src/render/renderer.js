@@ -9111,10 +9111,10 @@ const RIGID_ASHLINE_RIG_MOTION_IDENTITY = Object.freeze({
 
 // Each sibling is pinned to its own package hash and the same verified source motion bank.
 const RIGID_ASHLINE_LOD_IDENTITIES = new Map([
-  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod1', packageContentHash: 'dc52d2b8c5a964e982b2886e6912895ff8661eaffbf860e7519055196cb6b64d' })],
-  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod2', packageContentHash: '1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42' })],
-  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod1', packageContentHash: 'b39460ff39cf194c9cd5ea9c9538c999bfe324527ece5a11bc3b34e1723f2c81' })],
-  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod2', packageContentHash: 'cdebb6c8a30e25b81c51d778598ce7ba51d3c70aab6fa2427f2e65455f59b631' })],
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod1', packageContentHash: '08359be3633ee264a288156afe47e4bab484a7aa8bdc93de1c2625765be33fb5' })],
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod2', packageContentHash: 'ab0399328d49858dcd1b987097f942d84ca3e18f515368f64454fdae775fa8a2' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod1', packageContentHash: 'f10bb30df4c3a506d2bd8c6b95f6af25de57ceca7b572b7826d12beaa141e272' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod2', packageContentHash: 'd67943ef594d0567ef1b9149a0b044b268a6afebdf1580365d0342c62576bd61' })],
 ]);
 function rigidAshlineIdentityForUrl(owner, url) {
   if (url === RIGID_ASHLINE_HULL_URL) return owner._ashlineHullBatchEnabled === false
