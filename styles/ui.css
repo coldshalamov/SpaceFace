@@ -212,7 +212,9 @@ html.sf-reduce-motion #modal-backdrop { transition: none; }
 /* banner and feed items join their host's own lane (#alerts, #toasts — see stage.js `lane`), so the
    flow is an ordinary column child there; only the dialog and prompt slots place their own flow. */
 #sf-stage-banner .sf-stage__flow, #sf-stage-feed .sf-stage__flow { position: static; align-items: center; }
-#sf-stage-prompt .sf-stage__flow { left: 50%; bottom: 175px; transform: translateX(-50%); align-items: center; }
+/* The prompt flow seats items in the decision lane: above the HUD, under the screens — the same
+   z 20 the prompt deck holds (src/ui/AGENTS.md DOM layering). */
+#sf-stage-prompt .sf-stage__flow { left: 50%; bottom: 175px; transform: translateX(-50%); align-items: center; z-index: 20; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
 body.ui-modal-open #modal-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 200ms var(--ease, ease), visibility 0s; }
@@ -2155,10 +2157,15 @@ html.sf-reduce-motion .sf-drawer--entity .sf-drawer__deck > * { animation: none;
   .sf-drawer__facts .sf-tile { border: 1px solid CanvasText; }
 }
 
-/* Dock refusal on the HUD: compact dataState, vacuum vignette, pointer-events for the verb. */
+/* Dock refusal: a compact dataState card, vacuum vignette, pointer-events for the verb. G16-02 —
+   shown through the Stage's banner slot (the shared .dp-glass frame owns placement); the #hud
+   seat below only remains for hosts with no live Stage. */
 .sf-dock-deny {
+  width: min(52ch, 90vw); pointer-events: auto;
+}
+#hud > .sf-dock-deny {
   position: absolute; top: 14%; left: 50%; transform: translateX(-50%);
-  z-index: 41; width: min(52ch, 90vw); pointer-events: auto;
+  z-index: 41;
 }
 .sf-dock-deny .sf-state {
   margin: 0; max-width: none;
@@ -2456,3 +2463,374 @@ html.sf-reduce-motion .orr-clip__plate { transition:none; }
   .orr-clip__foot { background:CanvasText; }
   .orr-clip__thumb::before { background:CanvasText; box-shadow:none; }
 }
+
+/* ============================================================================
+   G16-02 — every popup through one door (design/program/fleet/drafts/G16-one-glass.md §2).
+   The straggler popups retired their injected <style> blocks here. Base rules stay
+   unconditional; mount placement/frame props each popup loses are scoped to the legacy
+   parents (#hud > …, #ui-root > …) that only ever see the element on a host with no live
+   Stage. Inside a Stage frame (.sf-stage__item, the shared .dp-glass) only the content
+   rules apply — the frame owns the face and the slot owns the place.
+   ========================================================================== */
+
+/* ── Tutorial flight card (hudAttention.js — once per profile, dismisses itself) ─────────── */
+.sf-tutorial-flight-card {
+  box-sizing: border-box; max-width: min(42rem, 86vw); pointer-events: none;
+  text-align: center; line-height: 1.35;
+  color: var(--dp-ink, #e8e2d4); text-shadow: var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5));
+}
+/* Legacy #hud seat — only on a host where the Stage never ran. */
+#hud > .sf-tutorial-flight-card {
+  position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+  padding: .45rem .7rem; background: var(--dp-glass-deep, rgb(6 8 12 / .82)); z-index: 30;
+}
+
+/* ── Contact hail (contactHailPrompt.js) ─────────────────────────────────────────────────────
+   The HAIL button host (#sf-contact-hail) is HUD chrome the comms tape adopts — unchanged.
+   The panel is the transient card: shown through the Stage's prompt slot inside the shared
+   frame, so only its content rules are unconditional. The face and the anchored seat survive
+   solely under the fallback #ui-root mount. */
+#sf-contact-hail { position: absolute; left: 85px; top: 20px; z-index: 20;
+  font-family: var(--hud-data, var(--mono, Consolas, monospace)); contain: layout style; }
+.sf-contact-hail__button { width: 72px; height: 32px; padding: 0 10px; border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--sf-calm) 38%, transparent);
+  background: color-mix(in srgb, var(--sf-surface) 90%, transparent); color: var(--sf-calm);
+  font: 600 12px var(--sf-subhead-face, "IBM Plex Sans", sans-serif); letter-spacing: .04em; cursor: default;
+  transition: border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease, translate .1s ease; }
+.sf-contact-hail--ready .sf-contact-hail__button { color: var(--sf-paper); border-color: var(--sf-goal);
+  cursor: pointer; }
+.sf-contact-hail--ready .sf-contact-hail__button:hover {
+  background: color-mix(in srgb, var(--sf-surface) 80%, var(--sf-goal) 15%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--sf-goal) 22%, transparent); }
+.sf-contact-hail--ready .sf-contact-hail__button:active { translate: 0 1px; }
+.sf-contact-hail__button:hover:not(:disabled), .sf-contact-hail__button:focus-visible,
+.sf-contact-hail__actions button:hover, .sf-contact-hail__actions button:focus-visible,
+.sf-contact-hail__deck:focus-visible {
+  outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-contact-hail__button:disabled { opacity: .72; }
+/* Content rules — the card reads the same inside the kit frame and on the fallback mount. */
+.sf-contact-hail__panel { width: min(332px, calc(100vw - 28px));
+  box-sizing: border-box;
+  font-family: var(--hud-data, var(--mono, Consolas, monospace));
+  color: var(--hud-paper, rgb(236 244 253 / .97)); }
+/* The panel's own glass face + anchored seat — fallback mount only. In the Stage frame the
+   shared .dp-glass face and the prompt slot replace both. */
+#ui-root > .sf-contact-hail__panel { position: fixed; left: 8px; top: 58px; z-index: 20;
+  pointer-events: auto; padding: 10px 11px; border-radius: 8px;
+  background-color: var(--glass-fill, rgb(9 14 22 / .82));
+  background-image: var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%));
+  border: 1px solid var(--glass-edge, rgb(188 220 255 / .2)); border-top: 2px solid var(--glass-neon, rgb(141 217 255));
+  box-shadow: var(--glass-drop, 0 10px 26px rgb(2 6 14 / .4)), var(--glass-inner, inset 0 1px 0 rgb(255 255 255 / .05));
+  animation: sf-contact-hail-in .15s ease-out 1; }
+@keyframes sf-contact-hail-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.sf-contact-hail__panel[hidden] { display: none !important; }
+.sf-contact-hail__deck { width: 100%; border-radius: 3px; border: 1px solid var(--sf-edge);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  color: var(--sf-paper); padding: 8px; display: grid; grid-template-columns: 24px 1fr; grid-template-rows: auto auto auto;
+  column-gap: 9px; row-gap: 2px; text-align: left; cursor: pointer; margin-bottom: 8px;
+  transition: border-color .15s ease, background .15s ease, translate .1s ease; }
+.sf-contact-hail__deck:hover {
+  background: color-mix(in srgb, var(--sf-surface) 75%, rgba(255,255,255,.06));
+  border-color: color-mix(in srgb, var(--sf-goal) 50%, var(--sf-edge)); }
+.sf-contact-hail__deck:active { translate: 0 1px; }
+.sf-contact-hail__crest { grid-row: 1 / span 2; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--sf-calm); }
+.sf-contact-hail__who { grid-column: 2; display: grid; gap: 1px; }
+.sf-contact-hail__pilot { font: 600 13px var(--hud-data, var(--mono, Consolas, monospace)); line-height: 1.15; letter-spacing: .03em; }
+.sf-contact-hail__class { font-size: 12px; color: var(--hud-muted, rgb(178 199 222 / .8)); line-height: 1.2; }
+.sf-contact-hail__freq { grid-column: 2; font: 500 12px var(--hud-data, var(--mono, Consolas, monospace)); color: var(--glass-neon, rgb(141 217 255)); }
+.sf-contact-hail__ribbon { grid-column: 1 / -1; width: 100%; height: 22px; color: var(--sf-you); }
+.sf-contact-hail__ribbon path { fill: none; stroke: currentColor; stroke-width: 1.4; }
+.sf-contact-hail__lines { display: grid; gap: 2px; }
+.sf-contact-hail__line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; line-height: 1.35; letter-spacing: .02em; }
+.sf-contact-hail__panel--detail { max-height: min(480px, calc(100dvh - 90px));
+  overflow-y: auto; overscroll-behavior: contain; }
+.sf-contact-hail__close { margin-top: 8px; min-height: 30px; width: 100%;
+  border: 1px solid var(--sf-edge); border-radius: 3px; background: var(--sf-surface);
+  color: var(--sf-paper); font: 500 12px var(--hud-data, monospace); cursor: pointer; }
+.sf-contact-hail__close[hidden] { display: none; }
+.sf-contact-hail__close:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-contact-hail__panel--detail:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-contact-hail__panel--detail .sf-contact-hail__line,
+.sf-contact-hail__line.sf-contact-hail__tow-advice { white-space: normal;
+  overflow: visible; overflow-wrap: anywhere; text-overflow: clip; }
+.sf-contact-hail__line + .sf-contact-hail__line { color: var(--sf-calm); }
+.sf-contact-hail__actions { display: flex; gap: 6px; margin-top: 8px; }
+.sf-contact-hail__actions:empty { display: none; }
+.sf-contact-hail__actions button { min-height: 30px; flex: 1 1 0; border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--sf-calm) 40%, transparent);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent); color: var(--sf-paper); cursor: pointer;
+  font: 500 12px var(--sf-data-face, "IBM Plex Mono", monospace); letter-spacing: .03em;
+  transition: border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
+.sf-contact-hail__actions button:hover {
+  border-color: var(--sf-goal);
+  background: color-mix(in srgb, var(--sf-surface) 75%, var(--sf-goal) 14%);
+  color: var(--sf-paper); }
+.sf-contact-hail__actions button:active { translate: 0 1px; }
+body.ui-modal-open #sf-contact-hail,
+body.ui-live-screen #sf-contact-hail,
+body.ui-modal-open .sf-contact-hail__panel,
+body.ui-live-screen .sf-contact-hail__panel { opacity: 0; visibility: hidden; pointer-events: none; }
+@media (max-width: 900px), (max-height: 620px) {
+  #sf-contact-hail { left: 85px; top: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-contact-hail, .sf-contact-hail__button, .sf-contact-hail__panel, .sf-contact-hail__deck, .sf-contact-hail__actions button { transition: none; }
+  .sf-contact-hail__panel { animation: none; }
+}
+html.sf-reduce-motion #sf-contact-hail, html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__button,
+html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__panel, html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__deck,
+html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__actions button { transition: none; animation: none; }
+
+/* ── Command bar (commandBar.js — flag-gated persistent top strip; mounts in the banner
+   slot, the same tier it always held) ──────────────────────────────────────────────────── */
+#sf-command-bar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 10px 18px 9px;
+  background: var(--dp-veil-head);
+  font-size: var(--dp-fs-etch);
+  pointer-events: none;
+  /* visibility is gated by .sf-cb--active below */
+  opacity: 0;
+  transition: opacity var(--dp-d-settle, 220ms) var(--dp-ease-settle, cubic-bezier(.16, 1, .3, 1));
+}
+#sf-command-bar.sf-cb--active { opacity: 1; }
+/* Hidden whenever a modal/menu is open or the player is docked — same gate as #hud. Live
+   (non-pausing) overlays also own pointer input, so the bar steps aside for them too. */
+body.ui-modal-open #sf-command-bar,
+body.ui-live-screen #sf-command-bar { opacity: 0; }
+
+#sf-command-bar .sf-cb-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 14px;
+  line-height: 1.1;
+  min-width: 0;
+}
+#sf-command-bar .sf-cb-cell + .sf-cb-cell {
+  border-left: 1px solid var(--dp-rule, rgb(232 226 212 / .10));
+}
+#sf-command-bar .sf-cb-k {
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--dp-ink-mute, #b0aea6);
+}
+#sf-command-bar .sf-cb-v {
+  font-family: var(--dp-face-numeral, var(--dp-face-read, "Archivo", sans-serif));
+  font-stretch: 100%;
+  font-weight: 520;
+  font-size: var(--dp-fs-data);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0;
+  color: var(--dp-ink, #e8e2d4);
+  white-space: nowrap;
+}
+
+/* Identity cell (left) — etched name + sector. Anchors the strip, spends no accent. */
+#sf-command-bar .sf-cb-cell--id { min-width: 132px; }
+#sf-command-bar .sf-cb-brand {
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 650;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--dp-ink-dim, #b7b4a6);
+}
+#sf-command-bar .sf-cb-sector {
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--dp-ink-mute, #b0aea6);
+}
+
+/* Vitals — thin linear gauges (scales: the sanctioned straight edge for a ruled reading; the
+   arc form of these quantities is the Cluster's job). Brightness encodes state: dim = nominal,
+   danger red = the layer failing. */
+#sf-command-bar .sf-cb-vitals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0;
+}
+#sf-command-bar .sf-cb-vrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#sf-command-bar .sf-cb-vlabel {
+  width: 38px;
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dp-ink-mute, #b0aea6);
+}
+#sf-command-bar .sf-cb-track {
+  position: relative;
+  width: 92px;
+  height: 5px;
+  background: var(--dp-field-ink, rgb(232 226 212 / .08));
+  overflow: hidden;
+}
+#sf-command-bar .sf-cb-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(1);
+}
+#sf-command-bar .sf-cb-num {
+  font-family: var(--dp-face-numeral, var(--dp-face-read, "Archivo", sans-serif));
+  font-stretch: 100%;
+  font-weight: 520;
+  font-size: var(--dp-fs-etch);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--dp-ink-dim, #b7b4a6);
+  width: 38px;
+  text-align: right;
+}
+/* The fills: bone for the physical layers, phosphor for the energy readings, the idle lamp for
+   heat (the lamp you could wake). A failing layer is threat: danger red. */
+#sf-command-bar .sf-cb-fill--hull { background: color-mix(in srgb, var(--dp-ink, #e8e2d4) 62%, transparent); }
+#sf-command-bar .sf-cb-fill--armor { background: color-mix(in srgb, var(--dp-ink, #e8e2d4) 38%, transparent); }
+#sf-command-bar .sf-cb-fill--shield { background: color-mix(in srgb, var(--dp-phos, #dfeeff) 58%, transparent); }
+#sf-command-bar .sf-cb-fill--energy { background: color-mix(in srgb, var(--dp-phos, #dfeeff) 32%, transparent); }
+#sf-command-bar .sf-cb-fill--heat { background: color-mix(in srgb, var(--dp-lamp-dim, #8a6b3a) 85%, transparent); }
+/* Bright = problem state (overrides rest): hull critical, armor bitten through, energy starving,
+   heat failing. All four are threats to the hull, so all four speak danger red. */
+#sf-command-bar.sf-cb--hull-crit .sf-cb-fill--hull { background: var(--dp-danger, #ff5038); }
+#sf-command-bar.sf-cb--armor-crit .sf-cb-fill--armor { background: var(--dp-danger, #ff5038); }
+#sf-command-bar.sf-cb--energy-low .sf-cb-fill--energy { background: var(--dp-danger, #ff5038); }
+#sf-command-bar.sf-cb--heat-high .sf-cb-fill--heat { background: var(--dp-danger, #ff5038); }
+
+/* Economy cell — cargo + credits, always pinned (the core fix for "am I gaining anything?"). */
+#sf-command-bar .sf-cb-cell--cargo { min-width: 96px; }
+#sf-command-bar .sf-cb-cell--credits { min-width: 96px; }
+/* Credits delta arrow — surfaces gain/loss direction with a shape, never colour alone.
+   Gain is money you earned (the lamp); loss is a debit (danger); flat stays quiet. */
+#sf-command-bar .sf-cb-delta {
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-size: var(--dp-fs-etch);
+  margin-left: 4px;
+}
+#sf-command-bar .sf-cb-delta--up { color: var(--dp-lamp, #f2b950); }
+#sf-command-bar .sf-cb-delta--down { color: var(--dp-danger, #ff5038); }
+#sf-command-bar .sf-cb-delta--flat { color: var(--dp-ink-mute, #b0aea6); }
+
+/* Cargo full warning — the one warm accent on the strip: a full hold is a decision point
+   (sell or jettison), which is exactly what the lamp means. */
+#sf-command-bar.sf-cb--cargo-full .sf-cb-v--cargo { color: var(--dp-lamp, #f2b950); }
+
+/* Role/class cell — your ship's function (Miner/Fighter/...). */
+#sf-command-bar .sf-cb-cell--role { min-width: 78px; }
+
+/* Recent impact is one anchored receipt, not floating text or a visor arc. It appears only
+   after player damage, then yields to the normal strip. Screen readers already receive the
+   damage alert channel (alerts.js), so this visual status is intentionally not assertive.
+   Arrival is a 180 ms opacity settle on transforms/opacity only — nothing just appears. */
+#sf-command-bar .sf-cb-cell--impact { display:none; min-width:210px; max-width:290px; }
+#sf-command-bar.sf-cb--impact .sf-cb-cell--impact { display:flex;
+  animation: sf-cb-impact-in 180ms var(--dp-ease-out, cubic-bezier(.16, 1, .3, 1)) 1; }
+@keyframes sf-cb-impact-in { from { opacity: 0; } to { opacity: 1; } }
+html.sf-reduce-motion #sf-command-bar.sf-cb--impact .sf-cb-cell--impact { animation: none; }
+#sf-command-bar .sf-cb-impact {
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--dp-ink-dim, #b7b4a6);
+}
+
+@media (forced-colors: active) {
+  #sf-command-bar { background: Canvas; }
+  #sf-command-bar .sf-cb-cell + .sf-cb-cell { border-left-color: CanvasText; }
+}
+
+/* P10 condense: at a squeezed frame the strip tightens its gutters and gauges — the type floor
+   and the row structure hold, nothing is shrunk below the token scale. */
+@media (max-width: 1500px) {
+  #sf-command-bar { padding: 8px 12px 7px; }
+  #sf-command-bar .sf-cb-cell { padding: 0 9px; }
+  #sf-command-bar .sf-cb-cell--id { min-width: 0; }
+  #sf-command-bar .sf-cb-cell--cargo,
+  #sf-command-bar .sf-cb-cell--credits { min-width: 0; }
+  #sf-command-bar .sf-cb-cell--impact { min-width: 0; max-width: 200px; }
+  #sf-command-bar .sf-cb-track { width: 64px; }
+  #sf-command-bar .sf-cb-vlabel { width: 34px; }
+}
+
+/* ── Stunt callout (stuntCallout.js — trick/score layer; seats in the feed slot, inside #hud
+   so it survives the hud rebuild the slot itself already re-seats through) ────────────────── */
+.sf-stuntcall { position:fixed; left:calc(var(--sf-hud-edge, 16px) + var(--sf-safe-inset-x, 0px)); bottom:32vh; z-index:12; display:flex; flex-direction:column;
+  align-items:flex-start; gap:5px; pointer-events:none; }
+.sf-stuntcall[hidden] { display:none; }
+.sf-stuntcall__line { display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
+  padding:3px 9px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .86), rgb(11 14 20 / .86));
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .60); }
+.sf-stuntcall__lines { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+.sf-stuntcall__name { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
+.sf-stuntcall__line[data-rarity="common"] .sf-stuntcall__name { font-weight:450;
+  color:rgb(248 244 234 / .78); }
+.sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
+  color:rgb(248 244 234 / .88); }
+.sf-stuntcall__line[data-rarity="rare"] .sf-stuntcall__name { font-weight:700;
+  color:rgb(248 244 234 / .96); }
+.sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
+  color:rgb(248 244 234 / 1); }
+.sf-stuntcall__pts { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:500;
+  font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.02em; color:rgb(236 230 216 / .76); }
+.sf-stuntcall__line.is-bank { border-color:rgb(242 185 80 / .36); }
+.sf-stuntcall__line.is-bank .sf-stuntcall__name { color:var(--dp-hand, #f2b950); }
+.sf-stuntcall__line.is-bank .sf-stuntcall__pts { color:var(--dp-hand, #f2b950); }
+.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px;
+  padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88)); }
+.sf-stuntcall__rowtop { display:flex; align-items:baseline; gap:10px; }
+.sf-stuntcall__mult { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:600;
+  font-size:24px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums;
+  color:rgb(248 244 234 / .95); }
+.sf-stuntcall__names { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:rgb(236 230 216 / .78); }
+.sf-stuntcall__scale { position:relative; width:190px; height:3px; border-radius:1.5px;
+  background:rgb(236 230 216 / .20); }
+.sf-stuntcall__scale-fill { position:absolute; inset:0; transform-origin:left center;
+  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .82); }
+.sf-stuntcall__scale-notch { position:absolute; top:-3px; width:1px; height:9px;
+  background:rgb(236 230 216 / .55); }
+.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-num, "Spline Sans Mono", monospace);
+  font-weight:500; font-size:12px; letter-spacing:.04em; text-transform:uppercase;
+  font-variant-numeric:tabular-nums; color:rgb(236 230 216 / .64); }
+.sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
+html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
+@media (prefers-reduced-motion:reduce) { .sf-stuntcall__rise { animation:none; } }
+.sf-stuntcall__sr { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; }

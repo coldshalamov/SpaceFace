@@ -46,6 +46,17 @@ export function stagePriority(severity) {
   return Number.isFinite(rank) ? rank : SEV_RANK.info;
 }
 
+// Popups that receive no ctx (module-level confirm(), mountWhyReveal(), the hud-owned tutorial
+// card and stunt callout) reach the door through the same accessor pattern getPromptDeck() uses.
+// createStage publishes the live instance; destroy() clears it, so a torn-down stage can never
+// seat a popup on a dead host.
+let activeStage = null;
+
+/** The live Stage, or null before ui init / after destroy / on a page without the slot hosts. */
+export function getStage() {
+  return activeStage;
+}
+
 function inertStage() {
   const known = (name) => { if (!(name in STAGE_SLOTS)) throw new RangeError(`unknown stage slot "${name}"`); };
   return {
@@ -215,6 +226,7 @@ export function createStage(ctx = {}) {
     queued: (name) => slot(name).queue.map((r) => r.id),
     has: (name) => { const s = slot(name); return s.visible.length + s.queue.length > 0; },
     destroy() {
+      if (activeStage === api) activeStage = null;
       for (const s of slots.values()) {
         for (const rec of [...s.visible, ...s.queue]) {
           if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
@@ -229,5 +241,6 @@ export function createStage(ctx = {}) {
   // Resolve the authored containers up front so a page missing the markup gets named slots
   // created before any host asks for one.
   for (const name of slots.keys()) slotEl(name);
+  activeStage = api;
   return api;
 }
