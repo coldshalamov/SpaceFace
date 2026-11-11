@@ -53,6 +53,8 @@ import { physicsBodyNativeReady, queuePhysicsImpulse } from '../core/physicsAuth
 import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { hash32 } from '../core/rng.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 const CARRIER_ARCHETYPE = 'place_station_trade_hub';
 const owners = new WeakMap();
@@ -590,8 +592,9 @@ export const borrowedSun = {
     return { carrierId: C.carrierId, visitId: r.visitId, phase: r.phase,
       serviceAvailable: this.serviceStatus().ok, berth: berth.name, sectorId: berth.sectorId,
       nextBerth: next.name, stock, status, ledger,
-      detail: `${stock.map(s => `${s.label}: ${s.stock} units in the ordinary market`).join(' · ') || 'Stock remains in the ordinary market register.'} The light is free. Spare parts use the normal quote. Next berth: ${next.name}.${ledgerLine}`,
-      rumor: r.lastTrade ? `Our last accepted business was ${r.lastTrade.side === 'buy' ? 'outgoing' : 'incoming'} ${r.lastTrade.qty} units of ${labels.get(r.lastTrade.commodityId) || r.lastTrade.commodityId}. Same ship, different cargo.`
+      // words-field-counts: a one-unit stock row and a one-unit trade can count to one.
+      detail: `${stock.map(s => `${s.label}: ${s.stock} ${pluralWord(s.stock, 'unit', 'units')} in the ordinary market`).join(' · ') || 'Stock remains in the ordinary market register.'} The light is free. Spare parts use the normal quote. Next berth: ${next.name}.${ledgerLine}`,
+      rumor: r.lastTrade ? `Our last accepted business was ${r.lastTrade.side === 'buy' ? 'outgoing' : 'incoming'} ${r.lastTrade.qty} ${pluralWord(r.lastTrade.qty, 'unit', 'units')} of ${labels.get(r.lastTrade.commodityId) || r.lastTrade.commodityId}. Same ship, different cargo.`
         : 'No accepted trade has been recorded on this visit. We prefer being found.' };
   },
   offer() {

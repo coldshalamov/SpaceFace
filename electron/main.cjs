@@ -830,15 +830,16 @@ function installCrashReportWriters(electronApi = electron, identity = releaseIde
       // The handler suppresses Node's own stderr dump; keep the crash loud on dev consoles.
       console.error(error);
       // A player's game that just vanishes looks like it never ran: say what happened, once, and
-      // where the report is. The exit below runs whatever the box does.
+      // where the report is. The exit runs on dismissal or the grace window, whichever first.
+      // exit() bypasses will-quit, so a downloaded update does not auto-install on a crash-quit.
       try {
-        showFatalBox(describeUnexpectedFailure(error, {
+        reportFatalAndExit(describeUnexpectedFailure(error, {
           reportPath: written,
           reportDir: path.join(dumpDir, 'reports'),
-        }), dialogApi);
-      } catch (_) {}
-      // exit() bypasses will-quit, so a downloaded update does not auto-install on a crash-quit.
-      if (typeof process.exit === 'function') process.exit(1);
+        }), () => { if (typeof process.exit === 'function') process.exit(1); }, dialogApi);
+      } catch (_) {
+        if (typeof process.exit === 'function') process.exit(1);
+      }
     });
   }
   return { installed: true, reportDir: path.join(dumpDir, 'reports') };
@@ -918,13 +919,39 @@ function describeUnexpectedFailure(error, { reportPath = '', reportDir = '' } = 
 }
 
 // At most one fatal box per process, none while the player is already quitting, and never a
-// reason to skip the exit that follows.
-function showFatalBox({ title, message }, dialogApi = dialog) {
-  if (fatalBoxShown || appQuitting || !shellDialogsEnabled()) return false;
-  if (!dialogApi || typeof dialogApi.showErrorBox !== 'function') return false;
+// reason to skip the exit that follows. The box is deliberately asynchronous: a synchronous
+// modal (dialog.showErrorBox) pins the main thread until dismissed, and an undismissed one
+// used to keep the process — and its single-instance lock — alive forever, so every later
+// launch claimed "already running" with no game behind it. The exit happens on dismissal or
+// after the grace window, whichever comes first.
+const FATAL_BOX_GRACE_MS = 60 * 1000;
+
+function reportFatalAndExit({ title, message }, exitNow, dialogApi = dialog) {
+  let exiting = false;
+  const finish = () => {
+    if (exiting) return;
+    exiting = true;
+    try { exitNow(); } catch (_) { /* a failed exit attempt must not loop */ }
+  };
+  if (fatalBoxShown || appQuitting || !shellDialogsEnabled()
+    || !dialogApi || typeof dialogApi.showMessageBox !== 'function') {
+    finish();
+    return;
+  }
   fatalBoxShown = true;
-  try { dialogApi.showErrorBox(title, message); } catch (_) { /* exit regardless */ }
-  return true;
+  try {
+    Promise.resolve(dialogApi.showMessageBox({
+      type: 'error',
+      title: String(title || ''),
+      message: String(message || ''),
+      buttons: ['OK'],
+      noLink: true,
+    })).catch(() => {}).finally(finish);
+    const timer = setTimeout(finish, FATAL_BOX_GRACE_MS);
+    if (timer && typeof timer.unref === 'function') timer.unref();
+  } catch (_) {
+    finish();
+  }
 }
 
 // Startup failures used to leave no file at all (the launch receipt exists only for probes), so the
@@ -1442,9 +1469,10 @@ function handleWindowCreationFailure(error) {
   // Leave a report and tell the player why nothing opened, then exit. Neither step may stop the exit.
   try {
     const { written, reportDir } = writeStartupFailureReport(error);
-    showFatalBox(describeStartupFailure(error, { reportPath: written, reportDir }));
-  } catch (_) {}
-  app.exit(1);
+    reportFatalAndExit(describeStartupFailure(error, { reportPath: written, reportDir }), () => app.exit(1));
+  } catch (_) {
+    app.exit(1);
+  }
 }
 
 function requestGameWindow() {

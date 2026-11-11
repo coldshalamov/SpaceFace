@@ -13,13 +13,14 @@ import { BOMB_DEFS, BOMB_DRIFT } from './bombs.js';
 import { IMPULSE_CHARGES } from './impulseCharges.js';
 import { PLANET_REGION_RANK } from './planets.js';
 import { swarmCallinById } from './swarmDraft.js';
+import { pluralWord } from '../core/numberFormat.js';
 
 export const finite = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 export const sec = (n) => `${Math.round(n * 10) / 10}s`;
 // Distances read as bare numbers with a plain word ("520 units out"), never the internal "wu"
 // shorthand — a new player cannot read it (owner 2026-10-27).
 export const wu = (n) => `${Math.round(n)} units`;
-export const plural = (n, one, many = `${one}s`) => (n === 1 ? one : many);
+export { pluralWord as plural };
 
 /** A payload's short label: the catalogue's `shortName`, except two retired payloads whose short name is a power's name. */
 export function payloadShortName(def) {
@@ -28,9 +29,9 @@ export function payloadShortName(def) {
 
 export function detonationText(counts) {
   const parts = [];
-  if (counts.charges) parts.push(`${counts.charges} ${plural(counts.charges, 'charge')}`);
-  if (counts.bombs) parts.push(`${counts.bombs} drift ${plural(counts.bombs, 'bomb')}`);
-  if (counts.plants) parts.push(`${counts.plants} planted ${plural(counts.plants, 'charge')}`);
+  if (counts.charges) parts.push(`${counts.charges} ${pluralWord(counts.charges, 'charge')}`);
+  if (counts.bombs) parts.push(`${counts.bombs} drift ${pluralWord(counts.bombs, 'bomb')}`);
+  if (counts.plants) parts.push(`${counts.plants} planted ${pluralWord(counts.plants, 'charge')}`);
   return parts.join(' + ');
 }
 
