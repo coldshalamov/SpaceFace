@@ -2104,20 +2104,25 @@ html.sf-reduce-motion .sf-entity-link--row, html.sf-reduce-motion .sf-entity-lin
 .sf-drawer__apron { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; margin-top: auto; padding-top: 24px; border: 0; }
 .sf-drawer__apron::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
   background: linear-gradient(90deg, var(--dp-rule-hi, rgb(232 226 212 / .22)), transparent); }
-/* Verbs: the first (the route) is the one lamp-lit key with the 45° cut; the rest are quiet etched keys. */
+/* Verbs: the first (the route) is the one lamp-lit key; the rest are quiet keys with a hairline.
+   Rounded fields (card pass, shadcn drift), matching the confirm dialog's keys. */
 .sf-drawer__verb {
-  position: relative; display: inline-flex; align-items: center; min-height: 42px; padding: 0 22px 0 18px; border: 0; border-radius: 0; cursor: pointer; box-shadow: none; outline: none !important;
+  position: relative; display: inline-flex; align-items: center; min-height: 42px; padding: 0 20px; border: 0; border-radius: 8px; cursor: pointer; box-shadow: none; outline: none !important;
   font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif); font-variation-settings: "wght" 700, "wdth" 96;
   font-size: 13px; letter-spacing: .13em; text-transform: uppercase; line-height: 1;
   color: var(--dp-metal-0, #10131a);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp, #f2b950) 0);
+  background: var(--dp-lamp, #f2b950);
   transition: color 140ms var(--dp-ease-settle, ease), background 140ms var(--dp-ease-settle, ease), box-shadow 200ms var(--dp-ease-settle, ease);
 }
-.sf-drawer__verb:hover, .sf-drawer__verb:focus-visible { background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp-hot, #ffd98c) 0); box-shadow: 0 0 22px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); translate: none; }
+.sf-drawer__verb:hover, .sf-drawer__verb:focus-visible { background: var(--dp-lamp-hot, #ffd98c); box-shadow: 0 0 22px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); translate: none; }
 .sf-drawer__verb::after { --sf-bk: var(--dp-lamp-hot, #ffd98c); }
-.sf-drawer__verb--quiet { color: var(--dp-ink, #e8e2d4); background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0); }
-.sf-drawer__verb--quiet:hover, .sf-drawer__verb--quiet:focus-visible { color: var(--dp-lamp-hot, #ffd98c); background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0); box-shadow: none; }
+.sf-drawer__verb--quiet { color: var(--dp-ink, #e8e2d4); background: var(--dp-field-ink, rgb(232 226 212 / .08));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 14%, transparent); }
+.sf-drawer__verb--quiet:hover, .sf-drawer__verb--quiet:focus-visible { color: var(--dp-lamp-hot, #ffd98c); background: var(--dp-field-ink-hi, rgb(232 226 212 / .14));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 22%, transparent); }
 .sf-drawer__verb--quiet::after { --sf-bk: var(--dp-ink, #e8e2d4); }
+/* Focus: one rounded ring that follows the key, in place of the shared eight-tick bracket. */
+button.sf-drawer__verb::after { inset: -4px; border-radius: 11px; background: none; box-shadow: 0 0 0 1.5px var(--sf-bk); }
 .sf-drawer__verb:active { transform: translateY(1px); }
 
 @media (prefers-reduced-motion: reduce) {

@@ -241,7 +241,7 @@ const CSS = `
 .sf-drawer__verb[disabled], .sf-drawer__verb:disabled {
   cursor: default; opacity: .38; filter: none;
   color: var(--dp-ink-mute, #b0aea6);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0);
+  background: var(--dp-field-ink, rgb(232 226 212 / .08));
   box-shadow: none;
 }
 .sf-drawer__verb[disabled]:hover, .sf-drawer__verb:disabled:hover,
