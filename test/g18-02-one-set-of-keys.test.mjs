@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 // rebindable, untouched profiles migrated once, custom maps preserved.
 
 import { createSimulation } from '../src/core/sim.js';
-import { input, resolveActionCodes, resolveActionLabel } from '../src/systems/input.js';
+import { domKeyEvent, input, resolveActionCodes, resolveActionLabel } from '../src/systems/input.js';
+import { createSwarmCallinsDirector } from '../src/systems/swarmCallins.js';
 import {
   contextActionAllowed,
   contextHelpRows,
@@ -90,14 +91,16 @@ test('G18-02: a rebound key on the Line overrides the RMB label', () => {
 
 // ── context gates and the wheel ───────────────────────────────────────────────
 
-test('G18-02: contextWheel is admitted in flight and combat, refused in swarm', () => {
+test('G18-02: contextWheel is admitted in flight, combat and swarm — refused docked', () => {
   assert.equal(contextActionAllowed(flightState(), 'contextWheel'), true);
   const combat = flightState();
   combat.playerId = 1;
   combat.player = { targetId: 2 };
   combat.entities = { get: (id) => (id === 1 ? { id: 1, team: 0 } : { id: 2, team: 1, alive: true }) };
   assert.equal(contextActionAllowed(combat, 'contextWheel'), true);
-  assert.equal(contextActionAllowed(swarmState(), 'contextWheel'), false);
+  // G18-02b: the wheel is in BOTH doors — a live Swarm run must admit it or Q resolves to
+  // nothing and the overlay can never open (the bug the lead found on the real route).
+  assert.equal(contextActionAllowed(swarmState(), 'contextWheel'), true);
   assert.equal(contextActionAllowed({ ...flightState(), mode: 'station' }, 'contextWheel'), false);
 });
 
@@ -137,7 +140,8 @@ test('G18-02: the Swarm card matches the unified table', () => {
   assert.equal(verbs['Line — fire / release'], 'RMB');
   assert.equal(verbs['Boost / dash'], 'Space');
   assert.equal(verbs['Interact'], 'E');
-  assert.equal(verbs['Call-in'], 'Q');
+  // G18-02b: Q is the wheel in the Swarm door too; the Call-in slice lives inside it.
+  assert.equal(verbs['Wheel — hold · aim · release'], 'Q');
   assert.deepEqual(SWARM_DEFAULT_BINDINGS.boost, ['Space']);
 });
 
@@ -205,6 +209,49 @@ test('G18-02: holding contextWheel publishes a held level on actions', () => {
   assert.equal(sim.state.input.actions.contextWheel, false);
 });
 
+// ── G18-02b: the wheel on the real route ─────────────────────────────────────
+
+test('G18-02b: holding Q through the real DOM key path opens the wheel in a live Swarm run', () => {
+  const { sim, keys } = inputFor();
+  sim.state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm' };
+  // The exact descriptor the window keydown listener hands domKeyEvent — code, pressed,
+  // repeat, blocked. Before the fix this dropped at the Swarm allowlist and the wheel
+  // could never open on the shipped route.
+  domKeyEvent(keys, { type: 'keydown', code: 'KeyQ', pressed: true, repeat: false, blocked: false });
+  sim.step();
+  assert.equal(sim.state.input.actions.contextWheel, true,
+    'a held Q in a live Swarm run must publish actions.contextWheel');
+  assert.equal(sim.state.input.actions.callIn, false,
+    'the wheel hold is a level, never a call-in edge');
+  domKeyEvent(keys, { type: 'keyup', code: 'KeyQ', pressed: false });
+  sim.step();
+  assert.equal(sim.state.input.actions.contextWheel, false);
+});
+
+test('G18-02b: the Swarm wheel seats its legal slices and Call-in only while a charge waits', () => {
+  const st = swarmState();
+  const base = contextWheelSlices(st, 0).map((s) => s.action);
+  for (const action of ['brake', 'reelIn', 'reelOut', 'strafeLeft', 'strafeRight']) {
+    assert.ok(base.includes(action), `swarm wheel seat: ${action}`);
+  }
+  assert.ok(!base.includes('callIn'), 'no Call-in slice while the queue is empty');
+  assert.ok(!base.includes('aimedMine'), 'no mine slice in the Swarm door');
+  const charged = contextWheelSlices(st, 1).map((s) => s.action);
+  assert.ok(charged.includes('callIn'), 'a stocked call surfaces the Call-in slice');
+});
+
+test('G18-02b: a wheel Call-in tap fires the real Swarm edge — and stays Swarm-only', () => {
+  const { sim, keys } = inputFor();
+  sim.state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm' };
+  assert.equal(keys.applyWheelVerb({ action: 'callIn', phase: 'tap' }), true);
+  sim.step();
+  assert.equal(sim.state.input.actions.callIn, true,
+    'the wheel verb must reach actions.callIn — the flag the director edges on');
+  // Adventure flight refuses it: Call-in is a Swarm verb, not a second fire button.
+  sim.state.run = { kind: 'adventure', phase: 'inactive', ruleset: null };
+  assert.equal(keys.applyWheelVerb({ action: 'callIn', phase: 'tap' }), false);
+});
+
 // ── the pad ───────────────────────────────────────────────────────────────────
 
 test('G18-02: the pad speaks the same table — hold-Y is the wheel', () => {
@@ -264,4 +311,25 @@ test('G18-02: Settings lists the wheel and every wheel slice as rebindable', () 
   for (const action of ['brake', 'mine', 'travelBurn', 'bulletTime', 'gyreSnare']) {
     assert.ok(GAMEPAD_REBINDABLE.includes(action), `pad rebind row: ${action}`);
   }
+});
+
+// ── the call-in queue publication (feeds the wheel's Call-in slice) ───────────
+
+test('G18-02b: the call-in director publishes queue depth the wheel can gate on', () => {
+  const events = [];
+  const st = swarmState();
+  st.mode = 'flight';
+  st.input = { actions: {} };
+  const bus = { emit: (type, payload) => events.push({ type, payload }), on: () => () => {} };
+  const director = createSwarmCallinsDirector({ state: st, bus, helpers: {}, registry: { get: () => null } });
+  director.init();
+  assert.equal(director.callinState().queued, 0);
+  director.queueCallin('turret_drop');
+  assert.equal(director.callinState().queued, 1);
+  assert.deepEqual(events.at(-1), { type: 'swarm:callinQueued', payload: { pending: 1, callinId: 'turret_drop' } });
+  // The same actions.callIn edge the wheel's tap mints consumes the queue and re-publishes.
+  st.input.actions.callIn = true;
+  director.update(1 / 60, st);
+  assert.equal(director.callinState().queued, 0);
+  assert.deepEqual(events.at(-1), { type: 'swarm:callinQueued', payload: { pending: 0, callinId: 'turret_drop' } });
 });
