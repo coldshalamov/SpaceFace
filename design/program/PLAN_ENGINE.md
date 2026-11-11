@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The plan engine — how agents keep SpaceFace's plan saturated
 
 Owner direction, 2026-10-19: part of SpaceFace's premise is finding out how good a game agents can

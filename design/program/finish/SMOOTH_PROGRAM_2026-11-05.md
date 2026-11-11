@@ -1,4 +1,7 @@
 <!-- LIFETIME: STABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The Smooth Program — playable first (owner direction, 2026-11-05)
 
 **Owner direction, 2026-11-05.** "The game is entirely useless as long as it's not running smoothly

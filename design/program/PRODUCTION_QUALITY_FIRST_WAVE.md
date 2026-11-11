@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PLAN — detailed selected proposals, not implementation status. -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # First wave: movement, matter, and a complete place
 
 Parent: [production-quality plan](PRODUCTION_QUALITY_COMPOUNDING.md).
