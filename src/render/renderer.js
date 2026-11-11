@@ -330,6 +330,7 @@ import {
   snapshotHasEntityGeneration,
   snapshotIndexOf,
 } from './snapshotFence.js';
+import { createPoseContinuity } from './poseContinuity.js';
 import {
   consumePersistentSubmitUploads,
   createPersistentSubmitLanes,
@@ -28446,6 +28447,31 @@ export const render = {
       slot,
     );
     if (!applied) return false;
+    // PERF-02a: the player's hull is the picture's anchor (the chase camera reads this same
+    // drawn position) — when a late pack lands behind the extrapolated guess the raw write
+    // above steps it backwards. Absorb that correction into a healing offset so the drawn
+    // hull only ever continues its own motion. Player row only; every other entity keeps
+    // the raw fence pose.
+    const entityId = world.entityIds[slot];
+    if (entityId && this.state && entityId === this.state.playerId) {
+      const cont = this._poseContinuity || (this._poseContinuity = createPoseContinuity());
+      const scratch = this._poseContinuityScratch
+        || (this._poseContinuityScratch = { x: 0, z: 0, yaw: 0 });
+      const ox = Number.isFinite(origin.x) ? origin.x : 0;
+      const oz = Number.isFinite(origin.z) ? origin.z : 0;
+      cont.sample(
+        entityId,
+        mesh.position.x + ox,
+        mesh.position.z + oz,
+        mesh.rotation.y,
+        this._presentationFrameDt,
+        scratch,
+      );
+      mesh.position.x = scratch.x - ox;
+      mesh.position.z = scratch.z - oz;
+      mesh.rotation.y = scratch.yaw;
+      if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
+    }
     const attachedRow = this.state?.entities?.get(world.entityIds[slot]);
     if (attachedRow?.data?.warmFreighterVisualPose) {
       applyWarmFreighterDressingPose(mesh, attachedRow, this._frameMembrane);
