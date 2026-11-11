@@ -46,6 +46,8 @@ import { faction as HELIX } from '../data/factions/helix.js';
 import { hash32 } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const FLAG = (HELIX.custom && HELIX.custom.falseFlag) || {};
 const LIEN = (HELIX.custom && HELIX.custom.lienDrone) || {};
@@ -785,7 +787,7 @@ export const factionHelix = {
   /** The docket reads an unmasking: a verdict, a precedent, a verified notice. */
   _onFlagsDropped(state, hx, packId, breaker, members) {
     this._fileVerdict(state, 'pack_unmasked', packId,
-      `${members.length} hull${members.length === 1 ? '' : 's'} unmasked by ${breaker && breaker.id}`);
+      `${counted(members.length, 'hull', 'hulls')} unmasked by ${breaker && breaker.id}`);
     this._precedent(state, 'unmasked');
     this._deed(state, 'unmasked', packId);
     for (const n of hx.notices) {

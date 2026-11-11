@@ -774,9 +774,17 @@ export const HUD_CSS = `
     0%, 100% { opacity:.68; }
     50% { opacity:1; }
   }
+  /* Reduced motion holds every edge telegraph steady at the same legible .9 the telegraph slot
+     reads: the inbound-missile and closing-boost tells keep their slot, glyph and channel colour,
+     only the 0.5 s hard-step strobe stops (the tell is never silenced, just not re-flashed). */
   @media (prefers-reduced-motion: reduce) {
-    .sf-threat-halo__slot--telegraph { animation: none; opacity:.9; }
+    .sf-threat-halo__slot--telegraph,
+    .sf-threat-halo__slot--missile,
+    .sf-threat-halo__slot--arc[data-closing="boost"] { animation: none; opacity:.9; }
   }
+  html.sf-reduce-motion .sf-threat-halo__slot--telegraph,
+  html.sf-reduce-motion .sf-threat-halo__slot--missile,
+  html.sf-reduce-motion .sf-threat-halo__slot--arc[data-closing="boost"] { animation:none; opacity:.9; }
   html.sf-reduce-flash .sf-threat-halo__slot--missile,
   html.sf-reduce-flash .sf-threat-halo__slot--arc[data-closing="boost"],
   html.sf-reduce-flash .sf-threat-halo__slot--telegraph { animation:none; }

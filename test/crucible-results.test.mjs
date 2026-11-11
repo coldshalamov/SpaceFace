@@ -1043,3 +1043,28 @@ test('the share band is one aligned row per item: caption, single-line field, sa
     resetCrucibleMetaForTests();
   }
 });
+
+test('a round-30 swarm win offers exactly Take the win and Keep going', () => {
+  const { lines, stamp, buttons, emitted } = mountResults({
+    outcome: 'victory', ruleset: 'swarm', seed: 4242, wave: 30, deepestWave: 30,
+    wavesCleared: 30, kills: 412, score: 9100, credits: 540, xp: 2400, level: 12,
+    picks: [{ verb: 'Volume', defId: 'wpn_autocannon_m', wave: 10 }],
+    headline: 'The Pit is yours. Thirty rounds, every champion down.',
+    defeat: null, damageTrail: [],
+  });
+  const text = lines.join('\n');
+  assert.equal(stamp, 'CRUCIBLE / ARENA CLEARED');
+  assert.equal(lines[0], 'THE PIT IS YOURS');
+  const verbs = buttons.map((b) => b.textContent).filter((t) => !t.startsWith('Copy '));
+  assert.deepEqual(verbs, ['Take the win', 'Keep going'],
+    'the win plate offers exactly the two authored choices');
+  assert.ok(text.includes('Deepest round'), 'the ledger names the run’s deepest round');
+
+  // Keep going asks the run owner to resume the course; the plate only pops itself first.
+  const keep = buttons.find((b) => b.textContent === 'Keep going');
+  keep.listeners.click[0]();
+  assert.deepEqual(emitted.map((e) => e.event), ['ui:popScreen', 'run:swarmDeepRequested']);
+  const take = buttons.find((b) => b.textContent === 'Take the win');
+  take.listeners.click[0]();
+  assert.equal(emitted.at(-1).event, 'ui:replaceScreen', 'Take the win rides the ordinary exit');
+});

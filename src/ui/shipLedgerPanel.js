@@ -18,6 +18,7 @@ import {
   ledgerEvidencePageTitle,
 } from '../systems/shipLedger.js';
 import { laneCommandSink, laneRpc } from '../core/simLaneCommands.js';
+import { counted } from './numberFormat.js';
 
 export function shipLedgerEntryAriaLabel(entry) {
   if (!entry) return 'Empty ship ledger entry';
@@ -421,7 +422,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
     pageReadout.textContent = `${model.page + 1} / ${model.pageCount}`;
     status.textContent = model.total === 0
       ? 'Ledger empty.'
-      : `${model.total} entries. Archive page ${model.page + 1} of ${model.pageCount}.`;
+      : `${counted(model.total, 'entry', 'entries')}. Archive page ${model.page + 1} of ${model.pageCount}.`;
     renderBoard();
     return model;
   }

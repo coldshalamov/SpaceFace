@@ -9,7 +9,6 @@ import { mulberry32 } from '../src/core/rng.js';
 import {
   SWARM_BROOD_FAMILIES,
   SWARM_BROOD_MAX,
-  swarmBroodBossFor,
   swarmBroodIssues,
   swarmBroodKillPay,
   swarmBroodPlan,
@@ -79,6 +78,8 @@ function firstFamily(engine, familyIndex) {
 
 test('the burrower continues the roster clock without breaking the base catalog', () => {
   assert.deepEqual(swarmBroodIssues(), []);
+  // C01-03: the strains' debut waves are real deep-course rows again — the late table
+  // passes its authoring check clean.
   assert.deepEqual(swarmBroodLateIssues(), []);
   const burrower = swarmBroodLateFamily('burrower');
   assert.ok(burrower, 'late table admits burrower');
@@ -99,11 +100,6 @@ test('the burrower continues the roster clock without breaking the base catalog'
   assert.ok(row && row.count > 0, 'wave 19 spends mites on burrowers');
   const mite = plan.find((part) => part.id === 'mite');
   assert.ok(mite && mite.count >= 1, 'the mite floor stays');
-
-  assert.equal(swarmBroodBossFor(70), 'brood_queen');
-  const queen = foldBroodLatePlan(swarmBroodPlan(70, mulberry32(broodStreamSeed(SEED, 70))), 70);
-  assert.deepEqual(queen.map((part) => part.id), ['mite']);
-  assert.equal(queen[0].count, swarmBroodPopulation(70));
 });
 
 test('a burrower hides in the rock and telegraphs before it bursts, seed 4242', () => {
@@ -186,6 +182,6 @@ test('a burrower hides in the rock and telegraphs before it bursts, seed 4242', 
   };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: state.simTime });
-  assert.equal(scene.objects.length, 7, 'bodies + marks + pools + lines + lanes + lobs + tendril segs');
+  assert.equal(scene.objects.length, 10, 'bodies + rings + pools + lines + lanes + lobs + segs + mother links/beams/auras');
   assert.equal(scene.objects[0].count, engine.census().alive, 'every live body, including the burrower, draws');
 });

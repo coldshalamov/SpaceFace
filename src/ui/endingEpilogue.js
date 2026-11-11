@@ -50,7 +50,9 @@ function endingWarLine(state) {
     if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
     const [aId, bId] = String(pairKey).split(':');
     if (!aId || !bId) continue;
-    const name = (id) => FACTION_NAME_BY_ID.get(id) || String(id).replace(/^faction_/, '');
+    // A house the catalog no longer lists reads as an honest generic noun
+    // (words-standing-house-fallback) — never a prefix-stripped id remnant dressed as a name.
+    const name = (id) => FACTION_NAME_BY_ID.get(id) || 'an unlisted house';
     const frontSectorId = contestedSectorForPair(pairKey);
     const front = (frontSectorId && SECTOR_NAME_BY_ID.get(frontSectorId)) || 'the contested lane';
     const lean = Number(rec.playerLean) || 0;

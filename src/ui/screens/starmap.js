@@ -20,6 +20,8 @@ import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFo
 import { drawGlyph, glyphSvg } from '../glyphs.js';
 import { injectOrrery } from '../orrery/tokens.js';
 import { dressLampKey } from '../orrery/lampKey.js';
+import { counted } from '../numberFormat.js';
+
 
 const FACTION_NAME = Object.create(null);
 const FACTION_COLOR = Object.create(null);
@@ -716,7 +718,7 @@ export function describeStarmapObjectiveRoute(state, objective, nameOf = sectorN
     return {
       state: 'plotted',
       next: `Next jump: ${nameOf(first.to)}`,
-      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+      summary: `${counted(hops, 'hop', 'hops')} / ${fuel}F`,
       canPlot: true,
       actionLabel: 'Refresh Objective Route',
     };
@@ -1677,7 +1679,7 @@ export const starmapScreen = {
 
       ${isCurrent ? '<div class="sm-route">▸ Current sector</div>'
         : reachable ? '<div class="sm-route">▸ Reachable in one jump</div>'
-          : previewRoute ? `<div class="sm-route">▸ ${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F available path</div>`
+          : previewRoute ? `<div class="sm-route">▸ ${counted(hops, 'hop', 'hops')} / ${fuel}F available path</div>`
             : noPath ? '<div class="sm-hint">No charted route leads there yet.</div>'
               : '<div class="sm-hint">Not directly reachable — plot a multi-hop route.</div>'}
       ${routeHtml}`;
