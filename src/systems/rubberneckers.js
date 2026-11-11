@@ -15,6 +15,7 @@
 // Preserves single intent writer: mixed into traffic.js as rubberneckersOps.
 
 import { occupantGenerationOf } from '../core/entity.js';
+import { requestTrafficReaction, releaseTrafficReaction } from './trafficReactionLease.js';
 
 export const RUBBERNECKERS_ACTIVE_EVENT = 'traffic:rubberneckersActive';
 export const RUBBERNECKERS_SHOO_EVENT = 'traffic:rubberneckerShooed';
@@ -75,22 +76,6 @@ function isEntityDisabled(entity) {
   if (entity.flags && (entity.flags.disabled || entity.flags.derelict)) return true;
   if (data.hp != null && data.maxHp && data.hp <= data.maxHp * 0.25) return true;
   return false;
-}
-
-function setRubberneckerIntent(entity, strafe = 0, throttle = 0, boost = false, brake = false, fire = null, aim = null) {
-  if (!entity) return;
-  if (!entity.data) entity.data = {};
-  if (!entity.data.intent) entity.data.intent = {};
-  const intent = entity.data.intent;
-  intent.moveX = strafe;
-  intent.moveZ = throttle;
-  intent.boost = boost;
-  intent.brake = brake;
-  if (fire !== null) intent.fire = fire;
-  if (aim !== null) intent.aimAngle = aim;
-  intent.strafe = strafe;
-  intent.throttle = throttle;
-  intent.aim = aim;
 }
 
 export const rubberneckersOps = {
@@ -278,18 +263,23 @@ export const rubberneckersOps = {
     const gen = occupantGenerationOf(e);
     if (gen != null && row.generation != null && row.generation !== gen) {
       memory.delete(e.id);
+      releaseTrafficReaction(this, e);
       return false;
     }
 
+    // A job hull's steering rides the npcJobs lease; when the look ends the job resumes.
+    const endLook = (reactionName) => {
+      row.status = 'idle';
+      memory.delete(e.id);
+      if (e.data && e.data.civilianReaction === reactionName) delete e.data.civilianReaction;
+      if (rec && rec.civilianReaction === reactionName) delete rec.civilianReaction;
+      releaseTrafficReaction(this, e);
+      return false;
+    };
+
     // 1. If currently in looking state:
     if (row.status === 'looking') {
-      if (now >= row.until) {
-        row.status = 'idle';
-        memory.delete(e.id);
-        if (e.data && e.data.civilianReaction === 'rubbernecking') delete e.data.civilianReaction;
-        if (rec && rec.civilianReaction === 'rubbernecking') delete rec.civilianReaction;
-        return false;
-      }
+      if (now >= row.until) return endLook('rubbernecking');
 
       // Check if player approaches close enough to shoo them:
       if (player && player.alive !== false && player.pos && e.pos) {
@@ -307,8 +297,12 @@ export const rubberneckersOps = {
         const dx = row.targetWreckPos.x - e.pos.x;
         const dz = row.targetWreckPos.z - e.pos.z;
         const aim = Math.atan2(dz, dx);
-        setRubberneckerIntent(e, 0, RUBBERNECKERS_TUNING.slowThrottle, false, true, null, aim);
-        if (e.data && e.data.intent) e.data.intent.brake = true;
+        const throttle = RUBBERNECKERS_TUNING.slowThrottle;
+        const owned = requestTrafficReaction(this, e, {
+          moveX: 0, moveZ: throttle, boost: false, brake: true, aimAngle: aim,
+          strafe: 0, throttle, aim,
+        }, row.until - now);
+        if (!owned) return endLook('rubbernecking'); // owner will not lease: the look ends
         if (e.data) e.data.civilianReaction = 'rubbernecking';
         if (rec) rec.civilianReaction = 'rubbernecking';
         return true;
@@ -317,21 +311,18 @@ export const rubberneckersOps = {
 
     // 2. If shooed, flee away from player / wreck at full boost:
     if (row.status === 'shooed') {
-      if (now >= row.until) {
-        row.status = 'idle';
-        memory.delete(e.id);
-        if (e.data && e.data.civilianReaction === 'shooed') delete e.data.civilianReaction;
-        if (rec && rec.civilianReaction === 'shooed') delete rec.civilianReaction;
-        return false;
-      }
+      if (now >= row.until) return endLook('shooed');
 
       const awayX = player && player.pos ? player.pos.x : row.targetWreckPos.x;
       const awayZ = player && player.pos ? player.pos.z : row.targetWreckPos.z;
       const fx = e.pos.x - awayX;
       const fz = e.pos.z - awayZ;
       const fleeAim = Math.atan2(fz, fx);
-      setRubberneckerIntent(e, 0, 1.0, true, false, null, fleeAim);
-      if (e.data && e.data.intent) e.data.intent.brake = false;
+      const owned = requestTrafficReaction(this, e, {
+        moveX: 0, moveZ: 1.0, boost: true, brake: false, aimAngle: fleeAim,
+        strafe: 0, throttle: 1.0, aim: fleeAim,
+      }, row.until - now);
+      if (!owned) return endLook('shooed');
       if (e.data) e.data.civilianReaction = 'shooed';
       if (rec) rec.civilianReaction = 'shooed';
       return true;

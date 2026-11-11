@@ -13,6 +13,7 @@
 
 import { occupantGenerationOf } from '../core/entity.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
+import { requestTrafficReaction, releaseTrafficReaction } from './trafficReactionLease.js';
 
 export const ROAD_RAGE_TUNING = Object.freeze({
   shoveWindowS: 30,           // shove twice within 30 s of sim time
@@ -58,16 +59,12 @@ export function isCivilianShip(entity) {
   return false;
 }
 
-function applyIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
-  const data = e.data || (e.data = {});
-  const intent = data.intent || (data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
-  intent.moveX = moveX;
-  intent.moveZ = moveZ;
-  intent.boost = boost;
-  intent.fire = fire;
-  intent.fireGroup = fireGroup;
-  intent.aimAngle = aimAngle;
-  intent.brake = false;
+function endRoadRage(row, e, rec, host) {
+  row.rageState = null;
+  if (rec) rec.civilianReaction = null;
+  if (e.data) e.data.civilianReaction = null;
+  // A job hull's steering rides the npcJobs lease; ending the reaction resumes the job.
+  releaseTrafficReaction(host, e);
 }
 
 export function getOrCreateRoadRageRow(memory, entity, now = 0) {
@@ -185,8 +182,10 @@ export function recordRoadRageShove(state, victim, attackerId, now, memory, opti
 /**
  * Step road rage behavior for one civilian entity.
  * Returns true while road rage is actively driving the civilian.
+ * `host` is the traffic owner: a hull with data.jobId is steered through the npcJobs
+ * interrupt/lease seam instead of a direct intent write (single writer per hull).
  */
-export function stepRoadRage(e, state, player, dt, memory, rec = null) {
+export function stepRoadRage(e, state, player, dt, memory, rec = null, host = null) {
   if (!e || !state || !memory) return false;
   const row = memory.get(e.id);
   if (!row || !row.rageState) return false;
@@ -194,9 +193,7 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
   const now = finite(state.simTime, 0);
 
   if (!player || player.alive === false || !player.pos || !e.pos) {
-    row.rageState = null;
-    if (rec) rec.civilianReaction = null;
-    if (e.data) e.data.civilianReaction = null;
+    endRoadRage(row, e, rec, host);
     return false;
   }
 
@@ -224,9 +221,7 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
   if (row.rageState === 'flee') {
     if (now - row.fleeStartedAt >= ROAD_RAGE_TUNING.fleeDurationS) {
       // Finished fleeing: return to whatever it was doing
-      row.rageState = null;
-      if (rec) rec.civilianReaction = null;
-      if (e.data) e.data.civilianReaction = null;
+      endRoadRage(row, e, rec, host);
       return false;
     }
 
@@ -234,7 +229,14 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
     const awayZ = e.pos.z - player.pos.z;
     const aim = Math.atan2(awayZ, awayX);
     // At top speed: moveZ = 1, boost = true, weapons cold
-    applyIntent(e, 0, 1, true, false, null, aim);
+    const owned = requestTrafficReaction(host, e, {
+      moveX: 0, moveZ: 1, boost: true, fire: false, fireGroup: null, aimAngle: aim, brake: false,
+    }, (row.fleeStartedAt + ROAD_RAGE_TUNING.fleeDurationS) - now);
+    if (!owned) {
+      // A job hull we cannot steer keeps its job: the rage ends quietly, one writer intact.
+      endRoadRage(row, e, rec, host);
+      return false;
+    }
     if (rec) rec.civilianReaction = 'road_rage_flee';
     if (e.data) e.data.civilianReaction = 'road_rage_flee';
     return true;
@@ -246,7 +248,13 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
     const towardZ = player.pos.z - e.pos.z;
     const aim = Math.atan2(towardZ, towardX);
     // Accelerates toward player, no weapons fired
-    applyIntent(e, 0, 1, false, false, null, aim);
+    const owned = requestTrafficReaction(host, e, {
+      moveX: 0, moveZ: 1, boost: false, fire: false, fireGroup: null, aimAngle: aim, brake: false,
+    }, (row.rageStartedAt + ROAD_RAGE_TUNING.ramDurationS + ROAD_RAGE_TUNING.fleeDurationS) - now);
+    if (!owned) {
+      endRoadRage(row, e, rec, host);
+      return false;
+    }
     if (rec) rec.civilianReaction = 'road_rage_ram';
     if (e.data) e.data.civilianReaction = 'road_rage_ram';
     return true;
@@ -311,7 +319,7 @@ export const roadRageOps = {
   _reactRoadRage(e, rec, stations, state, player) {
     if (!state || (state.mode && state.mode !== 'flight')) return false;
     const memory = this._roadRageMemory();
-    return stepRoadRage(e, state, player, 1 / 60, memory, rec);
+    return stepRoadRage(e, state, player, 1 / 60, memory, rec, this);
   },
 };
 
@@ -369,7 +377,7 @@ export const roadRage = {
         row.rageState = null;
         continue;
       }
-      stepRoadRage(entity, state, player, dt, this._mem, null);
+      stepRoadRage(entity, state, player, dt, this._mem, null, this);
     }
   },
 };
