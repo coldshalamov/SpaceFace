@@ -322,33 +322,6 @@ export const nearMissPlantOps = {
           sectorId: state.world?.currentSectorId || null,
           t: now,
         });
-
-        this.bus.emit('law:distressRaised', {
-          cause: 'reckless_flying',
-          victimId: e.id,
-          attackerId: player.id,
-          sectorId: state.world?.currentSectorId || null,
-          t: now,
-        });
-
-        // Control logs and acknowledges the reckless report
-        if (this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function') {
-          this.helpers.voice.say({
-            channel: 'bark',
-            text: NEAR_MISS_CONTROL_LOG,
-            kind: 'traffic',
-            ttl: 4,
-            id: `controlRecklessLog:${e.id}:${Math.floor(now)}`,
-          });
-        }
-
-        this.bus.emit('bark:triggered', {
-          entityId: 'control',
-          situation: 'reckless-flight-logged',
-          text: NEAR_MISS_CONTROL_LOG,
-          reason: 'plant:PL-01',
-          t: now,
-        });
       }
     }
 

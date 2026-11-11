@@ -16842,6 +16842,7 @@ export function lootTrailColorFor(e) {
   const data = (e && e.data) || {};
   if (e && e.type === 'payload') return '#4fbf8f';
   if (data.kind === 'swarm_repair' || data.swarmRepair === true) return LOOT_TRAIL_SWARM_REPAIR;
+  if (data.kind === 'swarm_drop' || data.swarmDrop === true) return '#ffd24a';
   if (data.kind === 'credits' || data.kind === 'credit_chip') return '#ffcc44';
   return oreColor(data.commodityId);
 }
