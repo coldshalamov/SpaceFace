@@ -335,3 +335,20 @@ export const BOMB_CHARGE_CHOICE = 'impulse_charge';
 export function bombDef(id) {
   return BOMB_DEFS[id] || BOMB_DEFS.bomb_frag;
 }
+
+// A01-05 Wide Bore: a drop stamps `radiusScale` on the bomb; every reader resolves the def through
+// here so the blast, the field, the sweep, the primed warning and the preview share one radius.
+// The shared base defs are never mutated - a scaled copy is cached per (def, scale).
+const SCALED_BOMB_DEFS = new Map();
+export function resolvedBombDef(data) {
+  const def = bombDef(data && data.bombId);
+  const scale = Number(data && data.radiusScale);
+  if (!(scale > 0) || scale === 1) return def;
+  const key = `${def.id}|${scale}`;
+  let scaled = SCALED_BOMB_DEFS.get(key);
+  if (!scaled) {
+    scaled = Object.freeze({ ...def, radius: def.radius * scale });
+    SCALED_BOMB_DEFS.set(key, scaled);
+  }
+  return scaled;
+}
