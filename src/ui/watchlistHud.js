@@ -75,7 +75,7 @@ export function createWatchlistHud(ctx) {
       if (bus && typeof bus.emit === 'function') {
         // news:publish drops records without provenance — the pin's own identity is the citation.
         bus.emit('news:publish', {
-          text: `Watch: ${pin.label} ${word} ${target} cr — quoting ${price}.`,
+          text: `Watch: ${pin.label} ${word} ${Number(target).toLocaleString('en-US')} cr — quoting ${Number(price).toLocaleString('en-US')}.`,
           kind: 'watchlist_price',
           sourceRef: `watchlist:${pin.ref}@${pin.stationId}`,
           stationId: pin.stationId || null,

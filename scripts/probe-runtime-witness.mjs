@@ -134,6 +134,7 @@ const consoleHits = [];
 const pageErrors = [];
 const snapshots = [];
 const canvasFrames = [];
+const composedFrames = [];
 const loadingReadinessSamples = [];
 let loadingProgressEvents = [];
 let probeInstrumentation = null;
@@ -2277,6 +2278,16 @@ function readWitnessInPage() {
       };
     }
   }
+  // Presented-hold accounting from the loop diagnostics (cumulative since loop start; the
+  // classifier compares first→last deltas). This is the world-hitch number that frame cost alone
+  // cannot see: a repeated presented moment while time advances.
+  sample.presented = {
+    gapMs: Number.isFinite(d.lastPresentedGapMs) ? d.lastPresentedGapMs : null,
+    maxGapMs: Number.isFinite(d.maxPresentedGapMs) ? d.maxPresentedGapMs : null,
+    gapsOver100: Number.isFinite(d.presentedGapsOver100) ? d.presentedGapsOver100 : null,
+    heldMs: Number.isFinite(d.heldPresentMs) ? d.heldPresentMs : null,
+    maxHeldMs: Number.isFinite(d.maxHeldPresentMs) ? d.maxHeldPresentMs : null,
+  };
   // GPU-side residency alongside the heap. Growth here that never plateaus says the world is
   // retaining what it streams in rather than churning it, which is a different fix from allocation
   // churn even though both end in the same multi-second collection.
@@ -2289,6 +2300,101 @@ function readWitnessInPage() {
       programs: Array.isArray(progs) ? progs.length : 0,
     } : null;
   } catch (_) { sample.gpuResidency = null; }
+  // Picture contract: the console proves the buffer, but sign-off also needs the live post route,
+  // dynamic-resolution/relief state, bloom depth and sky/particle tier from the same sample.
+  try {
+    const render = window.SF?.state?.render || null;
+    const video = window.SF?.state?.settings?.video || {};
+    const diag = render?.diagnostics || null;
+    const report = diag && typeof diag.getReport === 'function' ? diag.getReport() : null;
+    const post = report && report.post ? report.post : null;
+    const bloom = post && post.bloom && typeof post.bloom === 'object' ? post.bloom : null;
+    const renderer = render?.renderer || null;
+    const canvas = renderer && renderer.domElement ? renderer.domElement : null;
+    const ratio = renderer && typeof renderer.getPixelRatio === 'function'
+      ? renderer.getPixelRatio() : null;
+    const cssW = Number(window.innerWidth) || 0;
+    const cssH = Number(window.innerHeight) || 0;
+    const dpr = Number(window.devicePixelRatio) || 1;
+    sample.picture = {
+      renderScale: Number.isFinite(Number(video.renderScale)) ? Number(video.renderScale) : null,
+      pixelRatioCap: Number.isFinite(Number(video.pixelRatioCap)) ? Number(video.pixelRatioCap) : null,
+      pixelRatio: Number.isFinite(Number(ratio)) ? Number(ratio) : null,
+      bufferWidth: canvas ? canvas.width | 0 : null,
+      bufferHeight: canvas ? canvas.height | 0 : null,
+      cssWidth: cssW,
+      cssHeight: cssH,
+      devicePixelRatio: dpr,
+      dynResScale: Number.isFinite(Number(render?.dynResScale)) ? Number(render.dynResScale) : 1,
+      hitchReliefLevel: Number(render?.hitchReliefLevel) || 0,
+      contentScale: bloom && Number.isFinite(Number(bloom.contentScale))
+        ? Number(bloom.contentScale) : null,
+      effectiveSceneScale: post && Number.isFinite(Number(post.effectiveSceneScale))
+        ? Number(post.effectiveSceneScale) : null,
+      // contentNative is the scene's own 1:1 test, not the buffer's. A 0.9 content scale plus CAS
+      // is a reconstruction; a native drawing buffer does not make the picture native.
+      contentNative: (() => {
+        const effective = post && Number.isFinite(Number(post.effectiveSceneScale))
+          ? Number(post.effectiveSceneScale) : 1;
+        const bloomScale = bloom && Number.isFinite(Number(bloom.contentScale))
+          ? Number(bloom.contentScale) : 1;
+        const cas = bloom ? bloom.casSharpenActive === true : false;
+        return effective >= 0.999 && bloomScale >= 0.999 && cas !== true;
+      })(),
+      casSharpenActive: bloom ? bloom.casSharpenActive === true : null,
+      casReconstruction: bloom ? bloom.casReconstruction : null,
+      sceneTargetWidth: post && Number.isFinite(Number(post.sceneTargetWidth))
+        ? Number(post.sceneTargetWidth) : null,
+      sceneTargetHeight: post && Number.isFinite(Number(post.sceneTargetHeight))
+        ? Number(post.sceneTargetHeight) : null,
+      configuredRenderScale: post && Number.isFinite(Number(post.configuredRenderScale))
+        ? Number(post.configuredRenderScale) : null,
+      activePath: post ? post.activePath : null,
+      bloomSelected: post ? post.bloomSelected === true : null,
+      bloomLevels: Number.isFinite(Number(video.bloomLevels)) ? Number(video.bloomLevels) : null,
+      bloomStrength: Number.isFinite(Number(video.bloomStrength)) ? Number(video.bloomStrength) : null,
+      // Live post state, not the configured preset: the hitch governor can cap bloom to one level
+      // and zero grade/vignette/toe/grain at relief 2. A capture signed off at relief 0 must say so.
+      bloomLevelsLive: bloom && Number.isFinite(Number(bloom.levels)) ? Number(bloom.levels) : null,
+      bloomEnabledLive: bloom ? bloom.enabled === true : null,
+      postGrade: bloom && Number.isFinite(Number(bloom.grade)) ? Number(bloom.grade) : null,
+      postVignette: bloom && Number.isFinite(Number(bloom.vignette)) ? Number(bloom.vignette) : null,
+      postToe: bloom && Number.isFinite(Number(bloom.toe)) ? Number(bloom.toe) : null,
+      postGrain: bloom && Number.isFinite(Number(bloom.grain)) ? Number(bloom.grain) : null,
+      postFxActive: bloom
+        ? (Number(bloom.grade) || 0) + (Number(bloom.vignette) || 0)
+          + (Number(bloom.toe) || 0) + (Number(bloom.grain) || 0) > 0
+        : null,
+      particleQuality: typeof video.particleQuality === 'string' ? video.particleQuality : null,
+      skyTier: render?.spaceBg?.tierName || null,
+      sharpen: video.sharpen === true,
+      frameCap: Number.isFinite(Number(video.frameCap)) ? Number(video.frameCap) : null,
+      // Native means the drawing buffer covers the CSS×DPR footprint. A sub-native raster is the
+      // pixelation class this probe must never report as healthy.
+      native: canvas
+        ? (canvas.width | 0) >= Math.floor(cssW * dpr) && (canvas.height | 0) >= Math.floor(cssH * dpr)
+        : null,
+    };
+  } catch (_) { sample.picture = null; }
+  // Worker-lane truth: reply apply cost and freeze state belong in every witness run, not only the
+  // tether-stress probe. A main-thread stall hides from frame counters; this is where it surfaces.
+  try {
+    const diag = window.SF?.simLaneDiag?.() || null;
+    sample.lane = diag ? {
+      replyCount: diag.replyCount,
+      lastCommandSequence: diag.workerClockLastAppliedCommandSequence,
+      workerApplyMaxMs: diag.workerApplyMaxMs,
+      appliesOver100ms: diag.workerApplyOver100,
+      msSinceLastAppliedReply: diag.msSinceLastAppliedReply,
+      commandInFlightWallMs: diag.commandInFlightWallMs ?? null,
+      freezeActive: diag.freezeActive === true,
+      freezeEpisodes: Array.isArray(diag.freezeEpisodes) ? diag.freezeEpisodes.slice(-3) : null,
+      lastReplyWork: diag.workerLastReplyWork || null,
+      worstReplyWork: diag.workerApplyMaxWork || null,
+      slowApplies: Array.isArray(diag.workerSlowApplies) ? diag.workerSlowApplies.slice(-3) : null,
+      slowEvents: Array.isArray(diag.workerSlowEvents) ? diag.workerSlowEvents.slice(-5) : null,
+    } : null;
+  } catch (_) { sample.lane = null; }
   // Economy population alongside the heap. The flight allocation profile blames synthetic
   // price-history seeding, which costs 64 points per LISTING at market creation - so the size of
   // that cost is a function of how many markets come into existence during flight, not of the tick
@@ -3051,6 +3157,17 @@ async function captureCanvasFrame(targetPage, shotPath, elapsedMs) {
   return hash;
 }
 
+// The composed frame keeps the HUD and is captured at the page's device scale, so legibility and
+// the final presentation (post + CAS + DOM) are reviewed together instead of canvas-only.
+async function captureComposedFrame(targetPage, shotPath, elapsedMs) {
+  const reliefLevel = await targetPage.evaluate(() => (
+    Number(window.SF?.state?.render?.hitchReliefLevel) || 0
+  )).catch(() => null);
+  await targetPage.screenshot({ path: shotPath, type: 'png' });
+  composedFrames.push({ elapsedMs, path: shotPath, reliefLevel });
+  return shotPath;
+}
+
 async function dismissCinematic(targetPage) {
   const splash = targetPage.locator('#cinematic-splash');
   if (await splash.isVisible().catch(() => false)) {
@@ -3744,6 +3861,8 @@ try {
   const started = Date.now();
   let shotIndex = 0;
   let tetherStage = 0;
+  let censusStartedAt = null;
+  let censusResult = null;
   let backgroundWindowId = null;
   let backgroundStage = 0;
   let backgroundBefore = null;
@@ -3781,6 +3900,23 @@ try {
       log(`background-flight: returned native focus; sim advanced ${occluded.simTime - backgroundBefore.simTime}s while occluded`);
     }
     if (TETHER_STRESS && tetherStage === 0) {
+      await page.evaluate(() => {
+        window.__SF_TETHER_EVENTS__ = [];
+        const record = (type) => (payload) => {
+          if (window.__SF_TETHER_EVENTS__.length >= 200) return;
+          window.__SF_TETHER_EVENTS__.push({
+            at: Math.round(performance.now()),
+            type,
+            reason: payload?.reason || payload?.breakReason || null,
+            targetId: payload?.targetId ?? null,
+            load: Number.isFinite(payload?.load) ? payload.load : null,
+          });
+        };
+        for (const name of ['tether:attached', 'tether:released', 'tether:break',
+          'tether:snapCatch', 'massline:snareEnded', 'tether:latchDenied']) {
+          try { window.SF.bus.on(name, record(name)); } catch (_) {}
+        }
+      }).catch(() => {});
       await page.keyboard.press('ControlLeft+Space');
       tetherStage = 1;
       log('tether-stress: nearest latch + thrust');
@@ -3788,6 +3924,34 @@ try {
       await page.keyboard.down('KeyA');
       await page.keyboard.down('BracketLeft');
       tetherStage = 2;
+      // Draw census: name the exact objects filling the tether frame. The hook is removed
+      // after 1.2 s; it is a diagnostic, not a permanent probe.
+      const installed = await page.evaluate(() => {
+        const sys = window.SF?.registry?.get?.('render');
+        const r = sys?.renderer;
+        if (!r || typeof r.renderBufferDirect !== 'function') return false;
+        const original = r.renderBufferDirect;
+        const counts = new Map();
+        let calls = 0;
+        const normalize = (name) => String(name || '?')
+          .replace(/_\d+/g, '_#')
+          .replace(/\d+/g, '#');
+        r.renderBufferDirect = function drawCensus(camera, scene, geometry, material, object) {
+          calls += 1;
+          // Group entity ids and instance suffixes so a long tail of unique meshes is visible
+          // as a family instead of hundreds of one-call rows.
+          const key = `${normalize(object?.name || object?.type)}|${material?.name || material?.type || '?'}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+          return original.apply(this, arguments);
+        };
+        window.__SF_DRAW_CENSUS__ = {
+          calls: () => calls,
+          stop: () => { r.renderBufferDirect = original; },
+          rows: () => [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40),
+        };
+        return true;
+      }).catch(() => false);
+      if (installed) censusStartedAt = elapsedMs;
       log('tether-stress: turn + reel in');
     } else if (TETHER_STRESS && !TETHER_HOLD_STRESS && tetherStage === 2 && elapsedMs >= 12_000) {
       await page.keyboard.up('BracketLeft');
@@ -3824,10 +3988,43 @@ try {
           laneRpc('probeState').then((value) => ({ value }), (error) => ({ error: String(error?.message || error) })),
           new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), 300)),
         ]);
+        const attachment = (() => {
+          const byId = state?.combat?.attachments?.byId;
+          if (!byId || !tether) return null;
+          for (const id in byId) {
+            const a = byId[id];
+            if (a && a.state === 'active'
+              && (a.ownerId === state.playerId || a.controllerId === state.playerId)
+              && a.targetId === tether.targetId) return a;
+          }
+          return null;
+        })();
+        let targetMeshChildren = 0;
+        try { target?.mesh?.traverse?.(() => { targetMeshChildren += 1; }); } catch (_) {}
         return {
           tick: state?.tick, scale: state?.timeScale,
           timeEffects: state ? readTimeEffectsRequests(state) : null,
           active: tether?.active === true, targetId: tether?.targetId ?? null,
+          tetherDetail: tether ? {
+            phase: tether.phase || null,
+            load: Number.isFinite(tether.load) ? tether.load : null,
+            strain: Number.isFinite(tether.strain) ? tether.strain : null,
+            reeling: tether.reeling === true,
+            payingOut: tether.payingOut === true,
+            automaticBreakAllowed: tether.automaticBreakAllowed === true,
+          } : null,
+          attachment: attachment ? {
+            state: attachment.state,
+            breakReason: attachment.breakReason || null,
+            lastTension: attachment.lastTension ?? null,
+            lastImpulse: attachment.lastImpulse ?? null,
+            lastYank: attachment.lastYank ?? null,
+          } : null,
+          targetDetail: target ? {
+            type: target.type || null,
+            dataType: target.data?.typeId || target.data?.enemyId || null,
+            meshChildren: targetMeshChildren,
+          } : null,
           hitchRelief: state?.render ? {
             level: state.render.hitchReliefLevel || 0,
             scale: state.render.hitchReliefScale || 1,
@@ -3859,14 +4056,51 @@ try {
       row.tetherStage = tetherStage;
     }
     snapshots.push(row);
+    if (TETHER_STRESS && censusStartedAt != null && censusResult == null
+      && elapsedMs >= censusStartedAt + 1_200) {
+      censusResult = await page.evaluate(() => {
+        const census = window.__SF_DRAW_CENSUS__;
+        if (!census) return null;
+        census.stop();
+        return { calls: census.calls(), rows: census.rows() };
+      }).catch(() => null);
+    }
     if (!NO_SAMPLE_SHOTS && !PRODUCTION_ROUTE && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
       await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
+      if (shotIndex === 0) {
+        await captureComposedFrame(page, path.join(OUT, 't00-composed.png'), elapsedMs)
+          .catch((err) => log(`composed screenshot failed: ${err}`));
+      }
       shotIndex += 1;
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
-  if (TETHER_STRESS) await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
+  if (TETHER_STRESS) {
+    await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
+    try {
+      const tetherEvents = await page.evaluate(() => window.__SF_TETHER_EVENTS__ || []);
+      await writeFile(path.join(OUT, 'tether-events.json'), JSON.stringify(tetherEvents, null, 2));
+    } catch (_) { /* event recorder is best-effort */ }
+    if (censusResult) {
+      await writeFile(path.join(OUT, 'draw-census.json'), JSON.stringify(censusResult, null, 2));
+    }
+    // Per-frame trace: presented fence clock, playout delay/depth/rate, pack time, player pose,
+    // lane reply/step cost. This is the evidence that distinguishes a fence pin from a worker
+    // stall or a mesh-writer bug.
+    try {
+      const frameTruth = await page.evaluate(() => (
+        window.__SF_FRAME_TRUTH__ && typeof window.__SF_FRAME_TRUTH__.exportJSON === 'function'
+          ? window.__SF_FRAME_TRUTH__.exportJSON({ note: 'tether-stress' })
+          : null
+      ));
+      if (frameTruth) {
+        await writeFile(path.join(OUT, 'frame-truth.json'), JSON.stringify(frameTruth));
+      }
+    } catch (error) {
+      log(`frame-truth export failed: ${error && error.message}`);
+    }
+  }
   // A one-off in-page question on the live flight scene ("what is that object?"), asked after the
   // sample so it cannot perturb the measured window. Printed and kept in the report.
   if (process.env.SPACEFACE_WITNESS_EVAL) {
@@ -3957,6 +4191,13 @@ try {
     const finalShot = path.join(OUT, 't-final.png');
     await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
   }
+  // The final composed frame is captured after the measured window (it cannot perturb the sample)
+  // and only once the hitch governor has returned to relief 0, so the sign-off picture is the
+  // authored post state, not a relief-2 fallback.
+  await page.waitForFunction(() => (Number(window.SF?.state?.render?.hitchReliefLevel) || 0) === 0,
+    null, { timeout: 6000 }).catch(() => {});
+  await captureComposedFrame(page, path.join(OUT, 't-final-composed.png'), Date.now() - started)
+    .catch(() => {});
 } catch (error) {
   primaryError = error;
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
@@ -4218,6 +4459,7 @@ const report = {
   first: snapshots[0] || null,
   last: snapshots[snapshots.length - 1] || null,
   canvasFrames,
+  composedFrames,
   pageErrors,
   consoleHits,
   logs,

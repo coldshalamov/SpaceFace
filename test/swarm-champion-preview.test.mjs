@@ -1,13 +1,12 @@
 // THE NEXT CHAMPION IS A NAMED GOAL, NOT A RUMOR.
 //
-// Fourteen champions rotate every tenth wave and nothing told the player which one was
-// coming — deep-run content like the colossi was invisible until it arrived. swarmNextBossFor
-// resolves the next rotation row at-or-after a wave (wrap-aware, so wave 147 already knows
-// the Iron Maw returns at 150 wearing its numeral), and the combat net speaks it ONCE, at a
-// fixed three-wave lead: "The Tendril waits at wave 75." Boss waves name themselves on
-// arrival; every other wave stays quiet. A Circuit round carries its own boss contract, so
-// the cadence preview never speaks there — a net that names a hull that is not coming
-// teaches the player to ignore the net.
+// The Pit's six champions hold every fifth round of the thirty-round course — and the
+// combat net tells the player which one is coming. swarmNextBossFor resolves the next
+// champion at-or-after a wave (clamp-aware, so a question asked past the course still
+// answers the Forge Regent's round), and the net speaks it ONCE, at a fixed three-wave
+// lead. Boss waves name themselves on arrival; every other wave stays quiet. A Circuit
+// round carries its own boss contract, so the cadence preview never speaks there — a
+// net that names a hull that is not coming teaches the player to ignore the net.
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -94,28 +93,26 @@ test('the next champion is the boss wave at-or-after the wave asked', () => {
   assert.equal(onTheBossWave.wave, 5);
   assert.equal(onTheBossWave.distance, 0);
   assert.equal(swarmNextBossFor(11).id, 'mirrorjaw_foreman');
-  assert.equal(swarmNextBossFor(6).wave, 15);
-  assert.equal(swarmNextBossFor(75).id, 'brood_tendril', 'the colossus rows answer too');
+  assert.equal(swarmNextBossFor(6).wave, 10, 'C01-01: the Corsair Wing rides wave 10');
+  assert.equal(swarmNextBossFor(6).id, 'corsair_wing');
+  assert.equal(swarmNextBossFor(26).id, 'forge_regent',
+    'the course edge answers with its final champion');
 });
 
-test('the wrap rides along — wave 142 previews Iron Maw II, numeral and cycle included', () => {
-  const next = swarmNextBossFor(142);
-  assert.equal(next.id, 'iron_maw');
-  assert.equal(next.wave, 145);
-  assert.equal(next.distance, 3);
-  assert.equal(next.cycle, 1, 'the preview carries the pass');
-  assert.equal(next.label, `${SWARM_BOSS_ROTATION[0].label} II`);
-  assert.equal(next.label, swarmBossFor(145).label, 'the preview names what the wave will field');
-  assert.equal(swarmNextBossFor(150).cycle, 1);
-  assert.equal(swarmNextBossFor(285).label, `${SWARM_BOSS_ROTATION[0].label} III`, 'deeper passes too');
-});
-
-test('junk input and the last boss wave are honest, and the answer is deterministic', () => {
+test('junk input and the course edge are honest, and the answer is deterministic', () => {
   assert.equal(swarmNextBossFor(0).wave, 5, 'junk clamps to wave 1');
   assert.equal(swarmNextBossFor('x').wave, 5);
-  assert.equal(swarmNextBossFor(995).id, 'mirrorjaw_foreman', 'wave 995 is the last legal boss wave');
-  assert.equal(swarmNextBossFor(996), null, 'no champion is promised past the ceiling');
-  assert.equal(swarmNextBossFor(999), null);
+  // C01-03: past the win the deep clock answers — wave 77 hears the Tendril at 80, and the
+  // horizon's end is honest null rather than a clamped champion.
+  assert.equal(swarmNextBossFor(999), null, 'past the last legal boss wave there is no call');
+  const deep = swarmNextBossFor(77);
+  assert.equal(deep.id, 'brood_tendril', 'the deep course names its own champions');
+  assert.equal(deep.wave, 80);
+  assert.equal(deep.distance, 3);
+  assert.equal(swarmNextBossFor(147).id, 'iron_maw', 'the wrap call carries the numeral row');
+  assert.equal(swarmNextBossFor(147).cycle, 1);
+  assert.equal(swarmNextBossFor(26).wave, 30, 'wave 26 still hears the final call');
+  assert.equal(swarmNextBossFor(26).distance, 4);
   assert.deepEqual(swarmNextBossFor(77), swarmNextBossFor(77), 'pure: same input, same answer');
 });
 
@@ -132,31 +129,16 @@ test('wave 2 names the wave-5 champion once — label, target wave and authored 
     `${boss.label} waits at wave ${boss.wave}. ${boss.line}`,
   );
   assert.match(previews[0], /Iron Maw/, 'the authored name reaches the player');
-  assert.match(previews[0], /Throw the pack into the flank berm\./, 'the authored line rides along');
+  assert.match(previews[0], /Throw the pack into it\./, 'the authored line rides along');
   const say = h.emitted.find((e) => e.event === 'voice:say' && /waits at wave/.test(e.payload.text));
   assert.equal(say.payload.channel, 'objective');
   assert.ok(Number.isFinite(say.payload.ttl) && say.payload.ttl > 0);
   survivalAnnounce.destroy();
 });
 
-test('deep runs name deep champions — The Tendril waits at wave 75', () => {
-  const h = boot();
-  openWave(h, 72);
-  const previews = h.previewTexts();
-  assert.equal(previews.length, 1);
-  assert.match(previews[0], /^The Tendril waits at wave 75\./);
-  assert.match(previews[0], /put a rock on the line\./);
-  survivalAnnounce.destroy();
-});
-
-test('the wrap is announced as the escalation it is — Iron Maw II waits at wave 145', () => {
-  const h = boot();
-  openWave(h, 142);
-  const previews = h.previewTexts();
-  assert.equal(previews.length, 1);
-  assert.match(previews[0], /Iron Maw' II waits at wave 145\./);
-  survivalAnnounce.destroy();
-});
+// Retired with C01-01 (see test/RETIRED_SWARM_ENDLESS.md):
+//   - deep runs name deep champions — The Tendril waits at wave 75
+//   - the wrap is announced as the escalation it is — Iron Maw II waits at wave 145
 
 test('repeated wave events never repeat the mention', () => {
   const h = boot();

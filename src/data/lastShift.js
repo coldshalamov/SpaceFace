@@ -1,5 +1,7 @@
 import { SECTOR_ZONES } from './sectorZones.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { counted } from '../core/numberFormat.js';
+
 
 export const LAST_SHIFT = Object.freeze({
   siteId: 'ceres:last-shift:v1', sectorId: 'sector_ceres_belt',
@@ -66,7 +68,7 @@ export function lastShiftArchiveEvidence(state) {
     || ids.some(id => !row.knownClueIds?.includes(id))
     || receipt.text !== lastShiftReport(ids, receipt.destroyedClueIds || [])) return null;
   return { id: 'ceres_last_shift', flag: 'doss_ceres_last_shift', title: 'The Last Shift',
-    copy: `The Last Shift: ${receipt.text}`, detail: ids.length === 3 ? 'three sources' : `${ids.length} source${ids.length === 1 ? '' : 's'}` };
+    copy: `The Last Shift: ${receipt.text}`, detail: ids.length === 3 ? 'three sources' : `${counted(ids.length, 'source', 'sources')}` };
 }
 
 // A local conversation cites the last explicitly filed account, not newly read/unfiled clues.

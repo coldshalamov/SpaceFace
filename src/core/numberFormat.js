@@ -62,6 +62,39 @@ export function formatCount(value, state, options) {
   return formatNumber(Math.max(0, Math.round(Number(value) || 0)), state, options);
 }
 
+const COUNT_WORDS_SMALL = Object.freeze([
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+]);
+
+/**
+ * The ONE singular/plural chooser. `pluralWord(1, 'leg')` is "leg",
+ * `pluralWord(3, 'leg')` is "legs"; pass both arms for irregular nouns
+ * (`pluralWord(n, 'trophy', 'trophies')`) and for verb agreement
+ * (`pluralWord(n, 'was taken', 'were taken')`). Never re-implement per screen —
+ * `INFERENCE_CLASSES.md` guards this with test/player-counts.test.mjs.
+ */
+export function pluralWord(count, singular, plural) {
+  const n = Number(count);
+  const whole = Number.isFinite(n) ? Math.abs(Math.round(n)) : 0;
+  return whole === 1 ? singular : (plural == null ? `${singular}s` : plural);
+}
+
+/**
+ * "<n> <noun>" with the count in the player's locale: counted(3, 'entry')
+ * is "3 entries". options.words spells counts 0..9 ("three crates") — the old
+ * saveLoad countPhrase behaviour; options.bare drops the numeral and returns
+ * just pluralWord (same as calling pluralWord directly).
+ */
+export function counted(count, singular, plural, state, options) {
+  const word = pluralWord(count, singular, plural);
+  if (options && options.bare) return word;
+  const n = Math.max(0, Math.round(Number(count) || 0));
+  const figure = options && options.words && n < COUNT_WORDS_SMALL.length
+    ? COUNT_WORDS_SMALL[n]
+    : formatCount(n, state, options);
+  return `${figure} ${word}`;
+}
+
 /**
  * True when this tag actually renders a grouping separator. Used by tests and by the pseudo-locale
  * audit; false means the tag is a valid locale that simply groups nothing (e.g. some CJK locales

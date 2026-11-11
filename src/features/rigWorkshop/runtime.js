@@ -8,6 +8,8 @@ import { explainWorkshopReason, PART_BUTTONS } from './text.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
 import { isGuidedOnboardingActive } from '../../onboarding/opportunityAdmission.js';
 import { readTensionSensors } from '../../systems/tensionDirector.js';
+import { counted } from '../../core/numberFormat.js';
+
 
 const owners = new WeakMap();
 const dist = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.z || 0) - (b?.z || 0));
@@ -478,7 +480,7 @@ export function createRigWorkshopSystem() {
       if (!rig || !isWorkshopAdventure(this.state)) return;
       const broken = Math.max(rig.connections.filter(c => ['broken', 'detached'].includes(c.state)).length, rig.detachedCount || 0);
       const detail = job ? `${job.title} · ${job.delivered.length}/${job.cargo.length} delivered. ${job.stage === 'pickup' ? 'Follow the cargo marker, approach slowly, then secure an original.' : 'Brake well before the gantry and let the load settle below 6 WU/s and 0.4 rad/s.'}${job.id === 'kiln' ? ' Keep mover assist enabled while braking.' : ''}` : 'Test the rig or carry your own loose payloads. Fly and brake normally; the tow and mover respond through the existing physics.';
-      this._show('field', `${rig.name}${broken ? ` · ${broken} broken connection${broken === 1 ? '' : 's'}` : ''}`, detail,
+      this._show('field', `${rig.name}${broken ? ` · ${counted(broken, 'broken connection', 'broken connections')}` : ''}`, detail,
         [this._option('capture', 'Secure cargo', 'capture'),
           this._option('power', rig.power ? 'Cut mover power' : 'Enable movers', 'power'),
           this._option('couple', 'Couple ship', 'couple'),

@@ -103,6 +103,11 @@ const LOCAL_STALE_ACK_MS = 3000;
 // small under mild congestion; the retained merge still bounds deep stalls.
 const LOCAL_MAX_UNACKED = 4;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
+// Main-thread presentation heartbeat. Every rAF callback posts one; a stall stops the beats.
+// The fence has ~150-300 ms of history, so after that it holds the picture. If the worker kept
+// stepping through the stall, the first frame after it would re-seat seconds ahead — the
+// freeze-then-teleport jump. Hold the clock instead; the world resumes from the held pose.
+const LOCAL_HEARTBEAT_HOLD_MS = 250;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
 const LOCAL_MERGED_PACK_MAX_RECORDS = 32768;
 const LOCAL_MERGED_PACK_MAX_SEGMENTS = 64;
@@ -129,6 +134,9 @@ const localClock = {
   sentAwaitingAck: false,
   sentClockSequence: 0,
   sentJournalEnd: 0,
+  lastHeartbeatAtMs: 0,
+  heartbeatHeld: false,
+  heartbeatHolds: 0,
   unackedSequences: [],
   ackWatchdogTimer: null,
   staleAckRecoveries: 0,
@@ -736,6 +744,20 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   // catch-up/shed policy sees exactly what a heavy step produces.
   runInjectedStall();
   const now = localNowMs();
+  const hasExplicit = Number.isSafeInteger(explicitSteps) && explicitSteps > 0;
+  if (!force && !hasExplicit && localClock.lastHeartbeatAtMs > 0
+    && now - localClock.lastHeartbeatAtMs > LOCAL_HEARTBEAT_HOLD_MS) {
+    // The page cannot present. Do not advance the world into a picture it will later jump
+    // across: drop the stalled wall interval, keep the pose, and wait for the next beat.
+    if (!localClock.heartbeatHeld) {
+      localClock.heartbeatHeld = true;
+      localClock.heartbeatHolds += 1;
+    }
+    localClock.anchorMs = now;
+    localClock.accumulator = 0;
+    scheduleLocalClock();
+    return;
+  }
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
   if (localClock.backpressured && localClock.sentAwaitingAck && !force) return;
   // A timer that fires while the presentation side is backpressured must not
@@ -835,6 +857,10 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     staleAckRecoveries: localClock.staleAckRecoveries || 0,
     stallApplications: localClock.stallApplications || 0,
     stallTotalMs: localClock.stallTotalMs || 0,
+    heartbeatHolds: localClock.heartbeatHolds || 0,
+    heartbeatHeld: localClock.heartbeatHeld === true,
+    heartbeatAgeMs: localClock.lastHeartbeatAtMs > 0
+      ? Math.max(0, now - localClock.lastHeartbeatAtMs) : null,
     backpressured: localClock.backpressured,
     backpressureEpisodes: localClock.backpressureEpisodes,
     backpressureMs: localClock.backpressureTotalMs + (localClock.backpressured
@@ -1200,6 +1226,19 @@ export { localMergeReply, localMaterializePack, localAckReplyAction };
 self.onmessage = (event) => {
   const msg = event && event.data;
   if (!msg || typeof msg !== 'object') return;
+  // Presentation heartbeat: lane bookkeeping only, never parked behind the serial chain. A beat
+  // resumes a held clock from the held pose without charging the stalled wall interval.
+  if (msg.kind === 'laneHeartbeat') {
+    const now = localNowMs();
+    localClock.lastHeartbeatAtMs = now;
+    if (localClock.heartbeatHeld) {
+      localClock.heartbeatHeld = false;
+      localClock.anchorMs = now;
+      localClock.accumulator = 0;
+      scheduleLocalClock();
+    }
+    return;
+  }
   // ACK release is host-independent lane bookkeeping — run it on receipt
   // instead of parking it behind an in-flight tick batch on the serial chain.
   // The chained handler re-applies it through the same sequence check, so a

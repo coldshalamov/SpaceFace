@@ -190,8 +190,13 @@ async function runSeed(seed, jitterZ) {
 
       let deployed = false;
       let actionTick = -1;
+      // EC-G18 one feel: the well is a 1.2 s yank + 2 s hold, so it (and its live cluster
+      // counter) ends inside the chain window. Keep the counter's peak while the well lived.
+      let peakCluster = 0;
       ticks += host.step(CHAIN_TICKS, {
         before: () => {
+          const live = state.fields && state.fields.cluster;
+          if (live && Number.isFinite(live.count)) peakCluster = Math.max(peakCluster, live.count);
           writeRealPathInput(state, {});
           parkAll([...cast, rock]);
           state.input.aimWorld = { x: WELL_CENTER.x, z: WELL_CENTER.z };
@@ -245,9 +250,9 @@ async function runSeed(seed, jitterZ) {
 
       const rating = rateClusterMoment(secondaries);
       const live = rec.ratings[0] || null;
-      const liveFinal = fieldsRt.cluster && Number.isFinite(fieldsRt.cluster.count)
+      const liveFinal = Math.max(peakCluster, fieldsRt.cluster && Number.isFinite(fieldsRt.cluster.count)
         ? fieldsRt.cluster.count
-        : 0;
+        : 0);
       const kinds = rating.kinds.join(',');
       return {
         seed,
