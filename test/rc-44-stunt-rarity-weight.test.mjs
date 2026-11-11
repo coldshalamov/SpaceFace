@@ -78,7 +78,8 @@ test('RC-44: SLINGSHOT GOLF lands heavier than ROCK DISCOVERY', () => {
   // The sheet carries a strict weight ladder; rarity is an attribute, not a new surface.
   // 'rare' is a real tier (stuntRecognition baseScore 140 — Bank Job, Return to Sender,
   // Kickstart, Needle Thread, One-Two): it must sit between uncommon and legendary.
-  const src = readFileSync(fileURLToPath(new URL('../src/ui/stuntCallout.js', import.meta.url)), 'utf8');
+  // G16-02 retired the injected sheet to styles/ui.css — the ladder lives there now.
+  const src = readFileSync(fileURLToPath(new URL('../styles/ui.css', import.meta.url)), 'utf8');
   for (const rarity of ['common', 'uncommon', 'rare', 'legendary']) {
     assert.match(src, new RegExp(`data-rarity="${rarity}"`), `sheet styles ${rarity}`);
   }

@@ -64,8 +64,14 @@ export function createToasts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('toasts');
   const hud = typeof document !== 'undefined' ? document.getElementById('hud') : null;
-  if (root && hud && root.parentNode && root.parentNode !== hud) {
-    hud.appendChild(root);
+  // G16-01 the Stage: the feed slot owns the receipt lane's mount point. It lives inside #hud
+  // (index.html), so the mobile seats' `#hud #toasts` rules keep binding; #hud stays the
+  // fallback when no stage exists (ui-bench, headless).
+  const feedHost = () => (ctx.stage && typeof ctx.stage.slotEl === 'function'
+    ? ctx.stage.slotEl('feed') : null) || hud;
+  const host = feedHost();
+  if (root && host && root.parentNode && root.parentNode !== host) {
+    host.appendChild(root);
   }
   if (root && root.classList) root.classList.add('sf-receipts');
   let liveRegion = document.getElementById('toast-live');
@@ -82,7 +88,8 @@ export function createToasts(ctx) {
   // first card never flashes at the CSS fallback position over the command deck.
   function ensureConnected() {
     if (root && !root.isConnected) {
-      (hud || document.body).appendChild(root);
+      const host = feedHost() || document.body;
+      if (root.parentNode !== host) host.appendChild(root);
       liveRegion = document.getElementById('toast-live');
       positionLane();
     }

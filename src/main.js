@@ -722,6 +722,76 @@ async function boot() {
         setTimeout(launchWhenArmoryKnown, 300);
       }
     }
+    // Dev-only Adventure sector jump (G17-02): `?sector=<id>` skips the title and launches a
+    // fresh Adventure game with the default seed (or `?seed=N`), placing the player in sector `<id>`
+    // at that sector's normal arrival point, in flight. `?shot=1` sets window.__sfShotReady = true
+    // after the sector finishes loading and 3 s of simulation have passed.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined'
+      && new URLSearchParams(location.search).has('sector')) {
+      const devSectorQuery = new URLSearchParams(location.search);
+      const rawSectorId = devSectorQuery.get('sector');
+      const { resolveStartSectorId } = await import('./systems/world.js');
+      const targetSectorId = resolveStartSectorId(rawSectorId);
+      if (!targetSectorId) {
+        console.log(`[SpaceFace] unknown sector '${rawSectorId}', starting normally`);
+      }
+      // Emulate a returning player so First Light cannot intercept the launch.
+      const access = state && state.settings && state.settings.accessibility;
+      if (access && typeof access === 'object') access.firstLightOffered = true;
+      try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+
+      const devSeed = devSectorQuery.has('seed') ? Number.parseInt(devSectorQuery.get('seed'), 10) : undefined;
+      const seedOpt = Number.isFinite(devSeed) && devSeed > 0 ? { seed: devSeed } : {};
+
+      const wantsShot = devSectorQuery.get('shot') === '1';
+
+      if (targetSectorId) {
+        const { NEW_GAME } = await import('./data/newGameDefaults.js');
+        NEW_GAME.startingSectorId = targetSectorId;
+      }
+
+      try {
+        const { dismissConfirm } = await import('./ui/confirm.js');
+        dismissConfirm();
+      } catch (_) {}
+
+      bus.emit('game:new', seedOpt);
+
+      const ensureArrivalAndShot = () => {
+        let waited = 0;
+        const checkArrival = async () => {
+          if (state && state.mode === 'flight') {
+            try {
+              const { dismissConfirm } = await import('./ui/confirm.js');
+              dismissConfirm();
+            } catch (_) {}
+            const worldSystem = registry.get('world');
+            if (targetSectorId && worldSystem && state.world && state.world.currentSectorId !== targetSectorId) {
+              worldSystem.enterSector(targetSectorId);
+            }
+            if (wantsShot) {
+              const startSimTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+              const checkShot = () => {
+                if (state && state.mode === 'flight' && (state.simTime - startSimTime) >= 3) {
+                  if (typeof window !== 'undefined') {
+                    window.__sfShotReady = true;
+                  }
+                  return;
+                }
+                setTimeout(checkShot, 50);
+              };
+              setTimeout(checkShot, 50);
+            }
+            return;
+          }
+          waited += 1;
+          if (waited < 1200) setTimeout(checkArrival, 100);
+          else console.error('[SpaceFace] dev sector route timed out waiting for flight mode');
+        };
+        setTimeout(checkArrival, 100);
+      };
+      ensureArrivalAndShot();
+    }
   } catch (err) {
     showBootError(err);
     throw err;

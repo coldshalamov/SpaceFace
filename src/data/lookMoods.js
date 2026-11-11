@@ -31,32 +31,32 @@ export const LOOK_BASE = deepFreeze({
   surface: {
     // Paint value. 1.0 shows the authored albedo; <1 lifts it toward pastel (the retired
     // Lacquer & Starlight pass shipped 0.80, which is what bleached the fleet).
-    albedoGamma: 0.92,
+    albedoGamma: 0.90,
     // Paint chroma around its own luminance. >1 deepens colour without changing value.
-    albedoSaturation: 1.26,
+    albedoSaturation: 1.18,
     // Share of form shading replaced by graphic light bands. 0 = physical falloff, 1 = poster.
     // Kept moderate so ships, stations, and enemies share a unified physical PBR light response.
     bandMix: 0.20,
     // Colour of the unlit side and of the lit side (multipliers on diffuse light).
     // Raised shadow floor prevents dark hulls and unlit enemies from vanishing into pitch-black voids.
     // Deep slate-ultramarine shadow floor fights warm solar key for two-color contrast.
-    shadowTint: [0.76, 0.74, 0.84],
-    lightTint: [1.08, 1.03, 0.96],
+    shadowTint: [0.70, 0.80, 1.00],
+    lightTint: [1.12, 1.03, 0.87],
     // Dark contour where the hull turns away from the camera. 0 = none.
-    contour: 0.25,
+    contour: 0.18,
     // Clear coat: a second specular lobe over smooth dielectric paint.
     // Calibrated to give a sleek aerospace finish without creating piercing armor-like glare.
     coat: 0.70,
     coatRoughness: 0.32,
     coatEnv: 0.54,
     // Gain on the coat's sun glint. Kept balanced so glints glisten cleanly without flaring out into white bars.
-    coatSun: 0.32,
+    coatSun: 0.25,
     // Coat reflectance at the grazing limb (facing reflectance is a fixed lacquer 0.05).
     coatEdge: 0.42,
     coatTint: [1.0, 1.0, 1.0],
     // Edge light: a coloured grazing-angle rim, strongest away from the key.
-    rim: [0.20, 0.62, 1.0],
-    rimStrength: 0.52,
+    rim: [1.00, 0.70, 0.35],
+    rimStrength: 0.32,
     rimPower: 3.5,
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
@@ -64,10 +64,10 @@ export const LOOK_BASE = deepFreeze({
     // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
     // dark geological faces without changing their hue or texture strata; it is never emission.
     rockFloor: 0.12,
-    rockRim: 0.28,
+    rockRim: 0.20,
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
-    paintCeiling: 0.74,
+    paintCeiling: 0.72,
     // Scale on the shared scene IBL (foundry HDRI) as seen by lit hulls, multiplied by each
     // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
     // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and
@@ -76,31 +76,32 @@ export const LOOK_BASE = deepFreeze({
   },
   post: {
     // How hard the sector wears the grade below (0 = ungraded) and its corner darkening.
-    grade: 0.7,
-    vignette: 0.2,
+    grade: 0.60,
+    vignette: 0.08,
     // Split-tone multipliers for dark and bright pixels.
-    shadowTint: [0.86, 0.96, 1.14],
-    highlightTint: [1.06, 1.01, 0.94],
+    shadowTint: [0.85, 0.96, 1.14],
+    highlightTint: [1.10, 1.02, 0.89],
     // Contrast around mid-grey (1 = none) and global saturation (1 = none).
     // Slightly lifted to give depth, clean separation against black space and pop on hull forms.
-    contrast: 1.07,
-    saturation: 1.25,
+    contrast: 1.02,
+    saturation: 1.14,
     // Extra saturation for muted colours only, so skin-of-paint pops without neon clipping.
-    vibrance: 0.32,
+    vibrance: 0.20,
     // Painted-edge ink and value steps from the retired illustration pass. 0 = clean.
     ink: 0.08,
     // Colour of bloom spill: subtle electric blue-white aura.
-    bloomTint: [0.98, 1.01, 1.05],
+    bloomTint: [1.04, 1.00, 0.94],
     // Corner darkening colour (multiplied in at full vignette): deep cosmic midnight.
-    vignetteTint: [0.01, 0.02, 0.04],
+    vignetteTint: [0.04, 0.06, 0.14],
   },
   rig: {
-    keyHex: 0xfff0dc, rimHex: 0x4fc8ff, fillHex: 0x5c7cff, ambientHex: 0x27345c,
-    // Darkness (owner, 2026-10-20: "dark, with lonely lights piercing the darkness"). Gains on the
+    keyHex: 0xffd49a, rimHex: 0xffc477, fillHex: 0x718bd1, ambientHex: 0x394568,
+    // Light (owner, 2026-11-11: "too dark, bleak and depressing" — supersedes the 2026-10-20 darkness;
+    // the lead chose concept A, a working harbour at golden hour: design/game/look/concepts/). Gains on the
     // sector's authored ambient and fill intensities. The key stays a hard rake and the rim keeps
     // silhouettes, so the side a sun does not reach is left for real lamps to find.
-    ambientGain: 0.6,
-    fillGain: 0.5,
+    ambientGain: 0.90,
+    fillGain: 0.80,
   },
 });
 
@@ -144,7 +145,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.88, 0.82, 1.22],
-      grade: 0.9, vignette: 0.26,
+      grade: 0.75, vignette: 0.14,
       highlightTint: [1.10, 0.97, 1.02],
       contrast: 1.08,
       saturation: 1.28,
@@ -154,7 +155,7 @@ export const LOOK_MOODS = deepFreeze({
       vignetteTint: [0.05, 0.01, 0.08],
     },
     rig: { keyHex: 0xffd9ec, rimHex: 0x19e6ff, fillHex: 0xd24bff, ambientHex: 0x2a1f52,
-      ambientGain: 0.45, fillGain: 0.35 },
+      ambientGain: 0.85, fillGain: 0.75 },
   },
 
   // Sker Haven: a yard at night under sodium lamps. Amber against deep blue.
@@ -170,7 +171,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.80, 0.94, 1.22],
-      grade: 0.85, vignette: 0.24,
+      grade: 0.72, vignette: 0.12,
       highlightTint: [1.14, 1.0, 0.84],
       contrast: 1.07,
       saturation: 1.26,
@@ -179,7 +180,7 @@ export const LOOK_MOODS = deepFreeze({
       vignetteTint: [0.01, 0.02, 0.06],
     },
     rig: { keyHex: 0xffb45e, rimHex: 0x32c8ff, fillHex: 0x3a5cff, ambientHex: 0x1c2a58,
-      ambientGain: 0.45, fillGain: 0.35 },
+      ambientGain: 0.85, fillGain: 0.75 },
   },
 
   // Vesta Forge: furnace orange against teal. The classic hot/cold split, pushed.
@@ -192,7 +193,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.80, 1.0, 1.12],
-      grade: 0.8, vignette: 0.24,
+      grade: 0.70, vignette: 0.12,
       highlightTint: [1.16, 1.0, 0.84],
       contrast: 1.06,
       bloomTint: [1.10, 0.98, 0.86],
@@ -214,7 +215,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.86, 0.94, 1.18],
-      grade: 0.75, vignette: 0.24,
+      grade: 0.68, vignette: 0.12,
       highlightTint: [0.98, 1.02, 1.08],
       contrast: 1.05,
       saturation: 1.18,
@@ -255,7 +256,7 @@ export const LOOK_MOODS = deepFreeze({
     },
     post: {
       shadowTint: [0.78, 1.04, 1.02],
-      grade: 0.9, vignette: 0.26,
+      grade: 0.75, vignette: 0.14,
       highlightTint: [1.06, 0.96, 1.10],
       contrast: 1.08,
       saturation: 1.26,
@@ -265,7 +266,7 @@ export const LOOK_MOODS = deepFreeze({
       vignetteTint: [0.04, 0.01, 0.07],
     },
     rig: { keyHex: 0xc8b6ff, rimHex: 0x54ffb0, fillHex: 0x4ddc92, ambientHex: 0x2c2a52,
-      ambientGain: 0.45, fillGain: 0.35 },
+      ambientGain: 0.85, fillGain: 0.75 },
   },
 });
 

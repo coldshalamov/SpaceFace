@@ -12,9 +12,12 @@ const hudStyles = read('../src/ui/views/hudStyles.js');
 const hudSrc = read('../src/ui/hud.js');
 const toastsSrc = read('../src/ui/toasts.js');
 const floatSrc = read('../src/ui/floatingText.js');
-const hailSrc = read('../src/ui/contactHailPrompt.js');
 const lawSrc = read('../src/ui/sectorLawPresenter.js');
-const stuntSrc = read('../src/ui/stuntCallout.js');
+// G16-02: contactHailPrompt's and stuntCallout's injected sheets retired to styles/ui.css —
+// their motion (and both reduced-motion guards) live in the same canonical sheet now.
+const uiCss = read('../styles/ui.css');
+const hailSrc = uiCss;
+const stuntSrc = uiCss;
 const wingmanSrc = read('../src/ui/wingmanRadial.js');
 const deckCss = read('../styles/prompt-deck.css');
 const commsCss = read('../styles/commsradial.css');
