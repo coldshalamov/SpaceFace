@@ -28,13 +28,14 @@ Or paste this into any agent window (Devin pane, Claude, anything):
 
 ## The gate
 
-The lead runs `npm run gate` after every batch of fleet commits and before any push. It boots
-Adventure through the real route (`check:playable`), boots Swarm headless for one round
+The lead runs `npm run gate` after every batch of fleet commits and before any push. It lints
+every relative `src/` import specifier (`check:src-imports`), boots Adventure through the real
+route (`check:playable`), boots Swarm headless for one round
 (`player-truth --mode=swarm --rounds=1`), and replays the deterministic 47-A sim (`check:sim`),
 stopping at the first failure — one line per step, then `GATE PASS` or `GATE FAIL` (same lines
 in `.devshots/fleet/gate-last.txt`, full step logs in `.devshots/fleet/gate-<step>.log`).
 A red gate means the batch is fixed or reverted before anything else lands.
-`npm run gate -- --quick` runs the Adventure boot only.
+`npm run gate -- --quick` runs the import lint plus the Adventure boot only.
 
 ## Who does what
 

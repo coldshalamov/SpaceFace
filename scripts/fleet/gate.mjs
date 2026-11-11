@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Fleet stability gate — one command that says "the game still works".
 //
-//   npm run gate               all three steps, stopping at the first failure
-//   npm run gate -- --quick    step 1 only (Adventure boot)
+//   npm run gate               all four steps, stopping at the first failure
+//   npm run gate -- --quick    steps 1–2 only (import lint + Adventure boot)
 //
-//   1. boot-adventure  npm run check:playable    real-route boot: menu, launch, hull, ship
+//   1. import-lint     npm run check:src-imports  every relative src/ specifier is canonical
+//                                               and resolves verbatim — the `.//` boot brick
+//   2. boot-adventure  npm run check:playable     real-route boot: menu, launch, hull, ship
 //                                               mesh, world, controls, no exception/shader error
-//   2. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1   headless Swarm boot
-//   3. sim-47a         npm run check:sim         deterministic 47-A replay
+//   3. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1   headless Swarm boot
+//   4. sim-47a         npm run check:sim          deterministic 47-A replay
 //
 // Prints one line per step (PASS boot-adventure 74s / FAIL boot-swarm: <first error line>),
 // then GATE PASS or GATE FAIL, writes the same to .devshots/fleet/gate-last.txt, and exits
@@ -24,6 +26,7 @@ const QUICK = process.argv.slice(2).includes('--quick');
 const BUDGET_MS = 12 * 60 * 1000;
 
 const STEPS = [
+  { name: 'import-lint', args: ['run', 'check:src-imports'] },
   { name: 'boot-adventure', args: ['run', 'check:playable'] },
   { name: 'boot-swarm', args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1'] },
   { name: 'sim-47a', args: ['run', 'check:sim'] },
@@ -87,7 +90,7 @@ const emit = (l) => { lines.push(l); console.log(l); };
 const deadline = Date.now() + BUDGET_MS;
 let gateOk = true;
 
-for (const step of QUICK ? STEPS.slice(0, 1) : STEPS) {
+for (const step of QUICK ? STEPS.slice(0, 2) : STEPS) {
   const remaining = deadline - Date.now();
   if (remaining <= 0) {
     emit(`FAIL ${step.name}: gate time budget (12m) already spent`);

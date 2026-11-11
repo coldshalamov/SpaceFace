@@ -50,7 +50,7 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
 - Program: `board-chunks.mjs` for the live §1C seams. `program-dispatch.mjs --next` / `--ready` / `--id PQ-XXX` only for the old packet queue. A drained dispatch is the board, not an empty plan.
 - Simulation: `node scripts/agent-loop.mjs sim <scenario...>` for a no-boot batch; `sf-sim.mjs` and focused `check-*-sim`/compare scripts remain the owner doors. `--trace` adds diagnostic handling artifacts, never a second simulator.
 - Runtime liveness: `probe-runtime-witness.mjs` → `.devshots/runtime-witness/`.
-- Stability gate: `npm run gate` (`scripts/fleet/gate.mjs`) — playable boot → headless swarm boot → 47-A sim replay, one verdict; `--quick` for the boot only.
+- Stability gate: `npm run gate` (`scripts/fleet/gate.mjs`) — src import lint → playable boot → headless swarm boot → 47-A sim replay, one verdict; `--quick` runs the lint + boot only.
 - Browser/Electron: launcher/probe scripts plus the shared game server and validation broker.
 - Frontend look/iteration: `node scripts/ui-bench.mjs` ([`../docs/UI_VISUAL_ITERATION.md`](../docs/UI_VISUAL_ITERATION.md)). A screen the bench mounts does not need a game boot. Batch viewports with `--viewports`; inspect PNGs and finish untried controls before claiming the screen is done.
 - Assets / UI: the focused reachability, a11y, contrast, labels, and compositor checks.
