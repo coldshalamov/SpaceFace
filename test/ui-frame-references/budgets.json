@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "323a63a932ca6ebf7a076a0c3454a4ceebf87d392ee5719ca72f86fa6f04a3b0",
+  "uiSourceDigest": "f78a8b66e951c644792d6d60d5561152e96df8d6ad49160e77bdaaf2f10be69f",
   "uiSourceFiles": {
     "index.html": "9675d8b65c4623cc9aa48ad94c670479f78ce1b0f2d05166fa9a52b44d509e04",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -387,7 +387,7 @@
     "src/ui/station/screens/events.js": "b9ca90d981109747f49d985963931239008062a0d80cb3b9d6452bbc705dd860",
     "src/ui/station/screens/factions.js": "2f5f3b753950448d3aafbb63def2af4d4ec7e04365c27b292839874668fe1915",
     "src/ui/station/screens/fhChrome.js": "ca151390af002a332af6cd1327eaa79d138fc6ccc7d128fab85bc75285c8b827",
-    "src/ui/station/screens/industry.js": "b897671d13bb1cc8e222a20db07d8b3fc6bf252e41f9861a94c9ca2e87d0734b",
+    "src/ui/station/screens/industry.js": "944bb7589b47df80931683e56263f1a79e529e8a1b4350ec66c0514e3afafc00",
     "src/ui/station/screens/ledger.js": "7ab2763cfa6f4bcc2a075cc73bd858c120c22d735fb6f1941ce60da330e9be12",
     "src/ui/station/screens/market.js": "3c80037835310cfcdbd5f6d795aed1aad330fe48e785f693ef20bc6e27c3e100",
     "src/ui/station/screens/shipworks.js": "bbcfb0bae033990a9be43f3e1329bb91fe1cd990a8b45ef2d5a80887f93e0c11",
