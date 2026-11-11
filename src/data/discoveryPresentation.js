@@ -1728,7 +1728,7 @@ export function stakeBookmarkRows(state) {
     Object.freeze({
       label: 'COPIED OPEN',
       value: live > 0
-        ? `${live} PAGE${live === 1 ? '' : 'S'} — FILED AS AR-3\'S OWN RECOMMENDATIONS`
+        ? `${counted(live, 'PAGE', 'PAGES')} — FILED AS AR-3\'S OWN RECOMMENDATIONS`
         : 'THE COUNT RIDES AR-3\'S LOG, NOT THIS PAGE — THE RIBBON STAYS TIED',
       sealed: false,
     }),

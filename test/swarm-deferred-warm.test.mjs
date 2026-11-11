@@ -38,9 +38,12 @@ test('wave 1 fields only the wasp: the launch warm pays a single archetype', () 
 
 test('eligibility is cumulative and boss packages join on their wave', () => {
   assert.deepEqual([...swarmEligibleEnemyIds(2)].sort(), ['reaver_pirate', 'wasp_swarmer']);
+  // C01-01: the first champion is the wave-5 Iron Maw; wave 10 is the Corsair Wing's round.
+  const wave5 = swarmEligibleEnemyIds(5);
+  assert.ok(wave5.has('dreadnought_boss'), 'the first champion wave fields the dreadnought');
   const wave10 = swarmEligibleEnemyIds(10);
-  assert.ok(wave10.has('dreadnought_boss'), 'the first boss wave fields the dreadnought');
   assert.ok(wave10.has('corsair_raider'), 'the corsair unlocks on its own wave too');
+  assert.equal(wave10.has('dreadnought_boss'), false, "the Maw does not ride the Wing's round");
   // Nothing ever leaves the set: a wave N+1 warm covers everything earlier waves covered.
   for (const id of swarmEligibleEnemyIds(9)) assert.ok(wave10.has(id), `${id} stays covered`);
 });

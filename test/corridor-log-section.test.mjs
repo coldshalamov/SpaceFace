@@ -93,7 +93,7 @@ test('corridor log: the receipts ring renders newest-first with outcome and age'
     assert.ok(html.includes('THE GRANDEE TRANSIT'), 'the newest receipt leads');
     assert.ok(html.indexOf('THE GRANDEE TRANSIT') < html.indexOf('SALVAGE WATCH'), 'newest first');
     assert.ok(html.includes('TRANSIT OVER'), 'the outcome word is read');
-    assert.ok(html.includes('10 min ago'), `the age reads: ${html}`);
+    assert.ok(html.includes('10 minutes ago'), `the age reads: ${html}`);
     assert.ok(html.includes('came and went clean'), 'the receipt text is the body');
     assert.equal(state.encounterDirector.receipts.length, 2, 'rendering does not mutate the ring');
   } finally {
