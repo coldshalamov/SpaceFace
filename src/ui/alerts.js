@@ -183,7 +183,12 @@ export function createAlerts(ctx) {
   // named slot; nothing about the pills' styling or ids changes.
   const bannerHost = ctx.stage && typeof ctx.stage.slotEl === 'function' ? ctx.stage.slotEl('banner') : null;
   if (root && bannerHost && root.parentNode !== bannerHost) bannerHost.appendChild(root);
-  const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, expiresAt, el, wasShown }
+  // G16-03 the Stage enforces: every pill and the one-voice floor are banner items, so the
+  // slot's one-visible queue (severity first, then FIFO) decides what the strip shows — two
+  // information alerts can never draw on top of each other again. The pills carry their own
+  // annunciator chrome, so they mount bare (no second glass frame).
+  const stage = ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
+  const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, expiresAt, el, wasShown, stageHandle }
   const expiredKeys = [];
   let nextExpiryAt = Infinity;
   let blockedMills = new Set();
@@ -224,12 +229,19 @@ export function createAlerts(ctx) {
     // every severity lit the same amber dot. Steady red (no blink): pills are lit controls.
     if (rec._lens) rec._lens.className = `dp-annunc__lens dp-lamp${sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     recomputeNextExpiry();
-    render();
+    if (stage) {
+      const el = ensureEl(rec);
+      if (rec._txt.textContent !== rec.text) rec._txt.textContent = rec.text;
+      rec.stageHandle = stage.show('banner', el, { id: `alert:${rec.key}`, severity: rec.sev, bare: true });
+    } else {
+      render();
+    }
   }
 
   function clear(key) {
     const rec = map.get(key);
     if (!rec) return;
+    if (rec.stageHandle) { rec.stageHandle.clear(); rec.stageHandle = null; }
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     map.delete(key);
     recomputeNextExpiry();
@@ -336,13 +348,14 @@ export function createAlerts(ctx) {
     for (let i = 0; i < expiredKeys.length; i++) {
       const rec = map.get(expiredKeys[i]);
       if (!rec) continue;
+      if (rec.stageHandle) { rec.stageHandle.clear(); rec.stageHandle = null; }
       if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
       map.delete(rec.key);
       dirty = true;
     }
     expiredKeys.length = 0;
     if (dirty) recomputeNextExpiry();
-    if (dirty) render();
+    if (dirty && !stage) render();
   }
 
   function recomputeNextExpiry() {
@@ -379,6 +392,8 @@ export function createAlerts(ctx) {
   let floorEl = null;
   let floorId = null;
   let floorSpokenText = null;
+  let floorHandle = null;
+  let floorHandleSev = null;
   let politeLive = null;
   let dangerLive = null;
 
@@ -406,7 +421,7 @@ export function createAlerts(ctx) {
 
   function surfaceFloor(p) {
     if (!root || !p || !p.text) return;
-    floorId = p.id != null ? String(p.id) : '_floor';
+    const nextFloorId = p.id != null ? String(p.id) : '_floor';
     const sev = floorSeverity(p);
     if (!floorEl) {
       floorEl = document.createElement('div');
@@ -429,10 +444,24 @@ export function createAlerts(ctx) {
     // Danger is announced assertively (mirrors the prior danger-pill a11y behavior); every other
     // voice is polite so it never interrupts a screen reader mid-sentence.
     // Identical line already on the floor (same-id coalesce / re-surface) — keep DOM, no re-speak.
-    if (floorEl.parentNode === root && floorSpokenText === p.text) return;
+    if (nextFloorId === floorId && floorSpokenText === p.text) return;
     floorEl._txt.textContent = p.text;
     floorSpokenText = p.text;
-    if (floorEl.parentNode !== root) root.appendChild(floorEl);
+    // A new voice id replaces the old floor item outright — the arbiter clears before surfacing,
+    // but a missed clear must not leave a stale banner record behind.
+    if (floorHandle && floorId !== nextFloorId) { floorHandle.clear(); floorHandle = null; }
+    floorId = nextFloorId;
+    if (stage) {
+      // The floor is one banner item like the pills: it mounts bare (own chrome) and obeys the
+      // slot's queue — a danger voice preempts an info pill and the pill returns on clear.
+      if (!floorHandle || floorHandleSev !== sev
+        || (!floorHandle.visible && !floorHandle.queued)) {
+        floorHandleSev = sev;
+        floorHandle = stage.show('banner', floorEl, { id: `floor:${floorId}`, severity: sev, bare: true });
+      }
+    } else if (floorEl.parentNode !== root) {
+      root.appendChild(floorEl);
+    }
     // The floor slot is RESERVED: the element stays mounted for the session and only turns
     // visible between voices. Toggling visibility (not display, not append/remove) keeps its
     // layout box, so the persistent pills below never shift ~30-40px when a voice surfaces or
@@ -452,9 +481,10 @@ export function createAlerts(ctx) {
     if (!floorEl) return;
     // Ignore a stale clear for a floor already replaced by a newer surface.
     if (p && p.id != null && String(p.id) !== floorId) return;
-    // Slot stays reserved: keep the element mounted and its layout box (text included, so the
-    // height is exact) and only turn it invisible — the pills below never move. A hidden
-    // visibility box is dropped from the accessibility tree, so the line truly goes silent.
+    // Staged: the floor record leaves the banner slot (a queued line drops out, a visible one
+    // frees the seat for the pill or floor behind it). Unstaged: the reserved box goes invisible.
+    if (floorHandle) { floorHandle.clear(); floorHandle = null; }
+    floorHandleSev = null;
     floorEl.style.visibility = 'hidden';
     if (politeLive) politeLive.textContent = '';
     if (dangerLive) dangerLive.textContent = '';
