@@ -872,9 +872,13 @@ export function objectInfoLine(t, state, p, dist) {
     // same scan gate: how it died (the cause's black-box evidence), what shipment it was
     // flying (freight identity), and how long it has been dead (the wreck's own kill stamp
     // against the 10-sim-minute day the world clock shares). Unscanned hulls tell nothing.
-    if (!record && t.type === 'wreck' && d.scanned) {
+    // An identified generic wreck story does not replace this independently witnessed label.
+    // Keep its scan gate, but do not put paperwork behind the black-box deduplication gate.
+    if (t.type === 'wreck' && d.scanned) {
       const paper = normalizePatrolPaperwork(d.patrolPaperwork);
       if (paper) facts.push(`Owner: ${paper.owner}`, paper.cargo, 'Seal closed');
+    }
+    if (!record && t.type === 'wreck' && d.scanned) {
       const evidence = d.causeContract && typeof d.causeContract.evidence === 'string'
         ? d.causeContract.evidence.trim() : '';
       if (evidence) facts.push(localizeText('Black box: {how}', { how: evidence }));

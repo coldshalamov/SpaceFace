@@ -1,4 +1,4 @@
-import { patrolPaperworkAction } from '../../missions/patrolPaperwork.js';
+import { patrolPaperworkAction, patrolContractBrief } from '../../missions/patrolPaperwork.js';
 import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 import { book4ChoiceAction } from '../book4Choice.js';
 import { cinderJournalAction } from '../../missions/cinderRoute.js';
@@ -923,11 +923,12 @@ export function missionCommandBrief(m, state) {
   const firstSample = contract47aReadout(m);
   const field = cinderJournalAction(state);
   const cinder = field?.missionId === m.id ? field : null;
+  const patrol = patrolContractBrief(state, m);
   return Object.freeze({
     what: objectiveText(m),
     where: registry?.where || firstSample?.where || destLabel(m),
-    how: cinder?.body || stripNextPrefix(nextStepText(m, state)),
-    why: missionPurposeText(m),
+    how: cinder?.body || patrol?.how || stripNextPrefix(nextStepText(m, state)),
+    why: patrol?.why || missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
     risk: [term('Risk', 'R0 / route pending'), stake ? stake.text : 'no collateral'].join(' · '),
     completion: missionProgressLabel(m),
@@ -1892,7 +1893,7 @@ export function storyActionForBeat(beat, state) {
       };
     }
     case 6:
-      return {
+      return patrolPaperworkAction(state) || {
         tone: 'primary',
         label: 'ASSET',
         title: 'Plant income',

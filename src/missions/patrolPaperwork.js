@@ -54,8 +54,30 @@ export function patrolPaperworkText(paper) {
   return row ? `${CAPTAINS[row.captainId]}: ${row.owner}; ${row.cargo}. The seal remains closed.` : '';
 }
 
+// A briefing is a view of what this pilot actually scanned, not a promise about Sorrel's hold.
+export function patrolContractBrief(state, mission) {
+  if (mission?.type !== 'patrol_clear' || mission.storyTag !== TAGS.cap_redcut_sorrel
+    || mission.storyTarget?.namedCaptainId !== 'cap_redcut_sorrel') return null;
+  const sable = normalizePatrolObservations(state?.aftermathWrecks?.patrolObservations).cap_sable_iask;
+  return {
+    how: 'Track Redcut Sorrel in Charon Expanse and clear the marked hull. After the fight, you can scan the wreck before stripping it. The scan is optional.',
+    why: sable
+      ? 'Sable’s label named Vale Holdings and three years of sealed administrative records. Sorrel is the second Patrol contract. If his wreck survives, compare its label yourself. Clearing the lane pays; a matching label would still not open either seal.'
+      : 'Sorrel is the second Patrol contract. Clearing his marked hull finishes the chain. A surviving wreck may carry a readable label; scanning it is optional, and its contents remain sealed.',
+  };
+}
+
+export function patrolPaperworkComparison(state) {
+  const rows = normalizePatrolObservations(state?.aftermathWrecks?.patrolObservations);
+  const sable = rows.cap_sable_iask, sorrel = rows.cap_redcut_sorrel;
+  if (!sable || !sorrel || sable.missionId === sorrel.missionId
+    || sable.markerId === sorrel.markerId) return ''; // Two labels must identify two independent hulls.
+  return 'Two defeated hulls. The same owner: VALE HOLDINGS LLC. Sable and Sorrel both carried labels for three years of sealed administrative records. You read both labels, not the records inside. This does not identify Helix.';
+}
+
 export function patrolPaperworkAction(state) {
-  if (state?.story?.branch !== 'patrol' || state.story.beatIndex !== 5) return null;
+  const beat = state?.story?.beatIndex;
+  if (state?.story?.branch !== 'patrol' || (beat !== 5 && beat !== 6)) return null;
   if (state.missions?.active?.some(m => m?.status === 'active' && /^campaign47a:b5:patrol:[12]$/.test(m.storyTag || ''))) return null;
   const observations = normalizePatrolObservations(state.aftermathWrecks?.patrolObservations);
   const pending = Object.values(state.aftermathWrecks?.bySector || {}).flat().find(marker =>
@@ -65,8 +87,18 @@ export function patrolPaperworkAction(state) {
     ? ' The Weighing remains unverified; this paperwork does not identify Helix.' : ' This paperwork does not identify Helix.';
   if (pending) return { tone: 'primary', label: 'WRECK RECORD',
     title: `Scan ${CAPTAINS[pending.patrolPaperwork.captainId]}’s wreck`,
-    body: 'Find the defeated captain’s hulk in Charon Expanse. Fly within scanner range and pulse the scanner before stripping it. The next patrol contract remains available.' + caveat,
+    body: 'Find the defeated captain’s hulk in Charon Expanse. Fly within scanner range and pulse the scanner before stripping it. '
+      + (beat === 5 ? 'The next patrol contract remains available.' : 'Patrol is complete. This scan is optional; you can leave and deploy your first income asset.') + caveat,
     meta: 'Optional evidence' };
+  if (beat === 6) {
+    const comparison = patrolPaperworkComparison(state);
+    if (!comparison && !observations.cap_sable_iask && !observations.cap_redcut_sorrel) return null;
+    const record = comparison || `${observations.cap_sable_iask ? 'Sable’s' : 'Sorrel’s'} wreck label names Vale Holdings and three years of sealed administrative records. You have no second observed label to compare. The contents remain sealed.`;
+    return { tone: 'primary', label: 'ASSET', title: 'Carry the record forward',
+      body: record + ' Patrol is complete. Deploy a drone, trader, or outpost to start earning while you fly.'
+        + (state.story.flags?.weighing_receipt?.outcome === 'cleared_unverified' ? ' The Weighing remains unverified.' : ''),
+      meta: comparison ? 'Two labels observed · contents sealed' : 'One label observed · contents sealed' };
+  }
   if (observations.cap_sable_iask) return { tone: 'primary', label: 'CHAIN', title: 'Take the next Patrol contract',
     body: 'Sable’s wreck record names Vale Holdings and three years of sealed administrative records. You read the label, not its contents. Return to Coalition for the next contract.' + caveat,
     meta: 'Wreck record observed' };

@@ -1,4 +1,4 @@
-import { capturePatrolPaperwork, normalizePatrolPaperwork, normalizePatrolObservations, patrolPaperworkText } from '../missions/patrolPaperwork.js';
+import { capturePatrolPaperwork, normalizePatrolPaperwork, normalizePatrolObservations, patrolPaperworkText, patrolPaperworkComparison } from '../missions/patrolPaperwork.js';
 import { ownsFiniteWinnowManifest } from '../world/vestaWinnowRecovery.js';
 import { ownsFiniteCharonSupplyManifest } from '../world/charonSalvageSupply.js';
 // aftermathWrecks.js - BP-01/C11 Battle-Aftermath Persistence.
@@ -3005,7 +3005,7 @@ export const aftermathWrecks = {
     own.patrolObservations[paper.captainId] = { ...paper, markerId: marker.markerId,
       sectorId: marker.sectorId, observedAt: this.state.simTime };
     this.bus.emit('comms:log', { from: 'WRECK RECORD', kind: 'story',
-      text: patrolPaperworkText(paper) + ' Label observed; contents not recovered. This does not identify Helix.' });
+      text: patrolPaperworkComparison(this.state) || patrolPaperworkText(paper) + ' Label observed; contents not recovered. This does not identify Helix.' });
     return true;
   },
 
