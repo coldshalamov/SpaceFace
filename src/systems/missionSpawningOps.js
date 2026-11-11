@@ -36,7 +36,7 @@ import { spawnReckoning } from '../missions/reckoningRuntime.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { CLEAN_CYLINDER } from '../data/cleanCylinder.js';
 import { pointContaminationAt } from '../data/alienEcology.js';
-import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { sectorLocalToGlobalForSector, globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { QUIET_PASSAGE, evaluatePassengerHeatProximity } from '../data/heatLure.js';
 import { ESCORT_TURN_DELAY_S, PHYSICAL_ROLE, PHYSICAL_TYPE_SET, SECTOR_BY_ID, authoredDefinitionOf, authoredEncounterOf, b2RescueActorCount, b2RescueActorForRole, b2RescueActorIdentity, b2RescueActorIndexFromEntity, completedMissionTargetSlots, contractClaimSiteMission, convoyWreckPocket, driveDisabledRuntime, ensureB2RescueActorOutcomes, isCampaign47aB2Rescue, isMutationRecovery, lowestVacantSlot, missionHostileSpawnPos, missionStoryTargetSpawnPos, mulberryLocal, physicalRoleOf, stableEntityId, wrapAngleLocal } from './missionShared.js';
 import { RECORD_KIND, ensureWorldRecords, missionIdentityOf, stableRecordId } from '../world/worldRecords.js';
@@ -196,6 +196,15 @@ export const missionSpawningOps = {
       if (starterBuoy && (e.type !== 'payload' || e.data?.physicalRole !== PHYSICAL_ROLE.SLAG_CORE
         || e.data?.starterWorkdayVersion !== m.params.starterWorkdayVersion
         || e.data?.starterJobId !== m.params.starterJobId || e.data?.starterStep !== m.params.starterStep)) return false;
+      if (m.params?.cleanCylinder) {
+        const key = `mission:${m.id}:0`;
+        if (m.type !== 'escort' || m.status !== 'active' || e.type !== 'ship'
+          || this.state.entities.get(e.id) !== e || e.data?.missionId !== m.id || e.data?.missionTag !== m.id
+          || missionTargetSlotOf(e, m.id) !== 0 || e.data.identityKey !== key
+          || e.data.worldRecordId !== stableRecordId(this.state.meta?.seed || 1,
+            m.destSectorId, RECORD_KIND.MISSION_TARGET, key)
+          || [e.homeSectorId, e.data.homeSectorId, e.data.sectorId].some(id => id != null && id !== m.destSectorId)) return false;
+      }
       const mid = missionIdentityOf(e);
       return mid != null && String(mid) === String(cinderTargetOwner(m));
     });
@@ -214,6 +223,7 @@ export const missionSpawningOps = {
     const ordered = [];
     for (const e of candidates) {
       let slot = missionTargetSlotOf(e, cinderTargetOwner(m));
+      if (m.params?.cleanCylinder && usedSlots.has(slot)) continue;
       // A Weighing hull keeps its exact authored slot. Do not repair a duplicate or
       // completed survivor into a new target and thereby fabricate a fresh formation.
       if (isWeighingOperation(m) && (usedSlots.has(slot) || completedMissionTargetSlots(m).has(slot))) {
@@ -277,6 +287,22 @@ export const missionSpawningOps = {
           usedB2ActorIndices.set(role, used);
           e.data.missionActorId = b2RescueActorIdentity(m, actor, actorIndex);
         }
+      }
+      // World records retain this mission's slot, body and condition, but not escort
+      // steering metadata. Rebind only the charge's exact owned slot, never another ship.
+      if (m.params?.cleanCylinder && e.type === 'ship' && slot === 0) {
+        e.team = 0;
+        e.factionId = m.factionId;
+        e.homeSectorId = m.destSectorId;
+        e.data.escortee = 'lead';
+        e.data.cleanCylinderOf = String(m.id);
+        e.data.machine = { kind: 'shepherd' };
+        if (typeof e.data.suppressionOffline !== 'boolean') e.data.suppressionOffline = true;
+        e.data.name = 'Shepherd-class charge';
+        // Mission intent owns this hull. An absent AI can be re-created as {} by
+        // other systems and admitted to tactical maneuvering; explicit passive is durable.
+        e.data.ai = { passive: true, roe: 'hold_fire' };
+        e.data.intent ||= { moveX: 0, moveZ: 0, brake: true, boost: false, fire: false };
       }
       ordered.push({ id: e.id, slot });
       if (!existing.has(e.id)) adopted++;
@@ -1233,6 +1259,7 @@ export const missionSpawningOps = {
         // No data.ai → the AI system skips it (it requires data.ai); WE steer it via data.intent in
         // update() so it runs the lane instead of dogfighting. Seed a neutral intent.
         delete spec.data.ai;
+        if (m.params?.cleanCylinder) spec.data.ai = { passive: true, roe: 'hold_fire' };
         spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
         let ent;
         try {
@@ -1411,7 +1438,8 @@ export const missionSpawningOps = {
 
   _cleanCylinderGlobal(pos) {
     const world = this.registry?.get('world');
-    return world?._toGlobal ? world._toGlobal(pos) : { x: pos.x, z: pos.z };
+    return world?._toGlobal ? world._toGlobal(pos, CLEAN_CYLINDER.sectorId)
+      : sectorLocalToGlobalForSector(pos, CLEAN_CYLINDER.sectorId);
   },
 
   _snapshotCleanCylinder(m) {
@@ -1419,7 +1447,8 @@ export const missionSpawningOps = {
     const lead = c && this.state.entities.get(m._escorteeId);
     if (!lead?.alive) return;
     const world = this.registry?.get('world');
-    const local = world?._toLocal ? world._toLocal(lead.pos) : lead.pos;
+    const local = world?._toLocal ? world._toLocal(lead.pos, CLEAN_CYLINDER.sectorId)
+      : globalToSectorLocalForSector(lead.pos, CLEAN_CYLINDER.sectorId);
     c.pose = { x: local.x, z: local.z, vx: lead.vel?.x || 0, vz: lead.vel?.z || 0, rot: lead.rot || 0 };
   },
 
@@ -1436,15 +1465,19 @@ export const missionSpawningOps = {
     const gap = distance(player.pos, lead.pos);
     const relativeSpeed = Math.hypot((player.vel?.x || 0) - (lead.vel?.x || 0), (player.vel?.z || 0) - (lead.vel?.z || 0));
     c.matched = gap <= t.pocketRadius && relativeSpeed <= t.matchSpeed;
-    if (!c.joined && c.matched) c.joined = true;
+    if (!c.joined && c.matched) {
+      c.joined = true;
+      this.bus.emit('comms:popup', { sender: promotedPilotIdentity(0, m.id).name, category: 'mission', ttl: 8,
+        text: 'There you are. I can hold the cylinder clean while we match. Stay on my shoulder; I will call before the coil gives out.' });
+    }
     if (c.joined && c.phase === 'crossing') c.crossingS += dt;
     const faultAge = c.crossingS - t.faultAtS;
     const warning = faultAge >= 0 && faultAge < t.warningS && !c.faultRepaired;
     const fault = faultAge >= t.warningS && faultAge < t.warningS + t.faultS && !c.faultRepaired;
     if (warning && !c.faultWarned) {
       c.faultWarned = true;
-      this.bus.emit('comms:popup', { sender: 'Shepherd charge', category: 'mission', ttl: 8,
-        text: 'Suppression spike in six seconds. Target and match close to repair, or turn back toward the entry refuge; I will follow your retreat.' });
+      this.bus.emit('comms:popup', { sender: promotedPilotIdentity(0, m.id).name, category: 'mission', ttl: 8,
+        text: 'Suppression spike in six seconds. Target me and hold within 100 WU, relative speed below 8, for six seconds. Or lead me home: move 100 WU toward the entry refuge, stay within 420, and keep moving that way for two seconds.' });
     }
     // A player visibly moving back along the lane chooses retreat; no hidden UI intent or
     // abandon-to-success conversion. Both live hulls must reach the actual entry refuge.
@@ -1452,13 +1485,13 @@ export const missionSpawningOps = {
     const backD = Math.hypot(backX, backZ) || 1;
     const backOffset = ((player.pos.x - lead.pos.x) * backX + (player.pos.z - lead.pos.z) * backZ) / backD;
     const backSpeed = ((player.vel?.x || 0) * backX + (player.vel?.z || 0) * backZ) / backD;
-    if (c.joined && c.phase !== 'retreat' && (warning || fault || c.exposure >= t.foulAt)
+    if (c.joined && c.phase === 'crossing' && (c.faultWarned || c.exposure >= t.foulAt)
       && gap <= t.pocketRadius && backD > 160 && backOffset > 100 && backSpeed > 4) c.retreatS += dt;
     else c.retreatS = 0;
     if (c.retreatS >= 2) {
       c.phase = 'retreat';
-      this.bus.emit('comms:popup', { sender: 'Shepherd charge', category: 'mission', ttl: 6,
-        text: 'Following you back to the entry refuge. Return together for the 25% recovery fee; this is not a clean delivery.' });
+      this.bus.emit('comms:popup', { sender: promotedPilotIdentity(0, m.id).name, category: 'mission', ttl: 6,
+        text: 'I have your turn. Following you to the entry refuge. Keep me in the pocket until we are both home. The recovery fee is 300 cr; the crossing stays unfinished.' });
     }
     const repairing = c.joined && state.player.targetId === lead.id;
     const holdRepair = repairing && gap <= t.repairRadius && relativeSpeed <= t.repairSpeed
@@ -1468,29 +1501,42 @@ export const missionSpawningOps = {
     if (c.repairS >= t.repairS) {
       c.exposure = 0; c.repairS = 0; c.repairs = (c.repairs || 0) + 1;
       if (warning || fault) c.faultRepaired = true;
-      this.bus.emit('comms:popup', { sender: 'Shepherd charge', category: 'mission', ttl: 5,
-        text: 'Purge cycle complete. Cylinder clean; suppression restored. Continue passage or return to refuge.' });
+      this.bus.emit('comms:popup', { sender: promotedPilotIdentity(0, m.id).name, category: 'mission', ttl: 5,
+        text: c.phase === 'crossing'
+          ? 'Purge cycle complete. Cylinder clean; suppression restored. Thank you for holding still. We can cross, or you can still lead me back to the entry refuge.'
+          : c.phase === 'retreat'
+            ? 'Purge cycle complete. Cylinder clean. We are still returning to the entry refuge; stay with me until we are both home.'
+            : 'Purge cycle complete. Cylinder clean. Thank you for holding still; bring me to the berth.' });
     }
     lead.data.suppressionOffline = !c.joined || !c.matched || (fault && !c.faultRepaired);
     if (c.joined && c.phase === 'crossing' && lead.data.suppressionOffline) {
       const world = this.registry?.get('world');
-      const local = world?._toLocal ? world._toLocal(lead.pos) : lead.pos;
+      const local = world?._toLocal ? world._toLocal(lead.pos, CLEAN_CYLINDER.sectorId)
+      : globalToSectorLocalForSector(lead.pos, CLEAN_CYLINDER.sectorId);
       c.exposure = Math.min(1, c.exposure + pointContaminationAt(state, m.destSectorId, local.x, local.z) * 0.06 * dt);
     }
     c.fouled = c.exposure >= t.foulAt;
-    const status = c.phase === 'retreat' ? 'RETREAT TO ENTRY REFUGE'
-      : holdRepair ? `REPAIR ${Math.floor(c.repairS)}/${t.repairS}s`
-        : c.fouled ? 'FOULED — TARGET AND MATCH CLOSE TO REPAIR'
-          : lead.data.suppressionOffline ? 'SUPPRESSION DOWN — MATCH OR REPAIR'
-            : c.phase === 'delivery' ? 'CLEAN — ESCORT TO BERTH' : 'CLEAN — MATCH THE POCKET';
+    const station = this._liveStation(m.destStationId);
+    if (c.phase === 'crossing' && distance(lead.pos, exit) <= 100 && c.joined) {
+      c.phase = 'delivery';
+      this.bus.emit('comms:popup', { sender: promotedPilotIdentity(0, m.id).name, category: 'mission', ttl: 7,
+        text: c.fouled ? 'Through the corridor. I am carrying contamination. We can stop and purge before the berth, or take the 600 cr quarantine delivery.'
+          : 'Through. The cylinder is still clean. One more leg to Expanse; stay with me until the berth.' });
+    }
+    const status = !c.joined ? 'ENTRY REFUGE — APPROACH AND MATCH'
+      : c.phase === 'retreat' ? 'RETURN TO ENTRY REFUGE TOGETHER'
+        : c.retreatS > 0 ? `LEADING HOME ${Math.min(2, Math.floor(c.retreatS))}/2s — KEEP MOVING TOWARD ENTRY`
+          : holdRepair ? `PURGING ${Math.min(t.repairS, Math.floor(c.repairS))}/${t.repairS}s — HOLD CLOSE AND MATCH`
+            : c.fouled ? 'FOULED — TARGET AND MATCH WITHIN 100 WU TO PURGE'
+              : lead.data.suppressionOffline ? 'SUPPRESSION DOWN — MATCH THE CHARGE'
+                : c.phase === 'delivery' ? 'CLEAN — ESCORT TO BERTH' : 'CLEAN — STAY WITH THE CHARGE';
     const objective = `${status} · exposure ${Math.round(c.exposure * 100)}%`;
     lead.data.scanLabel = `SHEPHERD CHARGE — ${objective}`;
     if (c.objective !== objective) {
       c.objective = objective;
+      this._refreshTrackedMissionNav(m);
       this.bus.emit('mission:updated', { missionId: m.id, exposure: c.exposure, phase: c.phase });
     }
-    const station = this._liveStation(m.destStationId);
-    if (c.phase === 'crossing' && distance(lead.pos, exit) <= 100 && c.joined) c.phase = 'delivery';
     const target = c.phase === 'retreat' ? entry : c.phase === 'delivery' ? station?.pos : exit;
     const intent = lead.data.intent || (lead.data.intent = {});
     intent.moveX = 0; intent.boost = false; intent.fire = false; intent.fireGroup = null;
@@ -1501,6 +1547,11 @@ export const missionSpawningOps = {
     intent.brake = !c.joined || holdRepair || !target || distance(lead.pos, target) <= 80;
     m._escorteeArrived = c.phase === 'delivery' && !!station
       && distance(lead.pos, station.pos) <= ((station.data?.dockRadius || 80) + 40);
+    if (m._escorteeArrived && !c.berthCalled) {
+      c.berthCalled = true;
+      this.bus.emit('comms:popup', { sender: promotedPilotIdentity(0, m.id).name, category: 'mission', ttl: 7,
+        text: 'Holding at Expanse. Dock when you are ready; the desk needs your arrival before it can settle our run.' });
+    }
     this._snapshotCleanCylinder(m);
     if (c.phase === 'retreat' && distance(lead.pos, entry) <= 120 && distance(player.pos, entry) <= 160) {
       this._settleEscortConvoyPay(m);

@@ -129,6 +129,15 @@ export function objectiveText(m) {
         : 'Star Marker weir · pull one hull out of formation before firing';
   }
   const p = m.params || {};
+  if (m.type === 'escort' && p.cleanCylinder) {
+    const c = p.cleanCylinder;
+    if (c.outcome === 'retreated') return 'Returned together to the entry refuge — crossing unfinished';
+    if (c.outcome === 'contaminated_delivery') return 'Delivered to quarantine — contaminated cylinder';
+    if (c.outcome === 'clean_delivery') return 'Delivered to Expanse — cylinder clean';
+    return c.objective || (c.phase === 'retreat' ? 'Return to the entry refuge together'
+      : c.phase === 'delivery' ? 'Escort the charge to Expanse, then dock to settle'
+        : 'Join the charge at the entry refuge — within 420 WU, relative speed below 12 WU/s');
+  }
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
   const dest = m.destStationId ? destStationName(m.destStationId) : 'destination';

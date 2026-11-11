@@ -1,3 +1,8 @@
+import { aiPorts } from '../src/systems/aiPorts.js';
+import { sectorLocalToGlobalForSector, globalToSectorLocalForSector } from '../src/data/sectorCoordinates.js';
+import { objectiveText, continueRecap } from '../src/ui/sim/missionRecap.js';
+import { generateContacts, buildReply } from '../src/ui/station/barContacts.js';
+import { CYLINDER_MESSAGE_ID } from '../src/ui/station/cleanCylinderConversation.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
@@ -185,10 +190,10 @@ test('M30 seed 4242: live V3/Rapier consumes escort intent and moves the charge 
     state.mode = 'flight'; state.world.currentSectorId = T.sectorId;
     state.settings.gameplay.tutorialHints = false;
     assert.equal(await sim.registry.get('physics').prepareBackend(state), true);
-    const spec = makeEnemySpawnSpec('mule_trader', 1, { x: T.entry.x, z: T.entry.z - 200 });
+    const spec = makeEnemySpawnSpec('mule_trader', 1, sectorLocalToGlobalForSector({ x: T.entry.x, z: T.entry.z - 200 }, T.sectorId));
     spec.isPlayer = true; spec.team = 0; delete spec.data.ai;
     const player = sim.spawn(spec); state.playerId = player.id;
-    sim.spawn({ type: 'station', pos: { x: 3000, z: 2000 }, data: { stationId: T.stationId, dockRadius: 90 } });
+    sim.spawn({ type: 'station', pos: sectorLocalToGlobalForSector({ x: 3000, z: 2000 }, T.sectorId), data: { stationId: T.stationId, dockRadius: 90 } });
     const system = sim.registry.get('missions');
     system.ensureBoard(T.stationId);
     assert.equal(system.acceptMission(T.id), true);
@@ -199,4 +204,108 @@ test('M30 seed 4242: live V3/Rapier consumes escort intent and moves the charge 
     assert.ok(lead.pos.x > start.x && lead.pos.z > start.z, 'motion is toward the exit refuge');
     assert.ok(lead.vel.length() < T.speed * 1.5, 'the existing Shepherd pace remains matchable');
   } finally { sim.dispose(); }
+});
+
+
+test('M30 production coordinate boundary names the sector and saves local poses exactly once', () => {
+  const f=runtime(); f.world._toGlobal=sectorLocalToGlobalForSector; delete f.world._toLocal;
+  const m=f.accept(), q=f.charge(m), expected=sectorLocalToGlobalForSector(T.entry,T.sectorId);
+  assert.deepEqual({x:q.pos.x,z:q.pos.z},expected);
+  assert.ok(Math.hypot(q.pos.x-T.entry.x,q.pos.z-T.entry.z)>1000);
+  f.system._snapshotCleanCylinder(m);
+  assert.equal(m.params.cleanCylinder.pose.x,T.entry.x);assert.equal(m.params.cleanCylinder.pose.z,T.entry.z);
+  const saved=JSON.parse(JSON.stringify(f.system.serialize()));
+  f.system.deserialize(saved);const resumed=f.state.missions.active[0];f.system._ensureMissionTargets(resumed);
+  assert.equal(f.charge(resumed),q);assert.deepEqual({x:q.pos.x,z:q.pos.z},expected);
+});
+
+test('M30 adopts the actual damaged Continue body without pose, health or identity replacement', () => {
+  const f=runtime(),m=f.accept(),q=f.charge(m);
+  q.pos.x+=180;q.vel.x=5;q.hull=97;q.shield=12;q.armorHp=8;
+  const identity=q.data.worldRecordId, before={pos:q.pos.clone(),vel:q.vel.clone(),hull:q.hull,shield:q.shield,armor:q.armorHp};
+  const data=JSON.parse(JSON.stringify(f.system.serialize()));
+  delete q.data.escortee;delete q.data.cleanCylinderOf;delete q.data.machine;
+  q.data.ai={archetype:'fleeing_trader'};q.team=1;
+  f.system.deserialize(data);const resumed=f.state.missions.active[0];
+  for(let i=0;i<3;i++)f.system._ensureMissionTargets(resumed);
+  assert.equal(f.charge(resumed),q);assert.equal(q.data.worldRecordId,identity);assert.equal(q.team,0);assert.deepEqual(q.data.ai,{passive:true,roe:'hold_fire'});
+  assert.equal(q.data.escortee,'lead');assert.equal(q.data.machine.kind,'shepherd');
+  assert.deepEqual({pos:q.pos,vel:q.vel,hull:q.hull,shield:q.shield,armor:q.armorHp},before);
+  assert.equal(f.state.entityList.filter(e=>e.alive&&e.data?.cleanCylinderOf===m.id).length,1);
+});
+
+for(const invalid of ['missionId','identityKey','record','sector','slot','notShip']) test('M30 rejects conflicting Continue provenance: '+invalid,()=>{
+  const f=runtime(),m=f.accept(),q=f.charge(m);delete q.data.escortee;m._escorteeId=null;m.targetEntityIds=[];
+  if(invalid==='missionId')q.data.missionId='foreign';
+  if(invalid==='identityKey')q.data.identityKey='mission:foreign:0';
+  if(invalid==='record')q.data.worldRecordId='foreign-record';
+  if(invalid==='sector')q.homeSectorId='sector_helios_prime';
+  if(invalid==='slot')q.data.missionTargetSlot=1;
+  if(invalid==='notShip')q.type='wreck';
+  const before=JSON.stringify(q);f.system._adoptLiveMissionTargets(m);
+  assert.equal(m._escorteeId,null);assert.deepEqual(m.targetEntityIds,[]);assert.equal(JSON.stringify(q),before);
+});
+
+test('M30 repair keeps the promised physical retreat available and reports its two-second lead',()=>{
+  const f=runtime(),m=f.accept(),c=m.params.cleanCylinder;
+  f.at(m,{x:1000,z:1900});f.seconds(29);f.state.player.targetId=f.charge(m).id;f.seconds(6.1);
+  assert.equal(c.faultRepaired,true);assert.equal(c.exposure,0);
+  f.match(m,-120);f.player.pos.z-=120;f.player.vel.set(-10,0,-10);f.seconds(1);
+  assert.match(c.objective,/LEADING HOME 0\/2s|LEADING HOME 1\/2s/);assert.equal(objectiveText(m),c.objective);
+  f.seconds(1.1);assert.equal(c.phase,'retreat');assert.match(objectiveText(m),/ENTRY REFUGE/);
+  f.at(m,T.entry);f.step();assert.equal(f.state.missions.receipts[0].rewardCr,300);
+});
+
+test('M30 objective names the phase after a physical exit crossing and updates only owned navigation',()=>{
+  const f=runtime(),m=f.accept();f.match(m);f.step();
+  f.at(m,T.exit);f.step();assert.equal(m.params.cleanCylinder.phase,'delivery');assert.match(objectiveText(m),/BERTH/);
+  const wp=JSON.stringify(f.state.nav.waypoint);assert.match(wp,/BERTH/);
+  f.state.nav.waypoint={kind:'local',pos:{x:1,z:2}};const custom=JSON.stringify(f.state.nav.waypoint);
+  m.params.cleanCylinder.exposure=.7;f.step();assert.equal(JSON.stringify(f.state.nav.waypoint),custom);
+});
+
+for(const outcome of ['clean_delivery','contaminated_delivery','retreated']) test('M30 '+outcome+' leaves one truthful local pilot message without paying or rewriting history',()=>{
+  const f=runtime(),m=f.accept();f.match(m);f.step();
+  if(outcome==='retreated'){m.params.cleanCylinder.phase='retreat';f.at(m,T.entry);f.step();}
+  else {if(outcome==='contaminated_delivery')m.params.cleanCylinder.exposure=.7;f.arrive(m);}
+  const before=JSON.stringify({story:f.state.story,missions:f.state.missions,credits:f.state.player.credits});
+  const contacts=generateContacts(T.stationId,f.state),contact=contacts.find(c=>c.id===CYLINDER_MESSAGE_ID);assert.ok(contact);
+  assert.match(contact.roleLabel,/recorded message/);
+  const words=buildReply('pilot','cylinder_after',{state:f.state,bus:f.bus},T.stationId,contact).text;
+  assert.match(words,outcome==='retreated'?/entry refuge/:outcome==='clean_delivery'?/clean cylinder/:/will not call it clean/);
+  const receipt=buildReply('pilot','cylinder_receipt',{state:f.state,bus:f.bus},T.stationId,contact).text;
+  assert.match(receipt,outcome==='retreated'?/300 cr/:outcome==='clean_delivery'?/1,200 cr/:/600 cr/);
+  assert.equal(JSON.stringify({story:f.state.story,missions:f.state.missions,credits:f.state.player.credits}),before);
+  assert.equal(generateContacts('station_helios',f.state).some(c=>c.id===CYLINDER_MESSAGE_ID),false);
+  f.state.missions.receipts=[];assert.match(buildReply('pilot','cylinder_after',{state:f.state},T.stationId,contact).text,/no settled/);
+});
+
+test('M30 no message claims a pilot survived a failed or absent run',()=>{
+ const f=runtime(),m=f.accept();assert.equal(generateContacts(T.stationId,f.state).some(c=>c.id===CYLINDER_MESSAGE_ID),false);
+ f.charge(m).alive=false;f.bus.emit('entity:destroyed',{id:f.charge(m).id,data:f.charge(m).data});
+ assert.equal(generateContacts(T.stationId,f.state).some(c=>c.id===CYLINDER_MESSAGE_ID),false);
+});
+
+
+test('M30 spawn and Continue keep tactical maneuver authority out of the mission-owned charge', () => {
+  const f = runtime(), m = f.accept(), q = f.charge(m);
+  const ports = Object.create(aiPorts); ports.init({ state: f.state, bus: f.bus, helpers: f.helpers });
+  const admitted = () => ports._listSquads(f.state.tick).some(s => s.members.some(e => e.id === q.id));
+  assert.equal(admitted(), false, 'new charge has explicit passive mission authority');
+  q.data.ai = {};
+  assert.equal(admitted(), true, 'an empty AI is not inert in the production tactical roster');
+  f.system._adoptLiveMissionTargets(m);
+  assert.equal(admitted(), false, 'authenticated adoption restores passive authority');
+});
+
+test('M30 a purge during retreat keeps the entry refuge promise', () => {
+  const f = runtime(), m = f.accept(), c = m.params.cleanCylinder;
+  f.at(m, { x: 1000, z: 1900 }); f.step(); f.player.pos.x += 900; f.seconds(60);
+  assert.ok(c.exposure >= T.foulAt);
+  f.match(m, -120); f.player.pos.z -= 120; f.player.vel.set(-10, 0, -10); f.seconds(2.1);
+  assert.equal(c.phase, 'retreat');
+  f.match(m); f.state.player.targetId = f.charge(m).id; f.seconds(6.1);
+  assert.equal(c.exposure, 0); assert.equal(c.phase, 'retreat');
+  const text = f.events.filter(e => e.name === 'comms:popup' && e.payload.text.startsWith('Purge cycle complete')).at(-1).payload.text;
+  assert.match(text, /entry refuge/); assert.doesNotMatch(text, /berth/);
 });

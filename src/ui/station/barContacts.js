@@ -1,3 +1,4 @@
+import { cleanCylinderContact, cleanCylinderReply } from './cleanCylinderConversation.js';
 import { getDeepReachOperation } from '../../story/campaign47a/embodiedMissions.js';
 import { reckoningCallbacks } from '../../story/campaign47a/reckoningCallbacks.js';
 import { deepReachBriefing } from '../../story/campaign47a/deepReachBriefing.js';
@@ -905,7 +906,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
         && state.story.flags.eris_choir_bar_service.served === true,
     }] : [];
   const cinderDesk = cinderDepartureContact(state, stationId);
+  const cylinderMessage = cleanCylinderContact(state, stationId);
   const listed = [
+    ...(cylinderMessage ? [cylinderMessage] : []),
     ...(cinderDesk ? [cinderDesk] : []),
     ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
@@ -1785,6 +1788,8 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'It stays open. Come back when you have read the terms.' };
   }
   const state = ctx.state || {};
+  const cylinderReply = cleanCylinderReply(state, stationId, contact, choiceId);
+  if (cylinderReply) return cylinderReply;
   if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }

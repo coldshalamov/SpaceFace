@@ -20,8 +20,8 @@ export function buildCleanCylinderOffer() {
     title: 'The clean cylinder', summary: 'Escort a Shepherd-class charge through the Broken Shepherd corridor.',
     brief: 'Join the charge at the entry refuge. Stay within its 420 WU pocket and match velocity within 12 WU/s. '
       + 'To repair, target the charge within 100 WU and match within 8 WU/s for 6 seconds; onboard purge supplies are included. '
-      + 'When the field spikes, fly back toward the entry refuge to lead a retreat. '
-      + 'Full fee for clean delivery, 50% for contaminated delivery, 25% for returning together to refuge. No cargo, purchase or special equipment required.',
+      + 'After the spike warning, you can still turn back even after repair. Stay within 420 WU, move 100 WU ahead toward the entry refuge, and keep flying that way for two seconds. '
+      + '1,200 cr for clean delivery, 600 cr for contaminated delivery, 300 cr for returning together to refuge. You can purge before docking; the fee follows the condition of the cylinder at delivery. No cargo, purchase or special equipment required.',
     reward_cr: 1200, collateral_cr: 0, duration_s: null, time_limit_s: null,
     riskTier: 1, minRep: -149, objectiveTarget: 1,
     params: { convoySize: 1, ambushSize: 0, cleanCylinder: {
