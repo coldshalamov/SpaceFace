@@ -60,13 +60,14 @@ test('offer, status and clear reset route-only expansion and keep compact behavi
  }finally{f.restore();}
 });
 test('detail CSS wraps long tokens and bounds scrolling to narrow or short viewport without changing compact rows',()=>{
- const source=readFileSync(new URL('../src/ui/contactHailPrompt.js',import.meta.url),'utf8');
- assert.match(source,/\.sf-contact-hail__line \{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap/);
- assert.match(source,/\.sf-contact-hail__panel--detail \{ max-height:min\(480px, calc\(100dvh - 90px\)\);\s*overflow-y:auto/);
+ // G16-02 retired the injected sheet to styles/ui.css — pin the same rules there.
+ const source=readFileSync(new URL('../styles/ui.css',import.meta.url),'utf8');
+ assert.match(source,/\.sf-contact-hail__line \{\s*overflow:\s*hidden;\s*text-overflow:\s*ellipsis;\s*white-space:\s*nowrap/);
+ assert.match(source,/\.sf-contact-hail__panel--detail \{\s*max-height:\s*min\(480px,\s*calc\(100dvh - 90px\)\);[\s\S]*?overflow-y:\s*auto/);
  // The wrap rule is grouped with the tow-advice line (tally_three advice needs the same
  // multi-line treatment); pin the grouped selector and the wrapping semantics it carries.
- assert.match(source,/\.sf-contact-hail__panel--detail \.sf-contact-hail__line,\s*\.sf-contact-hail__line\.sf-contact-hail__tow-advice \{ white-space:normal;\s*overflow:visible; overflow-wrap:anywhere; text-overflow:clip/);
- assert.match(source,/width:min\(332px, calc\(100vw - 28px\)\)/);
+ assert.match(source,/\.sf-contact-hail__panel--detail \.sf-contact-hail__line,\s*\.sf-contact-hail__line\.sf-contact-hail__tow-advice \{\s*white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;\s*text-overflow:\s*clip/);
+ assert.match(source,/width:\s*min\(332px,\s*calc\(100vw - 28px\)\)/);
 });
 
 test('route reading grace and focused reading do not extend receipt or actionable expiry',()=>{
