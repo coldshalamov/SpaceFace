@@ -34,7 +34,9 @@ These override the documents above where they differ.
 2. **The look: a busy working harbour at golden hour, not a tomb.** Warm and readable; deep blue
    shadows, not black; neon only as accents on signs and engines; bloom is a budget, not a filter; one
    grade for the whole game with small per-sector offsets.
-3. **Phones:** default framing shows the same horizontal world width as desktop; pinch zooms 0.6×–1.5×;
+3. **Phones:** default framing sits halfway (geometric mean) between the desktop distance and the full
+   desktop width — about twice the old phone view, the ship still easy to find; pinch zooms 0.5×–2.0×, so a
+   full pinch-out shows the desktop's whole width (lead look, 2026-11-11);
    the flight HUD covers at most 25 % of the screen; every touch control is labelled on first use; the
    phone throw is a flick while latched; phones default to the `low` preset.
 4. **Performance is judged by two numbers:** main-thread idle ≥ 30 % and sim/real-time ratio ≥ 0.98

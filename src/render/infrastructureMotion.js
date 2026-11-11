@@ -18,6 +18,7 @@
 
 import { resolveStationSideEventVfxProfile } from './stationSideEventVfx.js';
 import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 
 function hashId(id) {
   const s = String(id || '');
@@ -410,6 +411,8 @@ export function createInfrastructureMotionTracker() {
   function updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const animDt = dt * ratio;
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
@@ -437,10 +440,11 @@ export function createInfrastructureMotionTracker() {
         jumpResp = resolveGateJumpResponse(elapsed, reducedMotion);
       }
     }
-    rec.portalSwirl += swirlSpeed * (jumpResp ? jumpResp.swirlMul : 1) * dt;
+    rec.portalSwirl += swirlSpeed * (jumpResp ? jumpResp.swirlMul : 1) * animDt;
+    rec.animTime = rec.animTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.animTime + animDt);
 
     // Portal breathing & expansion
-    const breath = Math.sin(simTime * 2.2 + rec.phase) * (0.04 + approachFactor * 0.08);
+    const breath = Math.sin(rec.animTime * 2.2 + rec.phase) * (0.04 + approachFactor * 0.08);
     rec.portalScale = (1.0 + breath) * (jumpResp ? jumpResp.scaleMul : 1.0);
     const glowMul = jumpResp ? jumpResp.glowMul : 1.0;
 
@@ -454,12 +458,12 @@ export function createInfrastructureMotionTracker() {
 
       if (innerRing) innerRing.rotation.z = rec.portalSwirl * 0.65;
       if (lens) {
-        // Counter-rotating shimmer layer: simTime drives the shader's ring drift, the mesh's own
+        // Counter-rotating shimmer layer: drawn-world clock drives the shader's ring drift, the mesh's own
         // swirl parallaxes against the portal disc beneath it.
         lens.rotation.z = rec.portalSwirl * 1.35;
         const lensMat = lens.material;
         if (lensMat && lensMat.uniforms && lensMat.uniforms.uTime) {
-          lensMat.uniforms.uTime.value = simTime * (reducedMotion ? 0.25 : 1.0);
+          lensMat.uniforms.uTime.value = rec.animTime * (reducedMotion ? 0.25 : 1.0);
         }
       }
       if (portal) {
@@ -492,6 +496,8 @@ export function createInfrastructureMotionTracker() {
   function updateStationMotion(entity, mesh, simTime, frameDt, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const animDt = dt * ratio;
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
@@ -523,16 +529,16 @@ export function createInfrastructureMotionTracker() {
       // gapLocked rings carry a real corridor arc aligned to the collision proxy's navigable
       // gap — spinning them would swing the drawn opening away from the collider's opening.
       if (ring1 && !(ring1.userData && ring1.userData.gapLocked)) {
-        ring1.rotation.z += ringRate * dt;
+        ring1.rotation.z += ringRate * animDt;
       }
       const ring2 = mesh.userData && mesh.userData.ring2;
       if (ring2) {
-        ring2.rotation.z -= ringRate * 0.7 * dt;
+        ring2.rotation.z -= ringRate * 0.7 * animDt;
       } else if (mesh.children) {
         // Fallback: name-matched secondary ring (procedural builds register userData.ring2).
         for (const child of mesh.children) {
           if (child.name && child.name.indexOf('ring2') >= 0) {
-            child.rotation.z -= ringRate * 0.7 * dt;
+            child.rotation.z -= ringRate * 0.7 * animDt;
           }
         }
       }
@@ -559,7 +565,8 @@ export function createInfrastructureMotionTracker() {
     if (rec.dishNodes) {
       // Dishes keep sweeping through a berthing — they are tracking the arrival, not holding
       // with the ring. Traffic control watches closest exactly when the ring stands down.
-      const sweep = reducedMotion ? 0 : Math.sin(simTime * rec.dishSweepSpeed + rec.phase) * 1.2;
+      rec.dishTime = rec.dishTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.dishTime + animDt);
+      const sweep = reducedMotion ? 0 : Math.sin(rec.dishTime * rec.dishSweepSpeed + rec.phase) * 1.2;
       for (let i = 0; i < rec.dishNodes.length; i++) {
         const d = rec.dishNodes[i];
         d.node.rotation.y = d.baseY + sweep;
@@ -642,6 +649,8 @@ export function createInfrastructureMotionTracker() {
   function updateWreckMotion(entity, mesh, simTime, frameDt, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const animDt = dt * ratio;
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
@@ -670,9 +679,9 @@ export function createInfrastructureMotionTracker() {
     // the sim-authored heading — an accumulating tumble would swing the drawn hulk through space
     // the collider doesn't occupy.
     if (!reducedMotion && !boundHulk) {
-      rec.driftRotX += rec.driftRate * 0.7 * dt;
-      rec.driftRotY += rec.driftRate * dt;
-      rec.driftRotZ += rec.driftRate * 0.5 * dt;
+      rec.driftRotX += rec.driftRate * 0.7 * animDt;
+      rec.driftRotY += rec.driftRate * animDt;
+      rec.driftRotZ += rec.driftRate * 0.5 * animDt;
 
       // Apply to first child or mesh root
       const body = (mesh.children && mesh.children[0]) || mesh;
@@ -684,7 +693,7 @@ export function createInfrastructureMotionTracker() {
     // Intermittent electrical arc discharge — deterministic schedule from the id hash (each
     // strike advances the mix), and the discharge physically JOLTS the dead hull: a brief
     // asymmetric twitch riding on the drift pose.
-    rec.arcTimer -= dt;
+    rec.arcTimer -= animDt;
     if (rec.arcTimer <= 0) {
       const next = hashId(String(entity.id) + ':' + rec.arcCount);
       rec.arcCount++;
@@ -692,12 +701,13 @@ export function createInfrastructureMotionTracker() {
       rec.arcIntensity = 1.0;
     }
     if (rec.arcIntensity > 0) {
-      rec.arcIntensity = Math.max(0, rec.arcIntensity - dt * 6.0);
+      rec.arcIntensity = Math.max(0, rec.arcIntensity - animDt * 6.0);
       if (!reducedMotion && !boundHulk) {
         const body = (mesh.children && mesh.children[0]) || mesh;
         const jolt = rec.arcIntensity * rec.arcIntensity * 0.028;
-        body.rotation.y += Math.sin(simTime * 71.0 + rec.phase) * jolt;
-        body.rotation.z += Math.cos(simTime * 83.0 + rec.phase * 1.7) * jolt;
+        rec.joltTime = rec.joltTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.joltTime + animDt);
+        body.rotation.y += Math.sin(rec.joltTime * 71.0 + rec.phase) * jolt;
+        body.rotation.z += Math.cos(rec.joltTime * 83.0 + rec.phase * 1.7) * jolt;
       }
     }
   }
