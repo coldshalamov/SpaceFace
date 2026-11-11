@@ -24,6 +24,7 @@ import {
   swarmEventFrame,
   SWARM_EVENT_BOUNTY_REASON,
 } from '../src/systems/swarmEvents.js';
+import { swarmCourseFor } from '../src/data/swarmCourse.js';
 
 const SEED = 4242;
 const NEW_SIGNATURES = {
@@ -36,7 +37,11 @@ function drawFor(arenaId, eventId) {
   for (const seed of [SEED, 7, 13, 77, 99, 555]) {
     for (let wave = 1; wave <= 400; wave++) {
       const draw = swarmEventFor({ arenaId, wave, seed });
-      if (draw && draw.id === eventId) return { wave, seed };
+      // G08-02 — a course twist deals its card on its own round ahead of the seed; a
+      // course-dealt hit is not the seeded draw this finder is hunting.
+      if (draw && draw.id === eventId && swarmCourseFor(wave)?.twistId !== eventId) {
+        return { wave, seed };
+      }
     }
   }
   return null;

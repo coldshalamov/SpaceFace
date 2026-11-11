@@ -89,7 +89,11 @@ function clampTetherRatingMult(raw) {
 
 function standardTetherSpoolMultiplier(owner) {
   const raw = owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult;
-  return clampTetherRatingMult(raw);
+  // A01-05 Long Reel: the run ledger's own spool grant folds in beside the fitted
+  // rating — the shared [1,6] clamp still bounds the product.
+  const runGrant = owner && owner.data && owner.data.swarmMods && owner.data.swarmMods.tetherLenMult;
+  return clampTetherRatingMult(
+    (Number.isFinite(raw) && raw > 0 ? raw : 1) * (Number.isFinite(runGrant) && runGrant > 0 ? runGrant : 1));
 }
 
 // Trophy-head break ceiling (ships.js derives it from a fitted module's loadCapacityMult). Only the

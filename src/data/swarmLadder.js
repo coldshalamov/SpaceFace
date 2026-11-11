@@ -31,6 +31,7 @@ import {
   swarmRosterFor,
 } from './swarmMode.js';
 import { swarmEventFor } from './swarmEvents.js';
+import { swarmCourseFor } from './swarmCourse.js';
 import { swarmSpecialistBriefForEnemy } from './swarmSpecialists.js';
 
 /** One zone is ten rounds; the champion rides the authored boss cadence (first at wave 5). */
@@ -357,6 +358,7 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
     ...swarmSpecialistBriefForEnemy(specialistEntry.enemyId),
   } : null;
   const event = swarmEventFor({ arenaId, wave: w, seed });
+  const course = swarmCourseFor(w);
   return {
     wave: w,
     zone,
@@ -367,5 +369,7 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
     specialistBrief,
     boss: block.boss ? { label: block.bossLabel, line: block.bossLine } : null,
     event: event ? { name: event.name, telegraph: event.telegraph } : null,
+    // G08-02 — the Pit's authored round identity: name, twist, and the card it deals.
+    course: course ? { round: course.round, name: course.name, twist: course.twist, twistId: course.twistId } : null,
   };
 }

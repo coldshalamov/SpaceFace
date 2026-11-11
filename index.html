@@ -1261,15 +1261,32 @@
 <body>
   <canvas id="gl-canvas"></canvas>
   <div id="ui-root">
-    <div id="hud"></div>
-    <div id="modal-backdrop"></div>
-    <div id="screens"></div>
-    <div id="toasts">
-      <!-- Status-only polite live region: toasts stack as interactive dismiss controls;
-           announcing pure text here once avoids re-reading the whole stack and the "dismiss" name. -->
-      <div id="toast-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="hud">
+      <!-- G16-01 the Stage: the feed slot owns the receipt lane's mount point. It lives inside
+           #hud so the mobile seats' `#hud #toasts` rules keep binding — toasts.js re-parents
+           the lane here after the hud rebuild too. -->
+      <div id="sf-stage-feed" class="sf-stage-slot" data-stage-slot="feed">
+        <div id="toasts">
+          <!-- Status-only polite live region: toasts stack as interactive dismiss controls;
+               announcing pure text here once avoids re-reading the whole stack and the "dismiss" name. -->
+          <div id="toast-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+        </div>
+      </div>
     </div>
-    <div id="alerts"></div>
+    <!-- G16-01 the Stage (design/program/fleet/drafts/G16-one-glass.md): one host for every
+         transient popup. The four existing hosts mount inside their named slots — the centre
+         dialog (backdrop + screens), the top banner (alerts), the receipt feed (toasts, inside
+         #hud above) and the prompt deck (mounted by promptDeck.js). The slot containers are
+         layout-transparent: the hosts keep their own ids, z-order and pointer rules, and a slot
+         shows one item at a time (toasts: at most three stacked). -->
+    <div id="sf-stage-dialog" class="sf-stage-slot" data-stage-slot="dialog">
+      <div id="modal-backdrop"></div>
+      <div id="screens"></div>
+    </div>
+    <div id="sf-stage-banner" class="sf-stage-slot" data-stage-slot="banner">
+      <div id="alerts"></div>
+    </div>
+    <div id="sf-stage-prompt" class="sf-stage-slot" data-stage-slot="prompt"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
       <!-- The intro visualizer outranks every other boot asset: preload=auto makes its
