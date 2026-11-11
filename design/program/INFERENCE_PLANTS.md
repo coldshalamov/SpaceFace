@@ -101,7 +101,7 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | ID | When | Static says | State |
 |---|---|---|---|
 | PL-51 | You ring the Ceres Bell twice in a minute | *"Somebody rang the Ceres Bell. Twice."* | OPEN |
-| PL-52 | You throw a ship into a station | *"Whoever parked that in the dock: bold."* | CLAIMED flash 2026-11-11 |
+| PL-52 | You throw a ship into a station | *"Whoever parked that in the dock: bold."* | SHIPPED 028d546081ef |
 | PL-53 | You ride a freight string out of a sector | *"Stowaway on the noon freight. We see you."* | OPEN |
 | PL-54 | Ten near misses in one minute | *"Traffic advisory: there's one of those out today."* | OPEN |
 | PL-55 | You are killed by traffic | *"Lane lights exist. Just saying."* | SHIPPED 22f4977395b2 |

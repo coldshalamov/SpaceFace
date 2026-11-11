@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-wing-gap-press",
-      "date": "2026-11-04",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A lost wingman's seat says his name on the band, presses his killer for one bounded window, and a lost mining watch is named instead of silently dying",
-      "fingerprint": "verb=grieves-and-presses,subject=player-wingman-casualty,sector=adventure-flight,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "821b2b834e56",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-wound-smoke",
       "date": "2026-11-04",
       "wf": "WF-12",
@@ -1709,6 +1696,22 @@
       "evidence": ".devshots/fleet/runs/PLANT-NEXT.flash.2026-11-11T02-37-06/RECEIPT.md",
       "kind": "plant",
       "player": "Cutting off a loaded hauler makes it follow you for twenty seconds with its horn held down."
+    },
+    {
+      "id": "PL-52",
+      "date": "2026-11-11",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "PL-52 plant: thrown ship hitting a station opens player.throw_ship_station on the Static",
+      "fingerprint": "verb=report,subject=thrown-ship-into-station,sector=the-static,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "028d546081ef",
+      "verification": "focused_green",
+      "evidence": ".devshots/fleet/runs/PLANT-NEXT.flash.2026-11-11T02-54-50/RECEIPT.md",
+      "kind": "plant",
+      "player": "Throwing a ship into a station causes the Static to report: 'Whoever parked that in the dock: bold.'"
     }
   ],
   "knownDefects": [
