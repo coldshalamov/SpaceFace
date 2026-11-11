@@ -248,7 +248,11 @@ test('integration stays one-voice, reduced-motion aware, and off the frame loop'
     /choiceModalOpen\s*\|\|\s*endingEpilogue\.isOpen\(\)\s*\|\|\s*endingEpilogue\.hasPending\(\)/,
     'a deferred epilogue still owns modal attention',
   );
-  assert.match(epilogueSource, /prefers-reduced-motion:\s*reduce/);
+  // G16-02 retired the epilogue's injected sheet to styles/ui.css — the reduced-motion
+  // guard rides with the rest of its rules there.
+  const epilogueSheet = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
+  const epilogueBlock = epilogueSheet.slice(epilogueSheet.indexOf('.sf-ending-epilogue {'));
+  assert.match(epilogueBlock, /prefers-reduced-motion:\s*reduce/);
   assert.doesNotMatch(epilogueSource, /requestAnimationFrame|\btick\s*\(/);
   assert.doesNotMatch(epilogueSource, /comms:popup|audio:|voice:/);
   assert.doesNotMatch(epilogueSource, /portrait|visor|cockpit/i);

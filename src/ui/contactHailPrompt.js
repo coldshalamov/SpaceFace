@@ -16,7 +16,6 @@ import {
 } from './commsRadial.js';
 import { getPromptDeck } from './promptDeck.js';
 
-const STYLE_ID = 'sf-contact-hail-style';
 const ROUTE_READING_GRACE_S = 30;
 
 function clamp01(value) {
@@ -29,7 +28,10 @@ function clamp01(value) {
 
 export function createContactHailPrompt(ctx) {
   const { state, bus } = ctx;
-  injectStyle();
+  // G16-02: the detail panel rides the Stage's prompt slot inside the shared .dp-glass frame —
+  // the injected sheet retired to styles/ui.css, where the panel's face and anchored seat stay
+  // scoped to the legacy #ui-root mount this file keeps for a host with no live Stage.
+  const stage = ctx && ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
 
   const root = document.createElement('div');
   root.id = 'sf-contact-hail';
@@ -61,8 +63,9 @@ export function createContactHailPrompt(ctx) {
   const panel = root.querySelector('[data-k="panel"]');
   // hud.js re-seats #sf-contact-hail into the comms tape inside .sf-leftcontext, and that column
   // clips every descendant outside its box — the absolute panel would paint nowhere. The panel is
-  // an overlay, not tape content: it lives on #ui-root and anchors itself to the button's rect.
-  uiRoot.appendChild(panel);
+  // an overlay, not tape content: the Stage's prompt slot hosts it (fallback: #ui-root, anchored
+  // to the button's rect as before).
+  if (!stage) uiRoot.appendChild(panel);
   const linesEl = panel.querySelector('[data-k="lines"]');
   const actionsEl = panel.querySelector('[data-k="actions"]');
   const closeBtn = panel.querySelector('[data-k="close"]');
@@ -81,11 +84,12 @@ export function createContactHailPrompt(ctx) {
   let previousFreq = '';
   let nextRibbonUpdateAt = 0;
   let toldRequestId = null;
+  let panelHandle = null;
 
-  // Keep the authored relationship: the panel hangs 71px left and 38px below the channel button,
-  // wherever the button's live home puts it (the tape adoption moves it once, safe-insets after).
+  // Keep the authored relationship on the fallback mount: the panel hangs 71px left and 38px
+  // below the channel button. The staged panel takes the prompt slot's seat instead.
   function syncPanelPosition() {
-    if (panel.hidden) return;
+    if (panel.hidden || panelHandle) return;
     const r = root.getBoundingClientRect();
     if (!r.width && !r.height) return;
     panel.style.left = `${Math.max(8, Math.round(r.left) - 71)}px`;
@@ -138,6 +142,7 @@ export function createContactHailPrompt(ctx) {
     routeReadUntil = null;
     if (panel.contains(document.activeElement)) hailButton.focus?.();
     closeBtn.hidden = true;
+    if (panelHandle) { panelHandle.clear(); panelHandle = null; }
     panel.hidden = true;
     panel.classList.remove('sf-contact-hail__panel--detail');
     panel.removeAttribute('tabindex');
@@ -193,6 +198,9 @@ export function createContactHailPrompt(ctx) {
       return button;
     }));
     panel.hidden = false;
+    if (stage && !panelHandle) {
+      panelHandle = stage.show('prompt', panel, { id: 'contact-hail', severity: 'info' });
+    }
     // THE WORLD REMEMBERS (U-E): a patrol that opened with a deed has now actually said it, once.
     if (payload.deedId && payload.requestId !== toldRequestId) {
       toldRequestId = payload.requestId;
@@ -294,6 +302,7 @@ export function createContactHailPrompt(ctx) {
     deckBtn.removeEventListener('click', onDeckClick);
     closeBtn.removeEventListener('click', hidePanel);
     try { freqMorph.dispose(); } catch (_) {}
+    if (panelHandle) { panelHandle.clear(); panelHandle = null; }
     panel.remove();
     root.remove();
   }
@@ -319,105 +328,5 @@ export function createContactHailPrompt(ctx) {
   return { el: root, tick, request, choose, hide: hidePanel, destroy };
 }
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-  /* No paint containment: the deck panel intentionally hangs 71px left of the button (left:-71px)
-     — contain:paint would clip it to the root's border box and it would never render. */
-  #sf-contact-hail { position:absolute; left:85px; top:20px; z-index:20;
-    font-family:var(--hud-data, var(--mono, Consolas, monospace)); contain:layout style; }
-  .sf-contact-hail__button { width:72px; height:32px; padding:0 10px; border-radius:4px;
-    border:1px solid color-mix(in srgb, var(--sf-calm) 38%, transparent);
-    background:color-mix(in srgb, var(--sf-surface) 90%, transparent); color:var(--sf-calm);
-    font:600 12px var(--sf-subhead-face, "IBM Plex Sans", sans-serif); letter-spacing:.04em; cursor:default;
-    transition:border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease, translate .1s ease; }
-  .sf-contact-hail--ready .sf-contact-hail__button { color:var(--sf-paper); border-color:var(--sf-goal);
-    cursor:pointer; }
-  .sf-contact-hail--ready .sf-contact-hail__button:hover {
-    background:color-mix(in srgb, var(--sf-surface) 80%, var(--sf-goal) 15%);
-    box-shadow:0 0 10px color-mix(in srgb, var(--sf-goal) 22%, transparent); }
-  .sf-contact-hail--ready .sf-contact-hail__button:active { translate:0 1px; }
-  .sf-contact-hail__button:hover:not(:disabled), .sf-contact-hail__button:focus-visible,
-  .sf-contact-hail__actions button:hover, .sf-contact-hail__actions button:focus-visible,
-  .sf-contact-hail__deck:focus-visible {
-    outline:2px solid var(--sf-goal); outline-offset:2px; }
-  .sf-contact-hail__button:disabled { opacity:.72; }
-  /* position:fixed on #ui-root — an overlay anchored to the button's rect by syncPanelPosition.
-     Anything inside the comms tape's clipped column would paint nowhere. pointer-events:auto:
-     #ui-root is pointer-transparent; the opt-in used to come from .sf-commtape__slots while the
-     panel lived inside it — without it the deck and its verbs are click-dead. */
-  .sf-contact-hail__panel { position:fixed; left:8px; top:58px; z-index:20; pointer-events:auto; width:min(332px, calc(100vw - 28px));
-    box-sizing:border-box; padding:10px 11px; border-radius:8px;
-    font-family:var(--hud-data, var(--mono, Consolas, monospace));
-    /* Glass register (hudStyles :root tokens) — no backdrop-filter, flight perf floor §7. */
-    background-color:var(--glass-fill, rgb(9 14 22 / .82));
-    background-image:var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%));
-    color:var(--hud-paper, rgb(236 244 253 / .97));
-    border:1px solid var(--glass-edge, rgb(188 220 255 / .2)); border-top:2px solid var(--glass-neon, rgb(141 217 255));
-    box-shadow:var(--glass-drop, 0 10px 26px rgb(2 6 14 / .4)), var(--glass-inner, inset 0 1px 0 rgb(255 255 255 / .05));
-    animation:sf-contact-hail-in .15s ease-out 1; }
-  @keyframes sf-contact-hail-in { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
-  .sf-contact-hail__panel[hidden] { display:none !important; }
-  .sf-contact-hail__deck { width:100%; border-radius:3px; border:1px solid var(--sf-edge);
-    background:color-mix(in srgb, var(--sf-surface) 88%, transparent);
-    color:var(--sf-paper); padding:8px; display:grid; grid-template-columns:24px 1fr; grid-template-rows:auto auto auto;
-    column-gap:9px; row-gap:2px; text-align:left; cursor:pointer; margin-bottom:8px;
-    transition:border-color .15s ease, background .15s ease, translate .1s ease; }
-  .sf-contact-hail__deck:hover {
-    background:color-mix(in srgb, var(--sf-surface) 75%, rgba(255,255,255,.06));
-    border-color:color-mix(in srgb, var(--sf-goal) 50%, var(--sf-edge)); }
-  .sf-contact-hail__deck:active { translate:0 1px; }
-  .sf-contact-hail__crest { grid-row:1 / span 2; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; color:var(--sf-calm); }
-  .sf-contact-hail__who { grid-column:2; display:grid; gap:1px; }
-  .sf-contact-hail__pilot { font:600 13px var(--hud-data, var(--mono, Consolas, monospace)); line-height:1.15; letter-spacing:.03em; }
-  .sf-contact-hail__class { font-size:12px; color:var(--hud-muted, rgb(178 199 222 / .8)); line-height:1.2; }
-  .sf-contact-hail__freq { grid-column:2; font:500 12px var(--hud-data, var(--mono, Consolas, monospace)); color:var(--glass-neon, rgb(141 217 255)); }
-  .sf-contact-hail__ribbon { grid-column:1 / -1; width:100%; height:22px; color:var(--sf-you); }
-  .sf-contact-hail__ribbon path { fill:none; stroke:currentColor; stroke-width:1.4; }
-  .sf-contact-hail__lines { display:grid; gap:2px; }
-  .sf-contact-hail__line { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    font-size:12px; line-height:1.35; letter-spacing:.02em; }
-  .sf-contact-hail__panel--detail { max-height:min(480px, calc(100dvh - 90px));
-    overflow-y:auto; overscroll-behavior:contain; }
-  .sf-contact-hail__close { margin-top:8px; min-height:30px; width:100%;
-    border:1px solid var(--sf-edge); border-radius:3px; background:var(--sf-surface);
-    color:var(--sf-paper); font:500 12px var(--hud-data, monospace); cursor:pointer; }
-  .sf-contact-hail__close[hidden] { display:none; }
-  .sf-contact-hail__close:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
-  .sf-contact-hail__panel--detail:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
-  .sf-contact-hail__panel--detail .sf-contact-hail__line,
-  .sf-contact-hail__line.sf-contact-hail__tow-advice { white-space:normal;
-    overflow:visible; overflow-wrap:anywhere; text-overflow:clip; }
-  .sf-contact-hail__line + .sf-contact-hail__line { color:var(--sf-calm); }
-  .sf-contact-hail__actions { display:flex; gap:6px; margin-top:8px; }
-  .sf-contact-hail__actions:empty { display:none; }
-  .sf-contact-hail__actions button { min-height:30px; flex:1 1 0; border-radius:3px;
-    border:1px solid color-mix(in srgb, var(--sf-calm) 40%, transparent);
-    background:color-mix(in srgb, var(--sf-surface) 88%, transparent); color:var(--sf-paper); cursor:pointer;
-    font:500 12px var(--sf-data-face, "IBM Plex Mono", monospace); letter-spacing:.03em;
-    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
-  .sf-contact-hail__actions button:hover {
-    border-color:var(--sf-goal);
-    background:color-mix(in srgb, var(--sf-surface) 75%, var(--sf-goal) 14%);
-    color:var(--sf-paper); }
-  .sf-contact-hail__actions button:active { translate:0 1px; }
-  body.ui-modal-open #sf-contact-hail,
-  body.ui-live-screen #sf-contact-hail,
-  body.ui-modal-open .sf-contact-hail__panel,
-  body.ui-live-screen .sf-contact-hail__panel { opacity:0; visibility:hidden; pointer-events:none; }
-  @media (max-width:900px), (max-height:620px) {
-    #sf-contact-hail { left:85px; top:12px; }
-  }
-  @media (prefers-reduced-motion:reduce) {
-    #sf-contact-hail, .sf-contact-hail__button, .sf-contact-hail__panel, .sf-contact-hail__deck, .sf-contact-hail__actions button { transition:none; }
-    .sf-contact-hail__panel { animation:none; }
-  }
-  html.sf-reduce-motion #sf-contact-hail, html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__button,
-  html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__panel, html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__deck,
-  html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__actions button { transition:none; animation:none; }`;
-  document.head.appendChild(style);
-}
 
 export default createContactHailPrompt;
