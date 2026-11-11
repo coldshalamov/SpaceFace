@@ -444,11 +444,16 @@ export function settingsPackRestartNote(modsDir) {
 }
 
 export function settingsWorkshopSubscribedNote(count) {
-  return localizeText('Steam Workshop: {count} subscribed item(s). Sync mirrors them into the content directory; a restart loads them.', { count });
+  // words-ship-sheet-counts: whole singular/plural sentences, never "item(s)".
+  return Number(count) === 1
+    ? localizeText('Steam Workshop: 1 subscribed item. Sync mirrors it into the content directory; a restart loads it.')
+    : localizeText('Steam Workshop: {count} subscribed items. Sync mirrors them into the content directory; a restart loads them.', { count });
 }
 
 export function settingsWorkshopSyncedNote(count) {
-  return localizeText('Workshop sync mirrored {count} pack(s) — restart to load', { count });
+  return Number(count) === 1
+    ? localizeText('Workshop sync mirrored 1 pack — restart to load')
+    : localizeText('Workshop sync mirrored {count} packs — restart to load', { count });
 }
 
 export const CONTROL_SHORTCUTS = Object.freeze([

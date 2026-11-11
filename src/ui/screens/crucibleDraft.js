@@ -71,6 +71,8 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
 import { injectCrucibleRefitLayouts } from '../orrery/crucible-refitLayouts.js';
+import { counted } from '../numberFormat.js';
+
 
 /**
  * Show or hide a footer word. `.k-word { display: inline-block }` beats the `hidden`
@@ -284,7 +286,7 @@ export function rerollControlLines(state, notice = null) {
   const exhausted = s.reason === 'pool_exhausted';
   return {
     visible: true,
-    label: exhausted ? 'Re-roll' : `Re-roll · ${price} cr`,
+    label: exhausted ? 'Re-roll' : `Re-roll · ${Number(price).toLocaleString('en-US')} cr`,
     wallet: `Run wallet ${credits} cr`,
     draw: s.rerolls > 0 ? `Draw ${s.rerolls + 1}` : '',
     disabled: !s.available,
@@ -324,7 +326,7 @@ export function affordableOfferCount(offers) {
 /** The one line the first Escape leaves behind when it spared the player's unspent credits. */
 export function launchGuardLine(count) {
   const n = Math.max(0, Math.floor(Number(count) || 0));
-  return `You can still afford ${n} card${n === 1 ? '' : 's'} — Esc again or Launch to go`;
+  return `You can still afford ${counted(n, 'card', 'cards')} — Esc again or Launch to go`;
 }
 
 const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
@@ -1486,7 +1488,7 @@ export const crucibleDraftScreen = {
         button.textContent = '';
         button.appendChild(el('span', 'sf-cru-filter-word', category));
         if (shop) button.appendChild(el('span', 'sf-cru-count', String(count)));
-        button.setAttribute('aria-label', shop ? `${category}, ${count} offer${count === 1 ? '' : 's'}` : category);
+        button.setAttribute('aria-label', shop ? `${category}, ${counted(count, 'offer', 'offers')}` : category);
       }
     }
 

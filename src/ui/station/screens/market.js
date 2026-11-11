@@ -23,6 +23,8 @@ import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
 import { compareDockedFreight, formatFreightComparison, marketStockStatus } from '../../../systems/economy.js';
+import { economyPulseReport } from '../../../economy/economyPulse.js';
+import { marketPulseRead, marketPulseHtml } from '../../marketPulsePresenter.js';
 import { partialDeliverySettlement } from '../../../systems/missions.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
@@ -86,6 +88,35 @@ for (const sec of SECTORS) {
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
 export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
 export { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
+
+// The market screen's own count and age words (words-yard-count-lines): the route's
+// review verb can count to one ("Review 1 unit of …"), and the chart cursor reads a
+// sample's age in words instead of a stopwatch "25 s ago". Pure text — exported so the
+// focused test reads exactly what the screen says, cursor label and screen-reader
+// label alike.
+export function reviewLoadLabel(units, name) {
+  const n = Math.max(0, Math.floor(Number(units) || 0));
+  const good = String(name || '').trim() || 'cargo';
+  return n === 1 ? `Review 1 unit of ${good}` : `Review ${n} units of ${good}`;
+}
+
+export function sampleAgeLabel(sec, kind) {
+  const n = Number(sec);
+  if (!Number.isFinite(n)) return kind === 'f' ? 'forecast' : '';
+  if (kind === 'f') {
+    if (n <= 0) return 'now';
+    const ahead = Math.max(1, Math.round(n / 60));
+    return ahead === 1 ? 'in 1 minute' : `in ${ahead} minutes`;
+  }
+  const ago = -n;
+  if (ago < 20) return 'now';
+  if (ago < 90) {
+    const s = Math.round(ago);
+    return s === 1 ? '1 second ago' : `${s} seconds ago`;
+  }
+  const m = Math.round(ago / 60);
+  return m === 1 ? '1 minute ago' : `${m} minutes ago`;
+}
 
 // Reveal the selected commodity without scrolling the station's outer body or header.
 export function revealMarketRowInRail(rail, row) {
@@ -899,6 +930,7 @@ export function createMarketScreen(ctx) {
   const consoleEl = el.querySelector('.sx-mkt__console');
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
+  const pulseEl = el.querySelector('.sx-mkt__pulse');
   const decisionEl = el.querySelector('.sx-mkt__decision');
   const papers = createLaunderService({ bus: ctx.bus, getState: () => ctx.state || {}, document });
   // The market frame always parents the quote; a detached frame keeps the papers desk unmounted
@@ -2350,7 +2382,7 @@ export function createMarketScreen(ctx) {
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
             `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span>` +
-            `<button type="button" ${stationControlAttrs('review-load')} class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="Review ${t.loadUnits} units of ${escapeHtml(t.cmdtyName)}">${stationControlLabel('review-load')}</button></span>` +
+            `<button type="button" ${stationControlAttrs('review-load')} class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="${escapeHtml(reviewLoadLabel(t.loadUnits, t.cmdtyName))}">${stationControlLabel('review-load')}</button></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
@@ -2363,6 +2395,22 @@ export function createMarketScreen(ctx) {
     dressRoutes();
   }
 
+  // WF-06 — the berth's own pulse, read. The economy already bins twelve hours of observed
+  // cash in/out, contract offers and field work (src/economy/economyPulse.js) but no surface
+  // ever read it; this paints that measured flow beside the routes it feeds. Quiet stays quiet.
+  function renderPulse(state) {
+    if (!pulseEl) return;
+    let read = null;
+    try {
+      read = marketPulseRead(economyPulseReport(state && state.economy, state && state.simTime));
+    } catch (_) { read = null; }
+    const next = marketPulseHtml(read);
+    if (pulseEl.dataset.pulseHtml !== next) {
+      pulseEl.dataset.pulseHtml = next;
+      pulseEl.innerHTML = next;
+    }
+  }
+
   function renderAll(state) {
     renderAdBoardNotice(adBoardEl, state);
     const active = typeof document !== 'undefined' ? document.activeElement : null;
@@ -2370,6 +2418,7 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state);
     renderConsole(state, { receiptOnly: editingQuantity });
     renderRoutes(state);
+    renderPulse(state);
   }
 
   // A worker-side price refusal is already an authoritative quote for this exact
@@ -2675,12 +2724,7 @@ export function createMarketScreen(ctx) {
   // hovering the plot parks a hairline on the nearest one and reads its price and age beside it.
   // Nothing re-renders: the cursor is one element inside the plot, moved by transform.
   function relAge(sec, kind) {
-    const n = Number(sec);
-    if (!Number.isFinite(n)) return kind === 'f' ? 'forecast' : '';
-    if (kind === 'f') return n <= 0 ? 'now' : `in ${Math.max(1, Math.round(n / 60))} min`;
-    const ago = -n;
-    if (ago < 20) return 'now';
-    return ago < 90 ? `${Math.round(ago)} s ago` : `${Math.round(ago / 60)} min ago`;
+    return sampleAgeLabel(sec, kind);
   }
   function chartSamples(host) {
     if (host._samples && host._samplesSrc === host.dataset.points) return host._samples;

@@ -16,6 +16,8 @@ import { NEW_GAME_PLUS_SCHEMA, scarCarryPhrase } from '../core/newGamePlus.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { shipLedgerHasFactOutside } from '../systems/shipLedger.js';
 import { LEDGER_SPEAKER } from './storyLedger.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 const COMMODITY_NAME = new Map(COMMODITIES.map((def) => [def.id, def.name]));
 
@@ -161,7 +163,7 @@ function leftoverDockSpillLine(state) {
   if (!commodityId || count <= 0) return null;
   const name = COMMODITY_NAME.get(commodityId);
   if (!name) return null;
-  const units = count === 1 ? 'unit' : 'units';
+  const units = pluralWord(count, 'unit', 'units');
   return leftoverLine(`${name} spilled on the way in, ${count} ${units}.`);
 }
 
