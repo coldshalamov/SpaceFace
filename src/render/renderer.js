@@ -1,3 +1,4 @@
+import { presentedAdvanceRatio } from './presentedClock.js';
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
 import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
@@ -31182,12 +31183,16 @@ export const render = {
     tryPresentedCall(this, 'hero-rig', () => this._heroRig
       && this._heroRig.update(this.state, frameDt, this._frameMembrane, this._meshes));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
-    this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
+    // EC-G11 one clock: the backdrop, parallax, far-plane life and post shader time advance with the
+    // drawn world (presentedClock.js), so a sim stall stills them with the ship instead of leaving
+    // live decor over a frozen frame.
+    const worldDt = frameDt * presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    this._bgTime = (this._bgTime || 0) + worldDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
       tryPresentedCall(this, 'backdrop', () => {
-        if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
-        parallaxLayers.update(frameDt);
-        farPlaneLife.update(frameDt);
+        if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position); // wall dt paces plate uploads; _bgTime is the drawn-world clock
+        parallaxLayers.update(worldDt);
+        farPlaneLife.update(worldDt);
       });
     }
     tryPresentedCall(this, 'shadow-map-enabled', () => this._syncShadowMapEnabled());
