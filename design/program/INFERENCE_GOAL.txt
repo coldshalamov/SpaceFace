@@ -14,7 +14,7 @@ needs a new content file, a new bark list or a new system, it is not an
 INFERENCE unit: add one line under COMMISSION-CANDIDATES at the end of
 INFERENCE_IDEAS.md and move on.
 
-A unit is exactly one of three kinds:
+A unit is exactly one of four kinds:
 
   CLASS   You found a defect a player would notice. Fix it EVERYWHERE it
           occurs, through one shared helper or component, and add or extend
@@ -26,6 +26,12 @@ A unit is exactly one of three kinds:
           route: a job nobody can reach, an enemy that never spawns, a
           button that does nothing, a reward that never pays. Make it work
           completely.
+  PLANT   Build one OPEN row of design/program/INFERENCE_PLANTS.md exactly
+          as written: a reaction, a street moment, a chance meeting, a
+          secret, a radio line. The lead designer wrote them so that you do
+          not have to invent. Do not improve the idea; make it work, make it
+          physical, and capture it happening. If the row needs a place or a
+          person that is not built yet, skip it and take another.
   REMOVE  Delete noise: a duplicate, an unreachable thing, a line nobody
           needs, a dead test, a feature that makes the game worse. Less is
           a real improvement here.
@@ -43,13 +49,17 @@ Every unit:
     the work is kept, and it does not count toward N.
   - Adds at most one new test file, and only one that would have caught the
     defect. Prefer extending a check that already runs.
-  - Never adds a bark list, an audio recipe or a content file.
+  - Never adds a bark list, an audio recipe or a content file of your own
+    invention. A PLANT adds exactly what its row says and nothing more.
 
-Before choosing, read design/program/INFERENCE_CLASSES.md. OPEN classes there
-come first: they are known defects still waiting for their everywhere-fix.
+Before choosing, read design/program/INFERENCE_CLASSES.md and
+design/program/INFERENCE_PLANTS.md. Alternate: one unit that makes the game
+more correct (CLASS, FINISH or REMOVE), then one PLANT, and so on. Two plants
+in a row is allowed only when no OPEN class remains.
 
 Read, in this order, then start:
   design/program/INFERENCE_CLASSES.md
+  design/program/INFERENCE_PLANTS.md
   design/program/INFERENCE_LANES.md
   design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md
   design/VISION.md
