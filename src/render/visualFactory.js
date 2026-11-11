@@ -16,6 +16,7 @@ import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
 // libraries that were fully decoded before flight admission. Contract: createVisualFactory() ->
 // { build(entity) }
@@ -312,8 +313,11 @@ function getExternalTexture(path) {
 const _t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 // The live renderer pushes the sim clock each prepareFrame so self-animating details hold still
 // with the world (pause, hit-stop, restore latch) instead of animating over a frozen scene.
-// Null keeps the wall-clock fallback for benches/tests that never drive the render loop.
+// Null keeps the drawn-world fallback for benches/tests that never drive the render loop.
 let _presentationNow = null;
+let _accumulatedNow = 0;
+let _lastNowWallMs = NaN;
+
 export function setFactoryPresentationNow(seconds) {
   _presentationNow = Number.isFinite(seconds) ? seconds : null;
 }
@@ -324,7 +328,14 @@ export function factoryPresentationNow() {
 function nowSec() {
   if (_presentationNow != null) return _presentationNow;
   const n = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  return (n - _t0) / 1000;
+  if (!Number.isFinite(_lastNowWallMs)) {
+    _lastNowWallMs = n;
+  } else {
+    const dt = Math.max(0, (n - _lastNowWallMs) / 1000);
+    _lastNowWallMs = n;
+    _accumulatedNow += dt * presentedAdvanceRatio(n);
+  }
+  return _accumulatedNow;
 }
 
 // Recipe lookup with safe fallback so a missing/unknown defId never throws.
