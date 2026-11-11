@@ -256,7 +256,8 @@ function openField(t, id = 'bomb_goo') {
   // The five powers (owner 2026-10-22): the bay is BOMB + its cycle, and SHOVE sets armed
   // ordnance off (it took the old detonate's D-Pad Down beside the repulsor's Y).
   for (const action of ['bomb', 'cycleBomb', 'shove']) assert.ok(TAUGHT_FLIGHT_ACTIONS.includes(action));
-  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.shove, ['alt', 'dDown']);
+  // G18-02: RB shoves on the pad (hold-Y owns the wheel the old chords moved to).
+  assert.deepEqual(GAMEPAD_DEFAULT_BINDINGS.shove, ['r1']);
   assert.equal(gamepadShareAllowed('shove', 'fire'), false);
   assert.equal(gamepadShareAllowed('shove', 'tabPrev'), true);
   const settings = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');

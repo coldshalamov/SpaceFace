@@ -188,6 +188,16 @@ export function createLaneSystemFacade(ctx) {
             type: 'gestureCancel',
             reason: typeof reason === 'string' ? reason : 'lifecycle',
           }),
+          // G18-02 context wheel: slice choices are sim-owned; ship them as DOM descriptors.
+          applyWheelVerb: (d) => laneDomEvent({
+            type: 'wheelVerb',
+            action: d && d.action,
+            phase: d && d.phase,
+          }),
+          wheelLatchOn: (action) => {
+            const latches = st && st.input && st.input.wheelLatches;
+            return !!(latches && latches[action]);
+          },
         };
       case 'economy': {
         // quote() is a synchronous read — the stage-5 census missed that the

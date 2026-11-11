@@ -1,4 +1,7 @@
 <!-- LIFETIME: STABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The Translator Checklist — turning the owner's spoken verdict into work
 
 When the owner supplies gameplay feedback, one agent wears the TRANSLATOR hat and turns it into
