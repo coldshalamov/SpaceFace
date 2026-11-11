@@ -7,6 +7,8 @@ export const TUNING = Object.freeze({
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const finite = (n, fallback = 0) => Number.isFinite(n) ? n : fallback;
 export const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+/** How far the two open-space contacts' separation must change before they pinch the camera. */
+export const PINCH_GESTURE_MIN_PX = 12;
 export function stickRadius(width, height, scale = 1) {
   return clamp(Math.min(width, height) * 0.19, 54, 86) * clamp(finite(scale, 1), 0.75, 1.6);
 }
@@ -23,13 +25,21 @@ export class MobileGestures {
     this.pointers = new Map(); this.stick = null; this.wheel = null; this.wheelPage = 0;
     this.pulses = []; this.sampled = {}; this.toggle = {}; this.flickS = 0; this.flick = null;
     this.activity = false; this.cancelSerial = 0; this.cancelledRoles = new Set();
+    // Two open-space thumbs ('stick' plus the 'pinch' candidate) armed by their landing distance;
+    // once they change that distance past PINCH_GESTURE_MIN_PX the pair owns the camera's zoom.
+    this.pinch = null;     // { a, b, d0 } — the live gesture: pointer ids and the armed distance
+    this.pinchBase = null; // { a, b, d0 } — the candidate pair's baseline distance at landing
   }
   begin(id, role, x, y, ms, radius = 70) {
     if (![x, y, ms, radius].every(Number.isFinite) || this.pointers.has(id)) return false;
     if ([...this.pointers.values()].some(p => p.role === role)) return false;
     const p = { id, role, ox: x, oy: y, x, y, started: ms, last: ms, path: 0,
-      radius, boost: false, beyondS: 0, heldS: 0, moved: false };
+      radius, boost: false, beyondS: 0, heldS: 0, moved: false, suppressed: false };
     this.pointers.set(id, p); if (role === 'stick') this.stick = p;
+    if (role === 'stick' || role === 'pinch') {
+      const mate = [...this.pointers.values()].find(q => q !== p && (q.role === 'stick' || q.role === 'pinch'));
+      if (mate) this.pinchBase = { a: mate.id, b: p.id, d0: Math.hypot(p.x - mate.x, p.y - mate.y) };
+    }
     this.activity = true; return true;
   }
   move(id, x, y, ms) {
@@ -37,30 +47,68 @@ export class MobileGestures {
     if (!p || ![x, y, ms].every(Number.isFinite) || ms < p.last) return false;
     p.path += Math.hypot(x - p.x, y - p.y); p.x = x; p.y = y; p.last = ms;
     if (Math.hypot(x - p.ox, y - p.oy) > 10) p.moved = true;
+    if (this.pinchBase && !this.pinch && (id === this.pinchBase.a || id === this.pinchBase.b)) {
+      const a = this.pointers.get(this.pinchBase.a), b = this.pointers.get(this.pinchBase.b);
+      if (!a || !b) this.pinchBase = null;
+      else {
+        const d = Math.hypot(b.x - a.x, b.y - a.y);
+        if (Math.abs(d - this.pinchBase.d0) > PINCH_GESTURE_MIN_PX) {
+          this.pinch = { a: a.id, b: b.id, d0: d };
+          // Gun contacts already down are suppressed for the rest of their hold: the release a
+          // pinch leaves behind is "without firing", not a last shot as the stick re-arms.
+          for (const q of this.pointers.values()) if (q.role === 'fire') q.suppressed = true;
+        }
+      }
+    }
     this.activity = true; return true;
   }
   end(id, x, y, ms, cancel = false) {
     const p = this.pointers.get(id); if (!p) return null;
     if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(ms)) this.move(id, x, y, ms);
+    const wasPinch = !!(this.pinch && (this.pinch.a === id || this.pinch.b === id));
+    if (wasPinch) this.pinch = null;
     const elapsed = Math.max(1, p.last - p.started);
     const d = Math.hypot(p.x - p.ox, p.y - p.oy);
-    if (!cancel && p.role === 'stick' && elapsed <= TUNING.flickMaxMs
+    if (!cancel && !wasPinch && !p.suppressed && p.role === 'stick' && elapsed <= TUNING.flickMaxMs
       && d >= p.radius * TUNING.flickMinRadius && d / elapsed >= TUNING.flickMinSpeed
       && d / Math.max(d, p.path) >= TUNING.flickStraightness && !p.boost) {
       this.flickS = TUNING.flickPulseS;
       this.flick = shapeStick(p.x - p.ox, p.y - p.oy, p.radius);
     }
     // Sub-frame taps survive one fixed tick; cancellation is NEVER a tap.
-    if (!cancel && (p.role === 'fire' || p.role === 'tether') && !p.sampled) this.pulse(p.role);
+    if (!cancel && !p.suppressed && (p.role === 'fire' || p.role === 'tether') && !p.sampled) this.pulse(p.role);
     if (cancel) { this.cancelledRoles.add(p.role); this.pulses = this.pulses.filter(a => a !== p.role); }
     if (p === this.stick) this.stick = null;
-    this.pointers.delete(id); this.activity = true; return p;
+    this.pointers.delete(id);
+    if (wasPinch || p.role === 'stick' || p.role === 'pinch') this.seatOpenThumb(wasPinch);
+    this.activity = true; return p;
+  }
+  /** A thumb that outlives its open-space mate takes the stick where it rests; a thumb released
+   *  from an active pinch re-anchors — it travelled with the gesture, so its old origin would
+   *  read as a huge false deflection. A resting pair that never pinched keeps the stick's origin. */
+  seatOpenThumb(wasPinch) {
+    this.pinchBase = null;
+    let s = this.stick;
+    if (!s) {
+      s = [...this.pointers.values()].find(q => q.role === 'stick' || q.role === 'pinch');
+      if (!s) return;
+      s.role = 'stick'; this.stick = s;
+    } else if (!wasPinch) return;
+    s.ox = s.x; s.oy = s.y; s.path = 0; s.moved = true;
+    s.boost = false; s.beyondS = 0; s.heldS = 0;
   }
   pulse(action) { if (typeof action === 'string' && this.pulses.length < 32) this.pulses.push(action); }
   held(role) { return [...this.pointers.values()].some(p => p.role === role); }
+  /** Live finger separation of the active pinch pair; null unless a pinch is live. */
+  pinchDistance() {
+    const g = this.pinch; if (!g) return null;
+    const a = this.pointers.get(g.a), b = this.pointers.get(g.b);
+    return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : null;
+  }
   reset() {
     this.pointers.clear(); this.stick = null; this.wheel = null; this.pulses.length = 0;
     this.sampled = {}; this.toggle = {}; this.flickS = 0; this.flick = null;
+    this.pinch = null; this.pinchBase = null;
     this.cancelSerial++; this.activity = true; this.cancelledRoles.clear();
   }
   sample(dt) {
@@ -72,11 +120,16 @@ export class MobileGestures {
       if (this.sampled[action] || actions[action]) remaining.push(action); else actions[action] = true;
     }
     this.pulses = remaining;
-    for (const p of this.pointers.values()) { actions[p.role] = true; p.sampled = true; }
+    for (const p of this.pointers.values()) {
+      // The stick and fire roles do not fire while a pinch owns the camera; suppressed contacts
+      // stay dead until they lift so the release after a pinch is not a shot.
+      if (!p.suppressed && !(this.pinch && p.role === 'fire')) actions[p.role] = true;
+      p.sampled = true;
+    }
     this.sampled = actions;
     const p = this.stick;
     let flight = { x: 0, y: 0, magnitude: 0, raw: 0, boost: false, brake: false, active: false };
-    if (p) {
+    if (p && !this.pinch) {
       const shaped = shapeStick(p.x - p.ox, p.y - p.oy, p.radius, p.boost);
       p.heldS += step;
       if (shaped.boostCandidate) {
@@ -89,7 +142,7 @@ export class MobileGestures {
       flight = { ...this.flick, magnitude: 1, boost: true, brake: false, active: true, flick: true };
       this.flickS = Math.max(0, this.flickS - step);
     }
-    const gun = [...this.pointers.values()].find(p => p.role === 'fire');
+    const gun = this.pinch ? null : [...this.pointers.values()].find(p => p.role === 'fire' && !p.suppressed);
     const aim = gun && Math.hypot(gun.x - gun.ox, gun.y - gun.oy) > 14
       ? shapeStick(gun.x - gun.ox, gun.y - gun.oy, gun.radius) : null;
     const tether = [...this.pointers.values()].find(p => p.role === 'tether');
