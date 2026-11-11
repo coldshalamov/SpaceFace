@@ -281,6 +281,7 @@ export const sectorPostcard = {
     }
     this._cardEl = null;
     this._dismiss = null;
+    this._stageHandle = null;
     this._hideTimer = null;
   },
 
@@ -308,10 +309,11 @@ export const sectorPostcard = {
   },
 
   // ── DOM card (cosmetic; fully guarded; never blocks flight) ─────────────────────────────────
+  // G16-02: the card goes through the Stage's banner slot — the shared .dp-glass frame and the
+  // alerts lane replace this module's own mount point and z-index. A host with no live Stage
+  // keeps the legacy #hud seat (styles/kit.css scopes its placement to `#hud >`).
   _render(card) {
     if (typeof document === 'undefined') return;
-    const host = document.getElementById('hud') || document.body;
-    if (!host) return;
 
     this._hide(); // replace any previous card
 
@@ -355,7 +357,14 @@ export const sectorPostcard = {
     line(card.nextAction, 'sf-postcard__dim');
     line(card.rumor && `“${card.rumor}”`, 'sf-postcard__rumor');
 
-    host.appendChild(el);
+    const stage = this._ctx && this._ctx.stage;
+    if (stage && typeof stage.show === 'function') {
+      this._stageHandle = stage.show('banner', el, { id: 'sf-sector-postcard', severity: 'info' });
+    } else {
+      const host = document.getElementById('hud') || document.body;
+      if (!host) return;
+      host.appendChild(el);
+    }
     this._cardEl = el;
 
     // Dismiss on ANY input; auto-fade as cosmetic hygiene.
@@ -374,6 +383,7 @@ export const sectorPostcard = {
     this._dismiss = null;
     if (this._hideTimer != null && typeof window !== 'undefined') window.clearTimeout(this._hideTimer);
     this._hideTimer = null;
+    if (this._stageHandle) { this._stageHandle.clear(); this._stageHandle = null; }
     if (this._cardEl && this._cardEl.parentNode) this._cardEl.parentNode.removeChild(this._cardEl);
     this._cardEl = null;
   },
