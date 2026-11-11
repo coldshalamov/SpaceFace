@@ -10,6 +10,7 @@ import { createAlerts } from '../src/ui/alerts.js';
 import { createToasts } from '../src/ui/toasts.js';
 import { createPromptDeck } from '../src/ui/promptDeck.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
+import { RECEIPT_MAX } from '../src/ui/hudAttention.js';
 
 // A tiny synchronous bus: emit() runs this event's listeners in subscription order, matching the
 // fields the real emitters send (PROTOCOL — tests use the game's real payload shapes).
@@ -434,4 +435,114 @@ test('G16-03: the one-voice floor is a banner item — a danger voice preempts a
     f.bus.emit('voice:clear', { id: 'alert:incoming' });
     assert.deepEqual(f.stage.visible('banner'), ['alert:dock'], 'the pill returns when the voice clears');
   } finally { f.restore(); }
+});
+
+function toastsFixture() {
+  const dom = installDom();
+  const stage = createStage({ document: dom.doc });
+  const toastsEl = dom.doc.createElement('div'); toastsEl.id = 'toasts';
+  const liveEl = dom.doc.createElement('div'); liveEl.id = 'toast-live';
+  toastsEl.appendChild(liveEl);
+  stage.slotEl('feed').appendChild(toastsEl); // the lane lives inside the slot (index.html)
+  const bus = createBus();
+  const host = createToasts({
+    bus, stage,
+    state: { ui: {}, playerId: 'p1', entities: new Map(), world: {} },
+  });
+  return { ...dom, stage, bus, host, toastsEl };
+}
+
+const feedFlow = (toastsEl) => toastsEl.children.find(
+  (c) => c.classList && c.classList.contains('sf-stage__flow'),
+);
+
+// A receipt's words live on its .sf-toast__text child — the card root only carries chrome.
+const toastText = (el) => {
+  const t = el && el.children ? el.children.find((c) => c.classList && c.classList.contains('sf-toast__text')) : null;
+  return t ? t.textContent : '';
+};
+
+test('G16-03: receipts ride the feed door — the lane cap holds and the oldest goes out', () => {
+  const f = toastsFixture();
+  try {
+    // Real `toast` payloads (toasts.js push()): {text, kind, ttl} in seconds.
+    f.bus.emit('toast', { text: 'Sold 4 Platinum +1,240 cr', kind: 'good', ttl: 6 });
+    f.bus.emit('toast', { text: 'Autopilot course laid in', kind: 'info', ttl: 4 });
+    f.bus.emit('toast', { text: 'Heat rising', kind: 'warn', ttl: 4 });
+    f.bus.emit('toast', { text: 'Cargo latched', kind: 'success', ttl: 4 });
+    // The lane's own cap (RECEIPT_MAX, inside the feed slot's three-seat ceiling) holds: the two
+    // oldest went out — their cards still finish their exit beat, marked --out in the lane.
+    assert.equal(f.stage.visible('feed').length, RECEIPT_MAX, 'the stage owns the visible set');
+    const flow = feedFlow(f.toastsEl);
+    const liveCards = flow.children.filter((el) => el.classList && !el.classList.contains('sf-toast--out'));
+    assert.deepEqual(liveCards.map(toastText), ['Cargo latched', 'Heat rising'],
+      'newest first — the lane\'s original prepend order');
+    assert.equal(liveCards.some((el) => toastText(el) === 'Sold 4 Platinum +1,240 cr'), false,
+      'the oldest receipt left the lane');
+  } finally { f.restore(); }
+});
+
+test('G16-03: a cleared receipt frees its feed seat for the next toast', () => {
+  const f = toastsFixture();
+  try {
+    f.bus.emit('toast', { text: 'Docking clamp released', kind: 'info', ttl: 4 });
+    assert.equal(f.stage.visible('feed').length, 1);
+    const card = feedFlow(f.toastsEl).firstElementChild;
+    card.dispatch('click');
+    assert.equal(f.stage.visible('feed').length, 0, 'a click-dismissed receipt clears the seat');
+    f.bus.emit('toast', { text: 'Cargo latched', kind: 'info', ttl: 4 });
+    assert.equal(f.stage.visible('feed').length, 1, 'the freed seat takes the next receipt');
+    assert.equal(toastText(feedFlow(f.toastsEl).children.find(
+      (el) => el.classList && !el.classList.contains('sf-toast--out'),
+    )), 'Cargo latched');
+  } finally { f.restore(); }
+});
+
+test('G16-03: the prompt deck claims the prompt seat — a rival queues behind it', async () => {
+  const dom = installDom();
+  try {
+    const stage = createStage({ document: dom.doc });
+    const bus = createBus();
+    const deck = createPromptDeck({
+      document: dom.doc, bus, stage,
+      state: { mode: 'flight', ui: {}, simTime: 0, entities: new Map(), playerId: 'p1' },
+    });
+    // A rival panel on the prompt slot first — contactHailPrompt's real call shape.
+    stage.show('prompt', 'PIRATE DEMAND — pay or be boarded', { id: 'contact-hail', severity: 'info' });
+    assert.deepEqual(stage.visible('prompt'), ['contact-hail']);
+    // A live decision claims the seat — the hail is demoted and waits, never drawn over.
+    deck.offerDecision({
+      id: 'jump-choice', kind: 'warn', sender: 'NAV', headline: 'Unfiled jump charge',
+      detail: 'File the burn or eat the fine', choices: [{ id: 'file', label: 'File charge' }, { id: 'burn', label: 'Burn anyway' }],
+    });
+    assert.deepEqual(stage.visible('prompt'), ['sf-prompt-deck-seat'], 'the deck holds the seat while live');
+    assert.deepEqual(stage.queued('prompt'), ['contact-hail'], 'the hail waits behind the deck');
+    deck.clearAll();
+    assert.deepEqual(stage.visible('prompt'), ['contact-hail'], 'the queued hail mounts when the deck empties');
+    deck.destroy();
+  } finally { dom.restore(); }
+});
+
+test('G16-03: a centre dialog waits while a station/menu screen is open', () => {
+  const dom = installDom();
+  try {
+    const stage = createStage({ document: dom.doc });
+    const dialogSlot = stage.slotEl('dialog');
+    const screens = dom.doc.createElement('div'); screens.id = 'screens';
+    const backdrop = dom.doc.createElement('div'); backdrop.id = 'modal-backdrop';
+    dialogSlot.appendChild(backdrop);
+    dialogSlot.appendChild(screens);
+    const bus = createBus();
+    const sm = createScreenManager({ state: { ui: {}, mode: 'flight' }, bus, stage });
+    sm.register({ id: 'menu' });
+    sm.pushScreen('menu');
+    assert.equal(stage.held('dialog'), true, 'the open screen holds the dialog seat');
+    const handle = stage.show('dialog', 'Sell the ship?', { id: 'c1', severity: 'warn' });
+    assert.equal(handle.visible, false, 'the dialog waits while the screen is open');
+    assert.deepEqual(stage.queued('dialog'), ['c1']);
+    sm.popScreen();
+    assert.equal(handle.visible, true, 'the queued dialog mounts when the screen closes');
+    assert.equal(stage.held('dialog'), false);
+    sm.destroy();
+  } finally { dom.restore(); }
 });
