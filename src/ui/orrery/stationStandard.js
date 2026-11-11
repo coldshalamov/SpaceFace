@@ -743,7 +743,7 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
 }
 
 /* ==== BAR =================================================================================== */
-${P} .sx-bar__hang { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important; background-image:none !important; padding:9px 12px !important; }
+${P} .sx-bar__hang { box-sizing:border-box; border:${LINE} !important; border-radius:8px; background:${PANEL} !important; background-image:none !important; padding:9px 12px !important; }
 ${P} .sx-bar__hang::before, ${P} .sx-bar__hang::after, ${P} .sx-bar__rows::before, ${P} .sx-bar__rows::after,
 ${P} .sx-bar .sx-lead__rows::before, ${P} .sx-bar .sx-lead__rows::after, ${P} .sx-bar .sx-talk__choices::before, ${P} .sx-bar .sx-talk__choices::after { display:none !important; content:none !important; }
 ${P} .sx-bar :is(.sx-bar__rows, .sx-lead__rows, .sx-intel__rows, .sx-bar__foot, .sx-talk__choices) { background:none !important; background-image:none !important; }
@@ -755,7 +755,7 @@ ${P} .sx-bar :is(.sx-bar__keys, .sx-talk__keys) { text-transform:none !important
   font-weight:500 !important; color:rgb(${BONE} / .6) !important; }
 ${P} .sx-bar .sx-bar__rows { display:flex !important; flex-direction:column !important; gap:2px !important; list-style:none; margin:0 0 2px !important; padding:0 !important; }
 ${P} .sx-bar .sx-bar-row { display:block !important; width:100% !important; box-sizing:border-box; text-align:left !important; height:auto !important; min-height:0 !important;
-  padding:4px 9px !important; border:1px solid transparent !important; border-radius:2px !important; background:none !important; background-image:none !important; clip-path:none !important;
+  padding:4px 9px !important; border:1px solid transparent !important; border-radius:6px !important; background:none !important; background-image:none !important; clip-path:none !important;
   font-family:${UI} !important; font-size:14px !important; font-weight:600 !important; line-height:1.2 !important; letter-spacing:0 !important; text-transform:none !important;
   color:rgb(${BONE}) !important; white-space:normal !important; cursor:pointer; }
 ${P} .sx-bar .sx-bar-row::before, ${P} .sx-bar .sx-bar-row::after { content:none !important; display:none !important; }
@@ -773,13 +773,13 @@ ${P} .sx-bar .sx-lead__t { flex:1 1 auto; min-width:0 !important; white-space:no
   font-family:${UI} !important; font-size:13px !important; font-weight:600 !important; line-height:1.25 !important; letter-spacing:0 !important; color:rgb(${BONE}) !important; }
 ${P} .sx-bar .sx-lead__s { flex:none; font-family:${NUM} !important; font-size:12.5px !important; letter-spacing:0 !important; color:var(--dp-phos, #dfeeff) !important; text-transform:none !important; }
 ${P} .sx-bar .sx-lead__go { display:inline-flex !important; align-items:center; height:24px !important; padding:0 8px !important;
-  border:${LINE} !important; border-radius:2px !important; background:transparent !important;
+  border:${LINE} !important; border-radius:6px !important; background:transparent !important;
   font-family:${UI} !important; font-size:12px !important; font-weight:600 !important; letter-spacing:.01em !important; text-transform:none !important; color:rgb(${BONE} / .9) !important; cursor:pointer; }
 ${P} .sx-bar .sx-lead__go::before, ${P} .sx-bar .sx-lead__go::after { content:none !important; display:none !important; }
 ${P} .sx-bar .sx-lead__go:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .12) !important; color:#fff !important; }
 ${P} .sx-bar .sx-bar__foot { display:flex !important; flex-wrap:wrap; gap:8px !important; padding:6px 0 0 !important; margin:6px 0 0 !important; list-style:none; }
 ${P} .sx-bar .sx-bar__foot button { display:inline-flex !important; align-items:center; gap:4px; height:28px !important; padding:0 10px !important;
-  border:${LINE} !important; border-radius:2px !important; background:transparent !important;
+  border:${LINE} !important; border-radius:6px !important; background:transparent !important;
   font-family:${UI} !important; font-size:12.5px !important; font-weight:600 !important; letter-spacing:.01em !important; text-transform:none !important; color:rgb(${BONE} / .92) !important; cursor:pointer; }
 ${P} .sx-bar .sx-bar__foot button::before, ${P} .sx-bar .sx-bar__foot button::after { content:none !important; display:none !important; }
 ${P} .sx-bar :is(.sx-intel) :is(.k-row__name, .k-row__sub, small) { font-family:${UI} !important; font-size:12.5px !important; letter-spacing:.01em !important; text-transform:none !important; }
