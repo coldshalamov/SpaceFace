@@ -836,13 +836,15 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops .sx-dock__group--nav { flex-wrap:wrap !important; gap:0 18px !important; padding-left:0 !important; width:100% !important; transform:none !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li { flex:none !important; }
   ${D} .sxb-ops :is(.sxb-ops__dock, .sx-dock, .sx-dock__group--nav) { min-height:0 !important; height:auto !important; padding-bottom:0 !important; margin-bottom:0 !important; }
-  /* only the open destination keeps its line, on one row under the words */
-  ${D} .sxb-ops .sx-dock__group--nav { position:relative !important; padding-bottom:18px !important; }
+  /* only the open destination keeps its line, under the words: two lines' lane so the help sentence reads whole
+     instead of ellipsizing mid-word at 390–430 wide (it clamps at two on narrower phones) */
+  ${D} .sxb-ops .sx-dock__group--nav { position:relative !important; padding-bottom:34px !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile:is(.is-active, :focus-visible))) > .sx-tile__gloss { display:none !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile:focus-visible) ~ li > .sx-tile__gloss { display:none !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li > .sx-tile__gloss { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; top:auto !important;
     width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:left !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:16px !important; }
+    white-space:normal !important; overflow:hidden !important; line-height:16px !important; max-height:32px !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow-wrap:normal !important; text-wrap:pretty; }
   ${D} .sxb-ops .sx-tile { min-height:36px !important; }
   ${D} .sxb-ops .orr-stationrow__rule, ${D} .sxb-ops .so-dock-indicator { display:none !important; }
   ${D} .sxb-ops .sx-comms { margin:0 !important; align-self:center !important; }
