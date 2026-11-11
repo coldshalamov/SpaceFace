@@ -70,6 +70,7 @@ import {
 } from '../data/swarmMods.js';
 import {
   swarmHeldWeaponDefId,
+  swarmPrimaryWeaponIndex,
   swarmTapAvailable,
   swarmTapCount,
   swarmTapsSoldOut,
@@ -145,9 +146,11 @@ export function createSwarmFloorDirector(ctx) {
   }
 
   /**
-   * Where a bought gun lands: the first EMPTY slot that mounts it, else the lowest-index
-   * (primary) slot that mounts it — the armory's own add-before-swap order. Null when no
-   * mountable slot exists, or when every mountable slot already carries this exact def.
+   * Where a bought gun lands: the occupied PRIMARY mount that takes it (the same
+   * lowest-index rule the Forge's held-gun read uses - the displaced gun goes to the
+   * hold), else, when no occupied mount can take it (or the primary already carries this exact
+   * def, so there is nothing to replace), the first empty mount that does. Null when neither
+   * exists.
    */
   function padSlotIndex(def) {
     const loadout = activeLoadout();
@@ -155,10 +158,11 @@ export function createSwarmFloorDirector(ctx) {
     const fittings = Array.isArray(loadout.owned.fittings) ? loadout.owned.fittings : [];
     const mountable = buildSlotList(loadout.shipDef)
       .filter((slot) => slot.type === 'weapon' && fits(slot, def));
+    const primary = swarmPrimaryWeaponIndex(loadout.owned, loadout.shipDef,
+      (slot) => fits(slot, def));
+    if (primary >= 0 && fittings[primary] !== def.id) return primary;
     const empty = mountable.find((slot) => !fittings[slot.index]);
-    if (empty) return empty.index;
-    const swap = mountable.find((slot) => fittings[slot.index] !== def.id);
-    return swap ? swap.index : null;
+    return empty ? empty.index : null;
   }
 
   /**
@@ -176,6 +180,7 @@ export function createSwarmFloorDirector(ctx) {
         shipIndex: (state.player && state.player.activeShipIndex) || 0,
         slotIndex,
         def,
+        swarmGrant: true, // a Swarm floor gun is bought with credits, never with Adventure research
       });
       if (blocker) return null;
     }
@@ -565,7 +570,7 @@ export function createSwarmFloorDirector(ctx) {
     }
     const sys = ships();
     const fitted = !!(sys && typeof sys.fitModule === 'function'
-      && sys.fitModule({ slotIndex: job.slotIndex, defId: job.defId }));
+      && sys.fitModule({ slotIndex: job.slotIndex, defId: job.defId, swarmGrant: true }));
     if (!fitted) {
       emit('run:awardRequested', { credits: job.price, reason: REFUND_REASON });
       emit('toast', {

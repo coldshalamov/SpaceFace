@@ -13,6 +13,7 @@ import { ships as shipsProto, buildSlotList, fits } from '../src/systems/ships.j
 import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { swarmHeldWeaponDefId } from '../src/systems/playerModifiers.js';
 import {
   SWARM_FLOOR_PLANS,
   SWARM_FLOOR_PAD_KIND,
@@ -218,7 +219,12 @@ test('a wall-gun pad sells its gun through the run purse and the ships owner fit
     assert.equal(slot.type, 'weapon');
     assert.ok(fits(slot, WEAPONS.find((w) => w.id === 'wpn_concussion_cannon_s')),
       'the pad gun mounts on the slot it landed in');
-    assert.equal(h.owned.fittings[0], 'wpn_pulse_laser_s', 'the starter gun was not displaced');
+    assert.equal(h.owned.fittings[0], 'wpn_concussion_cannon_s', 'the bought gun replaces the primary');
+    assert.equal(slotIndex, 0);
+    assert.ok(h.state.player.moduleInventory.some((m) => m.defId === 'wpn_pulse_laser_s'),
+      'the displaced starter goes to the hold, not the void');
+    assert.equal(swarmHeldWeaponDefId(h.state), 'wpn_concussion_cannon_s',
+      'the Forge reads the gun just bought as the gun you hold');
     assert.equal(h.events.spent.length, 1);
     assert.equal(h.events.spent[0].reason, 'swarm_floor_pad');
     assert.ok(h.events.cues.some((c) => c.id === 'sfx_ui_confirm'), 'the buy cue played');
@@ -419,5 +425,43 @@ test('Crate pulls and spot memory are run-scoped: they survive a re-arm, reset o
     assert.equal(h.events.moved.length, 1, 'the third pull of the RUN lifts the Crate');
     assert.equal(h.events.moved[0].pulls, 3);
     h.tickSeconds(2.5);
+  } finally { h.destroy(); }
+});
+
+test('review 3: with no occupied primary a bought gun fills the first empty mount', () => {
+  const h = boot({ credits: 5000 });
+  try {
+    h.owned.fittings[0] = null;
+    h.collect(h.padById('foundry-gun-ne'));
+    assert.equal(h.owned.fittings[0], 'wpn_concussion_cannon_s');
+    assert.equal(h.owned.fittings[1], null);
+    assert.equal(swarmHeldWeaponDefId(h.state), 'wpn_concussion_cannon_s');
+  } finally { h.destroy(); }
+});
+
+test('review 4: the Crate deals research-gated guns the hull can mount, and Adventure stays gated', () => {
+  const dealt = new Set();
+  for (let k = 0; k < WEAPONS.length * 3; k += 1) {
+    const h = boot({ credits: 5000 });
+    try {
+      const r = (k + 0.5) / (WEAPONS.length * 3);
+      h.state.rng = () => r;
+      h.collect(h.padById('foundry-crate'));
+      const buy = h.events.bought.find((b) => b.kind === 'crate');
+      if (buy) dealt.add(buy.defId);
+    } finally { h.destroy(); }
+  }
+  const gated = [...dealt].filter((id) => WEAPONS.find((w) => w.id === id).requiresTech);
+  assert.ok(gated.length > 0, `the Crate dealt ${[...dealt].join(', ')} - no research-gated gun`);
+  // The campaign rule is untouched: outside a swarm grant the same gun is still locked.
+  const h = boot({ credits: 0 });
+  try {
+    const def = WEAPONS.find((w) => w.id === gated[0]);
+    const ask = (extra) => h.ctx.registry.get('ships').moduleFitBlocker({ shipIndex: 0, slotIndex: 1, def, ...extra });
+    assert.equal(ask({}) && ask({}).reason, 'research_required');
+    assert.equal(ask({ swarmGrant: true }), null);
+    h.state.run = null;
+    assert.equal(ask({ swarmGrant: true }) && ask({ swarmGrant: true }).reason, 'research_required',
+      'a grant means nothing outside a live Swarm run');
   } finally { h.destroy(); }
 });

@@ -183,14 +183,26 @@ export function swarmHeldWeaponDefId(state) {
   const owned = player && Array.isArray(player.ownedShips)
     ? player.ownedShips[(player.activeShipIndex) || 0] : null;
   const shipDef = owned && SHIP_BY_ID.get(owned.defId);
-  if (!shipDef || !Array.isArray(owned.fittings)) return null;
-  const slots = buildSlotList(shipDef);
-  for (const slot of slots) {
+  const index = swarmPrimaryWeaponIndex(owned, shipDef);
+  return index >= 0 ? owned.fittings[index] : null;
+}
+
+/**
+ * THE one definition of the primary gun: the lowest-index weapon slot that carries a
+ * catalogue weapon. `accepts(slot)` narrows it to mounts a particular gun can take - the
+ * floor's purchase replaces the occupied primary it can mount, and the Forge reads the
+ * same lowest-index rule unnarrowed. Returns -1 when no weapon slot is occupied.
+ */
+export function swarmPrimaryWeaponIndex(owned, shipDef, accepts = null) {
+  if (!owned || !shipDef || !Array.isArray(owned.fittings)) return -1;
+  for (const slot of buildSlotList(shipDef)) {
     if (!slot || slot.type !== 'weapon') continue;
     const id = owned.fittings[slot.index];
-    if (id && WEAPON_BY_ID.has(id)) return id;
+    if (!id || !WEAPON_BY_ID.has(id)) continue;
+    if (typeof accepts === 'function' && !accepts(slot)) continue;
+    return slot.index;
   }
-  return null;
+  return -1;
 }
 
 /** Forge damage scale for one shot: ×1.4 when this exact defId carries the receipt. */
