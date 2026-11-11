@@ -52,6 +52,7 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 
 | ID | Tier | Job | State |
 |---|---|---|---|
+| RECON-MOB | D | One recon draft for MOB-01..04 (`drafts/MOB.md`) | TAKEN devin2 |
 | MOB-01 pinch zoom | D | NEEDS-PACKET: pinch zooms the flight camera out to desktop framing; default phone zoom wider | NEEDS-PACKET |
 | MOB-02 phone HUD | D | NEEDS-PACKET: flight HUD covers ≤ 25 % of a 390×844 screen (`ui-bench --phone`) | NEEDS-PACKET |
 | MOB-03 touch controls you can read | D | NEEDS-PACKET: every touch control labelled on first use; what a tap does is shown | NEEDS-PACKET |
@@ -72,7 +73,7 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | G18-REVIEW | L | Before DONE: run `node --test test/al-race-1-contested-line-4242.test.mjs` on a quiet machine (with the change, two Hard circuits lost the anchored-lap margin; the run without it timed out at 7 min on a loaded host); one Adventure trace of a throw into a ship (`node scripts/agent-loop.mjs sim <scenario> --trace`) | READY |
 | G18-02-one-set-of-keys | D | Same keys both doors; everything else on a Q context wheel | READY |
 | G18-03-the-missing-feedback | D | Camera beat on light kill + slingshot release (both doors), boost to 2x cruise with a ring, engine feel set | BUILT 739a85eb |
-| G18-04-boost-pins-and-puffs | D | Re-pin the two boost tests to 2.0 via their re-freeze process; ignition cough + turn puffs | TAKEN devin2 |
+| G18-04-boost-pins-and-puffs | D | Re-pin the two boost tests to 2.0 via their re-freeze process; ignition cough + turn puffs | BUILT ffc5b618 |
 | G17-01-swarm-start-at-round | D | `?swarmRound=N`, `--start-round=N` | BUILT 2f8b164a |
 | G16 one glass | D | NEEDS-PACKET: Kit Page + the Stage popup host (every popup through one host, one style). Spec: EC-G16 #1024 | NEEDS-PACKET |
 
