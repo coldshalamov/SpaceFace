@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # ATTENTION LEDGER — every surface a player can reach, and how much love it has
 
 Claimable rows for the ATTENTION PROGRAM (`ATTENTION_PROGRAM.md`). One row = one

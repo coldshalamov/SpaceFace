@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # SpaceFace report card — every system, graded against 2020s A-list games
 
 Maintained by [`PLAN_ENGINE.md`](./PLAN_ENGINE.md) cycle C1, using the brief in

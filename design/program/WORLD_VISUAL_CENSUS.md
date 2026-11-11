@@ -1,4 +1,7 @@
 <!-- LIFETIME: DURABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # What you see that is not a packaged model
 
 The release manifest and `VISUAL_ASSET_CATALOG.md` only count **files on disk**.
