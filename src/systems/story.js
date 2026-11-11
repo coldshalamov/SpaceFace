@@ -1,3 +1,4 @@
+import { normalizeSeedCharter, seedCharterPaidReceipt, seedRemittanceComparison } from '../missions/empireSeedCharter.js';
 // src/systems/story.js — the narrative overlay system.
 //
 // This is the system that makes the story spine ACTUALLY REACH THE PLAYER. It owns no sim money,
@@ -253,6 +254,7 @@ export const story = {
       this._onPostEndingSignal('economy:tradeCompleted', p || {});
     });
     bus.on('economy:grantCredits', (p) => this._onAutomationRemittance(p || {}));
+    bus.on('automation:traderCycleCompleted', p => this._onSeedCharterRemittance(p || {}));
     bus.on('asset:deployed', () => {
       this._armValeRemittanceWatch();
       this._maybeSpeakBeatRecovery('asset:deployed');
@@ -765,7 +767,9 @@ export const story = {
     if (!s || !s.flags || !s.flags.vale_remittance_armed) return;
     if (s.flags.vale_remittance_noted) return;
     const reason = String((p && p.reason) || '');
-    if (!reason.startsWith('automation:')) return;
+    if (!reason.startsWith('automation:') || !Number.isFinite(p.amount) || p.amount <= 0) return;
+    // The crewed charter's actual cycle receipt, after the economy owner, carries this scene.
+    if (normalizeSeedCharter(this.state.automation?.meta?.seedCharter)) return;
     s.flags.vale_remittance_noted = true;
     const amount = Number(p && p.amount) || 0;
     const ledger = s.transactionLog || (s.transactionLog = []);
@@ -782,6 +786,23 @@ export const story = {
       ttl: 8,
       persist: false,
     });
+  },
+
+  _onSeedCharterRemittance(event) {
+    const s = this.state.story;
+    if (!s || s.flags?.seed_charter_remittance) return;
+    const receipt = seedCharterPaidReceipt(this.state, event);
+    if (!receipt) return;
+    s.flags = s.flags || {};
+    s.flags.seed_charter_remittance = receipt;
+    s.flags.vale_remittance_noted = true;
+    const ledger = s.transactionLog || (s.transactionLog = []);
+    ledger.push({ at: receipt.at, amount: receipt.amount, assetId: receipt.assetId,
+      cycle: receipt.cycle, note: 'REMITTANCE FROM CREWED CHARTER / CLEARED: VALE HOLDINGS LLC' });
+    this._fireComms({ id: 'seed_charter_remittance', sender: 'VALE HOLDINGS LLC',
+      text: `${receipt.amount.toLocaleString()} CR CLEARED. CREWED CHARTER / CYCLE ${receipt.cycle}.`,
+      note: seedRemittanceComparison(this.state) + ' The clearing receipt is kept in Automation → Traders.',
+      category: 'story', ttl: 10, persist: true });
   },
 
   // =========================================================================================

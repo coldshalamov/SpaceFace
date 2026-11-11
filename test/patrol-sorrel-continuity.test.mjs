@@ -260,7 +260,8 @@ test('consuming both unobserved hulks leaves the normal Book 6 asset route', () 
   assert.equal(h.state.story.beatIndex, 6);
   assert.equal(patrolPaperworkComparison(h.state), '');
   const action = storyActionForBeat({ beat: 6 }, h.state);
-  assert.equal(action.title, 'Plant income');
+  assert.equal(action.title, 'Meet the crew at Belt Outpost');
+  assert.equal(action.mapAction.stationId, 'station_beltout');
   assert.doesNotMatch(action.body, /Sable|Sorrel|Helix|sealed/);
 });
 

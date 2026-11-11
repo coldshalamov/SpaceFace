@@ -1,3 +1,5 @@
+import { resolveDockRange } from '../core/dockRange.js';
+import { seedCharterOffer, normalizeSeedCharter, SEED_CHARTER_DEF, SEED_CHARTER_STATION } from '../missions/empireSeedCharter.js';
 // Automation & passive-income system — the anti-idle build-up layer.
 // Contract: ARCHITECTURE §0.5 (seeded RNG), §0.6 (single-writer credits — emit
 // economy:grant/chargeCredits, never write player.credits), §2.3 step 12 (runs after
@@ -2437,6 +2439,7 @@ export const automation = {
       case 'recall': return this.recallDrone(p.shipId);
       case 'refuel': return this.refuelDrone(p.shipId);
       case 'hireTrader': return this.hireTrader(p.targetRef);
+      case 'commissionSeedCharter': return this.commissionSeedCharter();
       case 'assignRoute': return this.reroute(p.shipId);
       case 'dismiss': return this.dismissTrader(p.shipId);
       case 'resumeTrader': return this.resumeTrader(p.shipId);
@@ -2728,19 +2731,46 @@ export const automation = {
       return false;
     }
     if (!this._charge(def.hireCost, 'hire:' + defId)) return false;
+    const t = this._createTrader(def);
+    this.bus.emit('asset:deployed', { kind: 'trader', id: t.id, defId: t.defId });
+    this.toast(`Trader hired — route ${routeLabel(t.route)}`, 'success');
+    return true;
+  },
+
+  commissionSeedCharter() {
+    const offer = seedCharterOffer(this.state);
+    if (this._seedCharterPending || !offer || !offer.atDesk || !offer.affordable
+      || resolveDockRange(this.state, {}).stationId !== SEED_CHARTER_STATION) {
+      this.toast('The first crewed charter is available once, at the Belt Outpost berth after Book 5.', 'error');
+      return false;
+    }
+    const def = TRADER_BY_ID.get(SEED_CHARTER_DEF);
+    this._seedCharterPending = true;
+    try {
+    if (!this._charge(def.hireCost, 'seed_charter:' + def.id)) return false;
+    const t = this._createTrader(def);
+    // Spend admission before synchronous mission/story callbacks can observe deployment.
+    this.meta().seedCharter = { version: 1, assetId: t.id, defId: t.defId,
+      stationId: SEED_CHARTER_STATION, issuedAt: this.state.simTime || 0, costCr: def.hireCost };
+    this.bus.emit('asset:deployed', { kind: 'trader', id: t.id, defId: t.defId });
+    this.toast('Crewed charter commissioned. The first remittance waits for a paid run.', 'success');
+    return true;
+    } finally { this._seedCharterPending = false; }
+  },
+
+  _createTrader(def) {
+    const defId = def.id;
     const good = this._currentOreId();
     const t = {
       id: this._allocId(), defId, tier: def.tier,
-      route: this._pickRoute(), good,
+      route: this._pickRoute(null, def), good,
       cycleProgress: 0, cycleTime: def.cycleTime, cargoVol: def.cargoVol,
       lastCycleProfit: 0, upkeepPerMin: def.upkeepPerMin, hotness: 0,
       status: 'enroute', ratePerMin: 0,
     };
     if (t.route) t.route.good = good;
     this.state.automation.traders.push(t);
-    this.bus.emit('asset:deployed', { kind: 'trader', id: t.id, defId: t.defId });
-    this.toast(`Trader hired — route ${routeLabel(t.route)}`, 'success');
-    return true;
+    return t;
   },
 
   // Re-roll the trade route (the panel "Route" button — no station picker, so we auto-pick a fresh
@@ -2748,7 +2778,7 @@ export const automation = {
   reroute(id) {
     const t = this.state.automation.traders.find((x) => x.id === id);
     if (!t) return false;
-    t.route = this._pickRoute(t.route);
+    t.route = this._pickRoute(t.route, TRADER_BY_ID.get(t.defId) || t);
     if (t.route) t.route.good = this._currentOreId();
     t.hotness = 0;
     t.cycleProgress = 0;
@@ -2791,27 +2821,38 @@ export const automation = {
 
   // Pick a 2-station A->B route: A produces our good cheaply, B consumes it dearly. Falls back to
   // any two distinct stations. Deterministic-ish (price-driven), avoids re-picking the same pair.
-  _pickRoute(avoid) {
-    const econ = this._economy();
-    const good = this._currentOreId();
-    let bestA = null, bestB = null, bestBuy = Infinity, bestSell = -Infinity;
-    for (const st of ALL_STATIONS) {
-      if (econ && econ.getMarket) econ.getMarket(st.id); // warm the market so a price exists
-      const buy = econ ? (econ.priceOf(st.id, good, 'buy') || 0) : 0;
-      const sell = econ ? (econ.priceOf(st.id, good, 'sell') || 0) : 0;
-      if (buy > 0 && buy < bestBuy) { bestBuy = buy; bestA = st.id; }
-      if (sell > bestSell) { bestSell = sell; bestB = st.id; }
+  _pickRoute(avoid, def = TRADERS[0]) {
+    const econ = this._economy(), good = this._currentOreId();
+    // The settlement buys a whole shipment and pays route fuel. Rank that same quote, not
+    // independent headline prices: the widest spread can be a loss across several sectors.
+    const ports = ALL_STATIONS.map(st => {
+      if (econ && econ.getMarket) econ.getMarket(st.id);
+      const buyKnown = Number(econ?.priceOf?.(st.id, good, 'buy')) > 0;
+      const sellKnown = Number(econ?.priceOf?.(st.id, good, 'sell')) > 0;
+      // Settlement has an old nominal fallback. It must not invent a newly selectable port
+      // that has no live market for this good. Keep the original selector's availability gate.
+      return { id: st.id, buy: buyKnown ? this._stationPrice(st.id, good, 'buy', def.cargoVol) : 0,
+        sell: sellKnown ? this._stationPrice(st.id, good, 'sell', def.cargoVol) : 0 };
+    });
+    let best = null, other = null;
+    for (const from of ports) for (const to of ports) {
+      if (from.id === to.id || !(from.buy > 0) || !(to.sell > 0)) continue;
+      const route = { from: from.id, to: to.id, good };
+      const fuelCost = this._routeFuelCost({ route });
+      const profit = traderProfitPerCycle(def, from.buy, to.sell, { hotness: 0, routeFuelCost: fuelCost });
+      const row = { route, profit, fuelCost };
+      // Catalog iteration breaks equal-quote ties deterministically. When all quotes are zero,
+      // prefer the shorter fuel bill rather than manufacturing a positive estimate.
+      const better = old => !old || profit > old.profit || profit === old.profit && fuelCost < old.fuelCost;
+      if (better(best)) best = row;
+      if ((!avoid || avoid.from !== from.id || avoid.to !== to.id) && better(other)) other = row;
     }
-    if (!bestA || !bestB || bestA === bestB) {
-      // fallback: first two distinct stations
-      bestA = ALL_STATIONS[0] && ALL_STATIONS[0].id;
-      bestB = (ALL_STATIONS.find((s) => s.id !== bestA) || {}).id || bestA;
-    }
-    if (avoid && avoid.from === bestA && avoid.to === bestB) {
-      const alt = ALL_STATIONS.find((s) => s.id !== bestA && s.id !== bestB);
-      if (alt) bestB = alt.id;
-    }
-    return { from: bestA, to: bestB, good };
+    // A reroute can seek another paying lane; do not throw away the only positive route merely
+    // to change its names. Prices can still move during the normal 180–320 second cycle.
+    if (avoid && other?.profit > 0) return other.route;
+    if (best) return best.route;
+    const from = ALL_STATIONS[0]?.id;
+    return { from, to: ALL_STATIONS.find(st => st.id !== from)?.id || from, good };
   },
 
   // ---- OUTPOSTS ----
@@ -3682,6 +3723,8 @@ export const automation = {
         lastOfflineWindowStart: a.meta.lastOfflineWindowStart || 0,
         lastOfflineReceipt: a.meta.lastOfflineReceipt || null,
         wingCommandSeq: a.meta.wingCommandSeq || 0,
+        // Invalid restored admission stays spent rather than minting a second charter.
+        seedCharter: normalizeSeedCharter(a.meta.seedCharter) || (a.meta.seedCharter != null ? { spent: true } : null),
       },
       nextId: this._nextId,
     };

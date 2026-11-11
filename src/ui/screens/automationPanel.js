@@ -1,3 +1,4 @@
+import { seedCharterOffer, seedCharterRecord, SEED_CHARTER_STATION, SEED_CHARTER_SECTOR } from '../../missions/empireSeedCharter.js';
 // src/ui/screens/automationPanel.js — Automation / passive-fleet screen (ARCHITECTURE §5, spec 09).
 // Tabs: Drones / Traders / Outposts / Fleet. Reads state.automation (+ static defs for the
 // purchasable catalog). Buy / assign / order buttons emit ui:fleetOrder{shipId,order,targetRef}
@@ -1362,6 +1363,7 @@ export const automationScreen = {
       next && next.title,
       next && next.action,
       next && next.targetRef,
+      seedCharterRecord(st)?.body || '',
       droneBay.bayCount,
       droneBay.compatibleSlotCount,
       droneBay.droneControlResearched,
@@ -1474,6 +1476,7 @@ export const automationScreen = {
     const kindAttr = next.kind ? ` data-kind="${escapeHtml(next.kind)}"` : '';
     // A6: the route Beam names where the commit lands — the visible consequence.
     const berth = action === 'openShipworksRoute' ? 'Helios Shipworks berth'
+      : action === 'openSeedCharterRoute' || action === 'commissionSeedCharter' ? 'Belt Outpost dispatch'
       : action === 'hireTrader' ? 'Trader berth'
       : action === 'buildOutpost' ? 'Outpost charter'
       : action === 'assignFleet' ? 'Fleet muster'
@@ -1606,6 +1609,12 @@ export const automationScreen = {
     const st = this._ctx.state;
     const hireUnlocked = (st.player && st.player.researchedNodes || []).includes('tech_autonomous_fleets');
 
+    const charterRecord = seedCharterRecord(st);
+    if (charterRecord) {
+      frag.appendChild(this._section(charterRecord.title));
+      const note = document.createElement('div'); note.className = 'au-note'; note.textContent = charterRecord.body;
+      frag.appendChild(note);
+    }
     frag.appendChild(this._section(`Active Traders (${owned.length})`));
     if (!owned.length) {
       frag.appendChild(emptyEl(hireUnlocked
@@ -2010,6 +2019,11 @@ export const automationScreen = {
       }
       return;
     }
+    if (act === 'openSeedCharterRoute') {
+      openGalaxyMap(this._ctx, { focus: MAP_FOCUS.GALAXY, sectorId: SEED_CHARTER_SECTOR,
+        stationId: SEED_CHARTER_STATION, label: 'Belt Outpost · crewed charter', source: 'automation:seed-charter' });
+      return;
+    }
     if (act === 'switchTab') {
       if (TABS.some((t) => t.id === ref)) {
         this._tab = ref;
@@ -2027,6 +2041,7 @@ export const automationScreen = {
       recall: 'Recalling asset…',
       refuel: 'Refueling drone…',
       hireTrader: 'Hiring NPC trader…',
+      commissionSeedCharter: 'Commissioning crewed charter…',
       assignRoute: 'Assigning trade route…',
       dismiss: 'Dismissing trader…',
       resumeTrader: 'Resuming trader…',
@@ -2039,7 +2054,7 @@ export const automationScreen = {
     };
 
     // For purchases/assigns the instance does not exist yet → shipId null, targetRef = defId/index.
-    const purchaseLike = ['buyDrone', 'hireTrader', 'buildOutpost', 'assignFleet'];
+    const purchaseLike = ['buyDrone', 'hireTrader', 'commissionSeedCharter', 'buildOutpost', 'assignFleet'];
     const isPurchase = purchaseLike.includes(act);
     // assignProgram targets an EXISTING drone (shipId = ref) with the templateId as targetRef.
     const isProgram = act === 'assignProgram';
@@ -2238,6 +2253,20 @@ export function automationNextAction(state) {
         kind: 'drone',
         actionTitle: 'Refuel waiting drone',
       });
+  }
+  const charter = seedCharterOffer(state);
+  if (charter) {
+    const terms = `One fully crewed Hauler: ${fmtCr(charter.costCr)} cr once, ${charter.upkeepPerMin} cr/min upkeep; ${charter.cycleTime}s per run. No fleet research needed or unlocked. The crew trades on live prices; a run can pay nothing, and the ship can be lost. Reroute or dismiss it from Traders.`;
+    const action = !charter.atDesk ? 'openSeedCharterRoute' : charter.affordable ? 'commissionSeedCharter' : 'switchTab';
+    return nextAction('traders', 'A crew for your first run',
+      (!charter.atDesk ? 'Belt Outpost has one first-run charter after Book 5. ' : 'Dispatch leaves the receipt face down. “Pay the crew. Read the clearing line when it comes back.” ') + terms,
+      charter.affordable ? 'One charter · no guaranteed return' : `${fmtCr(charter.costCr - credits)} cr still needed`,
+      !charter.atDesk ? 'Plot Belt Outpost' : charter.affordable ? `Commission · ${fmtCr(charter.costCr)} cr` : 'Review Traders',
+      { action, targetRef: 'traders', kind: 'trader', actionTitle: terms });
+  }
+  const charterRecord = seedCharterRecord(state);
+  if (charterRecord && state.story?.beatIndex === 7 && !state.story.flags?.deep_reach_operation_complete) {
+    return nextAction('traders', charterRecord.title, charterRecord.body, 'Saved charter receipt', 'View Traders');
   }
   if (!(a.drones || []).length) {
     const purchase = describeAutomationPurchase('drone', droneMk1, state);

@@ -1,3 +1,4 @@
+import { seedCharterOffer, SEED_CHARTER_STATION } from '../../missions/empireSeedCharter.js';
 import { patrolPaperworkAction, patrolContractBrief } from '../../missions/patrolPaperwork.js';
 import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 import { book4ChoiceAction } from '../book4Choice.js';
@@ -1892,14 +1893,23 @@ export function storyActionForBeat(beat, state) {
         meta: chainProgress ? (chainProgress + ' done') : 'Faction',
       };
     }
-    case 6:
-      return patrolPaperworkAction(state) || {
+    case 6: {
+      const paper = patrolPaperworkAction(state);
+      if (paper?.label === 'WRECK RECORD') return paper;
+      const charter = seedCharterOffer(state);
+      if (charter) return { tone: 'primary', label: 'FIRST RUN', title: 'Meet the crew at Belt Outpost',
+        body: 'Belt Outpost in Ceres offers one fully crewed Hauler for ' + charter.costCr.toLocaleString()
+          + ' cr, plus ' + charter.upkeepPerMin + ' cr/min upkeep. Dock there and open Automation. Read the first paid receipt in Traders; buying the charter is not income. Deploy a drone through research if you prefer that route.'
+          + (paper ? ' ' + paper.body.slice(0, paper.body.indexOf(' Patrol is complete.')) : ''),
+        meta: 'Crewed service · no research grant', mapAction: stationRouteAction(SEED_CHARTER_STATION, 'Plot route to Belt Outpost') };
+      return paper || {
         tone: 'primary',
         label: 'ASSET',
         title: 'Plant income',
         body: 'Deploy a drone, trader, or outpost so the sector starts earning while you fly.',
         meta: 'Passive',
       };
+    }
     case 7:
       {
         // Pre-offer Deep Reach guidance. The live shared gate (story/endings/eligibility.js) is
