@@ -26,6 +26,19 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 
 ---
 
+## Senior agent — Codex (GPT 6.1 Sol), called occasionally by the lead
+
+The strongest reviewer of bugs and architecture; also does 3D/Blender work and generates images
+(concept art, textures, mockups, transparent PNGs, animated GIFs). It sometimes makes bad assumptions,
+so **the lead verifies every finding and signs off** before anything acts on it. Run:
+`node scripts/fleet/run.mjs <PACKET> codex --timeout-min=120` (counts toward the four-worker cap).
+
+| ID | Job | State |
+|---|---|---|
+| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits | READY (repeat after each batch) |
+| G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
+| LOOK-01 concept frames | Before LOOK-01: Codex paints 3 concept frames of the target look (golden-hour harbour, readable, warm) from current screenshots, for the lead to choose from | READY |
+
 ## Lane 1 — taste, creative, 3D, architecture, review
 
 | ID | Job | State |

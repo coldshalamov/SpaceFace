@@ -48,6 +48,7 @@ which model fits which lane.
 | **Lead (Claude, strongest model)** | diagnosis, architecture, feel and look decisions, reviewing, writing packets | grunt edits a worker can do |
 | **Devin SWE-2 Max** (3 accounts, free) | medium–large packets that name the seam (2–6 files + test); recon drafts; running probes and reporting numbers | judging what looks or feels good; 3D modelling |
 | **Gemini 3.8 Flash** (agy) | one written plant at a time (~15 min), small data rows | anything unreviewed; open design |
+| **Codex, GPT 6.1 Sol high** (senior, occasional) | hard backend/architecture reviews, batched reviews (`REVIEW-BATCH`), 3D/Blender, image generation (concept art, textures, mockups, transparent PNGs, GIFs) | final sign-off — it can make odd assumptions; the lead verifies every finding |
 | **DeepSeek (OpenCode Go)** | — produced nothing in 90 min headless; not in rotation | |
 
 Run at most three Devins + one Flash at once, never two on the same files. Devin hits short rate
