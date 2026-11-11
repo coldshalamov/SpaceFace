@@ -163,6 +163,7 @@ import { trafficNearMissOps } from './trafficNearMiss.js';
 import { roadRageOps } from './roadRage.js';
 import { tailgaterOps } from './tailgater.js';
 import { rubberneckersOps } from './rubberneckers.js';
+import { nearMissPlantOps } from './nearMissPlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1631,6 +1632,7 @@ export const traffic = {
   ...roadRageOps,
   ...tailgaterOps,
   ...rubberneckersOps,
+  ...nearMissPlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1741,6 +1743,7 @@ export const traffic = {
     this._initRoadRage(ctx);
     this._initTailgater(ctx);
     this._initRubberneckers(ctx);
+    this._initNearMissPlant(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
@@ -4082,6 +4085,11 @@ export const traffic = {
           this._syncTrafficRecordToData(e, rec);
           continue;
         }
+        // PL-01: near miss plant reaction (swerve, flash lamps, "Lane's not yours, pal!", report on 3rd)
+        if (this._reactNearMissPlant(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         this._reactCivilianViolence(e, rec, stations, state);
         // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
         // job runtime and emits the horn; the choreography keeps its single intent writer.
@@ -4104,6 +4112,11 @@ export const traffic = {
       }
       // PL-03: rubberneckers reaction (passing civilians slow to look at wreck, shooed by player)
       if (this._reactRubberneckers(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-01: near miss plant reaction (swerve, flash lamps, "Lane's not yours, pal!", report on 3rd)
+      if (this._reactNearMissPlant(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
