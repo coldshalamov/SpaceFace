@@ -37,7 +37,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | READY (repeat after each batch) |
 | G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
-| LOOK-01 concept frames | Before LOOK-01: Codex paints 3 concept frames of the target look (golden-hour harbour, readable, warm) from current screenshots, for the lead to choose from | READY |
+| LOOK-00-concept-frames | Codex paints 3 concept frames of the target look over a real screenshot, for the lead to choose from | TAKEN codex |
 
 ## Lane 1 — taste, creative, 3D, architecture, review
 
