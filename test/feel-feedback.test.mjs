@@ -153,8 +153,21 @@ for (const door of ['adventure', 'swarm']) {
     const { state, cam } = rig({ swarm: door === 'swarm' });
     const exitAngle = Math.PI / 3;
     const receipt = applyMasslineReleaseCameraCue(cam, state, {
-      source: 'massline', physicsEarned: true, bonusDv: 200,
-      exitAngle, releaseId: 'r1',
+      releaseId: `massline:self-sling:${state.tick}:player_1`,
+      source: 'massline',
+      physicsEarned: true,
+      targetId: null,
+      anchorId: 'anchor_1',
+      corrected: false,
+      bonusDv: 0,
+      selfSlingBonusDv: 0,
+      load: 1,
+      exitAngle,
+      exitSpeed: 95,
+      tick: state.tick,
+      prediction: { valid: true },
+      impulses: [],
+      releasePosition: { x: 0, z: 0 },
     });
     assert.equal(receipt.physicsEarned, true);
     assert.equal(receipt.pullWu, 3, `${door}: release receipt carries the pull`);
@@ -168,13 +181,58 @@ for (const door of ['adventure', 'swarm']) {
 test('G18-03: an unearned release stays silent', () => {
   const { state, cam } = rig();
   const receipt = applyMasslineReleaseCameraCue(cam, state, {
-    source: 'massline', physicsEarned: false, bonusDv: 200,
-    exitAngle: 0, releaseId: 'r2',
+    releaseId: 'r2',
+    source: 'massline',
+    physicsEarned: false,
+    exitSpeed: 95,
+    bonusDv: 0,
+    exitAngle: 0,
   });
   assert.equal(receipt.pullWu, 0);
   assert.equal(receipt.zoomFactor, 0);
   const { peak } = settleKick(state, cam);
   assert.ok(peak < 0.05, 'an unearned release must not move the frame');
+});
+
+test('G18-03: slow release (<= 60 wu/s) stays silent', () => {
+  const { state, cam } = rig();
+  const receipt = applyMasslineReleaseCameraCue(cam, state, {
+    releaseId: 'r2b',
+    source: 'massline',
+    physicsEarned: true,
+    exitSpeed: 45,
+    bonusDv: 0,
+    exitAngle: Math.PI / 4,
+  });
+  assert.equal(receipt.pullWu, 0);
+  assert.equal(receipt.zoomFactor, 0);
+  const { peak } = settleKick(state, cam);
+  assert.ok(peak < 0.05, 'release <= 60 wu/s must not move the frame');
+});
+
+test('G18-03: swung-body release (massline:throw) pulls camera with real receipt', () => {
+  const { state, cam } = rig();
+  const exitAngle = Math.PI / 6;
+  const receipt = applyMasslineReleaseCameraCue(cam, state, {
+    releaseId: 'massline:throw:100:payload_1',
+    source: 'massline',
+    physicsEarned: true,
+    payloadId: 'payload_1',
+    aimTargetId: null,
+    aimSynthetic: true,
+    errorRad: 0.01,
+    payloadSpeed: 90,
+    exitSpeed: 90,
+    exitAngle,
+    mode: 'snap',
+    tick: state.tick,
+    time: 1.66,
+  });
+  assert.equal(receipt.physicsEarned, true);
+  assert.equal(receipt.pullWu, 3);
+  const { peak, dir } = settleKick(state, cam);
+  assert.ok(peak >= 2.3 && peak <= 3.05);
+  assertDirection(dir, Math.cos(exitAngle), Math.sin(exitAngle), 'adventure');
 });
 
 test('G18-03: reduced motion emits none of the moving beats', () => {
@@ -186,7 +244,7 @@ test('G18-03: reduced motion emits none of the moving beats', () => {
   });
   assert.equal(cam.killBeatLog().length, 0, 'reduced motion: no light beat at all');
   const receipt = applyMasslineReleaseCameraCue(cam, state, {
-    source: 'massline', physicsEarned: true, bonusDv: 200,
+    source: 'massline', physicsEarned: true, exitSpeed: 95, bonusDv: 0,
     exitAngle: Math.PI / 3, releaseId: 'r3',
   });
   assert.equal(receipt.pullWu, 0, 'reduced motion: no release pull');
