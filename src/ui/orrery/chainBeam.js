@@ -351,7 +351,12 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     const blocked = data.blocked && data.blocked.reason ? data.blocked : null;
     host.classList.toggle('is-blocked', !!blocked);
     const n = Math.max(1, inputs.length);
-    const pitch = Math.min(52 * sc, (H - 20) / n);
+    // A short-desktop Industry sheet can raise --orr-chain-pitch-cap so a wrapped
+    // Source button still clears the next input. Never lower the authored 52*sc cap.
+    const capRaw = (typeof getComputedStyle === 'function' ? getComputedStyle(host).getPropertyValue('--orr-chain-pitch-cap') : '').trim();
+    const capPx = Number.parseFloat(capRaw);
+    const pitchCap = Number.isFinite(capPx) && capPx > 0 ? Math.max(52 * sc, capPx) : 52 * sc;
+    const pitch = Math.min(pitchCap, (H - 20) / n);
     const gIn = Math.min(2.6, sc);
     // a material's pictogram inside its node: a filled object (18-22px) when the screen hands one in, else a 24-grid
     // stroke drawing sized to the ring

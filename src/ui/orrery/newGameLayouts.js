@@ -171,11 +171,11 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-yard > .orr-turntable__row > li.is-front ~ li { translate:-18px 38px !important; }
 }
 
-/* the same band at ≤460 tall (844×390, 900×420, 1024×440): the stage had ~305px for the name, the fittings,
+/* the same band at ≤480 tall (844×390, 900×420, 1024×440, 801×461): the stage had ~305px for the name, the fittings,
    the ring and the run, so the yard was forced up over the hull's name and the fittings, and the form column
    showed only CASUAL. The frame's margin closes to 20px, the run's scale stands down to the accessibility
    tree (the yard then centres on the hull alone) and the footnote does too, so every difficulty stop shows. */
-@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+@media (min-width:801px) and (max-width:1100px) and (max-height:480px) {
   ${NGD} { padding-top:20px !important; padding-bottom:20px !important; row-gap:10px !important; }
   ${NGD} > .k-fine,
   ${NGD} .orr-ng-caption > .sf-ng-route {
@@ -195,6 +195,25 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:51% !important; height:23% !important; }
   ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }
+  /* the difficulty scale stood on end ran 196px down a 237px form column, so IRONMAN sat under the fold at 844×390:
+     its stations close to 28px rows (the scale re-measures them and redraws its ruler), the stack rides up into its
+     own top pad, and the live stop's sentence stands beside the words as a ruled aside instead of under them */
+  ${NGD} .sf-ng-body > div:has(> #sf-ng-difficulty-desc) { position:relative !important; }
+  ${NGD} .sf-ng-body .orr-ng-gap { height:4px !important; }
+  /* the column's scroll fade (the seed waits below) shortens to 18px so it no longer greys the last stop */
+  ${NGD} > .sf-ng-body {
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 18px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 18px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
+  ${NGD} .orr-stopscale--y { margin:-8px 0 -10px !important; }
+  ${NGD} .orr-stopscale--y > .orr-stopscale__row > li > .k-word { min-height:28px !important; height:28px !important;
+    padding-top:0 !important; padding-bottom:0 !important; align-items:center !important; }
+  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { position:absolute !important; left:178px !important; right:0 !important; top:16px !important;
+    margin:0 !important; padding:2px 0 2px 12px !important; border-left:1px solid rgb(${BONE} / .3) !important;
+    font-size:12.5px !important; line-height:1.4 !important; text-wrap:pretty; }
+  /* the aside rides beside the live stop (the last one hangs from its row's foot so a third line stays above the fold) */
+  ${NGD} .sf-ng-body > div:has(.orr-stopscale__row > li:nth-child(2) > [aria-pressed="true"]) > #sf-ng-difficulty-desc { top:56px !important; }
+  ${NGD} .sf-ng-body > div:has(.orr-stopscale__row > li:nth-child(3) > [aria-pressed="true"]) > #sf-ng-difficulty-desc { top:96px !important; }
+  ${NGD} .sf-ng-body > div:has(.orr-stopscale__row > li:nth-child(4) > [aria-pressed="true"]) > #sf-ng-difficulty-desc { top:154px !important; translate:0 -100%; }
 }
 
 /* 701–1100 wide desktop: the four beats share a ~380–560px stage, so each title had ~90–120px and
@@ -335,6 +354,30 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .sf-ng-sheet .sfs__stats { grid-template-columns:1fr 1fr; column-gap:16px; row-gap:0; }
   ${NGD} .sf-ng-sheet .sfs__pips { display:none; }
   ${NGD} .sf-ng-sheet .sfs--compact .sfs__stat { padding:3px 0 4px; }
+}
+/* 801–1100 wide, ≤600 tall (960×540, 801×461): the six-stat sheet arrived after the hero box was placed
+   for this band, so the hull render, its ring and the WASP / PELICAN names sat on MUSCLE and the
+   stat gloss. The sheet lays its six cells out three across (two rows, not three), the hover gloss stands
+   down here (it is aria-hidden; each row keeps its name and number), and the hero box drops into the
+   gap the sheet gives back, between the numbers and the run. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:600px) {
+  ${NGD} .sf-ng-sheet .sfs--compact { max-width:400px; }
+  ${NGD} .sf-ng-sheet .sfs__stats { grid-template-columns:repeat(3, minmax(0, 1fr)); column-gap:18px; }
+  ${NGD} .sf-ng-sheet .sfs__meaning { display:none !important; }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { top:50% !important; height:18% !important; }
+  ${NGD} > .k-stage::before { top:65%; }
+}
+@media (min-width:801px) and (max-width:1100px) and (max-height:480px) {
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { top:60% !important; height:19% !important; }
+  ${NGD} > .k-stage::before { top:76%; }
+}
+/* 801–900 wide, ≤600 tall (801×461, 844×390): the ring is ~150px across, so the rear names stood on the
+   front name's line (WASP ran into HITCH, PELICAN touched it). The yard picks each name's side from the
+   ring angle, which CSS can't read, so the front name steps down a line instead, under the rear pair. */
+@media (min-width:801px) and (max-width:900px) and (max-height:600px) {
+  ${NGD} .orr-yard > .orr-turntable__row > li.is-front { translate:0 20px !important; }
 }
 /* Short narrow desktop: keep the existing page scroll and every form section, including the
    hull picker, loadout and first-flight preview. These are decisions, not decorative overflow.

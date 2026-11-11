@@ -674,7 +674,13 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
   ${P} .sx-mkt .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; margin:0 !important; padding:6px 0 !important; align-self:center; }
   ${P} .sx-mkt .orr-mkt-find { grid-column:2 !important; grid-row:1 !important; margin:0 !important; align-self:center; }
   ${P} .sx-mkt .sx-mkt-browser__filters { grid-column:1 / -1 !important; grid-row:2 !important; flex-direction:row !important; flex-wrap:nowrap !important;
-    width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; overflow-x:auto !important; overflow-y:hidden !important; }
+    width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; overflow-x:auto !important; overflow-y:hidden !important;
+    scrollbar-width:none; padding-right:24px !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 40px), transparent calc(100% - 10px)) !important;
+    mask-image:linear-gradient(90deg, #000 calc(100% - 40px), transparent calc(100% - 10px)) !important; }
+  /* the row holds five of the eight families; the fifth stopped on a hard cut that read as a broken
+     chip. It fades at the right edge instead, like the narrow bands' family strip, and the last
+     family scrolls clear of the fade (ui-polish-429) */
   ${P} .sx-mkt .sx-mkt-browser__filters > li { flex:none !important; }
   ${P} .sx-mkt .sx-mkt-browser__rail { grid-column:1 / -1 !important; grid-row:3 !important; min-height:0 !important; overflow-y:auto !important; }
   ${P} .sx-mkt .sx-mkt-table { table-layout:auto !important; }
