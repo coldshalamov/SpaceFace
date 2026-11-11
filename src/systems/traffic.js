@@ -162,6 +162,7 @@ import { trafficCausalChainOps } from './trafficCausalChainOps.js';
 import { trafficNearMissOps } from './trafficNearMiss.js';
 import { roadRageOps } from './roadRage.js';
 import { tailgaterOps } from './tailgater.js';
+import { rubberneckersOps } from './rubberneckers.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1629,6 +1630,7 @@ export const traffic = {
   ...trafficNearMissOps,
   ...roadRageOps,
   ...tailgaterOps,
+  ...rubberneckersOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1738,6 +1740,7 @@ export const traffic = {
 
     this._initRoadRage(ctx);
     this._initTailgater(ctx);
+    this._initRubberneckers(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
@@ -3918,6 +3921,7 @@ export const traffic = {
     reconcileCharonSupply(this);
     stepSpillVultures(this);
     stepGratitudeParcel(this);
+    this._stepRubberneckers(state);
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
@@ -4073,6 +4077,11 @@ export const traffic = {
           this._syncTrafficRecordToData(e, rec);
           continue;
         }
+        // PL-03: rubberneckers reaction (passing civilians slow to look at wreck, shooed by player)
+        if (this._reactRubberneckers(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         this._reactCivilianViolence(e, rec, stations, state);
         // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
         // job runtime and emits the horn; the choreography keeps its single intent writer.
@@ -4090,6 +4099,11 @@ export const traffic = {
       }
       // PL-06: loaded hauler cut off pursues for 20 s with horn down
       if (this._reactTailgater(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-03: rubberneckers reaction (passing civilians slow to look at wreck, shooed by player)
+      if (this._reactRubberneckers(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
