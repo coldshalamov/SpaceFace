@@ -187,7 +187,7 @@
   "src/ui/orrery/flight-radialsLayouts.js": "03411d7212a79fe65d9f62ec104a84dd0c470d8e370cd7b95099809e85e88e82",
   "src/ui/orrery/flightCluster.js": "7982c82e92c0ede146cb154e615e12c03ebaf2a6c990da0b253519a083543b2e",
   "src/ui/orrery/footprintDial.js": "854bd512776d8d8b4157fb68876a4b3c587692d978462451038b01477ab0786e",
-  "src/ui/orrery/footprintLayouts.js": "025ed52127146335a2c7202a078ae1cd4d56ea98041969b00ba901fb0a898be7",
+  "src/ui/orrery/footprintLayouts.js": "b3f1f94522295eb0342fa28ebba401ba0d4720c7617faf4731b81a0a129454d3",
   "src/ui/orrery/game-overLayouts.js": "8581f52a84e3f2deb0e1eb5f59ae3fea192356c9a1786167877b76e5457d7b35",
   "src/ui/orrery/gameOverLayouts.js": "516b9e4911364c4799c07b939f2db3a935c11bc5553ee18239a80363242c1f6c",
   "src/ui/orrery/helpInstruments.js": "dabf2863bc8e7cf3ed8b60923fc598023c761c128e71764b22e0720c13e68dc4",
