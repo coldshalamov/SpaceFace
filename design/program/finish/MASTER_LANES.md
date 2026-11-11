@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Master plan — seven lanes and their prompts
 
 The 29 campaigns in [`MASTER_PLAN.md`](./MASTER_PLAN.md) grouped into seven lanes that can run at

@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Phase-2 motion audit — how everything moves
 
 Post ANI-01…15. What moves in SpaceFace today, what events drive it, where authored

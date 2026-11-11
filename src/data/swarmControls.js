@@ -50,7 +50,7 @@ export const SWARM_HELP_ROWS = Object.freeze([
   ['1–5', 'Pull · Shove · Pin · Bomb · Rig'],
   ['Space', 'Boost / dash'],
   ['Q', 'Call-in'],
-  ['F', 'Interact'],
+  ['E', 'Interact'],
   ['Tab', 'Scoreboard'],
   ['Esc', 'Pause'],
 ]);
