@@ -43,6 +43,11 @@ tree. You must not damage them.
    event is emitted on the main thread and handled in the simulation (or the reverse), check it crosses
    the worker boundary (`src/core/mainToSimEventSurface.js`; regenerate with
    `node scripts/lib/eventSurfaceCensus.mjs --forward-set`).
+   **A new system must be registered where the game really builds systems:** add it to
+   `src/runtime/authoritativeSystemManifest.js` (init/update order, clock, modes — copy a neighbour such as
+   `swarmSupply`) and to `src/runtime/nodeSystemFactoryTable.js` (the worker). Adding it to a lookup in
+   `src/core/registry.js` alone does nothing. Test it through that materialization, not by calling
+   `init(ctx)` yourself.
 
 ## How to work
 

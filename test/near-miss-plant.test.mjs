@@ -238,16 +238,9 @@ test('escalation on repeat: second pass barks again; third pass reports you to C
   assert.equal(reportEvent.payload.targetEntityId, 'player_hero');
   assert.equal(reportEvent.payload.count, 3);
 
-  // Asserts law distress raised
-  const distressEvent = events.find((e) => e.name === 'law:distressRaised');
-  assert.ok(distressEvent, 'law:distressRaised emitted for reckless flying');
-  assert.equal(distressEvent.payload.cause, 'reckless_flying');
-  assert.equal(distressEvent.payload.victimId, 'civ_2');
-  assert.equal(distressEvent.payload.attackerId, 'player_hero');
-
-  // Asserts Control acknowledgment
-  const controlBark = events.find((e) => e.payload && e.payload.text === NEAR_MISS_CONTROL_LOG);
-  assert.ok(controlBark, 'Control logs the report');
+  // One voice line only: no patrol/Control second line, no invented law incident.
+  assert.equal(events.some((e) => e.name === 'law:distressRaised'), false, 'no fabricated law incident');
+  assert.equal(events.some((e) => e.payload && e.payload.text === NEAR_MISS_CONTROL_LOG), false, 'no second voice line');
 });
 
 test('memory window expiry: a pass after 50s (memoryS = 45s) resets count back to 1', () => {
