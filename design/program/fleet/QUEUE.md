@@ -89,11 +89,13 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | ID | Job | State |
 |---|---|---|
 | A01-03-swarm-drops | Eight drops on the repair-cell seam (Full Rack, Heavy Hands, Dead Weight, Magnet, Big Bang, Double Scrap, Loose Cannon, Free Forge) | BUILT 777d78d5 + lead-review dca33eb8 (registered in the runtime manifest + worker; Free Forge no longer breaks the run; Dead Weight/Big Bang/Magnet/Double Scrap/Loose Cannon go through their real owners; drops have their own crystal look) — not seen on screen |
+| FIX-R4a-stage-findings | Review b14da677: persistent pills swallow timed announcements; refresh breaks FIFO; dialogs bypass admission | HOLD on G16-03 |
 | G16-04-floating-text-and-notice-plates | Floating world text merges (`FRIENDLY FIRE ×4`) and caps at 4; notice lines on readable plates; pad labels yield to HUD | HOLD on G16-03 (shares files) |
 | G16-03-the-stage-enforces | Alerts/toasts/prompts/dialogs go through `stage.show()` (one visible, priority, FIFO); prompt seat fixed; dialogs wait for open screens; UI budgets re-baselined once | TAKEN agent2 (devin1) |
 | G16-02-every-popup-through-one-door | Migrate 16 straggler popups onto the Stage and the kit frame, text unchanged | BUILT deaae6ca (12 popups on the Stage; most not yet seen staged on screen) |
 | FIX-R1-review-2026-11-11 | Five verified review findings: rubberneckers' payload, held Shove counted twice, release camera pull, near-miss lamps, two seed tests | BUILT 015fbf27..772f8067 (lead checked real payloads) |
 | G17-02-start-in-any-sector | `?sector=<id>` + a script that photographs every sector (needed by LOOK-01 and the towns) | TAKEN agent3 (flash) |
+| FIX-R4b-invalid-sector | Review b14da677: an invalid `?sector=` must leave the ordinary boot alone | TAKEN agent3 (flash) |
 | MOB-04 phone quality tier | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | READY |
 | MOB-03 touch controls you can read | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | READY |
 | G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | BUILT aad98992 (names + twist lines; 7 twists wired — the rest are C01-04/05) |
