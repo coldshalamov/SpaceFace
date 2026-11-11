@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "c9e814ce4f919056a10c4b07fcadd138c65d6545c1564282458afe0f5e34c91b",
+  "uiSourceDigest": "a512697e9236b47e4bcfaf684897080de6290c8d553e3d076f0df58385c5d812",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -305,7 +305,7 @@
     "src/ui/screenManager.js": "65cc701aae23bfc38e82e3da1c62bc34d5ab3517c53a47e12ffda58b7c6a678f",
     "src/ui/screenMemory.js": "e98d531c00ab00da32cfa5b8203324ebae91c7beb561da6e7f8e5deff728fc20",
     "src/ui/screens/achievements.js": "e49d74f5576ddbbd5fc0b6e923dbe03db746ca855e052d557597e1721de38961",
-    "src/ui/screens/automationPanel.js": "9646836e0624a98186703f0a19041ffe08cf8b4987826ce14a0c46c584e46b0d",
+    "src/ui/screens/automationPanel.js": "dc6643cc8d9904426c5547952301d300e120d7166dc56e3f4545a2b858497d9d",
     "src/ui/screens/base.js": "3d9af171b9746e1424f1d3dd4b942ae7b8c118ffbed013ffcb5eae008214eab5",
     "src/ui/screens/clipExport.js": "1d68dce0572da66a55e37edef757ca92ed6e9601d5e2dd13ced8439f143b2cec",
     "src/ui/screens/clips.js": "8a253d868d6b45a2c1ab4f3035226a5523288f9056107814dc75407418f28246",
