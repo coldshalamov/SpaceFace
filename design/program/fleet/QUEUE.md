@@ -66,6 +66,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | ID | Job | State |
 |---|---|---|
 | FIX-R2-reactions-respect-job-owners | Review finding: road rage / tailgater / rubberneckers must lease job-owned hulls through npcJobs, not overwrite them | TAKEN agent2 (devin2) |
+| G18-02b-the-wheel-opens | REDO: holding Q must open the context wheel on the real route; prove with `scripts/fleet/looks/context-wheel.mjs` | READY |
 | PERF-01-where-the-frame-goes | Seven on/off experiments on the main thread; numbers only. **Only with no other game instance running** | READY |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
@@ -74,7 +75,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | HOLD on A01-04 |
 | G16-01-the-stage-exists | One Stage hosts every transient popup; priority queue per slot; nothing overlaps | TAKEN agent2 (devin1) |
 | G19-02-honest-hold | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | READY |
-| G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | BUILT b931aac8 (Q wheel not yet seen on screen) |
+| G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | REDO: the Q wheel never opens in a real game (lead look 2026-11-11) → G18-02b |
 | MOB-01 pinch zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | READY |
 | MOB-02 phone HUD | spec: `drafts/MOB.md` §MOB-02 + ruling 3 (HUD ≤ 25 % of 390×844, measured ≈ 50 % today; contrast in scope); prove with `ui-bench --phone` shots | READY |
 | MOB-05 flick to throw | On a phone, drag-and-release while the Line holds a body throws it along the flick (`drafts/MOB.md` §7 q1) | READY |
