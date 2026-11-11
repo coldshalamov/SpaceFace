@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Creative direction — what SpaceFace is, and how we'll know it's done
 
 *Written by Claude as creative director, 2026-11-06, at the owner's request: "take more control and

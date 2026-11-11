@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The quiet-host program — one clean machine, one session, every result has a consumer
 
 Owner, 2026-10-04: the dev box runs agents around the clock, so wall-clock perf reads and

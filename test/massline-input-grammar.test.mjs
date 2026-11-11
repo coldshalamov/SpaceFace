@@ -72,20 +72,21 @@ function step(host, state, ticks = 1) {
   }
 }
 
-test('PQ-003 new profiles reserve Space for Massline, retain F as its alias, and keep defaults collision-free', () => {
+test('G18-02 new profiles: the Line is RMB, Space is the boost, and the defaults stay collision-free', () => {
   const fresh = createGameState(47);
   assert.equal(fresh.settings.controls.masslineBindingProfile, 'space-v1');
   for (const [schemeName, scheme] of Object.entries(DEFAULTS.SCHEMES)) {
-    // Digit3 is the PIN power since the five powers (owner 2026-10-22); the Line keeps Space then F.
-    assert.deepEqual(scheme.tether, ['Space', 'KeyF'], `${schemeName} must expose Space then F`);
+    // G18-02: the Line left the keyboard entirely (RMB in every door); Space is the boost.
+    assert.deepEqual(scheme.tether, [], `${schemeName} must expose no keyboard Line`);
+    assert.ok(scheme.boost.includes('Space'), `${schemeName} must seat boost on Space`);
     for (const [action, codes] of Object.entries(scheme)) {
-      if (action === 'tether' || !Array.isArray(codes)) continue;
-      assert.equal(codes.includes('Space'), false, `${schemeName}.${action} must not steal Massline Space`);
+      if (action === 'boost' || !Array.isArray(codes)) continue;
+      assert.equal(codes.includes('Space'), false, `${schemeName}.${action} must not steal the Space boost`);
     }
   }
 });
 
-test('existing profiles migrate to the same Space/F Massline binding as new profiles', () => {
+test('existing profiles migrate onto the unified table — the migration-written Space/F Line is stripped once', () => {
   const state = createGameState(47);
   const storage = {
     getItem(key) {
@@ -102,45 +103,48 @@ test('existing profiles migrate to the same Space/F Massline binding as new prof
 
   assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storage), true);
   assert.equal(state.settings.controls.masslineBindingProfile, 'space-v1');
-  assert.deepEqual(state.settings.controls.bindings.tether, ['Space', 'KeyF']);
-  assert.equal(state.settings.controls.bindings.brake?.includes('Space') || false, false);
+  // G18-02: the one-set-of-keys pass runs after the legacy massline stamp and removes the
+  // migration-written tether override, so an untouched profile ends on "no overrides" —
+  // the new defaults (RMB Line, Space boost, wheel slices) apply.
+  assert.equal(state.settings.controls.bindings, null);
+  assert.equal(state.settings.controls.oneSetOfKeysVersion, 1);
 });
 
-test('PQ-003 Space press publishes an immediate normalized latch packet', () => {
+test('G18-02 RMB press publishes an immediate normalized latch packet', () => {
   const host = makeInput();
   const state = makeState();
-  host._keys.Space = true;
+  host._m2 = true;
   step(host, state);
 
   assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
   assert.equal(state.input.actions.massline.latch, true);
   assert.equal(state.input.actions.massline.phase, 'preview');
   assert.equal(state.input.actions.tetherFire, true, 'legacy latch consumer stays bridged');
-  assert.equal(state.input.brake, false, 'Space does not also brake on the new profile');
+  assert.equal(state.input.brake, false, 'the Line does not also brake');
 });
 
-test('PQ-003 quick attached tap cuts on release while a hold enters line control without cutting', () => {
+test('G18-02 quick attached tap cuts on release while a hold enters line control without cutting', () => {
   const host = makeInput();
   const state = makeState();
   state.player.tether.active = true;
   state.player.tether.targetId = 'rock';
 
-  host._keys.Space = true;
+  host._m2 = true;
   step(host, state);
   assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
   assert.equal(state.input.actions.massline.cut, false);
-  host._keys.Space = false;
+  host._m2 = false;
   step(host, state);
   assert.equal(state.input.actions.massline.cut, true, 'quick release is the cut edge');
   assert.equal(state.input.actions.massline.source, 'keyboard', 'release keeps one-tick provenance');
   step(host, state);
   assert.equal(state.input.actions.massline.source, null, 'idle packets do not retain stale device provenance');
 
-  host._keys.Space = true;
+  host._m2 = true;
   host._keys.KeyW = true;
   step(host, state, 14);
   assert.equal(state.input.actions.massline.lineControl, true);
-  host._keys.Space = false;
+  host._m2 = false;
   host._keys.KeyW = false;
   step(host, state);
   assert.equal(state.input.actions.massline.cut, false, 'release after line control never cuts');
@@ -151,12 +155,13 @@ test('CADENCE: a motionless hold past the tap window never cuts on release (hold
   // reclassified as a tap-cut merely because the pilot moved no axis. The old pin asserted the
   // opposite — that a motionless hold still disconnected on release — which is exactly the
   // accidental-cut failure mode Cadence removes. Disconnect remains available via a quick tap.
+  // G18-02: the hold is on RMB now — same held level, same grammar.
   const host = makeInput();
   const state = makeState();
   state.player.tether.active = true;
   state.player.tether.targetId = 'rock';
 
-  host._keys.Space = true;
+  host._m2 = true;
   step(host, state, 30);
   // CADENCE authored change: the old pin required lineControl to stay false for a motionless hold.
   // A hold past the 0.16 s window now IS line control — a positive hold command whose axes sit at
@@ -165,7 +170,7 @@ test('CADENCE: a motionless hold past the tap window never cuts on release (hold
     'a motionless hold is line control holding position: mode entered, axes neutral');
   assert.equal(state.input.actions.massline.lineLength, 0, 'no reel axis was commanded');
   assert.equal(state.input.actions.massline.orbitDirection, 0, 'no orbit axis was commanded');
-  host._keys.Space = false;
+  host._m2 = false;
   step(host, state);
   assert.equal(state.input.actions.massline.cut, false,
     'a 0.5 s hold is a hold, not a tap: releasing it must NOT cut (Cadence authored change)');
@@ -195,9 +200,9 @@ test('CADENCE: hold-entry consumes nearby turn intent once; neutral after entry 
       host._keys.ArrowLeft = true;
       step(host, state, 4);
       host._keys.ArrowLeft = false;
-      host._keys.Space = true;
+      host._m2 = true;
     } else {
-      host._keys.Space = true;
+      host._m2 = true;
       step(host, state, 4);
       host._keys.ArrowRight = true;
       step(host, state);
@@ -230,7 +235,7 @@ test('PQ-003 line-control publishes orbit intent without letting Helm Assist bec
   state.player.tether.targetId = 'rock';
   state.entities.get('p').rot = 1;
   host._screen.active = true;
-  host._keys.Space = true;
+  host._m2 = true;
   host._keys.ArrowRight = true;
   step(host, state, 14);
 
@@ -262,10 +267,11 @@ test('PQ-003 line-control maps forward/reverse/turn/boost and clears on modal fo
   const state = makeState();
   state.player.tether.active = true;
   state.player.tether.targetId = 'rock';
-  host._keys.Space = true;
+  // G18-02: the Line hold is RMB; Space is the boost (the pump axis of line control).
+  host._m2 = true;
   host._keys.ArrowDown = true;
   host._keys.ArrowRight = true;
-  host._keys.ShiftLeft = true;
+  host._keys.Space = true;
   step(host, state, 14);
 
   assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
@@ -290,7 +296,7 @@ test('PQ-003 modal reset blocks held-through input but accepts the first fresh p
   step(host, state);
 
   state.ui.screenStack.pop();
-  host._keys.Space = true;
+  host._m2 = true;
   step(host, state);
   assert.equal(state.input.actions.massline.latch, true, 'a fresh press after closing UI is not swallowed');
 
