@@ -85,6 +85,7 @@ import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { frontierRumorMapReadouts, frontierRumorMapTarget, frontierRumorCorroborations } from './frontierRumorMapLayer.js';
+import { laneChatterForZone } from './laneChatterMapLayer.js';
 import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
 import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
@@ -147,6 +148,8 @@ import {
   RIBBON_ACTION_IDS,
   formatDurationS,
 } from './map/mapRouteRibbon.js';
+import { counted, pluralWord } from './numberFormat.js';
+
 
 // ---------------------------------------------------------------------------------------------
 // Static catalogs (pure — safe at import time).
@@ -2264,6 +2267,9 @@ export function buildSystemModel(state, sectorId, options = {}) {
       reason: z.reason || '',
       hazard: !!meta.hazard,
       safe: !!meta.safe,
+      // inf-lane-chatter-chart: what the station boards say about this lane (pirateRumor's own
+      // records), or null when the boards never flagged it.
+      chatter: laneChatterForZone(state, sid, z.id),
     };
   });
 
@@ -3165,7 +3171,7 @@ export function resolveRouteEngageAction(state) {
     visible: true,
     enabled: true,
     label: mapControlLabel('engage'),
-    reason: legs ? `${legs} leg${legs === 1 ? '' : 's'} plotted — ready to fly` : 'Route plotted — ready to fly',
+    reason: legs ? `${counted(legs, 'leg', 'legs')} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
 }
@@ -3973,7 +3979,7 @@ export function computePreviewRoute(state, startSectorId, targetSectorId) {
 // Search Target Gathering Helper
 // ---------------------------------------------------------------------------------------------
 
-function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile = null) {
+export function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile = null) {
   const targets = [];
   // 1. Sectors
   const galaxyModel = buildGalaxyModel(state);
@@ -4035,10 +4041,16 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
     }
   }
   // Named danger rings already have a public selectable zone target on SYSTEM. Expose that
-  // exact target in search, without indexing anonymous generated clutter.
+  // exact target in search, without indexing anonymous generated clutter. A named lane the
+  // station boards flagged joins them (inf-lane-chatter-chart): the headline names the lane, so
+  // the pilot who heard it can type that name and land on the ring.
   for (const zone of systemModel.zones) {
-    if (!zone.hazard || !zone.authoredName) continue;
+    if (!zone.authoredName) continue;
+    if (!zone.hazard && !(zone.chatter && zone.chatter.flagged)) continue;
     const target = systemZoneTarget(zone, curSecId, playerEntity(state)?.pos);
+    if (target && !zone.hazard && zone.chatter && zone.chatter.mapTag) {
+      target.detail = `${target.detail} · ${zone.chatter.mapTag}`;
+    }
     if (target) targets.push(target);
   }
   // Galaxy search can name every charted sector, so let its known station catalog answer the
@@ -6272,6 +6284,19 @@ _stepAnimation(now) {
         </div>
 
       `;
+      // inf-lane-chatter-chart: what the station boards say about this lane, read from
+      // pirateRumor's own record. Absent entirely when the boards never flagged it.
+      {
+        const chatter = laneChatterForZone(state, t.sectorId || currentSectorId(state), t.id);
+        if (chatter && chatter.lines.length) {
+          html += `
+        <div class="gm-ins-section" data-lane-chatter="${chatter.live ? 'live' : 'cooled'}">
+          <div class="gm-ins-title"${chatter.live ? ` style="color:${INK.red}"` : ''}>Lane chatter</div>
+          ${chatter.lines.map((line) => `<div class="gm-ins-note">${escapeMapHtml(line)}</div>`).join('')}
+        </div>
+      `;
+        }
+      }
       buttonLabel = 'Align Autopilot';
     } else if (t.kind === 'waypoint') {
       const player = playerEntity(state);
@@ -6587,6 +6612,12 @@ _stepAnimation(now) {
     const zoneLine = zone
       ? `${zone.name} (${zoneMeta ? zoneMeta.label : zone.type}${zoneThreatLvl ? ` · Threat ${zoneThreatLvl}` : ''})`
       : 'Open sector space';
+    // inf-lane-chatter-chart: flying inside a lane the boards still flag says so under the zone
+    // row — the live talk only; a cooled warning stays on the zone's own record.
+    const hereChatter = zone && sectorId ? laneChatterForZone(state, sectorId, zone.id) : null;
+    const hereChatterHtml = hereChatter && hereChatter.live && hereChatter.lines.length
+      ? `<div class="gm-ins-note" data-lane-chatter-here style="color:${INK.red}">${escapeMapHtml(hereChatter.lines[0])}</div>`
+      : '';
     const speed = player && player.vel
       ? Math.round(Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0))
       : 0;
@@ -6689,6 +6720,7 @@ _stepAnimation(now) {
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorName)}</span></div>
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
+        ${hereChatterHtml}
         <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) u · Hdg ${headingBrg} · ${speed} u/s</span></div>
         ${careersInner}
       </div>
@@ -6830,7 +6862,7 @@ _stepAnimation(now) {
       : offers.length
       ? offers.map((offer) => {
         const tint = memoryTint(offer.ageS);
-        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
+        return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${Number(offer.sell).toLocaleString('en-US')} cr · ${ageText(offer.ageS)}</span></div>`;
       }).join('')
       : dataStateHtml('empty', {
         code: 'NO_QUOTES',
@@ -6884,9 +6916,9 @@ _stepAnimation(now) {
     const ecology = regionalEcologyReadout(state, sectorId);
     const economyProfile = REGIONAL_ECONOMY_PROFILE_BY_SECTOR.get(sectorId) || null;
     const conflictLine = conflict.wars > 0
-      ? `${conflict.wars} war${conflict.wars > 1 ? 's' : ''}${conflict.tense > 0 ? ` · ${conflict.tense} tense` : ''}`
+      ? `${counted(conflict.wars, 'war', 'wars')}${conflict.tense > 0 ? ` · ${conflict.tense} tense` : ''}`
       : conflict.tense > 0
-        ? `${conflict.tense} tense pairing${conflict.tense > 1 ? 's' : ''}`
+        ? `${counted(conflict.tense, 'tense pairing', 'tense pairings')}`
         : 'quiet';
     const holdingsLine = holdings.count
       ? `${holdings.count} claims · ${holdings.active} active · defense ${Math.round(holdings.defenseAvg)}`
@@ -7861,7 +7893,7 @@ _stepAnimation(now) {
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s k-row__sub">${alt.totalHops} hop${alt.totalHops === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
+        <span class="gm-rail-item-s k-row__sub">${counted(alt.totalHops, 'hop', 'hops')} · ${Math.round(alt.totalFuel || 0)}F${Number.isFinite(alt.totalToll) ? ` · ${alt.totalToll} cr toll` : ''} · worst leg ${Math.round(worst * 100)}% interdict${mode === 'spine' ? ' · fly the marked Ceres approach' : ''}</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -9515,7 +9547,7 @@ _draw() {
           x: anchor ? anchor.sx : this._line.x, y: anchor ? anchor.sy : this._line.y,
           clear: anchor ? (anchor.radiusPx || 14) + 8 : 12,
           title: String(target.name || sectorNameOf(state, sid)).toUpperCase(),
-          numerals: [{ value: String(hops), unit: hops === 1 ? 'JUMP' : 'JUMPS' }, { value: dist.value, unit: dist.unit }],
+          numerals: [{ value: String(hops), unit: pluralWord(hops, 'JUMP', 'JUMPS') }, { value: dist.value, unit: dist.unit }],
           figures: quiet.join('  ·  '),
           note: 'RELEASE TO LAY  ·  ESC TO DROP',
         };
@@ -9926,13 +9958,13 @@ _draw() {
       const holdingsSignal = this._layers.holdings ? sectorHoldingsSignal(state, n.id) : null;
       const eventDetail = eventSignal
         ? (eventSignal.wars > 0
-          ? `${eventSignal.wars} war${eventSignal.wars > 1 ? 's' : ''}${eventSignal.tense > 0 ? `, ${eventSignal.tense} tense` : ''}`
+          ? `${counted(eventSignal.wars, 'war', 'wars')}${eventSignal.tense > 0 ? `, ${eventSignal.tense} tense` : ''}`
           : eventSignal.tense > 0
             ? `${eventSignal.tense} tense`
             : 'quiet')
         : 'off';
       const holdingsDetail = holdingsSignal && holdingsSignal.count > 0
-        ? `${holdingsSignal.count} claim${holdingsSignal.count > 1 ? 's' : ''}`
+        ? `${counted(holdingsSignal.count, 'claim', 'claims')}`
         : 'none';
 
       this._clickTargets.push({
@@ -10471,6 +10503,20 @@ _drawSystem(g, state, w, h) {
       // world.js stores global.
       this._clickTargets.push({ ...systemZoneTarget(z, model.sectorId, playerEntity(state)?.pos), sx: x, sy: y, radiusPx: Math.max(16, rr) });
 
+      // inf-lane-chatter-chart: a lane the station boards still flag wears a dashed danger ring
+      // inside its rim and its label carries the boards' own count — under TROUBLE · Events, the
+      // layer the galaxy scale's war fronts already ride. Static ink: nothing here animates.
+      const chatterTag = this._layers.events && z.chatter && z.chatter.mapTag ? z.chatter.mapTag : '';
+      if (chatterTag && z.chatter.live) {
+        g.save();
+        g.strokeStyle = CHART_INK.danger(0.72);
+        g.lineWidth = 1.6;
+        if (typeof g.setLineDash === 'function') g.setLineDash([6, 5]);
+        g.beginPath(); g.arc(x, y, Math.max(6, rr * 0.86), 0, Math.PI * 2); g.stroke();
+        g.restore();
+      }
+      const chatterSuffix = chatterTag ? ` · ${chatterTag}` : '';
+
       if (z.hazard && this._layers.hazard) {
         g.save();
         g.fillStyle = CHART_INK.danger(0.06);
@@ -10482,8 +10528,8 @@ _drawSystem(g, state, w, h) {
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'hazard',
-          text: `HAZARD · ${z.name.toUpperCase()}`,
-          lines: [`HAZARD · ${z.name.toUpperCase()}`],
+          text: `HAZARD · ${z.name.toUpperCase()}${chatterSuffix}`,
+          lines: [`HAZARD · ${z.name.toUpperCase()}${chatterSuffix}`],
           x,
           y,
           anchorRadius: 5,
@@ -10496,8 +10542,8 @@ _drawSystem(g, state, w, h) {
         const zoneLabel = makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'zone',
-          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : ''),
-          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '')],
+          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix,
+          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix],
           x,
           y,
           anchorRadius: 3,
@@ -11454,7 +11500,7 @@ _drawLocal(g, state, w, h) {
       if (rememberedContacts > 0) {
         g.fillStyle = CHART_INK.bone(0.7);
         g.font = chartFont(560, 12, { stretch: 'normal' });
-        g.fillText(`${rememberedContacts} REMEMBERED ${rememberedContacts === 1 ? 'FIX' : 'FIXES'} FADING`, shipX, shipY + 52);
+        g.fillText(`${rememberedContacts} REMEMBERED ${pluralWord(rememberedContacts, 'FIX', 'FIXES')} FADING`, shipX, shipY + 52);
       }
       setTracking(g, 0, 12);
       g.restore();

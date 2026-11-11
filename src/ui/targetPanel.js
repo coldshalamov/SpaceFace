@@ -61,6 +61,8 @@ import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidan
 import { isSwarmGlass } from './swarmGlass.js';
 import { shipStatSheet } from './ship/shipStats.js';
 import { fittingsFromDefaultModules } from '../systems/ships.js';
+import { pluralWord } from './numberFormat.js';
+
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -715,9 +717,9 @@ function orchardSocketInfoLine(target, state) {
     : null;
   if (!component) {
     const reserve = state.sites.anvilOrchard.sourceRemaining;
-    return `${reserve} ${reserve === 1 ? 'unit' : 'units'} in reserve · select a pod socket`;
+    return `${reserve} ${pluralWord(reserve, 'unit', 'units')} in reserve · select a pod socket`;
   }
-  const units = `${component.units} ${component.units === 1 ? 'unit' : 'units'}`;
+  const units = `${component.units} ${pluralWord(component.units, 'unit', 'units')}`;
   const beam = resolveActionLabel(state, 'siteBeam');
   const rig = resolveActionLabel(state, 'rig');
   const hold = beam ? `hold ${beam}` : 'hold the release beam';

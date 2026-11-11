@@ -27,9 +27,9 @@ export function invoiceChoiceLabel(payload, choiceId) {
 export function invoiceReceiptText(payload) {
   const amount = Math.max(0, Math.floor(Number(payload && payload.amount) || 0));
   const outcome = String((payload && payload.outcome) || 'resolved');
-  if (outcome === 'paid') return `PAID · ${amount} cr transferred · the file closes clean`;
+  if (outcome === 'paid') return `PAID · ${Number(amount).toLocaleString('en-US')} cr transferred · the file closes clean`;
   if (outcome === 'short') return 'PAYMENT REFUSED · the account came back short · the bill stays open';
-  if (outcome === 'refused') return `ASSESSMENT · LATE FEE ON STANDBY FEE · ${amount} cr charged · consistency noted`;
+  if (outcome === 'refused') return `ASSESSMENT · LATE FEE ON STANDBY FEE · ${Number(amount).toLocaleString('en-US')} cr charged · consistency noted`;
   return `ACCOUNT CLOSED · ${outcome.replace(/_/g, ' ')}`;
 }
 

@@ -7948,7 +7948,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_dart_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart_lod1.glb",
-      "releaseSha256": "77e46eebb3d811d1e80d36a2ffcee58bcf3e650580c5e0842d8c872891788b66",
+      "releaseSha256": "fe54fccab7275578b1ddd318c29535cd91e8eefd0ac64e178f00064887ab88d9",
       "releaseBytes": 475072,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7969,7 +7969,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_dart_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart_lod2.glb",
-      "releaseSha256": "1cbadd483fe70294097dfa6021b4b881dc65499284beae77491cc66c71996b13",
+      "releaseSha256": "9b938687bedd39b54f2330b89a80cbde90fc15cdd43fa34d5f1787cc00eb07be",
       "releaseBytes": 404784,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7990,7 +7990,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_lod1.glb",
-      "releaseSha256": "5179453eb60309271de00ecb90e0ce610e89aea58ed2d49a2ffb49c8db4ac10e",
+      "releaseSha256": "81e8797e89795e7fe0adf43ab637d359edce4fdd1d56f9ac31b3074b68631fc2",
       "releaseBytes": 491300,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -8011,7 +8011,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_ashline_rig_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_lod2.glb",
-      "releaseSha256": "7a88004eb46995c52cff854d84e0bb1f04b6574d78c59cd2f4665f6716d8a097",
+      "releaseSha256": "fb6ce1a8a34099edd5033dff0f12761de15d348261d46b68e43a1a781a5526e9",
       "releaseBytes": 419176,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

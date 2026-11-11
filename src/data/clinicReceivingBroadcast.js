@@ -2,6 +2,8 @@
 // The shared readout is immutable across PR531/532, not another receipt owner.
 import {clinicFreightReadout} from './clinicFreightReadout.js';
 import {COMMODITIES} from './commodities.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 const CUT='station_hyperion_cut', SECTOR='sector_hyperion_cut';
 const number=n=>new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(n);
 export function clinicReceivingBroadcast(state, station) {
@@ -19,5 +21,5 @@ export function clinicReceivingBroadcast(state, station) {
       ?'Do not send a carrier for stock we do not have.'
       :'Count it before you promise it.');
   return {id:'clinic:intake:'+JSON.stringify([fact.missionId,CUT,fact.commodityId,fact.acceptedQty,stock]),
-    text:`Cut intake: Nyx shipment accepted, ${number(fact.acceptedQty)} ${fact.acceptedQty===1?'unit':'units'} of ${commodity}. ${count}`};
+    text:`Cut intake: Nyx shipment accepted, ${number(fact.acceptedQty)} ${pluralWord(fact.acceptedQty, 'unit', 'units')} of ${commodity}. ${count}`};
 }

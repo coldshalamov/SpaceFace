@@ -43,7 +43,12 @@ export function createLineHardware(state, options = {}) {
   const renderer = state?.render?.renderer;
   const owner = Object.freeze({ type: 'line-hardware' });
   const materials = [], scratch = {}, hot = new THREE.Color(0xff521c), classColor = new THREE.Color();
-  let disposed = false, parent = null, attached = false, lastClass = 0, lastHeadKey = null;
+  // G19-01: the class-up moment. The new colour reads in immediately; a 0.6 s bright pulse
+  // marks the crossing itself on the winch and pads (the rope re-reads its width on its own frame).
+  const white = new THREE.Color(0xffffff), pulseColor = new THREE.Color();
+  let disposed = false, parent = null, attached = false, lastClass = 0, lastHeadKey = null, pulseStart = -1;
+  const simNow = () => Number.isFinite(state && state.simTime) ? state.simTime
+    : (typeof performance !== 'undefined' ? performance.now() / 1000 : 0);
   const root = new THREE.Group(); root.name = 'LineClassHardware'; root.visible = false;
   const headMount = new THREE.Group(); headMount.position.set(-.18, .20, 0); root.add(headMount);
   const padMounts = PAD_POSITIONS.map((position, i) => {
@@ -91,6 +96,8 @@ export function createLineHardware(state, options = {}) {
       }
       const headKey = scratch.headId ? `${scratch.headId}:${scratch.headMark || ''}` : '';
       if (lastClass !== scratch.classIndex || lastHeadKey !== headKey) {
+        // A real class crossing (never the first attach) arms the bright pulse.
+        if (lastClass >= 1 && lastClass !== scratch.classIndex) pulseStart = simNow();
         root.userData.lineClass = scratch.label;
         headMount.userData.winch = scratch.hardware.winch;
         // Row 500 — the rim mark shows on the hull part: a fitted §7.1 head tints the
@@ -100,10 +107,12 @@ export function createLineHardware(state, options = {}) {
         lastClass = scratch.classIndex; lastHeadKey = headKey;
       }
       // Only private cloned materials change; cached hull/part materials retain their authored finish.
+      const pulse = pulseStart >= 0 ? Math.max(0, 1 - (simNow() - pulseStart) / 0.6) : 0;
+      pulseColor.copy(classColor).lerp(white, pulse * 0.85);
       for (const material of materials) {
         if (!material.emissive) continue;
-        material.emissive.copy(classColor).lerp(hot, scratch.heat);
-        material.emissiveIntensity = .12 + scratch.heat * 1.1;
+        material.emissive.copy(pulseColor).lerp(hot, scratch.heat);
+        material.emissiveIntensity = .12 + scratch.heat * 1.1 + pulse * 2.4;
       }
       return true;
     },

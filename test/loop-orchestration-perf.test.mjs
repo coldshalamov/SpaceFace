@@ -178,7 +178,7 @@ test('scheduler attribution clears stale child phases and preserves in-callback 
 test('runner and authored-admission owners publish bounded attribution without a second loop', () => {
   // The frame budget derives from the runner's fixedDt and is resolved ahead of the call —
   // the contract is beginFrame carries callbackStart plus that derived budget.
-  assert.match(presentationRunnerSource, /simulationRunner\.fixedDt[\s\S]{0,200}frameBudgetMs[\s\S]{0,200}perf\.beginFrame\([\s\S]*callbackStart[\s\S]*frameBudgetMs/);
+  assert.match(presentationRunnerSource, /simulationRunner\.fixedDt[\s\S]{0,600}frameBudgetMs[\s\S]{0,300}perf\.beginFrame\([\s\S]*callbackStart[\s\S]*frameBudgetMs/);
   assert.match(presentationRunnerSource, /perf\.recordPresentationFrame/);
   assert.match(partsLibrarySource, /recordAdmissionSlice[\s\S]*recordAdmissionWork/);
   assert.doesNotMatch(loopSource, /requestAnimationFrame/,

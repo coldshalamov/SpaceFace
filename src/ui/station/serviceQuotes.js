@@ -9,6 +9,8 @@ import { stationConditionChips } from '../../economy/stationConditions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
+import { counted } from '../numberFormat.js';
+
 
 export function factionPresenceServiceRows(state, stationId) {
   const own = state && state.factionPresence;
@@ -616,7 +618,7 @@ function baseServiceQuote(type, state, entity) {
     const payout = rights * SERVICE_PRICES.salvageRightCr;
     return {
       amount: rights, cost: payout, payout,
-      detail: `${rights} right${rights === 1 ? '' : 's'} @ ${fmtCr(SERVICE_PRICES.salvageRightCr)} cr + Pitborn notice`,
+      detail: `${counted(rights, 'right', 'rights')} @ ${fmtCr(SERVICE_PRICES.salvageRightCr)} cr + Pitborn notice`,
       buttonLabel: 'Redeem', disabled: false,
       chips: [{ text: `+${fmtCr(payout)} cr`, kind: 'gain' }, { text: `+${rights} pitborn rep`, kind: 'ok' }],
     };
@@ -842,14 +844,14 @@ export function yardJobReadout(state) {
     status = 'Holding';
     value = 'yard full';
     const waiting = yardView ? yardView.waitingClients : 0;
-    detail = `No free pad — ${waiting} client${waiting === 1 ? '' : 's'} ahead of you`;
+    detail = `No free pad — ${counted(waiting, 'client', 'clients')} ahead of you`;
     tone = 'warn';
   } else if (head.status === 'active') {
     status = `${label} underway`;
     value = pct;
     const crewsBusy = yardView ? yardView.busyCrews : null;
     detail = `Pad ${player.padIdx + 1}` +
-      (crewsBusy != null ? ` · ${crewsBusy} crew${crewsBusy === 1 ? '' : 's'} on the floor` : '');
+      (crewsBusy != null ? ` · ${counted(crewsBusy, 'crew', 'crews')} on the floor` : '');
     tone = 'ok';
   } else {
     status = `${label} queued`;
@@ -858,7 +860,7 @@ export function yardJobReadout(state) {
     tone = 'warn';
   }
   const extra = summary.count - 1;
-  if (extra > 0) detail += ` · +${extra} more job${extra === 1 ? '' : 's'} queued`;
+  if (extra > 0) detail += ` · +${counted(extra, 'more job', 'more jobs')} queued`;
   return {
     label: 'Yard',
     status,
