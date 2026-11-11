@@ -50,6 +50,8 @@ or does not.
 | PL-217 | **The sweeping line.** After a spill, a civilian holds a Rig wedge down the lane and walks the debris into a pile. Join with yours and it takes half the time, and the owner's thanks goes out on open radio | Sweep it clean; or sweep the pile your own way — everyone saw which way the wedge went | DRAFT 2026-11-11 |
 | PL-218 | **The doorstop.** A dock's rolling shutter jams half-open every third day and the queue backs up. Pin it open and the queue flows; the dockhand chalks your tag on the shutter's edge | Be the fix; or Pin it shut instead — the dock reroutes, and the dockhand chalks a number where your tag was going | DRAFT 2026-11-11 |
 | PL-219 | **One yank.** A loader drops a crate stack at a market and a passing hauler Pulls it back into a stack, mid-air, one practiced yank. The lane applauds | Try it yourself: misjudge the well, and the whole pile lands on you | DRAFT 2026-11-11 |
+| PL-243 | **Perspective.** Boost past a patrol, wanted for something small, and it does not even turn — someone worse is in the lane today | Enjoy the relativity; or go and find out who | DRAFT 2026-11-11 |
+| PL-244 | **Paper trail.** Your unpaid fines chase you from dock to dock as paper tags taped to your berth post | Pay them; or let them accumulate — a bouquet of debts | DRAFT 2026-11-11 |
 
 ## B. Secrets
 
@@ -67,6 +69,7 @@ or does not.
 | PL-20 | **J.C.** A scorch mark and the initials at places Juno reached before you. After a job together it reads *J.C. + you* | Get there first for once | OPEN |
 | PL-104 | **Inventory.** The gap behind Sker's Chop Line fits one small ship exactly. Spend a Market Night closed in behind it and the claws work round you till morning; Tinker Zell chalks a stock number on your hull | Sleep free, wearing a stock number; or take a normal berth | DRAFT 2026-11-11 |
 | PL-155 | **Fair trade.** The second beacon at Sedna blinks a second pattern, slower. It marks a hatch in the dark, out past the last lamp. Whatever you post in comes back as something else, about the same weight | Post junk, receive junk; post something you love; or post nothing | DRAFT 2026-11-11 |
+| PL-248 | **The crossing shadow.** At one hour of the day the Slipway's counterweight throws its shadow across exactly one window on the Tower side, and the light in that window goes out while it passes | Be there; that is all of it | DRAFT 2026-11-11 |
 
 ## C. Street life in the towns
 
@@ -111,6 +114,8 @@ or does not.
 | PL-232 | Tethys | The valid instruction. Once a shift, Points Dunmore routes a string through a clear lane and the whole yard obeys instantly, right or wrong | Obey with them; or hold your ground — the string parts around you, and you were valid too | DRAFT 2026-11-11 |
 | PL-233 | Pallas | The fresh mark. One morning every hull Fitch had chalked has a second mark beside it: KNOCKED, in a steady hand, all down the street. Somebody worked all night | Admire the night's work — Fitch does | DRAFT 2026-11-11 |
 | PL-234 | Io | The middle seat. Gus Varga welded a bench to the dead pump, and both flags' pilots sit on it, opposite ends, same bench | Take the middle seat; both sides will look at you | DRAFT 2026-11-11 |
+| PL-245 | Ceres | The Bell's hush. After any ring of the Bell, the whole belt's radio goes quiet for one minute — even Static waits | Be quiet with them; or fill the silence, and be answered by everyone at once | DRAFT 2026-11-11 |
+| PL-246 | Io | Wall time. Ten seconds before the Plume, the whole lane parks nose-in against the Plate, like sardines | Park with them; or be the loose thing the Plume takes | DRAFT 2026-11-11 |
 
 ## D. Chance meetings (anywhere)
 
@@ -147,6 +152,7 @@ or does not.
 | PL-208 | **Same time tomorrow.** Give way to a stranger once, at a beacon, and ever after they hold that beacon for you at that hour — an appointment nobody named | Keep it; or miss a day, and they wave you through late the next, no grudge | DRAFT 2026-11-11 |
 | PL-220 | **The stalled string.** Three containers sit dead at a green beacon, and nobody behind them has the mass to move them. One good Shove would do it | Be the shove and take a hundred flashes of thanks; or watch commuter patience die in real time | DRAFT 2026-11-11 |
 | PL-221 | **The waiting line.** Once, your hull snags on a line that was already waiting for you. Nothing on the other end. It lets go the moment you slow | Slow down; or run full boost, and it holds on a while | DRAFT 2026-11-11 |
+| PL-249 | **The dead stick.** A ship glides past you, dead silent — no radio, no thrust, straight as a rail for the dock. An old pilot flying it in on nothing | Escort silently; or offer a tow — they wave you off, gently | DRAFT 2026-11-11 |
 
 ## E. Lane Nine — Static reports what you did
 
@@ -182,6 +188,9 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-240 | You wear the same mark into all five towns | *"That mark's been around. So has its rope."* | DRAFT 2026-11-11 |
 | PL-241 | The tug tows you in while you played dead | *"One derelict recovered. It waved."* | DRAFT 2026-11-11 |
 | PL-242 | A frozen Wasp rides the Cryo ice barge | *"The ice barge has a new figurehead."* | DRAFT 2026-11-11 |
+| PL-254 | You weigh a whole wreck on the Nereid Scale | *"Somebody weighed a wreck. The Scale held."* | DRAFT 2026-11-11 |
+| PL-255 | You push a stranger's disabled ship to dock | *"Good turn out there. Logged."* | DRAFT 2026-11-11 |
+| PL-256 | You settle your fines in full | *"Fines settled in full. Unusual."* | DRAFT 2026-11-11 |
 
 ## F. In the Pit
 
@@ -260,6 +269,7 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-237 | Rhea | Honk at heat. Rhea haulers honk at any hull carrying an old scorch, whoever earned it | Wear your burns; they were earned somewhere | DRAFT 2026-11-11 |
 | PL-238 | Io | Half and half. Coldburn Rey's hull is painted half one flag's colours, half the other's. Both sides pretend not to see him | See him | DRAFT 2026-11-11 |
 | PL-239 | Haumea | Rowan's tap. Tap Rowan strikes the ice once a pulse, and the whole rift flashes on his stroke | Move on the tap; everyone out here does | DRAFT 2026-11-11 |
+| PL-247 | Nereid | The scandal. Put a wreck on the Scale and the whole yard stops to watch the number — and argues for an hour about whether that counts | Weigh anything; the yard loves a scandal | DRAFT 2026-11-11 |
 
 ## H. The world reacts, part two
 
@@ -285,6 +295,8 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-227 | **Seen.** Wear a mark from one town into a town that has never seen it: a kid points, and an old pilot nods once — they know what it took | Wear your history around | DRAFT 2026-11-11 |
 | PL-228 | **Two names.** Two towns' Berth Boards have named you differently for the same deed, and each town is sure theirs is right | Live with both; each town is certain | DRAFT 2026-11-11 |
 | PL-229 | **The other name.** The town chalked a name on the board for the day the tug brought you in asleep, and it stuck | Earn a better one; the town will keep both | DRAFT 2026-11-11 |
+| PL-250 | **Known by name.** Near a town that has named you, civilians give you room — your own name, no mark needed | Enjoy it; or exploit it — they let you, muttering | DRAFT 2026-11-11 |
+| PL-251 | **The other side of it.** A disabled stranger hails the nearest good hull, and today that is you | Push them to the dock; or fly past — the next time you are down, nobody comes | DRAFT 2026-11-11 |
 
 ## I. Secrets, part two
 
@@ -317,6 +329,8 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-151 | **No papers.** Once the works makes parts, a hail on a private channel offers to buy the lot, unlogged: *"No papers. Better price."* | Sell dark, and watch honest haulers give your lane a miss; or refuse, and the hail comes back weekly, polite | DRAFT 2026-11-11 |
 | PL-152 | **The tally.** Lose a raid and they take a module — and leave one of their own behind, wrecked on your rock. Inside, a chalked list of yards, and yours is on it | Keep the wreck as proof; or feed it to the works, and the list burns with it | DRAFT 2026-11-11 |
 | PL-153 | **The minute.** Every shift change your drill head stops dead for one minute, whatever it is in the middle of | Be there for the minute; the drill taps twice, like the rest of the Rock | DRAFT 2026-11-11 |
+| PL-252 | **The regular's hour.** The hauler that first called on your light comes back at the same hour every week, expecting the hopper full | Be full; or miss the hour — it circles once, leaves, and the next call is a long time off | DRAFT 2026-11-11 |
+| PL-253 | **The wall's first dent.** Win your first raid and one wreck stays half-buried in your wall where it hit | Leave it — proof; or feed it to the works | DRAFT 2026-11-11 |
 
 ## Suggestions
 
