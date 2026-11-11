@@ -31,7 +31,7 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | STAB-01-launchers-always-start | D | Both launchers reach the menu 10/10; plain-sentence errors | TAKEN devin1 |
 | STAB-02-stability-gate | D | `npm run gate` = Adventure boot + Swarm boot + deterministic replay | TAKEN devin2 |
 | KNOWN-REDS | D | Already failing on master (not caused by fleet work): `deep-sky-plate-pipeline` #9, `performance-dirty-ranges` (4), `render-target-pipeline-warmup` #25, `pq-204-advanced-perf` #13/#19, `anvil-orchard-motor`, `ceres-five-minute-acceptance` (2), `physics-sandbox-routes` (2), `pq-163-04-cliff` (2). Fix each cause or retire a test whose claim is obsolete, with a one-line reason | NEEDS-PACKET |
-| STAB-03 import and boot lint | S | NEEDS-PACKET: a static check that every relative import resolves (the `.//` break), wired into `gate --quick` | NEEDS-PACKET |
+| STAB-03-import-and-boot-lint | D | Static check: every relative import resolves cleanly (the `.//` boot break); first gate step | TAKEN devin2 |
 | G11-01-never-freeze | L | The freeze-and-blip: measure on a quiet machine, then one clock, adaptive playout, then a cheaper sim | READY |
 | G11 one clock | L | Step 1 landed: speed-gauge ring (3167d8f6) and backdrop/parallax/post time (next commit) follow the drawn world. Still on the wall clock: per-ship idle spins, shader `uTime` uniforms outside the post route — grep `performance.now\|clock.getElapsedTime` in `src/render` | BUILT |
 | PARK-01-land-overnight-lane-b | D | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
