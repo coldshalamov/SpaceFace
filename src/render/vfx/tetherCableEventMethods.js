@@ -1,6 +1,7 @@
 // Tether cable event pictures. VFX retains the cable pools, event wiring, and frame lifecycle.
 import { addShieldContact } from '../weapons/shieldContacts.js';
 import { LINE_SHIELD_BREAK_STRENGTH, resolveLatchShieldBite } from './lineShieldBite.js';
+import { LATCH_DISC_C0, latchHeftPlan } from './latchHeftRead.js';
 
 export function createTetherCableEventMethods({
   SPR_FLASH,
@@ -412,13 +413,24 @@ export function createTetherCableEventMethods({
       // full-strength contact where the cable meets the shell, aimed at the biting hull — the
       // same wire, and the same contact-aims-at-the-attacker convention, projectile hits use.
       // A fresh hitch resets the sustain clock so the first strain re-assert is clean.
+      let shellBit = false;
       if (target) {
         const bite = resolveLatchShieldBite(target, ship.x, ship.z, this._lineShieldBiteScratch || (this._lineShieldBiteScratch = {}));
         if (bite.live) {
           addShieldContact(target.id, bite.dirX, 0.12, bite.dirZ, bite.strength);
           this._lineShieldBiteAt = this._causeNow();
+          shellBit = true;
         }
       }
+      // inf-latch-heft-read: the anchor end speaks the body the Line caught — its substance's
+      // spray and its share of the coupled pair against the hull holding the Line. A shell that
+      // takes the bite keeps today's disc; a body with no surface and no mass claims nothing.
+      const owner = (p && p.actorId != null ? this._ent(p.actorId) : null) || player;
+      const heft = target && !shellBit
+        ? latchHeftPlan(target, owner, typeof this._isReduced === 'function' && this._isReduced(),
+          this._latchHeftScratch || (this._latchHeftScratch = {}))
+        : null;
+      const heftLive = !!(heft && heft.live);
       let dirX = anchor.x - ship.x;
       let dirZ = anchor.z - ship.z;
       const chord = Math.hypot(dirX, dirZ);
@@ -444,13 +456,27 @@ export function createTetherCableEventMethods({
         -dirX * (chord / pulseLife), -dirZ * (chord / pulseLife), -dirX, -dirZ);
       // Spark ring thrown off the anchor IN the plane of contact: a disc around the line axis —
       // alternating the two perpendicular directions with jitter, never an isotropic ball.
-      this._c0.set('#eaf6ff');
-      const n = Math.max(10, Math.round(14 * (this._burst || 1)));
+      // inf-latch-heft-read: the disc wears the caught body's spray (colour, speed, size, life,
+      // drag) and its heft (count, speed, size); without a read it is today's white disc.
+      this._c0.set(heftLive ? heft.c0 : LATCH_DISC_C0);
+      if (heftLive && heft.c1) this._c1.set(heft.c1);
+      const countMul = heftLive ? heft.countMul : 1;
+      const speedMul = heftLive ? heft.speedMul : 1;
+      const lifeMul = heftLive ? heft.lifeMul : 1;
+      const sizeMul = heftLive ? heft.sizeMul : 1;
+      const dragMul = heftLive ? heft.dragMul : 1;
+      const n = Math.max(6, Math.round(10 * countMul), Math.round(14 * (this._burst || 1) * countMul));
       for (let k = 0; k < n; k++) {
         const a = perpAngle + (k % 2 ? Math.PI : 0) + (random() - 0.5) * 0.6;
-        const v = 14 + random() * 30;
+        const v = (14 + random() * 30) * speedMul;
         this._spawnParticle(anchor.x, anchor.z, Math.cos(a) * v, Math.sin(a) * v,
-          0.18 + random() * 0.3, 1.35, 0.0, this._c0, this._c1, 2.8, 0, 0);
+          (0.18 + random() * 0.3) * lifeMul, 1.35 * sizeMul, 0.0, this._c0, this._c1, 2.8 * dragMul, 0, 0);
+      }
+      // The load seating: a ring rolls off the caught body, sized to its own radius, wider and
+      // slower the less it will swing. Drawn only when a mass justifies it.
+      if (heftLive && heft.ringLive) {
+        this._spawnSprite(SPR_RING, anchor.x, 0.9, anchor.z, heft.ringLife, heft.ringSize0,
+          heft.ringSize1, heft.ringOp, 0.0, heft.ringColor, 0, 0);
       }
     },
   };

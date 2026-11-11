@@ -5,7 +5,7 @@ import {
   fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
   EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
-import { swarmFeel } from '../data/swarmFeelProfile.js';
+import { oneFeelPhaseTable, oneFeelCooldownS, oneFeelPhaseAt } from '../data/swarmFeelProfile.js';
 export {
   FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
   FIELD_PHASE_WINDING, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
@@ -1231,21 +1231,12 @@ export const fields = {
       ? { ...FIELD_DEFS.well, durationS: COLLECTOR_KNOT.durationS, cooldownS: COLLECTOR_KNOT.cooldownS, hull: COLLECTOR_KNOT.hull }
       : FIELD_DEFS[kind];
     const now = nowOf(state);
-    // S1 Swarm feel (audit P4/P5): under a live Swarm run, Pull deploys as a yank-and-hold
-    // and Shove as a punch that fades — a phase table stamped onto the same kernel record.
-    // The collector knot and every non-Swarm deploy keep the authored def untouched.
-    const feel = swarmFeel(state);
-    const swarmPhases = !collector && feel && (kind === 'well' || kind === 'repulsor')
-      ? (kind === 'well'
-        ? { punchS: feel.pull.yankS, punchStrengthMult: feel.pull.yankStrengthMult,
-            punchDampingMult: feel.pull.yankDampingMult, fadeS: feel.pull.holdS, fadeTo: 1 }
-        : { punchS: feel.shove.punchS, punchStrengthMult: feel.shove.punchStrengthMult,
-            punchDampingMult: 1, fadeS: feel.shove.bermS, fadeTo: 0 })
-      : null;
+    // S1 feel (audit P4/P5), one feel in both doors since EC-G18: Pull deploys as a
+    // yank-and-hold and Shove as a punch that fades — a phase table stamped onto the same
+    // kernel record, in Adventure exactly as in Swarm. Only the collector knot keeps its def.
+    const swarmPhases = collector ? null : oneFeelPhaseTable(kind);
     const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
-    const deployCooldownS = swarmPhases
-      ? (kind === 'well' ? feel.pull.cooldownS : feel.shove.cooldownS)
-      : def.cooldownS;
+    const deployCooldownS = swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS;
     const cd = rt.cooldowns[kind] || 0;
     if (now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
@@ -1947,17 +1938,10 @@ export const fields = {
       let strength;
       let damping;
       let phase;
-      if (elapsed < p.punchS) {
-        strength = baseStrength * p.punchStrengthMult;
-        damping = baseDamping * p.punchDampingMult;
-        phase = FIELD_PHASE_ACTIVE;
-      } else {
-        const t = p.fadeS > 0 ? Math.min(1, (elapsed - p.punchS) / p.fadeS) : 1;
-        const fadeTo = Number.isFinite(p.fadeTo) ? p.fadeTo : 0;
-        strength = baseStrength * (1 + (fadeTo - 1) * t);
-        damping = baseDamping;
-        phase = fadeTo >= 1 ? FIELD_PHASE_ACTIVE : FIELD_PHASE_DISSIPATING;
-      }
+      const at = oneFeelPhaseAt(p, elapsed);
+      strength = baseStrength * at.strengthMult;
+      damping = baseDamping * at.dampingMult;
+      phase = at.punch || at.fadeTo >= 1 ? FIELD_PHASE_ACTIVE : FIELD_PHASE_DISSIPATING;
       rec.lifecyclePhase = phase;
       if (typeof this._kernel.update === 'function') this._kernel.update(fieldId, { strength, damping });
       else { rec.strength = strength; rec.damping = damping; }

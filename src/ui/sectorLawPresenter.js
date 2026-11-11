@@ -10,6 +10,8 @@ import { openingInstructionSolo } from './hudAttention.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { classifyImpactResponsibility } from '../combat/killCausality.js';
 import { targetDisplayName } from './targetPanel.js';
+import { counted } from './numberFormat.js';
+
 
 const STYLE_ID = 'sf-sector-law-style';
 const RECEIPT_TTL_S = 4;
@@ -200,7 +202,7 @@ export function authorityIncidentReadout(payload, state, simTime = state && stat
     return Object.freeze({
       mode: 'incident', danger: true,
       flag: 'INTERCEPT ACTIVE', authority, station, target,
-      headline: `${units} PATROL UNIT${units === 1 ? '' : 'S'} INTERCEPTING`,
+      headline: `${counted(units, 'PATROL UNIT', 'PATROL UNITS')} INTERCEPTING`,
       detail: causeText(payload.cause), statusText: 'WEAPONS AUTHORIZED', eta: null,
     });
   }

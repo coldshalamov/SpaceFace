@@ -9,6 +9,8 @@
 
 import { beatDefAt, endingDef, outpostSpecDef } from './campaign47a/campaignData.js';
 import { normalizeFurnaceSettlement } from './campaign47a/campaignReceipts.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 export const LEDGER_KIND = 'story-ledger';
 export const LEDGER_BADGE = 'LEDGER';
@@ -360,7 +362,7 @@ function stepSpeech(beatIndex, stepId, signal, source = null) {
           : `${feedPhrase}${losses ? `; ${lossPhrase}` : ''}`,
         then: feeds === 3 ? 'CR-FEED received all three ore pods'
           : feeds === 0 ? 'the four marked mites cleared; all three ore pods were lost'
-            : `CR-FEED received ${feeds === 1 ? 'one ore pod' : 'two ore pods'}; ${lossPhrase}`,
+            : `CR-FEED received ${pluralWord(feeds, 'one ore pod', 'two ore pods')}; ${lossPhrase}`,
       };
     }
   }

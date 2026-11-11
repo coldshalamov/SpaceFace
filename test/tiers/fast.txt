@@ -37,6 +37,7 @@ test/shield-restored-event.test.mjs
 test/ui-control-labels.test.mjs
 test/ui-gamepad-slider-select-nav.test.mjs
 test/ui-grammar-matrix.test.mjs
+test/player-counts.test.mjs
 test/weapon-clips.test.mjs
 # The Q5 guards themselves: a new source-slice anti-pattern, a drifted tier manifest, or a
 # reference record that writes on a failed run must fail the fast tier.

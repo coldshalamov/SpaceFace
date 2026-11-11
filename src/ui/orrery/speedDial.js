@@ -17,6 +17,7 @@
 import { svg, arcD, polar, circularText } from './svg.js';
 import { arcGauge } from './instruments.js';
 import { createSpring, reducedMotion } from './motion.js';
+import { presentedAdvanceRatio } from '../../render/presentedClock.js';
 
 const STYLE_ID = 'sf-orrery-speeddial-style';
 
@@ -409,12 +410,15 @@ export function createSpeedDial() {
       if (deg !== wakeDeg) { wakeDeg = deg; paintWake(); }
     }
 
+    // EC-G18/G11 one clock: the streak ring turns with the drawn world. During a stall the reading
+    // holds, so the spin is re-set every update and scaled by how fast the world is advancing on
+    // screen — it slows and stops with the ship instead of spinning over a frozen frame.
+    setSpin(reading === 0 ? 0 : Math.min(18, 0.6 + (sp / r) * 6) * presentedAdvanceRatio(nowMs()));
     if (changed('reading', reading)) {
       const text = formatSpeedReading(sp);
       numeral.textContent = text;
       numeral.classList.toggle('is-l4', text.length === 4);
       numeral.classList.toggle('is-l5', text.length >= 5);
-      setSpin(reading === 0 ? 0 : Math.min(18, 0.6 + (sp / r) * 6));
       // the streaks are the "really moving" cue: absent at a crawl, full at ref x 1.3, never at rest
       const seen = Math.round(clamp01((sp / r - 0.4) / 0.9) * 10) / 10;
       if (changed('streaks', seen)) streaks.style.opacity = String(seen);

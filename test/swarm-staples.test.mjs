@@ -171,10 +171,11 @@ test('the seeded cadence deals a card to every special round and to no ordinary 
       assert.equal((swarmMinorEventFor({ arenaId, wave: w, seed: SEED }) || {}).id, (minor || {}).id);
     }
   }
-  // The specials are the announced cadence, not a scatter: majors on the odd fives the boss
-  // skips, minors on the two off-beats of each ten.
-  assert.equal(isSwarmEventWave(10), true);
-  assert.equal(isSwarmEventWave(20), true);
+  // The specials are the announced cadence, not a scatter: C01-01 fills every multiple of
+  // five with a champion, so the course deals no major round at all — majors are dead
+  // inside the thirty; minors still ride the two off-beats of each ten (2, 8, 12, 18, 22, 28).
+  assert.equal(isSwarmEventWave(10), false);
+  assert.equal(isSwarmEventWave(20), false);
   assert.equal(isSwarmMinorEventWave(2), true);
   assert.equal(isSwarmMinorEventWave(18), true);
   assert.equal(isSwarmEventWave(4), false);

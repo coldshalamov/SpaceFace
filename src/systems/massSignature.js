@@ -38,6 +38,8 @@ import {
 } from '../data/massSignature.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { counted } from '../core/numberFormat.js';
+
 
 // ── EXP-25 dials ───────────────────────────────────────────────────────────────────────
 
@@ -618,13 +620,13 @@ export const massSignature = {
       clutter,
       t: now,
     });
-    const parts = [`${contacts.length} signature${contacts.length === 1 ? '' : 's'}`];
+    const parts = [`${counted(contacts.length, 'signature', 'signatures')}`];
     const heaviest = contacts[0];
     if (heaviest) {
       parts.push(`max ${formatSignatureMass(heaviest.massT)}${heaviest.tier === 'hot' ? ' hot' : ''}${heaviest.spoofed ? ' forged' : ''}`);
     }
     if (shadowed.length) parts.push(`${shadowed.length} shadowed`);
-    if (clutter) parts.push(`${clutter} faint return${clutter === 1 ? '' : 's'}`);
+    if (clutter) parts.push(`${counted(clutter, 'faint return', 'faint returns')}`);
     this.bus && this.bus.emit('comms:log', { from: 'SCOPE', text: parts.join(' · '), kind: 'scan' });
   },
 };

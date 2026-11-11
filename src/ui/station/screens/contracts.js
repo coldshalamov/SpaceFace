@@ -38,6 +38,7 @@ import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
 import { acceptMissionOnLane, chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import { objectiveText } from '../../screens/missionLog.js';
+import { closedFileRead } from '../closedFileRead.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -63,6 +64,8 @@ import { createCounter, decrypt } from '../../orrery/text.js';
 import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
+import { counted } from '../../numberFormat.js';
+
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -470,7 +473,7 @@ export function missionDossierHtml(m, state, options = {}) {
   const routeScope = missionRouteScope(m, state);
   const routeText = routeScope && routeScope.text
     ? routeScope.text
-    : (jumps > 0 ? `${jumps} jump${jumps > 1 ? 's' : ''}` : 'Route pending');
+    : (jumps > 0 ? `${counted(jumps, 'jump', 'jumps')}` : 'Route pending');
   // Restores the guidance the retired hub gave assistive tech: the verb must say what pressing it
   // does AND why it cannot be pressed, without depending on the visual readiness module.
   const acceptAria = ready
@@ -1452,7 +1455,20 @@ export function createContractsScreen(ctx) {
             `</li>`
           );
         }).join('') + `</ul>`
-      : `<p class="k-sentence sx-ct__none">No active missions. Accept a job from the board to begin.</p>`;
+      : (() => {
+          // inf-closed-file-board: an empty Yours column still names the last file you lost —
+          // why it closed, what it cost, and where the next try is — instead of reading as if
+          // nothing had happened. Pure read over missions' own receipts; null keeps the old line.
+          const closed = closedFileRead(state, sid || (ctx && ctx.station && ctx.station.id));
+          if (!closed) {
+            return `<p class="k-sentence sx-ct__none">No active missions. Accept a job from the board to begin.</p>`;
+          }
+          return `<div class="sx-ct__closed" data-closed-file="${escapeHtml(closed.missionId)}">`
+            + `<p class="k-sentence sx-ct__none">Your last file closed: ${escapeHtml(closed.title)} — ${escapeHtml(closed.cause)}</p>`
+            + `<p class="k-sentence sx-ct__none">${escapeHtml(closed.cost)}</p>`
+            + (closed.next ? `<p class="k-sentence sx-ct__none">${escapeHtml(closed.next)}</p>` : '')
+            + `</div>`;
+        })();
     dressActive();
   }
 
