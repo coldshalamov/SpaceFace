@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "e3adede6fa2bdd2a8c83999b9f9a620dbb9fb26c1415182884bae9c28be96e58",
+  "uiSourceDigest": "84eb6533c0a37bd2ce2d5fc0d488889d2275051485fb3495b2514c6f4f6aac92",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -206,7 +206,7 @@
     "src/ui/orrery/gameOverLayouts.js": "516b9e4911364c4799c07b939f2db3a935c11bc5553ee18239a80363242c1f6c",
     "src/ui/orrery/helpInstruments.js": "dabf2863bc8e7cf3ed8b60923fc598023c761c128e71764b22e0720c13e68dc4",
     "src/ui/orrery/helpLayouts.js": "a4482f16531b46937f6ccd4e9dee4fd63bdc4497dd0a25dc848e9452c09b3222",
-    "src/ui/orrery/helpRig.js": "e938a001ef321760c1b0417d2be761909336e72a288965e950eaf1eef34b91eb",
+    "src/ui/orrery/helpRig.js": "96ed050d97638e2d1071556a22dd34aeac2cff04ddb77190056ea39278f0a8d8",
     "src/ui/orrery/hoverTag.js": "558307fe7f423ab960c7cffb6edb2bff99b7ee998b3e593216909650a1d2a271",
     "src/ui/orrery/hudAdapter.js": "d2c0659d02b81aabc53014431a2e60e37f726edbf66c206f173a2563a03d7f51",
     "src/ui/orrery/hudSkin.js": "e2d6ba3246ad492e1e9337ef7e10a59c21ed4f3cac6f4bf7efc2234a0dc585e8",

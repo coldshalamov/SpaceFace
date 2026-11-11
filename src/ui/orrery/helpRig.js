@@ -175,6 +175,13 @@ html.sf-reduce-motion .orr-hrig__spot { display:none; }
 .orr-hrig.is-small .orr-hrig__key--word { font-size:12px; letter-spacing:.08em; }
 .orr-hrig.is-small .orr-hrig__alt { font-size:12px; }
 .orr-hrig.is-small .orr-hrig__glyph { padding-bottom:6px; gap:4px; }
+/* ui-polish-484: a narrow desktop rig (is-small: 960, 1280, 1366 wide). A two-word glyph (HOLD Q · wheel) beside its verb
+   made a 200-270px station, so the right column (COUNTERMEASURE, LATERAL RIGHT, MINE BEAM) ran over EVERY KEY. Those stations
+   stand as the keycap over its verb, aligned on the ring side, so both columns narrow and the berth keeps its room. */
+.orr-hrig.is-small:not(.is-phone, .is-pad) .orr-hrig__st:has(> .orr-hrig__kb > .orr-hrig__key--word + .orr-hrig__alt),
+.orr-hrig.is-small.is-pad:not(.is-phone) .orr-hrig__st:has(> .orr-hrig__pad > .orr-hrig__key--word + .orr-hrig__alt) { flex-direction:column; align-items:flex-start; justify-content:center; gap:3px; }
+.orr-hrig.is-small:not(.is-phone, .is-pad) .orr-hrig__st[data-side="L"]:has(> .orr-hrig__kb > .orr-hrig__key--word + .orr-hrig__alt),
+.orr-hrig.is-small.is-pad:not(.is-phone) .orr-hrig__st[data-side="L"]:has(> .orr-hrig__pad > .orr-hrig__key--word + .orr-hrig__alt) { align-items:flex-end; }
 .orr-hrig__verb { ${LABEL} font-size:clamp(12px, .62vw, 16px); letter-spacing:.14em; line-height:1.2; color:rgb(${BONE} / .8); transition:color .16s linear; white-space:nowrap; }
 .orr-hrig__glyph { position:relative; display:inline-flex; align-items:baseline; gap:6px; flex:none; padding:0 2px 7px; min-width:22px; justify-content:center; }
 .orr-hrig__glyph::before { content:""; position:absolute; left:-3px; right:-3px; bottom:-1px; height:9px; border-radius:5px; background:rgb(${HOT} / .13); transition:background .16s linear; }
@@ -631,7 +638,9 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
         const glyph = el.querySelector(device === 'pad' ? '.orr-hrig__pad' : '.orr-hrig__kb');
         let gw = glyph ? glyph.offsetWidth : 24;
         if (!gw) gw = 24;
-        const ay = y + heights[i] / 2;
+        // a stacked station (keycap over verb) takes its leader at the keycap's middle, not the box's
+        const gy = glyph && glyph.offsetHeight ? glyph.offsetTop + glyph.offsetHeight / 2 : heights[i] / 2;
+        const ay = y + (Math.abs(gy - heights[i] / 2) > 3 ? gy : heights[i] / 2);
         const ax = side === 'L' ? left + w + 8 : left - 8;
         return { spec, ax, ay, side: side === 'L' ? -1 : 1, gw };
       });
