@@ -164,6 +164,7 @@ import { roadRageOps } from './roadRage.js';
 import { tailgaterOps } from './tailgater.js';
 import { rubberneckersOps } from './rubberneckers.js';
 import { nearMissPlantOps } from './nearMissPlant.js';
+import { applausePlantOps } from './applausePlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1633,6 +1634,7 @@ export const traffic = {
   ...tailgaterOps,
   ...rubberneckersOps,
   ...nearMissPlantOps,
+  ...applausePlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1773,6 +1775,7 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    this._initApplausePlantListeners?.();
     // Despawn is not a kill. A cutter removed by sector exit, residency demotion, or TTL holds
     // its wreck/payload reservation forever unless the destroy receipt releases it too.
     this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));

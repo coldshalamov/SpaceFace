@@ -32,22 +32,9 @@
 // Headless-safe: importing this module in Node (no `document`) touches no DOM; every access is
 // call-time guarded, matching the causeLedger import-before-DOM proof.
 
+import { getStage } from './stage.js';
+
 const TIP_ID = 'sf-why-tip';
-const TIP_STYLE = [
-  'position:fixed',
-  // At a normal viewport this is exactly causeLedger's 42ch; the min() only bites on inspector-
-  // narrow columns (~287px), where a fixed 42ch tip would overhang the edge or force one-character
-  // wrapping. Content still wraps at word boundaries (white-space:pre-line).
-  'max-width:min(42ch, calc(100vw - 24px))',
-  'box-sizing:border-box',
-  'white-space:pre-line',
-  // The look (glass, leader rule, face, arrival) lives in styles/kit.css `#sf-why-tip` — the one
-  // popup pane language. Only layout-critical properties stay inline.
-  'pointer-events:none',
-  // DOM layering (src/ui/AGENTS.md): screens sit at z100, alerts at z1100. A tier-2 reveal is
-  // raised BY screen content, so it must clear the screen layer; it never blocks input.
-  'z-index:1100',
-].join(';');
 
 /** The enumerated reason an element carries, or '' when it carries none (render NOTHING then). */
 export function whyTextFor(el) {
@@ -63,9 +50,13 @@ function tipElement() {
     el = document.createElement('div');
     el.id = TIP_ID;
     el.setAttribute('role', 'tooltip');
-    el.style.cssText = TIP_STYLE;
     el.style.display = 'none';
-    (document.body || document.documentElement).appendChild(el);
+    // G16-02: the tip mounts inside the Stage's banner slot — the lane (position:fixed,
+    // z-index 1100 to clear the screens) and the look both live in styles/kit.css. A page
+    // without the slot host keeps the body mount.
+    const stage = getStage();
+    const slot = stage && typeof stage.slotEl === 'function' ? stage.slotEl('banner') : null;
+    (slot || document.body || document.documentElement).appendChild(el);
   }
   return el;
 }
