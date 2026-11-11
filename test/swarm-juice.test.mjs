@@ -260,13 +260,15 @@ test('CLOSE CALL: a kill under a tenth of hull gets named', () => {
   swarmJuice.destroy();
 });
 
+// S14 (483dff172351) moved the first champion from wave 10 to wave 5 (SWARM_BOSS_FIRST); the
+// boss-round pins below retarget the same Iron Maw at the wave that now fields it.
 test('the round slam fires at plan time with the boss card and the debut card', () => {
   const h = boot();
   h.state.run.phase = 'wave_intro';
-  h.bus.emit('run:wavePlanned', { wave: 10, plan: {} });
+  h.bus.emit('run:wavePlanned', { wave: 5, plan: {} });
   const slam = named(h, 'swarm:roundSlam');
   assert.equal(slam.length, 1);
-  assert.equal(slam[0].payload.wave, 10);
+  assert.equal(slam[0].payload.wave, 5);
   assert.ok(slam[0].payload.boss && slam[0].payload.boss.name, 'a boss round names its boss');
   const intro = named(h, 'swarm:bossIntro');
   assert.equal(intro.length, 1);
@@ -313,14 +315,14 @@ test('a hull hit inside the wave costs the FLAWLESS line', () => {
 
 test('the boss bar: a champion wave reports hp, and the last champion down says BOSS DOWN', () => {
   const h = boot();
-  h.state.run.wave = 10;
+  h.state.run.wave = 5;
   h.state.run.phase = 'wave_intro';
-  h.bus.emit('run:wavePlanned', { wave: 10, plan: {} });
+  h.bus.emit('run:wavePlanned', { wave: 5, plan: {} });
   h.state.run.phase = 'active';
   const boss = {
     id: h.state.nextEntityId++, alive: true, type: 'ship', pos: { x: 40, z: 0 },
     hull: 500, hullMax: 1000,
-    data: { runCohort: SURVIVAL_COHORT_TAG, runWave: 10, swarmChampion: true, stuntThreat: { baseScore: 900, credits: 60 } },
+    data: { runCohort: SURVIVAL_COHORT_TAG, runWave: 5, swarmChampion: true, stuntThreat: { baseScore: 900, credits: 60 } },
   };
   h.state.entities.set(boss.id, boss);
   advance(h, DT * 20); // the collector sweeps on its 15-tick cadence
@@ -473,7 +475,7 @@ test('seed 4242: a boss round is one heavier slam, not two', () => {
   const plainThud = cuesOf(plain, SWARM_MOMENT_CUES.slamThud)[0];
   const h = boot();
   h.state.run.phase = 'wave_intro';
-  h.bus.emit('run:wavePlanned', { wave: 10, plan: {} });
+  h.bus.emit('run:wavePlanned', { wave: 5, plan: {} });
   assert.equal(named(h, 'swarm:roundSlam').length, 1);
   assert.equal(named(h, 'swarm:bossIntro').length, 1, 'the versus card fires beside the slam');
   const thud = cuesOf(h, SWARM_MOMENT_CUES.slamThud);
@@ -600,7 +602,7 @@ test('end to end: the real audio system voices every moment with its own recipe,
   const heard = () => plays.map((p) => p.recipeId);
 
   h.state.run.phase = 'wave_intro';
-  h.bus.emit('run:wavePlanned', { wave: 10, plan: {} });
+  h.bus.emit('run:wavePlanned', { wave: 5, plan: {} });
   for (let i = 0; i < 12; i++) advance(h, DT);
   assert.deepEqual(heard(), ['sfx_swarm_slam_thud', 'sfx_moment_stinger'], 'boss round: impact then stinger');
   assert.equal(plays[1].opts.rate, 0.8);
@@ -609,10 +611,10 @@ test('end to end: the real audio system voices every moment with its own recipe,
   plays.length = 0;
   advance(h, 1); // out of the stinger window
   h.state.run.phase = 'active';
-  h.bus.emit('run:waveStarted', { wave: 10 });
+  h.bus.emit('run:waveStarted', { wave: 5 });
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
-  h.bus.emit('run:waveCleared', { wave: 10 });
+  h.bus.emit('run:waveCleared', { wave: 5 });
   const rows = named(h, 'swarm:roundClear')[0].payload.tally.length;
   for (let i = 0; i < Math.ceil((rows + 2) * SWARM_TALLY_STAGGER_S / DT); i++) advance(h, DT);
   const ticks = plays.filter((p) => p.recipeId === 'sfx_ui_confirm');

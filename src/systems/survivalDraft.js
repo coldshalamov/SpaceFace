@@ -96,6 +96,8 @@ import {
 } from '../data/swarmHangar.js';
 import { runHasPerk } from '../data/swarmPerks.js';
 import { addCargo } from './cargo.js';
+import { counted } from '../core/numberFormat.js';
+
 
 export const CRUCIBLE_DRAFT_SCREEN_ID = 'crucibleDraft';
 export const CRUCIBLE_REFIT_SCREEN_ID = 'crucibleRefit';
@@ -1782,7 +1784,7 @@ export const survivalDraft = {
         return;
       }
       this._purchased.add(pending.id);
-      this._notice = `${added} impulse charge${added === 1 ? '' : 's'} racked.`;
+      this._notice = `${counted(added, 'impulse charge', 'impulse charges')} racked.`;
       this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
       return;
     }

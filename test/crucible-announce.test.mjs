@@ -202,7 +202,7 @@ test('an authored counterHint fires the first time an archetype appears, and nev
   materialize(h, 7, jackal);
   const first = h.texts().filter((t) => t.startsWith('Mine-Layer Jackal:'));
   assert.equal(first.length, 1, 'taught on first sight');
-  assert.match(first[0], /Salts your wake/);
+  assert.match(first[0], /Its wake is mined/);
 
   // Again in the same wave.
   materialize(h, 7, jackal);

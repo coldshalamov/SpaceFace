@@ -21,6 +21,8 @@ import { FAUNA_SPECIES } from './alienFauna.js';
 import { faunaFamily } from './discoveryPresentation.js';
 import { FIGURES } from './narrative.js';
 import { hash32 } from '../core/rng.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 export const CODEX_SECTIONS = Object.freeze([
   { id: 'commodities', title: 'Cargo', line: 'What the lanes carry, who refines it, who buries it.' },
@@ -632,7 +634,7 @@ function sectorBody(def) {
   if (overlay) sentences.push(overlay);
   const owner = def.factionId ? factionName(def.factionId) : null;
   if (owner) sentences.push(`${owner} flies the flag where a flag would stick.`);
-  sentences.push(`${def.stations ? def.stations.length : 0} station${def.stations && def.stations.length === 1 ? '' : 's'} on the chart, security ${def.security != null ? def.security : 'unrated'}, ${def.neighbors ? def.neighbors.length : 0} gate${def.neighbors && def.neighbors.length === 1 ? '' : 's'} out.`);
+  sentences.push(`${def.stations ? def.stations.length : 0} ${pluralWord(def.stations && def.stations.length, 'station', 'stations')} on the chart, security ${def.security != null ? def.security : 'unrated'}, ${def.neighbors ? def.neighbors.length : 0} ${pluralWord(def.neighbors && def.neighbors.length, 'gate', 'gates')} out.`);
   if (def.hazards && def.hazards.length) sentences.push('The hazard list is on file; the pilots who skipped it are too.');
   return sentences.join(' ');
 }

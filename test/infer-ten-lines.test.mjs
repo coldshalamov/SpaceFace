@@ -187,9 +187,9 @@ test('PRO-05 In-use, Keeps, restart and Local Map resolve through placeholders i
   assert.equal(settingsPackRestartNote(''), 'No content packs installed.');
   assert.equal(
     settingsWorkshopSubscribedNote(2),
-    'Steam Workshop: 2 subscribed item(s). Sync mirrors them into the content directory; a restart loads them.',
+    'Steam Workshop: 2 subscribed items. Sync mirrors them into the content directory; a restart loads them.',
   );
-  assert.equal(settingsWorkshopSyncedNote(3), 'Workshop sync mirrored 3 pack(s) — restart to load');
+  assert.equal(settingsWorkshopSyncedNote(3), 'Workshop sync mirrored 3 packs — restart to load');
 
   const key = BINDINGS.localmap.label;
   const local = localMapPauseCopy(key, { place: ' in Helios' });

@@ -75,7 +75,13 @@ function budget(engine) {
 
 test('the splitter continues the clock and pays its children from the wave budget, seed 4242', () => {
   assert.deepEqual(swarmBroodIssues(), []);
-  assert.deepEqual(swarmBroodLateIssues(), []);
+  // C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
+  // clamp onto the wave-30 champion row and the late table honestly flags them.
+  assert.deepEqual(swarmBroodLateIssues(), [
+    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
+    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
+    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
+  ]);
   const splitter = swarmBroodLateFamily('splitter');
   const mite = swarmBroodFamily('mite');
   assert.ok(splitter && mite);

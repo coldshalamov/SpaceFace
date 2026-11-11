@@ -12,6 +12,7 @@ import {
   wrapAngle,
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { VENT_PRESS_REASON, ventPressRange } from './ventPress.js';
 import { SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
 import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/subsystems.js';
@@ -1816,6 +1817,11 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     || phase === 'regroup' || phase === 'broadside_shift' || phase === 'relocate';
   if (factionBehavior && !isEgress && !IDENTITY_OWNED_RANGE_DOCTRINES.has(doctrineId)) {
     preferredRange = factionBehavior.preferredRange;
+  }
+  // Vent press (src/ai/ventPress.js): a crew that saw the pilot's guns vent tightens whatever band
+  // it is holding for the window. Egress keeps its egress range; the stamp self-expires.
+  if (!isEgress && self && self.activity && self.activity.reason === VENT_PRESS_REASON) {
+    preferredRange = ventPressRange(preferredRange);
   }
   if (assignedTargetBreak) formationLocked = false;
   return Object.freeze({
