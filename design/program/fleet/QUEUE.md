@@ -97,7 +97,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | MOB-04 phone quality tier | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | READY |
 | MOB-03 touch controls you can read | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | READY |
 | G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | BUILT aad98992 (names + twist lines; 7 twists wired — the rest are C01-04/05) |
-| G11 one clock, the rest | Per-ship idle spins and shader `uTime` uniforms outside the post route still run on the wall clock: multiply their time step by `presentedAdvanceRatio()` from `src/render/presentedClock.js` (see how `renderer.js` does `_bgTime`); find them with `grep -rn "performance.now\|clock.getElapsedTime\|uTime" src/render` | READY |
+| G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | TAKEN agent3 (flash) |
 | PERF-04 late shader compiles | Three programs compile mid-flight (`npm run perf:renderer-info` names them by frame); add them to the opening prewarm cohort so the count is 0 | READY |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
