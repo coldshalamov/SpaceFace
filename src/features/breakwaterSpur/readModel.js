@@ -12,6 +12,8 @@ import {
 import { nextActionFor, cartridgesSeated, surveyComplete } from './project.js';
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
 
+import { breakwaterServicePrice, affordableBreakwaterServiceUnits } from './services.js';
+
 const PH = BREAKWATER_PHASE;
 
 function finite(n, fallback = 0) { return Number.isFinite(n) ? n : fallback; }
@@ -137,7 +139,7 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
 
 // Decision-deck offers — built from the row only, with a revision the adapter
 // echoes back so stale choices are refused.
-export function buildBreakwaterSpurOffer(state) {
+export function buildBreakwaterSpurOffer(state, page = 'home') {
   const row = state.world.breakwaterSpur;
   if (!row || row.phase === PH.DARK) return null;
   const status = getBreakwaterSpurStatus(state);
@@ -194,7 +196,7 @@ export function buildBreakwaterSpurOffer(state) {
       };
     case PH.OPERATING:
     case PH.DEGRADED:
-      return operatingOffer(row, base, status, actions);
+      return operatingOffer(row, base, status, actions, state, page);
     case PH.FAILED:
       return {
         ...base, kind: 'failed', title: 'Breakwater Spur — dead frame',
@@ -228,7 +230,7 @@ function addCartridgeRepairs(row,actions) {
   }
 }
 
-function operatingOffer(row, base, status, actions) {
+function operatingOffer(row, base, status, actions, state, page) {
   addCartridgeRepairs(row,actions);
   if (row.charter === BREAKWATER_CHARTER.COOP) {
     const j = row.coop.jobs;
@@ -249,8 +251,28 @@ function operatingOffer(row, base, status, actions) {
       actions.push({ id: 'deliver:supply', label: 'Hand supply cartridge to the shelf' });
     }
     if (status.stock.repair > 0 || status.stock.fuel > 0) {
-      actions.push({ id: 'service:repair', label: `Repair hull (${status.stock.repair} in stock)` });
-      actions.push({ id: 'service:fuel', label: `Refuel (${status.stock.fuel} in stock)` });
+      const player = state.entities?.get?.(state.playerId);
+      const needs = { repair: Math.max(0, finite(player?.hullMax) - finite(player?.hull)),
+        fuel: Math.max(0, finite(state.fuel?.max) - finite(state.fuel?.current)) };
+      for (const kind of ['repair', 'fuel']) {
+        const units = Math.max(0, Math.floor(Math.min(status.stock[kind], needs[kind])));
+        if (!units) continue;
+        const label = kind === 'repair' ? 'Repair hull' : 'Refuel';
+        actions.push({ id: `service:${kind}`, label: `${label} · ${units} units / ${breakwaterServicePrice(kind, units)} CR` });
+        const partial = affordableBreakwaterServiceUnits(kind, units, state.player?.credits);
+        if (partial > 0 && partial < units) actions.push({ id: `service:${kind}:budget`, units: partial,
+          label: `${label} what I can afford · ${partial} units / ${breakwaterServicePrice(kind, partial)} CR` });
+      }
+    }
+    const serviceActions = actions.filter(action => action.id.startsWith('service:'));
+    if (page === 'services') return { ...base, revision: `${base.revision}:services`, kind: 'services',
+      title: 'Breakwater Spur — fuel and hull services', detail, status,
+      actions: [...serviceActions, { id: 'service:back', label: 'Back to the co-op berth' }, { id: 'close', label: 'Leave' }] };
+    // The existing prompt adapter has nine action slots. Group services, rather
+    // than silently clipping a job, repair or Leave from a fully populated berth.
+    if (actions.length + 1 > 9 && serviceActions.length) {
+      const nonService = actions.filter(action => !action.id.startsWith('service:'));
+      actions.splice(0, actions.length, ...nonService, { id: 'service:menu', label: 'Fuel and hull services' });
     }
     actions.push({ id: 'close', label: 'Leave' });
     return { ...base, kind: 'berth', title: 'Breakwater Spur — co-op berth', detail, actions, status };

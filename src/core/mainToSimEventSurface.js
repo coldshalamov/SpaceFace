@@ -24,6 +24,8 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'career:origin:choose',
   'career:origin:decline',
   'career:origin:reoffer',
+  'ceresWinching:action',
+  'ceresNinthMouth:action',
   'cinderglassJob:action',
   'cinderglassJob:presentationReady',
   'claim:defenseIgnore',
@@ -330,4 +332,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=185 dynamic=39 legacy=18 excluded=6 total=214 knownUnforwarded=83
+// provenance: census=186 dynamic=39 legacy=18 excluded=6 total=215 knownUnforwarded=83

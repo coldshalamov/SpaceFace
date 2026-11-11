@@ -29,11 +29,12 @@ import {
   barRegularStoryLine,
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
+import { CERES_RETURN_CONTACT, CERES_RETURN_STATION } from '../../../story/ceresShiftReturn.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
 import { createReplyDial } from '../../orrery/barReplyDial.js';
 import { injectOrreryStationBar } from '../../orrery/station-barLayouts.js';
-import { typewriter, decrypt } from '../../orrery/text.js';
+import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -139,6 +140,7 @@ function offerWord(attrs, label) {
   return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" ${stationControlAttrs('offer')} class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
 }
 
+let ceresRequestSequence = 0;
 export function createBarScreen(ctx) {
   installGhostConvoyBarListener(ctx && ctx.bus, ctx && ctx.state);
   installOreLotBarListener(ctx && ctx.bus, ctx && ctx.state);
@@ -158,12 +160,16 @@ export function createBarScreen(ctx) {
   let erisServedVisitId = null;
   let erisLastReply = null;
   let saidText = null;   // what the selected contact just said
-  // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
-  // spoken with a Waveform breathing under the name, the words resolving on arrival.
+  let ceresPending = null;
+  let ceresResponse = null;
+  function clearCeresPending() {
+    if (ceresPending && !ceresResponse) saidText = null;
+    ceresPending = null; ceresResponse = null;
+  }
+  // The waveform accompanies a complete answer; only the role and choice labels resolve on arrival.
   let wave = null;
   let dial = null;   // the replies as a dial on her voice arc (barReplyDial.js); the list mirrors it
   let spokenText = null;   // the line the waveform has already voiced
-  let stopType = null;
   const stopDecrypt = [];
   let pendingMissionOffer = null;
   let pendingFrontierRumorOffer = null;
@@ -511,11 +517,10 @@ export function createBarScreen(ctx) {
     composeStage(c);
   }
 
-  /** The waveform under the name; a fresh line is typed while the bars speak; labels resolve. */
+  /** The waveform under the name; answers stay complete while the labels resolve. */
   function composeStage(c) {
     if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
     if (wave) { wave.dispose(); wave = null; }
-    if (stopType) { stopType(); stopType = null; }
     for (const stop of stopDecrypt.splice(0)) stop();
     const idEl = stageEl.querySelector('.sx-talk__id');
     const nameEl = stageEl.querySelector('.sx-talk__name');
@@ -587,7 +592,8 @@ export function createBarScreen(ctx) {
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
       if (wave) wave.speak(ms);
-      stopType = typewriter(reply, text, { cps: 46, onDone: () => { if (wave) wave.idle(); stopType = null; } });
+      // Consequences must be readable immediately. Typing changed this paragraph's height
+      // after focus/scroll had settled, moving the remaining words and choices out of view.
     } else if (!saidText) spokenText = null;
     if (reducedMotion()) return;
     const targets = [...stageEl.querySelectorAll('.sx-talk__role, .sx-choice')].filter(Boolean);
@@ -668,11 +674,16 @@ export function createBarScreen(ctx) {
       }
     } catch (_) { /* cosmetic */ }
   }
-  function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); seatSpine(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine); }
+  function renderAll(state) {
+    if (ceresPending && (sid() !== CERES_RETURN_STATION || !state.ui?.docked)) clearCeresPending();
+    renderRail(state); renderStage(state); renderLeads(state); seatSpine();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine);
+  }
 
   // ---------- interactions ----------
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
+    clearCeresPending();
     selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
@@ -709,6 +720,7 @@ export function createBarScreen(ctx) {
     if (btn && typeof btn.focus === 'function' && document.activeElement !== btn) {
       try { btn.focus({ preventScroll: true }); } catch (_) { btn.focus(); }
     }
+    btn?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }
   // a farewell or a refusal cools her; a question or an order warms her. Deterministic, from the
   // reply's own id and words; the dial leans her standing tick with it.
@@ -737,6 +749,7 @@ export function createBarScreen(ctx) {
     if (!b) return;
     setCurrentChoice(b);
     if (dial) dial.focus(choiceBtns().indexOf(b));
+    b.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   });
   // a reply's numeral turns the dial first (the cursor swings, the reply previews); a second press says it
   stageEl.addEventListener('keydown', (ev) => {
@@ -853,6 +866,11 @@ export function createBarScreen(ctx) {
     const st = ctx.state || {};
     const c = selected(st); if (!c) return;
     const choiceId = b.getAttribute('data-choice');
+    clearCeresPending();
+    const ceresRequest = c.id === CERES_RETURN_CONTACT && sid() === CERES_RETURN_STATION
+      && choiceId.startsWith('ceres_return_') ? { requestId: `ceres-return:${++ceresRequestSequence}`, choiceId } : null;
+    if (ceresRequest) ceresPending = ceresRequest;
+
     if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
     if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
@@ -860,6 +878,7 @@ export function createBarScreen(ctx) {
         contactId: c.id, choiceId, stationId: sid(),
         canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
         role: c.role || null, // INF-074: lets contact memory tell barkeeps from merchants
+        ...(ceresRequest ? { requestId: ceresRequest.requestId } : {}),
         ...(c.canonicalKey === 'eris_choir_chair' ? {
           visitId: erisVisitId(), requestId: `eris:${erisVisitId()}:${choiceId}`,
         } : {}),
@@ -879,6 +898,8 @@ export function createBarScreen(ctx) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
     saidText = (result && result.text) || 'They shrug.';
+    if (ceresRequest) saidText = ceresResponse?.requestId === ceresRequest.requestId
+      ? ceresResponse.text : 'Kessler looks for the current yard slip.';
     if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
       saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
         : 'The barkeep cannot pour just now. Try again shortly.';
@@ -956,6 +977,21 @@ export function createBarScreen(ctx) {
     renderAll(ctx.state || {});
   });
 
+  const offCeresReceipt = ctx.bus?.on?.('comms:log', (event) => {
+    if (!visible || !ceresPending || sid() !== CERES_RETURN_STATION || !ctx.state.ui?.docked
+      || selectedId !== CERES_RETURN_CONTACT || event?.source !== 'ceres_shift_return'
+      || event.contactId !== CERES_RETURN_CONTACT || event.stationId !== CERES_RETURN_STATION
+      || event.requestId !== ceresPending.requestId || event.choiceId !== ceresPending.choiceId
+      || !['accepted', 'refused'].includes(event.outcome) || typeof event.text !== 'string' || ceresResponse) return;
+    ceresResponse = { requestId: event.requestId, text: event.text };
+    saidText = event.text;
+    renderAll(ctx.state || {});
+  });
+  const offCeresLoad = ctx.bus?.on?.('save:loaded', () => {
+    if (selectedId === CERES_RETURN_CONTACT) saidText = null;
+    clearCeresPending();
+  });
+
   return {
     el,
     onShow(c) {
@@ -965,6 +1001,8 @@ export function createBarScreen(ctx) {
     },
     onHide() {
       visible = false;
+      if (selectedId === CERES_RETURN_CONTACT) saidText = null;
+      clearCeresPending();
       erisOpenAnnounced = false;
       const leavingVisitId = erisVisitId();
       // A station overlay hides the shell but leaves this tab mounted. Only a real tab
@@ -980,6 +1018,9 @@ export function createBarScreen(ctx) {
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
       visible = false;
+      clearCeresPending();
+      if (typeof offCeresReceipt === 'function') offCeresReceipt();
+      if (typeof offCeresLoad === 'function') offCeresLoad();
       offRecognition.forEach((off) => off());
       if (typeof offErisReceipt === 'function') offErisReceipt();
       pinnedContact = null;
@@ -987,7 +1028,6 @@ export function createBarScreen(ctx) {
       if (typeof offErisUndock === 'function') offErisUndock();
       if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
       if (wave) { wave.dispose(); wave = null; }
-      if (stopType) { stopType(); stopType = null; }
       for (const stop of stopDecrypt.splice(0)) stop();
     },
   };

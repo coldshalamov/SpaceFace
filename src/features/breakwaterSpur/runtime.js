@@ -124,8 +124,8 @@ export function createBreakwaterSpurSystem() {
       });
     },
 
-    _offer() {
-      const offer = buildBreakwaterSpurOffer(this.state);
+    _offer(page = 'home') {
+      const offer = buildBreakwaterSpurOffer(this.state, page);
       if (!offer) return;
       this._offerRevision = offer.revision;
       const projected = {...offer, expiresAt:this.state.simTime + BREAKWATER_OFFER_TTL_S};
@@ -284,10 +284,15 @@ export function createBreakwaterSpurSystem() {
         this.bus.emit('breakwaterSpur:receipt', { text: 'That offer has gone stale.', kind: 'warn' });
         return;
       }
-      if (!this.state.breakwaterSpurOffer?.actions?.some(action => action.id === id)) return;
+      const selected = this.state.breakwaterSpurOffer?.actions?.find(action => action.id === id);
+      if (!selected) return;
       this._offerRevision=null; this.state.breakwaterSpurOffer=null;
       const epoch=this._epoch, t=this.state.simTime;
       switch (id) {
+        case 'service:menu':
+          this._offer('services'); return;
+        case 'service:back':
+          this._offer(); return;
         case 'course':
           this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(COURSE_APPROACH,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater Spur', autopilot:false });
           break;
@@ -375,9 +380,10 @@ export function createBreakwaterSpurSystem() {
           }
           break;
         }
-        case 'service:repair': case 'service:fuel': {
+        case 'service:repair': case 'service:fuel':
+        case 'service:repair:budget': case 'service:fuel:budget': {
           const kind = id.split(':')[1];
-          this.services.runService(row, kind).then(res => {
+          this.services.runService(row, kind, id.endsWith(':budget') ? selected.units : undefined).then(res => {
             if (this._epoch!==epoch || this._destroyed) return;
             if (res.ok) {
               this._cue('work');

@@ -215,6 +215,7 @@ import {
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
 import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
+import { isNinthMouthBody } from '../world/ceresNinthMouthBodies.js';
 import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
 import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
@@ -2060,7 +2061,7 @@ export const world = {
     // retain their existing persistence paths, and an actor is never captured twice.
     for (const e of indexedTypeScan(state, 'payloads')) {
       if (e?.type === 'payload' && !isLivingWorldActor(e)
-          && (starterBuoyRecordMarker(e) || isLanternWardHardwareEntity(e))) capture(e);
+          && (starterBuoyRecordMarker(e) || isLanternWardHardwareEntity(e) || isNinthMouthBody(e))) capture(e);
     }
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);

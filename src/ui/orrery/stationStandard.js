@@ -21,6 +21,8 @@ const PANEL = 'rgb(8 11 16 / .82)';
 const UI = 'var(--dp-face-read, "Instrument Sans", system-ui, sans-serif)';
 const NUM = 'var(--dp-face-num, "Spline Sans Mono", ui-monospace, Consolas, monospace)';
 const TITLE = 'var(--dp-face-display, "Archivo", system-ui, sans-serif)';
+// Bar reading is shared with the phone cascade (which deliberately bypasses P).
+const BAR = 'html:root:root:root body #screens#screens#screens > .sx-berth.orr-station .sx-bar';
 
 const CSS = `
 ${P} { --dp-face-num: "Spline Sans Mono", ui-monospace, Consolas, monospace; }
@@ -800,6 +802,39 @@ ${P} .sx-bar .sx-choice::after { content:none !important; display:none !importan
 ${P} .sx-bar .sx-choice:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .14) !important; background-image:none !important; outline:none !important; }
 ${P} .sx-bar .sx-choice:focus-visible { outline:2px solid rgb(${AMBER}) !important; outline-offset:2px !important; }
 ${P} .sx-bar .sx-choice:disabled { opacity:.45; cursor:not-allowed; }
+
+/* A response is a complete reading, never a one-line preview. Keep the opener and role
+   alongside it, and let the existing stage/body scroll own long conversations. */
+${BAR} :is(.sx-talk__role, .sx-talk__name, .sx-talk__memory, .sx-talk__reply, .sx-choice) {
+  white-space:normal !important; overflow-wrap:anywhere !important; text-overflow:clip !important;
+  -webkit-line-clamp:unset !important; max-height:none !important; }
+${BAR} .sx-talk__reply { height:auto !important; overflow:visible !important; flex-shrink:0 !important; }
+${BAR} .sx-talk__choices { flex-shrink:0 !important; }
+${BAR} .sx-choice { scroll-margin:8px; }
+@media (max-width:960px), (max-height:600px) {
+  /* Compact screens cannot afford a poster behind the answer. The same portrait sits
+     next to the name; every line and choice remains in ordinary reading order. */
+  ${BAR} .sx-bar__stage .sx-talk { display:block !important; padding:0 4px 12px 0 !important; min-width:0 !important; }
+  ${BAR} .sx-talk > .sx-talk__head { display:grid !important; grid-template-columns:minmax(0,1fr) 56px !important;
+    grid-template-rows:auto !important; align-items:start !important; gap:10px !important; }
+  ${BAR} .sx-talk > .sx-talk__head > .sx-talk__id { display:block !important; grid-column:1 !important; grid-row:1 !important;
+    width:auto !important; max-width:none !important; margin:0 !important; padding:8px 10px !important; }
+  ${BAR} .sx-talk__head .sx-talk__role { display:block !important; margin:0 0 4px !important; font-size:12px !important; line-height:1.35 !important; }
+  ${BAR} .sx-talk__head .sx-talk__name { margin:0 !important; font-size:22px !important; line-height:1.15 !important; }
+  ${BAR} .sx-talk__head .sx-talk__memory { display:block !important; margin:8px 0 0 !important; max-width:none !important;
+    font-size:14px !important; line-height:1.45 !important; color:rgb(${BONE}) !important; }
+  ${BAR} .sx-talk__head > .sx-talk__avatar { display:block !important; position:relative !important; grid-column:2 !important; grid-row:1 !important;
+    inset:auto !important; width:56px !important; height:56px !important; max-height:none !important; margin:0 !important; transform:none !important; }
+  ${BAR} .sx-talk__avatar::before, ${BAR} .sx-talk__avatar::after, ${BAR} .orr-voicearc { display:none !important; }
+  ${BAR} .sx-talk__avatar, ${BAR} .sx-talk__avatar :is(img, canvas, .sx-portrait) { mask-image:none !important; -webkit-mask-image:none !important; }
+  ${BAR} .sx-talk__reply.is-said { display:block !important; max-width:none !important; margin:10px 0 !important;
+    font-size:15px !important; line-height:1.5 !important; padding:8px 10px !important; background:${PANEL} !important; }
+  ${BAR} .sx-talk .sx-talk__choices { display:flex !important; align-items:stretch !important; width:100% !important; max-width:none !important;
+    margin:10px 0 0 !important; padding:0 !important; list-style:none !important; }
+  ${BAR} .sx-talk__choices > li { width:100% !important; min-width:0 !important; }
+  ${BAR} .sx-talk__choices > li .sx-choice { display:block !important; width:100% !important; height:auto !important; min-height:44px !important;
+    font-size:14px !important; line-height:1.45 !important; padding-top:10px !important; padding-bottom:10px !important; }
+}
 
 /* On a short landscape Market berth the base 136px vital cards lose their compact dock-layout
    sizing: values overlap labels, while the uncapped head leaves only a thin market strip. Keep the

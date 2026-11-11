@@ -10,8 +10,9 @@ import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { STENCIL_GLSL, stencilFallbackTexture } from './illustratedStencils.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 import { installNocturneProbeShader } from './nocturne/probes.js';
+import { installShadeRegionShader, SHADE_REGION_GAIN_GLSL } from './nocturne/shadeRegions.js';
 import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v19-nocturne';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v21-native-shade-lobes';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -33,6 +34,13 @@ function nocturnePhysicalLightChunk() {
       * saturate(dot(nonPerturbedNormal, directLight.direction)) * BRDF_Lambert(material.diffuseColor);`);
   return chunk.slice(0, startIndex) + `
     vec3 sfLocalPhysicalDiffuse = reflectedLight.directDiffuse;
+    vec3 sfLocalPhysicalSpecular = reflectedLight.directSpecular;
+    #ifdef USE_SHEEN
+      vec3 sfLocalPhysicalSheen = sheenSpecularDirect;
+    #endif
+    #ifdef USE_CLEARCOAT
+      vec3 sfLocalPhysicalClearcoat = clearcoatSpecularDirect;
+    #endif
     vec3 sfDirectionalGeometricDiffuse = vec3(0.0);
   ` + sun + chunk.slice(endIndex);
 }
@@ -418,9 +426,35 @@ export function installIllustratedSurface(material) {
           float sfRoom = sfLookPaintCeiling - sfKnee;
           sfBoundedPigment *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
+        float sfShadeGain = 1.0;
+        ${SHADE_REGION_GAIN_GLSL}
         vec3 outgoingLight = sfBoundedPigment + sfLocalIllumination
-          + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
+          + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;
+        if (sfShadeGain < 1.0) {
+          // AO/energy terms can reduce total specular after the direct-light loop.
+          // Keep its actual local share without inventing energy above that total.
+          vec3 sfLocalSpecular = min(max(sfLocalPhysicalSpecular, vec3(0.0)), max(totalSpecular, vec3(0.0)));
+          outgoingLight = (sfBoundedPigment + sfRimLight * sfHeadroom + sfCoatLight
+            + totalSpecular - sfLocalSpecular) * sfShadeGain
+            + sfLocalIllumination + sfLocalSpecular + totalEmissiveRadiance;
+          // Three adds native Physical sheen/clearcoat after outgoingLight below.
+          // Shade their broad contributions before that untouched native composition;
+          // the point/spot lobes captured before the sun loop retain their actual RGB.
+          // Disabled/outside shade never writes these accumulators, preserving the
+          // original exterior formulas and clearcoat's native Fresnel attenuation.
+          #ifdef USE_SHEEN
+            vec3 sfLocalSheenSpecular = min(max(sfLocalPhysicalSheen, vec3(0.0)), max(sheenSpecularDirect, vec3(0.0)));
+            sheenSpecularDirect = (sheenSpecularDirect - sfLocalSheenSpecular) * sfShadeGain + sfLocalSheenSpecular;
+            sheenSpecularIndirect *= sfShadeGain;
+          #endif
+          #ifdef USE_CLEARCOAT
+            vec3 sfLocalClearcoatSpecular = min(max(sfLocalPhysicalClearcoat, vec3(0.0)), max(clearcoatSpecularDirect, vec3(0.0)));
+            clearcoatSpecularDirect = (clearcoatSpecularDirect - sfLocalClearcoatSpecular) * sfShadeGain + sfLocalClearcoatSpecular;
+            clearcoatSpecularIndirect *= sfShadeGain;
+          #endif
+        }`);
     installNocturneProbeShader(shader);
+    installShadeRegionShader(shader);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);

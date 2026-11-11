@@ -95,7 +95,7 @@ export class NpcCableFx {
     for (const id in attachments) {
       const link = attachments[id];
       const serviceCable = link?.defId === 'attachment_transport_clamp'
-        && link.controlMode === 'lantern_ward_attended_work';
+        && (link.controlMode === 'lantern_ward_attended_work' || link.controlMode === 'ceres_anchor_winch');
       if (!link || (link.defId !== 'tether_standard' && !serviceCable) || link.state !== 'active'
         || link.ownerId === state.playerId || link.targetId === state.playerId
         || link.controllerId === state.playerId

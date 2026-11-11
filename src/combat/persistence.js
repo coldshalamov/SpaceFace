@@ -4,6 +4,7 @@ import { ensureCombatState, ensureCombatant, entityKey, createCombatCatalog, res
 import { CERES_WORKFLEET_CONTRACT as CERES } from '../data/ceresWorkfleet.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
+import { isCeresWinchAnchor } from '../data/ceresAnchorWinching.js';
 import { pendingStuntBodyIds } from './stuntEvidence.js';
 
 import { isHostileForAI } from '../ai/engagementAuthority.js';
@@ -28,7 +29,7 @@ export function serializeCombatState(state) {
     }
     if (!Object.hasOwn(combat.attachments.byId, id)) {
       const row=clonePlain(entry.saved);
-      if(entry.hostileOwner)row.ownerRef={kind:'persistent',saveId:String(entry.hostileOwner.entity.id)};
+      if(entry.hostileOwner||entry.anchorOwner)row.ownerRef={kind:'persistent',saveId:String((entry.hostileOwner||entry.anchorOwner).entity.id)};
       attachments.byId[id]=row;
     }
   }
@@ -206,6 +207,61 @@ function isIncomingCeresConstraint(saved,id) {
     &&typeof saved.ownerRef.saveId==='string'&&/^\d+$/.test(saved.ownerRef.saveId)&&saved.sourceSocketId==='socket_massline'
     &&saved.targetSocketId===(saved.targetRef.kind==='worldSite'?'socket_tether_anchor':'socket_hull');
 }
+// Attended anchor custody is distinct from the autonomous workfleet. Its fixed body is
+// generic-persistent; only the exact original finite plate may be its remote endpoint.
+function isCeresAnchorSavedConstraint(saved, id) {
+  return savedConstraintShape(saved, id) && saved.controlMode === 'ceres_anchor_winch'
+    && saved.defId === 'attachment_transport_clamp' && saved.controllerRef == null
+    && saved.ownerRef?.kind === 'persistent' && /^\d+$/.test(saved.ownerRef.saveId)
+    && saved.targetRef?.kind === 'worldSite' && ceresRefKey(saved.targetRef)
+    && saved.sourceSocketId === 'socket_lantern_clamp' && saved.targetSocketId === 'socket_tether_anchor';
+}
+function ceresAnchorOwnerEligible(state, owner, id, allowCreating = false) {
+  const job = state.npcJobs?.ceresAnchorSwing;
+  return isCeresWinchAnchor(owner) && owner.alive !== false && owner.hull > 0
+    && state.entities?.get(owner.id) === owner && Number.isSafeInteger(owner.occupantGeneration)
+    && owner.occupantGeneration > 0 && state.world?.currentSectorId === CERES.sectorId
+    && !owner.playerOwned && !owner.data?.playerOwned && !owner.data?.controlLease && !owner.data?.disabled
+    && !owner.data?.worldRecordId && !owner.data?.worldSiteId && !owner.data?.persistenceOwner
+    && job?.schemaVersion === 1 && (job.lineId === id || allowCreating && job.lineId == null
+      && Object.values(state.combat?.attachments?.byId || {}).filter(a => a.state === 'active'
+        && a.controlMode === 'ceres_anchor_winch' && a.ownerId === owner.id).length === 1)
+    && job.anchorIndex === owner.data.ceresWinchAnchor
+    && [...state.entities.values()].filter(e => e?.data?.ceresWinchIdentity === owner.data.ceresWinchIdentity).length === 1;
+}
+function ceresAnchorConflict(state, owner, target, id) {
+  return Object.values(state.combat?.attachments?.byId || {}).some(a => a.state === 'active' && a.id !== id
+    && [a.ownerId, a.targetId, a.controllerId].some(key => key === owner.id || key === target?.id)
+    && !(target && a.targetId === target.id && a.defId === 'tether_standard'
+      && a.ownerId === state.playerId && a.controllerId == null && currentPlayerConstraint(state, a)));
+}
+function currentCeresAnchorConstraint(state, row) {
+  if (row?.state !== 'active' || row.controlMode !== 'ceres_anchor_winch'
+    || row.defId !== 'attachment_transport_clamp' || row.controllerId != null) return false;
+  const owner = state.entities?.get(row.ownerId), target = state.entities?.get(row.targetId);
+  if (!ceresAnchorOwnerEligible(state, owner, row.id, true) || !target
+    || row.ownerGeneration !== owner.occupantGeneration || row.targetGeneration !== target.occupantGeneration
+    || row.sourceSocketId !== 'socket_lantern_clamp' || row.targetSocketId !== 'socket_tether_anchor'
+    || ceresAttachmentRef(target)?.kind !== 'worldSite' || !incomingSocketsEligible(owner, target, row)) return false;
+  const resolved = resolveCeresAttachmentEntity(state, ceresAttachmentRef(target), new Map());
+  return resolved === target && !ceresAnchorConflict(state, owner, target, row.id);
+}
+function resolveCeresAnchorConstraint(state, entry) {
+  const owner = entry.anchorOwner.entity;
+  if (owner.occupantGeneration !== entry.anchorOwner.life || !ceresAnchorOwnerEligible(state, owner, entry.saved.id)) return false;
+  // Pending foreign lines count too: restore order must not decide which custody wins.
+  for (const other of pendingCeresAttachments.get(state.combat)?.values() || []) {
+    if (other === entry || other.saved.id === entry.saved.id) continue;
+    const row = other.saved;
+    if (ceresRefKey(row.targetRef) === ceresRefKey(entry.saved.targetRef)
+      && !(other.playerOwner && row.defId === 'tether_standard' && row.controllerRef == null)) return false;
+  }
+  const target = resolveCeresAttachmentEntity(state, entry.saved.targetRef, entry.leases);
+  if (target === false || ceresAnchorConflict(state, owner, target, entry.saved.id)) return false;
+  if (target == null) return null;
+  return incomingSocketsEligible(owner, target, entry.saved) ? [owner, target] : false;
+}
+
 export function ceresWorkfleetIncomingSavedOwnerIds(payload) {
   const ids=new Set();
   for(const [id,row] of Object.entries(payload?.attachments?.byId||{}))if(isIncomingCeresConstraint(row,id)&&row.ownerRef.kind==='persistent')ids.add(row.ownerRef.saveId);
@@ -343,6 +399,7 @@ export function resumeCeresWorkfleetAttachments(state) {
 }
 
 function resolvePendingCeresAttachment(state, entry) {
+  if(entry.anchorOwner)return resolveCeresAnchorConstraint(state,entry);
   if(entry.hostileOwner||entry.playerOwner)return resolveIncomingCeresConstraint(state,entry);
   for(const other of pendingCeresAttachments.get(state.combat)?.values()||[])if(other.playerOwner
     &&playerOwnerEligible(state,other.playerOwner.entity)&&other.playerOwner.life===other.playerOwner.entity.occupantGeneration
@@ -440,6 +497,7 @@ function serializeAttachments(combat, refs, state) {
     if ((saved.controlMode === 'ceres_workfleet'
         || [ownerRef, targetRef, controllerRef].some(ref => ref?.kind === 'worldRecord' || ref?.kind === 'worldSite'))
         && !isCeresSavedAttachment(saved, id)
+        && !(isCeresAnchorSavedConstraint(saved, id) && currentCeresAnchorConstraint(state, attachment))
         && !(isIncomingCeresConstraint(saved,id)&&(temporaryHostileConstraint(state,attachment)||currentPlayerConstraint(state,attachment)))) continue;
     byId[id] = saved;
   }
@@ -526,6 +584,16 @@ function restoreAttachments(state, combat, savedAttachments, resolveEntityRef, e
     if (saved.defId === 'attachment_brood_grip') { summary.dropped++; continue; }
     if (saved.controlMode === 'ceres_workfleet'
         || [saved.ownerRef, saved.targetRef, saved.controllerRef].some(ref => ref?.kind === 'worldRecord' || ref?.kind === 'worldSite')) {
+      const anchor = isCeresAnchorSavedConstraint(saved, id);
+      if (anchor) {
+        const owner = state.entities?.get(resolveEntityRef(saved.ownerRef));
+        if (!owner || !isCeresWinchAnchor(owner)) { summary.dropped++; continue; }
+        let pending = pendingCeresAttachments.get(combat);
+        if (!pending) pendingCeresAttachments.set(combat, pending = new Map());
+        pending.set(id, { saved: clonePlain(saved), leases: new Map(),
+          anchorOwner: { entity: owner, life: owner.occupantGeneration } });
+        continue;
+      }
       const incoming=isIncomingCeresConstraint(saved,id);
       if (!isCeresSavedAttachment(saved, id)&&!incoming) { summary.dropped++; continue; }
       const owner=incoming?state.entities?.get(resolveEntityRef(saved.ownerRef)):null;

@@ -1,7 +1,8 @@
+import { CERES_ARRIVAL_PREFIX, ceresArrivalChoices, ceresArrivalMapOffer, ceresArrivalReply } from '../../story/ceresArrivalStory.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
-import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
+import { kesslerCeresShiftChoice, kesslerCeresShiftReply, ceresReturnChoices } from './ceresShiftConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
@@ -836,7 +837,8 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       const workChoice = kesslerStarterWorkChoice(state, stationId);
       const freightChoice = kesslerFreightChoice(state, stationId);
       const ceresChoice = kesslerCeresShiftChoice(state, stationId);
-      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+      const ceresReturn = ceresReturnChoices(state, stationId);
+      if (slipChoice || workChoice || freightChoice || ceresChoice || ceresReturn.length) {
         const choices = getChoices(canonical.role, canonical);
         const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
         const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
@@ -844,6 +846,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
         if (workChoice) choices.push(workChoice);
         if (freightChoice) choices.push(freightChoice);
         if (ceresChoice) choices.push(ceresChoice);
+        choices.push(...ceresReturn);
         if (dismissChoice) choices.push(dismissChoice);
         canonical.choices = choices;
       }
@@ -896,6 +899,10 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  for (const contact of listed) {
+    const arrival = ceresArrivalChoices(state, stationId, contact);
+    if (arrival.length) contact.choices = [...getChoices(contact.role, contact), ...arrival];
+  }
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
   // The wake silences this room's ambient patrons, not its mission and service contacts.
@@ -1753,6 +1760,15 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  if (String(choiceId).startsWith(CERES_ARRIVAL_PREFIX)) {
+    const reply = ceresArrivalReply(state, stationId, contact, choiceId);
+    if (choiceId === `${CERES_ARRIVAL_PREFIX}map`) {
+      const offer = ceresArrivalMapOffer(state, stationId, contact);
+      if (offer && !openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, ...offer }))
+        return { text: 'The chart will not open right now. Kroll is still at the Ninth Mouth receiving mast; try the map again when the screen is clear.' };
+    }
+    return reply;
+  }
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);

@@ -1,3 +1,5 @@
+import { installCeresNinthMouth, stepCeresNinthMouth, serializeCeresNinthMouth, restoreCeresNinthMouth } from './ceresNinthMouth.js';
+import { installCeresAnchorWinching, stepCeresAnchorWinching, serializeCeresAnchorSwing, restoreCeresAnchorSwing } from './ceresAnchorWinching.js';
 import { cinderglassJobTrafficTarget, cinderglassJobTrafficDt } from '../features/cinderglassJob/physical.js';
 import { pallasShiftOwnsMovement } from '../data/pallasWorkShift.js';
 import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
@@ -9,6 +11,7 @@ import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
+import { serializeCeresPlayerWinching } from './ceresPlayerWinching.js';
 import {
   stepLanternWard, serializeLanternWard, restoreLanternWard,
   clearLanternWardControls, lanternWardCompletionReceipt, lanternWardStatus,
@@ -1081,6 +1084,10 @@ export const npcJobsRuntime = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._ceresNinthMouthCleanup?.();
+    this._ceresNinthMouthCleanup = installCeresNinthMouth(this);
+    this._ceresWinchingCleanup?.();
+    this._ceresWinchingCleanup = installCeresAnchorWinching(this);
     this._ensureState();
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
@@ -4478,6 +4485,8 @@ export const npcJobsRuntime = {
       return; // scenery only matters in flight (mirrors traffic)
     }
     stepCeresWorkfleet(this,dt);
+    stepCeresAnchorWinching(this,dt);
+    stepCeresNinthMouth(this,dt);
     stepLanternWard(this,dt);
     this._stepPlayerTenderDispatch(dt);
     this._stepOncallTenderReturn();
@@ -7324,6 +7333,8 @@ export const npcJobsRuntime = {
     for (const rec of towed) this._clearTugAttachment(rec.entry, 'npc_tow_target_gone');
   },
 
+  destroy() { this._ceresWinchingCleanup?.(); this._ceresWinchingCleanup = null; },
+
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
   // Physical receipts are retrieved from this owner; a bus payload is not service truth.
   lanternWardReceipt(receiptId) { return lanternWardCompletionReceipt(this, receiptId); },
@@ -7333,9 +7344,13 @@ export const npcJobsRuntime = {
   serialize() {
     const byId = this._byId();
     const out = { byId: {} };
+    const ninthMouth = serializeCeresNinthMouth(this);
+    if (ninthMouth) out.ceresNinthMouth = ninthMouth;
+    const anchorSwing = serializeCeresAnchorSwing(this);
+    if (anchorSwing) out.ceresAnchorSwing = anchorSwing;
     const ward = serializeLanternWard(this);
     if (ward) out.lanternWard = ward;
-    if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=JSON.parse(JSON.stringify(this.state.npcJobs.ceresWorkfleet));
+    if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=serializeCeresPlayerWinching(this.state,this.state.npcJobs.ceresWorkfleet);
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
       if (!entry || !entry.job || entry.transient === true) continue;
@@ -7476,8 +7491,11 @@ export const npcJobsRuntime = {
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };
     restoreLanternWard(this, data?.lanternWard ?? null);
+    restoreCeresNinthMouth(this, data?.ceresNinthMouth ?? null);
     const ceresWorkfleet=restoreCeresWorkfleetJob(data?.ceresWorkfleet);
     if(ceresWorkfleet)this.state.npcJobs.ceresWorkfleet=ceresWorkfleet;
+    const anchorSwing = restoreCeresAnchorSwing(data?.ceresAnchorSwing);
+    if (anchorSwing) this.state.npcJobs.ceresAnchorSwing = anchorSwing;
     this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
