@@ -39,6 +39,15 @@ import { isSwarmGlass } from './swarmGlass.js';
 const dialogHost = (ctx) =>
   (ctx && ctx.stage && typeof ctx.stage.slotEl === 'function' && ctx.stage.slotEl('dialog'))
   || document.getElementById('ui-root');
+// G16-03: a transient centre dialog (endgame choice, scavenger claim) is admitted through the
+// Stage's dialog seat — it queues behind an open station/menu screen or another dialog and
+// mounts when the seat frees. Buttons keep their own click ownership; `open` lands on mount.
+function seatDialog(ctx, wrap, id) {
+  const stage = ctx && ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
+  const open = () => requestAnimationFrame(() => wrap.classList.add('open'));
+  if (!stage) { dialogHost(ctx).appendChild(wrap); open(); return null; }
+  return stage.show('dialog', wrap, { id, severity: 'warn', bare: true, onMount: open });
+}
 const PLACE_GRAFFITI_HOLD_MS = 8000;
 const PLACE_GRAFFITI_FADE_MS = 400;
 
@@ -678,11 +687,12 @@ export function createComms(ctx) {
       '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">YES</button><button class="sf-endgame__c-no">NO</button></div>' +
       '</div>';
-    dialogHost(ctx).appendChild(wrap);
-    requestAnimationFrame(() => wrap.classList.add('open'));
+    const seat = seatDialog(ctx, wrap, 'comms-choice');
+    wrap._sfSeat = seat;
     const cleanup = () => {
       choiceModalOpen = false;
       ownedModals.delete(wrap);
+      if (seat) seat.clear({ keepEl: true });
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
@@ -754,11 +764,12 @@ export function createComms(ctx) {
       '<div class="sf-endgame__c-hint">They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">CUT LINE</button><button class="sf-endgame__c-no">REFUSE</button></div>' +
       '</div>';
-    dialogHost(ctx).appendChild(wrap);
-    requestAnimationFrame(() => wrap.classList.add('open'));
+    const seat = seatDialog(ctx, wrap, 'comms-choice');
+    wrap._sfSeat = seat;
     const cleanup = () => {
       choiceModalOpen = false;
       ownedModals.delete(wrap);
+      if (seat) seat.clear({ keepEl: true });
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
@@ -835,7 +846,7 @@ export function createComms(ctx) {
     ]) {
       try { if (child && typeof child.destroy === 'function') child.destroy(); } catch (_) {}
     }
-    for (const modal of ownedModals) modal.remove();
+    for (const modal of ownedModals) { if (modal._sfSeat) modal._sfSeat.clear(); modal.remove(); }
     ownedModals.clear();
     live.length = 0;
     held.length = 0;
