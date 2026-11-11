@@ -31,6 +31,7 @@ import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { buildDuration } from '../../../systems/crafting.js';
 import { sellableCargoQuantity } from '../../../systems/cargo.js';
 import { techDisplayName } from '../../../data/tech.js';
+import { marketStockStatus } from '../../../systems/economy.js';
 
 /** How long FABRICATE is held before the run commits (the process bezel fills over it). */
 export const INDUSTRY_HOLD_MS = 900;
@@ -55,6 +56,50 @@ const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station
 
 function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
 function matName(id) { return CMDTY_NAME.get(id) || commodityDisplayName(String(id)); }
+
+// WF-14 — the yard's stock answers the line's demand. A short input used to say only "Short N
+// Name" and punt the player to the market with "Source in market"; whether this berth could
+// actually cover the shortfall was knowable only by walking there and back. The line now names
+// what the local yard stocks against the need — covers it, holds only part, or is dry (with the
+// market's own restock estimate) — on the input row, the ladder word and the chain node alike.
+// Read-only over the economy mirror; the stock count alone still answers if the status read fails.
+
+/** What the docked berth's market holds of one input, plus its restock outlook. Pure read. */
+export function yardStockOf(state, commodityId) {
+  const sid = state && state.ui && state.ui.dockedStationId;
+  const row = sid && state.economy && state.economy.markets
+    && state.economy.markets[sid] && state.economy.markets[sid][commodityId];
+  const stock = Math.max(0, Math.floor(Number(row && row.stock) || 0));
+  let soldOut = false;
+  let restockSeconds = null;
+  try {
+    const status = marketStockStatus(state, sid, commodityId);
+    soldOut = status.soldOut === true;
+    restockSeconds = status.restockSeconds;
+  } catch (_) { /* the stock count alone still answers */ }
+  return { stock, soldOut, restockSeconds };
+}
+
+/** The one honest word for a short input. `null` when nothing is short — no line on a satisfied need. */
+export function yardStockAnswer({ have, need, yardStock, soldOut = false, restockSeconds = null }) {
+  const short = Math.max(0, Math.floor(Number(need) || 0) - Math.floor(Number(have) || 0));
+  if (!(short > 0)) return null;
+  const stock = Math.max(0, Math.floor(Number(yardStock) || 0));
+  const restockAbout = Number.isFinite(restockSeconds) && restockSeconds > 0
+    ? (restockSeconds > 120 ? `${Math.ceil(restockSeconds / 60)}m` : `${Math.max(1, Math.ceil(restockSeconds))}s`)
+    : null;
+  if (stock >= short) return { covers: true, word: `yard holds ${stock}` };
+  if (stock > 0) return { covers: false, word: `yard holds only ${stock}` };
+  if (soldOut && restockAbout) return { covers: false, word: `yard is dry, restock ~${restockAbout}` };
+  return { covers: false, word: 'yard holds none' };
+}
+
+/** Convenience for render paths: the yard word for one input of a blueprint, or '' when not short. */
+function yardWordFor(state, commodityId, have, need) {
+  const yard = yardStockOf(state, commodityId);
+  const answer = yardStockAnswer({ have, need, yardStock: yard.stock, soldOut: yard.soldOut, restockSeconds: yard.restockSeconds });
+  return answer ? answer.word : '';
+}
 // A fabricator output names a catalogue thing; map its kind onto the resolver vocabulary so the
 // name is a door. Weapons and anything off-vocabulary degrade to plain text inside entitySpanHtml.
 const OUTPUT_ENTITY_TYPE = { commodity: 'commodity', module: 'module', ship: 'hull' };
@@ -264,7 +309,7 @@ export function createIndustryScreen(ctx) {
           const headType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0] || '';
           const facility = allStation ? (headType === 'fab' ? 'fabricator' : 'refinery') : '';
           const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
-          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
+          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) { const yardWord = yardWordFor(state, id, have, bp.inputs[id]); return `Short ${bp.inputs[id] - have} ${matName(id)}${yardWord ? ` · ${yardWord}` : ''}`; } } return 'Needs materials'; };
           // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
           const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && facilityForBlueprint(bp) === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
           // what the whole group shares is said once on its header: one tier, and one reason when every rung not ready gives the same one
@@ -310,10 +355,12 @@ export function createIndustryScreen(ctx) {
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
       const need = bp.inputs[id]; const have = Math.floor(freeQty(state, id));
       const ok = have >= need;
+      const yardWord = ok ? '' : yardWordFor(state, id, have, need);
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
           `<span class="k-row__name sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
-          (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">${stationControlLabel('source-market')}</button>`) +
+          (yardWord ? `<span class="k-row__sub sx-fab-in__yard">Short ${need - have} · ${escapeHtml(yardWord)}</span>` : '') +
+          (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market${yardWord ? `, ${escapeHtml(yardWord)}` : ''}">${stationControlLabel('source-market')}</button>`) +
           `<span class="k-row__num sx-fab-in__q">${have} <span class="k-62">/ ${need}</span></span>` +
         `</li>`
       );
@@ -427,11 +474,14 @@ export function createIndustryScreen(ctx) {
       inputs: Object.keys(bp.inputs || {}).map((id) => {
         const have = Math.floor(freeQty(state, id));
         const need = bp.inputs[id];
-        // a short input carries its own way out: the market, in one word under the count
+        // a short input carries its own way out: the market, in one word under the count —
+        // and what the yard itself stocks against the need, so the walk is never a guess
+        const yardWord = have < need ? yardWordFor(state, id, have, need) : '';
         const verbHtml = have < need
           ? `<button type="button" ${stationControlAttrs('source-market')} class="orr-chain__source" data-source-cmdty="${escapeHtml(id)}">Source in market</button>`
           : '';
-        return { nameHtml: escapeHtml(matName(id)), have, need, verbHtml, glyph: glyphFor(id, 'material') };
+        return { nameHtml: escapeHtml(matName(id)), have, need, verbHtml, glyph: glyphFor(id, 'material'),
+          noteHtml: yardWord ? escapeHtml(yardWord) : '' };
       }),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: buildDuration(bp) ? `${buildDuration(bp)} s` : 'instant',

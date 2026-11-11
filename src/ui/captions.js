@@ -224,6 +224,10 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   ambient_station_shift_bell: Object.freeze({ text: 'The shift bell rings.', urgency: 'normal', event: 'station.shift' }),
   ambient_station_market_chime: Object.freeze({ text: 'The market desk chimes.', urgency: 'normal', event: 'station.market' }),
   sfx_rescue_delivery_chime: Object.freeze({ text: 'A berth takes them in.', urgency: 'normal', event: 'station.rescue' }),
+  // inf-wreck-cooling-voice: a fresh hulk's first cooling voice names what is ticking.
+  sfx_ambient_wreck_tick: Object.freeze({ text: 'Hot wreck metal ticks as it cools.', urgency: 'normal', event: 'wreck.cooling' }),
+  sfx_ambient_wreck_knock: Object.freeze({ text: 'Hot wreck metal ticks as it cools.', urgency: 'normal', event: 'wreck.cooling' }),
+  sfx_ambient_wreck_groan: Object.freeze({ text: 'A burning wreck groans as it settles.', urgency: 'normal', event: 'wreck.cooling' }),
   sfx_refusal_empty: Object.freeze({ text: 'No ammunition.', urgency: 'high', event: 'refusal.ammo' }),
   sfx_refusal_target: Object.freeze({ text: 'No valid target.', urgency: 'high', event: 'refusal.target' }),
   sfx_massline_deny: Object.freeze({ text: 'Action refused.', urgency: 'high', event: 'refusal' }),
@@ -285,6 +289,31 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   sfx_field_loop_well: Object.freeze({ text: 'Gravity well holding.', urgency: 'normal', event: 'field.well' }),
   sfx_field_loop_repulsor: Object.freeze({ text: 'Repulsor holding.', urgency: 'normal', event: 'field.repulsor' }),
   sfx_field_loop_cone: Object.freeze({ text: 'Cone holding.', urgency: 'normal', event: 'field.cone' }),
+  // inf-lane-horn: a buzzed civilian's horn says which class answered and how far it escalated.
+  sfx_lane_horn_tap: Object.freeze({ text: 'A pilot honks.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_lane_horn_double: Object.freeze({ text: 'A pilot honks twice.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_lane_horn_lean: Object.freeze({ text: 'A pilot leans on the horn.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_hauler_blast: Object.freeze({ text: 'A hauler blasts its horn.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_hauler_blast_double: Object.freeze({ text: 'A hauler blasts twice.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_hauler_blast_lean: Object.freeze({ text: 'A hauler leans on its horn.', urgency: 'warn', event: 'traffic.horn' }),
+  // a11y-danger-captions: the warnings a deaf player must not miss spoke as de-snaked ids at
+  // normal urgency ("Subsystem drive disabled." / "Mining fracture warning.") — words that name
+  // a file, not the moment. These are authored now, high or warn as the moment deserves.
+  sfx_subsystem_disabled: Object.freeze({ text: 'A subsystem burns out.', urgency: 'high', event: 'combat.subsystem' }),
+  sfx_subsystem_drive_disabled: Object.freeze({ text: 'A drive subsystem goes down.', urgency: 'high', event: 'combat.subsystem.drive' }),
+  sfx_subsystem_sensor_disabled: Object.freeze({ text: 'A sensor subsystem goes dark.', urgency: 'high', event: 'combat.subsystem.sensor' }),
+  sfx_subsystem_weapon_disabled: Object.freeze({ text: 'A weapon subsystem fails.', urgency: 'high', event: 'combat.subsystem.weapon' }),
+  sfx_hull_decompress: Object.freeze({ text: 'A hull breaches.', urgency: 'high', event: 'combat.breach' }),
+  sfx_combat_near_miss: Object.freeze({ text: 'A round slips past.', urgency: 'warn', event: 'combat.nearmiss' }),
+  sfx_doctrine_ranged_charge: Object.freeze({ text: 'A hostile lines up a shot.', urgency: 'warn', event: 'combat.telegraph' }),
+  sfx_swarm_alert_tick: Object.freeze({ text: 'The chain is about to break.', urgency: 'warn', event: 'swarm.chainwarn' }),
+  sfx_travel_interdiction: Object.freeze({ text: 'You are being pulled over.', urgency: 'warn', event: 'travel.interdiction' }),
+  sfx_mining_fracture_warning: Object.freeze({ text: 'The rock is about to fracture.', urgency: 'warn', event: 'mining.fracture' }),
+  sfx_mining_heat_warning: Object.freeze({ text: 'The drill is running hot.', urgency: 'warn', event: 'mining.heat' }),
+  sfx_mining_gas_hazard: Object.freeze({ text: 'Gas vents from the seam.', urgency: 'high', event: 'mining.gas' }),
+  // inf-gate-throat-voice: a gate's throat names what is singing when it first comes into hearing.
+  sfx_gate_throat: Object.freeze({ text: 'A jump gate hums.', urgency: 'normal', event: 'place.gate' }),
+  sfx_wormhole_throat: Object.freeze({ text: 'A wormhole throat moans.', urgency: 'normal', event: 'place.wormhole' }),
 });
 
 export function isUiBlipRecipe(recipeId) {

@@ -1,4 +1,6 @@
 import { label, clone, compareId, text } from './schema.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 const COMPLETE_STAGES = ['kill', 'aftermath', 'salvage', 'recovered', 'sold', 'law'];
 const SURFACE_TEXT = { terrain: 'terrain', craft: 'another craft', structure: 'a structure' };
@@ -174,7 +176,7 @@ export function buildStoryView(story) {
     if (declared && flips.length) {
       const declaredLane = sectorName(declared);
       summary = `${pairName} went to war${declaredLane ? ` over ${declaredLane}` : ''}.`
-        + ` The front has since turned ${flips.length} ${flips.length === 1 ? 'time' : 'times'} — ${summary}`;
+        + ` The front has since turned ${flips.length} ${pluralWord(flips.length, 'time', 'times')} — ${summary}`;
     }
     radio = summary;
   }

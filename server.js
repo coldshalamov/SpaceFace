@@ -36,7 +36,7 @@ if (devSimWorkerBundleEnabled && !sourceOverlay) {
   const { createDevSimWorkerBundleProvider } = await import('./scripts/lib/devSimWorkerBundle.mjs');
   devSimWorkerBundleProvider = createDevSimWorkerBundleProvider({ root: ROOT });
   devSimWorkerBundleProvider.prewarm().catch((error) => {
-    console.error('[dev-sim-worker] asynchronous prewarm failed; current requests will rebuild or return 503:', error && (error.stack || error.message) || String(error));
+    console.error('[dev-sim-worker] asynchronous prewarm failed; current requests will rebuild, serve the last good bundle, or return 503:', error && (error.stack || error.message) || String(error));
   });
 }
 

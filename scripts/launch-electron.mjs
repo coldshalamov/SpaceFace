@@ -13,11 +13,19 @@ const {
   evaluateLaunchOutcome,
   formatLaunchOutcome,
   parseLaunchReceipts,
+  probeSpaceFacePort,
   tailDiagnosticText,
 } = require('./lib/electronLaunchProtocol.cjs');
 const { resolvePlayerSaveDir } = require('./lib/playerSaveStore.cjs');
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+// Outcomes where the printed sentence alone does not explain what happened — the only codes
+// that earn the diagnostic-log tail.
+const DIAGNOSTIC_TAIL_CODES = new Set([
+  'exited-before-ready',
+  'electron-exited',
+  'still-starting',
+]);
 const launchRoot = path.join(os.tmpdir(), 'spaceface-launcher');
 mkdirSync(launchRoot, { recursive: true });
 const launchId = `${Date.now()}-${process.pid}`;
@@ -68,7 +76,7 @@ async function launchElectron() {
     child.once('exit', (code) => { exitCode = code; });
   }
 
-  const deadline = Date.now() + 45_000;
+  const deadline = Date.now() + 90_000;
   let result;
   do {
     const parsed = readReceipts();
@@ -95,13 +103,54 @@ async function launchElectron() {
   }
 
   child?.unref();
-  const message = formatLaunchOutcome(result, { logPath });
+
+  // 'existing-instance' says another SpaceFace process holds the single-instance lock — but a
+  // wedged or half-dead process holds the lock with no game behind it. Check the game server
+  // actually answers before telling the player a window was focused; when it does not, say
+  // plainly what is wrong instead of claiming success.
+  if (result.pass && result.code === 'existing-instance') {
+    const healthy = await existingInstanceIsServing(result.port || 41788);
+    if (!healthy) {
+      console.error('Another SpaceFace process is holding the launch lock but is not responding.');
+      console.error('Close any SpaceFace or Electron windows (or end them in Task Manager), then launch again.');
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  const message = result.code === 'startup-failed' && result.message
+    ? `SpaceFace could not start: ${firstLine(result.message)}\nDiagnostic log: ${logPath}`
+    : formatLaunchOutcome(result, { logPath });
   (result.pass ? console.log : console.error)(message);
   if (!result.pass) {
+    // Codes whose message already names the cause (port conflict, package-invalid, navigation,
+    // preload, spawn, missing runtime) need no raw log dump — certainly not a stack trace. Only
+    // unexplained exits and timeouts earn the tail, with the frames stripped; the full log
+    // keeps everything.
     const diagnosticTail = readDiagnosticTail();
-    if (diagnosticTail) console.error(`\nLast Electron output:\n${diagnosticTail}`);
+    if (diagnosticTail && DIAGNOSTIC_TAIL_CODES.has(result.code)) {
+      console.error(`\nLast Electron output:\n${withoutStackFrames(diagnosticTail)}`);
+    }
   }
   process.exitCode = result.pass ? 0 : (result.pending ? 2 : 1);
+}
+
+function withoutStackFrames(text) {
+  const lines = String(text || '').split(/\r?\n/);
+  const cut = lines.findIndex((line) => /^\s+at\s/.test(line));
+  return (cut === -1 ? lines.join('\n') : lines.slice(0, cut).join('\n')).trimEnd();
+}
+
+function firstLine(value) {
+  return String(value || '').split(/\r?\n/)[0].trim();
+}
+
+async function existingInstanceIsServing(port) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await probeSpaceFacePort(port)) return true;
+    await delay(1500);
+  }
+  return false;
 }
 
 function readReceipts() {

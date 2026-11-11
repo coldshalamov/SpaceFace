@@ -31,7 +31,7 @@ export function chargeQuoteText(pv) {
   const oreWord = (id) => String(id || '').replace(/^cmdty_(ore_)?/, '');
   const list = (map) => Object.entries(map || {}).filter(([, q]) => q > 0)
     .map(([id, q]) => `${q}u ${oreWord(id)}`).join(' · ');
-  const parts = [`${pv.payloadLabel || 'Bore charge'} — ${pv.cost > 0 ? `${pv.cost} cr` : 'from stock'}`];
+  const parts = [`${pv.payloadLabel || 'Bore charge'} — ${pv.cost > 0 ? `${Number(pv.cost).toLocaleString('en-US')} cr` : 'from stock'}`];
   const banked = list(pv.yields);
   if (banked) parts.push(`banks ${banked}`);
   const spilled = list(pv.spill);

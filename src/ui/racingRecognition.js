@@ -4,6 +4,8 @@ import { RACING_CIRCUITS } from '../data/raceLevels.js';
 import { CUP_HEATS, RACING_DIFFICULTIES, RACING_RIVALS, readRacingCareer,
   racingRecognitionStatus } from '../systems/racingCareer.js';
 import { racingTakedownReceipts } from '../missions/racingOpponents.js';
+import { pluralWord } from './numberFormat.js';
+
 
 /** One-line takedown receipt for toasts and the recognition board; null for foreign payloads. */
 export function racingTakedownText(payload) {
@@ -43,7 +45,7 @@ export function renderRacingRecognition(storage) {
       const last = row.lastOutcome === 'retired' ? 'Rival retired'
         : Number.isFinite(row.lastGapS) ? `${Math.abs(row.lastGapS).toFixed(2)}s ${row.lastOutcome}`
           : `You finished ${row.lastOutcome}`;
-      note = `${row.meetings} ${row.meetings === 1 ? 'meeting' : 'meetings'} · ${row.wins} ${row.wins === 1 ? 'win' : 'wins'}. Last: ${last} at ${course} (${difficulty}).`;
+      note = `${row.meetings} ${pluralWord(row.meetings, 'meeting', 'meetings')} · ${row.wins} ${pluralWord(row.wins, 'win', 'wins')}. Last: ${last} at ${course} (${difficulty}).`;
     }
     section.appendChild(el('p', 'k-sentence', `${rival.name} · ${rival.style} — ${note}`));
   }
