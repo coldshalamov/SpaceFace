@@ -718,6 +718,20 @@ export const MOBILE_SCREEN_CSS = `
   ${P} .aw-chip { white-space:normal; max-width:100%; }
   ${P} .aw-key { display:none; }
   ${P} .aw-guide { max-width:calc(100% - 20px) !important; }
+
+  /* ui-polish-454: the Save/Load reading grows out past the page by its face inset (saveLayouts'
+     margin:0 -var(--sv-face-x)), but the phone page sets every child to width:100%, so the card kept
+     the page's width and slid 12px left: 28px of gutter on the left, 52px on the right. It takes the
+     page plus both insets, so both gutters match and the text keeps the title's left edge. On a
+     portrait phone Sector and Played share a row and Saved gets its own, so the stamp (Sep 22, 2026,
+     03:41 PM) reads on one line instead of breaking into two or three with PM on its own. On its side
+     the three readings already fit on one row, so they keep it. */
+  ${V} > .k-stage__foot.sf-save-ledger { width:calc(100% + 2 * var(--sv-face-x, 12px)) !important; max-width:none !important; }
+  @media (max-width:560px) {
+    ${V} .sf-save-ledger .sf-ledger-facts { grid-template-columns:repeat(2, minmax(0, max-content)); }
+    ${V} .sf-save-ledger .sf-ledger-fact:nth-child(4):last-child { grid-column:1 / -1; }
+    ${V} .sf-save-ledger .sf-ledger-fact:nth-child(4):last-child > dd { white-space:nowrap; overflow-wrap:normal; }
+  }
 }
 /* Phone on its side (compact chart, <=540 tall): the four-row phone head took 188 of 390px, and the
    lens band, sky and inspector shared the 41px left, so the map sat under every word and ENGAGE ROUTE
