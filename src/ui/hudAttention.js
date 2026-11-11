@@ -9,6 +9,7 @@ import { controlPrompt } from './controlPrompts.js';
 import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
 import { attentionAdmits, isAdventureFlight, plainCallout, receiptSource } from './attentionGlass.js';
 import { counted } from './numberFormat.js';
+import { getStage } from './stage.js';
 
 
 export const RECEIPT_MAX = 2;
@@ -350,6 +351,15 @@ function ensureTutorialFlightCardStyle(doc) {
   if (parent && parent.appendChild) parent.appendChild(style);
 }
 
+// G16-02: on the real DOM the card mounts through the Stage's banner slot — the shared
+// .dp-glass frame and the alerts lane replace its own mount and z-index. The handle is
+// module-level like the card's once-per-profile singleton; clearing it releases the slot.
+let tutorialCardHandle = null;
+function clearTutorialCardStage(card) {
+  if (tutorialCardHandle) { tutorialCardHandle.clear(); tutorialCardHandle = null; }
+  if (card) card.hidden = true;
+}
+
 /**
  * Mount CONTROL_PROMPTS.tutorialFlight once per profile. The flight HUD's slow
  * tick is the caller. A keys wall (bullet-separated bind list) is refused.
@@ -358,28 +368,29 @@ export function syncTutorialFlightCard(state, doc, hudLayout = null) {
   const documentRef = doc || (typeof document !== 'undefined' ? document : null);
   if (!documentRef || typeof documentRef.getElementById !== 'function') return null;
   const existing = documentRef.getElementById(TUTORIAL_FLIGHT_CARD_ID);
+  // The Stage only owns the real document's card — a test's fake doc keeps the legacy #hud seat.
+  const stage = documentRef === (typeof document !== 'undefined' ? document : null) ? getStage() : null;
   const inFlight = !!(state && state.mode === 'flight'
     && !(state.ui && state.ui.docked)
     && !(state.player && state.player.flags && state.player.flags.docked));
   if (existing && !inFlight) {
-    existing.hidden = true;
+    clearTutorialCardStage(existing);
     return null;
   }
   if (openingInstructionSolo(state) || !tutorialFlightRelevant(state)) {
-    if (existing) existing.hidden = true;
+    if (existing) clearTutorialCardStage(existing);
     return null;
   }
   if (existing && inFlight && existing.hidden !== true) {
     const live = tutorialFlightCardText(state);
     if (live && !live.includes(' • ') && existing.textContent !== live) existing.textContent = live;
-    applyTutorialFlightCardLayout(existing, hudLayout);
+    if (!tutorialCardHandle) applyTutorialFlightCardLayout(existing, hudLayout);
   }
   if (!tutorialFlightMoment(state)) return existing && existing.hidden !== true ? existing : null;
-  const root = documentRef.getElementById('hud');
-  if (!root || typeof documentRef.createElement !== 'function') return null;
+  const root = stage ? null : documentRef.getElementById('hud');
+  if (!stage && (!root || typeof documentRef.createElement !== 'function')) return null;
   const text = tutorialFlightCardText(state);
   if (!text || text.includes(' • ')) return null;
-  ensureTutorialFlightCardStyle(documentRef);
   let card = existing;
   if (!card) {
     card = documentRef.createElement('div');
@@ -387,11 +398,22 @@ export function syncTutorialFlightCard(state, doc, hudLayout = null) {
     if (card.setAttribute) card.setAttribute('id', TUTORIAL_FLIGHT_CARD_ID);
     card.className = 'sf-tutorial-flight-card';
     if (card.setAttribute) card.setAttribute('role', 'status');
-    if (root.appendChild) root.appendChild(card);
+    if (root && root.appendChild) root.appendChild(card);
   }
   card.hidden = false;
   card.textContent = text;
-  applyTutorialFlightCardLayout(card, hudLayout);
+  if (stage && typeof stage.show === 'function') {
+    // A card that pre-dates the Stage would otherwise keep its injected own-mount rules
+    // inside the shared frame. Re-show only when the seat is empty or was cleared —
+    // show() replaces same-id records, and a per-tick replace replays the entrance.
+    documentRef.getElementById('sf-tutorial-flight-card-style')?.remove?.();
+    if (!tutorialCardHandle || (!tutorialCardHandle.visible && !tutorialCardHandle.queued)) {
+      tutorialCardHandle = stage.show('banner', card, { id: TUTORIAL_FLIGHT_CARD_ID });
+    }
+  } else {
+    ensureTutorialFlightCardStyle(documentRef);
+    applyTutorialFlightCardLayout(card, hudLayout);
+  }
   if (state.player) state.player.hints = markFirstUseHint(state.player.hints, 'firstFlight');
   return card;
 }
