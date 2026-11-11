@@ -1,3 +1,4 @@
+import { isWeighingOperation, isWeighingTarget, weighingSpawnPosition, stampWeighingTarget, observeWeighingScene, WEIGHING_WORKSITE } from '../missions/weighingWorksite.js';
 import { syncSlateCore } from '../missions/slateCoreWorksite.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { syncMawWorksite } from '../missions/mawWorksite.js';
@@ -58,6 +59,7 @@ export const missionSpawningOps = {
    * ghost-pack nest ids, and set-piece/capital encounter actors.
    */
   _missionTargetArchetypes(m) {
+    if (isWeighingOperation(m)) return [WEIGHING_WORKSITE.archetype];
     if (authoredCinderRoute(m)) return ['wasp_swarmer'];
     const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
     if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
@@ -175,6 +177,7 @@ export const missionSpawningOps = {
     }
     const candidates = list.filter((e) => {
       if (!e || !e.alive || e.isPlayer) return false;
+      if (isWeighingOperation(m) && !isWeighingTarget(this.state, m, e, missionTargetSlotOf(e, m.id))) return false;
       if (isSpineBreakOperation(m) && e.data?.escortee === 'lead') {
         const worksite = ensureSpineBreakWorksite(m);
         const data = e.data;
@@ -211,6 +214,14 @@ export const missionSpawningOps = {
     const ordered = [];
     for (const e of candidates) {
       let slot = missionTargetSlotOf(e, cinderTargetOwner(m));
+      // A Weighing hull keeps its exact authored slot. Do not repair a duplicate or
+      // completed survivor into a new target and thereby fabricate a fresh formation.
+      if (isWeighingOperation(m) && (usedSlots.has(slot) || completedMissionTargetSlots(m).has(slot))) {
+        // Only an authenticated exact-owned stale duplicate reaches this branch.
+        // Disarm its detector stamp; never promote it to a fourth quarry.
+        e.data.helixFalseFlag = false;
+        continue;
+      }
       if (authoredCinderRoute(m) && (!Number.isInteger(slot) || slot < 0 || slot >= 3
         || usedSlots.has(slot) || completedMissionTargetSlots(m).has(slot))) {
         // Same finite cast only: never rename a duplicate/cleared survivor to a fourth Wasp.
@@ -224,6 +235,7 @@ export const missionSpawningOps = {
       // survivor merely because a lower slot is absent; its mission+slot identity is the save seam.
       this._stampMissionTargetIdentity(e, m, slot);
       stampCinderWasp(m, e, slot);
+      stampWeighingTarget(this.state, m, e, slot);
       if (b2Outcomes) {
         const role = physicalRoleOf(e);
         const actor = role === PHYSICAL_ROLE.POD
@@ -842,6 +854,7 @@ export const missionSpawningOps = {
    * ambient ships and unaccepted lookalikes never receive this lock.
    */
   _armAcceptedCombatTargets(m, state = this.state) {
+    observeWeighingScene(this, m, state);
     if (!m || m.status !== 'active' || (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear')) return 0;
     const player = state && state.entities && state.entities.get(state.playerId);
     if (!player || player.alive === false || protectedStationAt(state, player)) return 0;
@@ -1019,6 +1032,7 @@ export const missionSpawningOps = {
 
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const cinder = authoredCinderRoute(m);
+      const weighing = isWeighingOperation(m);
       // Spawn only the targets still owed (objectiveTarget - progress) so a mid-mission save/load or
       // partial clear doesn't re-spawn already-killed hostiles and leave an orphan.
       // Adopted rematerialized hosts count toward the remaining quota.
@@ -1062,7 +1076,7 @@ export const missionSpawningOps = {
         const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
         // Nest composition mirrors the live scavenger-ambush doctrine (020/215): one reaver anchor
         // holding the seam, wasp cutters working around it. Ordinary bounties keep their tier pool.
-        const typeId = cinder ? 'wasp_swarmer' : storyTarget && storyTarget.archetype
+        const typeId = weighing ? WEIGHING_WORKSITE.archetype : cinder ? 'wasp_swarmer' : storyTarget && storyTarget.archetype
           || (ghostPack
             ? (durableSlot === 0 ? 'reaver_pirate' : 'wasp_swarmer')
             : pool[Math.floor(rng() * pool.length)]);
@@ -1070,13 +1084,13 @@ export const missionSpawningOps = {
         // The whole ghost pack rings the storyTarget anchor (the authored lane feature the rumor
         // pointed at) so the nest is a PLACE; fall back to the player ring if the anchor fails to
         // resolve — an unresolvable anchor must never silently void the spawn.
-        let pos = cinder ? cinderWaspPosition(durableSlot) : null;
+        let pos = weighing ? weighingSpawnPosition(m, durableSlot) : cinder ? cinderWaspPosition(durableSlot) : null;
         if (storyTarget) pos = missionStoryTargetSpawnPos(m, storyTarget, rng);
         if (!pos && ghostPack && m.storyTarget) pos = missionStoryTargetSpawnPos(m, m.storyTarget, rng);
         if (!pos) pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, level, pos, {
-          factionId: storyTarget && storyTarget.factionId,
+          factionId: weighing ? 'faction_reach' : storyTarget && storyTarget.factionId,
           startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
@@ -1126,6 +1140,7 @@ export const missionSpawningOps = {
           if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
           this._stampMissionTargetIdentity(ent, m, durableSlot);
           stampCinderWasp(m, ent, durableSlot);
+          stampWeighingTarget(this.state, m, ent, durableSlot);
           m.targetEntityIds.push(ent.id);
           spawned++;
           if (storyTarget && storyTarget.namedCaptainId) {

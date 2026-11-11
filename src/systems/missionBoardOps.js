@@ -1,3 +1,4 @@
+import { isWeighingOperation } from '../missions/weighingWorksite.js';
 import { starterWorkSite, STARTER_WORKDAY_VERSION } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -883,7 +884,19 @@ export const missionBoardOps = {
     if (!offer || !offer.type || offer.stationId !== info.id || activeTags.has(offer.storyTag)) {
       return board.slots.length !== before;
     }
-    if (board.slots.some((candidate) => candidate && candidate.storyTag === offer.storyTag)) {
+    const existing = board.slots.find(candidate => candidate && candidate.storyTag === offer.storyTag);
+    if (existing) {
+      // Refresh preparation on the unaccepted board row only. Preserve identity, price,
+      // deadline and other terms; an active legacy operation is never re-authored.
+      if (isWeighingOperation(offer) && existing.params?.weighingVersion == null
+          && existing.type === offer.type && existing.storyBranch === offer.storyBranch
+          && existing.destSectorId === offer.destSectorId
+          && existing.params?.bookScene === offer.params.bookScene) {
+        const fresh = { ...existing, brief: offer.brief,
+          params: { ...existing.params, weighingVersion: 1 } };
+        board.slots = board.slots.map(row => row === existing ? fresh : row);
+        return true;
+      }
       return board.slots.length !== before;
     }
     board.slots.unshift(offer);

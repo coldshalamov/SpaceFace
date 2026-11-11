@@ -1,3 +1,4 @@
+import { isWeighingOperation, weighingEvidence, WEIGHING_OPENING } from '../missions/weighingWorksite.js';
 import { isSlateCore, snapshotSlateCore, restoreSlateCore, retireSlateCore, parkSlateCore, materializeSlateAftermath, validSlateAftermath } from '../missions/slateCoreWorksite.js';
 import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite, hasMawReceiving, retireMawWorksite, materializeMawAftermath, validMawAftermath, mawHandlingRead } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
@@ -1710,6 +1711,11 @@ export const missionStoryOps = {
       this._advanceStory(beat, { skipCredits: true });
       return true;
     }
+    // Terminal mission settlement records only the method the native scene supplied.
+    // Clearing the three marked targets is still the mission owner's predicate.
+    if (isWeighingOperation(m)) {
+      m.params.completionMethod = weighingEvidence(m) ? 'break_the_pattern' : 'hold_the_weir';
+    }
     const furnaceSettlement = furnaceSettlementFromMission(m, beat.beat, 'infested', 'mission:completed');
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
@@ -1760,10 +1766,20 @@ export const missionStoryOps = {
         text: 'The spine holds. The board moves the price: your door keeps its entry. Coupler Head rating posted to your record.',
       });
     } else if (bookScene === 'too_perfect_pack') {
-      story.flags.helix_unmasked = true;
+      const authored = isWeighingOperation(m), evidence = authored && weighingEvidence(m);
+      if (!authored || evidence) story.flags.helix_unmasked = true;
+      if (authored) story.flags.weighing_receipt = {
+        version: 1, missionId: m.id, at: this.state.simTime || 0,
+        outcome: evidence ? 'unmasked_and_cleared' : 'cleared_unverified',
+        packId: evidence?.packId || null, exposedAt: evidence?.at ?? null,
+      };
       this.bus.emit('comms:popup', {
-        id: `b4_pack_${m.id}`, sender: 'IFF REGISTER', category: 'story', ttl: 8, persist: true,
-        text: 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.',
+        id: `b4_pack_${m.id}`, sender: 'IFF REGISTER', category: 'story', ttl: 10, persist: true,
+        text: !authored
+          ? 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.'
+          : evidence
+            ? 'WEIR CLEARED. Three live transponders exposed Helix before the fight. Concord keeps the registry evidence. Book 4 is settled; your Concord choice and its costs remain.'
+            : 'WEIR CLEARED. The three marked hulls are down, but no live full-pack registry exposure was verified. Concord records the clearance, not an accusation against Helix. Book 4 is settled.',
       });
     } else if (bookScene === 'barn_raising') {
       if (m.params?.frontierBarnRaisingVersion === 1 && m.params?.frontierReceipt?.version === 1) {
@@ -2725,7 +2741,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'too_perfect_pack') {
-      popup('CONCORD WEIR', 'The pack on the weir flies Reach colors with no slag on the welds. Run the Weighing honest; the pattern will tell on itself.', 7);
+      popup('CONCORD WEIR', isWeighingOperation(inst) ? WEIGHING_OPENING : 'The pack on the weir flies Reach colors with no slag on the welds. Run the Weighing honest; the pattern will tell on itself.', 12);
       return true;
     }
     if (scene === 'barn_raising') {
@@ -2772,6 +2788,15 @@ export const missionStoryOps = {
     let row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
     if (!row) return false;
     // Refresh only the unaccepted board row, never an already active legacy job.
+    if (isWeighingOperation(offer) && row.params?.weighingVersion == null
+        && row.type === offer.type && row.storyBranch === offer.storyBranch
+        && row.destSectorId === offer.destSectorId
+        && row.params?.bookScene === offer.params.bookScene) {
+      const fresh = { ...row, brief: offer.brief,
+        params: { ...row.params, weighingVersion: 1 } };
+      board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
+      row = fresh;
+    }
     if (isSlateCore(offer) && !isSlateCore(row)) {
       row.brief = offer.brief;
       row.params = { ...offer.params };

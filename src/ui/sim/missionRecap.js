@@ -1,3 +1,4 @@
+import { isWeighingOperation, weighingEvidence } from '../../missions/weighingWorksite.js';
 import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 // Sim-safe mission recap and objective wording — extracted from ui/screens/missionLog.js.
 // Everything here is pure: data tables + state reads in, player-facing text out. No DOM,
@@ -118,6 +119,15 @@ export function objectiveText(m) {
   if (registry) return registry.objective;
   const firstSample = contract47aReadout(m);
   if (firstSample) return firstSample.objective;
+  if (isWeighingOperation(m)) {
+    const progress = Math.max(0, Math.min(3, Number(m.objectiveProgress) || 0));
+    const exposed = !!weighingEvidence(m);
+    if (m.status === 'completed') return exposed ? 'Weir cleared · Helix exposure recorded' : 'Weir cleared · true registry unverified';
+    const scene = m.params.weighingScene;
+    return exposed ? `Helix exposed · clear ${progress}/3 weir hulls`
+      : scene?.phase === 'combat' ? `Clear ${progress}/3 weir hulls · registry unverified`
+        : 'Star Marker weir · pull one hull out of formation before firing';
+  }
   const p = m.params || {};
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
