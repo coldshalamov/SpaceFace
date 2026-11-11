@@ -179,13 +179,20 @@ test('X5 P0: labels stay live in every context — the sheet never blanks a real
   ];
   for (const st of contexts) {
     const ctx = inputContextFor(st);
-    for (const action of ['forward', 'reverse', 'boost', 'travelBurn', 'cruise']) {
+    // G18-02: the taught seats keep a live label in every context — movement, Space boost
+    // and the held wheel key. Overflow verbs ship unbound and read as blank here BY DESIGN
+    // (the sheet names the wheel for them, see keyLabel's wheel fallback).
+    for (const action of ['forward', 'reverse', 'boost', 'contextWheel']) {
       const label = resolveActionLabel(st, action);
       assert.ok(label.length > 0, `${ctx}: ${action} label is blank`);
       assert.ok(resolveActionCodes(st, action).length > 0, `${ctx}: ${action} codes are empty`);
     }
-    // Fire is the left mouse button: no KeyboardEvent code, but never a blank label.
+    for (const action of ['travelBurn', 'cruise', 'brake']) {
+      assert.equal(resolveActionLabel(st, action), '', `${ctx}: ${action} is a wheel slice — no key label`);
+    }
+    // Fire is the left mouse button and the Line the right: no KeyboardEvent code, never blank.
     assert.equal(resolveActionLabel(st, 'fire'), 'LMB');
+    assert.equal(resolveActionLabel(st, 'tether'), 'RMB');
   }
 });
 
@@ -200,7 +207,8 @@ test('X5 #5: every context has a short Help card, and the card is derived from l
   ];
   for (const st of states) {
     const rows = contextHelpRows(st, (action) => resolveActionLabel(st, action, { sep: ' ' }));
-    assert.ok(rows.length > 0 && rows.length <= 10, `${inputContextFor(st)} rows ${rows.length}`);
+    // G18-02 added the Wheel row to the flight/combat cards — one line teaches every slice.
+    assert.ok(rows.length > 0 && rows.length <= 11, `${inputContextFor(st)} rows ${rows.length}`);
     for (const row of rows) {
       assert.equal(row.length, 2);
       assert.ok(String(row[0]).length > 0 && String(row[1]).length > 0);
@@ -213,7 +221,10 @@ test('X5 #5: every context has a short Help card, and the card is derived from l
   assert.ok(combatCard.some(([keys]) => /Backspace/.test(keys)), 'Backspace clear row');
   assert.ok(!combatCard.some(([, verb]) => /Flee/.test(verb)), 'no flee while healthy');
   const wounded = lowHullState({ player: { targetId: 2 } });
-  assert.ok(contextHelpRows(wounded, (a) => resolveActionLabel(wounded, a)).some(([, verb]) => /Flee/.test(verb)));
+  // G18-02: travel burn ships unbound (it is a wheel slice), so the card resolver names the
+  // wheel for it — the same fallback the Help screen passes (help.js wheelKey).
+  assert.ok(contextHelpRows(wounded, (a) => resolveActionLabel(wounded, a) || 'Q wheel')
+    .some(([keys, verb]) => /Flee/.test(verb) && /wheel/i.test(keys)), 'flee row names the wheel');
 });
 
 test('X5 #5: a saved rebind moves the Help card', () => {

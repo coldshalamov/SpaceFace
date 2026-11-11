@@ -46,6 +46,10 @@ test('raw input harvests an Orchard lot and Continue preserves worker hardware a
   try {
     const state = sim.state;
     state.mode = 'flight'; state.world.currentSectorId = PLANET_SITE.sectorId;
+    // G18-02: the contextual site beam and full stop moved to the Q context wheel — no
+    // default keys. Saved custom bindings keep the old routes for this ordinary-input fixture.
+    state.settings.controls.bindings = { ...(state.settings.controls.bindings || {}),
+      siteBeam: ['KeyB'], brake: ['Digit0'] };
     state.settings.gameplay.physicsBackend = 'rapier-dynamic'; sim.step();
     let frame = state.entities.get(state.planet.orchardFrameId);
     assert.ok(frame);
