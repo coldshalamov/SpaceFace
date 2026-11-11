@@ -52,6 +52,7 @@ import {
   validateSwarmEvents,
 } from '../src/data/swarmEvents.js';
 import { SWARM_RULESET, isSwarmBossWave } from '../src/data/swarmMode.js';
+import { swarmCourseFor } from '../src/data/swarmCourse.js';
 import { createSwarmEventDirector, swarmEventFrame } from '../src/systems/swarmEvents.js';
 import {
   crucibleHullSetupFor,
@@ -298,7 +299,11 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
   // again — wave 35 is the first card it hands back.
   for (let wave = 1; wave <= 40; wave++) {
     const draw = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
-    const majors = wave > 30 && wave % 10 === 5;
+    // G08-02 — a course round's twistId deals its own card through the same consult; band
+    // rounds serve it at the minor voice instead, so they stay out of the major column.
+    const course = swarmCourseFor(wave);
+    const majors = (wave > 30 && wave % 10 === 5)
+      || Boolean(course && course.twistId && !isSwarmMinorEventWave(wave));
     if (!majors) {
       assert.equal(draw, null, `wave ${wave} has no major event round`);
     } else {

@@ -62,6 +62,7 @@ import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCros
 import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
 import { applySwarmWeaponLevels } from '../data/swarmWeaponLevels.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 import { captureAndTransfer, admitCapturedVessel } from './shipControlTransfer.js';
 import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
 import { componentAfterRemoval, quoteModuleSale, validateModuleSaleQuote } from '../shipjack/componentProvenance.js';
@@ -2640,7 +2641,7 @@ export const ships = {
    *  answers the owning faction's standing ledger: rep ≥ minRep is the whole gate, the research
    *  tree plays no part, and no station rack bypasses it — faction yards do not stock rivals'
    *  exclusives. The buy price still quotes through the normal standing-discount path. */
-  isUnlocked(def) {
+  isUnlocked(def, opts = null) {
     if (!def || def.intrinsicHull) return false;
     if (def.swarmEarned) {
       return swarmCrossoverEarned(def.swarmEarned)
@@ -2656,8 +2657,19 @@ export const ships = {
       return false;
     }
     if (!def.requiresTech) return true;
+    // Run-scoped Swarm grant: a gun the Foundry floor sells never waits on the Adventure research
+    // ledger. Only the research door opens, and only inside a live Swarm run; faction, earned and
+    // line gates above and the physical fitting gates in moduleFitBlocker still apply.
+    if (opts && opts.swarmGrant === true && this._swarmGrantLive()) return true;
     if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;
     return !!stationShopOffer(def, dockedShopStationId(this.state));
+  },
+
+  /** Whether the state carries a live Swarm run (the only scope a swarm grant means anything in). */
+  _swarmGrantLive() {
+    const run = this.state && this.state.run;
+    return !!run && typeof run === 'object' && run.kind === 'survival'
+      && run.phase !== 'inactive' && run.ruleset === SWARM_RULESET;
   },
 
   quoteModuleSale(request) { return quoteModuleSale(this.state, request); },
@@ -3217,7 +3229,7 @@ export const ships = {
 
   // ---- outfitting: fit / unfit modules ----------------------------------------------------
 
-  moduleFitBlocker({ shipIndex, slotIndex, def }) {
+  moduleFitBlocker({ shipIndex, slotIndex, def, swarmGrant = false }) {
     const owned = this.ownedShip(shipIndex);
     if (!owned || !def) return { reason: 'missing_fit_target', text: null };
     const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
@@ -3235,7 +3247,7 @@ export const ships = {
     }
     const saucerRefusal = saucerFittingRefusal(shipDef.id, def);
     if (saucerRefusal) return { reason: 'intrinsic_saucer_drive', text: saucerRefusal };
-    if (!this.isUnlocked(def)) {
+    if (!this.isUnlocked(def, { swarmGrant })) {
       return { reason: 'research_required', text: defLockReasonText(def) };
     }
     const conflictingDef = findMasslineHeadConflict(owned.fittings, slotIndex, def);
@@ -3286,7 +3298,7 @@ export const ships = {
 
   /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
    *  slot on the active (or given) owned ship. */
-  fitModule({ shipIndex, slotIndex, instanceId, defId, operationId }) {
+  fitModule({ shipIndex, slotIndex, instanceId, defId, operationId, swarmGrant = false }) {
     const refuse = (reason) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -3319,7 +3331,7 @@ export const ships = {
       def = defById(defId);
     }
     if (!def) return refuse('unknown_module');
-    const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def });
+    const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def, swarmGrant });
     if (blocker) {
       if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
       return refuse(blocker.reason);
