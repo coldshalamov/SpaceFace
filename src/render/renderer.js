@@ -7367,6 +7367,59 @@ export function computeNearMissLampFlash(entity, now, reducedFlash = false) {
   return 1.0;
 }
 
+/**
+ * Compute the applause dock lamp flash multiplier for a station (PL-08).
+ * Emits two flashes across the flash window, respecting reduced flash,
+ * and expires dockLampsFlashing when the duration is over.
+ */
+export function computeStationDockLampFlash(stationEntity, now, reducedFlash = false) {
+  if (!stationEntity || !stationEntity.data || !stationEntity.data.dockLampsFlashing) return 1.0;
+  const until = Number.isFinite(stationEntity.data.dockLampFlashUntil)
+    ? stationEntity.data.dockLampFlashUntil
+    : (now + 1.6);
+  if (now >= until) {
+    stationEntity.data.dockLampsFlashing = false;
+    return 1.0;
+  }
+  const duration = 1.6;
+  const elapsed = Math.max(0, duration - (until - now));
+  // Two flashes (applause):
+  // Pulse 1: 0.00s to 0.30s
+  // Gap:     0.30s to 0.55s
+  // Pulse 2: 0.55s to 0.85s
+  const inPulse1 = elapsed >= 0.0 && elapsed <= 0.30;
+  const inPulse2 = elapsed >= 0.55 && elapsed <= 0.85;
+  if (inPulse1 || inPulse2) {
+    return reducedFlash ? 1.8 : 4.5;
+  }
+  return 1.0;
+}
+
+/**
+ * Apply the applause dock lamp flash to all blinkers/lamps on the station mesh hierarchy.
+ */
+export function applyStationDockLampFlash(mesh, stationEntity, now, reducedFlash = false) {
+  if (!mesh || !stationEntity) return 1.0;
+  const mult = computeStationDockLampFlash(stationEntity, now, reducedFlash);
+  if (mesh.traverse) {
+    mesh.traverse((child) => {
+      const bl = child.userData && child.userData.blink;
+      if (bl) {
+        const base = Number.isFinite(bl.base) ? bl.base : 3.4;
+        const mat = child.material;
+        if (mat && Number.isFinite(mat.emissiveIntensity)) {
+          if (mult > 1.0) {
+            mat.emissiveIntensity = base * mult;
+          } else {
+            mat.emissiveIntensity = base;
+          }
+        }
+      }
+    });
+  }
+  return mult;
+}
+
 // Marker stamped on a root whose dirty flag is our own post-withhold invalidation —
 // the arm's identical-opts restore needs the dirty, but a queued clean root must not
 // re-pay the signature collect every presented frame until its arm lands.
@@ -19611,6 +19664,18 @@ export const render = {
           : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0));
       }
     });
+    onBus('station:dockLampFlash', (payload) => {
+      if (!payload) return;
+      const targetId = payload.entityId || payload.stationId;
+      const ent = state && state.entities && state.entities.get && targetId ? state.entities.get(targetId) : null;
+      if (ent) {
+        if (!ent.data) ent.data = {};
+        ent.data.dockLampsFlashing = true;
+        ent.data.dockLampFlashUntil = Number.isFinite(payload.until)
+          ? payload.until
+          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 1.6));
+      }
+    });
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     onBus('game:started', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
     onBus('save:loaded', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
@@ -29286,6 +29351,9 @@ export const render = {
               globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
             } else {
               globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+              if (entity.data && entity.data.dockLampsFlashing) {
+                applyStationDockLampFlash(mesh, entity, simTime, _worldSiteA11y?.reducedFlash);
+              }
             }
           } else if (typeName === 'place' && machineAwake) {
             // Landmarks/props carry authored ANIM_ parts (beacons, dishes, drills); gates
