@@ -537,11 +537,17 @@ export const masslineThrow = {
     const impulses = [];
     runtime.lastThrow = {
       releaseId,
+      source: 'massline',
+      physicsEarned: !!solution.valid,
       payloadId: payload.id,
       aimTargetId: aim.entity ? aim.entity.id : null,
       aimSynthetic: !aim.entity,
       errorRad: solution.errorRad,
       payloadSpeed: solution.payloadSpeed,
+      exitSpeed: solution.payloadSpeed,
+      exitAngle: Number.isFinite(solution.interceptAngle)
+        ? solution.interceptAngle
+        : (payload.vel ? Math.atan2(payload.vel.z, payload.vel.x) : 0),
       mode,
       tick: state.tick,
       time: finite(state.simTime, state.tick / 60),
