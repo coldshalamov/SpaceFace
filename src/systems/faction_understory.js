@@ -1,3 +1,4 @@
+import { clearCompostArrival, syncCompostArrival } from '../missions/compostArrivalScene.js';
 // faction_understory.js — W-UNDERSTORY (build_map §34.5 row 517, bible 02 §10).
 //
 // The Understory's persistent mark is the garden: a wreck-reef that digests dead mass
@@ -710,7 +711,7 @@ export const understoryGardens = {
       this.bus.on('understory:buyCover', () => this._onBuyCover()),
       this.bus.on('understory:payDebt', () => this._onPayDebt()),
       this.bus.on('sector:enter', () => this.ensureAuthoredReceiver()),
-      this.bus.on('save:restoring', () => { this._saveRestoring = true; }),
+      this.bus.on('save:restoring', () => { this._saveRestoring = true; clearCompostArrival(this); }),
       this.bus.on('save:loaded', () => {
         const { authoredReceiver, drops, seq } = ensureUnderstoryState(this.state);
         this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq };
@@ -726,6 +727,7 @@ export const understoryGardens = {
   },
 
   destroy() {
+    clearCompostArrival(this);
     for (const off of this._subs || []) {
       try { if (typeof off === 'function') off(); } catch { /* listener hygiene */ }
     }
@@ -2101,6 +2103,7 @@ export const understoryGardens = {
       this._digest(e, rec);
       syncGardenStage(state, e, rec);
     }
+    syncCompostArrival(this, gardens);
     this._tendGardeners();
     this._sporeHead();
     this._syncTidePushback();
