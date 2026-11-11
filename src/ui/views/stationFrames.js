@@ -83,6 +83,9 @@ export function marketFrameHtml() {
         `<details class="so-route-disclosure"><summary>Route intelligence</summary>` +
           `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
         `</details>` +
+        `<details class="so-route-disclosure" open><summary>Market pulse</summary>` +
+          `<div class="sx-mkt__pulse" aria-label="Market pulse, twelve hours observed"></div>` +
+        `</details>` +
         `<aside class="k-t-fine k-62 sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
       `</div>` +
       `<div class="sx-mkt__console"><div class="sx-mkt__trade"></div></div>` +

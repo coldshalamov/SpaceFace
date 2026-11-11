@@ -11,6 +11,8 @@ import { COMMODITIES } from '../data/commodities.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { FACTION_META } from '../data/factions.js';
 import { getPromptDeck } from './promptDeck.js';
+import { pluralWord } from './numberFormat.js';
+
 
 const COMMODITY_LABELS = new Map(COMMODITIES.map((c) => [c.id, String(c.name || c.id).replace(/^Refined /i, '')]));
 const FACTION_LABELS = new Map(FACTION_META.map((f) => [f.id, String(f.name || f.id)]));
@@ -103,7 +105,7 @@ export function yieldReceiptText(payload) {
   if (payload && payload.reason === 'killed') return 'YIELD VOID · the yielding crew is dead';
   if (payload && payload.accepted === true) {
     const pods = numberText(payload.pods != null ? payload.pods : 1);
-    return `YIELD TAKEN · ${pods} pod${payload.pods === 1 ? '' : 's'} in the drift · they ran clean`;
+    return `YIELD TAKEN · ${pods} ${pluralWord(payload.pods, 'pod', 'pods')} in the drift · they ran clean`;
   }
   return 'LET GO · they keep their take · weapons stay cold';
 }

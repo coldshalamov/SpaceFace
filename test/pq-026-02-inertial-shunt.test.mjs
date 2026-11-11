@@ -314,7 +314,7 @@ test('PQ-026.02 route cruise numbers are the live catalog', () => {
   assert.equal(COAST_S, 1.2, 'fixed shunt measurement horizon remains unchanged');
   // The screen stays a fixed 126 WU of space — the faster cruise crosses it in half the time.
   near(SCREEN / governedCruise(WASP), COAST_S / 2, 'B3 screen-crossing time at the restored ceiling');
-  assert.equal(driveProfile(HITCH).boostSpeedMult, 1.55, 'Hitch boost cap multiplier');
+  assert.equal(driveProfile(HITCH).boostSpeedMult, 2.0, 'Hitch boost cap multiplier'); // EC-G18: boost is twice cruise
   assert.equal(preSolveRadialClosingSpeed(195, 0, 0, 0, 1, 0), 195);
   assert.equal(preSolveRadialClosingSpeed(195, 0, -210, 0, 1, 0), 405);
 });

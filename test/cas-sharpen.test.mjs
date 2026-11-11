@@ -50,6 +50,10 @@ test('CAS gate: below-display-resolution frames sharpen, full-res and supersampl
   // Missing/zero display footprint means "no evidence of below-res" — off.
   assert.equal(resolveCasSharpenActive(640, 360, 0, 0), false);
   assert.equal(resolveCasSharpenActive(640, 360, undefined, undefined), false);
+  // Fractional CSS×DPR footprints: a sub-pixel remainder is not an upscale; a full pixel is.
+  assert.equal(resolveCasSharpenActive(1600, 900, 1600.5, 900.5), false);
+  assert.equal(resolveCasSharpenActive(1600, 900, 1601, 900), true);
+  assert.equal(resolveCasSharpenActive(1440, 810, 1600.5, 900.5), true);
 });
 
 test('CAS fragment shader embeds the vendored AMD headers byte-for-byte — the filter is not rewritten', () => {

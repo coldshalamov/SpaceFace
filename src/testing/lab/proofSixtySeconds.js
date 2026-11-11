@@ -30,6 +30,8 @@ import { stuntGrammar } from '../../systems/stuntGrammar.js';
 import { createAuthoritativeRuntime } from '../../runtime/createAuthoritativeRuntime.js';
 import { getNodeSystemFactoryTable } from '../../runtime/nodeSystemFactoryTable.js';
 import { createInputTapeDriver } from './inputTape.js';
+import { counted } from '../../core/numberFormat.js';
+
 
 export const PROOF_SCENARIO_ID = 'proof.sixty_seconds';
 export const PROOF_SECTOR_ID = CERES_ACTIVITY_SECTOR_ID;
@@ -1161,7 +1163,7 @@ export function formatLeftoverRoutes(runs) {
         for (const note of beat.notes) lines.push(`    ${note}`);
       }
     }
-    lines.push(`Do not claim 11/11: ${leftover.dark} cell${leftover.dark === 1 ? '' : 's'} remain dark.`);
+    lines.push(`Do not claim 11/11: ${counted(leftover.dark, 'cell', 'cells')} remain dark.`);
   }
   if (late.length) {
     lines.push('LISTED BEATS AFTER 60s (not inside the window):');
@@ -1750,7 +1752,7 @@ export function formatBeatTable(runs) {
   lines.push(`Worst seed: ${worst}/11. Hard-cap honored: ${allCap ? 'yes' : 'NO'}.`);
   lines.push(`ALPHA RESULT: ${gate ? 'DONE' : 'NOT DONE'}`);
   if (!claim.allowed) {
-    lines.push(`Do not claim 11/11: ${claim.dark} cell${claim.dark === 1 ? '' : 's'} remain dark.`);
+    lines.push(`Do not claim 11/11: ${counted(claim.dark, 'cell', 'cells')} remain dark.`);
   }
   lines.push('');
   lines.push(formatLeftoverRoutes(runs));
