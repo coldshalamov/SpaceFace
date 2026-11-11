@@ -38,7 +38,8 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 
 | ID | Tier | Job | State |
 |---|---|---|---|
-| G18 slice 1 one feel | L | Pull/Shove/contacts identical in both doors (commit 21a3a741) | DONE |
+| G18 slice 1 one feel | L | Pull/Shove/contacts identical in both doors (commit 21a3a741) | BUILT 21a3a741 |
+| G18-REVIEW | L | Before DONE: run `node --test test/al-race-1-contested-line-4242.test.mjs` on a quiet machine (with the change, two Hard circuits lost the anchored-lap margin; the run without it timed out at 7 min on a loaded host); one Adventure trace of a throw into a ship (`node scripts/agent-loop.mjs sim <scenario> --trace`) | READY |
 | G18-02-one-set-of-keys | D | Same keys both doors; everything else on a Q context wheel | READY |
 | G18-03 feedback | D | NEEDS-PACKET: camera beat on light kill + slingshot release, boost to 2x cruise with a ring, FEEL §2 engine set. Spec: EC-G18 brief §3 | NEEDS-PACKET |
 | G17-01-swarm-start-at-round | D | `?swarmRound=N`, `--start-round=N` | BUILT 2f8b164a |
@@ -72,6 +73,6 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | ID | Tier | Job | State |
 |---|---|---|---|
 | PLANT-NEXT | S | Build the next OPEN world reaction in `INFERENCE_PLANTS.md` (96 open) | READY (repeat) |
-| PRX-NEXT | D | Finish the next leftover PR (#921–#998) from `.dev/pr-expansion/HANDOFF.md` | READY (repeat) |
-| PL-08-applause | S | Station lamps flash at a slingshot kill | TAKEN deepseek |
+| PRX-NEXT | D | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955); the rest wait for wave 4–5 | READY (repeat) |
+| PL-08-applause | S | Station lamps flash at a slingshot kill (row CLAIMED in the plant list) | TAKEN deepseek |
 | PL-05-road-rage | S | A twice-shoved civilian shoves back, then runs | BUILT b34318dd |
