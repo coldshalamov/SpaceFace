@@ -19,7 +19,7 @@
 // All event subscriptions are registered in init; frame() integrates the timers.
 import { damp } from '../core/math.js';
 import { createTimeEffects } from '../core/timeEffects.js';
-import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { WEAPONS } from '../data/weapons.js';
 import {
   VL_WAKE_AT,
@@ -69,6 +69,14 @@ export const CRUNCH_REPEATER_ROF = 3.5;      // /s — at or above this, never h
 export const CRUNCH_RECOIL_FOV_MAX = 2.8;    // deg — heavy muzzle kick ceiling (below death punch)
 
 const CRUNCH_FAMILY = new Set(['kinetic', 'explosive']);
+
+// G18-03 — "redline": a light screen shake while the boost has been held at the governed boost
+// cap. The arm time keeps the dash's own anticipation beats owning the press edge; the feed is
+// a continuous trauma trickle (equilibrium ~0.5, ≈0.45 wu inside FEEL.md's 0.3–0.8 light band),
+// not stacked discrete kicks. Reduced motion carries zero — the packet wants it off, not 25%.
+const REDLINE_ARM_S = 1.0;
+const REDLINE_TOP_FRACTION = 0.85;
+const REDLINE_TRAUMA_PER_S = 1.0;
 
 function weaponRecord(weaponId) {
   return weaponId != null ? WEAPON_BY_ID.get(weaponId) || null : null;
@@ -1066,6 +1074,35 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     return speed > maxSpd * VL_WAKE_AT * 0.85;
   },
 
+  // G18-03 redline — feed the shared camera trauma while boost rides near its governed cap.
+  // Owns nothing but the trickle: the cap comes from the same catalog/profile pair the speed
+  // lines resolve, and the shake lands through the camera's ordinary addTrauma gate.
+  _updateRedlineShake(frameDt) {
+    const state = this.state;
+    const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+    const ents = state && state.entities;
+    const pid = state && state.playerId;
+    const player = ents && pid != null ? ents.get(pid) : null;
+    const boosting = !!(player && player.flags && player.flags.boosting);
+    this._redlineHoldS = boosting ? (this._redlineHoldS || 0) + dt : 0;
+    if (!boosting || this._redlineHoldS < REDLINE_ARM_S) return;
+    if (!player || !player.vel) return;
+    if (state.mode !== 'flight' || !this._modalClear()) return;
+    const settings = state.settings || {};
+    if ((settings.video && settings.video.motionReduce)
+      || (settings.accessibility && settings.accessibility.motionPreference === 'reduce')) return;
+    const governed = Math.max(1, resolveGovernedCombatSpeed(player, state, player.maxSpeed || 1));
+    const profile = resolvePropulsionProfile(player, state);
+    const boostCap = profile && Number.isFinite(profile.boostMaxSpeed) && profile.boostMaxSpeed > 0
+      ? profile.boostMaxSpeed
+      : governed * (profile && Number.isFinite(profile.boostSpeedMult) && profile.boostSpeedMult > 1
+        ? profile.boostSpeedMult : 1);
+    const speed = Math.hypot(player.vel.x || 0, player.vel.z || 0);
+    if (speed < boostCap * REDLINE_TOP_FRACTION) return;
+    const ctrl = state.render && state.render.cameraCtrl;
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(REDLINE_TRAUMA_PER_S * dt);
+  },
+
   _updateSpeedLines(frameDt) {
     // Ensure canvas is mounted
     if (!this._slCanvas || !this._slCanvas.isConnected) {
@@ -1572,15 +1609,22 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         // FB-084: the capital tier of the weight-keyed kill beat (deep push + hold), keyed on
         // the same acoustic mass the kill audio resolves.
         if (ctrl && typeof ctrl.killCam === 'function') {
-          ctrl.killCam(victimAcousticMass(p, state), { capital: true });
+          ctrl.killCam(victimAcousticMass(p, state), {
+            capital: true,
+            direction: p.presentation && p.presentation.direction,
+          });
         }
         return;
       }
-      // Small kill: short hit-stop + camera beat, now weighted (FB-084): light victims get no
-      // beat, the wasp's kiss is gone rather than stacked; medium+ tier by the mass law.
+      // Small kill: short hit-stop + camera beat, now weighted (FB-084): the light tier nudges
+      // along the kill direction the presentation receipt carries (G18-03); medium+ keeps the
+      // zoom beat by the mass law.
       this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
       if (ctrl && typeof ctrl.killCam === 'function') {
-        ctrl.killCam(victimAcousticMass(p, state), { capital: false });
+        ctrl.killCam(victimAcousticMass(p, state), {
+          capital: false,
+          direction: p.presentation && p.presentation.direction,
+        });
       }
     }, { presentation: true });
 
@@ -2245,7 +2289,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
     }
 
-    // ---- speed-lines overlay ----
+    // ---- redline shake, then speed-lines overlay ----
+    this._updateRedlineShake(frameDt);
     this._updateSpeedLines(frameDt);
   },
 };

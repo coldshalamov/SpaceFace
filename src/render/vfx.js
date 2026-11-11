@@ -10555,7 +10555,28 @@ export const vfx = {
   },
 
   _onBoost(p, on) {
-    return presentShipBoost(this, p, on, SHIP_MANEUVER_VFX_HELPERS);
+    const presented = presentShipBoost(this, p, on, SHIP_MANEUVER_VFX_HELPERS);
+    // G18-03 — the boost ignition ring. `presentShipBoost` returns early for production-thruster
+    // ships, so the player (who rides that path) lit the boost with no ring at all. One expanding
+    // ring behind the ship — 0.35 s, fading out — reused from the same SPR_RING pool the death
+    // shockwave rides. Player-scoped: NPC boost signatures stay as authored on both paths.
+    if (!on || !this._scene || !p || p.shipId !== this.state.playerId) return presented;
+    const entity = this._ent(p.shipId);
+    if (!entity || !this._usesProductionThruster(entity)) return presented;
+    const cf = Math.cos(entity.rot || 0);
+    const sf = Math.sin(entity.rot || 0);
+    const socket = this._trailSocketWorldPose(entity);
+    const exhaustX = socket ? socket.forwardX : -cf;
+    const exhaustZ = socket ? socket.forwardZ : -sf;
+    const bx = (socket ? socket.x : entity.pos.x - cf * (entity.radius + 2))
+      + exhaustX * BOOST_BURST_NOZZLE_CLEARANCE;
+    const bz = (socket ? socket.z : entity.pos.z - sf * (entity.radius + 2))
+      + exhaustZ * BOOST_BURST_NOZZLE_CLEARANCE;
+    const reduced = this._isReduced();
+    this._spawnSprite(SPR_RING, bx, 0, bz, 0.35, 2, 16,
+      reduced ? 0.3 : 0.55, 0.0, this._engineColor(entity),
+      exhaustX * 4, exhaustZ * 4);
+    return presented;
   },
 
   _onDash(p) {
