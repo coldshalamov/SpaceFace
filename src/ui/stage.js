@@ -62,6 +62,8 @@ function inertStage() {
   return {
     show: (name) => { known(name); return null; },
     clear: (name) => { known(name); return false; },
+    hold: (name) => { known(name); return { release() {}, get held() { return false; } }; },
+    held: (name) => { known(name); return false; },
     slotEl: (name) => { known(name); return null; },
     names: () => Object.keys(STAGE_SLOTS),
     visible: (name) => { known(name); return []; },
@@ -77,7 +79,7 @@ export function createStage(ctx = {}) {
 
   const slots = new Map();
   for (const [name, def] of Object.entries(STAGE_SLOTS)) {
-    slots.set(name, { name, def, el: null, flow: null, visible: [], queue: [], seq: 0 });
+    slots.set(name, { name, def, el: null, flow: null, visible: [], queue: [], seq: 0, holds: new Set() });
   }
   const slot = (name) => {
     const found = slots.get(name);
@@ -146,20 +148,25 @@ export function createStage(ctx = {}) {
       if (reducedMotion()) cut(null, rec.el, { state: 'stage-show' });
       else settle(rec.el, { from: s.def.enter, state: 'stage-show' });
     } catch (_) { /* motion is cosmetic — the item still shows without it */ }
+    // Deferred items (queued behind a hold) run their mount-side effects here — a dialog that
+    // waited behind a screen still claims its initial focus when the seat finally takes it.
+    try { if (typeof rec.onMount === 'function') rec.onMount(rec.el); } catch (_) { /* host-side */ }
   }
 
   function promote(s) {
-    while (s.visible.length < s.def.maxVisible && s.queue.length) {
+    while (!s.holds.size && s.visible.length < s.def.maxVisible && s.queue.length) {
       mount(s, s.queue.shift());
     }
   }
 
-  function removeRec(s, rec, { promoteQueue = true } = {}) {
+  function removeRec(s, rec, { promoteQueue = true, keepEl = false } = {}) {
     const vi = s.visible.indexOf(rec);
     if (vi >= 0) {
       s.visible.splice(vi, 1);
       rec.visible = false;
-      if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      // keepEl leaves the element in the lane for a host-owned exit beat (a toast's fade) —
+      // the seat is still freed, so the promoted item enters while the leaver goes out.
+      if (rec.el && rec.el.parentNode && !keepEl) rec.el.parentNode.removeChild(rec.el);
       if (promoteQueue) promote(s);
       return true;
     }
@@ -184,7 +191,7 @@ export function createStage(ctx = {}) {
       id: rec.id, slot: s.name, el: rec.el,
       get visible() { return rec.visible; },
       get queued() { return s.queue.includes(rec); },
-      clear() { return removeRec(s, rec); },
+      clear(opts) { return removeRec(s, rec, { keepEl: !!(opts && opts.keepEl) }); },
     };
   }
 
@@ -206,7 +213,13 @@ export function createStage(ctx = {}) {
     // replacement, so the swap releases the seat without promoting.
     for (const old of [...s.visible, ...s.queue]) if (old.id === id) removeRec(s, old, { promoteQueue: false });
 
-    const rec = { id, seq, severity: opts.severity || 'info', el: null, visible: false };
+    const rec = {
+      id, seq, severity: opts.severity || 'info', el: null, visible: false,
+      // hold marks a seat that priority never demotes (a live decision deck); onMount runs
+      // once per mount — including a deferred promotion — so hosts re-arm visible effects.
+      hold: opts.hold === true,
+      onMount: typeof opts.onMount === 'function' ? opts.onMount : null,
+    };
     const body = normalizeContent(content);
     if (opts.bare) {
       rec.el = body || doc.createElement('div');
@@ -220,23 +233,46 @@ export function createStage(ctx = {}) {
     }
 
     // Preempt: only a strictly higher rank takes a seat — equal rank still waits its turn
-    // (FIFO), and a held seat (the screens host) is never a demotion candidate.
+    // (FIFO), and a held seat (the screens host) is never a demotion candidate. While the
+    // slot itself is held (a station/menu screen is open) nothing new mounts at all.
     const rank = stagePriority(rec.severity);
-    while (s.visible.length >= s.def.maxVisible) {
-      let lowest = null;
-      for (const v of s.visible) {
-        if (v.hold) continue;
-        if (!lowest || stagePriority(v.severity) < stagePriority(lowest.severity)
-          || (stagePriority(v.severity) === stagePriority(lowest.severity) && v.seq < lowest.seq)) lowest = v;
+    if (!s.holds.size) {
+      while (s.visible.length >= s.def.maxVisible) {
+        let lowest = null;
+        for (const v of s.visible) {
+          if (v.hold) continue;
+          if (!lowest || stagePriority(v.severity) < stagePriority(lowest.severity)
+            || (stagePriority(v.severity) === stagePriority(lowest.severity) && v.seq < lowest.seq)) lowest = v;
+        }
+        if (!lowest || stagePriority(lowest.severity) >= rank) break;
+        removeRec(s, lowest, { promoteQueue: false });
+        insertQueue(s, lowest);
       }
-      if (!lowest || stagePriority(lowest.severity) >= rank) break;
-      removeRec(s, lowest, { promoteQueue: false });
-      insertQueue(s, lowest);
     }
-    if (s.visible.length < s.def.maxVisible) mount(s, rec);
-    else insertQueue(s, rec);
+    if (!s.holds.size && s.visible.length < s.def.maxVisible) mount(s, rec);
+    else {
+      insertQueue(s, rec);
+      // A queued item owns no DOM seat — pull it off any parent a host pre-attached so
+      // "queued" always means "not on screen" (confirm.js seats its root in the slot first).
+      if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    }
 
     return handleFor(s, rec);
+  }
+
+  /**
+   * Hold a slot's seats: while held, new items queue and nothing promotes. screenManager holds
+   * `dialog` for as long as a station/menu screen is open so a centre dialog raised underneath
+   * waits for the screen to close (G16-03) instead of drawing over it. Releasing promotes.
+   */
+  function hold(name) {
+    const s = slot(name);
+    const token = {};
+    s.holds.add(token);
+    return {
+      get held() { return s.holds.has(token); },
+      release() { if (s.holds.delete(token)) promote(s); },
+    };
   }
 
   /** Release a slot item: the visible head, or the named record. A freed seat promotes the queue. */
@@ -249,7 +285,8 @@ export function createStage(ctx = {}) {
   }
 
   const api = {
-    show, clear, slotEl,
+    show, clear, hold, slotEl,
+    held: (name) => slot(name).holds.size > 0,
     names: () => [...slots.keys()],
     visible: (name) => slot(name).visible.map((r) => r.id),
     queued: (name) => slot(name).queue.map((r) => r.id),
@@ -262,6 +299,7 @@ export function createStage(ctx = {}) {
         }
         s.visible.length = 0;
         s.queue.length = 0;
+        s.holds.clear();
         if (s.flow && s.flow.parentNode) s.flow.parentNode.removeChild(s.flow);
         s.flow = null;
       }
