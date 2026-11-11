@@ -1,3 +1,4 @@
+import { isDetachedCapitalPlate } from '../combat/capitalPlatePersistence.js';
 import {
   saveStoreGeneration as _saveStoreGeneration,
   installSaveStoreWriteTracking,
@@ -1839,7 +1840,10 @@ export const save = {
       // (Held/mid-hold clumps are intentionally NOT serialized: a save is allowed to
       // interrupt the beam — the snagged body resumes its authored life on continue.)
       const gyreBall = !!(e.data && e.data.gyreLaunched);
-      if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id) && !ceresHostileOwners.has(e.id)) continue;
+      // A torn plate is finite physical salvage. Save its current body, not a fresh
+      // recipe from the score's attached:false receipt; keep sector retirement intact.
+      const capitalPlate = isDetachedCapitalPlate(e);
+      if (!isPlayer && !liveProjectile && !gyreBall && !capitalPlate && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id) && !ceresHostileOwners.has(e.id)) continue;
       // Validation metadata for dependent saved cognition, never authority to reuse a live life.
       out.push({ ...plainEntity(e, isPlayer), occupantGeneration: e.occupantGeneration ?? null });
     }
@@ -8544,10 +8548,11 @@ export const save = {
       // class of in-flight damage dealer, and the whole sim (snag/pull/suck guards,
       // sector regen wipe) relies on live bodies never carrying flags.persistent.
       const isGyreBall = !!(spec.data && spec.data.gyreLaunched);
+      const isCapitalPlate = isDetachedCapitalPlate(spec);
       if (!isProjectile && !isGyreBall && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
       // A restored round stays transient: it must not survive sector regeneration outlive its
       // clock, and a repeat save re-admits it through the same live-projectile clause.
-      spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile && !isGyreBall, noInterp: true });
+      spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile && !isGyreBall && !isCapitalPlate, noInterp: true });
       // A saved hostile constraint owner is included by its live attachment, not promoted to a durable actor.
       if(batch?.transientCeresOwners?.has(String(saved.id))&&saved.flags?.persistent!==true)delete spec.flags.persistent;
       if (isProjectile && entityIdRemap) {

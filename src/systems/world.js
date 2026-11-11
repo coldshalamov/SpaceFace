@@ -1,3 +1,4 @@
+import { isDetachedCapitalPlate } from '../combat/capitalPlatePersistence.js';
 import { starterBuoyRecordMarker } from '../missions/starterWorkday.js';
 import {TALLY_THREE} from '../data/tallyThree.js';
 import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
@@ -757,6 +758,19 @@ export const world = {
     // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
     bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
     bus.on('entity:destroyed', (p) => handleMachineTokenDestroyed(this, p || {}));
+    bus.on('entity:destroyed', (p) => {
+      const entity = p?.entity;
+      if (!isDetachedCapitalPlate(entity) || entity.data.capitalPlate.fightId.startsWith('swarm:')) return;
+      // Residency and Continue dispose bodies without consuming the finite source. An
+      // actual lifetime removal (including a fully salvaged plate) closes its world row.
+      if (['sector_residency', 'save_restore', 'run_reset', 'virtualize'].includes(p.reason)) return;
+      // Use the corpse's source identity: its numeric id may already name a new occupant.
+      const recordId = entity.data.worldRecordId;
+      const record = this.state.world.records?.byId?.[recordId];
+      const plate = record?.extra?.capitalPlateSource?.data?.capitalPlate;
+      if (plate?.fightId !== entity.data.capitalPlate.fightId || plate?.plateId !== entity.data.capitalPlate.plateId) return;
+      this.markWorldRecordDestroyed(recordId, { outcome: 'destroyed', pos: entity.pos });
+    });
     bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
     bus.on('save:restoring', () => {
       this._clearAdoptedSalvorApproachState(this.state);

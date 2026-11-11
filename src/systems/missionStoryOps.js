@@ -1536,9 +1536,10 @@ export const missionStoryOps = {
     }
     // Hard leave retires mission-pinned targets explicitly; world correctly refuses to evict them.
     for (const m of this.state.missions.active) {
-      // Cinder is a finite cast, not a respawn quota. Existing mission-pinned/world-record
-      // ownership retains the real survivors; a hard exit is not their destruction.
-      if (authoredCinderRoute(m)) continue;
+      // Cinder and capitals are finite casts, not respawn quotas. Existing persistent,
+      // mission-pinned ownership retains survivors while their encounter is suspended.
+      // A hard exit is not destruction or permission to replenish issued slots.
+      if (authoredCinderRoute(m) || isCapitalBossMission(m)) continue;
       if (m.destSectorId === sectorId && parkSlateCore(this, m)) continue;
       if (m.destSectorId === sectorId && parkMawWorksite(this, m)) continue;
       if (m.needsTargets && m.destSectorId === sectorId) {
@@ -1750,7 +1751,7 @@ export const missionStoryOps = {
       story.flags.foreman_settled = true;
       this.bus.emit('comms:popup', {
         id: `b3_foreman_${m.id}`, sender: 'YARD FEED', category: 'story', ttl: 7, persist: true,
-        text: 'FOREMAN DOWN. The yard ledger closes the feud; the lane is yours by claim and by weld.',
+        text: 'FOREMAN DOWN. The yard ledger closes the feud. The next introductions wait at Helios. Forge can repair your hull; Vesta’s Refuel Depot can fill the tank.',
       });
     } else if (bookScene === 'spine_break') {
       story.flags.spine_break_done = true;
@@ -2716,7 +2717,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'foreman_feud') {
-      popup('YARD FEED', 'The Mirrorjaw Foreman is calling every weld on the lane an unpaid debt. The yard wants the feud settled — one way reads louder.', 7);
+      popup('YARD FEED', 'Vesta Forge. Let the charge lock, cross its line, then work the stern; move before the vent. A Class I line is rated 20t against 180t ballast: brief pulls, early releases. Forge repairs hulls; Refuel Depot has the pump.', 10);
       return true;
     }
     if (scene === 'spine_break') {
@@ -2777,6 +2778,15 @@ export const missionStoryOps = {
     }
     if (hasMawReceiving(offer) && !hasMawReceiving(row)) {
       const fresh = { ...row, brief: offer.brief, params: { ...offer.params } };
+      board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
+      row = fresh;
+    }
+    // A saved unaccepted row keeps its identity and terms, but receives the current
+    // preparation. Never rewrite a live contract or mutate a possibly frozen board row.
+    if (offer.storyTag === 'campaign47a:b3:foreman' && offer.params?.foremanBriefVersion === 1
+        && row.params?.foremanBriefVersion !== 1) {
+      const fresh = { ...row, brief: offer.brief,
+        params: { ...row.params, foremanBriefVersion: 1 } };
       board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
       row = fresh;
     }

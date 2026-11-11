@@ -1,3 +1,4 @@
+import { isDetachedCapitalPlate, isCapitalPlateRecord, captureCapitalPlateSource, capitalPlateSpecFromRecord } from '../combat/capitalPlatePersistence.js';
 import { starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord } from '../missions/starterWorkday.js';
 import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
@@ -734,6 +735,8 @@ export function recordsForSector(bag, sectorId) {
 /** Whether a record should produce a live entity at FULL rematerialize. */
 export function recordShouldRematerialize(rec, tier) {
   if (!rec || rec.alive === false) return false;
+  // Refuse malformed finite plate recipes before world's enemy-spawn shortcut.
+  if (isCapitalPlateRecord(rec) && !capitalPlateSpecFromRecord(rec)) return false;
   if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return false;
   // These finite originals have exact native recipes. Refuse before world's
   // enemyTypeId shortcut can replace a corrupted civic body with an enemy ship.
@@ -862,6 +865,8 @@ function captureSalvorSource(entity, recordId) {
  */
 export function captureEntityRecord(entity, opts = {}) {
   if (!entity) return null;
+  // Swarm salvage belongs to the run/arena, never to a campaign sector record.
+  if (isDetachedCapitalPlate(entity) && entity.data.capitalPlate.fightId.startsWith('swarm:')) return null;
   if (entity.data && entity.data.persistenceOwner != null
     && entity.data.persistenceOwner !== 'worldRecords') return null;
   const sectorId = opts.sectorId
@@ -974,9 +979,11 @@ export function captureEntityRecord(entity, opts = {}) {
     : (d.deactivation !== undefined ? d.deactivation : (previous && previous.deactivation));
   const priorExtra = opts.extra !== undefined ? opts.extra : previous?.extra || null;
   const salvorSource = captureSalvorSource(entity, recordId);
-  let extra = priorExtra;
+  const capitalPlateSource = captureCapitalPlateSource(entity, recordId);
+  // Preserve a damaged versioned recipe as unavailable, never a plausible generic wreck.
+  let extra = capitalPlateSource ? { ...priorExtra, capitalPlateSource } : priorExtra;
   if (salvorSource || priorExtra?.salvorSource) {
-    extra = { ...priorExtra };
+    extra = { ...extra };
     if (salvorSource) extra.salvorSource = salvorSource;
     else delete extra.salvorSource;
   }
@@ -1264,6 +1271,8 @@ export function spawnSpecFromRecord(record) {
     const role = lanternWardActorRoleForRecord(record);
     return role ? lanternWardActorSpec(role, null, record) : null;
   }
+
+  if (isCapitalPlateRecord(rec)) return capitalPlateSpecFromRecord(rec);
 
   if (rec.extra?.salvorSource) {
     const source = rec.extra.salvorSource;
