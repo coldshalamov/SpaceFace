@@ -25,6 +25,7 @@ import { runXpForLevel } from '../core/runState.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
 import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 import { resolveActionLabel } from '../systems/input.js';
+import { swarmOwnedTapMods } from '../systems/playerModifiers.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -581,6 +582,14 @@ export const survivalHud = {
       this._setHidden(dom.earn, true);
     }
 
+    // A01-05: the till's receipts, in the order the run bought them. Text only — no
+    // colour cue is the only channel.
+    const tapMods = swarmOwnedTapMods(st);
+    this._setHidden(dom.mods, !tapMods.length);
+    if (tapMods.length) {
+      this._setText(dom.modsList, tapMods.map((mod) => `${mod.icon} ${mod.name}`).join('  '));
+    }
+
     // PQ-174.06: after a death the readout keeps the cause and the missed telegraph on the
     // glass, beside the LOST word — a death the player cannot read is a bug report.
     if (this._death && dom.death) {
@@ -951,12 +960,22 @@ export const survivalHud = {
     death.hidden = true;
     death.setAttribute('role', 'status');
 
+    // A01-05: the run's bought Tap bottles — icon + name, never colour alone. The row
+    // leaves the glass entirely until the till has sold the run something.
+    const mods = make('div', 'sf-crun__mods', root);
+    mods.hidden = true;
+    mods.setAttribute('aria-label', 'Bought tap modifiers');
+    const modsWord = make('span', 'sf-crun__word', mods);
+    modsWord.textContent = 'MODS';
+    const modsList = make('span', 'sf-crun__modslist', mods);
+
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, hero, intro, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
+      mods, modsList,
     };
     // Rebuilt nodes reuse the same __crunKey values: drop the last-written cache so the first
     // update repaints fresh nodes instead of trusting slots another mount wrote.
@@ -1035,6 +1054,9 @@ export const survivalHud = {
     font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-danger-hot, var(--sf-foe)); }
+  .sf-crun__mods { display:flex; gap:8px; align-items:baseline; }
+  .sf-crun__modslist { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--dp-ink-dim, var(--sf-calm)); }
   /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */
   @media (forced-colors: active) {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
