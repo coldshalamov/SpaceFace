@@ -127,6 +127,10 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // winning the Pit. A cold house emits nothing and opens nothing.
     return (Number(payload.purse) || 0) > 0 ? ['player.won_pit'] : [];
   }
+  if (event === 'band:throwShipStation') {
+    // PL-52: You throw a ship into a station — the Static roasts: "Whoever parked that in the dock: bold."
+    return ['player.throw_ship_station'];
+  }
   if (event === 'player:death') {
     // PL-55: killed by TRAFFIC — a civilian hull, not a hostile. The receipt's killerId
     // still resolves at emit time; the law layer's own civilian test decides "traffic".
@@ -252,6 +256,50 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
+    this._thrownShips = new Map();
+    this._listen('massline:throw', (payload) => {
+      if (!payload || payload.payloadId == null) return;
+      const state = this.state;
+      const entity = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(payload.payloadId)
+        : (Array.isArray(state && state.entityList) ? state.entityList.find((e) => e && e.id === payload.payloadId) : null);
+      if (entity && entity.type === 'ship' && entity.id !== (state && state.playerId)) {
+        const now = Number(state && state.simTime) || 0;
+        this._thrownShips.set(entity.id, now);
+        while (this._thrownShips.size > 16) {
+          this._thrownShips.delete(this._thrownShips.keys().next().value);
+        }
+      }
+    });
+    this._listen('physics:impact', (payload) => {
+      if (!payload || !this._thrownShips || this._thrownShips.size === 0) return;
+      const state = this.state;
+      const now = Number(state && state.simTime) || 0;
+      const aId = payload.aId;
+      const bId = payload.bId;
+      let thrownShipId = null;
+      let otherId = null;
+      if (this._thrownShips.has(aId)) {
+        thrownShipId = aId;
+        otherId = bId;
+      } else if (this._thrownShips.has(bId)) {
+        thrownShipId = bId;
+        otherId = aId;
+      }
+      if (thrownShipId == null) return;
+      const thrownAt = this._thrownShips.get(thrownShipId);
+      this._thrownShips.delete(thrownShipId);
+      if (now < thrownAt || now - thrownAt > 5.0) return;
+      const other = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(otherId)
+        : (Array.isArray(state && state.entityList) ? state.entityList.find((e) => e && e.id === otherId) : null);
+      if (other && other.type === 'station' && !(other.data && other.data.isGate)) {
+        const own = this._ensureState();
+        for (const eventKey of deriveBandEventKeys('band:throwShipStation', {}, state)) {
+          if (BAND_EVENT_KEYS.includes(eventKey)) own.eventKeys[eventKey] = true;
+        }
+      }
+    });
     for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
@@ -264,6 +312,7 @@ export const bandRadio = {
 
   newGame() {
     this.state.bandRadio = defaultBandRadioState();
+    if (this._thrownShips) this._thrownShips.clear();
     this._lastStatusSignature = null;
     this._lastBedSignature = null;
     this._bearingRequestEmitted = false;
@@ -452,6 +501,7 @@ export const bandRadio = {
   },
 
   destroy() {
+    if (this._thrownShips) this._thrownShips.clear();
     for (const unsub of this._unsubs || []) {
       try { unsub(); } catch (_) {}
     }
