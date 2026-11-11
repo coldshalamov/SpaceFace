@@ -142,6 +142,7 @@ function launch(resume) {
       log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
       clearInterval(idleWatch);
       try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+      setTimeout(() => { if (!closed) { closed = true; clearTimeout(timer); finish(0); } }, 30_000);
     }
   }, 30_000);
   child.on('close', () => clearInterval(idleWatch));
