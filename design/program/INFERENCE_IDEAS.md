@@ -1,4 +1,7 @@
 <!-- LIFETIME: VOLATILE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # INFERENCE ideas — directed grunt catalog
 
 Law: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) §0.1. Feelings and inventions live in

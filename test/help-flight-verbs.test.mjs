@@ -8,7 +8,8 @@ import { controlSections } from '../src/ui/screens/help.js';
 import { DEFAULTS } from '../src/systems/input.js';
 
 test('flight help lists travel burn and the five powers from the live binding map', () => {
-  const flight = controlSections({ settings: { controls: {}, gameplay: {} } })
+  const state = { settings: { controls: {}, gameplay: {} }, mode: 'flight', ui: {} };
+  const flight = controlSections(state)
     .find((section) => section[0] === 'Flight');
   assert.ok(flight, 'flight section exists');
   const rows = new Map(flight[1].map((row) => [row[1], row[0]]));
@@ -21,7 +22,13 @@ test('flight help lists travel burn and the five powers from the live binding ma
   for (const gone of ['chargeDetonate', 'chargeThrow', 'dropBomb', 'deployWell', 'deployRepulsor', 'deployMassSeed', 'toggleClearingCone', 'toggleSkimCollector']) {
     assert.equal(rows.has(gone), false, `${gone} is no longer its own row`);
   }
-  assert.ok(DEFAULTS.BINDINGS.travelBurn.includes('F8'));
-  assert.ok(DEFAULTS.BINDINGS.shove.includes('KeyR'));
-  assert.ok(DEFAULTS.BINDINGS.shove.includes('Digit2'), 'the SHOVE hotbar seat is a real binding');
+  // G18-02: the wheel teaches the overflow verbs — they ship unbound, and the sheet says
+  // where they live rather than printing an em-dash.
+  assert.ok(rows.has('contextWheel'), 'the wheel itself has a row');
+  const travelRow = flight[1].find((row) => row[1] === 'travelBurn');
+  assert.match(String(travelRow[2] || ''), /context wheel/, 'travel burn names the wheel');
+  const brakeRow = flight[1].find((row) => row[1] === 'brake');
+  assert.match(String(brakeRow[2] || ''), /context wheel/, 'brake names the wheel');
+  assert.deepEqual(DEFAULTS.BINDINGS.travelBurn, [], 'travel burn ships on the wheel');
+  assert.deepEqual(DEFAULTS.BINDINGS.shove, ['Digit2'], 'the SHOVE hotbar seat is a real binding');
 });

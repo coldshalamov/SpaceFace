@@ -42,6 +42,9 @@ function fixture() {
   const state = createGameState(821);
   state.mode = 'flight';
   state.ui.screenStack = [];
+  // G18-02: cruise moved to the Q context wheel; a saved custom seat on V keeps this test's
+  // tap-edge meaningful and exercises the wheel action's rebind path.
+  state.settings.controls.bindings = { cruise: ['KeyV'] };
   state.playerId = 1;
   state.entities.set(1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 });
   const host = Object.create(input);
