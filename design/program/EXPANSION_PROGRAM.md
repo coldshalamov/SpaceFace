@@ -1,4 +1,7 @@
 <!-- LIFETIME: DURABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # SpaceFace Expansion Program — operating guidelines for the long autonomous build
 
 Goal: raise SpaceFace to A-list 2026 parity in **graphics, animation, VFX, variety and world density**,

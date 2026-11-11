@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # EXPERIENCE PROGRAM — establishing the game, first boot to mastery
 
 Owner direction 2026-10-24: plan the establishment of a game out of this repo,

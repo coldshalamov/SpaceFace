@@ -66,11 +66,14 @@ test('every Adventure-only action resolves to nothing in a live Swarm run', () =
 test('the same Adventure-only actions still resolve normally in Adventure', () => {
   for (const action of ADVENTURE_ONLY) {
     assert.equal(swarmFlightActionAllowed(ADVENTURE, action), true, action);
-    assert.ok(resolveActionCodes(ADVENTURE, action).length > 0, `${action} bound in adventure`);
+    // G18-02: the Adventure verbs carry no keyboard seat — they are wheel slices and
+    // rebindable rows, so an empty code list is correct here, not a broken binding.
+    assert.deepEqual(resolveActionCodes(ADVENTURE, action), [], `${action} ships on the wheel in adventure`);
   }
-  // And Adventure keeps its own defaults: Space stays the Line, Shift stays the boost.
-  assert.ok(resolveActionCodes(ADVENTURE, 'tether').includes('Space'));
-  assert.ok(resolveActionCodes(ADVENTURE, 'boost').some((c) => c.startsWith('Shift')));
+  // And the unified seats hold in Adventure: Space is the boost, the Line is RMB (no key).
+  assert.deepEqual(resolveActionCodes(ADVENTURE, 'boost'), ['Space']);
+  assert.deepEqual(resolveActionCodes(ADVENTURE, 'tether'), []);
+  assert.deepEqual(resolveActionCodes(ADVENTURE, 'contextWheel'), ['KeyQ']);
 });
 
 test('saved rebinds still apply to keys inside the Swarm set', () => {
