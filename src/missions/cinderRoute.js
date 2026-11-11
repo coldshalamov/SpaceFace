@@ -290,6 +290,41 @@ export function cinderFieldReport(m, state) {
   return { cleared, drivenOff, destroyed, consumed, recorded, pending, delivered: a.delivered, text: parts.join(' ') };
 }
 
+// The Line resists separation along its length. A slow tug is not evidence that
+// the load has stopped circling it. This is a readout, never a motion controller
+// or a new intake gate; the booth still weighs the hull's actual absolute speed.
+export function cinderTowMotion(state, hull) {
+  const player = state?.entities?.get(state.playerId);
+  const finite = p => Number.isFinite(p?.x) && Number.isFinite(p?.z);
+  if (!player?.alive || !hull?.alive || !finite(player.pos) || !finite(hull.pos)
+    || !finite(player.vel) || !finite(hull.vel)) return null;
+  const dx = hull.pos.x - player.pos.x, dz = hull.pos.z - player.pos.z;
+  const length = Math.hypot(dx, dz);
+  if (!(length >= 1)) return null;
+  const vx = hull.vel.x - player.vel.x, vz = hull.vel.z - player.vel.z;
+  const motion = {
+    hullSpeed: Math.hypot(hull.vel.x, hull.vel.z),
+    tugSpeed: Math.hypot(player.vel.x, player.vel.z),
+    radialRelativeSpeed: (vx * dx + vz * dz) / length,
+    swingSpeed: Math.abs(vx * dz - vz * dx) / length,
+  };
+  return Object.values(motion).every(Number.isFinite) ? motion : null;
+}
+
+const motionSpeed = n => (Math.ceil(n * 10) / 10).toFixed(1);
+export function cinderTowHandling(state, hull) {
+  const motion = cinderTowMotion(state, hull);
+  if (!motion || motion.hullSpeed <= ROOK_BOOTH.restSpeed) return null;
+  if (motion.swingSpeed > ROOK_BOOTH.restSpeed) return {
+    kind: 'swing', motion,
+    text: `Hull ${motionSpeed(motion.hullSpeed)} WU/s; tug ${motionSpeed(motion.tugSpeed)}; sideways around the tug ${motionSpeed(motion.swingSpeed)}. A stopped tug does not stop a swinging hull. Short reeling can make the swing faster. Use clear space outside the rings; keep your ship clear of the hull when changing pull direction.`,
+  };
+  return {
+    kind: 'approach', motion,
+    text: `Hull ${motionSpeed(motion.hullSpeed)} WU/s; tug ${motionSpeed(motion.tugSpeed)}. Slow the whole tow before the ring. Watch the hull speed, keep clear of the hull when changing pull direction, and make the final approach straight and slow.`,
+  };
+}
+
 function cinderIntakeReason(state, hull) {
   const wanted = isPlayerWanted(state);
   const refusal = 'ROOK REFUSES WHILE WANTED. Preserve this hull and resolve your status through the law. Quiet Line payment is not Rook proof.';
@@ -307,7 +342,10 @@ function cinderIntakeReason(state, hull) {
   const action = wanted ? refusal : check.speed > ROOK_BOOTH.restSpeed ? 'BRAKE THE HULL'
     : check.inZone ? 'Inside and slow enough — hold for Rook' : 'Bring the hull into the ring';
   const displayedSpeed = (Math.ceil(check.speed * 10) / 10).toFixed(1);
-  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}${wanted ? '' : '.'}`;
+  const handling = cinderTowHandling(state, hull);
+  const swing = handling?.kind === 'swing'
+    ? ` SIDEWAYS AROUND TUG ${motionSpeed(handling.motion.swingSpeed)} WU/s; tug ${motionSpeed(handling.motion.tugSpeed)}. Settle the swing outside the rings; do not reel it short.` : '';
+  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}${wanted ? '' : '.'}${swing}`;
 }
 export function cinderRouteFocus(m, state) {
   if (!authoredCinderRoute(m)) return null;
@@ -356,13 +394,14 @@ export function cinderJournalAction(state) {
   const law = !report.delivered && isPlayerWanted(state)
     ? ' Rook refuses delivery while WANTED. Paying a hull price at Quiet Line does not clear that status or file Rook’s proof.' : '';
   const towing = cinderPlayerTow(m, state);
+  const handling = towing ? cinderTowHandling(state, towing) : null;
   const next = report.delivered ? 'Finish the remaining clearances; the booth payment and contract settlement are separate.'
     : towing ? 'Keep the original hull on the Line. Rook buys inside his 100-WU ring at Expanse at 8 WU/s or slower.'
     : report.cleared < 3 ? 'Clear the remaining marked Wasps on the Ashfall approach. Keep one real hull intact for Rook; clearance and delivery can finish in either order.'
     : report.recorded > 0 ? (['Marked Cinder hull — recovery pending', 'Cinder wreck evidence pending'].includes(focus.label) ? focus.reason : 'Track follows the original marked hull at its recorded position. Reattach after Continue; tow it to Rook’s 100-WU ring at Expanse at 8 WU/s or slower.')
     : 'Aftermath evidence is pending. Follow the recorded objective; no replacement hull or loss credit is invented.';
   return { tone: 'primary', label: 'CINDER FIELD REPORT', title: focus.label, missionId: m.id,
-    body: `${report.text} ${next}${law}`,
+    body: `${report.text} ${next}${handling ? ' ' + handling.text : ''}${law}`,
     meta: `${report.cleared}/3 clearances · ${report.delivered ? 'Rook proof filed' : 'Rook proof outstanding'}` };
 }
 
