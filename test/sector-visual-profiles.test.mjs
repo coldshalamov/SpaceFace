@@ -130,6 +130,7 @@ test('way-of-life sectors resolve their own authored rig and key tint', () => {
     ['sector_pallas_drift', 'pallas_drift', 0xd9e6ff, 0x9fb4d8],
     ['sector_sker_haven', 'sker_haven', 0xffb45e, 0xc98d5c],
     ['sector_ceres_belt', 'ceres_belt', 0xf0e2c8, 0xb8a48f],
+    ['sector_dione_lane', 'dione_lane', 0xdfe9ff, 0xc9a06e],
   ];
   for (const [sectorId, profileId, keyColor, fillColor] of cases) {
     const profile = resolveSectorVisualProfile({ id: sectorId });
@@ -243,6 +244,8 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     vesta_forge: { bloomStrength: 0.44, bloomThreshold: 0.94, exposure: 0.95 },
     pallas_drift: { bloomStrength: 0.432, bloomThreshold: 0.96, exposure: 0.94 },
     sker_haven: { bloomStrength: 0.432, bloomThreshold: 0.96, exposure: 0.94 },
+    // dione_lane derives from core and inherits its post block unchanged.
+    dione_lane: { bloomStrength: 0.416, bloomThreshold: 0.98, exposure: 0.96 },
     viscera: { bloomStrength: 0.408, bloomThreshold: 0.88, exposure: 0.91 },
   };
 
