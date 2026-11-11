@@ -59,21 +59,23 @@ try {
       await page.waitForSelector('#cinematic-splash', { state: 'detached', timeout: 6000 }).catch(() => {});
     }
 
-    const confirmBtn = page.locator('.sf-confirm__ok, .sf-confirm__cancel');
-    if (await confirmBtn.count().catch(() => 0)) {
-      await confirmBtn.first().click().catch(() => {});
-      await page.waitForSelector('.sf-confirm', { state: 'detached', timeout: 4000 }).catch(() => {});
+    // The first-run "First light" prompt appears some seconds after load, dims the scene and holds
+    // the game. Answer it with PLAY (shipped settings) whenever it shows, until the sector is ready;
+    // removing its DOM instead (the first version) left the dimmed, held frame in every picture.
+    const deadline = Date.now() + 180_000;
+    let ready = false;
+    while (!ready && Date.now() < deadline) {
+      const ok = page.locator('.sf-confirm__ok');
+      if (await ok.first().isVisible().catch(() => false)) {
+        await ok.first().click().catch(() => {});
+        await page.waitForSelector('.sf-confirm', { state: 'detached', timeout: 4000 }).catch(() => {});
+      }
+      ready = await page.evaluate(() => window.__sfShotReady === true).catch(() => false);
+      if (!ready) await page.waitForTimeout(1000);
     }
-
-    await page.waitForFunction(() => window.__sfShotReady === true, null, { timeout: 180_000 });
-
-    const confirmOverlay = page.locator('.sf-confirm, #sf-confirm-root');
-    if (await confirmOverlay.count().catch(() => 0)) {
-      await page.evaluate(() => {
-        const root = document.getElementById('sf-confirm-root');
-        if (root) root.remove();
-      }).catch(() => {});
-    }
+    if (!ready) throw new Error(`sector ${sectorId} never became ready`);
+    // Let the opening settle (fades, arrival motion) before the picture.
+    await page.waitForTimeout(3000);
 
     const shotPath = join(OUT_DIR, `${sectorId}.png`);
     await page.screenshot({ path: shotPath });

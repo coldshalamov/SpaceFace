@@ -238,7 +238,16 @@ const LAYER_DEFS = [
 // decal edge instead of thinning haze. The new band carries ~0.73 of the gain at that line and
 // eases smoothly to the frame top, so plate structure thins INTO the floor.
 const DUST_DEEP_TONE_GAIN = 0.85;
-const DUST_DEEP_TONE_BRIGHTNESS = 2.2;
+// Owner 2026-11-11 ("too dark, bleak"; lead chose concept A, design/game/look/concepts/): empty space
+// reads as deep indigo, not void. The floor is the palette haze pulled partway toward one shared
+// indigo (keeps each sector's hue), 1.6x brighter than the 2026-11-01 floor.
+const DUST_DEEP_TONE_BRIGHTNESS = 3.6;
+const DUST_DEEP_TONE_INDIGO = new THREE.Color('#141a3c');
+const DUST_DEEP_TONE_INDIGO_MIX = 0.45;
+function deepToneFor(palette, out) {
+  return out.set((palette || PALETTES.EMBER).haze).lerp(DUST_DEEP_TONE_INDIGO, DUST_DEEP_TONE_INDIGO_MIX)
+    .multiplyScalar(DUST_DEEP_TONE_BRIGHTNESS);
+}
 // DUST P3a — deep star floor. Group-local drop of the second (deep) star plane below the
 // shipped STAR_DEPTH plane; see _createStars for why it exists.
 const DEEP_STAR_DROP = 460;
@@ -1350,7 +1359,7 @@ export class SpaceBackground {
     this._tintA = new THREE.Color(1, 1, 1);
     this._tintB = new THREE.Color(1, 1, 1);
     // DUST P3a deep-space floor tone (set per palette in bakeAll; EMBER until the first bake).
-    this._deepTone = new THREE.Color(PALETTES.EMBER.haze).multiplyScalar(DUST_DEEP_TONE_BRIGHTNESS);
+    this._deepTone = deepToneFor(PALETTES.EMBER, new THREE.Color());
     this._starTint = new THREE.Color(1, 1, 1);
     this._sectorTintStart = new THREE.Color(PALETTES.EMBER.emission);
     this._sectorTintTarget = new THREE.Color(PALETTES.EMBER.emission);
@@ -1838,8 +1847,7 @@ export class SpaceBackground {
     this.currentPaletteName = PALETTES[paletteName] ? paletteName : 'EMBER';
     const p = this._paletteColors(this.currentPaletteName);
     // DUST P3a: the deep-space floor follows the sector palette's haze hue.
-    this._deepTone.set((PALETTES[this.currentPaletteName] || PALETTES.EMBER).haze)
-      .multiplyScalar(DUST_DEEP_TONE_BRIGHTNESS);
+    deepToneFor(PALETTES[this.currentPaletteName], this._deepTone);
     const sizes = this.bakeSizes;
     const bakeSeed = (this.skySeed % 100000) * 0.001;
 
