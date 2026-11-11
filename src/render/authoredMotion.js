@@ -24,6 +24,7 @@ import { createPalletJackVisualDriver } from './palletJackVisuals.js';
 import { createMothlightVisualDriver } from './mothlightVisuals.js';
 import { createSecondRinseVisualDriver, isSecondRinse } from './secondRinseVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
 // The contracts layer (motionBank.js) stays simulation-free; this module is the ship-side glue:
@@ -148,9 +149,11 @@ export function createAuthoredClock({ simNow, wallNow } = {}) {
     } else {
       const simDelta = sim - lastSim;
       const wallDelta = wall - lastWall;
+      const wallMs = typeof performance !== 'undefined' ? performance.now() : NaN;
+      const ratio = presentedAdvanceRatio(wallMs);
       // Monotonic forward: a sim reset (new game/sector) never runs clips backwards — the
-      // frozen branch also covers backwards jumps by taking the wall delta instead.
-      clockS += simDelta > 0 ? simDelta : Math.min(Math.max(wallDelta, 0), 0.5);
+      // frozen branch also covers backwards jumps by taking the wall delta scaled by the drawn-world ratio.
+      clockS += simDelta > 0 ? simDelta : Math.min(Math.max(wallDelta * ratio, 0), 0.5);
     }
     lastSim = sim;
     lastWall = wall;
