@@ -55,7 +55,7 @@ import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import { GRAVITY_MARK_STATUS_ID, PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
-import { bombDef } from '../data/bombs.js';
+import { bombDef, resolvedBombDef } from '../data/bombs.js';
 import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
@@ -70,6 +70,7 @@ import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '
 import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
@@ -1207,7 +1208,23 @@ export const fields = {
     return false;
   },
 
-  _deployRadial(state, rt, kind) {
+  /**
+   * One-off Shove of a chosen radius (Swarm drop `big_bang`, src/systems/swarmDrops.js): the SAME
+   * repulsor deploy as the Shove key — emitter, kernel record, phase table, retirement — but at
+   * `radius`, free of the player's cooldown and without starting one. Returns the field id or null.
+   */
+  deployOneOffShove(radius) {
+    const state = this.state;
+    if (!state || !(Number(radius) > 0)) return null;
+    const rt = ensureRuntime(state);
+    this._deployRadial(state, rt, 'repulsor', { radius: Number(radius), free: true });
+    const player = this._player(state);
+    const fieldId = player ? `field_repulsor_oneoff_${state.tick}_${player.id}` : null;
+    return fieldId && rt.deployed[fieldId] ? fieldId : null;
+  },
+
+  _deployRadial(state, rt, kind, opts = null) {
+    const free = !!(opts && opts.free);
     const player = this._player(state);
     if (this._deployBlocked(state, player)) return;
     // The Collector Maw (packet 05) makes Pull a collector with an explicit next action: with a knot
@@ -1236,9 +1253,11 @@ export const fields = {
     // kernel record, in Adventure exactly as in Swarm. Only the collector knot keeps its def.
     const swarmPhases = collector ? null : oneFeelPhaseTable(kind);
     const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
-    const deployCooldownS = swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS;
+    // A01-05 Wide Bore take: power cooldowns read the run ledger's own multiplier.
+    const deployCooldownS = (swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS)
+      * swarmFieldCooldownScale(state);
     const cd = rt.cooldowns[kind] || 0;
-    if (now < cd) {
+    if (!free && now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
       this.bus.emit('fields:deployDenied', { kind, reason: 'cooldown', readyAt: cd });
       // The same SHOVE press set off armed ordnance this tick: the press worked, so no warning.
@@ -1253,6 +1272,10 @@ export const fields = {
     const spec = collector
       ? { ...playerFieldSpec(kind, player, state), durationS: def.durationS }
       : { ...playerFieldSpec(kind, player, state), durationS: deployDurationS };
+    // A01-05 Wide Bore give: the player's own powers reach wider — authored one-off
+    // radii (swarm drops) pass through untouched below.
+    if (Number.isFinite(spec.radius)) spec.radius *= swarmFieldRadiusScale(state);
+    if (opts && opts.radius > 0) spec.radius = opts.radius;
     const cx = spec.center.x, cz = spec.center.z;
 
     // Replacing an empty collector: recall the old emitter first (its cooldown gate passed above).
@@ -1266,7 +1289,7 @@ export const fields = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return;
     advanceEntityIdPastOccupied(state);
-    const fieldId = `field_${kind}_${state.tick}_${player.id}`;
+    const fieldId = free ? `field_${kind}_oneoff_${state.tick}_${player.id}` : `field_${kind}_${state.tick}_${player.id}`;
     const expireAt = now + deployDurationS;
     const emitter = spawnEntity({
       type: EMITTER_TYPE,
@@ -1288,7 +1311,7 @@ export const fields = {
         fieldKind: kind,
         fieldId,
         ownerId: player.id,
-        radius: def.radius,
+        radius: spec.radius,
         expireAt,
         collector: collector || undefined,
       },
@@ -1313,13 +1336,13 @@ export const fields = {
           // receipt; _applySwarmDeployedPhases rewrites strength/damping each force pass.
           swarmFeelPhases: swarmPhases || undefined,
           baseStrength: spec.strength, baseDamping: spec.damping || 0 };
-    rt.cooldowns[kind] = now + deployCooldownS;
+    if (!free) rt.cooldowns[kind] = now + deployCooldownS;
     rt.lastDenial = null;
 
     this.bus.emit('fields:deployed', collector
       ? { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt, collector: true }
-      : { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt });
-    this._emitDeployCue(kind, cx, cz, def.radius);
+      : { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: spec.radius, expireAt });
+    this._emitDeployCue(kind, cx, cz, spec.radius);
     if (kind === 'well') this._pullMarkLockedTarget(state, player, cx, cz, def.radius, fieldId);
     if (collector) this._knots.publish(state, true);
     // CV-EAR: no generic UI confirm here — each power's own deploy voice arrives via the
@@ -3126,13 +3149,13 @@ export function readFieldFamily(input, shell) {
   for (let i = 0; i < cloudCount; i++) {
     const bomb = _goo[i];
     const data = bomb.data;
-    const def = bombDef(data.bombId);
+    const def = resolvedBombDef(data);
     const field = def.field;
     const envelope = bombFieldEnvelope(now, data.fieldStartedAt, field.durationS, field.endStrength ?? 1);
     let overlap = 0;
     for (let j = 0; j < _goo.length; j++) {
       const other = _goo[j];
-      const otherRadius = bombDef(other.data.bombId).radius;
+      const otherRadius = resolvedBombDef(other.data).radius;
       const dist = Math.hypot(other.pos.x - bomb.pos.x, other.pos.z - bomb.pos.z);
       if (bombSurfaceFalloff(dist, 0, otherRadius) > 0) overlap++;
     }
