@@ -2855,6 +2855,11 @@ export function vitalsFigures(defeat) {
  * The results grid's 'Abandoned' row predates this and is pinned by its own test.
  */
 export function resultTitle(result) {
+  // C01-01 — clearing the Pit's own course is the design's win: the Pit is yours. A Circuit
+  // journey clears a different contract and keeps its own title.
+  if (result && result.outcome === 'victory' && result.ruleset === SWARM_RULESET && !result.circuit) {
+    return 'THE PIT IS YOURS';
+  }
   if (result && result.outcome === 'victory') return 'Arena Cleared';
   if (result && result.stopReason === 'player_retired') return 'Run Retired';
   if (result && result.stopReason === 'wave_plan_failed') return 'Arena Failed';

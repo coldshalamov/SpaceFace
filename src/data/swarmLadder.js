@@ -25,7 +25,6 @@
 // result; this module only ever sees plain facts.
 
 import {
-  SWARM_BOSS_EVERY,
   SWARM_BOSS_FIRST,
   SWARM_WAVE_MAX,
   swarmPlanBlock,
@@ -68,8 +67,9 @@ export function swarmZoneFor(wave) {
     cycle,
     name: base + romanSuffix(cycle),
     startWave: index * SWARM_ZONE_LENGTH + 1,
-    // The champion's authored wave in this zone: 5, 15, 25, ... (SWARM_BOSS_FIRST/EVERY).
-    bossWave: SWARM_BOSS_FIRST + index * SWARM_BOSS_EVERY,
+    // The zone's champion wave: 5, 15, 25 — the mid-zone boss. With two champions a zone
+    // under the every-fifth cadence, the zone stride is the zone length, not the boss cadence.
+    bossWave: SWARM_BOSS_FIRST + index * SWARM_ZONE_LENGTH,
   };
 }
 
@@ -276,8 +276,8 @@ export function swarmLadderZonesCleared(startWave, lastClearedWave) {
   if (last < start) return [];
   const firstZone = swarmZoneIndexFor(start);
   // A zone is cleared when its authored champion falls inside the clear span, not when the
-  // tenth round does: the first champion is wave 5, then every tenth.
-  const lastZone = Math.floor((last - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY);
+  // tenth round does: the first champion is wave 5, then one a zone (5, 15, 25).
+  const lastZone = Math.floor((last - SWARM_BOSS_FIRST) / SWARM_ZONE_LENGTH);
   const out = [];
   for (let z = firstZone; z <= lastZone; z++) out.push(z);
   return out;

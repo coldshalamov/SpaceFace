@@ -1112,6 +1112,11 @@ export const survivalResults = {
         recentCauses: run.style && Array.isArray(run.style.recentCauses) ? run.style.recentCauses.slice() : [],
       },
     };
+    // C01-01 — the whole line's sim duration, so a win's record time is measured on the
+    // same clock the fight ran on (never wall time).
+    result.durationS = this._runStartSimTime != null
+      ? Math.max(0, result.endedAt.simTime - this._runStartSimTime)
+      : null;
     const challenge = challengeFromRun(run);
     result.ruleset = challenge.ruleset;
     result.trialId = challenge.trialId;

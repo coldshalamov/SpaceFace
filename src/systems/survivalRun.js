@@ -935,6 +935,12 @@ export const survivalRun = {
   },
 
   _requestCleanupExit(run) {
+    // C01-01 — clearing the Pit's last round IS the win: no armory and no bench stand between
+    // the Forge Regent's fall and the results screen.
+    if (isSwarmRuleset(run && run.ruleset) && this._isLastWave(run)) {
+      this._requestTransition('cleanup', 'victory', REASON_ACT_COMPLETE);
+      return;
+    }
     // A swarm run takes its CARD FIRST on a wave that is both. `draft -> refit` is a legal edge,
     // so a wave-10 stop is draft then bench rather than a bench instead of the draft the player
     // came for. The arc keeps its own shape: there, wave 10 has always been a bench and nothing
@@ -979,7 +985,7 @@ export const survivalRun = {
 
   _isLastWave(run) {
     const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
-    // A swarm run has no victory screen to reach. It ends when you die, and only then.
+    // C01-01 — the Pit is finite: clearing round thirty wins the run.
     if (isSwarmRuleset(run && run.ruleset)) return wave >= SWARM_WAVE_MAX;
     if (isEndlessRuleset(run && run.ruleset)) return wave >= SURVIVAL_ENDLESS_WAVE_MAX;
     if (isBossCircuitRuleset(run && run.ruleset)) return wave >= SURVIVAL_BOSS_CIRCUIT_LENGTH;

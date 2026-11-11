@@ -45,8 +45,8 @@ export const SWARM_SCHEMA_VERSION = 2;
 /** Legacy timed-plan compatibility. Current Swarm plans complete their finite cohort instead. */
 export const SWARM_WAVE_DURATION_TICKS = 3600;
 
-/** No authored ceiling. Matches SURVIVAL_ENDLESS_WAVE_MAX so the phase machine has one cap idiom. */
-export const SWARM_WAVE_MAX = 999;
+/** C01-01 — the Pit is a finite course: thirty rounds, and the Forge Regent holds the last one. */
+export const SWARM_WAVE_MAX = 30;
 
 /**
  * Every round opens the cash armory. Every tenth also opens the refit/extraction bench.
@@ -54,9 +54,9 @@ export const SWARM_WAVE_MAX = 999;
 export const SWARM_DRAFT_EVERY = 1;
 export const SWARM_REFIT_EVERY = 10;
 
-/** S14 — the first boss arrives at wave 5 with the build still warm, then every tenth
- *  after (15, 25, ...): a Dreadnought on top of a (reduced) swarm. */
-export const SWARM_BOSS_EVERY = 10;
+/** The design's cadence: the first champion arrives at wave 5, then every fifth round —
+ *  5, 10, 15, 20, 25 and the Forge Regent's own wave 30 (12_SWARM_THE_PIT). */
+export const SWARM_BOSS_EVERY = 5;
 export const SWARM_BOSS_FIRST = 5;
 
 /**
@@ -694,10 +694,50 @@ function swarmEscalatedBoss(row, cycle) {
   };
 }
 
+/**
+ * C01-01 — the Pit's authored course: which champion holds which boss round, in the design's
+ * own order (12_SWARM_THE_PIT). Ids resolve against SWARM_BOSS_ROTATION; a missing row falls
+ * back to the closest course champion still present in the data.
+ */
+const SWARM_COURSE_BOSSES = new Map([
+  [5, 'iron_maw'],
+  [10, 'corsair_wing'],
+  [15, 'mirrorjaw_foreman'],
+  [20, 'yardmaster'],
+  [25, 'the_anvil'],
+  [30, 'forge_regent'],
+]);
+
+function swarmBossRowById(id) {
+  return SWARM_BOSS_ROTATION.find((row) => row && row.id === id) || null;
+}
+
+/**
+ * The champion an authored course wave fields: its own row when the data carries it, otherwise
+ * the nearest course wave's champion that still exists — round 30's rule exactly.
+ */
+function swarmCourseBossFor(w) {
+  const authored = SWARM_COURSE_BOSSES.get(w);
+  const row = authored ? swarmBossRowById(authored) : null;
+  if (row) return row;
+  let best = null;
+  let bestDistance = Infinity;
+  for (const [wave, id] of SWARM_COURSE_BOSSES) {
+    const candidate = swarmBossRowById(id);
+    if (!candidate) continue;
+    const distance = Math.abs(wave - w);
+    if (distance < bestDistance) { best = candidate; bestDistance = distance; }
+  }
+  return best || SWARM_BOSS_ROTATION[0] || null;
+}
+
 /** Which champion a boss wave fields. Non-boss waves have none. */
 export function swarmBossFor(wave) {
   const w = swarmWaveOf(wave);
   if (!isSwarmBossWave(w)) return null;
+  if (SWARM_COURSE_BOSSES.has(w)) return swarmCourseBossFor(w);
+  // Past the authored course — unreachable while the Pit caps at thirty — the rotation clock
+  // still answers, so a raised cap never has to rebuild this function.
   const step = Math.max(0, Math.floor((w - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY));
   const row = SWARM_BOSS_ROTATION[step % SWARM_BOSS_ROTATION.length];
   const cycle = Math.floor(step / SWARM_BOSS_ROTATION.length);
@@ -716,7 +756,7 @@ export const SWARM_CHAMPION_LEAD_WAVES = 3;
  * wave names the fight on the field). Returns the rotation row exactly as swarmBossFor
  * resolves it — the cycle numeral and wrap escort ride along — plus the `wave` it lands on
  * and the `distance` out, so a preview speaks without redoing the wrap math. Null past the
- * last legal boss wave: there is no champion beyond wave 990 to promise.
+ * last legal boss wave: there is no champion beyond wave 30 to promise.
  */
 export function swarmNextBossFor(wave) {
   const w = swarmWaveOf(wave);
@@ -769,7 +809,7 @@ export function swarmWaveOf(wave) {
 
 export function isSwarmBossWave(wave) {
   const w = swarmWaveOf(wave);
-  return w >= SWARM_BOSS_FIRST && w % SWARM_BOSS_EVERY === SWARM_BOSS_FIRST;
+  return w >= SWARM_BOSS_FIRST && (w - SWARM_BOSS_FIRST) % SWARM_BOSS_EVERY === 0;
 }
 
 export function isSwarmDraftWave(wave) {
