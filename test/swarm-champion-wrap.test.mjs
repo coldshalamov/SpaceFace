@@ -39,10 +39,13 @@ test('every course champion is the authored first-pass row — no cycle, no nume
     assert.equal(planFor(wave).swarm.bossCycle, 0, `wave ${wave} plan rides pass zero`);
   }
   assert.equal(swarmBossFor(7), null, 'an ordinary wave fields no champion');
-  // Past the edge the clamped answer is still the authored first pass — never a wrap.
-  const deep = swarmBossFor(45);
-  assert.equal(deep.id, 'forge_regent');
-  assert.equal(deep.cycle, undefined, 'the clamp wears no cycle either');
+  // C01-03: past the win the deep course resumes on the old clock — a champion every tenth
+  // round (45 is no champion row), and the wrap's first pass lands Iron Maw II at wave 150.
+  assert.equal(swarmBossFor(45), null, 'a deep non-decade round fields no champion');
+  const wrap = swarmBossFor(150);
+  assert.equal(wrap.id, 'iron_maw', 'the second pass opens where the rotation began');
+  assert.equal(wrap.cycle, 1, 'wave 150 wears the first wrap');
+  assert.equal(wrap.label, "Dreadnought 'Iron Maw' II");
 });
 
 test('the numeral ladder reads the pass — II on the second, VIII at the ceiling', () => {

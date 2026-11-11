@@ -30,10 +30,9 @@ Read in this order: this page → `PLAYBOOK.md` (how the work runs, the four pro
 
 ## 2. Jobs in flight at the checkpoint
 
-| Packet | Worker | State at checkpoint |
-|---|---|---|
-| C01-03-keep-going | devin3 | started 04:25; if no `fleet(C01-03)` commit exists, re-run it |
-| PLANT-NEXT | flash | running; check `git log` for a `plant:` commit and the plant list for a `CLAIMED flash` row with no `SHIPPED` (reset it to `OPEN`) |
+None. C01-03 keep-going landed (0e0cb5d0; Swarm suite back to the 30 known reds) and Flash's last
+plant landed (PL-01, 89470617). Note: Flash and Devin sometimes keep running after they commit — give
+every run a `--timeout-min`.
 
 ## 3. What landed this session (all on master)
 

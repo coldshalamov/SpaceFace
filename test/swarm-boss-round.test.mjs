@@ -60,10 +60,13 @@ test('the champion rotation walks the thirty-round course — capital rows are t
       );
     }
   }
-  // The course ends at thirty — deeper indices clamp onto the final champion, never a wrap.
+  // C01-03 — past the win the deep clock answers with its own rows: 35 is an ordinary
+  // round again and the decade mark re-opens the rotation on its fourth row, no cycle.
   const deep = swarmPlan(35);
-  assert.equal(deep.swarm.bossId, 'forge_regent', 'past the course the final champion answers');
-  assert.equal(deep.swarm.bossCycle, 0, 'no cycle numeral rides the clamped row');
+  assert.equal(deep.swarm.boss, false, 'a deep ≡5-mod-10 round plans an ordinary room');
+  const decade = swarmPlan(40);
+  assert.equal(decade.swarm.bossId, 'corsair_wing', 'the deep decade fields its authored row');
+  assert.equal(decade.swarm.bossCycle, 0, 'the first deep pass wears no numeral');
 });
 
 test('the opening chaff is pure ammunition — light pursuer roles only', () => {

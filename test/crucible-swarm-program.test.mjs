@@ -293,11 +293,19 @@ test('every hull launches bare, a bad hull refuses, and the code round-trips it'
 test('swarm events validate, draw deterministically, and leave boss rounds to the boss', () => {
   const issues = validateSwarmEvents();
   assert.deepEqual(issues, [], issues.join('; '));
-  // C01-01: every fifth round is a champion now — no major event round exists inside or
-  // past the course. The minor band (≡2,8 mod 10, non-boss) deals the only cards.
+  // C01-03: through the win every fifth round is a champion so the course deals no majors;
+  // past it the ≡5-mod-10 deep rounds are real non-champion rows and the major band deals
+  // again — wave 35 is the first card it hands back.
   for (let wave = 1; wave <= 40; wave++) {
     const draw = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
-    assert.equal(draw, null, `wave ${wave} has no major event round`);
+    const majors = wave > 30 && wave % 10 === 5;
+    if (!majors) {
+      assert.equal(draw, null, `wave ${wave} has no major event round`);
+    } else {
+      assert.ok(draw && SWARM_EVENT_BY_ID[draw.id], `wave ${wave} deals a real major card`);
+      const again = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
+      assert.equal(again.id, draw.id, `wave ${wave} is seeded-stable`);
+    }
     const minor = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
     if (isSwarmMinorEventWave(wave)) {
       assert.ok(minor && SWARM_EVENT_BY_ID[minor.id], `wave ${wave} draws a real minor card`);
