@@ -80,6 +80,12 @@ ${SL} > .k-stage__foot.sf-save-ledger {
 @media (min-width:521px) and (max-height:460px) {
   ${SLD} .sf-save-portrait > .sf-ledger-line > .sf-portrait-standing { -webkit-line-clamp:1; }
 }
+/* 641–680 tall from 791 wide (the shared sheet's one-entry-per-line record): a war save's STANDING sentence ran to
+   a second line and pushed SAVE HERE / DELETE 3–4px under BACK (LOAD over EXPORT at 1024×660). One line here; the
+   whole reading stays in the node's text and its title. */
+@media (min-width:791px) and (min-height:641px) and (max-height:680px) {
+  ${SLD} .sf-save-portrait > .sf-ledger-line > .sf-portrait-standing { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; }
+}
 /* ≥1500 × ≤460 and 791–1499 × ≤420, a house save: STANDING back in its own two-up cell (one line), so the record keeps master's three rows */
 @media (min-width:1500px) and (max-height:460px), (min-width:791px) and (max-width:1499px) and (max-height:420px) {
   ${SLD} .sf-save-portrait > .sf-ledger-line:has(> .sf-portrait-standing[data-entity]) > .sf-ledger-k { grid-column:auto; padding-left:8px; }
