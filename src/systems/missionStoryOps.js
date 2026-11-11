@@ -1,5 +1,5 @@
 import { isSlateCore, snapshotSlateCore, restoreSlateCore, retireSlateCore, parkSlateCore, materializeSlateAftermath, validSlateAftermath } from '../missions/slateCoreWorksite.js';
-import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
+import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite, hasMawReceiving, retireMawWorksite, materializeMawAftermath, validMawAftermath, mawHandlingRead } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { isSpineBreakOperation } from '../missions/spineBreakWorksite.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
@@ -1086,7 +1086,7 @@ export const missionStoryOps = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
-    if (retireSlateCore(this, m)) return;
+    if (retireSlateCore(this, m) || retireMawWorksite(this, m)) return;
     if (retainCinderRetry(this, m)) return;
     if (m?.storyTag === 'campaign47a:b1:infested' && m.params?.furnaceWorksiteVersion === 1) {
       // Ecology owns these living actors and its permanent clearance ledger. Settlement
@@ -1440,6 +1440,7 @@ export const missionStoryOps = {
     if (!sectorId) return;
     materializeFurnaceAftermath(this, sectorId);
     materializeSlateAftermath(this);
+    materializeMawAftermath(this);
     // Clearance and delivery are separate legs: completed kill quota must not suppress pods.
     for (const mission of this.state.missions.active || []) {
       if (authoredFurnaceWorksite(mission)) syncFurnaceWorksite(this, mission);
@@ -1510,6 +1511,8 @@ export const missionStoryOps = {
     }
     if (this.state.missions.slateCoreAftermath && sectorId === this.state.missions.slateCoreAftermath.destSectorId)
       parkSlateCore(this, this.state.missions.slateCoreAftermath);
+    if (this.state.missions.mawWorksiteAftermath && sectorId === this.state.missions.mawWorksiteAftermath.destSectorId)
+      parkMawWorksite(this, this.state.missions.mawWorksiteAftermath);
     // PQ-019C: mark the run BEFORE any continuous-handoff early-return below. `entity:destroyed` is
     // the generic "left the world" event, so without this a player who simply flew out of Tethys
     // would be told the capsule was destroyed rather than lost. See heistMissionRuntime.onSectorExit.
@@ -1741,7 +1744,7 @@ export const missionStoryOps = {
       story.flags.maw_fed = true;
       this.bus.emit('comms:popup', {
         id: `b3_maw_${m.id}`, sender: 'LANE TRAFFIC', category: 'story', ttl: 7, persist: true,
-        text: 'The maw leaves the reactor approach stunned and off the lane. It will den somewhere it can afford to be hungry.',
+        text: hasMawReceiving(m) ? 'Ceres traffic has logged the Maw at the exterior receiver. It still drifts; keep clear. Next is the Foreman at Vesta Forge. Refuel at Ceres before departure.' : 'The maw leaves the reactor approach stunned and off the lane. It will den somewhere it can afford to be hungry.',
       });
     } else if (bookScene === 'foreman_feud') {
       story.flags.foreman_settled = true;
@@ -2704,6 +2707,10 @@ export const missionStoryOps = {
       popup('SLATE', 'Ceres yard needs that slag core. Keep it on the line or sling it clean. After the drop, I\u2019ll tally each strain spike on your tether.', 8);
       return true;
     }
+    if (scene === 'feed_the_maw' && hasMawReceiving(inst)) {
+      popup('CERES TRAFFIC', `Three marked 40t hot-slag pods, three solid hits. ${mawHandlingRead(this.state)} Then latch the 120t Maw and move it east to the exterior receiver: within 80 WU, below 18 WU/s. Lost pods void this detail.`, 10);
+      return;
+    }
     if (scene === 'feed_the_maw') {
       popup('CERES TRAFFIC', 'A Furnace maw blocks the old refinery approach. Three marked hot-slag pods are staged beside it. Latch and swing or sling each pod into the maw hard enough for a solid hit, then tow the stunned body to Ceres yard. Lost pods void the detail.', 7);
       return true;
@@ -2761,12 +2768,17 @@ export const missionStoryOps = {
     const registryOffer = offer.storyTag === 'campaign47a:b2:elroy' && offer.type === 'bounty_hunt';
     if ((authoredCinderRoute(offer) || registryOffer) && departedStationId !== offer.stationId) return false;
     const board = this.ensureBoard(offer.stationId);
-    const row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
+    let row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
     if (!row) return false;
     // Refresh only the unaccepted board row, never an already active legacy job.
     if (isSlateCore(offer) && !isSlateCore(row)) {
       row.brief = offer.brief;
       row.params = { ...offer.params };
+    }
+    if (hasMawReceiving(offer) && !hasMawReceiving(row)) {
+      const fresh = { ...row, brief: offer.brief, params: { ...offer.params } };
+      board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
+      row = fresh;
     }
     return this.acceptMission(row.id);
   },
@@ -2804,6 +2816,7 @@ export const missionStoryOps = {
     delete state.missions.cinderRetry;
     delete state.missions.furnaceWorksiteAftermath;
     delete state.missions.slateCoreAftermath;
+    delete state.missions.mawWorksiteAftermath;
     delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
@@ -2969,6 +2982,7 @@ export const missionStoryOps = {
     });
     snapshotFurnaceAftermath(this);
     if (m.slateCoreAftermath) snapshotSlateCore(this, m.slateCoreAftermath);
+    if (m.mawWorksiteAftermath) snapshotMawWorksite(this, m.mawWorksiteAftermath);
     const serialized = {
       boards: m.boards, active, completedLog: m.completedLog, receipts: normalizeMissionReceipts(m.receipts),
       nextId: m.nextId, config: m.config || MISSION_TUNING,
@@ -2976,6 +2990,7 @@ export const missionStoryOps = {
     };
     if (m.furnaceWorksiteAftermath) serialized.furnaceWorksiteAftermath = m.furnaceWorksiteAftermath;
     if (m.slateCoreAftermath) serialized.slateCoreAftermath = JSON.parse(JSON.stringify(m.slateCoreAftermath));
+    if (m.mawWorksiteAftermath) serialized.mawWorksiteAftermath = JSON.parse(JSON.stringify(m.mawWorksiteAftermath));
     if (m.cinderRetry) serialized.cinderRetry = JSON.parse(JSON.stringify(m.cinderRetry));
     if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
@@ -3031,11 +3046,17 @@ export const missionStoryOps = {
     const state = this.state;
     restoreFurnaceAftermath(this, data.furnaceWorksiteAftermath);
     delete state.missions.slateCoreAftermath;
+    delete state.missions.mawWorksiteAftermath;
     if (isSlateCore(data.slateCoreAftermath) && data.slateCoreAftermath.status === 'completed'
         && data.slateCoreAftermath.params?.slateReceipt?.missionId === data.slateCoreAftermath.id) {
       const aftermath = JSON.parse(JSON.stringify(data.slateCoreAftermath));
       restoreSlateCore(aftermath);
       if (validSlateAftermath(aftermath)) state.missions.slateCoreAftermath = aftermath;
+    }
+    if (hasMawReceiving(data.mawWorksiteAftermath) && data.mawWorksiteAftermath.status === 'completed') {
+      const aftermath = JSON.parse(JSON.stringify(data.mawWorksiteAftermath));
+      restoreMawWorksite(aftermath);
+      if (validMawAftermath(aftermath)) state.missions.mawWorksiteAftermath = aftermath;
     }
     if (authoredCinderRoute(data.cinderRetry)) state.missions.cinderRetry = JSON.parse(JSON.stringify(data.cinderRetry));
     else delete state.missions.cinderRetry;

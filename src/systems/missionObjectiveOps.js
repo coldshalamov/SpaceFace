@@ -1,6 +1,6 @@
 import { isSlateCore, slateCoreAtReceiver, prepareSlateReceipt } from '../missions/slateCoreWorksite.js';
 import { registryWritContact, registryWritCustody, registryWritForce } from '../missions/registryWrit.js';
-import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
+import { isMawWorksite, acceptMawImpact, loseMawBody, hasMawReceiving, mawAtReceiver, prepareMawReceipt } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
@@ -2344,6 +2344,7 @@ export const missionObjectiveOps = {
 
   _entityAtStoryDestDock(entity, m) {
     if (isSlateCore(m)) return slateCoreAtReceiver(this, m, entity);
+    if (hasMawReceiving(m)) return mawAtReceiver(this, m, entity);
     if (!entity || !entity.pos) return false;
     const station = this._storyDestStation(m);
     if (!station || !station.pos) return false;
@@ -2390,7 +2391,7 @@ export const missionObjectiveOps = {
       if (rows.length) this._sayStoryLine(`Still owed: ${rows.join('; ')}.`, 5);
       return false;
     }
-    if (!prepareSlateReceipt(this, m, method)) return false;
+    if (!prepareSlateReceipt(this, m, method) || !prepareMawReceipt(this, m, method)) return false;
     m.params = m.params || {};
     m.params.completionMethod = method;
     if (isCampaign47aB2Rescue(m)) {
@@ -2642,6 +2643,12 @@ export const missionObjectiveOps = {
         m.params.slateCore.handled = true;
         this._sayStoryLine('Slate: Bring it 110 WU west to the receiving beacon. Within 70 WU, below 18 WU/s. Keep the line or release it clean.', 8);
       }
+      if (hasMawReceiving(m) && m.params.mawStuns === 3
+          && m.params.mawBodies?.[0]?.entityId === target.id
+          && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
+        m.params.mawHandledAfterStun = true;
+        this._sayStoryLine('Ceres traffic: receiving beacon east of the worksite. Within 80 WU, below 18 WU/s. Short pulls, early release. Keep clear of its drift.', 8);
+      }
       m.params.latchedRole = role;
       m.params.latchedTargetId = p.targetId;
       this._refreshTrackedMissionNav(m);
@@ -2769,7 +2776,7 @@ export const missionObjectiveOps = {
         }
         delete m._extrasAnnounced;
         this._sayStoryLine(m.params.mawStuns >= m.params.mawStunsNeeded
-          ? 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.'
+          ? (hasMawReceiving(m) ? 'Three hits logged. Latch the 120t Maw, then move it east to the exterior receiving beacon. Class I needs brief pulls and early releases.' : 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.')
           : `The maw shudders — stun ${m.params.mawStuns}/${m.params.mawStunsNeeded}.${isMawWorksite(m) ? ' Use another marked hot-slag pod.' : ''}`, 6);
         this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id });

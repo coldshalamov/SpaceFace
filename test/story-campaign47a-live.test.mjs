@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { hasMawReceiving, mawReceivingLayout } from '../src/missions/mawWorksite.js';
 import { isSlateCore, slateCoreLayout } from '../src/missions/slateCoreWorksite.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -259,6 +260,21 @@ function completeSpineSetPiece(h, mission) {
       .map((id) => h.state.entities.get(id))
       .find((entity) => entity && entity.data && entity.data.physicalRole === role);
     assert.ok(target, `${mission.type} needs ${role}`);
+    if (hasMawReceiving(mission)) {
+      // Adapter fixture, not native piloting: stage the new physical receiving gate
+      // after the three finite impacts above. The earned public-input route is separate.
+      h.bus.emit('tether:latched', { sourceId: h.state.playerId, targetId: target.id });
+      target.pos = { ...mawReceivingLayout().receiver };
+      target.vel = { x: 19, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'active', 'fast Maw arrivals cannot settle');
+      target.vel = { x: 0, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'completed', 'handled Maw settles at the exterior receiver');
+      assert.equal(mission.params.mawReceipt.mass, 120);
+      assert.equal(target.alive, true, 'Maw recovery retains the live body');
+      return;
+    }
     if (isSlateCore(mission)) {
       // Adapter fixture only: authenticate the player event and supply physical receiver
       // state. Actual flight, towing and earned line handling are separate route proofs.
