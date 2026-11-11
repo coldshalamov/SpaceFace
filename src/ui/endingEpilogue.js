@@ -12,7 +12,7 @@ import { SECTORS } from '../data/sectors.js';
 import { contestedSectorForPair } from '../data/conflictZones.js';
 import { localizeText } from '../localization/sourceText.js';
 
-const STYLE_ID = 'sf-ending-epilogue-style';
+import { getStage } from './stage.js';
 const DEFER_MS = 240;
 
 const CONSEQUENCE_BY_ID = Object.freeze({
@@ -113,76 +113,15 @@ function canRestoreFocus(el) {
   return !!el && el.isConnected !== false && !el.disabled && typeof el.focus === 'function';
 }
 
-function injectStyles() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-    .sf-ending-epilogue {
-      position: fixed; inset: 0; z-index: 2800; display: grid; place-items: center;
-      padding: clamp(18px, 4vw, 64px); box-sizing: border-box; pointer-events: auto;
-      color: #edf6ff; background:
-        radial-gradient(circle at 50% 38%, rgba(39, 91, 121, .18), transparent 44%),
-        rgba(3, 7, 13, .96); animation: sf-ending-epilogue-in .42s ease-out both;
-    }
-    .sf-ending-epilogue[data-ending-kind="continuation"] {
-      background: radial-gradient(circle at 50% 38%, rgba(88, 111, 128, .13), transparent 44%), rgba(3, 7, 13, .96);
-    }
-    .sf-ending-epilogue__panel {
-      width: min(760px, 100%); max-height: min(760px, 92vh); overflow: auto;
-      padding: clamp(26px, 5vw, 58px); box-sizing: border-box;
-      border: 1px solid rgba(105, 205, 236, .42); border-inline-width: 0;
-      background: linear-gradient(180deg, rgba(10, 20, 30, .84), rgba(5, 11, 19, .72));
-      box-shadow: 0 32px 90px rgba(0, 0, 0, .58); text-align: left;
-    }
-    .sf-ending-epilogue__eyebrow,
-    .sf-ending-epilogue__section-title {
-      margin: 0; font-family: var(--mono, monospace); text-transform: uppercase;
-      letter-spacing:.06em; color: #76d9f3;
-    }
-    .sf-ending-epilogue__eyebrow { font-size: 12px; margin-bottom: 14px; }
-    .sf-ending-epilogue__title {
-      margin: 0; max-width: 18ch; font-family: var(--mono, monospace); font-size: clamp(30px, 6vw, 62px);
-      line-height: .98; letter-spacing: .025em; font-weight: 650; text-wrap: balance;
-    }
-    .sf-ending-epilogue__resolution {
-      margin: 22px 0 0; max-width: 58ch; color: #c9d7e3; font-size: clamp(15px, 2vw, 19px); line-height: 1.55;
-    }
-    .sf-ending-epilogue__rule { width: 72px; height: 1px; margin: 30px 0; background: #76d9f3; opacity: .75; }
-    .sf-ending-epilogue__sections { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-    .sf-ending-epilogue__section-title { font-size: 12px; margin-bottom: 9px; color: #89a9bc; }
-    .sf-ending-epilogue__section-copy { margin: 0; color: #e1ebf2; font-size: 14px; line-height: 1.55; }
-    .sf-ending-epilogue__record { grid-column: 1 / -1; }
-    .sf-ending-epilogue__record .sf-ending-epilogue__section-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
-    .sf-ending-epilogue__objective-name { display: block; margin-bottom: 5px; color: #76d9f3; }
-    .sf-ending-epilogue__dismiss {
-      margin-top: 34px; min-height: 42px; padding: 9px 18px; border: 1px solid rgba(118, 217, 243, .72);
-      border-radius: 3px; background: rgba(33, 107, 130, .12); color: #dff8ff;
-      font: 12px var(--mono, monospace); letter-spacing:.06em; cursor: pointer;
-    }
-    .sf-ending-epilogue__dismiss:hover { background: rgba(52, 158, 190, .2); }
-    .sf-ending-epilogue__dismiss:focus-visible { outline: 3px solid #f5c35b; outline-offset: 4px; }
-    @keyframes sf-ending-epilogue-in {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @media (max-width: 620px) {
-      .sf-ending-epilogue__sections { grid-template-columns: 1fr; gap: 20px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .sf-ending-epilogue { animation: none; }
-      .sf-ending-epilogue *, .sf-ending-epilogue *::before, .sf-ending-epilogue *::after {
-        transition: none !important; animation: none !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
 
-export function createEndingEpilogue({ bus, state, root, isBlocked } = {}) {
-  const mount = root || document.getElementById('ui-root');
+export function createEndingEpilogue({ bus, state, root, stage, isBlocked } = {}) {
+  // G16-02: the scrim seats inside the Stage's dialog slot (the screens host — the same tier
+  // it always held); the injected sheet retired to styles/ui.css. A caller-supplied root or a
+  // host without the Stage keeps the old mount.
+  const live = stage || (typeof getStage === 'function' && getStage());
+  const slot = live && typeof live.slotEl === 'function' ? live.slotEl('dialog') : null;
+  const mount = root || slot || document.getElementById('ui-root');
   if (!mount) throw new Error('ending epilogue requires #ui-root');
-  injectStyles();
 
   let active = null;
   let pending = null;
