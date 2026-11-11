@@ -230,11 +230,6 @@ export function createFreightLaneDirector(ctx) {
       source: FREIGHT_OWNER,
       maxSpeed: FREIGHT_SERVO.maxSpeed,
     });
-    // Kinematic mirror for harnesses with no native owner (and the intent record).
-    if (member.vel && typeof member.vel === 'object') {
-      member.vel.x = wantX;
-      member.vel.z = wantZ;
-    }
   }
 
   function _releaseMember(state, member, rec, reason) {
@@ -266,10 +261,6 @@ export function createFreightLaneDirector(ctx) {
     const dv = want - alongN;
     queuePhysicsImpulse(body, { x: px * dv * mass, z: pz * dv * mass },
       { tag: 'freight_shove', externalEffect: true });
-    if (body.vel && typeof body.vel === 'object') {
-      body.vel.x += px * dv;
-      body.vel.z += pz * dv;
-    }
   }
 
   function _crushEntity(state, member, target, rec) {
@@ -464,6 +455,22 @@ export function createFreightLaneDirector(ctx) {
         }
       }
       emit('freight:clear', { stringId: rec.id, t: simTimeOf(st), reason });
+    }
+    // Save/load mid-string: the director's records do not persist but the container bodies may.
+    // Any freight body the live records do not own is an orphan; retire it with the room.
+    const list = st && Array.isArray(st.entityList) ? st.entityList : null;
+    if (list) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (e && e.alive !== false && e.data && e.data.roomOwner === FREIGHT_OWNER && e.data.freightString != null) {
+          e.alive = false;
+          emit('entity:retired', {
+            id: e.id, occupantGeneration: e.occupantGeneration, type: e.type,
+            pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null,
+            reason: `freight-${reason}`, owner: FREIGHT_OWNER, simTime: simTimeOf(st),
+          });
+        }
+      }
     }
     strings = [];
     armed = null;

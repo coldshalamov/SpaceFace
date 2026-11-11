@@ -91,11 +91,17 @@ function boot() {
     // Headless integrator: the SG-02 owner would apply the mirrored velocity and the
     // queued impulses; here we do both and keep receipts for the assertions.
     for (const e of state.entityList) {
+      const cmd = consumePhysicsCommand(e);
+      if (e && e.alive !== false && cmd && cmd.control && e.data && e.data.freightString != null) {
+        // Stand-in for the dynamic body owner: integrate the servo force it would apply.
+        const m = Math.max(1, e.mass || 1);
+        e.vel.x += (cmd.control.force.x / m) * DT;
+        e.vel.z += (cmd.control.force.z / m) * DT;
+      }
       if (e && e.alive !== false && e.data && e.data.freightString != null) {
         e.pos.x += (e.vel && e.vel.x || 0) * DT;
         e.pos.z += (e.vel && e.vel.z || 0) * DT;
       }
-      const cmd = consumePhysicsCommand(e);
       if (cmd && cmd.impulses && cmd.impulses.length) {
         const mass = Math.max(1, e.mass || (e.physicsBody && e.physicsBody.mass) || 1);
         for (const imp of cmd.impulses) {
@@ -332,4 +338,16 @@ test('the same seed produces identical freight outcomes', () => {
   assert.deepEqual(w1, w2, 'warning timetable is identical for the same seed');
   assert.deepEqual(d1, d2, 'departures are identical for the same seed');
   assert.deepEqual(p1, p2, 'container positions are bit-identical for the same seed');
+});
+
+test('orphaned freight bodies (a load mid-string) are retired when the room re-arms', () => {
+  const h = boot();
+  try {
+    h.tickUntil(22);
+    const members = h.freightMembers();
+    assert.equal(members.length, FREIGHT_STRING_COUNT);
+    // Simulate the director losing its records (load): a fresh install must not leave them driving nowhere.
+    survivalArena._freight.arm({ arenaId: 'not_the_foundry' });
+    assert.equal(h.freightMembers().length, 0, 'orphan containers retired');
+  } finally { h.destroy(); }
 });
