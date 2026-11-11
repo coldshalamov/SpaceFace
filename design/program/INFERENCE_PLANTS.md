@@ -41,6 +41,7 @@ or does not.
 | PL-101 | **The far berth.** Cut the dock queue under boost and every horn behind you holds down; the dock berths you at the far pier. Cut in twice more and the pier is chalked with your tag — the walk is yours now | Queue like the rest; or own the joke and the exercise | DRAFT 2026-11-11 |
 | PL-102 | **Mistaken.** Park dead-still in a lane for a minute, lamps off. A patrol sweeps you with its lamp and taps your hull twice. Play dead through it and the recovery tug clamps on and tows you in as a wreck | Wave a lamp and be on your way; or ride the tow in and explain yourself at the dock | DRAFT 2026-11-11 |
 | PL-103 | **The bus does not move.** Shove Late Benny's bus mid-route: it sways and holds course, and the whole route hears *"We leave when we leave."* Shove it at a stop and one passenger pod rolls loose | Hand the pod up at the next stop; or keep it — the passenger talks from your hold, all day | DRAFT 2026-11-11 |
+| PL-127 | **Litter.** Ditch cargo in a lane and it stays put; traffic files round it on open radio — *"Whose?"* Ditch three in a day and the sweep bill finds you at the next dock | Go back for it; or leave it and pay the sweep | DRAFT 2026-11-11 |
 
 ## B. Secrets
 
@@ -80,6 +81,9 @@ or does not.
 | PL-105 | Tethys | The standoff. Where the two halves' queues merge at the border gate, one Customs ship and one Pitborn ship end up nose to nose — every shift, neither yielding | Shove them apart and both halves honk thanks; or nudge your side's ship through, and the other half closes ranks on you for a week | DRAFT 2026-11-11 |
 | PL-106 | Sker | The parts sled. A scrapper on a sled works the Chop Line all day, catching what the claws drop. Take a part out of the air and the sled shadows you through the market till Market Night — bids run low with it there | Let the sled eat; or steal from a sled and haggle under its witness | DRAFT 2026-11-11 |
 | PL-107 | Ceres | The empty slot. A barge misses its number and the whole shift circles the Rock an extra lap rather than re-count. Lead the barge home and the mouth flashes thanks; slide into its slot yourself and the board counts you in — mouth right-of-way included | Return it; or fly as barge nine for a day, and Dessa Kroll reads the board twice | DRAFT 2026-11-11 |
+| PL-128 | Helios | The surge. At the shift horn every ship in the harbor moves at once for a full minute. Hold still in the middle and the whole harbor parts round you; cut across the flow and the tugs box you into a berth you did not pick | Be still and watch; or cut the flow and take the berth they give you | DRAFT 2026-11-11 |
+| PL-129 | Vesta | Somebody's crate. The furnace door opens on a rhythm. A frozen lump through on the beat and the next pour runs a shade brighter; a whole crate through and the yard PA answers: *"That was somebody's crate."* The dock bill agrees | Feed it lumps; or feed it cargo and pay for the brightness | DRAFT 2026-11-11 |
+| PL-130 | Vesta | The stamp. The stamping hammer hits once a plate. Get any part of yours under it and the part comes back Vesta-stamped, official, forever | Stamp your parts; or stamp a stolen one and watch Customs hold it up to the light | DRAFT 2026-11-11 |
 
 ## D. Chance meetings (anywhere)
 
@@ -103,6 +107,9 @@ or does not.
 | PL-108 | **Moving house.** A tug with a family's whole life strapped on takes a turn too hard and a chair comes loose. Hand it back: *"Take the chair. Just the chair."* | Keep the chair; or Line the whole rack off, and be chased across two sectors, sadly, on open radio | DRAFT 2026-11-11 |
 | PL-109 | **His own fault.** A hotshot boosts past you, clips your wing and tumbles off ahead: *"My boost. My fault."* | Tow them upright for a trade; or strip the wreck while they watch, and be held at the next gate on the strength of their radio | DRAFT 2026-11-11 |
 | PL-110 | **Still even.** Pass Juno Castellane head-on anywhere and she flashes her lamps once. The third time, a hail: *"Still even."* | Flash back; or shove her once, and the next three jobs you eye are done before you dock | DRAFT 2026-11-11 |
+| PL-131 | **The broken toll.** A raider with a dead gun holds up traffic with a hand-painted sign: TOLL. It is not going well for them | Pay for the story; fly through for free; or take a lame ship apart, and hear about it on every dock that week | DRAFT 2026-11-11 |
+| PL-132 | **The dark stretch.** A lone hauler with one lamp hails you to fly beside them through the dark. At the far end: *"Didn't feel so far."* — and a unit of cargo, tipped | Fly the stretch; or peel off whenever — they make it, this time | DRAFT 2026-11-11 |
+| PL-133 | **The shadow pilot.** A brand-new pilot latches onto your wake and copies everything: your line, your route, your parking. Dock, and they dock behind you, badly | Fly well, and in three towns meet a pilot who flies well; fly like a maniac, and meet that instead | DRAFT 2026-11-11 |
 
 ## E. Lane Nine — Static reports what you did
 
@@ -123,6 +130,9 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-111 | You beat the recovery tug to a wreck | *"Today, the tug came second."* | DRAFT 2026-11-11 |
 | PL-112 | You ride the Plume | *"Heard the Plume had a passenger."* | DRAFT 2026-11-11 |
 | PL-113 | You settle Tolliver's whole list at a dock | *"Kind Regards reports all square. Suspicious."* | DRAFT 2026-11-11 |
+| PL-134 | Your yard's lamp is lit for the first night | *"New light in the belt. Somebody's home."* | DRAFT 2026-11-11 |
+| PL-135 | You crack the Ceres Bell | *"Bell sounds different. Nobody's saying who."* | DRAFT 2026-11-11 |
+| PL-136 | You win three races in one day | *"Somebody get that rope a licence."* | DRAFT 2026-11-11 |
 
 ## F. In the Pit
 
@@ -140,6 +150,7 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-70 | **Had enough.** The last enemy of a round, if it is small, runs for a gate | Let it go. It comes back at the next boss wearing a scarf, with a name | OPEN |
 | PL-114 | **Sponsorship.** Between rounds a banner drone circles the floor. Throw it into the lane and the freight takes its banner — the next Wasp through wears it, blind. Kiln: *"The sponsors are thrilled."* | Do it on purpose; the blind one charges someone | DRAFT 2026-11-11 |
 | PL-115 | **Lit up.** In Lights Out, anything crossing the lane's amber lights shows for a second — thrown rocks, Quiet Ghosts | Fight on the lane; or lead them across the amber and see them first | DRAFT 2026-11-11 |
+| PL-137 | **Bad magnet.** A Magnet drop pulls every piece of Scrap on the floor to you — plus the nearest live barrel. Kiln: *"Tidy. Careful."* | Bank it all; or steer, quickly | DRAFT 2026-11-11 |
 
 ## G. Street life at the outposts and waystations
 
@@ -162,6 +173,12 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-118 | Veil | Pips counts. Pips paces you along the buoy line, counting aloud, always right. Passing you: *"Two."* | Count your own ships; or come back with a passenger pod and hear *"Three."* | DRAFT 2026-11-11 |
 | PL-119 | Eunomia | The red minute. A seal flare goes red in the Graves and every cutter within sight stops dead for a full minute, lamps steady. Cut during the minute and every one of those lamps finds you | Wait it out with them; or work a claimed wreck in the hush | DRAFT 2026-11-11 |
 | PL-120 | Sedna | The reading. After dark Dustwife Senna reads the names of the lost, one lamp hung for each. One night, without looking up, she hangs one and reads yours | Sit the night out; or leave Sedna a while — when you come back, she is past it | DRAFT 2026-11-11 |
+| PL-138 | Proteus | Two ropes. Deep Colm's winch groans against its catch and loses: *"Pull!"* Anchor your stern behind him and it comes up on two lines — and the Well pulls back once, hard, to see who's new | Hold, and be hailed first next time; or let go early, and the Well is quiet for a day | DRAFT 2026-11-11 |
+| PL-139 | The Bolus | The shelf. Leave anything against the wall on the inhale; on the exhale it sits flush in the wall, kept. Leave it too long and it is part of the road | Take it back on the exhale, on the Line; or start a row of things you meant to keep | DRAFT 2026-11-11 |
+| PL-140 | Haumea | Glass pays. Calve a shard on the Pulse and Mr. Glass buys it off your rope on the spot. Miss the pulse and it is glitter — he buys glitter by the handful, cheap | Calve big; calve wrong; or ring a shard off the rift wall and hear *"Don't."* | DRAFT 2026-11-11 |
+| PL-141 | Eris | Three-count. Wait out one beam beside Sabine's rock and she counts you across: *"One. Two."* Then a mark chalked for you on the waiting rock — you are one of the counters now | Cross on her count, safe; or cross early, and your mark gets crossed out | DRAFT 2026-11-11 |
+| PL-142 | Nyx March | Twice. Flash once at Lark as she passes lights-off and she flashes back, once. Flash twice, and something further off answers — twice, both times you try it | Stick to once; or keep trying twice, and start mapping who answers | DRAFT 2026-11-11 |
+| PL-143 | Triton | The good patch. Fly into Triton dented and Hanne Brandt has the patch on before you've docked: *"Patches and tea. That's the list."* Other patchers click their tongues at her work | Come back dented often; or ask what the tea is for — she pours you one instead of answering | DRAFT 2026-11-11 |
 
 ## H. The world reacts, part two
 
@@ -180,6 +197,8 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-121 | **Your berth.** Dock in the same berth five times running and the dockhand chalks your tag on the post and shoos strangers out of it | Be a regular; or sleep one night in a chalked berth that is not yours — the morning tow is gentle, the look is not | DRAFT 2026-11-11 |
 | PL-122 | **Red at home.** Come home wanted and your own berth's lamp burns red. Dock dark if you like: *"Saw nothing."* | Pay at the window; or keep flying dark, and he keeps seeing nothing | DRAFT 2026-11-11 |
 | PL-123 | **Someone's course.** Planted anchors dot a lane in a pattern that is plainly a swing line, and the builder watches from a rock with a timer | Run it clean and get the nod; or cut one anchor loose — the builder collects the pieces, and your description | DRAFT 2026-11-11 |
+| PL-144 | **Ducklings.** Tow anything big and small skiffs tuck in behind it for the slipstream, one by one | Let them ride, and one leaves a part at the far end; or shove them off — they take the long way, and so, now, do you | DRAFT 2026-11-11 |
+| PL-145 | **Freight manners.** Hold at a beacon and let three strings through and the fourth flashes you across first. Never yield, and the strings close ranks — every crossing becomes a fight you started | Yield; or make an enemy of the timetable | DRAFT 2026-11-11 |
 
 ## I. Secrets, part two
 
@@ -196,6 +215,19 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-124 | **The parked light.** Beat the light on the Tethys bypass three times, and one night it waits at the far end, dark, beside a small cairn of parts | Take one — it flashes once as you do; take them all, and the next run is not a race | DRAFT 2026-11-11 |
 | PL-125 | **Under the paint.** A scrape deep enough for the repair bay turns up a scratch under your hull's paint, older than your registration: 12.4 | Have it buffed out — it comes back with the next deep scrape; or leave it. It was there first | DRAFT 2026-11-11 |
 | PL-126 | **Keeping it.** Wear the lost hat past Benny's bus and he looks at it a long while: *"Keeping it, then."* Hand it back and it rides on the dash, in the window, every route | Keep it; or give it up, and always know where the bus is | DRAFT 2026-11-11 |
+
+## J. The yard — street life on your own rock
+
+| ID | What happens | What the player can do | State |
+|---|---|---|---|
+| PL-146 | **The first caller.** In the yard's first week a hauler you never hired calls at night, takes on ore, and leaves a lamp burning on your rock: *"Saw your light."* | Leave the lamp lit, and the calls come weekly; snuff it, and the next call is a long time coming | DRAFT 2026-11-11 |
+| PL-147 | **The first part.** The works' first part comes out one size wrong, stamped with your yard's number. It fits nothing you own | Keep it; or scrap it — the works only knows the one size | DRAFT 2026-11-11 |
+| PL-148 | **The count.** Before the first raid, a fast skiff flies your yard's perimeter at night, once, lamps off | Let it count; or Line it — the pilot ejects, the skiff is yours, and the raid comes early | DRAFT 2026-11-11 |
+| PL-149 | **Which way it leans.** The seedling on your rock leans a little more each day, always the same way: out, toward the dark | Follow the lean, one day; or ignore it — it grows anyway | DRAFT 2026-11-11 |
+| PL-150 | **Its spot.** One turret you place drifts back, overnight, to the first spot you ever set it, whatever you tow it to | Give it the spot; or keep moving it — it goes home anyway, dragging its base | DRAFT 2026-11-11 |
+| PL-151 | **No papers.** Once the works makes parts, a hail on a private channel offers to buy the lot, unlogged: *"No papers. Better price."* | Sell dark, and watch honest haulers give your lane a miss; or refuse, and the hail comes back weekly, polite | DRAFT 2026-11-11 |
+| PL-152 | **The tally.** Lose a raid and they take a module — and leave one of their own behind, wrecked on your rock. Inside, a chalked list of yards, and yours is on it | Keep the wreck as proof; or feed it to the works, and the list burns with it | DRAFT 2026-11-11 |
+| PL-153 | **The minute.** Every shift change your drill head stops dead for one minute, whatever it is in the middle of | Be there for the minute; the drill taps twice, like the rest of the Rock | DRAFT 2026-11-11 |
 
 ## Suggestions
 
