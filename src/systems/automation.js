@@ -78,6 +78,8 @@ import {
   insertDressingRow,
   markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const compareStableId = (left, right) => {
@@ -3331,7 +3333,7 @@ export const automation = {
     const hrs = (elapsed / 3600).toFixed(1);
     if (credited > 0 || cycles > 0 || lost > 0 || distressed) {
       this.bus.emit('toast', {
-        text: `While away (${hrs}h): earned +${credited} cr over ${cycles} production runs${lost ? `, ${lost} asset${lost === 1 ? '' : 's'} lost` : ''}`,
+        text: `While away (${hrs}h): earned +${credited} cr over ${cycles} production runs${lost ? `, ${counted(lost, 'asset', 'assets')} lost` : ''}`,
         kind: 'info',
         ttl: 6,
       });

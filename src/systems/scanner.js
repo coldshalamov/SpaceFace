@@ -81,6 +81,8 @@ import {
   liveEntityById,
   resolveEntitySelection,
 } from '../ui/sim/stableSelection.js';
+import { counted } from '../core/numberFormat.js';
+
 
 /**
  * The live body a signal record still points at. A record written with `entityStable` resolves
@@ -1190,11 +1192,17 @@ export const scanner = {
       const entity = slice[i];
       const result = tickGhostEscape(entity, state, now);
       if (result.escaped) {
+        // fix-ghost-escape-pos: the sim despawns the escaped ghost, so the consumer's entity
+        // lookup usually misses and the melt honestly skipped. The last recorded position is
+        // the truth — stamp it into the receipt at emit time.
+        const px = Number(entity && entity.pos && entity.pos.x);
+        const pz = Number(entity && entity.pos && entity.pos.z);
         this.bus.emit('scanner:ghostEscaped', {
           entityId: entity.id,
           reason: result.reason || 'beyond_escape_range',
           distance: result.distance,
           simTime: now,
+          ...(Number.isFinite(px) && Number.isFinite(pz) ? { pos: { x: px, z: pz } } : {}),
         });
       }
     }
@@ -1522,7 +1530,7 @@ export const scanner = {
       if (resonanceSignal) {
         const response = resonanceObeliskResponse(scanCount);
         record.classification = 'RESONANCE OBELISK';
-        record.detail = `Pulse interval ${response.pulseIntervalS.toFixed(1)} s. ${scanCount} scan${scanCount === 1 ? '' : 's'} logged; Vael watch cadence target ${response.patrolIntervalS} s.`;
+        record.detail = `Pulse interval ${response.pulseIntervalS.toFixed(1)} s. ${counted(scanCount, 'scan', 'scans')} logged; Vael watch cadence target ${response.patrolIntervalS} s.`;
         record.resonance = response;
         if (own.completed[candidate.id]) {
           record.status = 'investigated';

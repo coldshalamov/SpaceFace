@@ -4,6 +4,8 @@
 import { hash32 } from '../core/rng.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { RUBRIC as C, RUBRIC_TRUTH as T } from '../data/rubric.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 export const finiteXZ = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.z);
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -180,7 +182,7 @@ export function truthLine(facts, seedBase = 1) {
   if (facts.ageSeconds != null) {
     const mins = Math.floor(facts.ageSeconds / 60);
     if (facts.ageSeconds >= SIM_DAY_S) parts.push(fill(pick(T.ageDays, seed, 'a'), { n: Math.floor(facts.ageSeconds / SIM_DAY_S),
-      unit: Math.floor(facts.ageSeconds / SIM_DAY_S) === 1 ? 'day' : 'days' }));
+      unit: Math.floor(facts.ageSeconds / pluralWord(SIM_DAY_S), 'day', 'days') }));
     else if (mins >= 1) parts.push(fill(pick(T.ageMinutes, seed, 'a'), { n: mins }));
     else parts.push(T.ageFresh);
   }

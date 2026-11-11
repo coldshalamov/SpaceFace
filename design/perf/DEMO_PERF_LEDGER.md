@@ -252,6 +252,130 @@ Verification after these changes: `check:playable` 18/18; `check:sim` and `check
 and witness reruns are invalid while the shared host is above ~70 % CPU (it reached 87 % from
 another agent's session).
 
+## Picture, present clock and gate truth (2026-11-08)
+
+Three audits kept this from being called optimal. What changed:
+
+- **The Auto/High-performance picture is no longer a quality cut.** `particleQuality` is **medium**
+  (the authored mid sky tier; the source's own measurement says mid holds 60 fps on this iGPU and
+  the frame is submission-bound) and `sharpen` is **false** at native raster. The legacy unsharp was
+  left over from the 0.75-scale posture and doubled with CAS on any dyn-res dip.
+- **CAS ignores sub-pixel fractional footprints.** `resolveCasSharpenActive` floors the CSS×DPR
+  footprint, so a 1600×900 buffer against 1600.5×900.5 never reads as an upscale; a full-pixel
+  deficit still does.
+- **VFX, camera follow, feel and UI advance on the presented interval**, not the rAF callback dt.
+  At a 30 Hz cap on 60 Hz the callback dt is 16.7 ms while the picture cadence is 33.3 ms; the old
+  wiring ran cosmetics at 0.5× wall speed (0.25× at 120 Hz) while the snapshot world ran at 1×.
+  `state.render.lastPresentDtMs` is now the presented interval too.
+- **Receipt-lane content changes keep settled obstacle geometry.** A caption/toast text or
+  show/hide no longer clears the measured rects; only a layout/settings invalidation does. The
+  busy-lane safety tick re-places against the last measurement and still loses to a real one.
+- **The hitch gate reports the picture and the worker lane.** `probe-runtime-witness` now records
+  `picture` (native buffer vs CSS×DPR, renderScale, dynRes, relief level, contentScale, CAS state,
+  bloom depth, particle/sky tier, sharpen, cap) and `lane` (apply max, >100 ms applies, freeze
+  state, last-reply fold/reconcile/events); `report.md` prints both. The stress gate also records
+  the parent chain and material identity of any post-warmup program link.
+
+Latest quiet-host stress gate (20 s warm-up, 30 s sample, 1280×720 headed): **pass**, p50 16.67 /
+p95 33.3 / p99 33.39, **0 app-owned >50 ms**, 6 **scheduler-only** >50 ms, **0** post-warmup program
+events. Two earlier runs of the same gate each caught one illustrated-surface program link at
+~3.6–3.8 s (roughness-map-only material, 4 anonymous meshes) — a mid-flight traffic family that
+its admission did not warm. The identity instrumentation above is in place; treat that link as
+probabilistic and unresolved, not fixed by the passing run.
+
+Two quiet-host normal-flight witnesses after the telemetry landed (`native-posture-3/4`, 20 s of
+flight each) now name the remaining tail instead of leaving it as "admission/apply 200 ms":
+
+- Picture: buffer **1832×973 at CSS 1466×779 @1.25** — native; `renderScale 1`, `dynRes 0.90`
+  with **CAS sharpen active**, `hitchRelief 0`, bloom route with 2 levels, particles **medium**,
+  sky **mid**, sharpen false, cap 30. Presentation p95 **24.4 / 25.8 ms** (budget 33.3).
+- Worker lane: no freeze episodes, command-in-flight 0. The only apply over 100 ms in each run is
+  the **opening scene reply** (`game:newGame`, `game:scenePrepared`, `sector:enter`, 101 spawns;
+  apply 122–125 ms, of which **106–118 ms is `sector:enter` replay**). Mid-flight replies fold in
+  0.6–7.1 ms and reconcile in <0.1 ms; no mid-flight apply over 100 ms was observed.
+- The witness report now prints `picture` and `worker lane` (apply max, slow-reply split, slow
+  replay events, reply mode), so an apparent "200 ms admission/apply" must name the mode before it
+  is treated as a flight hitch.
+
+### Cold family-less rock program (2026-11-08)
+
+The probabilistic post-warmup program link was not a new ship: the owners were live
+`Asteroid_652/653/654` meshes sharing one `MeshStandardMaterial` with a roughness map and no
+albedo map. A non-common rock built before its generated family maps decode keeps the procedural
+tint/noise material (`visualFactory.astMaterial`, no `:fam` key). The family-ready warm built a
+leaf group from the *decoded* family materials, so the old procedural program was never linked and
+paid the whole illustrated-surface link on its first draw in flight.
+
+Fix: tag that material (`spacefaceFamilylessRock`) and re-skin every live/prewarm rock onto the
+decoded family in `_runRockFamilyDecodeRewarm` before its paced compile. The same rock now also
+wears the intended base-colour/normal/emissive maps instead of the noise fallback. Focused proof:
+`test/rock-family-library.test.mjs` (pre-decode tag → decode → one swap → idempotent; plus the
+renderer wiring assertion). `test/rock-surface-library.test.mjs` also had a pre-existing brittle
+regex pinned to `async () =>` after the opener gained an `options` argument; the contract is
+unchanged and the assertion now names the real signature.
+
+### Content 1:1, composed captures, and the presented-hold gate (2026-11-08)
+
+The visual audit separated “native buffer” from “native picture”: the drawing buffer was 1832×973
+while the scene ran at 0.9 content (1649×876) and CAS reconstructed it, with no measured cadence
+win. That cut is gone:
+
+- `COMBINED_READABILITY_FLOOR` is **1**. The Auto/30 fps posture keeps `dynResScale 1`,
+  `contentScale 1`, `casSharpenActive false`; the hitch governor still stops at post-FX level 2
+  and never drops raster.
+- The witness publishes `picture.contentNative` (scene scale ≥0.999, content scale ≥0.999, no CAS
+  upscale) and returns a **soft-picture** failure for a native buffer with sub-native content.
+  `report.md` prints `content: 1:1` or `content: NOT 1:1 (...)`.
+- Composed `t00-composed.png` / `t-final-composed.png` captures keep the HUD, so legibility and the
+  final post chain are reviewed together. The first composed frame shows the mission tracker, the
+  speed/energy stack, radar and prompt deck legible at 1:1.
+
+The hitch audit's residual class — a presented-world hold with normal rAF cadence — is now a
+first-class number. `presentationRunner` records `lastPresentedGapMs`, `maxPresentedGapMs`,
+`presentedGapsOver100`, the current `heldPresentMs` streak, `maxHeldPresentMs`, and a small ring of
+completed `heldPresentEpisodes` (wall ms). A repeated presented moment while time advances is
+wall-time held, not just a duplicate frame. The witness fails **world-hold** above 100 ms
+(first→last delta), and `check-hitch-budget` fails the sample on any presented gap ≥100 ms or a
+repeated-moment hold >100 ms, using episode wall times so a new hold smaller than an earlier max
+cannot hide.
+
+The stress gate is now fail-closed and auditable: it waits for `authoredUpgradeDiagnostics.activeJobs`
+(not only the queue's `pending/running`) before starting the sample, fails `p95` above the cadence
+budget, records every unexpected spike separately from the top-20 list, snapshots the authored job at
+spike time instead of serializing its later mutation, keeps unresolved program additions as audit
+evidence, records host CPU busy, and refuses a ≥70% window.
+
+## Tether-route truth and the generic frame cliff (2026-11-08)
+
+The per-frame frame-truth trace changes the diagnosis. On the ordinary tether spin, before the
+heartbeat/stand-in work:
+
+- presented frames: **6.8 fps**; present p50 **68 ms**, p95 **106 ms**, max **341 ms**;
+- simulation advanced **0.33 s per wall second**;
+- **zero** fence-pin episodes >80 ms. The “locations frozen while animation continues” is not a
+  fence pin: at 70–140 ms frames the world pose updates only when a frame finally presents, while
+  CSS animation and asteroid tumble keep their own clocks.
+
+After the presentation heartbeat and coarse-tier stand-in:
+
+- presented frames **~10 fps**; sim rate **0.50×**; present p50 **65 ms**, p95 **94 ms**, max
+  **136 ms** (the 341 ms freeze is gone);
+- the pending-ship stand-in family disappeared from the draw census (LOD2 instead of the LOD0
+  primitive pile);
+- `bloomScene` (the whole world draw) p95 **31 ms**, avg 21.6 — the remaining frame cost.
+
+The worker’s own per-system profile on the stress route (host-contended, so absolute values are
+inflated; shares are the signal): step p50 **23.6 ms** / p95 **36.6**; physics **5.8 ms/tick**
+(25%), tacticalAI **4.35 ms** (18%, p95 9.7), npcJobsRuntime **2.0 ms** (8%), flight 1.7,
+world/traffic 0.7 each; the rest spread across ~20 systems. `NEAR_CLOCK_IDS` is not a lower
+cadence — near systems still run every 60 Hz primary tick; only catch-up steps skip them.
+
+The draw census normalized by family (`Asteroid_#`, `GLTFKit_StaticGroup_#`) shows the render tail
+is **per-part ship/wreck meshes** (`GLTFKit_StaticGroup_*` 1.2k calls, `Retro_*` 1.35k, LOD hook/
+nav/canopy parts ~1k over the window), VFX ~660, background ~480 — not one broken object. The
+illustrated-surface per-ship uniforms keep those hull surfaces out of the retained batch, so each
+part is its own draw. This is the E7 retained-batch/material-uniform problem, not a quality setting.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.
