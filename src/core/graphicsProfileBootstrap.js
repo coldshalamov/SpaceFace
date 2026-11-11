@@ -5,6 +5,7 @@
 export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
 export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
+export const ONE_SET_OF_KEYS_VERSION = 1;
 export const AUDIO_DEFAULT_MUTE_VERSION = 2;
 export const GAME_MOTION_DEFAULT_VERSION = 1;
 export const SHADOWS_DEFAULT_VERSION = 1;
@@ -45,6 +46,44 @@ export function migrateLegacyMasslineBindingProfile(settings) {
   }
   controls.bindings = bindings;
   controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
+  return settings;
+}
+
+// G18-02 "one set of keys": values a MIGRATION (never a player) wrote into controls.bindings
+// under the pre-unified layout. Stripping exactly these restores "this player never rebound
+// anything" — an empty remainder reads the new stock table, everything else is a real remap.
+const MIGRATION_WRITTEN_BINDINGS = Object.freeze({
+  tether: Object.freeze(['Space', 'KeyF']),
+});
+
+function sameCodeSet(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  return sa.every((code, i) => code === sb[i]);
+}
+
+/**
+ * One-time move onto the G18-02 defaults. A player who never rebound anything carries either no
+ * bindings or only the migration-written seats above — both become "no overrides" once, so the
+ * unified table (Space boost, RMB the Line, overflow on the Q wheel) applies. Any real remap
+ * keeps the whole map: a player's saved bindings are sacred and are never rewritten here.
+ */
+export function migrateOneSetOfKeysProfile(settings) {
+  if (!isPlainObject(settings)) return settings;
+  if (!isPlainObject(settings.controls)) settings.controls = {};
+  const controls = settings.controls;
+  if (typeof controls.oneSetOfKeysVersion === 'number'
+    && controls.oneSetOfKeysVersion >= ONE_SET_OF_KEYS_VERSION) return settings;
+  const bindings = isPlainObject(controls.bindings) ? controls.bindings : null;
+  if (bindings) {
+    for (const action of Object.keys(bindings)) {
+      const written = MIGRATION_WRITTEN_BINDINGS[action];
+      if (written && sameCodeSet(bindings[action], written)) delete bindings[action];
+    }
+    controls.bindings = Object.keys(bindings).length ? bindings : null;
+  }
+  controls.oneSetOfKeysVersion = ONE_SET_OF_KEYS_VERSION;
   return settings;
 }
 
@@ -145,9 +184,11 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
 
 export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage) {
   if (!state || !isPlainObject(state.settings)) return false;
-  const profile = migrateDefaultShadowsProfile(migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-    migrateLegacyMasslineBindingProfile(readProfileSettings(storage)),
-  )));
+  const profile = migrateOneSetOfKeysProfile(
+    migrateDefaultShadowsProfile(migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
+      migrateLegacyMasslineBindingProfile(readProfileSettings(storage)),
+    ))),
+  );
   if (!profile) return false;
   state.settings = mergeProfileSettings(state.settings, profile);
   return true;

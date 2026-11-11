@@ -293,3 +293,56 @@ test('traffic system integration via event bus', () => {
   assert.equal(civ.data.civilianReaction, 'road_rage_flee', 'impact switches traffic to flee');
   assert.equal(civ.data.intent.boost, true, 'civilian flees at top speed');
 });
+
+test('held shove: real 0.25 s cadence for 2 s counts as one shove', () => {
+  const state = makeState(0);
+  const memory = new Map();
+  const civ = state.entities.get('civ_1');
+  const player = state.entities.get('player_1');
+
+  // One field deployment held for 2 seconds (emitted every 0.25 s: 9 pulses from t = 0 to 2.0)
+  for (let t = 0; t <= 2.0; t += 0.25) {
+    state.simTime = t;
+    const triggered = recordRoadRageShove(state, civ, player.id, t, memory, {
+      fieldId: 'repulsor_field_alpha',
+      deploymentId: 'repulsor_field_alpha',
+    });
+    assert.equal(triggered, false, `pulse at t=${t}s must not trigger road rage from a single held field`);
+  }
+
+  const row = memory.get(civ.id);
+  assert.equal(row.shoves.length, 1, 'sustained 2 s repulsor deployment counts as exactly one shove');
+  assert.equal(row.rageState, null, 'civilian is not in road rage');
+
+  // A second distinct field deployment at t = 3.0 s triggers road rage
+  state.simTime = 3.0;
+  const triggeredSecond = recordRoadRageShove(state, civ, player.id, 3.0, memory, {
+    fieldId: 'repulsor_field_beta',
+    deploymentId: 'repulsor_field_beta',
+  });
+  assert.equal(triggeredSecond, true, 'second distinct field deployment triggers road rage');
+  assert.equal(row.rageState, 'ram', 'civilian enters ram state on second distinct shove');
+});
+
+test('held shove without deployment id: receipts within 1.0 s count as one shove', () => {
+  const state = makeState(0);
+  const memory = new Map();
+  const civ = state.entities.get('civ_1');
+  const player = state.entities.get('player_1');
+
+  // Receipts from same attacker at 0.25 s cadence without deployment ID
+  for (let t = 0; t <= 2.0; t += 0.25) {
+    state.simTime = t;
+    const triggered = recordRoadRageShove(state, civ, player.id, t, memory);
+    assert.equal(triggered, false, `receipt at t=${t}s within 1.0s window must not trigger road rage`);
+  }
+
+  const row = memory.get(civ.id);
+  assert.equal(row.shoves.length, 1, 'held shove without deployment id counts as one shove');
+
+  // After a gap > 1.0 s (e.g. at t = 4.0 s), the next receipt counts as the second shove
+  state.simTime = 4.0;
+  const triggeredSecond = recordRoadRageShove(state, civ, player.id, 4.0, memory);
+  assert.equal(triggeredSecond, true, 'second shove after > 1.0s gap triggers road rage');
+  assert.equal(row.rageState, 'ram');
+});

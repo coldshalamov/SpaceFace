@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # SpaceFace master plan — from janky web game to professional game
 
 **Owner direction, 2026-11-06.** We have most of the pieces of a real game. The job now is to
