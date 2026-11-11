@@ -325,7 +325,10 @@ test('a Pull grips the locked target three times as hard, and a heavy hull reads
   const travel = (m) => Math.hypot(m.toX - m.x, m.toZ - m.z);
   assert.equal(rowOf(marked).marked, true);
   assert.equal(rowOf(twin).marked, false);
-  assert.ok(travel(rowOf(marked)) > travel(rowOf(twin)) * 1.5, 'the gravity mark grips harder');
+  // EC-G18 one feel: the yank pulls both bodies all the way in, so compare the grip early —
+  // where each is 0.3 s into the press (path point 3, one per 0.1 s) — not where both end up.
+  const early = (m) => Math.hypot(m.path[6] - m.x, m.path[7] - m.z);
+  assert.ok(early(rowOf(marked)) > early(rowOf(twin)) * 1.5, 'the gravity mark grips harder');
   assert.equal(rowOf(heavy).shrug, true);
   assert.equal(rowOf(twin).shrug, false);
 }));

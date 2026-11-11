@@ -85,6 +85,8 @@ import { hash32, drawSeeded } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const SPINE = (MTS.custom && MTS.custom.cargoSpine) || {};
 const TICKER = (MTS.custom && MTS.custom.hullTicker) || {};
@@ -734,7 +736,7 @@ export const factionMeridian = {
         });
         this.bus && this.bus.emit('comms:log', {
           from: 'MTS SPINE',
-          text: `Coupler ${breakAt} gone — ${tail.length} container${tail.length === 1 ? '' : 's'} loose.`,
+          text: `Coupler ${breakAt} gone — ${counted(tail.length, 'container', 'containers')} loose.`,
           kind: 'encounter',
         });
       }
@@ -1315,7 +1317,7 @@ export const factionMeridian = {
     }
     this.bus && this.bus.emit('meridian:convoyArrived', { convoyId: cv.id, boxes, purseCr });
     this._log(state, 'MTS CONVOY',
-      `Manifest closed — the train docks at ${cv.destName} with ${boxes} box${boxes === 1 ? '' : 'es'}.`,
+      `Manifest closed — the train docks at ${cv.destName} with ${counted(boxes, 'box', 'boxes')}.`,
       'machine');
     // The train docks: freight and tug leave the field together.
     for (const m of linked) this._despawn(state, m, 'meridian_convoy_docked');
