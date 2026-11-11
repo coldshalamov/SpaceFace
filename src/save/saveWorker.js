@@ -312,6 +312,31 @@ export function preflightSaveImport(value) {
   return { ok: true, nodes };
 }
 
+// STANDING reads only factions[id].rep and conflicts[pairKey].state (buildSavePortrait →
+// unwrapStandingBags), so the card keeps just those: a stored war save reads its houses
+// and its front, not "No house stands with you", without posting the full faction records.
+function cardStandingFromFactions(saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return undefined;
+  const reps = (bag) => {
+    const out = {};
+    for (const id of Object.keys(bag)) {
+      const rec = bag[id];
+      if (rec && typeof rec === 'object' && rec.rep !== undefined) out[id] = { rep: rec.rep };
+    }
+    return out;
+  };
+  if (saved.factions && typeof saved.factions === 'object') {
+    const conflicts = {};
+    const bag = saved.conflicts && typeof saved.conflicts === 'object' ? saved.conflicts : {};
+    for (const key of Object.keys(bag)) {
+      const rec = bag[key];
+      if (rec && typeof rec === 'object' && rec.state !== undefined) conflicts[key] = { state: rec.state };
+    }
+    return { factions: reps(saved.factions), conflicts };
+  }
+  return saved.factions ? undefined : reps(saved); // legacy envelope: the flat rep bag
+}
+
 // Portrait-data projection for the Save/Load screen's lazy fill: everything
 // buildSavePortrait + slotShipId read out of unwrapSaveData(env) — the heavy env.data
 // fields nobody's card consumes (world tables, thumbnail) stay off postMessage, and the
@@ -328,6 +353,7 @@ export function cardDataFromEnvelope(env) {
     missions: source.missions,
     aceMemory: source.aceMemory,
     meta: source.meta,
+    factions: cardStandingFromFactions(source.factions),
   };
 }
 
@@ -536,6 +562,7 @@ export function cardEnvFromEnvelope(env) {
       story: data.story,
       nav: data.nav,
       aceMemory: data.aceMemory,
+      factions: cardStandingFromFactions(data.factions),
     },
   };
 }
@@ -963,8 +990,31 @@ function cardEnvFromEnvelope(env) {
       story: data.story,
       nav: data.nav,
       aceMemory: data.aceMemory,
+      factions: cardStandingFromFactions(data.factions),
     },
   };
+}
+// STANDING twin: only factions[id].rep + conflicts[pairKey].state ride the card.
+function cardStandingFromFactions(saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return undefined;
+  var reps = function (bag) {
+    var out = {};
+    Object.keys(bag).forEach(function (id) {
+      var rec = bag[id];
+      if (rec && typeof rec === 'object' && rec.rep !== undefined) out[id] = { rep: rec.rep };
+    });
+    return out;
+  };
+  if (saved.factions && typeof saved.factions === 'object') {
+    var conflicts = {};
+    var bag = saved.conflicts && typeof saved.conflicts === 'object' ? saved.conflicts : {};
+    Object.keys(bag).forEach(function (key) {
+      var rec = bag[key];
+      if (rec && typeof rec === 'object' && rec.state !== undefined) conflicts[key] = { state: rec.state };
+    });
+    return { factions: reps(saved.factions), conflicts: conflicts };
+  }
+  return saved.factions ? undefined : reps(saved);
 }
 // Portrait-data projection for the Save/Load screen's lazy fill — the heavy env.data
 // fields nobody's card consumes (world tables, thumbnail) stay off postMessage.
@@ -980,6 +1030,7 @@ function cardDataFromEnvelope(env) {
     missions: source.missions,
     aceMemory: source.aceMemory,
     meta: source.meta,
+    factions: cardStandingFromFactions(source.factions),
   };
 }
 function peekCardDataJson(raw) {
