@@ -65,6 +65,8 @@ import { applySwarmWeaponLevels } from '../data/swarmWeaponLevels.js';
 import { captureAndTransfer, admitCapturedVessel } from './shipControlTransfer.js';
 import { settleOwnedVesselYardOperation } from '../shipjack/ownedOperations.js';
 import { componentAfterRemoval, quoteModuleSale, validateModuleSaleQuote } from '../shipjack/componentProvenance.js';
+import { counted } from '../core/numberFormat.js';
+
 
 /** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
 function finiteAmount(value) {
@@ -552,7 +554,7 @@ export function deedResaleQuote(owned, shipDef) {
 
 function missingModulesText(missingCount) {
   const count = Math.max(1, Math.round(Number(missingCount) || 0));
-  return `${count} module${count === 1 ? '' : 's'} not in hold`;
+  return `${counted(count, 'module', 'modules')} not in hold`;
 }
 
 function createLoadoutPresetId(defId, fittings, createdAt, seed = 0) {
@@ -3008,7 +3010,7 @@ export const ships = {
       : 0;
     if (parkedUnits > 0 && confirmedCargoUnits !== parkedUnits) {
       this.bus.emit('toast', {
-        text: `Hold still carries ${parkedUnits} unit${parkedUnits === 1 ? '' : 's'} — empty it or confirm the sale takes them.`,
+        text: `Hold still carries ${counted(parkedUnits, 'unit', 'units')} — empty it or confirm the sale takes them.`,
         kind: 'error',
         ttl: 4,
       });

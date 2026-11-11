@@ -53,8 +53,11 @@ test('the opening burst never pre-empts the debut: no group fields the newcomer 
   for (const w of DEBUT_WAVES) {
     const newcomer = swarmNewcomerFor(w);
     const plan = swarmPlan(w);
+    // C01-01: wave 10 is a champion round — the Corsair Wing's champion packages field the
+    // wave's own newcomer as owed champion bodies, the same carve-out a capital debut gets.
     const early = plan.packages.filter(
-      (pkg) => pkg.enemyId === newcomer.enemyId && pkg.debut !== true && pkg.atTick < SWARM_DEBUT_TICKS,
+      (pkg) => pkg.enemyId === newcomer.enemyId && pkg.debut !== true && pkg.champion !== true
+        && pkg.atTick < SWARM_DEBUT_TICKS,
     );
     assert.equal(early.length, 0, `wave ${w}: ${newcomer.enemyId} arrives only as the staged debut`);
   }

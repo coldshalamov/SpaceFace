@@ -148,9 +148,9 @@ test('a borderline sustained miss parks at a shallow band instead of grinding to
   assert.equal(borderline.getScale(), 1, 'a ~1.25x miss never reaches even the first band');
 });
 
-test('raster relief raises the adaptive floor — combined scale stays readable', () => {
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.9,
-    'no relief means the combined readability floor');
+test('raster relief raises the adaptive floor — the demo posture stays native content', () => {
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 1,
+    'no relief still holds the demo combined floor at native content');
   assert.equal(adaptiveFloorForCombinedScale(0.6, 0.8), 1,
     'hitch relief 0.8 lifts the discrete floor to the native scale');
   assert.equal(adaptiveFloorForCombinedScale(0.5, 0.72), 1,

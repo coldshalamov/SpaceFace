@@ -34,6 +34,7 @@ import { svg, polar, arcD, circularText } from './svg.js';
 import { createSpring, reducedMotion } from './motion.js';
 import { injectOrrery } from './tokens.js';
 import { rollTo } from './text.js';
+import { counted, pluralWord } from '../numberFormat.js';
 import { heatLevelFor, heatClearSecondsForLevel, heatRadiusForLevel, heatZoneInCurrentSector, wantedTierInfo, THRESHOLD } from '../../systems/heat.js';
 
 const STYLE_ID = 'orr-footprint-dial-style';
@@ -982,7 +983,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
       const open = sources.filter((s) => s.open).length;
       const lead = reading.held === 'inside' ? 'Leave the zone, then ' : '';
       const where = after.level > 0 ? `T${after.level}` : 'clean';
-      const outlive = open ? `${open} source${open === 1 ? '' : 's'} outlive${open === 1 ? 's' : ''} the heat` : 'nothing on the record outlives it';
+      const outlive = open ? `${counted(open, 'source', 'sources')} ${pluralWord(open, 'outlives', 'outlive')} the heat` : 'nothing on the record outlives it';
       return { text: `${lead}${lead ? 's' : 'S'}tay out ${Math.round(scrubT)} s → ${where} · ${outlive}`, preview: true };
     }
     if (preview && preview.line) return { text: preview.line, preview: true };

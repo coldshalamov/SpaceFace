@@ -46,6 +46,8 @@ import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
 import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -93,6 +95,9 @@ export const MAX_REINFORCE_LINES_PER_WAVE = 2;
 export const REINFORCE_TELL_GAP_S = 8;
 /** Reading time for an arrival tell — the hulls are already on the approach. */
 const REINFORCE_TELL_TTL_S = 4;
+
+/** inf-mine-field-voice: one line per thinning/release episode, however many mines shared it. */
+export const MINE_FIELD_VOICE_GAP_S = 25;
 
 /**
  * Gate id → world bearing, in words.
@@ -302,14 +307,18 @@ export function waveOpeningLine(wave, plan) {
     if (plan.openingLesson) {
       return `Wave ${wave}. One hostile on the field — the rest are holding. The rock beside you is ammunition: line it and throw it.`;
     }
+    const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${pressure}${wall}${actLine} ${closing}`;
+      // S14 puts champions on odd waves, so a boss round can also be a debut round. Wave 5's
+      // Iron Maw arrives with the Detonator Dart's staged first body, and wave 15's Foreman with
+      // the Patrol Lawman's. The champion speaks first. The debut keeps its one namecheck, so it
+      // does not arrive unannounced on the busiest round so far.
+      return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${namecheck}${pressure}${wall}${actLine} ${closing}`;
     }
-    const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     // LW-05: a scheduled recurring character is named before contact, same as the debut it
     // replaced — its staged seat lands seconds into the wave, so it is inbound, not arrived.
     const character = swarm.character && typeof swarm.character.name === 'string' && swarm.character.name
@@ -327,7 +336,7 @@ export function waveOpeningLine(wave, plan) {
   }
   if (bodies <= 0) return null;
 
-  const noun = bodies === 1 ? 'hostile' : 'hostiles';
+  const noun = pluralWord(bodies, 'hostile', 'hostiles');
   const where = joinBearings(bearings);
   const arrival = where ? `${capitalize(countWord(bodies))} ${noun} ${where}.` : `${capitalize(countWord(bodies))} ${noun} inbound.`;
 
@@ -410,6 +419,10 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
     this._unsubs.push(this.bus.on('swarm:hiveSacKilled', (p) => this._onHiveSacKilled(p)));
     this._unsubs.push(this.bus.on('swarm:broodReserve', (p) => this._onBroodReserve(p)));
+    // inf-mine-field-voice: the specialist mine layer thins and is released through mines' own
+    // receipts; until now nothing on the band said so.
+    this._unsubs.push(this.bus.on('mines:expired', () => this._onMineFieldThinning()));
+    this._unsubs.push(this.bus.on('mines:released', (p) => this._onMineFieldReleased(p || {})));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -440,6 +453,8 @@ export const survivalAnnounce = {
     this._muted = false;
     this._arenaIntroArmed = false;
     this._arenaIntroTicks = 0;
+    this._mineThinAt = null;
+    this._mineGoneAt = null;
     this._resetWave(0);
   },
 
@@ -681,7 +696,7 @@ export const survivalAnnounce = {
     if (!Number.isInteger(wave) || wave < 1) return;
     const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
     const countText = stored > 0
-      ? `${capitalize(countWord(stored))} ${stored === 1 ? 'hostile' : 'hostiles'}`
+      ? `${capitalize(countWord(stored))} ${pluralWord(stored, 'hostile', 'hostiles')}`
       : 'Hostile reinforcement';
     this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
   },
@@ -703,6 +718,40 @@ export const survivalAnnounce = {
     const spoke = this._say('objective', `survival:w${wave}:stall`,
       'The room breathes again — the pack is inbound.', 5);
     if (spoke) this._stallSpokeWave = wave;
+  },
+
+  // ── inf-mine-field-voice ─────────────────────────────────────────────────────────────────────
+  // The specialist mine layer answers the same law as every other arena system: the player should
+  // be able to point at the state of the field. mines.js emits one receipt per mine as its
+  // lifetime lapses (mines:expired) and one receipt when the layer is released
+  // (mines:released, swarmSpecialist) — until now both vanished into silence. Each episode speaks
+  // at most once per cooldown so a twelve-mine field expiring over a minute is one line, not
+  // twelve; a fixed dedupe id keeps the comms layer honest; the sector-exit releaseAll (no
+  // swarmSpecialist mark) stays silent, because leaving is not news.
+  _mineFieldCooled(atKey, gapS, now) {
+    const at = this[atKey];
+    return !(Number.isFinite(at) && now >= at && now - at < gapS);
+  },
+
+  _onMineFieldThinning() {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    if (!this._mineFieldCooled('_mineThinAt', MINE_FIELD_VOICE_GAP_S, now)) return;
+    const spoke = this._say('objective', 'survival:mines:thin',
+      'A specialist mine field is thinning.', 4);
+    if (spoke) this._mineThinAt = now;
+  },
+
+  _onMineFieldReleased(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    if (payload.swarmSpecialist !== true) return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    if (!this._mineFieldCooled('_mineGoneAt', MINE_FIELD_VOICE_GAP_S, now)) return;
+    const spoke = this._say('objective', 'survival:mines:gone',
+      'The specialist mines are gone from the room.', 4);
+    if (spoke) this._mineGoneAt = now;
   },
 
   /**

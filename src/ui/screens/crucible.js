@@ -93,6 +93,7 @@ import {
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
+  SWARM_WAVE_MAX,
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
@@ -158,6 +159,8 @@ import { el, settle, stamp, cue } from '../kit/index.js';
 import { renderResultsSheet, resultsSheetModel, recordedKitId } from './resultsSheet.js';
 import { capPins, platePins, panePins, channelPins, rowPins }
   from '../kit/computedMaterial.js';
+import { counted, pluralWord } from '../numberFormat.js';
+
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -459,7 +462,7 @@ function canAnimate() {
 function hullBlurb(starter) {
   if (starter.blurb) return starter.blurb;
   const count = Array.isArray(starter.loadout) ? starter.loadout.length : 0;
-  return `${starter.hullId.replace(/^ship_/, '')} · ${count} hardpoint${count === 1 ? '' : 's'} fitted`;
+  return `${starter.hullId.replace(/^ship_/, '')} · ${counted(count, 'hardpoint', 'hardpoints')} fitted`;
 }
 
 // `freshSeed` lives in crucibleLaunch.js — the title's one-press Swarm launch uses the same
@@ -535,7 +538,10 @@ export function lifetimeFigures(profile) {
   return [
     { key: 'runs', label: 'Runs', value: n(life.runs) },
     { key: 'victories', label: 'Won', value: n(life.victories) },
-    { key: 'deepestWave', label: 'Deepest', value: n(life.deepestWave) },
+    // C01-03 — the deep course's own record, beside the wins and the fastest win: the best
+    // round a run ever reached, win-banked continues included.
+    { key: 'deepestWave', label: 'Deepest round', value: n(life.deepestWave) },
+    { key: 'bestWinTimeS', label: 'Best win', value: n(life.bestWinTimeS) },
     { key: 'bestScore', label: 'Best score', value: n(life.bestScore) },
     { key: 'bestKills', label: 'Best kills', value: n(life.bestKills) },
   ];
@@ -592,7 +598,7 @@ export function historyRunRows(profile) {
       run && run.arenaId ? String(run.arenaId).replace(/^arena_/, '').replace(/_/g, ' ') : '',
       ruleset && ruleset !== 'scored' ? ruleset.replace(/_/g, ' ') : '',
       run && run.trialId ? 'trial' : '',
-      mutators > 0 ? `${mutators} mutator${mutators === 1 ? '' : 's'}` : '',
+      mutators > 0 ? `${counted(mutators, 'mutator', 'mutators')}` : '',
       run && run.dailyDateKey ? 'daily' : '',
       run && run.ghostHash ? 'ghost on file' : '',
       run && run.bestLineId ? 'best line' : '',
@@ -702,7 +708,7 @@ function renderRecordRows(profile, hooks = {}) {
   const log = historyRunRows(profile);
   if (log.length) {
     const drawer = el('details', 'sf-crd-log');
-    const summary = el('summary', 'k-t-fine fh-legend', `Run log · ${log.length} run${log.length === 1 ? '' : 's'} recorded`);
+    const summary = el('summary', 'k-t-fine fh-legend', `Run log · ${counted(log.length, 'run', 'runs')} recorded`);
     paintLegend(summary, false);
     drawer.appendChild(summary);
     const list = el('ul', 'k-rows sf-crd-log__list');
@@ -1328,7 +1334,7 @@ export const crucibleScreen = {
         const button = word(perk.name, 'k-word--fine sf-crd-perk');
         paintKey(button, 'small');
         const gate = Number.isInteger(perk.stars) ? `${perk.stars} stars`
-          : Number.isInteger(perk.challenges) ? `${perk.challenges} challenge${perk.challenges === 1 ? '' : 's'}`
+          : Number.isInteger(perk.challenges) ? `${counted(perk.challenges, 'challenge', 'challenges')}`
             : 'locked';
         button.title = earned ? perk.blurb : `${perk.blurb} Earned at ${gate}.`;
         button.setAttribute('aria-label', `${perk.name}. ${perk.blurb}${earned ? '' : ` Earned at ${gate}.`}`);
@@ -1543,7 +1549,7 @@ export const crucibleScreen = {
           badge.setAttribute('aria-hidden', 'true');
           button.appendChild(badge);
         } else {
-          button.title = `${choice.name} — bare hull, ${choice.slotCount} hardpoint${choice.slotCount === 1 ? '' : 's'}`;
+          button.title = `${choice.name} — bare hull, ${counted(choice.slotCount, 'hardpoint', 'hardpoints')}`;
         }
         button.addEventListener('click', () => {
           if (hullLocked) {
@@ -1647,7 +1653,7 @@ export const crucibleScreen = {
         if (locked) {
           const need = SWARM_ARENA_STAR_GATES[button.dataset.arenaId] || 0;
           const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
-          const earn = `${roomName} — locked. Opens at ${need} ladder star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+          const earn = `${roomName} — locked. Opens at ${counted(need, 'ladder star', 'ladder stars')} — you have ${have}. The Foundry's climb pays them.`;
           button.title = earn;
           button.setAttribute('aria-label', earn);
         } else {
@@ -1680,7 +1686,7 @@ export const crucibleScreen = {
           const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
           arenaSentence.dataset.kind = 'earn';
           arenaSentence.textContent = `${arenaDescriptions[arena.id][0]} opens at ${need} ladder `
-            + `star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+            + `${pluralWord(need, 'star', 'stars')} — you have ${have}. The Foundry's climb pays them.`;
           cue('deny');
           return;
         }
@@ -1897,7 +1903,7 @@ export const crucibleScreen = {
         zoneIndex: swarmZoneIndexFor(startWave),
       });
       const pickedAsk = pickedOpen.length
-        ? ` The next star${pickedOpen.length > 1 ? 's' : ''} want${pickedOpen.length > 1 ? '' : 's'} ${pickedOpen.join(' and ')}.`
+        ? ` ${pluralWord(pickedOpen.length, 'The next star wants', 'The next stars want')} ${pickedOpen.join(' and ')}.`
         : '';
       els.zoneSentence.textContent = (startWave > 1
         ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
@@ -1928,7 +1934,7 @@ export const crucibleScreen = {
       const bounty = Math.max(0, Math.round(Number(hangar.bounty) || 0));
       const hulls = Array.isArray(hangar.ownedHulls) ? hangar.ownedHulls : [];
       els.hangarNote.textContent = `Bounty ${bounty} cr — banked across runs, not the run purse.`
-        + (hulls.length ? ` ${hulls.length} hull${hulls.length === 1 ? '' : 's'} in the bay.` : '');
+        + (hulls.length ? ` ${counted(hulls.length, 'hull', 'hulls')} in the bay.` : '');
       els.hangarTracks.innerHTML = '';
       for (const track of HANGAR_TRACKS) {
         const rank = hangarRank(hangar, track.id);
@@ -2063,7 +2069,7 @@ export const crucibleScreen = {
       try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
       if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
       shareNote.textContent = `Code loaded — seed ${res.seed}`
-        + (res.mutators.length ? `, ${res.mutators.length} mutator${res.mutators.length === 1 ? '' : 's'}` : '')
+        + (res.mutators.length ? `, ${counted(res.mutators.length, 'mutator', 'mutators')}` : '')
         + '.';
       cue('confirm');
       syncHull();
@@ -2580,6 +2586,11 @@ export function resultRows(result) {
   return [
     ['Outcome', result.stopReason === 'player_retired' ? 'Retired · unranked' : (result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')))],
     ['Reached', reachedRow(result)],
+    // C01-03 — the swarm record's own figure: the best round a run reached, including the
+    // rounds a banked win's continue sailed past thirty.
+    ...(result.ruleset === SWARM_RULESET
+      ? [['Deepest round', String(progress.highestRoundEntered ?? result.deepestWave ?? result.wave ?? 0)]]
+      : []),
     ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
     ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
     ['Round threat resolved', progress.roundThreatBudget != null && progress.roundThreatResolved != null
@@ -2853,6 +2864,11 @@ export function vitalsFigures(defeat) {
  * The results grid's 'Abandoned' row predates this and is pinned by its own test.
  */
 export function resultTitle(result) {
+  // C01-01 — clearing the Pit's own course is the design's win: the Pit is yours. A Circuit
+  // journey clears a different contract and keeps its own title.
+  if (result && result.outcome === 'victory' && result.ruleset === SWARM_RULESET && !result.circuit) {
+    return 'THE PIT IS YOURS';
+  }
   if (result && result.outcome === 'victory') return 'Arena Cleared';
   if (result && result.stopReason === 'player_retired') return 'Run Retired';
   if (result && result.stopReason === 'wave_plan_failed') return 'Arena Failed';
@@ -2864,6 +2880,23 @@ export function resultTitle(result) {
 export function resultStamp(result) {
   if (result && result.outcome === 'victory') return 'CRUCIBLE / ARENA CLEARED';
   return 'CRUCIBLE / FLIGHT RECORD';
+}
+
+/**
+ * C01-03 — the round-30 Swarm win's offer: exactly two ways off the plate. `Take the win`
+ * leaves the run through the ordinary hangar exit with the banked result; `Keep going`
+ * hands the still-banked run back to the course past the win. Any other result — a death,
+ * an earlier ending, a Circuit journey — keeps the ordinary foot and reads null here.
+ */
+export function resultWinOffers(result) {
+  if (!result || result.ruleset !== SWARM_RULESET || result.circuit) return null;
+  if (result.outcome !== 'victory') return null;
+  const reached = Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0);
+  if (reached < SWARM_WAVE_MAX) return null;
+  return [
+    { id: 'take_win', label: 'Take the win' },
+    { id: 'keep_going', label: 'Keep going' },
+  ];
 }
 
 /**
@@ -3316,7 +3349,7 @@ function renderLastSeconds(band, trail) {
     left.appendChild(track);
     line.appendChild(left);
     const fig = el('span', 'k-row__num');
-    fig.appendChild(el('span', 'k-t-fine k-62 sf-crres__hit-fig', `${row.hits} hit${row.hits === 1 ? '' : 's'}`));
+    fig.appendChild(el('span', 'k-t-fine k-62 sf-crres__hit-fig', `${counted(row.hits, 'hit', 'hits')}`));
     fig.appendChild(el('span', 'sf-crres__hit-fig', ` ${row.amount} damage`));
     line.appendChild(fig);
     list.appendChild(line);
@@ -3851,6 +3884,35 @@ export const crucibleResultsScreen = {
     // two dots while the tape played the same five seconds with every hull and round. The result
     // model keeps `result.killReplay` (survivalResults still records it) until the ring system's
     // registry retirement lands.
+    // C01-03 — the round-30 win offers exactly two ways off the plate, nothing else: bank it
+    // and leave through the ordinary hangar exit, or keep going into the deep course with
+    // the win already banked. The run's phase machine owns the resume; the plate only asks.
+    const winOffers = resultWinOffers(result);
+    if (winOffers) {
+      let focusWord = null;
+      for (const offer of winOffers) {
+        const button = addWord(word(offer.label, 'k-word--emph'
+          + (offer.id === 'keep_going' ? ' k-word--primary' : '')));
+        if (offer.id === 'keep_going') focusWord = button;
+        button.addEventListener('click', () => {
+          if (offer.id === 'keep_going') {
+            // Pop the plate first so the armory the resume lands on is never covered, then
+            // let the owner walk the run back into the course.
+            ctx.bus.emit('ui:popScreen', {});
+            ctx.bus.emit('run:swarmDeepRequested', {});
+            return;
+          }
+          try { clearKillcamTape(); } catch { /* the replay is optional */ }
+          ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        });
+      }
+      foot.appendChild(footWords);
+      rootEl.appendChild(foot);
+      this._regions = { title: h, story, ledger, foot, again: focusWord };
+      rootEl.dataset.kReady = '1';
+      return;
+    }
+
     // r2: the Lamp rule spans the verb's own words — the verb rides in a span of its own so
     // the key beside it never inherits the rule. The live text node moves into the span; a stub
     // DOM with no child text nodes keeps the button's own textContent either way.
@@ -4268,7 +4330,7 @@ export function deathDialSpec(result, ctx) {
     hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
       .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
-    hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
+    hitSummary: breakdown.hits ? `Last ${counted(breakdown.hits, 'hit', 'hits')} · ${breakdown.total} damage` : '',
     engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',
