@@ -65,6 +65,12 @@ Built: launchers (STAB-01), the gate (STAB-02), import lint (STAB-03), worker bu
 - Earlier lanes measured the worker step itself: p95 ≈ 58 ms, 74 % in JS per-body passes, 1.55 MB
   allocated per tick.
 
+- **The ship flicks forward and back** (owner: "a snake's tongue"; same on the iPhone): the player's own
+  ship is drawn only from late worker snapshots; the fence extrapolates ahead, then the real snapshot
+  lands behind and the pose jumps back. The game treats its own worker like a distant, laggy server —
+  but has none of the client-side prediction and error smoothing every online game uses for the
+  player's own ship. Fix in two steps: PERF-02a error smoothing, PERF-02b local prediction.
+
 **Why a hundred "improve performance" asks failed:** each one tuned a constant inside an architecture
 whose budget was already spent twice over (main thread and worker both saturated), and none had a
 number that defined done. Fixes must be structural and judged by the two numbers below.
