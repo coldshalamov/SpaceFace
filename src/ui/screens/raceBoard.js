@@ -21,6 +21,8 @@ import { RACING_COSMETICS, racingCosmeticFor, racingCosmeticUnlocked } from '../
 import { listRacingGhosts, exportRacingGhostByKey, clearRacingGhostByKey } from '../../systems/racingGhosts.js';
 import { renderRacingRecognition } from '../racingRecognition.js';
 import { racingSetPieceDefinitions } from '../../data/racingSetPieces.js';
+import { pluralWord } from '../numberFormat.js';
+
 
 const storageOf=()=>{try{return globalThis.localStorage||null;}catch{return null;}};
 const manager=ctx=>ctx?.screenManager||ctx?.screens||ctx?.registry?.get?.('ui')?.screenManager;
@@ -262,7 +264,7 @@ export const raceBoardScreen={
         const fitTimes=recordPrefix?Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
           &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time):[];
         const best=fitTimes.length?Math.min(...fitTimes):null;
-        card.appendChild(el('p','k-sentence',`${row.laps} ${row.laps===1?'lap':'laps'} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
+        card.appendChild(el('p','k-sentence',`${row.laps} ${pluralWord(row.laps, 'lap', 'laps')} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
         if(timeTrialOnly&&fit.raceMode!=='time-trial'){
           card.appendChild(el('p','k-sentence','Select Time trial to fly this circuit.'));
         }else if(fit.raceMode==='cup'&&!eligible){

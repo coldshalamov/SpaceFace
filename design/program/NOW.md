@@ -31,7 +31,6 @@ contexts/servers. Preserve concurrent edits; no reset/restore/clean/stash or bro
 | Distant ship admission | Terra terminal01a1abb6-176d | lod.js, wholeShipLodPolicy.js; partsLibrary prewarm/admission/controller; renderer ship LOD callsite; focused tests | Complete initial-tier admission and safe promotion, not just later sibling swaps. Exact packaged families; Dart currently has none |
 | Shadow-off retained batches | Sol terminal01a1abab-bc8b | renderer effective depth; rigidOpaqueBatch.js; precompile warm fence; rigidBatchShadowGate.js; focused tests | Complete meaningful superseded-preparation check and fail-closed consumer guards; 20 ejected instances observed, no FPS claim |
 | Hot ship package consolidation | Terra terminal01a1abb6-1771 | ignored shard-3/rigid-ship-merge/ only until exact source grant | Safe same-motion-owner Dart/Rig merging prototype with part/hook/material/socket/collision preservation; rare static barge alone not priority |
-| INFERENCE 20 + 20 omitted-kind units (2026-11-08) | zcode controller + its implementer agents | per-unit exact paths, each committed as its own unit as soon as its focused test passes; new `test/inf-*.test.mjs`; never renderer.js, lod.js, wholeShipLodPolicy.js, partsLibrary.js, rigidOpaqueBatch*, precompile.js, vfx.js tier construction, residencyManager.js, bloom.js, `src/core/*`, onboarding, `src/data/encounters/*`, input/bindings | Controller records units in inference-memory.json + lane boards and regenerates localization catalogs once at the end; this row is removed then |
 
 Current approved GPU source is bad06a4b250a: encounter context6943, v23 referencesd79f, berth
 readers4aa334, starter previewdf437, finite material152650, fracture clearance95464, debrief59233,
@@ -285,3 +284,19 @@ Lane A does not edit: SWARM lane-F file list (`swarm/LANES.md`), `src/ui/screens
 claims above, Lane B's set (onboarding/first-hour, `src/ui/ship/partFacts.js` + preview rig,
 `src/data/encounters/`, `src/audio/`, X5 context rows), `design/program/vm-drop/`. Determinism
 goldens are versioned by `scripts/reference.mjs` only, never hand-edited.
+
+<!-- Lane B OVERNIGHT (player-visible build) — claims, 2026-11-08 → 2026-11-09 -->
+## Lane B OVERNIGHT — player-visible build (`.overnight-dispatch/LANE_B_PLAYER_VISIBLE_BUILD.md`)
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| WS1 W5 first hour | Lane B | `src/systems/onboarding.js`, `src/onboarding/*`, `test/pq-163-03-sentence.test.mjs` + new focused tests, `campaigns/W5/*` | First: the handed-over store-sentence defect (route through `attentionAdmits`, deferred at dock). Then the recorded first-hour walk. |
+| WS2 W2 levels | Lane B | `campaigns/W2/*`, `src/data/encounters/*`, `test/w2-*.test.mjs` + focused tests per upgraded level | Rating sweep of all ~370 encounters → `campaigns/W2/RATING_SWEEP.md`, then 12–15 authored upgrades + job generators |
+| WS3 P2 previews | Lane B | `src/ui/ship/partFacts.js`, new preview-rig script(s) under `scripts/`, preview clips/manifest rows under `assets/`, `test/part-facts*.test.mjs`, `campaigns/P2/*` | Range capture rig → 3–5 s previews for top ~20 purchasable parts; merge safe near-duplicates; comprehension check |
+| WS4 X4 sound pass | Lane B | `src/audio/*`, `src/data/audioRecipes.js`, `assets/audio/*`, `campaigns/X4/*`, new `test/x4-*` focused tests | 30 most frequent events get mass/material variants (≥3 for top events), `state.rng`-seeded; library stays < 12 MiB; `test/pq-158-*` run never edited |
+| WS5 X5 contexts | Lane B | `src/data/inputContexts.js`, `src/systems/input.js` (additive context rows only — rebind contract untouched), `src/ui/` help/control-label surfaces, `test/x5-*`, `test/input-contexts*.test.mjs`, `campaigns/X5/*` | Visible short control set per context + pad parity; `check:ui:control-labels` |
+| WS6 W1 support | Lane B | `campaigns/W1/*` (ACT_SHAPE.md, STATUS.md, evidence), `scripts/` act-walk extension, focused tests | Act-1 beat walk on the ordinary route + ten-moments check |
+| Stretch: special-500 codex | Lane B | `design/program/special-500/BUILD_LEDGER.json` row updates, codex page + flag files per unit, focused tests | Only the 15 named codex units, one at a time, only if W2 sweep + W5 close |
+| Shared/board | Lane B | `design/program/NOW.md` (this section), `campaigns/_OVERNIGHT_B/*`, `EXECUTION_STATUS_2026-11-06.md` (Overnight Lane B section), `package.json` (one alias row for the preview rig — re-read live before edit, preserve Lane A's check pins) | Hourly DECISIONS.md checkpoint |
+
+Lane B does not edit: Lane A's set (`src/core/*`, `src/render/residencyManager.js`/`bloom.js`/renderer admit wiring, ui-polish PR batch files incl. `src/ui/station/screens/shipworks.js` and shared kit CSS until the batch lands), Terra/Sol claims (`lod.js`, `wholeShipLodPolicy.js`, `partsLibrary.js`, `rigidOpaqueBatch.js`, `precompile.js`, `vfx.js` tiers, renderer ship-LOD callsite), SWARM files (`src/ui/screens/crucible.js`, `crucibleDraft.js`, `broodPresentation.js`, `src/ui/ship/shipStats.js` — read-only), `src/ui/bindings.js` rebind contract, `design/program/vm-drop/`, determinism goldens `test/*.expected.json`.

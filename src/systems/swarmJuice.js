@@ -41,6 +41,7 @@ import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import { swarmBossFor, swarmNewcomerFor, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
+import { isSwarmLadderRun, swarmZoneChainTarget, swarmZoneIndexFor } from '../data/swarmLadder.js';
 import { swarmBroodNewcomerFor } from '../data/swarmBrood.js';
 import { swarmBroodStrainDebutFor } from '../data/swarmBroodLate.js';
 import {
@@ -234,6 +235,7 @@ export const swarmJuice = {
     this._bestChain = 0;            // the run's chain high-water, for the tally
     this._lastChain = 0;            // the live chain — hit-stop scales on its tier
     this._maxTierAt = 0;            // last announced tier mark — menus never re-announce
+    this._chainStarZones = new Set(); // inf-chain-star: ladder zones whose chain star was called
     this._overdriveLive = false;    // an opened overdrive window this juice layer has named
     this._bossWave = 0;
     this._boss = new Map();         // entity ref -> { dead } — identity, never ids
@@ -526,6 +528,35 @@ export const swarmJuice = {
       });
       if (run) this._requestHitStop(run);
     }
+    this._callChainStar(chain);
+  },
+
+  /**
+   * inf-chain-star — the star the Crucible screen asked for lands in the moment it is earned.
+   * Before a ladder run the screen names each zone's open ask ("a chain of 12"), and the settle
+   * pays the zone's chain star when the zone's chain peak reached swarmZoneChainTarget — but the
+   * instant the live chain crossed that line, nothing on the glass said so: the star you were
+   * told to chase was only revealed on the results plate. Now the announcer calls it once per
+   * zone per run ("CHAIN STAR · ×12"), on a ladder run only (a Daily, a typed Custom seed, a
+   * mutator run or practice pays no stars, so it never claims one). The settle stays the only
+   * writer of stars; this reads the same law at the moment it is met.
+   */
+  _callChainStar(chain) {
+    const run = liveSwarmRun(this.state);
+    if (!run || run.practice === true) return;
+    const mutators = Array.isArray(run.arenaMutators) ? run.arenaMutators : [];
+    if (!isSwarmLadderRun({ ruleset: run.ruleset, arenaId: run.arenaId, seed: run.seed, mutators })) return;
+    const zone = swarmZoneIndexFor(run.wave);
+    if (this._chainStarZones.has(zone)) return;
+    const target = swarmZoneChainTarget(zone);
+    if (!(chain >= target)) return;
+    this._chainStarZones.add(zone);
+    this._emit('swarm:announce', { kind: 'chainstar', text: `CHAIN STAR · ×${target}`, count: chain });
+    this._emit('audio:cue', {
+      id: SWARM_MOMENT_CUES.chainTier,
+      gain: 0.85,
+      rate: swarmClimbRate(Math.min(SWARM_CLIMB_RATES.length - 1, 2 + zone)),
+    });
   },
 
   _onChainBroken(payload) {

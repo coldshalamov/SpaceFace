@@ -15,6 +15,7 @@ import { droneBayCapacityForState, droneRecoveryCost, normalizeAutomationRecordI
 import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
+import { pluralWord } from '../numberFormat.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
@@ -1534,8 +1535,8 @@ export const automationScreen = {
         const readout = curTpl === 'mine_to_depot' ? describeProgrammedMinerOperation(d, def) : null;
         const opsHtml = readout ? `
             <div class="au-miner-ops" data-state="${escapeHtml(readout.state)}" role="img" aria-label="${escapeHtml(readout.accessibleSummary)}">
-              <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} u</strong></div>
-              <div><span class="au-flow-k">Stored</span><strong>${escapeHtml(String(readout.stored))}/${escapeHtml(String(readout.cap))} u</strong></div>
+              <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} ${pluralWord(Number(readout.grossUnits), 'unit', 'units')}</strong></div>
+              <div><span class="au-flow-k">Stored</span><strong>${escapeHtml(String(readout.stored))}/${escapeHtml(String(readout.cap))} ${pluralWord(Number(readout.cap), 'unit', 'units')}</strong></div>
               <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
               <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
             </div>

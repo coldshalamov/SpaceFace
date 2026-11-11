@@ -19,6 +19,20 @@ export const LINE_CLASS_BY_INDEX = Object.freeze(Object.fromEntries(
   LINE_CLASSES.map((row) => [row.index, row]),
 ));
 
+// Design doc 17 §1 — what each class-up means in player words. `name` is the class's own name
+// (the plate title renders it in capitals; index 8 keeps "THE MASSLINE"), `hold` the new mass the
+// line can take, `move` the verb the class adds. Keyed by class index, parallel to LINE_CLASSES.
+export const LINE_CLASS_NAMES = Object.freeze({
+  1: Object.freeze({ name: 'Thread', hold: 'pods, crates, Wasps, small rocks', move: 'Swing — latch and arc' }),
+  2: Object.freeze({ name: 'Cord', hold: 'fighters, medium rocks, a bus (just)', move: 'Throw — release is graded and named on screen' }),
+  3: Object.freeze({ name: 'Cable', hold: 'loaded containers, Bruisers, a container string', move: 'Whip — snap the line to fling what is on it without a swing' }),
+  4: Object.freeze({ name: 'Hawser', hold: 'crewed light ships, big rocks, doors', move: 'Anchor — plant yourself and hold against a pull' }),
+  5: Object.freeze({ name: 'Chain', hold: 'haulers, hot plates, heavies', move: 'Drag — tow at full boost' }),
+  6: Object.freeze({ name: 'Girder', hold: 'hulls off hooks, station modules', move: 'Tear — pull parts off something bigger than you' }),
+  7: Object.freeze({ name: 'Span', hold: 'sections of a capital wreck', move: 'Orbit — keep a body circling you as a shield, then send it' }),
+  8: Object.freeze({ name: 'the Massline', hold: 'a moonlet', move: 'Sling a moonlet' }),
+});
+
 export const PROVENANCE_TIERS = Object.freeze({
   stock: Object.freeze({ index: 0, label: 'Stock', mark: 'plain', behavior: null }),
   worked: Object.freeze({ index: 1, label: 'Worked', mark: 'copper', behavior: 'shop_tuned' }),
