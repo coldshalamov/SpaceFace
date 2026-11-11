@@ -34,6 +34,7 @@ function makeHauler(id = 'hauler_1', { x = 0, z = 0, rot = 0, role = 'hauler', v
     radius: 8,
     data: {
       trafficRole: role,
+      cargo: { ore: 12 },
       intent: { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0, brake: false },
       ai: { passive: true },
     },
@@ -57,6 +58,7 @@ function makePlayer({ x = 0, z = 0, vx = 0, vz = 0 } = {}) {
 test('isLoadedHauler identifies heavy freight hulls and rejects ineligible ships', () => {
   const hauler = makeHauler('h1', { role: 'hauler' });
   assert.equal(isLoadedHauler(hauler), true, 'hauler is loaded hauler');
+const empty = makeHauler('h_empty', { role: 'hauler' });  empty.data.cargo = { ore: 0 };  assert.equal(isLoadedHauler(empty), false, 'an empty hauler is not a loaded hauler');
 
   const oreCarrier = makeHauler('h2', { role: 'ore_carrier' });
   assert.equal(isLoadedHauler(oreCarrier), true, 'ore carrier is loaded hauler');
