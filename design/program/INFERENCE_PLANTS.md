@@ -47,6 +47,9 @@ or does not.
 | PL-177 | **The slow emergency.** A civilian's cargo hatch swings open and one pod hangs there, snagged, not falling. They have not noticed | Bump it back in and take a flash of thanks; take it, and they never knew; or bump it loose, and everyone knows | DRAFT 2026-11-11 |
 | PL-197 | **The dead lane.** A lane with all beacons dark, and traffic still runs it, from memory, on horns | Follow a local's tail through; or tow a lamp line down it and be thanked in horns for a day | DRAFT 2026-11-11 |
 | PL-198 | **The orphan.** A wreck nobody owns drifts across a lane for days, and everyone files around it, until the nearest town is arguing about it on open radio | Tow it to the dock and watch three owners appear; or enjoy the argument | DRAFT 2026-11-11 |
+| PL-217 | **The sweeping line.** After a spill, a civilian holds a Rig wedge down the lane and walks the debris into a pile. Join with yours and it takes half the time, and the owner's thanks goes out on open radio | Sweep it clean; or sweep the pile your own way — everyone saw which way the wedge went | DRAFT 2026-11-11 |
+| PL-218 | **The doorstop.** A dock's rolling shutter jams half-open every third day and the queue backs up. Pin it open and the queue flows; the dockhand chalks your tag on the shutter's edge | Be the fix; or Pin it shut instead — the dock reroutes, and the dockhand chalks a number where your tag was going | DRAFT 2026-11-11 |
+| PL-219 | **One yank.** A loader drops a crate stack at a market and a passing hauler Pulls it back into a stack, mid-air, one practiced yank. The lane applauds | Try it yourself: misjudge the well, and the whole pile lands on you | DRAFT 2026-11-11 |
 
 ## B. Secrets
 
@@ -103,6 +106,11 @@ or does not.
 | PL-203 | Charon | The tour. Em Sato points at the garden from her tender, naming each growth for nobody: wall, mouth, wall, wall, mouth | Follow the tour from flight, and learn which is which before you touch anything | DRAFT 2026-11-11 |
 | PL-204 | Ashfall | The hook. Lazlo's crane, idle, hangs its hook at hover height, and the scar's pilots sit on it to wait, swaying | Take a seat; or hover near — someone will offer you theirs | DRAFT 2026-11-11 |
 | PL-205 | Helios | The lit hull. In the Helios yard one hull is always lit, and nobody is ever seen aboard. Park beside it and the light inside moves, once | Leave it be; that light is hers | DRAFT 2026-11-11 |
+| PL-230 | Helios | Venn's window. At Lamps-Up, Orla Venn's window is the first lit and the last dark. Park outside it and the whole crescent comes up in front of you | Be the audience of one | DRAFT 2026-11-11 |
+| PL-231 | Ceres | Marsh's line. Tally Marsh's yard is a maze of things that are not salvage yet. Cross its line towing anything and Marsh is on open radio before your line goes taut | Admire the maze from outside; or test the reflex | DRAFT 2026-11-11 |
+| PL-232 | Tethys | The valid instruction. Once a shift, Points Dunmore routes a string through a clear lane and the whole yard obeys instantly, right or wrong | Obey with them; or hold your ground — the string parts around you, and you were valid too | DRAFT 2026-11-11 |
+| PL-233 | Pallas | The fresh mark. One morning every hull Fitch had chalked has a second mark beside it: KNOCKED, in a steady hand, all down the street. Somebody worked all night | Admire the night's work — Fitch does | DRAFT 2026-11-11 |
+| PL-234 | Io | The middle seat. Gus Varga welded a bench to the dead pump, and both flags' pilots sit on it, opposite ends, same bench | Take the middle seat; both sides will look at you | DRAFT 2026-11-11 |
 
 ## D. Chance meetings (anywhere)
 
@@ -137,6 +145,8 @@ or does not.
 | PL-206 | **The measuring hull.** A ship with no markings matches your course for a full sector, never closing, never falling behind | Break off and lose them; turn and confront — they bolt; or let them follow, and wonder what they were measuring | DRAFT 2026-11-11 |
 | PL-207 | **The welder's sparks.** Wherever something is being fixed there are sparks, and behind the mask, Slate. Leave anything broken by the sparks overnight | Come back to it mended; leave something stolen, and it comes back mended and engraved with its owner's tag | DRAFT 2026-11-11 |
 | PL-208 | **Same time tomorrow.** Give way to a stranger once, at a beacon, and ever after they hold that beacon for you at that hour — an appointment nobody named | Keep it; or miss a day, and they wave you through late the next, no grudge | DRAFT 2026-11-11 |
+| PL-220 | **The stalled string.** Three containers sit dead at a green beacon, and nobody behind them has the mass to move them. One good Shove would do it | Be the shove and take a hundred flashes of thanks; or watch commuter patience die in real time | DRAFT 2026-11-11 |
+| PL-221 | **The waiting line.** Once, your hull snags on a line that was already waiting for you. Nothing on the other end. It lets go the moment you slow | Slow down; or run full boost, and it holds on a while | DRAFT 2026-11-11 |
 
 ## E. Lane Nine — Static reports what you did
 
@@ -169,6 +179,9 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-209 | You relight a dead lane's beacons | *"Dead lane relit. Traffic appreciates it."* | DRAFT 2026-11-11 |
 | PL-210 | Slate mends something of yours overnight | *"Somebody left a welder work. It's done."* | DRAFT 2026-11-11 |
 | PL-211 | A Slipway kid beats you in a race | *"One of the crescent kids took a race."* | DRAFT 2026-11-11 |
+| PL-240 | You wear the same mark into all five towns | *"That mark's been around. So has its rope."* | DRAFT 2026-11-11 |
+| PL-241 | The tug tows you in while you played dead | *"One derelict recovered. It waved."* | DRAFT 2026-11-11 |
+| PL-242 | A frozen Wasp rides the Cryo ice barge | *"The ice barge has a new figurehead."* | DRAFT 2026-11-11 |
 
 ## F. In the Pit
 
@@ -193,6 +206,11 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-189 | **Rung.** Put an enemy through the gong and the crowd is louder than Kiln | Aim for it | DRAFT 2026-11-11 |
 | PL-212 | **The wave-back.** Flash your lamps at the stands between rounds and a whole section flashes back | Play to them; they came for this | DRAFT 2026-11-11 |
 | PL-213 | **The sweeper's route.** The janitor's path between rounds is the cleanest line on the floor — it sweeps round every hazard on the map | Follow it once and learn the room | DRAFT 2026-11-11 |
+| PL-222 | **One shot short.** Try Kiln's round-five-without-firing dare and fail by one shot: Kiln says nothing at all, and the crowd finds that funnier than anything she could say | Try again next run | DRAFT 2026-11-11 |
+| PL-223 | **Your own ghost.** The Nightly keeps your best line as a ghost on your own board | Race it; the board only keeps the winner | DRAFT 2026-11-11 |
+| PL-224 | **The Brood's shortcut.** In the Hive, a wall you cut stays cut for the run — and the Brood uses your cut too, every one you did not need | Cut only what you need | DRAFT 2026-11-11 |
+| PL-225 | **The figurehead.** In the Cryo Drift, throw a Wasp against the passing ice barge and it sticks, frozen, riding the lane a full circuit | Decorate the barge; the crowd has opinions | DRAFT 2026-11-11 |
+| PL-226 | **The ding.** In the Storm Lattice, the cable car dings at each pylon just before the arc comes | Move on the ding, not the arc | DRAFT 2026-11-11 |
 
 ## G. Street life at the outposts and waystations
 
@@ -237,6 +255,11 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-214 | Proteus | Pyrrha's box. Hand Pyrrha anything and she lifts it once, sets it down, and tells you what it is worth as a rumour. Arrive empty-handed and you get the speech: *"A reading's a rumor. Bring me a box."* | Bring her the strangest thing you can tow | DRAFT 2026-11-11 |
 | PL-215 | Kepler | Somebody's stall. One stall at the Scar sells a single item a night, and the item is always somebody's lost thing | Buy it back for its owner; or wonder how it keeps getting lost | DRAFT 2026-11-11 |
 | PL-216 | Nyx March | The blue minute. On nights no lot is due, the light on the Fence still turns blue for one minute — and every ship in Nyx March looks away | Look away with them; or watch the blue, and Clerk Yune will make a small note about you | DRAFT 2026-11-11 |
+| PL-235 | Eunomia | The new weld. Kowalczyk's own seal-flare launcher is welded shut — one clean weld, newer than everything else on his hull. He did it himself | Notice; say nothing | DRAFT 2026-11-11 |
+| PL-236 | The Bolus | Ives's minute. Every day at the same minute, Ives stands on the wall's road, hands in pockets, riding the Breath like a ferry | Stand your ship beside him for one breath | DRAFT 2026-11-11 |
+| PL-237 | Rhea | Honk at heat. Rhea haulers honk at any hull carrying an old scorch, whoever earned it | Wear your burns; they were earned somewhere | DRAFT 2026-11-11 |
+| PL-238 | Io | Half and half. Coldburn Rey's hull is painted half one flag's colours, half the other's. Both sides pretend not to see him | See him | DRAFT 2026-11-11 |
+| PL-239 | Haumea | Rowan's tap. Tap Rowan strikes the ice once a pulse, and the whole rift flashes on his stroke | Move on the tap; everyone out here does | DRAFT 2026-11-11 |
 
 ## H. The world reacts, part two
 
@@ -259,6 +282,9 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-145 | **Freight manners.** Hold at a beacon and let three strings through and the fourth flashes you across first. Never yield, and the strings close ranks — every crossing becomes a fight you started | Yield; or make an enemy of the timetable | DRAFT 2026-11-11 |
 | PL-174 | **The witness.** A civilian saw it, and your description goes chalked on the Berth Board — wrong colour, wrong tag. It holds until the witness docks and corrects it | Enjoy the wrong chalk; or be gone before they dock | DRAFT 2026-11-11 |
 | PL-194 | **Your wake.** Boost past a working crew and their work scatters — ore piles drift, tethers swing, and the crews hold up whatever is at hand | Slow down past work; or owe three crews in one pass | DRAFT 2026-11-11 |
+| PL-227 | **Seen.** Wear a mark from one town into a town that has never seen it: a kid points, and an old pilot nods once — they know what it took | Wear your history around | DRAFT 2026-11-11 |
+| PL-228 | **Two names.** Two towns' Berth Boards have named you differently for the same deed, and each town is sure theirs is right | Live with both; each town is certain | DRAFT 2026-11-11 |
+| PL-229 | **The other name.** The town chalked a name on the board for the day the tug brought you in asleep, and it stuck | Earn a better one; the town will keep both | DRAFT 2026-11-11 |
 
 ## I. Secrets, part two
 
