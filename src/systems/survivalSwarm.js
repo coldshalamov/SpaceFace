@@ -15,6 +15,7 @@ import { COHORT_RECIPE_RIVER } from '../data/squadChoreography.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import {
   SWARM_CLEANUP_TICKS,
+  SWARM_DEEP_WAVE_MAX,
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
@@ -35,6 +36,7 @@ import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export {
   SWARM_CLEANUP_TICKS,
+  SWARM_DEEP_WAVE_MAX,
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
@@ -49,6 +51,15 @@ export {
   SURVIVAL_ROLE_PROBLEMS,
   survivalRoleProblem,
 };
+
+/**
+ * C01-03 — the run took `Keep going` past the round-30 win. The stamp rides telemetry the
+ * way the stake and threats do: schema-free, run-lifelong, never serialized. Once set it is
+ * never unset inside a run — the banked win is a fact, not a mode to toggle back out of.
+ */
+export function isSwarmDeepRun(run) {
+  return !!(run && run.telemetry && run.telemetry.deepContinued === true);
+}
 
 export function isSwarmRuleset(ruleset) {
   return ruleset === SWARM_RULESET;

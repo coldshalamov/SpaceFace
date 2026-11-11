@@ -102,13 +102,15 @@ test('the next champion is the boss wave at-or-after the wave asked', () => {
 test('junk input and the course edge are honest, and the answer is deterministic', () => {
   assert.equal(swarmNextBossFor(0).wave, 5, 'junk clamps to wave 1');
   assert.equal(swarmNextBossFor('x').wave, 5);
-  // C01-01: the course ends at wave 30 — every ask past the final champion clamps to the
-  // Forge Regent's round. No null, no wrap numeral, no deeper row.
-  const edge = swarmNextBossFor(999);
-  assert.equal(edge.id, 'forge_regent', 'past the course the final champion answers');
-  assert.equal(edge.wave, 30);
-  assert.equal(edge.distance, 0, 'the clamped answer is the champion already on the field');
-  assert.equal(edge.cycle, undefined, 'no pass numeral rides the clamp');
+  // C01-03: past the win the deep clock answers — wave 77 hears the Tendril at 80, and the
+  // horizon's end is honest null rather than a clamped champion.
+  assert.equal(swarmNextBossFor(999), null, 'past the last legal boss wave there is no call');
+  const deep = swarmNextBossFor(77);
+  assert.equal(deep.id, 'brood_tendril', 'the deep course names its own champions');
+  assert.equal(deep.wave, 80);
+  assert.equal(deep.distance, 3);
+  assert.equal(swarmNextBossFor(147).id, 'iron_maw', 'the wrap call carries the numeral row');
+  assert.equal(swarmNextBossFor(147).cycle, 1);
   assert.equal(swarmNextBossFor(26).wave, 30, 'wave 26 still hears the final call');
   assert.equal(swarmNextBossFor(26).distance, 4);
   assert.deepEqual(swarmNextBossFor(77), swarmNextBossFor(77), 'pure: same input, same answer');
