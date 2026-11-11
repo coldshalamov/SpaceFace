@@ -28,6 +28,8 @@ import { getSectorWayOfLife } from '../data/sectorWayOfLife.js';
 import { ALL_KILL_MACHINE_BY_ID } from '../data/environmentalMachinery.js';
 import { openSurveyFix } from '../systems/surveyFix.js';
 import { missionNextActionRow, trackedMission } from './sim/missionNextAction.js';
+import { counted } from './numberFormat.js';
+
 
 // dangerTier 0..5 → one-word security read (0 = safest). Pure display language.
 export const SECURITY_TIER_LABELS = ['secure', 'patrolled', 'contested', 'dangerous', 'lawless', 'lethal'];
@@ -346,7 +348,7 @@ export const sectorPostcard = {
       card.ecology && card.ecology.familyLabel,
       card.dominantZone && card.dominantZone.name,
       card.ecology && card.ecology.unresolvedCauses > 0
-        ? `${card.ecology.unresolvedCauses} active consequence${card.ecology.unresolvedCauses === 1 ? '' : 's'}`
+        ? `${counted(card.ecology.unresolvedCauses, 'active consequence', 'active consequences')}`
         : null,
     ].filter(Boolean).join(' · ');
     line(placeIdentity, 'sf-postcard__dim');

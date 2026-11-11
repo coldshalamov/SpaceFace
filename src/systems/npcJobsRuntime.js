@@ -222,6 +222,11 @@ const CLOSE_CALL_SPEED_WU = 40;
 const CLOSE_CALL_HOLD_S = 2.5;
 const CLOSE_CALL_COOLDOWN_S = 30;
 const CLOSE_CALL_PHASES = new Set([NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD]);
+// inf-lane-horn: a hull on a moving leg jinks off a buzzing player's line (traffic leases it via
+// swerveJob). The stationary bench phases above keep SF-081's brace instead.
+const NEAR_MISS_SWERVE_PHASES = new Set([NPC_JOB_PHASE.DEPART, NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH, NPC_JOB_PHASE.RETURN]);
+const NEAR_MISS_SWERVE_MAX_S = 3;
 // SF-082: a fleeing worker must not resume blind into a hostile parked on the stop it was
 // flying to — that is flee→resume→flee flapping, not a choice. When the remembered threat is
 // still alive and inside the guard ring of the pending stop, the job falls back to the nearest
@@ -1249,6 +1254,8 @@ export const npcJobsRuntime = {
         // Traffic must not write intent for a job hull.
         interrupt: (jobId, threat) => this.interruptJob(jobId, threat),
         resume: (jobId) => this.resumeJob(jobId),
+        // inf-lane-horn: traffic noticed the player buzzing this hull; lease one short jink.
+        swerve: (jobId, swerve) => this.swerveJob(jobId, swerve),
         // Read-on-demand performance evidence. The returned object is a detached scalar snapshot;
         // callers cannot mutate the retained hot-path counters or request scratch.
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
@@ -4773,7 +4780,9 @@ export const npcJobsRuntime = {
       // an ambient errand overwrite its authenticated hold/formation after _drive.
       if (!claimed && !isTallyPassageJob(entry.job) && !(pallasTarget && pallasShiftOwnsMovement(this.state, entry, entity))
         && !cinderglassTarget && !entry.job.payload?.salvageIntakeWait && !isScrapSweeperJob(entry, entity) && !prospecting
-        && !pallasSeamRole(this.state, entity)) applyLaneErrandIntent(this, entry, entity, simT);
+        && !pallasSeamRole(this.state, entity) && !(entry.nearMissSwerve && this._nearMissSwerving(entry, simT))) {
+        applyLaneErrandIntent(this, entry, entity, simT);
+      }
     }
   },
 
@@ -5332,6 +5341,14 @@ export const npcJobsRuntime = {
       return;
     }
 
+    // inf-lane-horn: a buzzed hull on a moving leg jinks for its leased beat, then the route below
+    // takes it back from wherever the jink left it. The kernel clock never paused.
+    if (entry.nearMissSwerve && this._nearMissSwerving(entry, finite(this.state.simTime, 0))) {
+      const swerve = entry.nearMissSwerve;
+      this._writeIntent(entity, swerve.strafe, 1, false, swerve.aim, false);
+      return;
+    }
+
     if (phase===NPC_JOB_PHASE.APPROACH && job.payload?.requirePhysicalArrival
       && job.routeIndex===job.route.length-1 && job.route[job.routeIndex]?.pos) {
       const policy=job.payload.requirePhysicalArrival;
@@ -5778,6 +5795,37 @@ export const npcJobsRuntime = {
       interrupt(entry.job, { entityId: threat && threat.entityId != null ? threat.entityId : null });
     }
     this._threatQueryDirty = true;
+    return true;
+  },
+
+  /**
+   * inf-lane-horn: traffic saw the player buzz this hull. Lease one short jink to the job drive.
+   * The kernel phase and clock are untouched; only the moving legs honor it, a leased or fleeing
+   * hull refuses, and the stamp is runtime-only (serialize() never carries entry fields).
+   */
+  swerveJob(jobId, swerve) {
+    if (jobId == null || !swerve) return false;
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job || entry.job.corrupt || entry.control) return false;
+    if (!NEAR_MISS_SWERVE_PHASES.has(entry.job.phase)) return false;
+    const untilSimT = Number(swerve.untilSimT);
+    const aim = Number(swerve.aim);
+    const now = finite(this.state && this.state.simTime, 0);
+    if (!Number.isFinite(untilSimT) || !Number.isFinite(aim) || !(untilSimT > now)
+      || untilSimT - now > NEAR_MISS_SWERVE_MAX_S) return false;
+    entry.nearMissSwerve = { untilSimT, aim, strafe: Number(swerve.strafe) < 0 ? -1 : 1 };
+    return true;
+  },
+
+  /** A live, honest jink lease. A lapsed or clock-rewound stamp is dropped on read. */
+  _nearMissSwerving(entry, simT) {
+    const swerve = entry && entry.nearMissSwerve;
+    if (!swerve) return false;
+    if (!(simT < swerve.untilSimT) || swerve.untilSimT - simT > NEAR_MISS_SWERVE_MAX_S
+      || !NEAR_MISS_SWERVE_PHASES.has(entry.job && entry.job.phase) || entry.control) {
+      entry.nearMissSwerve = null;
+      return false;
+    }
     return true;
   },
 

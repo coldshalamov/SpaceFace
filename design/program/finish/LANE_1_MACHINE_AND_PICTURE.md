@@ -685,3 +685,30 @@ payloads carry no position (the melt honestly skips on recycling).
 - Whole-run A/B across separate launches on this host (fps swings 10–45 with other load) — A/B inside one session.
 - The runtime whole-ship LOD swap (turned off for blink defects; see memory `frame-sacred-lod-blink-mechanisms`).
 - Quoting the 3.5 GB "all textures resident" figure as a runtime cost (live residency is ~71.5 MB).
+
+## INFERENCE 20+20 pass (2026-11-08/09, controller + implementer agents)
+
+Implemented and focused-tested (one commit each, `test/*-<slug>.test.mjs`, recorded in
+`design/program/inference-memory.json`); picture/sound slice:
+- inf-wreck-cooling-voice (WF-13): a sim-stamped fresh wreck ticks, thuds and groans on the same
+  deterministic aftermath clock its smoke reads, aftermath-only, first voice carries the caption
+  (9681e22a52).
+- a11y-hit-vignette (WF-12): the damage vignette profiles per axis - reduced flash swells/holds
+  instead of re-strobing at hit cadence, reduced motion keeps a softened held wash (f5ab4d3eec).
+- fix-machinery-storm-hull (WF-12 repair): machinery hazard receipts name the player hull and
+  the family storm severity, so the Cinder Sluice kill field reads on the hull like the charted
+  storm (44f0ab92af).
+- a11y-danger-captions (WF-13 repair): the danger caption family is authored at high/warn
+  urgency (subsystem loss, breach, near miss, ranged charge, chain warn, interdiction,
+  fracture/heat/gas) instead of de-snaked ids at normal (c8ee2d0860).
+- inf-gate-throat-voice (WF-13): the approach bed skips gate bodies; the nearest live gate sings
+  its own throat - a sawtooth ring detuning across the spin-up radius, a wormhole a lower moan
+  (972999ec67).
+- inf-massline-bite-read (WF-12): the Line's bite reads the caught surface (spray by material)
+  shaped by the target's share of the coupled pair; the cyan flash pair is untouched
+  (c2f370e716).
+- inf-radio-distance (WF-13): the comms band carries distance - past 1800 wu narrower, hissier,
+  more driven; past 3600 further; the register always survives, intimate voices never ride a far
+  carrier, the PCM cache keys the band (4aad17df23).
+Support repairs, not units: the wave-10 swarm pin re-pins (c607261f11a5, 912617579de3), the gust
+forecast u/s² pin (c3298dcc7727), two stale knownDefects resolved by verification (c52b35e747fc).

@@ -260,6 +260,41 @@ export const TERRAIN_CRUMPLE_LAW = Object.freeze({
 // almost nothing: it is terrain, not a mutual grinder.
 export const HEAVY_AS_TERRAIN_MASS = 150;
 
+// CH-02 — ram damage for everyone. Below the heavy boundary craft contact still read its DAMAGE
+// off the solver's bounded Δv: every contact is clamped to min(mass) x MAX_CONTACT_DV and the
+// 12-tick pair cooldown drops the remainder, so a 130 WU/s ram dealt exactly what a 55 WU/s bump
+// did, and the striker's mass never entered — a 90-mass Ironback ploughing into a 16-mass Wasp
+// dented it like a peer. The ram law reads the speed the hulls actually met at and how big each
+// one is: the victim's share of the closing speed in a dead (restitution 0, the craft contact
+// material) two-body collision,
+//   ramDeltaV = closing * mStriker / (mStriker + mVictim)
+// fed to the SAME energy proxy, scale, craft multiplier and mass-relative cap the bounded read
+// uses. It only ever raises that read (the solver bound stays a rate limit, exactly as PQ-137.06
+// and PQ-140.01 left it), so every bump the solver resolves honestly is bit-stable — traffic
+// grinding is not chaos — and a whip contact the craft multiplier zeroes stays zero. A heavy
+// rams a light: the light's share is nearly the whole closing speed and it is wrecked. Equals
+// meet: each takes half, and both crumple (the bounded read already carried a peer ram; the law
+// lifts it only past the solver's ceiling). A light rams a heavy: it bounces off hurt while the
+// heavy's share stays under the crumple floor — a light is still not terrain.
+export const CRAFT_RAM_LAW = Object.freeze({
+  restitution: 0,
+  // The read fires only on a committed ram: the victim's share must itself clear the crumple
+  // family's threshold before the law speaks. This is what keeps PQ-140.01's word true — a
+  // light is not terrain, and its share in a heavy's frame is a bump, not a crumple.
+  minShare: TERRAIN_CRUMPLE_LAW.threshold,
+});
+
+/**
+ * The victim's honest Δv in a craft-on-craft contact at `closingSpeed`: its mass-ratio share of
+ * the speed the two hulls met at. 0 for anything unreadable, so a receipt without a measured
+ * closing speed or a massless partner keeps the bounded read.
+ */
+export function craftRamDeltaV(closingSpeed, victimMass, strikerMass) {
+  if (!Number.isFinite(closingSpeed) || !(closingSpeed > 0)) return 0;
+  if (!(victimMass > 0) || !(strikerMass > 0)) return 0;
+  return (1 + CRAFT_RAM_LAW.restitution) * closingSpeed * strikerMass / (strikerMass + victimMass);
+}
+
 // §22 B5 — spall energy axis. Shares the feel/audio 8→150 WU/s ramp: below the touch speed a
 // contact cannot throw chips at all, at the reference slam the chip count saturates.
 export const COLLISION_DEBRIS_SPEED_TOUCH = 8;
@@ -478,6 +513,7 @@ export function resolveCollisionConsequence(input = {}) {
   const useCrumple = (worldSurface || heavyAsTerrain) && Number.isFinite(input.preSolveClosingSpeed);
   let impactDamage;
   let damageCap = massRelativeCap;
+  let ramDeltaV = 0;
   if (useCrumple) {
     const crumple = Math.max(0, input.preSolveClosingSpeed - TERRAIN_CRUMPLE_LAW.threshold);
     const massScale = TERRAIN_CRUMPLE_LAW.refMass / mass;
@@ -492,6 +528,29 @@ export function resolveCollisionConsequence(input = {}) {
       0,
       massRelativeCap,
     );
+    // CH-02 (CRAFT_RAM_LAW): the damage reads the victim's mass-ratio share of the pre-solve
+    // closing speed whenever the solver bound truncated it. Control, the receipt's `deltaV`
+    // and every reader of them keep the solver's number.
+    if (surface === 'craft' && surfaceDamageMultiplier > 0) {
+      const share = craftRamDeltaV(
+        input.preSolveClosingSpeed,
+        mass,
+        positive(other.physicsBody && other.physicsBody.mass, positive(other.mass, 0)),
+      );
+      if (share > deltaV && share >= CRAFT_RAM_LAW.minShare) {
+        const overRamSpeed = Math.max(0, share - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
+        const ramDamage = clamp(
+          0.5 * mass * overRamSpeed * overRamSpeed
+            * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
+          0,
+          massRelativeCap,
+        );
+        if (ramDamage > impactDamage) {
+          impactDamage = ramDamage;
+          ramDeltaV = share;
+        }
+      }
+    }
   }
   const damage01 = damageCap > 0
     ? impactDamage / damageCap : 0;
@@ -521,6 +580,8 @@ export function resolveCollisionConsequence(input = {}) {
     exchangedMomentum,
     deltaV,
     ...(projectileKnock ? { projectileKnock: true } : {}),
+    // CH-02: present only when the ram law raised the damage — the Δv the damage read.
+    ...(ramDeltaV > 0 ? { ramDeltaV } : {}),
     control,
     staggerTicks,
     impactDamage,

@@ -15,7 +15,7 @@
 
 import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
 import { waveOpeningLine } from '../systems/survivalAnnounce.js';
-import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { isSwarmDeepRun, isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { circuitFor, circuitRoundFor, CIRCUIT_STAGE_COUNT, CIRCUIT_ROUNDS_PER_STAGE } from '../systems/survivalCircuit.js';
 import {
   deathCauseText,
@@ -77,6 +77,15 @@ export const OBJECTIVE_WORDS = Object.freeze({
 export function objectiveWord(objectiveKind) {
   const word = OBJECTIVE_WORDS[objectiveKind];
   return typeof word === 'string' ? word : null;
+}
+
+/**
+ * The swarm round counter's own word: `ROUND 31` before the win's continue, `ROUND 31 · DEEP`
+ * past it. Same figure, one suffix — the deep water is announced, not renumbered.
+ */
+export function swarmRoundWord(run) {
+  const word = `ROUND ${String(Math.max(1, (run && run.wave) || 1)).padStart(2, '0')}`;
+  return isSwarmDeepRun(run) ? `${word} · DEEP` : word;
 }
 
 const MARK_GLYPHS = Object.freeze(['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']);
@@ -383,12 +392,14 @@ export const survivalHud = {
     const circuit = swarm ? circuitFor(run) : null;
     const circuitRound = circuit ? circuitRoundFor(run, run.wave) : null;
     const overtime = !!(circuit && circuit.status === 'overtime');
+    // C01-03 — a banked win's continue is DEEP water, and the counter says so: same ROUND
+    // figure, one suffix, the Circuit branches untouched.
     this._setText(dom.waveN, swarm
       ? circuitRound
         ? `STAGE ${circuitRound.stage}/${CIRCUIT_STAGE_COUNT} · ROUND ${circuitRound.localRound}/${CIRCUIT_ROUNDS_PER_STAGE}`
         : overtime
           ? `OVERTIME · ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
-          : `ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
+          : swarmRoundWord(run)
       : `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
     this._setText(dom.phase, phase);
     // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.

@@ -7,6 +7,10 @@
 //   * poxsac (w75): blastOnly + births — a mother only a blast can stop.
 // The engine's only new work: the split and mother hold-backs fund by FLAG, not by id,
 // so these families reuse the same budget law instead of growing new machinery.
+//
+// C01-01: the course ends at wave 30 — all three debut gates (w61/67/75) are unreachable,
+// so nothing in this band fields inside a run. The tests pin the honest validator flags
+// and the in-course reserve law the waves a run can reach still hold.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -36,6 +40,7 @@ import {
   isSwarmBossWave,
   swarmNewcomerFor,
 } from '../src/data/swarmMode.js';
+import { swarmSlamSub } from '../src/ui/swarmJuiceHud.js';
 
 const SEED = 4242;
 const DT = 1 / 60;
@@ -156,16 +161,21 @@ function isolate(h, keep) {
 
 test('the tables stay honest: base, late and the ten-clock all clean', () => {
   assert.deepEqual(swarmBroodIssues(), []);
+  // C01-03: the strain debuts sit on real deep-course rows — the late table is clean.
   assert.deepEqual(swarmBroodLateIssues(), []);
   for (const band of BAND3) {
     const fam = swarmBroodLateFamily(band.id);
     assert.ok(fam, `${band.id} is not in the late table`);
     assert.equal(fam.fromWave, band.fromWave, `${band.id} gate moved`);
-    assert.ok(!isSwarmBossWave(band.fromWave),
-      `${band.id} gates at wave ${band.fromWave}, a champion row`);
     assert.equal(swarmNewcomerFor(band.fromWave), null,
       `wave ${band.fromWave} shares its slam with a ship debut — the brood card must show`);
   }
+  // C01-03: the deep course runs the old ≡0-mod-10 clock — champions hold the decade marks
+  // and every band-3 gate (61/67/75) sits on a real non-champion round. No gate lands on
+  // a champion row; the Tendril's round is 80 on this clock.
+  assert.deepEqual(BAND3.filter((b) => isSwarmBossWave(b.fromWave)).map((b) => b.id),
+    [],
+    'a band-3 gate landed on a champion row');
   // The band's own cadence: at least 6 and at most 8 waves between consecutive gates,
   // measured from the deep band's last gate (undertow, 55).
   const gates = [55, ...BAND3.map((b) => b.fromWave)];
@@ -213,6 +223,9 @@ test('each debut wave deals the brood slam card with the authored counter', () =
     assert.equal(card.name, fam.name);
     assert.equal(card.counter, fam.counter, `${band.id} counter line did not ride the card verbatim`);
     assert.equal(card.brood, true, 'the brood lane marks its own card');
+    // The slam's sub-line is what the player reads — on the pox sac's champion round too.
+    assert.equal(swarmSlamSub(slams[0].payload), `NEW THREAT · ${fam.name}`,
+      `wave ${band.fromWave} slam names the debut`);
   }
 });
 
@@ -412,26 +425,31 @@ test('third-band waves conserve the wave budget across every held lane', () => {
 
 // --- the reserve picker: eligibility by flag, determinism --------------------------------
 
-test('the late reserve takes mirebulb but never a hold-back owner', () => {
-  const pick = swarmBroodLateReserve(75, () => 0.9);
-  assert.ok(pick, 'wave 75 keeps a reserve');
-  assert.equal(pick.familyId, 'mirebulb', 'the newest eligible family never joins the draw');
-  assert.ok(pick.count >= 1 && pick.count <= swarmBroodLateFamily('mirebulb').cohort);
+test('the late reserve takes burrower but never a hold-back owner', () => {
+  // Versioned for C01-01: the course ends at round 30, so the deep probes (75/76) collapse
+  // onto the champion row — the reserve law survives on the last ordinary rounds. Wave 25
+  // is a champion round and keeps no reserve; waves 26–29 keep one, and the only family
+  // eligible inside the course is the burrower (remora opens at 31, past the finish).
+  assert.equal(swarmBroodLateReserve(25, () => 0.9), null, 'a champion round keeps no reserve');
+  const pick = swarmBroodLateReserve(29, () => 0.9);
+  assert.ok(pick, 'wave 29 keeps a reserve');
+  assert.equal(pick.familyId, 'burrower', 'the newest eligible family never joins the draw');
+  assert.ok(pick.count >= 1 && pick.count <= swarmBroodLateFamily('burrower').cohort);
   // Sweep the whole draw: the picker can never land on a splits or births family —
   // their unbudgeted children would grow the plan.
   const eligibleSeen = new Set();
   for (let d = 0; d < 1000; d++) {
-    const p = swarmBroodLateReserve(75, () => d / 1000);
+    const p = swarmBroodLateReserve(29, () => d / 1000);
     assert.ok(p);
     eligibleSeen.add(p.familyId);
     const fam = swarmBroodLateFamily(p.familyId);
     assert.ok(!fam.births && !fam.splits, `${p.familyId} owns a hold-back and must stay out`);
-    assert.ok(fam.fromWave <= 75, `${p.familyId} picked before its gate`);
+    assert.ok(fam.fromWave <= 29, `${p.familyId} picked before its gate`);
   }
-  assert.ok(eligibleSeen.has('mirebulb'), 'the sweep never drew the mirebulb');
-  assert.ok(!eligibleSeen.has('poxsac') && !eligibleSeen.has('clutchstone'));
+  assert.ok(eligibleSeen.has('burrower'), 'the sweep never drew the burrower');
+  assert.ok(!eligibleSeen.has('splitter') && !eligibleSeen.has('brood_mother'));
   // Deterministic: the same (seed, wave) always picks the same group.
-  assert.deepEqual(swarmBroodLateReserve(67, () => 0.314), swarmBroodLateReserve(67, () => 0.314));
+  assert.deepEqual(swarmBroodLateReserve(28, () => 0.314), swarmBroodLateReserve(28, () => 0.314));
 });
 
 test('the runtime fields the whole late roster on a deep wave — mirror sized for all of it', () => {
