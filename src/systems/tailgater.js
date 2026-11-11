@@ -12,6 +12,7 @@
 // Preserves single intent writer: mixed into traffic.js as tailgaterOps.
 
 import { occupantGenerationOf } from '../core/entity.js';
+import { requestTrafficReaction, releaseTrafficReaction } from './trafficReactionLease.js';
 
 export const TAILGATER_START_EVENT = 'traffic:tailgaterStart';
 export const TAILGATER_HORN_EVENT = 'traffic:tailgaterHorn';
@@ -142,18 +143,6 @@ export function predictPlayerCutOff(player, hauler, tuning = TAILGATER_TUNING) {
   };
 }
 
-function setTailgaterIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
-  const data = e.data || (e.data = {});
-  const intent = data.intent || (data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
-  intent.moveX = moveX;
-  intent.moveZ = moveZ;
-  intent.boost = boost;
-  intent.fire = fire;
-  intent.fireGroup = fireGroup;
-  intent.aimAngle = aimAngle;
-  intent.brake = false;
-}
-
 export function getOrCreateTailgaterRow(memory, entity, now = 0) {
   if (!memory || !entity) return null;
   const generation = occupantGenerationOf(entity);
@@ -223,6 +212,7 @@ export const tailgaterOps = {
         row.tailgating = false;
         row.cooldownUntil = now + TAILGATER_TUNING.cooldownS;
         if (e.data && e.data.civilianReaction === 'tailgating') delete e.data.civilianReaction;
+        releaseTrafficReaction(this, e);
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit(TAILGATER_END_EVENT, {
             entityId: e.id,
@@ -238,6 +228,7 @@ export const tailgaterOps = {
         row.tailgating = false;
         row.cooldownUntil = now + TAILGATER_TUNING.cooldownS;
         if (e.data && e.data.civilianReaction === 'tailgating') delete e.data.civilianReaction;
+        releaseTrafficReaction(this, e);
         return false;
       }
 
@@ -250,6 +241,7 @@ export const tailgaterOps = {
         row.tailgating = false;
         row.cooldownUntil = now + TAILGATER_TUNING.cooldownS;
         if (e.data && e.data.civilianReaction === 'tailgating') delete e.data.civilianReaction;
+        releaseTrafficReaction(this, e);
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit(TAILGATER_END_EVENT, {
             entityId: e.id,
@@ -263,7 +255,17 @@ export const tailgaterOps = {
 
       // Steer directly toward player and drive forward:
       const aim = Math.atan2(dz, dx);
-      setTailgaterIntent(e, 0, 1, false, false, null, aim);
+      const owned = requestTrafficReaction(this, e, {
+        moveX: 0, moveZ: 1, boost: false, fire: false, fireGroup: null, aimAngle: aim, brake: false,
+      }, row.expiresAt - now);
+      if (!owned) {
+        // The job owner will not lease this hull: the chase ends, the job keeps its intent.
+        row.tailgating = false;
+        row.cooldownUntil = now + TAILGATER_TUNING.cooldownS;
+        if (e.data && e.data.civilianReaction === 'tailgating') delete e.data.civilianReaction;
+        releaseTrafficReaction(this, e);
+        return false;
+      }
 
       // Sound horn continuously / periodically throughout the 20 seconds:
       if (now - row.lastHornAt >= TAILGATER_TUNING.hornIntervalS) {
@@ -292,17 +294,21 @@ export const tailgaterOps = {
     const cutOff = predictPlayerCutOff(player, e, TAILGATER_TUNING);
     if (!cutOff) return false;
 
+    const dx = player.pos.x - e.pos.x;
+    const dz = player.pos.z - e.pos.z;
+    const aim = Math.atan2(dz, dx);
+    const owned = requestTrafficReaction(this, e, {
+      moveX: 0, moveZ: 1, boost: false, fire: false, fireGroup: null, aimAngle: aim, brake: false,
+    }, TAILGATER_TUNING.durationS);
+    // A job hull whose owner will not lease does not chase.
+    if (!owned) return false;
+
     // Trigger engaged!
     row.tailgating = true;
     row.startedAt = now;
     row.expiresAt = now + TAILGATER_TUNING.durationS;
     row.lastHornAt = now;
     if (e.data) e.data.civilianReaction = 'tailgating';
-
-    const dx = player.pos.x - e.pos.x;
-    const dz = player.pos.z - e.pos.z;
-    const aim = Math.atan2(dz, dx);
-    setTailgaterIntent(e, 0, 1, false, false, null, aim);
 
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('audio:cue', {
