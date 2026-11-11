@@ -1,5 +1,9 @@
 # Handoff — where the build stands (checkpoint 2026-11-11 ~04:40 UTC)
 
+**New since this checkpoint (owner, 2026-11-11): work is split into four agent lanes in `QUEUE.md`
+(Agent 1 hardest/taste … Agent 4 mechanical); the design now lives on master in `design/game/`; the
+front doors (`AGENTS.md`, `CLAUDE.md`) point only at `design/program/fleet/README.md`.**
+
 Read in this order: this page → `PLAYBOOK.md` (how the work runs, the four programs) → `QUEUE.md`
 (every job and its state). Lead = the strongest model available; workers = Devin SWE-2 Max ×3
 (`devin1..3`) and Gemini Flash (`flash`) via `node scripts/fleet/run.mjs <PACKET> <backend>`.
