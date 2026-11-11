@@ -312,7 +312,7 @@ html body #screens .orr-station .k-word[data-rack-restock],
   color:rgb(236 230 216 / .9) !important;
   background-color:rgb(236 230 216 / .06) !important;
   background-image:none !important;
-  border:1px solid rgb(236 230 216 / .38) !important; border-radius:2px !important;
+  border:1px solid rgb(236 230 216 / .38) !important; border-radius:6px !important;
   cursor:pointer;
 }
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]::before,
