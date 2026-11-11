@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Source coverage index — 2026-10-29
 
 This index records Finish source packets U001–U072 and links the detailed local notes where they

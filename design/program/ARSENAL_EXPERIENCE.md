@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Arsenal experience — 11 October 2026
 
 Owner request: audit and improve every built ship weapon and power. The standard is the

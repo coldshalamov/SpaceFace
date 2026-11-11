@@ -29,8 +29,20 @@ tree. You must not damage them.
    five times.
 5. **Never run the full test suite or long jobs.** Run only the checks your packet names. A
    command that runs over 5 minutes: stop it and report it.
-6. Do not start the game server, browsers, or Electron unless the packet says to.
+6. **Machine safety (the owner's laptop crashed twice under load).** Start the game, a browser or
+   Electron only when the packet says to, and **always through the lock**:
+   `node scripts/fleet/game-lock.mjs run -- <command>` (e.g. `... run -- npm run check:playable`). It waits
+   if another game is running. Never start two at once; never run the whole test suite; close what you
+   started.
 7. Do not edit `test/references/**`, golden files, or expected outputs to make a check pass.
+8. **Tests must use what the game really sends** (senior review 2026-11-11 found four tests that passed
+   while the feature was dead). When your code listens for an event, find the real emitter
+   (`grep -rn "emit('<event>'" src`) and build the test payload with **exactly its fields** — never a
+   shape the game does not send. When your feature must be *seen* (lamps, flashes, labels), a data flag
+   is not enough: find the renderer/UI that draws it and wire it, or report it as Blocked. When the
+   event is emitted on the main thread and handled in the simulation (or the reverse), check it crosses
+   the worker boundary (`src/core/mainToSimEventSurface.js`; regenerate with
+   `node scripts/lib/eventSurfaceCensus.mjs --forward-set`).
 
 ## How to work
 
