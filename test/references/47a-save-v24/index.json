@@ -1,9 +1,9 @@
 {
   "schema": "spaceface.referenceIndex.v1",
   "id": "47a-save-v24",
-  "envelope": "test/47a.telemetry.save-v24.expected.json",
+  "envelope": "test/47a.telemetry.save-v26.expected.json",
   "createdAt": "2026-11-07T01:12:45.000Z",
-  "updatedAt": "2026-11-07T04:13:51.208Z",
+  "updatedAt": "2026-11-08T09:46:18.375Z",
   "versions": [
     {
       "version": 1,
@@ -580,7 +580,282 @@
           }
         }
       }
+    },
+    {
+      "version": 3,
+      "file": "v3.expected.json",
+      "snapshotFile": "v3.snapshot.json.gz",
+      "hash": "e9f34322eb5e1868434e3047ce6db22cc7bcd2e8253ca609388647e828a2bb79",
+      "at": "2026-11-08T09:46:18.375Z",
+      "reason": "Drained economy slicing flag-on shape: the per-fixed-tick drain completes every due pass inside its 5 s period, and the due-epsilon restores the intended cadence at each 5 s boundary. Content delta is expected to be economy-market-only (pass evaluated at its due tick); recorded on a tree clean of the foreign newGameDefaults/input hunks.",
+      "ticket": "E2-ECON-SLICING",
+      "cleanRuns": 5,
+      "ticks": 720,
+      "reloadAt": 600,
+      "seed": 47,
+      "inputTape": "test/47a.inputs.json",
+      "scenarioContract": "src/data/scenarios/47a.scenario.json",
+      "gitHead": "f95de0eb1ba7560839209936afba48c7b96fe41a",
+      "dirty": true,
+      "delta": {
+        "hashChanged": true,
+        "previousHash": "ebbfe82a6bf1e87ac1912942751e661fe6cf4ba42e69a2ddce360c408385061b",
+        "newHash": "e9f34322eb5e1868434e3047ce6db22cc7bcd2e8253ca609388647e828a2bb79",
+        "hashEqual": false,
+        "changed": 1937,
+        "added": 0,
+        "removed": 0,
+        "totalDiffs": 1937,
+        "fieldClasses": {
+          "economy": 1937
+        },
+        "motionCount": 0,
+        "motionDiffs": [],
+        "sample": [
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_alloys.regimeEndT",
+            "before": 3701.072135,
+            "after": 3701.055468,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_alloys.regimeStartT",
+            "before": -1008.139117,
+            "after": -1008.155784,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_art.regimeEndT",
+            "before": 2645.918827,
+            "after": 2645.902161,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_art.regimeStartT",
+            "before": -1145.978106,
+            "after": -1145.994772,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_classified_salvage.regimeEndT",
+            "before": 3899.483276,
+            "after": 3899.466609,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_classified_salvage.regimeStartT",
+            "before": -1054.483155,
+            "after": -1054.499822,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_comp_circuitry.regimeEndT",
+            "before": 3775.263203,
+            "after": 3775.246537,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_comp_circuitry.regimeStartT",
+            "before": -1196.92076,
+            "after": -1196.937427,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_comp_hullplate.regimeEndT",
+            "before": 2331.790013,
+            "after": 2331.773347,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_comp_hullplate.regimeStartT",
+            "before": -1009.744319,
+            "after": -1009.760985,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_consumer_goods.regimeEndT",
+            "before": 3270.21448,
+            "after": 3270.197813,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_consumer_goods.regimeStartT",
+            "before": -1033.482836,
+            "after": -1033.499503,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_control_unit.regimeEndT",
+            "before": 2428.179706,
+            "after": 2428.163039,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_control_unit.regimeStartT",
+            "before": -1161.631026,
+            "after": -1161.647693,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_crystal_lumin.regimeEndT",
+            "before": 3858.059664,
+            "after": 3858.042997,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_crystal_lumin.regimeStartT",
+            "before": -1003.896149,
+            "after": -1003.912816,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_crystal_silica.regimeEndT",
+            "before": 3650.477875,
+            "after": 3650.461208,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_crystal_silica.regimeStartT",
+            "before": -1041.254089,
+            "after": -1041.270755,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_dmc_black_box.regimeEndT",
+            "before": 1221.490117,
+            "after": 1221.47345,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_dmc_black_box.regimeStartT",
+            "before": -1143.618136,
+            "after": -1143.634803,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_electronics.regimeEndT",
+            "before": 3932.643389,
+            "after": 3932.626722,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_electronics.regimeStartT",
+            "before": -1112.90356,
+            "after": -1112.920227,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_exotic_amazonite.regimeEndT",
+            "before": 2707.08248,
+            "after": 2707.065813,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_exotic_amazonite.regimeStartT",
+            "before": -1172.682881,
+            "after": -1172.699548,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_exotic_xenium.regimeEndT",
+            "before": 2547.776916,
+            "after": 2547.76025,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_exotic_xenium.regimeStartT",
+            "before": -1197.671784,
+            "after": -1197.688451,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_filament_sample.regimeEndT",
+            "before": 2598.603618,
+            "after": 2598.586951,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_filament_sample.regimeStartT",
+            "before": -1001.867714,
+            "after": -1001.884381,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_food.regimeEndT",
+            "before": 1300.304441,
+            "after": 1300.287775,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_food.regimeStartT",
+            "before": -1153.78138,
+            "after": -1153.798047,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_fuel_cells.regimeEndT",
+            "before": 1080.383234,
+            "after": 1080.366567,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_fuel_cells.regimeStartT",
+            "before": -1133.61812,
+            "after": -1133.634786,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gas_helium3.regimeEndT",
+            "before": 928.5075,
+            "after": 928.490833,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gas_helium3.regimeStartT",
+            "before": -1179.650658,
+            "after": -1179.667325,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gas_hydrogen.regimeEndT",
+            "before": 2122.962913,
+            "after": 2122.946246,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gas_hydrogen.regimeStartT",
+            "before": -1078.408035,
+            "after": -1078.424702,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gem_diamond.regimeEndT",
+            "before": 4194.932232,
+            "after": 4194.915565,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gem_diamond.regimeStartT",
+            "before": -1032.343317,
+            "after": -1032.359984,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gem_emerald.regimeEndT",
+            "before": 1564.639494,
+            "after": 1564.622827,
+            "class": "economy"
+          },
+          {
+            "path": "$.economy.cycles.station_ashcache.cmdty_gem_emerald.regimeStartT",
+            "before": -1109.408409,
+            "after": -1109.425076,
+            "class": "economy"
+          }
+        ],
+        "traceChanged": {}
+      }
     }
   ],
-  "latest": 2
+  "latest": 3
 }

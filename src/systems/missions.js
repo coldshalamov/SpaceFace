@@ -5,6 +5,22 @@ import { firstWaspRouteFocus } from '../missions/starterWaspRoute.js';
 import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
 import { compostRouteFocus } from '../missions/compostRoute.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
+// W-TENDER — the authored Tender run. The offer/tuning are data (missionsData.js); this module
+// owns the authorship guard, the rival-queue ledger, the drive adjudicator, the weigh stamps, and
+// the fail-forward spot post. Payment, charges, rep, and settlement stay in THIS system.
+import {
+  authoredTenderHaul,
+  createTenderRecord,
+  initializeTenderHaul,
+  driveTender,
+  onFlaggedAtIntake,
+  tenderLedgerEntry,
+  tenderPaydayLine,
+  tenderScanFaceClear,
+  tenderScanFaceHolder,
+  tenderUndeclaredIntakeUnits,
+  flashReducedCue,
+} from '../missions/tenderHaul.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
@@ -99,6 +115,7 @@ import {
   withBountyHeadMoney,
   RANK_CONTRACT_BY_FACTION,
   RANK_CONTRACT_SOURCE,
+  TENDER_HAUL_TYPE,
 } from '../data/missions.js';
 import {
   SET_PIECE_FOLLOW_ON_SOURCE,
@@ -368,6 +385,8 @@ import { missionStoryOps } from './missionStoryOps.js';
 import {
   TYPE_BY_ID, TYPE_ORDER, CMDTY_BY_ID, FACTION_BY_ID, SHIP_BY_ID, DESK_SERVICES, STATION_INFO, SECTOR_BY_ID, ALL_STATIONS, stationInfoFor, passengerIdentityFor, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, CONTRABAND_CMDTYS, MISSION_RECEIPT_LIMIT, BULK_HAUL_TYPE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_FEE, PHYSICAL_TYPE_SET, PHYSICAL_ROLE, CAPITAL_SUBSYSTEM_ORDER, CAPITAL_SUBSYSTEM_BY_ID, THROWN_MASS_SUBSYSTEM_DAMAGE, authoredDefinitionOf, authoredEncounterOf, isCampaign47aB2Rescue, b2RescueActorForRole, b2RescueActorCount, b2RescueActorIdentity, b2RescueActorIndexFromEntity, ensureB2RescueActorOutcomes, authoredMethodFor, authoredMethodDebriefPhrase, stampAuthoredTwist, stampCapitalBossTwist, isCapitalBossMission, completedEndgamePull, capitalSubsystemWorldPos, PHYSICAL_BERTH_WU, STORY_LATCH_DOCK_SLACK_WU, MISSION_WRECK_COLLISION_MASK, CONDITION_WARN_COOLDOWN_S, CONDITION_BRIEF_MAX, withClauseBriefSuffix, TICK_CONDITION_ID_SET, MISSION_HOSTILE_SPAWN_MIN_WU, MISSION_HOSTILE_SPAWN_MAX_WU, MISSION_HOSTILE_SPAWN_ATTEMPTS, MISSION_PORT_SAFE_RADIUS_WU, CONTRACT_CLAIM_PLAYER_RANGE_WU, CONTRACT_CLAIM_WORK_RANGE_WU, CONTRACT_CLAIM_CUT_PERIOD_S, CONTRACT_CLAIM_FLEE_RANGE_WU, CONTRACT_CLAIM_ORBIT_RAD_PER_S, CONTRACT_CLAIM_SCAN_LABEL, MUTATION_MAX_DEPTH, MUTATION_SALVAGE_CMDTYS, MISSION_MUTATIONS, ESCORT_TURN_DELAY_S, MUTATION_TOAST, missionMutationFor, escortLossSite, driveDisabledRuntime, mutationWreckRouting, isMutationRecovery, convoyClientVoice, CONVOY_WRECK_RING_WU, CONVOY_WRECK_DRIFT_WU_S, convoyWreckPocket, bountyTargetLost, externalTargetLoss, mutationPartialSettlement, partialDeliverySettlement, LONG_READ_RUMOR_EVENT, SET_PIECE_RECOVERY_OBJECTIVES, SET_PIECE_DISPOSITION_OBJECTIVES, CHOIR_RETURN_RADIUS_WU, CONTRACT_47A_B0_TAG, CONTRACT_47A_SAMPLE_ID, CONTRACT_47A_B1_TAG, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, ONBOARDING_CHOICE_LOOPS, markCorridorFirstDock, CONTRACT_47A_REWARD_CR, contract47aBalanceNote, CONTRACT_47A_B2_SCAN_RADIUS_WU, CONTRACT_47A_B2_CUSTODY_REEL_WU, SIZE_TIER, BRANCH_FACTION, BRANCH_INTRO_BY_FACTION, BRANCH_INTRO_BY_BRANCH, HOME_FACTION, clamp, round, cargoFootprint, fmtCargoUnits, signedRep, factionShortName, isStoryBranchIntroOffer, storyBranchIntroForOffer, missionOfferMinRep, setPieceCauseOf, isFingerprintBoardSource, isCompetingStarvedRow, isZeroPayLandmarkMission, setPieceEventFields, setPieceUpfrontCost, missionObservesClauseEvent, sectorDistanceWu, missionNavReason, plainFollowupPlace, B6_DEPLOYMENT_KINDS, b6DeploymentPayload, campaign47aEmbodiedEvidence, campaign47aRegisterResolved, campaign47aRouteKind, campaign47aOutcomeKey, normalizeMissionReceipts, setPieceEpochFrom, normalizeSetPieceSettlements, CLEAN_PHYSICAL_RELEASE, physicalRoleOf, contractClaimSiteOffer, contractClaimSiteMission, salvagePoolUnits, steerIntentToward, missionHostileSpawnPos, missionTargetSlotOf, completedMissionTargetSlots, lowestVacantSlot, ashfallCacheApproachPos, ashfallBlockadeDoorPos, stableEntityId, missionStoryTargetSpawnPos, outsideMissionPortSafety, capitalBossPlacementClear, CAPITAL_BOSS_PLACEMENT_ATTEMPTS, capitalBossAdjustedPlacement, distSq, BEAT_TRIGGER, STORY_SIGNAL_BY_KIND, BRANCH_CHAIN_TYPE, BRANCH_CHAIN_LEG_LABEL, BRANCH_CHAIN_COUNT, BEAT_HINT, storyBeatTitle, hasActiveMissionEntityIndex, missionIndexedEntities, sameNavWaypoint, sameStableBind, sameNavPos, wrapAngleLocal, mulberryLocal,
 } from './missionShared.js';
+import { counted } from '../core/numberFormat.js';
+
 export * from './missionShared.js';
 
 
@@ -653,6 +672,11 @@ export const missions = {
       // recorded — the ordered B0 list needs 'skim' landed before 'dock'.
       this._resolveContract47aSkimForDock(stationId);
       this._onDockedObjectives(stationId);
+      // W-TENDER: the dock moments are the run's weigh moments — the declare latches at the Tally
+      // when the scan face is clear, and the intake weighs unmanifested mass at the Forge. Full-
+      // tick systems freeze while `ui.docked` (core/presentationFreeze.js), so the latches stamp
+      // here, at the event the catalog's tick samples mirror.
+      this._onTenderDocked(stationId);
       this._settleCaptainGratitude(stationId);
       this._onContract47aB3Docked(stationId);
       // W-BOOKS-3-4: a blown Hawser seam gets Slate's second pass at the yard — the
@@ -875,6 +899,9 @@ export const missions = {
     // A blocking physics term latched: any contract whose objective was already met but was held
     // back on that term settles now, without needing a second dock or a second kill.
     bus.on('mission:conditionSatisfied', (p) => this._onConditionSatisfied(p));
+    // W-TENDER: a forfeited tender term still stamps its fact — the intake flag weighs the duty
+    // and moves Concord's secondary channel at the moment the term trips, never at settle.
+    bus.on('mission:conditionBroken', (p) => this._onTenderConditionBroken(p));
     // The Long Read is a chained-offer adapter over the live unique-wreck D-loop. These events are
     // evidence of actual rumor, scan, complication, salvage, and decision state—not proxy counters.
     bus.on('uniqueWreck:rumorRecorded', (p) => this._onLongReadRumorRecorded(p));
@@ -980,6 +1007,10 @@ export const missions = {
       // SF-143: the yard watch's window is the runtime's armed clock, never a deadline — same
       // drive-then-settle shape as the heist, and `continue` keeps ordinary mission logic out.
       if (m.counterweight) { this._driveCounterweight(m, i); continue; }
+      // W-TENDER: the desk's intake window is the drive's close clock (the offer declares no
+      // duration_s, so the deadline branch above can never mint the red EXPIRED), and the settle
+      // re-prices late lots instead of voiding them.
+      if (m.tender) { this._driveTender(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) {
         this._steerEscortee(m, state, dt);
@@ -1132,8 +1163,17 @@ export const missions = {
     const clauseState = m._clauseState || (m._clauseState = {});
     const runtime = clauseState[def.id] || (clauseState[def.id] = { count: 0 });
     if (!holds) { runtime.holdT = 0; return; }
-    runtime.holdT = (runtime.holdT || 0) + (dt || 0);
     const now = state.simTime || 0;
+    if (def.warnOnly === true) {
+      // A warning light, never a latch: the state is still fixable in flight, so the tick slot
+      // only says so. The owner's own event/dock handler is the one place this term can trip.
+      if (def.warnText && (runtime.warnAt == null || now - runtime.warnAt >= CONDITION_WARN_COOLDOWN_S)) {
+        runtime.warnAt = now;
+        this.bus.emit('alert', { key: `mission-term-${def.id}`, sev: 'warn', text: def.warnText, ttl: 2.2 });
+      }
+      return;
+    }
+    runtime.holdT = (runtime.holdT || 0) + (dt || 0);
     if (def.warnText && (runtime.warnAt == null || now - runtime.warnAt >= CONDITION_WARN_COOLDOWN_S)) {
       runtime.warnAt = now;
       // Told up front on the board, told again the moment it starts going wrong. This alert is the
@@ -1187,6 +1227,130 @@ export const missions = {
     if (voice && typeof voice.say === 'function'
       && voice.say({ channel: 'comms', text, kind: 'clauseBreach' })) return;
     this.bus.emit('toast', { text, kind: 'warn', ttl: 4 });
+  },
+
+  // ── W-TENDER: the run's weigh moments, duty charge, and settlement helpers ──────────────────
+
+  /**
+   * The dock moments are the run's weigh moments. Full-tick systems freeze while `ui.docked`
+   * (src/core/presentationFreeze.js), so the catalog's dock-reading tick samples cannot run at the
+   * actual moment — the latch stamps HERE, at the dock event, through the ONE shared tally the
+   * per-tick slot uses. The declare waits for the player's slot: a rival still holding the scan
+   * face keeps it closed, and the player undocks, waits in flight (the dwells elapse on the
+   * drive), and docks again — queue seconds are window seconds.
+   */
+  _onTenderDocked(stationId) {
+    const active = this.state.missions.active || [];
+    if (!active.length) return;
+    const now = Number(this.state.simTime) || 0;
+    for (const m of active) {
+      if (!m || m.status !== 'active' || !authoredTenderHaul(m) || !m.tender) continue;
+      const params = m.params || {};
+      // Desk contact: it decides refuse-now vs grace at the close; the grace itself counts from
+      // the window close (driveTender arms graceUntilS = closeAt + graceS).
+      if (stationId === m.destStationId && m.tender.deskContactAt_s == null) {
+        m.tender.deskContactAt_s = now;
+      }
+      // The Tally weigh: the declare latches only when the scan face is clear of rival hulls.
+      // While a rival still holds it, the dock says who holds the face and how long the wait is.
+      const gateId = params.gateStationId || 'station_customs';
+      if (stationId === gateId) {
+        const runtime = m._clauseState && m._clauseState.grader_declared;
+        if (!(runtime && (runtime.satisfied || runtime.breached))) {
+          if (params.weighDeclared === true && params.weighAtDesk === true) {
+            // The intake weigh already stamped this receipt (the Forge flagged the run before any
+            // Tally declaration): the paperwork premium stays "only ever earned by declaring at
+            // the Tally" (the term's own prose), so this dock says so instead of latching a
+            // premium the stamped receipt cannot carry — payout, ledger, and rep must agree.
+            this.bus.emit('toast', {
+              text: 'The intake already weighed this run — the declare at the Tally stays closed.',
+              kind: 'info', ttl: 4,
+            });
+          } else if (tenderScanFaceClear(m, this.state, now)) {
+            this._latchTenderCondition(m, 'grader_declared');
+          } else {
+            const holder = tenderScanFaceHolder(m, this.state, now);
+            if (holder) {
+              const behind = holder.queuedBehind > 0
+                ? ` with ${counted(holder.queuedBehind, 'more hauler', 'more haulers')} queued`
+                : '';
+              this.bus.emit('toast', {
+                text: `${holder.name} holds the Tally scan face${behind} — your slot opens in about `
+                  + `${Math.max(1, Math.ceil(holder.slotOpensInS))} s. Undock and come back to declare.`,
+                kind: 'info', ttl: 5,
+              });
+            }
+          }
+        }
+      }
+      // The intake weigh: the Forge flags unmanifested mass no Tally declaration covers — a
+      // declaration weighs what was aboard then, never mass loaded afterwards. The contract iron
+      // is manifest-covered up to the lot; only the side mass is ever at risk.
+      if (stationId === m.destStationId) {
+        const runtime = m._clauseState && m._clauseState.manifest_undisclosed;
+        if (!(runtime && (runtime.breached || runtime.satisfied))
+          && tenderUndeclaredIntakeUnits(this.state, m) > 0) {
+          this._latchTenderCondition(m, 'manifest_undisclosed');
+        }
+      }
+    }
+  },
+
+  /**
+   * Stamp one tender condition through the ONE shared tally, then speak through the shipped events.
+   * The two weigh terms stay quiet here: their listeners (onGraderDeclared via
+   * mission:conditionSatisfied, onFlaggedAtIntake via mission:conditionBroken) own the one weigh
+   * toast, which carries the units and the duty — never a second near-identical line beside it.
+   */
+  _latchTenderCondition(m, conditionId) {
+    const def = missionConditionById(conditionId);
+    if (!def) return false;
+    const outcome = tallyMissionCondition(m, def, Number(this.state.simTime) || 0);
+    if (outcome === 'ignored') return false;
+    const weighTerm = conditionId === 'grader_declared' || conditionId === 'manifest_undisclosed';
+    if (outcome === 'satisfied') {
+      this.bus.emit('mission:conditionSatisfied', {
+        missionId: m.id, conditionId, label: def.label, blocking: def.blocking === true,
+      });
+      if (!weighTerm) {
+        this.bus.emit('toast', { text: def.satisfiedText || `${def.label}: done.`, kind: 'success', ttl: 3 });
+      }
+    } else if (outcome === 'breached') {
+      this.bus.emit('mission:conditionBroken', {
+        missionId: m.id, conditionId, event: null, label: def.label, onBreach: def.onBreach || 'fail',
+      });
+      if (!weighTerm) this._sayConditionLine(def.breachText || `Contract term broken: ${def.label}.`);
+    }
+    this.bus.emit('mission:updated', { missionId: m.id });
+    return true;
+  },
+
+  /** A forfeited tender term still stamps its fact at the trip moment — never at settle. */
+  _onTenderConditionBroken(payload) {
+    const missionId = payload && payload.missionId;
+    const conditionId = payload && payload.conditionId;
+    if (!missionId || conditionId !== 'manifest_undisclosed') return false;
+    const m = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.id === missionId && candidate.status === 'active'
+    ));
+    if (!m || !authoredTenderHaul(m)) return false;
+    // Duty stamps at the weigh (the intake) and Concord moves through the secondary channel only.
+    // The premium drop is settleContractClauses' own breach bucket; heat is never touched.
+    return onFlaggedAtIntake(this, m);
+  },
+
+  /**
+   * Charge the duty stamped at the weighs — once, from the stamps, never from the hold. The Tally
+   * stamp and the intake's own stamp (mass loaded beyond a declaration) are separate receipts.
+   */
+  _chargeTenderDuty(m) {
+    if (!m || !authoredTenderHaul(m)) return;
+    const params = m.params || {};
+    const duty = Math.max(0, Math.round(Number(params.weighDutyCr) || 0))
+      + Math.max(0, Math.round(Number(params.intakeWeighDutyCr) || 0));
+    if (duty > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: duty, reason: `tender_duty:${m.id}` });
+    }
   },
 
   /** Physics terms carried by a mission instance, as canonical catalog records. */
@@ -1355,6 +1519,9 @@ export const missions = {
 
     const inst = this._instanceFromOffer(offer);
     initializeCinderRoute(this, inst);
+    // W-TENDER: stamp the intake window's close and the run's durable record at accept — the
+    // window is already running, which the dossier said before the commitment.
+    initializeTenderHaul(this, inst);
     // A branch selection is atomic: withdraw both siblings from every board before any fee intent
     // or sealed-manifest cargo write can expose a half-selected route to synchronous listeners.
     const withdrawnSetPiece = setPieceCauseOf(offer)
@@ -1430,13 +1597,15 @@ export const missions = {
     this.bus.emit('toast', { text: acceptText, kind: 'success', ttl: termLines.length ? 5 : 3 });
     // GF-4: a gold echo-ring + light flash at the player so accepting a contract has a visible beat
     // (the audio stinger fires from audioSystem's mission:accepted subscription). 'objective' lane
-    // resolves to a warm gold radial ring in vfx._presentationStyle.
+    // resolves to a warm gold radial ring in vfx._presentationStyle. The tender's own cue carries
+    // the house flashReduced two-gate read so reduced-motion players get the ring, not the flash.
     const _p = this.state.entities && this.state.playerId != null ? this.state.entities.get(this.state.playerId) : null;
     this.bus.emit('presentation:vfxCue', {
       id: 'mission.accept', lane: 'objective', material: 'objective',
       particles: 24, lights: 1, magnitude: 1,
       position: _p ? { x: _p.pos.x, z: _p.pos.z } : null,
       targetId: this.state.playerId,
+      ...(authoredTenderHaul(inst) ? { flashReduced: flashReducedCue(this.state) } : {}),
     });
 
     // B4 branch: accepting a faction intro contract sets the story branch.
@@ -1958,6 +2127,23 @@ export const missions = {
           }),
         }
         : {}),
+      // W-TENDER — the run's durable subrecord: the intake-window close, the rival-queue ledger,
+      // and the window/grace stamps. Serialized wholesale inside the active entry like `heist`/
+      // `counterweight` above; non-tender instances gain no key at all. initializeTenderHaul
+      // (below) fills the close stamp the params don't carry until accept.
+      ...(offer.type === TENDER_HAUL_TYPE
+        ? {
+          tender: createTenderRecord({
+            missionId: id,
+            tick: state.tick | 0,
+            closeAtS: null,
+            graceS: offer.params && offer.params.graceS,
+            floorUnits: offer.params && offer.params.floorUnits,
+            lotUnits: offer.params && offer.params.qty,
+            manifestUnits: offer.params && offer.params.manifestUnits,
+          }),
+        }
+        : {}),
       ...(setPieceCauseOf(offer)
         ? { upfrontCostCr: setPieceUpfrontCost(offer, this.state) } : {}),
       sourceOfferId: offer.id || null,
@@ -1978,6 +2164,8 @@ export const missions = {
   _objectiveTarget(typeId, params) {
     switch (typeId) {
       case 'bulk_trade': return params.qty;
+      // W-TENDER: the desk's count is the lot — 440 u of iron ore sold into the intake.
+      case TENDER_HAUL_TYPE: return Math.max(1, Math.round(Number(params && params.qty) || 1));
       case BULK_HAUL_TYPE: return params.massU || 1;
       case 'mining_quota': return params.qty;
       case 'patrol_clear': return params.clearCount;
@@ -2022,7 +2210,10 @@ export const missions = {
     const p = barnParams;
     // PB-MIS-E: the yard scenes materialize their bodies on destination arrival like every
     // other placed contract — deferred spawn lifecycle, sector-exit conservation.
+    // W-TENDER: the rival queue is placed world content at the Customs Gate — the run's first
+    // wait is physical, so the deferred spawn lifecycle carries it too.
     return typeId === SPLIT_MANIFEST_TYPE || typeId === QUIET_BERTH_TYPE
+      || typeId === TENDER_HAUL_TYPE
       || typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
       || typeId === 'race'    // course gates materialize as beacon entities in the course sector
       || PHYSICAL_TYPE_SET.has(typeId)
@@ -3842,7 +4033,7 @@ export const missions = {
               }
             } else {
               this.bus.emit('toast', {
-                text: `Spine Break: re-couple ${outcome.remaining} more loose container${outcome.remaining === 1 ? '' : 's'} before docking`,
+                text: `Spine Break: re-couple ${counted(outcome.remaining, 'more loose container', 'more loose containers')} before docking`,
                 kind: 'warn', ttl: 4,
               });
             }
@@ -4653,6 +4844,9 @@ export const missions = {
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
+    // W-TENDER: the duty stamped at either weigh charges here, once — settle never re-reads the
+    // hold, so the receipt remembers whether the pilot queued, ran, or dumped.
+    if (m.tender) this._chargeTenderDuty(m);
     if (m.cause?.reyBid) this.bus.emit('coldburnRey:playerDelivered', { missionId: m.id });
     // SP2-053: Quinn's stool regulars get the +1 cr nudge on contracts offered at her bars
     // (tiny, real — the flag read lives with the counter leg that writes it).
@@ -4889,12 +5083,14 @@ export const missions = {
     // GF-4: a bigger celebratory ring + light burst at the player on completion (the triumphant
     // chord + music duck fire from audioSystem's mission:completed subscription). 'branch' lane
     // resolves to a gold echo-ring in vfx._presentationStyle — reads as a resolved/rewarded beat.
+    // The tender's own cue carries the house flashReduced two-gate read (vfx renders its variant).
     const _cp = this.state.entities && this.state.playerId != null ? this.state.entities.get(this.state.playerId) : null;
     this.bus.emit('presentation:vfxCue', {
       id: 'mission.complete', lane: 'branch', material: 'branch',
       particles: 48, lights: 2, magnitude: 1.4,
       position: _cp ? { x: _cp.pos.x, z: _cp.pos.z } : null,
       targetId: this.state.playerId,
+      ...(authoredTenderHaul(m) ? { flashReduced: flashReducedCue(this.state) } : {}),
     });
   },
 
@@ -5272,6 +5468,8 @@ export const missions = {
     // A preloaded manifest belongs to the failed contract. Remove the remaining sealed quantity
     // through cargo authority so abandoning and reissuing cannot duplicate freight.
     const contractCargoRemoved = this._removePreloadedContractCargo(m);
+    // W-TENDER: a stamped weigh charges its duty even on a floor fail — the weigh happened.
+    if (m.tender) this._chargeTenderDuty(m);
     // Collateral is forfeited (already charged at accept — nothing to refund).
     this._logCompletion(m.type, 0, false);
     const externalLoss = reason === 'failed_external' && m.params && m.params.externalCauseLabel
@@ -5440,6 +5638,14 @@ export const missions = {
       const ledger = this.state.missions.yardContracts || (this.state.missions.yardContracts = {});
       ledger[yardContractId] = outcome;
     }
+    // W-TENDER: the settlement promotes to a durable ledger beyond the 10-deep receipt ring's
+    // eviction (the _syncQuietPassageOffer pattern) — what the pilot did at the Tally survives
+    // every later settlement, and the board sync reads it so the standing row never reposts.
+    if (m && m.tender && authoredTenderHaul(m)) {
+      const flags = this.state.story.flags || (this.state.story.flags = {});
+      flags.tender_tally_filed = true;
+      this.state.missions.tenderTally = tenderLedgerEntry(m, outcome, reason);
+    }
     const restoration = outcome === 'completed' && isShortageGateRepair(m)
       ? this.state.economyContracts?.shortageRepairs?.[m.cause.shortageEventId] : null;
     const receipt = missionReceiptFor(m, outcome, reason, { ...settlement, at_s: this.state.simTime || 0 });
@@ -5494,6 +5700,11 @@ export function missionPaydayLine(m, rewardCr) {
     return m.heist.settledOutcome === 'fenced_success'
       ? `PAYDAY ${cr} cr — the fence settles fast and forgets your face.`
       : `PAYDAY ${cr} cr — logged, receipted, and paid on the tick.`;
+  }
+  // W-TENDER: the receipt prints the bend as the tender's own line — the desk buy's price impact
+  // beside the window words. A late settle prints no bend and names no spare seconds.
+  if (m && m.tender) {
+    return tenderPaydayLine(m, cr);
   }
   const markName = m && m.storyTarget && m.storyTarget.role === 'board_writ' ? m.storyTarget.name : null;
   if (m && m.type === 'bounty_hunt' && markName) {

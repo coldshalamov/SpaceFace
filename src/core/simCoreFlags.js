@@ -24,12 +24,14 @@ const DEFAULTS = Object.freeze({
   telemetryDemand: false,
   /**
    * A due economy pass advances by a fixed quantum per fixed tick instead of one 130 ms step.
-   * HELD OFF (2026-11-06): the per-fixed-tick drain, save cursor and 2100-tick/60 s cadence tests
-   * are green behind this flag, but the shipped 47-A tape is currently contaminated by foreign
-   * working-tree changes, so v26 cannot be recorded honestly. v24 (`1fedbd09…`) stays active;
-   * v25 (`080c5bd9…`) is the obsolete un-drained shape. Flip this on only with a clean v26.
+   * CANDIDATE (2026-11-08, Lane A): the per-fixed-tick drain, save cursor and 2100-tick/60 s
+   * cadence tests are green; the shared 47-A tape is now clean of the foreign hunks that
+   * contaminated it, so the flag-on shape can be recorded honestly as the next versioned
+   * reference. v26 (`ebbfe82a…`/`67416291…`) is the active pinned shape; v25 (`080c5bd9…`)
+   * is the obsolete un-drained shape. This default is ON while the flag-on reference and the
+   * matched A/B verify it; it flips back if the 8/12/25 ms bars are not met.
    */
-  economySlicing: false,
+  economySlicing: true,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
   lazySg02Snapshot: true,
 });
