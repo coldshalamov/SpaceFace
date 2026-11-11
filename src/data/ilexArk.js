@@ -1,4 +1,6 @@
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 export const ILEX_ARK = Object.freeze({ id:'ilex:seed-ark:v1', actorId:'ilex:seed-ark:carrier',
   originSectorId:'sector_tethys_junction', destinationSectorId:'sector_ceres_belt', stationId:'station_ceres',
@@ -52,7 +54,7 @@ export function ilexOutcomeText(ids,carrierAlive=true){
   const n=ilexVaultIds(ids).length;
   return n===6?'Six vaults accepted. All six seed lines survive; the Ceres greenhouse can establish the complete planting.'
     :n===0?'No vault reached the greenhouse. The planting cannot begin. Ilex asks for the incident record, not a claim of successful delivery.'
-    :`${n}/6 vault${n===1?'':'s'} accepted. ${6-n} seed line${6-n===1?' is':'s are'} missing; Ceres plants only the surviving lines.${carrierAlive?'':' The carrier was lost; its recovered vaults still count.'}`;
+    :`${n}/6 ${pluralWord(n, 'vault', 'vaults')} accepted. ${6-n} seed line${6-n===1?' is':'s are'} missing; Ceres plants only the surviving lines.${carrierAlive?'':' The carrier was lost; its recovered vaults still count.'}`;
 }
 // Read-only current objective. Settlement prose belongs only to a closed voyage:
 // an original still aboard, separating or drifting is not a failed seed line.

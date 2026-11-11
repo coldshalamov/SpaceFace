@@ -4,6 +4,8 @@ import { witnessLineOfSight } from './lineOfSight.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { counted } from '../core/numberFormat.js';
+
 export { witnessLineOfSight } from './lineOfSight.js';
 const LIMITS = { episodes: 32, witnesses: 8, terminals: 8, reportQueue: 8 };
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -312,7 +314,7 @@ export function stuntAccountFor(record) {
 /** §6 harm row: actual recorded outcomes only; unknown values stay unknown. */
 export function stuntHarmFor(incident) {
   const dead=(Array.isArray(incident?.victimLives)?incident.victimLives:[]).filter(v=>v&&v.dead===true).length;
-  if(dead>0)return `${dead} ship${dead===1?'':'s'} destroyed`;
+  if(dead>0)return `${counted(dead, 'ship', 'ships')} destroyed`;
   if(incident?.consequence?.killed===true)return '1 ship destroyed';
   if(incident?.escaped===true)return 'no recorded harm';
   const c=incident?.consequence;

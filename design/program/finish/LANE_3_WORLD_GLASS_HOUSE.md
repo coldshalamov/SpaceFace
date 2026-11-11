@@ -1009,3 +1009,36 @@ and trade controls inside the viewport; ordinary station/trade acceptance remain
 - Localization: four of five locales are machine-filled; new player text goes through the localization pipeline, never hard-coded.
 - `design/program/vm-drop/` is remote-authoritative; never write under it locally.
 - Git-bash `sed` strips CRLF; check `git diff --numstat` after scripted edits of mixed-ending files.
+
+## INFERENCE 20+20 pass (2026-11-08/09, controller + implementer agents)
+
+Implemented and focused-tested (one commit each, recorded in `design/program/inference-memory.json`);
+living-world + glass-house slice:
+- inf-lane-horn (WF-01): a fast close pass by the player jinks the hull, leans on its class horn
+  (tap, double, held lean), the crew speaks on a scrape or repeat, dock control calls the third pass
+  in its shell; a pass is not a crime (91cefdb780).
+- inf-spill-vultures (WF-01): a violence-spilled pod is a contest - scavenger skiffs fly in, work
+  the pods and fly out with the take; race them or kill them and the goods scatter (19294b1853).
+- inf-pilot-personality-drive (WF-01): ambient pilots carry a seeded temperament that changes the
+  driving itself - spacing, speed, braking, and which reaction a stimulus earns (4b9cd64be0).
+- inf-desk-compose (WF-17): the arrival greeting is one voice with three bands - keeper and
+  recognition plus at most one news band (title outranks posture, war outranks peace), unknown
+  houses read as honest nouns (8b2f2ed220).
+- inf-station-pa (WF-04): the station desk calls its own routine through the side-event signal -
+  Dock control for lawful berths, Yardmaster for the rest, once per event (59288e9ca8).
+- inf-gratitude-parcel (WF-09): the freighter you saved arms one gift pod on its next real
+  delivery and launches it on its next close pass, the captain's thanks spoken from the hull
+  (d37d22922d).
+- inf-lane-chatter-chart (WF-14): the chart reads pirateRumor's own records - dashed ring and
+  board count on the flagged lane, a Lane chatter inspector section, search by the headline's
+  name (13f64e0223).
+- inf-closed-file-board (WF-14): the contracts board's empty Yours column names the last file you
+  lost - why it closed, what it cost, where the next try is (7e3ff346d2).
+- inf-fit-milestone (WF-07): a fit that teaches the hull a new verb names it on the receipt
+  (1adb3ada38).
+- inf-frenzy-ledger (WF-16): a rampage files one dated frenzy page that answers whether it paid
+  (93586af472).
+- inf-market-pulse (WF-06): the Market screen paints the berth's measured twelve-hour pulse -
+  cash in/out, sale share, work posted vs taken (6b0c9cdcab).
+- inf-yard-stock-answer (WF-14): a fabrication line short on inputs names what the yard itself
+  stocks against the need (9a1c332936).

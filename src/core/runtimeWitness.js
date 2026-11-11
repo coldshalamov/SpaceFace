@@ -434,6 +434,19 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
   const canvasChanged = hashes.length >= 2 && new Set(hashes).size > 1;
   const canvasStuck = hashes.length >= 2 && new Set(hashes).size === 1;
   const hitchCount = tail.filter((row) => row.hitch === true).length;
+  const picture = last.picture && typeof last.picture === 'object' ? last.picture : null;
+  const firstPresented = first.presented && typeof first.presented === 'object'
+    ? first.presented : null;
+  const lastPresented = last.presented && typeof last.presented === 'object'
+    ? last.presented : null;
+  const maxHeldPresentDeltaMs = firstPresented && lastPresented
+    && Number.isFinite(Number(firstPresented.maxHeldMs))
+    && Number.isFinite(Number(lastPresented.maxHeldMs))
+    ? Math.max(0, Number(lastPresented.maxHeldMs) - Number(firstPresented.maxHeldMs)) : null;
+  const presentedGapsDelta = firstPresented && lastPresented
+    && Number.isFinite(Number(firstPresented.gapsOver100))
+    && Number.isFinite(Number(lastPresented.gapsOver100))
+    ? Math.max(0, Number(lastPresented.gapsOver100) - Number(firstPresented.gapsOver100)) : null;
   const topPhase = last.topPhase || null;
   const facts = {
     sampleCount: tail.length,
@@ -459,6 +472,12 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     topPhase,
     topPhaseP95: last.topPhaseP95,
     speed: last.speed,
+    contentNative: picture ? picture.contentNative !== false : null,
+    contentScale: picture ? picture.contentScale ?? null : null,
+    effectiveSceneScale: picture ? picture.effectiveSceneScale ?? null : null,
+    casSharpenActive: picture ? picture.casSharpenActive ?? null : null,
+    maxHeldPresentDeltaMs,
+    presentedGapsDelta,
   };
 
   if (last.contextLost === true) {
@@ -548,6 +567,26 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     ? worldSubmissionDelta >= 2 : rendererObserved && rendererFrameDelta >= 2;
   const pictureLive = rendererLive || canvasChanged;
   if (simDelta >= 0.5 && frameDelta >= 8 && pictureLive && !canvasStuck) {
+    if (maxHeldPresentDeltaMs != null && maxHeldPresentDeltaMs > 100) {
+      return {
+        ok: false,
+        kind: 'world-hold',
+        headline: `The presented world held for ${Math.round(maxHeldPresentDeltaMs)} ms while time advanced.`,
+        next: 'Check fence pack silence, the worker lane, and the presented-clock cap before tuning frame cost.',
+        facts,
+      };
+    }
+    if (picture && picture.contentNative === false) {
+      return {
+        ok: false,
+        kind: 'soft-picture',
+        headline: `The world is presenting below 1:1 content`
+          + ` (scene ${finite(picture.effectiveSceneScale).toFixed(2)},`
+          + ` CAS ${picture.casSharpenActive === true ? 'sharpen' : 'off'}).`,
+        next: 'Restore content scale 1.0 or prove a matched cadence gain; a native drawing buffer is not a native picture.',
+        facts,
+      };
+    }
     const hitchHeavy = hitchCount >= Math.max(3, Math.floor(tail.length * 0.4));
     if (hitchHeavy) {
       return {
@@ -660,6 +699,87 @@ function formatLiveCountsLine(samples) {
   return `- live field, tether and traffic counts: fields ${fields} | tethers ${tethers} | traffic ${traffic}`;
 }
 
+function formatPresentedHoldLine(presented) {
+  if (!presented || typeof presented !== 'object') return null;
+  const ms = (value) => (Number.isFinite(Number(value)) ? `${Math.round(Number(value))} ms` : 'n/a');
+  return `- presented hold: max gap ${ms(presented.maxGapMs)}`
+    + ` | gaps >=100 ms ${presented.gapsOver100 ?? 'n/a'}`
+    + ` | max repeated-moment hold ${ms(presented.maxHeldMs)}`;
+}
+
+/** Picture contract: native buffer, post route, relief and the authored tiers, in one block. */
+function formatPictureLines(picture) {
+  if (!picture || typeof picture !== 'object') return [];
+  const num = (value, digits = 2) => (Number.isFinite(Number(value))
+    ? Number(value).toFixed(digits) : 'n/a');
+  const buffer = picture.bufferWidth != null && picture.bufferHeight != null
+    ? `${picture.bufferWidth}x${picture.bufferHeight}` : 'n/a';
+  const css = picture.cssWidth != null && picture.cssHeight != null
+    ? `${picture.cssWidth}x${picture.cssHeight} @${num(picture.devicePixelRatio)}dpr` : 'n/a';
+  const contentNative = picture.contentNative === true
+    || (picture.contentNative == null
+      && Number(picture.effectiveSceneScale) >= 0.999
+      && picture.casSharpenActive !== true);
+  const contentDetail = contentNative
+    ? '1:1'
+    : `NOT 1:1 (scene ${num(picture.effectiveSceneScale)}, content ${num(picture.contentScale)}`
+      + `, CAS ${picture.casSharpenActive === true ? 'sharpen' : 'off'})`;
+  return [
+    '',
+    '## Picture contract',
+    `- native: ${picture.native === true ? 'yes' : picture.native === false ? 'NO' : 'n/a'}`
+      + ` (buffer ${buffer}, css ${css}, ratio ${num(picture.pixelRatio)})`,
+    `- content: ${contentDetail}`,
+    `- raster: renderScale ${num(picture.renderScale)} | dynRes ${num(picture.dynResScale)}`
+      + ` | hitchRelief ${picture.hitchReliefLevel ?? 0} | contentScale ${num(picture.contentScale)}`
+      + ` | effective ${num(picture.effectiveSceneScale)}`,
+    `- post: ${picture.activePath || 'n/a'} | bloom ${picture.bloomEnabledLive === true ? 'on' : picture.bloomSelected === true ? 'on' : 'off'}`
+      + ` (levels ${picture.bloomLevelsLive ?? picture.bloomLevels ?? 'n/a'}, strength ${num(picture.bloomStrength)})`
+      + ` | postFx ${picture.postFxActive === true ? 'on' : 'off'}`
+      + ` | CAS ${picture.casSharpenActive === true ? 'sharpen' : (picture.casReconstruction || 'off')}`,
+    `- authored tiers: particles ${picture.particleQuality || 'n/a'} | sky ${picture.skyTier || 'n/a'}`
+      + ` | sharpen ${picture.sharpen === true} | cap ${picture.frameCap ?? 'n/a'}`,
+  ];
+}
+
+/** Worker-lane truth: a rare apply block or freeze episode that frame counters cannot see. */
+function formatLaneLines(lane) {
+  if (!lane || typeof lane !== 'object') return [];
+  const ms = (value) => (Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)} ms` : 'n/a');
+  const worst = lane.worstReplyWork && typeof lane.worstReplyWork === 'object'
+    ? lane.worstReplyWork : null;
+  const work = worst || (lane.lastReplyWork && typeof lane.lastReplyWork === 'object'
+    ? lane.lastReplyWork : null);
+  const workLine = work
+    ? ` | ${worst ? 'worst' : 'last'} reply fold ${ms(work.applyFoldMs)}`
+      + ` reconcile ${ms(work.applyReconcileMs)}`
+      + ` events ${ms(work.applyEventsMs)}`
+      + (Number.isFinite(Number(worst?.applyMs)) ? ` total ${ms(worst.applyMs)}` : '')
+    : '';
+  const slowEvents = Array.isArray(lane.slowEvents) ? lane.slowEvents.slice(-3) : [];
+  const slowApply = Array.isArray(lane.slowApplies) && lane.slowApplies.length
+    ? lane.slowApplies[lane.slowApplies.length - 1] : null;
+  const slowApplyTypes = slowApply && slowApply.eventTypes
+    ? Object.entries(slowApply.eventTypes).sort((a, b) => b[1] - a[1]).slice(0, 4)
+      .map(([type, count]) => `${type}x${count}`).join(', ')
+    : '';
+  const slowLine = slowEvents.length
+    ? slowEvents.map((event) => `${event?.t || '?'} ${ms(event?.ms)}`).join(' | ')
+    : 'none';
+  return [
+    '',
+    '## Worker lane',
+    `- apply max: ${ms(lane.workerApplyMaxMs)} | over 100 ms: ${lane.appliesOver100ms ?? 0}`
+      + ` | since last reply: ${ms(lane.msSinceLastAppliedReply)}`,
+    `- freeze active: ${lane.freezeActive === true} | command in flight: ${ms(lane.commandInFlightWallMs)}`
+      + ` | replies: ${lane.replyCount ?? 'n/a'}${workLine}`,
+    `- slow events (>=8 ms replay): ${slowLine}`
+      + (slowApplyTypes
+        ? ` | slow reply events${slowApply?.mode ? ` (${slowApply.mode})` : ''}: ${slowApplyTypes}`
+        : ''),
+  ];
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -697,6 +817,9 @@ export function formatRuntimeWitnessReport({
     formatSpawnWitnessLine(samples),
     formatGeometryPendingLine(samples),
     formatLiveCountsLine(samples),
+    ...(formatPresentedHoldLine(last?.presented) ? [formatPresentedHoldLine(last?.presented)] : []),
+    ...formatPictureLines(last?.picture),
+    ...formatLaneLines(last?.lane),
     '',
     '## Where the last frames went (ms)',
   ];

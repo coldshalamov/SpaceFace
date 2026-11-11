@@ -55,6 +55,7 @@ import {
   shovePanicBreakActivity,
   shovePanicLive,
 } from '../ai/shovePanic.js';
+import { noteVentPress, stepVentPressRestores } from '../ai/ventPress.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind } from '../data/swarmSpecialists.js';
 import {
   ENEMY_DOCTRINE_OVERRIDES,
@@ -374,6 +375,8 @@ export function createTacticalAISystem({
   // doctrine.telegraph object whose emit is still owed; identity expires with the phase.
   let heldLaneTelegraphs = new WeakMap();
   const bodyLaunchRt = new Map();
+  // Vent press call cooldown (src/ai/ventPress.js): transient, reset with the runtime, never saved.
+  const ventPressRt = { lastCallAt: -Infinity };
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
   let quietLatch = null;
@@ -460,6 +463,7 @@ export function createTacticalAISystem({
 
   function resetRuntime() {
     bodyLaunchRt.clear();
+    ventPressRt.lastCallAt = -Infinity;
     committedLaneCues = new WeakMap();
     heldLaneTelegraphs = new WeakMap();
     stack = null;
@@ -582,6 +586,26 @@ export function createTacticalAISystem({
     stepShovePanicRestores(state, shipLikeList);
   }
 
+  /**
+   * Vent press (src/ai/ventPress.js): the pilot's forced heat vent is the one receipt; the nearest
+   * engaged crews tighten their band for the window and the nearest calls it. One walk per vent.
+   */
+  function handleVentPress(payload) {
+    const state = ctxRef && ctxRef.state;
+    if (!state || !payload || payload.phase !== 'start' || payload.ownerId !== state.playerId) return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player) return;
+    noteVentPress(state, payload, {
+      candidates: indexedShipLikeOrEntitiesScan(state),
+      isHostile: (e) => isHostileForAI(state, e, player),
+      skip: (e) => isCounterplayOwned(e, state),
+      bus: ctxRef.bus,
+      helpers: ctxRef.helpers,
+      runtime: ventPressRt,
+    });
+  }
+
   function replayLastManeuvers(liveStack, tick, state) {
     const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
     if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
@@ -622,6 +646,7 @@ export function createTacticalAISystem({
         listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
         listenLifecycle(ctx.bus, 'combat:tumbled', handleShoveTumble);
+        listenLifecycle(ctx.bus, 'weapons:vent', handleVentPress);
       }
     },
 
@@ -685,6 +710,7 @@ export function createTacticalAISystem({
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
       restoreShovePanics(state, shipLikeList);
+      stepVentPressRestores(state, shipLikeList);
       const liveStack = ensureStack(state);
       bindHullResolver(liveStack);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;

@@ -98,20 +98,23 @@ test('brood catalog is lawful: mite present, telegraphs shaped, population insid
 });
 
 test('engine census: the cap holds and spawn honours it', () => {
-  const h = boot({ wave: 40 });
+  // C01-01: the course ends at wave 30 — wave 29 is the deepest ordinary round and the
+  // only one past the reserve gate (SWARM_BROOD_RESERVE_FROM_WAVE) a run still reaches.
+  const h = boot({ wave: 29 });
   const engine = makeEngine(h);
-  engine.prepareWave(h.state.run, 40);
+  engine.prepareWave(h.state.run, 29);
   const spawned = engine.spawnWave(h.state);
-  // The wave's authored population is a lifetime budget, not the opening spawn: wave 40's
+  // The wave's authored population is a lifetime budget, not the opening spawn: wave 29's
   // plan fields splitters and a brood mother, and prepareWave holds part of the SAME mite
   // share back — two mites per splitter for the split, the mother's birthBudget for her
-  // tide (16 + 12 here; seed-sw-36/37 pin both reserves and their release), and now the
-  // Machine's rebuild reserve for its welders (15 here). Arrivals plus held reserves plus
-  // still-deferred placements equal the population law's count exactly:
-  // nothing is silently dropped or invented.
+  // tide, the Hive's sac reserve, and the B5 late specialist reserve (exempt only on
+  // champion waves). Arrivals plus held reserves plus still-deferred placements equal the
+  // population law's count exactly: nothing is silently dropped or invented.
   const held = engine._splitter().reserve + engine._mother().reserve
-    + engine._hive().sacBudget + engine.view.pendingCount + engine._machine().reserve;
-  assert.equal(spawned + held, swarmBroodPopulation(40));
+    + engine._hive().sacBudget + engine.view.pendingCount + engine._machine().reserve
+    + engine._reserve().left;
+  assert.ok(engine._reserve().left > 0, 'an ordinary late wave holds a specialist reserve');
+  assert.equal(spawned + held, swarmBroodPopulation(29));
   assert.ok(engine.census().alive <= SWARM_BROOD_MAX);
   assert.ok(engine.census().alive >= SWARM_BROOD_MIN);
   // A second spawn attempt with no plan left is a no-op, never an overflow.
