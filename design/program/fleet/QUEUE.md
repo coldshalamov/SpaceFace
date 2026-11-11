@@ -80,7 +80,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | G19-02-honest-hold [FE] | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | READY |
 | G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | BUILT b931aac8 + 321ab601 (wheel fixed and seen) |
 | MOB-01-pinch-zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | BUILT 9c0a921e + lead acaec5ff (default halfway to desktop width; pinch 0.5–2.0×) |
-| MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | TAKEN agent2 (devin2) |
+| MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | TAKEN agent2 (devin2, started before the FE rule) — Sonnet visual pass after |
 | MOB-05 flick to throw | On a phone, drag-and-release while the Line holds a body throws it along the flick (`drafts/MOB.md` §7 q1) | READY |
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | READY |
 | PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
@@ -92,7 +92,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | ID | Job | State |
 |---|---|---|
 | A01-03-swarm-drops | Eight drops on the repair-cell seam (Full Rack, Heavy Hands, Dead Weight, Magnet, Big Bang, Double Scrap, Loose Cannon, Free Forge) | BUILT 777d78d5 + lead-review dca33eb8 (registered in the runtime manifest + worker; Free Forge no longer breaks the run; Dead Weight/Big Bang/Magnet/Double Scrap/Loose Cannon go through their real owners; drops have their own crystal look) — not seen on screen |
-| FIX-R4a-stage-findings [FE] | Review b14da677: persistent pills swallow timed announcements; refresh breaks FIFO; dialogs bypass admission | HOLD on G16-03 |
+| FIX-R4a-stage-findings [FE] | Review b14da677: persistent pills swallow timed announcements; refresh breaks FIFO; dialogs bypass admission — Sonnet after G16-03, together with a visual pass on G16-02/03 | HOLD on G16-03 |
 | G16-04-floating-text-and-notice-plates [FE] | Floating world text merges (`FRIENDLY FIRE ×4`) and caps at 4; notice lines on readable plates; pad labels yield to HUD | HOLD on G16-03 (shares files) |
 | G16-03-the-stage-enforces [FE] | Alerts/toasts/prompts/dialogs go through `stage.show()` (one visible, priority, FIFO); prompt seat fixed; dialogs wait for open screens; UI budgets re-baselined once | TAKEN agent2 (devin1) |
 | G16-02-every-popup-through-one-door | Migrate 16 straggler popups onto the Stage and the kit frame, text unchanged | BUILT deaae6ca (12 popups on the Stage; most not yet seen staged on screen) |
