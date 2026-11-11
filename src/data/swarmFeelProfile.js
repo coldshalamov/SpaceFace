@@ -103,6 +103,69 @@ export const SWARM_FEEL_PROFILE = Object.freeze({
 });
 
 /**
+ * EC-G18 / decision D1 — ONE FEEL. The throw is the same in both doors: Pull is a yank, Shove is
+ * a punch, and a thrown body keeps its killing speed through a collision, in Adventure exactly as
+ * in Swarm. These three blocks are the game's feel, not a Swarm option, so they resolve without a
+ * run gate. Adventure adds consequences (witnesses, law, spilled cargo), never softer physics.
+ * Swarm-only knobs — fodder stats, the dying window, the death shockwave — still resolve through
+ * swarmFeel(state) below.
+ */
+export const ONE_FEEL = Object.freeze({
+  version: SWARM_FEEL_VERSION,
+  contact: SWARM_FEEL_PROFILE.contact,
+  pull: SWARM_FEEL_PROFILE.pull,
+  shove: SWARM_FEEL_PROFILE.shove,
+});
+
+/**
+ * The deploy-time phase table for a radial power under the one feel, or null for kinds that keep
+ * their authored def (cones, sheets, knots). Pull is a yank then a hold at full strength; Shove a
+ * punch then a berm fading to nothing. The table rides the deployed receipt (fields.js) and the
+ * hold-to-preview predictor (powerPreview.js) reads the same rows, so the preview shows the law
+ * the press will run.
+ */
+export function oneFeelPhaseTable(kind) {
+  if (kind === 'well') {
+    const p = ONE_FEEL.pull;
+    return { punchS: p.yankS, punchStrengthMult: p.yankStrengthMult, punchDampingMult: p.yankDampingMult, fadeS: p.holdS, fadeTo: 1 };
+  }
+  if (kind === 'repulsor') {
+    const s = ONE_FEEL.shove;
+    return { punchS: s.punchS, punchStrengthMult: s.punchStrengthMult, punchDampingMult: 1, fadeS: s.bermS, fadeTo: 0 };
+  }
+  return null;
+}
+
+/** Cooldown for a phased power under the one feel. */
+export function oneFeelCooldownS(kind) {
+  return kind === 'well' ? ONE_FEEL.pull.cooldownS : ONE_FEEL.shove.cooldownS;
+}
+
+/**
+ * Strength and damping multipliers `elapsed` seconds into a phase table. Pure; the one law both
+ * the live field and the preview evaluate. Past punchS + fadeS the field has expired.
+ */
+export function oneFeelPhaseAt(p, elapsed) {
+  if (elapsed < p.punchS) return { strengthMult: p.punchStrengthMult, dampingMult: p.punchDampingMult, punch: true };
+  const t = p.fadeS > 0 ? Math.min(1, (elapsed - p.punchS) / p.fadeS) : 1;
+  const fadeTo = Number.isFinite(p.fadeTo) ? p.fadeTo : 0;
+  return { strengthMult: 1 + (fadeTo - 1) * t, dampingMult: 1, punch: false, fadeTo };
+}
+
+/**
+ * The contact block for a body, or null for bodies that keep the plain contact law. Every
+ * non-player ship takes the bowling-pin rule in both doors (EC-G18); bodies stamped at Swarm wave
+ * materialization keep it as before. Rocks, pods and the player keep the shared constants.
+ */
+export function oneFeelContact(entity) {
+  if (!entity) return null;
+  const data = entity.data;
+  if (data && data[SWARM_FEEL_STAMP] === true) return ONE_FEEL.contact;
+  if (entity.type === 'ship' && entity.isPlayer !== true) return ONE_FEEL.contact;
+  return null;
+}
+
+/**
  * The Swarm feel profile, or null outside a live Swarm run. Same predicate the presentation
  * gate uses: survival-kind run, swarm ruleset, any phase except 'inactive'. Both realms
  * (main-thread sim and the whole-sim worker) mirror state.run, so the gate is identical

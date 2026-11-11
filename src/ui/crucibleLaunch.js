@@ -138,6 +138,35 @@ export function crucibleHullSetupFor({
   return result;
 }
 
+/** The door's display names, so `?swarmArena=` accepts what the arena row shows. */
+const SWARM_ARENA_DOOR_NAMES = Object.freeze({
+  helios_core: 'Ricochet Foundry',
+  lagrange_crucible: 'Lagrange Crucible',
+  cinder_sluice: 'Cinder Sluice',
+  cryo_drift: 'Cryo Drift',
+  storm_lattice: 'Storm Lattice',
+  asteroid_mill: 'Asteroid Mill',
+  the_hive: 'The Hive',
+});
+
+function arenaNameKey(name) {
+  return typeof name === 'string' ? name.toLowerCase().replace(/[^a-z0-9]+/g, '') : '';
+}
+
+/**
+ * Resolve a `?swarmArena=` value to an arena id: the id itself, the catalog label, or the
+ * door's display name, compared case- and punctuation-insensitively. Null when nothing
+ * matches — the caller falls back to the door's default arena.
+ */
+export function crucibleArenaIdForName(name) {
+  const key = arenaNameKey(name);
+  if (!key) return null;
+  const match = COMBAT_LAB_ARENAS.find((arena) => arenaNameKey(arena.id) === key
+    || arenaNameKey(arena.label) === key
+    || arenaNameKey(SWARM_ARENA_DOOR_NAMES[arena.id]) === key);
+  return match ? match.id : null;
+}
+
 /** Every player hull the door can field, cheapest first. */
 export function crucibleHullChoices() {
   return SHIPS.map((ship) => ({

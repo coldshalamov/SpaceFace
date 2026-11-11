@@ -288,7 +288,13 @@ function fmtCr(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
 }
 
+// words-authored-names: the authored commodity name ("Iron Ore"), never the de-snaked id
+// ("ore iron"); the id fallback survives only for a good the catalog no longer carries.
+const CLAIM_MATERIAL_NAME = new Map((COMMODITIES || []).map((row) => [row && row.id, row && row.name]));
+
 function materialName(id) {
+  const name = CLAIM_MATERIAL_NAME.get(id);
+  if (typeof name === 'string' && name.trim()) return name.trim();
   return String(id || 'material').replace(/^cmdty_/, '').replace(/_/g, ' ');
 }
 
@@ -1551,7 +1557,7 @@ export const claims = {
     };
     spec.defense = defense;
     this._setDefenseWaypoint(body, defense);
-    this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount} ships, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
+    this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount === 1 ? '1 ship' : `${attackerCount} ships`}, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
       defenseId, attackerFactionId: defense.attackerFactionId, attackerCount,
     });
     this.bus.emit('claim:defenseWarning', {
@@ -1869,7 +1875,7 @@ export const claims = {
       kind: 'claim_defense', markerKind: 'mission-objective', claimId: body.id, defenseId: defense.id,
       ignoreDefense: defense.phase === 'warning',
       sectorId: body.sectorId, pos: { x: body.x, z: body.z }, label: `DEFEND ${body.name}`,
-      reason: `${defense.attackerName} · ${defense.attackerCount} ships · respond at ${body.name} (${remaining}s)`,
+      reason: `${defense.attackerName} · ${defense.attackerCount === 1 ? '1 ship' : `${defense.attackerCount} ships`} · respond at ${body.name} (${remaining}s)`,
       arrivalRadius: CLAIM_DEFENSE_ARRIVAL_R, deadline_s: defense.deadlineAt,
     };
     const current = this.state.nav.waypoint;

@@ -22,6 +22,8 @@ import { injectOrrery } from '../orrery/tokens.js';
 import { MATERIALS, ORE_TINTS } from './asteroidRenderer2d.js';
 import { drillTierReqForOre } from '../../systems/drill.js';
 import { machineCapability, oreContactRate } from '../../systems/siteProduction.js';
+import { counted } from '../numberFormat.js';
+
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -369,7 +371,7 @@ export function tileLensModel({
   }
   if (cutPreview && (cutPreview.contactsLost > 0 || cutPreview.rateLost > 0 || cutPreview.powerLost > 0 || cutPreview.processBonusLost > 0)) {
     const bits = [];
-    if (cutPreview.contactsLost > 0) bits.push(`Cuts ${cutPreview.contactsLost} contact${cutPreview.contactsLost === 1 ? '' : 's'}`);
+    if (cutPreview.contactsLost > 0) bits.push(`Cuts ${counted(cutPreview.contactsLost, 'contact', 'contacts')}`);
     if (cutPreview.rateLost > 0) bits.push(`−${cutPreview.rateLost}/min`);
     if (cutPreview.powerLost > 0) bits.push(`−${cutPreview.powerLost} MW`);
     if (cutPreview.processBonusLost > 0) bits.push(`−${Math.round(cutPreview.processBonusLost * 100)}% process speed`);

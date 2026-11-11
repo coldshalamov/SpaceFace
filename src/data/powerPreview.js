@@ -24,6 +24,7 @@ import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { queryPhysicalBodies, resolvePhysicalImpulse } from '../combat/physicalEffects.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { bombRadialDirection, bombSurfaceFalloff, integrateBombDrift } from '../combat/bombDynamics.js';
+import { oneFeelPhaseTable, oneFeelPhaseAt } from './swarmFeelProfile.js';
 import {
   activeFieldSnapshot, fieldBodyProfile, fieldEntityIsPrimed, fieldLifecyclePhase, fieldVelocityTermApplies,
   isForceableFieldBody, playerFieldSpec, pullMarkTargetEligible,
@@ -175,7 +176,7 @@ const _inside = [];
  * private normalized copy this module may ramp and move; `drift` carries a ship-attached rig's
  * centre with the ship. `kicks` ([{t, dvx, dvz}], time-ordered) adds blasts that land inside it.
  */
-function fieldPath(e, profile, own, live, { now, baseStrength, expireS, drift = null, kicks = null }) {
+function fieldPath(e, profile, own, live, { now, baseStrength, expireS, drift = null, kicks = null, phases = null }) {
   const gated = fieldVelocityTermApplies(e, profile);
   let px = e.pos.x, pz = e.pos.z;
   let vx = finite(e.vel && e.vel.x), vz = finite(e.vel && e.vel.z);
@@ -183,9 +184,18 @@ function fieldPath(e, profile, own, live, { now, baseStrength, expireS, drift = 
   const path = [px, pz];
   const steps = Math.round(FIELD_HORIZON_S / STEP_S);
   let k = 0;
+  const baseDamping = finite(own.damping);
   for (let i = 0; i < steps; i++) {
     const t = i * STEP_S;
-    own.strength = baseStrength * fieldLifecyclePhase(0, expireS, t).mult;
+    if (phases) {
+      // EC-G18 one feel: the deployed receipt's phase table owns strength and damping (fields.js
+      // _applySwarmDeployedPhases), so the preview runs the same yank/punch law the press will.
+      const at = t < expireS ? oneFeelPhaseAt(phases, t) : null;
+      own.strength = at ? baseStrength * at.strengthMult : 0;
+      own.damping = at ? baseDamping * at.dampingMult : baseDamping;
+    } else {
+      own.strength = baseStrength * fieldLifecyclePhase(0, expireS, t).mult;
+    }
     if (drift) { own.center.x = cx0 + drift.x * t; own.center.z = cz0 + drift.z * t; }
     _inside.length = 0;
     if (fieldContainsPoint(own, px, pz)) _inside.push(own);
@@ -197,7 +207,7 @@ function fieldPath(e, profile, own, live, { now, baseStrength, expireS, drift = 
     px += vx * STEP_S; pz += vz * STEP_S;
     if ((i + 1) % PATH_EVERY === 0) path.push(px, pz);
   }
-  own.center.x = cx0; own.center.z = cz0; own.strength = baseStrength;
+  own.center.x = cx0; own.center.z = cz0; own.strength = baseStrength; own.damping = baseDamping;
   _inside.length = 0;
   return path;
 }
@@ -244,6 +254,7 @@ function fieldMoves(state, player, spec, opts) {
   const { registry, live, drift = null, markTargetId = null, kicksById = null } = opts;
   const own = normalizeField({ ...spec, id: `preview:${spec.kind}` });
   const now = simNow(state);
+  const phases = oneFeelPhaseTable(own.kind);
   const envelope = own.kind === 'sheet' ? Math.hypot(own.radius, finite(own.halfWidth)) : own.radius;
   const bodies = bodiesNear(state, own.center, envelope, (e) => fieldContainsPoint(own, e.pos.x, e.pos.z));
   const moves = [];
@@ -265,7 +276,8 @@ function fieldMoves(state, player, spec, opts) {
     const shrug = profile.anchored === true || couple <= FIELD_COUPLING.minShipCouple + 1e-9;
     const kicks = kicksById ? kicksById.get(e.id) || null : null;
     const path = fieldPath(e, profile, own, live, {
-      now, baseStrength: own.strength, expireS: finite(spec.durationS, Infinity), drift, kicks,
+      now, baseStrength: own.strength, expireS: phases ? phases.punchS + phases.fadeS : finite(spec.durationS, Infinity),
+      drift, kicks, phases,
     });
     moves.push(moveRow(e, path, { shrug, marked }));
     seen.add(e.id);

@@ -5,6 +5,11 @@
 // the brood lane, where five veteran variants gate across w31–w55 through flag recipes the
 // engine already runs. Everything folds out of the mite share: same population band, same
 // quota, same caps, stock stats — a different fight, not a bigger one.
+//
+// C01-01: the course ends at wave 30 — every band gate (w31–w55) sits past the last round,
+// so the five variants are unreachable and clamp onto the wave-30 champion row. The tests
+// below assert the in-course truth (no gate fires in a run) and pin the authored rows the
+// validator honestly flags.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -127,6 +132,7 @@ function slotsOf(engine, familyIndex) {
 
 test('the tables stay honest: catalog and late-family validators are clean', () => {
   assert.deepEqual(swarmCatalogIssues(), []);
+  // C01-03: the strain debuts sit on real deep-course rows — the late table is clean.
   assert.deepEqual(swarmBroodLateIssues(), []);
 });
 
@@ -283,8 +289,10 @@ test('nothing in the band scales: stock stats only, no multipliers', () => {
 });
 
 test('the ten-clock stays clean: no band gate lands on a champion row', () => {
+  // C01-03: the deep course runs again — every late-band gate sits on a real non-champion
+  // round (the champions hold the decade marks: 40, 50, 60, …).
   for (const band of BROOD_BAND) {
-    assert.ok(!isSwarmBossWave(band.fromWave),
+    assert.equal(isSwarmBossWave(band.fromWave), false,
       `${band.id} gates at wave ${band.fromWave}, a champion row`);
   }
   for (const w of [30, 40, 50, 60]) {
