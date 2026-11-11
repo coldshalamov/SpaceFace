@@ -435,7 +435,9 @@ export function maintainSwarmPlayerMods(state, helpers, dt) {
   // ordinary damage route — accumulated so the router hears whole points.
   if (mods.hotCoreBurnPerS > 0 && boost) {
     marks.hotCoreCarry = Number.isFinite(marks.hotCoreCarry) ? marks.hotCoreCarry : 0;
-    const burning = (boost._burnT || 0) > 0;
+    // The flight owner's own resource-gated flag: true while the ship is sustaining boost,
+    // with or without a fitted afterburner window.
+    const burning = !!(player.flags && player.flags.boosting === true);
     const speed = Math.hypot(
       Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
     let cap = 0;
@@ -459,10 +461,14 @@ export function maintainSwarmPlayerMods(state, helpers, dt) {
         const packet = scalarHitToDamagePacket({
           damage: burn,
           damageType: 'thermal',
+          subsystemShare: 0, // the burn lands on the hull, never diverted into a component
           pos: player.pos ? { x: player.pos.x, z: player.pos.z } : null,
           source: { kind: 'swarm_tap_hot_core', chargeId: 'hot_core' },
         });
-        packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+        // Structural hull loss (combat/damage.js): the amount IS the hull removed, so shields,
+        // armor and difficulty scaling cannot absorb the stated trade.
+        packet.shieldBypass = 1;
+        packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true, structuralHull: true };
         route({
           attackerId: player.id,
           targetId: player.id,

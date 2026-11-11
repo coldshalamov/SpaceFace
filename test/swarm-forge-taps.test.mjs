@@ -508,3 +508,34 @@ test('review 1: Plated Hull after Glass Cannon adds the halved bonus, never lowe
     assert.equal(h.pilot.hullMax, 107, 'stable across further upkeep');
   } finally { h.destroy(); }
 });
+
+function hotCoreCap(h) {
+  const profile = resolvePropulsionProfile(h.pilot, h.state);
+  return profile.combatSpeed * profile.boostSpeedMult * (1 + h.pilot.boost.topSpeedPct);
+}
+
+for (const burner of [false, true]) {
+  test(`review 2: Hot Core burns two true hull per second at top boost speed (${burner ? 'afterburner fitted' : 'no afterburner'})`, () => {
+    const h = boot();
+    try {
+      h.recordTap('hot_core');
+      h.pilot.shield = 80;
+      h.pilot.armorHp = 60;
+      h.pilot.armorFlat = 5;
+      if (!burner) { h.pilot.boost.burnDurS = 0; }
+      h.upkeep();
+      if (burner) h.pilot.boost._burnT = 3;
+      // The flight owner's own resource-gated flag: the ship is sustaining boost.
+      h.pilot.flags = { ...(h.pilot.flags || {}), boosting: true };
+      h.pilot.vel = { x: hotCoreCap(h), z: 0 };
+      for (let i = 0; i < 130; i += 1) h.upkeep();
+      assert.equal(h.pilot.hull, 196, 'a little over two seconds at top speed = 4 whole hull, whatever the shield and armor');
+      assert.equal(h.pilot.shield, 80, 'the shield is not spent');
+      assert.equal(h.pilot.armorHp, 60, 'the armor is not spent');
+      // Below top speed, or off the boost, the core cools and costs nothing.
+      h.pilot.vel = { x: 10, z: 0 };
+      for (let i = 0; i < 120; i += 1) h.upkeep();
+      assert.equal(h.pilot.hull, 196);
+    } finally { h.destroy(); }
+  });
+}
