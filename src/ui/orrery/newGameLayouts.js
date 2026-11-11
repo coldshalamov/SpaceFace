@@ -160,15 +160,21 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
 
 /* At compact desktop sizes keep the rear names below the ring and away from the LINE dial. */
 @media (min-width:801px) and (max-width:1366px) and (max-height:800px) {
-  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 38px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 64px !important; }
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
 }
 @media (min-width:801px) and (max-width:1080px) and (max-height:800px) {
-  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 24px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 39px !important; }
+  /* the ring is ~210px across here, so the rear pair stands on the front name's line just outside its key:
+     the hull after the front one (cyclically) sits on the right, the one before it on the left */
+  ${NGD} .orr-yard > .orr-turntable__row > li.is-front + li,
+  ${NGD} .orr-yard > .orr-turntable__row > li:first-child:has(~ li.is-front:last-child) { translate:52px 39px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:has(+ li.is-front),
+  ${NGD} .orr-yard > .orr-turntable__row > li.is-front:first-child ~ li:last-child { translate:-52px 39px !important; }
 }
 @media (min-width:1081px) and (max-width:1180px) and (max-height:800px) {
-  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front):has(~ .is-front) { translate:18px 38px !important; }
-  ${NGD} .orr-yard > .orr-turntable__row > li.is-front ~ li { translate:-18px 38px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front):has(~ .is-front) { translate:18px 64px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li.is-front ~ li { translate:-18px 64px !important; }
 }
 
 /* the same band at ≤480 tall (844×390, 900×420, 1024×440, 801×461): the stage had ~305px for the name, the fittings,
