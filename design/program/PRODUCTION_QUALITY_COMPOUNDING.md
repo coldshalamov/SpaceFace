@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PLAN — selected production direction; lifecycle stays in the existing board. -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Production quality through compounding improvements
 
 **Owner update, 2026-10-04:** the active debugging and polish priority is
