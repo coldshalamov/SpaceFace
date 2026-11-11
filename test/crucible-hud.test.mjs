@@ -312,7 +312,7 @@ test('wave plan projection preserves the live Swarm quota, hull runway, and main
   const wire = projectBridgeEvent('run:wavePlanned', { wave: 3, tick: 91, plan: original });
   assert.equal(wire.dropped, false);
   assert.equal(wire.reason, 'adapter');
-  assert.equal(wire.flat.plan.swarm.killTarget, 26);
+  assert.equal(wire.flat.plan.swarm.killTarget, 38);
   assert.equal(wire.flat.plan.objective.population, 'ships');
   assert.equal(waveOpeningLine(3, wire.flat.plan), waveOpeningLine(3, original),
     'the main-side opening copy retains its authored objective and arrival wording');
@@ -382,8 +382,8 @@ test('late cohort progress restores the ship-count HUD while a circuit timer sta
 });
 
 test('boss wave projection preserves the announced champion and its renderer hull identity', () => {
-  const original = planWave({ seed: 4242, arenaId: ARENA, wave: 10, ruleset: 'swarm' });
-  const projected = projectBridgeEvent('run:wavePlanned', { wave: 10, tick: 600, plan: original });
+  const original = planWave({ seed: 4242, arenaId: ARENA, wave: 15, ruleset: 'swarm' });
+  const projected = projectBridgeEvent('run:wavePlanned', { wave: 15, tick: 600, plan: original });
   assert.equal(projected.dropped, false);
   assert.equal(projected.flat.plan.objective.kind, 'boss');
   assert.equal(projected.flat.plan.swarm.boss, true);

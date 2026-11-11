@@ -41,6 +41,8 @@ import { settle, reducedMotion } from './kit/motion.js';
 import { arcGauge } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { setLocalizedTextTemplate } from '../localization/domBridge.js';
+import { counted } from './numberFormat.js';
+
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
 const EXPIRY_GRACE_S = 2.5;    // display-expire grace after a passed deadline (producer may still resolve)
@@ -114,7 +116,7 @@ export function deadlineText(deadlineAt, simTime, statusFlag) {
   if (!Number.isFinite(deadlineAt)) return 'Choose a response. Flight remains active.';
   const remaining = Math.max(0, Number(deadlineAt) - (Number(simTime) || 0));
   const seconds = Math.ceil(remaining);
-  return `Choose a response · ${seconds} second${seconds === 1 ? '' : 's'}`;
+  return `Choose a response · ${counted(seconds, 'second', 'seconds')}`;
 }
 
 export function digitIndex(key) {

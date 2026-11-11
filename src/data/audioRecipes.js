@@ -2951,6 +2951,61 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.6 },
     filterType: 'bandpass', filterFreq: 420, filterQ: 0.9,
   },
+  // inf-wreck-cooling-voice (WF-13): a fresh wreck sounds its cooling — hull conduction, not a
+  // fire roar. The tick is a struck plate's ring: two inharmonic partials (~1.47 ratio, the
+  // upper dying first) over a hairline transient. The knock is the hot frame flexing, duller and
+  // lower. The groan is the hull settling — a resonant sawtooth creak, higher and faster-wobbling
+  // than the seam rock's stone groan so metal and stone never read alike. Played positionally at
+  // the hulk by audioSystem._updateWreckCooling on the wreck's own burn/cool clock.
+  {
+    id: 'sfx_ambient_wreck_tick_ring',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1650, freqSweep: [1665, 1610], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.17 },
+    filterType: 'bandpass', filterFreq: 1800, filterQ: 2.2,
+    transientClick: { gain: 0.3 },
+  },
+  {
+    id: 'sfx_ambient_wreck_tick_partial',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 2430, freqSweep: [2440, 2390], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.09 },
+    filterType: 'bandpass', filterFreq: 2500, filterQ: 2.6,
+  },
+  {
+    id: 'sfx_ambient_wreck_tick',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_ambient_wreck_tick_ring', 'sfx_ambient_wreck_tick_partial'],
+    gainMult: 0.6,
+  },
+  {
+    id: 'sfx_ambient_wreck_knock',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 380, freqSweep: [430, 330], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.15 },
+    filterType: 'lowpass', filterFreq: 950, filterQ: 1.4,
+    transientClick: { gain: 0.22 },
+    gainMult: 0.7,
+  },
+  {
+    id: 'sfx_ambient_wreck_groan',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 64, freqSweep: [72, 55], sweepTimeS: 1.5,
+    gainEnvelope: { attack: 0.3, decay: 0.6, sustain: 0.65, release: 0.9 },
+    filterType: 'lowpass', filterFreq: 340, filterQ: 3.2,
+    lfoRate: 5.5, lfoDepth: 0.045,
+    distortionAmount: 0.15, distortionCurve: 'tanh',
+    gainMult: 0.75,
+  },
   // PQ-158.02 — Massline instrument: reel whine, release (distinct from break), bridle chord.
   {
     id: 'sfx_massline_reel_whine',
@@ -3697,6 +3752,134 @@ export const RECIPES = [
     filterFreq: 1200,
     filterQ: 2.2,
     pitchRange: [0.96, 1.04],
+  },
+  // inf-lane-horn (CH-12): the lane's horns. A buzzed civilian answers in its own class. The dyad
+  // family is a bright two-reed car-horn third (330 / 415 Hz) through a nasal bandpass, pitched per
+  // class by playback rate (light bright, work gruff); the heavy family is the hauler foghorn's
+  // fundamental and fifth with a hard attack — a blast, not the greeting's slow swell. Each family
+  // climbs the same ladder a repeat climbs: tap → double → held lean. Played positionally at the
+  // buzzed hull by the bark director on `traffic:nearMiss`.
+  {
+    id: 'sfx_lane_horn_reed_low',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 330,
+    gainEnvelope: { attack: 0.008, decay: 0.05, sustain: 0.7, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1050, filterQ: 1.2,
+  },
+  {
+    id: 'sfx_lane_horn_reed_high',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 415,
+    gainEnvelope: { attack: 0.008, decay: 0.05, sustain: 0.6, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1300, filterQ: 1.4,
+    gainMult: 0.7,
+  },
+  {
+    id: 'sfx_lane_horn_tap',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_lane_horn_reed_low', 'sfx_lane_horn_reed_high'],
+    gainEnvelope: { attack: 0.008, decay: 0.09, sustain: 0.75, release: 0.1 },
+    gainMult: 0.8,
+  },
+  {
+    id: 'sfx_lane_horn_double',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_lane_horn_reed_low', 'sfx_lane_horn_reed_high'],
+    gainEnvelope: { attack: 0.008, decay: 0.08, sustain: 0.75, release: 0.08 },
+    repeatCount: 1, repeatIntervalS: 0.22,
+    gainMult: 0.85,
+  },
+  {
+    id: 'sfx_lane_horn_lean',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_lane_horn_reed_low', 'sfx_lane_horn_reed_high'],
+    // The decay ramp is the held lean: peak to 0.85 over a full second, then let go.
+    gainEnvelope: { attack: 0.01, decay: 1.05, sustain: 0.85, release: 0.22 },
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_fund',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 70,
+    freqSweep: [70, 66],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.05, decay: 0.2, sustain: 0.7, release: 0.45 },
+    filterType: 'lowpass', filterFreq: 380, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_fifth',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 105,
+    freqSweep: [105, 99],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.06, decay: 0.2, sustain: 0.6, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 460, filterQ: 0.8,
+    gainMult: 0.6,
+  },
+  {
+    id: 'sfx_hauler_blast',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_blast_fund', 'sfx_hauler_blast_fifth', 'sfx_hauler_horn_breath'],
+    gainEnvelope: { attack: 0.05, decay: 0.25, sustain: 0.7, release: 0.4 },
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_double',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_blast_fund', 'sfx_hauler_blast_fifth', 'sfx_hauler_horn_breath'],
+    gainEnvelope: { attack: 0.05, decay: 0.18, sustain: 0.7, release: 0.28 },
+    repeatCount: 1, repeatIntervalS: 0.5,
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_lean',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_blast_fund', 'sfx_hauler_blast_fifth', 'sfx_hauler_horn_breath'],
+    // A loaded hull leaning on its horn: the blast holds near full for a second and a half.
+    gainEnvelope: { attack: 0.05, decay: 1.5, sustain: 0.88, release: 0.6 },
+    gainMult: 0.95,
+  },
+  // inf-gate-throat-voice (WF-13): a jump gate sounds like a gate, not a berth. The station bed
+  // is a 60 Hz sine pedal under a 180 Hz lowpass; the gate throat is a ring that SINGS — a D2
+  // sawtooth whose fifth harmonic rings through a narrow bandpass, its pitch breathing at the
+  // portal's own breath rate (infrastructureMotion: sin(simTime * 2.2) → 0.35 Hz). The runtime
+  // detunes it up to a whole tone across the picture's 400 wu spin-up radius, so the harmonic
+  // the bandpass catches slides as the swirl winds up. The wormhole throat is lower and wider:
+  // a triangle moan with a slow, deep warble under a resonant lowpass, sagging (detuned down)
+  // as the player closes. Both loop on the ambient bus via audioSystem._updateGateThroat.
+  {
+    id: 'sfx_gate_throat',
+    category: 'ambient',
+    type: 'continuous_oscillator',
+    wave: 'sawtooth',
+    baseFreq: 73.4,
+    gainEnvelope: { attack: 1.2, sustain: 1.0, release: 1.6 },
+    filterType: 'bandpass', filterFreq: 370, filterQ: 6,
+    lfoRate: 0.35, lfoDepth: 0.018,
+  },
+  {
+    id: 'sfx_wormhole_throat',
+    category: 'ambient',
+    type: 'continuous_oscillator',
+    wave: 'triangle',
+    baseFreq: 49,
+    gainEnvelope: { attack: 1.6, sustain: 1.0, release: 2.0 },
+    filterType: 'lowpass', filterFreq: 210, filterQ: 5,
+    lfoRate: 0.21, lfoDepth: 0.07,
   },
 ];
 

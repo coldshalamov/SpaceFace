@@ -45,8 +45,10 @@ import {
 import {
   SWARM_EVENT_BY_ID,
   SWARM_EVENT_TABLES,
-  SWARM_SHARED_EVENTS,
+  isSwarmMinorEventWave,
   swarmEventFor,
+  swarmMinorEventFor,
+  swarmMinorEventPool,
   validateSwarmEvents,
 } from '../src/data/swarmEvents.js';
 import { SWARM_RULESET, isSwarmBossWave } from '../src/data/swarmMode.js';
@@ -291,31 +293,43 @@ test('every hull launches bare, a bad hull refuses, and the code round-trips it'
 test('swarm events validate, draw deterministically, and leave boss rounds to the boss', () => {
   const issues = validateSwarmEvents();
   assert.deepEqual(issues, [], issues.join('; '));
-  // Non-event waves draw nothing; boss rounds carry the boss room instead.
+  // C01-03: through the win every fifth round is a champion so the course deals no majors;
+  // past it the ≡5-mod-10 deep rounds are real non-champion rows and the major band deals
+  // again — wave 35 is the first card it hands back.
   for (let wave = 1; wave <= 40; wave++) {
     const draw = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
-    if (wave % 5 !== 0 || isSwarmBossWave(wave)) {
-      assert.equal(draw, null, `wave ${wave} is not an event round`);
+    const majors = wave > 30 && wave % 10 === 5;
+    if (!majors) {
+      assert.equal(draw, null, `wave ${wave} has no major event round`);
     } else {
-      assert.ok(draw && SWARM_EVENT_BY_ID[draw.id], `wave ${wave} draws a real card`);
-      // Same inputs, same card — a ghost replay and a share code see the same room.
+      assert.ok(draw && SWARM_EVENT_BY_ID[draw.id], `wave ${wave} deals a real major card`);
       const again = swarmEventFor({ arenaId: 'helios_core', wave, seed: SEED });
       assert.equal(again.id, draw.id, `wave ${wave} is seeded-stable`);
     }
+    const minor = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
+    if (isSwarmMinorEventWave(wave)) {
+      assert.ok(minor && SWARM_EVENT_BY_ID[minor.id], `wave ${wave} draws a real minor card`);
+      // Same inputs, same card — a ghost replay and a share code see the same room.
+      const again = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
+      assert.equal(again.id, minor.id, `wave ${wave} is seeded-stable`);
+    } else {
+      assert.equal(minor, null, `wave ${wave} is not a minor round`);
+    }
   }
-  // Signature events headline their own room: across a seed sweep the arena's cards
-  // outnumber the shared deck.
-  let signature = 0;
-  let shared = 0;
-  const own = new Set(SWARM_EVENT_TABLES.helios_core);
+  // The minor band deals only from the arena's authored pool: every draw lands inside it,
+  // the room's own trick deals its share, and the shared pods out-deal it (helios's mix
+  // is one own card against the two shared ones).
+  const pool = new Set(swarmMinorEventPool('helios_core'));
+  const counts = {};
   for (let seed = 1; seed <= 40; seed++) {
-    const draw = swarmEventFor({ arenaId: 'helios_core', wave: 5, seed });
-    if (own.has(draw.id)) signature++;
-    else if (SWARM_SHARED_EVENTS.includes(draw.id)) shared++;
+    const draw = swarmMinorEventFor({ arenaId: 'helios_core', wave: 2, seed });
+    assert.ok(draw, 'the minor round always deals');
+    assert.ok(pool.has(draw.id), 'every draw lands inside the authored minor pool');
+    counts[draw.id] = (counts[draw.id] || 0) + 1;
   }
-  assert.ok(signature > shared,
-    `signatures headline helios_core (${signature} signature vs ${shared} shared)`);
-  assert.equal(signature + shared, 40, 'every event wave draws a card');
+  assert.ok(counts.sprocket_crate > 0, "helios's own crate deals its share");
+  assert.ok((counts.supply_drop || 0) + (counts.mine_drift || 0) > counts.sprocket_crate,
+    'the shared pods out-deal the room trick — the authored 1:2 mix');
 });
 
 // ── S6.7 — demo flies one round; buying keeps it ─────────────────────────────
@@ -601,21 +615,26 @@ test('a surge overdrive rides the per-tick write for its whole window', () => {
   const registry = { get: (name) => (name === 'fields' ? fields : null) };
   const director = createSwarmEventDirector({ state: h.state, bus: h.bus, helpers: {}, registry });
   director.init();
-  // The draw is seeded — walk to the seed whose wave-5 cinder card is the sluice surge.
-  let seed = 1;
-  while (swarmEventFor({ arenaId: 'cinder_sluice', wave: 5, seed })?.id !== 'sluice_surge') seed++;
+  // C01-01: majors are dead inside the course — sling_gust is the minor band's
+  // install-free surge, dealt on lagrange's wave-12 minor round at seed 1.
+  const seed = 1;
+  assert.equal(
+    swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave: 12, seed })?.id,
+    'sling_gust',
+    'the seeded draw lands the minor surge',
+  );
   h.state.run.seed = seed;
-  h.state.run.arenaId = 'cinder_sluice';
-  h.state.run.wave = 5;
-  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 5 }));
+  h.state.run.arenaId = 'lagrange_crucible';
+  h.state.run.wave = 12;
+  director.setFrame(swarmEventFrame({ at: { x: 0, z: 0 }, laneGate: null, seed, wave: 12 }));
   director.setInstalledFields([{ id: 'survival_arena_field_a', strength: 40 }]);
-  h.bus.emit('run:waveStarted', { wave: 5 });
+  h.bus.emit('run:waveStarted', { wave: 12 });
   // Past the windup: the overdrive is live, and the per-tick write must carry it.
   h.state.simTime += 10;
   director.update(0.016, h.state);
-  assert.equal(director.fieldStrengthScale('survival_arena_field_a'), 2.0,
-    'the sluice runs hot through the window');
-  assert.ok(writes.some((w) => w.id === 'survival_arena_field_a' && w.strength === 80),
+  assert.equal(director.fieldStrengthScale('survival_arena_field_a'), 1.8,
+    'the sling runs hot through the window');
+  assert.ok(writes.some((w) => w.id === 'survival_arena_field_a' && w.strength === 72),
     'the authored field got its overdrive patch');
   // Past the window: the scale is calm again — the machinery's own write restores the base.
   h.state.simTime += 11;
