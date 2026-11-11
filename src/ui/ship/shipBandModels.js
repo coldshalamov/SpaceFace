@@ -176,6 +176,12 @@ function formatUnits(value, suffix = '') {
   return `${rounded}${suffix}`;
 }
 
+// words-ship-sheet-counts: the capability verb counts one drone in the singular — the fit
+// receipt now reads this verb aloud the moment a drone bay lands, so "1 drone(s)" was a leak.
+function droneVerb(count) {
+  return roundInt(count) === 1 ? 'Put 1 drone in the water' : `Put ${formatUnits(count)} drones in the water`;
+}
+
 function formatMultiplier(value) {
   const n = round1(value);
   return Number.isInteger(n) ? String(n) : String(n.toFixed(1));
@@ -1028,7 +1034,7 @@ export function capabilityDefinitions(derived) {
   if (finite(derived.tetherSpoolMult, 1) > 1) defs.push({ id: 'spool', verb: 'Swing off things further away', tone: 'you' });
   if (finite(derived.tetherReelRateMult, 1) > 1) defs.push({ id: 'reel', verb: 'Reel in faster than they can pull away', tone: 'you' });
   if (finite(derived.magnetRange, 0) > 0) defs.push({ id: 'magnet', verb: 'Scoop cargo without stopping', tone: 'you' });
-  if (finite(derived.droneBayCount, 0) > 0) defs.push({ id: 'drone', verb: `Put ${formatUnits(derived.droneBayCount)} drone(s) in the water`, tone: 'you' });
+  if (finite(derived.droneBayCount, 0) > 0) defs.push({ id: 'drone', verb: droneVerb(derived.droneBayCount), tone: 'you' });
   if (String(derived.jumpDriveTier || '') !== 'jump_t1') defs.push({ id: 'jump', verb: 'Reach further out', tone: 'you' });
   if (finite(derived.hullRepairOOC, 0) > 0) defs.push({ id: 'repair', verb: 'Heal between fights', tone: 'you' });
   if (finite(derived.hiddenCargoPct, 0) > 0) defs.push({ id: 'hidden', verb: 'Carry what you should not be carrying', tone: 'foe' });
@@ -1061,7 +1067,7 @@ function capabilityFromModule(moduleId) {
   if (finite(mods.tetherSpoolMult, 1) > 1) return { id: 'spool', verb: 'Swing off things further away' };
   if (finite(mods.tetherReelRateMult, 1) > 1) return { id: 'reel', verb: 'Reel in faster than they can pull away' };
   if (finite(mods.magnetRange, 0) > 0) return { id: 'magnet', verb: 'Scoop cargo without stopping' };
-  if (finite(mods.droneBay, 0) > 0) return { id: 'drone', verb: `Put ${formatUnits(mods.droneBay)} drone(s) in the water` };
+  if (finite(mods.droneBay, 0) > 0) return { id: 'drone', verb: droneVerb(mods.droneBay) };
   if (finite(mods.jumpDriveTier, 1) > 1) return { id: 'jump', verb: 'Reach further out' };
   if (finite(mods.hullRepairOOC, 0) > 0) return { id: 'repair', verb: 'Heal between fights' };
   if (finite(mods.hiddenCargoPct, 0) > 0) return { id: 'hidden', verb: 'Carry what you should not be carrying' };
@@ -1249,11 +1255,13 @@ export function scarCalloutsForHull({ shipId, livingHull, simTime }) {
   if (killTally > 0) {
     rows.push({
       id: 'kills',
-      label: `${killTally} KILLS`,
+      label: killTally === 1 ? '1 KILL' : `${killTally} KILLS`,
       sub: anchorLabel,
       kind: anchorKind,
       local: KILL_ANCHOR,
-      why: `${killTally} confirmed kill(s) painted on the nose.${approxSuffix}`,
+      why: killTally === 1
+        ? `1 confirmed kill painted on the nose.${approxSuffix}`
+        : `${killTally} confirmed kills painted on the nose.${approxSuffix}`,
     });
   }
   const weldCount = clamp(Math.floor(finite(record.repairPatches, 0)), 0, LIVING_HULL_REPAIR_PATCH_MAX);
@@ -1283,11 +1291,13 @@ export function scarCalloutsForHull({ shipId, livingHull, simTime }) {
     const cycles = Math.max(0, livingHullCyclesSinceWash(record, simTime));
     rows.push({
       id: 'grime',
-      label: `GRIMY | ${cycles} CYCLES`,
+      label: cycles === 1 ? 'GRIMY | 1 CYCLE' : `GRIMY | ${cycles} CYCLES`,
       sub: anchorLabel,
       kind: anchorKind,
       local: GRIME_ANCHOR,
-      why: `${cycles} cycle(s) since the last wash.${approxSuffix}`,
+      why: cycles === 1
+        ? `1 cycle since the last wash.${approxSuffix}`
+        : `${cycles} cycles since the last wash.${approxSuffix}`,
     });
   }
   if (record.graffitiLine) {

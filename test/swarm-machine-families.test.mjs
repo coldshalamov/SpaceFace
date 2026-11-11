@@ -119,9 +119,12 @@ function addRock(h, x, z, r = 14) {
 }
 
 test('the machine table is honest and its clock is lawful', () => {
+  // C01-03: every machine debut sits on a real deep-course non-champion row — the table's
+  // own validator has nothing to flag.
   assert.deepEqual(swarmMachineIssues(), []);
   // The brood catalogs are untouched — the Machine folds beside them, never into them.
   assert.deepEqual(swarmBroodIssues(), []);
+  // The late brood table's own check is clean the same way.
   assert.deepEqual(swarmBroodLateIssues(), []);
   // Seven units, one mechanism flag each.
   assert.equal(SWARM_MACHINE_FAMILIES.length, 7);
