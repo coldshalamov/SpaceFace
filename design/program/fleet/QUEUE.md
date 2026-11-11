@@ -31,7 +31,7 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | STAB-01-launchers-always-start | D | Both launchers reach the menu 10/10; plain-sentence errors | TAKEN devin1 |
 | STAB-02-stability-gate | D | `npm run gate` = Adventure boot + Swarm boot + deterministic replay | TAKEN devin2 |
 | STAB-03 import and boot lint | S | NEEDS-PACKET: a static check that every relative import resolves (the `.//` break), wired into `gate --quick` | NEEDS-PACKET |
-| G11 never freeze | L | The freeze-and-blip: sim falls behind real time, presentation holds then snaps. Spec: EC-G11 card + `MASTER_PLAN.md` E1/E10 | READY |
+| G11-01-never-freeze | L | The freeze-and-blip: measure on a quiet machine, then one clock, adaptive playout, then a cheaper sim | READY |
 | PARK-01-land-overnight-lane-b | D | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
 
 ## Wave 0 — the floor
