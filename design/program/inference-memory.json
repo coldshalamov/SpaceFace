@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-current-rider",
-      "date": "2026-11-04",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A marked Crucible elite kills its drive inside a room current and the field law physically carries it around the seam - one hit knocks it off the current",
-      "fingerprint": "verb=rides,subject=crucible-elite-affix,sector=crucible-law-arenas,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "72661896ebfb",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-wing-gap-press",
       "date": "2026-11-04",
       "wf": "WF-16",
@@ -1706,6 +1693,22 @@
       "evidence": ".devshots/fleet/runs/PL-05-road-rage.flash.2026-11-11T01-43-07/RECEIPT.md",
       "kind": "plant",
       "player": "Shoving the same civilian twice makes them turn to clumsily ram you once, then flee at top speed."
+    },
+    {
+      "id": "PL-06",
+      "date": "2026-11-11",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "PL-06 plant: a cut-off loaded hauler pursues for twenty seconds with its horn down",
+      "fingerprint": "verb=pursue,subject=hauler-tailgater,sector=lanes,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "4fb8e0a3fb72",
+      "verification": "focused_green",
+      "evidence": ".devshots/fleet/runs/PLANT-NEXT.flash.2026-11-11T02-37-06/RECEIPT.md",
+      "kind": "plant",
+      "player": "Cutting off a loaded hauler makes it follow you for twenty seconds with its horn held down."
     }
   ],
   "knownDefects": [
