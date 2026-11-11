@@ -13,7 +13,7 @@
 // are private copies, and the held power is read through powerVerbs.heldPower (a WeakMap, never
 // state), so holding a key cannot change the simulation.
 import { FIELD_DEFS, FIELD_COUPLING, fieldsFlag } from './fields.js';
-import { BOMB_DRIFT, bombDef } from './bombs.js';
+import { BOMB_DRIFT, bombDef, resolvedBombDef } from './bombs.js';
 import { IMPULSE_CHARGES } from './impulseCharges.js';
 import { GRAVITY_MARK_FIELD_COUPLING } from './combatDefs.js';
 import {
@@ -362,7 +362,7 @@ function planShove(state, player, rail, opts) {
     const d = b && b.data;
     if (!b || !b.alive || b.type !== 'bomb' || !d || d.ownerId !== player.id || d.phase !== 'drift' || d.retired) continue;
     if (!(now >= d.armedAt)) continue;
-    const def = bombDef(d.bombId);
+    const def = resolvedBombDef(d);
     const t = Math.max(0, Math.min(finite(d.detonateAt, now + BOMB_DRIFT.warningS), now + BOMB_DRIFT.warningS) - now);
     integrateBombDrift(drift, b.pos.x, b.pos.z, finite(b.vel && b.vel.x), finite(b.vel && b.vel.z), t, BOMB_DRIFT.dragPerS);
     if (def.field && def.field.kind === 'singularity') { areas.push(ring('field', drift.x, drift.z, def.radius)); continue; }
@@ -442,7 +442,8 @@ function planChargeThrow(state, player) {
   const blocked = playerImpulseCharges(state) <= 0 ? 'No impulse charges in cargo'
     : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : null;
   const plan = chargeThrowPlan(state, player);
-  const def = plan.def;
+  // A01-05 Wide Bore: the thrown plate stamps this scale at the throw; draw the resolved reach.
+  const def = { ...plan.def, radius: plan.def.radius * swarmFieldRadiusScale(state) };
   if (plan.trap) {
     const areas = [ring('trap', plan.pos.x, plan.pos.z, finite(def.triggerRadius, def.radius)), ring('armed', plan.pos.x, plan.pos.z, def.radius)];
     return { center: plan.pos, radius: def.radius, areas, moves: [], blocked, note: 'Repulsion trap — it fires when a hull comes close' };
@@ -491,7 +492,8 @@ function planDriftBomb(state, player, rail) {
   const loaded = !cells || cells.some((c) => c && c.id === id && c.count > 0);
   let blocked = slot && (slot.state === 'cooling' || slot.state === 'locked' || slot.state === 'empty') ? slot.why : null;
   if (!blocked && (!id || !loaded)) blocked = 'That bomb is not loaded';
-  const def = bombDef(id);
+  // A01-05 Wide Bore: the drop will stamp this scale on the bomb, so the ring is the resolved radius.
+  const def = resolvedBombDef({ bombId: id, radiusScale: swarmFieldRadiusScale(state) });
   const drop = bombDropPlan(player);
   // Drift until the fuze or the first craft the proximity fuze takes after arming, then the
   // warning beat (bombs._tickBombs / _findTriggerVictim).

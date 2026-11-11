@@ -14,6 +14,9 @@ import { runSession as runSessionProto } from '../src/systems/runSession.js';
 import { ships as shipsProto, buildSlotList, fits } from '../src/systems/ships.js';
 import { weapons as weaponsProto } from '../src/systems/weapons.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { bombs as bombsProto } from '../src/systems/bombs.js';
+import { BOMB_DEFS } from '../src/data/bombs.js';
+import { powerPreviewPlan } from '../src/data/powerPreview.js';
 import { mines as minesProto } from '../src/systems/mines.js';
 import { playerPickupMagnetRange } from '../src/systems/mining.js';
 import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
@@ -605,4 +608,54 @@ test('review 5: Hair Trigger raises a continuous beam heat gain for the player o
     const npc = h.helpers.spawnEntity({ type: 'ship', team: 2, pos: { x: 50, z: 0 }, radius: 8 });
     assert.equal(burn(npc), plain, 'NPC beam heat unchanged');
   } finally { h.destroy(); }
+});
+
+// Wide Bore: the Bomb power's reach and cooldown, at the player Bomb owner's own seam.
+test('review 6: Wide Bore widens the player Bomb x1.4 and slows its cooldown x1.35', () => {
+  const h = boot();
+  const bombSys = Object.create(bombsProto);
+  const events = [];
+  try {
+    bombSys.init(h.ctx);
+    h.bus.on('bombs:dropped', (p) => events.push(['dropped', p]));
+    h.bus.on('bombs:detonated', (p) => events.push(['detonated', p]));
+    const payloadId = 'bomb_frag';
+    const base = BOMB_DEFS[payloadId];
+    const drop = () => {
+      h.state.simTime += 100; // clear any bay cooldown between drops
+      const bomb = bombSys.drop(h.pilot, payloadId, h.state);
+      assert.ok(bomb, 'the bay dropped');
+      return bomb;
+    };
+    const cooldownOf = () => h.state.bombs.cooldowns[payloadId] - h.state.simTime;
+
+    const plain = drop();
+    assert.equal(plain.data.radiusScale, 1);
+    assert.ok(Math.abs(cooldownOf() - base.cooldownS) < 1e-9);
+
+    h.recordTap('wide_bore');
+    const wide = drop();
+    assert.equal(wide.data.radiusScale, 1.4);
+    assert.ok(Math.abs(cooldownOf() - base.cooldownS * 1.35) < 1e-9, 'cooldown x1.35');
+    const droppedWide = events.filter(([n]) => n === 'dropped').pop()[1];
+    assert.ok(Math.abs(droppedWide.radius - base.radius * 1.4) < 1e-9, 'presentation radius x1.4');
+
+    // The held-power preview draws the same resolved radius the drop will stamp.
+    h.state.input = { ...(h.state.input || {}), actions: { ...(h.state.input && h.state.input.actions), bomb: { held: true, pressed: false } } };
+    const plan = powerPreviewPlan(h.state, 'bomb');
+    assert.ok(plan, 'a bomb preview exists');
+    assert.ok(Math.abs(plan.radius - base.radius * 1.4) < 1e-9, `preview radius ${plan.radius}`);
+
+    // The blast itself reaches x1.4.
+    bombSys._detonate(wide, wide.data, h.state, 'manual');
+    const detonated = events.filter(([n]) => n === 'detonated').pop()[1];
+    assert.ok(Math.abs(detonated.radius - base.radius * 1.4) < 1e-9, 'blast radius x1.4');
+
+    // An NPC bomb and the shared base definition are untouched.
+    const npc = h.helpers.spawnEntity({ type: 'ship', team: 2, mass: 30, radius: 8, hull: 100, hullMax: 100, pos: { x: 400, z: 0 } });
+    const theirs = bombSys.drop(npc, payloadId, h.state);
+    assert.ok(theirs, 'the NPC dropped');
+    assert.equal(theirs.data.radiusScale, 1);
+    assert.equal(BOMB_DEFS[payloadId].radius, base.radius, 'base data never mutated');
+  } finally { bombSys.destroy(); h.destroy(); }
 });

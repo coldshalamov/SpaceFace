@@ -55,7 +55,7 @@ import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import { GRAVITY_MARK_STATUS_ID, PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
-import { bombDef } from '../data/bombs.js';
+import { bombDef, resolvedBombDef } from '../data/bombs.js';
 import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
@@ -3149,13 +3149,13 @@ export function readFieldFamily(input, shell) {
   for (let i = 0; i < cloudCount; i++) {
     const bomb = _goo[i];
     const data = bomb.data;
-    const def = bombDef(data.bombId);
+    const def = resolvedBombDef(data);
     const field = def.field;
     const envelope = bombFieldEnvelope(now, data.fieldStartedAt, field.durationS, field.endStrength ?? 1);
     let overlap = 0;
     for (let j = 0; j < _goo.length; j++) {
       const other = _goo[j];
-      const otherRadius = bombDef(other.data.bombId).radius;
+      const otherRadius = resolvedBombDef(other.data).radius;
       const dist = Math.hypot(other.pos.x - bomb.pos.x, other.pos.z - bomb.pos.z);
       if (bombSurfaceFalloff(dist, 0, otherRadius) > 0) overlap++;
     }
