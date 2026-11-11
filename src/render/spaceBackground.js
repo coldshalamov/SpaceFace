@@ -240,10 +240,10 @@ const LAYER_DEFS = [
 const DUST_DEEP_TONE_GAIN = 0.85;
 // Owner 2026-11-11 ("too dark, bleak"; lead chose concept A, design/game/look/concepts/): empty space
 // reads as deep indigo, not void. The floor is the palette haze pulled partway toward one shared
-// indigo (keeps each sector's hue), 1.6x brighter than the 2026-11-01 floor.
-const DUST_DEEP_TONE_BRIGHTNESS = 3.6;
+// indigo (keeps each sector's hue), ~2.7x brighter than the 2026-11-01 floor.
+const DUST_DEEP_TONE_BRIGHTNESS = 6.0;
 const DUST_DEEP_TONE_INDIGO = new THREE.Color('#141a3c');
-const DUST_DEEP_TONE_INDIGO_MIX = 0.45;
+const DUST_DEEP_TONE_INDIGO_MIX = 0.6;
 function deepToneFor(palette, out) {
   return out.set((palette || PALETTES.EMBER).haze).lerp(DUST_DEEP_TONE_INDIGO, DUST_DEEP_TONE_INDIGO_MIX)
     .multiplyScalar(DUST_DEEP_TONE_BRIGHTNESS);
