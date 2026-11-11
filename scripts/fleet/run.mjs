@@ -8,6 +8,7 @@
 //   devin1 | devin2 | devin3   Devin CLI, SWE-2 Max, one Windows profile each (acct1..acct3)
 //   deepseek                   OpenCode 2.x, opencode-go/deepseek-v4.1-flash#max
 //   flash                      Antigravity (agy), gemini-3.8-flash-high
+//   codex                      Codex 0.163, gpt-6.1-sol high — the senior agent (reviews, architecture, 3D, images)
 //
 // Each run writes .devshots/fleet/runs/<PACKET-ID>.<backend>.<stamp>/ (git-ignored):
 //   PROMPT.txt  run.log  RECEIPT.md (written by the worker)  EXIT.json  CHANGED.txt
@@ -25,6 +26,7 @@ const HOME = process.env.USERPROFILE || 'C:\\Users\\93rob';
 const BASH = 'C:\\Program Files\\Git\\bin\\bash.exe';
 const OPENCODE = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe');
 const AGY = join(HOME, 'AppData', 'Local', 'agy', 'bin', 'agy.exe');
+const CODEX_JS = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
 
 const args = process.argv.slice(2);
 if (args[0] === '--list') {
@@ -34,14 +36,14 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|deepseek|flash> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|deepseek|flash|codex> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
 if (!existsSync(packetPath)) { console.error(`no packet ${packetPath}`); process.exit(2); }
 
 // Machine safety (owner, 2026-11-11: two crashes under load): at most MAX_ACTIVE workers at once.
-const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 2);
+const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 4);
 const ACTIVE = join(REPO, '.devshots', 'fleet', 'active');
 mkdirSync(ACTIVE, { recursive: true });
 const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
@@ -91,6 +93,12 @@ if (devin) {
 } else if (backend === 'deepseek') {
   cmd = OPENCODE;
   cmdArgs = ['run', '-m', 'opencode-go/deepseek-v4.1-flash#max', '--auto', prompt];
+} else if (backend === 'codex') {
+  // The senior agent (owner, 2026-11-11): GPT 6.1 Sol, high effort, via the npm codex 0.163 shim
+  // (the codex.exe on PATH is an old desktop bundle). Prompt on stdin. Use for hard backend /
+  // architecture reviews, batched reviews, 3D/Blender work and image/texture/mockup generation.
+  cmd = process.execPath;
+  cmdArgs = [CODEX_JS, 'exec', '-m', 'gpt-6.1-sol', '-c', 'model_reasoning_effort="high"', '-s', 'danger-full-access', '-C', REPO, '-'];
 } else if (backend === 'flash') {
   cmd = AGY;
   cmdArgs = ['--print', prompt, '--model', 'gemini-3.8-flash-high', '--dangerously-skip-permissions', '--output-format', 'text'];
@@ -119,9 +127,23 @@ function launch(resume) {
 [fleet] attempt ${attempt}${resume ? ' (resume)' : ''} at ${new Date().toISOString()}
 `);
   const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true });
+  if (backend === 'codex') child.stdin.end(prompt); else child.stdin.end();
   const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
   child.stdout.on('data', onData);
   child.stderr.on('data', onData);
+  // Flash and Devin sometimes sit "waiting" forever after writing their receipt. Once the receipt
+  // exists and the log has been silent for 3 minutes, end the worker so its slot frees up.
+  let lastOutputAt = Date.now();
+  child.stdout.on('data', () => { lastOutputAt = Date.now(); });
+  child.stderr.on('data', () => { lastOutputAt = Date.now(); });
+  const idleWatch = setInterval(() => {
+    if (existsSync(join(runDir, 'RECEIPT.md')) && Date.now() - lastOutputAt > 180_000) {
+      log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
+      clearInterval(idleWatch);
+      try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+    }
+  }, 30_000);
+  child.on('close', () => clearInterval(idleWatch));
   const timer = setTimeout(() => { log.write(`
 [fleet] timeout after ${timeoutMin} min
 `); child.kill(); }, Math.max(1000, deadline - Date.now()));

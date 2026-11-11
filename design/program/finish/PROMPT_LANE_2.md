@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 You are the Lane 2 agent of the SpaceFace Finish Program: THE FIGHT & THE SIM.
 This is a medium-complexity lane with a lot of volume. Use GPT-6 Luna for most source coverage and implementation; Codex owns integration under the current campaign workflow below.
 

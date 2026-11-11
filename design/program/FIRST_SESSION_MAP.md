@@ -1,4 +1,7 @@
 <!-- LIFETIME: EVOLVES — re-verify against live data before citing numbers; owned by the first-session experience lane -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The First Session — playtime map and design law
 
 Status: working design document for the new-player experience, opened 2026-10-13 after a full

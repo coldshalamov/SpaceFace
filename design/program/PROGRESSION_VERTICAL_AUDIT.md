@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Progression Vertical Audit — Scalar vs Verb
 
 Generated **2026-09-19** by `scripts/check-progression-verb-audit.mjs` — this file is GENERATED, do not hand-edit. Regenerate with `npm run check:progression:verbs -- --write=design/program/PROGRESSION_VERTICAL_AUDIT.md`.

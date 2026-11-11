@@ -112,8 +112,13 @@ test('wreck triggers exactly up to two passing civilians to slow down and look',
   };
   host._initRubberneckers();
 
-  // Wreck occurs at (0, 0)
-  host._onRubberneckersEntityKilled({ victim });
+  // Wreck occurs at (0, 0) - real combat.js emission shape
+  host._onRubberneckersEntityKilled({
+    id: victim.id,
+    killerId: 'player_1',
+    type: victim.type,
+    pos: { x: victim.pos.x, z: victim.pos.z },
+  });
 
   assert.equal(events.length, 1, 'emitted active event');
   assert.equal(events[0].wreckId, victim.id);
@@ -140,7 +145,12 @@ test('negative checks: wrong distance, wrong target, too soon to repeat', () => 
   const host1 = { bus, state: state1, ...rubberneckersOps };
   host1._initRubberneckers();
 
-  host1._onRubberneckersEntityKilled({ victim: victim1 });
+  host1._onRubberneckersEntityKilled({
+    id: victim1.id,
+    killerId: 'player_1',
+    type: victim1.type,
+    pos: { x: victim1.pos.x, z: victim1.pos.z },
+  });
   assert.equal(events.length, 0, 'wrong distance does not trigger rubberneckers');
 
   // Check 2: Wrong target (non-ship killed: asteroid or missile)
@@ -151,7 +161,12 @@ test('negative checks: wrong distance, wrong target, too soon to repeat', () => 
   const host2 = { bus, state: state2, ...rubberneckersOps };
   host2._initRubberneckers();
 
-  host2._onRubberneckersEntityKilled({ victim: asteroid });
+  host2._onRubberneckersEntityKilled({
+    id: asteroid.id,
+    killerId: 'player_1',
+    type: asteroid.type,
+    pos: { x: asteroid.pos.x, z: asteroid.pos.z },
+  });
   assert.equal(events.length, 0, 'non-ship death does not trigger rubbernecking');
 
   // Check 2b: Hostile or lawful ships do not rubberneck
@@ -162,7 +177,12 @@ test('negative checks: wrong distance, wrong target, too soon to repeat', () => 
   const host2b = { bus, state: state2b, ...rubberneckersOps };
   host2b._initRubberneckers();
 
-  host2b._onRubberneckersEntityKilled({ victim: victim1 });
+  host2b._onRubberneckersEntityKilled({
+    id: victim1.id,
+    killerId: 'player_1',
+    type: victim1.type,
+    pos: { x: victim1.pos.x, z: victim1.pos.z },
+  });
   assert.equal(events.length, 0, 'hostile and lawful ships do not rubberneck');
 
   // Check 3: Too soon to repeat (second wreck within 60 s cooldown)
@@ -174,12 +194,22 @@ test('negative checks: wrong distance, wrong target, too soon to repeat', () => 
   const host3 = { bus, state: state3, ...rubberneckersOps };
   host3._initRubberneckers();
 
-  host3._onRubberneckersEntityKilled({ victim: victim2a });
+  host3._onRubberneckersEntityKilled({
+    id: victim2a.id,
+    killerId: 'player_1',
+    type: victim2a.type,
+    pos: { x: victim2a.pos.x, z: victim2a.pos.z },
+  });
   assert.equal(events.length, 1, 'first wreck triggers incident');
 
   // Second wreck 15 s later (cooldown is 60 s):
   state3.simTime = 115.0;
-  host3._onRubberneckersEntityKilled({ victim: victim2b });
+  host3._onRubberneckersEntityKilled({
+    id: victim2b.id,
+    killerId: 'player_1',
+    type: victim2b.type,
+    pos: { x: victim2b.pos.x, z: victim2b.pos.z },
+  });
   assert.equal(events.length, 1, 'second wreck during cooldown does NOT trigger new incident');
 });
 
@@ -193,7 +223,12 @@ test('rubbernecking civilians slow down and aim nose toward the wreck', () => {
   const host = { bus, state, ...rubberneckersOps };
   host._initRubberneckers();
 
-  host._onRubberneckersEntityKilled({ victim });
+  host._onRubberneckersEntityKilled({
+    id: victim.id,
+    killerId: 'player_1',
+    type: victim.type,
+    pos: { x: victim.pos.x, z: victim.pos.z },
+  });
 
   // Call _reactRubberneckers in traffic loop:
   const reacting = host._reactRubberneckers(civ, { role: 'courier' }, [], state, null);
@@ -221,7 +256,12 @@ test('player approaching within shoo distance shoos rubberneckers away with bark
   const host = { bus, state, ...rubberneckersOps };
   host._initRubberneckers();
 
-  host._onRubberneckersEntityKilled({ victim });
+  host._onRubberneckersEntityKilled({
+    id: victim.id,
+    killerId: 'player_1',
+    type: victim.type,
+    pos: { x: victim.pos.x, z: victim.pos.z },
+  });
 
   // Civ is looking:
   host._reactRubberneckers(civ, { role: 'courier' }, [], state, player);
@@ -260,7 +300,12 @@ test('scavenger arrives within a minute at wreck', () => {
   host._initRubberneckers();
 
   // Wreck at t = 0
-  host._onRubberneckersEntityKilled({ victim });
+  host._onRubberneckersEntityKilled({
+    id: victim.id,
+    killerId: 'player_1',
+    type: victim.type,
+    pos: { x: victim.pos.x, z: victim.pos.z },
+  });
 
   // At t = 20 s, scavenger has not arrived yet:
   state.simTime = 20.0;
@@ -279,7 +324,12 @@ test('scavenger arrives within a minute at wreck', () => {
   host2._initRubberneckers();
   player.pos = { x: 210, z: 150 }; // 10 wu away from wreck!
   state.simTime = 100.0;
-  host2._onRubberneckersEntityKilled({ victim });
+  host2._onRubberneckersEntityKilled({
+    id: victim.id,
+    killerId: 'player_1',
+    type: victim.type,
+    pos: { x: victim.pos.x, z: victim.pos.z },
+  });
 
   state.simTime = 145.0;
   host2._stepRubberneckers(state);
@@ -331,8 +381,13 @@ test('traffic system integration via update loop and bus', () => {
     incidentFired = true;
   });
 
-  // Emit entity:killed to simulate ship wreck
-  bus.emit('entity:killed', { victim });
+  // Emit entity:killed to simulate ship wreck using real combat emitter shape
+  bus.emit('entity:killed', {
+    id: victim.id,
+    killerId: player.id,
+    type: victim.type,
+    pos: { x: victim.pos.x, z: victim.pos.z },
+  });
 
   assert.equal(incidentFired, true, 'rubberneckers incident activated on entity:killed');
 
@@ -343,4 +398,45 @@ test('traffic system integration via update loop and bus', () => {
   assert.equal(civ1.data.civilianReaction, 'rubbernecking');
   assert.equal(civ1.data.intent.brake, true);
   assert.equal(civ1.data.intent.moveZ, RUBBERNECKERS_TUNING.slowThrottle);
+});
+
+test('rubberneckers start when victim entity is already gone from state.entities', () => {
+  const bus = createBus();
+  const events = [];
+  bus.on(RUBBERNECKERS_ACTIVE_EVENT, (e) => events.push(e));
+
+  const civ1 = makeShip('civ_1', { x: 100, z: 0, role: 'courier' });
+  const civ2 = makeShip('civ_2', { x: 150, z: 50, role: 'miner' });
+
+  // Victim is NOT in entities map:
+  const entities = new Map([
+    [civ1.id, civ1],
+    [civ2.id, civ2],
+  ]);
+
+  const state = {
+    mode: 'flight',
+    simTime: 10.0,
+    playerId: 'player_1',
+    entities,
+  };
+
+  const host = {
+    bus,
+    state,
+    ...rubberneckersOps,
+  };
+  host._initRubberneckers();
+
+  // Wreck occurs at (0, 0) with real combat emitter payload and entity gone
+  host._onRubberneckersEntityKilled({
+    id: 'already_deleted_ship',
+    killerId: 'player_1',
+    type: 'ship',
+    pos: { x: 0, z: 0 },
+  });
+
+  assert.equal(events.length, 1, 'emitted active event despite victim entity gone');
+  assert.equal(events[0].wreckId, 'already_deleted_ship');
+  assert.deepEqual(events[0].rubberneckerIds, ['civ_1', 'civ_2']);
 });
