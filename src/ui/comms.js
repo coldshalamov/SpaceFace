@@ -25,6 +25,7 @@ import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js'
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
 import { createContactHailPrompt } from './contactHailPrompt.js';
 import { createCommsRadial } from './commsRadial.js';
+import { createContextWheel } from './contextWheel.js';
 import { createEndingEpilogue } from './endingEpilogue.js';
 import { createCommsTrace } from './effects/commsTrace.js';
 import { openingInstructionSolo } from './hudAttention.js';
@@ -318,6 +319,8 @@ export function createComms(ctx) {
   const special500InvoicePrompt = createSpecial500InvoicePrompt(ctx);
   const special500ConfessionalPrompt = createSpecial500ConfessionalPrompt(ctx);
   const commsRadial = createCommsRadial(ctx);
+  // G18-02 "one set of keys": the overflow verbs live on the hold-Q / hold-Y context wheel.
+  const contextWheel = createContextWheel(ctx);
   const endingEpilogue = createEndingEpilogue({
     ...ctx,
     isBlocked: () => choiceModalOpen,
@@ -771,6 +774,7 @@ export function createComms(ctx) {
     if (recoveryEncounterPrompt && recoveryEncounterPrompt.tick) recoveryEncounterPrompt.tick();
     if (contactHailPrompt && contactHailPrompt.tick) contactHailPrompt.tick();
     if (commsRadial && commsRadial.tick) commsRadial.tick();
+    if (contextWheel && contextWheel.tick) contextWheel.tick();
     updateCommsTrace();
     tickHeldComms();
     sweep();
@@ -821,6 +825,7 @@ export function createComms(ctx) {
       contactHailPrompt,
       special500ConfessionalPrompt,
       commsRadial,
+      contextWheel,
     ]) {
       try { if (child && typeof child.destroy === 'function') child.destroy(); } catch (_) {}
     }
@@ -838,7 +843,7 @@ export function createComms(ctx) {
     placeGraffiti.destroy();
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, destroy, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt, commsRadial };
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, destroy, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt, commsRadial, contextWheel };
 }
 
 function normalizeTtlMs(ttl) {
