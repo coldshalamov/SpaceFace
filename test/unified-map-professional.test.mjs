@@ -83,7 +83,8 @@ test('supported viewports allocate non-overlapping map chrome and usable canvas'
     assert.ok(layout.viewport.height >= 260,
       `${width}x${height} keeps enough vertical map context`);
   }
-  const comms = read('../src/ui/comms.js');
+  // G16-02 retired comms.js's injected sheet to styles/ui.css — the same rule lives there.
+  const comms = read('../styles/ui.css');
   assert.match(comms, /body\.ui-modal-open \.sf-comm-backlog-btn[^}]*visibility:hidden/s,
     'the persistent comms/menu control must vacate modal map chrome');
 });

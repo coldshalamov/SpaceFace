@@ -91,11 +91,17 @@ function boot() {
     // Headless integrator: the SG-02 owner would apply the mirrored velocity and the
     // queued impulses; here we do both and keep receipts for the assertions.
     for (const e of state.entityList) {
+      const cmd = consumePhysicsCommand(e);
+      if (e && e.alive !== false && cmd && cmd.control && e.data && e.data.freightString != null) {
+        // Stand-in for the dynamic body owner: integrate the servo force it would apply.
+        const m = Math.max(1, e.mass || 1);
+        e.vel.x += (cmd.control.force.x / m) * DT;
+        e.vel.z += (cmd.control.force.z / m) * DT;
+      }
       if (e && e.alive !== false && e.data && e.data.freightString != null) {
         e.pos.x += (e.vel && e.vel.x || 0) * DT;
         e.pos.z += (e.vel && e.vel.z || 0) * DT;
       }
-      const cmd = consumePhysicsCommand(e);
       if (cmd && cmd.impulses && cmd.impulses.length) {
         const mass = Math.max(1, e.mass || (e.physicsBody && e.physicsBody.mass) || 1);
         for (const imp of cmd.impulses) {
@@ -226,6 +232,41 @@ test('the player loses 40% of max hull and is shoved out of the lane', () => {
   } finally { h.destroy(); }
 });
 
+test('a shielded player still loses exactly 40% of max hull; the shield is not the buffer', () => {
+  const h = boot();
+  try {
+    const pilot = h.spawn({ mass: 60, radius: 10, hull: 200, hullMax: 200, shield: 500, shieldMax: 500, pos: { x: -100, z: -2 } });
+    h.state.playerId = pilot.id;
+    h.tickUntil(24);
+    assert.ok(h.events.contacts.find((c) => c.targetId === pilot.id && c.player), 'the string touched the pilot');
+    assert.ok(Math.abs(pilot.hull - (200 - FREIGHT_PLAYER_HULL_FRACTION * 200)) < 0.5,
+      `hull lost 40% despite a full shield (hull now ${pilot.hull})`);
+    assert.equal(pilot.shield, 500, 'the shield was not drained by the crush');
+  } finally { h.destroy(); }
+});
+
+test('an armored heavy loses 60% of max hull; plating does not absorb the crush', () => {
+  const h = boot();
+  try {
+    const heavy = h.spawn({ mass: 200, radius: 14, hull: 100, hullMax: 100, armorFlat: 50, armorHp: 400, shield: 300, pos: { x: -150, z: 3 } });
+    h.tickUntil(24);
+    assert.ok(h.events.contacts.find((c) => c.targetId === heavy.id), 'the string touched the heavy');
+    assert.ok(Math.abs(heavy.hull - (100 - FREIGHT_HEAVY_HULL_FRACTION * 100)) < 0.5,
+      `hull lost 60% despite armor and shield (hull now ${heavy.hull})`);
+    assert.equal(heavy.armorHp, 400, 'armor HP untouched');
+    assert.equal(heavy.shield, 300, 'shield untouched');
+  } finally { h.destroy(); }
+});
+
+test('a shielded, armored light hull still dies', () => {
+  const h = boot();
+  try {
+    const wasp = h.spawn({ mass: 24, radius: 8, hull: 40, hullMax: 40, shield: 900, armorFlat: 60, armorHp: 900, pos: { x: -200, z: 0 } });
+    h.tickUntil(23);
+    assert.equal(wasp.alive, false);
+  } finally { h.destroy(); }
+});
+
 test('a latched container cuts loose after 0.5 s above the hold threshold', () => {
   const h = boot();
   try {
@@ -249,7 +290,7 @@ test('a latched container cuts loose after 0.5 s above the hold threshold', () =
     assert.equal(h.events.released.length, 0);
     // Now haul on it — sustained tension over the envelope.
     att.lastTension = 1e9;
-    h.tickN(FREIGHT_HOLD_TICKS + 2);
+    for (let i = 0; i < FREIGHT_HOLD_TICKS + 2; i++) { att.lastReelTick = h.state.tick; h.tick(); }
     assert.equal(target.data.freightString, null, 'the container cut loose from the string');
     assert.equal(target.data.freightReleased, true);
     const rel = h.events.released.find((r) => r.entityId === target.id);
@@ -297,4 +338,79 @@ test('the same seed produces identical freight outcomes', () => {
   assert.deepEqual(w1, w2, 'warning timetable is identical for the same seed');
   assert.deepEqual(d1, d2, 'departures are identical for the same seed');
   assert.deepEqual(p1, p2, 'container positions are bit-identical for the same seed');
+});
+
+test('orphaned freight bodies (a load mid-string) are retired when the room re-arms', () => {
+  const h = boot();
+  try {
+    h.tickUntil(22);
+    const members = h.freightMembers();
+    assert.equal(members.length, FREIGHT_STRING_COUNT);
+    // Simulate the director losing its records (load): a fresh install must not leave them driving nowhere.
+    survivalArena._freight.arm({ arenaId: 'not_the_foundry' });
+    assert.equal(h.freightMembers().length, 0, 'orphan containers retired');
+  } finally { h.destroy(); }
+});
+
+function latch(h, idx = 2) {
+  const pilot = h.spawn({ mass: 60, radius: 10, hull: 200, hullMax: 200, pos: { x: -700, z: -700 } });
+  h.state.playerId = pilot.id;
+  h.tickUntil(21);
+  const target = h.freightMembers().sort((a, b) => a.data.freightIndex - b.data.freightIndex)[idx];
+  const att = {
+    id: 'att_ride', defId: 'attachment_massline', ownerId: pilot.id, targetId: target.id,
+    controllerId: pilot.id, state: 'active', createdTick: h.state.tick,
+    lastTension: 1e9, lastImpulse: 0, lastYank: 0,
+  };
+  h.state.combat.attachments.byId[att.id] = att;
+  return { pilot, target, att };
+}
+
+test('a passive ride (huge tension, towed along the lane) never cuts the container loose in 10 s', () => {
+  const h = boot();
+  try {
+    const { pilot, target } = latch(h);
+    for (let i = 0; i < 600; i++) { pilot.vel.x = FREIGHT_SPEED_WU_S; pilot.vel.z = 0; h.tick(); if (!target.alive) break; }
+    assert.equal(h.events.released.length, 0, 'riding is not hauling');
+  } finally { h.destroy(); }
+});
+
+test('reeling, swinging, or hauling back against the string cuts the container loose', () => {
+  for (const mode of ['reel', 'swing', 'haulback']) {
+    const h = boot();
+    try {
+      const { pilot, target, att } = latch(h);
+      for (let i = 0; i < FREIGHT_HOLD_TICKS + 2; i++) {
+        if (mode === 'reel') att.lastReelTick = h.state.tick;
+        else if (mode === 'swing') { pilot.vel.x = FREIGHT_SPEED_WU_S; pilot.vel.z = 90; }
+        else { pilot.vel.x = -30; pilot.vel.z = 0; }
+        h.tick();
+      }
+      assert.equal(target.data.freightString, null, `${mode} cut it loose`);
+    } finally { h.destroy(); }
+  }
+});
+
+test('east-end despawn releases the pilot latch; a cut-loose container is never despawned by the string', () => {
+  const h = boot();
+  try {
+    const { pilot, target, att } = latch(h, 0);
+    const cutCalls = [];
+    h.helpers.combatPhysics = { cutAttachment: (r) => cutCalls.push(r.reason) };
+    const loose = h.freightMembers().find((m) => m.data.freightIndex === 4);
+    // Cut member 4 loose by hauling, then let the whole string run out the east end.
+    const att2 = { ...att, id: 'att_haul', targetId: loose.id };
+    h.state.combat.attachments.byId[att2.id] = att2;
+    for (let i = 0; i < FREIGHT_HOLD_TICKS + 2; i++) { att2.lastReelTick = h.state.tick; h.tick(); }
+    assert.equal(loose.data.freightReleased, true);
+    h.tickUntil(34);
+    assert.equal(target.alive, false, 'the latched string member despawned at the east end');
+    assert.notEqual(att.state, 'active', 'its latch was cut, no orphaned tether');
+    assert.ok(cutCalls.includes('freight_east_exit'), 'the physics joint was cut with the despawn');
+    assert.equal(loose.alive, true, 'the cut-loose container survives the string cleanup');
+    assert.ok(Math.abs(pilot.pos.x + 700) < 1e-6 && Math.abs(pilot.pos.z + 700) < 1e-6, 'the player was not snapped anywhere');
+    // Re-arm (wave end) retires the string but not the loose body.
+    survivalArena._freight.arm({ arenaId: 'not_the_foundry' });
+    assert.equal(loose.alive, true, 'room teardown leaves the released heavy body to the wave cleanup');
+  } finally { h.destroy(); }
 });
