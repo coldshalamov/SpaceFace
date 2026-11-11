@@ -178,6 +178,64 @@ export function createFloatingText(ctx) {
   let head = 0;
   let activeCount = 0;
 
+  // A01-04 — Foundry floor pad labels. A pad is a lit till: its name+price rides a small
+  // persistent world-anchored div above the body, readable at any zoom because it is
+  // screen-space like the floats. The sim owns the truth — the label text and the denial
+  // flash deadline live on entity.data.swarmFloorPad, so this layer is a pure read of the
+  // entity bag each frame (no event bookkeeping, no sim writes).
+  const padLayer = document.createElement('div');
+  padLayer.id = 'sf-floorpads';
+  padLayer.setAttribute?.('aria-hidden', 'true');
+  layer.appendChild(padLayer);
+  const padNodes = new Map();   // entityId -> { el, lastText, denied }
+  const _padWorld = { x: 0, y: 0, z: 0 };
+  const _padScreen = { x: 0, y: 0, onScreen: false };
+
+  function syncPadLabels() {
+    if (padNodes.size === 0 && !(state.entities && typeof state.entities.values === 'function')) return;
+    if (!helpers.worldToScreen) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const seen = new Set();
+    for (const e of state.entities.values()) {
+      const rec = e && e.data && e.data.swarmFloorPad;
+      if (!rec || e.alive === false || !e.pos) continue;
+      seen.add(e.id);
+      let node = padNodes.get(e.id);
+      if (!node) {
+        const el = document.createElement('div');
+        el.className = 'sf-fp';
+        padLayer.appendChild(el);
+        node = { el, lastText: '', denied: null };
+        padNodes.set(e.id, node);
+      }
+      const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
+      if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; }
+      // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
+      // refusedUntil in sim time, so the red reads exactly as long as the pad is lit denied.
+      const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
+      if (node.denied !== denied) {
+        node.denied = denied;
+        node.el.className = denied ? 'sf-fp sf-fp--deny' : 'sf-fp';
+      }
+      _padWorld.x = e.pos.x; _padWorld.z = e.pos.z;
+      const s = helpers.worldToScreen(_padWorld, _padScreen);
+      const show = Number.isFinite(s.x) && Number.isFinite(s.y)
+        && (s.onScreen !== false || s.x !== 0 || s.y !== 0);
+      const nextDisplay = show ? 'block' : 'none';
+      if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;
+      if (show) {
+        // Sit just above the body's mark so the pad's own light stays visible under the words.
+        const nextTransform = `translate3d(${s.x}px,${s.y - 26}px,0) translate(-50%,-50%)`;
+        if (node.el.style.transform !== nextTransform) node.el.style.transform = nextTransform;
+      }
+    }
+    for (const [id, node] of padNodes) {
+      if (seen.has(id)) continue;
+      node.el.parentNode && node.el.parentNode.removeChild(node.el);
+      padNodes.delete(id);
+    }
+  }
+
   function retire(n) {
     if (!n || !n.alive) return;
     n.alive = false;
@@ -416,6 +474,9 @@ export function createFloatingText(ctx) {
   }
 
   function update(dt) {
+    // Pad labels are persistent furniture — they keep reading while the transient pool is
+    // empty, so this pass is never gated on activeCount.
+    syncPadLabels();
     if (activeCount <= 0) return;
     if (!helpers.worldToScreen) return;
     // Viewport for the edge-overshoot fade — the same measures worldToScreen maps NDC against.
@@ -473,6 +534,11 @@ export function createFloatingText(ctx) {
         try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
       }
       for (const n of nodes) retire(n);
+      for (const node of padNodes.values()) {
+        node.el.parentNode && node.el.parentNode.removeChild(node.el);
+      }
+      padNodes.clear();
+      if (padLayer.parentNode) padLayer.parentNode.removeChild(padLayer);
       if (layer.parentNode) layer.parentNode.removeChild(layer);
     },
   };
@@ -541,6 +607,17 @@ function injectStyle() {
   .sf-ft--module { color:var(--dp-ink-dim, #b7b4a6); font-size:15px; }
   .sf-ft--rights { color:var(--dp-lamp, #f2b950); font-size:14px; letter-spacing:.05em; }
   .sf-ft--pickup { color:var(--dp-ink, #e8e2d4); font-size:14px; }
+  /* A01-04 floor pads — a till's price tag rides its lit body, constant screen size so the pad
+     reads from anywhere in the room. Lamp warm (a place you spend) at rest, danger red for the
+     sim-timed refusal flash. Same keyline law as the floats; never above the prompt deck. */
+  #sf-floorpads { position:absolute; inset:0; pointer-events:none; }
+  .sf-fp { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%);
+    font-family:var(--dp-face-read, "Archivo", sans-serif);
+    font-weight:760; font-variant-numeric:tabular-nums lining-nums;
+    font-size:13px; letter-spacing:.07em; white-space:nowrap; will-change:transform;
+    color:var(--dp-lamp, #f2b950);
+    text-shadow:0 0 7px rgb(0 0 0 / .94), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-fp--deny { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); }
   `;
   document.head.appendChild(s);
 }

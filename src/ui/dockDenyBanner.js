@@ -55,6 +55,7 @@ export const dockDenyBanner = {
       this._bus.on('dock:docked', this._onAttempt);  // today's live attempt signal
     }
     this._bannerEl = null;
+    this._stageHandle = null;
     this._hideTimer = null;
   },
 
@@ -89,10 +90,11 @@ export const dockDenyBanner = {
   },
 
   // ── DOM scan line (cosmetic; fully guarded; never blocks flight) ─────────────────────────────
+  // G16-02: the banner goes through the Stage's banner slot — the shared .dp-glass frame and
+  // the alerts lane replace this module's own mount point and z-index. A host with no live
+  // Stage keeps the legacy #hud seat (styles/ui.css scopes its placement to `#hud >`).
   _render(deny) {
     if (typeof document === 'undefined') return;
-    const host = document.getElementById('hud') || document.body;
-    if (!host) return;
     this._hide();
 
     const el = document.createElement('div');
@@ -116,7 +118,14 @@ export const dockDenyBanner = {
       },
     });
 
-    host.appendChild(el);
+    const stage = this._ctx && this._ctx.stage;
+    if (stage && typeof stage.show === 'function') {
+      this._stageHandle = stage.show('banner', el, { id: 'sf-dock-deny', severity: 'warn' });
+    } else {
+      const host = document.getElementById('hud') || document.body;
+      if (!host) return;
+      host.appendChild(el);
+    }
     this._bannerEl = el;
     if (typeof window !== 'undefined') this._hideTimer = window.setTimeout(() => this._hide(), BANNER_TTL_MS);
   },
@@ -124,6 +133,7 @@ export const dockDenyBanner = {
   _hide() {
     if (this._hideTimer != null && typeof window !== 'undefined') window.clearTimeout(this._hideTimer);
     this._hideTimer = null;
+    if (this._stageHandle) { this._stageHandle.clear(); this._stageHandle = null; }
     if (this._bannerEl) settleDataState(this._bannerEl);
     if (this._bannerEl && this._bannerEl.parentNode) this._bannerEl.parentNode.removeChild(this._bannerEl);
     this._bannerEl = null;

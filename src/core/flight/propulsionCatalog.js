@@ -39,6 +39,21 @@ export const PLAYER_TRANSLATION_RESPONSIVENESS = 1.15;
  */
 export const PLAYER_YAW_AUTHORITY = 2;
 
+/**
+ * External profile scalers — a run-modifier seam. Core cannot reach gameplay
+ * ledgers, so a system-side owner (src/systems/playerModifiers.js) registers a
+ * pure `(profile, entity, state) -> profile` hook; resolvers apply every scaler
+ * to the resolved profile AFTER merge and translation feel, before cruise
+ * derivation. A scaler that returns the input profile allocates nothing.
+ */
+const PROPULSION_SCALERS = [];
+
+export function registerPropulsionScaler(scaler) {
+  if (typeof scaler === 'function' && !PROPULSION_SCALERS.includes(scaler)) {
+    PROPULSION_SCALERS.push(scaler);
+  }
+}
+
 const TRANSLATION_ACCEL_KEYS = Object.freeze([
   'mainAccel',
   'reverseAccel',
@@ -448,6 +463,13 @@ export function resolvePropulsionProfile(entity, state = null) {
 
   if (isPlayerCraft(entity, state)) {
     profile = withPlayerTranslationFeel(profile);
+  }
+
+  if (PROPULSION_SCALERS.length) {
+    for (const scaler of PROPULSION_SCALERS) {
+      const scaled = scaler(profile, entity, state);
+      if (scaled && scaled !== profile) profile = scaled;
+    }
   }
 
   // Cruise engagement multipliers (spec2/02 §1): player only.
