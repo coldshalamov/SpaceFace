@@ -446,6 +446,23 @@ export const ATTACHMENT_DEFS = Object.freeze([
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
   {
+    // Fixed CR-FEED infrastructure, not a player Line upgrade. Three radial cables
+    // hold the original quarantine loads; only explicit local hail winds one drum.
+    id: 'attachment_furnace_capstan', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    minLength: 55, maxLength: 900,
+    break: { maxTension: 100000, maxImpulse: 10000, maxYank: 30000, graceTicks: 12 },
+    // Radius-12 cargo couples at 1.25 to a work ship's 260 WU/s² cone: 325 WU/s².
+    // 16,000 / 40 t = 400 WU/s² locally; multiple fields can still overload it.
+    // Neither fields nor mass change. Canonical spring/stretch remain authoritative.
+    // The local controller cuts at measured 900 WU reach; capped tension alone is
+    // not a promise that the generic high break threshold will ever be reached.
+    spring: { K: 640, zeta: 1.15, captureS: 0.45, maxForce: 16000, maxStretchRatio: 0.75 },
+    limits: { maxPerOwner: 3 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
     id: 'attachment_twin_bridle', version: 1,
     sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: false },

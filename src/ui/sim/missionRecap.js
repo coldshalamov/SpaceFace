@@ -1,3 +1,4 @@
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 // Sim-safe mission recap and objective wording — extracted from ui/screens/missionLog.js.
 // Everything here is pure: data tables + state reads in, player-facing text out. No DOM,
 // no timers, no randomness — so the whole-sim worker lane (and any system) may import it.
@@ -79,7 +80,7 @@ export function registryContactReadout(m) {
     return {
       objective: 'Registry identified — choose custody or force',
       where,
-      next: 'Civilian maintenance vessel. For custody, tether Elroy and reel to 60 WU or less; or destroy the vessel to resolve by force.',
+      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 WU and reel the Line to 60 WU or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
     };
   }
   if (p.investigationStage != null) return null;
@@ -121,6 +122,7 @@ export function objectiveText(m) {
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
   const dest = m.destStationId ? destStationName(m.destStationId) : 'destination';
+  if (isReportInRestitution(m)) return `Report in at ${dest} — no cargo required`;
   if (p.setPieceObjective === 'long_read_rumor_survey') {
     const rumorLabel = p.rumorAlreadyKnown ? 'RUMOR KNOWN' : 'RUMOR PURCHASED';
     return `${rumorLabel} ${p.rumorPurchased ? '✓' : '○'} / BEARING FIXED ${p.bearingFixed ? '✓' : '○'}`;

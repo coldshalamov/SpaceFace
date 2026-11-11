@@ -186,6 +186,10 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       ctx=context;root();
       const listen=(event,fn)=>{const off=ctx.bus.on(event,fn);if(typeof off==='function') unsubs.push(off);
         else if(typeof ctx.bus.off==='function') unsubs.push(()=>ctx.bus.off(event,fn));};
+      listen('game:newGame',()=>{
+        ctx.state.capitalBossEncounters={version:1,fights:{},orders:{}};
+        thrownMassHits.clear();
+      });
       listen('capitalBoss:start',p=>system.start(p));
       listen('capitalBoss:detach',p=>system.detach(p.fightId));
       // KILLED is a combat fact. DESTROYED may be virtualization/save restoration and is not death.
@@ -369,6 +373,10 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       const d = Math.hypot(dx, dz) || 1;
       const plate = spawn && spawn({
         type: 'wreck',
+        // Campaign salvage belongs to this sector, not the mission-pinned boss. Swarm
+        // slabs remain arena-owned and never enter the campaign world-record bag.
+        ...(!r.fightId.startsWith('swarm:') ? { homeSectorId: boss.homeSectorId
+          || boss.data?.homeSectorId || ctx.state.world?.currentSectorId } : {}),
         pos: { x: world.x, z: world.z },
         vel: { x: Number(boss.vel && boss.vel.x) || 0, z: Number(boss.vel && boss.vel.z) || 0 },
         radius: spec.radius, mass: spec.mass,
@@ -378,6 +386,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
           kind: 'wreck', label: spec.label, scanLabel: spec.label, name: spec.label,
           masslineTetherable: true,
           capitalPlate: { fightId: r.fightId, bossId: r.bossId, plateId: spec.id, covers: spec.covers },
+          identityKey: `capital_plate:${r.fightId}/${spec.id}`,
           // The aftermath package keeps a torn plate reading as a boss part, not generic
           // debris — the same render path fracture pieces use. Row 547 lets a plate name its
           // own authored piece (a door reads as a cargo module, an emitter as a turret); the

@@ -158,6 +158,27 @@ function foldPallasSeamVitals(row, fields) {
   }
 }
 
+function foldHeliosCuttingVitals(row, fields, life = row.occupantGeneration) {
+  if (fields.heliosCuttingActive === undefined) return;
+  // Spawn vitals arrive as a flat bag; retain only the resolved entity data facts.
+  for (const key of ['heliosCuttingActive', 'heliosCuttingLife', 'heliosCuttingJobId',
+    'heliosCuttingRecordId', 'heliosCuttingSlotId']) delete row[key];
+  const data = row.data, record = fields.heliosCuttingRecordId, slot = fields.heliosCuttingSlotId;
+  const jobId = fields.heliosCuttingJobId;
+  if (!Number.isSafeInteger(life) || life < 1 || fields.heliosCuttingLife !== life
+    || row.type !== 'ship' || typeof record !== 'string' || !record || data?.worldRecordId !== record
+    || jobId !== `job:${record}` || (data.jobId != null && data.jobId !== jobId)
+    || !['helios_seam_miner', 'helios_starter_cutter'].includes(slot)
+    || (data.activityActorSlotId != null && data.activityActorSlotId !== slot)
+    || (fields.heliosCuttingActive !== null && typeof fields.heliosCuttingActive !== 'boolean')) return;
+  // A resident traffic hull can be commissioned after SPAWN has already crossed
+  // the bridge. Only this same record/life's canonical Helios job may fill that gap.
+  data.jobId = jobId;
+  data.activityActorSlotId = slot;
+  if (typeof fields.heliosCuttingActive === 'boolean') data.minerShiftActive = fields.heliosCuttingActive;
+  else delete data.minerShiftActive;
+}
+
 // The visuals retain this data object. Update it from the authoritative work phase, including
 // explicit cleared flags, and reject a delayed update for a prior occupant or another record.
 function foldLanternWardVitals(row, fields, life = row.occupantGeneration) {
@@ -299,6 +320,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       foldAiState(row, info.vitals);
       foldSeekerVitals(row, info.vitals, info.occupantGeneration);
       foldPallasSeamVitals(row, info.vitals);
+      foldHeliosCuttingVitals(row, info.vitals, info.occupantGeneration);
       foldLanternWardVitals(row, info.vitals, info.occupantGeneration);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
@@ -385,7 +407,8 @@ export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
 // assigned; 2 = fold-only key (never assigned). The fold functions read only
 // names under these prefixes plus vx/vz, so any other key can skip them.
 const VITAL_KEY_KIND = new Map();
-const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic']);
+const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic',
+  'heliosCuttingActive', 'heliosCuttingLife', 'heliosCuttingJobId', 'heliosCuttingRecordId', 'heliosCuttingSlotId']);
 const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
 const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
   'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
@@ -440,6 +463,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldAiState(row, fields);
     foldSeekerVitals(row, fields);
     foldPallasSeamVitals(row, fields);
+    foldHeliosCuttingVitals(row, fields);
     foldLanternWardVitals(row, fields);
     foldOrchardPodVitals(row, fields);
     if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
@@ -893,6 +917,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'dockingPresentation',
   // Hail and the Ward's contact readers need a bounded account of the actual work history.
   'npcJobs.lanternWard',
+  // Docked law desk reads only its current assessed warrant and shift progress.
+  'lawSecurity.fineOffer',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored

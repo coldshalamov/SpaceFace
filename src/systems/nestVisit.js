@@ -1,6 +1,6 @@
 // Book2 arrangement around the existing705 owner. No parallel enemy/economy simulator.
 import { NEST_VISIT, nestPosition, nestApproach, normalizeNestVisit, NEST_OUTCOMES } from '../data/nestVisit.js';
-import { captureNestRuntime, normalizeNestSnapshot, departNestRuntime, nestSnapshotSpawnSites, settleNestRuntimeForSave, nestSnapshotAdoptions } from '../data/encounters/705-the-nest.js';
+import { captureNestRuntime, normalizeNestSnapshot, departNestRuntime, nestSnapshotSpawnSites, settleNestRuntimeForSave, nestSnapshotAdoptions, NEST_BAY_OFFSETS } from '../data/encounters/705-the-nest.js';
 import { hullEnvelopeWu, proxyOuterRadiusWu, COLLISION_PROXY_MANIFESTS } from '../data/collisionProxyManifests.js';
 import { modelTruthProxyManifest } from '../data/modelTruth.js';
 import { shouldSyncPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
@@ -97,21 +97,64 @@ export function tickNestVisit(d) {
   d._nestVisitNextTry = now + 2;
   const adoptions = resume ? nestSnapshotAdoptions(s, snapshot, own.encounterId) : { ok: true, actors: new Map() };
   if (!adoptions.ok) return { ok: false, reason: 'ambiguous_saved_actor' };
-  // Generic persistence can restore only some launched cast members. Their exact saved
-  // poses belong to the already-validated close assembly, not foreign berth obstacles.
-  // A divergent restored pose is uncertain: never spawn a missing member through it.
+  // Generic persistence can restore launched Wasps before the director's next
+  // scheduled tick. Their physical motion is authoritative; never rewind it or
+  // leave the nursery absent merely because an already-restored Wasp has flown.
+  // Only the unchanged close assembly may be ignored for missing-site clearance.
+  // A moved Wasp remains a real obstacle to every actor we still need to spawn.
   const admittedCast = new Set();
+  let movedCarrier = null;
   for (const [slot, actor] of adoptions.actors) {
     const row = [snapshot.carrier, ...snapshot.doors, ...snapshot.wasps].find(a => a.slot === slot);
     if (!row || !Number.isFinite(actor.pos?.x) || !Number.isFinite(actor.pos?.z)
-        || Math.hypot(actor.pos.x - row.pos.x, actor.pos.z - row.pos.z) > 0.01
-        || Math.abs((Number(actor.rot) || 0) - row.rot) > 0.001) {
+        || !Number.isFinite(actor.rot)) return { ok: false, reason: 'divergent_saved_actor' };
+    const samePose = Math.hypot(actor.pos.x - row.pos.x, actor.pos.z - row.pos.z) <= 0.01
+      && Math.abs(actor.rot - row.rot) <= 0.001;
+    if (!samePose) {
+      const cause = actor.data?.encounterCausality;
+      const sameNursery = cause?.encounterId === own.encounterId && cause.shapeId === 'the_nest'
+        && cause.sectorId === own.sectorId && typeof cause.fingerprint === 'string' && cause.fingerprint.length > 0
+        && actor.data?.encounterFingerprint === cause.fingerprint;
+      const movingBody = actor.physicsBody?.dynamic === true && actor.physicsBody.mass === 16
+        && actor.physicsBody.radius === actor.radius && shouldSyncPhysicsBodyEntity(actor)
+        && Number.isFinite(actor.vel?.x) && Number.isFinite(actor.vel?.z) && Number.isFinite(actor.angVel);
+      if (slot.startsWith('wasp:') && sameNursery && actor.data?.defId === 'ship_wasp' && movingBody) continue;
+      // A real return can move the carrier and make generic combat persistence
+      // restore it before the visit tick. Preserve that body's actual motion.
+      // It remains an obstacle except at a missing baffle proven still inside
+      // the measured original assembly clearance after this actual motion.
+      const movingCarrier = slot === 'carrier' && sameNursery && actor.type === 'ship'
+        && actor.data?.defId === 'ship_atlas' && actor.mass === 520 && actor.radius === 30
+        && actor.physicsBody?.dynamic === true && actor.physicsBody.mass === 520
+        && actor.physicsBody.radius === 30 && shouldSyncPhysicsBodyEntity(actor)
+        && Number.isFinite(actor.vel?.x) && Number.isFinite(actor.vel?.z) && Number.isFinite(actor.angVel);
+      if (movingCarrier) {
+        movedCarrier = actor;
+        continue;
+      }
       return { ok: false, reason: 'divergent_saved_actor' };
     }
     admittedCast.add(actor);
   }
   const spawnSites = resume ? nestSnapshotSpawnSites(snapshot) : [{ pos: anchor, radius: NEST_VISIT.coreClearance }];
-  if (!spawnSites || spawnSites.some(site => !adoptions.actors.has(site.slot) && !nestSiteClear(s, site.pos, site.radius, admittedCast))) {
+  const siteClear = site => {
+    if (adoptions.actors.has(site.slot)) return true;
+    let exempt = admittedCast;
+    if (movedCarrier && /^door:[01]$/.test(site.slot || '')) {
+      const off = NEST_BAY_OFFSETS[Number(site.slot.slice(-1))], angle = movedCarrier.rot;
+      const socket = { x: movedCarrier.pos.x + off.dx * Math.cos(angle) - off.dz * Math.sin(angle),
+        z: movedCarrier.pos.z + off.dx * Math.sin(angle) + off.dz * Math.cos(angle) };
+      // Original released Atlas/baffle skins have 3.110235 WU clearance.
+      // This per-site 3-WU deviation bound uses the *current* carrier socket and
+      // actual saved baffle position, not a blanket exemption for carrier drift.
+      // Displaced/non-nominal sites and every missing Wasp still see the carrier.
+      if (Math.hypot(site.pos.x - socket.x, site.pos.z - socket.z) <= 3) {
+        exempt = new Set(admittedCast); exempt.add(movedCarrier);
+      }
+    }
+    return nestSiteClear(s, site.pos, site.radius, exempt);
+  };
+  if (!spawnSites || spawnSites.some(site => !siteClear(site))) {
     if (d._nestClearanceCueAt == null || now - d._nestClearanceCueAt >= 20) {
       d._nestClearanceCueAt = now;
       d.emit('comms:log', { from: 'CHARON LANE WATCH', text: 'Nursery berth obstructed. Hold outside; the carrier cannot arrive through another hull.', kind: 'encounter' });

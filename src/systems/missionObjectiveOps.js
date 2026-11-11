@@ -1,4 +1,6 @@
-import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
+import { isSlateCore, slateCoreAtReceiver, prepareSlateReceipt } from '../missions/slateCoreWorksite.js';
+import { registryWritContact, registryWritCustody, registryWritForce } from '../missions/registryWrit.js';
+import { isMawWorksite, acceptMawImpact, loseMawBody, hasMawReceiving, mawAtReceiver, prepareMawReceipt } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
@@ -281,6 +283,7 @@ export const missionObjectiveOps = {
       if (!starterRamKill(p)) return;
     }
     if (m.storyTag === CONTRACT_47A_B2_TAG) {
+      if (!registryWritForce(this.state, m, p)) return;
       this._resolveContract47aB2(m, i, 'force', p.id);
       return;
     }
@@ -1245,13 +1248,9 @@ export const missionObjectiveOps = {
       && mission.type === 'bounty_hunt'
     ));
     if (!m || m.params && m.params.investigationStage === 'identified') return false;
-    if (this.state.world.currentSectorId !== m.destSectorId) return false;
     const selectedId = p && p.targetId != null ? p.targetId : this.state.player && this.state.player.targetId;
-    if (selectedId == null || !m.targetEntityIds.includes(selectedId)) return false;
-    const target = this.state.entities.get(selectedId);
-    const player = this.state.entities.get(this.state.playerId);
-    if (!target || target.alive === false || !target.pos || !player || !player.pos) return false;
-    if (distSq(target.pos, player.pos) > CONTRACT_47A_B2_SCAN_RADIUS_WU * CONTRACT_47A_B2_SCAN_RADIUS_WU) return false;
+    const contact = registryWritContact(this.state, m, selectedId);
+    if (!contact || contact.distance > CONTRACT_47A_B2_SCAN_RADIUS_WU) return false;
 
     m.params = m.params || {};
     m.params.investigationStage = 'identified';
@@ -1264,19 +1263,16 @@ export const missionObjectiveOps = {
     }, this.state.simTime || 0);
     this._refreshTrackedMissionNav(m);
     this.bus.emit('mission:updated', { missionId: m.id, investigationStage: 'identified' });
-    this._sayStoryLine('Registry match: civilian maintenance vessel. Choose your response.', 6);
+    this._sayStoryLine('Registry match: civilian maintenance vessel. For custody, keep the living vessel on your Line within 60 WU and reel. Force remains a choice.', 10);
     return true;
   },
 
   _onContract47aB2TetherReel(p) {
     if (!p || p.actorId !== this.state.playerId || p.targetId == null) return false;
-    const after = Number(p.after);
-    if (!Number.isFinite(after) || after > CONTRACT_47A_B2_CUSTODY_REEL_WU) return false;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG || m.type !== 'bounty_hunt') continue;
-      if (!m.targetEntityIds.includes(p.targetId)) continue;
-      if (!m.params || m.params.investigationStage !== 'identified') return false;
+      if (!registryWritCustody(this.state, m, p, CONTRACT_47A_B2_CUSTODY_REEL_WU)) continue;
       this._resolveContract47aB2(m, i, 'custody', p.targetId);
       return true;
     }
@@ -2347,6 +2343,8 @@ export const missionObjectiveOps = {
   },
 
   _entityAtStoryDestDock(entity, m) {
+    if (isSlateCore(m)) return slateCoreAtReceiver(this, m, entity);
+    if (hasMawReceiving(m)) return mawAtReceiver(this, m, entity);
     if (!entity || !entity.pos) return false;
     const station = this._storyDestStation(m);
     if (!station || !station.pos) return false;
@@ -2393,6 +2391,7 @@ export const missionObjectiveOps = {
       if (rows.length) this._sayStoryLine(`Still owed: ${rows.join('; ')}.`, 5);
       return false;
     }
+    if (!prepareSlateReceipt(this, m, method) || !prepareMawReceipt(this, m, method)) return false;
     m.params = m.params || {};
     m.params.completionMethod = method;
     if (isCampaign47aB2Rescue(m)) {
@@ -2639,6 +2638,17 @@ export const missionObjectiveOps = {
       if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.targetId)) continue;
       m.params = m.params || {};
+      if (isSlateCore(m) && m.params.slateCore?.entityId === target.id
+          && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
+        m.params.slateCore.handled = true;
+        this._sayStoryLine('Slate: Bring it 110 WU west to the receiving beacon. Within 70 WU, below 18 WU/s. Keep the line or release it clean.', 8);
+      }
+      if (hasMawReceiving(m) && m.params.mawStuns === 3
+          && m.params.mawBodies?.[0]?.entityId === target.id
+          && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
+        m.params.mawHandledAfterStun = true;
+        this._sayStoryLine('Ceres traffic: receiving beacon east of the worksite. Within 80 WU, below 18 WU/s. Short pulls, early release. Keep clear of its drift.', 8);
+      }
       m.params.latchedRole = role;
       m.params.latchedTargetId = p.targetId;
       this._refreshTrackedMissionNav(m);
@@ -2766,7 +2776,7 @@ export const missionObjectiveOps = {
         }
         delete m._extrasAnnounced;
         this._sayStoryLine(m.params.mawStuns >= m.params.mawStunsNeeded
-          ? 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.'
+          ? (hasMawReceiving(m) ? 'Three hits logged. Latch the 120t Maw, then move it east to the exterior receiving beacon. Class I needs brief pulls and early releases.' : 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.')
           : `The maw shudders — stun ${m.params.mawStuns}/${m.params.mawStunsNeeded}.${isMawWorksite(m) ? ' Use another marked hot-slag pod.' : ''}`, 6);
         this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id });

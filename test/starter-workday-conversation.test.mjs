@@ -1,3 +1,4 @@
+import { heliosCampaignChoices, heliosCampaignReply } from '../src/ui/station/heliosCampaignHandoff.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -21,19 +22,10 @@ const SECTOR = 'sector_helios_prime';
 const CHOICE = 'helios_local_work';
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
-// Use the exact current production board author and worksite reader. Its emitted board object is
-// the posting Kessler may surface; the conversation is not allowed to synthesize one.
-const workdaySource = read('src/missions/starterWorkday.js')
-  .replace(/^import[^;]*;\n/gm, '')
-  .replace(/^export /gm, '');
-const workday = Function(workdaySource + '; return { starterWorkSite, STARTER_WORKDAY_VERSION };')();
-const boardSource = read('src/systems/missionBoardOps.js')
-  .replace(/^import[\s\S]*?;\n/gm, '')
-  .replace('export const missionBoardOps', 'const missionBoardOps');
-const missionBoardOps = Function(
-  'activeOwnedShip', 'nextStarterStep', 'starterWorkSite', 'STARTER_WORKDAY_VERSION',
-  boardSource + '; return missionBoardOps;',
-)(activeOwnedShip, nextStarterStep, workday.starterWorkSite, workday.STARTER_WORKDAY_VERSION);
+// Exercise the real posting and settlement exports; source slicing breaks when
+// the owner imports helpers rather than declaring them inline.
+import { missionBoardOps } from '../src/systems/missionBoardOps.js';
+import { missionReceiptFor as receiptFor } from '../src/systems/missions.js';
 
 function freshState(job, done = 0) {
   return {
@@ -93,7 +85,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const wireEnd = bar.indexOf('  const endingCourier =', wireStart);
   assert.ok(wireStart >= 0 && wireEnd > wireStart);
   const compose = Function(
-    'contacts', 'canonicalContactsForStation', 'kesslerWeightSlipChoice',
+    'contacts', 'canonicalContactsForStation', 'heliosCampaignChoices', 'kesslerWeightSlipChoice',
     'kesslerStarterWorkChoice', 'kesslerFreightChoice', 'kesslerCeresShiftChoice', 'getChoices', 'state', 'stationId',
     bar.slice(wireStart, wireEnd) + '; return contacts;',
   );
@@ -103,7 +95,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const slip = { id: 'weight-slip', label: 'Read my weight slip.' };
   const contacts = compose([{ id: 'generated' }], (id) => id === STATION
     ? [{ id: 'contact_station_helios_kessler', canonicalKey: 'kessler', role: 'merchant' }]
-    : [], () => slip, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, state, STATION);
+    : [], heliosCampaignChoices, () => slip, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, state, STATION);
   const kessler = contacts.find((contact) => contact.canonicalKey === 'kessler');
   assert.deepEqual(kessler.choices.map((choice) => choice.id), [
     'routes', 'market', 'weight-slip', CHOICE, 'ceres_second_measure_shift', 'dismiss',
@@ -113,7 +105,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const away = { ...state, ui: { docked: false, dockedStationId: STATION } };
   const awayContacts = compose([{ id: 'generated' }], (id) => id === STATION
     ? [{ id: 'contact_station_helios_kessler', canonicalKey: 'kessler', role: 'merchant' }]
-    : [], () => null, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, away, STATION);
+    : [], heliosCampaignChoices, () => null, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, away, STATION);
   const awayKessler = awayContacts.find((contact) => contact.canonicalKey === 'kessler');
   assert.equal((awayKessler.choices || []).some((choice) => choice.id === CHOICE), false);
 });
@@ -124,9 +116,10 @@ test('the production Kessler reply keeps weight-slip precedence and routes local
   const end = bar.indexOf('/* ── main panel export', start);
   assert.ok(start >= 0 && end > start);
   const canonical = Function(
-    'kesslerWeightSlipReply', 'kesslerStarterWorkReply', 'kesslerFreightReply', 'kesslerCeresShiftReply',
+    'heliosCampaignReply', 'kesslerWeightSlipReply', 'kesslerStarterWorkReply', 'kesslerFreightReply', 'kesslerCeresShiftReply',
     bar.slice(start, end) + '; return buildCanonicalReply;',
   )(
+    heliosCampaignReply,
     (_state, _station, id) => id === 'weight-slip' ? { text: 'original slip reply' } : null,
     kesslerStarterWorkReply,
     kesslerFreightReply,
@@ -150,7 +143,7 @@ test('the exact Kessler offer reaches the existing bar Accept + track card and m
   const makeRenderOffer = Function(
     'acceptedMissionId', 'pendingMissionOffer', 'BINDINGS', 'missionPreflight',
     'missionConsequenceSummary', 'offerWord', 'escapeHtml',
-    available + rendererSource + '; return missionOfferHtml;',
+    'const campaignHandoffAnswer = false;\n' + available + rendererSource + '; return missionOfferHtml;',
   );
   const { state, offer } = postedState(STARTER_JOBS[0]);
   const result = kesslerStarterWorkReply(state, STATION, CHOICE);
@@ -287,17 +280,6 @@ test('missing or malformed conversation state is read-only and fails without thr
 });
 
 
-// Exercise the actual receipt builder, not a hand-authored success flag. The production
-// board supplies the authored workday identity; settlement supplies the accepted method.
-const buoyReceiptFields = (await import('../src/missions/starterBuoyAftermath.js')).firstBuoyReceiptFields;
-const missionsSource = read('src/systems/missions.js');
-const receiptStart = missionsSource.indexOf('export function missionReceiptFor(');
-const receiptEnd = missionsSource.indexOf('export const CLEAN_PHYSICAL_RELEASE', receiptStart);
-assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
-const receiptFor = Function('firstBuoyReceiptFields', 'receiptTitle', 'missionRepDeltaFor',
-  'SET_PIECE_MISSION_SOURCE', missionsSource.slice(receiptStart, receiptEnd)
-    .replace('export function', 'function') + '; return missionReceiptFor;')(
-  buoyReceiptFields, (mission) => mission.title, () => 0, 'setPiece');
 
 function buoyReturn(step = 1, completionMethod = 'tow_in', outcome = 'completed') {
   const job = STARTER_JOBS.find((entry) => entry.id === 'starter_pelican');

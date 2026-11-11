@@ -1,4 +1,5 @@
-import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
+import { isSlateCore, snapshotSlateCore, restoreSlateCore, retireSlateCore, parkSlateCore, materializeSlateAftermath, validSlateAftermath } from '../missions/slateCoreWorksite.js';
+import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite, hasMawReceiving, retireMawWorksite, materializeMawAftermath, validMawAftermath, mawHandlingRead } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { isSpineBreakOperation } from '../missions/spineBreakWorksite.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
@@ -1085,6 +1086,7 @@ export const missionStoryOps = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
+    if (retireSlateCore(this, m) || retireMawWorksite(this, m)) return;
     if (retainCinderRetry(this, m)) return;
     if (m?.storyTag === 'campaign47a:b1:infested' && m.params?.furnaceWorksiteVersion === 1) {
       // Ecology owns these living actors and its permanent clearance ledger. Settlement
@@ -1104,6 +1106,17 @@ export const missionStoryOps = {
     const follow = m.params && m.params.poiSignalFollowup;
     const world = this.registry && this.registry.get && this.registry.get('world');
     const targetIds = new Set(m.targetEntityIds || []);
+    // Custody retires the mission's world slot, not its witness's life. Use the existing
+    // terminal 'defeated' latch (save-normalized and never rematerialized), with explicit
+    // custody provenance in the record's preserved extra. No kill event or wreck is made.
+    const registryCustody = m.status === 'completed' && m.storyTag === 'campaign47a:b2:elroy'
+      && m.type === 'bounty_hunt' && m.storyTarget?.id === 'npc_elroy'
+      && m.storyTarget?.role === 'register_mark' && m.params?.investigationOutcome === 'custody';
+    const retirementOutcome = registryCustody ? 'defeated' : 'destroyed';
+    const noteCustody = (rec) => {
+      if (registryCustody && rec) rec.extra = { ...(rec.extra || {}),
+        custodyOutcome: 'registry_custody', custodyMissionId: m.id };
+    };
     if (follow) {
       // O(1) holder arm under a proven single count — the walk predicate pins the same
       // recordId plus living-actor membership, so a counted unique holder is the only
@@ -1192,19 +1205,28 @@ export const missionStoryOps = {
       if (sharedIds.has(id)) continue; // another live contract still owns this subject
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
-        if (this._handoffFleeingTarget(e)) {
+        if (!registryCustody && this._handoffFleeingTarget(e)) {
           if (e.data.worldRecordId != null) releasedRecordIds.add(e.data.worldRecordId);
           const budget = this.helpers && this.helpers.spawnBudget;
           if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
           continue;
         }
+        // Fresh mission targets can carry durable identity before save/demotion has made
+        // their first record. Capture through the world owner while the witness is still
+        // live, then apply the same canonical terminal custody disposition below.
+        if (registryCustody && e.data?.worldRecordId != null
+          && !sharedRecordIds.has(e.data.worldRecordId)
+          && !this.state.world?.records?.byId?.[e.data.worldRecordId]
+          && typeof world?.upsertWorldRecord === 'function') {
+          world.upsertWorldRecord(e);
+        }
         e.alive = false; // swept end-of-step
         // A silent sweep must retire durable memory too, or re-entry resurrects the target.
         if (e.data && e.data.worldRecordId != null && !sharedRecordIds.has(e.data.worldRecordId)
           && world && typeof world.markWorldRecordDestroyed === 'function') {
-          world.markWorldRecordDestroyed(e.data.worldRecordId, {
-            outcome: 'destroyed', reason: 'mission_settled',
-          });
+          noteCustody(world.markWorldRecordDestroyed(e.data.worldRecordId, {
+            outcome: retirementOutcome, reason: registryCustody ? 'registry_custody' : 'mission_settled',
+          }));
         }
         const budget = this.helpers && this.helpers.spawnBudget;
         if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
@@ -1219,10 +1241,11 @@ export const missionStoryOps = {
         rec.missionTag = null;
         if (rec.kind === 'mission_target') rec.kind = 'npc';
       } else if (world && typeof world.markWorldRecordDestroyed === 'function') {
-        world.markWorldRecordDestroyed(rec.recordId, { outcome: 'destroyed', reason: 'mission_settled' });
+        noteCustody(world.markWorldRecordDestroyed(rec.recordId, { outcome: retirementOutcome, reason: registryCustody ? 'registry_custody' : 'mission_settled' }));
       } else {
         rec.alive = false;
-        rec.outcome = 'destroyed';
+        rec.outcome = retirementOutcome;
+        noteCustody(rec);
       }
     }
     m.targetEntityIds = [];
@@ -1416,6 +1439,8 @@ export const missionStoryOps = {
   *spawnTargetsForSectorChunked(sectorId) {
     if (!sectorId) return;
     materializeFurnaceAftermath(this, sectorId);
+    materializeSlateAftermath(this);
+    materializeMawAftermath(this);
     // Clearance and delivery are separate legs: completed kill quota must not suppress pods.
     for (const mission of this.state.missions.active || []) {
       if (authoredFurnaceWorksite(mission)) syncFurnaceWorksite(this, mission);
@@ -1479,10 +1504,15 @@ export const missionStoryOps = {
       if (m.destSectorId !== sectorId) continue;
       snapshotFurnaceWorksite(this, m);
       snapshotMawWorksite(this, m);
+      snapshotSlateCore(this, m);
       // Borrowed fauna stay ecology-owned. Held/gyre/stunt/custody pods remain live under
       // their current owner on every exit; reentry adopts them rather than cloning.
       if (authoredFurnaceWorksite(m)) m.targetEntityIds = [];
     }
+    if (this.state.missions.slateCoreAftermath && sectorId === this.state.missions.slateCoreAftermath.destSectorId)
+      parkSlateCore(this, this.state.missions.slateCoreAftermath);
+    if (this.state.missions.mawWorksiteAftermath && sectorId === this.state.missions.mawWorksiteAftermath.destSectorId)
+      parkMawWorksite(this, this.state.missions.mawWorksiteAftermath);
     // PQ-019C: mark the run BEFORE any continuous-handoff early-return below. `entity:destroyed` is
     // the generic "left the world" event, so without this a player who simply flew out of Tethys
     // would be told the capsule was destroyed rather than lost. See heistMissionRuntime.onSectorExit.
@@ -1506,9 +1536,11 @@ export const missionStoryOps = {
     }
     // Hard leave retires mission-pinned targets explicitly; world correctly refuses to evict them.
     for (const m of this.state.missions.active) {
-      // Cinder is a finite cast, not a respawn quota. Existing mission-pinned/world-record
-      // ownership retains the real survivors; a hard exit is not their destruction.
-      if (authoredCinderRoute(m)) continue;
+      // Cinder and capitals are finite casts, not respawn quotas. Existing persistent,
+      // mission-pinned ownership retains survivors while their encounter is suspended.
+      // A hard exit is not destruction or permission to replenish issued slots.
+      if (authoredCinderRoute(m) || isCapitalBossMission(m)) continue;
+      if (m.destSectorId === sectorId && parkSlateCore(this, m)) continue;
       if (m.destSectorId === sectorId && parkMawWorksite(this, m)) continue;
       if (m.needsTargets && m.destSectorId === sectorId) {
         if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
@@ -1713,13 +1745,13 @@ export const missionStoryOps = {
       story.flags.maw_fed = true;
       this.bus.emit('comms:popup', {
         id: `b3_maw_${m.id}`, sender: 'LANE TRAFFIC', category: 'story', ttl: 7, persist: true,
-        text: 'The maw leaves the reactor approach stunned and off the lane. It will den somewhere it can afford to be hungry.',
+        text: hasMawReceiving(m) ? 'Ceres traffic has logged the Maw at the exterior receiver. It still drifts; keep clear. Next is the Foreman at Vesta Forge. Refuel at Ceres before departure.' : 'The maw leaves the reactor approach stunned and off the lane. It will den somewhere it can afford to be hungry.',
       });
     } else if (bookScene === 'foreman_feud') {
       story.flags.foreman_settled = true;
       this.bus.emit('comms:popup', {
         id: `b3_foreman_${m.id}`, sender: 'YARD FEED', category: 'story', ttl: 7, persist: true,
-        text: 'FOREMAN DOWN. The yard ledger closes the feud; the lane is yours by claim and by weld.',
+        text: 'FOREMAN DOWN. The yard ledger closes the feud. The next introductions wait at Helios. Forge can repair your hull; Vesta’s Refuel Depot can fill the tank.',
       });
     } else if (bookScene === 'spine_break') {
       story.flags.spine_break_done = true;
@@ -2667,16 +2699,25 @@ export const missionStoryOps = {
       popup("ROOK'S BOOTH", 'Cinder One, Two and Three hold the Ashfall approach in Charon. Clear all three; tow one of their actual marked hulls to my lit ring at Expanse. Brake the hull inside it. Keep one intact — I do not buy a story about a wreck.', 10);
       return true;
     }
+    if (scene === 'variance_delivery' && isSlateCore(inst)) {
+      const custody = this.state.story?.flags?.elroy_outcome === 'custody';
+      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 WU west to my receiving beacon, below 18 WU/s. A 20t Class I line is overmatched; pull briefly and release early. Brake before release; payment does not stop its drift.`, 10);
+      return true;
+    }
     if (scene === 'variance_delivery') {
       popup('SLATE', 'Ceres yard needs that slag core. Keep it on the line or sling it clean. After the drop, I\u2019ll tally each strain spike on your tether.', 8);
       return true;
+    }
+    if (scene === 'feed_the_maw' && hasMawReceiving(inst)) {
+      popup('CERES TRAFFIC', `Three marked 40t hot-slag pods, three solid hits. ${mawHandlingRead(this.state)} Then latch the 120t Maw and move it east to the exterior receiver: within 80 WU, below 18 WU/s. Lost pods void this detail.`, 10);
+      return;
     }
     if (scene === 'feed_the_maw') {
       popup('CERES TRAFFIC', 'A Furnace maw blocks the old refinery approach. Three marked hot-slag pods are staged beside it. Latch and swing or sling each pod into the maw hard enough for a solid hit, then tow the stunned body to Ceres yard. Lost pods void the detail.', 7);
       return true;
     }
     if (scene === 'foreman_feud') {
-      popup('YARD FEED', 'The Mirrorjaw Foreman is calling every weld on the lane an unpaid debt. The yard wants the feud settled — one way reads louder.', 7);
+      popup('YARD FEED', 'Vesta Forge. Let the charge lock, cross its line, then work the stern; move before the vent. A Class I line is rated 20t against 180t ballast: brief pulls, early releases. Forge repairs hulls; Refuel Depot has the pump.', 10);
       return true;
     }
     if (scene === 'spine_break') {
@@ -2725,10 +2766,30 @@ export const missionStoryOps = {
       legacy: campaign47aRouteKind(this.state) === 'legacy',
     });
     if (!offer || !offer.stationId) return false;
-    if (authoredCinderRoute(offer) && departedStationId !== offer.stationId) return false;
+    const registryOffer = offer.storyTag === 'campaign47a:b2:elroy' && offer.type === 'bounty_hunt';
+    if ((authoredCinderRoute(offer) || registryOffer) && departedStationId !== offer.stationId) return false;
     const board = this.ensureBoard(offer.stationId);
-    const row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
+    let row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
     if (!row) return false;
+    // Refresh only the unaccepted board row, never an already active legacy job.
+    if (isSlateCore(offer) && !isSlateCore(row)) {
+      row.brief = offer.brief;
+      row.params = { ...offer.params };
+    }
+    if (hasMawReceiving(offer) && !hasMawReceiving(row)) {
+      const fresh = { ...row, brief: offer.brief, params: { ...offer.params } };
+      board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
+      row = fresh;
+    }
+    // A saved unaccepted row keeps its identity and terms, but receives the current
+    // preparation. Never rewrite a live contract or mutate a possibly frozen board row.
+    if (offer.storyTag === 'campaign47a:b3:foreman' && offer.params?.foremanBriefVersion === 1
+        && row.params?.foremanBriefVersion !== 1) {
+      const fresh = { ...row, brief: offer.brief,
+        params: { ...row.params, foremanBriefVersion: 1 } };
+      board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
+      row = fresh;
+    }
     return this.acceptMission(row.id);
   },
 
@@ -2764,6 +2825,8 @@ export const missionStoryOps = {
     state.missions.receipts = [];
     delete state.missions.cinderRetry;
     delete state.missions.furnaceWorksiteAftermath;
+    delete state.missions.slateCoreAftermath;
+    delete state.missions.mawWorksiteAftermath;
     delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
@@ -2902,6 +2965,7 @@ export const missionStoryOps = {
     const active = source.map((a) => {
       snapshotFurnaceWorksite(this, a);
       snapshotMawWorksite(this, a);
+      snapshotSlateCore(this, a);
       if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
       if (a.params?.workingBattlefield) snapshotWorkingBattlefield(this, a);
       snapshotReckoning(this, a);
@@ -2927,12 +2991,16 @@ export const missionStoryOps = {
       return row;
     });
     snapshotFurnaceAftermath(this);
+    if (m.slateCoreAftermath) snapshotSlateCore(this, m.slateCoreAftermath);
+    if (m.mawWorksiteAftermath) snapshotMawWorksite(this, m.mawWorksiteAftermath);
     const serialized = {
       boards: m.boards, active, completedLog: m.completedLog, receipts: normalizeMissionReceipts(m.receipts),
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
     if (m.furnaceWorksiteAftermath) serialized.furnaceWorksiteAftermath = m.furnaceWorksiteAftermath;
+    if (m.slateCoreAftermath) serialized.slateCoreAftermath = JSON.parse(JSON.stringify(m.slateCoreAftermath));
+    if (m.mawWorksiteAftermath) serialized.mawWorksiteAftermath = JSON.parse(JSON.stringify(m.mawWorksiteAftermath));
     if (m.cinderRetry) serialized.cinderRetry = JSON.parse(JSON.stringify(m.cinderRetry));
     if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
@@ -2987,6 +3055,19 @@ export const missionStoryOps = {
     if (!data) return;
     const state = this.state;
     restoreFurnaceAftermath(this, data.furnaceWorksiteAftermath);
+    delete state.missions.slateCoreAftermath;
+    delete state.missions.mawWorksiteAftermath;
+    if (isSlateCore(data.slateCoreAftermath) && data.slateCoreAftermath.status === 'completed'
+        && data.slateCoreAftermath.params?.slateReceipt?.missionId === data.slateCoreAftermath.id) {
+      const aftermath = JSON.parse(JSON.stringify(data.slateCoreAftermath));
+      restoreSlateCore(aftermath);
+      if (validSlateAftermath(aftermath)) state.missions.slateCoreAftermath = aftermath;
+    }
+    if (hasMawReceiving(data.mawWorksiteAftermath) && data.mawWorksiteAftermath.status === 'completed') {
+      const aftermath = JSON.parse(JSON.stringify(data.mawWorksiteAftermath));
+      restoreMawWorksite(aftermath);
+      if (validMawAftermath(aftermath)) state.missions.mawWorksiteAftermath = aftermath;
+    }
     if (authoredCinderRoute(data.cinderRetry)) state.missions.cinderRetry = JSON.parse(JSON.stringify(data.cinderRetry));
     else delete state.missions.cinderRetry;
     state.missions.boards = data.boards || {};
@@ -3074,6 +3155,7 @@ export const missionStoryOps = {
         status: a.status || 'active',
       };
       restoreMawWorksite(row);
+      restoreSlateCore(row);
       if (authoredFurnaceWorksite(row) && Array.isArray(row.params?.furnaceLots)) {
         const ledger = normalizeFurnaceAftermath({ version: 1, missionId: row.id, lots: row.params.furnaceLots });
         row.params = ledger ? { ...row.params, furnaceLots: ledger.lots,

@@ -1,3 +1,6 @@
+import { kesslerCargoRelease } from './kesslerCargoRelease.js';
+import { isPersistentCargo, reservedCargoQuantity, sellableCargoQuantity, isUnsellableCargo } from './cargoReadModel.js';
+export { isPersistentCargo, reservedCargoQuantity, sellableCargoQuantity, reservedCargoQty, sellableCargoQty, isUnsellableCargo, releasableContractUnits } from './cargoReadModel.js';
 import { receiveCinderglassPod } from '../features/cinderglassJob/ownerSeams.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 // Cargo system (ARCHITECTURE §0.6 single-writer, §0.12/§0.13 cargo shape, spec 02-mining-ores-cargo).
@@ -227,154 +230,6 @@ function defOf(state, id) {
   if (id in VOL) return { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id], basePrice: BASE_PRICE[id] };
   if (PERSISTENT_FOOTPRINT.has(id)) return PERSISTENT_FOOTPRINT.get(id);
   return null;
-}
-
-export function isPersistentCargo(state, commodityId) {
-  const locked = state && state.story && state.story.persistentCargo;
-  return Array.isArray(locked) && locked.includes(commodityId);
-}
-
-/**
- * True if `commodityId` is sealed contract freight that the player must not sell or jettison mid-run.
- *
- * This guards the player-facing trade/dump paths (market Sell, station hold Sell) the same way the
- * HUD already guards jettison. It narrows to ONLY preloaded-mission cargo: contracts that load a
- * sealed manifest into the hold at accept time (cargo_delivery / salvage_retrieval / smuggling_run
- * with `preloadedCargo:true`). Selling those bricks the mission with no recovery. It deliberately
- * does NOT cover `bulk_trade`/`bulk_haul` — those missions REQUIRE selling generic goods at the
- * destination, so those commodity ids must stay sellable.
- *
- * Plain state read (no missions import) → no circular dependency. The canonical cargo writer
- * (`removeCargo`) is intentionally NOT gated by this: the missions system has legitimate internal
- * consumers (`_deliverCargo`, `_removePreloadedContractCargo`) that remove preloaded cargo through
- * the writer directly. The guard belongs on player intent, not on the writer.
- */
-/**
- * Sealed contract freight. A preloaded mission (`preloadedCargo:true` on cargo_delivery /
- * salvage_retrieval / smuggling_run) reserves units of `params.cmdtyId` until it delivers or ends;
- * units the player bought or salvaged on top of the manifest are their own. Persistent story cargo
- * and `fixtureSealed` ids seal the entire held lot. `bulk_trade`/`bulk_haul` commodities stay
- * sellable — those missions require selling generic goods at the destination.
- *
- * Plain state reads (no missions import) → no circular dependency. The canonical cargo writer
- * (`removeCargo`) is intentionally NOT gated: the missions system removes preloaded cargo through
- * the writer directly. The guards belong on player intent, not on the writer.
- */
-function heldCargoQuantity(state, commodityId) {
-  const items = state && state.player && state.player.cargo && state.player.cargo.items;
-  return Math.max(0, Math.floor(Number(items && items[commodityId]) || 0));
-}
-
-/**
- * Remaining sealed claim for one preloaded contract.
- * An accounted `sealedRemaining` is the owner's record. A known `qty` with no delivery
- * record reserves the full obligation — old saves must not invent delivered progress.
- * No quantity at all is ambiguous: the whole held stack stays sealed.
- */
-function preloadedClaim(mission) {
-  if (!mission || mission.preloadedCargo !== true || !mission.params) return null;
-  const commodityId = mission.params.cmdtyId;
-  if (typeof commodityId !== 'string' || !commodityId) return null;
-  const params = mission.params;
-  if (params.sealAccounted === true && Number.isFinite(Number(params.sealedRemaining))) {
-    return {
-      commodityId,
-      remaining: Math.max(0, Math.floor(Number(params.sealedRemaining))),
-      explicit: true,
-    };
-  }
-  const qty = Number(params.qty);
-  if (Number.isFinite(qty) && qty > 0) {
-    return { commodityId, remaining: Math.floor(qty), explicit: true };
-  }
-  return { commodityId, remaining: null, explicit: false };
-}
-
-function activePreloadedClaims(state, commodityId) {
-  const active = state && state.missions && state.missions.active;
-  if (!Array.isArray(active)) return [];
-  const claims = [];
-  for (const mission of active) {
-    if (!mission || mission.status !== 'active') continue;
-    const claim = preloadedClaim(mission);
-    if (!claim || claim.commodityId !== commodityId) continue;
-    claims.push({ mission, claim });
-  }
-  return claims;
-}
-
-/** Units of `commodityId` ordinary sale and jettison must leave aboard. */
-export function reservedCargoQuantity(state, commodityId) {
-  const held = heldCargoQuantity(state, commodityId);
-  if (isPersistentCargo(state, commodityId)) return held;
-  if (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId)) return held;
-  const claims = activePreloadedClaims(state, commodityId);
-  if (!claims.length) return 0;
-  if (claims.some((row) => !row.claim.explicit)) return held;
-  let reserved = 0;
-  for (const row of claims) reserved += row.claim.remaining;
-  return reserved;
-}
-
-/** Units the player may sell or dump. Held minus a valid reservation, never below zero. */
-export function sellableCargoQuantity(state, commodityId) {
-  if (isPersistentCargo(state, commodityId)) return 0;
-  if (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId)) return 0;
-  const held = heldCargoQuantity(state, commodityId);
-  const claims = activePreloadedClaims(state, commodityId);
-  if (!claims.length) return held;
-  if (claims.some((row) => !row.claim.explicit)) return 0;
-  let reserved = 0;
-  for (const row of claims) reserved += row.claim.remaining;
-  return Math.max(0, held - reserved);
-}
-
-/** NXB-025 published spellings — aliases of the canonical *Quantity readers above. */
-export function reservedCargoQty(state, commodityId) {
-  return reservedCargoQuantity(state, commodityId);
-}
-
-export function sellableCargoQty(state, commodityId) {
-  return sellableCargoQuantity(state, commodityId);
-}
-
-/** True when a seal exists and leaves nothing the player may sell or dump. */
-export function isUnsellableCargo(state, commodityId) {
-  const sealed = isPersistentCargo(state, commodityId)
-    || (Array.isArray(state?.fixtureSealed) && state.fixtureSealed.includes(commodityId))
-    || activePreloadedClaims(state, commodityId).length > 0;
-  return sealed && sellableCargoQuantity(state, commodityId) <= 0;
-}
-
-/**
- * Units this contract may take out of the hold without spending another contract's reservation.
- * Ambiguous rows (no quantity) release only the legacy single-unit obligation, capped by
- * explicit siblings. An explicit row releases its own remaining units, and nothing when an
- * ambiguous sibling still seals the whole stack.
- */
-export function releasableContractUnits(state, mission) {
-  const claim = preloadedClaim(mission);
-  if (!claim) return 0;
-  const held = heldCargoQuantity(state, claim.commodityId);
-  let explicitOthers = 0;
-  let ambiguousSibling = false;
-  const active = state && state.missions && state.missions.active;
-  if (Array.isArray(active)) {
-    for (const other of active) {
-      if (!other || other === mission || other.id === mission.id || other.status !== 'active') continue;
-      const sibling = preloadedClaim(other);
-      if (!sibling || sibling.commodityId !== claim.commodityId) continue;
-      if (!sibling.explicit) ambiguousSibling = true;
-      else explicitOthers += sibling.remaining;
-    }
-  }
-  const room = Math.max(0, held - explicitOthers);
-  if (!claim.explicit) {
-    const qty = Math.max(1, Math.floor(Number(mission.params && mission.params.qty) || 1));
-    return Math.min(qty, room);
-  }
-  if (ambiguousSibling) return 0;
-  return Math.min(claim.remaining, room);
 }
 
 /** The lot a flight jettison dumps.
@@ -1646,6 +1501,16 @@ export const cargo = {
     qty = Math.min(qty, free);
     if (qty <= 0) return 0;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
+    const releaseBodies = richSources.length + (richSources.reduce((n, r) => n + r.richQty, 0) < qty ? 1 : 0);
+    // Only a calm, clear set-down inside Scale 4 changes the existing release impulse.
+    // Hot-dock spills retain their own bay law; all other jettisons remain fast.
+    const deckRelease = options?.bay ? null : kesslerCargoRelease(state, player, JETTISON_POD_RADIUS, JETTISON_CLEARANCE, releaseBodies);
+    if (deckRelease?.blocked) {
+      this.bus?.emit('toast', { text: deckRelease.reason === 'clearance'
+        ? 'Scale 4 needs clearance around the hull. Move toward the ring center; if your hull cannot fit, jettison outside and tow the pod in.'
+        : 'Scale 4 release blocked behind the hull. Make room, or release one free unit at a time.', kind: 'warn', ttl: 5 });
+      return 0;
+    }
     this._jettisonInFlight = true;
     let removed = 0, dumped = 0;
     const acceptedRich = new Map();
@@ -1663,14 +1528,27 @@ export const cargo = {
       const bay = !!(options && options.bay);
       // A deliberate dump leaves aft at eject speed. A hot dock leaves the pods beside the hull,
       // almost stopped, so they sit in the bay instead of riding the approach back out the lane.
-      const eject = bay ? 0 : JETTISON_EJECT_SPEED * volatileThrowSpeedScale(commodityId);
+      const eject = bay ? 0 : deckRelease ? deckRelease.ejectSpeed : JETTISON_EJECT_SPEED * volatileThrowSpeedScale(commodityId);
+      let deckSlot = 0;
       const spawnJettisonPod = (amount, richSource = null) => {
         if (!(amount > 0)) return;
         const slot = bay ? Math.max(0, Math.floor(Number(options && options.slot) || 0)) : 0;
         const along = bay ? (slot - 0.5) * (JETTISON_POD_RADIUS * 2.4) : 0;
-        const pos = bay
+        const pos = deckRelease ? deckRelease.positions[deckSlot] : bay
           ? { x: px - fz * r + fx * along, z: pz + fx * r + fz * along }
           : { x: px - fx * r, z: pz - fz * r };
+        if (deckRelease) {
+          // Cargo removal and prior pod admission publish synchronous events. Re-read
+          // the current pilot and remaining clear slots before committing this body.
+          // A changed pose/context or new obstacle refuses through the existing refund
+          // path; it must never fall back to fast ejection or a stale world position.
+          const current = kesslerCargoRelease(state, player, JETTISON_POD_RADIUS,
+            JETTISON_CLEARANCE, releaseBodies, deckSlot);
+          const here = current?.positions?.[deckSlot++];
+          if (!current || current.blocked || !here || here.x !== pos.x || here.z !== pos.z
+            || player.pos.x !== px || player.pos.z !== pz || player.vel.x !== vx || player.vel.z !== vz
+            || (Number.isFinite(player.rot) ? player.rot : 0) !== rot) return;
+        }
         const vel = bay
           ? { x: vx * 0.04, z: vz * 0.04 }
           : { x: vx - fx * eject, z: vz - fz * eject };

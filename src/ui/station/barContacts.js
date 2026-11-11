@@ -1,5 +1,9 @@
+import { cinderDepartureChoices, cinderDepartureReply, cinderDepartureContact } from './cinderDepartureConversation.js';
+import { furnaceDetailChoices, furnaceDetailReply } from './furnaceDetailConversation.js';
+import { tethysScaleChoices, tethysScaleReply } from './tethysScaleConversation.js';
+import { heliosCampaignChoices, heliosCampaignReply } from './heliosCampaignHandoff.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
-import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
+import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './heliosFirstShiftConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
 import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
@@ -834,20 +838,30 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   let insertAt = 1;
   for (const canonical of canonicalContactsForStation(stationId)) {
     if (canonical.canonicalKey === 'kessler') {
+      const campaignChoices = heliosCampaignChoices(state, stationId);
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
       const workChoice = kesslerStarterWorkChoice(state, stationId);
       const freightChoice = kesslerFreightChoice(state, stationId);
       const ceresChoice = kesslerCeresShiftChoice(state, stationId);
-      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+      if (campaignChoices.length || slipChoice || workChoice || freightChoice || ceresChoice) {
         const choices = getChoices(canonical.role, canonical);
         const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
         const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
+        choices.push(...campaignChoices);
         if (slipChoice) choices.push(slipChoice);
         if (workChoice) choices.push(workChoice);
         if (freightChoice) choices.push(freightChoice);
         if (ceresChoice) choices.push(ceresChoice);
         if (dismissChoice) choices.push(dismissChoice);
         canonical.choices = choices;
+      }
+    }
+    if (canonical.canonicalKey === 'mira') {
+      const scaleChoices = tethysScaleChoices(state, stationId);
+      if (scaleChoices.length) {
+        const ordinary = getChoices(canonical.role, canonical);
+        canonical.choices = [...scaleChoices, ...ordinary];
+        canonical.line = 'Your receiving copy is ready. Compare it with the seal you brought.';
       }
     }
     if (canonical.role === 'barkeep') {
@@ -888,7 +902,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
         && state.story.flags.eris_choir_bar_service.served === true,
     }] : [];
+  const cinderDesk = cinderDepartureContact(state, stationId);
   const listed = [
+    ...(cinderDesk ? [cinderDesk] : []),
     ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
@@ -898,6 +914,15 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  const furnaceHost = listed.find(c => c.id === 'contact_station_ceres_0' && c.role === 'barkeep');
+  if (furnaceHost) {
+    const choices = furnaceDetailChoices(state, stationId, furnaceHost);
+    if (choices.length) furnaceHost.choices = [...choices, ...getChoices(furnaceHost.role, furnaceHost)];
+  }
+  for (const contact of listed) {
+    const choices = cinderDepartureChoices(state, stationId, contact);
+    if (choices.length) contact.choices = [...choices, ...getChoices(contact.role, contact)];
+  }
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
   // The wake silences this room's ambient patrons, not its mission and service contacts.
@@ -1755,6 +1780,10 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  const cinderReply = cinderDepartureReply(ctx, stationId, contact, choiceId);
+  if (cinderReply) return cinderReply;
+  const furnaceReply = furnaceDetailReply(ctx, stationId, contact, choiceId);
+  if (furnaceReply) return furnaceReply;
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
@@ -2202,6 +2231,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
 
   switch (contact.canonicalKey) {
     case 'kessler': {
+      const campaignReply = heliosCampaignReply(state, stationId, choiceId);
+      if (campaignReply) return campaignReply;
       const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
       if (slipReply) return slipReply;
       const workReply = kesslerStarterWorkReply(state, stationId, choiceId);
@@ -2305,7 +2336,9 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'bye') return { text: 'Scan complete. No flags. That is not the same as cleared.' };
       return null;
 
-    case 'mira':
+    case 'mira': {
+      const scaleReply = tethysScaleReply(ctx, stationId, choiceId);
+      if (scaleReply) return scaleReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId, state) + '. Payment on delivery. The seal code should look familiar by then.' };
@@ -2314,6 +2347,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (choiceId === 'market') return { text: 'Cargo insurance wants verified seals. Verification writes to the same database freight uses, so the seal becomes true when it arrives.' };
       if (choiceId === 'dismiss') return { text: 'The seal was never yours. That is why it can protect you.' };
       return null;
+
+    }
 
     case 'slate':
       if (choiceId === 'tech') return { text: 'Pulse Laser S keeps arguments short. Good shields keep repairs profitable. A bad weld keeps everybody employed.' };

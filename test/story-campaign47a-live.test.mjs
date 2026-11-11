@@ -12,6 +12,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { hasMawReceiving, mawReceivingLayout } from '../src/missions/mawWorksite.js';
+import { isSlateCore, slateCoreLayout } from '../src/missions/slateCoreWorksite.js';
+import { getCombatKernel } from '../src/combat/kernel.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto, CONTRACT_47A_SAMPLE_ID } from '../src/systems/missions.js';
@@ -257,6 +260,38 @@ function completeSpineSetPiece(h, mission) {
       .map((id) => h.state.entities.get(id))
       .find((entity) => entity && entity.data && entity.data.physicalRole === role);
     assert.ok(target, `${mission.type} needs ${role}`);
+    if (hasMawReceiving(mission)) {
+      // Adapter fixture, not native piloting: stage the new physical receiving gate
+      // after the three finite impacts above. The earned public-input route is separate.
+      h.bus.emit('tether:latched', { sourceId: h.state.playerId, targetId: target.id });
+      target.pos = { ...mawReceivingLayout().receiver };
+      target.vel = { x: 19, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'active', 'fast Maw arrivals cannot settle');
+      target.vel = { x: 0, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'completed', 'handled Maw settles at the exterior receiver');
+      assert.equal(mission.params.mawReceipt.mass, 120);
+      assert.equal(target.alive, true, 'Maw recovery retains the live body');
+      return;
+    }
+    if (isSlateCore(mission)) {
+      // Adapter fixture only: authenticate the player event and supply physical receiver
+      // state. Actual flight, towing and earned line handling are separate route proofs.
+      const receiver = slateCoreLayout().receiver;
+      h.bus.emit('tether:latched', { sourceId: h.state.playerId, targetId: target.id });
+      target.pos = { ...receiver };
+      target.vel = { x: 19, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'active', 'fast arrivals cannot settle the core');
+      target.vel = { x: 0, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'completed', 'handled core settles at the exterior receiver');
+      assert.equal(mission.params.slateReceipt.mass, 36);
+      assert.equal(target.alive, true, 'delivery retains the physical material');
+      return;
+    }
+
     let berth = [...h.state.entities.values()].find((entity) => (
       entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
     ));
@@ -368,11 +403,33 @@ function playBookBeat2(h, outcome = 'force') {
   h.missions.spawnTargetsForSector(elroy.destSectorId);
   h.missions._ensureMissionTargets(elroy);
   const targetId = elroy.targetEntityIds[0];
-  state.entities.get(targetId).pos = { x: 5, z: 0 };
+  const target = state.entities.get(targetId), player = state.entities.get(state.playerId);
+  target.pos = { x: player.pos.x + 50, z: player.pos.z };
+  // This adapter fixture does not run the entity pool or native physics. Supply its live
+  // occupants and constraint port explicitly; mission spawning already owns target identity.
+  player.alive = true;
+  player.type = 'ship';
+  player.occupantGeneration ??= 1;
+  target.occupantGeneration ??= targetId;
+  state.ui.docked = false;
   bus.emit('scan:completed', { targetId });
   if (outcome === 'custody') {
-    bus.emit('tether:reel', { actorId: state.playerId, targetId, after: 50 });
+    const kernel = getCombatKernel({ state, bus, helpers: {
+      combatPhysics: {
+        createAttachment: () => ({ id: 'campaign-registry-constraint' }),
+        setAttachmentReel: ({ restLength }) => ({ restLength }),
+        cutAttachment: () => true,
+      },
+    } });
+    const created = kernel.attachments.create({ defId: 'tether_standard', ownerId: state.playerId, targetId });
+    assert.equal(created.ok, true, 'custody requires an actual attachment record');
+    state.player.tether = { active: true, targetId, attachmentId: created.attachment.id };
+    assert.equal(kernel.attachments.reel(created.attachment.id, -1).ok, true);
+    assert.equal(elroy.params.investigationOutcome, 'custody', 'the existing mission owner settles the real reel');
+    kernel.attachments.cut(created.attachment.id, state.playerId);
+    state.player.tether.active = false;
   } else {
+    target.alive = false; // the combat producer marks its victim dead before this event
     bus.emit('entity:killed', { id: targetId, killerId: state.playerId });
   }
 }

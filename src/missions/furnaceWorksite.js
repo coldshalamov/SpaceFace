@@ -1,8 +1,21 @@
 // CR-FEED owns these three disposal lots; ordinary rock remains valid furnace fuel.
 import { FURNACE_INTAKE } from '../data/furnace.js';
+import { lineClassForIndex, normalizeLineProgression } from '../data/lineProgression.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 
 export const FURNACE_LOT_VERSION = 1;
+export const FURNACE_LOT_MASS_T = 40;
+export function furnaceHandlingRead(state) {
+  const line = lineClassForIndex(normalizeLineProgression(state?.lineProgression).classIndex);
+  return { lineClass: line.label, limitT: line.fullControlMassT,
+    podMassT: FURNACE_LOT_MASS_T, overclass: FURNACE_LOT_MASS_T > line.fullControlMassT };
+}
+export function furnaceHandlingLine(state) {
+  const read = furnaceHandlingRead(state);
+  return read.overclass
+    ? `Each pod is ${read.podMassT} t. Your Line Class ${read.lineClass} is rated for ${read.limitT} t: a sustained hold overheats and snaps even at low speed. Do not attempt a long tow. The CR-FEED yard gantry has its own 40 t winch: clear the mites, right-click the gantry at the large ring, then Hail to wind one original pod at a time.`
+    : `Each pod is ${read.podMassT} t, within your Line Class ${read.lineClass} rating of ${read.limitT} t. Aim the load through the large intake ring; the small ring is only an approach mark.`;
+}
 export function furnaceMouthGlobal() {
   return sectorLocalToGlobalForSector(FURNACE_INTAKE.mouth, FURNACE_INTAKE.sectorId);
 }
@@ -17,7 +30,9 @@ export function furnaceLots(m) {
     const paid = Math.min(3, Math.max(0, m.params.furnaceFeeds | 0));
     m.params.furnaceLots = Array.from({ length: 3 }, (_, slot) => ({
       slot, received: slot < paid, sectorId: FURNACE_INTAKE.sectorId,
-      pos: sectorLocalToGlobalForSector({ x: 1760, z: 1740 + slot * 70 }, FURNACE_INTAKE.sectorId),
+      // Fresh lots have separate pickup pockets east of the intake, clear of the old hulk.
+      // Existing ledgers retain their physical positions; this is not a save migration.
+      pos: sectorLocalToGlobalForSector({ x: 1760 + slot * 170, z: 1640 }, FURNACE_INTAKE.sectorId),
       vel: { x: 0, z: 0 }, hull: 220,
     }));
   }
@@ -26,8 +41,8 @@ export function furnaceLots(m) {
 export function furnaceLotSpec(m, lot) {
   return {
     type: 'payload', team: 2, pos: { ...lot.pos }, vel: { ...lot.vel }, rot: lot.rot || 0, angVel: lot.angVel || 0,
-    radius: 12, mass: 40, hull: lot.hull, hullMax: 220, collides: true,
-    physicsBody: { radius: 12, mass: 40, dynamic: true, ccd: true },
+    radius: 12, mass: FURNACE_LOT_MASS_T, hull: lot.hull, hullMax: 220, collides: true,
+    physicsBody: { radius: 12, mass: FURNACE_LOT_MASS_T, dynamic: true, ccd: true },
     homeSectorId: lot.sectorId || sectorMembershipAtGlobal(lot.pos),
     flags: { missionPinned: true },
     data: { furnaceLotVersion: FURNACE_LOT_VERSION, furnaceMissionId: m.id,
@@ -74,18 +89,27 @@ export function furnaceWorksiteFocus(m, state) {
   if (m.objectiveProgress < m.objectiveTarget) return {
     pos: mites.length ? { x: mites[0].pos.x, z: mites[0].pos.z } : sectorLocalToGlobalForSector(FURNACE_HAULER_LOCAL, m.destSectorId), targetEntityId: mites[0]?.id || null,
     label: 'Refinery hauler — repair-mite clearance',
-    reason: 'Clear four marked repair-mite sites with carefully placed frag blasts. Blasts also hurt Casket worms: keep them outside the blast. Buy and load more frag at Tethys Trade Hub if needed.',
+    reason: `Clear four marked repair-mite sites with carefully placed frag blasts. Blasts also hurt Casket worms: keep them outside the blast. Buy and load more frag at Tethys Trade Hub if needed. ${furnaceHandlingLine(state)}`,
   };
   const pending = furnaceLots(m).filter(row => !row.received && !row.lost);
   const lot = pending.find(row => { const body = state.entities?.get(row.entityId); return body && (body.flags?.tethered || state.player?.tether?.targetId === body.id); }) || pending[0];
   const e = lot && state.entities?.get(lot.entityId);
   const held = e && (e.flags?.tethered || state.player?.tether?.targetId === e.id);
+  const gantry = (state.entityList || []).find(body => body.alive && body.data?.furnaceCapstanId === 'cr_feed_quarantine_gantry'
+    && body.data.furnaceMissionId === m.id);
+  if (gantry && !held && lot) return {
+    pos: { x: gantry.pos.x, z: gantry.pos.z }, targetEntityId: gantry.id,
+    sectorId: FURNACE_INTAKE.sectorId, label: 'CR-FEED gantry — winch the quarantine pods',
+    reason: `${m.params.furnaceFeeds || 0}/3 received; ${m.params.furnaceLosses || 0} lost. Right-click the gantry and Hail: WINCH POD brings one original 40 t load through the large intake ring. The yard winch is included; your own Line rating does not change. HOLD stops the drum, RELEASE TO MANUAL cuts its cable. Stay within 650 WU. Keep your own freight and hull clear.`,
+  };
+  const initial = lot && sectorLocalToGlobalForSector({ x: 1760 + lot.slot * 170, z: 1640 }, FURNACE_INTAKE.sectorId);
+  const bank = initial && Math.hypot((e?.pos || lot.pos).x - initial.x, (e?.pos || lot.pos).z - initial.z) < 35;
   return {
     pos: held || !lot ? furnaceMouthGlobal() : { ...(e?.pos || lot.pos) },
     targetEntityId: held ? null : e?.id || null,
     sectorId: held || !lot ? FURNACE_INTAKE.sectorId : sectorMembershipAtGlobal(e?.pos || lot.pos),
     label: held ? 'CR-FEED — release ore across the lip' : 'Infested hauler — disposal pods',
-    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. Tow or fling each marked pod into the open amber ring; ordinary rock does not settle these lots.`,
+    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. ${held ? 'The large amber ring is the intake; the smaller ring is only an approach mark.' : bank ? 'Collect the next pod from the intake-aligned east bank.' : 'Follow the current marked load position; this pod has moved.'} ${furnaceHandlingLine(state)} Only marked pods settle these lots; ordinary rock does not.`,
   };
 }
 

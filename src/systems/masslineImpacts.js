@@ -1,3 +1,4 @@
+import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 // Massline whip-impact events — read-only observer (massline rung 13).
 // Runs immediately AFTER masslineThreats in UPDATE_ORDER: it reads the already-settled
 // state.player.tether mirror (tetherGameplay) plus entities, and detects the payoff moment of the
@@ -356,10 +357,16 @@ export const masslineImpacts = {
 // Contact this tick: already inside the padded combined radius, OR the relative ballistic path
 // crosses the (unpadded) combined radius within dt (swept test — same closest-approach math as
 // masslineThreats' timeToImpact, horizon = one tick, so a fast crossing can't tunnel).
+function whipContactRadius(e) {
+  // The authored Maw has a breathing-footprint collider wider than its nominal
+  // gameplay radius. Detect contact at that real shell, before physics separates it.
+  return Math.max(0, isIntactMawWorksiteBody(e) && Number.isFinite(e.physicsBody?.radius)
+    ? e.physicsBody.radius : finite(e.radius, 0));
+}
 function inContact(mass, e, rvx, rvz, dt) {
   const rx = finite(e.pos.x, 0) - finite(mass.pos.x, 0);
   const rz = finite(e.pos.z, 0) - finite(mass.pos.z, 0);
-  const R = Math.max(0, finite(e.radius, 0)) + Math.max(0, finite(mass.radius, 0));
+  const R = whipContactRadius(e) + whipContactRadius(mass);
   const rr = rx * rx + rz * rz;
   const Rpad = R + WHIP_CONTACT_PAD;
   if (rr <= Rpad * Rpad) return true;
@@ -525,7 +532,7 @@ function whipContactGeometry(mass, victim) {
   }
   nx /= nlen;
   nz /= nlen;
-  const victimRadius = Math.max(0, finite(victim && victim.radius, 0));
+  const victimRadius = whipContactRadius(victim);
   const speed = Math.hypot(rvx, rvz);
   const approach = speed > 1e-6 ? { x: rvx / speed, z: rvz / speed } : null;
   return {

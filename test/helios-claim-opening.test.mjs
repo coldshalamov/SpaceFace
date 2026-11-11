@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { resourceBodyIdentityKey } from '../src/world/resourceBodyRecords.js';
 import { stepHeliosClaimOpening, isHeliosClaimCutter, heliosClaimAwaitingWitness, heliosClaimVisualEpoch, HELIOS_CLAIM_OPENING as D } from '../src/systems/heliosClaimOpening.js';
 import { claimRichSeamOpportunity, expireRichSeamOpportunities, openRichSeamOpportunity, richSeamOpportunityReadout, recordFieldExtraction, fieldDepletion } from '../src/systems/fieldDepletion.js';
 
@@ -174,7 +175,12 @@ test('production NPC picker/current target/beam reselect other real work before 
   const source=fs.readFileSync(new URL('../src/systems/npcJobsRuntime.js',import.meta.url),'utf8');
   const start=source.indexOf('  _ensureHeliosStarterMiner() {');
   const end=source.indexOf('  // ── per-tick drive',start);
-  const methods=vm.runInNewContext('({'+source.slice(start,end)+'})',{
+  // Execute the same durable-face validators used by the extracted owner methods.
+  const identityStart=source.indexOf('function heliosFaceKey(rock) {');
+  const identityEnd=source.indexOf('function starterRockMineable(rock)',identityStart);
+  assert.ok(identityStart>=0 && identityEnd>identityStart);
+  const methods=vm.runInNewContext(source.slice(identityStart,identityEnd)+'\n({'+source.slice(start,end)+'})',{
+    resourceBodyIdentityKey,
     heliosClaimAwaitingWitness, NPC_JOB_KIND:{MINER:'miner'}, NPC_JOB_PHASE:{WORK:'work'},
     HELIOS_STARTER_SECTOR_ID:D.sectorId, HELIOS_SEAM_MINER_SLOT_ID:'helios_seam_miner',
     HELIOS_STARTER_MINER_SHIFT_S:20,NPC_MINER_BASE_WORK_S:30,BEAM_MK1:{dps:1,range:1000},

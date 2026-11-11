@@ -1,3 +1,4 @@
+import { book4MissionChips } from './book4Choice.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { FACTION_META } from '../data/factions.js';
@@ -206,7 +207,7 @@ export function missionRiskRewardSummary(m) {
   };
 }
 
-export function missionConsequenceSummary(m) {
+export function missionConsequenceSummary(m, state = null) {
   const reward = missionRewardCredits(m);
   const repReward = missionRepReward(m);
   const repPenalty = missionRepPenalty(m);
@@ -245,6 +246,7 @@ export function missionConsequenceSummary(m) {
     });
   }
 
+  chips.push(...book4MissionChips(m, state));
   return { reward, repReward, repPenalty, collateral, chips };
 }
 

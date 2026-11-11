@@ -1,3 +1,8 @@
+import { cinderDepartureChoices, isCinderDepartureChoice, cinderDepartureOfferCurrent } from '../cinderDepartureConversation.js';
+import { furnaceDetailChoices, isFurnaceDetailChoice } from '../furnaceDetailConversation.js';
+import { tethysScaleChoices, isTethysScaleChoice } from '../tethysScaleConversation.js';
+import { heliosCampaignChoices, heliosCampaignActionCurrent, takeHeliosCampaignAction } from '../heliosCampaignHandoff.js';
+import { firstShiftMarketCurrent, openFirstShiftMarket } from '../heliosFirstShiftConversation.js';
 import { barFrameHtml } from '../../views/stationFrames.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { stationRegularRecognition } from '../stationArrival.js';
@@ -166,6 +171,16 @@ export function createBarScreen(ctx) {
   let stopType = null;
   const stopDecrypt = [];
   let pendingMissionOffer = null;
+  let pendingFirstShiftMarket = null;
+  let pendingCampaignHandoff = null;
+  let campaignHandoffAnswer = false;
+  let handoffEpoch = 0;
+  let acceptancePending = false;
+  let firstShiftAnswer = false;
+  let tethysScaleAnswer = false;
+  let furnaceDetailAnswer = false;
+  let cinderDepartureAnswer = false;
+  let pendingCinderOffer = null;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
@@ -306,7 +321,9 @@ export function createBarScreen(ctx) {
       `</section>`;
     }
     const offer = pendingMissionOffer;
-    if (!offer || !missionOfferAvailable(state, offer.id)) return '';
+    if (!offer || !missionOfferAvailable(state, offer.id)
+      || campaignHandoffAnswer && !heliosCampaignActionCurrent(state, sid(), pendingCampaignHandoff)
+      || cinderDepartureAnswer && !cinderDepartureOfferCurrent(state, sid(), selected(state), pendingCinderOffer)) return '';
     const preflight = missionPreflight(offer, state);
     const consequences = missionConsequenceSummary(offer);
     const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
@@ -319,6 +336,24 @@ export function createBarScreen(ctx) {
       (unmet ? `<p class="k-sentence k-bad sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
       offerWord(`data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}`, 'Accept + track') +
     `</section>`;
+  }
+
+  function campaignHandoffHtml(state) {
+    const action = pendingCampaignHandoff;
+    if (action?.kind === 'offer' || !heliosCampaignActionCurrent(state, sid(), action)) return '';
+    const label = action.kind === 'mission' ? 'Track + open Mission Log' : 'Plot Scale 4 course';
+    return '<section class="sx-bar-offer" aria-label="Next campaign leg">'
+      + '<p class="k-sentence sx-bar-offer__state">' + escapeHtml(action.kind === 'mission'
+        ? action.title + ' is already accepted. Tracking does not settle it.'
+        : 'A course to the open Scale 4 ring. Your freight stays yours.') + '</p>'
+      + offerWord('data-campaign-handoff', label) + '</section>';
+  }
+
+  function firstShiftMarketHtml(state) {
+    if (!firstShiftMarketCurrent(state, sid(), pendingFirstShiftMarket)) return '';
+    return '<section class="sx-bar-offer" aria-label="First shift iron buyer">'
+      + '<p class="k-sentence sx-bar-offer__state">Review your held iron and the current price. Nothing is sold until you choose Sell.</p>'
+      + offerWord('data-first-shift-market', 'Review iron at Market') + '</section>';
   }
 
   function frontierRumorOfferHtml() {
@@ -487,7 +522,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}"${ch.disabled ? ` disabled title="${escapeHtml(ch.reason || '')}"` : ''}>${escapeHtml(ch.label)}</button></li>`).join('')
             : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
-        `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
+        `</ul>` + campaignHandoffHtml(state) + firstShiftMarketHtml(state) + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
 
     appendVonnFreightLossMapOffer(state, c);
@@ -582,7 +617,7 @@ export function createBarScreen(ctx) {
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
-    if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
+    if (reply && saidText && saidText !== spokenText && !reducedMotion() && !firstShiftAnswer && !tethysScaleAnswer && !furnaceDetailAnswer && !cinderDepartureAnswer) {
       spokenText = saidText;
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
@@ -673,7 +708,7 @@ export function createBarScreen(ctx) {
   // ---------- interactions ----------
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
-    selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    handoffEpoch++; selectedId = id; saidText = null; tethysScaleAnswer = false; furnaceDetailAnswer = false; cinderDepartureAnswer = false; pendingCinderOffer = null; pendingCampaignHandoff = null; campaignHandoffAnswer = false; pendingMissionOffer = null; pendingFirstShiftMarket = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (focus) {
@@ -777,6 +812,27 @@ export function createBarScreen(ctx) {
   });
 
   stageEl.addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-campaign-handoff]')) {
+      if (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler') return;
+      const action = pendingCampaignHandoff;
+      pendingCampaignHandoff = null;
+      if (!takeHeliosCampaignAction(ctx, sid(), action)) {
+        saidText = 'The contract changed. Ask Kessler again for the current route.';
+      } else if (action.kind === 'course') {
+        saidText = 'Scale 4 course requested. Check the map before launch; plotting does not move your ship or freight.';
+      }
+      renderStage(ctx.state || {});
+      return;
+    }
+    if (ev.target.closest('[data-first-shift-market]')) {
+      if (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler') return;
+      if (!openFirstShiftMarket(ctx, sid(), pendingFirstShiftMarket)) {
+        pendingFirstShiftMarket = null;
+        saidText = 'The hold or ticket changed. Ask me again before taking this slip to Market.';
+        renderStage(ctx.state || {});
+      }
+      return;
+    }
     if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
       if (openVonnFreightLossMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;
@@ -821,11 +877,39 @@ export function createBarScreen(ctx) {
     const accept = ev.target.closest('[data-accept-mission]');
     if (accept && !accept.disabled) {
       const missionId = accept.getAttribute('data-accept-mission');
+      if (!visible || acceptancePending || pendingMissionOffer?.id !== missionId) return;
+      const cinderAccept = cinderDepartureAnswer;
+      const cinderCurrent = () => !cinderAccept || (visible
+        && cinderDepartureOfferCurrent(ctx.state, sid(), selected(ctx.state || {}), pendingCinderOffer));
+      if (!cinderCurrent()) {
+        pendingMissionOffer = null; pendingCinderOffer = null;
+        saidText = 'The posting changed. Ask Rook for its current terms before signing.';
+        renderStage(ctx.state || {}); return;
+      }
+      const acceptingEpoch = handoffEpoch;
+      const campaignAccept = campaignHandoffAnswer;
+      if (campaignAccept && (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler'
+        || pendingCampaignHandoff?.kind !== 'offer' || pendingCampaignHandoff.missionId !== missionId
+        || !heliosCampaignActionCurrent(ctx.state, sid(), pendingCampaignHandoff))) {
+        pendingMissionOffer = null;
+        pendingCampaignHandoff = null;
+        saidText = 'The posting changed. Ask Kessler for its current terms before signing.';
+        renderStage(ctx.state || {});
+        return;
+      }
+      if (campaignAccept) pendingCampaignHandoff = null;
+      const acceptingContact = selectedId;
       const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      if (!cinderCurrent() || cinderAccept && handoffEpoch !== acceptingEpoch) return;
       // The worker-lane rpc returns the authoritative verdict; the emitted path
       // (main lane) has no ack, so acceptance is verified by re-reading the offer.
-      const res = await acceptMissionOnLane(ctx.bus, missionId);
+      acceptancePending = true;
+      let res;
+      try { res = await acceptMissionOnLane(ctx.bus, missionId); }
+      catch (_) { res = null; }
+      finally { acceptancePending = false; }
+      if (!visible || selectedId !== acceptingContact || handoffEpoch !== acceptingEpoch) return;
       const laneAccepted = res && res.ok === true && res.emitted !== true;
       const markAccepted = () => {
         acceptedMissionId = missionId;
@@ -853,6 +937,27 @@ export function createBarScreen(ctx) {
     const st = ctx.state || {};
     const c = selected(st); if (!c) return;
     const choiceId = b.getAttribute('data-choice');
+    if (c.canonicalKey === 'kessler' && ['helios_47a_file', 'helios_47a_original'].includes(choiceId)
+      && (!visible || !heliosCampaignChoices(st, sid()).some(choice => choice.id === choiceId))) {
+      pendingCampaignHandoff = null;
+      saidText = 'That file is no longer current. Ask Kessler again.';
+      renderStage(st);
+      return;
+    }
+    const cinderChoice = isCinderDepartureChoice(choiceId);
+    if (cinderChoice && (!visible || !choiceBtns().includes(b) || !cinderDepartureChoices(st, sid(), c).some(choice => choice.id === choiceId))) return;
+    const detailChoice = isFurnaceDetailChoice(choiceId);
+    if (detailChoice && (!visible || !furnaceDetailChoices(st, sid(), c).some(choice => choice.id === choiceId))) return;
+    const scaleChoice = isTethysScaleChoice(choiceId);
+    if (scaleChoice && (!visible || c.canonicalKey !== 'mira'
+      || !tethysScaleChoices(st, sid()).some(choice => choice.id === choiceId))) return;
+    const choiceEpoch = ++handoffEpoch;
+    const choiceStationId = sid();
+    // A synchronous intent can hide/reopen the Bar, restore a save or change its contact.
+    // Do not execute or commit an answer belonging to the visit that just ended.
+    const scaleChoiceCurrent = () => (!scaleChoice && !detailChoice && !cinderChoice) || (visible && handoffEpoch === choiceEpoch
+      && ctx.state === st && sid() === choiceStationId && selected(st)?.id === c.id
+      && (cinderChoice ? cinderDepartureChoices(st, choiceStationId, c) : detailChoice ? furnaceDetailChoices(st, choiceStationId, c) : tethysScaleChoices(st, choiceStationId)).some(choice => choice.id === choiceId));
     if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
     if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
@@ -866,8 +971,10 @@ export function createBarScreen(ctx) {
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
+    if (!scaleChoiceCurrent()) return;
     let result = null;
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
+    if (!scaleChoiceCurrent()) return;
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
     if (result && result.endgameResolved) {
       pinnedContact = {
@@ -878,17 +985,30 @@ export function createBarScreen(ctx) {
     } else if (result && result.pinContact) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
-    saidText = (result && result.text) || 'They shrug.';
+    let answerText = (result && result.text) || 'They shrug.';
     if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
-      saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
+      answerText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
         : 'The barkeep cannot pour just now. Try again shortly.';
     }
     if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
       id: `bar-lead:${c.id}:${result.missionOffer.id || choiceId}`,
-      sender: c.name || 'Contact', contactId: c.id, text: saidText,
-      category: 'story', ttl: Math.max(8, Math.ceil(saidText.length / 18)), persist: true,
+      sender: c.name || 'Contact', contactId: c.id, text: answerText,
+      category: 'story', ttl: Math.max(8, Math.ceil(answerText.length / 18)), persist: true,
     });
+    // Popup listeners can synchronously end this visit too. Keep the answer local
+    // until that boundary has returned; lifecycle cleanup cannot clear an answer
+    // whose Cinder/receipt ownership flags have not been committed yet.
+    if (!scaleChoiceCurrent()) return;
+    saidText = answerText;
+    pendingCampaignHandoff = result?.campaignHandoff || null;
+    campaignHandoffAnswer = result?.campaignHandoffAnswer === true;
     pendingMissionOffer = result && result.missionOffer || null;
+    pendingFirstShiftMarket = result && result.firstShiftMarket || null;
+    firstShiftAnswer = !!result?.firstShiftReceipt;
+    tethysScaleAnswer = result?.tethysScaleAnswer === true;
+    furnaceDetailAnswer = result?.furnaceDetailAnswer === true;
+    cinderDepartureAnswer = result?.cinderDepartureAnswer === true;
+    pendingCinderOffer = result?.cinderDepartureOffer || null;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
     awaitingPointerMove = true;
@@ -938,6 +1058,22 @@ export function createBarScreen(ctx) {
   watchEvents();
   watchComms();
 
+  const offCampaignLifecycle = ['save:restoring', 'save:loaded', 'game:newGame', 'game:started', 'dock:undocked'].map(event => {
+    const clear = () => {
+      handoffEpoch++;
+      acceptedMissionId = null;
+      pendingMissionOffer = null;
+      pendingCampaignHandoff = null;
+      if (campaignHandoffAnswer) { saidText = null; pendingMissionOffer = null; campaignHandoffAnswer = false; }
+      if (tethysScaleAnswer) { saidText = null; tethysScaleAnswer = false; }
+      if (furnaceDetailAnswer) { saidText = null; furnaceDetailAnswer = false; }
+      if (cinderDepartureAnswer) { saidText = null; cinderDepartureAnswer = false; }
+      pendingCinderOffer = null;
+      if (visible) renderAll(ctx.state || {});
+    };
+    ctx.bus?.on(event, clear);
+    return () => ctx.bus?.off(event, clear);
+  });
   const offRecognition = ['stationContact:changed', 'faction:repChanged'].map((event) => {
     const handler = () => { if (visible) renderAll(ctx.state || {}); };
     ctx.bus?.on(event, handler);
@@ -965,6 +1101,17 @@ export function createBarScreen(ctx) {
     },
     onHide() {
       visible = false;
+      handoffEpoch++;
+      acceptedMissionId = null;
+      pendingMissionOffer = null;
+      pendingFirstShiftMarket = null;
+      pendingCampaignHandoff = null;
+      if (campaignHandoffAnswer) { saidText = null; campaignHandoffAnswer = false; pendingMissionOffer = null; }
+      if (firstShiftAnswer) { saidText = null; firstShiftAnswer = false; }
+      if (tethysScaleAnswer) { saidText = null; tethysScaleAnswer = false; }
+      if (furnaceDetailAnswer) { saidText = null; furnaceDetailAnswer = false; }
+      if (cinderDepartureAnswer) { saidText = null; cinderDepartureAnswer = false; }
+      pendingCinderOffer = null;
       erisOpenAnnounced = false;
       const leavingVisitId = erisVisitId();
       // A station overlay hides the shell but leaves this tab mounted. Only a real tab
@@ -980,7 +1127,9 @@ export function createBarScreen(ctx) {
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
       visible = false;
+      handoffEpoch++;
       offRecognition.forEach((off) => off());
+      offCampaignLifecycle.forEach(off => off());
       if (typeof offErisReceipt === 'function') offErisReceipt();
       pinnedContact = null;
       if (typeof offDockDeed === 'function') offDockDeed();

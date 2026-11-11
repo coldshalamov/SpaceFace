@@ -1,3 +1,4 @@
+import { initFurnaceCapstan, stepFurnaceCapstan, removeFurnaceCapstan } from '../missions/furnaceCapstan.js';
 // W-BOOKS-0-2 (row 533, 06 §34.7 Book 1): the CR-FEED furnace intake at Ceres — a marked
 // mouth ring beside the closed refinery. Fling the infested ore hauler's pods (or any loose
 // rock) across the lip and the yard burns them; each feed emits `furnace:fed`, which the
@@ -6,7 +7,8 @@
 // WHAT THIS OWNS — one beacon marking the mouth (same event-driven seams as every one-off:
 // init / deferred sector-enter / save:loaded / newGame) plus the per-tick eat pass. The
 // intake never buys or holds freight — it consumes the body and files the fact.
-import { furnaceMouthGlobal } from '../missions/furnaceWorksite.js';
+import { furnaceMouthGlobal, authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
+import { syncFurnaceArrivalScene, removeFurnaceArrivalScene, furnaceReceiptLine } from '../missions/furnaceArrivalScene.js';
 import { FURNACE_INTAKE } from '../data/furnace.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
@@ -44,11 +46,12 @@ export function createFurnaceIntake() {
     name: 'furnaceIntake',
     init(ctx) {
       this.destroy();
-      this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
+      this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
       this._unsubs = []; this._restoring = false;
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
+      initFurnaceCapstan(this, on);
       on('sector:enter', (p) => {
         if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
         this._sync();
@@ -95,6 +98,8 @@ export function createFurnaceIntake() {
       return null;
     },
     _removeOwned() {
+      removeFurnaceArrivalScene(this);
+      removeFurnaceCapstan(this);
       for (const e of this.state?.entityList || []) {
         if (e?.alive && e.data?.furnaceIntake === true) this.helpers?.removeEntity?.(e.id);
       }
@@ -105,8 +110,11 @@ export function createFurnaceIntake() {
       const beacon = this._beacon();
       if (beacon && beacon.data.ringRadius !== FURNACE_INTAKE.mouthRadius) this.helpers.removeEntity?.(beacon.id);
       if (!this._beacon() && this.helpers.spawnEntity) this.helpers.spawnEntity(furnaceIntakeSpec());
+      syncFurnaceArrivalScene(this);
+      stepFurnaceCapstan(this);
       const flags = this._flags();
-      if (flags && flags[FURNACE_INTAKE.announceFlag] !== true) {
+      const detail = this.state.missions?.active?.some(authoredFurnaceWorksite);
+      if (!detail && flags && flags[FURNACE_INTAKE.announceFlag] !== true) {
         flags[FURNACE_INTAKE.announceFlag] = true;
         this.bus?.emit('comms:popup', {
           id: 'furnace_intake_announce', sender: FURNACE_INTAKE.sender, category: 'story',
@@ -116,8 +124,10 @@ export function createFurnaceIntake() {
     },
     /** The mouth is a hazard ring: anything edible crossing the lip is taken, whatever
      *  the speed — flinging is the intended delivery. Once per body per tick. */
-    update() {
+    update(dt) {
       if (this._restoring || !this._adventure()) return;
+      syncFurnaceArrivalScene(this);
+      stepFurnaceCapstan(this, dt);
       const list = [...(this.state?.entityList || [])];
       const mouth = furnaceMouthGlobal();
       const r2 = FURNACE_INTAKE.mouthRadius * FURNACE_INTAKE.mouthRadius;
@@ -128,6 +138,7 @@ export function createFurnaceIntake() {
         const dx = pos.x - mouth.x, dz = pos.z - mouth.z;
         if (dx * dx + dz * dz > r2) continue;
         e._furnaceTaken = true;
+        const receiptLine = furnaceReceiptLine(this.state, e);
         const flags = this._flags();
         if (flags) {
           flags[FURNACE_INTAKE.fedFlag] = true;
@@ -144,7 +155,7 @@ export function createFurnaceIntake() {
         });
         this.bus?.emit('comms:popup', {
           id: `furnace_fed_${e.id}`, sender: FURNACE_INTAKE.sender, category: 'info',
-          text: FURNACE_INTAKE.fed, ttl: 6, persist: false,
+          text: receiptLine || FURNACE_INTAKE.fed, ttl: 6, persist: false,
         });
         this.helpers?.removeEntity?.(e.id);
       }

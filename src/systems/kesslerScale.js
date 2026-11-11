@@ -1,3 +1,5 @@
+import { tickKesslerRecovery, clearKesslerRecovery } from './kesslerFreightRecovery.js';
+import { recordKesslerComparison, tickKesslerComparison } from './kesslerComparisonContact.js';
 // W-CAST-HANDS (row 542, 03 §4.1 / 06 B1): Kessler's scale — "put cargo on his deck,
 // compare his reading with your Line's strain gauge. The discrepancy is the clue."
 // A weigh-slip plate beside the Tethys tally post: rest a jettisoned pod inside the
@@ -26,7 +28,7 @@ export function kesslerScaleSpec() {
     homeSectorId: KESSLER_SCALE.sectorId,
     data: {
       kesslerScale: true, kesslerWorksiteVersion: 1, parentType: 'story_prop',
-      scanLabel: 'Scale 4 · rest a cargo pod inside the ring · freight retained',
+      scanLabel: 'Scale 4 · damped deck · rest cargo inside the ring · freight retained',
       circuitMark: true, ringRadius: KESSLER_SCALE.padRadius,
       visualRadius: KESSLER_SCALE.padRadius,
       scannerSignalKind: 'salvage',
@@ -92,6 +94,7 @@ export function createKesslerScale() {
       return null;
     },
     _removeOwned() {
+      clearKesslerRecovery(this);
       for (const row of [...(this.state?.world?.dressing?.rows || [])]) {
         if (row?.data?.kesslerWorksite) dropDressingRow(this.state, row.id);
       }
@@ -139,7 +142,7 @@ export function createKesslerScale() {
      *  reading — the thumbed plate figure against the pod's own stamp. */
     update(dt, state) {
       const s = state || this.state;
-      if (!s || !this._adventure()) return;
+      if (!s || !this._adventure()) { clearKesslerRecovery(this); return; }
       const flags = this._flags();
       if (!flags) return;
       const settling = new Set();
@@ -179,12 +182,15 @@ export function createKesslerScale() {
           id: `kessler_read_${e.id}`, sender: KESSLER_SCALE.sender, category: 'story',
           text: line, ttl: 9, persist: firstVariance,
         });
+        recordKesslerComparison(s, { plateRead: plate, trueRead: honest, variance, count });
         this.bus?.emit('kesslerPod:weighed', {
           entityId: e.id, plateRead: plate, trueRead: honest,
           variance, firstVariance, count,
         });
       }
       this._settlingPods = settling;
+      tickKesslerComparison(s, this.bus, pad);
+      tickKesslerRecovery(this);
     },
   };
 }

@@ -53,7 +53,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'furnaceIntake', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'wexTicket', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'kesslerDeckDamping', 'rookReceivingBrake', 'furnaceIntake', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger',
   // (the eight faction-signature owners above already init at line 41 — the earlier
   // duplicate block here was a merge artifact; init ids are unique)
   'recoveryEncounter', 'factions',
@@ -161,7 +161,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'swarmFortify', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'swarmFortify', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'rookReceivingBrake', 'kesslerDeckDamping', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -558,6 +558,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // per fixed step, so on a catch-up frame they must run on every step, not once per frame:
   // aiPorts flushes (and replays) the AI's maneuvers, planetRuntime queues planet drag/heat/harvest.
   'aiPorts', 'planetRuntime',
+  // Powered Scale 4 drag uses this tick's response and is consumed by the next solve.
+  'kesslerDeckDamping', 'rookReceivingBrake',
   // Flight + physics authorities: single writers of position/velocity.
   'heroManeuvers', 'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
@@ -933,6 +935,8 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   survivorPod: MODE_SCOPE_FLIGHT_ONLY,
   rookBooth: MODE_SCOPE_FLIGHT_ONLY,
   kesslerScale: MODE_SCOPE_FLIGHT_ONLY,
+  kesslerDeckDamping: MODE_SCOPE_FLIGHT_ONLY,
+  rookReceivingBrake: MODE_SCOPE_FLIGHT_ONLY,
   furnaceIntake: MODE_SCOPE_FLIGHT_ONLY,
   gateThreeWeir: MODE_SCOPE_FLIGHT_ONLY,
   slateColumn: MODE_SCOPE_FLIGHT_ONLY,

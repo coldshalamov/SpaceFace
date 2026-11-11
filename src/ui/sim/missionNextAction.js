@@ -1,3 +1,4 @@
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 // missionNextAction.js — SF-246 sim half ("mission progress points at the actual next action").
 //
 // One derivation from the mission owner's CANONICAL record to the one thing that can be done
@@ -260,7 +261,7 @@ export function missionNextActionRow(state, mission) {
     });
     return Object.freeze(row);
   }
-  if (destination && location.inSector && (type === 'passenger_transport' || type === 'smuggling_run')) {
+  if (destination && location.inSector && (type === 'passenger_transport' || type === 'smuggling_run' || isReportInRestitution(mission))) {
     row.phase = 'turn_in';
     row.action = Object.freeze({
       kind: 'dock',

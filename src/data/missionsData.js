@@ -2646,7 +2646,7 @@ export const STORY_BEATS = [
   { beat: 2, id: 'first_blood',    objective: 'Run the cinder board, feed a garden its first stage, meet the Nest — then take the name on the register.',
     headlineVerb: 'hunt', setPiece: 'cinder board + compost run + the nest + register contract',
     reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'bounty_board', next: 3 },
-  { beat: 3, id: 'bigger_boat',    objective: 'Take delivery of VARIANCE ADJUSTMENT at Slate\u2019s berth, feed the Furnace maw, and settle the Foreman\u2019s yard feud.',
+  { beat: 3, id: 'bigger_boat',    objective: 'Recover Slate\u2019s core, clear the Furnace Maw at Ceres, then face the Foreman at Vesta Forge.',
     headlineVerb: 'tow', setPiece: 'variance adjustment + feed the maw + foreman', physicalType: 'tow_recovery', authoredSetPieceId: 'long_tow',
     reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'long_tow', next: 4 },
   { beat: 4, id: 'pick_a_side',    objective: 'Pick a door at the clearing station, then run its operation — Spine Break, the Weighing, or Barn Raising.',

@@ -54,6 +54,9 @@ export function applyNestBroodSpawnSpec(spec, live, slot) {
 // Object bindings are deliberately transient. Save files carry semantic slots, never entity IDs.
 const bindings = new WeakMap();
 const BAY_OPEN_S = 2;
+// Once the baffle and its original socket footprints no longer overlap, the
+// physical return target is the carrier flank. This is not a credited player tear.
+const BAFFLE_SOCKET_DIAMETER = 24;
 const integer = (value, max) => Number.isInteger(value) && value >= 0 && value <= max;
 const finite = (value, limit = 1e7) => Number.isFinite(value) && Math.abs(value) <= limit;
 const vector = (v, limit) => v && finite(v.x, limit) && finite(v.z, limit)
@@ -72,7 +75,7 @@ function actorSnapshot(e, slot, state) {
     rot: Number(e.rot) || 0, angVel: Number(e.angVel) || 0, hull: Math.max(0, Number(e.hull) || 0),
     armorHp: Math.max(0, Number(e.armorHp) || 0), cap: Math.max(0, Number(e.cap) || 0),
     shield: Math.max(0, Number(e.shield) || 0),
-    torn: e.data?.torn === true, marked: e.data?.thrownBy === 'player',
+    torn: e.data?.torn === true, detached: e.data?.nestDetached === true, tearEligible: e.data?.nestTearEligible === true, marked: e.data?.thrownBy === 'player',
     latched: e.data?.latchedBy === 'player', held: heldByPlayer(state, e) };
 }
 function normalizeActor(raw, slot) {
@@ -83,10 +86,29 @@ function normalizeActor(raw, slot) {
     || ['hull', 'armorHp', 'shield', 'cap'].some(k => !finite(raw[k], 100000) || raw[k] < 0)) return null;
   return { slot, status: raw.status, pos, vel, rot: raw.rot, angVel: raw.angVel, hull: raw.hull,
     armorHp: raw.armorHp, cap: raw.cap,
-    shield: raw.shield, torn: raw.torn === true, marked: raw.marked === true, latched: raw.latched === true, held: raw.held === true };
+    shield: raw.shield, torn: raw.torn === true, detached: raw.detached === true, tearEligible: raw.tearEligible === true, marked: raw.marked === true, latched: raw.latched === true, held: raw.held === true };
 }
 
 /** Strict bounded save boundary; no archetypes, arbitrary data or numeric IDs cross it. */
+function normalizeReturnSurface(raw, contact) {
+  if (!raw || raw.version !== 1 || !['carrier', 'door:0', 'door:1'].includes(raw.slot)
+    || raw.open !== true || !vector(raw.carrierPos) || !vector(raw.targetPos) || !finite(raw.carrierRot, 1e6)) return null;
+  const c = Math.cos(raw.carrierRot), s = Math.sin(raw.carrierRot);
+  if (raw.slot !== 'carrier') {
+    if (raw.detached !== false) return null;
+    const socket = socketPosition({ pos: raw.carrierPos, rot: raw.carrierRot }, BAY_OFFSETS[Number(raw.slot.slice(-1))]);
+    if (Math.hypot(raw.targetPos.x - socket.x, raw.targetPos.z - socket.z) >= BAFFLE_SOCKET_DIAMETER
+      || Math.hypot(contact.x - raw.targetPos.x, contact.z - raw.targetPos.z) > 24) return null;
+  } else {
+    if (raw.targetPos.x !== raw.carrierPos.x || raw.targetPos.z !== raw.carrierPos.z) return null;
+    const dx = contact.x - raw.carrierPos.x, dz = contact.z - raw.carrierPos.z, x = dx * c + dz * s, z = -dx * s + dz * c;
+    if (raw.detached !== true || Math.abs(x) > 26.5 || Math.abs(z) > 32 || Math.abs(z) < 1) return null;
+  }
+  return { version: 1, slot: raw.slot, open: true, detached: raw.detached,
+    carrierPos: { x: raw.carrierPos.x, z: raw.carrierPos.z }, carrierRot: raw.carrierRot,
+    targetPos: { x: raw.targetPos.x, z: raw.targetPos.z } };
+}
+
 export function normalizeNestSnapshot(raw) {
   if (!raw || raw.version !== 1 || !integer(raw.remaining, NEST_SIZE)
     || !integer(raw.launched, NEST_SIZE) || raw.remaining + raw.launched !== NEST_SIZE
@@ -121,7 +143,10 @@ export function normalizeNestSnapshot(raw) {
     returnHits: raw.returnHits, tornDoors: raw.tornDoors, vented: raw.vented === true,
     contactEstablished: raw.contactEstablished === true, consumedWaspSlots: consumed,
     guttingPendingSlot: pending, guttingAttempted: raw.guttingAttempted === true,
-    returnContacts: contacts.map(c => ({ slot: c.slot, pos: { ...c.pos }, impulse: c.impulse, tick: c.tick })),
+    // Legacy pending contacts could refer to distant scrap. Discard only unconsumed
+    // attempts without impact-time surface proof; already credited returns stay intact.
+    returnContacts: contacts.filter(c => normalizeReturnSurface(c.surface, c.pos)).map(c => ({ slot: c.slot,
+      pos: { ...c.pos }, impulse: c.impulse, tick: c.tick, surface: normalizeReturnSurface(c.surface, c.pos) })),
     launchIn: raw.launchIn, deadlineIn: raw.deadlineIn, bayOpenIn: raw.bayOpenIn };
 }
 
@@ -129,10 +154,15 @@ export function captureNestRuntime(state, live, now) {
   const rec = live?.data?.nest, bound = bindings.get(live);
   if (!rec || !bound) return null;
   const carrier = bound.carrierDeath || actorSnapshot(bound.carrier, 'carrier', state);
+  const doors = bound.doors.map((e, i) => bound.deadDoors[i] || actorSnapshot(e, `door:${i}`, state));
+  if (carrier.status === 'live') for (let i = 0; i < doors.length; i++) {
+    const door = canonical(state, bound.doors[i]);
+    if (doors[i].status === 'live' && door && baffleDetached(bound.carrier, door, i)) doors[i].detached = true;
+  }
   return normalizeNestSnapshot({ version: 1, carrier, broodVariant: rec.broodVariant,
     pendingCarrierOutcome: carrier.status === 'dead' && rec.contactEstablished
       ? (rec.guttingConfirmed ? 'carrier_gutted' : 'carrier_down') : null,
-    doors: bound.doors.map((e, i) => bound.deadDoors[i] || actorSnapshot(e, `door:${i}`, state)),
+    doors,
     wasps: bound.wasps.map((e, i) => bound.deadWasps[i] || actorSnapshot(e, `wasp:${i}`, state)),
     remaining: rec.remaining, launched: rec.launched, returnHits: rec.returnHits,
     tornDoors: rec.tornDoors, vented: rec.vented, contactEstablished: rec.contactEstablished,
@@ -153,6 +183,8 @@ function applySnapshot(entity, saved) {
   if (saved.marked && !saved.held) entity.data.thrownBy = 'player';
   if (saved.latched) entity.data.latchedBy = 'player';
   if (saved.torn) entity.data.torn = true;
+  if (saved.detached) entity.data.nestDetached = true;
+  if (saved.tearEligible) entity.data.nestTearEligible = true;
 }
 
 /** Called by the director before core admission; factory identity and physical recipe stay authoritative. */
@@ -207,6 +239,23 @@ function socketPosition(carrier, off) {
     z: carrier.pos.z + off.dx * s + off.dz * c };
 }
 
+function baffleDetached(carrier, door, index) {
+  if (door.data?.nestDetached || door.data?.torn) return true;
+  const socket = socketPosition(carrier, BAY_OFFSETS[index]);
+  return Math.hypot(door.pos.x - socket.x, door.pos.z - socket.z) >= BAFFLE_SOCKET_DIAMETER;
+}
+function reconcileBaffleSeparation(d, live, state) {
+  const bound = bindings.get(live), rec = live.data?.nest, carrier = canonical(state, bound?.carrier);
+  if (!bound || !rec || !carrier || carrier.alive === false) return;
+  for (let i = 0; i < bound.doors.length; i++) {
+    const door = canonical(state, bound.doors[i]);
+    if (!door || door.alive === false || door.data.torn || door.data.nestDetached || !baffleDetached(carrier, door, i)) continue;
+    door.data.nestDetached = true;
+    d.emit('comms:log', { from: 'NEST CARRIER', text: 'BAFFLE DISPLACED — the carrier flank is exposed. The loose baffle is scrap, not a return target. Aim the return at the carrier flank.', kind: 'encounter' });
+  }
+  rec.detachedDoors = bound.doors.reduce((n, door, i) => n + (door?.data?.nestDetached || bound.deadDoors[i]?.detached ? 1 : 0), 0);
+}
+
 function hangTrophy(d, live, label) {
   // This is a remembered plate receipt. A physical Sker wall/theft is a separate owner.
   const wall = d.state.trophyWall || (d.state.trophyWall = { plates: [] });
@@ -222,7 +271,7 @@ function resolveNest(d, live, outcome) {
   const rec = live.data.nest;
   if (!rec || live.phase === 'done') return;
   if (['carrier_down', 'carrier_gutted', 'nest_emptied'].includes(outcome)) {
-    hangTrophy(d, live, `NEST CARRIER — ${outcome === 'nest_emptied' ? 'EMPTIED' : 'GUTTED'}`);
+    hangTrophy(d, live, `NEST CARRIER — ${outcome === 'nest_emptied' ? 'EMPTIED' : outcome === 'carrier_gutted' ? 'GUTTED' : 'DESTROYED'}`);
   }
   if (outcome === 'carrier_escapes') {
     const story = d.state.story || (d.state.story = {});
@@ -290,9 +339,17 @@ function rollback(d, live, reason) {
   return d.abort(live, reason);
 }
 
-function bayOpen(rec, now) { return rec.tornDoors > 0 || now < rec.bayOpenUntil; }
+// A compact nursery has finished its physical launch cycle after its sixth real
+// admission. The empty coupling assemblies stay exposed, so the Class I return
+// option remains usable after observing/catching the finite brood. This is not a
+// timer, a victory or a refill. Standard/random carriers retain their old cycle.
+function spentNursery(rec) {
+  return rec.broodVariant === COMPACT_BROOD && rec.remaining === 0 && rec.launched === NEST_SIZE;
+}
+function bayOpen(rec, now) { return spentNursery(rec) || rec.tornDoors > 0 || rec.detachedDoors > 0 || now < rec.bayOpenUntil; }
 function bayIndexOpen(rec, bound, index, now) {
-  return now < rec.bayOpenUntil || bound.doors[index]?.data?.torn === true || bound.deadDoors[index]?.torn === true;
+  return spentNursery(rec) || now < rec.bayOpenUntil || bound.doors[index]?.data?.torn === true || bound.deadDoors[index]?.torn === true
+    || bound.doors[index]?.data?.nestDetached === true || bound.deadDoors[index]?.detached === true;
 }
 function contactHitsOpenFlank(rec, bound, carrier, pos, now) {
   const angle = Number(carrier.rot) || 0, c = Math.cos(angle), s = Math.sin(angle);
@@ -301,10 +358,12 @@ function contactHitsOpenFlank(rec, bound, carrier, pos, now) {
   // The released Atlas is 51.6 WU long at this actor's scale. Contact must be on
   // the corresponding real hull flank, not merely near a detached plug or marker.
   return Math.abs(x) <= 26.5 && Math.abs(z) <= 32 && Math.abs(z) >= 1
-    && (bound.doors[z < 0 ? 0 : 1]?.data?.torn === true || bound.deadDoors[z < 0 ? 0 : 1]?.torn === true)
+    && (bound.doors[z < 0 ? 0 : 1]?.data?.torn === true || bound.deadDoors[z < 0 ? 0 : 1]?.torn === true
+      || bound.doors[z < 0 ? 0 : 1]?.data?.nestDetached === true || bound.deadDoors[z < 0 ? 0 : 1]?.detached === true)
     && bayIndexOpen(rec, bound, z < 0 ? 0 : 1, now);
 }
 function publishBayState(rec, bound, now) {
+  bound.carrier.data.nestNurserySpent = spentNursery(rec);
   bound.carrier.data.nestBayOpen = bayOpen(rec, now);
   bound.carrier.data.nestBayOpenUntil = rec.bayOpenUntil;
   let offsets = bound.carrier.data.nestBayOffsets;
@@ -314,7 +373,8 @@ function publishBayState(rec, bound, now) {
   }
   const angle = Number(bound.carrier.rot) || 0, c = Math.cos(angle), s = Math.sin(angle);
   for (let i = 0; i < DOOR_COUNT; i++) {
-    const door = bound.doors[i], torn = door?.data?.torn || bound.deadDoors[i]?.torn;
+    const door = bound.doors[i], torn = door?.data?.torn || bound.deadDoors[i]?.torn
+      || door?.data?.nestDetached || bound.deadDoors[i]?.detached;
     if (door && door.alive !== false && !torn) {
       const dx = door.pos.x - bound.carrier.pos.x, dz = door.pos.z - bound.carrier.pos.z;
       offsets[i].dx = dx * c + dz * s; offsets[i].dz = -dx * s + dz * c;
@@ -326,6 +386,7 @@ function publishBayState(rec, bound, now) {
   for (let i = 0; i < DOOR_COUNT; i++) states[i] = bayIndexOpen(rec, bound, i, now);
   bound.doors.forEach((door, i) => {
     if (!door?.data) return;
+    if (door.data.nestDetached && !door.data.torn) door.data.scanLabel = 'DISPLACED BLAST BAFFLE — SCRAP / RETURN TO CARRIER FLANK';
     door.data.nestBayOpen = bayIndexOpen(rec, bound, i, now);
     door.data.nestBayOpenUntil = door.data.torn ? 0 : rec.bayOpenUntil;
   });
@@ -392,9 +453,15 @@ function launchWasps(d, live, count, now, restoreRows = null) {
   if (!restoreRows) {
     rec.remaining -= admitted; rec.launched += admitted;
     if (admitted) {
+      rec.launchDeferred = false;
       rec.bayOpenUntil = now + BAY_OPEN_S;
       d.emit('nest:waspsLaunched', { encounterId: live.id, count: admitted, vented: rec.vented, t: now });
-      d.emit('comms:log', { from: 'NEST CARRIER', text: 'COUPLINGS EXPOSED — two-second return window.', kind: 'encounter' });
+      d.emit('comms:log', { from: rec.broodVariant === COMPACT_BROOD ? 'CHARON LANE WATCH' : 'NEST CARRIER', text: spentNursery(rec)
+        ? 'Six launched. The nursery is spent; both coupling assemblies remain exposed. The Wasps already out are still dangerous. A real Line-driven impact can breach a coupling; no more brood will be supplied.'
+        : 'COUPLINGS EXPOSED — two-second return window.', kind: 'encounter' });
+    } else if (rec.broodVariant === COMPACT_BROOD && rec.remaining > 0 && !rec.launchDeferred) {
+      rec.launchDeferred = true;
+      d.emit('comms:log', { from: 'CHARON LANE WATCH', text: 'Launch deferred. The remaining brood is still aboard; there has been no new exposure window. Any torn flank remains exposed. Watch the actual launch, or keep the eastern lane open for withdrawal.', kind: 'encounter' });
     }
   }
   return admitted;
@@ -472,10 +539,14 @@ export const runtime = Object.freeze({
       if (bound.wasps.length !== saved.wasps.length) return rollback(d, live, 'incomplete_nest_restore');
     }
     rec.contactEstablished = true;
+    reconcileBaffleSeparation(d, live, state);
     publishBayState(rec, bound, d.now());
     live.phase = 'conflict';
-    d.say(live, 'alert', saved ? 'NEST CARRIER: the same baffles and remaining brood. Your damage still shows. Check your Line connection before returning another Wasp.'
-      : `NEST CARRIER: six ${rec.broodVariant === COMPACT_BROOD ? 'small nursery Wasps aboard. Class I can catch this 16t brood' : 'Wasps aboard. These 16t Wasps require Class I capacity and live Line T1'}; ram one into an exposed coupling during launch. The 400t blast baffles require Class III capacity and live Line T1. Guns work. The open lane behind you is your way out.`,
+    d.say(live, 'alert', saved
+      ? rec.broodVariant !== COMPACT_BROOD ? 'NEST CARRIER: the same baffles and remaining brood. Your damage still shows. Check your Line connection before returning another Wasp.' : `CHARON LANE WATCH: the same carrier, baffles and remaining brood. ${spentNursery(rec) ? 'All six have launched; the empty nursery couplings are still exposed.' : 'Your damage still shows.'} Check your Line connection before returning another Wasp.`
+      : rec.broodVariant === COMPACT_BROOD
+      ? 'CHARON LANE WATCH: a Reach nursery is working this lane. Six small 16t Wasps aboard; Class I and a bare Line can catch them. Watch the launch couplings. After the last real launch, the empty assemblies stay exposed. Guns work too. The eastern lane behind you is your way out.'
+      : 'NEST CARRIER: six Wasps aboard. These 16t Wasps require Class I capacity and live Line T1; ram one into an exposed coupling during launch. The 400t blast baffles require Class III capacity and live Line T1. Guns work. The open lane behind you is your way out.',
     null, { primary: true, literal: true });
   },
 
@@ -487,10 +558,17 @@ export const runtime = Object.freeze({
       if (!playerId || (payload.actorId !== playerId && payload.controllerId !== playerId)) return;
       const door = bound.doors.find(e => e?.id === payload.targetId && canonical(state, e));
       const wasp = bound.wasps.find(e => e?.id === payload.targetId && canonical(state, e));
-      if (door?.alive !== false && door) door.data.latchedBy = 'player';
+      if (door?.alive !== false && door) {
+        const carrier = canonical(state, bound.carrier), index = bound.doors.indexOf(door);
+        // A late latch on remote scrap cannot create an attributed carrier tear.
+        if (carrier && !baffleDetached(carrier, door, index)) {
+          door.data.latchedBy = 'player'; door.data.nestTearEligible = true;
+        }
+      }
       if (wasp?.alive !== false && wasp) wasp.data.thrownBy = 'player';
     }
     if (name === 'physicsImpact') {
+      reconcileBaffleSeparation(d, live, state);
       const carrier = canonical(state, bound.carrier);
       if (!carrier || carrier.alive === false || !(payload.impulse > 0) || !finite(payload.impulse, 1e12)
         || !vector(payload.pos) || !integer(payload.tick, Number.MAX_SAFE_INTEGER)) return;
@@ -506,7 +584,7 @@ export const runtime = Object.freeze({
       } else {
         // An intact cycling assembly is a real impact target, not a pretend opening through
         // its collider. Once torn away it is scrap and the carrier's exposed flank owns returns.
-        if (hit.alive === false || hit.data.torn || !bayIndexOpen(rec, bound, doorIndex, d.now())
+        if (hit.alive === false || baffleDetached(carrier, hit, doorIndex) || !bayIndexOpen(rec, bound, doorIndex, d.now())
           || Math.hypot(payload.pos.x - hit.pos.x, payload.pos.z - hit.pos.z) > (Number(hit.radius) || 12) + 12) return;
       }
       const contactReach = (Number(hit.radius) || 30) + (Number(wasp.radius) || 12) + 20;
@@ -516,7 +594,10 @@ export const runtime = Object.freeze({
         || (payload.bGeneration != null && payload.bGeneration !== b.occupantGeneration)) return;
       // The physics producer reuses its payload. Copy only bounded receipt fields now.
       if (!rec.returnContacts.has(i)) rec.returnContacts.set(i, { slot: i,
-        pos: { x: payload.pos.x, z: payload.pos.z }, impulse: payload.impulse, tick: payload.tick });
+        pos: { x: payload.pos.x, z: payload.pos.z }, impulse: payload.impulse, tick: payload.tick,
+        surface: { version: 1, slot: hit === carrier ? 'carrier' : `door:${doorIndex}`, open: true, detached: hit === carrier,
+          carrierPos: { x: carrier.pos.x, z: carrier.pos.z }, carrierRot: Number(carrier.rot) || 0,
+          targetPos: { x: hit.pos.x, z: hit.pos.z } } });
     }
     if (name === 'entityGone' || name === 'squadKill') {
       const carrier = canonical(state, bound.carrier);
@@ -542,9 +623,10 @@ export const runtime = Object.freeze({
     if (!carrier) return d.abort(live, 'unresolved_nest_carrier');
     if (carrier.alive === false) return resolveNest(d, live, rec.guttingConfirmed ? 'carrier_gutted' : 'carrier_down');
     if (!player || player.alive === false) return d.abort(live, 'subject_gone');
+    reconcileBaffleSeparation(d, live, state);
     for (const entity of bound.doors) {
       const door = canonical(state, entity);
-      if (!door || door.alive === false || door.data.torn || door.data.latchedBy !== 'player') continue;
+      if (!door || door.alive === false || door.data.torn || door.data.latchedBy !== 'player' || door.data.nestTearEligible !== true) continue;
       const socket = socketPosition(carrier, door.data.socket), dx = door.pos.x - socket.x, dz = door.pos.z - socket.z;
       if (dx * dx + dz * dz >= TEAR_WU * TEAR_WU) {
         door.data.torn = true; door.data.scanLabel = 'TORN BLAST BAFFLE — FLANK EXPOSED'; rec.tornDoors++;
@@ -559,7 +641,7 @@ export const runtime = Object.freeze({
     } else if (rec.remaining > 0 && now >= rec.nextLaunchS) {
       rec.nextLaunchS = now + LAUNCH_S; launchWasps(d, live, 1, now);
     }
-    carrier.data.scanLabel = bayOpen(rec, now) ? 'NEST CARRIER — COUPLINGS EXPOSED / RAM A WASP' : 'NEST CARRIER — COUPLINGS GUARDED / WATCH THE LAUNCH';
+    carrier.data.scanLabel = spentNursery(rec) ? 'NURSERY SPENT — COUPLINGS EXPOSED / RETURN A WASP' : bayOpen(rec, now) ? 'NEST CARRIER — COUPLINGS EXPOSED / RAM A WASP' : 'NEST CARRIER — COUPLINGS GUARDED / WATCH THE LAUNCH';
     publishBayState(rec, bound, now);
     for (let i = 0; i < bound.wasps.length && live.phase !== 'done'; i++) {
       const wasp = canonical(state, bound.wasps[i]);
