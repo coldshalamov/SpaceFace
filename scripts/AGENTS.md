@@ -36,6 +36,8 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
   (also gauntlet, adventure, racing). Choose it when it answers the changed gameplay claim;
   there is no blanket per-PR verdict or contact-sheet quota. Fix relevant failed checks before
   repeating them. Its actor stays public-input only; its reader stays observer-only.
+  `--start-round=<1..30>` opens a swarm run on the dev route `?swarmRound=N` (title and door
+  skipped, first wave is round N, checkpoint purse funded); pair with `--arena=` for a room.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save,
   and raw trace identity. Never reuse a capture across acceptance cells.
 - `agent-loop` plans/summaries, UI fixtures and handling reports never promote evidence. `sf lab

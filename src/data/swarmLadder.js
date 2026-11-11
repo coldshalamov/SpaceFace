@@ -155,6 +155,28 @@ export function swarmCheckpointPurseFor(zoneIndex) {
   return 800 + 350 * (idx - 1);
 }
 
+/** The `?swarmRound=N` developer route accepts the ladder's authored rounds, 1..30. */
+export const SWARM_START_ROUND_MIN = 1;
+export const SWARM_START_ROUND_MAX = 30;
+
+/**
+ * The `?swarmRound=N` developer route's start request: which round the run opens on and the
+ * purse the opening armory gets. Any input clamps into 1..30; a non-numeric value falls back
+ * to the ordinary opening. The purse is the same checkpoint purse a player-earned mid-ladder
+ * start pays — "a typical run's purse at that point" (§6.2), the authored stand-in for the
+ * sum of rounds 1..N-1's variable kill pays. Pure: same input, same answer.
+ */
+export function swarmStartAtRound(requested) {
+  const parsed = Number(typeof requested === 'string' ? requested.trim() : requested);
+  const startWave = Number.isFinite(parsed)
+    ? Math.min(SWARM_START_ROUND_MAX, Math.max(SWARM_START_ROUND_MIN, Math.trunc(parsed)))
+    : SWARM_START_ROUND_MIN;
+  return {
+    startWave,
+    purse: swarmCheckpointPurseFor(swarmZoneIndexFor(startWave)),
+  };
+}
+
 /** The chain that earns a zone's third star. Climbs so the late zones still ask for play. */
 export function swarmZoneChainTarget(zoneIndex) {
   const idx = Number.isInteger(zoneIndex) && zoneIndex >= 0 ? zoneIndex : 0;
