@@ -93,6 +93,7 @@ import {
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
+  SWARM_WAVE_MAX,
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
@@ -537,7 +538,10 @@ export function lifetimeFigures(profile) {
   return [
     { key: 'runs', label: 'Runs', value: n(life.runs) },
     { key: 'victories', label: 'Won', value: n(life.victories) },
-    { key: 'deepestWave', label: 'Deepest', value: n(life.deepestWave) },
+    // C01-03 — the deep course's own record, beside the wins and the fastest win: the best
+    // round a run ever reached, win-banked continues included.
+    { key: 'deepestWave', label: 'Deepest round', value: n(life.deepestWave) },
+    { key: 'bestWinTimeS', label: 'Best win', value: n(life.bestWinTimeS) },
     { key: 'bestScore', label: 'Best score', value: n(life.bestScore) },
     { key: 'bestKills', label: 'Best kills', value: n(life.bestKills) },
   ];
@@ -2582,6 +2586,11 @@ export function resultRows(result) {
   return [
     ['Outcome', result.stopReason === 'player_retired' ? 'Retired · unranked' : (result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')))],
     ['Reached', reachedRow(result)],
+    // C01-03 — the swarm record's own figure: the best round a run reached, including the
+    // rounds a banked win's continue sailed past thirty.
+    ...(result.ruleset === SWARM_RULESET
+      ? [['Deepest round', String(progress.highestRoundEntered ?? result.deepestWave ?? result.wave ?? 0)]]
+      : []),
     ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
     ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
     ['Round threat resolved', progress.roundThreatBudget != null && progress.roundThreatResolved != null
@@ -2871,6 +2880,23 @@ export function resultTitle(result) {
 export function resultStamp(result) {
   if (result && result.outcome === 'victory') return 'CRUCIBLE / ARENA CLEARED';
   return 'CRUCIBLE / FLIGHT RECORD';
+}
+
+/**
+ * C01-03 — the round-30 Swarm win's offer: exactly two ways off the plate. `Take the win`
+ * leaves the run through the ordinary hangar exit with the banked result; `Keep going`
+ * hands the still-banked run back to the course past the win. Any other result — a death,
+ * an earlier ending, a Circuit journey — keeps the ordinary foot and reads null here.
+ */
+export function resultWinOffers(result) {
+  if (!result || result.ruleset !== SWARM_RULESET || result.circuit) return null;
+  if (result.outcome !== 'victory') return null;
+  const reached = Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0);
+  if (reached < SWARM_WAVE_MAX) return null;
+  return [
+    { id: 'take_win', label: 'Take the win' },
+    { id: 'keep_going', label: 'Keep going' },
+  ];
 }
 
 /**
@@ -3858,6 +3884,35 @@ export const crucibleResultsScreen = {
     // two dots while the tape played the same five seconds with every hull and round. The result
     // model keeps `result.killReplay` (survivalResults still records it) until the ring system's
     // registry retirement lands.
+    // C01-03 — the round-30 win offers exactly two ways off the plate, nothing else: bank it
+    // and leave through the ordinary hangar exit, or keep going into the deep course with
+    // the win already banked. The run's phase machine owns the resume; the plate only asks.
+    const winOffers = resultWinOffers(result);
+    if (winOffers) {
+      let focusWord = null;
+      for (const offer of winOffers) {
+        const button = addWord(word(offer.label, 'k-word--emph'
+          + (offer.id === 'keep_going' ? ' k-word--primary' : '')));
+        if (offer.id === 'keep_going') focusWord = button;
+        button.addEventListener('click', () => {
+          if (offer.id === 'keep_going') {
+            // Pop the plate first so the armory the resume lands on is never covered, then
+            // let the owner walk the run back into the course.
+            ctx.bus.emit('ui:popScreen', {});
+            ctx.bus.emit('run:swarmDeepRequested', {});
+            return;
+          }
+          try { clearKillcamTape(); } catch { /* the replay is optional */ }
+          ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        });
+      }
+      foot.appendChild(footWords);
+      rootEl.appendChild(foot);
+      this._regions = { title: h, story, ledger, foot, again: focusWord };
+      rootEl.dataset.kReady = '1';
+      return;
+    }
+
     // r2: the Lamp rule spans the verb's own words — the verb rides in a span of its own so
     // the key beside it never inherits the rule. The live text node moves into the span; a stub
     // DOM with no child text nodes keeps the button's own textContent either way.
