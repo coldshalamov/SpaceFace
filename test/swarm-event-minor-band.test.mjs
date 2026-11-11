@@ -97,8 +97,9 @@ test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, neve
       assert.equal(swarmMinorEventFor({ arenaId: 'the_hive', wave: w, seed: SEED }), null);
     }
   }
-  // The band starts at wave 2 — rounds 1, 3 and 4 stay clean.
-  for (const w of [1, 3, 4]) {
+  // The band starts at wave 2 — rounds 1 and 3 stay clean. Wave 4 is the course's first
+  // authored twist ('Mind the Gap' → sling_tide) and deals its own card — see swarm-course.
+  for (const w of [1, 3]) {
     assert.equal(isSwarmMinorEventWave(w), false);
     assert.equal(swarmMinorEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null);
     assert.equal(swarmEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null,
@@ -228,7 +229,8 @@ test('same seed deals the same minor card — ghosts agree; seeds still vary it'
 });
 
 test('boss and ordinary waves arm nothing — the director consult holds the cap', () => {
-  for (const wave of [1, 4, 6, 9, 15]) {
+  // Wave 4 is out of this list: the course's authored twist arms sling_tide on it.
+  for (const wave of [1, 6, 9, 15]) {
     const h = armedDirector({ arenaId: 'asteroid_mill', wave });
     startWave(h, wave);
     assert.equal(telegraphed(h).length, 0, `wave ${wave} offers nothing`);
