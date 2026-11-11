@@ -161,13 +161,8 @@ function isolate(h, keep) {
 
 test('the tables stay honest: base, late and the ten-clock all clean', () => {
   assert.deepEqual(swarmBroodIssues(), []);
-  // C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
-  // clamp onto the wave-30 champion row and the late table honestly flags them.
-  assert.deepEqual(swarmBroodLateIssues(), [
-    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
-    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
-    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
-  ]);
+  // C01-03: the strain debuts sit on real deep-course rows — the late table is clean.
+  assert.deepEqual(swarmBroodLateIssues(), []);
   for (const band of BAND3) {
     const fam = swarmBroodLateFamily(band.id);
     assert.ok(fam, `${band.id} is not in the late table`);
@@ -175,13 +170,12 @@ test('the tables stay honest: base, late and the ten-clock all clean', () => {
     assert.equal(swarmNewcomerFor(band.fromWave), null,
       `wave ${band.fromWave} shares its slam with a ship debut — the brood card must show`);
   }
-  // Versioned for C01-01: the finite course ends at round 30 and everything past it clamps
-  // onto the wave-30 champion row, so EVERY band-3 gate now "lands on a champion" — the
-  // whole band is unreachable. The pin records that honestly rather than pretending the
-  // old single-collision schedule (poxsac at 75, the Tendril's round) still exists.
+  // C01-03: the deep course runs the old ≡0-mod-10 clock — champions hold the decade marks
+  // and every band-3 gate (61/67/75) sits on a real non-champion round. No gate lands on
+  // a champion row; the Tendril's round is 80 on this clock.
   assert.deepEqual(BAND3.filter((b) => isSwarmBossWave(b.fromWave)).map((b) => b.id),
-    BAND3.map((b) => b.id),
-    'every band-3 gate sits past round 30 and clamps onto the champion row');
+    [],
+    'a band-3 gate landed on a champion row');
   // The band's own cadence: at least 6 and at most 8 waves between consecutive gates,
   // measured from the deep band's last gate (undertow, 55).
   const gates = [55, ...BAND3.map((b) => b.fromWave)];

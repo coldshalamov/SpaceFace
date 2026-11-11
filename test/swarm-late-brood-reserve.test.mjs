@@ -97,9 +97,8 @@ function budget(engine) {
 // (a) The band law: below the gate, on champion waves, and in the Hive the picker is
 // silent — and it never spends the stream for a wave it rejects.
 test('the picker gates on band, champion and eligibility law', () => {
-  // C01-01: the course ends at round 30. Waves 26–29 are the only ordinary rounds inside
-  // the band (25 is a champion); every wave past 30 clamps onto the champion row and keeps
-  // no reserve at all.
+  // C01-03: the reserve band keeps on through the deep water — pre-band and champion rows
+  // stay silent, deep non-champion rounds hold their drop.
   for (const w of [1, 20, SWARM_BROOD_RESERVE_FROM_WAVE - 1]) {
     assert.equal(swarmBroodLateReserve(w, () => 0.5), null, `wave ${w} keeps no reserve`);
   }
@@ -108,8 +107,10 @@ test('the picker gates on band, champion and eligibility law', () => {
     assert.equal(swarmBroodLateReserve(w, () => 0.5), null, `champion wave ${w} keeps no reserve`);
   }
   for (const w of [31, 37, 55]) {
-    assert.equal(swarmBroodLateReserve(w, () => 0.5), null,
-      `wave ${w} is past the course — the picker is silent`);
+    const deep = swarmBroodLateReserve(w, () => 0.9);
+    assert.ok(deep, `wave ${w} holds a deep reserve`);
+    const fam = swarmBroodLateFamily(deep.familyId);
+    assert.ok(fam && fam.fromWave <= w, `${deep.familyId} not unlocked at wave ${w}`);
   }
   for (const w of [26, 27, 28, 29]) {
     const pick = swarmBroodLateReserve(w, () => 0.9);

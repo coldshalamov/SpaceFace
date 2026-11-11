@@ -53,7 +53,6 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 | ID | Job | State |
 |---|---|---|
 | PERF-01-where-the-frame-goes | Seven on/off experiments on the main thread; numbers only. **Only with no other game instance running** | READY |
-| C01-03-keep-going | Win at 30, then "Keep going" into the endless course; late content returns | TAKEN agent2 (devin3, in flight at checkpoint — re-run if no `fleet(C01-03)` commit) |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
 | G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | READY |
@@ -71,7 +70,7 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 |---|---|---|
 | MOB-04 phone quality tier | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | READY |
 | MOB-03 touch controls you can read | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | READY |
-| G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | HOLD on C01-03 |
+| G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | READY |
 | G11 one clock, the rest | Per-ship idle spins and shader `uTime` uniforms outside the post route still run on the wall clock: multiply their time step by `presentedAdvanceRatio()` from `src/render/presentedClock.js` (see how `renderer.js` does `_bgTime`); find them with `grep -rn "performance.now\|clock.getElapsedTime\|uTime" src/render` | READY |
 | PERF-04 late shader compiles | Three programs compile mid-flight (`npm run perf:renderer-info` names them by frame); add them to the opening prewarm cohort so the count is 0 | READY |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat) |
@@ -96,7 +95,7 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 | STAB-01 launchers 10/10 · STAB-02 the gate · STAB-03 import lint · STAB-04 bundle never 503 | BUILT e33d7154 · ae8333d9 · 77e70240 · fbf37258 |
 | G18 one feel (21a3a741) · G18-03 feedback (739a85eb) · G18-04 pins + puffs (ffc5b618) | BUILT |
 | G17-01 start at round (2f8b164a) · G08-01 enemy looks (3e94db0d) · G19-01 class-up (3c7e8338) | BUILT |
-| C01-01 win at 30 (ca74e15f) · C01-02 tests follow the course (478a068a) | BUILT |
+| C01-01 win at 30 (ca74e15f) · C01-02 tests follow the course (478a068a) · C01-03 keep going (0e0cb5d0) | BUILT |
 | PERF-02a ship never steps back (849ea0da) · G11 one clock: gauge (3167d8f6), backdrop (9349afb6) | BUILT |
-| Plants PL-01, PL-03 (half), PL-05, PL-06, PL-52 | BUILT |
+| Plants PL-01 (89470617), PL-03 (half), PL-05, PL-06, PL-52 | BUILT |
 | RECON-MOB (`drafts/MOB.md`) | DONE |

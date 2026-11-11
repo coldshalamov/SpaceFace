@@ -292,9 +292,9 @@ test('.01 opening reward-reference is 15; later waves still climb; concurrency u
       assert.ok(swarmConcurrent(wave) >= swarmConcurrent(wave - 1));
     }
   }
-  // Past the course every wave index clamps to the wave-30 champion room — concurrency
-  // reads the champion's reduced room, not the deep-run maximum.
-  assert.equal(swarmConcurrent(999), swarmConcurrent(30));
+  // C01-03: past the win the deep course holds the room at its own ceiling — a non-
+  // champion round that deep reads the run's maximum room, not the champion discount.
+  assert.equal(swarmConcurrent(999), SWARM_CONCURRENT_MAX);
 });
 
 test('armed menu capture reports observed zero instead of historical unavailable', () => {
