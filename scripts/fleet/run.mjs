@@ -197,4 +197,6 @@ function finish(code) {
   log.end();
   console.log(`[fleet] done ${JSON.stringify(exit)}`);
   if (existsSync(receipt)) console.log(readFileSync(receipt, 'utf8').split('\n').slice(0, 6).join('\n'));
+  // An orphaned grandchild can hold stdout/stderr open forever; the run is over, so exit (frees the slot).
+  setTimeout(() => process.exit(code === 0 ? 0 : 1), 2000);
 }
