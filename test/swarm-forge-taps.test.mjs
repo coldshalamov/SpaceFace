@@ -13,6 +13,7 @@ import { FOUNDRY_ARENA_ID } from '../src/systems/swarmArena.js';
 import { runSession as runSessionProto } from '../src/systems/runSession.js';
 import { ships as shipsProto, buildSlotList, fits } from '../src/systems/ships.js';
 import { weapons as weaponsProto } from '../src/systems/weapons.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { mines as minesProto } from '../src/systems/mines.js';
 import { playerPickupMagnetRange } from '../src/systems/mining.js';
 import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
@@ -539,3 +540,69 @@ for (const burner of [false, true]) {
     } finally { h.destroy(); }
   });
 }
+
+// The cycle-rate and heat trades must bend every player fire path, not only projectiles.
+function weaponsHost(h) {
+  const events = [];
+  const sys = Object.assign(Object.create(weaponsProto), {
+    bus: { emit(name, payload) { events.push({ name, payload }); } },
+    state: h.state,
+    _byId: new Map(),
+    _beamFiring: new Set(),
+    _beamFiringPrev: new Set(),
+    _beamActiveMeta: new Map(),
+    _attackLive: new Set(),
+    _spawnVectorMine() {},
+    _muzzle(e) { return { x: e.pos.x, z: e.pos.z }; },
+    _hardpointDir(e, w, aim) { return aim; },
+  });
+  h.state.combat = h.state.combat || {};
+  h.state.combat.beams = [];
+  return sys;
+}
+
+for (const [tap, rofMult, heatMult] of [['overbore', 0.5, 1], ['hair_trigger', 2, 1.5]]) {
+  test(`review 5: ${tap} bends a deploy weapon's cycle and heat for the player only`, () => {
+    const h = boot();
+    const prev = COMBAT_FLAGS.weaponImpulseConsequences;
+    COMBAT_FLAGS.weaponImpulseConsequences = true;
+    try {
+      const def = WEAPON_BY_ID.get('wpn_vector_mine_m');
+      const sys = weaponsHost(h);
+      const fire = (entity, isPlayer) => {
+        const w = { defId: def.id, slotIndex: 0, _cooldown: 0, _heat: 0 };
+        sys._serviceDeployWeapon(entity, w, def, isPlayer, 1000, h.state, 0);
+        return w;
+      };
+      const plain = fire(h.pilot, true);
+      h.recordTap(tap);
+      const bent = fire(h.pilot, true);
+      assert.ok(Math.abs(bent._cooldown - plain._cooldown / rofMult) < 1e-9,
+        `cycle ${plain._cooldown} -> ${bent._cooldown}`);
+      assert.ok(Math.abs(bent._heat - plain._heat * heatMult) < 1e-9,
+        `heat ${plain._heat} -> ${bent._heat}`);
+      const npc = h.helpers.spawnEntity({ type: 'ship', team: 2, pos: { x: 50, z: 0 }, radius: 8 });
+      const theirs = fire(npc, false);
+      assert.equal(theirs._cooldown, plain._cooldown, 'NPC cycle unchanged');
+      assert.equal(theirs._heat, plain._heat, 'NPC heat unchanged');
+    } finally { COMBAT_FLAGS.weaponImpulseConsequences = prev; h.destroy(); }
+  });
+}
+
+test('review 5: Hair Trigger raises a continuous beam heat gain for the player only', () => {
+  const h = boot();
+  try {
+    const def = WEAPON_BY_ID.get('wpn_beam_laser_m');
+    const sys = weaponsHost(h);
+    const burn = (entity) => {
+      const w = { defId: def.id, slotIndex: 0, _heat: 0, heatPerSec: 55, heatMax: 1000, range: 400, energyCost: 0 };
+      sys._serviceBeam(entity, w, { ...def, energyCost: 0 }, true, 1000, 0.5, h.state, 0);
+      return w._heat;
+    };
+    const plain = burn(h.pilot);
+    h.recordTap('hair_trigger');
+    assert.ok(Math.abs(burn(h.pilot) - plain * 1.5) < 1e-9, 'heat gain x1.5 on the beam');
+    const npc = h.helpers.spawnEntity({ type: 'ship', team: 2, pos: { x: 50, z: 0 }, radius: 8 });
+    assert.equal(burn(npc), plain, 'NPC beam heat unchanged');
+  } finally { h.destroy(); }
+});
