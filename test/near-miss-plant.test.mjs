@@ -6,6 +6,7 @@
 //    parked/slow player, and too soon (inside cooldown) do NOT trigger the plant reaction.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 
 import '../src/systems/traffic.js';
 import {
@@ -21,6 +22,11 @@ import {
   swerveForNearMissPlant,
   nearMissPlantOps,
 } from '../src/systems/nearMissPlant.js';
+import {
+  computeNearMissLampFlash,
+  createShipAuxPool,
+  syncShipAuxPools,
+} from '../src/render/renderer.js';
 
 function makeCivilian(id = 'civ_hauler_1', { x = 0, z = 30, role = 'hauler', team = 2, radius = 6 } = {}) {
   return {
@@ -268,4 +274,104 @@ test('memory window expiry: a pass after 50s (memoryS = 45s) resets count back t
   assert.equal(plantEvents2.length, 2);
   assert.equal(plantEvents2[1].payload.count, 1, 'count reset to 1 after memory window expired');
   assert.equal(plantEvents2[1].payload.reported, false, 'not reported');
+});
+
+test('near-miss lamp presentation: two flashes, respecting reduced flash, and cleanly expires (PL-01)', () => {
+  const civ = makeCivilian('civ_flash_1');
+  civ.data.lampsFlashing = true;
+  civ.data.lampFlashUntil = 102.0;
+
+  // 1. Not flashing returns neutral multiplier
+  const calmCiv = makeCivilian('civ_calm');
+  assert.equal(computeNearMissLampFlash(calmCiv, 100.0, false), 1.0);
+
+  // 2. Pulse 1 (elapsed 0.1 s): full flash gain
+  const flash1 = computeNearMissLampFlash(civ, 100.1, false);
+  assert.ok(flash1 > 3.0, 'pulse 1 delivers bright lamp flash');
+
+  // 3. Gap between pulses (elapsed 0.3 s): returns to resting floor
+  const gap = computeNearMissLampFlash(civ, 100.3, false);
+  assert.equal(gap, 1.0, 'gap between flashes is resting floor');
+
+  // 4. Pulse 2 (elapsed 0.5 s): second flash
+  const flash2 = computeNearMissLampFlash(civ, 100.5, false);
+  assert.ok(flash2 > 3.0, 'pulse 2 delivers second lamp flash');
+
+  // 5. After pulse 2 (elapsed 1.0 s, before expiry): resting floor
+  const afterPulses = computeNearMissLampFlash(civ, 101.0, false);
+  assert.equal(afterPulses, 1.0, 'after second flash stays resting until window ends');
+
+  // 6. Reduced flash: calm gain, no harsh strobe spike
+  const reducedPulse = computeNearMissLampFlash(civ, 100.1, true);
+  assert.ok(reducedPulse < flash1, 'reduced flash is strictly dimmer than normal flash');
+  assert.ok(reducedPulse > 1.2, 'reduced flash still visibly indicates the flash');
+
+  // 7. Expiry at or past lampFlashUntil: flag cleared, multiplier 1.0
+  const expired = computeNearMissLampFlash(civ, 102.0, false);
+  assert.equal(expired, 1.0, 'expired lamp returns to resting multiplier');
+  assert.equal(civ.data.lampsFlashing, false, 'lampsFlashing cleared upon expiry');
+});
+
+test('aux nav pool sync modulates drawn nav-light intensity on near-miss flash', () => {
+  const root = new THREE.Group();
+  const navSource = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.2, 0.2, 0.2),
+    new THREE.MeshStandardMaterial({ color: 0x88eeff, emissive: new THREE.Color(0x88eeff), emissiveIntensity: 1.0 }),
+    2,
+  );
+  navSource.name = 'GLTFKit_Nav_Lights';
+  navSource.userData.damageRole = 'navLight';
+  navSource.count = 2;
+  root.add(navSource);
+
+  const scene = new THREE.Scene();
+  scene.add(root);
+  root.updateWorldMatrix(true, true);
+
+  const pool = createShipAuxPool(scene);
+  const entity = {
+    id: 'civ_nav_1',
+    type: 'ship',
+    alive: true,
+    radius: 12,
+    shield: 0,
+    data: {
+      lampsFlashing: true,
+      lampFlashUntil: 102.0,
+    },
+  };
+  const meshes = new Map([['civ_nav_1', root]]);
+  const state = {
+    simTime: 100.1, // inside pulse 1
+    settings: { video: { flashReduce: false } },
+  };
+
+  syncShipAuxPools(pool, [entity], meshes, state);
+  assert.equal(pool.nav.mesh.visible, true);
+  assert.equal(pool.nav.mesh.count, 2);
+
+  // The drawn color attribute should carry the boosted flash
+  const rFlash = pool.nav.mesh.instanceColor.getX(0);
+  assert.ok(rFlash > 0.8, 'drawn nav light color is boosted during near-miss flash');
+
+  // At gap time (elapsed 0.3 s):
+  state.simTime = 100.3;
+  syncShipAuxPools(pool, [entity], meshes, state);
+  const rGap = pool.nav.mesh.instanceColor.getX(0);
+  assert.ok(rFlash > rGap * 3.5, 'pulse 1 is more than 3.5x resting gap intensity');
+  assert.ok(rGap < rFlash, 'drawn nav light returns to lower resting intensity between pulses');
+
+  // At pulse 2 time (elapsed 0.5 s):
+  state.simTime = 100.5;
+  syncShipAuxPools(pool, [entity], meshes, state);
+  const rFlash2 = pool.nav.mesh.instanceColor.getX(0);
+  assert.ok(rFlash2 > 0.8, 'pulse 2 boosts drawn nav light color');
+
+  // Reduced flash:
+  state.simTime = 100.1;
+  state.settings.video.flashReduce = true;
+  syncShipAuxPools(pool, [entity], meshes, state);
+  const rReduced = pool.nav.mesh.instanceColor.getX(0);
+  assert.ok(rReduced < rFlash, 'reduced flash produces lower radiance than standard flash');
+  assert.ok(rReduced > rGap, 'reduced flash still indicates the event');
 });
