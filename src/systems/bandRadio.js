@@ -288,12 +288,13 @@ export const bandRadio = {
       }
       if (thrownShipId == null) return;
       const thrownAt = this._thrownShips.get(thrownShipId);
-      this._thrownShips.delete(thrownShipId);
-      if (now < thrownAt || now - thrownAt > 5.0) return;
+      if (now < thrownAt || now - thrownAt > 5.0) { this._thrownShips.delete(thrownShipId); return; }
       const other = state && state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(otherId)
         : (Array.isArray(state && state.entityList) ? state.entityList.find((e) => e && e.id === otherId) : null);
       if (other && other.type === 'station' && !(other.data && other.data.isGate)) {
+        // A bounce off a rock first does not spend the throw; only the station does.
+        this._thrownShips.delete(thrownShipId);
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys('band:throwShipStation', {}, state)) {
           if (BAND_EVENT_KEYS.includes(eventKey)) own.eventKeys[eventKey] = true;
