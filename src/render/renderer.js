@@ -7374,22 +7374,17 @@ export function computeNearMissLampFlash(entity, now, reducedFlash = false) {
  */
 export function computeStationDockLampFlash(stationEntity, now, reducedFlash = false) {
   if (!stationEntity || !stationEntity.data || !stationEntity.data.dockLampsFlashing) return 1.0;
+  // Packet PL-08: on 0.15 s, off 0.15 s, on 0.15 s, off; the window is 0.45 s.
+  const duration = 0.45;
   const until = Number.isFinite(stationEntity.data.dockLampFlashUntil)
     ? stationEntity.data.dockLampFlashUntil
-    : (now + 1.6);
+    : (now + duration);
   if (now >= until) {
     stationEntity.data.dockLampsFlashing = false;
     return 1.0;
   }
-  const duration = 1.6;
   const elapsed = Math.max(0, duration - (until - now));
-  // Two flashes (applause):
-  // Pulse 1: 0.00s to 0.30s
-  // Gap:     0.30s to 0.55s
-  // Pulse 2: 0.55s to 0.85s
-  const inPulse1 = elapsed >= 0.0 && elapsed <= 0.30;
-  const inPulse2 = elapsed >= 0.55 && elapsed <= 0.85;
-  if (inPulse1 || inPulse2) {
+  if (elapsed <= 0.15 || (elapsed >= 0.30 && elapsed <= 0.45)) {
     return reducedFlash ? 1.8 : 4.5;
   }
   return 1.0;
@@ -19673,7 +19668,7 @@ export const render = {
         ent.data.dockLampsFlashing = true;
         ent.data.dockLampFlashUntil = Number.isFinite(payload.until)
           ? payload.until
-          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 1.6));
+          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 0.45));
       }
     });
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
