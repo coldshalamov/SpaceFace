@@ -1,4 +1,7 @@
 <!-- LIFETIME: STABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Program map
 
 This is a plan-family catalog, not a current dispatch list. Current leases live in [`NOW.md`](./NOW.md); executable work lives in [`roadmap/active/`](./roadmap/active/README.md).

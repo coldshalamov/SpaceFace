@@ -5635,7 +5635,7 @@ export function createHud(ctx, alerts) {
     const brakeStop = resolveBrakeStopPreview(p, profile, state.input);
     // A held comms fan or wingman wheel stands exactly where this tape sits; the wheel is the
     // modal, so the tape yields while it is up instead of poking out from under its edge.
-    const radialHeld = !!(state.ui && (state.ui.commsRadialOpen || state.ui.wingmanRadialOpen));
+    const radialHeld = !!(state.ui && (state.ui.commsRadialOpen || state.ui.wingmanRadialOpen || state.ui.contextWheelOpen));
     const want = !radialHeld && (active || nearCeiling || !!brakeStop);
 
     // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
