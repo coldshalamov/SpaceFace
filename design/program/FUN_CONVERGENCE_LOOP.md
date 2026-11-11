@@ -1,4 +1,7 @@
 <!-- LIFETIME: STABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The Fun Convergence Loop — how "make it better" becomes work agents can do
 
 **Status: ACTIVE EXECUTION LAW for every feel, combat, and "is it fun" task. Admitted by the owner's

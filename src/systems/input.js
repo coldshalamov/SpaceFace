@@ -72,7 +72,6 @@ import {
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
 const HELM_SOFT_ANGLE = 0.55;
 
-const WORLD_TOOL_HOLD_S = 0.28;
 const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor; stops micro-jitter
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
 
@@ -260,9 +259,8 @@ function stepTravelLatch(host, state, inp, dt, lineOwnsAxis = false) {
 // overlapping verbs (Charge, Blast, Seed, Well, Repel, Cone, Skim, Bomb) became five, one job
 // each: 1 PULL · 2 SHOVE · 3 PIN · 4 BOMB · 5 RIG. The rank on the HUD (powerRail.js / the ORRERY
 // Cluster's ordnance crescent) reads the same five in the same order, so the shelf is one hotbar.
-// R stays a second Shove key (it was the detonate key, and Shove now detonates), and the bomb
-// verb keeps the old charge-throw letter in each scheme. The Line is Space/F only now: its old
-// Digit3 alias went to Pin.
+// G18-02: the digits are the only power seats — the old letter aliases moved to the wheel, and
+// the Line is RMB (its old Digit3 alias went to Pin).
 //
 // The old verb names are still the internal action flags the owners consume; input turns each
 // power press into them below. They are also lookup aliases (see binding()), so every surface
@@ -272,62 +270,47 @@ function stepTravelLatch(host, state, inp, dt, lineOwnsAxis = false) {
 // capture and swallow their digits on document capture, and flight input is neutralized under
 // modals (`modalInputActive`) — the same slot-claim contract the rail was designed around.
 const VERB_BINDINGS = {
-  siteBeam:       ['KeyB'],   // level: contextual beam for an explicitly selected World Site proxy
-  tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
+  // G18-02 one set of keys: six inputs are the taught set — WASD move, mouse aim, LMB fire,
+  // RMB the Line, Space boost, 1–5 powers (E interact, M map stay UI-owned). EVERY other verb
+  // ships unbound by default and lives on the one context wheel held on Q (hold-Y on a pad);
+  // each is still rebindable, so a player who wants a dedicated key can put one back.
+  contextWheel:   ['KeyQ'],   // hold: the overflow wheel — tap slices are edges, level slices latch
+  siteBeam:       [],   // level: contextual beam for an explicitly selected World Site proxy
+  tether:         [],   // RMB is the Line in every door; a key seat stays rebindable
   // The five powers (edges). PULL deploys the Well; SHOVE the Repulsor plus a detonation of every
   // armed charge and drift bomb; PIN the anchor Mass Seed; RIG the cone or, in a planet band, the
   // skim scoop. BOMB is per scheme (the scheme tables below) because it inherits the old
   // charge-throw letter, which differs between schemes.
   pull:           ['Digit1'],
-  shove:          ['Digit2', 'KeyR'],
+  shove:          ['Digit2'],
   pin:            ['Digit3'],
   rig:            ['Digit5'],
-  scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
-  cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
-  autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
+  scanPulse:      [],   // edge: scanner pulse (8 s cd owned by scanner system)
+  cruise:         [],   // edge: toggle cruise charge (cruise system owns state)
+  autopursuit:    [],   // retired; retained as an inert save/input compatibility field.
   // Linked shield pylons (Controlled Chaos packet 06): ONE labeled edge whose meaning is named by
   // the HUD pill each time (PLACE FIRST ENDPOINT / LINK SECOND ENDPOINT / RECALL PAIR / CAPACITY
-  // REACHED) - it is not folded into another power. Digit6 is free repo-wide (checked against both
-  // scheme tables, ui/bindings.js, the UI key router and the prompt-digit claims). The shieldPylons
-  // system owns fitting, cost, placement and the pair lifecycle.
-  deployShieldPylon: ['Digit6'],
-  deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
-                              //   The UI router owns U only when a claimable body is in range; in open
-                              //   space it falls through to this flight verb (see check-claim-base-input).
-  // Massline Physics Identity (Wave M2). Every letter key is spoken for, so the two new verbs sit
-  // on the free left-pinky cluster next to WASD; both are rebindable like every other action.
-  bulletTime:     ['CapsLock'],   // level: hold for time dilation (bulletTime system owns meter)
-  cloak:          ['Backquote'],  // edge: toggle the cloak module (cloak system owns energy/gating)
-  // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state).
-  // Quote (') is free repo-wide (checked against both scheme tables, ui/bindings.js, and the
-  // UI key router): every letter is claimed, and 'o' in particular was triple-claimed
-  // (Band cycle on Shift+O + the overview-pin toggle on plain 'o'). Quote is right-pinky
-  // reachable, a natural hold verb, and carries no modifier alias or UI claim. Level verb:
-  // hold to beam + hold the clump, release to bowl it; hold-to-toggle latch opt-in via
-  // accessibility.holdToToggle.gyreSnare.
-  gyreSnare:          ['Quote'],    // level: hold to pull/snag/grow a ball, release to bowl it
-  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Comma is free repo-wide (checked against both
-  // scheme tables and ui/bindings.js) and is the bay's cycle key: it turns between the sticky
+  // REACHED) - it is not folded into another power. The shieldPylons system owns fitting, cost,
+  // placement and the pair lifecycle.
+  deployShieldPylon: [],
+  deployBeacon:   [],   // edge: drop a claim beacon in open space (beacons system owns cost/cap)
+  // Massline Physics Identity (Wave M2) level verbs — wheel latch slices; hold-to-toggle latch
+  // opt-in via accessibility.holdToToggle.{bulletTime,gyreSnare}.
+  bulletTime:     [],   // level: hold for time dilation (bulletTime system owns meter)
+  cloak:          [],   // edge: toggle the cloak module (cloak system owns energy/gating)
+  // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state):
+  // hold to beam + hold the clump, release to bowl it.
+  gyreSnare:      [],   // level: hold to pull/snag/grow a ball, release to bowl it
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): the bay's cycle verb turns between the sticky
   // impulse charge (the BOMB default while one is aboard) and the loaded drift bombs. The bombs
   // system owns lifecycle/fuze/payload/selection.
-  cycleBomb: ['Comma'],  // edge: cycle the ordnance (the charge, then the loaded rack cells)
-  // VERB-13: one flight key dumps the selected hold lot as the payload body cargo already spawns.
-  // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
-  jettisonLot: ['Period'],
+  cycleBomb:      [],   // edge: cycle the ordnance (the charge, then the loaded rack cells)
+  // VERB-13: dumps the selected hold lot as the payload body cargo already spawns. Cargo owns it.
+  jettisonLot:    [],
   // The hull burst has NO verb of its own (owner principle 2026-09-30): the fitted boost upgrade
   // rides the boost itself, and the hullBurst system polls the player's boost flag. There is no
   // burst key to bind on keyboard, mouse or pad.
-  // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
-  // key on a full keyboard, it is never used for anything else in this game, and it carries a
-  // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
-  // key at all (or bury it behind Fn), so a second code ships in the SAME array — the existing
-  // multi-code idiom this table already uses for WASD-and-arrows, not a parallel laptop scheme.
-  // The fallback must not collide with an interface owner: the UI router opens Help on h/H
-  // (src/ui/input.js :523, settings.js RESERVED_LITERAL_CODES) and never suppresses flight, so
-  // a KeyH seat fired the drive AND opened Help — RC-05. F8 is the one F-key nobody owns
-  // (F1-F5/F7/F9 are claimed; checked against both scheme tables, ui/bindings.js and the router),
-  // sits in the same row on every chassis, and needs no Fn reach.
-  travelBurn:     ['NumLock', 'F8'],   // edge: toggle the travel drive (latch owns the state machine)
+  travelBurn:     [],   // edge: toggle the travel drive (latch owns the state machine)
 };
 
 const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
@@ -335,57 +318,58 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   reverse:  ['KeyS', 'ArrowDown'],
   yawRight: ['KeyD', 'ArrowRight'],
   yawLeft:  ['KeyA', 'ArrowLeft'],
-  strafeLeft:  ['KeyQ'],
-  strafeRight: ['KeyE'],
-  boost:    ['ShiftLeft', 'ShiftRight'],
-  fire:     [],                 // LMB fires; Space is the new-profile Massline action
-  brake:    ['Digit0'],         // full stop; S/Down commands governed reverse thrust
-  autoFire: ['KeyG'],
-  countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
-  bomb: ['Digit4', 'KeyY'],    // the BOMB power: Digit4 is its hotbar seat; Y is the old charge-throw letter (Q/E strafe, T is the tech tree)
-  // VERB-14: the winch needs keys every player has. BracketLeft/Right are free repo-wide
-  // (no flight verb, no UI shortcut, no help copy claims them) and sit as a natural in/out pair
-  // on any layout. Rebindable like every other flight verb; the hold-grammar line-control path stays.
-  reelIn:  ['BracketLeft'],
-  reelOut: ['BracketRight'],
+  // G18-02: strafe leaves the letters — Q is the context wheel, E is interact. The verbs stay
+  // reachable as wheel latch slices and rebindable like every other action.
+  strafeLeft:  [],
+  strafeRight: [],
+  boost:    ['Space'],
+  fire:     [],                 // LMB fires
+  brake:    [],                 // full stop is a wheel latch; S/Down commands governed reverse thrust
+  autoFire: [],
+  countermeasure: [],          // deploy chaff/ECM (P1-7) — wheel tap by default, remappable
+  bomb: ['Digit4'],            // the BOMB power's hotbar seat
+  // The winch rides the wheel latch slices (or the Line's own hold grammar); both stay rebindable.
+  reelIn:  [],
+  reelOut: [],
   ...VERB_BINDINGS,
-  // Mouse buttons (LMB=fire, RMB=group2/mine) are not remappable in this pass — they're ergonomic
-  // constants. Keyboard equivalents (Space to fire) ARE remappable.
+  // Mouse buttons (LMB=fire, RMB=the Line) are not remappable in this pass — they're ergonomic
+  // constants. Keyboard equivalents ARE remappable.
 };
 
-const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
+const HELM_BINDINGS = {      // HELM ASSIST: mouse owns the nose, so A/D stay strafe here
   forward:  ['KeyW', 'ArrowUp'],
   reverse:  ['KeyS', 'ArrowDown'],
   yawRight: [],                // nose follows cursor — yaw keys retired in this scheme
   yawLeft:  [],
   strafeLeft:  ['KeyA', 'ArrowLeft'],
   strafeRight: ['KeyD', 'ArrowRight'],
-  boost:    ['ShiftLeft', 'ShiftRight'],
+  boost:    ['Space'],
   fire:     [],                // LMB only
-  brake:    ['Digit0'],        // full stop; S/Down commands governed reverse thrust
-  autoFire: ['KeyG'],
-  countermeasure: ['KeyX'],
-  bomb: ['Digit4', 'KeyQ'],    // helm: Q is free (A/D strafe), the old charge-throw letter here
-  reelIn:  ['BracketLeft'],
-  reelOut: ['BracketRight'],
+  brake:    [],                // full stop is a wheel latch; S/Down commands governed reverse thrust
+  autoFire: [],
+  countermeasure: [],
+  bomb: ['Digit4'],
+  reelIn:  [],
+  reelOut: [],
   ...VERB_BINDINGS,
 };
 
 export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fights
   forward:  ['KeyW', 'ArrowUp'],
   reverse:  ['KeyS', 'ArrowDown'],
-  yawRight: ['KeyD', 'ArrowRight'],  // yaw, including under thrust; Q/E is the strafe
+  yawRight: ['KeyD', 'ArrowRight'],  // yaw, including under thrust
   yawLeft:  ['KeyA', 'ArrowLeft'],
-  strafeLeft:  ['KeyQ'],             // explicit strafe in every state (pursuit orbit-adjust)
-  strafeRight: ['KeyE'],
-  boost:    ['ShiftLeft', 'ShiftRight'],
+  // G18-02: Q is the context wheel and E is interact — strafe moves to wheel latch slices.
+  strafeLeft:  [],
+  strafeRight: [],
+  boost:    ['Space'],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
-  brake:    ['Digit0'],              // full stop; S/Down commands governed reverse thrust
-  autoFire: ['KeyG'],
-  countermeasure: ['KeyX'],
-  bomb: ['Digit4', 'KeyY'],                    // Q/E are strafe here, so the bomb's letter is Y (classic parity); Digit4 is the hotbar seat
-  reelIn:  ['BracketLeft'],
-  reelOut: ['BracketRight'],
+  brake:    [],                      // full stop is a wheel latch; S/Down commands governed reverse thrust
+  autoFire: [],
+  countermeasure: [],
+  bomb: ['Digit4'],                  // the BOMB power's hotbar seat
+  reelIn:  [],
+  reelOut: [],
   ...VERB_BINDINGS,
 };
 
@@ -403,7 +387,8 @@ function activeScheme(state) {
  * Pure Pilot keyboard projection after rebind resolution.
  *
  * The live input tick and deterministic public-control harness share this one semantic owner:
- * A/D always yaws, Q/E always strafes, S reverses, and the dedicated brake stops. A/D must not strafe under
+ * A/D always yaws, strafe rides its own seats (rebound keys or the wheel latches), S reverses,
+ * and the dedicated brake stops. A/D must not strafe under
  * thrust. Vectoring would then aim the path at nose + atan2(strafe, throttle), the hull would
  * sit out of its trail while the key was held, and the lead bound would not see it.
  */
@@ -465,12 +450,12 @@ const ARROW_WORDS = Object.freeze({
 });
 
 /** Mouse buttons are not remappable; empty `fire` still means the left mouse button. */
-export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', mine: 'RMB' });
+export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', tether: 'RMB' });
 
 /** Flight actions the default route teaches. Interface keys live in `src/ui/bindings.js`. */
 export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
-  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut',
+  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut', 'contextWheel',
   'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
   'siteBeam', 'scanPulse', 'cruise', 'deployShieldPylon',
 ]);
@@ -537,7 +522,7 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'Pause') return 'Pause';
   if (code === 'ContextMenu') return 'Menu';
   if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
-  if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
+  if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.tether;
   // Last resort is never the raw DOM code: strip the mechanical prefix and split the camel case
   // ('NumpadEnter' never reaches here, 'IntlRo' → 'Ro', 'LaunchApp1' → 'Launch App').
   return code.replace(/^(Key|Digit|Numpad)/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || code;
@@ -545,12 +530,14 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
 
 /**
  * The label every HUD / help / prompt surface must print for a flight action.
- * Empty `fire` is LMB (the mouse is not remappable). Other empty bindings print `empty`.
+ * Empty `fire` is LMB and empty `tether` is RMB (the mouse buttons are not remappable);
+ * a key rebound onto the Line overrides the RMB label, same as a fire key.
  */
 export function resolveActionLabel(state, action, { sep = '/', arrows = 'glyph', empty = '' } = {}) {
   const codes = binding(state, action);
   if (!codes.length) {
     if (action === 'fire') return MOUSE_ACTION_LABELS.fire;
+    if (action === 'tether') return MOUSE_ACTION_LABELS.tether;
     return empty;
   }
   // Two codes that print the same glyph (Backslash / IntlBackslash) are one label, not "\/\\".
@@ -1064,26 +1051,11 @@ export function domMouseDownEvent(host, d = {}) {
   domPointerMoveEvent(host, d);
   if (d.offCanvas === true || (!host._canvas && d.uiCommand === true)) {
     host._m0 = false; host._m1 = false; host._m2 = false;
-    host._clearM2HoldClock();
     return;
   }
   if (d.button === 0) host._m0 = true;
   if (d.button === 1) host._m1 = true;
-  if (d.button === 2) {
-    host._m2 = true; host._m2HeldS = 0; host._m2ToolLane = null; host._m2SlingTargetId = null;
-    host._clearM2HoldClock();
-    const clockTarget = host._m2TimerTarget;
-    if (host._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
-      const epoch = host._m2HoldEpoch;
-      try {
-        host._m2HoldTimer = clockTarget.setTimeout(() => {
-          if (host._initialized && host._m2 === true && host._m2HoldEpoch === epoch) {
-            host._m2HoldReady = true;
-          }
-        }, WORLD_TOOL_HOLD_S * 1000);
-      } catch (_) { host._m2HoldTimer = null; }
-    }
-  }
+  if (d.button === 2) host._m2 = true;
   host._kbmActivityPending = true;
 }
 
@@ -1091,7 +1063,7 @@ export function domMouseUpEvent(host, d = {}) {
   if (!host) return;
   if (d.button === 0) host._m0 = false;
   if (d.button === 1) host._m1 = false;
-  if (d.button === 2) { host._m2 = false; host._clearM2HoldClock(); }
+  if (d.button === 2) host._m2 = false;
 }
 
 export const input = {
@@ -1121,17 +1093,13 @@ export const input = {
     resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
     this._combatStickPilotRun = null;
     this._m0 = false; this._m1 = false; this._m2 = false;
-    this._m2HeldS = 0;
-    this._m2ToolLane = null;
-    this._m2SlingTargetId = null;
-    this._m2HoldReady = false;
-    this._m2HoldTimer = null;
-    this._m2UsesUiClock = false;
-    this._m2TimerTarget = null;
     this._cmHeld = false;
     this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
     this._holdToggleLatches = Object.create(null);
     this._holdToggleEdges = Object.create(null);
+    // G18-02 context-wheel latches: slice choices that read as "held" verbs until chosen again or
+    // the flight context drops them (dock, modal, death — same contract as hold-to-toggle).
+    this._wheelLatches = Object.create(null);
     this._touchPylonQuarantined = false;
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
@@ -1143,13 +1111,6 @@ export const input = {
     this._inputActivitySeq = 0;
     this._lastInputWallMs = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
-    // Worker realm (simLane=worker): no window/document, but self carries real timers —
-    // the m2 world-tool hold clock keeps its wall-duration semantics inside the sim realm.
-    if (typeof window === 'undefined' && typeof self !== 'undefined'
-        && typeof self.setTimeout === 'function' && typeof self.clearTimeout === 'function') {
-      this._m2UsesUiClock = true;
-      this._m2TimerTarget = self;
-    }
 
     this.gamepad = createGamepad(ctx);
     ctx.gamepad = this.gamepad;
@@ -1237,6 +1198,11 @@ export const input = {
         else if (d.op === 'plantCharge' && typeof drill.plantCharge === 'function') drill.plantCharge();
         break;
       }
+      case 'wheelVerb':
+        // Context-wheel slice choice shipped from the UI realm — same application as a
+        // direct applyWheelVerb call on the main lane.
+        this.applyWheelVerb(d);
+        break;
       case 'gamepadFrame':
         if (this.gamepad && typeof this.gamepad.applyLaneFrame === 'function') {
           this.gamepad.applyLaneFrame(d.frame);
@@ -1283,10 +1249,6 @@ export const input = {
   _attachDomInputAdapter(keys) {
     const windowTarget = typeof window !== 'undefined' ? window : null;
     const bindings = (this._domBindings = []);
-    this._m2UsesUiClock = !!(windowTarget
-      && typeof windowTarget.setTimeout === 'function'
-      && typeof windowTarget.clearTimeout === 'function');
-    this._m2TimerTarget = this._m2UsesUiClock ? windowTarget : null;
     const listen = (target, type, listener, options) => {
       if (!target || typeof target.addEventListener !== 'function') return;
       target.addEventListener(type, listener, options);
@@ -1367,8 +1329,6 @@ export const input = {
     // focus blur cannot eat an input between fixed ticks. Destroy has no old-owner tick left to
     // consume it, so never carry that pending edge into a later init of this input instance.
     if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
-    this._m2UsesUiClock = false;
-    this._m2TimerTarget = null;
     const touch = this.touch;
     if (touch && typeof touch.setEnabled === 'function') {
       try { touch.setEnabled(false); } catch (_) {}
@@ -1395,31 +1355,41 @@ export const input = {
       try { this.bus.emit('input:worldGestureCancelled', { reason }); } catch (_) {}
     }
     this._m2 = false;
-    this._m2HeldS = 0;
-    this._m2ToolLane = null;
-    this._m2SlingTargetId = null;
-    this._clearM2HoldClock();
     if (hadField) delete inp.worldObjectTargetId;
   },
 
-  _clearM2HoldClock() {
-    const target = this._m2TimerTarget;
-    if (this._m2HoldTimer != null && target && typeof target.clearTimeout === 'function') {
-      try { target.clearTimeout(this._m2HoldTimer); } catch (_) {}
+  /**
+   * G18-02 context wheel — a slice choice lands here from the UI (direct call on the main lane,
+   * `wheelVerb` domEvent on the worker lane). 'tap' slices queue one sampled press through the
+   * same edge path a bound key would take; 'toggle' slices flip an input-owned latch that the
+   * held-verb reads below merge as "held". The context allowlist gates both, so a wheel slice
+   * can never reach a verb its context refuses.
+   */
+  applyWheelVerb(d = {}) {
+    const action = typeof d.action === 'string' ? d.action : '';
+    if (!action) return false;
+    const st = this.state;
+    const allowed = action === 'aimedMine'
+      ? !isSwarmControls(st)
+      : contextActionAllowed(st, action);
+    if (!allowed) return false;
+    if (d.phase === 'toggle') {
+      const latches = this._wheelLatches || (this._wheelLatches = Object.create(null));
+      if (latches[action]) delete latches[action];
+      else latches[action] = true;
+      return true;
     }
-    this._m2HoldTimer = null;
-    this._m2HoldReady = false;
-    this._m2HoldEpoch = (this._m2HoldEpoch || 0) + 1;
+    const queue = flightEdgeQueue(this);
+    queue.push({ action, pressed: true, source: 'wheel', sector: st && st.world && st.world.currentSectorId });
+    if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+    return true;
   },
 
-  _sampleMouseToolLane(state, inp) {
-    if (!inp || !Object.prototype.hasOwnProperty.call(inp, 'worldObjectTargetId')) return 'legacy';
-    const lane = initialMouseToolLane(state, inp.worldObjectTargetId);
-    if (lane === 'sling') {
-      const tether = state.player && state.player.tether;
-      this._m2SlingTargetId = tether && tether.targetId != null ? tether.targetId : null;
-    }
-    return lane;
+  /** Live wheel-latch read for the UI's ON lamps — context-gated the same as the tick merge. */
+  wheelLatchOn(action) {
+    const st = this.state;
+    if (!(this._wheelLatches && this._wheelLatches[action])) return false;
+    return action === 'aimedMine' ? !isSwarmControls(st) : contextActionAllowed(st, action);
   },
 
   // Death and the recovery berth are not key-ups. A boost, thrust, or throw held across the
@@ -1473,9 +1443,7 @@ export const input = {
     this._m0 = false;
     this._m1 = false;
     this._m2 = false;
-    this._m2HeldS = 0;
-    this._m2ToolLane = null;
-    this._m2SlingTargetId = null;
+    this._wheelLatches = Object.create(null);
     if (this._screen) this._screen.active = false;
     const committedInput = this.state && this.state.input;
     if (committedInput?.autoFire || committedInput?.drawFlight) resetAutoTargetPath(this);
@@ -1778,6 +1746,7 @@ export const input = {
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
       acts.siteBeam = false; acts.aimedMine = false;
       acts.autoTargetToggle = false;
+      acts.contextWheel = false;
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
@@ -1818,8 +1787,9 @@ export const input = {
       if (inp.travelDrive) inp.travelDrive = this._travel || undefined;
       // FB-113: a hold-to-toggle latch is a flight context, not a player preference — leaving
       // flight (dock, death, any screen or modal) drops every latch outright. The pilot did not
-      // release it; the context did.
+      // release it; the context did. The G18-02 wheel latches answer to the same contract.
       resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
+      this._wheelLatches = Object.create(null);
       // A key still physically held through the context change is held, not a fresh press —
       // the same convention _edgePrev follows two lines up. Pin the toggle edges to the live
       // physical sample so a held-through-dock key cannot re-latch itself on the way back.
@@ -1840,6 +1810,12 @@ export const input = {
       return;
     }
 
+    // G18-02 context wheel: a chosen latch slice reads as "held" on the verbs below. The raw
+    // device samples stay untouched — the latch is an alternative held, never a press edge.
+    const wheelOn = (a) => {
+      if (!(this._wheelLatches && this._wheelLatches[a])) return false;
+      return a === 'aimedMine' ? !isSwarmControls(state) : contextActionAllowed(state, a);
+    };
     // --- direction: yaw the nose + throttle forward/reverse along the nose (rebindable) ---
     const scheme = activeScheme(state);
     const helm = scheme === 'helm-assist';
@@ -1863,8 +1839,8 @@ export const input = {
       pilotProjectionInput.brakeHeld = kbdBrakeHeld;
       pilotProjectionInput.yawLeft = this._held(state, 'yawLeft');
       pilotProjectionInput.yawRight = this._held(state, 'yawRight');
-      pilotProjectionInput.strafeLeft = this._held(state, 'strafeLeft');
-      pilotProjectionInput.strafeRight = this._held(state, 'strafeRight');
+      pilotProjectionInput.strafeLeft = this._held(state, 'strafeLeft') || wheelOn('strafeLeft');
+      pilotProjectionInput.strafeRight = this._held(state, 'strafeRight') || wheelOn('strafeRight');
       pilotProjectionInput.boost = kbdBoostHeld;
       pilotProjection = projectPilotFlightControls(
         pilotProjectionInput,
@@ -1886,10 +1862,10 @@ export const input = {
         : (this._heldExcept(state, 'yawLeft', 'ArrowLeft') || (arrowYaw && arrowLeftHeld));
       const strafeRight = helm
         ? (this._heldExcept(state, 'strafeRight', 'ArrowRight') || (arrowStrafe && arrowRightHeld))
-        : (this._held(state, 'strafeRight') || (arrowStrafe && arrowRightHeld));
+        : (this._held(state, 'strafeRight') || (arrowStrafe && arrowRightHeld)) || wheelOn('strafeRight');
       const strafeLeft = helm
         ? (this._heldExcept(state, 'strafeLeft', 'ArrowLeft') || (arrowStrafe && arrowLeftHeld))
-        : (this._held(state, 'strafeLeft') || (arrowStrafe && arrowLeftHeld));
+        : (this._held(state, 'strafeLeft') || (arrowStrafe && arrowLeftHeld)) || wheelOn('strafeLeft');
       const arrowTurn = arrowYaw
         ? ((arrowRightHeld ? 1 : 0) - (arrowLeftHeld ? 1 : 0))
         : 0;
@@ -1989,7 +1965,8 @@ export const input = {
     // fall back to a previously active joystick whose last sample is still nonzero.
     const saucerKeys = isPlayerSaucer(p) && (up || down
       || this._held(state, 'yawLeft') || this._held(state, 'yawRight')
-      || this._held(state, 'strafeLeft') || this._held(state, 'strafeRight'));
+      || this._held(state, 'strafeLeft') || this._held(state, 'strafeRight')
+      || wheelOn('strafeLeft') || wheelOn('strafeRight'));
     const kbdDrive = !!(saucerKeys || kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
     const pointerOwnsHelm = !!(helm && kbmRecent && this._screen && this._screen.active);
     const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);
@@ -2037,7 +2014,7 @@ export const input = {
     // ordinary jettison tap into a full-hold dump.
     const boostHeldRaw = !!(kbdBoost || gpBoost || tpBoost);
     const brakeHeld = applyHoldToggle(holdLatches, holdEdges, 'brake',
-      keyboardBrake || gpBrake, toggleLive('brake'));
+      keyboardBrake || gpBrake, toggleLive('brake')) || wheelOn('brake');
     inp.boost = boostHeld;
     inp.brake = brakeHeld;
     inp.fire = kbdFire || gpFire || tpFire;
@@ -2048,50 +2025,38 @@ export const input = {
       inp.drawFlightManual = !!(inp.brake || kbdTurn || kbdMoveX || kbdMoveZ
         || gpTurn || gpMoveZ || gpMoveX || tpTurn || tpMoveX || tpMoveZ);
     }
-    // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
-    // (hostile ship/drone, fracture chunk, cargo mass), RMB is throwArm — mining yields and
-    // masslineThrow owns the solution/auto-cut. While latched to a mineable asteroid or wreck,
-    // RMB stays the mining beam so tether station-keeping works for extraction (the designed
-    // dance partner; see mining.activeMineableTetherTarget). Unlatched play is unchanged.
+    // G18-02 one set of keys: RMB IS the Line in every context — the world-tool hold lanes
+    // (beam/sling/inspect) are retired. Mining rides the pad trigger, touch, and the context
+    // wheel's MINE BEAM latch; a site beam keeps its own key and pad chord plus a wheel latch.
+    const swarmLive = isSwarmControls(state);
     const selectedSite = selectedWorldSiteTarget(state);
-    const contextualSiteBeam = this._held(state, 'siteBeam') && !!selectedSite;
+    const contextualSiteBeam = (this._held(state, 'siteBeam') || wheelOn('siteBeam')) && !!selectedSite;
     // FB-003: LB+X is the pad's dedicated site-beam channel; LT still doubles while a site is
     // selected. Both claim the selected-site lane, never ordinary rock mining.
     const gamepadSiteBeam = (gpMine || this._padHeld(gp, 'siteBeam')) && !!selectedSite;
     const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
-    this._m2HeldS = this._m2 ? (this._m2HeldS || 0) + dt : 0;
-    // S5: in a live Swarm run RMB is the Line, not the world tool — the mine/sling/throw lane
-    // stays closed so every RMB hold feeds the tether grammar below instead.
-    const swarmLive = isSwarmControls(state);
-    const mouseToolHeld = !swarmLive && !!(this._m2 && (this._m2UsesUiClock
-      ? this._m2HoldReady === true
-      : this._m2HeldS >= WORLD_TOOL_HOLD_S));
-    if (!this._m2) { this._m2ToolLane = null; this._m2SlingTargetId = null; }
-    else if (this._m2ToolLane == null) this._m2ToolLane = this._sampleMouseToolLane(state, inp);
-    const mouseLane = this._m2ToolLane;
-    const anyMineHeld = !swarmLive && !!((mouseToolHeld && (mouseLane === 'beam' || mouseLane === 'legacy'))
-      || gpMine || tpMine);
-    // RMB and touch Mine are cursor-aimed even when a World Site remains selected. Only the
-    // explicit B action and gamepad LT claim the selected-site lane; preserving this provenance
-    // prevents a stale site selection from stealing ordinary rock mining.
+    const anyMineHeld = !swarmLive && !!(gpMine || tpMine || wheelOn('aimedMine'));
+    // Wheel and pad mining are cursor-aimed even when a World Site remains selected. Only the
+    // explicit site-beam routes claim the selected-site lane; preserving this provenance prevents
+    // a stale site selection from stealing ordinary rock mining.
     const aimedMineHeld = anyMineHeld && !siteBeamHeld;
     const mineHeld = siteBeamHeld || aimedMineHeld;
     acts.siteBeam = siteBeamHeld;
     acts.aimedMine = aimedMineHeld;
     const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
-    const tether = state.player && state.player.tether;
-    const slingLaneLive = mouseLane === 'sling'
-      && !!(tether && tether.active && tether.targetId === this._m2SlingTargetId);
-    const slingHeld = mouseLane !== 'beam'
-      && (aimedMineHeld || (mouseToolHeld && !siteBeamHeld && slingLaneLive));
-    const throwArmHeld = massline2Flag('throw') && tetherLatched && slingHeld
+    // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
+    // (hostile ship/drone, fracture chunk, cargo mass), the RMB press arms the throw and
+    // masslineThrow owns the solution/auto-cut — "RMB throws THEM". The same RMB hold feeds the
+    // Line grammar below, which is the unified Swarm contract.
+    const throwArmHeld = massline2Flag('throw') && tetherLatched && this._m2 === true
       && isThrowArmPayload(state);
     inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
-    // logic + AI auto-deploy in one place.
-    this._updateCountermeasureHold(this._held(state, 'countermeasure') || gpCountermeasure, inp);
+    // logic + AI auto-deploy in one place. A wheel tap rides the same sampled queue as a key.
+    this._updateCountermeasureHold(this._held(state, 'countermeasure') || gpCountermeasure
+      || takeSampledPress(this, state, 'countermeasure'), inp);
 
     const gpOrTouchAim = gpAimActive || tpAimActive;
     const aimAxes = tpAimActive ? tp.axes : (gpAimActive ? gp.axes : null);
@@ -2160,7 +2125,16 @@ export const input = {
     // consumes this edge. Holding the right stick is the only controller draw-to-fly authority.
     acts.autoTargetToggle = !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('autoTarget')
-      && gp.actions.autoTarget && gp.actions.autoTarget.pressed);
+      && gp.actions.autoTarget && gp.actions.autoTarget.pressed)
+      || takeSampledPress(this, state, 'autoFire');
+
+    // G18-02: the context wheel is a LEVEL verb — held while Q (or the pad/touch seat) is down.
+    // The UI opens on the rising edge, aims while it's held, and chooses on release.
+    acts.contextWheel = !!(this._held(state, 'contextWheel')
+      || this._padHeld(gp, 'contextWheel')
+      || (tp && tp.isConnected() && tp.actions.contextWheel && tp.actions.contextWheel.held));
+    // The wheel component reads the live latch set for its ON lamps.
+    inp.wheelLatches = this._wheelLatches;
 
     // --- LOCKED input contract (BUILD_PLAN_2_0 §0): edge-triggered verb flags ---
     const edges = this._edgePrev || (this._edgePrev = {});
@@ -2176,13 +2150,14 @@ export const input = {
       return sampled || (held && !was);
     };
     const tetherEdge = takeOldestTetherEdge(this);
-    // One alias releasing (F or 3) must not drop Space while Space is still down.
+    // One alias releasing (F or 3) must not drop a second held seat while it is still down.
     // The edge's own code is excluded, so a same-key re-press still counts as a release.
-    // S5: in Swarm the Line is RMB — the mouse button holds/releases it through the same grammar.
+    // G18-02: the Line is RMB in every door — the mouse button holds/releases it through the
+    // same grammar a rebound key or the pad trigger uses.
     const tetherHeld = (!tetherEdge
       ? this._held(state, 'tether')
       : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code)))
-      || (swarmLive && this._m2 === true);
+      || this._m2 === true;
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
@@ -2197,9 +2172,9 @@ export const input = {
       || (state.player.remoteMassline && state.player.remoteMassline.active)
     ));
     const reelInHeld = applyHoldToggle(holdLatches, holdEdges, 'reelIn',
-      this._held(state, 'reelIn'), toggleLive('reelIn'));
+      this._held(state, 'reelIn'), toggleLive('reelIn')) || wheelOn('reelIn');
     const reelOutHeld = applyHoldToggle(holdLatches, holdEdges, 'reelOut',
-      this._held(state, 'reelOut'), toggleLive('reelOut'));
+      this._held(state, 'reelOut'), toggleLive('reelOut')) || wheelOn('reelOut');
     const dedicatedLineLength = (reelOutHeld ? 1 : 0) - (reelInHeld ? 1 : 0);
     const rawLineLength = dedicatedLineLength || -inp.moveZ;
     // In twin-stick, strafe is the orbit direction analog of the drive scheme's yaw stick.
@@ -2281,13 +2256,15 @@ export const input = {
     // beam routing is decided (single owner for the RMB arbitration). FB-003: RB+D-pad-down is the
     // pad cloak edge; FB-113: bulletTime joins the hold-to-toggle verbs.
     acts.bulletTime = applyHoldToggle(holdLatches, holdEdges, 'bulletTime',
-      this._held(state, 'bulletTime') || this._padHeld(gp, 'bulletTime'), toggleLive('bulletTime'));
+      this._held(state, 'bulletTime') || this._padHeld(gp, 'bulletTime'), toggleLive('bulletTime'))
+      || wheelOn('bulletTime');
     acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
     // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
     // clump; the falling edge is the bowl. Opt-in press-to-toggle latch rides the same FB-113 path.
     acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
-      this._held(state, 'gyreSnare') || this._padHeld(gp, 'gyreSnare'), toggleLive('gyreSnare'));
+      this._held(state, 'gyreSnare') || this._padHeld(gp, 'gyreSnare'), toggleLive('gyreSnare'))
+      || wheelOn('gyreSnare');
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
     // press MEANS in each state (arm a spool, cancel a spool, disengage a burn). The pad press
     // asks the SAME context allowance as the key: a healthy fight cannot arm the long burn, and
@@ -2378,8 +2355,8 @@ export const input = {
     if (isPlayerSaucer(p)) {
       Object.assign(inp, projectSaucerControls({
         keys: this._keys, source: this._movementSource,
-        left: this._held(state, 'yawLeft') || this._held(state, 'strafeLeft'),
-        right: this._held(state, 'yawRight') || this._held(state, 'strafeRight'),
+        left: this._held(state, 'yawLeft') || this._held(state, 'strafeLeft') || wheelOn('strafeLeft'),
+        right: this._held(state, 'yawRight') || this._held(state, 'strafeRight') || wheelOn('strafeRight'),
         up, down, pad: gp?.axes, touch: tp?.axes,
         // Down is translation on a saucer, NEVER the ordinary reverse-brake shortcut.
         brake: brakeHeld,

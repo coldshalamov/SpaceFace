@@ -1,4 +1,7 @@
 <!-- LIFETIME: STABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # SpaceFace program control surface
 
 > **Current front door (owner, 2026-11-06):** the [master plan](./finish/MASTER_PLAN.md) owns the 29
