@@ -752,16 +752,17 @@ export function resolveInitialChaseZoom(zoom) {
 }
 
 // --- MOB-01 phone framing (design/game ruling 3) ---
-// A phone's default view shows the same horizontal world width the desktop default shows, and a
-// pinch carries the camera from 0.6x (in) to 1.5x (out) of that default. The chase rig keeps a
+// A phone's default view sits halfway (geometric mean) between the desktop default distance and the
+// distance that shows the desktop's full horizontal world width; a pinch carries the camera from
+// 0.5x (in) to 2.0x (out) of that default, so pinching out reaches the full desktop width. The chase rig keeps a
 // fixed vertical FOV, so the ground-plane horizontal extent scales with distance x aspect — the
 // matching distance is a ratio of glass half-extents, not a fixed zoom. On a 390x844 portrait
 // screen that lands near 554 wu (about twice today's horizontal glass), beyond the wheel's own
 // 330 ceiling: this is a device-scaled band, the same channel composition spends past
 // CAMERA_ZOOM_MAX, and the FOLLOW path consumes state.camera.zoom unclamped.
 export const DESKTOP_REFERENCE_ASPECT = 16 / 9;
-export const MOBILE_PINCH_ZOOM_MIN_FACTOR = 0.6;
-export const MOBILE_PINCH_ZOOM_MAX_FACTOR = 1.5;
+export const MOBILE_PINCH_ZOOM_MIN_FACTOR = 0.5;
+export const MOBILE_PINCH_ZOOM_MAX_FACTOR = 2.0;
 
 /**
  * World units of horizontal world width on the ground plane — half the glass half-extent the
@@ -784,7 +785,12 @@ export function resolvePhoneDefaultZoom(fovDeg = 50, aspect = DESKTOP_REFERENCE_
   const desktopHalfX = glassHalfExtents(DEFAULT_ZOOM, fov, DESKTOP_REFERENCE_ASPECT, tilt).halfX;
   const unitHalfX = glassHalfExtents(1, fov, a, tilt).halfX;
   if (!(unitHalfX > 0) || !(desktopHalfX > 0)) return DEFAULT_ZOOM;
-  return Math.max(CAMERA_ZOOM_MIN, desktopHalfX / unitHalfX);
+  // Lead look 2026-11-11: the full desktop-width match (~554 wu on 390x844) shrank the player's
+  // ship to a speck on a portrait phone. The default is the geometric mean of the desktop default
+  // and that match (~282 wu, about twice the old phone view); a pinch out (2.0x) still reaches the
+  // full desktop width, a pinch in (0.5x) the old close view.
+  const widthMatch = desktopHalfX / unitHalfX;
+  return Math.max(CAMERA_ZOOM_MIN, Math.sqrt(DEFAULT_ZOOM * Math.max(DEFAULT_ZOOM, widthMatch)));
 }
 
 /**
