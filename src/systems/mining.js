@@ -22,6 +22,7 @@ import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
 import { ORES, ASTEROIDS, deriveAsteroidSeams } from '../data/mining.js';
 import { magnetMultiplier } from '../data/swarmHangar.js';
+import { swarmMagnetPickupBonus } from './playerModifiers.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -3533,6 +3534,8 @@ export function playerPickupMagnetRange(state, playerEntity = null) {
     const mul = magnetMultiplier(hangar);
     if (mul > 1) range *= mul;
   }
+  // A01-05 Magnet Hull: the Tap's own scrap reach rides the same resolved number.
+  range += swarmMagnetPickupBonus(state);
   return range;
 }
 

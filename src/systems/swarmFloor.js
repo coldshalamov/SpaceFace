@@ -1,8 +1,10 @@
-// A01-04 — the Foundry floor's buyable pads (arena helios_core, Lane 2).
+// A01-04/A01-05 — the Foundry floor's buyable pads (arena helios_core, Lane 2).
 //
 // Two wall-gun pads (Pulse Laser by the south gate, Concussion Cannon in the northeast corner,
-// 500 each) and THE CRATE (950), which sells a random hull-compatible gun and relocates after
-// every third pull to one of three authored spots, never the same spot twice in a row.
+// 500 each), THE CRATE (950), which sells a random hull-compatible gun and relocates after
+// every third pull to one of three authored spots, never the same spot twice in a row —
+// and the A01-05 hardware: THE FORGE behind the furnace on the north wall (5000, once per
+// gun per run) and two TAPS mid-floor selling run-long modifiers at stepping prices.
 //
 // HOW A PAD WORKS
 // ---------------
@@ -34,6 +36,7 @@
 // per-wave re-arm and reset only when the run ends.
 
 import { validateRunState } from '../core/runState.js';
+import { makeStream } from '../core/rng.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { buildSlotList, fits } from './ships.js';
 import { SHIPS } from '../data/ships.js';
@@ -46,6 +49,7 @@ import {
   SWARM_FLOOR_CRATE_PULLS_PER_MOVE,
   SWARM_FLOOR_PAD_RADIUS,
   SWARM_FLOOR_CRATE_RADIUS,
+  SWARM_FLOOR_FORGE_RADIUS,
   SWARM_FLOOR_PAD_RETRY_S,
   SWARM_FLOOR_REFUSAL_FLASH_S,
   SWARM_FLOOR_CRATE_MOVE_S,
@@ -53,6 +57,24 @@ import {
   swarmFloorPlanFor,
   wallGunLabel,
 } from '../data/swarmFloor.js';
+import {
+  SWARM_FORGE_PRICE,
+  SWARM_FORGE_LABEL,
+  SWARM_FORGE_RECORD_KIND,
+  SWARM_TAP_RECORD_KIND,
+  SWARM_TAP_PRICES,
+  SWARM_TAP_MAX_PURCHASES,
+  swarmTapModById,
+  swarmForgeFormName,
+  swarmTapLabel,
+} from '../data/swarmMods.js';
+import {
+  swarmHeldWeaponDefId,
+  swarmPrimaryWeaponIndex,
+  swarmTapAvailable,
+  swarmTapCount,
+  swarmTapsSoldOut,
+} from './playerModifiers.js';
 
 const FLOOR_OWNER = 'survival-floor';
 const SPEND_REASON = 'swarm_floor_pad';
@@ -60,6 +82,7 @@ const REFUND_REASON = 'swarm_floor:refund';
 const CRATE_PAD_ID = 'foundry-crate';
 const BUY_CUE = 'sfx_ui_confirm';
 const DENY_CUE = 'sfx_ui_error';
+const FORGE_CUE = 'sfx_station_machinery';
 const LIFT_CUE = 'sfx_dock_clunk';
 const SETTLE_CUE = 'sfx_dock_clunk';
 
@@ -103,6 +126,7 @@ export function createSwarmFloorDirector(ctx) {
   let padsById = new Map();     // entityId -> pad
   let pending = null;           // the purchase a spend receipt is expected to resolve
   let crate = { spotIndex: 0, pulls: 0 };   // run-scoped Crate memory
+  let tapRng = null;            // the round's own seeded pour stream (never shares state.rng)
   let unsubs = [];
 
   function emit(name, payload) {
@@ -122,9 +146,11 @@ export function createSwarmFloorDirector(ctx) {
   }
 
   /**
-   * Where a bought gun lands: the first EMPTY slot that mounts it, else the lowest-index
-   * (primary) slot that mounts it — the armory's own add-before-swap order. Null when no
-   * mountable slot exists, or when every mountable slot already carries this exact def.
+   * Where a bought gun lands: the occupied PRIMARY mount that takes it (the same
+   * lowest-index rule the Forge's held-gun read uses - the displaced gun goes to the
+   * hold), else, when no occupied mount can take it (or the primary already carries this exact
+   * def, so there is nothing to replace), the first empty mount that does. Null when neither
+   * exists.
    */
   function padSlotIndex(def) {
     const loadout = activeLoadout();
@@ -132,10 +158,11 @@ export function createSwarmFloorDirector(ctx) {
     const fittings = Array.isArray(loadout.owned.fittings) ? loadout.owned.fittings : [];
     const mountable = buildSlotList(loadout.shipDef)
       .filter((slot) => slot.type === 'weapon' && fits(slot, def));
+    const primary = swarmPrimaryWeaponIndex(loadout.owned, loadout.shipDef,
+      (slot) => fits(slot, def));
+    if (primary >= 0 && fittings[primary] !== def.id) return primary;
     const empty = mountable.find((slot) => !fittings[slot.index]);
-    if (empty) return empty.index;
-    const swap = mountable.find((slot) => fittings[slot.index] !== def.id);
-    return swap ? swap.index : null;
+    return empty ? empty.index : null;
   }
 
   /**
@@ -153,6 +180,7 @@ export function createSwarmFloorDirector(ctx) {
         shipIndex: (state.player && state.player.activeShipIndex) || 0,
         slotIndex,
         def,
+        swarmGrant: true, // a Swarm floor gun is bought with credits, never with Adventure research
       });
       if (blocker) return null;
     }
@@ -173,6 +201,65 @@ export function createSwarmFloorDirector(ctx) {
     const rng = state && typeof state.rng === 'function' ? state.rng : null;
     const pick = Math.floor((rng ? rng() : 0) * catalogue.length) % catalogue.length;
     return catalogue[pick].id;
+  }
+
+  /** The price a tap charges for its NEXT sale — the step for the count already bought. */
+  function tapPriceNow() {
+    const run = liveSwarmRun(state);
+    if (!run) return SWARM_TAP_PRICES[0];
+    const count = swarmTapCount(run);
+    return count < SWARM_TAP_MAX_PURCHASES ? SWARM_TAP_PRICES[count] : null;
+  }
+
+  /**
+   * One deterministic tap offer: the pool is the catalogue minus every `swarm_tap`
+   * receipt on the run's own ledger minus anything the caller wants kept out —
+   * the sibling pad's live offer, so the pair never pours the same bottle. The draw
+   * rides the round's own seeded stream so the pour never perturbs the shared
+   * `state.rng` sequence the Crate and the wave planner already own.
+   */
+  function rollTapOffer(excludeIds = []) {
+    const run = liveSwarmRun(state);
+    if (!run || swarmTapsSoldOut(run)) return null;
+    const pool = swarmTapAvailable(run, excludeIds);
+    if (!pool.length) return null;
+    const draw = tapRng ? tapRng() : 0;
+    return pool[Math.floor(draw * pool.length) % pool.length];
+  }
+
+  function tapPads() {
+    return pads.filter((pad) => pad.rec && pad.rec.kind === 'tap');
+  }
+
+  function siblingTapOffer(pad) {
+    const sib = tapPads().find((row) => row !== pad && row.rec && row.rec.modId);
+    return sib ? [sib.rec.modId] : [];
+  }
+
+  /**
+   * Re-roll one tap's label truth: the offer, the next price step, or SOLD OUT
+   * once the run's four-bottle till is dry. The entity's swarmFloorPad record IS
+   * the label record — this is the same write the arm made.
+   */
+  function refreshTapRec(pad) {
+    const run = liveSwarmRun(state);
+    const rec = pad.rec;
+    if (!run || swarmTapsSoldOut(run)) {
+      rec.modId = null;
+      rec.price = null;
+      rec.label = swarmTapLabel(null);
+      return;
+    }
+    const price = tapPriceNow();
+    const offer = rollTapOffer(siblingTapOffer(pad));
+    rec.modId = offer ? offer.id : null;
+    rec.price = price;
+    rec.label = offer ? swarmTapLabel(offer, price) : swarmTapLabel(null);
+  }
+
+  /** After a sale both pads re-read their own till: this one re-rolls, the sibling re-prices. */
+  function refreshAllTapRecs() {
+    for (const pad of tapPads()) refreshTapRec(pad);
   }
 
   function _spawnPad({ rec, spot, radius }) {
@@ -238,10 +325,46 @@ export function createSwarmFloorDirector(ctx) {
       spot,
       radius: SWARM_FLOOR_CRATE_RADIUS,
     });
+    // A01-05 — the Forge and the two Taps. Tap offers roll here, at round start,
+    // from the mods this run does not own yet; the two pads never vend the same
+    // bottle in the same round. The pour stream is keyed on the run's own seed and
+    // the round number, so re-arms of the same round re-pour the same offers.
+    tapRng = makeStream(seed, `swarm-tap:${wave}`);
+    if (plan.forge) {
+      _spawnPad({
+        rec: {
+          padId: plan.forge.id,
+          kind: 'forge',
+          defId: null,
+          price: SWARM_FORGE_PRICE,
+          label: SWARM_FORGE_LABEL,
+        },
+        spot: { x: anchor.x + plan.forge.dx, z: anchor.z + plan.forge.dz },
+        radius: SWARM_FLOOR_FORGE_RADIUS,
+      });
+    }
+    const tapSpecs = Array.isArray(plan.taps) ? plan.taps : [];
+    const rolledOffers = [];
+    for (const spec of tapSpecs) {
+      const offer = rollTapOffer(rolledOffers.map((mod) => mod && mod.id));
+      rolledOffers.push(offer);
+      _spawnPad({
+        rec: {
+          padId: spec.id,
+          kind: 'tap',
+          defId: null,
+          modId: offer ? offer.id : null,
+          price: offer ? tapPriceNow() : null,
+          label: offer ? swarmTapLabel(offer, tapPriceNow()) : swarmTapLabel(null),
+        },
+        spot: { x: anchor.x + spec.dx, z: anchor.z + spec.dz },
+        radius: SWARM_FLOOR_PAD_RADIUS,
+      });
+    }
     emit('swarm:floorArmed', {
       arenaId, wave,
       pads: pads.map((pad) => ({ padId: pad.rec.padId, kind: pad.rec.kind,
-        label: pad.rec.label, price: pad.rec.price,
+        label: pad.rec.label, price: pad.rec.price, modId: pad.rec.modId ?? null,
         pos: { x: pad.spot.x, z: pad.spot.z } })),
     });
   }
@@ -261,10 +384,30 @@ export function createSwarmFloorDirector(ctx) {
     emit('toast', {
       text: reason === 'insufficient_funds'
         ? `Need ${missing} more · ${rec.label.split('·')[0].trim()}`
-        : `${rec.label.split('·')[0].trim()} does not fit your hull.`,
+        : rec.refuseText || `${rec.label.split('·')[0].trim()} does not fit your hull.`,
       kind: 'warn',
       ttl: 2,
     });
+    emit('audio:cue', { id: DENY_CUE, position: { x: pad.spot.x, z: pad.spot.z }, gain: 0.5 });
+  }
+
+  /**
+   * A refusal the pad voices itself — 'Already forged' is packet law, not a
+   * computed deficit — the refusal event and the deny flash stay identical.
+   */
+  function _refuseText(pad, run, reason, text) {
+    const rec = pad.rec;
+    const now = simTimeOf(state);
+    if (pad.entity && pad.entity.data && pad.entity.data.swarmFloorPad) {
+      pad.entity.data.swarmFloorPad.refusedUntil = now + SWARM_FLOOR_REFUSAL_FLASH_S;
+    }
+    emit('swarm:floorPadRefused', {
+      padId: rec.padId, kind: rec.kind, reason,
+      price: rec.price, available: run && Number.isFinite(run.credits) ? run.credits : 0,
+      missing: 0,
+      pos: { x: pad.spot.x, z: pad.spot.z },
+    });
+    emit('toast', { text, kind: 'warn', ttl: 2 });
     emit('audio:cue', { id: DENY_CUE, position: { x: pad.spot.x, z: pad.spot.z }, gain: 0.5 });
   }
 
@@ -272,6 +415,8 @@ export function createSwarmFloorDirector(ctx) {
     const run = liveSwarmRun(state);
     if (!run) return;
     const rec = pad.rec;
+    if (rec.kind === 'forge') { _attemptForge(pad, run); return; }
+    if (rec.kind === 'tap') { _attemptTap(pad, run); return; }
     const price = rec.price;
     if (run.credits < price) {
       _refuse(pad, run, 'insufficient_funds', price - run.credits);
@@ -291,14 +436,141 @@ export function createSwarmFloorDirector(ctx) {
     pending = null;
   }
 
+  /**
+   * THE FORGE — one gun, once per run. The receipt for a defId is the run ledger's
+   * own `swarm_forge` row, so a forge survives re-arms and room teardowns. A held
+   * Free Forge flag never touches the wallet; otherwise it is the ordinary
+   * spend-then-commit flow the wall guns already use.
+   */
+  function _attemptForge(pad, run) {
+    const rec = pad.rec;
+    const heldId = swarmHeldWeaponDefId(state);
+    if (!heldId) {
+      _refuseText(pad, run, 'no_gun', 'No gun to forge');
+      return;
+    }
+    const already = (run.modifiers || []).some(
+      (row) => row && row.kind === SWARM_FORGE_RECORD_KIND && row.defId === heldId);
+    if (already) {
+      _refuseText(pad, run, 'already_forged', 'Already forged');
+      return;
+    }
+    const free = !!(run.telemetry && run.telemetry.freeForge === true);
+    if (!free && run.credits < SWARM_FORGE_PRICE) {
+      _refuse(pad, run, 'insufficient_funds', SWARM_FORGE_PRICE - run.credits);
+      return;
+    }
+    if (free) {
+      _commitForge(pad, run, heldId, true);
+      return;
+    }
+    pending = { padId: rec.padId, kind: 'forge', defId: heldId, price: SWARM_FORGE_PRICE };
+    emit('run:spendRequested', { credits: SWARM_FORGE_PRICE, reason: SPEND_REASON });
+    pending = null;
+  }
+
+  function _commitForge(pad, run, defId, free) {
+    const def = WEAPON_BY_ID.get(defId);
+    const form = swarmForgeFormName(defId, def && def.name);
+    // The free pour is spent too — the flag clears the moment the forge answers.
+    if (free && run.telemetry && typeof run.telemetry === 'object') {
+      run.telemetry.freeForge = false;
+    }
+    emit('run:modifierRecordRequested', {
+      record: {
+        kind: SWARM_FORGE_RECORD_KIND, offerId: 'forge', defId,
+        form, wave: Math.max(1, armed ? armed.wave : run.wave),
+      },
+      wave: armed ? armed.wave : run.wave,
+    });
+    const at = pad ? { x: pad.spot.x, z: pad.spot.z } : null;
+    emit('audio:cue', { id: FORGE_CUE, position: at, gain: 0.9, rate: 0.8 });
+    // A brief ship flash, through the generic presentation channel the rest of
+    // the sim's visual receipts already ride — flash/vfx accessibility applies
+    // inside the renderer, as for every cue.
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    emit('presentation:vfxCue', {
+      id: 'swarm.forge', lane: 'swarm',
+      position: player && player.pos ? { x: player.pos.x, z: player.pos.z } : at,
+      magnitude: 1.5, particles: 22, lights: 1,
+      sourceId: state.playerId, flashReduced: false,
+    });
+    emit('toast', { text: `THE FORGE · ${form}`, kind: 'good', ttl: 3 });
+    emit('swarm:floorPadBought', {
+      padId: pad ? pad.rec.padId : 'foundry-forge', kind: 'forge', defId, form,
+      price: free ? 0 : SWARM_FORGE_PRICE, pos: at,
+    });
+  }
+
+  /**
+   * A TAP — one bottle per crossing, four for the run across both pads. The pad's
+   * offer is rolled at round start and re-rolled after each pour; the price steps
+   * on the run's committed count, not on the pad.
+   */
+  function _attemptTap(pad, run) {
+    const rec = pad.rec;
+    if (swarmTapsSoldOut(run)) {
+      refreshTapRec(pad);
+      _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
+      return;
+    }
+    // A stale offer never vends twice: if the ledger owns this bottle already
+    // (bought on the sibling pad) the tap re-pours before it charges.
+    const owned = (run.modifiers || []).some(
+      (row) => row && row.kind === SWARM_TAP_RECORD_KIND && row.offerId === rec.modId);
+    if (!rec.modId || owned) refreshTapRec(pad);
+    const mod = rec.modId ? swarmTapModById(rec.modId) : null;
+    if (!mod) {
+      _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
+      return;
+    }
+    const price = SWARM_TAP_PRICES[swarmTapCount(run)];
+    if (run.credits < price) {
+      _refuse(pad, run, 'insufficient_funds', price - run.credits);
+      return;
+    }
+    pending = { padId: rec.padId, kind: 'tap', modId: mod.id, price };
+    emit('run:spendRequested', { credits: price, reason: SPEND_REASON });
+    pending = null;
+  }
+
+  function _commitTap(job, pad) {
+    const run = liveSwarmRun(state);
+    const mod = swarmTapModById(job.modId);
+    if (!run || !mod) return;
+    emit('run:modifierRecordRequested', {
+      record: {
+        kind: SWARM_TAP_RECORD_KIND, offerId: mod.id,
+        wave: Math.max(1, armed ? armed.wave : run.wave),
+      },
+      wave: armed ? armed.wave : run.wave,
+    });
+    const at = pad ? { x: pad.spot.x, z: pad.spot.z } : null;
+    emit('audio:cue', { id: BUY_CUE, gain: 0.8, position: at });
+    emit('toast', { text: `TAP · ${mod.name} — ${mod.text}`, kind: 'good', ttl: 4 });
+    emit('swarm:floorPadBought', {
+      padId: job.padId, kind: 'tap', modId: mod.id, price: job.price, pos: at,
+    });
+    refreshAllTapRecs();
+  }
+
   function _onSpent(payload) {
     if (!pending || !payload || payload.reason !== SPEND_REASON || payload.credits !== pending.price) return;
     const job = pending;
     pending = null;
     const pad = pads.find((row) => row.rec.padId === job.padId);
+    if (job.kind === 'forge') {
+      _commitForge(pad, liveSwarmRun(state), job.defId, false);
+      return;
+    }
+    if (job.kind === 'tap') {
+      _commitTap(job, pad);
+      return;
+    }
     const sys = ships();
     const fitted = !!(sys && typeof sys.fitModule === 'function'
-      && sys.fitModule({ slotIndex: job.slotIndex, defId: job.defId }));
+      && sys.fitModule({ slotIndex: job.slotIndex, defId: job.defId, swarmGrant: true }));
     if (!fitted) {
       emit('run:awardRequested', { credits: job.price, reason: REFUND_REASON });
       emit('toast', {

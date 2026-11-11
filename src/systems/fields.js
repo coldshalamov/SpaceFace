@@ -55,7 +55,7 @@ import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import { GRAVITY_MARK_STATUS_ID, PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
-import { bombDef } from '../data/bombs.js';
+import { bombDef, resolvedBombDef } from '../data/bombs.js';
 import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
@@ -70,6 +70,7 @@ import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '
 import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
@@ -1252,7 +1253,9 @@ export const fields = {
     // kernel record, in Adventure exactly as in Swarm. Only the collector knot keeps its def.
     const swarmPhases = collector ? null : oneFeelPhaseTable(kind);
     const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
-    const deployCooldownS = swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS;
+    // A01-05 Wide Bore take: power cooldowns read the run ledger's own multiplier.
+    const deployCooldownS = (swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS)
+      * swarmFieldCooldownScale(state);
     const cd = rt.cooldowns[kind] || 0;
     if (!free && now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
@@ -1269,6 +1272,9 @@ export const fields = {
     const spec = collector
       ? { ...playerFieldSpec(kind, player, state), durationS: def.durationS }
       : { ...playerFieldSpec(kind, player, state), durationS: deployDurationS };
+    // A01-05 Wide Bore give: the player's own powers reach wider — authored one-off
+    // radii (swarm drops) pass through untouched below.
+    if (Number.isFinite(spec.radius)) spec.radius *= swarmFieldRadiusScale(state);
     if (opts && opts.radius > 0) spec.radius = opts.radius;
     const cx = spec.center.x, cz = spec.center.z;
 
@@ -3143,13 +3149,13 @@ export function readFieldFamily(input, shell) {
   for (let i = 0; i < cloudCount; i++) {
     const bomb = _goo[i];
     const data = bomb.data;
-    const def = bombDef(data.bombId);
+    const def = resolvedBombDef(data);
     const field = def.field;
     const envelope = bombFieldEnvelope(now, data.fieldStartedAt, field.durationS, field.endStrength ?? 1);
     let overlap = 0;
     for (let j = 0; j < _goo.length; j++) {
       const other = _goo[j];
-      const otherRadius = bombDef(other.data.bombId).radius;
+      const otherRadius = resolvedBombDef(other.data).radius;
       const dist = Math.hypot(other.pos.x - bomb.pos.x, other.pos.z - bomb.pos.z);
       if (bombSurfaceFalloff(dist, 0, otherRadius) > 0) overlap++;
     }
