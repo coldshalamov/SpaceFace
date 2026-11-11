@@ -308,12 +308,14 @@ test('round preview: the plan card names count, roster, newcomer, event and boss
   assert.ok(opener.killTarget > 0);
   assert.ok(opener.concurrent > 0);
   assert.ok(opener.roster.length > 0);
-  // S14: the first champion arrives at wave 5, then every tenth after.
+  // C01-01: champions arrive on every fifth round — 5, 10, 15, 20, 25 and the wave-30 cap.
   const boss = swarmRoundPreview({ arenaId: 'helios_core', wave: 5, seed: LADDER_SEED });
   assert.ok(boss.boss, 'the first champion wave names the boss on the preview');
-  // S14: wave 10 is the authored event slot now that the champion cadence starts at 5.
+  // Wave 10 is the Corsair Wing's champion round now — with every fifth round a boss, the
+  // course deals no major event card and the armory card's event slot reads empty.
   const event = swarmRoundPreview({ arenaId: 'helios_core', wave: 10, seed: LADDER_SEED });
-  assert.ok(event.event && event.event.name, 'an event wave names its card');
+  assert.ok(event.boss, 'the second champion wave names its boss on the preview');
+  assert.equal(event.event, null, 'no major event slot remains inside the course');
   // Deterministic: same (arena, wave, seed) always draws the same card.
   assert.deepEqual(
     swarmRoundPreview({ arenaId: 'helios_core', wave: 10, seed: LADDER_SEED }),

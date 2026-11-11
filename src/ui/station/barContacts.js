@@ -73,6 +73,8 @@ import {
   STORY_BUYER_CHOICE_PREFIX, STORY_BUYER_CONTACT_PREFIX, STORY_BUYER_DECLINE_CHOICE,
   STORY_REWARD_BUYERS, storyBuyerOffersAt, storyBuyerRepDeltas, storyBuyerRow,
 } from '../../data/storyRewardBuyers.js';
+import { pluralWord } from '../numberFormat.js';
+
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -2107,7 +2109,7 @@ function dossSourceList(state) {
 function dossRecordCopy(state) {
   const sources = dossSourceList(state);
   if (!sources.length) return 'No verified primary source is in the archive yet.';
-  return `${sources.length} verified primary ${sources.length === 1 ? 'source' : 'sources'}: ${sources.join(' ')}`;
+  return `${sources.length} verified primary ${pluralWord(sources.length, 'source', 'sources')}: ${sources.join(' ')}`;
 }
 
 function buildDossArchiveReply(choiceId, state) {

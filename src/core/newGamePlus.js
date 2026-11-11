@@ -21,6 +21,8 @@ import {
   createPostEndingContinuity,
   normalizePostEndingContinuity,
 } from '../story/endings/resolve.js';
+import { pluralWord } from './numberFormat.js';
+
 
 export const NEW_GAME_PLUS_SCHEMA = 'spaceface.newGamePlus.v1';
 const TITLE_BY_ID = new Map(TITLES.map((def) => [def.id, def]));
@@ -103,19 +105,19 @@ export function leftoverNewRunLine(candidate) {
   if (grudgeName) {
     const extra = Math.max(0, grudgeCount - 1);
     clauses.push(extra
-      ? `${grudgeName} and ${extra} other ${extra === 1 ? 'grudge' : 'grudges'}`
+      ? `${grudgeName} and ${extra} other ${pluralWord(extra, 'grudge', 'grudges')}`
       : `${grudgeName} still hunting`);
   } else if (grudgeCount) {
-    clauses.push(`${grudgeCount} unresolved hunter ${grudgeCount === 1 ? 'grudge' : 'grudges'}`);
+    clauses.push(`${grudgeCount} unresolved hunter ${pluralWord(grudgeCount, 'grudge', 'grudges')}`);
   }
   if (scarPhrase) {
     const extra = Math.max(0, scarCount - 1);
     clauses.push(extra ? `${scarPhrase} and ${extra} more` : scarPhrase);
   } else if (scarCount) {
-    clauses.push(`${scarCount} ${scarCount === 1 ? 'scar' : 'scars'}`);
+    clauses.push(`${scarCount} ${pluralWord(scarCount, 'scar', 'scars')}`);
   }
   if (titleName) clauses.push(titleName);
-  else if (titleCount) clauses.push(`${titleCount} ${titleCount === 1 ? 'title' : 'titles'}`);
+  else if (titleCount) clauses.push(`${titleCount} ${pluralWord(titleCount, 'title', 'titles')}`);
   const fact = clean(candidate.worldFactTitle);
   if (fact) clauses.push(fact);
   // NXI-191 — the confirmation states the reset instead of implying it: every physical
@@ -156,16 +158,16 @@ export function legacyFlightLine(record) {
   if (name) {
     const extra = Math.max(0, count - 1);
     clauses.push(extra
-      ? `${name} and ${extra} other ${extra === 1 ? 'grudge' : 'grudges'}`
+      ? `${name} and ${extra} other ${pluralWord(extra, 'grudge', 'grudges')}`
       : `${name} still hunting`);
   } else if (count) {
-    clauses.push(`${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`);
+    clauses.push(`${count} ${pluralWord(count, 'GRUDGE', 'GRUDGES')}`);
   }
   if (scarPhrase) {
     const extra = Math.max(0, scars.length - 1);
     clauses.push(extra ? `${scarPhrase} and ${extra} more` : scarPhrase);
   } else if (scars.length) {
-    clauses.push(`${scars.length} ${scars.length === 1 ? 'SCAR' : 'SCARS'}`);
+    clauses.push(`${scars.length} ${pluralWord(scars.length, 'SCAR', 'SCARS')}`);
   }
   if (title) clauses.push(title);
   if (fact) clauses.push(fact);

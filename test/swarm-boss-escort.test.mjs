@@ -1,7 +1,7 @@
 // COMMAND COLOSSI ARRIVE WITH ATTENDANTS — the authored escort fold.
 //
-// Late-rotation capital champions used to field alone: waves 85–135 were the same hull solo,
-// which is the exact failure the wrap fix already named for wave 145. The command rows —
+// Late-rotation capital champions used to field alone: waves 90–140 were the same hull solo,
+// which is the exact failure the wrap fix already named for wave 150. The command rows —
 // the Nest Carrier, the Furnace Maw, Adjudicator 44-C and the Hive-Hulk — now carry
 // `escort`: attendant champions folded in beside the hull through `bossPackagesFor`, spent
 // out of the wave's own opening chaff (never stacked on top), owed like every champion
@@ -126,14 +126,14 @@ function bossRow(id) {
 
 // wave → [boss hull enemyId, escort enemyId] for the escorted command rows.
 const ESCORTED = [
-  [85, 'nest_carrier', 'mine_layer_jackal'],
-  [105, 'furnace_maw', 'bruiser_brawler'],
-  [125, 'adjudicator_44c', 'patrol_lawman'],
-  [135, 'hive_hulk', 'tether_control_raider'],
+  [90, 'nest_carrier', 'mine_layer_jackal'],
+  [110, 'furnace_maw', 'bruiser_brawler'],
+  [130, 'adjudicator_44c', 'patrol_lawman'],
+  [140, 'hive_hulk', 'tether_control_raider'],
 ];
 const SOLO = [
-  [95, 'casket_worm'],
-  [115, 'yardmaster'],
+  [100, 'casket_worm'],
+  [120, 'yardmaster'],
 ];
 
 test('the command rows fold hull plus attendants; the lone silhouettes stay solo', () => {
@@ -229,7 +229,7 @@ test('attendant seats are spent from opening chaff — the room stays exactly as
 
 test('a wrapped command row keeps its attendants AND wears the guard — bounded by the shared cap', () => {
   // hive_hulk sits at rotation index 13: wraps land on waves 280/420/560/700 (cycles 1–4).
-  for (const [wave, cycle, wardens] of [[275, 1, 1], [415, 2, 1], [555, 3, 1], [695, 4, 2]]) {
+  for (const [wave, cycle, wardens] of [[280, 1, 1], [420, 2, 1], [560, 3, 1], [700, 4, 2]]) {
     const boss = swarmBossFor(wave);
     assert.equal(boss.id, 'hive_hulk', `wave ${wave} lands the Hive-Hulk again`);
     assert.equal(boss.cycle, cycle, `wave ${wave}`);
@@ -253,8 +253,8 @@ test('a wrapped command row keeps its attendants AND wears the guard — bounded
 });
 
 test('a wrapped escorted wave materializes hull plus attendants plus guard inside the same law', () => {
-  const h = boot(275);
-  startWave(h, 275);
+  const h = boot(280);
+  startWave(h, 280);
   const bodies = championBodies(h);
   const hull = bodies.find((e) => e.data.missionTag === 'capital_boss');
   assert.ok(hull, 'the wrapped Hive-Hulk hull landed under its score stamp');
@@ -265,7 +265,7 @@ test('a wrapped escorted wave materializes hull plus attendants plus guard insid
     'the cycle-one guard tops the entourage up');
   assert.equal(bodies.length, 4, 'hull + two tenders + one warden — all owed');
   // The same opening fill as the base wave — the guard is spent from chaff too.
-  assert.equal(swarmOpeningCount(planFor(275).packages), swarmPressureAt(275, 0));
+  assert.equal(swarmOpeningCount(planFor(280).packages), swarmPressureAt(280, 0));
   // The versus card names the pass.
   const intro = h.emitted.filter((e) => e.event === 'swarm:bossIntro');
   assert.equal(intro.length, 1);
@@ -274,24 +274,24 @@ test('a wrapped escorted wave materializes hull plus attendants plus guard insid
 
 test('solo rows keep the exact wrap law they shipped — the guard formula is unchanged', () => {
   // iron_maw carries no escort: the warden count is min(cycle, MAX), byte-identical to before.
-  for (const [wave, count] of [[145, 1], [285, 2], [425, 3], [565, 4]]) {
+  for (const [wave, count] of [[150, 1], [290, 2], [430, 3], [570, 4]]) {
     const guard = bossPackagesFor(swarmBossFor(wave)).find((p) => p.enemyId === SWARM_WRAP_ESCORT_ENEMY);
     assert.equal(guard && guard.count, count, `wave ${wave}`);
   }
   // And a compositional row's wing is the boss, not an entourage — the guard still stacks.
-  const wing = swarmBossFor(175);
+  const wing = swarmBossFor(180);
   assert.equal(bossPackagesFor(wing).filter((p) => p.enemyId === 'corsair_raider')
     .reduce((s, p) => s + p.count, 0), 3, 'the aces are the fight, not attendants');
   assert.equal(bossPackagesFor(wing).find((p) => p.enemyId === SWARM_WRAP_ESCORT_ENEMY).count, 1);
 });
 
 test('the card and the announce are untouched — id, label, line, room all ride the row', () => {
-  const h = boot(85);
-  startWave(h, 85);
+  const h = boot(90);
+  startWave(h, 90);
   const intro = h.emitted.filter((e) => e.event === 'swarm:bossIntro');
   assert.equal(intro.length, 1, 'one versus card');
   assert.equal(intro[0].payload.name, 'Nest Carrier', 'the card names the hull, not the entourage');
-  const plan = planFor(85).swarm;
+  const plan = planFor(90).swarm;
   assert.equal(plan.bossId, 'nest_carrier');
   assert.equal(plan.bossLabel, 'Nest Carrier');
   assert.equal(plan.bossScoreId, 'capital_boss_nest_carrier');
@@ -299,13 +299,13 @@ test('the card and the announce are untouched — id, label, line, room all ride
   assert.equal(plan.bossRoom, 'nest_berth');
   assert.equal(plan.bossCycle, 0);
   // Prewarm still sees every hull the wave can field, attendants included.
-  const eligible = swarmEligibleEnemyIds(85);
+  const eligible = swarmEligibleEnemyIds(90);
   assert.ok(eligible.has('nest_carrier') && eligible.has('mine_layer_jackal'),
     'the launch warm covers the attendant hulls');
 });
 
 test('escorted boss plans stay deterministic — same seed, same composition', () => {
-  for (const wave of [85, 105, 125, 135, 275]) {
+  for (const wave of [90, 110, 130, 140, 280]) {
     const a = planFor(wave);
     const b = planFor(wave);
     assert.deepEqual(a.packages, b.packages, `wave ${wave} packages drifted`);

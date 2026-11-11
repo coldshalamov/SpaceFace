@@ -4,6 +4,7 @@
 //   npm run player-truth -- --mode=swarm [--arena="Ricochet Foundry"|all] [--seed=4242]
 //   npm run player-truth -- --mode=adventure|racing|gauntlet [--duration=300]
 //   flags: --headed (GPU Chrome, preferred) · --rounds=3 · --duration=<sim s> · --wall=<min>
+//          --start-round=<1..30> (swarm only: open on ?swarmRound=N, skipping title and door)
 //          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --tag=<suffix> (label suffix, e.g. idle) · --evidence (copy compact result
 //          into design/program/player-truth/<label>/; scratch frames stay) · --prune-frames (opt-in delete of scratch frames after --evidence; default off)
 //   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
@@ -45,7 +46,7 @@ import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
-import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
+import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, installFirstLightPromptHandler, readLaunchedRunSeed } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey, foldTargetRejections } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
@@ -311,7 +312,7 @@ export async function awaitRoundHandoff(page, {
 }
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false, vfxAttribution: false, fortify: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false, vfxAttribution: false, fortify: false, startRound: null };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
@@ -320,6 +321,11 @@ export function parseArgs(argv) {
     else if (k === 'prune-frames') a.pruneFrames = v == null || v === '' || v === 'true';
     else if (k === 'fight') a.fight = true;
     else if (k === 'fortify') a.fortify = v !== 'false';
+    else if (k === 'start-round') {
+      const n = Number(v);
+      if (!Number.isFinite(n)) throw new Error('--start-round requires a round number (1..30)');
+      a.startRound = Math.trunc(n);
+    }
     else if (k === 'vfx-attribution') a.vfxAttribution = true;
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
@@ -333,6 +339,7 @@ export function parseArgs(argv) {
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
   if (a.fortify && a.mode !== 'swarm') throw new Error('--fortify requires --mode=swarm');
+  if (a.startRound != null && a.mode !== 'swarm') throw new Error('--start-round requires --mode=swarm');
   if (!MODES.includes(a.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
   if (a.candidateSource && a.baseline) throw new Error('--candidate-source cannot be used as a Git performance baseline');
   // SwiftShader fill cost dominates a software run; a smaller canvas keeps a bounded run in minutes.
@@ -827,8 +834,22 @@ async function runOne(args, arena, extra = {}) {
 
   let doorInfo = null; let renderer = 'unknown'; let browserVersion = browser.version();
   const stopWindowGuard = await keepHeadedWindowNormal(page, { headed: args.headed });
+  const startRound = Number.isFinite(args.startRound) ? args.startRound : null;
   try {
-    await bootToMenu(page, server.baseUrl, step);
+    if (startRound != null) {
+      // --start-round: open the game on the dev swarm route (?swarmRound=N) — the title and
+      // door are skipped by the page itself; the armory of the round-N run appears on its own.
+      const launchUrl = new URL(server.baseUrl);
+      launchUrl.searchParams.set('swarmRound', String(startRound));
+      if (arena) launchUrl.searchParams.set('swarmArena', String(arena));
+      await installFirstLightPromptHandler(page, step);
+      await page.goto(launchUrl.toString(), { waitUntil: 'commit' });
+      await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus),
+        null, { timeout: 180000 });
+      step('main menu', true, `skipped via ?swarmRound=${startRound}${arena ? `&swarmArena=${arena}` : ''}`);
+    } else {
+      await bootToMenu(page, server.baseUrl, step);
+    }
     trace.meta.sourceOverlay = args.baselineSource ? {
       kind: args.candidateSource ? 'candidate' : 'git-baseline',
       manifest: args.baselineSource.relative,
@@ -843,9 +864,20 @@ async function runOne(args, arena, extra = {}) {
     await shoot('main menu', false);
 
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
+      if (startRound != null) {
+        // The dev route launched the run itself; there is no door to describe. Wait for the
+        // run to exist, then read the authoritative seed for the trace meta.
+        await page.waitForFunction(() => {
+          const run = window.SF && window.SF.state && window.SF.state.run;
+          return !!(run && run.kind === 'survival');
+        }, null, { timeout: 600000 });
+        doorInfo = { arenas: null, seedSet: false, seed: null,
+          runSeed: await readLaunchedRunSeed(page).catch(() => null), hull: null, hulls: null, doorPrep: null };
+      } else {
       doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step, {
         onShip: async () => { await shoot('ship step', false); },
       });
+      }
       if (args.mode === 'gauntlet') {
         // Enter Gauntlet launches directly. Arm at the returned live run, retaining any exact
         // field deliveries that landed between launch and this first route observation.
@@ -854,7 +886,26 @@ async function runOne(args, arena, extra = {}) {
         await beginImpulseObserver(opening.tick, opening.wave);
       }
       if (args.mode === 'swarm') {
-        await waitForPreparationLaunch(page);
+        // A --start-round run's armory button reads "Launch round N", not "round 1". The
+        // stock wait greps only round 1, so feed it a snap that accepts any numbered round
+        // and reports the mid-round "Fit out before round N" subtitle as still-warming.
+        const readAnyRound = () => page.evaluate(() => {
+          const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+          const root = document.getElementById('screens');
+          const visible = !!(root && root.style.display !== 'none' && root.getAttribute('aria-hidden') !== 'true');
+          const titleEl = document.querySelector('#screens #sf-crucible-draft-title, #screens h1');
+          const subEl = document.querySelector('#screens .sf-cru-sub');
+          const screen = document.querySelector('#screens .k-screen');
+          const stamp = screen && screen.dataset ? screen.dataset.stamp || '' : '';
+          const launch = [...document.querySelectorAll('#screens button')]
+            .some((x) => x.offsetParent && !x.disabled && /Launch round \d+/.test(n(x.textContent)));
+          const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+          let sub = subEl ? n(subEl.textContent) : '';
+          if (/fit out before round \d+/i.test(sub)) sub = 'fit out before round 1';
+          return { visible, title: titleEl ? n(titleEl.textContent) : '', sub, stamp: n(stamp),
+            top: sm && typeof sm.top === 'function' ? sm.top() : null, launch };
+        }).catch(() => null);
+        await waitForPreparationLaunch(page, startRound != null ? { read: readAnyRound } : {});
         await waitBootOverlayGone(page);
         await shoot('armory', false);
         const shelf = await readArmoryShelf(page);
@@ -886,8 +937,9 @@ async function runOne(args, arena, extra = {}) {
         const word = await armoryLaunchWord(page);
         // The opening well acts during the intro, before the active phase is observable.
         // Begin after run:started but before the public launch button starts that intro.
-        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick), 1);
-        await clickText(page, word || 'Launch round 1');
+        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick),
+          startRound != null ? startRound : 1);
+        await clickText(page, word || `Launch round ${startRound != null ? startRound : 1}`);
       } else if (doorInfo && doorInfo.doorPrep) {
         const door = doorInfo.doorPrep;
         const claimed = door.fittedClaimed || 0;

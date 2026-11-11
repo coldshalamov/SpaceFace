@@ -51,6 +51,8 @@ import {
   indexedTypeScan,
 } from '../world/livingWorldViews.js';
 import { hash32 } from '../core/rng.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const intOr = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n | 0 : d; };
@@ -1156,7 +1158,7 @@ export const pirateDisguise = {
           this._untagWitness(state, row);
           hushed += 1;
         }
-        return { kind: offer.kind, hushed, toast: `Mouths shut — ${hushed} file${hushed === 1 ? '' : 's'} closed.` };
+        return { kind: offer.kind, hushed, toast: `Mouths shut — ${counted(hushed, 'file', 'files')} closed.` };
       }
       case 'cool_marks': {
         const burned = cover.burned[offer.factionId];

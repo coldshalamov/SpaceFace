@@ -82,7 +82,16 @@ export function driverPhrase(signal, sectorName) {
   return out;
 }
 
+// words-authored-names: the hauler-lane why-line names stations as the chart does ("Ceres
+// Refinery"), never as a lowercase de-snaked id ("ceres"); the id fallback is for an
+// uncatalogued berth only.
+const LEDGER_STATION_NAME = new Map((SECTORS || []).flatMap((sector) => (sector && sector.stations) || [])
+  .filter((station) => station && station.id && station.name)
+  .map((station) => [station.id, station.name]));
+
 function stationShort(stationId) {
+  const name = LEDGER_STATION_NAME.get(stationId);
+  if (name) return name;
   return String(stationId || '').replace(/^station_/, '').replace(/_/g, ' ') || 'this station';
 }
 

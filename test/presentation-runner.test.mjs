@@ -208,6 +208,40 @@ test('a 30 Hz cap accumulates present elapsed so the playout clock runs at wall 
   controller.destroy();
 });
 
+test('a repeated presented moment is wall-time held, not a long present interval', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} },
+    settings: { video: { frameCap: 30, vsync: true } },
+    render: { displayHz: 60, frameCap: 30 },
+  };
+  const registry = {
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner([], []),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => 0,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  let now = 1000 + LOOP_FIXED_DT * 1000;
+  for (let i = 0; i < 24; i++) {
+    raf.flushOne(now);
+    now += 1000 / 60;
+  }
+  const diagnostics = controller.getDiagnostics();
+  assert.ok(diagnostics.duplicateMomentPresents > 0, 'the same presented moment is detected');
+  assert.ok(diagnostics.maxHeldPresentMs > 100,
+    `a repeated moment accumulates wall-time hold, got ${diagnostics.maxHeldPresentMs} ms`);
+  assert.equal(diagnostics.presentedGapsOver100, 0,
+    'a cap hold is a repeated moment, not a >=100 ms present interval');
+  controller.destroy();
+});
+
 test('after-present compile waits for both the sim and the picture on every frame', () => {
   const raf = createRaf();
   const order = [];

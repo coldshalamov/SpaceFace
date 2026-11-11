@@ -13,6 +13,8 @@ import {
   forceChannelForTelegraphKind,
   getForcePaletteHex,
 } from '../data/palettes.js';
+import { pluralWord } from './numberFormat.js';
+
 
 export {
   OCCUPATIONAL_ROLE_IDS,
@@ -120,7 +122,7 @@ export function hostileLabelFor(role, bucket, telegraphed, armedMines = 0) {
   // FIGHT-11 — the mine-layer's halo counts the screen it laid: armed mines only
   // (an unarmed hull is cargo, never a counted threat). Plain words, no ids.
   const mines = Math.max(0, Math.floor(Number(armedMines) || 0));
-  if (mines > 0) label += ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}`;
+  if (mines > 0) label += ` · ${mines} ${pluralWord(mines, 'MINE', 'MINES')}`;
   return label;
 }
 
@@ -1602,7 +1604,7 @@ export function createThreatHalo(root, busOrOpts) {
         ? 'DETONATOR — FUSE LIT'
         : hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue, hostileMines[i]);
       const mines = hostileMines[i];
-      const mineLabel = mines > 0 ? ` · ${mines} ${mines === 1 ? 'MINE' : 'MINES'}` : '';
+      const mineLabel = mines > 0 ? ` · ${mines} ${pluralWord(mines, 'MINE', 'MINES')}` : '';
       setAttr(slot, 'aria-label', cutLabel ? cutLabel + mineLabel : identityLabel);
       // Keep the numeral inside the arc's existing footprint and expose the whole named
       // marker as one image; the decorative glyph and numeral need no duplicate reading.
