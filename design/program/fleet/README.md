@@ -1,49 +1,41 @@
-# The fleet — how the game gets built by cheaper agents
+# Start here — how SpaceFace gets built
 
-The design is written (docs 10–19 on the `EC-G13` branch, the plants in `INFERENCE_PLANTS.md`).
-This folder turns it into **packets**: one job each, small enough for a mid-strength agent, with
-exact names, exact files, and a check the worker runs on its own tokens.
+There are exactly three things to know:
 
-- `PROTOCOL.md` — the rules every worker follows (shared folder, exact-path commits, honest receipt).
-- `QUEUE.md` — every packet, in build order, with who can do it and its state.
-- `packets/` — the jobs.
-- `scripts/fleet/run.mjs` — hands one packet to one agent, headless, and keeps the log.
+| Question | The one answer |
+|---|---|
+| **What is the game?** | `design/game/` (start at its README; doc 18 is the acceptance standard) |
+| **What do I work on?** | `design/program/fleet/QUEUE.md` — four lanes; you work only in yours |
+| **How do I work?** | `design/program/fleet/PROTOCOL.md` (rules), `PLAYBOOK.md` (the loop and the programs), `HANDOFF.md` (where things stand) |
 
-## Run a packet (owner or lead)
+Everything else under `design/program/` and `design/program/finish/` is **history** unless a queue row
+links it. Do not take work from any other plan, board, build map, lane file or PR description.
+
+## Starting an agent — paste this, with its number
+
+> You are **Agent 2** on SpaceFace. Read `design/program/fleet/README.md`, then `PROTOCOL.md`, then
+> take the first `READY` row in **Lane 2** of `design/program/fleet/QUEUE.md` and do it, following
+> the protocol. When it is `BUILT`, take the next one. Do not stop to ask; write blockers in your receipt.
+
+Lanes: **1** taste, creative writing, art/3D, architecture, diagnosis, reviewing on screen, writing
+packets · **2** large engineering with a named seam · **3** fully specified medium jobs · **4**
+mechanical jobs that cannot go wrong. An agent may drop to an easier (higher-numbered) lane when its
+own is empty, never to a harder one. Suggested: the strongest model you have = Agent 1; Devin SWE-2
+Max = Agents 2 and 3; Gemini Flash = Agents 3–4.
+
+## Running workers headless (lead only)
 
 ```bash
-node scripts/fleet/run.mjs G19-01-class-up-moment devin1
+node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|flash> [--timeout-min=90]
 ```
 
-Backends: `devin1`, `devin2`, `devin3` (SWE-2 Max, one account each), `deepseek` (OpenCode Go),
-`flash` (Gemini 3.8 Flash via agy). Logs and the worker's receipt land in
-`.devshots/fleet/runs/<packet>.<backend>.<time>/`. Run up to three Devins plus one DeepSeek and one
-Flash at once; never two jobs that share a file.
-
-Or paste this into any agent window (Devin pane, Claude, anything):
-
-> Read `design/program/fleet/PROTOCOL.md`, then take the first row in `design/program/fleet/QUEUE.md`
-> whose State is `READY` and whose Tier you meet. Change its State to `TAKEN <your name>` and commit
-> that one line. Then do the packet. When done, set the State to `BUILT <hash>` and commit.
+Logs and the worker's receipt land in `.devshots/fleet/runs/<packet>.<backend>.<time>/`. Never two
+workers on the same files. The runner resumes a worker after a provider rate limit.
 
 ## The gate
 
-The lead runs `npm run gate` after every batch of fleet commits and before any push. It lints
-every relative `src/` import specifier (`check:src-imports`), boots Adventure through the real
-route (`check:playable`), boots Swarm headless for one round
-(`player-truth --mode=swarm --rounds=1`), and replays the deterministic 47-A sim (`check:sim`),
-stopping at the first failure — one line per step, then `GATE PASS` or `GATE FAIL` (same lines
-in `.devshots/fleet/gate-last.txt`, full step logs in `.devshots/fleet/gate-<step>.log`).
-A red gate means the batch is fixed or reverted before anything else lands.
-`npm run gate -- --quick` runs the import lint plus the Adventure boot only.
-
-## Who does what
-
-| Tier | Who | Gets |
-|---|---|---|
-| **L** | Claude (lead) | taste-critical feel, architecture, anything that rewrites the frame loop; and **reviewing every BUILT row** |
-| **D** | Devin SWE-2 Max, or better | written specs touching 2–6 files, with a test |
-| **S** | DeepSeek, Flash, or better | one row of written content, 1–3 files, with a test |
-
-A row only becomes `DONE` after review (a lead looks at the diff and, for anything visible, the
-screen). `BUILT` means "the worker says so".
+`npm run gate` (on a quiet machine): import lint → Adventure boot through the real route → Swarm boot
+(one round) → deterministic 47-A replay. One line per step, then `GATE PASS` / `GATE FAIL` (also in
+`.devshots/fleet/gate-last.txt`, step logs in `.devshots/fleet/gate-<step>.log`).
+`npm run gate -- --quick` = lint + Adventure boot. Run it after every batch and before every push;
+red means fix or revert before anything else lands.

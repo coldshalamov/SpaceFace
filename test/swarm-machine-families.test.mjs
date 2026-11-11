@@ -119,27 +119,13 @@ function addRock(h, x, z, r = 14) {
 }
 
 test('the machine table is honest and its clock is lawful', () => {
-  // C01-01: the course ends at wave 30 — formation_drone (debut 26) is the only machine a
-  // run still reaches, and it lands on an ordinary round. The six later debuts sit past the
-  // course edge, so the validator now reads their fromWaves as the clamped wave-30 champion
-  // row: unreachable content, flagged rather than silently deleted.
-  assert.deepEqual(swarmMachineIssues(), [
-    { path: 'swarmMachineFamilies[1]', message: 'sawblade lands on a champion row' },
-    { path: 'swarmMachineFamilies[2]', message: 'repair_drone lands on a champion row' },
-    { path: 'swarmMachineFamilies[3]', message: 'magnet_sentry lands on a champion row' },
-    { path: 'swarmMachineFamilies[4]', message: 'shield_linker lands on a champion row' },
-    { path: 'swarmMachineFamilies[5]', message: 'assembler lands on a champion row' },
-    { path: 'swarmMachineFamilies[6]', message: 'beam_turret lands on a champion row' },
-  ]);
+  // C01-03: every machine debut sits on a real deep-course non-champion row — the table's
+  // own validator has nothing to flag.
+  assert.deepEqual(swarmMachineIssues(), []);
   // The brood catalogs are untouched — the Machine folds beside them, never into them.
   assert.deepEqual(swarmBroodIssues(), []);
-  // C01-01: the three late strains debut past round 30 — unreachable, clamped onto the
-  // wave-30 champion row, and honestly flagged by the late table's own validator.
-  assert.deepEqual(swarmBroodLateIssues(), [
-    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
-    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
-    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
-  ]);
+  // The late brood table's own check is clean the same way.
+  assert.deepEqual(swarmBroodLateIssues(), []);
   // Seven units, one mechanism flag each.
   assert.equal(SWARM_MACHINE_FAMILIES.length, 7);
   const flags = SWARM_MACHINE_FAMILIES.map((f) => f.id);

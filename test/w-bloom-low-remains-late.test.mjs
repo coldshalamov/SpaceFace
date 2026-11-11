@@ -101,13 +101,9 @@ const DISPOSITION = Object.freeze({
   mirebulb: 'effect', clutchstone: 'effect', poxsac: 'effect',
 });
 
-// C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
-// clamp onto the wave-30 champion row and the late table honestly flags them.
-const STRAIN_ISSUES = Object.freeze([
-  { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
-  { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
-  { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
-]);
+// C01-03: the strain debuts sit on real deep-course rows again — the late table's
+// authoring check is expected clean.
+const STRAIN_ISSUES = Object.freeze([]);
 
 test('the audit table is complete: every late family resolves to remain, effect, or honest nothing', () => {
   assert.deepEqual(swarmBroodLateIssues(), STRAIN_ISSUES);

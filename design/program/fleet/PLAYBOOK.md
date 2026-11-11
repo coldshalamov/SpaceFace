@@ -31,6 +31,10 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
 
 ## 2. Who does what (calibrated 2026-11-10)
 
+Work is assigned by **lane** (`QUEUE.md`): Lane 1 = taste, creative, 3D, architecture, review; Lane 2
+= large engineering; Lane 3 = fully specified medium jobs; Lane 4 = mechanical. The table below says
+which model fits which lane.
+
 | Who | Good for | Not for |
 |---|---|---|
 | **Lead (Claude, strongest model)** | diagnosis, architecture, feel and look decisions, reviewing, writing packets | grunt edits a worker can do |
