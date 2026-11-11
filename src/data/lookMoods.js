@@ -60,10 +60,10 @@ export const LOOK_BASE = deepFreeze({
     rimPower: 3.5,
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
-    rockFill: 1.10,
+    rockFill: 0.95,
     // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
     // dark geological faces without changing their hue or texture strata; it is never emission.
-    rockFloor: 0.18,
+    rockFloor: 0.14,
     rockRim: 0.20,
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
@@ -100,8 +100,8 @@ export const LOOK_BASE = deepFreeze({
     // the lead chose concept A, a working harbour at golden hour: design/game/look/concepts/). Gains on the
     // sector's authored ambient and fill intensities. The key stays a hard rake and the rim keeps
     // silhouettes, so the side a sun does not reach is left for real lamps to find.
-    ambientGain: 1.10,
-    fillGain: 1.00,
+    ambientGain: 0.90,
+    fillGain: 0.80,
   },
 });
 

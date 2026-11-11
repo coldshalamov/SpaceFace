@@ -53,13 +53,13 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // estuary is distant atmosphere around them, held below the lit machinery — dimmed and
       // desaturated (owner 2026-10-27: the amber clouds carried more weight than gameplay, so
       // the accent drops further; the planet itself is receded in spaceBackground's planet style).
-      paintedSky: { plate: 'helios-amber-estuary', strength: 0.10, parallax: 0.003, saturation: 1.0 },
+      paintedSky: { plate: 'helios-amber-estuary', strength: 0.16, parallax: 0.003, saturation: 1.0 },
       // §22.5 C6 — the sector's baked sky backdrop (vm-drop/sector-skies). It substitutes the
       // procedural composite base under everything: the paintedSky accent plate, the star
       // associations and the bodies still draw over it. `sky` is the deep-field mood named by
       // background.structure.recipeId; resolveBackgroundSky clamps the fields.
       sky: { plate: 'sky-helios-orbital-void', strength: 1.0, parallax: 0.002 },
-      intensity: 0.44,
+      intensity: 0.57,
       nebulaOpacity: 0.0,
       structure: {
         ...DEFAULT_STRUCTURE,
@@ -115,13 +115,13 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     skyPalette: 'AZURE',
     lighting: { ambient: 0.15, key: 2.8, rim: 1.40, fill: 0.42 },
     background: {
-      intensity: 0.40,
+      intensity: 0.52,
       // Authored star associations/landmarks carry the composition; no procedural full-field veil.
       nebulaOpacity: 0.0,
       // The Lantern shelf: an offline-baked plate with one dominant lit mass upper-right, a far
       // companion upper-left and an explicit protected void over the lower-left play corridor.
       // It is authored art, not a wash — the bake refuses to ship over its composition budget.
-      paintedSky: { plate: 'core-lantern-shelf', strength: 0.10, parallax: 0.0032, saturation: 0.70 },
+      paintedSky: { plate: 'core-lantern-shelf', strength: 0.16, parallax: 0.0032, saturation: 0.70 },
       // Baked core sky under the Lantern shelf accent (vm-drop/sector-skies).
       sky: { plate: 'sky-core-trade-constellation', strength: 1.0, parallax: 0.002 },
       structure: {
@@ -151,12 +151,12 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     skyPalette: 'EMBER',
     lighting: { ambient: 0.15, key: 2.75, rim: 1.35, fill: 0.40 },
     background: {
-      intensity: 0.38,
+      intensity: 0.49,
       // The broken dust lane is explicit geometry with authored silhouette and occlusion.
       nebulaOpacity: 0.0,
       // The ochre shoal answers this region's own recipe: one warm mass broken into pieces by dark
       // lanes, sitting clear of the amber stellar river the star formation already draws overhead.
-      paintedSky: { plate: 'belt-ochre-shoal', strength: 0.10, parallax: 0.0034, saturation: 0.68 },
+      paintedSky: { plate: 'belt-ochre-shoal', strength: 0.16, parallax: 0.0034, saturation: 0.68 },
       // Baked belt sky under the ochre-shoal accent (vm-drop/sector-skies).
       sky: { plate: 'sky-belt-broken-dust-lane', strength: 1.0, parallax: 0.002 },
       structure: {
@@ -191,7 +191,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     // Slightly stronger key/rim/fill so station + long-ship keep two readable planes.
     lighting: { ambient: 0.13, key: 3.10, rim: 1.50, fill: 0.38 },
     background: {
-      intensity: 0.50,
+      intensity: 0.65,
       // Full-field L1/L2 contribution forced off — macro geometry + stars only.
       nebulaOpacity: 0.0,
       // Deliberately NO painted plate. The fringe's identity is the tidal filament and the blue
@@ -244,12 +244,12 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     skyPalette: 'ION',
     lighting: { ambient: 0.15, key: 2.40, rim: 1.40, fill: 0.36 },
     background: {
-      intensity: 0.42,
+      intensity: 0.55,
       // Local electromagnetic scar + wormhole replace the former fullscreen violet wash.
       nebulaOpacity: 0.0,
       // Still not a wash: the cold halo is two shell arcs and one knot, with a second protected
       // void over the right half so the live wormhole owns that patch of sky uncontested.
-      paintedSky: { plate: 'anomaly-cold-halo', strength: 0.09, parallax: 0.0030, saturation: 0.72 },
+      paintedSky: { plate: 'anomaly-cold-halo', strength: 0.14, parallax: 0.0030, saturation: 0.72 },
       // Baked anomaly sky under the cold-halo accent (vm-drop/sector-skies).
       sky: { plate: 'sky-anomaly-electromagnetic-scar', strength: 1.0, parallax: 0.002 },
       structure: {
@@ -292,7 +292,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     skyPalette: 'AZURE',
     lighting: { ambient: 0.12, key: 2.55, rim: 1.30, fill: 0.35 },
     background: {
-      intensity: 0.30,
+      intensity: 0.39,
       nebulaOpacity: 0.0,
       paintedSky: null,
       // The galaxy plate is Tethys's alone (§22.5 C6 row law): `sky-galactic-spur` is the single
@@ -344,7 +344,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       ambientColor: BOLUS_PALETTE.ambient,
     },
     background: {
-      intensity: 0.22,
+      intensity: 0.29,
       nebulaOpacity: 0.0,
       paintedSky: null,
       sky: null,
