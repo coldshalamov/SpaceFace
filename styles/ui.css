@@ -214,7 +214,20 @@ html.sf-reduce-motion #modal-backdrop { transition: none; }
 #sf-stage-banner .sf-stage__flow, #sf-stage-feed .sf-stage__flow { position: static; align-items: center; }
 /* The prompt flow seats items in the decision lane: above the HUD, under the screens — the same
    z 20 the prompt deck holds (src/ui/AGENTS.md DOM layering). */
-#sf-stage-prompt .sf-stage__flow { left: 50%; bottom: 175px; transform: translateX(-50%); align-items: center; z-index: 20; }
+/* G16-03: the prompt slot seats where the deck actually sits — upper-right of the HUD on
+   desktop, the bottom-left sheet on small viewports, the right column on short landscape —
+   the same seats #sf-prompt-deck owns in styles/prompt-deck.css. The flow spans the slot so a
+   bare item's own absolute seat (the deck root) resolves against the same box it measures. */
+#sf-stage-prompt .sf-stage__flow { position: absolute; inset: 0; justify-content: flex-start; align-items: flex-end; padding-top: max(56px, calc(var(--sf-hud-edge, 20px) + 36px)); padding-right: calc(100vw - var(--sf-rightdock-left, calc(100vw - 250px)) + 14px); box-sizing: border-box; z-index: 20; }
+#sf-stage-prompt .sf-stage__item { width: min(328px, calc(100vw - 32px)); }
+@media (max-width: 900px), (max-height: 620px) {
+  #sf-stage-prompt .sf-stage__flow { justify-content: flex-end; align-items: flex-start; padding-top: 0; padding-right: 0; padding-bottom: max(224px, 25vh); padding-left: 12px; }
+  #sf-stage-prompt .sf-stage__item { width: min(392px, calc(100vw - 172px)); }
+}
+@media (min-width: 640px) and (max-height: 620px) {
+  #sf-stage-prompt .sf-stage__flow { justify-content: flex-start; align-items: flex-end; padding-top: 112px; padding-right: 12px; padding-bottom: 0; padding-left: 0; }
+  #sf-stage-prompt .sf-stage__item { width: min(392px, calc(100vw - 350px)); }
+}
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
 body.ui-modal-open #modal-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 200ms var(--ease, ease), visibility 0s; }

@@ -27,6 +27,7 @@
 import * as THREE from 'three';
 import { recordMountedRootForUnreadyScan } from './bloom.js';
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 
 const CROWN_KIND = 'forge_crown';
 const PLATE_COUNT = 9;
@@ -228,7 +229,8 @@ export function createForgeCrownTracker() {
 
     const reduced = !!(options && options.motionReduce);
     const calmFlash = !!(options && options.flashReduce);
-    const dt = Math.max(0, frameDt || 0);
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const dt = Math.max(0, frameDt || 0) * ratio;
     rec.clock += dt;
 
     const alive = entity.alive !== false;
