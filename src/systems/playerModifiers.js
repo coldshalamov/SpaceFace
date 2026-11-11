@@ -310,6 +310,33 @@ function maintainScalar(rec, read, write, mult) {
   }
 }
 
+/**
+ * The ONE seam for an additive max-hull contribution (the plated-hull passive stack) on a
+ * hull that may carry the Glass Cannon multiplier. `delta` is an authored, unmodified
+ * amount: it joins the captured base and the live max moves by delta x the multiplier
+ * already applied, so upkeep never re-reads the sum as a fresh unmodified base and
+ * halves it a second time. `floorBase` keeps the unmodified base from sinking under a
+ * floor on a removal. Returns the live max-hull change.
+ */
+export function addSwarmHullMaxBonus(player, delta, floorBase = 0) {
+  if (!player || !Number.isFinite(player.hullMax) || !Number.isFinite(delta)) return 0;
+  const before = player.hullMax;
+  const marks = player.data && player.data.swarmMods;
+  const rec = marks && marks.hullMax;
+  if (!rec || !Number.isFinite(rec.base) || !Number.isFinite(rec.mult)) {
+    player.hullMax = Math.max(floorBase, before + delta);
+    return player.hullMax - before;
+  }
+  const expected = rec.base * rec.mult;
+  if (Math.abs(before - expected) > Math.max(1e-6, Math.abs(expected) * 1e-9)) {
+    rec.base = before; // a foreign rewrite: adopt it, exactly as the upkeep does
+    rec.mult = 1;
+  }
+  rec.base = Math.max(floorBase, rec.base + delta);
+  player.hullMax = rec.base * rec.mult;
+  return player.hullMax - before;
+}
+
 function playerEntity(state) {
   const id = state && state.playerId;
   if (id == null || !state.entities || typeof state.entities.get !== 'function') return null;

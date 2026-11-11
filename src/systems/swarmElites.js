@@ -51,7 +51,7 @@ import { findDivePull, livePullsOf } from './swarmDiveSeek.js';
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { maintainSwarmPlayerMods, swarmRamDealtScale } from './playerModifiers.js';
+import { addSwarmHullMaxBonus, maintainSwarmPlayerMods, swarmRamDealtScale } from './playerModifiers.js';
 import { validateRunState } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -890,18 +890,19 @@ export const swarmElites = {
       state.swarmPassiveHullApplied = bonus;
       state.swarmPassiveHullBase = player.hullMax;
       if (bonus > 0) {
-        player.hullMax += bonus;
-        player.hull = Math.min(player.hullMax, player.hull + bonus);
+        const gained = addSwarmHullMaxBonus(player, bonus);
+        player.hull = Math.min(player.hullMax, player.hull + gained);
       }
       return;
     }
     const delta = bonus - applied;
     if (delta !== 0) {
+      // A01-05 - the bonus joins the Glass Cannon base at one seam (playerModifiers).
       if (delta > 0) {
-        player.hullMax += delta;
-        player.hull = Math.min(player.hullMax, player.hull + delta);
+        const gained = addSwarmHullMaxBonus(player, delta);
+        player.hull = Math.min(player.hullMax, player.hull + gained);
       } else {
-        player.hullMax = Math.max(state.swarmPassiveHullBase || 0, player.hullMax + delta);
+        addSwarmHullMaxBonus(player, delta, state.swarmPassiveHullBase || 0);
         player.hull = Math.min(player.hull, player.hullMax);
       }
     }

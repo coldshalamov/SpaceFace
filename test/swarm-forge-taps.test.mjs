@@ -7,6 +7,8 @@ import { createRunState } from '../src/core/runState.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { survivalArena } from '../src/systems/survivalArena.js';
+import { swarmElites } from '../src/systems/swarmElites.js';
+import { SWARM_PASSIVE_RECORD_KIND } from '../src/data/swarmDraft.js';
 import { FOUNDRY_ARENA_ID } from '../src/systems/swarmArena.js';
 import { runSession as runSessionProto } from '../src/systems/runSession.js';
 import { ships as shipsProto, buildSlotList, fits } from '../src/systems/ships.js';
@@ -485,5 +487,24 @@ test('the forge receipt outlives the room: forged name survives a re-arm', () =>
     // And a second crossing still refuses through the ledger, not the pad.
     h.collect(forge());
     assert.equal(h.state.run.credits, 5000, 're-arm never reset the forge receipt');
+  } finally { h.destroy(); }
+});
+
+// ---- lead review 2026-11-11 -------------------------------------------------
+
+test('review 1: Plated Hull after Glass Cannon adds the halved bonus, never lowers max hull', () => {
+  const h = boot();
+  try {
+    swarmElites._maintainPassiveStack(h.state);
+    h.recordTap('glass_cannon');
+    h.upkeep();
+    assert.equal(h.pilot.hullMax, 100, 'glass cannon halves 200');
+    h.state.run.modifiers = [...h.state.run.modifiers,
+      { kind: SWARM_PASSIVE_RECORD_KIND, passiveId: 'plated_hull', count: 1 }];
+    swarmElites._maintainPassiveStack(h.state);
+    h.upkeep();
+    assert.equal(h.pilot.hullMax, 107, 'plating adds 14 x 0.5 on top of 100');
+    h.upkeep();
+    assert.equal(h.pilot.hullMax, 107, 'stable across further upkeep');
   } finally { h.destroy(); }
 });
