@@ -83,8 +83,9 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 |---|---|---|---|
 | G08-01-enemies-wear-their-sheet | D | Enemies drawn at sheet scale + hue | BUILT 3e94db0d |
 | C01-01-swarm-can-be-won | D | Thirty rounds, Forge Regent, `THE PIT IS YOURS` | BUILT ca74e15f |
-| C01-02-tests-follow-the-thirty-round-course | D | ~67 endless-course assertions rewritten or retired; list content now unreachable | TAKEN devin3 |
-| G08-02-thirty-named-rounds | D | `ROUND 7 — NAME` + twist via the existing seam; fold in the best content C01-02 lists as unreachable | HOLD on C01-02 |
+| C01-02-tests-follow-the-thirty-round-course | D | ~67 endless-course assertions rewritten or retired; list content now unreachable | BUILT 478a068a |
+| C01-03-keep-going | D | Win at 30, then "Keep going" into the endless course: all late content returns | TAKEN devin3 |
+| G08-02-thirty-named-rounds | D | `ROUND 7 — NAME` + twist via the existing seam; fold in the best content C01-02 lists as unreachable | HOLD on C01-03 |
 | G19-01-class-up-moment | D | The rope's class-up is an event | BUILT 3c7e8338 |
 | A01 the Foundry floor | D | NEEDS-PACKET: wall guns + buy pads, the moving crate, the forge, doors (docs 12 "What is on the floor", 15 Foundry) — split in three | NEEDS-PACKET |
 | A01 freight lanes | D | NEEDS-PACKET: timetabled freight crossing the arena, horn + lights (doc 12 "Traffic") | NEEDS-PACKET |
