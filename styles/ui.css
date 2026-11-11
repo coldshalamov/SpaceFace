@@ -197,6 +197,22 @@ html.sf-reduce-motion #modal-backdrop { transition: none; }
 #toasts { position: absolute; left: calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom: 155px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
 #alerts { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; transform: none; z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
+/* G16-01 the Stage (design/program/fleet/drafts/G16-one-glass.md): one host for every transient
+   popup. The named slot containers live in index.html and are layout-transparent — the hosts
+   inside keep their own ids, z-order and pointer rules. `.sf-stage-slot > div` restores the
+   `#ui-root > div` absolute contract for the hosts that used to be direct children
+   (#modal-backdrop, #screens, #alerts); the feed slot sits inside #hud so `#hud #toasts` keeps
+   binding. Items shown through stage.show() mount in .sf-stage__flow inside the slot, framed by
+   the shared .dp-glass — no new visual design. */
+.sf-stage-slot { position: absolute; inset: 0; pointer-events: none; }
+.sf-stage-slot > div { position: absolute; }
+.sf-stage__flow { display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.sf-stage__item { pointer-events: auto; }
+#sf-stage-dialog .sf-stage__flow { inset: 0; align-items: center; justify-content: center; }
+#sf-stage-banner .sf-stage__flow { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; align-items: center; }
+#sf-stage-feed .sf-stage__flow { left: 50%; bottom: 155px; transform: translateX(-50%); align-items: center; }
+#sf-stage-prompt .sf-stage__flow { left: 50%; bottom: 175px; transform: translateX(-50%); align-items: center; }
+
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
 body.ui-modal-open #modal-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 200ms var(--ease, ease), visibility 0s; }
 body.ui-modal-open #sf-onboarding,
