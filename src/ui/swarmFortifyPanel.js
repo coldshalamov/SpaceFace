@@ -62,7 +62,18 @@ export const crucibleFortifyScreen = {
     const title = make('header', 'k-title');
     const heading = make('h1', 'k-display k-t-title', 'Fortify the field'); heading.id = 'sf-fortify-title';
     this._balance = make('p', 'k-sentence sf-fortify-balance', 'Reading the run purse…');
-    title.append(heading, make('p', 'k-sentence', 'Build while paused. Your first defense establishes three fixed approaches. Defenses remain between waves and can be destroyed.'), this._balance);
+    const overview = make('div', 'sf-fortify-overview');
+    const devicesLink = make('button', 'k-word k-word--fine sf-fortify-jump', 'Devices · ' + Object.keys(SWARM_FORTIFY_DEVICES).length);
+    devicesLink.type = 'button'; devicesLink.setAttribute('aria-controls', 'sf-fortify-shelf');
+    devicesLink.addEventListener('click', () => this._reveal(this._deviceButtons.get(this._deviceId)));
+    this._fieldLink = make('button', 'k-word k-word--fine sf-fortify-jump', 'In the field');
+    this._fieldLink.type = 'button'; this._fieldLink.setAttribute('aria-controls', 'sf-fortify-state');
+    this._fieldLink.addEventListener('click', () => {
+      const service = [...this._structures.querySelectorAll('[data-repair-id]')].find(button => !button.disabled);
+      this._reveal(service || this._structures);
+    });
+    overview.append(this._balance, devicesLink, this._fieldLink);
+    title.append(heading, make('p', 'k-sentence sf-fortify-intro', 'Build while paused. First defense fixes three approaches. Defenses stay between waves unless destroyed.'), overview);
     const layout = make('section', 'sf-fortify-layout'); layout.dataset.sfScroll = 'fortify';
     const plan = make('section', 'sf-fortify-plan'); plan.setAttribute('aria-label', 'Arena construction positions');
     this._map = svg(this._doc, 'svg', { viewBox: '-560 -560 1120 1120', role: 'img', 'aria-label': 'Live paused field: physical obstacles, defenses, approach corridors and selected device reach' });
@@ -71,19 +82,27 @@ export const crucibleFortifyScreen = {
     this._facings = make('div', 'sf-fortify-sockets sf-fortify-facings');
     this._facings.setAttribute('role', 'group'); this._facings.setAttribute('aria-label', 'Slab facing'); this._facings.hidden = true;
     this._position = make('p', 'k-sentence sf-fortify-position', '');
-    plan.append(this._map, this._sockets, this._facings, this._position);
+    this._position.id = 'sf-fortify-position';
+    plan.append(this._map, this._sockets, this._facings);
     const shelf = make('section', 'sf-fortify-shelf'); shelf.dataset.sfScroll = 'fortify-shelf';
+    shelf.id = 'sf-fortify-shelf';
     shelf.setAttribute('aria-label', 'Construction devices'); this._deviceButtons = new Map();
+    shelf.appendChild(make('h2', 'k-t-emph sf-fortify-shelf-title', 'Choose a device · ' + Object.keys(SWARM_FORTIFY_DEVICES).length));
     for (const device of Object.values(SWARM_FORTIFY_DEVICES)) {
       const button = make('button', 'sf-fortify-device'); button.type = 'button'; button.dataset.deviceId = device.id;
       button.setAttribute('aria-pressed', String(device.id === this._deviceId));
-      button.append(make('strong', '', device.name), make('span', 'k-t-fine', device.cost + ' cr'), make('small', '', device.description));
+      button.setAttribute('aria-label', device.name + ' · ' + device.cost + ' cr');
+      const description = make('small', '', device.description); description.id = 'sf-fortify-description-' + device.id;
+      button.setAttribute('aria-describedby', description.id);
+      button.append(make('strong', '', device.name), make('span', 'k-t-fine', device.cost + ' cr'), description);
       button.addEventListener('click', () => { this._deviceId = device.id; this._paint(); });
       this._deviceButtons.set(device.id, button); shelf.appendChild(button);
     }
-    this._structures = make('section', 'sf-fortify-state'); shelf.appendChild(this._structures); layout.append(plan, shelf);
+    this._structures = make('section', 'sf-fortify-state'); this._structures.id = 'sf-fortify-state';
+    this._structures.tabIndex = -1; this._structures.setAttribute('aria-label', 'In the field');
+    shelf.appendChild(this._structures); layout.append(plan, shelf);
     const foot = make('footer', 'k-foot'); this._build = make('button', 'k-word k-word--emph sf-fortify-build', 'Choose a position');
-    this._build.type = 'button'; this._build.disabled = true;
+    this._build.type = 'button'; this._build.disabled = true; this._build.setAttribute('aria-describedby', this._position.id);
     this._build.addEventListener('click', () => {
       const payload = { deviceId: this._deviceId, socketId: this._socketId };
       if (SWARM_FORTIFY_DEVICES[this._deviceId]?.facings === true) payload.facing = this._facing;
@@ -93,7 +112,7 @@ export const crucibleFortifyScreen = {
     close.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
     this._note = make('p', 'k-sentence sf-fortify-receipt', 'Choose a device, then a field position.');
     this._note.setAttribute('role', 'status'); this._note.setAttribute('aria-live', 'polite');
-    foot.append(this._build, close, this._note); root.append(title, layout, foot);
+    foot.append(this._position, this._build, close, this._note); root.append(title, layout, foot);
     root.addEventListener('keydown', event => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       event.preventDefault(); event.stopPropagation(); close.click();
@@ -116,6 +135,7 @@ export const crucibleFortifyScreen = {
   onHide() { this._shown = false; this._queryId = null; this._offCancel?.(); this._offCancel = null; },
   refresh(ctx, options) { this._ctx = ctx; if (this._shown && !options?.periodic) this._requestView(); },
   dispose() { this.onHide(); for (const off of this._offs || []) off?.(); this._offs = []; this._ctx = null; this._root = null; },
+  _reveal(target) { target?.focus({ preventScroll: true }); target?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' }); },
   _requestView() { this._queryId = nextRequestId++; this._ctx.bus.emit('swarm:fortifyStateRequested', { requestId: this._queryId }); },
   _submit(type, payload) {
     if (this._pending || !this._model || (type === 'swarm:fortifyBuildRequested' && this._build.disabled)) return;
@@ -143,12 +163,22 @@ export const crucibleFortifyScreen = {
   _paint() {
     const model = this._model;
     for (const [id, button] of this._deviceButtons) button.setAttribute('aria-pressed', String(id === this._deviceId));
-    if (!model) { this._build.disabled = true; return; }
+    if (!model) {
+      this._build.disabled = true; this._fieldLink.disabled = true;
+      this._fieldLink.textContent = 'In the field';
+      this._position.textContent = 'Reading construction positions…'; return;
+    }
     const active = this._doc.activeElement;
     const focusSocket = this._root.contains(active) ? active?.dataset?.socketId : null;
     const focusFacing = this._root.contains(active) ? active?.dataset?.facingId : null;
     const focusRepair = this._root.contains(active) ? active?.dataset?.repairId : null;
     this._balance.textContent = 'Run purse · ' + Math.max(0, Math.floor(model.credits || 0)) + ' cr';
+    const structures = model.structures || [];
+    const needsService = structures.filter(structure => structure.missingEndpoint || structure.hull < structure.hullMax
+      || (Number.isFinite(structure.ammo) && structure.ammo < structure.ammoMax)).length;
+    this._fieldLink.disabled = false;
+    this._fieldLink.textContent = 'In the field · ' + structures.length
+      + (needsService ? ' · ' + needsService + (needsService === 1 ? ' needs service' : ' need service') : '');
     const slots = deviceSlots(model, this._deviceId);
     if (!slots.some(slot => slot.id === this._socketId)) this._socketId = slots.find(slot => !slot.blocked && !slot.occupied)?.id || slots[0]?.id || null;
     this._sockets.replaceChildren();
@@ -175,7 +205,9 @@ export const crucibleFortifyScreen = {
     this._position.textContent = !selected ? 'No construction position is available.'
       : selected.occupied ? 'Position ' + (slots.indexOf(selected) + 1) + ' is occupied. Choose another position to build.'
       : selected.blocked ? reasons[selected.reason] || 'Position ' + (slots.indexOf(selected) + 1) + ' is obstructed. Choose another position to build.'
-      : 'Position ' + (slots.indexOf(selected) + 1) + ' · clear physical approach.';
+      : 'Position ' + (slots.indexOf(selected) + 1) + ' · ' + (selected.label || selected.id).replace(' corridor', '')
+        + ' · clear physical approach.';
+    if (selected && device.facings === true) this._position.textContent += ' ' + (SWARM_FORTIFY_FACINGS.find(row => row.id === this._facing)?.label || '') + '.';
     this._build.textContent = selected ? 'Build ' + device.name + ' · ' + device.cost + ' cr' : 'No construction position available';
     this._build.disabled = !!this._pending || !selected || selected.blocked || selected.occupied || !(model.credits >= device.cost) || !['draft', 'refit'].includes(model.phase);
     this._paintMap(model, slots); this._structures.replaceChildren(element(this._doc, 'h2', 'k-t-emph', 'In the field'));

@@ -82,10 +82,11 @@ test('the wall heavies arrive late, on the wall bearing, protected like a debut'
   assert.ok(entries.length > 0, 'wall flag did not reach the schedule');
 });
 
-test('wave 6 is the one mass-gap round with no wall muscle — its only legal bruiser is debuting', () => {
+test('other arenas keep wave six mass-gap while Foundry gives its wreck payoff room', () => {
   // Mine-Layer Jackal is the only wall-role body legal at wave 6, and it is the wave's staged
   // newcomer — it cannot double as wall muscle, so the first wall is geometry alone.
-  const plan = swarmPlan(6);
+  assert.equal(swarmPlan(6).swarm.massGap, undefined);
+  const plan = swarmPlan(6, { arenaId: 'the_hive' });
   assert.ok(!plan.error);
   assert.ok(plan.swarm.massGap, 'wave 6 still gets the wall geometry');
   assert.equal(plan.swarm.massGap.heavyEnemyId, null,

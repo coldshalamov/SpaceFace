@@ -1,4 +1,7 @@
+import { bindFortifyReadiness } from '../swarmFortifyReadiness.js';
 import { fortifyAvailable } from '../swarmFortifyPanel.js';
+import { SWARM_FORTIFY_DEVICES } from '../../data/swarmFortify.js';
+import { swarmFoundryRound } from '../../data/swarmFoundryScore.js';
 // Crucible draft surface (PQ-133 / CRU-016) and refit surface (CRU-017).
 //
 // Both are pure DOM over receipts. They read the open offers, the re-roll price and the fittable
@@ -746,8 +749,13 @@ export function firstSwarmIntermission(run, offers) {
     ? `Service: ${repair.name.trim()} (${repair.price} cr).`
     : offers.some(buyable)
       ? 'Buy for round 2, or keep your salvage.'
-      : 'Keep your salvage; no purchase is available now.';
-  return `Round 1 cleared. ${choice} Rearrange loadout for spares, or Fortify the field. Launch round 2 when ready.`;
+      : 'Keep your salvage; no purchase is available on this armory shelf.';
+  const foundry = swarmFoundryRound({ arenaId: run.arenaId, wave: 2,
+    mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit });
+  const preparation = foundry && wallet >= SWARM_FORTIFY_DEVICES.tesla_pair.cost
+    ? `Rearrange loadout for spares, or Fortify the field: Tesla Pair (${SWARM_FORTIFY_DEVICES.tesla_pair.cost} cr) cuts crossings; Kinetic Turret (${SWARM_FORTIFY_DEVICES.kinetic_turret.cost} cr) spends ${SWARM_FORTIFY_DEVICES.kinetic_turret.effect.ammo} rounds.`
+    : 'Rearrange loadout for spares, or Fortify the field.';
+  return `Round 1 cleared. ${choice} ${preparation} Launch round 2 when ready.`;
 }
 
 /** SWARM-04 §6.5 — the next-round sentence shared by the armory and the refit bench. */
@@ -792,7 +800,7 @@ export function swarmForecastForRun(run, nextWave) {
       || !Number.isInteger(swarm.killTarget) || swarm.killTarget <= 0
       || !Number.isInteger(swarm.concurrent) || swarm.concurrent <= 0) return null;
 
-    const authored = swarmRoundPreview({ arenaId: run.arenaId, wave: nextWave, seed: run.seed });
+    const authored = swarmRoundPreview({ arenaId: run.arenaId, wave: nextWave, seed: run.seed, plan });
     if (!authored || !authored.zone || typeof authored.zone.name !== 'string') return null;
     const roster = [...new Set((Array.isArray(swarm.roster) ? swarm.roster : [])
       .filter((entry) => entry && (Number(entry.weight) || 0) > 0)
@@ -813,6 +821,104 @@ export function swarmForecastForRun(run, nextWave) {
   }
 }
 
+/** The champion's aftermath belongs at the earned shop, never over a live fight. */
+export function foundryAftermathIntermission(run, offers = []) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || ![5, 6].includes(run.wave) || run.telemetry?.firstBossDown?.wave !== 5
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: run.wave,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  const wallet = Number.isFinite(run.credits) ? Math.max(0, run.credits) : 0;
+  const repair = offers.filter(offer => offer?.available === true && !offer.purchased
+    && offer.kind === 'service' && ['weld', 'hull_patch'].includes(offer.service)
+    && Number.isFinite(offer.price) && offer.price >= 0 && offer.price <= wallet
+    && typeof offer.name === 'string' && offer.name.trim()).sort((a, b) => a.price - b.price)[0];
+  const service = repair ? ` ${repair.name.trim()}: ${repair.price} cr.` : '';
+  return run.wave === 5
+    ? `Iron Maw down. Round 5 cleared.${service} Surviving wreckage stays in the field. Spend your run purse here or save it; extraction opens after round 10.`
+    : `Round 6 cleared.${service} The next charge can break against surviving wreckage. Repair or Fortify, then launch when ready.`;
+}
+
+/** Round seven hands its close-range charge lesson to the existing rail sniper. */
+export function foundryLancerIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || run.wave !== 7 || (run.telemetry?.startWave || 1) > 7
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 8,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  return 'Round 7 cleared. A Lancer opens next: when it charges, strafe sideways, then close while it resets. Repair, check your Fortify ammunition, or save your purse before launch.';
+}
+
+/** The learned rail shot becomes a protected pair before the Cyst's own arrival. */
+export function foundryWardenIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || run.wave !== 8 || (run.telemetry?.startWave || 1) > 8
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 9,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  return 'Round 8 cleared. A Warden guards the next Lancer: attack the guard or circle its screen. A glowing Cyst follows before the crowd; burst it away from your hull. Repair, check Fortify ammunition, or save your purse before launch.';
+}
+
+/** First extraction is a choice at the bench, never an automatic victory. */
+export function foundryFirstExitIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm'
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 10,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 9 && run.phase === 'draft')
+    return 'Round 9 cleared. Face the Corsair, then the event in your forecast and the crowd. Check repairs and Fortify ammunition. After round 10, the bench offers extraction or another round.';
+  if (run.wave !== 10 || !['draft', 'refit'].includes(run.phase)) return null;
+  const purse = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
+  return run.phase === 'draft'
+    ? `Round 10 cleared. ${purse} cr remains in your run purse. Buy only what you want to take onward, then open the exit bench to refit, bank or extract. Spending here reduces what you take home.`
+    : `First exit reached. Fit earned spares${purse > 1 ? ', bank part of your purse,' : ''} or extract. Launch round 11 to keep this run and its field going. Next, a Leecher can latch and slow you: shoot it on approach or scrape solid rock at speed. This is not the end of Swarm.`;
+}
+
+export function foundryRecoveryIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 12,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 11) return 'Round 11 cleared. Next, the Quiet Ghost charges a rail shot, then changes flank. Strafe the charge and close during its move. A Leecher may join before the crowd: keep a solid scrape surface within reach. Repair or restock before launch.';
+  return null;
+}
+
+export function foundryForemanIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 15,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 12) return 'Round 12 cleared. Next, cross the Cutter’s plated nose and attack the flank. A Glassback follows: guns cannot crack its shell. Keep loose mass within reach, or ram it and leave the shards. Repair or restock what your build needs.';
+  if (run.wave === 13) return 'Round 13 cleared. Next, a Point-Defense Screen covers the Cutter. Break the escort or circle its fire before working the Cutter’s flank. Check your repairs and ammunition; no purchase is required.';
+  if (run.wave === 14) return 'Round 14 cleared. The Mirrorjaw Foreman is next. Leave its locked charge lane, cross behind the prow and attack during the coast. The stern also vents: keep moving. Prepare your own build before launch.';
+
+  return null;
+}
+
+/** A five-round post-boss act returns to the existing bench, never a new ending. */
+export function foundrySecondExitIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm'
+    || !['draft', 'refit'].includes(run.phase) || run.wave < 15 || run.wave > 20
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 20,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 20) {
+    const purse = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
+    return run.phase === 'draft'
+      ? `Round 20 cleared. ${purse} cr remains. Buy only what you want to carry on, then open the exit bench to refit, bank or extract. Spending reduces what you can take home.`
+      : `Second exit reached. Fit earned spares${purse > 1 ? ', bank part of your purse,' : ''} or extract. Launch round 21 to keep this run and its field going. Swarm continues.`;
+  }
+  if (run.phase !== 'draft') return null;
+  if (run.wave === 15) return 'Round 15 cleared. Swarm continues to round 16. If Foreman wreckage survives, use it if it suits your build. The Raider threatens a loaded line: swing away from its spool or release, then punish the miss. Repair, restock or keep your purse for the second exit after round 20.';
+  if (run.wave === 16) return 'Round 16 cleared. Next, a Bellows and pack can use a surviving solid bank. Shoot until it swells, then finish it or let the fuse burst it. Stay clear or use the shove against the bank. Repair or save your purse; no purchase is required.';
+  if (run.wave === 17) return 'Round 17 cleared. Next, a Bruiser commits to its flared pass. Slip sideways, then punish the recovery. Keep room to move instead of trapping yourself against a bank.';
+  if (run.wave === 18) return 'Round 18 cleared. Next, Iron Kraken opens alone. Dodge its marked arms and locked jet, then fire into the open front core during recovery. A Bellows pocket follows if a solid bank is still usable. Choose what to repair and what to save.';
+  return 'Round 19 cleared. One round to the second exit: a screen covers the Raider, then the Bruiser joins. Pick the exposed threat and preserve an escape lane. The forecast event and crowd follow. Clear to refit, bank or extract; you may keep flying afterward.';
+}
+
+export function swarmArmoryExitLabel(run) {
+  return run?.phase === 'draft' && ((run.wave === 10 && foundryFirstExitIntermission(run))
+    || (run.wave === 20 && foundrySecondExitIntermission(run)))
+    ? 'Open exit bench' : `Launch round ${(run?.wave || 0) + 1}`;
+}
+
 /** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
 export function swarmNextLine(next) {
   if (!next) return '';
@@ -821,7 +927,8 @@ export function swarmNextLine(next) {
     `clear ${next.killTarget}`,
     `room cap ${next.concurrent}`,
   ];
-  if (next.roster.length) bits.push(next.roster.join(', '));
+  if (next.foreground) bits.push(`${next.foreground.title}: ${next.foreground.preparation}`);
+  else if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
   if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
@@ -1254,6 +1361,7 @@ export const crucibleDraftScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     bindScreenResultRefresh(this, this._ctx, ARMORY_RESULT_REFRESH_EVENTS);
+    bindFortifyReadiness(this, this._ctx);
     this._visualArmory?.setActive(true);
     if (this._ctx) this.refresh(this._ctx);
     this._offCancel?.();
@@ -1272,6 +1380,8 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1280,6 +1390,8 @@ export const crucibleDraftScreen = {
   },
 
   dispose() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1498,7 +1610,14 @@ export const crucibleDraftScreen = {
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
-    this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
+    this._sub.textContent = foundryAftermathIntermission(context.state?.run, offers)
+      ?? foundryLancerIntermission(context.state?.run)
+      ?? foundryWardenIntermission(context.state?.run)
+      ?? foundryFirstExitIntermission(context.state?.run)
+      ?? foundryRecoveryIntermission(context.state?.run)
+      ?? foundryForemanIntermission(context.state?.run)
+      ?? foundrySecondExitIntermission(context.state?.run)
+      ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
@@ -1670,7 +1789,7 @@ export const crucibleDraftScreen = {
         : circuitOwed
           ? (circuitError ? 'Circuit data invalid — start a new run'
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
-          : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
+          : shop ? swarmArmoryExitLabel(context.state?.run) : (offers.length ? 'Keep current loadout' : 'Continue'),
       'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
@@ -2111,8 +2230,10 @@ export const crucibleRefitScreen = {
     const h = el('h1', 'k-display k-t-title', 'Refit');
     h.id = 'sf-crucible-refit-title';
     title.appendChild(h);
-    title.appendChild(el('p', 'k-t-emph k-62 sf-cru-sub',
-      'Strip a hardpoint, or choose any spare the run has earned and fit it.'));
+    const sub = el('p', 'k-t-emph k-62 sf-cru-sub',
+      'Strip a hardpoint, or choose any spare the run has earned and fit it.');
+    title.appendChild(sub);
+    this._sub = sub;
     rootEl.appendChild(title);
     // The owner's word on a refused fit or strip, under the title where the eye starts.
     const note = el('p', 'k-sentence sf-cru-note', '');
@@ -2379,6 +2500,7 @@ export const crucibleRefitScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     bindScreenResultRefresh(this, this._ctx, REFIT_RESULT_REFRESH_EVENTS);
+    bindFortifyReadiness(this, this._ctx);
     // A worker receipt may have landed while this modal was hidden and unsubscribed. Re-read
     // the canonical snapshot on every reopen rather than waiting for the next event edge.
     if (this._ctx) this.refresh(this._ctx);
@@ -2392,6 +2514,8 @@ export const crucibleRefitScreen = {
   },
 
   onHide() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     this._feedEndHold(false);
     unbindScreenResultRefresh(this);
     if (canAnimate()) cue('close');
@@ -2422,6 +2546,8 @@ export const crucibleRefitScreen = {
   },
 
   dispose() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     unbindScreenResultRefresh(this);
     this._refitResultOff?.();
     this._refitResultOff = null;
@@ -2438,6 +2564,9 @@ export const crucibleRefitScreen = {
   _syncFoot(context) {
     const run = context && context.state ? context.state.run : null;
     const lines = refitFootLines(run);
+    if (this._sub) this._sub.textContent = foundryFirstExitIntermission(run)
+      ?? foundrySecondExitIntermission(run)
+      ?? 'Strip a hardpoint, or choose any spare the run has earned and fit it.';
     const setNote = (node, text) => {
       if (!node) return;
       if (node.textContent !== text) node.textContent = text;

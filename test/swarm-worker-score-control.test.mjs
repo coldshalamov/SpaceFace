@@ -51,6 +51,9 @@ test('production worker admits fresh pointer control at input sampling and prese
       waveSerial = Math.max(waveSerial, wave);
       state.run = Object.assign(createRunState({ kind: 'survival', ruleset: 'swarm', seed: 73311 }),
         { phase: 'active', wave, retireToken });
+      // This fixture supplies an active run instead of going through begin().
+      // Adopt it at owner initialization before input/award clones exercise it.
+      registry.get('runSession').init({ state, bus });
       registry.get('swarmChain')._reset();
     }
     async function reset() {

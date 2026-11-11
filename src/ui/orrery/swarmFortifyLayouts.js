@@ -1,10 +1,14 @@
 import { injectOrrery } from './tokens.js';
 
+// Match the mobile shell's specificity only for this screen's compact title/copy.
+// Otherwise its generic 42px heading silently replaces the compact composition on phones.
+const PHONE = 'html:root[data-sf-mobile="1"] body #screens#screens#screens > .screen.sf-crucible-fortify';
+
 const CSS = `
 html body #screens > .k-screen.sf-crucible-fortify {
   display:grid !important; grid-template-rows:auto minmax(0,1fr) auto !important;
   gap:20px !important; padding:28px 40px !important; height:100dvh !important;
-  width:100% !important; max-width:none !important; margin:0 !important; overflow:hidden !important;
+  width:100% !important; max-width:none !important; margin:0 !important; overflow:hidden !important; box-sizing:border-box !important;
 }
 .sf-crucible-fortify .k-title,.sf-crucible-fortify .k-foot { position:static !important; margin:0 !important; padding:0 !important; }
 .sf-crucible-fortify .k-title h1 { margin:0; font-size:clamp(28px,4vw,48px); }
@@ -26,7 +30,7 @@ html body #screens > .k-screen.sf-crucible-fortify {
 .sf-fortify-plan .sf-fortify-bank { fill:none; stroke:currentColor; stroke-width:2.5; stroke-dasharray:8 5; }
 .sf-fortify-plan polygon { vector-effect:non-scaling-stroke; }
 .sf-fortify-facings { margin-top:10px; }
-.sf-fortify-facings[hidden] { display:none; }
+.sf-fortify-facings[hidden] { display:none !important; }
 .sf-fortify-plan .sf-fortify-pilot { fill:var(--dp-phos); stroke:none; }
 .sf-fortify-plan .sf-fortify-point { fill:var(--dp-void); stroke:var(--dp-ink); stroke-width:1.5; }
 .sf-fortify-plan .sf-fortify-point[data-selected=true] { stroke:var(--dp-hand); stroke-width:3; }
@@ -34,10 +38,11 @@ html body #screens > .k-screen.sf-crucible-fortify {
 .sf-fortify-plan .sf-fortify-point[data-occupied=true] { fill:var(--dp-hand); }
 html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan text { fill:var(--dp-ink); font:56px var(--dp-face-numeral) !important; text-anchor:middle; dominant-baseline:central; }
 .sf-fortify-plan text[data-occupied=true] { fill:var(--dp-void); }
-.sf-fortify-position { margin:8px 0; min-height:1.5em; }
+.sf-fortify-position { grid-column:1/-1; max-width:none; margin:0; min-height:1.5em; color:var(--dp-ink); overflow-wrap:anywhere; }
 .sf-fortify-sockets { display:flex; gap:8px 18px; flex-wrap:wrap; }
 .sf-fortify-sockets button,.sf-fortify-device { min-height:44px; text-align:left; }
-.sf-fortify-shelf { overflow:auto; min-height:0; padding-right:8px; }
+.sf-fortify-shelf { overflow:auto; min-width:0; min-height:0; padding:4px 8px 4px 4px; scroll-padding:4px; }
+.sf-fortify-shelf-title { margin:0; font:600 14px/1.4 var(--dp-face-read); }
 .sf-fortify-device { width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 18px; border:0; border-bottom:1px solid var(--dp-line); padding:14px 0; background:none; color:var(--dp-ink); cursor:pointer; text-transform:none !important; letter-spacing:normal !important; }
 .sf-fortify-device strong { font:600 17px var(--dp-face-read); }
 .sf-fortify-device small { grid-column:1/-1; font:14px/1.45 var(--dp-face-read); color:var(--dp-ink-dim); }
@@ -48,7 +53,7 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan text { fill:
 .sf-fortify-state li { padding:8px 0; font:14px/1.5 var(--dp-face-read); }
 .sf-fortify-state button { margin-left:12px; }
 .sf-fortify-balance { color:var(--dp-hand); font-variant-numeric:tabular-nums; }
-.sf-crucible-fortify .k-foot { display:flex; gap:10px 28px; flex-wrap:wrap; align-items:center; }
+.sf-crucible-fortify .k-foot { display:grid; grid-template-columns:auto auto minmax(0,1fr); gap:10px 28px; align-items:center; }
 /* the commit verbs are keys: the build is the one amber primary (the 45° cut), the close a
    secondary (STATION_STANDARD §5) — not amber and bone words a player could miss. */
 html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build {
@@ -69,21 +74,7 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear; }
 html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close:is(:hover, :focus-visible) {
   color:#fff; background:rgb(236 230 216 / .12); border-color:rgb(236 230 216 / .75); }
-.sf-fortify-receipt { flex:1 0 100%; margin:0; min-height:1.5em; }
-@media (max-width:760px) {
-  html body #screens > .k-screen.sf-crucible-fortify { padding:20px !important; gap:12px !important; }
-  .sf-fortify-layout { display:flex; flex-direction:column; overflow:auto; gap:18px; }
-  .sf-fortify-plan,.sf-fortify-shelf { flex:0 0 auto; }
-  .sf-fortify-plan svg { height:240px; flex:none; }
-  .sf-fortify-shelf { overflow:visible; }
-}
-@media (max-height:540px) and (min-width:761px) {
-  html body #screens > .k-screen.sf-crucible-fortify { padding:16px 24px !important; gap:8px !important; }
-  .sf-fortify-layout { overflow:auto; }
-  .sf-fortify-plan,.sf-fortify-shelf { min-height:360px; }
-  .sf-fortify-plan svg { min-height:240px; }
-  .sf-fortify-shelf { overflow:visible; }
-}
+.sf-fortify-receipt { min-width:0; margin:0; min-height:1.5em; overflow-wrap:anywhere; }
 /* polish277: the armory's choices read as controls, not loose type. Positions are hairline
    chips, devices hairline cards, built structures framed rows with a hairline Repair/Rearm key,
    and an empty field a dashed well. Radius 8 and faint fills, the same family as the other
@@ -124,144 +115,107 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state button:not(
   background:rgb(236 230 216 / .12) !important; border-color:rgb(236 230 216 / .6) !important; }
 html.sf-reduce-motion .k-screen.sf-crucible-fortify .sf-fortify-sockets button,
 html.sf-reduce-motion .k-screen.sf-crucible-fortify .sf-fortify-device { transition:none !important; }
-@media (max-width:760px) {
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button { min-height:44px; }
+/* Keep navigation in the title and placement beside the commit action. The footer occupies
+   its own grid row: no fade, mask or shadow may cover the decision or service controls. */
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-overview {
+  display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; margin-top:8px;
 }
-
-/* —— UI polish: short densify (sockets/shelf ∩ transparent foot + off-bottom clips) ——
-   At ≤560 tall the plan SVG + position chips + device shelf outgrew the 1fr mid row while
-   the foot stayed transparent (651/700 socket labels offB ~19; 801/960 shelf/device offB
-   ~31–35; shelf∩foot mash tens of k). Compress chrome, turn the mid row into a real
-   scrollport, drop the short-desktop 360px floors that forced overflow, and raise an
-   opaque foot curtain + fade apron so Build / Return stay clear. */
-@media (max-height:560px) {
-  html body #screens > .k-screen.sf-crucible-fortify {
-    gap:8px !important; padding:12px 18px 8px !important;
-    overflow:hidden !important; height:100dvh !important; max-height:100dvh !important;
-    box-sizing:border-box !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .k-title h1,
-  html body #screens > .k-screen.sf-crucible-fortify .k-title .k-t-title {
-    font-size:clamp(22px, 5.2vh, 32px) !important; line-height:.94 !important; margin:0 !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .k-title :is(p, .k-sentence, .sf-fortify-balance) {
-    font-size:12px !important; line-height:1.3 !important; margin:2px 0 0 !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-layout {
-    min-height:0 !important; max-height:100% !important; overflow:auto !important;
-    gap:14px !important; align-content:start !important;
-    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
-    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan,
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf {
-    min-height:0 !important; max-height:none !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan svg {
-    min-height:120px !important; max-height:min(220px, 42vh) !important; flex:0 1 auto !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf {
-    overflow:visible !important; padding-bottom:4px !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device {
-    padding:8px 10px !important; gap:4px 12px !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device strong { font-size:14px !important; }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device small {
-    font-size:12px !important; line-height:1.3 !important;
-    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
-    overflow:hidden !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets { gap:6px !important; margin-top:4px !important; }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button {
-    min-height:28px !important; padding:0 8px !important; font-size:12px !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state {
-    margin-top:8px !important; padding-top:8px !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot {
-    z-index:8 !important; position:relative !important; isolation:isolate;
-    flex:none !important; grid-row:3 !important;
-    margin:0 !important; padding:6px 0 4px !important;
-    border-top:1px solid rgb(236 230 216 / .16) !important;
-    background:rgb(5 7 10) !important;
-    box-shadow:0 48px 0 0 rgb(5 7 10), 0 -28px 28px -2px rgb(5 7 10 / .97) !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot::before {
-    content:'' !important; display:block !important; pointer-events:none !important;
-    position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
-    height:22px !important;
-    background:linear-gradient(180deg, transparent, rgb(5 7 10)) !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot > :is(.k-words, .sf-fortify-build, .sf-fortify-close, .sf-fortify-receipt) {
-    position:relative; z-index:1;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build,
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
-    min-height:32px !important; font-size:13px !important; padding:0 12px !important;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-receipt {
-    font-size:12px !important; margin:0 !important; min-height:0 !important;
-  }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-overview .sf-fortify-balance { margin:0 !important; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-jump {
+  min-height:36px; padding:4px 10px; border:1px solid var(--dp-line) !important;
+  border-radius:6px; background:var(--dp-void) !important; color:var(--dp-ink);
+  font:500 13px/1.35 var(--dp-face-read) !important; letter-spacing:normal !important; text-transform:none !important;
 }
-/* Very short: keep purchase feedback beside the verbs when space permits.
-   This live status owns refusals and build/repair/rearm results, so it must remain readable. */
-@media (max-height:500px) {
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-receipt {
-    flex:1 1 22ch !important; min-width:0 !important;
-    line-height:1.3 !important; overflow-wrap:anywhere;
-  }
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot { padding:4px 0 2px !important; }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan svg {
-    min-height:100px !important; max-height:min(180px, 38vh) !important;
-  }
+html body #screens > .k-screen.sf-crucible-fortify > .k-foot {
+  gap:8px 16px; border-top:1px solid var(--dp-line); padding-top:8px !important;
 }
-/* Narrow+short: keep foot verbs on one compact row. */
-@media (min-width:641px) and (max-width:820px) and (max-height:560px) {
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot { gap:6px 10px !important; }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build,
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
-    min-height:30px !important; font-size:12px !important; padding:0 8px !important; white-space:nowrap !important;
-  }
-}
-/* Phone portrait: height often clears ≤560, but stacked shelf still paints under the foot. */
-@media (max-width:560px) {
+@media (max-width:760px), (max-height:560px) {
   html body #screens > .k-screen.sf-crucible-fortify {
     gap:8px !important; padding:12px 14px 8px !important;
-    overflow:hidden !important; height:100dvh !important; max-height:100dvh !important;
-    box-sizing:border-box !important;
+    height:100dvh !important; max-height:100dvh !important;
   }
   html body #screens > .k-screen.sf-crucible-fortify .k-title h1,
   html body #screens > .k-screen.sf-crucible-fortify .k-title .k-t-title {
-    font-size:clamp(22px, 6vw, 30px) !important; line-height:.94 !important;
+    font-size:clamp(22px, 4vw, 30px) !important; line-height:1.05 !important; margin:0 !important;
   }
+  html body #screens > .k-screen.sf-crucible-fortify .k-title :is(p, .k-sentence) {
+    font-size:13px !important; line-height:1.35 !important; margin:4px 0 0 !important;
+  }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-intro { max-width:none; }
+  ${PHONE} .k-title > h1 { font-size:22px !important; line-height:1.05 !important; }
+  ${PHONE} .k-title > .sf-fortify-intro { font-size:13px !important; line-height:1.35 !important; }
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-layout {
-    min-height:0 !important; overflow:auto !important; gap:12px !important;
-    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
-    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+    grid-template-columns:minmax(0,1fr) minmax(260px,1fr); gap:14px;
+    min-height:0; overflow:hidden;
+  }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan {
+    overflow:auto; padding:4px; scroll-padding:4px;
   }
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan svg {
-    height:200px !important; min-height:140px !important; flex:none !important;
+    height:240px; min-height:240px; flex:none;
   }
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf { overflow:visible !important; }
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot {
-    z-index:8 !important; position:relative !important; isolation:isolate;
-    flex:none !important; grid-row:3 !important;
-    margin:0 !important; padding:6px 0 4px !important;
-    border-top:1px solid rgb(236 230 216 / .16) !important;
-    background:rgb(5 7 10) !important;
-    box-shadow:0 48px 0 0 rgb(5 7 10), 0 -28px 28px -2px rgb(5 7 10 / .97) !important;
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets { gap:6px; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button {
+    min-height:36px; padding:4px 8px; white-space:normal;
   }
-  html body #screens > .k-screen.sf-crucible-fortify > .k-foot::before {
-    content:'' !important; display:block !important; pointer-events:none !important;
-    position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
-    height:22px !important;
-    background:linear-gradient(180deg, transparent, rgb(5 7 10)) !important;
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device {
+    min-height:44px; padding:10px; gap:6px 10px;
   }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device strong { font-size:14px; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device small { font-size:13px; line-height:1.4; }
+  /* Compact choices expose names/prices together; selecting one reveals its complete description.
+     Explicit aria-describedby retains the description for assistive technology on every choice. */
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device[aria-pressed=false] small { display:none; }
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build,
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
-    min-height:34px !important; font-size:13px !important;
+    min-height:36px; font-size:13px !important; padding:6px 12px;
   }
+  html body #screens > .k-screen.sf-crucible-fortify :is(.sf-fortify-position, .sf-fortify-receipt) {
+    font-size:13px !important; line-height:1.35 !important; margin:0 !important; min-height:0;
+  }
+}
+/* Short wide frames need the choices BESIDE the schematic, not below a 240px picture.
+   The 160px drawing with 84-unit numbers keeps the numerals at 12 CSS pixels. */
+@media (max-height:560px) and (min-width:600px) {
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan {
+    display:grid; grid-template-columns:160px minmax(0,1fr); gap:8px; align-content:start; align-items:start;
+  }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan svg {
+    width:160px; height:160px; min-height:160px;
+  }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan text { font-size:84px !important; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets {
+    display:grid; grid-template-columns:minmax(0,1fr); gap:4px;
+  }
+  /* Mouse/keyboard rows can be compact; the mobile shell's 44px !important floor still wins. */
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button { min-height:32px; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-facings {
+    grid-column:1/-1; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:0;
+  }
+}
+@media (max-height:560px) and (min-width:780px) {
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets:not(.sf-fortify-facings) {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+/* A phone gets one normal vertical scrollport, with the same reading and focus order.
+   Landscape frames as narrow as 600px retain both the map and device choice columns. */
+@media (max-width:599px) {
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-overview {
+    display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 12px;
+  }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-balance { grid-column:1/-1; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-jump { white-space:normal; }
+  html body #screens > .k-screen.sf-crucible-fortify > .k-foot { grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-receipt { grid-column:1/-1; }
+  html body #screens > .k-screen.sf-crucible-fortify :is(.sf-fortify-build, .sf-fortify-close) { white-space:normal; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-layout {
+    display:flex; flex-direction:column; overflow:auto; gap:16px; scroll-padding:4px;
+  }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan,
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf { flex:none; overflow:visible; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  html body #screens > .k-screen.sf-crucible-fortify :is(.sf-fortify-sockets button, .sf-fortify-jump, .sf-fortify-state button, .sf-fortify-build, .sf-fortify-close) { min-height:44px; }
 }
 `;
 

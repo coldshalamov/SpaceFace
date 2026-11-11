@@ -1,7 +1,7 @@
 // SWARM-01 — the persistent Hangar. Bounty bought between runs never enters the adventure wallet.
 
 import { SHIPS } from './ships.js';
-import { SWARM_BOSS_EVERY, isSwarmBossWave } from './swarmMode.js';
+import { SWARM_BOSS_FIRST, SWARM_BOSS_EVERY, isSwarmBossWave } from './swarmMode.js';
 
 export const HANGAR_TRACKS = Object.freeze([
   Object.freeze({ id: 'plating', name: 'Plating', stat: 'hull', perRank: 0.05, prices: Object.freeze([100, 250, 500, 900, 1400]) }),
@@ -51,8 +51,8 @@ export function hangarRank(hangar, trackId) {
 
 export function bossWasCleared(result) {
   const cleared = Math.round(Number(result && (result.wavesCleared != null ? result.wavesCleared : result.wave)) || 0);
-  if (cleared < SWARM_BOSS_EVERY) return false;
-  for (let wave = SWARM_BOSS_EVERY; wave <= cleared; wave += SWARM_BOSS_EVERY) {
+  if (cleared < SWARM_BOSS_FIRST) return false;
+  for (let wave = SWARM_BOSS_FIRST; wave <= cleared; wave += SWARM_BOSS_EVERY) {
     if (isSwarmBossWave(wave)) return true;
   }
   return false;

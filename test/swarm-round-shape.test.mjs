@@ -16,6 +16,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { makeEnemySpawnSpec } from '../src/systems/enemySpawnSpec.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
@@ -92,6 +93,7 @@ function beginWave(h, wave = h.state.run.wave, seed = SEED) {
   assert.ok(plan && plan.ok !== false, `wave ${wave} plans`);
   h.bus.emit('run:wavePlanned', { wave, plan });
   h.bus.emit('run:waveStarted', { wave });
+  noteSwarmPilotAction(h.state); // This fixture represents the scripted active pilot.
   return plan;
 }
 
@@ -200,7 +202,7 @@ test('one gate per group: opening groups arrive on distinct bearings (waves 1-3)
     const gates = new Set(opening.map((p) => p.gateGroup).filter(Boolean));
     assert.ok(gates.size >= Math.min(swarmOpeningGroupCount(wave), 2),
       `wave ${wave} spreads its opening across gates (${[...gates]})`);
-    tick(h, 90);
+    tick(h, (plan.swarm.foundry?.shipReadTicks || 0) + 161);
     const byGate = new Map();
     for (const m of h.events.filter((e) => e.event === 'run:waveMaterialized')) {
       const g = m.payload.gateGroup;

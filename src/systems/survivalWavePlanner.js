@@ -3,6 +3,7 @@
 // Same input → same output. Never mutates the input.
 
 import { mulberry32 } from '../core/rng.js';
+import { swarmFoundryRound } from '../data/swarmFoundryScore.js';
 import { ironKrakenForSwarmWave } from '../data/ironKraken.js';
 import {
   SPAWN_BUDGET_DEFAULT_MAX,
@@ -207,6 +208,7 @@ function expandSchedule(packages) {
       if (pkg.debut === true) entry.debut = true;
       if (pkg.wall === true) entry.wall = true;
       if (pkg.staged === true) entry.staged = true;
+      if (Number.isInteger(pkg.readAfterTicks)) entry.readAfterTicks = pkg.readAfterTicks;
       if (typeof pkg.characterScoreId === 'string') entry.characterScoreId = pkg.characterScoreId;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
@@ -413,9 +415,10 @@ function biasSwarmRosterForBuild(roster, dominant) {
   return bent ? next : null;
 }
 
-function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, swarmThreats, circuitRound }) {
+function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarmStake, swarmThreats, circuitRound }) {
   const w = swarmWaveOf(wave);
   const list = mutatorList(mutators);
+  const foundry = swarmFoundryRound({ arenaId, wave: w, mutators: list, circuitRound });
   const stake = swarmStakeFor(swarmStake);
   // SWARM-06: the Threat wager's room half lands here — Thick Pack multiplies pressure exactly
   // like a stake leg (concurrency and quota, never stats), and its product with the stake is
@@ -436,7 +439,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // SF-062 — the mass-and-gap round. A light-pursuer opening is ammunition first; the wall and
   // its late heavies turn one side of the room into a corridor the player navigates or breaks.
   // The mutator owns the room outright, so heavies_only suppresses the shape entirely.
-  const massGap = !heaviesOnly && isSwarmMassGapWave(w);
+  const massGap = !heaviesOnly && !foundry && isSwarmMassGapWave(w);
   // SF-068 — a boss round's reduced swarm is ammunition, not chores: the champion is the work,
   // so its opening chaff draws from the same light bodies the mass-gap wall feeds — the shapes
   // the room's berm, mines and pull can actually turn on the boss. heavies_only owns outright.
@@ -553,7 +556,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   }
   // Character heavies have their own finite seat. Weighted roster picks would turn a
   // readable eight-arm arrival into a random three-Kraken reinforcement pack.
-  const character = !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
+  const character = (!foundry || foundry.characterForeground) && !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
     ? ironKrakenForSwarmWave(w) : null;
   let characterLanded = false;
   if (character) {
@@ -565,15 +568,52 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     if (donor) {
       donor.count -= 1;
       donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
-      packages.push({ atTick: SWARM_DEBUT_TICKS, gateGroup: swarmFreeGateFor(w, packages.map(pkg => pkg.gateGroup)),
+      packages.push({ atTick: foundry?.characterForeground ? 0 : SWARM_DEBUT_TICKS, gateGroup: swarmFreeGateFor(w, packages.map(pkg => pkg.gateGroup)),
         role: 'elite', enemyId: character.enemyId, count: 1, batchSize: 1, batchGapTicks: 0,
-        staged: true, distance: character.spawnDistance, characterScoreId: character.scoreId });
+        staged: true, distance: character.spawnDistance, characterScoreId: character.scoreId,
+        ...(foundry?.characterForeground ? { foundryReadTicks: 1 } : {}) });
       characterLanded = true;
     }
+  }
+  if (['break_the_guard', 'peel_the_screen'].includes(foundry?.id)) {
+    // A guard needs an actual ward. Reassign ONE already-owed opening seat to
+    // the learned threat beside its escort, rather than add a free hull.
+    const wardId = foundry.id === 'peel_the_screen' ? 'customs_cutter' : 'lancer_sniper';
+    const guard = packages.find(pkg => pkg.debut);
+    const donor = packages.find(pkg => !pkg.debut && pkg.enemyId === wardId && pkg.count > 1)
+      || packages.find(pkg => !pkg.debut && !pkg.champion && pkg.count > 1);
+    if (guard && donor) {
+      donor.count -= 1;
+      donor.batchSize = Math.min(donor.batchSize, donor.count);
+      packages.push({ atTick: 0, gateGroup: guard.gateGroup, role: wardId === 'customs_cutter' ? 'disruptor' : 'reach', enemyId: wardId,
+        count: 1, batchSize: 1, batchGapTicks: 0, staged: true, distance: 280 });
+    }
+  }
+  if (foundry?.foregroundShips) for (const foreground of foundry.foregroundShips) {
+    // Spend an ordinary seat, preferring one already belonging to this family.
+    // No free enemy, changed quota, or competing attack owner enters the act.
+    const donor = packages.find(pkg => !pkg.debut && !pkg.champion && !pkg.staged
+      && pkg.enemyId === foreground.enemyId && pkg.count > 1)
+      || packages.find(pkg => !pkg.debut && !pkg.champion && !pkg.staged && pkg.count > 1);
+    if (!donor) continue;
+    donor.count -= 1;
+    donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
+    packages.push({ atTick: 0, gateGroup: foreground.gate,
+      role: foreground.role, enemyId: foreground.enemyId, count: 1, batchSize: 1,
+      batchGapTicks: 0, staged: true, distance: foreground.role === 'support' ? 230 : 280,
+      foundryReadTicks: foreground.readTicks });
+  }
+  if (foundry) {
+    packages = packages.map(pkg => ({ ...pkg,
+      ...(pkg.debut && Number.isInteger(foundry.debutAtTick) ? { atTick: foundry.debutAtTick } : {}),
+      readAfterTicks: Number.isInteger(pkg.foundryReadTicks) ? pkg.foundryReadTicks : pkg.champion ? 0 : pkg.debut || (['break_the_guard', 'peel_the_screen'].includes(foundry.id) && pkg.staged)
+        ? foundry.debutReadTicks : foundry.shipReadTicks,
+    }));
   }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w, bossOverride);
+  if (foundry) swarm.foundry = { ...foundry };
   if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
     name: character.name, variant: character.variant };
   if (biasedRoster) {
@@ -723,7 +763,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     // An authored act round owns its room: the act table's phase wins over the cycle. A pact
     // mutator that rewrites the room's law (shutter_alternating) wins over both — the same
     // applyMutators the recipe path runs, and the authored blurb contracts every wave.
-    arenaPhase: applyMutators((act && act.arenaPhase) || swarmArenaPhase(w), mutators),
+    arenaPhase: applyMutators((foundry && foundry.arenaPhase) || (act && act.arenaPhase) || swarmArenaPhase(w), mutators),
     rewards,
     draftExpectation: isSwarmRefitWave(w)
       ? { kind: 'refit', choices: null }
@@ -953,6 +993,7 @@ function planWaveInner(input) {
   if (mode === SWARM_RULESET) {
     const planned = planSwarmWave({
       seed,
+      arenaId,
       wave,
       mutators,
       buildSummary,

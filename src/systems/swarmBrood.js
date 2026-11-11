@@ -46,9 +46,17 @@
 // sample scratch and the kill receipt scratch are all retained; a step allocates nothing. The
 // renderer consumes the same retained buffers through the published view.
 
+import { planSwarmBellowsPocket } from './swarmBellowsPocket.js';
+import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
+import { planSwarmOpeningLeecher } from './swarmOpeningLeecher.js';
+import { planSwarmOpeningGlassback } from './swarmOpeningGlassback.js';
+import { planSwarmOpeningCyst } from './swarmOpeningCyst.js';
+import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
-import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { physicsBodyNativeReady, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
@@ -58,8 +66,14 @@ import { isSwarmRuleset } from './survivalSwarm.js';
 import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
-import { findSwarmArrival } from './swarmSafety.js';
+import { findSwarmArrival, swarmPilotHasActed } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
+import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
+import { planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
+import { planSwarmOpeningCrossfire } from './swarmOpeningCrossfire.js';
+import { planSwarmOpeningWreck } from './swarmOpeningWreck.js';
+import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
+import { planSwarmFortifiedFlanks } from './swarmFortifiedFlanks.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
   BROOD_CHARGER_DASH_SPEED,
@@ -195,7 +209,12 @@ function cellKey(cx, cz) {
 
 // mover/rock caches — rebuilt into retained arrays every tick, never reallocated
 const ROCK_CACHE_MAX = 64;
+// One original Foundry offcut has a cover seat without displacing ordinary stones.
+const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + 1;
 const MOVER_CACHE_MAX = 96;
+// Champion mass never displaces the original hull/remain budget.
+const BOSS_CHUNK_CACHE_MAX = 8;
+const MOVER_STORAGE_MAX = MOVER_CACHE_MAX + BOSS_CHUNK_CACHE_MAX;
 
 const EMPTY_FIELDS = [];
 
@@ -236,6 +255,8 @@ export function createBroodEngine(deps = {}) {
   const bus = deps.bus && typeof deps.bus.emit === 'function' ? deps.bus : null;
   const fieldList = typeof deps.fieldList === 'function' ? deps.fieldList : () => EMPTY_FIELDS;
   const getState = typeof deps.getState === 'function' ? deps.getState : () => null;
+  const fortifyIngress = typeof deps.fortifyIngress === 'function' ? deps.fortifyIngress : () => null;
+  const openingPlacementState = typeof deps.openingPlacementState === 'function' ? deps.openingPlacementState : state => state;
   const routeDamage = typeof deps.routeDamage === 'function' ? deps.routeDamage : null;
 
   // body state
@@ -286,28 +307,45 @@ export function createBroodEngine(deps = {}) {
   const gridCellZ = new Int32Array(CAP);
 
   // caches
-  const rockX = new Float32Array(ROCK_CACHE_MAX);
-  const rockZ = new Float32Array(ROCK_CACHE_MAX);
-  const rockR = new Float32Array(ROCK_CACHE_MAX);
-  const rockVX = new Float32Array(ROCK_CACHE_MAX);
-  const rockVZ = new Float32Array(ROCK_CACHE_MAX);
-  const rockCredited = new Uint8Array(ROCK_CACHE_MAX);
+  const rockEntities = new Array(ROCK_STORAGE_MAX).fill(null);
+  const linkMoverEntities = new Array(MOVER_STORAGE_MAX).fill(null);
+  let linkMassHistory = new WeakMap();
+  const rockX = new Float32Array(ROCK_STORAGE_MAX);
+  const rockZ = new Float32Array(ROCK_STORAGE_MAX);
+  const rockR = new Float32Array(ROCK_STORAGE_MAX);
+  const rockVX = new Float32Array(ROCK_STORAGE_MAX);
+  const rockVZ = new Float32Array(ROCK_STORAGE_MAX);
+  const rockCredited = new Uint8Array(ROCK_STORAGE_MAX);
   let rockCount = 0;
-  const movX = new Float32Array(MOVER_CACHE_MAX);
-  const movZ = new Float32Array(MOVER_CACHE_MAX);
-  const movVX = new Float32Array(MOVER_CACHE_MAX);
-  const movVZ = new Float32Array(MOVER_CACHE_MAX);
-  const movMass = new Float32Array(MOVER_CACHE_MAX);
-  const movRad = new Float32Array(MOVER_CACHE_MAX);
-  const movIsPlayer = new Uint8Array(MOVER_CACHE_MAX);
-  const movIsHead = new Uint8Array(MOVER_CACHE_MAX);
-  const movCredited = new Uint8Array(MOVER_CACHE_MAX);
+  const movX = new Float32Array(MOVER_STORAGE_MAX);
+  const movZ = new Float32Array(MOVER_STORAGE_MAX);
+  const movVX = new Float32Array(MOVER_STORAGE_MAX);
+  const movVZ = new Float32Array(MOVER_STORAGE_MAX);
+  const movMass = new Float32Array(MOVER_STORAGE_MAX);
+  const movRad = new Float32Array(MOVER_STORAGE_MAX);
+  const movIsPlayer = new Uint8Array(MOVER_STORAGE_MAX);
+  const movIsHead = new Uint8Array(MOVER_STORAGE_MAX);
+  const movCredited = new Uint8Array(MOVER_STORAGE_MAX);
   // W-BLOOM-LOW remains movers: splashRadius/glueS the moving remain carries, and its entity
   // id so combat can retire the body once the burst or the stick is spent. -1 is "no remain".
-  const movRemainId = new Int32Array(MOVER_CACHE_MAX);
-  const movSplashR = new Float32Array(MOVER_CACHE_MAX);
-  const movGlueS = new Float32Array(MOVER_CACHE_MAX);
+  const movRemainId = new Int32Array(MOVER_STORAGE_MAX);
+  const movSplashR = new Float32Array(MOVER_STORAGE_MAX);
+  const movGlueS = new Float32Array(MOVER_STORAGE_MAX);
   let movCount = 0;
+  // Chunk-only observations: previously published mover behavior is unchanged.
+  let bossChunkStart = 0, bossChunkResolvedTick = -1, chunkEpoch = 0;
+  const chunkEntities = new Array(MOVER_STORAGE_MAX).fill(null);
+  const cellObservedTick = new Float64Array(CAP);
+  const cellObservedLife = new Uint32Array(CAP);
+  const cellObservedX = new Float32Array(CAP), cellObservedZ = new Float32Array(CAP);
+  const cellObservedVX = new Float32Array(CAP), cellObservedVZ = new Float32Array(CAP);
+  const bossChunkTargetPhysical = new Uint8Array(CAP);
+  const chunkFromX = new Float32Array(MOVER_STORAGE_MAX);
+  const chunkFromZ = new Float32Array(MOVER_STORAGE_MAX);
+  const chunkSwept = new Uint8Array(MOVER_STORAGE_MAX);
+  const chunkBornTick = new Float64Array(CAP);
+  let chunkHistory = new WeakMap();
+  const chunkSweepFrom = { x: 0, z: 0 }, chunkSweepTo = { x: 0, z: 0 };
   let nextAttackAt = 0;
   let spawnRequested = false;
   let nextSpawnAttemptAt = 0;
@@ -466,6 +504,11 @@ export function createBroodEngine(deps = {}) {
   let bankPlayed = false;
   let bank = null;
   let spawnRequestedBankAttempted = false;
+  let foundryScore = null, foundryTicks = 0, foundryLastTick = null;
+  let openingVolleyAttempted = false;
+  let recoveryFallback = false;
+  let openingBeat = null; // three live opening lives; remainder stays in the ordinary plan
+  let openingRamp = null; // bounded directional arrivals after that first decision
 
   // --- B4: the Hive's reserve (see src/systems/theHiveArena.js) ------------------------
   //
@@ -532,11 +575,15 @@ export function createBroodEngine(deps = {}) {
   // per-linker reform clock after a thrown body crosses the beam.
   const linkPartner = new Int16Array(CAP);
   const linkBrokenUntil = new Float64Array(CAP);
+  const linkStartedTick = new Float64Array(CAP);
+  const linkTargetLife = new Uint32Array(CAP);
   // Repair/assemble channels: the remain ENTITY being consumed (-1 none — entity ids
   // are stable across ticks, mover-cache slots are not) and the one-shot tell for the
   // channel's telegraph.
   const channelEntity = new Int32Array(CAP);
   const channelTold = new Uint8Array(CAP);
+  const channelSource = new Array(CAP).fill(null);
+  const channelGeneration = new Float64Array(CAP);
   // Formation squads: each formation body rides a squad anchor (-1 none); anchors are a
   // fixed pool orbiting the signature on a seeded lissajous — the Galaga weave. The peel
   // clock feeds one member at a time into the authored dive.
@@ -561,6 +608,8 @@ export function createBroodEngine(deps = {}) {
   const beamT = new Float32Array(BEAM_MAX);
   const beamTotal = new Float32Array(BEAM_MAX);
   const beamRange = new Float32Array(BEAM_MAX);
+  // The authored reach remains intact; physical cover clips only this tick's edge.
+  const beamReach = new Float32Array(BEAM_MAX);
   const beamWidth = new Float32Array(BEAM_MAX);
   const beamDamage = new Float32Array(BEAM_MAX);
   const beamAlive = new Uint8Array(BEAM_MAX);
@@ -677,9 +726,20 @@ export function createBroodEngine(deps = {}) {
   // --- lifecycle --------------------------------------------------------------------------
 
   function clear(reason = 'clear') {
+    chunkEpoch++;
+    chunkHistory = new WeakMap();
+    linkMassHistory = new WeakMap();
+    bossChunkResolvedTick = -1;
+    bossChunkTargetPhysical.fill(0);
+    cellObservedTick.fill(-1);
+    chunkBornTick.fill(Infinity);
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
     bank = null;
     spawnRequestedBankAttempted = false;
+    foundryScore = null; foundryTicks = 0; foundryLastTick = null;
+    openingVolleyAttempted = false; recoveryFallback = false;
+    openingBeat = null;
+    openingRamp = null;
     if (aliveCount > 0) { alive.fill(0); affix.fill(0); }
     aliveCount = 0;
     creditUntil.fill(0);
@@ -728,8 +788,12 @@ export function createBroodEngine(deps = {}) {
     shielded.fill(0);
     linkPartner.fill(-1);
     linkBrokenUntil.fill(0);
+    linkStartedTick.fill(Infinity);
+    linkTargetLife.fill(0);
     channelEntity.fill(-1);
     channelTold.fill(0);
+    channelSource.fill(null);
+    channelGeneration.fill(0);
     squadId.fill(-1);
     squadSlot.fill(0);
     squadCount = 0;
@@ -750,10 +814,11 @@ export function createBroodEngine(deps = {}) {
   }
 
   /** Plan the wave's cohort. Called at run:wavePlanned; spawning happens at wave start. */
-  function prepareWave(run, wave) {
+  function prepareWave(run, wave, wavePlan = null) {
     const seed = finite(run && run.seed, 1);
     const w = Math.max(1, Math.trunc(Number(wave) || 1));
     clear('wave_planned');
+    foundryScore = foundryScoreFromPlan(wavePlan, w);
     rng = mulberry32(broodStreamSeed(seed, w));
     // Late families replace mites. They do not add a second population on top of the plan.
     // The Machine folds last — the second faction spends out of what the late fold left.
@@ -865,20 +930,196 @@ export function createBroodEngine(deps = {}) {
   }
 
   /** Fill the planned cohort around the player anchor, in clumps on the wave's gate ring. */
+  function validateOpeningCourse(state) {
+    const course = openingRamp?.course;
+    if (!course) return;
+    const player = state?.entities?.get?.(state.playerId);
+    // Retire on an observed departure, even if the pilot returns before a packet.
+    if (course.player !== player || !player?.alive || !Number.isFinite(player.pos?.x)
+      || !Number.isFinite(player.pos?.z) || Math.hypot(player.pos.x - course.x, player.pos.z - course.z) > 120) openingRamp.course = null;
+  }
+
+  function openingBeatHasLives() {
+    return openingBeat?.lives.some(({ slot, life }) => alive[slot] && serial[slot] === life);
+  }
+
   function spawnWave(state) {
     if (!pendingPlan || pendingPlan.length === 0) return 0;
+    validateOpeningCourse(state);
+    if (openingBeat && (state.mode !== 'flight' || liveSwarmRun(state)?.phase !== 'active' ||
+      (openingBeat.remaining > 0 && openingBeatHasLives()))) return 0;
+    openingBeat = null;
+    if (openingRamp && (state.mode !== 'flight' || liveSwarmRun(state)?.phase !== 'active' || openingRamp.remaining > 1e-8)) return 0;
     cacheRocks(state);
     spawnRequested = true; // the arena owns the initial lesson release; retries cannot bypass it
+    // An interrupted continuation retains this request for the existing flight
+    // tick. Pausing during stone publication cannot admit the opening cohort.
+    if ((liveWave === 3 || liveWave === 4) && state?.mode !== 'flight') return 0;
     const now = finite(state?.simTime);
     nextSpawnAttemptAt = now + 0.5;
     const player = state?.entities?.get?.(state.playerId);
     const ax = finite(player?.pos?.x), az = finite(player?.pos?.z);
     const familyIndex = buildFamilyIndex();
+    // Let the guard pair speak before the second new shape. This clock counts
+    // active pilot play; waiting in the room cannot spend the Cyst's approach.
+    const lessonAtTick = foundryScore?.bellowsAtTick ?? foundryScore?.glassbackAtTick ?? foundryScore?.leecherAtTick ?? foundryScore?.cystAtTick;
+    if (!openingVolleyAttempted && lessonAtTick > foundryTicks) {
+      // Approach the authored edge without spending another half-second poll.
+      // The Cyst's full six-second read must finish before the ship crowd at840.
+      nextSpawnAttemptAt = Math.min(nextSpawnAttemptAt,
+        now + Math.max(0, lessonAtTick - foundryTicks - 1) * DT);
+      return 0;
+    }
+    // Round two uses the surviving court, not an invisible ring following the pilot.
+    // Check only on the first admission attempt; a missing court keeps normal arrivals.
+    if (!openingVolleyAttempted) {
+      if (foundryScore) openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: null };
+      const mite = familyIndex.get('mite');
+      const wreck = foundryScore && mite != null ? planSwarmOpeningWreck(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]) : null;
+      // A living wreck scene must not walk into an unattended pilot for free kills.
+      // Admit it on actual input, then keep all ordinary motion and damage laws.
+      if (wreck && !swarmPilotHasActed(state)) { nextSpawnAttemptAt = 0; return 0; }
+      const fortified = foundryScore && mite != null ? planSwarmFortifiedFlanks(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite], fortifyIngress()) : null;
+      // Do not let invulnerable idle packs walk through a paid line before it may fire.
+      if (fortified && !swarmPilotHasActed(state)) return 0;
+      const course = fortified || (mite == null ? null : planSwarmOpeningFlanks(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]));
+      if (course) openingRamp = { remaining: 0, lastTick: state.tick, group: 0,
+        course, gates: course.gates || SWARM_OPENING_FLANK_GATES };
+    }
     const deferred = [];
-    let spawned = 0, groupIndex = 0;
+    let spawned = 0, groupIndex = openingRamp?.group || 0;
+    let arrivalBudget = openingRamp ? (foundryScore?.broodPacketSize || 18) : Infinity;
+    const packReserved = openingRamp ? [] : null;
+    if (packReserved) for (let i = 0; i < CAP; i++) if (alive[i]) {
+      packReserved.push({ alive: true, pos: { x: px[i], z: pz[i] }, radius: liveFamilyRadius[family[i]] });
+    }
+    if (openingRamp) openingRamp.remaining = foundryScore?.broodPacketGapS || 0.75;
+    // The first released pack presents a real throwing lane beyond one existing
+    // pocket pebble. Spend the usual mite plan; a blocked or used-up court falls
+    // through to ordinary arrivals, never teleports props or delays the round.
+    if (!openingVolleyAttempted) {
+      openingVolleyAttempted = true;
+      const bellows = familyIndex.get('bellows'), bellMite = familyIndex.get('mite');
+      const bellScene = foundryScore?.bellowsAtTick != null && bellows != null && bellMite != null
+        ? planSwarmBellowsPocket(state, state.run, liveWave, pendingPlan,
+          liveFamilyRadius[bellows], liveFamilyRadius[bellMite]) : null;
+      const bellSlots = [];
+      for (let i = 0; bellScene && i < CAP && bellSlots.length < 4; i++) if (!alive[i]) bellSlots.push(i);
+      if (bellScene && bellSlots.length === 4) {
+        spawnAt(bellSlots[0], bellows, bellScene.bellows.x, bellScene.bellows.z);
+        for (let i = 1; i < 4; i++) spawnAt(bellSlots[i], bellMite, bellScene.mites[i - 1].x, bellScene.mites[i - 1].z);
+        pendingPlan.find(part => part.id === 'bellows').count -= 1;
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        assignMotherShares(); publish(); return 4;
+      }
+      // No suitable bank: an otherwise empty lesson resumes bounded arrivals.
+      // The Kraken still owns its full read when its optional pocket is missing.
+      if (foundryScore?.bellowsAtTick != null) recoveryFallback = !foundryScore.characterForeground;
+      const glassback = familyIndex.get('glassback');
+      const shell = foundryScore?.glassbackAtTick != null && glassback != null
+        ? planSwarmOpeningGlassback(state, state.run, liveWave, pendingPlan, liveFamilyRadius[glassback]) : null;
+      const shellSlot = shell ? findFreeSlot() : -1;
+      if (shell && shellSlot >= 0) {
+        spawnAt(shellSlot, glassback, shell.pos.x, shell.pos.z);
+        pendingPlan.find(part => part.id === 'glassback').count -= 1;
+        assignMotherShares(); publish(); return 1;
+      }
+      if (foundryScore?.glassbackAtTick != null) recoveryFallback = true;
+      const leecher = familyIndex.get('leecher');
+      const scrape = foundryScore?.leecherAtTick != null && leecher != null
+        ? planSwarmOpeningLeecher(state, state.run, liveWave, pendingPlan, liveFamilyRadius[leecher]) : null;
+      const leechSlot = scrape ? findFreeSlot() : -1;
+      if (scrape && leechSlot >= 0) {
+        spawnAt(leechSlot, leecher, scrape.pos.x, scrape.pos.z);
+        pendingPlan.find(part => part.id === 'leecher').count -= 1;
+        // Only the ordinary owed life enters. Its real latch, braking and rock
+        // scrape own the outcome; the scored reserve clock owns the next pressure.
+        assignMotherShares(); publish(); return 1;
+      }
+      // A missing usable surface must not leave an empty twelve-second room.
+      // Resume finite paced Brood admission; the ship read still stays intact.
+      if (foundryScore?.leecherAtTick != null) recoveryFallback = true;
+      const cyst = familyIndex.get('lantern_cyst'), cystMite = familyIndex.get('mite');
+      const cystScene = foundryScore?.id === 'break_the_guard' && cyst != null && cystMite != null
+        ? planSwarmOpeningCyst(state, state.run, liveWave, pendingPlan,
+          liveFamilyRadius[cyst], liveFamilyRadius[cystMite]) : null;
+      const cystSlots = [];
+      for (let i = 0; cystScene && i < CAP && cystSlots.length < 4; i++) if (!alive[i]) cystSlots.push(i);
+      if (cystScene && cystSlots.length === 4) {
+        spawnAt(cystSlots[0], cyst, cystScene.cyst.x, cystScene.cyst.z);
+        for (let i = 1; i < 4; i++) spawnAt(cystSlots[i], cystMite, cystScene.mites[i - 1].x, cystScene.mites[i - 1].z);
+        pendingPlan.find(part => part.id === 'lantern_cyst').count -= 1;
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        openingBeat = { remaining: 6, lastTick: state.tick,
+          lives: cystSlots.map(slot => ({ slot, life: serial[slot] })) };
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: cystScene.course };
+        assignMotherShares(); publish(); return 4;
+      }
+      const openingState = liveWave === 3 || liveWave === 4 ? openingPlacementState(state) : state;
+      const spitter = familyIndex.get('spitter');
+      const mixedMite = familyIndex.get('mite');
+      const mixed = mixedMite == null || spitter == null ? null : planSwarmOpeningCrossfire(
+        openingState, state.run, liveWave, pendingPlan, liveFamilyRadius[mixedMite], liveFamilyRadius[spitter]);
+      const mixedSlots = [];
+      for (let i = 0; mixed && i < CAP && mixedSlots.length < 4; i++) if (!alive[i]) mixedSlots.push(i);
+      if (mixed && mixedSlots.length === 4) {
+        for (let i = 0; i < 3; i++) spawnAt(mixedSlots[i], mixedMite, mixed.mites[i].x, mixed.mites[i].z);
+        spawnAt(mixedSlots[3], spitter, mixed.spitter.x, mixed.spitter.z);
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        pendingPlan.find(part => part.id === 'spitter').count -= 1;
+        openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
+          lives: mixedSlots.map(slot => ({ slot, life: serial[slot] })) };
+        attackAfter[mixedSlots[3]] = Infinity;
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: { ...mixed.course, player: state.entities.get(state.playerId) } };
+        assignMotherShares();
+        publish();
+        return 4;
+      }
+      const debut = spitter == null ? null : planSwarmOpeningSpitter(
+        openingState, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]);
+      const debutSlot = debut ? findFreeSlot() : -1;
+      if (debut && debutSlot >= 0) {
+        spawnAt(debutSlot, spitter, debut.pos.x, debut.pos.z);
+        pendingPlan.find(part => part.id === 'spitter').count -= 1;
+        // One ordinary marked lob gets room to speak. Killing this life releases
+        // the crowd early; otherwise the existing six active-second beat does.
+        openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
+          lives: [{ slot: debutSlot, life: serial[debutSlot] }] };
+        attackAfter[debutSlot] = Infinity;
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: { ...debut.course, player: state.entities.get(state.playerId) } };
+        assignMotherShares();
+        publish();
+        return 1;
+      }
+      const mite = familyIndex.get('mite');
+      const wreck = foundryScore && mite != null ? planSwarmOpeningWreck(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]) : null;
+      const layout = wreck || (mite == null ? null : planSwarmOpeningVolley(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]));
+      const free = [];
+      for (let i = 0; layout && i < CAP && free.length < 3; i++) if (!alive[i]) free.push(i);
+      if (layout && free.length === 3) {
+        for (let i = 0; i < 3; i++) spawnAt(free[i], mite, layout.points[i].x, layout.points[i].z);
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        // Let the existing pebble-and-pack choice read before the full gate pressure.
+        // These are ordinary live enemies, not parked practice targets. The same plan
+        // resumes on their defeat or after six seconds of active pilot play.
+        openingBeat = { remaining: 6, lastTick: state.tick, lives: free.map(slot => ({ slot, life: serial[slot] })) };
+        const dx = layout.points[0].x - ax, dz = layout.points[0].z - az;
+        const distance = Math.hypot(dx, dz);
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0,
+          course: { x: ax, z: az, ux: dx / distance, uz: dz / distance, player } };
+        assignMotherShares();
+        publish();
+        return 3;
+      }
+    }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
-    if (!bankPlayed && !spawnRequestedBankAttempted) {
+    if (!bankPlayed && !spawnRequestedBankAttempted && foundryScore?.bankScene !== false && !['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt', 'crack_the_shell', 'peel_the_screen', 'cross_the_foreman'].includes(foundryScore?.id)) {
       spawnRequestedBankAttempted = true;
       const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
       const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');
@@ -892,28 +1133,49 @@ export function createBroodEngine(deps = {}) {
         pendingPlan.find(part => part.id === 'spitter').count -= 1;
         bank = { first: free[0], spit: free[1], second: free[2],
           firstLife: serial[free[0]], spitLife: serial[free[1]], secondLife: serial[free[2]],
-          phase: 'first', until: now + 8, flankX: layout.flankX, flankZ: layout.flankZ,
+          phase: 'first', until: now + 8, readPending: !!foundryScore?.bankReadS, flankX: layout.flankX, flankZ: layout.flankZ,
           rockId: layout.rockId };
         bankPlayed = true;
+        if (foundryScore?.bankReadS > 0) {
+          openingBeat = { remaining: foundryScore.bankReadS, lastTick: state.tick, attackPending: true,
+            lives: free.map(slot => ({ slot, life: serial[slot] })) };
+          for (const slot of free) attackAfter[slot] = Infinity;
+          assignMotherShares();
+          publish();
+          return 3;
+        }
         spawned += 3;
       }
     }
     for (const part of pendingPlan) {
+      const readTicks = foundryScore && !recoveryFallback ? Math.max(foundryScore.broodReadTicks,
+        part.id === 'spore_drift' ? foundryScore.sporeReadTicks : 0) : 0;
+      if (foundryTicks < readTicks) { deferred.push(part); continue; }
       const famIdx = familyIndex.get(part.id);
       if (famIdx == null) continue;
       let owed = 0;
-      for (let start = 0; start < part.count; start += 18) {
-        const bearing = gateBearing(GATE_RING[groupIndex++ % GATE_RING.length]);
-        const cx = ax + bearing.x * 165, cz = az + bearing.z * 165;
-        const n = Math.min(18, part.count - start);
+      for (let start = 0; start < part.count;) {
+        if (arrivalBudget <= 0) { owed += part.count - start; break; }
+        const gates = openingRamp?.course && openingRamp.gates || GATE_RING;
+        const bearing = gateBearing(gates[groupIndex++ % gates.length]);
+        const course = openingRamp?.course;
+        const distance = course?.distance || 165;
+        const cx = course ? course.x + (-bearing.x * course.uz - bearing.z * course.ux) * distance : ax + bearing.x * 165;
+        const cz = course ? course.z + (bearing.x * course.ux - bearing.z * course.uz) * distance : az + bearing.z * 165;
+        const n = Math.min(18, part.count - start, arrivalBudget);
+        start += n;
+        arrivalBudget -= n;
         for (let i = 0; i < n; i++) {
           const slot = findFreeSlot();
           if (slot < 0) { owed++; continue; }
           const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 30;
           const open = findSwarmArrival(state, { x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r },
-            liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE });
-          if (!open) { owed++; continue; }
+            liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE,
+              ...(packReserved ? { reserved: packReserved, reservedClearance: 1,
+                clusterCenter: { x: cx, z: cz }, clusterRadius: 30, clusterAngle: 0 } : {}) });
+          if (!open || (packReserved && Math.hypot(open.x - cx, open.z - cz) > 30.001) || (course && Math.hypot(open.x - ax, open.z - az) > (course.maxPlayerDistance || 300))) { owed++; continue; }
           spawnAt(slot, famIdx, open.x, open.z);
+          if (packReserved) packReserved.push({ alive: true, pos: { x: open.x, z: open.z }, radius: liveFamilyRadius[famIdx] });
           if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].burrows) parkBurrower(slot);
           if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].rooted) parkRooted(slot);
           spawned++;
@@ -922,6 +1184,10 @@ export function createBroodEngine(deps = {}) {
       if (owed > 0) deferred.push({ ...part, count: owed });
     }
     pendingPlan = deferred.length ? deferred : null;
+    if (openingRamp) {
+      openingRamp.group = groupIndex;
+      if (!pendingPlan) openingRamp = null;
+    }
     // B5 — the reserve drops on the wave's own clock: first spawn starts the timer,
     // so a held-back group always lands mid-wave rather than at the open.
     if (reserveBudget > 0 && !Number.isFinite(reserveReleaseAt)) {
@@ -947,6 +1213,7 @@ export function createBroodEngine(deps = {}) {
     timer[slot] = 0;
     seedPhase[slot] = rng() * Math.PI * 2;
     serial[slot] = nextSerial++;
+    chunkBornTick[slot] = finite(getState()?.tick);
     swellStage[slot] = 0;
     swellUntil[slot] = 0;
     primeUntil[slot] = 0;
@@ -976,8 +1243,12 @@ export function createBroodEngine(deps = {}) {
     shielded[slot] = 0;
     linkPartner[slot] = -1;
     linkBrokenUntil[slot] = 0;
+    linkStartedTick[slot] = Infinity;
+    linkTargetLife[slot] = 0;
     channelEntity[slot] = -1;
     channelTold[slot] = 0;
+    channelSource[slot] = null;
+    channelGeneration[slot] = 0;
     beamState[slot] = 0;
     beamSlotOf[slot] = -1;
     contactAfter[slot] = 0;
@@ -1096,17 +1367,46 @@ export function createBroodEngine(deps = {}) {
     return readRecentImpulseProvenance(entity, state.tick)?.actorId === playerId;
   }
 
+  // Observe native chunk motion, never infer a path across a gap, recycle or teleport.
+  function observeBossChunk(e, tick, x, z, radius, dx, dz) {
+    let history = chunkHistory.get(e);
+    if (!history || history.generation !== e.occupantGeneration || history.radius !== radius) {
+      history = { tick: tick, x: x, z: z,
+        fromX: x, fromZ: z, swept: false,
+        vx: dx, vz: dz,
+        generation: e.occupantGeneration, radius: radius };
+      chunkHistory.set(e, history);
+    } else if (history.tick !== tick) {
+      const consecutive = history.tick + 1 === tick;
+      history.fromX = consecutive ? history.x : x;
+      history.fromZ = consecutive ? history.z : z;
+      const travel = Math.hypot(x - history.x, z - history.z);
+      const possibleTravel = Math.max(Math.hypot(history.vx, history.vz),
+        Math.hypot(dx, dz)) * DT + 0.01;
+      history.swept = consecutive && travel <= possibleTravel;
+      history.tick = tick; history.x = x; history.z = z;
+      history.vx = dx; history.vz = dz;
+    }
+    return history;
+  }
+
   function cacheRocks(state) {
     rockCount = 0;
+    rockEntities.fill(null);
     const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length && rockCount < ROCK_CACHE_MAX; i++) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos) continue;
+      // A pending Foundry Bank cannot turn an idle pilot into credited terrain.
+      if (e.id === state.playerId && bank?.readPending && !swarmPilotHasActed(state)) continue;
+      // The broad fallback must not also treat champion movers as terrain.
+      if (e.type === 'wreck' && e.data?.swarmBossChunk === true) continue;
       if (e.collides === false) continue;
       // The Tendril head is never terrain — it plows the flock through the MOVER cache like
       // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
       // fallback every entity lands here, and without the guard the worm eats its own neck.
       if (e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID) continue;
+      rockEntities[rockCount] = e;
       rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
       rockZ[rockCount] = finite(e.pos.z);
@@ -1115,10 +1415,37 @@ export function createBroodEngine(deps = {}) {
       rockVZ[rockCount] = finite(e.vel && e.vel.z);
       rockCount += 1;
     }
+    // The same original can be left as shelter instead of thrown. Slow drift
+    // uses the room's existing slide/slam law; fast flight stays exclusively in
+    // the champion mover pass with its matched observation interval.
+    const offcut = state.entities?.get?.(state.run?.telemetry?.foundryMawOffcut?.id);
+    if (state.run?.wave < 6 || !isFoundryWreckKept(state, offcut)
+      || !swarmPilotHasActed(state) || offcut.collides === false || offcut.physicsBody === false
+      || !physicsBodyNativeReady(offcut) || Number.isFinite(offcut.data?.despawnAt)
+      || !Number.isFinite(offcut.pos?.x) || !Number.isFinite(offcut.pos?.z)
+      || !Number.isFinite(offcut.vel?.x) || !Number.isFinite(offcut.vel?.z)) return;
+    const body = resolvePhysicsBodySpec(offcut);
+    if (!body?.dynamic || body.material === 'sensor' || body.material === 'massline_sensor'
+      || PHYSICS_MATERIALS[body.material]?.ghost === true
+      || !(body.radius > 0) || !(body.mass >= BROOD_PLOW_MIN_MASS)) return;
+    const history = observeBossChunk(offcut, state.tick, offcut.pos.x, offcut.pos.z,
+      body.radius, offcut.vel.x, offcut.vel.z);
+    const travel = history.swept ? Math.hypot(offcut.pos.x - history.fromX,
+      offcut.pos.z - history.fromZ) / DT : 0;
+    if (Math.max(travel, Math.hypot(offcut.vel.x, offcut.vel.z)) >= BROOD_PLOW_MIN_SPEED) return;
+    rockEntities[rockCount] = offcut;
+    rockX[rockCount] = offcut.pos.x; rockZ[rockCount] = offcut.pos.z;
+    rockR[rockCount] = body.radius;
+    rockVX[rockCount] = offcut.vel.x; rockVZ[rockCount] = offcut.vel.z;
+    rockCredited[rockCount] = playerOwnsBody(state, offcut) ? 1 : 0;
+    rockCount += 1;
   }
 
   function cacheMovers(state) {
     movCount = 0;
+    linkMoverEntities.fill(null);
+    chunkSwept.fill(0);
+    chunkEntities.fill(null);
     headFound = false;
     const list = indexedShipLikeScan(state);
     const playerId = state.playerId;
@@ -1126,6 +1453,8 @@ export function createBroodEngine(deps = {}) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos || !e.vel) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;
+      // Native motion continues, but this held Bank has not admitted player rams yet.
+      if (e.id === playerId && bank?.readPending && !swarmPilotHasActed(state)) continue;
       // The Tendril's head is the wave's champion hull — a real entity found by its catalog
       // stamp, the same read-only seam every other system uses to recognize a named hull.
       const isHead = e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID;
@@ -1136,6 +1465,7 @@ export function createBroodEngine(deps = {}) {
         headVZ = finite(e.vel.z);
         headFound = true;
       }
+      linkMoverEntities[movCount] = e;
       movX[movCount] = finite(e.pos.x);
       movZ[movCount] = finite(e.pos.z);
       movVX[movCount] = finite(e.vel.x);
@@ -1159,6 +1489,7 @@ export function createBroodEngine(deps = {}) {
       if (!e || e.alive === false || !e.pos || !e.vel) continue;
       const rem = e.data && e.data.broodRemain;
       if (!rem) continue;
+      linkMoverEntities[movCount] = e;
       movX[movCount] = finite(e.pos.x);
       movZ[movCount] = finite(e.pos.z);
       movVX[movCount] = finite(e.vel.x);
@@ -1173,6 +1504,155 @@ export function createBroodEngine(deps = {}) {
       movGlueS[movCount] = finite(rem.glueS);
       movCount += 1;
     }
+    bossChunkStart = movCount;
+    cacheBossChunks(state);
+  }
+
+  const bossChunkCandidates = Array.from({ length: BOSS_CHUNK_CACHE_MAX }, () =>
+    ({ entity: null, body: null, history: null, distance: Infinity }));
+
+  function bossChunkTargetEligible(slot, simTime) {
+    if (!alive[slot] || phase[slot] === BROOD_PHASE_LATCHED || phase[slot] === BROOD_PHASE_WRAPPED) return false;
+    const def = liveFamilyDef[family[slot]];
+    if (def?.burrows && (phase[slot] === BROOD_PHASE_BURIED || phase[slot] === BROOD_PHASE_WINDUP)) return false;
+    // The ordinary flock's due fuse runs before contact. Keep that death's cause/owner.
+    if (phase[slot] !== BROOD_PHASE_DASH && !def?.rooted && !def?.bounces
+      && ((swellStage[slot] === 1 && simTime >= swellUntil[slot])
+        || (primeUntil[slot] && simTime >= primeUntil[slot]))) return false;
+    return true;
+  }
+
+  function bossChunkTargetObserved(state, slot) {
+    if (!bossChunkTargetPhysical[slot] || chunkBornTick[slot] >= state.tick || cellObservedTick[slot] + 1 !== state.tick
+      || cellObservedLife[slot] !== serial[slot]) return false;
+    const possible = Math.max(Math.hypot(cellObservedVX[slot], cellObservedVZ[slot]),
+      Math.hypot(vx[slot], vz[slot])) * DT + 0.01;
+    return Math.hypot(px[slot] - cellObservedX[slot], pz[slot] - cellObservedZ[slot]) <= possible;
+  }
+
+  function cacheBossChunks(state) {
+    if (!swarmPilotHasActed(state)) return;
+    let count = 0;
+    const wrecks = indexedTypeScan(state, 'wrecks');
+    for (let i = 0; i < wrecks.length; i++) {
+      const e = wrecks[i];
+      if (!e || e.type !== 'wreck' || e.alive === false || e.collides === false
+        || e.data?.swarmBossChunk !== true || e.data.physicalRole !== 'throw_mass'
+        || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)
+        || !Number.isFinite(e.vel?.x) || !Number.isFinite(e.vel?.z)) continue;
+      const body = resolvePhysicsBodySpec(e);
+      if (!body?.dynamic || body.material === 'massline_sensor' || body.material === 'sensor'
+        || !(Number.isFinite(body.mass) && body.mass >= BROOD_PLOW_MIN_MASS)
+        || !(Number.isFinite(body.radius) && body.radius > 0)) continue;
+      const history = observeBossChunk(e, state.tick, e.pos.x, e.pos.z, body.radius, e.vel.x, e.vel.z);
+      const travel = history.swept ? Math.hypot(e.pos.x - history.fromX, e.pos.z - history.fromZ) / DT : 0;
+      // Resting trophies are not weapons. Preserve a genuine fast crossing that just braked.
+      if (Math.max(travel, Math.hypot(e.vel.x, e.vel.z)) < BROOD_PLOW_MIN_SPEED) continue;
+      const fromX = history.swept ? history.fromX : e.pos.x;
+      const fromZ = history.swept ? history.fromZ : e.pos.z;
+      let distance = Infinity;
+      // If many old chunks are still in flight, retain the paths nearest the actual
+      // living crowd, not the first eight wreck IDs or whichever is nearest the pilot.
+      // This ranks candidates only; the existing per-cell contact law decides every hit.
+      for (let slot = 0; slot < CAP; slot++) {
+        if (!bossChunkTargetEligible(slot, finite(state.simTime))) continue;
+        const matched = history.swept && bossChunkTargetObserved(state, slot);
+        const dx = matched ? fromX - cellObservedX[slot] : e.pos.x - px[slot];
+        const dz = matched ? fromZ - cellObservedZ[slot] : e.pos.z - pz[slot];
+        const mx = matched ? e.pos.x - fromX - (px[slot] - cellObservedX[slot]) : 0;
+        const mz = matched ? e.pos.z - fromZ - (pz[slot] - cellObservedZ[slot]) : 0;
+        const len2 = mx * mx + mz * mz;
+        const t = len2 > 0 ? Math.max(0, Math.min(1, -(dx * mx + dz * mz) / len2)) : 0;
+        distance = Math.min(distance, Math.hypot(dx + mx * t, dz + mz * t)
+          - body.radius - liveFamilyRadius[family[slot]]);
+      }
+      for (let slot = 0; slot < TENDRIL_SEG_MAX; slot++) {
+        if (!segAlive[slot]) continue;
+        // Segments keep endpoint-only contact, so relevance claims no future path.
+        distance = Math.min(distance, Math.hypot(e.pos.x - segX[slot], e.pos.z - segZ[slot])
+          - body.radius - TENDRIL_SEG_RADIUS);
+      }
+      if (!Number.isFinite(distance) || (count === BOSS_CHUNK_CACHE_MAX
+        && distance >= bossChunkCandidates[count - 1].distance)) continue;
+      let at = Math.min(count, BOSS_CHUNK_CACHE_MAX - 1);
+      const candidate = bossChunkCandidates[at];
+      candidate.entity = e; candidate.body = body; candidate.history = history; candidate.distance = distance;
+      while (at > 0 && bossChunkCandidates[at - 1].distance > distance) {
+        bossChunkCandidates[at] = bossChunkCandidates[at - 1]; at--;
+      }
+      bossChunkCandidates[at] = candidate;
+      count = Math.min(BOSS_CHUNK_CACHE_MAX, count + 1);
+    }
+    for (let i = 0; i < count; i++) {
+      const { entity: e, body, history } = bossChunkCandidates[i];
+      chunkEntities[movCount] = e;
+      linkMoverEntities[movCount] = e;
+      movX[movCount] = e.pos.x; movZ[movCount] = e.pos.z;
+      movVX[movCount] = e.vel.x; movVZ[movCount] = e.vel.z;
+      movMass[movCount] = body.mass; movRad[movCount] = body.radius;
+      movIsPlayer[movCount] = 0; movIsHead[movCount] = 0;
+      movCredited[movCount] = playerOwnsBody(state, e) ? 1 : 0;
+      movRemainId[movCount] = -1; movSplashR[movCount] = 0; movGlueS[movCount] = 0;
+      chunkFromX[movCount] = history.fromX; chunkFromZ[movCount] = history.fromZ;
+      chunkSwept[movCount] = history.swept ? 1 : 0;
+      movCount++;
+    }
+    // The selection is transient, never a second owner or an entity lifetime pin.
+    for (const candidate of bossChunkCandidates) {
+      candidate.entity = null; candidate.body = null; candidate.history = null;
+    }
+  }
+
+  // Champion chunks compare the SAME observed interval for both participants,
+  // before this tick advances the cells. Never pair last tick's native flight with
+  // the target's next movement, or test the same chunk again in the later plow pass.
+  function sweepBossChunks(state) {
+    if (bossChunkResolvedTick === state.tick) return true;
+    bossChunkResolvedTick = state.tick;
+    const run = liveSwarmRun(state), epoch = chunkEpoch;
+    for (let i = 0; i < CAP; i++) {
+      if (!bossChunkTargetEligible(i, finite(state.simTime))) continue;
+      const tx = px[i], tz = pz[i], rad = liveFamilyRadius[family[i]];
+      const cx = tx - cellObservedX[i], cz = tz - cellObservedZ[i];
+      const observed = bossChunkTargetObserved(state, i);
+      let first = Infinity, contact = -1, hitX = tx, hitZ = tz;
+      for (let m = bossChunkStart; m < movCount; m++) {
+        const entity = chunkEntities[m];
+        if (!entity || entity.alive === false || state.entities?.get?.(entity.id) !== entity
+          || chunkHistory.get(entity)?.generation !== entity.occupantGeneration) continue;
+        let at = null;
+        if (chunkSwept[m] && observed) {
+          const mx = movX[m] - chunkFromX[m], mz = movZ[m] - chunkFromZ[m];
+          const rx = mx - cx, rz = mz - cz, floor = BROOD_PLOW_MIN_SPEED * DT;
+          if (mx * mx + mz * mz >= floor * floor && rx * rx + rz * rz >= floor * floor) {
+            chunkSweepFrom.x = chunkFromX[m] - cellObservedX[i];
+            chunkSweepFrom.z = chunkFromZ[m] - cellObservedZ[i];
+            chunkSweepTo.x = movX[m] - tx; chunkSweepTo.z = movZ[m] - tz;
+            at = segmentCircleT(chunkSweepFrom, chunkSweepTo, 0, 0, movRad[m] + rad);
+          }
+        }
+        // First observations and newly born lives still have real current contact,
+        // but cannot inherit a path sampled before they existed.
+        let endpoint = false;
+        if (at == null) {
+          const dx = tx - movX[m], dz = tz - movZ[m], reach = rad + movRad[m];
+          const rx = movVX[m] - vx[i], rz = movVZ[m] - vz[i];
+          if (dx * dx + dz * dz <= reach * reach
+            && rx * rx + rz * rz >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) {
+            at = 1; endpoint = true;
+          }
+        }
+        if (at == null || at >= first) continue;
+        first = at; contact = m;
+        hitX = endpoint ? tx : cellObservedX[i] + cx * at;
+        hitZ = endpoint ? tz : cellObservedZ[i] + cz * at;
+      }
+      if (contact < 0) continue;
+      kill(i, 'collision', hitX, hitZ, !!movCredited[contact] || creditUntil[i] > finite(state.simTime));
+      if (epoch !== chunkEpoch || run !== liveSwarmRun(state)
+        || run?.phase !== 'active' || state.mode !== 'flight') return false;
+    }
+    return true;
   }
 
   function rebuildGrid() {
@@ -1195,6 +1675,33 @@ export function createBroodEngine(deps = {}) {
   function step(state) {
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
+    if (foundryScore && foundryLastTick !== state.tick) {
+      foundryLastTick = state.tick;
+      if (swarmPilotHasActed(state)) foundryTicks = Math.min(Math.max(720, foundryScore.broodReadTicks), foundryTicks + 1);
+    }
+    validateOpeningCourse(state);
+    if (openingBeat) {
+      if (openingBeat.lastTick !== state.tick) {
+        openingBeat.lastTick = state.tick;
+        if (swarmPilotHasActed(state)) {
+          if (openingBeat.attackPending) {
+            for (const { slot, life } of openingBeat.lives) if (alive[slot] && serial[slot] === life) {
+              attackAfter[slot] = finite(state.simTime) + BROOD_ATTACK_ARRIVAL_S;
+            }
+            openingBeat.attackPending = false;
+          }
+          openingBeat.remaining = Math.max(0, openingBeat.remaining - DT);
+        }
+      }
+      if (!openingBeatHasLives() || openingBeat.remaining <= 1e-8) {
+        openingBeat = null;
+        nextSpawnAttemptAt = 0;
+      }
+    }
+    if (openingRamp && !openingBeat && (!foundryScore || swarmPilotHasActed(state)) && openingRamp.lastTick !== state.tick) {
+      openingRamp.lastTick = state.tick;
+      openingRamp.remaining = Math.max(0, openingRamp.remaining - DT);
+    }
     if (spawnRequested && pendingPlan?.length && finite(state.simTime) >= nextSpawnAttemptAt) spawnWave(state);
     // The Tendril wave keeps stepping while the body may still exist — the champion hull can
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
@@ -1271,6 +1778,18 @@ export function createBroodEngine(deps = {}) {
     creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
+
+    if (!sweepBossChunks(state)) return false;
+    if (run !== liveSwarmRun(state) || run.phase !== 'active' || state.mode !== 'flight') return false;
+    // Record the same interval's start before virtual movement; next step compares
+    // this real observation to the current position, alongside native payload history.
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i]) continue;
+      bossChunkTargetPhysical[i] = bossChunkTargetEligible(i, simTime) ? 1 : 0;
+      cellObservedTick[i] = state.tick; cellObservedLife[i] = serial[i];
+      cellObservedX[i] = px[i]; cellObservedZ[i] = pz[i];
+      cellObservedVX[i] = vx[i]; cellObservedVZ[i] = vz[i];
+    }
 
     const fields = fieldList() || EMPTY_FIELDS;
     const dt = DT;
@@ -1471,9 +1990,10 @@ export function createBroodEngine(deps = {}) {
           kill(i, 'explosive', px[i], pz[i]);
           continue;
         }
-        // lantern cyst prime fuse: the glow finished — it bursts.
+        // The family's own proximity fuse is an environmental burst. A real
+        // shot/throw still enters its existing credited damage/contact path.
         if (primeUntil[i] && simTime >= primeUntil[i]) {
-          kill(i, 'explosive', px[i], pz[i]);
+          kill(i, 'explosive', px[i], pz[i], false);
           continue;
         }
 
@@ -1592,18 +2112,19 @@ export function createBroodEngine(deps = {}) {
             attackAfter[i] = simTime + BROOD_WRAP_RETRY_S;
           } else if (channelEntity[i] >= 0 && !trackChannel(i, def)) {
             // The salvager's channel aborts the moment its wreck stops being there —
-            // spent by another builder, flung out of reach, or pulped mid-weld.
+            // caught by the pilot, spent, flung out of reach, or pulped mid-weld.
             phase[i] = BROOD_PHASE_FLOCK;
             timer[i] = 0;
             channelEntity[i] = -1;
             channelTold[i] = 0;
+            channelSource[i] = null;
           } else {
             timer[i] -= dt;
             if (timer[i] <= 0) {
               if (def.id === 'spitter') fireLob(i, fam);
               else if (def.id === 'charger') beginDash(i, fam);
               else if (def.wrapRange > 0) beginWrap(i, fam);
-              else if (channelEntity[i] >= 0) finishChannel(i, def);
+              else if (channelEntity[i] >= 0) { if (!finishChannel(i, def)) return false; }
               else if (def.formation) beginFormationDash(i, def);
               else phase[i] = BROOD_PHASE_FLOCK;
             }
@@ -1686,7 +2207,7 @@ export function createBroodEngine(deps = {}) {
 
       // -- deaths by plow: a heavy body moving fast through the pack. The throw, the swing,
       //    the ship itself — whatever the massline latches and releases is exactly such a body.
-      for (let m = 0; m < movCount; m++) {
+      for (let m = 0; m < bossChunkStart; m++) {
         const dx = px[i] - movX[m];
         const dz = pz[i] - movZ[m];
         const rr = movRad[m] + rad;
@@ -1815,6 +2336,11 @@ export function createBroodEngine(deps = {}) {
 
   function advanceBank(now) {
     if (!bank) return;
+    if (bank.readPending) {
+      if (!swarmPilotHasActed(getState())) return;
+      bank.until = now + foundryScore.bankReadS;
+      bank.readPending = false;
+    }
     if (now >= bank.until) { bank = null; return; }
     const firstAlive = bankLife(bank.first, bank.firstLife);
     if (bank.phase === 'first' && (!firstAlive
@@ -2127,7 +2653,18 @@ export function createBroodEngine(deps = {}) {
   // --- the leecher: latch, brake, and the shed verb the pilot already owns -------------------
 
   function stepLeecher(i, fam, dp) {
-    if (dp <= BROOD_LEECHER_LATCH_RANGE + playerRad * 0.5 && signatureRef
+    // Contact is evaluated after this tick's movement, like the plow below.
+    // A fixed half-hull reach could make a natural approach ram a large idle
+    // hull before it could latch. Fast pilot motion, including glancing rams,
+    // keeps the existing plow law; the original proximity latch is unchanged.
+    const dx = px[i] - playerX, dz = pz[i] - playerZ;
+    const distance = Math.hypot(dx, dz);
+    const contact = playerRad + liveFamilyRadius[fam];
+    const slowPilot = playerVX * playerVX + playerVZ * playerVZ
+      < BROOD_PLAYER_RAM_SPEED * BROOD_PLAYER_RAM_SPEED;
+    const latch = dp <= BROOD_LEECHER_LATCH_RANGE + playerRad * 0.5
+      || (distance <= contact && slowPilot);
+    if (latch && signatureRef
       && signatureRef.alive !== false) {
       phase[i] = BROOD_PHASE_LATCHED;
       timer[i] = 0;
@@ -2168,7 +2705,15 @@ export function createBroodEngine(deps = {}) {
       for (let r = 0; r < rockCount; r++) {
         const dx = playerX - rockX[r];
         const dz = playerZ - rockZ[r];
-        const rr = rockR[r] + playerRad;
+        // Authored rock proxies can exceed their visual/cache radius. Read the
+        // actual native contact envelope for this shed, without expanding the
+        // general Brood terrain solve or moving either participant.
+        const surface = rockEntities[r];
+        const body = surface?.physicsBody !== false && physicsBodyNativeReady(surface)
+          ? resolvePhysicsBodySpec(surface) : null;
+        const nativeRadius = body && !PHYSICS_MATERIALS[body.material]?.ghost
+          && !['sensor', 'massline_sensor'].includes(body.material) ? body.radius : 0;
+        const rr = Math.max(rockR[r], nativeRadius || 0) + playerRad;
         if (dx * dx + dz * dz <= rr * rr) {
           kill(i, 'collision', px[i], pz[i]);
           return;
@@ -2318,6 +2863,7 @@ export function createBroodEngine(deps = {}) {
       beamT[b] = 0;
       beamTotal[b] = def.beamSweepS > 0 ? def.beamSweepS : 1;
       beamRange[b] = def.beamRange > 0 ? def.beamRange : 130;
+      beamReach[b] = beamRange[b];
       beamWidth[b] = def.beamWidth > 0 ? def.beamWidth : 5;
       beamDamage[b] = def.beamDamage > 0 ? def.beamDamage : 18;
       beamHitPlayer[b] = 0;
@@ -2364,7 +2910,11 @@ export function createBroodEngine(deps = {}) {
       segA.z = beamZ[b];
       segB.x = beamX[b] + Math.cos(a) * beamRange[b];
       segB.z = beamZ[b] + Math.sin(a) * beamRange[b];
-      if (!beamHitPlayer[b] && signatureRef && signatureRef.alive !== false) {
+      const cover = beamCoverFraction(beamWidth[b]);
+      beamReach[b] = beamRange[b] * cover;
+      segB.x = segA.x + (segB.x - segA.x) * cover;
+      segB.z = segA.z + (segB.z - segA.z) * cover;
+      if (cover > 0 && !beamHitPlayer[b] && signatureRef && signatureRef.alive !== false) {
         const hit = segmentCircleT(segA, segB, playerX, playerZ, beamWidth[b] + playerRad);
         if (hit != null) {
           beamHitPlayer[b] = 1;
@@ -2372,7 +2922,7 @@ export function createBroodEngine(deps = {}) {
         }
       }
       for (let j = 0; j < CAP; j++) {
-        if (!alive[j] || j === owner) continue;
+        if (cover <= 0 || !alive[j] || j === owner) continue;
         const hit = segmentCircleT(segA, segB, px[j], pz[j],
           beamWidth[b] + liveFamilyRadius[family[j]]);
         if (hit != null) kill(j, 'terrain', px[j], pz[j], creditUntil[j] > simTime);
@@ -2390,6 +2940,28 @@ export function createBroodEngine(deps = {}) {
         }
       }
     }
+  }
+
+  // Cover is a live native solid, not the flock's padded collision disc. Inspect the
+  // asteroid index directly: the 64-entry movement cache must not make later stones
+  // transparent. No damage, custody or movement is written here.
+  function beamCoverFraction(width) {
+    const state = getState();
+    const stones = indexedTypeScan(state, 'asteroids');
+    let nearest = 1;
+    for (let r = 0; r < stones.length; r++) {
+      const stone = stones[r];
+      if (stone?.type !== 'asteroid' || stone.alive === false || stone.collides === false
+        || stone.physicsBody === false || state.entities?.get?.(stone.id) !== stone
+        || !physicsBodyNativeReady(stone)
+        || !Number.isFinite(stone.pos?.x) || !Number.isFinite(stone.pos?.z)) continue;
+      const body = resolvePhysicsBodySpec(stone);
+      if (!body || body.material === 'sensor' || body.material === 'massline_sensor'
+        || !(Number.isFinite(body.radius) && body.radius > 0)) continue;
+      const contact = segmentCircleT(segA, segB, stone.pos.x, stone.pos.z, body.radius + width);
+      if (contact != null && contact < nearest) nearest = contact;
+    }
+    return nearest;
   }
 
   /**
@@ -2544,14 +3116,26 @@ export function createBroodEngine(deps = {}) {
           segA.z = pz[i];
           segB.x = px[p];
           segB.z = pz[p];
-          for (let m = 0; m < movCount; m++) {
-            if (movVX[m] * movVX[m] + movVZ[m] * movVZ[m] < BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) continue;
-            const t = segmentCircleT(segA, segB, movX[m], movZ[m], movRad[m] + 1);
-            if (t != null) {
-              linkPartner[i] = -1;
-              linkBrokenUntil[i] = simTime + (def.linkReformS > 0 ? def.linkReformS : 7);
-              break;
+          const state = getState();
+          const observedLink = linkStartedTick[i] < state.tick
+            && linkTargetLife[i] === serial[p]
+            && bossChunkTargetObserved(state, i) && bossChunkTargetObserved(state, p);
+          let cut = false;
+          // Stones live outside the mover cache. Their native solid, not the padded
+          // terrain disc, is what the pilot can physically put across this beam.
+          if (swarmPilotHasActed(state)) {
+            for (let r = 0; r < rockCount && !cut; r++) {
+              const entity = rockEntities[r];
+              if (entity?.type !== 'asteroid') continue;
+              cut = massCutsLink(i, p, entity, state, observedLink);
             }
+            for (let m = 0; m < movCount && !cut; m++) {
+              cut = massCutsLink(i, p, linkMoverEntities[m], state, observedLink);
+            }
+          }
+          if (cut) {
+            linkPartner[i] = -1;
+            linkBrokenUntil[i] = simTime + (def.linkReformS > 0 ? def.linkReformS : 7);
           }
         }
       }
@@ -2570,17 +3154,98 @@ export function createBroodEngine(deps = {}) {
       }
       if (best >= 0) {
         linkPartner[i] = best;
+        linkStartedTick[i] = finite(getState()?.tick);
+        linkTargetLife[i] = serial[best];
+        // First contact observations begin when this visible beam exists, never
+        // while the pilot is still protected at the start of the round.
+        const state = getState();
+        if (swarmPilotHasActed(state)) {
+          for (let r = 0; r < rockCount; r++) {
+            if (rockEntities[r]?.type === 'asteroid') observeLinkMass(rockEntities[r], state);
+          }
+          for (let m = 0; m < movCount; m++) observeLinkMass(linkMoverEntities[m], state);
+        }
         emitTelegraph(i, def);
       }
     }
   }
 
-  /** The nearest throwable remain in the mover cache for a salvager's run, or -1. */
+  // Match observed native mass travel to the SAME interval of both living beam ends.
+  // Never borrow a newly formed link, a replaced life, a skipped tick or a teleport.
+  function observeLinkMass(entity, state) {
+    if (!entity || entity.alive === false || entity.collides === false || entity.physicsBody === false
+      || !Number.isFinite(entity.pos?.x) || !Number.isFinite(entity.pos?.z)
+      || !Number.isFinite(entity.vel?.x) || !Number.isFinite(entity.vel?.z)) return null;
+    const body = resolvePhysicsBodySpec(entity);
+    if (!body?.dynamic || body.material === 'sensor' || body.material === 'massline_sensor'
+      || !(Number.isFinite(body.radius) && body.radius > 0)) return null;
+    const x = entity.pos.x, z = entity.pos.z, dx = entity.vel.x, dz = entity.vel.z;
+    let history = linkMassHistory.get(entity);
+    if (!history || history.body !== entity.physicsBody || history.radius !== body.radius
+      || history.generation !== entity.occupantGeneration) {
+      history = { tick: state.tick, x, z, fromX: x, fromZ: z, vx: dx, vz: dz,
+        radius: body.radius, generation: entity.occupantGeneration, body: entity.physicsBody, swept: false };
+      linkMassHistory.set(entity, history);
+    } else if (history.tick !== state.tick) {
+      const consecutive = history.tick + 1 === state.tick;
+      history.fromX = consecutive ? history.x : x;
+      history.fromZ = consecutive ? history.z : z;
+      history.swept = consecutive && Math.hypot(x - history.x, z - history.z)
+        <= Math.max(Math.hypot(history.vx, history.vz), Math.hypot(dx, dz)) * DT + 0.01;
+      history.tick = state.tick; history.x = x; history.z = z;
+      history.vx = dx; history.vz = dz;
+    }
+    return history;
+  }
+
+  function massCutsLink(i, p, entity, state, observedLink) {
+    const mass = observeLinkMass(entity, state);
+    if (!mass) return false;
+    const radius = mass.radius + 1;
+    const speed = Math.hypot(entity.vel.x, entity.vel.z);
+    if (speed >= BROOD_PLOW_MIN_SPEED
+      && segmentCircleT(segA, segB, entity.pos.x, entity.pos.z, radius) != null) return true;
+    // A glue/splash remain may already be spent by an earlier contact along this
+    // interval. Its consumption owner decides that ordering after the link pass.
+    // Keep its existing endpoint verb; only reusable mass gains a swept beam cut.
+    const remain = entity.data?.broodRemain;
+    if (finite(remain?.glueS) > 0 || finite(remain?.splashRadius) > 0) return false;
+    if (!mass.swept || !observedLink
+      || Math.hypot(entity.pos.x - mass.fromX, entity.pos.z - mass.fromZ) < BROOD_PLOW_MIN_SPEED * DT) return false;
+    return movingDiscCutsLink(mass.fromX, mass.fromZ, entity.pos.x, entity.pos.z, radius,
+      cellObservedX[i], cellObservedZ[i], px[i], pz[i],
+      cellObservedX[p], cellObservedZ[p], px[p], pz[p]);
+  }
+
+  // A real pilot catch takes this tool out of the loose stock. Read the canonical,
+  // current-life attachment, not the HUD's selected tether or old throw provenance.
+  // Keep it in the mover cache: held mass still fights by the ordinary contact laws.
+  function salvageRemainAvailable(m) {
+    const state = getState(), entity = linkMoverEntities[m];
+    if (movRemainId[m] < 0 || !entity || entity.alive === false
+      || state.entities?.get(entity.id) !== entity || !entity.data?.broodRemain
+      || entity.collides === false || entity.physicsBody === false
+      || (Number.isFinite(entity.data.despawnAt) && entity.data.despawnAt <= state.simTime)) return false;
+    const player = state.entities?.get(state.playerId);
+    const playerLife = occupantGenerationOf(player), life = occupantGenerationOf(entity);
+    if (!player || player.alive === false || playerLife == null || life == null) return true;
+    const attachments = state.combat?.attachments?.byId;
+    for (const key in attachments) {
+      const attachment = attachments[key];
+      if (attachment?.state === 'active'
+        && (attachment.defId === 'tether_standard' || attachment.defId === 'attachment_massline')
+        && attachment.ownerId === player.id && attachment.targetId === entity.id
+        && attachment.ownerGeneration === playerLife && attachment.targetGeneration === life) return false;
+    }
+    return true;
+  }
+
+  /** The nearest loose throwable remain for a salvager's run, or -1. */
   function nearestRemainMov(i, maxD) {
     let best = -1;
     let bestD = maxD * maxD;
     for (let m = 0; m < movCount; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       const d2 = dx * dx + dz * dz;
@@ -2615,6 +3280,8 @@ export function createBroodEngine(deps = {}) {
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz > reach * reach) return;
       channelEntity[i] = movRemainId[m];
+      channelSource[i] = linkMoverEntities[m];
+      channelGeneration[i] = occupantGenerationOf(linkMoverEntities[m]) ?? 0;
       teleX[i] = movX[m];
       teleZ[i] = movZ[m];
       phase[i] = BROOD_PHASE_WINDUP;
@@ -2628,7 +3295,7 @@ export function createBroodEngine(deps = {}) {
     let first = -1;
     let near = 0;
     for (let m = 0; m < movCount; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz <= reach * reach) {
@@ -2638,6 +3305,8 @@ export function createBroodEngine(deps = {}) {
     }
     if (near < need) return;
     channelEntity[i] = movRemainId[first];
+    channelSource[i] = linkMoverEntities[first];
+    channelGeneration[i] = occupantGenerationOf(linkMoverEntities[first]) ?? 0;
     teleX[i] = movX[first];
     teleZ[i] = movZ[first];
     phase[i] = BROOD_PHASE_WINDUP;
@@ -2651,8 +3320,20 @@ export function createBroodEngine(deps = {}) {
     const id = channelEntity[i];
     if (id < 0) return true;
     const reach = (def.repairs ? def.repairRange * 2.5 : def.assembleRange * 1.5) || 30;
+    if (def.assembles) {
+      const need = Math.max(2, Math.trunc(def.assembleDebrisMin) || 2);
+      let near = 0;
+      for (let m = 0; m < movCount; m++) {
+        if (!salvageRemainAvailable(m)) continue;
+        const dx = movX[m] - px[i], dz = movZ[m] - pz[i];
+        if (dx * dx + dz * dz <= reach * reach) near++;
+      }
+      if (near < need) return false;
+    }
     for (let m = 0; m < movCount; m++) {
       if (movRemainId[m] !== id) continue;
+      if (!salvageRemainAvailable(m) || linkMoverEntities[m] !== channelSource[i]
+        || (occupantGenerationOf(linkMoverEntities[m]) ?? 0) !== channelGeneration[i]) return false;
       teleX[i] = movX[m];
       teleZ[i] = movZ[m];
       const dx = movX[m] - px[i];
@@ -2664,41 +3345,54 @@ export function createBroodEngine(deps = {}) {
 
   /** The channel lands: the wreck is spent, the mint spends the wave's own reserve. */
   function finishChannel(i, def) {
+    const state = getState(), run = liveSwarmRun(state), epoch = chunkEpoch, wave = liveWave, life = serial[i];
     const id = channelEntity[i];
     channelEntity[i] = -1;
     channelTold[i] = 0;
+    channelSource[i] = null;
     phase[i] = BROOD_PHASE_FLOCK;
     attackAfter[i] = attackClock + 1.5;
     if (def.repairs) {
       for (let m = 0; m < movCount; m++) {
-        if (movRemainId[m] === id) {
+        if (movRemainId[m] === id && salvageRemainAvailable(m)) {
           emitRemainSpent(m);
+          if (!salvageCompletionCurrent(state, run, epoch, wave, i, life)) return false;
           mintMachine(px[i] + 4, pz[i] + 4, def.repairYieldId);
           break;
         }
       }
-      return;
+      return true;
     }
     const reach = def.assembleRange > 0 ? def.assembleRange : 30;
     const need = Math.max(1, Math.trunc(def.assembleDebrisMin) || 2);
     let available = 0;
     for (let m = 0; m < movCount; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz <= reach * reach) available += 1;
     }
-    if (available < need) return;
+    if (available < need) return true;
     let ate = 0;
     for (let m = 0; m < movCount && ate < need; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz > reach * reach) continue;
       emitRemainSpent(m);
+      if (!salvageCompletionCurrent(state, run, epoch, wave, i, life)) return false;
       ate += 1;
     }
     if (ate === need) mintMachine(px[i] + 4, pz[i] + 4, def.assembleYieldId);
+    return true;
+  }
+
+  // Spending is a synchronous owner receipt. A cancelled room, fresh attempt or
+  // destroyed builder must not continue that old completion into new state.
+  function salvageCompletionCurrent(state, run, epoch, wave, i, life) {
+    return getState() === state && liveSwarmRun(state) === run && run?.phase === 'active'
+      && state.mode === 'flight' && run.wave === wave && liveWave === wave
+      && chunkEpoch === epoch && alive[i] === 1 && serial[i] === life;
   }
 
   /**
@@ -3531,6 +4225,7 @@ export function createBroodEngine(deps = {}) {
     // A dying turret's sweep dies with it; a dying linker's charge drops its shield
     // THIS tick — the link pass only rebuilds flags for the living.
     freeBeamOf(i);
+    channelSource[i] = null;
     if (linkPartner[i] >= 0) {
       const partner = linkPartner[i];
       linkPartner[i] = -1;
@@ -4093,7 +4788,7 @@ export function createBroodEngine(deps = {}) {
       rec.x = beamX[b]; rec.z = beamZ[b];
       rec.a0 = beamA0[b]; rec.a1 = beamA1[b];
       rec.t = beamT[b]; rec.total = beamTotal[b];
-      rec.range = beamRange[b]; rec.width = beamWidth[b];
+      rec.range = beamReach[b]; rec.width = beamWidth[b];
       rec.state = 1;
       beamRecN += 1;
     }
@@ -4145,6 +4840,26 @@ export function createBroodEngine(deps = {}) {
     },
     planBank(state, candidate = null) {
       return this.canPrepareBank(state) ? planSwarmBank(state, state?.run, liveWave, pendingPlan, candidate) : null;
+    },
+    // Admission-only preview for the two opening lessons after an earned, moving
+    // fight. It spends no lives, RNG, time or scenery. The arena owns any new rock.
+    canPrepareOpeningContinuation(state) {
+      const run = state?.run;
+      return state?.mode === 'flight' && !openingVolleyAttempted && !!pendingPlan && liveWave === run?.wave
+        && (liveWave === 3 || liveWave === 4) && run?.kind === 'survival'
+        && run.phase === 'active' && run.ruleset === 'swarm' && run.arenaId === 'helios_core'
+        && !run.arenaMutators?.length && !(state?.rockCore?.ratingT > 0);
+    },
+    planOpeningContinuation(state, candidate = null) {
+      if (!this.canPrepareOpeningContinuation(state)) return null;
+      const spitter = familyIndexOf('spitter'), mite = familyIndexOf('mite');
+      if (spitter < 0 || (liveWave === 4 && mite < 0)) return null;
+      const placement = openingPlacementState(state);
+      if (!placement) return null;
+      const preview = candidate ? { ...placement, entities: new Map(placement.entities).set(candidate.id, candidate) } : placement;
+      return liveWave === 3
+        ? planSwarmOpeningSpitter(preview, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter])
+        : planSwarmOpeningCrossfire(preview, state.run, liveWave, pendingPlan, liveFamilyRadius[mite], liveFamilyRadius[spitter]);
     },
     step,
     clear,
@@ -4254,4 +4969,27 @@ function segmentCircleT(from, to, x, z, radius) {
 
 function directCandidateBefore(t, kind, life, otherT, otherKind, otherLife) {
   return t < otherT || (t === otherT && (kind < otherKind || (kind === otherKind && life < otherLife)));
+}
+
+// Conservative advancement against a line whose two ends may move independently.
+// Each step is bounded by the maximum relative endpoint travel, so it cannot skip a
+// contact or turn a future/previous-only geometric crossing into an actual hit.
+// A nearly tangent unresolved approach fails closed after 32 iterations.
+function movingDiscCutsLink(x0, z0, x1, z1, radius, ax0, az0, ax1, az1, bx0, bz0, bx1, bz1) {
+  const mx = x1 - x0, mz = z1 - z0;
+  const adx = ax1 - ax0, adz = az1 - az0, bdx = bx1 - bx0, bdz = bz1 - bz0;
+  const bound = Math.max(Math.hypot(mx - adx, mz - adz), Math.hypot(mx - bdx, mz - bdz));
+  if (!(bound > 0)) return false;
+  let t = 0;
+  for (let n = 0; n < 32 && t <= 1; n++) {
+    const ax = ax0 + adx * t, az = az0 + adz * t;
+    const bx = bx0 + bdx * t, bz = bz0 + bdz * t;
+    const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz;
+    const rx = x0 + mx * t - ax, rz = z0 + mz * t - az;
+    const u = len2 > 0 ? Math.max(0, Math.min(1, (rx * dx + rz * dz) / len2)) : 0;
+    const gap = Math.hypot(rx - u * dx, rz - u * dz) - radius;
+    if (gap <= 1e-6) return true;
+    t += gap / bound;
+  }
+  return false;
 }

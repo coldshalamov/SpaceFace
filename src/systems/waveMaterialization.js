@@ -340,7 +340,11 @@ export function materializeWaveBatch(ctx, request) {
         const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
         // E4: a lone swarm body (or a scored fan) never materialises inside the line either —
         // the jitter swings around the ring, never under it.
-        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU : 0,
+        // Leave a sub-visible outward margin at the inclusive screen boundary. sin/cos
+        // and origin subtraction can round an exact 215-WU ring below 215; the strict
+        // safety check would then reject this same seeded point on every retry.
+        // Keep that check strict and move only the proposed minimum ring outward.
+        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU + 1e-6 : 0,
           distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER));
         pos = {
           x: anchor.x + Math.cos(angle) * radius,

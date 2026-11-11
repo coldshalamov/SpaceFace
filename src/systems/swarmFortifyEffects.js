@@ -1,3 +1,4 @@
+import { swarmPilotHasActed } from './swarmSafety.js';
 import { SWARM_FORTIFY_SCHEMA_VERSION, swarmFortifyDevice } from '../data/swarmFortify.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildWeaponDamagePacket } from './weapons.js';
@@ -31,7 +32,10 @@ export function createSwarmFortifyEffects({ state, bus, helpers, registry } = {}
     if (records.length === 0) return;
 
     const run = state.run;
-    if (!isActiveSwarmWave(state)) return;
+    // Protected arrivals still move, but damage cannot land until the pilot acts. Do not
+    // empty a paid magazine or spend the opening Tesla cadence on invulnerable targets.
+    // Only weapon effects wait here; the structure/field owner keeps physical toys live.
+    if (!isActiveSwarmWave(state) || !swarmPilotHasActed(state)) return;
     const currentWave = run.wave;
     const player = entityFor(state, state.playerId);
     const playerTeam = Number.isFinite(player && player.team) ? player.team : 0;

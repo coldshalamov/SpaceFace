@@ -2399,6 +2399,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     // directive-side mutation arrives as a typed {input|bus|settings|rpc} envelope
     // folded in wire order through the shared channel.
     if (Number.isSafeInteger(msg.generation) && msg.generation >= 0) {
+      if (msg.generation !== host.lifecycleGeneration) host.domainDiffer?.resendSwarmTurretPresentation();
       host.lifecycleGeneration = msg.generation;
       setTimeEffectsGeneration(state, msg.generation);
     }

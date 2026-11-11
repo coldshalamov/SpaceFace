@@ -20,6 +20,9 @@
 // survivalArena owns the installed-field ledger the surge kind needs to reach. Field slots,
 // mine caps and the teardown on rearm/ended are inherited, not re-declared.
 
+import { runLifetime } from './runSession.js';
+import { swarmPilotHasActed, swarmPilotIsActing, noteSwarmPilotAction } from './swarmSafety.js';
+import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
 import { mulberry32 } from '../core/rng.js';
 import { gateBearing } from './waveMaterialization.js';
 import { swarmEventFor, swarmMinorEventFor, SWARM_EVENT_BY_ID } from '../data/swarmEvents.js';
@@ -126,6 +129,8 @@ export function createSwarmEventDirector(ctx) {
 
     /** The host hands over the frame it installed with — bearings come from the same room. */
     setFrame(frame) { this._frame = frame; },
+    // The host calls this after rearm teardown, alongside the installed frame.
+    setPlan(plan, wave) { this._foundryScore = foundryScoreFromPlan(plan, wave); },
     /** The host's installed field specs — surge needs their authored strengths to overdrive. */
     setInstalledFields(specs) { this._installedFields = Array.isArray(specs) ? specs : []; },
 
@@ -147,11 +152,26 @@ export function createSwarmEventDirector(ctx) {
       const run = liveSwarmRun(state);
       if (!run || run.phase !== 'active') return;
       const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+      if (this._foundryScore?.wave === wave && this._foundryScore.events === 'quiet') return;
       // Major band first, then the minor off-beats — the bands are disjoint by construction,
       // so the fallback can never book a second event onto an event or boss wave.
       const event = swarmEventFor({ arenaId: run.arenaId, wave, seed: run.seed })
         || swarmMinorEventFor({ arenaId: run.arenaId, wave, seed: run.seed });
       if (!event) return;
+      // Give the existing Corsair its read before showing THIS seed's real wager.
+      // The finite cohort and the event's windup/spend owners are unchanged.
+      if (this._foundryScore?.wave === wave && this._foundryScore.eventReadTicks > 0) {
+        const lifetime = runLifetime(run) || run;
+        if (this._firstExit?.lifetime === lifetime && this._firstExit.wave === wave
+          && this._firstExit.retireToken === run.retireToken) return;
+        this._firstExit = { lifetime, retireToken: run.retireToken, wave, event,
+          ticks: 0, lastTick: null, telegraphed: false };
+        return;
+      }
+      this._arm(event, wave, state);
+    },
+
+    _arm(event, wave, state) {
       // Telegraph first, spend later — the player reads the card's wager before the room
       // plays it. deadlineAt IS the fire line: the deck and the director share one clock.
       const now = simTimeOf(state);
@@ -196,6 +216,24 @@ export function createSwarmEventDirector(ctx) {
 
     update(_dt, state) {
       const st = state || this._state;
+      const firstExit = this._firstExit;
+      if (firstExit) {
+        const run = liveSwarmRun(st);
+        if (!run || (runLifetime(run) || run) !== firstExit.lifetime
+          || run.retireToken !== firstExit.retireToken || run.wave !== firstExit.wave) {
+          this.teardown('run_changed'); return;
+        }
+        if (run.phase !== 'active' || st.mode !== 'flight') return;
+        if (!firstExit.telegraphed && firstExit.lastTick !== st.tick) {
+          firstExit.lastTick = st.tick;
+          if (swarmPilotIsActing(st)) noteSwarmPilotAction(st);
+          if (swarmPilotHasActed(st)) firstExit.ticks += 1;
+          if (firstExit.ticks >= this._foundryScore.eventReadTicks) {
+            firstExit.telegraphed = true;
+            this._arm(firstExit.event, firstExit.wave, st);
+          }
+        }
+      }
       const now = simTimeOf(st);
       if (this._armed && now >= this._armed.fireAt) {
         const armed = this._armed;
@@ -346,6 +384,8 @@ export function createSwarmEventDirector(ctx) {
     },
 
     teardown(reason) {
+      this._foundryScore = null;
+      this._firstExit = null;
       // A wave that cleared mid-surge must calm the room, not leave it running hot.
       if (this._live) this._finishLive(this._state);
       // A wave ending mid-windup stands the wager down — the deck retires its card on the

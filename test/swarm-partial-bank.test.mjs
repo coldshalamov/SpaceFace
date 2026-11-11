@@ -309,7 +309,7 @@ test('settlement composes secured salvage with whatever the ending pays on the r
 
   // An early cash-out (no boss cleared) halves only the remainder — the stamp is untouched.
   const early = settle(storage, {
-    outcome: 'extracted', cashOut: true, wavesCleared: 9, credits: 200, secured: 50,
+    outcome: 'extracted', cashOut: true, wavesCleared: 4, credits: 200, secured: 50,
     runId: 'early-walk-after-bank',
   });
   assert.equal(early.result.bankedBounty, 150);

@@ -252,12 +252,12 @@ export const SWARM_NEWCOMER_COUNTERS = Object.freeze({
   lancer_sniper: 'It lines long shots. Break them.',
   warden_escort: 'It shields a friend. Pop it.',
   corsair_raider: 'It duels. Throw mass, not shots.',
-  customs_cutter: 'It disables. Ram it first.',
-  quiet_ghost: 'It snipes unseen. Close fast.',
-  pd_screen_escort: 'It blocks shots. Well it.',
+  customs_cutter: 'Plated nose. Cross the pass; attack its flank.',
+  quiet_ghost: 'It charges a rail shot, then changes flank. Strafe, then close.',
+  pd_screen_escort: 'It screens a friend. Break it or circle its fire.',
   patrol_lawman: 'It shrugs throws. Grind it.',
-  tether_control_raider: 'It ropes you. Rope it first.',
-  bruiser_brawler: 'It rams. Sidestep, then sling.',
+  tether_control_raider: 'Its spool commits to your line. Swing away or release; punish the miss.',
+  bruiser_brawler: 'Its flare locks a pass. Slip sideways; attack the recovery.',
   field_anchor_controller: 'It anchors wells. Rope it away.',
 });
 
