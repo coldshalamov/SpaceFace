@@ -3,6 +3,8 @@
 import { FACTION_META } from '../../data/factions.js';
 import { castLastCall } from '../../data/contactDeedMemory.js';
 import { freeze, integerText as n, text } from './value.js';
+import { pluralWord } from '../../core/numberFormat.js';
+
 
 const comms = (sender, line, delayS = 12, note = null) => ({
   kind: 'comms', sender, text: line, category: 'story', ttl: 10, persist: true, delayS, note,
@@ -197,7 +199,7 @@ function lawLine(id, f) {
 }
 
 const FACTION_NAME = new Map(FACTION_META.map(r => [r.id, r.name]));
-const pods = (k) => `${n(k)} survivor pod${k === 1 ? '' : 's'}`;
+const pods = (k) => `${n(k)} ${pluralWord(k, 'survivor pod', 'survivor pods')}`;
 
 // The survivor-pod register: only what survivorPod.js wrote down. Absent counts say nothing.
 function podLine(f) {
@@ -209,7 +211,7 @@ function podLine(f) {
   if (p.captured) {
     const names = p.captors.map(r => `${FACTION_NAME.get(r.factionId) || text(r.factionId)}${r.count > 1 ? ` (${n(r.count)})` : ''}`);
     if (p.capturedUnknownCaptor) names.push('a hull the record did not name');
-    parts.push(`${pods(p.captured)} left in the lane ${p.captured === 1 ? 'was' : 'were'} taken by ${names.join(', ')}. Present whereabouts: UNCONFIRMED.`);
+    parts.push(`${pods(p.captured)} left in the lane ${pluralWord(p.captured, 'was', 'were')} taken by ${names.join(', ')}. Present whereabouts: UNCONFIRMED.`);
   }
   return ` POD REGISTER: ${parts.join(' ')}`;
 }
@@ -247,7 +249,7 @@ function archiveLine(id, f) {
 function archiveBody(id, f) {
   if (f.valeGatesRevoked) return 'The retained Verge record says Vale’s gate access was revoked. This disposition does not restore it. The surviving office is not proof that every one of its permissions survived.';
   if (f.heliosGridFound) return 'HELIOS BAY 7: the maintenance scan remains in your record. The wrong grid had a destination. A new title, a blank name or a closed payment line does not install it where it was needed.';
-  if (f.archiveSources.length) return `${n(f.archiveSources.length)} independently verified archive source${f.archiveSources.length === 1 ? '' : 's'} remain attached. Neither an appointment nor a settlement turns an original into an administrative inconvenience.`;
+  if (f.archiveSources.length) return `${n(f.archiveSources.length)} ${pluralWord(f.archiveSources.length, 'independently verified archive source', 'independently verified archive sources')} remain attached. Neither an appointment nor a settlement turns an original into an administrative inconvenience.`;
   if (id === 'D') return 'The ledger is in custody. The wider archive is incomplete. This desk will distinguish what it holds from what it has only heard.';
   return '47-A is an administrative claim about the load. Your disposition changes the claim’s treatment. It does not make the load into something else.';
 }

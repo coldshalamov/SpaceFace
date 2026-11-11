@@ -1,7 +1,7 @@
 // Endless continuation helpers (PQ-133.10b).
 // Ruleset-only: never adds keys to run state. Changing run.ruleset to 'endless'
 // during the wave-30 refit is the explicit continue choice. The refit screen
-// offers it beside Extract. Swarm never uses it; Swarm is already unbounded.
+// offers it beside Extract. Swarm never uses it; the Pit ends at round thirty.
 
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { SURVIVAL_ENDLESS_START_WAVE, SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';

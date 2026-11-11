@@ -13,6 +13,8 @@ import {
 } from './hudLayout.js';
 import { GYRE_SNARE } from '../data/gyreSnare.js';
 import { isAdventureFlight } from './attentionGlass.js';
+import { counted } from './numberFormat.js';
+
 
 // DMG× telegraph: the stamped scale clamps at launchImpactScaleMax, which a
 // ~576 t clump already pegs — the yield arc would flat-line for the last ~75%
@@ -217,7 +219,7 @@ export const gyreHud = {
           if (Number.isFinite(b.ttlS)) { soonest = b.ttlS; break; }
         }
       }
-      ballTxt += ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
+      ballTxt += ` · +${counted(extraBalls, 'ball', 'balls')}`;
       if (soonest > 0 && soonest < GYRE_SNARE.ballTtlWarnS) {
         ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(soonest)))}s`;
       }

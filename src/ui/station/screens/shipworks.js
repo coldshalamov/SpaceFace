@@ -117,6 +117,7 @@ import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../../ship/
 import { compareParts, intentDiffersFromSlot, partFacts, sortIdsByIntent } from '../../ship/partFacts.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
 import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
+import { stampFitCapabilityExpectation } from '../../ship/capabilityMilestone.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -131,6 +132,8 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { counted } from '../../numberFormat.js';
+
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 export function shipworksHullName(defId) {
@@ -224,10 +227,10 @@ export function hullSwitchCargoGuidance(state, targetIndex) {
   for (const amount of Object.values(ships[targetIndex].cargo?.items || {})) {
     incoming += Math.max(0, Math.floor(Number(amount) || 0));
   }
-  const outgoing = stays ? `${stays} unreserved unit${stays === 1 ? '' : 's'} stay on ${name(ships[activeIndex])}.`
+  const outgoing = stays ? `${counted(stays, 'unreserved unit', 'unreserved units')} stay on ${name(ships[activeIndex])}.`
     : `No unreserved cargo stays on ${name(ships[activeIndex])}.`;
-  const protectedText = protectedUnits ? ` ${protectedUnits} sealed or protected unit${protectedUnits === 1 ? '' : 's'} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
-  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${incoming} stored unit${incoming === 1 ? '' : 's'}; it loads what fits and keeps the rest aboard.`
+  const protectedText = protectedUnits ? ` ${counted(protectedUnits, 'sealed or protected unit', 'sealed or protected units')} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
+  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${counted(incoming, 'stored unit', 'stored units')}; it loads what fits and keeps the rest aboard.`
     : ` ${name(ships[targetIndex])} has no stored cargo.`;
   return outgoing + protectedText + incomingText;
 }
@@ -269,6 +272,30 @@ export function buyRailComparisonFacts(player, candidateDefId) {
     candidate: candDef ? catalogHullFacts(candDef.id, [], basisPlayer) : null,
     current: activeDef ? catalogHullFacts(activeDef.id, active.fittings || [], basisPlayer) : null,
   };
+}
+
+// The rack verb's own words (words-yard-count-lines): the yard can count to one round.
+// Whole singular/plural sentences with the verb agreeing ("1 unit loads", "2 units load").
+// Pure text — exported so the focused test reads exactly what the rack says.
+export function rackPartialFillLine(rounds) {
+  const n = Math.max(0, Math.floor(Number(rounds) || 0));
+  return n === 1
+    ? 'Partial fill — 1 unit loads before credits run out'
+    : `Partial fill — ${n} units load before credits run out`;
+}
+
+export function rackLoadLine(rounds) {
+  const n = Math.max(0, Math.floor(Number(rounds) || 0));
+  return n === 1
+    ? 'Load 1 unit — hangar stock first, then purchased ammunition'
+    : `Load ${n} units — hangar stock first, then purchased ammunition`;
+}
+
+export function rackShortLine(unmet) {
+  const n = Math.max(0, Math.floor(Number(unmet) || 0));
+  return n === 1
+    ? 'The rack is short 1 unit — restock fee plus ammunition exceed the balance'
+    : `The rack is short ${n} units — restock fee plus ammunition exceed the balance`;
 }
 
 function whyAttr(text) {
@@ -3975,10 +4002,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const prepareHint = !availability.outfitEnabled ? availability.outfitLabel
         : prepReady
           ? (prepPlan.limitingReason === 'credits'
-            ? `Partial fill — ${prepPlan.roundsLoaded} units load before credits run out`
-            : `Load ${prepPlan.roundsLoaded} units — hangar stock first, then purchased ammunition`)
+            ? rackPartialFillLine(prepPlan.roundsLoaded)
+            : rackLoadLine(prepPlan.roundsLoaded))
           : prepBroke
-            ? `The rack is short ${prepPlan.unmetNeed} units — restock fee plus ammunition exceed the balance`
+            ? rackShortLine(prepPlan.unmetNeed)
             : 'Rack is already prepared';
       if (prepReady && prepPlan.limitingReason === 'credits') prepNote = prepareHint;
       // No native title: the hint prints in visible type (prepNote) and the disabled state
@@ -4413,6 +4440,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function emitFitIntent(eventName, payload) {
+    // inf-fit-milestone: stamp the viewed hull's capability ids BEFORE the fit dispatches, so the
+    // station receipt can name the verb this fit teaches (consumed once, TTL-bounded, UI-only).
+    if (eventName === 'ui:fitModule' && payload) {
+      const ships = ctx.state && ctx.state.player && Array.isArray(ctx.state.player.ownedShips)
+        ? ctx.state.player.ownedShips : [];
+      const owned = ships[Number(payload.shipIndex)];
+      if (owned && owned.defId) {
+        stampFitCapabilityExpectation(ctx.state, {
+          hullDefId: owned.defId,
+          slotIndex: payload.slotIndex,
+          fittings: owned.fittings,
+          player: ctx.state.player,
+        });
+      }
+    }
     if (eventName === 'ui:fitModule' && laneCommandSink()) {
       if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
       const operationId = nextLaneToken('fit');

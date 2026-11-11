@@ -1,3 +1,4 @@
+import { presentedAdvanceRatio } from './presentedClock.js';
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
 import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
@@ -160,7 +161,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -329,6 +330,7 @@ import {
   snapshotHasEntityGeneration,
   snapshotIndexOf,
 } from './snapshotFence.js';
+import { createPoseContinuity } from './poseContinuity.js';
 import {
   consumePersistentSubmitUploads,
   createPersistentSubmitLanes,
@@ -28445,6 +28447,31 @@ export const render = {
       slot,
     );
     if (!applied) return false;
+    // PERF-02a: the player's hull is the picture's anchor (the chase camera reads this same
+    // drawn position) — when a late pack lands behind the extrapolated guess the raw write
+    // above steps it backwards. Absorb that correction into a healing offset so the drawn
+    // hull only ever continues its own motion. Player row only; every other entity keeps
+    // the raw fence pose.
+    const entityId = world.entityIds[slot];
+    if (entityId && this.state && entityId === this.state.playerId) {
+      const cont = this._poseContinuity || (this._poseContinuity = createPoseContinuity());
+      const scratch = this._poseContinuityScratch
+        || (this._poseContinuityScratch = { x: 0, z: 0, yaw: 0 });
+      const ox = Number.isFinite(origin.x) ? origin.x : 0;
+      const oz = Number.isFinite(origin.z) ? origin.z : 0;
+      cont.sample(
+        entityId,
+        mesh.position.x + ox,
+        mesh.position.z + oz,
+        mesh.rotation.y,
+        this._presentationFrameDt,
+        scratch,
+      );
+      mesh.position.x = scratch.x - ox;
+      mesh.position.z = scratch.z - oz;
+      mesh.rotation.y = scratch.yaw;
+      if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
+    }
     const attachedRow = this.state?.entities?.get(world.entityIds[slot]);
     if (attachedRow?.data?.warmFreighterVisualPose) {
       applyWarmFreighterDressingPose(mesh, attachedRow, this._frameMembrane);
@@ -29711,6 +29738,30 @@ export const render = {
     const stillLive = () => !!(this._meshes && this.scene === liveScene);
     const compile = state && state.render && state.render.compileObjectPipelines;
     if (typeof compile !== 'function') return;
+    // A rock built before the family maps decoded keeps the procedural tint/noise material: a
+    // flatter surface AND a program this warm group never links (the group builds after decode).
+    // Re-skin live and prewarm roots onto the decoded family here, paced like the other reskin
+    // legs, so the first live draw is the family program and already compiled.
+    const familyReskinnedRoots = [];
+    let familyReskinVisited = 0;
+    try {
+      for (const mesh of this._meshes.values()) {
+        if (!stillLive()) return;
+        if (upgradeFamilylessRockMaterials(mesh) > 0) familyReskinnedRoots.push(mesh);
+        if (++familyReskinVisited % 32 === 0) await yieldToBrowser();
+      }
+      for (const root of this._rosterPrewarmRoots || []) {
+        if (!stillLive()) return;
+        if (upgradeFamilylessRockMaterials(root) > 0) familyReskinnedRoots.push(root);
+        if (++familyReskinVisited % 32 === 0) await yieldToBrowser();
+      }
+    } catch (_) { /* family reskin is best-effort */ }
+    for (const root of familyReskinnedRoots) {
+      if (!stillLive()) return;
+      try { compile.call(state.render, root, { explicit: true }); } catch (_) { /* best effort */ }
+      await yieldToBrowser();
+    }
+    if (!stillLive()) return;
     const warmRoot = buildAsteroidLeafWarmGroup();
     warmRoot.visible = false;
     liveScene.add(warmRoot);
@@ -31158,12 +31209,16 @@ export const render = {
     tryPresentedCall(this, 'hero-rig', () => this._heroRig
       && this._heroRig.update(this.state, frameDt, this._frameMembrane, this._meshes));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
-    this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
+    // EC-G11 one clock: the backdrop, parallax, far-plane life and post shader time advance with the
+    // drawn world (presentedClock.js), so a sim stall stills them with the ship instead of leaving
+    // live decor over a frozen frame.
+    const worldDt = frameDt * presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    this._bgTime = (this._bgTime || 0) + worldDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
       tryPresentedCall(this, 'backdrop', () => {
-        if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
-        parallaxLayers.update(frameDt);
-        farPlaneLife.update(frameDt);
+        if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position); // wall dt paces plate uploads; _bgTime is the drawn-world clock
+        parallaxLayers.update(worldDt);
+        farPlaneLife.update(worldDt);
       });
     }
     tryPresentedCall(this, 'shadow-map-enabled', () => this._syncShadowMapEnabled());
@@ -34562,7 +34617,10 @@ function applyRendererSize(renderer, state) {
   // iGPU-bound scene needs fill relief at the raster source. Runtime intent only
   // — never a settings.video write — and any explicit video key flips quality to
   // Manual and restores the player's own resolution choice in the same publish.
-  // The Auto policy also caps presentation at 30 Hz (presentationRunner) so the loop stops\n  // presenting frames it cannot finish; the raster scale keeps the authored 0.9 sharpness.
+  // The Auto policy also caps presentation at 30 Hz (presentationRunner) so the loop stops
+  // presenting frames it cannot finish. The raster stays native at the integrated cap; the
+  // combined readability floor is 1.0, so dyn-res cannot soften the scene while the frame is
+  // submission-bound.
   const reliefGpu = state.render && state.render.gpu;
   const relief = reliefGpu && reliefGpu.tier === 'integrated'
     && adaptiveResolutionEnabledForSettings(reliefGpu, vd) === true;
