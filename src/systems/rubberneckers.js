@@ -123,8 +123,22 @@ export const rubberneckersOps = {
 
   _onRubberneckersEntityKilled(payload) {
     if (!payload) return;
-    const victim = payload.victim || (this.state && this.state.entities && this.state.entities.get
-      ? this.state.entities.get(payload.victimId || payload.entityId) : null);
+    const victimId = payload.id ?? payload.victimId ?? payload.entityId ?? payload.victim?.id;
+    let victim = (victimId != null && this.state && this.state.entities && this.state.entities.get)
+      ? this.state.entities.get(victimId)
+      : null;
+    if (!victim) {
+      victim = payload.victim || null;
+    }
+    if (!victim || !victim.pos) {
+      if (victimId != null && (payload.pos || payload.victim?.pos)) {
+        victim = {
+          id: victimId,
+          type: payload.type || payload.victim?.type || (victim && victim.type),
+          pos: payload.pos || payload.victim?.pos,
+        };
+      }
+    }
 
     // Only wrecks of ships trigger rubbernecking (not asteroids, projectiles, or debris):
     if (!victim || victim.type !== 'ship' || !victim.pos) return;
