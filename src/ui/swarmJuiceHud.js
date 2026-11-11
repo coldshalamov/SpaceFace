@@ -35,7 +35,11 @@ const TALLY_HOLD_S = 3.4;
 const CARD_TTL_S = 2.0;
 const BOSSDOWN_TTL_S = 2.2;
 const SHATTER_TTL_S = 1.7;
-const MAX_CALL_LINES = 3;
+// Two announcer lines at most: the centre column is one flow (see the CSS), and two lines plus
+// one beat keep it clear of the ship at 1280x720. A third arrival retires the oldest line.
+const MAX_CALL_LINES = 2;
+/** A beat that waited this long behind a higher one is stale news — it is dropped, not shown late. */
+const BEAT_STALE_S = 12;
 
 /** The popup's one line: the money/score figure first, the cause word riding it. */
 export function swarmPopupText({ word = '', score = 0, credits = 0 } = {}) {
@@ -208,25 +212,40 @@ export const swarmJuiceHud = {
       if (call.node && call.node.textContent !== call.text) call.node.textContent = call.text;
     }
 
-    // --- the slam / FIGHT beat -----------------------------------------------------
+    // --- the beat lane --------------------------------------------------------------
+    // The centre column shows ONE big beat at a time, by priority: BOSS DOWN > round slam /
+    // FIGHT > boss card > clear tally > Tab scoreboard. A beat that loses the lane waits (its
+    // clock starts when it first shows) instead of drawing over the winner; the DOM is a flow
+    // column too, so even two lit nodes could never stack on one another.
+    const card = this._card;
+    if (card && card.shownAt == null && simNow - card.at > BEAT_STALE_S) this._card = null;
+    if (this._clear && this._clear.shownAt == null && simNow - this._clear.at > BEAT_STALE_S) this._clear = null;
+    let beat = '';
+    if (simNow < this._bossDownUntil) beat = 'bossDown';
+    else if (this._slam || (simNow < this._fightUntil && this._fightWord)) beat = 'slam';
+    else if (this._card && (this._card.shownAt == null || simNow < this._card.until)) beat = 'card';
+    else if (this._clear) beat = 'clear';
+    else if (this._boardOn) beat = 'board';
+    this._beat = beat;
+
     const slam = this._slam;
-    if (slam) {
-      dom.slam.hidden = false;
-      this._text(dom.slamTitle, slam.title);
-      this._text(dom.slamSub, slam.sub);
-      dom.slamSub.hidden = !slam.sub;
-    } else if (simNow < this._fightUntil && this._fightWord) {
-      dom.slam.hidden = false;
-      this._text(dom.slamTitle, this._fightWord);
-      dom.slamSub.hidden = true;
-    } else {
-      dom.slam.hidden = true;
+    dom.slam.hidden = beat !== 'slam';
+    if (beat === 'slam') {
+      if (slam) {
+        this._text(dom.slamTitle, slam.title);
+        this._text(dom.slamSub, slam.sub);
+        dom.slamSub.hidden = !slam.sub;
+      } else {
+        this._text(dom.slamTitle, this._fightWord);
+        dom.slamSub.hidden = true;
+      }
     }
-    void step; void reduced;
+    dom.bossDown.hidden = beat !== 'bossDown';
 
     // --- the clear tally ------------------------------------------------------------
-    if (this._clear) {
-      const age = simNow - this._clear.at;
+    if (beat === 'clear') {
+      if (this._clear.shownAt == null) this._clear.shownAt = simNow;
+      const age = simNow - this._clear.shownAt;
       const hold = this._clear.rows.length * TALLY_ROW_STAGGER_S + TALLY_HOLD_S;
       if (age > hold) {
         this._clear = null;
@@ -242,7 +261,7 @@ export const swarmJuiceHud = {
           if (on) this._text(node, `${row.label}  ${row.value}`);
         });
       }
-    } else if (this._boardOn) {
+    } else if (beat === 'board') {
       // S5: Tab holds the scoreboard — the live round's honest numbers on the tally card.
       dom.tally.hidden = false;
       this._text(dom.tallyTitle, `ROUND ${run.wave || 1}`);
@@ -255,17 +274,19 @@ export const swarmJuiceHud = {
     } else {
       dom.tally.hidden = true;
     }
+    void step; void reduced;
 
     // --- the boss furniture ----------------------------------------------------------
-    const card = this._card;
-    if (card && simNow < card.until) {
+    if (beat === 'card') {
+      const live = this._card;
+      if (live.shownAt == null) { live.shownAt = simNow; live.until = simNow + CARD_TTL_S; }
       dom.card.hidden = false;
-      this._text(dom.cardTitle, card.title);
-      this._text(dom.cardLine, card.line || '');
-      dom.cardLine.hidden = !card.line;
+      this._text(dom.cardTitle, live.title);
+      this._text(dom.cardLine, live.line || '');
+      dom.cardLine.hidden = !live.line;
     } else {
       dom.card.hidden = true;
-      this._card = null;
+      if (this._card && this._card.shownAt != null && simNow >= this._card.until) this._card = null;
     }
     if (this._bossHp && simNow >= this._bossDownUntil) {
       dom.boss.hidden = false;
@@ -276,7 +297,6 @@ export const swarmJuiceHud = {
     } else {
       dom.boss.hidden = true;
     }
-    dom.bossDown.hidden = !(simNow < this._bossDownUntil);
 
     // --- the shatter ------------------------------------------------------------------
     if (this._shatter && simNow < this._shatter.until) {
@@ -408,7 +428,7 @@ export const swarmJuiceHud = {
   _onClear(p) {
     if (!p || !Array.isArray(p.tally)) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    this._clear = { wave: p.wave || 0, rows: p.tally, at: now };
+    this._clear = { wave: p.wave || 0, rows: p.tally, at: now, shownAt: null };
   },
 
   // S5: Tab toggles the scoreboard — the live round's numbers pinned on the tally card.
@@ -419,7 +439,7 @@ export const swarmJuiceHud = {
   _onBossIntro(p) {
     if (!p || typeof p.name !== 'string' || !p.name) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    this._card = { title: p.name, line: p.line || '', until: now + CARD_TTL_S };
+    this._card = { title: p.name, line: p.line || '', at: now, shownAt: null, until: now + CARD_TTL_S };
     this._bossHp = { name: p.name, frac: 1, alive: 1, total: 1 };
     this._bossDownUntil = 0;
   },
@@ -477,8 +497,12 @@ export const swarmJuiceHud = {
     root.setAttribute('aria-hidden', 'true');
     root.hidden = true;
 
-    // The chain is the hero — top-centre, biggest figure in the arena.
-    const hero = makeNode(doc, 'div', 'sf-sj__hero', root);
+    // ONE centre column: every top-centre piece is a flow child of it, so nothing is positioned
+    // by a private vh offset and two pieces can never draw on top of each other.
+    const col = makeNode(doc, 'div', 'sf-sj__col', root);
+
+    // The chain is the hero — top of the column, biggest figure in the arena.
+    const hero = makeNode(doc, 'div', 'sf-sj__hero', col);
     const heroTier = makeNode(doc, 'div', 'sf-sj__herotier', hero);
     const heroRow = makeNode(doc, 'div', 'sf-sj__herorow', hero);
     const heroFig = makeNode(doc, 'span', 'sf-sj__herofig', heroRow);
@@ -489,19 +513,19 @@ export const swarmJuiceHud = {
     hero.hidden = true;
 
     // The announcer, just under the hero.
-    const calls = makeNode(doc, 'div', 'sf-sj__calls', root);
+    const calls = makeNode(doc, 'div', 'sf-sj__calls', col);
     calls.hidden = true;
-    const shatter = makeNode(doc, 'div', 'sf-sj__shatter', root);
+    const shatter = makeNode(doc, 'div', 'sf-sj__shatter', col);
     shatter.hidden = true;
 
     // The round slam.
-    const slam = makeNode(doc, 'div', 'sf-sj__slam', root);
+    const slam = makeNode(doc, 'div', 'sf-sj__slam', col);
     const slamTitle = makeNode(doc, 'div', 'sf-sj__slamtitle', slam);
     const slamSub = makeNode(doc, 'div', 'sf-sj__slamsub', slam);
     slam.hidden = true;
 
     // The clear tally.
-    const tally = makeNode(doc, 'div', 'sf-sj__tally', root);
+    const tally = makeNode(doc, 'div', 'sf-sj__tally', col);
     const tallyTitle = makeNode(doc, 'div', 'sf-sj__tallytitle', tally);
     const tallyRows = [];
     for (let i = 0; i < 4; i++) {
@@ -512,17 +536,17 @@ export const swarmJuiceHud = {
     tally.hidden = true;
 
     // The boss furniture.
-    const card = makeNode(doc, 'div', 'sf-sj__card', root);
+    const card = makeNode(doc, 'div', 'sf-sj__card', col);
     const cardTitle = makeNode(doc, 'div', 'sf-sj__cardtitle', card);
     const cardLine = makeNode(doc, 'div', 'sf-sj__cardline', card);
     card.hidden = true;
-    const boss = makeNode(doc, 'div', 'sf-sj__boss', root);
+    const boss = makeNode(doc, 'div', 'sf-sj__boss', col);
     const bossName = makeNode(doc, 'div', 'sf-sj__bossname', boss);
     const bossTrack = makeNode(doc, 'div', 'sf-sj__bosstrack', boss);
     const bossFill = makeNode(doc, 'div', 'sf-sj__bossfill', bossTrack);
     const bossCount = makeNode(doc, 'div', 'sf-sj__bosscount', boss);
     boss.hidden = true;
-    const bossDown = makeNode(doc, 'div', 'sf-sj__bossdown', root);
+    const bossDown = makeNode(doc, 'div', 'sf-sj__bossdown', col);
     bossDown.hidden = true;
 
     // The pooled kill popups — absolutely positioned, re-projected each frame.
@@ -574,8 +598,12 @@ const CSS = `
   }
 }
 /* — the chain hero — */
-.sf-sj__hero { position:absolute; top:3.4vh; left:50%; transform:translateX(-50%);
-  display:flex; flex-direction:column; align-items:center; gap:2px; }
+/* The ONE centre column. Hero, boss bar, the single beat, announcer lines and the shatter are
+   flow children (CSS order = reading order), so no piece owns a private vh offset and none can
+   draw on another. */
+.sf-sj__col { position:absolute; top:3.4vh; left:50%; transform:translateX(-50%);
+  width:max-content; max-width:94vw; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.sf-sj__hero { order:0; display:flex; flex-direction:column; align-items:center; gap:2px; }
 .sf-sj__hero[hidden] { display:none; }
 .sf-sj__herotier { font-weight:700; font-size:13px; letter-spacing:.34em; text-transform:uppercase;
   color:var(--dp-ink-mute, var(--sf-calm)); }
@@ -607,8 +635,7 @@ const CSS = `
 .sf-sj__herodeplete { width:100%; height:100%; transform-origin:left center;
   background:var(--dp-lamp, #f2b950); }
 /* — the announcer — */
-.sf-sj__calls { position:absolute; top:16vh; left:50%; transform:translateX(-50%);
-  display:flex; flex-direction:column; align-items:center; gap:4px; }
+.sf-sj__calls { order:3; display:flex; flex-direction:column; align-items:center; gap:4px; }
 .sf-sj__calls[hidden] { display:none; }
 .sf-sj__call { font-weight:800; font-size:30px; letter-spacing:.22em; text-transform:uppercase;
   color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, 0 0 16px rgb(232 226 212 / .3));
@@ -619,17 +646,15 @@ const CSS = `
 /* inf-chain-star: the zone's chain star reads in the lamp's hot gold — the same ink the ladder's
    stars wear on the Crucible screen; the words carry the meaning. */
 .sf-sj__call[data-kind="chainstar"] { color:var(--dp-lamp-hot, #ffd98c); }
-.sf-sj__shatter { position:absolute; top:24vh; left:50%; transform:translateX(-50%);
+.sf-sj__shatter { order:4;
   font-weight:800; font-size:22px; letter-spacing:.26em; text-transform:uppercase;
   color:var(--dp-danger-hot, #ff5038); animation:sf-sj-drop .5s ease-out both; }
 .sf-sj__shatter[hidden] { display:none; }
 /* — the round slam — */
-/* RC-456: the sf-sj-slam keyframes hold translateX(-50%) — the layer's own centring idiom —
-   so the element must sit at left:50% with an intrinsic width. A full-width (left:0;right:0)
-   box under that transform rides -50vw forever (the both fill keeps the last keyframe), and
-   the centred ROUND title lands half off the left edge — the clipped label in the C1 pass. */
-.sf-sj__slam { position:absolute; top:34vh; left:50%; transform:translateX(-50%);
-  width:max-content; max-width:94vw; display:flex; flex-direction:column;
+/* RC-456: the centring lives on the column (left:50% + translateX(-50%), intrinsic width) and the
+   children are plain flow items, so the slam keyframes carry no translate that could ride a
+   full-width box off the left edge (the clipped ROUND label of the C1 pass). */
+.sf-sj__slam { order:2; max-width:94vw; display:flex; flex-direction:column;
   align-items:center; gap:6px; animation:sf-sj-slam .34s cubic-bezier(.2,.9,.3,1) both; }
 .sf-sj__slam[hidden] { display:none; }
 .sf-sj__slamtitle { font-weight:800; font-size:64px; line-height:1; letter-spacing:.3em;
@@ -638,7 +663,7 @@ const CSS = `
 .sf-sj__slamsub { font-weight:700; font-size:15px; letter-spacing:.3em; text-transform:uppercase;
   color:var(--dp-lamp-hot, #f2b950); }
 /* — the clear tally — */
-.sf-sj__tally { position:absolute; top:38vh; left:0; right:0; display:flex; flex-direction:column;
+.sf-sj__tally { order:2; display:flex; flex-direction:column;
   align-items:center; gap:4px; }
 .sf-sj__tally[hidden] { display:none; }
 .sf-sj__tallytitle { font-weight:800; font-size:34px; letter-spacing:.28em; text-transform:uppercase;
@@ -648,8 +673,7 @@ const CSS = `
   animation:sf-sj-rise .3s ease-out both; }
 .sf-sj__tallyrow[hidden] { display:none; }
 /* — the boss furniture — */
-.sf-sj__card { position:absolute; top:24vh; left:50%; transform:translateX(-50%);
-  display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 26px;
+.sf-sj__card { order:2; display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 26px;
   background:var(--dp-glass-flight, rgb(10 12 16 / .72));
   border-top:1px solid color-mix(in srgb, var(--dp-lamp, #f2b950) 55%, transparent);
   border-bottom:1px solid color-mix(in srgb, var(--dp-lamp, #f2b950) 55%, transparent);
@@ -659,7 +683,7 @@ const CSS = `
   color:var(--dp-ink, var(--sf-paper)); }
 .sf-sj__cardline { font-weight:550; font-size:13px; letter-spacing:.08em; font-style:italic;
   color:var(--dp-ink-mute, var(--sf-calm)); }
-.sf-sj__boss { position:absolute; top:11vh; left:50%; transform:translateX(-50%); width:min(34vw,420px);
+.sf-sj__boss { order:1; width:min(34vw,420px);
   display:flex; flex-direction:column; align-items:center; gap:3px; }
 .sf-sj__boss[hidden] { display:none; }
 .sf-sj__bossname { font-weight:700; font-size:12px; letter-spacing:.3em; text-transform:uppercase;
@@ -670,10 +694,8 @@ const CSS = `
   transition:transform .18s linear; }
 .sf-sj__bosscount { font-weight:650; font-size:12px; letter-spacing:.2em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-/* Same centring contract as the slam: sf-sj-slam owns the translateX(-50%), so the box takes
-   left:50% and an intrinsic width — left:0;right:0 under that transform clipped the text. */
-.sf-sj__bossdown { position:absolute; top:30vh; left:50%; transform:translateX(-50%);
-  width:max-content; max-width:94vw; text-align:center;
+/* The column centres its children; the keyframes carry no translate, so nothing rides off-centre. */
+.sf-sj__bossdown { order:2; max-width:94vw; text-align:center;
   font-weight:800; font-size:44px; letter-spacing:.3em; text-transform:uppercase;
   color:var(--dp-lamp-hot, #f2b950); text-shadow:var(--dp-emit-lamp, 0 0 26px rgb(242 185 80 / .4));
   animation:sf-sj-slam .34s cubic-bezier(.2,.9,.3,1) both; }
@@ -689,10 +711,19 @@ const CSS = `
 /* — beats — */
 @keyframes sf-sj-pop { from { opacity:0; transform:scale(.72); } to { opacity:1; transform:scale(1); } }
 @keyframes sf-sj-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-@keyframes sf-sj-slam { from { opacity:0; transform:translateX(-50%) scale(1.18); }
-  60% { opacity:1; transform:translateX(-50%) scale(.98); } to { opacity:1; transform:translateX(-50%) scale(1); } }
-@keyframes sf-sj-drop { from { opacity:1; transform:translateX(-50%) translateY(0) rotate(0deg); }
-  to { opacity:0; transform:translateX(-50%) translateY(34px) rotate(4deg); } }
+@keyframes sf-sj-slam { from { opacity:0; transform:scale(1.18); }
+  60% { opacity:1; transform:scale(.98); } to { opacity:1; transform:scale(1); } }
+@keyframes sf-sj-drop { from { opacity:1; transform:translateY(0) rotate(0deg); }
+  to { opacity:0; transform:translateY(34px) rotate(4deg); } }
+/* Phones: the column is 94vw at most; the big words scale down instead of clipping. */
+@media (max-width: 700px) {
+  .sf-sj__slamtitle { font-size:clamp(30px, 11vw, 64px); letter-spacing:.14em; }
+  .sf-sj__slamsub { letter-spacing:.14em; text-align:center; }
+  .sf-sj__call { font-size:clamp(18px, 6vw, 30px); letter-spacing:.12em; text-align:center; }
+  .sf-sj__bossdown { font-size:clamp(24px, 8vw, 44px); letter-spacing:.14em; }
+  .sf-sj__tallytitle { font-size:clamp(22px, 7vw, 34px); letter-spacing:.14em; }
+  .sf-sj__herofig { font-size:44px; }
+}
 @keyframes sf-sj-float { from { opacity:1; margin-top:0; } to { opacity:0; margin-top:-34px; } }
 /* Reduced keeps every word and drops the motion; accessibility flags read as reduced
    through arcadeEffectsLevel, so the class alone governs. */

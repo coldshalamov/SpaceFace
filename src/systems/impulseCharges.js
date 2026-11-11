@@ -34,6 +34,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { MODULES } from '../data/modules.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
+import { swarmFieldCooldownScale, swarmFieldRadiusScale } from './playerModifiers.js';
 import {
   activePlayerFittings, BOMB_PROPULSION_DIALS, bombPropulsionAvailable, chargeThrowPlan,
   repulsionTrapFitted, resolveImpulseChargeCapacity,
@@ -1152,6 +1153,8 @@ export const impulseCharges = {
         localOffset: null,
         localRot: null,
         armed: !trap && aftDrop,
+        // A01-05 Wide Bore: the thrower's blast reach, stamped at the throw (player only).
+        radiusScale: swarmFieldRadiusScale(state),
         aftDrop,
         propulsionImpulseMult: !trap && aftDrop ? BOMB_PROPULSION_DIALS.selfImpulseMult : 1,
         spawnedAt: state.simTime,
@@ -1165,7 +1168,7 @@ export const impulseCharges = {
       return;
     }
 
-    rt.throwCdT = def.armTimeS;
+    rt.throwCdT = def.armTimeS * swarmFieldCooldownScale(state);
     this.bus.emit('charge:thrown', { chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z } });
     // AE-124: the lure is registered at the throw point — where the charge leaves the hull.
     if (heatLureFitted(state)) {
@@ -1257,10 +1260,11 @@ export const impulseCharges = {
     // Rung 16 — massline combo for THIS charge. slingBomb amplifies the whole blast; anchorKick
     // channels the anchor's share of it along the tether line instead of the radial direction.
     const combo = this._detectCombo(d, ownerId, state);
+    const blastRadius = def.radius * (Number(d.radiusScale) > 0 ? Number(d.radiusScale) : 1);
     const result = this._blastVictims(state, {
       pos,
       ownerId,
-      radius: def.radius,
+      radius: blastRadius,
       impulse: def.impulse,
       damage: def.damage,
       impulseMult: combo && combo.combo === 'slingBomb' ? combo.def.impulseMult : 1,
@@ -1291,7 +1295,7 @@ export const impulseCharges = {
     this.bus.emit('charge:detonated', {
       pos,
       hits: result.hits,
-      radius: def.radius,
+      radius: blastRadius,
       shoves: result.shoves,
       ownerId,
       trigger,
