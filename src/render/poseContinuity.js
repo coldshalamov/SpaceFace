@@ -200,8 +200,14 @@ export function createPoseContinuity() {
           rec.ox *= decay;
           rec.oz *= decay;
         } else {
-          rec.ox = ex - x;
-          rec.oz = ez - z;
+          // Absorb the backward correction, but heal it in the same frame: a raw stream that
+          // stops (or keeps landing behind the drawn pose) re-enters this branch every frame,
+          // and an un-decayed absorb would carry the offset forever — the drawn ship parked
+          // ahead of its physical body (review 2026-11-11, HIGH). With the decay applied here
+          // a one-off snap still eases out over ~POSE_CONTINUITY_DECAY_S, and a persistent
+          // residual converges to the raw pose instead of sticking.
+          rec.ox = (ex - x) * decay;
+          rec.oz = (ez - z) * decay;
         }
       } else {
         rec.ox *= decay;

@@ -1,4 +1,7 @@
 <!-- LIFETIME: VOLATILE — orchestrator ledger for the 2026-10-17 demo-maturity campaign (owner instruction) -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Demo-maturity campaign — 30 units (2026-10-17)
 
 Owner instruction: orchestrate 30 tasks on the build map + INFERENCE board at a ~2:1 ratio
