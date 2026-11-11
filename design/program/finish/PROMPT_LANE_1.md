@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 You are the Lane 1 agent of the SpaceFace Finish Program: THE MACHINE & THE PICTURE.
 This is the hardest lane and the one that needs taste. Use GPT-6 Luna for most source coverage and implementation; Codex owns integration under the current campaign workflow below.
 
