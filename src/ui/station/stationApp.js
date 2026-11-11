@@ -63,6 +63,9 @@ import { injectStationStandard } from '../orrery/stationStandard.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 import { clearTradeExpectation, consumeStationTradeReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
+import { consumeFitCapabilityMilestone } from '../ship/capabilityMilestone.js';
+import { counted, pluralWord } from '../numberFormat.js';
+
 
 export function stationReceiptOverlapsControls(receiptRect, controls) {
   return [...(controls || [])].some((el) => {
@@ -931,7 +934,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (!Number.isFinite(Number(p.cells)) || !(p.cells > 0)) return;
     const bus = ctx && ctx.bus;
     if (bus) bus.emit('toast', {
-      text: `Decanted ${p.cells} fuel cell${p.cells === 1 ? '' : 's'} — +${p.units} fuel.`,
+      text: `Decanted ${counted(p.cells, 'fuel cell', 'fuel cells')} — +${p.units} fuel.`,
       kind: 'info', ttl: 2.5,
     });
   });
@@ -999,7 +1002,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     refresh();
   });
   subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
-  subscribe('module:equipped', () => showReceipt('SHIPWORKS', 'FIT COMMITTED', 'LOADOUT RECALCULATED'));
+  // inf-fit-milestone: a fit that teaches the hull a new verb names it on the receipt — the
+  // capability vocabulary's own words — instead of the mechanical LOADOUT RECALCULATED line.
+  subscribe('module:equipped', (p = {}) => {
+    const gained = consumeFitCapabilityMilestone(state(), p);
+    showReceipt('SHIPWORKS', 'FIT COMMITTED', gained && gained.verb
+      ? `NEW · ${String(gained.verb).toUpperCase()}`
+      : 'LOADOUT RECALCULATED');
+  });
   subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
   subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
   subscribe('mission:accepted', () => showReceipt('MISSION BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
@@ -1288,10 +1298,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         && s.player.cargo.items.cmdty_fuel_cells) || 0);
     const room = Math.max(0, (Number(fuel && fuel.max) || 0) - (Number(fuel && fuel.current) || 0));
     if (held <= 0 || room <= 0) return '';
-    const count = { count: held, word: held === 1 ? 'cell' : 'cells' };
+    const count = { count: held, word: pluralWord(held, 'cell', 'cells') };
     if (quote && quote.ok && quote.cells > 0) {
       const aria = localizeText('Decant carried fuel cells into the tank — {count} {word} moves {units} fuel',
-        { count: quote.cells, word: quote.cells === 1 ? 'cell' : 'cells', units: quote.units });
+        { count: quote.cells, word: pluralWord(quote.cells, 'cell', 'cells'), units: quote.units });
       return `<button type="button" ${stationControlAttrs('decant')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="decant"` +
         ` aria-label="${aria}">${localizeText('Decant +{units}', { units: quote.units })}</button>`;
     }

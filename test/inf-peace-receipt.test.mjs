@@ -53,10 +53,11 @@ test('a war that just resolved names its peace at either house desk', () => {
   const loserLine = stationWarPostureLineFor(state, A);
   assert.ok(loserLine && loserLine.includes('The war is over'), 'the loser house speaks the same peace');
 
-  // An unmapped ground still degrades to a readable name, never an id with its prefix.
+  // An unmapped ground reads as the honest noun (inf-desk-compose re-pin): the desk never mints
+  // a fake place name out of an id it does not know.
   const unknown = peaceState({ sectorId: 'sector_nowhere_lane' });
   const line = stationWarPostureLineFor(unknown, B);
-  assert.ok(line.includes('nowhere lane'), `the ground degrades readable: ${line}`);
+  assert.ok(line.includes('the contested lane'), `the ground degrades honest: ${line}`);
   assert.ok(!line.includes('sector_'), 'no raw sector id reaches the desk');
 });
 

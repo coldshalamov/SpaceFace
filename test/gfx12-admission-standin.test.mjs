@@ -65,6 +65,29 @@ function substrateOf(boundary) {
   return boundary.children.find((child) => child.userData && child.userData.authoredAdmissionSubstrate === true);
 }
 
+test('a pending ship uses the coarsest resident tier, not the LOD0 primitive pile', () => {
+  const record = stubRecord();
+  const extra = [];
+  for (const lod of ['lod0', 'lod1']) {
+    const geo = new THREE.BoxGeometry(2, 1, 1);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
+    for (const name of [`${lod.toUpperCase()}_Hull`, `${lod.toUpperCase()}_Mechanical`]) {
+      extra.push({
+        key: `${lod}:${name}`, name, geometry: geo, material: mat,
+        matrix: new THREE.Matrix4(), tags: Object.freeze({ lod }),
+      });
+    }
+  }
+  record.primitives = extra.concat(record.primitives);
+  const factory = buildFactory(() => record);
+  const boundary = factory.build({ ...ENTITY, id: 502 });
+  const standIn = substrateOf(boundary).userData.resolvingMarker;
+  const names = [];
+  standIn.traverse((object) => { if (object.isMesh) names.push(object.name); });
+  assert.deepEqual(names.sort(), ['StandIn_LOD2_Beacon', 'StandIn_LOD2_Hull'].sort(),
+    'the temporary stand-in draws only the coarse tier, never the LOD0 primitive pile');
+});
+
 test('a resident record substitutes the ship\'s own lod2 silhouette for the octahedron', () => {
   const record = stubRecord();
   const factory = buildFactory(() => record);

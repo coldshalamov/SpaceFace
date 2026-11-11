@@ -24,6 +24,7 @@ import {
 } from '../src/data/swarmBrood.js';
 import {
   SWARM_BOSS_EVERY,
+  SWARM_BOSS_FIRST,
   SWARM_CONCURRENT_MAX,
   SWARM_OPENING_QUOTA,
   SWARM_ROSTER,
@@ -134,15 +135,16 @@ test('the ship wave is untouched: quota, concurrency and roster pins hold', () =
   // touch them (swarmMode.js is not this packet's file).
   assert.equal(SWARM_OPENING_QUOTA, 15);
   assert.equal(SWARM_CONCURRENT_MAX, 30);
-  assert.equal(SWARM_BOSS_EVERY, 10);
+  assert.equal(SWARM_BOSS_EVERY, 5);
+  assert.equal(SWARM_BOSS_FIRST, 5);
   assert.equal(swarmConcurrent(1), 10);
   assert.equal(swarmQuota(1), 15);
   // Wave-2+ quota re-tuned by S10 round length (60–90 s rounds); the ship wave's own
   // shape — opening quota, concurrency, boss cadence — is still the pins above/below.
   assert.equal(swarmQuota(2), 34);
-  assert.equal(swarmConcurrent(25), 18); // a boss round holds fewer bodies (S14: 5, 15, 25…)
+  assert.equal(swarmConcurrent(25), 18); // a boss round holds fewer bodies (C01-01: 5, 10, 15, 20, 25, 30)
   assert.equal(swarmConcurrent(26), 30);
-  assert.equal(swarmQuota(10), 26);
+  assert.equal(swarmQuota(10), 26); // wave 10 is a champion round now — this is its discounted quota
   // The ship plan block carries no brood families and no brood keys.
   const block = swarmPlanBlock(12);
   assert.ok(block.roster.every((r) => !SWARM_BROOD_FAMILIES.some((f) => f.id === r.enemyId)));

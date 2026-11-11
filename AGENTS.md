@@ -6,24 +6,19 @@ missions, upgrade, and build income in a living universe. Its core is a `GameSta
 60 Hz simulation, separate from rendering. Read [`docs/ORIENTATION.md`](docs/ORIENTATION.md) for the
 repo map; [`ARCHITECTURE.md`](ARCHITECTURE.md) is the technical contract.
 
-**Current program:** the master plan in
-[`design/program/finish/MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md). Its 29 campaigns are
-grouped into seven parallel lanes by
-[`design/program/finish/MASTER_LANES.md`](design/program/finish/MASTER_LANES.md) (dispatch, collision
-map and copy-paste prompts), with live outcome state in
-[`design/program/finish/EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md).
-The three Finish boards are outcome detail for work the master plan names; they are not a separate
-dispatch surface. The active master-plan protocol supersedes conflicting older routing, ownership,
-provider, review, and capture instructions. Historical documents remain useful context only when a
-current task points to them.
+**Current program (owner, 2026-11-11): [`design/program/fleet/README.md`](design/program/fleet/README.md).**
+Work comes only from [`design/program/fleet/QUEUE.md`](design/program/fleet/QUEUE.md) — four lanes; an agent told
+"you are Agent N" works only Lane N. The design authority is [`design/game/`](design/game/README.md).
+Every older plan bank (`build_map.md`, `design/program/*.md`, `design/program/finish/**`, the INFERENCE
+lanes, the EC PR descriptions) is history unless a queue row links it.
 
 ## Start by task
 
 | Need | Start here |
 |---|---|
-| Active campaign, assignment or whole-game finishing | [`MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md) → [`MASTER_LANES.md`](design/program/finish/MASTER_LANES.md) → [`EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md) |
+| Any assignment, "you are Agent N", or whole-game finishing | [`design/program/fleet/README.md`](design/program/fleet/README.md) → [`QUEUE.md`](design/program/fleet/QUEUE.md) (your lane) → [`HANDOFF.md`](design/program/fleet/HANDOFF.md) |
 | Repo overview or module owner | [`docs/ORIENTATION.md`](docs/ORIENTATION.md) → [`docs/MODULE_MAP.md`](docs/MODULE_MAP.md) → nearest nested `AGENTS.md` |
-| Product or system intent | [`design/VISION.md`](design/VISION.md), [`design/GDD_2_0.md`](design/GDD_2_0.md), and the selected spec section |
+| Product or system intent | [`design/game/`](design/game/README.md) first, then [`design/VISION.md`](design/VISION.md) and [`design/GDD_2_0.md`](design/GDD_2_0.md) |
 | Named campaign, symptom, or special workflow | [`docs/TASK_ROUTER.md`](docs/TASK_ROUTER.md) |
 | Tests and checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md`; then the check relevant to the change |
 | Visual asset or lighting work | [`docs/visual-assets/README.md`](docs/visual-assets/README.md); for Blender/GLB follow the Forge route it names |

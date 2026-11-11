@@ -51,10 +51,14 @@ function fixture() {
   return { sim, state, boss, owner, record, emitted, dispose() { sim.dispose(); } };
 }
 
-test('S14 — capital rows land at 5, 15, 25 and every score act carries a short callout', () => {
+test('the thirty-round course fields a champion on every fifth round, capitals keep their scores', () => {
+  // C01-01: the finite course ends at wave 30 — champions at 5, 10, 15, 20, 25 and 30.
   assert.equal(isSwarmBossWave(SWARM_BOSS_FIRST), true);
   assert.equal(isSwarmBossWave(SWARM_BOSS_FIRST + SWARM_BOSS_EVERY), true);
-  for (const w of [1, 4, 10, 20, 30]) assert.equal(isSwarmBossWave(w), false);
+  for (const w of [5, 10, 15, 20, 25, 30]) assert.equal(isSwarmBossWave(w), true, `wave ${w}`);
+  for (const w of [1, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 29]) {
+    assert.equal(isSwarmBossWave(w), false, `wave ${w} stays ordinary`);
+  }
   assert.equal(swarmBossFor(SWARM_BOSS_FIRST).id, 'iron_maw');
   assert.equal(swarmBossFor(SWARM_BOSS_FIRST).scoreId, 'capital_boss_hulk');
   const capitalIds = new Set(['capital_boss_hulk', 'capital_boss_foreman', 'capital_boss_regent']);

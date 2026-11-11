@@ -54,6 +54,8 @@ import {
 import { hash32, drawSeeded } from '../core/rng.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 const touching = (a, b) => dist2(a.pos, b.pos) <= (a.radius + b.radius + 2) ** 2;
@@ -1879,7 +1881,7 @@ export const frontierHomesteads = {
     this.bus.emit('frontier:raidSpawned', {
       raidId, steadId: rec.entityId, steadName: rec.name, raiderIds: ids, tick: state.tick,
     });
-    this._log(state, `Raid on the wire — ${rec.name} is marked. ${ids.length} hull${ids.length === 1 ? '' : 's'} inbound.`);
+    this._log(state, `Raid on the wire — ${rec.name} is marked. ${counted(ids.length, 'hull', 'hulls')} inbound.`);
     return ids;
   },
 

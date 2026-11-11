@@ -28,21 +28,40 @@ export function isOfflineReceiptShowable(receipt) {
   return true;
 }
 
+/** How long the pilot was away, in the receipt's own words (words-offline-receipt):
+ * a sub-minute absence says so instead of printing "(0.0h)". */
+export function awayDurationLabel(elapsedSec) {
+  const s = Math.max(0, Math.round(Number(elapsedSec) || 0));
+  if (s < 60) return 'under a minute';
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min`;
+  const hours = s / 3600;
+  return hours >= 10 ? `${Math.round(hours)}h` : `${hours.toFixed(1)}h`;
+}
+
 export function formatOfflineReceiptLine(receipt) {
   if (!receipt) return '';
   const elapsedSec = Number(receipt.elapsedSec) || 0;
-  const hours = elapsedSec / 3600;
-  const hrs = hours >= 10 ? String(Math.round(hours)) : hours.toFixed(1);
   const credited = Math.round(Number(receipt.credited) || 0);
   const upkeep = Math.round(Number(receipt.upkeepCharged) || 0);
   const net = credited - upkeep;
   const unpaid = Math.max(0, Math.round(Number(receipt.upkeepUnpaid) || 0));
-  const bits = [`${net >= 0 ? '+' : '−'}${Math.abs(net)} cr wallet change`, `+${credited} cr earned`, `${upkeep} cr upkeep`];
-  if (unpaid > 0) bits.push(`${unpaid} cr unpaid (not yet charged)`);
-  const lost = Math.round(Number(receipt.lost) || 0);
-  if (lost > 0) bits.push(`${lost} lost`);
+  const lost = Math.max(0, Math.round(Number(receipt.lost) || 0));
+  // Only the facts that moved get a clause (words-offline-receipt): a hull that earned
+  // while its upkeep lapsed no longer reads "+0 cr wallet change · +0 cr earned ·
+  // 0 cr upkeep". The wallet-change clause keeps its place only when earn and upkeep
+  // actually fought each other — when one side is zero the surviving clause already
+  // tells the whole story, and the net would be the same number said twice. Money
+  // reads grouped like every other credit receipt.
+  const bits = [];
+  if (credited > 0 && upkeep > 0 && net !== 0) {
+    bits.push(`${net > 0 ? '+' : '−'}${Math.abs(net).toLocaleString('en-US')} cr wallet change`);
+  }
+  if (credited > 0) bits.push(`+${credited.toLocaleString('en-US')} cr earned`);
+  if (upkeep > 0) bits.push(`${upkeep.toLocaleString('en-US')} cr upkeep`);
+  if (unpaid > 0) bits.push(`${unpaid.toLocaleString('en-US')} cr unpaid (not yet charged)`);
+  if (lost > 0) bits.push(lost === 1 ? '1 asset lost' : `${lost.toLocaleString('en-US')} assets lost`);
   if (receipt.distressed) bits.push('assets distressed');
-  return `While you were away (${hrs}h): ${bits.join(' · ')}`;
+  return `While you were away (${awayDurationLabel(elapsedSec)}): ${bits.length ? bits.join(' · ') : 'nothing moved'}`;
 }
 
 export function consumeOfflineReceiptOnce(state, receipt) {

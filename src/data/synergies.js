@@ -4,6 +4,8 @@
 // checks prove each advertised drawback matches getDerivedStats() for the validation hull.
 
 import { MODULES } from './modules.js';
+import { counted, pluralWord } from '../core/numberFormat.js';
+
 
 export const SYNERGY_TELLS = Object.freeze([
   synergy({
@@ -102,7 +104,7 @@ export function explainSynergy(row, fittings, { scanned = true } = {}) {
       missingCount: missing.length,
       benefit: null,
       drawback: null,
-      text: `${row.label} is inactive until ${missing.length} required part${missing.length === 1 ? '' : 's'} ${missing.length === 1 ? 'is' : 'are'} fitted.`,
+      text: `${row.label} is inactive until ${counted(missing.length, 'required part', 'required parts')} ${pluralWord(missing.length, 'is', 'are')} fitted.`,
     };
   }
   return {
