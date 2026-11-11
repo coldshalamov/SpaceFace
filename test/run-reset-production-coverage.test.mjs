@@ -15,6 +15,7 @@ const EVENT_OWNED = Object.freeze({
   survivalRun: { event: 'run:started', method: '_resetMachine', reason: 'The accepted run start owns phase-clock and launch setup.' },
   swarmArena: { event: 'run:ended', method: '_release', reason: 'The terminal receipt releases arena objects/capacity; wave one resets pressure before materialization.' },
   swarmSupply: { event: 'run:ended', method: '_reset', reason: 'The terminal receipt resets supply cadence and drop ownership.' },
+  swarmDrops: { event: 'run:ended', method: '_reset', reason: 'The terminal receipt restores the guns, closes every timed effect and retires the Loose Cannon.' },
   swarmChain: { event: 'run:ended', method: '_reset', reason: 'The terminal receipt publishes the best chain, then clears it.' },
   swarmJuice: { event: 'run:started', method: '_reset', reason: 'The production arcade detector resets its run-local receipts and hit-stop lease on both accepted run start and terminal run end.' },
   swarmElites: { event: 'run:started', method: '_reset', reason: 'The elite affix stamper resets its per-run scan cursor, ordinals and chains on both accepted run start and terminal run end.' },

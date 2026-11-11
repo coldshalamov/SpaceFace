@@ -36,10 +36,12 @@ export function createDiscoveryPlate(ctx) {
   let nextReceiptAt = 0;
   let destroyed = false;
   let momentEl = null;
+  let momentHandle = null;
   let momentOutAt = 0;
   let momentRemoveAt = 0;
 
   function removeMoment() {
+    if (momentHandle) { momentHandle.clear(); momentHandle = null; }
     if (momentEl && momentEl.parentNode) momentEl.parentNode.removeChild(momentEl);
     momentEl = null;
     momentOutAt = 0;
@@ -48,15 +50,17 @@ export function createDiscoveryPlate(ctx) {
 
   // A moment plate (G19-01): the same .sf-discovery-plate surface the codex plates were drawn
   // with, shown right now for rec.ttlS seconds rather than queued behind the quiet-flight gate.
+  // G16-02: with a live Stage the plate rides the banner slot inside the shared frame — the
+  // positioning wrapper and the in/out classes only stay on the legacy #hud seat.
   // rec = { title, lines?: string[], ttlS?: seconds }. Returns false where there is no DOM.
   function show(rec) {
     const doc = typeof document !== 'undefined' ? document : null;
     if (destroyed || !doc || typeof doc.createElement !== 'function' || !rec || !rec.title) return false;
-    const host = doc.getElementById ? (doc.getElementById('hud') || doc.body) : doc.body;
-    if (!host || typeof host.appendChild !== 'function') return false;
+    const stage = ctx && ctx.stage;
+    const staged = stage && typeof stage.show === 'function';
+    const host = staged ? null : (doc.getElementById ? (doc.getElementById('hud') || doc.body) : doc.body);
+    if (!staged && (!host || typeof host.appendChild !== 'function')) return false;
     removeMoment();
-    const el = doc.createElement('div');
-    el.className = 'sf-discovery-plate';
     const frame = doc.createElement('div');
     frame.className = 'sf-discovery-plate__frame';
     frame.setAttribute('role', 'status');
@@ -70,6 +74,16 @@ export function createDiscoveryPlate(ctx) {
       meta.textContent = line;
       frame.appendChild(meta);
     }
+    const ttlS = Number.isFinite(rec.ttlS) && rec.ttlS > 0 ? rec.ttlS : MOMENT_TTL_S;
+    if (staged) {
+      momentHandle = stage.show('banner', frame, { id: 'discovery-moment', severity: 'info' });
+      momentEl = frame;
+      momentOutAt = performance.now() + ttlS * 1000;
+      momentRemoveAt = momentOutAt;
+      return true;
+    }
+    const el = doc.createElement('div');
+    el.className = 'sf-discovery-plate';
     el.appendChild(frame);
     host.appendChild(el);
     momentEl = el;
@@ -78,7 +92,6 @@ export function createDiscoveryPlate(ctx) {
     } else {
       el.classList.add('sf-discovery-plate--in');
     }
-    const ttlS = Number.isFinite(rec.ttlS) && rec.ttlS > 0 ? rec.ttlS : MOMENT_TTL_S;
     momentOutAt = performance.now() + ttlS * 1000;
     momentRemoveAt = momentOutAt + MOMENT_EXIT_MS;
     return true;
@@ -174,7 +187,9 @@ export function createDiscoveryPlate(ctx) {
     tick() {
       const now = performance.now();
       if (momentEl) {
-        if (now >= momentRemoveAt) removeMoment();
+        if (momentHandle) {
+          if (now >= momentOutAt) removeMoment();
+        } else if (now >= momentRemoveAt) removeMoment();
         else if (now >= momentOutAt) {
           momentEl.classList.remove('sf-discovery-plate--in');
           momentEl.classList.add('sf-discovery-plate--out');

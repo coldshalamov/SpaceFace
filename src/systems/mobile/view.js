@@ -1,4 +1,5 @@
-import { clamp, canFly, distanceToRect, stickRadius, wheelSlot } from './model.js';
+import { clamp, canFly, distanceToRect, isPhoneLayout, stickRadius, wheelSlot } from './model.js';
+import { CAMERA_ZOOM_MAX, DEFAULT_ZOOM, resolvePhoneDefaultZoom, resolvePinchZoomTarget } from '../../render/tabletopPolicy.js';
 import { POWER_PAGES, icon } from './catalog.js';
 import { MOBILE_CSS_PATH } from './styles.js';
 import { deferCssVisibility, loadCssSidecar } from '../../ui/orrery/cssSidecar.js';
@@ -87,6 +88,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   const cleanup = [], captures = new Map(); let raf = 0, visible = false, destroyed = false, taught = false;
   let pinned = false, messageUntil = 0, dockReady = false, lastFrame = null;
   let lastNumbers = -Infinity, lastMode = '', lastTick = -1, lastBoost = false, aimDeg = NaN;
+  let pinchZoom = null, sessionDefaultZoom = NaN, zoomTouched = false;
   const listen = (el, event, fn, opts) => { el.addEventListener(event, fn, opts); cleanup.push(() => el.removeEventListener(event, fn, opts)); };
   const clock = () => win.performance?.now?.() ?? 0;
   const size = () => ({ w: win.innerWidth, h: Math.min(win.innerHeight, win.visualViewport?.scale === 1 ? win.visualViewport.height : win.innerHeight) });
@@ -110,7 +112,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   let wheelGeometry = { cx: 0, cy: 0, radius: 150 }, selected = -1;
   function markWheel(open) { doc.documentElement.dataset.sfMobileWheel = open ? '1' : '0'; }
   function cancelAll() {
-    model.reset(); reset(); releaseCaptures(); pinned = false; selected = -1;
+    model.reset(); reset(); releaseCaptures(); pinned = false; selected = -1; pinchZoom = null;
     wheel.close(); markWheel(false); edge.setAttribute('aria-expanded', 'false');
     stickUI.release({ immediate: true }); schedule();
   }
@@ -259,9 +261,9 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       else if (magnet) {
         role = magnet;
         button = magnet === 'fire' ? gunKey : tetherKey;
-      } else role = 'stick';
+      } else role = model.stick ? 'pinch' : 'stick';
     }
-    if (role === 'stick') taught = true;
+    if (role === 'stick' || role === 'pinch') taught = true;
     const { w, h } = size(), radius = stickRadius(w, h, Number(config().scale) || 1);
     if (!model.begin(e.pointerId, role, e.clientX, e.clientY, e.timeStamp, radius)) { eat(e); return; }
     eat(e);
@@ -276,6 +278,23 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     eat(e);
     for (const sample of (e.getCoalescedEvents?.() || [])) model.move(e.pointerId, sample.clientX, sample.clientY, sample.timeStamp);
     model.move(e.pointerId, e.clientX, e.clientY, e.timeStamp);
+    // A live pinch owns the camera distance: it writes the same requested-zoom field the wheel's
+    // camera:zoom consumer resolves against (cam.setZoom's own 45–330 band can't carry a phone's
+    // ~554 default), and the chase rig eases it every frame — no jumps. Bus reach never crosses
+    // view.js; state.camera.zoom IS the owner's request record on the main lane.
+    if (model.pinch && pinchZoom?.g !== model.pinch) {
+      pinchZoom = { g: model.pinch, zoom0: Number.isFinite(state.camera?.zoom) && state.camera.zoom > 0
+        ? state.camera.zoom : (phoneDefaultZoom() || DEFAULT_ZOOM) };
+      stickUI.release({ immediate: true });
+    }
+    if (model.pinch && pinchZoom && state.camera) {
+      const d = model.pinchDistance();
+      if (d) {
+        const target = resolvePinchZoomTarget(pinchZoom.zoom0, d / Math.max(1, model.pinch.d0),
+          phoneDefaultZoom() || DEFAULT_ZOOM);
+        if (state.camera.zoom !== target) { state.camera.zoom = target; zoomTouched = true; }
+      }
+    }
     if (p.role === 'wheel') {
       const g = wheelGeometry, next = wheelSlot(e.clientX, e.clientY, g.cx, g.cy, g.radius, POWER_PAGES[model.wheelPage].powers.length, selected, hand(), g.span);
       if (next !== selected && next >= 0) haptic();
@@ -307,6 +326,10 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       else if (selected >= 0) use(POWER_PAGES[model.wheelPage].powers[selected]);
       else closeWheel();
     }
+    if (pinchZoom && !model.pinch) {
+      pinchZoom = null;
+      if (model.stick) placeStick(model.stick);
+    }
     if (cancelled) reset(p.role);
     schedule();
   }
@@ -337,6 +360,30 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   cleanup.push(() => observer.disconnect());
 
   // ---- drawing -----------------------------------------------------------------------------------------
+  /** The phone's aspect-aware default camera distance (design ruling 3), or NaN off-phone so
+   *  non-phone decks fall back to DEFAULT_ZOOM for the pinch band. */
+  function phoneDefaultZoom() {
+    if (!isPhoneLayout(doc, win)) return NaN;
+    return resolvePhoneDefaultZoom(
+      Number.isFinite(state.settings?.video?.fov) ? state.settings.video.fov : 50,
+      win.innerWidth / Math.max(1, win.innerHeight),
+      Number.isFinite(state.camera?.tilt) ? state.camera.tilt : 60);
+  }
+  /**
+   * The untouched camera adopts the phone's aspect-aware default while the pilot hasn't chosen a
+   * distance (untouched schema default, a value this phone seeded — including the rotation re-fit —
+   * or a rebuilt camera that re-clamped to the wheel ceiling). A pinch marks the session touched:
+   * the chosen zoom then persists for the session, which is the ruling's own persistence clause.
+   */
+  function seedPhoneDefault() {
+    const cam = state?.camera, d0 = phoneDefaultZoom();
+    if (!cam || !(d0 > 0)) return;
+    if (!zoomTouched
+      && (cam.zoom === DEFAULT_ZOOM || cam.zoom === sessionDefaultZoom || cam.zoom === CAMERA_ZOOM_MAX)) {
+      cam.zoom = d0;
+    }
+    sessionDefaultZoom = d0;
+  }
   /** The title is where a phone player looks for help; no other screen gets the pill (Pause has its own Help verb). */
   function guideWanted() {
     const stack = state.ui?.screenStack;
@@ -365,7 +412,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   }
   function paintAim(frame) {
     let gun = null, tether = null;
-    for (const c of model.pointers.values()) { if (c.role === 'fire') gun = c; else if (c.role === 'tether') tether = c; }
+    for (const c of model.pointers.values()) { if (c.role === 'fire' && !c.suppressed) gun = c; else if (c.role === 'tether') tether = c; }
     const dx = gun ? gun.x - gun.ox : 0, dy = gun ? gun.y - gun.oy : 0;
     const aiming = !!gun && Math.hypot(dx, dy) > 14;
     setIf(gunKey, 'aim', aiming ? '1' : '0');
@@ -399,7 +446,8 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     flight.hidden = !visible; guideButton.hidden = visible || guide.open || !guideWanted();
     doc.documentElement.dataset.sfMobileFlight = visible ? '1' : '0';
     if (!visible) return;
-    const p = model.stick;
+    seedPhoneDefault();
+    const p = model.pinch ? null : model.stick;
     if (p) {
       stickUI.show(p, { brake: !!f?.flight?.brake, heading: f?.heading ?? null, labelSide: stickUI.root.dataset.side || 'below' });
       if (p.boost && !lastBoost) haptic();
