@@ -75,6 +75,11 @@ export function createToasts(ctx) {
   }
   if (root && root.classList) root.classList.add('sf-receipts');
   let liveRegion = document.getElementById('toast-live');
+  // G16-03 the Stage enforces: receipts ride the feed slot's door — at most three visible at a
+  // time, queued overflow promoted on a clear, and the lane's own oldest-out eviction keeps the
+  // live set inside the cap. With no stage (headless, ui-bench) cards mount exactly as before.
+  const stage = ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
+  let toastSeq = 0;
   const live = []; // { el, born, ttl }
   let nextWakeAt = Infinity;
   let lastAnnounced = '';
@@ -329,15 +334,28 @@ export function createToasts(ctx) {
     el.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dismiss(rec); }
     });
-    // newest on top; #toast-live is sr-only and rides to the end of the flex stack via prepend
-    root.prepend(el);
-    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act };
+    // The card enters through the Stage feed door: bare — its own .sf-toast chrome is the frame —
+    // with its kind as the severity so a hot receipt can take a seat from a cold one. A queued
+    // card's element stays unmounted until the queue promotes it.
+    const rec = { el, born: now, ttl: normalizeTtlMs(ttl), text, kind, count: 1, action: act, stageHandle: null };
     live.unshift(rec);
+    if (stage) {
+      rec.stageHandle = stage.show('feed', el, { id: `toast:${++toastSeq}`, severity: kind, bare: true });
+    } else {
+      // newest on top; #toast-live is sr-only and rides to the end of the flex stack via prepend
+      root.prepend(el);
+    }
     announceStatus(text, 1);
     recomputeNextWake();
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));
     while (live.length > MAX) dismiss(pickEvictionVictim(live));
+    // Newest rides first in the shared flow — the lane's old prepend order — including a card
+    // that promoted off the queue when an eviction just freed its seat.
+    const lane = stage && el.parentNode;
+    if (lane && lane.firstElementChild && lane.firstElementChild !== el) {
+      lane.insertBefore(el, lane.firstElementChild);
+    }
     invalidateReceiptGeometry();
     return true;
   }
@@ -349,6 +367,9 @@ export function createToasts(ctx) {
     const hadFocus = elementHoldsFocus(rec.el);
     if (i >= 0) live.splice(i, 1);
     rec._dismissing = true;
+    // Free the Stage seat first — the freed seat promotes the queue while this card keeps its
+    // element for the exit beat below (keepEl; the lane owns the leaver's last 170ms).
+    if (rec.stageHandle) { rec.stageHandle.clear({ keepEl: true }); rec.stageHandle = null; }
     if (rec.el) {
       if (opts.instant) {
         // Session-boundary teardown: the scene is swapping underneath, so there is nothing
