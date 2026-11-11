@@ -20,26 +20,31 @@ import {
 const FOV = 50, TILT = 60;
 
 // --- the pure policy ---------------------------------------------------------------------------
-test('the aspect-aware phone default shows the desktop default horizontal world width', () => {
+test('the phone default sits halfway to the desktop width; a full pinch-out reaches it (lead 2026-11-11)', () => {
   const desktopWidth = glassHorizontalWidthWu(DEFAULT_ZOOM, FOV, DESKTOP_REFERENCE_ASPECT, TILT);
   for (const [w, h] of [[390, 844], [844, 390]]) {
     const zoom = resolvePhoneDefaultZoom(FOV, w / h, TILT);
-    const width = glassHorizontalWidthWu(zoom, FOV, w / h, TILT);
-    assert.ok(Math.abs(width / desktopWidth - 1) <= 0.05,
-      `${w}x${h}: default ${zoom.toFixed(1)} shows ${width.toFixed(0)} wu, desktop shows ${desktopWidth.toFixed(0)} wu`);
+    // The distance that would show the full desktop width on this aspect.
+    const unit = glassHorizontalWidthWu(1, FOV, w / h, TILT);
+    const match = desktopWidth / unit;
+    const expected = Math.sqrt(DEFAULT_ZOOM * Math.max(DEFAULT_ZOOM, match));
+    assert.ok(Math.abs(zoom / expected - 1) <= 1e-6, `${w}x${h}: default ${zoom.toFixed(1)} vs ${expected.toFixed(1)}`);
+    assert.ok(zoom >= DEFAULT_ZOOM, `${w}x${h}: never closer than the desktop default`);
+    const widest = glassHorizontalWidthWu(zoom * MOBILE_PINCH_ZOOM_MAX_FACTOR, FOV, w / h, TILT);
+    assert.ok(widest >= desktopWidth * 0.95, `${w}x${h}: a full pinch-out shows at least the desktop width (${widest.toFixed(0)} vs ${desktopWidth.toFixed(0)})`);
   }
   assert.ok(Math.abs(resolvePhoneDefaultZoom(FOV, DESKTOP_REFERENCE_ASPECT, TILT) - DEFAULT_ZOOM)
     / DEFAULT_ZOOM <= 0.05, 'a desktop-aspect screen keeps the desktop default');
 });
 
-test('a pinch follows the finger-distance ratio, clamped to the 0.6x/1.5x band', () => {
+test('a pinch follows the finger-distance ratio, clamped to the 0.5x/2.0x band', () => {
   const d0 = resolvePhoneDefaultZoom(FOV, 390 / 844, TILT);
   const lo = Math.max(45, d0 * MOBILE_PINCH_ZOOM_MIN_FACTOR), hi = d0 * MOBILE_PINCH_ZOOM_MAX_FACTOR;
   assert.equal(resolvePinchZoomTarget(d0, 1, d0), d0);
   assert.ok(Math.abs(resolvePinchZoomTarget(d0, 1.25, d0) - d0 * 1.25) < 1e-9, 'pinch-out follows the ratio');
   assert.ok(Math.abs(resolvePinchZoomTarget(d0, 0.8, d0) - d0 * 0.8) < 1e-9, 'pinch-in follows the ratio');
-  assert.equal(resolvePinchZoomTarget(d0, 3, d0), hi, 'spread clamps at 1.5x of the default');
-  assert.equal(resolvePinchZoomTarget(d0, 0.1, d0), lo, 'squeeze clamps at 0.6x of the default');
+  assert.equal(resolvePinchZoomTarget(d0, 3, d0), hi, 'spread clamps at 2.0x of the default');
+  assert.equal(resolvePinchZoomTarget(d0, 0.1, d0), lo, 'squeeze clamps at 0.5x of the default');
   assert.equal(resolvePinchZoomTarget(60, 1, d0), lo, 'the floor also binds a closer start');
   assert.equal(resolvePinchZoomTarget(NaN, NaN, NaN), DEFAULT_ZOOM, 'degenerate input is the desktop default');
 });
@@ -262,8 +267,7 @@ test('the untouched phone camera takes the aspect-aware default on first flight 
   try {
     const expected = resolvePhoneDefaultZoom(FOV, 390 / 844, TILT);
     assert.equal(w.state.camera.zoom, expected, 'the deck seeds the ruling default over the schema 144');
-    assert.ok(Math.abs(glassHorizontalWidthWu(w.state.camera.zoom, FOV, 390 / 844, TILT)
-      / glassHorizontalWidthWu(DEFAULT_ZOOM, FOV, DESKTOP_REFERENCE_ASPECT, TILT) - 1) <= 0.05);
+    assert.ok(w.state.camera.zoom > DEFAULT_ZOOM * 1.5, 'the untouched phone view is clearly wider than the old close view');
   } finally { w.dispose(); }
 });
 
