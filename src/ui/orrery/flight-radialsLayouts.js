@@ -156,7 +156,7 @@ html.sf-reduce-motion ${W} .sf-wradial__hub,
 html.sf-reduce-motion ${W} .sf-wradial__face { transition:none; }
 `;
 
-const RADIAL_OWNS_FRAME_SEL = '#sf-commsfan.is-open, .sf-drawer--haildeck.is-open, .sf-wradial:not([hidden])';
+const RADIAL_OWNS_FRAME_SEL = '#sf-commsfan.is-open, .sf-drawer--haildeck.is-open, .sf-wradial:not([hidden]), #sf-context-wheel:not([hidden])';
 
 /* Call after any radial open/close/hidden transition. Writes the body class only on change. */
 export function syncRadialOwnsFrame(doc = globalThis.document) {

@@ -1,4 +1,7 @@
 <!-- LIFETIME: DURABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The asset layer and performance: what it costs, what was wrong, what to do next
 
 **Current owner direction, 2026-11-05:** smoothness is the first priority. Small, barely noticeable

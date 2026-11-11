@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Graphics assessment — what holds the picture back (2026-09-28)
 
 An independent review of every live model and the running game against the intended style
