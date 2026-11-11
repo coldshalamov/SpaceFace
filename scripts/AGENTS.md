@@ -38,6 +38,7 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
   repeating them. Its actor stays public-input only; its reader stays observer-only.
   `--start-round=<1..30>` opens a swarm run on the dev route `?swarmRound=N` (title and door
   skipped, first wave is round N, checkpoint purse funded); pair with `--arena=` for a room.
+- `scripts/fleet/looks/sector-shots.mjs` captures sectors via `?sector=<id>&shot=1` (title skipped, arrival point in flight, ready after load + 3 s sim) to `.devshots/fleet/looks/sectors/<id>.png` and `sheet.png`.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save,
   and raw trace identity. Never reuse a capture across acceptance cells.
 - `agent-loop` plans/summaries, UI fixtures and handling reports never promote evidence. `sf lab

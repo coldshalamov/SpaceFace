@@ -2,6 +2,7 @@ import { logbookRecap } from '../chronicler/logbook.js';
 import { createLogbookMedia, logbookStill } from './logbookMedia.js';
 import { el, words } from './kit/index.js';
 import { injectLogbookLayouts } from './orrery/logbookLayouts.js';
+import { getStage } from './stage.js';
 
 export const LOGBOOK_RECAP_MS = 20000;
 export function createRecapClock(now = () => performance.now()) {
@@ -31,7 +32,15 @@ export function createLogbookRecap(ctx, options = {}) {
   const paint = entry => {
     if (!doc?.getElementById('ui-root')) return;
     injectLogbookLayouts(doc);
-    if (!root) { root = el('aside', 'orr-logbook-recap'); root.setAttribute('aria-label', 'Previously on your run'); doc.getElementById('ui-root').appendChild(root); }
+    if (!root) {
+      root = el('aside', 'orr-logbook-recap');
+      root.setAttribute('aria-label', 'Previously on your run');
+      // G16-02: a timed card sits in the Stage's dialog slot; a page/test without the live Stage
+      // keeps the ui-root mount.
+      const stage = doc === globalThis.document && getStage();
+      const slot = stage && typeof stage.slotEl === 'function' ? stage.slotEl('dialog') : null;
+      (slot || doc.getElementById('ui-root')).appendChild(root);
+    }
     root.replaceChildren(el('div', 'k-eyebrow', 'Previously, on your run…'));
     const still = logbookStill(state, entry);
     if (still) { const image = el('img'); image.src = still; image.alt = 'Recorded moment from your run'; root.appendChild(image); }

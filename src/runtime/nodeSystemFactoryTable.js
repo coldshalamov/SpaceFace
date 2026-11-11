@@ -17,6 +17,7 @@ import { swarmArena } from '../systems/swarmArena.js';
 import { swarmFortify } from '../systems/swarmFortify.js';
 import { heroManeuvers } from '../systems/heroManeuvers.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
+import { swarmDrops } from '../systems/swarmDrops.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
 import { swarmElites } from '../systems/swarmElites.js';
@@ -310,6 +311,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['swarmFortify', swarmFortify],
     ['heroManeuvers', heroManeuvers],
     ['swarmSupply', swarmSupply],
+    ['swarmDrops', swarmDrops],
     ['swarmChain', swarmChain],
     // The manifest marks swarmJuice node-safe (sim-phase juice detector) and swarmJuiceHud
     // domGuarded — without table rows every Node production-fidelity boot throws
