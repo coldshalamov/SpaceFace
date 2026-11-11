@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { presentedAdvanceRatio } from '../presentedClock.js';
 
 export const DISTORTION_CAPACITY = 64;
 
@@ -117,9 +118,10 @@ export class DistortionField {
    *   re-synced with dt 0 every frame, so it must be given the clock directly or it never moves.
    */
   update(dt, clock) {
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
     this.material.uniforms.uTime.value = Number.isFinite(clock)
       ? clock
-      : this.material.uniforms.uTime.value + (Number.isFinite(dt) ? dt : 0);
+      : this.material.uniforms.uTime.value + (Number.isFinite(dt) ? dt * ratio : 0);
     // Quiet path: capacity walk + attr needsUpdate when live===0 was pure CPU;
     // mesh already count=0/visible=false after the frame that retired the last slot.
     // uTime still advances above so a later spawn resumes with a current clock.
