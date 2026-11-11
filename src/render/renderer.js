@@ -7330,12 +7330,41 @@ export async function waitForShipAuxPoolGrowth(pool) {
  * shell with everything else, and hold it still under reduced motion.
  */
 export function tickShieldShellClock(pool, state) {
+  if (pool) {
+    pool.state = state;
+    pool.simTime = Number(state && state.simTime) || 0;
+  }
   const material = pool && pool.shield && pool.shield.material;
   if (!material) return 0;
   const video = state && state.settings && state.settings.video;
   const a11y = state && state.settings && state.settings.accessibility;
   const motionReduce = !!((video && video.motionReduce) || (a11y && (a11y.reducedMotion || a11y.motionReduce)));
   return setShieldShellClock(material, state && state.simTime, motionReduce);
+}
+
+/**
+ * Compute the near-miss flash multiplier for a ship's running/nav lights (PL-01).
+ * Emits two flashes across the flash window, respecting reduced flash,
+ * and expires lampsFlashing when the duration is over.
+ */
+export function computeNearMissLampFlash(entity, now, reducedFlash = false) {
+  if (!entity || !entity.data || !entity.data.lampsFlashing) return 1.0;
+  const until = Number.isFinite(entity.data.lampFlashUntil) ? entity.data.lampFlashUntil : (now + 2.0);
+  if (now >= until) {
+    entity.data.lampsFlashing = false;
+    return 1.0;
+  }
+  const duration = 2.0;
+  const elapsed = Math.max(0, duration - (until - now));
+  // Two flashes:
+  // Pulse 1: 0.00s to 0.22s
+  // Pulse 2: 0.38s to 0.60s
+  const inPulse1 = elapsed >= 0.0 && elapsed <= 0.22;
+  const inPulse2 = elapsed >= 0.38 && elapsed <= 0.60;
+  if (inPulse1 || inPulse2) {
+    return reducedFlash ? 1.7 : 4.2;
+  }
+  return 1.0;
 }
 
 // Marker stamped on a root whose dirty flag is our own post-withhold invalidation —
@@ -7474,8 +7503,14 @@ function shieldAuxAttrs(mesh) {
   return attrs;
 }
 
-export function syncShipAuxPools(pool, frameOrEntities, meshes) {
+export function syncShipAuxPools(pool, frameOrEntities, meshes, state = pool && pool.state) {
   if (!pool) return;
+  const now = Number(state && state.simTime) || (pool && Number(pool.simTime)) || 0;
+  const reducedFlash = !!(state && state.settings && (
+    state.settings.video?.flashReduce
+    || state.settings.accessibility?.flashReduce
+    || state.settings.accessibility?.reducedFlash
+  ));
   const classifiedFrame = frameOrEntities && Array.isArray(frameOrEntities.shipAux)
     ? frameOrEntities
     : null;
@@ -7559,7 +7594,10 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       const navMesh = pool.nav.mesh;
       const mat = Array.isArray(source.material) ? source.material[0] : source.material;
       const base = mat && mat.emissive && mat.emissive.isColor ? mat.emissive : (mat && mat.color && mat.color.isColor ? mat.color : SHIP_AUX_COLOR.set(0x88eeff));
-      const intensity = mat && Number.isFinite(mat.emissiveIntensity) ? mat.emissiveIntensity : 1;
+      let intensity = mat && Number.isFinite(mat.emissiveIntensity) ? mat.emissiveIntensity : 1;
+      if (entity.data && entity.data.lampsFlashing) {
+        intensity *= computeNearMissLampFlash(entity, now, reducedFlash);
+      }
       SHIP_AUX_COLOR.copy(base).multiplyScalar(Math.max(0, intensity));
       if (mat && Number.isFinite(mat.opacity)) SHIP_AUX_COLOR.multiplyScalar(Math.max(0, mat.opacity));
       for (let i = 0; i < sourceCount; i++) {
@@ -19562,6 +19600,17 @@ export const render = {
     onBus('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     onBus('massline:throw', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
+    onBus('traffic:nearMissFlash', (payload) => {
+      if (!payload || !payload.entityId) return;
+      const ent = state && state.entities && state.entities.get(payload.entityId);
+      if (ent) {
+        if (!ent.data) ent.data = {};
+        ent.data.lampsFlashing = true;
+        ent.data.lampFlashUntil = Number.isFinite(payload.until)
+          ? payload.until
+          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0));
+      }
+    });
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     onBus('game:started', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
     onBus('save:loaded', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
