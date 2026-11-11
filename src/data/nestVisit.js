@@ -58,11 +58,20 @@ export function nestWaypoint(state) {
   const cast = live?.data?.nest || own?.snapshot;
   const compact = cast?.broodVariant === 'nursery_compact_v1';
   const spent = compact && cast?.remaining === 0 && cast?.launched === 6;
+  const detached = cast?.detachedDoors > 0 || own?.snapshot?.doors?.some(door => door.detached);
   const launchRead = spent
-    ? 'All six nursery Wasps have actually launched. The empty coupling assemblies stay EXPOSED; the surviving Wasps are still dangerous. No further brood is supplied.'
+    ? 'All six nursery Wasps have actually launched. The carrier return targets stay EXPOSED; the surviving Wasps are still dangerous. No further brood is supplied.'
+    : detached
+    ? 'A displaced baffle leaves its carrier flank EXPOSED. Remaining brood still follows the actual launch cycle; the loose piece is not a return target.'
     : cast?.launchDeferred
     ? 'Launch deferred: brood is still aboard. No new exposure window has occurred. Watch for a real launch.'
     : 'Watch GUARDED change to EXPOSED COUPLING.';
+  const returns = Number.isInteger(cast?.returnHits) ? cast.returnHits : 0;
+  // Saved semantic occupants, not recyclable numeric entity IDs, own this read.
+  const surviving = own?.snapshot?.wasps?.filter(w => w.status === 'live').length;
+  const returnRead = Number.isInteger(surviving)
+    ? `Coupling breaches: ${returns}/3. ${surviving} launched Wasp${surviving === 1 ? ' remains' : 's remain'} alive.${cast?.remaining === 0 && surviving < 3 - returns ? ' Too few remain for three returns; use guns or withdraw alive.' : ''}`
+    : `Coupling breaches: ${returns}/3.`;
   const handling = compact
     ? 'The compact 16t nursery Wasps fit Class I and a bare Line'
     : 'These standard 16t Wasps need Class I capacity AND current Line rating T1';
@@ -70,7 +79,7 @@ export function nestWaypoint(state) {
     reason: own?.status === 'waiting' && state.encounterDirector.nestVisit.waitReason
       ? 'Nursery signal acquired. Other lane traffic must clear first. Hold at the outside approach; do not fly into the berth. No victory or progress is being credited while admission waits.'
       : own?.status === 'active'
-      ? `${launchRead} ${handling}: use the Line to drive one into the exposed coupling. Real contact is required; holding it nearby does nothing. The 400t salvaged blast baffles need Class III capacity AND current Line rating T1; guns or withdrawing alive remain valid.`
+      ? `${launchRead} ${returnRead} ${handling}: use the Line to drive one into the exposed coupling. Real contact is required; holding it nearby does nothing. Detached baffles are scrap: return to the exposed carrier flank, not the loose piece. Latching the 400t salvaged blast baffles needs Class III capacity AND current Line rating T1; guns or withdrawing alive remain valid.`
       : 'The garden growth is recorded. Approach the south-lane nursery from the east. A Reach carrier launches six compact 16t nursery Wasps; watch the exposed couplings, fight or withdraw alive. After the sixth real launch, the empty nursery assemblies stay exposed for a Line-driven return. Ripping the salvaged blast baffles is optional, not a required upgrade.',
     stationId: null, sectorId: NEST_VISIT.sectorId,
     // Keep navigation outside the hull even during combat; selection remains an explicit action.
