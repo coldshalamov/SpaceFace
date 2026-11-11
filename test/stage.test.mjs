@@ -263,3 +263,34 @@ test('slot containers self-attach to their authored parents and survive a hud wi
     assert.ok(stagePriority('warning') > stagePriority('info'));
   } finally { restore(); }
 });
+
+test('a refreshed id keeps its seat — a queued rival is not promoted past it', () => {
+  const { doc, restore } = installDom();
+  try {
+    const stage = createStage({ document: doc });
+    stage.show('banner', 'first', { id: 'a', severity: 'warn' });
+    stage.show('banner', 'rival', { id: 'b', severity: 'danger' });
+    assert.deepEqual(stage.queued('banner'), ['b']);
+    const again = stage.show('banner', 'first, refreshed', { id: 'a', severity: 'warn' });
+    assert.ok(again.visible, 'the refreshed item is still the one on the stage');
+    assert.deepEqual(stage.visible('banner'), ['a']);
+    assert.deepEqual(stage.queued('banner'), ['b']);
+  } finally { restore(); }
+});
+
+test('banner and feed items join the host lane (#alerts, #toasts), never a second layer', () => {
+  const { doc, uiRoot, hud, restore } = installDom();
+  try {
+    const alerts = doc.createElement('div'); alerts.id = 'alerts';
+    const toasts = doc.createElement('div'); toasts.id = 'toasts';
+    const stage = createStage({ document: doc });
+    stage.slotEl('banner').appendChild(alerts);
+    stage.slotEl('feed').appendChild(toasts);
+    stage.show('banner', 'pill', { severity: 'danger' });
+    stage.show('feed', 'receipt');
+    assert.equal(flowOf(stage, 'banner'), undefined, 'no flow beside the alerts host');
+    assert.ok(alerts.children.some((c) => c.classList.contains('sf-stage__flow')), 'the flow is a child of #alerts');
+    assert.ok(toasts.children.some((c) => c.classList.contains('sf-stage__flow')), 'the flow is a child of #toasts');
+    assert.equal(uiRoot.children.length > 0 && hud.children.length > 0, true);
+  } finally { restore(); }
+});

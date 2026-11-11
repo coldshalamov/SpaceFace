@@ -209,8 +209,9 @@ html.sf-reduce-motion #modal-backdrop { transition: none; }
 .sf-stage__flow { display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .sf-stage__item { pointer-events: auto; }
 #sf-stage-dialog .sf-stage__flow { inset: 0; align-items: center; justify-content: center; }
-#sf-stage-banner .sf-stage__flow { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; align-items: center; }
-#sf-stage-feed .sf-stage__flow { left: 50%; bottom: 155px; transform: translateX(-50%); align-items: center; }
+/* banner and feed items join their host's own lane (#alerts, #toasts — see stage.js `lane`), so the
+   flow is an ordinary column child there; only the dialog and prompt slots place their own flow. */
+#sf-stage-banner .sf-stage__flow, #sf-stage-feed .sf-stage__flow { position: static; align-items: center; }
 #sf-stage-prompt .sf-stage__flow { left: 50%; bottom: 175px; transform: translateX(-50%); align-items: center; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }

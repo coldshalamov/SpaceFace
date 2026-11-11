@@ -23,12 +23,15 @@ import { SEV_RANK } from './alerts.js';
 import { cut, reducedMotion, settle } from './kit/motion.js';
 
 // Each slot names the container element that hosts it in index.html, the parent that container
-// mounts under, its visible capacity, and the kit settle edge its items enter from. feed's
+// mounts under, its visible capacity, and the kit settle edge its items enter from. A slot whose
+// host already owns a flex lane (banner -> #alerts, feed -> #toasts) names it as `lane`: stage
+// items join that lane's own column, so a stage item and a host's pills stack with the lane's gap
+// instead of two absolutely placed layers drawing on one another. feed's
 // parent is #hud — the receipt lane's real mount point; everything else mounts under #ui-root.
 export const STAGE_SLOTS = Object.freeze({
   dialog: Object.freeze({ id: 'sf-stage-dialog', parent: 'ui-root', maxVisible: 1, enter: 'bottom' }),
-  banner: Object.freeze({ id: 'sf-stage-banner', parent: 'ui-root', maxVisible: 1, enter: 'top' }),
-  feed: Object.freeze({ id: 'sf-stage-feed', parent: 'hud', maxVisible: 3, enter: 'bottom' }),
+  banner: Object.freeze({ id: 'sf-stage-banner', parent: 'ui-root', maxVisible: 1, enter: 'top', lane: 'alerts' }),
+  feed: Object.freeze({ id: 'sf-stage-feed', parent: 'hud', maxVisible: 3, enter: 'bottom', lane: 'toasts' }),
   prompt: Object.freeze({ id: 'sf-stage-prompt', parent: 'ui-root', maxVisible: 1, enter: 'right' }),
 });
 
@@ -106,7 +109,9 @@ export function createStage(ctx = {}) {
       s.flow.className = 'sf-stage__flow';
       s.flow.setAttribute('data-stage-flow', s.name);
     }
-    const host = slotEl(s.name);
+    const slotHost = slotEl(s.name);
+    const lane = s.def.lane ? doc.getElementById(s.def.lane) : null;
+    const host = lane && lane.nodeType === 1 && slotHost.contains?.(lane) !== false ? lane : slotHost;
     if (s.flow.parentNode !== host) host.appendChild(s.flow);
     return s.flow;
   }
@@ -138,13 +143,13 @@ export function createStage(ctx = {}) {
     }
   }
 
-  function removeRec(s, rec) {
+  function removeRec(s, rec, { promoteQueue = true } = {}) {
     const vi = s.visible.indexOf(rec);
     if (vi >= 0) {
       s.visible.splice(vi, 1);
       rec.visible = false;
       if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
-      promote(s);
+      if (promoteQueue) promote(s);
       return true;
     }
     const qi = s.queue.indexOf(rec);
@@ -161,7 +166,9 @@ export function createStage(ctx = {}) {
     const s = slot(name);
     const seq = ++s.seq;
     const id = String(opts.id || `sf-stage-${name}-${seq}`);
-    for (const old of [...s.visible, ...s.queue]) if (old.id === id) removeRec(s, old);
+    // A refresh keeps its seat: freeing it must not promote a queued rival ahead of the
+    // replacement, so the swap releases the seat without promoting.
+    for (const old of [...s.visible, ...s.queue]) if (old.id === id) removeRec(s, old, { promoteQueue: false });
 
     const rec = { id, seq, severity: opts.severity || 'info', el: null, visible: false };
     const frame = doc.createElement('div');
