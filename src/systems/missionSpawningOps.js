@@ -1,3 +1,4 @@
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { syncMawWorksite } from '../missions/mawWorksite.js';
 import { registerMassScaleTow } from './cargoCustody.js';
 import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
@@ -721,6 +722,29 @@ export const missionSpawningOps = {
         m.destSectorId, RECORD_KIND.MISSION_TARGET, b2Key)
       && [ent.homeSectorId, ent.data.homeSectorId, ent.data.sectorId]
         .every(id => id == null || id === m.destSectorId);
+    // Registry names a civilian holding for inspection, not a swarmer assault. Authenticate
+    // fresh authoring or the exact durable slot before generic stamping can repair owner tags.
+    const registryContract = m.storyTag === CONTRACT_47A_B2_TAG
+      && m.type === 'bounty_hunt' && m.destSectorId === 'sector_charon_expanse'
+      && m.storyTarget?.id === 'npc_elroy' && m.storyTarget?.role === 'register_mark';
+    const registryHold = registryContract && m.status === 'active' && seq === 0
+      && ent.type === 'ship' && ent.alive !== false
+      && (ent.data.missionTag == null || ent.data.missionTag === m.id)
+      && (ent.data.missionId == null || ent.data.missionId === m.id)
+      && (ent.data.missionTargetSlot == null || ent.data.missionTargetSlot === 0)
+      && (ent.data.identityKey == null || ent.data.identityKey === b2Key)
+      && (ent.data.worldRecordId == null || ent.data.worldRecordId === stableRecordId(
+        (this.state.meta && this.state.meta.seed) || 1, m.destSectorId, RECORD_KIND.MISSION_TARGET, b2Key))
+      && [ent.homeSectorId, ent.data.homeSectorId, ent.data.sectorId]
+        .every(id => id == null || id === m.destSectorId)
+      && (ent.data.storyTargetId === 'npc_elroy' && ent.data.storyTargetRole === 'register_mark'
+        || restoreB2Mark
+          && (ent.data.storyTargetId == null || ent.data.storyTargetId === 'npc_elroy')
+          && (ent.data.storyTargetRole == null || ent.data.storyTargetRole === 'register_mark'));
+    // Do not manufacture Registry eligibility by overwriting a foreign owner/slot on the
+    // first pass and accepting it on the next. Leave rejected provenance untouched. This is
+    // the single authored civilian only; ordinary contracts retain their generic stamping.
+    if (registryContract && !registryHold) return;
     ent.data.missionTag = targetOwner;
     ent.data.missionId = targetOwner;
     ent.data.missionPinned = true;
@@ -766,6 +790,23 @@ export const missionSpawningOps = {
         ent.data.scanLabel = m.storyTarget.label || m.storyTarget.name;
         ent.data.ai.name = m.storyTarget.name;
       }
+    }
+    if (registryHold && ent.data.ai) {
+      const ai = ent.data.ai;
+      // Existing passive authority suppresses offensive fire and AI propulsion only. The
+      // ordinary hull, collision body, damage and Line remain live; no pose or vitals change.
+      ai.passive = true;
+      ai.allowPassiveManeuver = false;
+      ai.roe = RulesOfEngagement.HOLD_FIRE;
+      ai.motive = 'registry_writ_hold';
+      ai.engagementTrigger = 'await_registry_scan';
+      ai.hostileTeams = [];
+      ai.postureBaseActivity = null;
+      if (ai.activity?.kind !== ActivityKind.HAIL_HOLD || ai.activity?.reason !== 'registry_writ_hold') {
+        ai.activity = normalizeActivity({ kind: ActivityKind.HAIL_HOLD, reason: 'registry_writ_hold',
+          anchor: ent.pos, leashRadius: 60, startedTick: deferredEnterTick(this.state), targetId: null });
+      }
+      if (ent.data.combat) ent.data.combat.targetId = null;
     }
     ent.flags = ent.flags || {};
     ent.flags.missionPinned = true;
