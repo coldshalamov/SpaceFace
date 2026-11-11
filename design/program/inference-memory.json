@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-10",
+  "updated": "2026-11-11",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,19 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-patrol-bait",
-      "date": "2026-11-04",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A losing raider squad spoofs the law's own band, a Concord patrol and a Meridian screen open fire on each other through the ordinary hostility oracle, and a scanner pulse on the raider burns the lie",
-      "fingerprint": "verb=spoofs-and-turns,subject=raider-squad-vs-lawful-parties,sector=flight-lanes,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "9f332bd9e1db",
-      "verification": "focused_green"
-    },
     {
       "id": "inf-current-rider",
       "date": "2026-11-04",
@@ -1703,6 +1690,22 @@
       "evidence": "design/program/receipts/pl-58-pit-win.md",
       "kind": "plant",
       "player": "Win a Cull run at the Pit and the Static reports it: 'Lights came up at the Pit last night.'"
+    },
+    {
+      "id": "PL-05",
+      "date": "2026-11-11",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "PL-05 plant: a twice-shoved civilian shoves back, then runs",
+      "fingerprint": "verb=ram,subject=civilian-road-rage,sector=lanes,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "b34318ddee21",
+      "verification": "focused_green",
+      "evidence": ".devshots/fleet/runs/PL-05-road-rage.flash.2026-11-11T01-43-07/RECEIPT.md",
+      "kind": "plant",
+      "player": "Shoving the same civilian twice makes them turn to clumsily ram you once, then flee at top speed."
     }
   ],
   "knownDefects": [
