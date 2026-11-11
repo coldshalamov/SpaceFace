@@ -19,32 +19,30 @@ import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 // dumb: it only translates the raw standard-gamepad layout into game actions. Flight behavior is
 // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
 //
-// Standard mapping (Xbox / PlayStation equivalent):
-//   0  A / Cross      -> accept / Massline thumb action in flight
-//   1  B / Circle      -> cancel / back; dock when the station prompt is up in flight
-//   2  X / Square      -> cycle target
-//   3  Y / Triangle    -> shove / repulsor
-//   4  LB / L1         -> brake / reverse thrust; station tab previous
-//   5  RB / R1         -> boost; station tab next
-//   6  LT / L2         -> mine beam (analog)
+// Standard mapping (Xbox / PlayStation equivalent) — G18-02 "one set of keys":
+//   0  A / Cross      -> boost; UI accept on screens (disjoint contexts)
+//   1  B / Circle      -> cancel / back; RIG power in flight
+//   2  X / Square      -> dock / interact when the station prompt is up
+//   3  Y / Triangle    -> hold for the context wheel (aim with a stick, release to choose)
+//   4  LB / L1         -> PULL power; station tab previous
+//   5  RB / R1         -> SHOVE power; station tab next
+//   6  LT / L2         -> the Line — fire / hold / release (same role as RMB)
 //   7  RT / R2         -> fire (analog)
 //   8  View / Select   -> star map
 //   9  Menu / Start    -> pause
-//  10  L3              -> travel burn
-//  11  R3              -> countermeasure
+//  10  L3              -> unbound (free seat)
+//  11  R3              -> cycle target
 //  12  D-pad up        -> UI nav up; auto-target / draw-to-fly toggle in flight
-//  13  D-pad down      -> UI nav down; detonate armed bombs and charges
-//  14  D-pad left      -> UI nav left; cycle bomb-bay payload
-//  15  D-pad right     -> UI nav right; drop bomb
-//  16  Home / Guide    -> codex / journal (moved off Y; see GAMEPAD_DEFAULT_BINDINGS)
+//  13  D-pad down      -> UI nav down; PIN power
+//  14  D-pad left      -> UI nav left; unbound in flight
+//  15  D-pad right     -> UI nav right; BOMB power
+//  16  Home / Guide    -> codex / journal (see GAMEPAD_DEFAULT_BINDINGS)
 //
-// FB-003 chord layer: the solo buttons above leave a dozen flight verbs keyboard-only. Holding
-// LB or RB and tapping a d-pad/face button is a second "shifted" layer — LB hosts survey and
-// deploy verbs under the brake hand, RB hosts combat-state verbs under the boost hand. A chord
-// name is '<modifier>+<button>' and lives in GAMEPAD_DEFAULT_BINDINGS like any other binding:
-// resolvable, rebindable, and labeled by the help sheet with every button it holds. While a
-// chord's KEY is held inside an active chord its solo verb is suppressed for the hold; the
-// modifier's own verb (brake/boost) keeps working — chords are additive, not a mode.
+// Everything that is not on the one-set-of-keys table lives on the context wheel — brake,
+// mine, reel, countermeasure, scan/site beams, deploys, bullet time, cloak, gyre, cruise,
+// travel burn, cargo dump, bomb-bay cycling — exactly like Q on the keyboard. Chord names
+// ('<modifier>+<button>') remain fully supported for player remaps: a chorded button's solo
+// verb is suppressed while the modifier holds it; the modifier's own verb keeps working.
 
 const STD = {
   accept: 0,
@@ -91,62 +89,47 @@ export function isGamepadButtonName(name) {
 // This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
 // settings.controls.gamepad.bindings — resolved per tick by resolveGamepadBindings().
 export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
+  // G18-02 "one set of keys" — the pad speaks the same layout as WASD + mouse:
+  //   left stick move · right stick aim · RT fire · LT the Line · A boost · bumpers+faces powers
+  //   X interact/dock · View map · hold Y the context wheel (everything off the table).
   fire: Object.freeze(['r2']),
-  mine: Object.freeze(['l2']),
-  boost: Object.freeze(['r1']),
-  brake: Object.freeze(['l1']),
-  // §22 E1: shove is its own face button. Y used to open the codex; the codex stays on the
-  // guide button and inside Pause, so a fight never needs a chord to drop the repulsor.
-  // The five powers (owner 2026-10-22, powerVerbs.js): SHOVE keeps Y and gains the old detonate
-  // D-pad down, because Shove now sets off armed ordnance too.
-  shove: Object.freeze(['alt', 'dDown']),
-  cycleTarget: Object.freeze(['action']),
+  massline: Object.freeze(['l2']),     // LT is the Line — hold/aim/release, same grammar as RMB
+  boost: Object.freeze(['accept']),    // A boosts in flight; on screens A still confirms
+  brake: Object.freeze([]),            // full stop is a wheel latch
+  // The five powers (owner 2026-10-22, powerVerbs.js) seat on the bumpers and face/d-pad side:
+  pull: Object.freeze(['l1']),         // LB pulls the well
+  shove: Object.freeze(['r1']),        // RB shoves — the repulsor plus ordnance detonation
+  pin: Object.freeze(['dDown']),       // plant the anchor seed
+  bomb: Object.freeze(['dRight']),
+  rig: Object.freeze(['cancel']),      // B rigs in flight; B stays cancel while a screen owns input
+  cycleTarget: Object.freeze(['r3']),
   autoTarget: Object.freeze(['dUp']),
   map: Object.freeze(['view']),
   steeringView: Object.freeze(['l1+view']), // LB+View: chase / overhead without opening the map
   codex: Object.freeze(['home']),
   pause: Object.freeze(['menu']),
-  countermeasure: Object.freeze(['r3']),
   accept: Object.freeze(['accept']),
-  massline: Object.freeze(['accept']),
-  // Dock is B, which is cancel only while a screen is open. The rope keeps A in flight.
-  dock: Object.freeze(['cancel']),
+  // Dock/interact is X — one airlock muscle-memory in both doors. B keeps its screen cancel.
+  dock: Object.freeze(['action']),
   cancel: Object.freeze(['cancel']),
+  contextWheel: Object.freeze(['alt']), // hold Y: the overflow wheel — aim with a stick, release to choose
   tabPrev: Object.freeze(['l1']),
   tabNext: Object.freeze(['r1']),
-  // Travel Burn latch (atlas D5 / W1-5). L3 (left stick click, STD index 10) was the only
-  // standard-layout button still unbound, and it is the right one on the merits: the left stick
-  // is the throttle hand, so "press the throttle stick in" reads as committing to a long burn.
-  // It is an edge (`.pressed`), never a hold — the latch owns the state, not the button.
-  travelBurn: Object.freeze(['l3']),
-  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). D-right releases the selected bomb; d-left
-  // cycles the payload. Both are edges; the bombs system owns cooldown/fuze/lifecycle. dUp stays
-  // auto-target; the free d-pad wings are exactly the deployable-shaped pair.
-  // BOMB throws the sticky charge while one is aboard, else the chosen drift bomb; D-left cycles it.
-  bomb: Object.freeze(['dRight']),
-  cycleBomb: Object.freeze(['dLeft']),
-  // FB-003 — the chord layer. Hold LB or RB and tap the second button; the modifier's own verb
-  // keeps working (you can brake while pinging), and the chorded button's solo verb is held off
-  // only while that button is down — releasing it re-arms the solo on the next press. LB is the
-  // survey/deploy layer (the brake hand steadies the ship for deliberate work); RB is the
-  // combat-state layer (the boost hand picks the fighting mode). autoFire needs no slot —
-  // D-pad up is already autoTarget/draw-to-fly — and reel is the left stick while the Massline
-  // line-control owns the axis. Every verb is rebindable under Settings → Controls.
-  scanPulse: Object.freeze(['l1+dUp']),           // LB layer: scanner ping, "look up"
-  pin: Object.freeze(['l1+dDown']),               // LB layer: PIN the anchor seed, "plant it"
-  pull: Object.freeze(['l1+dLeft']),              // LB layer: PULL, the well, left hand shape
-  rig: Object.freeze(['l1+dRight']),              // LB layer: RIG, the cone or the skim scoop
-  siteBeam: Object.freeze(['l1+action']),         // LB+X: the contextual world-site beam
-  bulletTime: Object.freeze(['r1+dUp']),          // RB layer: time dilation, "slow up"
-  cloak: Object.freeze(['r1+dDown']),             // RB layer: cloak engages, "drop out of sight"
-  cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
-  deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
-  deployShieldPylon: Object.freeze(['r1+dLeft']),  // RB+D-left: place / link / recall a shield pylon (the HUD pill names which)
-  jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
-  // The Gyre Snare is a HELD verb: RB+Y (the combat layer's last free chord — Y is the
-  // repulsor hand solo, and holding it under the boost finger reads as "grip the mass").
-  // Hold to beam and hold the clump; let go to bowl it.
-  gyreSnare: Object.freeze(['r1+alt']),           // RB+Y: hold the lash, release to bowl
+  // Everything off the one-set table answers to the wheel instead of a dedicated seat; each of
+  // these remains rebindable in Settings → Controls.
+  mine: Object.freeze([]),             // the beam is a wheel latch slice
+  countermeasure: Object.freeze([]),
+  travelBurn: Object.freeze([]),
+  cycleBomb: Object.freeze([]),        // the bay's cycle verb is a wheel tap (BOMB still throws)
+  scanPulse: Object.freeze([]),
+  siteBeam: Object.freeze([]),
+  bulletTime: Object.freeze([]),
+  cloak: Object.freeze([]),
+  cruise: Object.freeze([]),
+  deployBeacon: Object.freeze([]),
+  deployShieldPylon: Object.freeze([]),
+  jettisonLot: Object.freeze([]),
+  gyreSnare: Object.freeze([]),
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -337,6 +320,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   massline: 'flight',
   shove: 'flight',
   dock: 'flight',
+  contextWheel: 'flight',
   // FB-003 chord-layer verbs are all flight-only: a modal owns the stick and the bumpers, so no
   // chord may reach through a screen.
   scanPulse: 'flight',
@@ -355,7 +339,9 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   tabPrev: 'modal',
   tabNext: 'modal',
 });
-const PAD_SHARE_PAIRS = new Set(['accept|massline']);
+// G18-02: A is boost in flight and still UI accept on screens; the massline share survives for
+// old remaps that left the rope on A.
+const PAD_SHARE_PAIRS = new Set(['accept|boost', 'accept|massline']);
 
 export function gamepadShareAllowed(a, b) {
   if (a === b) return true;
@@ -421,15 +407,14 @@ export function resolveGamepadBindings(settings) {
   const has = (a) => Object.prototype.hasOwnProperty.call(custom, a);
   const out = {};
   // Pass 1: untouched actions keep their shipped defaults (the stock map is internally legal).
+  // A saved remap always outranks a DEFAULT seat — G18-02 generalizes the old deployShieldPylon
+  // rule: the one-set-of-keys reseat moved a dozen buttons, and a stored claim on one of them
+  // keeps its meaning while the default action defers (wheel slice or rebind) instead of eating
+  // the player's map.
   for (const action in ACTION_MAP) {
     if (has(action)) continue;
-    // This newly introduced chord was free before pylons. A valid saved remap already
-    // occupying it keeps its meaning; the new equipment action can be bound in Settings.
-    // Existing actions retain the established default/share policy below.
-    const defaults = action === 'deployShieldPylon'
-      ? ACTION_MAP[action].filter(name => !Object.keys(ACTION_MAP).some(other => has(other)
-        && sanitize(custom[other]).includes(name) && !gamepadShareAllowed(action, other)))
-      : ACTION_MAP[action];
+    const defaults = ACTION_MAP[action].filter(name => !Object.keys(ACTION_MAP).some(other => has(other)
+      && sanitize(custom[other]).includes(name) && !gamepadShareAllowed(action, other)));
     out[action] = place(action, defaults);
   }
   // Pass 2: overrides claim buttons in canonical order. An override that loses every button to a

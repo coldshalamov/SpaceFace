@@ -27,6 +27,7 @@ const ACTION_KEYS = Object.freeze([
   'gyreSnare',
   'siteBeam',
   'aimedMine',
+  'contextWheel',
 ]);
 
 const MASSLINE_KEYS = Object.freeze([
