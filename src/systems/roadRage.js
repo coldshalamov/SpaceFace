@@ -91,7 +91,11 @@ export function getOrCreateRoadRageRow(memory, entity, now = 0) {
     row = {
       generation,
       shoves: [],
+      seenDeployments: new Set(),
+      shoveDeployments: [],
       lastShoveAt: -Infinity,
+      lastReceiptAt: -Infinity,
+      lastAttackerId: null,
       rageState: null,       // null | 'ram' | 'flee'
       rageStartedAt: -Infinity,
       fleeStartedAt: -Infinity,
@@ -107,7 +111,7 @@ export function getOrCreateRoadRageRow(memory, entity, now = 0) {
  * Record a shove from attackerId to victim at simTime `now`.
  * Returns true if this shove triggered road rage.
  */
-export function recordRoadRageShove(state, victim, attackerId, now, memory) {
+export function recordRoadRageShove(state, victim, attackerId, now, memory, options = {}) {
   if (!state || !victim || !memory) return false;
   const playerId = state.playerId;
   if (!playerId || attackerId !== playerId) return false;
@@ -123,19 +127,50 @@ export function recordRoadRageShove(state, victim, attackerId, now, memory) {
   // Already raging: do not retrigger
   if (row.rageState) return false;
 
-  // Debounce consecutive impulses from the same physical contact frame
-  if (row.shoves.length > 0 && now - row.shoves[row.shoves.length - 1] < ROAD_RAGE_TUNING.shoveDebounceS) {
-    return false;
+  let deploymentId = null;
+  if (typeof options === 'string' || typeof options === 'number') {
+    deploymentId = options;
+  } else if (options && typeof options === 'object') {
+    deploymentId = options.deploymentId ?? options.fieldId ?? options.provenance?.deploymentId ?? options.provenance?.fieldId ?? null;
   }
+
+  if (!row.seenDeployments) row.seenDeployments = new Set();
+  if (!Array.isArray(row.shoveDeployments)) row.shoveDeployments = [];
+  if (row.lastReceiptAt == null) row.lastReceiptAt = -Infinity;
 
   // Filter out expired shoves (> 30s ago)
   row.shoves = row.shoves.filter((t) => now - t <= ROAD_RAGE_TUNING.shoveWindowS);
+  row.shoveDeployments = row.shoveDeployments.filter((entry) => now - entry.t <= ROAD_RAGE_TUNING.shoveWindowS);
+  row.seenDeployments = new Set(row.shoveDeployments.map((entry) => entry.id));
+
+  // Count one shove per distinct field deployment;
+  // if it has none, treat receipts from the same attacker within 1.0 s as one shove.
+  if (deploymentId != null) {
+    if (row.seenDeployments.has(deploymentId)) {
+      row.lastReceiptAt = now;
+      return false;
+    }
+    row.seenDeployments.add(deploymentId);
+    row.shoveDeployments.push({ id: deploymentId, t: now });
+  } else {
+    const shoveGroupingWindowS = 1.0;
+    if (row.lastAttackerId === attackerId && (now - row.lastReceiptAt) <= shoveGroupingWindowS) {
+      row.lastReceiptAt = now;
+      return false;
+    }
+  }
+
+  row.lastReceiptAt = now;
+  row.lastAttackerId = attackerId;
   row.shoves.push(now);
   row.lastShoveAt = now;
 
   if (row.shoves.length >= 2) {
     // Shoved twice within 30 seconds of sim time! Trigger Road Rage.
     row.shoves.length = 0;
+    if (row.seenDeployments) row.seenDeployments.clear();
+    if (row.shoveDeployments) row.shoveDeployments.length = 0;
+    row.lastReceiptAt = -Infinity;
     row.rageState = 'ram';
     row.rageStartedAt = now;
     row.fleeStartedAt = -Infinity;
@@ -246,7 +281,7 @@ export const roadRageOps = {
 
     const now = finite(state.simTime, 0);
     const memory = this._roadRageMemory();
-    recordRoadRageShove(state, victim, attackerId, now, memory);
+    recordRoadRageShove(state, victim, attackerId, now, memory, payload);
   },
 
   _onRoadRageImpact(payload) {
@@ -303,7 +338,7 @@ export const roadRage = {
     const victim = this.state.entities?.get?.(p.victimId);
     if (!victim) return;
     const now = finite(this.state.simTime, 0);
-    recordRoadRageShove(this.state, victim, p.attackerId, now, this._mem);
+    recordRoadRageShove(this.state, victim, p.attackerId, now, this._mem, p);
   },
 
   _onImpact(p) {
