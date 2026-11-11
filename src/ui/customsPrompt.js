@@ -4,6 +4,8 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { counted } from './numberFormat.js';
+
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -78,8 +80,8 @@ export const customsPrompt = {
       ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
       : Math.max(0, p.units | 0);
     const fine = Number.isFinite(p.fine) ? p.fine : null;
-    const seized = units > 0 ? ` · ${units} unit${units === 1 ? '' : 's'} seized` : '';
-    const cost = fine != null ? `fined ${fine} cr` : 'contraband flagged';
+    const seized = units > 0 ? ` · ${counted(units, 'unit', 'units')} seized` : '';
+    const cost = fine != null ? `fined ${Math.max(0, Math.round(fine)).toLocaleString('en-US')} cr` : 'contraband flagged';
     this._bus?.emit?.('toast', {
       text: `CUSTOMS BUST — ${factionShort(p.factionId)} ${cost}${seized}; standing damaged.`,
       kind: 'warn', ttl: 5,
@@ -96,7 +98,7 @@ export const customsPrompt = {
     const units = Array.isArray(p.confiscated)
       ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
       : Math.max(0, p.units | 0);
-    const seized = units > 0 ? `${units} unit${units === 1 ? '' : 's'} ` : '';
+    const seized = units > 0 ? `${counted(units, 'unit', 'units')} ` : '';
     this._bus?.emit?.('toast', {
       text: `CUSTOMS GATE — ${seized}surrendered cargo impounded. No charge filed.`,
       kind: 'info', ttl: 4,

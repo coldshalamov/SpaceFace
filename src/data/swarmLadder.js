@@ -25,7 +25,6 @@
 // result; this module only ever sees plain facts.
 
 import {
-  SWARM_BOSS_EVERY,
   SWARM_BOSS_FIRST,
   SWARM_WAVE_MAX,
   swarmPlanBlock,
@@ -68,8 +67,9 @@ export function swarmZoneFor(wave) {
     cycle,
     name: base + romanSuffix(cycle),
     startWave: index * SWARM_ZONE_LENGTH + 1,
-    // The champion's authored wave in this zone: 5, 15, 25, ... (SWARM_BOSS_FIRST/EVERY).
-    bossWave: SWARM_BOSS_FIRST + index * SWARM_BOSS_EVERY,
+    // The zone's champion wave: 5, 15, 25 — the mid-zone boss. With two champions a zone
+    // under the every-fifth cadence, the zone stride is the zone length, not the boss cadence.
+    bossWave: SWARM_BOSS_FIRST + index * SWARM_ZONE_LENGTH,
   };
 }
 
@@ -153,6 +153,28 @@ export function swarmCheckpointPurseFor(zoneIndex) {
   const idx = Number.isInteger(zoneIndex) ? zoneIndex : 0;
   if (idx < 1) return 0;
   return 800 + 350 * (idx - 1);
+}
+
+/** The `?swarmRound=N` developer route accepts the ladder's authored rounds, 1..30. */
+export const SWARM_START_ROUND_MIN = 1;
+export const SWARM_START_ROUND_MAX = 30;
+
+/**
+ * The `?swarmRound=N` developer route's start request: which round the run opens on and the
+ * purse the opening armory gets. Any input clamps into 1..30; a non-numeric value falls back
+ * to the ordinary opening. The purse is the same checkpoint purse a player-earned mid-ladder
+ * start pays — "a typical run's purse at that point" (§6.2), the authored stand-in for the
+ * sum of rounds 1..N-1's variable kill pays. Pure: same input, same answer.
+ */
+export function swarmStartAtRound(requested) {
+  const parsed = Number(typeof requested === 'string' ? requested.trim() : requested);
+  const startWave = Number.isFinite(parsed)
+    ? Math.min(SWARM_START_ROUND_MAX, Math.max(SWARM_START_ROUND_MIN, Math.trunc(parsed)))
+    : SWARM_START_ROUND_MIN;
+  return {
+    startWave,
+    purse: swarmCheckpointPurseFor(swarmZoneIndexFor(startWave)),
+  };
 }
 
 /** The chain that earns a zone's third star. Climbs so the late zones still ask for play. */
@@ -254,8 +276,8 @@ export function swarmLadderZonesCleared(startWave, lastClearedWave) {
   if (last < start) return [];
   const firstZone = swarmZoneIndexFor(start);
   // A zone is cleared when its authored champion falls inside the clear span, not when the
-  // tenth round does: the first champion is wave 5, then every tenth.
-  const lastZone = Math.floor((last - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY);
+  // tenth round does: the first champion is wave 5, then one a zone (5, 15, 25).
+  const lastZone = Math.floor((last - SWARM_BOSS_FIRST) / SWARM_ZONE_LENGTH);
   const out = [];
   for (let z = firstZone; z <= lastZone; z++) out.push(z);
   return out;

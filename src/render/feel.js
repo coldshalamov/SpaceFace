@@ -8,15 +8,18 @@
 //     the camera via state.render.camera (a PerspectiveCamera) and restore its projection matrix.
 //   - The damage vignette is a pooled DOM radial gradient that flashes on heavy player hits and
 //     snaps off — the directional-hit indicator work is a separate concern; this is pure *punch*.
-//   - Everything is gated on state.settings.video.motionReduce (new): vestibular-sensitive players
-//     get the audio/number feedback with the shake/zoom suppressed. Accessibility is
+//     Its accessibility profile (resolveDamageVignetteProfile) stretches it, never deletes it:
+//     Reduce flashing swells and holds a softer wash instead of re-strobing it under fire.
+//   - The vestibular punch is gated on state.settings.video.motionReduce: vestibular-sensitive
+//     players get the audio/number feedback and a softened edge wash with the shake/zoom
+//     suppressed. Accessibility is
 //     table stakes (V2 §9, §12). Default OFF (motionReduce=false) so the punch is felt by default.
 //
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
 import { damp } from '../core/math.js';
 import { createTimeEffects } from '../core/timeEffects.js';
-import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { WEAPONS } from '../data/weapons.js';
 import {
   VL_WAKE_AT,
@@ -29,6 +32,7 @@ import {
   velocityLanguageFlag,
 } from './velocityLanguage.js';
 import { resolveMasslineFeelPunch } from './masslinePresentation.js';
+import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
 import { fillSpeedLineStreak, speedLineStreakGradient } from './speedLineStrokeCache.js';
 import { LINE_RATING_TIER_MAX, lineThrowTierForBody } from '../data/lineRating.js';
@@ -65,6 +69,14 @@ export const CRUNCH_REPEATER_ROF = 3.5;      // /s — at or above this, never h
 export const CRUNCH_RECOIL_FOV_MAX = 2.8;    // deg — heavy muzzle kick ceiling (below death punch)
 
 const CRUNCH_FAMILY = new Set(['kinetic', 'explosive']);
+
+// G18-03 — "redline": a light screen shake while the boost has been held at the governed boost
+// cap. The arm time keeps the dash's own anticipation beats owning the press edge; the feed is
+// a continuous trauma trickle (equilibrium ~0.5, ≈0.45 wu inside FEEL.md's 0.3–0.8 light band),
+// not stacked discrete kicks. Reduced motion carries zero — the packet wants it off, not 25%.
+const REDLINE_ARM_S = 1.0;
+const REDLINE_TOP_FRACTION = 0.85;
+const REDLINE_TRAUMA_PER_S = 1.0;
 
 function weaponRecord(weaponId) {
   return weaponId != null ? WEAPON_BY_ID.get(weaponId) || null : null;
@@ -606,6 +618,90 @@ const VIG_HEAVY = 0.18;   // peak vignette opacity for a heavy hit on the player
 const VIG_DEATH = 0.55;   // peak vignette opacity for player death
 const VIG_DECAY = 4.0;    // vignette fade rate
 
+// a11y-hit-vignette — the damage vignette is a full-screen red edge wash. Authored, it snaps to
+// its peak on every hit on the player and fades at VIG_DECAY, so sustained enemy fire re-fires it
+// at the hit cadence: a red full-screen flicker at 3-8 Hz. It ignored "Reduce flashing" entirely,
+// and "Reduce motion" deleted it outright (the early return that drops the FOV punch dropped the
+// wash with it), although the wash is light, not motion. One profile per axis, the same
+// vfxAccessibility profile every flash sprite already obeys ("stretch, never silence"):
+//   full            — authored, byte-for-byte: instant peak, fast fade.
+//   reduced-motion  — the wash stays (it is not vestibular), lower and held a little longer,
+//                     the FB-077 1.8x hold grammar.
+//   reduced-flash   — no snap and no re-strobe: the tint SWELLS to a lower peak, HOLDS while hits
+//                     keep landing, then releases slowly, so a burst of fire reads as one steady
+//                     red edge instead of a flicker. A light hit still reads (the legibility floor).
+// The flash axis is the stricter read for light, so reduced motion + reduced flash takes it.
+export const VIG_REDUCED_PEAK_FLOOR = 0.05;    // a stretched wash never fades below legibility
+export const VIG_FLASH_RISE_PER_S = 0.6;       // opacity/s: ~90 ms to a heavy-hit peak, no snap
+export const VIG_FLASH_HOLD_S = 0.6;           // held at peak after the latest hit lands
+export const VIG_FLASH_DECAY = 1.2;            // slow release (~0.8 s time constant)
+export const VIG_MOTION_HOLD_S = 0.16;         // the house reduced-motion flash floor (vfxAccessibility)
+export const VIG_MOTION_DECAY = VIG_DECAY / 1.8;
+
+const VFX_REDUCED_MOTION = resolveVfxAccessibilityProfile({ video: { motionReduce: true } });
+const VFX_REDUCED_FLASH = resolveVfxAccessibilityProfile({ accessibility: { flashReduce: true } });
+const VIGNETTE_FULL = Object.freeze({
+  id: 'full', peakScale: 1, peakFloor: 0, riseRate: Infinity, holdS: 0, decayRate: VIG_DECAY,
+});
+const VIGNETTE_REDUCED_MOTION = Object.freeze({
+  id: 'reduced-motion', peakScale: VFX_REDUCED_MOTION.flashOpacityScale, peakFloor: VIG_REDUCED_PEAK_FLOOR,
+  riseRate: Infinity, holdS: VIG_MOTION_HOLD_S, decayRate: VIG_MOTION_DECAY,
+});
+const VIGNETTE_REDUCED_FLASH = Object.freeze({
+  id: 'reduced-flash', peakScale: VFX_REDUCED_FLASH.flashOpacityScale, peakFloor: VIG_REDUCED_PEAK_FLOOR,
+  riseRate: VIG_FLASH_RISE_PER_S, holdS: VIG_FLASH_HOLD_S, decayRate: VIG_FLASH_DECAY,
+});
+const VIGNETTE_REDUCED_BOTH = Object.freeze({ ...VIGNETTE_REDUCED_FLASH, id: 'reduced-motion-and-flash' });
+
+/**
+ * The damage-vignette profile for the player's settings. Shared immutable records keyed off the
+ * same vfxAccessibility resolution the flash sprites use, so the wash and the sprites agree on
+ * which axis is active; the amplitude scale is that profile's own flash opacity scale.
+ */
+export function resolveDamageVignetteProfile(settings) {
+  const vfx = resolveVfxAccessibilityProfile(settings);
+  let profile = VIGNETTE_FULL;
+  if (vfx.id === 'reduced-motion') profile = VIGNETTE_REDUCED_MOTION;
+  else if (vfx.id === 'reduced-flash') profile = VIGNETTE_REDUCED_FLASH;
+  else if (vfx.id === 'reduced-motion-and-flash') profile = VIGNETTE_REDUCED_BOTH;
+  return profile;
+}
+
+/** Profile-scaled peak for an authored vignette peak: softened, never below the floor, never above authored. */
+export function damageVignettePeak(authoredPeak, profile = VIGNETTE_FULL) {
+  const peak = Number.isFinite(authoredPeak) ? Math.max(0, authoredPeak) : 0;
+  if (!(peak > 0)) return 0;
+  const p = profile || VIGNETTE_FULL;
+  return Math.max(peak * p.peakScale, Math.min(peak, p.peakFloor));
+}
+
+/**
+ * One vignette frame, pure and allocation-free. `v` = { level, target, hold } is written in place:
+ * the level rises toward a pending target at the profile's rise rate (instant when Infinity), the
+ * hold counts down once the level has arrived, then the level decays exponentially. With the full
+ * profile (no target, no hold) this is exactly the authored `vig += -vig * VIG_DECAY * dt`.
+ */
+export function stepDamageVignette(v, profile, dt) {
+  const p = profile || VIGNETTE_FULL;
+  const step = Number.isFinite(dt) && dt > 0 ? dt : 0;
+  let level = Number.isFinite(v.level) ? Math.max(0, v.level) : 0;
+  let target = Number.isFinite(v.target) ? Math.max(0, v.target) : 0;
+  let hold = Number.isFinite(v.hold) ? Math.max(0, v.hold) : 0;
+  if (target > level) {
+    level = p.riseRate === Infinity ? target : Math.min(target, level + p.riseRate * step);
+    if (level >= target) target = 0;
+  } else {
+    target = 0;
+    if (hold > 0) hold = Math.max(0, hold - step);
+    else level += -level * p.decayRate * step;
+  }
+  if (level < 0.001 && !(target > 0)) { level = 0; hold = 0; }
+  v.level = level;
+  v.target = target;
+  v.hold = hold;
+  return v;
+}
+
 // Speed-line ceilings. The streak drive is `intensity`, documented as 0..1 but historically never
 // clamped: it is derived from speed/maxSpeed, and long-distance travel and cruise push that ratio
 // far past 1 (ratio 10 produced intensity 15.5). Every downstream term scaled with it, and since
@@ -839,6 +935,9 @@ export const feel = {
     this._fovPunch = 0;       // envelope: authored punch amplitude (deg), may stack
     this._fovPunchApplied = 0; // what the PerspectiveCamera actually carries (rise-rate limited)
     this._vig = 0;            // current vignette opacity (0..1)
+    this._vigTarget = 0;      // pending swell peak under a stretched (reduced) vignette profile
+    this._vigHoldS = 0;       // seconds the stretched wash stays at peak after the latest hit
+    this._vigStep = { level: 0, target: 0, hold: 0 };
     this._hullCritEl = null;
     this._hullCritOn = false;
     this._hullCritDepth = 0;
@@ -973,6 +1072,35 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Early wake slightly below VL_WAKE_AT so the first non-silent drive frame
     // still runs the full producer before streaks appear.
     return speed > maxSpd * VL_WAKE_AT * 0.85;
+  },
+
+  // G18-03 redline — feed the shared camera trauma while boost rides near its governed cap.
+  // Owns nothing but the trickle: the cap comes from the same catalog/profile pair the speed
+  // lines resolve, and the shake lands through the camera's ordinary addTrauma gate.
+  _updateRedlineShake(frameDt) {
+    const state = this.state;
+    const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+    const ents = state && state.entities;
+    const pid = state && state.playerId;
+    const player = ents && pid != null ? ents.get(pid) : null;
+    const boosting = !!(player && player.flags && player.flags.boosting);
+    this._redlineHoldS = boosting ? (this._redlineHoldS || 0) + dt : 0;
+    if (!boosting || this._redlineHoldS < REDLINE_ARM_S) return;
+    if (!player || !player.vel) return;
+    if (state.mode !== 'flight' || !this._modalClear()) return;
+    const settings = state.settings || {};
+    if ((settings.video && settings.video.motionReduce)
+      || (settings.accessibility && settings.accessibility.motionPreference === 'reduce')) return;
+    const governed = Math.max(1, resolveGovernedCombatSpeed(player, state, player.maxSpeed || 1));
+    const profile = resolvePropulsionProfile(player, state);
+    const boostCap = profile && Number.isFinite(profile.boostMaxSpeed) && profile.boostMaxSpeed > 0
+      ? profile.boostMaxSpeed
+      : governed * (profile && Number.isFinite(profile.boostSpeedMult) && profile.boostSpeedMult > 1
+        ? profile.boostSpeedMult : 1);
+    const speed = Math.hypot(player.vel.x || 0, player.vel.z || 0);
+    if (speed < boostCap * REDLINE_TOP_FRACTION) return;
+    const ctrl = state.render && state.render.cameraCtrl;
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(REDLINE_TRAUMA_PER_S * dt);
   },
 
   _updateSpeedLines(frameDt) {
@@ -1481,15 +1609,22 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         // FB-084: the capital tier of the weight-keyed kill beat (deep push + hold), keyed on
         // the same acoustic mass the kill audio resolves.
         if (ctrl && typeof ctrl.killCam === 'function') {
-          ctrl.killCam(victimAcousticMass(p, state), { capital: true });
+          ctrl.killCam(victimAcousticMass(p, state), {
+            capital: true,
+            direction: p.presentation && p.presentation.direction,
+          });
         }
         return;
       }
-      // Small kill: short hit-stop + camera beat, now weighted (FB-084): light victims get no
-      // beat, the wasp's kiss is gone rather than stacked; medium+ tier by the mass law.
+      // Small kill: short hit-stop + camera beat, now weighted (FB-084): the light tier nudges
+      // along the kill direction the presentation receipt carries (G18-03); medium+ keeps the
+      // zoom beat by the mass law.
       this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
       if (ctrl && typeof ctrl.killCam === 'function') {
-        ctrl.killCam(victimAcousticMass(p, state), { capital: false });
+        ctrl.killCam(victimAcousticMass(p, state), {
+          capital: false,
+          direction: p.presentation && p.presentation.direction,
+        });
       }
     }, { presentation: true });
 
@@ -1981,21 +2116,31 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-    // Motion-reduce keeps the information (it's still a big hit) but drops the vestibular effects.
-    if (mr) return;
+    // Motion-reduce keeps the information (it's still a big hit) but drops the vestibular effects:
+    // the chained camera accent and the FOV punch go; the edge wash is light, not motion, and
+    // stays under the profile below (a11y-hit-vignette).
+    if (!mr) {
+      // Sequence the chain's second camera accent after this visual beat. A delayed
+      // render can delay that accent, but has no effect on simulation progress.
+      this._beatTimer = Math.max(this._beatTimer || 0, beatDuration || 0);
+      // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
+      this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
+    }
 
-    // Sequence the chain's second camera accent after this visual beat. A delayed
-    // render can delay that accent, but has no effect on simulation progress.
-    this._beatTimer = Math.max(this._beatTimer || 0, beatDuration || 0);
-    // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
-    this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
-
-    // Vignette: swap gradient class and raise opacity toward the peak.
+    // Vignette: swap gradient class and raise opacity toward the peak. The full profile snaps to
+    // the authored peak; a stretched profile swells to its softened peak and holds it instead.
     const vigEl = this._ensureVignette();
     if (vigEl && vigPeak > 0) {
       vigEl.className = 'sf-feel-vig' + (vigCls ? (' sf-feel-vig--' + vigCls) : '');
       vigEl.style.display = 'block';
-      this._vig = Math.max(this._vig, vigPeak);
+      const profile = resolveDamageVignetteProfile(this.state.settings);
+      const peak = damageVignettePeak(vigPeak, profile);
+      if (profile.riseRate === Infinity && !(profile.holdS > 0)) {
+        this._vig = Math.max(this._vig, peak);
+      } else {
+        this._vigTarget = Math.max(this._vigTarget || 0, peak);
+        this._vigHoldS = Math.max(this._vigHoldS || 0, profile.holdS);
+      }
     }
   },
 
@@ -2074,6 +2219,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     }
     if (photoFeel.hideVignette) {
       this._vig = 0;
+      this._vigTarget = 0;
+      this._vigHoldS = 0;
       if (this._vigEl) {
         this._vigEl.style.opacity = '0';
         this._vigEl.style.display = 'none';
@@ -2105,10 +2252,20 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     }
 
     // ---- vignette integration ----
-    const vigEl = this._vig > 0.001 ? this._ensureVignette() : this._vigEl;
-    if (this._vig > 0.001 && vigEl) {
-      this._vig += -this._vig * VIG_DECAY * frameDt;
-      if (this._vig < 0.001) { this._vig = 0; vigEl.style.opacity = '0'; vigEl.style.display = 'none'; }
+    // a11y-hit-vignette: the pure stepper owns rise / hold / decay; with the full profile and no
+    // pending swell it is exactly the authored exponential fade.
+    const vigPending = (this._vigTarget || 0) > 0.001;
+    const vigEl = this._vig > 0.001 || vigPending ? this._ensureVignette() : this._vigEl;
+    if ((this._vig > 0.001 || vigPending) && vigEl) {
+      const v = this._vigStep || (this._vigStep = { level: 0, target: 0, hold: 0 });
+      v.level = this._vig;
+      v.target = this._vigTarget || 0;
+      v.hold = this._vigHoldS || 0;
+      stepDamageVignette(v, resolveDamageVignetteProfile(this.state.settings), frameDt);
+      this._vig = v.level;
+      this._vigTarget = v.target;
+      this._vigHoldS = v.hold;
+      if (this._vig < 0.001 && !(this._vigTarget > 0)) { this._vig = 0; vigEl.style.opacity = '0'; vigEl.style.display = 'none'; }
       else vigEl.style.opacity = String(this._vig);
     }
 
@@ -2132,7 +2289,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
     }
 
-    // ---- speed-lines overlay ----
+    // ---- redline shake, then speed-lines overlay ----
+    this._updateRedlineShake(frameDt);
     this._updateSpeedLines(frameDt);
   },
 };

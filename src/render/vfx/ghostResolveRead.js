@@ -115,3 +115,18 @@ export function ghostEscapePlan(reduced = false) {
     },
   };
 }
+
+/**
+ * Where the melt reads (fix-ghost-escape-pos): the live contact's own position when it still
+ * resolves, else the last recorded position the emitter stamped into the receipt — the sim
+ * despawns an escaped ghost, so the record is usually already gone and the receipt's stamp is
+ * the truth. Null only when nobody ever knew where it was (the honest skip). Pure.
+ */
+export function ghostEscapePosition(p, contact) {
+  for (const candidate of [contact && contact.pos, p && p.pos]) {
+    if (candidate && Number.isFinite(candidate.x) && Number.isFinite(candidate.z)) {
+      return candidate;
+    }
+  }
+  return null;
+}

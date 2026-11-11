@@ -10,6 +10,7 @@ import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
 import { localizeText } from '../localization/sourceText.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
+import { isCivilianEntity } from '../combat/stuntContracts.js';
 import {
   BAND_BEARING_TEMPLATE,
   BAND_CHANNEL_BY_ID,
@@ -120,6 +121,27 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
       keys.push('player.break_blockade');
     }
     return keys;
+  }
+  if (event === 'pitborn:cullSettled') {
+    // PL-58: the yard only settles when the run scored and paid a purse — that IS
+    // winning the Pit. A cold house emits nothing and opens nothing.
+    return (Number(payload.purse) || 0) > 0 ? ['player.won_pit'] : [];
+  }
+  if (event === 'band:throwShipStation') {
+    // PL-52: You throw a ship into a station — the Static roasts: "Whoever parked that in the dock: bold."
+    return ['player.throw_ship_station'];
+  }
+  if (event === 'player:death') {
+    // PL-55: killed by TRAFFIC — a civilian hull, not a hostile. The receipt's killerId
+    // still resolves at emit time; the law layer's own civilian test decides "traffic".
+    const killer = payload.killerId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.killerId) : null;
+    return killer && isCivilianEntity(killer) ? ['player.killed_by_traffic'] : [];
+  }
+  if (event === 'line:classChanged') {
+    // PL-56: the lineProgression owner emits this only when the class ladder moves UP —
+    // a bigger Line on the lane is exactly what the Static would gossip about.
+    return ['player.line_class_up'];
   }
   if (event === 'warrant:hunterDisabled') {
     // The Margin reports the kill only when the player's hull did it — a hunter downed by another
@@ -234,7 +256,51 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed']) {
+    this._thrownShips = new Map();
+    this._listen('massline:throw', (payload) => {
+      if (!payload || payload.payloadId == null) return;
+      const state = this.state;
+      const entity = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(payload.payloadId)
+        : (Array.isArray(state && state.entityList) ? state.entityList.find((e) => e && e.id === payload.payloadId) : null);
+      if (entity && entity.type === 'ship' && entity.id !== (state && state.playerId)) {
+        const now = Number(state && state.simTime) || 0;
+        this._thrownShips.set(entity.id, now);
+        while (this._thrownShips.size > 16) {
+          this._thrownShips.delete(this._thrownShips.keys().next().value);
+        }
+      }
+    });
+    this._listen('physics:impact', (payload) => {
+      if (!payload || !this._thrownShips || this._thrownShips.size === 0) return;
+      const state = this.state;
+      const now = Number(state && state.simTime) || 0;
+      const aId = payload.aId;
+      const bId = payload.bId;
+      let thrownShipId = null;
+      let otherId = null;
+      if (this._thrownShips.has(aId)) {
+        thrownShipId = aId;
+        otherId = bId;
+      } else if (this._thrownShips.has(bId)) {
+        thrownShipId = bId;
+        otherId = aId;
+      }
+      if (thrownShipId == null) return;
+      const thrownAt = this._thrownShips.get(thrownShipId);
+      this._thrownShips.delete(thrownShipId);
+      if (now < thrownAt || now - thrownAt > 5.0) return;
+      const other = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(otherId)
+        : (Array.isArray(state && state.entityList) ? state.entityList.find((e) => e && e.id === otherId) : null);
+      if (other && other.type === 'station' && !(other.data && other.data.isGate)) {
+        const own = this._ensureState();
+        for (const eventKey of deriveBandEventKeys('band:throwShipStation', {}, state)) {
+          if (BAND_EVENT_KEYS.includes(eventKey)) own.eventKeys[eventKey] = true;
+        }
+      }
+    });
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {
@@ -246,6 +312,7 @@ export const bandRadio = {
 
   newGame() {
     this.state.bandRadio = defaultBandRadioState();
+    if (this._thrownShips) this._thrownShips.clear();
     this._lastStatusSignature = null;
     this._lastBedSignature = null;
     this._bearingRequestEmitted = false;
@@ -434,6 +501,7 @@ export const bandRadio = {
   },
 
   destroy() {
+    if (this._thrownShips) this._thrownShips.clear();
     for (const unsub of this._unsubs || []) {
       try { unsub(); } catch (_) {}
     }

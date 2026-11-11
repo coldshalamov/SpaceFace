@@ -40,6 +40,8 @@ import { collectAttackModifiers } from '../combat/adventureAttackReaders.js';
 import { compileAttackSpec, describeAttackMetrics } from '../combat/attackSpec.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { arsenalGlyphSource } from '../ui/orrery/arsenalGlyphs.js';
+import { counted } from '../core/numberFormat.js';
+
 
 /** Rail / number-row order of the verbs this projection speaks for. */
 export const ARSENAL_VERB_ORDER = Object.freeze(['travel', 'pull', 'shove', 'pin', 'bomb', 'rig', 'line', 'gyre', 'cloak']);
@@ -392,7 +394,7 @@ export function createArsenalPresentation() {
     const counts = armedOrdnanceCounts(state, nowS);
     const shove = entries.shove;
     shove.detonates = counts;
-    shove.label = counts.total > 0 ? `Shove · Pushes away + ${counts.total} blast${counts.total === 1 ? '' : 's'}` : 'Shove · Pushes away';
+    shove.label = counts.total > 0 ? `Shove · Pushes away + ${counted(counts.total, 'blast', 'blasts')}` : 'Shove · Pushes away';
     if (counts.total > 0) {
       shove.sentence += ` Armed now: ${detonationText(counts)} will go off.`;
       shove.ready = { state: 'armed', reason: `Armed — sets off ${detonationText(counts)}`, cooldownMs: shove.ready.cooldownMs };

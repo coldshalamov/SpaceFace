@@ -270,14 +270,26 @@ test('the gate: an unearned checkpoint stays locked — stars are the only key',
   }
   assert.equal(swarmZoneIndexFor(swarmCheckpointStartWave(0)), 0, 'Round 1 is always legal');
 
-  // And nothing but a zone boss writes the row: dying at wave 9 banks no checkpoint.
+  // And nothing but a zone boss writes the row: dying at wave 4 banks no checkpoint.
+  // C01-01 — the zone's champion is wave 5, so clearing through wave 9 already means
+  // the boss fell inside the span and zone one is banked.
   const died = applySwarmLadderResult(emptySwarmLadder(), {
+    arenaId: 'helios_core', startWave: 1, lastClearedWave: 4, deepestWave: 4,
+    zoneChains: {}, zoneDeaths: {},
+  });
+  assert.deepEqual(swarmLadderZonesCleared(1, 4), [], 'pre-champion deaths clear no zone');
+  assert.equal(died.ladder.arenas.helios_core.checkpoint ?? 0, 0, 'no boss, no checkpoint');
+  assert.equal(died.delta.newCheckpoint, null);
+
+  // Dying past the wave-5 champion does bank the zone — mid-zone deaths are enough now.
+  assert.deepEqual(swarmLadderZonesCleared(1, 9), [0], 'the wave-5 champion banks zone one');
+  const banked = applySwarmLadderResult(emptySwarmLadder(), {
     arenaId: 'helios_core', startWave: 1, lastClearedWave: 9, deepestWave: 9,
     zoneChains: {}, zoneDeaths: {},
   });
-  assert.deepEqual(swarmLadderZonesCleared(1, 9), [], 'mid-zone deaths clear no zone');
-  assert.equal(died.ladder.arenas.helios_core.checkpoint ?? 0, 0, 'no boss, no checkpoint');
-  assert.equal(died.delta.newCheckpoint, null);
+  assert.equal(banked.ladder.arenas.helios_core.checkpoint ?? 0, 1,
+    'past the champion, the first checkpoint is earned');
+  assert.equal(banked.delta.newCheckpoint?.startWave, swarmCheckpointStartWave(1));
 
   // The profile the door reads on boot says the same thing after a save/load round trip.
   const profile = loadCrucibleMeta();

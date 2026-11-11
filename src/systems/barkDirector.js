@@ -16,9 +16,13 @@ import {
   lawResponseBarkFor,
   lawStepBarkFor,
   oreFloodBarkFor,
+  stationPaBarkFor,
   patrolInterventionHailFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
+  spillVultureBarkFor,
+  pilotPersonalityHailFor,
+  gratitudeParcelBarkFor,
   sectorGreetingBarkFor,
   surrenderBarkFor,
   trafficRoleHail,
@@ -52,6 +56,13 @@ import { shouldDrawTableVfx, tableLookAtDelta, tableSimAuthorityWuFromState, tab
 import { ensureActivityClassified } from '../world/activityRuntime.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
+import {
+  LANE_HORN_MAX_STEP,
+  clampLaneHornStep,
+  laneHornBarkFor,
+  laneHornDockControlLine,
+  laneHornRegisterFor,
+} from '../data/laneHorns.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, stuntSpecificLine, witnessLineOfSight } from '../combat/stuntWitnesses.js';
 import { hintTextFor } from './survivalAnnounce.js';
@@ -352,6 +363,19 @@ export function minerSeamWorkedOutKey(payload) {
   return `${job}|${field}`;
 }
 
+/** The theft receipt's own words (words-receipt-counts): the band can count to one.
+ * A whole singular or plural sentence, an honest generic noun when the caller's lookups
+ * came back empty, and no bearing clause when nobody saw which way it went. Pure text —
+ * exported so the focused test reads exactly what the band says. */
+export function raiderTheftLine(who, qty, what, bearing = '') {
+  const name = String(who || '').trim() || 'a raider';
+  const good = String(what || '').trim() || 'cargo';
+  const n = Math.max(0, Math.round(Number(qty) || 0));
+  const units = n === 1 ? '1 unit' : `${n} units`;
+  const seen = String(bearing || '').trim();
+  return `${name} made off with ${units} of ${good}${seen ? ` — last seen headed ${seen}` : ''}.`;
+}
+
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
 // The patrol lattice takes notice one hull at a time — sector scans serialize on this gap
@@ -365,6 +389,12 @@ export const BODY_NEAR_MISS_RADIUS_WU = 70;
 export const BODY_NEAR_MISS_EXIT_WU = 90;
 export const BODY_NEAR_MISS_WINDOW_TICKS = 480;
 export const BODY_NEAR_MISS_COOLDOWN_TICKS = 120;
+// inf-lane-horn: crews the player buzzes speak at most one line per this gap across the sector;
+// a station's dock control calls the third pass in its shell once per watch; a buzzed crew skips
+// its friendly pass-by chirp for the grudge window.
+export const LANE_HORN_BARK_GAP_S = 4;
+export const LANE_HORN_DOCK_GAP_S = 90;
+export const LANE_HORN_GRUDGE_S = 45;
 
 /** Bench A/B: production default ON. Quiet latch skips barkDirector
  * ensureActivityClassified + living-actor bark/hail census when no eligible
@@ -807,6 +837,38 @@ export const barkDirector = {
       this._speakEventLine(entity, 'rival-departed', 'wreckEcology:departed',
         (_f, i) => rivalScavengerLineFor('departed', i));
     };
+    // The spill vulture (traffic spill convergence) speaks the same race as the
+    // wreck-field cutter, one line each: the claim on arrival, the warning pass
+    // when the player scoops first, and the getaway that names the take.
+    this._onVultureArrived = (payload) => {
+      const entity = this._spillVultureFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'vulture-claim', 'vultures:dispatch',
+        (_f, i) => spillVultureBarkFor('dispatch', i));
+    };
+    this._onVultureRace = (payload) => {
+      const entity = this._spillVultureFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'vulture-race', 'vultures:race',
+        (_f, i) => spillVultureBarkFor('race', i));
+    };
+    this._onVultureDeparted = (payload) => {
+      if (!payload || !(Number(payload.holdQty) > 0)) return;
+      const entity = this._spillVultureFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'vulture-departed', 'vultures:departed',
+        (_f, i) => spillVultureBarkFor('departed', i));
+    };
+    // The saved captain's own voice: the gift pod clearing the bay is the moment
+    // the debt is paid, spoken from the hull that owed it — once per captain.
+    this._onGratitudeParcel = (payload) => {
+      const state = this.state;
+      if (!state || !payload) return;
+      const entity = state.entities && state.entities.get && state.entities.get(payload.entityId);
+      if (!entity || !entity.data) return;
+      this._speakEventLine(entity, 'gratitude-parcel', 'gratitude:parcel',
+        (_f, i) => gratitudeParcelBarkFor(i));
+    };
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
@@ -832,6 +894,11 @@ export const barkDirector = {
       this.bus.on('wreckEcology:scavenged', this._onRivalCut);
       this.bus.on('wreckEcology:rivalPressured', this._onRivalPressured);
       this.bus.on('wreckEcology:departed', this._onRivalDeparted);
+      this.bus.on('vultures:dispatch', this._onVultureArrived);
+      this.bus.on('vultures:race', this._onVultureRace);
+      this.bus.on('vultures:departed', this._onVultureDeparted);
+      // The saved captain's gift pod clearing the bay speaks from the hull that owed it.
+      this.bus.on('gratitude:parcel', this._onGratitudeParcel);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
       this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
@@ -870,8 +937,15 @@ export const barkDirector = {
       this.bus.on('entity:killed', this._onHaulerRaidKill);
       this._onHaulerRegroup = (payload) => this._speakHaulerRegroup(payload || {});
       this.bus.on('traffic:haulerRegroup', this._onHaulerRegroup);
+      // inf-lane-horn — a civilian the player buzzed answers: its class horn at the hull, the
+      // crew's line on a scrape or a repeat, dock control on the third pass in its shell.
+      this._onLaneHorn = (payload) => this._answerLaneHorn(payload || {});
+      this.bus.on('traffic:nearMiss', this._onLaneHorn);
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
       this.bus.on('economy:oreFlood', this._onOreFlood);
+      // inf-station-pa — the station's desk calls its own routine when the pilot can see it.
+      this._onStationSideEvent = (payload) => this._speakStationPa(payload || {});
+      this.bus.on('station:sideEvent', this._onStationSideEvent);
       this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
       this._onThrownWreck = (payload) => this._speakThrownWreck(payload || {});
       this.bus.on('combat:tumbleRake', this._onTumbleRake);
@@ -976,6 +1050,11 @@ export const barkDirector = {
     if (this._liveHaulerRaids) this._liveHaulerRaids.clear();
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
+    this._stationPaKeys = null;
+    this._stationPaAt = null;
+    this._laneHornBarkAt = null;
+    this._laneHornDockAt = null;
+    this._laneHornGrudges = null;
     this.noteBarkWake();
   },
 
@@ -1092,6 +1171,16 @@ export const barkDirector = {
     const entity = this.state.entities && this.state.entities.get
       && this.state.entities.get(payload.entityId);
     if (!entity || !entity.data || entity.data.wreckEcologyRole !== 'scavenger') return null;
+    return entity;
+  },
+
+  // The spill vulture speaks from its own lifecycle events (traffic spill
+  // convergence); resolve the hull from any of them, or this observer is silent.
+  _spillVultureFrom(payload) {
+    if (!payload || !this.state) return null;
+    const entity = this.state.entities && this.state.entities.get
+      && this.state.entities.get(payload.entityId);
+    if (!entity || !entity.data || !entity.data.spillVulture) return null;
     return entity;
   },
 
@@ -1949,6 +2038,10 @@ export const barkDirector = {
     const dx = entity.pos.x - player.pos.x;
     const dz = entity.pos.z - player.pos.z;
     if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
+    // inf-lane-horn: a crew the player just buzzed leaned on its horn; it does not chirp hello.
+    const grudgeAt = this._laneHornGrudges instanceof Map ? this._laneHornGrudges.get(entity.id) : undefined;
+    const hailNow = Number(state.simTime) || 0;
+    if (Number.isFinite(grudgeAt) && hailNow >= grudgeAt && hailNow - grudgeAt < LANE_HORN_GRUDGE_S) return false;
     // The owed thank-you replaces the stock chirp for this one crossing.
     if (this._speakHaulerRescueThanks(entity)) return true;
     if (grandee) return this._speakGrandeeHail(entity);
@@ -2002,8 +2095,15 @@ export const barkDirector = {
   },
 
   // A working hull hails in its own work register, once per contact. Same foghorn
-  // and wing-rock answer as the freighter chirp — the voice is the new part.
+  // and wing-rock answer as the freighter chirp — the voice is the new part. A
+  // hull with a pilot personality answers in the temperament's register instead:
+  // the voice is the tell that this hull drives differently on purpose.
   _speakWorkHail(entity, role) {
+    const kind = entity && entity.data && entity.data.pilotPersonality;
+    if (kind) {
+      const accepted = this._speakTemperamentHail(entity, kind);
+      if (accepted) return true;
+    }
     const accepted = this._speakRegisterHail(entity, role, `${role}-hail`, `${role}Hail`);
     if (accepted && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('audio:cue', {
@@ -2015,6 +2115,43 @@ export const barkDirector = {
       // wing-rock and receipt trigger twice per pass.
     }
     return !!accepted;
+  },
+
+  // The temperament register itself: one hail line in the pilot personality's own
+  // voice, same foghorn contract as the role hails (once per contact, TTL-bounded).
+  _speakTemperamentHail(entity, kind) {
+    const state = this.state;
+    if (!state || !entity || entity.alive === false) return false;
+    const own = ensureState(state);
+    const entityId = String(entity.id);
+    const rec = entityRecordFor(own, entityId, entity);
+    const situation = `${kind}-hail`;
+    if (rec.said[situation]) return false;
+    if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, 'pilot-personality-hail', entityId);
+    const picked = pilotPersonalityHailFor(kind, index);
+    if (!picked) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const voiceId = `barkDirector:${entityId}:${situation}`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text: picked.text,
+      kind: 'barkDirector',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      factionId: factionFor(entity),
+      valid: () => {
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
+        return e === entity && e.occupantGeneration === entity.occupantGeneration && e.alive !== false;
+      },
+    });
+    if (!accepted) return false;
+    noteBarkText(own, factionFor(entity), situation, picked.text);
+    rec.said[situation] = true;
+    rec.lastSituation = situation;
+    return true;
   },
 
   _speakRegisterHail(entity, register, situation, salt) {
@@ -2160,6 +2297,106 @@ export const barkDirector = {
   },
 
   /**
+   * inf-lane-horn — traffic saw the player buzz a civilian (`traffic:nearMiss`). The horn always
+   * sounds at the hull, in its class and at its escalation step. A first pass that nearly scraped
+   * paint, and every repeat, also gets the crew's line (one line per hull per step, a sector gap
+   * between crews). A third pass inside a station's traffic shell brings dock control onto the
+   * band, naming the player's hull, once per station per watch. Traffic already rate-limits the
+   * pass itself; this only shapes the voice. Nothing here touches heat, standing or hostility.
+   */
+  _answerLaneHorn(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.entityId == null) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const hull = entityAt(state, payload.entityId);
+    if (!hull || hull.alive === false || hull.id === state.playerId || !finitePos(hull.pos)) return null;
+    const now = Number(state.simTime) || 0;
+    const step = clampLaneHornStep(payload.step);
+    const receipt = { entityId: hull.id, step, horn: null, text: null, dockText: null, t: now };
+    const horn = payload.horn && typeof payload.horn.id === 'string' ? payload.horn : null;
+    if (horn && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('audio:cue', {
+        id: horn.id,
+        position: { x: hull.pos.x, z: hull.pos.z },
+        gain: Number.isFinite(horn.gain) ? horn.gain : 0.8,
+        rate: Number.isFinite(horn.rate) ? horn.rate : 1,
+      });
+      receipt.horn = horn.id;
+    }
+    // A buzzed crew does not follow its horn with the friendly pass-by chirp.
+    if (!(this._laneHornGrudges instanceof Map)) this._laneHornGrudges = new Map();
+    this._laneHornGrudges.set(hull.id, now);
+    while (this._laneHornGrudges.size > 64) this._laneHornGrudges.delete(this._laneHornGrudges.keys().next().value);
+
+    const voice = this.helpers && this.helpers.voice;
+    const own = ensureState(state);
+    const register = laneHornRegisterFor(payload.role);
+    const crewMaySpeak = (step >= 2 || payload.scrape === true) && register
+      && !(Number.isFinite(this._laneHornBarkAt) && now >= this._laneHornBarkAt
+        && now - this._laneHornBarkAt < LANE_HORN_BARK_GAP_S);
+    if (crewMaySpeak && voice && typeof voice.say === 'function') {
+      const index = Number.isFinite(Number(payload.lineIndex)) ? Number(payload.lineIndex) : hull.id;
+      const text = laneHornBarkFor(register, step, index);
+      const factionId = factionFor(hull);
+      const voiceId = `barkDirector:${hull.id}:lane-horn`;
+      const accepted = text && voice.say({
+        channel: 'bark',
+        text,
+        kind: 'laneHorn',
+        ttl: VOICE_TTL_S,
+        id: voiceId,
+        factionId,
+        register: 'lane-horn',
+        valid: () => speakerStillLive(state, hull.id),
+      });
+      if (accepted) {
+        this._laneHornBarkAt = now;
+        noteSpeakerSpoke(own, hull, 'lane-horn', now, text);
+        receipt.text = text;
+        this._emit('barkDirector:voice', {
+          entityId: hull.id, situation: 'lane-horn', reason: 'traffic:nearMiss', text,
+          factionId, voiceId, register: 'lane-horn', step, t: now,
+        });
+      }
+    }
+
+    // Repeated recklessness inside a station's shell becomes the station's business.
+    const stationId = payload.stationEntityId;
+    if (step >= LANE_HORN_MAX_STEP && stationId != null && voice && typeof voice.say === 'function') {
+      if (!(this._laneHornDockAt instanceof Map)) this._laneHornDockAt = new Map();
+      const last = this._laneHornDockAt.get(stationId);
+      const cooled = !Number.isFinite(last) || now < last || now - last >= LANE_HORN_DOCK_GAP_S;
+      const station = cooled ? entityAt(state, stationId) : null;
+      if (station && station.alive !== false && station.type === 'station') {
+        const identity = activeHullIdentity(state);
+        const seed = state.meta && state.meta.seed;
+        const pick = hash32(seed == null ? 0 : seed, 'laneHornDock', String(stationId), Math.floor(now));
+        const dockText = laneHornDockControlLine(pick, identity && identity.name);
+        const factionId = factionFor(station);
+        const voiceId = `barkDirector:dock:${stationId}:lane-horn`;
+        const accepted = voice.say({
+          channel: 'bark',
+          text: dockText,
+          kind: 'laneHornDock',
+          ttl: VOICE_TTL_S,
+          id: voiceId,
+          factionId,
+          register: 'dock_control',
+        });
+        if (accepted) {
+          this._laneHornDockAt.set(stationId, now);
+          receipt.dockText = dockText;
+          this._emit('barkDirector:voice', {
+            entityId: station.id, situation: 'lane-horn-dock', reason: 'traffic:nearMiss',
+            text: dockText, factionId, voiceId, register: 'dock_control', t: now,
+          });
+        }
+      }
+    }
+    return receipt;
+  },
+
+  /**
    * THE WORLD REMEMBERS (U-E) — on `dock:docked`, when the station's faction weighs the Record at
    * -4 or worse, dock control's greeting is a cold one naming the loudest untold grievance; at +4
    * or better, a warm one naming the loudest untold praise. Silent on a game with no Record, a
@@ -2209,6 +2446,64 @@ export const barkDirector = {
     const receipt = {
       situation: 'dock-deed', text, deedId: deed.id, tone, stationId: payload.stationId,
       t: Number(state.simTime) || 0, register: 'dock_control', factionId, voiceId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  /**
+   * inf-station-pa (CH-63) — the station's desk calls its own routine. The side-event director
+   * runs the berth's day (`station:sideEvent`: a hauler on final, a patrol out of the bay, a drone
+   * on the plating...) and the renderer draws it; the station itself never spoke. One line per
+   * side event the pilot is close enough to see, in the house desk register (Dock control for a
+   * lawful house, Yardmaster otherwise — the ore-flood split), at most one per station per
+   * STATION_PA_COOLDOWN_S so a working berth sounds busy, not chattering. Silent when docked, when
+   * the station is gone or out of earshot, or when that desk has no line for the kind.
+   */
+  _speakStationPa(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.stationId == null || !payload.kind) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const station = entityAt(state, payload.stationId);
+    if (!station || station.alive === false || station.type !== 'station' || !finitePos(station.pos)) return null;
+    const player = entityAt(state, state.playerId);
+    if (!player || player.alive === false || !finitePos(player.pos)) return null;
+    if (Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z) > STATION_PA_EARSHOT_WU) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const now = Number(state.simTime) || 0;
+    const stationKey = String(station.id);
+    if (!this._stationPaAt) this._stationPaAt = new Map();
+    const last = this._stationPaAt.get(stationKey);
+    // A reload can rewind the sim clock: a stamp from the future is stale, never a gag.
+    if (Number.isFinite(last) && now >= last && now - last < STATION_PA_COOLDOWN_S) return null;
+    const factionId = factionFor(station);
+    const meta = FACTION_META.find((f) => f && f.id === factionId) || null;
+    const register = meta && meta.personality === 'lawful' ? 'dock_control' : 'yardmaster';
+    const seed = state.meta && state.meta.seed;
+    const eventKey = String(payload.eventId ?? `${stationKey}|${payload.kind}|${now}`);
+    if (this._stationPaKeys && this._stationPaKeys.has(eventKey)) return null;
+    const text = stationPaBarkFor(register, String(payload.kind),
+      hash32(seed == null ? 0 : seed, 'stationPa', eventKey));
+    if (!text) return null;
+    const voiceId = `barkDirector:${station.id}:station-pa`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'stationPa',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      factionId,
+      valid: () => speakerStillLive(state, station.id),
+      register,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_stationPaKeys', eventKey)) return null;
+    this._stationPaAt.set(stationKey, now);
+    while (this._stationPaAt.size > 32) this._stationPaAt.delete(this._stationPaAt.keys().next().value);
+    const receipt = {
+      entityId: station.id, situation: 'station-pa', kind: String(payload.kind), text,
+      eventId: payload.eventId ?? null, t: now, register, factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2941,7 +3236,7 @@ export const barkDirector = {
 
     this._emit('comms:log', {
       from: 'Local traffic',
-      text: `${who} made off with ${qty} units of ${what}${bearing ? ` — last seen headed ${bearing}` : ''}.`,
+      text: raiderTheftLine(who, qty, what, bearing),
       kind: 'cargo',
       custodyId,
       raiderId: payload.raiderId != null ? payload.raiderId : null,
@@ -2974,6 +3269,10 @@ export const barkDirector = {
       if (this._onRivalCut) this.bus.off('wreckEcology:scavenged', this._onRivalCut);
       if (this._onRivalPressured) this.bus.off('wreckEcology:rivalPressured', this._onRivalPressured);
       if (this._onRivalDeparted) this.bus.off('wreckEcology:departed', this._onRivalDeparted);
+      if (this._onVultureArrived) this.bus.off('vultures:dispatch', this._onVultureArrived);
+      if (this._onVultureRace) this.bus.off('vultures:race', this._onVultureRace);
+      if (this._onVultureDeparted) this.bus.off('vultures:departed', this._onVultureDeparted);
+      if (this._onGratitudeParcel) this.bus.off('gratitude:parcel', this._onGratitudeParcel);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
       if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
@@ -3003,7 +3302,9 @@ export const barkDirector = {
       if (this._onHaulerRaidCleared) this.bus.off('encounter:ambientPredationCleared', this._onHaulerRaidCleared);
       if (this._onHaulerRaidKill) this.bus.off('entity:killed', this._onHaulerRaidKill);
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
+      if (this._onLaneHorn) this.bus.off('traffic:nearMiss', this._onLaneHorn);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
+      if (this._onStationSideEvent) this.bus.off('station:sideEvent', this._onStationSideEvent);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
       if (this._onDriveDown) this.bus.off('combat:subsystemDisabled', this._onDriveDown);
       if (this._onDockDeed) this.bus.off('dock:docked', this._onDockDeed);
@@ -3041,6 +3342,10 @@ export const barkDirector = {
     this._onRivalCut = null;
     this._onRivalPressured = null;
     this._onRivalDeparted = null;
+    this._onVultureArrived = null;
+    this._onVultureRace = null;
+    this._onVultureDeparted = null;
+    this._onGratitudeParcel = null;
     this._onLawWarrantReleased = null;
     this._onLawDistressRaised = null;
     this._onCounterHintSpawn = null;
@@ -3057,11 +3362,18 @@ export const barkDirector = {
     this._onHaulerRaidCleared = null;
     this._onHaulerRaidKill = null;
     this._onHaulerRegroup = null;
+    this._onLaneHorn = null;
+    this._laneHornBarkAt = null;
+    this._laneHornDockAt = null;
+    this._laneHornGrudges = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
     this._onThrownWreck = null;
     this._onDockDeed = null;
     this._onDriveDown = null;
+    this._onStationSideEvent = null;
+    this._stationPaKeys = null;
+    this._stationPaAt = null;
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
     this._thrownWreckKeys = null;
@@ -3912,6 +4224,10 @@ function haulerForEmptyLoad(state, payload) {
 export const ORE_FLOOD_BARK_MIN_U = 8;
 export const ORE_FLOOD_SPEAKER_RADIUS_WU = 900;
 export const ORE_FLOOD_STATION_RADIUS_WU = 7000;
+/** inf-station-pa: the desk calls its routine only to a pilot inside the station's working shell. */
+export const STATION_PA_EARSHOT_WU = 3000;
+/** One routine call per station per this many sim seconds (side events fire every >= 25 s). */
+export const STATION_PA_COOLDOWN_S = 70;
 /** A hull that spoke inside this window is not asked to speak again for a world-answer receipt. */
 export const WORLD_ANSWER_SPEAKER_GAP_S = 6;
 const ORE_FLOOD_SPEAKER_ROLES = new Set(['miner', 'prospector', 'hauler', 'ore_carrier']);

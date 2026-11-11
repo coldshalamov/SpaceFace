@@ -1111,6 +1111,8 @@ export function createSnapshotFence(options = {}) {
       return sequence;
     },
     get packCount() { return packCount; },
+    /** The presented sim time the meshes are drawn at (NaN before the first presented sample). One clock for decor: src/render/presentedClock.js. */
+    get presentedTimeS() { return presentedValid ? presentedTime : NaN; },
     /** Identity-map rebuilds across every ring buffer (diagnostic; a stale fast pack scans). */
     get indexRebuildCount() {
       let total = 0;

@@ -1,4 +1,6 @@
 import { commodityDisplayName } from '../commodityNames.js';
+import { counted } from '../numberFormat.js';
+
 
 const STATION = 'station_helios';
 const SECTOR = 'sector_helios_prime';
@@ -86,7 +88,7 @@ export function kesslerFreightReply(state, stationId, selectedId) {
     : row.lines.some((entry) => entry?.manifestId === cause.manifestId && entry.commodityId === cause.commodityId
       && Number.isFinite(entry.qty) && entry.qty > 0 && entry.returnedQty >= entry.qty)
       ? 'The recorded freight has been returned.' : 'I have no remaining freight quantity on this record.';
-  const crew = pending ? ` ${pending} survivor${pending === 1 ? '' : 's'} still awaiting resolution.` : '';
+  const crew = pending ? ` ${counted(pending, 'survivor', 'survivors')} still awaiting resolution.` : '';
   const work = matchingWork(state, cause, row, line);
   if (work.active) return { text: `${outcome} ${freight}${crew} Your recovery ticket is open; the Mission Log has it.` };
   if (work.offer) return {
