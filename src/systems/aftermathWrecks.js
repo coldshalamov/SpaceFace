@@ -1,3 +1,4 @@
+import { capturePatrolPaperwork, normalizePatrolPaperwork, normalizePatrolObservations, patrolPaperworkText } from '../missions/patrolPaperwork.js';
 import { ownsFiniteWinnowManifest } from '../world/vestaWinnowRecovery.js';
 import { ownsFiniteCharonSupplyManifest } from '../world/charonSalvageSupply.js';
 // aftermathWrecks.js - BP-01/C11 Battle-Aftermath Persistence.
@@ -132,6 +133,7 @@ export function ensureAftermathState(state) {
   if (!own.bySector || typeof own.bySector !== 'object' || Array.isArray(own.bySector)) own.bySector = {};
   if (!own.causes || typeof own.causes !== 'object' || Array.isArray(own.causes)) own.causes = {};
   if (!own.ecology || typeof own.ecology !== 'object' || Array.isArray(own.ecology)) own.ecology = {};
+  if (!own.patrolObservations || typeof own.patrolObservations !== 'object') own.patrolObservations = {};
   if (typeof own.seed !== 'number') own.seed = seedOf(state);
   if (!Number.isFinite(own.runToken) || own.runToken < 0) own.runToken = 0;
   else own.runToken = own.runToken >>> 0;
@@ -758,6 +760,7 @@ function makeMarker(state, payload, entity) {
     victimRot: boundedPoseAngle(entity && entity.rot),
     victimPitch: boundedPoseAngle(entity && entity.pitch),
     victimBank: boundedPoseAngle(entity && entity.bank),
+    patrolPaperwork: capturePatrolPaperwork(state, entity),
     victimLabel: victimLabelFor(entity, payload),
     victimRegistry: victimRegistryFor(state, entity),
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
@@ -776,6 +779,10 @@ function makeMarker(state, payload, entity) {
     headline: null,
     structurePatch: null,
   };
+  // Newly authenticated B5 evidence is a substantive small salvage piece, not 1HP dust.
+  // Match the 60-hull sealed tooling rack (salvageOutfits/catalog). This is kill-time
+  // authoring only: normalization never upgrades old/damaged/saved or destroyed markers.
+  if (marker.patrolPaperwork) { marker.wreckHull = 60; marker.wreckHullMax = 60; }
   marker.manifestResidue = (ownsFiniteWinnowManifest(state, entity) || ownsFiniteCharonSupplyManifest(state, entity)) ? null : wreckCargoResidueFor(data.cargoManifest);
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
@@ -1068,6 +1075,7 @@ function normalizeMarker(input) {
     // The minted captain rides the same law (inf-wreck-captain): markers written before
     // the capture restore to null, and the scan honestly stays silent about who was aboard
     // rather than re-minting against an id that may have recycled.
+    patrolPaperwork: normalizePatrolPaperwork(input.patrolPaperwork),
     victimRegistry: normalizeVictimRegistry(input.victimRegistry),
     tick: Number.isFinite(input.tick) ? input.tick : 0,
     t: Number.isFinite(input.t) ? input.t : 0,
@@ -1173,6 +1181,12 @@ export const aftermathWrecks = {
     this._saveRestoring = false;
     ensureAftermathState(this.state);
 
+    this._patrolScanWitnesses = new Map();
+    this._patrolPulse = null;
+    this._onPatrolPulse = payload => this._witnessPatrolPulse(payload);
+    this._onPatrolResolved = payload => this._observePatrolWreck(payload);
+    this._clearPatrolPulse = () => { this._patrolScanWitnesses.clear(); };
+    this._resetPatrolPulse = () => { this._clearPatrolPulse(); this._patrolPulse = null; };
     this._onKilled = (payload) => {
       this._noteInhabitantGone(payload && payload.id);
       if (this._retireKilledWreck(payload)) return;
@@ -1196,7 +1210,7 @@ export const aftermathWrecks = {
           && payload.enterEpoch !== this.state.world.enterSerial) return;
       yield* this._spawnForSectorSteps(sectorId);
     };
-    this._onSectorExit = (payload) => { clearChainWreckWitnesses(this.state); this._clearLiveRefs(payload && payload.sectorId); };
+    this._onSectorExit = (payload) => { this._resetPatrolPulse(); clearChainWreckWitnesses(this.state); this._clearLiveRefs(payload && payload.sectorId); };
     this._onSalvageCompleted = (payload) => this._salvageCompleted(payload || {});
     this._onEncounterResolved = (payload) => {
       const cause = rememberCause(this.state, this.bus, payload || {});
@@ -1218,7 +1232,7 @@ export const aftermathWrecks = {
     this._onMissionCompleted = (payload) => this._settleMission(payload || {}, true);
     this._onMissionFailed = (payload) => this._settleMission(payload || {}, false);
     this._onNewGame = () => this.newGame();
-    this._onSaveRestoring = () => { clearChainWreckWitnesses(this.state); this._saveRestoring = true;this._siteAdmissionPending = false; };
+    this._onSaveRestoring = () => { this._resetPatrolPulse(); clearChainWreckWitnesses(this.state); this._saveRestoring = true;this._siteAdmissionPending = false; };
     this._onSaveLoaded = () => {
       clearChainWreckWitnesses(this.state);
       this._saveRestoring = false;
@@ -1234,6 +1248,9 @@ export const aftermathWrecks = {
     this._onLooseImpact = (payload) => this._shedImpactChips(payload || {});
 
     if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('scan:pulse', this._onPatrolPulse);
+      this.bus.on('scan:wreckResolved', this._onPatrolResolved);
+      this.bus.on('scan:completed', this._clearPatrolPulse);
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('entity:destroyed', this._onDestroyed);
@@ -1276,6 +1293,7 @@ export const aftermathWrecks = {
   },
 
   newGame() {
+    this._resetPatrolPulse?.();
     clearChainWreckWitnesses(this.state);
     this._saveRestoring = false;
     this._siteWreckLife = null;
@@ -2750,6 +2768,7 @@ export const aftermathWrecks = {
         // admission read (lootTableId/silhouette/assetRef/trafficRole), so a dead-hull render
         // pass resolves the file the victim actually drew — faction kit and hostile-family
         // overrides included — not just the chassis map entry.
+        patrolPaperwork: normalizePatrolPaperwork(marker.patrolPaperwork),
         hulkOfDefId: marker.victimDefId || null,
         hulkVisual: marker.victimVisual ? { ...marker.victimVisual } : null,
         hulkFactionId: marker.victimFactionId || null,
@@ -2944,6 +2963,52 @@ export const aftermathWrecks = {
     return true;
   },
 
+  // Only the scanner's current synchronous pulse may resolve a body it actually reached.
+  // Object identity + occupant generation prevent a recycled numeric id from inheriting proof.
+  _witnessPatrolPulse(payload) {
+    this._clearPatrolPulse();
+    const player = entityFor(this.state, this.state.playerId);
+    const now = this.state.simTime;
+    if (this._saveRestoring || !player || player.alive === false || !player.pos
+      || payload?.source !== 'player-scanner' || payload.scannerId !== player.id
+      || payload.scannerGeneration !== player.occupantGeneration
+      || !Number.isSafeInteger(payload.seq) || payload.seq < 1 || payload.simTime !== now
+      || !Number.isFinite(payload.radius) || payload.radius <= 0
+      || payload.pos?.x !== player.pos.x || payload.pos?.z !== player.pos.z) return;
+    if (this._patrolPulse?.player === player && this._patrolPulse.generation === player.occupantGeneration
+      && payload.seq <= this._patrolPulse.seq) return;
+    this._patrolPulse = { player, generation: player.occupantGeneration, seq: payload.seq };
+    const own = ensureAftermathState(this.state);
+    for (const marker of own.bySector[this.state.world?.currentSectorId] || []) {
+      if (!normalizePatrolPaperwork(marker.patrolPaperwork) || own.patrolObservations[marker.patrolPaperwork.captainId]) continue;
+      const live = this._resolveBoundWreck(marker.markerId);
+      if (!live || live.alive === false || live.data?.scanned === true || !live.pos
+        || this._boundWreckMarkers.get(live) !== marker.markerId
+        || Math.hypot(live.pos.x - player.pos.x, live.pos.z - player.pos.z) > payload.radius) continue;
+      this._patrolScanWitnesses.set(marker.markerId, { entity: live, generation: live.occupantGeneration, now });
+    }
+  },
+
+  _observePatrolWreck(payload) {
+    const witness = this._patrolScanWitnesses.get(payload?.markerId);
+    if (!witness) return false;
+    this._patrolScanWitnesses.delete(payload.markerId);
+    const marker = this._markerById(payload.markerId), live = this._resolveBoundWreck(payload.markerId);
+    const paper = normalizePatrolPaperwork(marker?.patrolPaperwork);
+    if (!paper || !live || live !== witness.entity || live.id !== payload.wreckId || live.alive === false
+      || live.occupantGeneration !== witness.generation || this.state.simTime !== witness.now
+      || live.data?.scanned !== true || this._boundWreckMarkers.get(live) !== marker.markerId
+      || payload.sectorId !== marker.sectorId || payload.sectorId !== this.state.world?.currentSectorId
+      || payload.pos?.x !== live.pos?.x || payload.pos?.z !== live.pos?.z) return false;
+    const own = ensureAftermathState(this.state);
+    if (own.patrolObservations[paper.captainId]) return false;
+    own.patrolObservations[paper.captainId] = { ...paper, markerId: marker.markerId,
+      sectorId: marker.sectorId, observedAt: this.state.simTime };
+    this.bus.emit('comms:log', { from: 'WRECK RECORD', kind: 'story',
+      text: patrolPaperworkText(paper) + ' Label observed; contents not recovered. This does not identify Helix.' });
+    return true;
+  },
+
   serialize() {
     const own = ensureAftermathState(this.state);
     this._reconcileSiteWreck();
@@ -2959,6 +3024,7 @@ export const aftermathWrecks = {
       seed: own.seed,
       runToken: own.runToken >>> 0,
       bySector,
+      patrolObservations: normalizePatrolObservations(own.patrolObservations),
       causes: trimCauses(own.causes),
       ecology: serializeEcology(own.ecology),
     };
@@ -2971,6 +3037,7 @@ export const aftermathWrecks = {
   // Generator twin: each sector's marker sort/cause join is record-atomic — yields sit only at
   // sector boundaries so order and RNG consumption stay identical.
   *deserializeChunked(data) {
+    this._resetPatrolPulse?.();
     const own = ensureAftermathState(this.state);
     const bySector = data && data.bySector && typeof data.bySector === 'object' ? data.bySector : {};
     // Choose one worksite globally from the incoming canonical snapshot BEFORE clearing
@@ -2979,6 +3046,7 @@ export const aftermathWrecks = {
     own.seed = data && typeof data.seed === 'number' ? data.seed >>> 0 : seedOf(this.state);
     own.runToken = data && Number.isFinite(data.runToken) && data.runToken >= 0 ? data.runToken >>> 0 : 0;
     own.bySector = {};
+    own.patrolObservations = normalizePatrolObservations(data && data.patrolObservations);
     own.causes = trimCauses(data && data.causes);
     own.ecology = serializeEcology(data && data.ecology);
     // The ambient-news throttle is session-transient; a rewind to an earlier save must not
@@ -3501,6 +3569,9 @@ export const aftermathWrecks = {
       }
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
+      this.bus.off('scan:pulse', this._onPatrolPulse);
+      this.bus.off('scan:wreckResolved', this._onPatrolResolved);
+      this.bus.off('scan:completed', this._clearPatrolPulse);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
       if (this._onEncounterResolved) this.bus.off('encounter:resolved', this._onEncounterResolved);
       if (this._onDocked) this.bus.off('dock:docked', this._onDocked);

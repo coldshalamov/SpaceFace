@@ -1,3 +1,4 @@
+import { patrolPaperworkAction } from '../../missions/patrolPaperwork.js';
 import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 import { book4ChoiceAction } from '../book4Choice.js';
 import { cinderJournalAction } from '../../missions/cinderRoute.js';
@@ -1879,7 +1880,9 @@ export function storyActionForBeat(beat, state) {
       };
     case 4:
       return book4ChoiceAction(state);
-    case 5:
+    case 5: {
+      const paperwork = patrolPaperworkAction(state);
+      if (paperwork) return paperwork;
       return {
         tone: 'primary',
         label: 'CHAIN',
@@ -1887,6 +1890,7 @@ export function storyActionForBeat(beat, state) {
         body: 'Complete your faction chain and keep the next contract tracked between docks.',
         meta: chainProgress ? (chainProgress + ' done') : 'Faction',
       };
+    }
     case 6:
       return {
         tone: 'primary',
