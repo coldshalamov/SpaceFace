@@ -1,4 +1,7 @@
 <!-- LIFETIME: DURABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # 3D stocktake — research the shelf, then plan the A-list picture
 
 Copy-paste operator: [`MODEL_STOCKTAKE_GOAL.txt`](./MODEL_STOCKTAKE_GOAL.txt).

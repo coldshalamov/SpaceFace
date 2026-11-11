@@ -559,10 +559,22 @@ function isMotionReduced(state) {
 }
 
 export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) {
-  const bonusDv = Math.max(0,
-    finiteOr(payload && payload.bonusDv, 0) || finiteOr(payload && payload.selfSlingBonusDv, 0));
-  const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && bonusDv > 0);
-  const strength = clamp01(bonusDv / 165);
+  let exitSpeed = 0;
+  if (payload) {
+    if (Number.isFinite(payload.exitSpeed)) {
+      exitSpeed = Math.max(0, payload.exitSpeed);
+    } else if (Number.isFinite(payload.payloadSpeed)) {
+      exitSpeed = Math.max(0, payload.payloadSpeed);
+    } else if (payload.velocity && Number.isFinite(payload.velocity.x) && Number.isFinite(payload.velocity.z)) {
+      exitSpeed = Math.hypot(payload.velocity.x, payload.velocity.z);
+    } else if (Number.isFinite(payload.bonusDv)) {
+      exitSpeed = Math.max(0, payload.bonusDv);
+    } else if (Number.isFinite(payload.selfSlingBonusDv)) {
+      exitSpeed = Math.max(0, payload.selfSlingBonusDv);
+    }
+  }
+  const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && exitSpeed > 60);
+  const strength = clamp01(exitSpeed / 165);
   // G18-03 — the throw direction: the self-sling receipt carries `exitAngle` (the release
   // velocity's azimuth); fall back to a normalized velocity vector when a different receipt
   // supplies one. No usable direction, no pull — the zoom beat still stands on its own.

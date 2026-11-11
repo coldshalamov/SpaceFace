@@ -1,4 +1,7 @@
 <!-- LIFETIME: DURABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Utilization — checkouts, models, and the one picture
 
 This note records the 2026-09-24 cleanup decisions. It does not open a packet, grant a lease, or
