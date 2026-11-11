@@ -26,6 +26,7 @@ import {
 } from '../data/swarmDraft.js';
 import { makeShipEntitySpec } from './ships.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { swarmFieldRadiusScale } from './playerModifiers.js';
 
 /** The smart bomb's blast: radius, throw speed, and the packet a hostile hull inside it takes. */
 export const SMART_BOMB_RADIUS_WU = 240;
@@ -138,6 +139,7 @@ export function createSwarmCallinsDirector(ctx) {
         lances: this._lances.length,
         allies: this._allies.length,
         domes: this._domes.length,
+        queued: this._queuedCallins.length,
       };
     },
 
@@ -159,6 +161,8 @@ export function createSwarmCallinsDirector(ctx) {
     /** S5: a bought called charge waits on the player — Q deploys the next one on the pile. */
     queueCallin(callinId) {
       if (callinId) this._queuedCallins.push(callinId);
+      // The wheel's Call-in slice rides this depth: it shows only while a charge waits (G18-02b).
+      this._emit(this._state, 'swarm:callinQueued', { pending: this._queuedCallins.length, callinId: callinId || null });
       return true;
     },
 
@@ -168,7 +172,9 @@ export function createSwarmCallinsDirector(ctx) {
       const edge = pressed && !this._prevCallin;
       this._prevCallin = pressed;
       if (!edge || !this._queuedCallins.length) return;
-      this.callIn(st, run, this._queuedCallins.shift());
+      const callinId = this._queuedCallins.shift();
+      this._emit(st, 'swarm:callinQueued', { pending: this._queuedCallins.length, callinId });
+      this.callIn(st, run, callinId);
     },
 
     // ---- the stocked charges (SW-01 smart bomb, SW-03 orbital lance) ------------------------
@@ -210,24 +216,26 @@ export function createSwarmCallinsDirector(ctx) {
 
     _detonateSmartBomb(st, pos) {
       const myId = playerIdOf(st);
+      // A01-05 Wide Bore: the Bomb power's reach rides the one run-modifier scale.
+      const radiusWu = SMART_BOMB_RADIUS_WU * swarmFieldRadiusScale(st);
       // The throw: every physical body in the room except the player is thrown outward. Brood
       // cells ride the same promotion rule as Domino's shove.
-      const bodies = queryPhysicalBodies(st, pos, SMART_BOMB_RADIUS_WU, this._helpers, []);
+      const bodies = queryPhysicalBodies(st, pos, radiusWu, this._helpers, []);
       for (const body of bodies) {
         if (!body || body.id === myId) continue;
         let dx = body.pos.x - pos.x;
         let dz = body.pos.z - pos.z;
         let d = Math.hypot(dx, dz);
         if (d < 1e-3) { dx = 0; dz = 1; d = 1; } // a body hugging the bomb still takes the radial throw
-        const falloff = 1 - Math.min(1, d / SMART_BOMB_RADIUS_WU);
+        const falloff = 1 - Math.min(1, d / radiusWu);
         const dv = SMART_BOMB_MAX_DV_WU_S * (0.35 + 0.65 * falloff);
         deliverPhysicalImpulse(st, body, { x: (dx / d) * dv * (body.mass || 1), z: (dz / d) * dv * (body.mass || 1) }, {
           source: 'swarm_smart_bomb', cause: 'bomb',
         });
       }
       // The break: hostile hulls in the radius take one real packet through the combat seam.
-      this._damageHostiles(st, pos, SMART_BOMB_RADIUS_WU, SMART_BOMB_DAMAGE, 'swarm_smart_bomb');
-      this._emit(st, 'swarm:smartBomb', { x: pos.x, z: pos.z, radiusWu: SMART_BOMB_RADIUS_WU });
+      this._damageHostiles(st, pos, radiusWu, SMART_BOMB_DAMAGE, 'swarm_smart_bomb');
+      this._emit(st, 'swarm:smartBomb', { x: pos.x, z: pos.z, radiusWu });
       this._emit(st, 'swarm:announce', { kind: 'callin', text: SWARM_CALLIN_CALLOUT.smart_bomb });
     },
 

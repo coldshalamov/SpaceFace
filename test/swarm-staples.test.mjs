@@ -24,6 +24,7 @@ import {
   swarmMinorEventFor,
   SWARM_EVENT_TABLES,
 } from '../src/data/swarmEvents.js';
+import { swarmCourseFor } from '../src/data/swarmCourse.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { createFlightCluster } from '../src/ui/orrery/flightCluster.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
@@ -160,7 +161,11 @@ test('the seeded cadence deals a card to every special round and to no ordinary 
     for (const arenaId of arenas) {
       const major = swarmEventFor({ arenaId, wave: w, seed: SEED });
       const minor = swarmMinorEventFor({ arenaId, wave: w, seed: SEED });
-      if (isSwarmEventWave(w)) assert.ok(major, `wave ${w} in ${arenaId} must carry a major card`);
+      // G08-02 — an authored course twist IS the deal on its own round; band rounds serve
+      // it through the minor consult instead, so they still hold major === null.
+      const courseDealt = Boolean(
+        swarmCourseFor(w)?.twistId && !isSwarmMinorEventWave(w));
+      if (isSwarmEventWave(w) || courseDealt) assert.ok(major, `wave ${w} in ${arenaId} must carry a major card`);
       else assert.equal(major, null, `wave ${w} is not a major round`);
       if (isSwarmMinorEventWave(w)) assert.ok(minor, `wave ${w} in ${arenaId} must carry a minor card`);
       else assert.equal(minor, null, `wave ${w} is not a minor round`);
@@ -172,8 +177,9 @@ test('the seeded cadence deals a card to every special round and to no ordinary 
     }
   }
   // The specials are the announced cadence, not a scatter: C01-01 fills every multiple of
-  // five with a champion, so the course deals no major round at all — majors are dead
-  // inside the thirty; minors still ride the two off-beats of each ten (2, 8, 12, 18, 22, 28).
+  // five with a champion, so the seeded major band is dead inside the thirty — G08-02's
+  // authored course twists deal their own cards on their own rounds instead; minors still
+  // ride the two off-beats of each ten (2, 8, 12, 18, 22, 28).
   assert.equal(isSwarmEventWave(10), false);
   assert.equal(isSwarmEventWave(20), false);
   assert.equal(isSwarmMinorEventWave(2), true);

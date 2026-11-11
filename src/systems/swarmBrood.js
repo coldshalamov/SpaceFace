@@ -58,6 +58,7 @@ import { isSwarmRuleset } from './survivalSwarm.js';
 import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
+import { swarmRamTakenScale } from './playerModifiers.js';
 import { findSwarmArrival } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import {
@@ -2092,7 +2093,8 @@ export function createBroodEngine(deps = {}) {
       const sz = playerZ - pz[i];
       const rr = corridorHalfWidth(rad, playerRad);
       if (sx * sx + sz * sz <= rr * rr) {
-        routePlayerDamage(slamDamage, px[i], pz[i], sourceId);
+        // A01-05 Bumper Rails take: a committed ram pays the run ledger's contact scale.
+        routePlayerDamage(slamDamage * swarmRamTakenScale(state), px[i], pz[i], sourceId);
         const d = Math.sqrt(sx * sx + sz * sz) || 1;
         // The pass lands as an ADDITIVE shove across the membrane, never a velocity write.
         queuePhysicsImpulse(signatureRef, {
@@ -2443,7 +2445,8 @@ export function createBroodEngine(deps = {}) {
       const dz = playerZ - pz[i];
       const rr = rad + playerRad;
       if (dx * dx + dz * dz <= rr * rr) {
-        routePlayerDamage(def.contactDamage > 0 ? def.contactDamage : 14,
+        routePlayerDamage(
+          (def.contactDamage > 0 ? def.contactDamage : 14) * swarmRamTakenScale(state),
           px[i], pz[i], 'machine_sawblade');
         contactAfter[i] = simTime + (def.contactCooldownS > 0 ? def.contactCooldownS : 0.5);
         const d = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -2868,7 +2871,7 @@ export function createBroodEngine(deps = {}) {
         const dz = playerZ - segZ[i];
         const rr = playerRad + TENDRIL_SEG_RADIUS;
         if (dx * dx + dz * dz <= rr * rr) {
-          routePlayerDamage(TENDRIL_SEG_CONTACT_DAMAGE, segX[i], segZ[i], 'brood_tendril');
+          routePlayerDamage(TENDRIL_SEG_CONTACT_DAMAGE * swarmRamTakenScale(state), segX[i], segZ[i], 'brood_tendril');
           const d = Math.sqrt(dx * dx + dz * dz) || 1;
           queuePhysicsImpulse(signatureRef, {
             x: (dx / d) * TENDRIL_SEG_CONTACT_SHOVE_DV * playerMass,

@@ -34,6 +34,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
 import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
 import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
+import { swarmCourseFor } from '../data/swarmCourse.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
 import { validateRunState } from '../core/runState.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -292,6 +293,12 @@ export function waveOpeningLine(wave, plan) {
     const stageLine = circuit
       ? `Stage ${circuit.stage}, round ${circuit.localRound}. `
       : '';
+    // G08-02 — the Pit's course names every round inside the thirty: the opener leads with
+    // the authored name ("ROUND 7 — Long Shots.") instead of the faceless "Wave 7." A
+    // Circuit round keeps the old heading — its own stage line names the journey — and the
+    // open ladder past the win has no authored names to wear.
+    const course = circuit ? null : swarmCourseFor(wave);
+    const heading = course ? `ROUND ${wave} — ${course.name}.` : `Wave ${wave}.`;
     const closing = !circuit ? 'Break the pack.'
       : circuit.kind === 'survive' ? 'Survive sixty seconds.'
         : circuit.kind === 'defend' ? 'Defend the beacon.'
@@ -305,7 +312,7 @@ export function waveOpeningLine(wave, plan) {
     // The first-run lesson names what is on the field, not the held pack: one hull, one rock
     // worth throwing, and the pack still on its way.
     if (plan.openingLesson) {
-      return `Wave ${wave}. One hostile on the field — the rest are holding. The rock beside you is ammunition: line it and throw it.`;
+      return `${heading} One hostile on the field — the rest are holding. The rock beside you is ammunition: line it and throw it.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     if (swarm.boss) {
@@ -313,17 +320,22 @@ export function waveOpeningLine(wave, plan) {
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
+      // G08-02 — when the round's own name IS the champion's (ROUND 15 — Mirrorjaw Foreman),
+      // the arrival label would only repeat it, so it drops and the authored bossLine carries
+      // the tell on its own. "Dreadnought 'Iron Maw'" is a hull name, not the round's — it stays.
+      const namedBoss = course
+        && label.toLowerCase().replace(/^the\s+/, '') === course.name.toLowerCase().replace(/^the\s+/, '');
       // S14 puts champions on odd waves, so a boss round can also be a debut round. Wave 5's
       // Iron Maw arrives with the Detonator Dart's staged first body, and wave 15's Foreman with
       // the Patrol Lawman's. The champion speaks first. The debut keeps its one namecheck, so it
       // does not arrive unannounced on the busiest round so far.
-      return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${namecheck}${pressure}${wall}${actLine} ${closing}`;
+      return `${heading} ${stageLine}${arrival}${namedBoss ? '' : ` ${label}.`}${line}${namecheck}${pressure}${wall}${actLine} ${closing}`;
     }
     // LW-05: a scheduled recurring character is named before contact, same as the debut it
     // replaced — its staged seat lands seconds into the wave, so it is inbound, not arrived.
     const character = swarm.character && typeof swarm.character.name === 'string' && swarm.character.name
       ? ` ${swarm.character.name} is inbound.` : '';
-    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${character}${pressure}${wall}${actLine} ${closing}`;
+    return `${heading} ${stageLine}${arrival}${namecheck}${character}${pressure}${wall}${actLine} ${closing}`;
   }
 
   let bodies = 0;
@@ -594,6 +606,14 @@ export const survivalAnnounce = {
     // on the same channel. One line, inside the per-wave budget (the arc boss wave is the worst
     // authored case at five). A wave that cannot open cannot spend a second line.
     if (spoke) {
+      // G08-02 — the course round's twist is the second line of the round's announcement:
+      // the name promised, the twist says what the round is. Authored verbatim, always on a
+      // course round, and counted in the same hard per-wave budget as every other beat.
+      const swarm = this._plan && this._plan.swarm;
+      const course = swarm && !swarm.circuit ? swarmCourseFor(wave) : null;
+      if (course && typeof course.twist === 'string' && course.twist.length > 0) {
+        this._say('objective', `survival:w${wave}:twist`, course.twist, 6);
+      }
       const arenaId = this.state && this.state.run ? this.state.run.arenaId : null;
       const question = questionClauseFor(wave, this._plan, arenaId);
       if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
