@@ -5,8 +5,9 @@
 // input / rebind validation, AGENTS.md section 6 — this is it):
 //   1. no hullBurst verb exists anywhere: no key in any scheme, no action member, no rebind row
 //      (keyboard or pad), no help row, no pad action;
-//   2. boost is unchanged and stays the ONE meter — Shift in every scheme, Backslash free again;
-//   3. a Shift press is a held boost on state.input.boost — the channel the burst rides;
+//   2. boost is unchanged and stays the ONE meter — G18-02 moved it to Space in every scheme,
+//      Backslash free again;
+//   3. a Space press is a held boost on state.input.boost — the channel the burst rides;
 //   4. the middle-click second trigger is gone with the verb.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -93,9 +94,9 @@ test('a live session never publishes a hullBurst action — not on ticks, keys, 
   });
 });
 
-test('boost is unchanged and stays the ONE meter: Shift in every scheme, Backslash free again', () => {
+test('boost is the ONE meter: Space in every scheme (G18-02), Backslash free again', () => {
   for (const [scheme, table] of Object.entries({ classic: DEFAULTS.BINDINGS, pilot: PILOT_BINDINGS, 'helm-assist': DEFAULTS.SCHEMES['helm-assist'] })) {
-    assert.deepEqual(table.boost, ['ShiftLeft', 'ShiftRight'], `${scheme}: boost is Shift, untouched`);
+    assert.deepEqual(table.boost, ['Space'], `${scheme}: boost is Space — one set of keys`);
     for (const [action, codes] of Object.entries(table)) {
       assert.ok(!(codes || []).includes('Backslash') && !(codes || []).includes('IntlBackslash'),
         `${scheme}: ${action} must not answer to the retired burst keys`);
@@ -103,17 +104,22 @@ test('boost is unchanged and stays the ONE meter: Shift in every scheme, Backsla
   }
 });
 
-test('a Shift press is a held boost on state.input.boost — the channel the burst rides', () => {
+test('a Space press is a held boost on state.input.boost — the channel the burst rides', () => {
   withInput({}, ({ win, state, tick }) => {
     tick();
     assert.equal(state.input.boost, false, 'idle');
-    win.dispatch('keydown', { code: 'ShiftLeft', target: null });
+    win.dispatch('keydown', { code: 'Space', target: null });
     tick();
-    assert.equal(state.input.boost, true, 'held Shift is a held boost intent');
+    assert.equal(state.input.boost, true, 'held Space is a held boost intent');
     tick();
     assert.equal(state.input.boost, true, 'still held, still boosting');
-    win.dispatch('keyup', { code: 'ShiftLeft', target: null });
+    win.dispatch('keyup', { code: 'Space', target: null });
     tick();
     assert.equal(state.input.boost, false, 'released');
+    // Shift is free under one set of keys — pressing it does nothing.
+    win.dispatch('keydown', { code: 'ShiftLeft', target: null });
+    tick();
+    assert.equal(state.input.boost, false, 'Shift no longer boosts');
+    win.dispatch('keyup', { code: 'ShiftLeft', target: null });
   });
 });

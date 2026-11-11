@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Zero to hero — the A-list demo program: *see the body*
 
 Owner, 2026-09-23: *"We have a lot of plans in the build map, I'm not convinced that they cover the

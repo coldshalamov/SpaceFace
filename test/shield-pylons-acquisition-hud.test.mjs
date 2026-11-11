@@ -62,18 +62,18 @@ test('buy and fit at Helios through the real ships owner; the fitted module is w
   assert.equal(charges[0].amount, stationShopOffer(MODULES.find((m) => m.id === PYLON_MODULE_ID), 'station_helios').price);
 });
 
-test('the deploy verb has a default binding, is a taught flight action, and a rebind is what the label reads', () => {
-  assert.deepEqual(DEFAULTS.SCHEMES.pilot.deployShieldPylon, ['Digit6']);
+test('the deploy verb is a taught wheel slice, and a rebind is what the label reads', () => {
+  // G18-02: the pylon verb ships on the context wheel, not a dedicated key.
+  assert.deepEqual(DEFAULTS.SCHEMES.pilot.deployShieldPylon, []);
   assert.ok(TAUGHT_FLIGHT_ACTIONS.includes('deployShieldPylon'));
   const base = { settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: null } } };
-  assert.equal(resolveActionLabel(base, 'deployShieldPylon'), '6');
+  assert.equal(resolveActionLabel(base, 'deployShieldPylon'), '');
   const remapped = { settings: { gameplay: { controlScheme: 'pilot' }, controls: { bindings: { deployShieldPylon: ['KeyJ'] } } } };
   assert.deepEqual(resolveActionCodes(remapped, 'deployShieldPylon'), ['KeyJ']);
   assert.equal(resolveActionLabel(remapped, 'deployShieldPylon'), 'J');
-  // No other flight verb shares the key in any scheme.
+  // Digit6 stays free in every scheme — the pylon lives on the wheel.
   for (const scheme of Object.keys(DEFAULTS.SCHEMES)) {
     for (const [action, codes] of Object.entries(DEFAULTS.SCHEMES[scheme])) {
-      if (action === 'deployShieldPylon') continue;
       assert.ok(!(codes || []).includes('Digit6'), `${scheme}.${action} must not share Digit6`);
     }
   }
@@ -107,7 +107,7 @@ test('the label names the NEXT operation at every stage of the pair', () => {
   // Fitted, nothing deployed: place the first endpoint (and say which key).
   t.state.input.aimWorld = { x: 100, z: -60 };
   assert.equal(label().op, PYLON_NEXT_OP.first);
-  assert.equal(label().key, '6');
+  assert.equal(label().key, 'Q wheel', 'the unbound deploy verb names the wheel it lives on');
   assert.equal(label().tone, 'idle');
   press(t, { x: 100, z: -60 });
   // First endpoint down, aim moved off it: link the second.
@@ -186,7 +186,7 @@ test('second-endpoint preview shows the actual span and strength before spending
   assert.equal(short.preview.span, DEF.minSpan);
   assert.equal(short.preview.capacity, DEF.capacity);
   assert.equal(short.preview.cost, DEF.endpointCostCredits);
-  assert.match(short.status, /36 WU.*620 SHIELD.*90 CR/);
+  assert.match(short.status, /36 u.*620 SHIELD.*90 CR/);
   assert.equal(short.op, PYLON_NEXT_OP.second);
 
   t.state.input.aimWorld = { x: 100, z: 130 };
@@ -194,7 +194,7 @@ test('second-endpoint preview shows the actual span and strength before spending
   assert.equal(long.preview.span, DEF.maxSpan);
   assert.equal(long.preview.capacity, DEF.capacity * DEF.capacitySpanFloor);
   assert.ok(long.preview.capacity < short.preview.capacity, 'a longer line visibly trades strength for coverage');
-  assert.match(long.status, /190 WU.*341 SHIELD.*90 CR/);
+  assert.match(long.status, /190 u.*341 SHIELD.*90 CR/);
   for (let i = 0; i < 5; i++) resolvePylonHud(t.state);
   assert.deepEqual(charges, [DEF.endpointCostCredits], 'aiming and reading never spends for the second endpoint');
   assert.equal(pair.state, S.UNPAIRED);
@@ -247,5 +247,5 @@ test('previewing a second wall preserves the existing weak wall warning and real
   assert.equal(view.key, 'J');
   assert.equal(view.preview.span, 120);
   assert.match(view.op, /^LINK SECOND ENDPOINT/);
-  assert.ok(view.op.endsWith('120WU/468SP'));
+  assert.ok(view.op.endsWith('120u/468SP'));
 });
