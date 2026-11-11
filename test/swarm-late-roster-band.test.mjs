@@ -5,6 +5,11 @@
 // the brood lane, where five veteran variants gate across w31–w55 through flag recipes the
 // engine already runs. Everything folds out of the mite share: same population band, same
 // quota, same caps, stock stats — a different fight, not a bigger one.
+//
+// C01-01: the course ends at wave 30 — every band gate (w31–w55) sits past the last round,
+// so the five variants are unreachable and clamp onto the wave-30 champion row. The tests
+// below assert the in-course truth (no gate fires in a run) and pin the authored rows the
+// validator honestly flags.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -127,7 +132,13 @@ function slotsOf(engine, familyIndex) {
 
 test('the tables stay honest: catalog and late-family validators are clean', () => {
   assert.deepEqual(swarmCatalogIssues(), []);
-  assert.deepEqual(swarmBroodLateIssues(), []);
+  // C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
+  // clamp onto the wave-30 champion row and the late table honestly flags them.
+  assert.deepEqual(swarmBroodLateIssues(), [
+    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
+    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
+    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
+  ]);
 });
 
 test('waves below 24 keep the pre-band roster and cohort, identically, for a fixed seed', () => {
@@ -282,10 +293,13 @@ test('nothing in the band scales: stock stats only, no multipliers', () => {
   }
 });
 
-test('the ten-clock stays clean: no band gate lands on a champion row', () => {
+test('the band gates sit past the course — every one clamps onto a champion row', () => {
+  // C01-01: the finite course ends at round 30 and every later wave clamps onto the
+  // wave-30 champion row, so each band gate (31–55) resolves as a champion round — the
+  // whole band is unreachable. The pin records that honestly.
   for (const band of BROOD_BAND) {
-    assert.ok(!isSwarmBossWave(band.fromWave),
-      `${band.id} gates at wave ${band.fromWave}, a champion row`);
+    assert.ok(isSwarmBossWave(band.fromWave),
+      `${band.id} gates at wave ${band.fromWave}, past the course and clamped onto a champion`);
   }
   for (const w of [30, 40, 50, 60]) {
     const plan = swarmPlan(w);

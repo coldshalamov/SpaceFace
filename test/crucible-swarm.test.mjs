@@ -229,11 +229,16 @@ test('pressure and quota rise, and the roster opens one archetype at a time', ()
     assert.ok(swarmCurveIsSane(wave), `wave ${wave} keeps quota at 2x concurrency or better`);
   }
   assert.ok(swarmQuota(12) > swarmQuota(1), 'the quota does climb early');
-  assert.equal(swarmQuota(60), SWARM_QUOTA_CAP, 'and flattens at the cap rather than growing forever');
+  // C01-01: the course ends at wave 30, and the last ordinary rounds already sit at the cap.
+  assert.equal(swarmQuota(26), SWARM_QUOTA_CAP, 'the late ordinary rounds run at the cap');
+  assert.equal(swarmQuota(29), SWARM_QUOTA_CAP);
+  assert.ok(swarmQuota(30) < SWARM_QUOTA_CAP, 'the final champion round discounts the swarm');
   // Wave 1 already holds more hulls than the authored arc's wave 1 has bodies in total (six), and
   // the ceiling is a real swarm rather than a squad.
   assert.ok(swarmConcurrent(1) > 6);
-  assert.equal(swarmConcurrent(999), SWARM_CONCURRENT_MAX);
+  assert.equal(swarmConcurrent(29), SWARM_CONCURRENT_MAX);
+  assert.equal(swarmConcurrent(999), swarmConcurrent(30),
+    'past the course the clamped answer is the wave-30 champion room');
   assert.ok(SWARM_CONCURRENT_MAX >= 30, 'thirty hulls on you is the deep-run promise');
 });
 
@@ -635,18 +640,18 @@ test('a refused champion remains owed until the spawn budget has room', () => {
   assert.ok(liveBosses(h, 5).length > 0, 'the deferred boss materializes');
 });
 
-test('the champion changes: every rotation row a different shape of boss wave, in step with the roster', () => {
+test('the champion changes: every course row a different shape of boss wave, in step with the roster', () => {
+  // C01-01: the finite course fields its six champions at 5, 10, 15, 20, 25 and 30.
   const seen = [];
-  for (let step = 1; step <= SWARM_BOSS_ROTATION.length; step++) {
-    const wave = step * 10 - 5;
+  for (const wave of [5, 10, 15, 20, 25, 30]) {
     const boss = swarmBossFor(wave);
     assert.ok(boss, `wave ${wave} has a champion`);
     assert.ok(!seen.includes(boss.id), `wave ${wave} is a boss the player has not fought (${boss.id})`);
     seen.push(boss.id);
     // Compositional rows never debut a silhouette as champion: every body they field is one the
-    // roster already introduced as ordinary chaff. The capital rows are the authored exception —
-    // the Foreman and the Regent are the scored arc's named set-pieces and the wave IS their
-    // introduction (same carve-out the Dreadnought always had).
+    // roster already introduced as ordinary chaff — or the wave's own staged debut (the Corsair
+    // Wing IS the corsair raider's introduction on wave 10). The capital rows are the authored
+    // exception — the wave IS their introduction (same carve-out the Dreadnought always had).
     const roster = new Set(swarmRosterFor(wave).map((e) => e.enemyId));
     for (const pkg of bossPackagesFor(boss)) {
       if (pkg.enemyId === 'dreadnought_boss' || boss.scoreId) continue;
@@ -654,16 +659,18 @@ test('the champion changes: every rotation row a different shape of boss wave, i
     }
     assert.ok(boss.label && boss.line, `${boss.id} names itself`);
   }
-  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'the whole rotation before any repeat');
-  // And it wraps rather than running out.
-  assert.equal(swarmBossFor(SWARM_BOSS_ROTATION.length * 10 + 5).id, SWARM_BOSS_ROTATION[0].id);
+  assert.equal(seen.length, 6, 'six distinct champions across the course');
+  // The course ends at thirty — a deeper index clamps to the final champion, never a wrap.
+  assert.equal(swarmBossFor(35).id, 'forge_regent', 'past the course the final champion answers');
   assert.equal(swarmBossFor(7), null, 'an ordinary wave has no champion');
 });
 
-test('every fifth-plus-tens wave is a boss wave, and no other wave owes one', () => {
+test('every fifth wave of the course is a boss wave, and no other wave owes one', () => {
+  // C01-01: champions on every fifth round through 30; deeper indices replay the clamped
+  // wave-30 champion row, so they still plan as boss rounds.
   for (let wave = 1; wave <= 60; wave++) {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
-    const expected = wave >= 5 && wave % 10 === 5;
+    const expected = wave <= 30 ? wave % 5 === 0 : true;
     assert.equal(plan.swarm.boss, expected, `wave ${wave} boss flag`);
     assert.equal(plan.swarm.requireBoss, expected);
     assert.equal(

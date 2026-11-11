@@ -97,14 +97,21 @@ function budget(engine) {
 // (a) The band law: below the gate, on champion waves, and in the Hive the picker is
 // silent — and it never spends the stream for a wave it rejects.
 test('the picker gates on band, champion and eligibility law', () => {
+  // C01-01: the course ends at round 30. Waves 26–29 are the only ordinary rounds inside
+  // the band (25 is a champion); every wave past 30 clamps onto the champion row and keeps
+  // no reserve at all.
   for (const w of [1, 20, SWARM_BROOD_RESERVE_FROM_WAVE - 1]) {
     assert.equal(swarmBroodLateReserve(w, () => 0.5), null, `wave ${w} keeps no reserve`);
   }
-  for (const w of [30, 40, 70, 80]) {
+  for (const w of [25, 30, 40, 70, 80]) {
     assert.ok(isSwarmBossWave(w));
     assert.equal(swarmBroodLateReserve(w, () => 0.5), null, `champion wave ${w} keeps no reserve`);
   }
-  for (const w of [SWARM_BROOD_RESERVE_FROM_WAVE, 31, 37, 55]) {
+  for (const w of [31, 37, 55]) {
+    assert.equal(swarmBroodLateReserve(w, () => 0.5), null,
+      `wave ${w} is past the course — the picker is silent`);
+  }
+  for (const w of [26, 27, 28, 29]) {
     const pick = swarmBroodLateReserve(w, () => 0.9);
     assert.ok(pick, `wave ${w} holds a reserve`);
     const fam = swarmBroodLateFamily(pick.familyId);
@@ -115,7 +122,7 @@ test('the picker gates on band, champion and eligibility law', () => {
   }
   // Deterministic: same stream position, same pick.
   const rngA = () => 0.314;
-  assert.deepEqual(swarmBroodLateReserve(31, rngA), swarmBroodLateReserve(31, rngA));
+  assert.deepEqual(swarmBroodLateReserve(29, rngA), swarmBroodLateReserve(29, rngA));
 });
 
 // (a cont.) Engine-side: a pre-band non-Hive wave spends its whole plan at the open.
@@ -133,17 +140,17 @@ test('pre-band wave in a plain arena keeps no reserve and drops nothing mid-wave
 
 // (b)+(c)+(e) A band wave in a non-Hive arena: one bounded specialist group drops
 // mid-wave, inside the wave's own budget, speaking the family's authored line.
-test('a wave-31 room drops one bounded late group mid-wave, inside the plan', () => {
-  const h = boot(31);
-  const h2 = boot(31);
-  h.engine.prepareWave(h.state.run, 31);
-  h2.engine.prepareWave(h2.state.run, 31);
+test('a wave-29 room drops one bounded late group mid-wave, inside the plan', () => {
+  const h = boot(29);
+  const h2 = boot(29);
+  h.engine.prepareWave(h.state.run, 29);
+  h2.engine.prepareWave(h2.state.run, 29);
 
   // Deterministic pick across two engines on the same (seed, wave) stream.
   const res = h.engine._reserve();
   assert.deepEqual(h2.engine._reserve(), res, 'the reserve pick is not deterministic');
   const fam = swarmBroodLateFamily(res.family);
-  assert.ok(fam && fam.fromWave <= 31 && !fam.births && !fam.splits,
+  assert.ok(fam && fam.fromWave <= 29 && !fam.births && !fam.splits,
     `reserve family ${res.family} breaks the eligibility law`);
   assert.ok(res.left >= 1 && res.left <= Math.min(SWARM_BROOD_RESERVE_MAX, fam.cohort),
     `reserve size ${res.left} outside the authored band`);
@@ -153,7 +160,7 @@ test('a wave-31 room drops one bounded late group mid-wave, inside the plan', ()
   assert.ok(spawned > 0);
   assert.ok(Number.isFinite(h.engine._reserve().releaseAt), 'the drop clock never armed');
   // (c) The reserve spent from the wave budget: alive + still-held = the population law.
-  assert.equal(budget(h.engine), swarmBroodPopulation(31),
+  assert.equal(budget(h.engine), swarmBroodPopulation(29),
     'immediate + held bodies moved off the authored population');
 
   // Before the clock: nothing drops early.
@@ -168,10 +175,10 @@ test('a wave-31 room drops one bounded late group mid-wave, inside the plan', ()
   assert.ok(drops.length >= 1, 'no reserve drop receipt');
   assert.equal(drops.reduce((s, e) => s + e.payload.count, 0), res.left,
     'the drop did not land the whole held group');
-  assert.ok(drops.every((e) => e.payload.familyId === res.family && e.payload.wave === 31));
+  assert.ok(drops.every((e) => e.payload.familyId === res.family && e.payload.wave === 29));
   // (c) After the drop the room still sits inside the authored population.
-  assert.ok(h.engine.census().alive <= swarmBroodPopulation(31));
-  assert.ok(budget(h.engine) <= swarmBroodPopulation(31));
+  assert.ok(h.engine.census().alive <= swarmBroodPopulation(29));
+  assert.ok(budget(h.engine) <= swarmBroodPopulation(29));
 
   // (e) The arrival is not silent: the held family's authored {bark,line,cue} spoke at
   // the drop point through the ordinary telegraph seam.
@@ -187,13 +194,13 @@ test('a wave-31 room drops one bounded late group mid-wave, inside the plan', ()
 
 // (d) The Hive is untouched: its sac reserve still owns the hold-back lane.
 test('the Hive keeps its sac reserve and fields no late drop', () => {
-  const h = boot(31, HIVE_ARENA_ID);
-  h.engine.prepareWave(h.state.run, 31);
+  const h = boot(29, HIVE_ARENA_ID);
+  h.engine.prepareWave(h.state.run, 29);
   assert.ok(h.engine._hive().sacBudget > 0, 'the Hive lost its sac reserve');
   assert.equal(h.engine._reserve().left, 0, 'the Hive grew a second reserve lane');
   assert.equal(h.engine._reserve().family, null);
   const spawned = h.engine.spawnWave(h.state);
-  assert.equal(budget(h.engine), swarmBroodPopulation(31));
+  assert.equal(budget(h.engine), swarmBroodPopulation(29));
   step(h, Math.ceil((SWARM_BROOD_RESERVE_DELAY_S + 5) * 60));
   assert.equal(h.emitted.filter((e) => e.event === 'swarm:broodReserve').length, 0,
     'a Hive wave dropped a late reserve');
@@ -204,10 +211,10 @@ test('the Hive keeps its sac reserve and fields no late drop', () => {
 
 // (b cont.) The drop reads as one gate-ring group: bounded, family-true, cap-safe.
 test('the dropped group lands on the gate ring inside the population cap', () => {
-  const h = boot(37);
-  h.engine.prepareWave(h.state.run, 37);
+  const h = boot(29);
+  h.engine.prepareWave(h.state.run, 29);
   const res = h.engine._reserve();
-  assert.ok(res.left > 0, 'wave 37 holds a reserve');
+  assert.ok(res.left > 0, 'wave 29 holds a reserve');
   h.engine.spawnWave(h.state);
   // Serials minted so far belong to the open cohort; anything above them is the drop's.
   let maxSerial = 0;

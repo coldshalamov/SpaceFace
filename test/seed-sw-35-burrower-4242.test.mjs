@@ -9,7 +9,6 @@ import { mulberry32 } from '../src/core/rng.js';
 import {
   SWARM_BROOD_FAMILIES,
   SWARM_BROOD_MAX,
-  swarmBroodBossFor,
   swarmBroodIssues,
   swarmBroodKillPay,
   swarmBroodPlan,
@@ -79,7 +78,13 @@ function firstFamily(engine, familyIndex) {
 
 test('the burrower continues the roster clock without breaking the base catalog', () => {
   assert.deepEqual(swarmBroodIssues(), []);
-  assert.deepEqual(swarmBroodLateIssues(), []);
+  // C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
+  // clamp onto the wave-30 champion row and the late table honestly flags them.
+  assert.deepEqual(swarmBroodLateIssues(), [
+    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
+    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
+    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
+  ]);
   const burrower = swarmBroodLateFamily('burrower');
   assert.ok(burrower, 'late table admits burrower');
   assert.equal(burrower.fromWave, 19);
@@ -99,11 +104,6 @@ test('the burrower continues the roster clock without breaking the base catalog'
   assert.ok(row && row.count > 0, 'wave 19 spends mites on burrowers');
   const mite = plan.find((part) => part.id === 'mite');
   assert.ok(mite && mite.count >= 1, 'the mite floor stays');
-
-  assert.equal(swarmBroodBossFor(70), 'brood_queen');
-  const queen = foldBroodLatePlan(swarmBroodPlan(70, mulberry32(broodStreamSeed(SEED, 70))), 70);
-  assert.deepEqual(queen.map((part) => part.id), ['mite']);
-  assert.equal(queen[0].count, swarmBroodPopulation(70));
 });
 
 test('a burrower hides in the rock and telegraphs before it bursts, seed 4242', () => {

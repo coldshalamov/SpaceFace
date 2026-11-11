@@ -101,8 +101,16 @@ const DISPOSITION = Object.freeze({
   mirebulb: 'effect', clutchstone: 'effect', poxsac: 'effect',
 });
 
+// C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
+// clamp onto the wave-30 champion row and the late table honestly flags them.
+const STRAIN_ISSUES = Object.freeze([
+  { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
+  { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
+  { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
+]);
+
 test('the audit table is complete: every late family resolves to remain, effect, or honest nothing', () => {
-  assert.deepEqual(swarmBroodLateIssues(), []);
+  assert.deepEqual(swarmBroodLateIssues(), STRAIN_ISSUES);
   const ids = SWARM_BROOD_LATE_FAMILIES.map((f) => f.id).sort();
   assert.deepEqual(ids, Object.keys(DISPOSITION).sort(), 'the late table grew — classify the new row');
   for (const fam of SWARM_BROOD_LATE_FAMILIES) {
@@ -152,22 +160,22 @@ test('a late brood death leaves its authored physical body at the death spot, wi
   assert.equal(charge.data.broodRemain.splashRadius, 34, 'the spent charge pops weakly');
 });
 
-test('the new kinds throw, splash and spend exactly like the six — and the splash honors kill-gates', () => {
-  const h = fixture();
-  // Cracked shell: the struck cell dies, a neighbor inside the splash dies by explosive law,
-  // a massOnly keelback inside the same splash pings off, and the shell body is spent.
+test('the cracked shell throws, splashes and spends exactly like the six — and the splash honors kill-gates', () => {
+  // C01-01: the keelback armor-ping and remora spent_charge halves of this case lived on
+  // deep-only families (49/31 — unreachable); see test/RETIRED_SWARM_ENDLESS.md. The
+  // burrower's shell law survives on the last ordinary reserve round.
+  const h = fixture({ wave: 29 });
+  // Cracked shell: the struck cell dies, a neighbor inside the splash dies by explosive
+  // law, a body outside the splash survives, and the shell body is spent.
   const mites = [];
   for (let i = 0; i < h.bodies.alive.length; i++) {
     if (h.bodies.alive[i] && h.familyOf(i) === 'mite') mites.push(i);
   }
-  assert.ok(mites.length >= 3, 'wave 55 fields the fodder');
+  assert.ok(mites.length >= 3, 'wave 29 fields the fodder');
   const [a, b, c] = mites;
   h.bodies.px[a] = 5000; h.bodies.pz[a] = 5000;
   h.bodies.px[b] = 5010; h.bodies.pz[b] = 5000; // inside splashRadius 26
   h.bodies.px[c] = 5060; h.bodies.pz[c] = 5000; // outside the splash
-  const kb = h.firstAlive('keelback');
-  assert.ok(kb >= 0, 'wave 55 fields a keelback');
-  h.bodies.px[kb] = 5012; h.bodies.pz[kb] = 5000; // inside the splash — armored
   const shell = h.placeRemain('cracked_shell', { x: 5000, z: 5000 }, { x: 100, z: 0 },
     { familyId: 'burrower', splashRadius: 26 });
   const spends = () => h.emitted.filter((e) => e.event === 'swarm:broodRemainsSpent'
@@ -176,25 +184,8 @@ test('the new kinds throw, splash and spend exactly like the six — and the spl
   assert.equal(h.bodies.alive[a], 0, 'the shell lands the impact kill');
   assert.equal(h.bodies.alive[b], 0, 'the splash takes the close neighbor');
   assert.equal(h.bodies.alive[c], 1, 'a body outside the splash survives');
-  assert.equal(h.bodies.alive[kb], 1, 'the keelback shell pings the explosive splash off');
   assert.equal(shell.alive, false, 'the shell shatters — its body is spent');
   assert.equal(spends().length, 1, 'the spend receipt went out exactly once');
-
-  // Spent charge: same law — a weak pop, spent on impact.
-  const mites2 = [];
-  for (let i = 0; i < h.bodies.alive.length; i++) {
-    if (h.bodies.alive[i] && h.familyOf(i) === 'mite') mites2.push(i);
-  }
-  assert.ok(mites2.length >= 2);
-  const [d, e] = mites2;
-  h.bodies.px[d] = -5000; h.bodies.pz[d] = -5000;
-  h.bodies.px[e] = -5020; h.bodies.pz[e] = -5000; // inside splashRadius 34
-  const charge = h.placeRemain('spent_charge', { x: -5000, z: -5000 }, { x: 100, z: 0 },
-    { familyId: 'remora', splashRadius: 34 });
-  h.tick();
-  assert.equal(h.bodies.alive[d], 0, 'the charge lands the impact kill');
-  assert.equal(h.bodies.alive[e], 0, 'the weak pop takes the close neighbor');
-  assert.equal(charge.alive, false, 'the spent charge is spent for good');
 });
 
 test('a late remain still plows at speed — light mass under the pebble gate is a weapon', () => {
@@ -251,9 +242,12 @@ test('the effect leaves deliver: the gloomcap bursts on the pack, the keelback s
 });
 
 test('the mother\'s unspent tide dies with her — she spills no bodies at all', () => {
-  const h = fixture();
+  // C01-01: the claim is wave-agnostic — the mother opens at 23 — so the probe moves to
+  // the last ordinary reserve round (the wave-55 fixture fielded the deep band, all
+  // unreachable; see test/RETIRED_SWARM_ENDLESS.md).
+  const h = fixture({ wave: 29 });
   const i = h.firstAlive('brood_mother');
-  assert.ok(i >= 0, 'wave 55 fields a brood mother');
+  assert.ok(i >= 0, 'wave 29 fields a brood mother');
   const reserve0 = h.engine._mother().reserve;
   const left0 = h.bodies.birthLeft[i];
   assert.ok(left0 > 0, 'she was assigned a tide to strand');
@@ -303,7 +297,7 @@ test('the honest-nothing leaves stay nothing: grey ash and a slack eddy drop no 
 
 test('the earlier families are unchanged: the six kinds, the two validators, the split payout', () => {
   assert.deepEqual(swarmBroodIssues(), []);
-  assert.deepEqual(swarmBroodLateIssues(), []);
+  assert.deepEqual(swarmBroodLateIssues(), STRAIN_ISSUES);
   const baseKinds = {};
   for (const f of SWARM_BROOD_FAMILIES) if (f.remains) baseKinds[f.id] = f.remains.kind;
   assert.deepEqual(baseKinds, {
@@ -328,7 +322,7 @@ test('the earlier families are unchanged: the six kinds, the two validators, the
 });
 
 test('the late validator flags a malformed remains spec and passes the honest one', () => {
-  assert.deepEqual(swarmBroodLateIssues(), []);
+  assert.deepEqual(swarmBroodLateIssues(), STRAIN_ISSUES);
   const fam = swarmBroodLateFamily('burrower');
   const honest = fam.remains;
   try {
@@ -342,5 +336,5 @@ test('the late validator flags a malformed remains spec and passes the honest on
   } finally {
     fam.remains = honest;
   }
-  assert.deepEqual(swarmBroodLateIssues(), [], 'restoring the authored spec keeps the table clean');
+  assert.deepEqual(swarmBroodLateIssues(), STRAIN_ISSUES, 'restoring the authored spec leaves only the strain flags');
 });

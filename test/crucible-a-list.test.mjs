@@ -130,18 +130,10 @@ test('five door arenas and four champions each change the room', () => {
     arenaId: 'helios_core', arenaPhase: 'boss', bossRoom: boss.room, wave: 10, seed: 4242, laneGate: 'front',
   }).note);
   assert.equal(new Set(rooms).size, SWARM_BOSS_ROTATION.length, rooms.join(' | '));
+  // C01-01: wave 20 is the Yardmaster's champion round — its packages share one gate.
   const wing = swarmOpeningPackages(20, () => 0.2).filter((pkg) => pkg.champion);
   assert.ok(wing.length >= 1);
   assert.ok(wing.every((pkg) => pkg.gateGroup === wing[0].gateGroup));
-  // The Quiet Choir's ghosts hold a far gate at standoff and never chase. Its wave follows
-  // its slot in the boss rotation — resolve it rather than pin a number, since the wave-40
-  // slot became the Corsair Wing when the rotation grew capital champions (quiet_choir is
-  // index 5, so its first boss wave is 60).
-  const choirWave = (SWARM_BOSS_ROTATION.findIndex((boss) => boss.id === 'quiet_choir') + 1)
-    * SWARM_BOSS_EVERY;
-  const choir = swarmOpeningPackages(choirWave, () => 0.2).filter((pkg) => pkg.enemyId === 'quiet_ghost');
-  assert.ok(choir.length >= 1, 'the Quiet Choir still fields its ghosts');
-  assert.ok(choir[0].distance > 200);
 });
 
 test('seed 4242 swarm opening names the bank, the pursuit, and a neighbor hit', () => {
