@@ -1964,10 +1964,31 @@ export function createHud(ctx, alerts) {
   let receiptLanePlacementDirty = true;
   let receiptIdleSlowTicks = 0;
   let receiptGeometryReusable = false;
-  function invalidateReceiptLane() {
+  let receiptGeometryKeep = false;
+  function invalidateReceiptLane(clearGeometry = true) {
     receiptLanePlacementDirty = true;
-    receiptGeometryReusable = false;
-    if (!receiptGeometryRects) return;
+    if (clearGeometry) {
+      receiptGeometryReusable = false;
+      receiptGeometryKeep = false;
+    }
+    if (!receiptGeometryRects) {
+      // A content change before the first measured flush still asks the next flush to retain the
+      // geometry it measures, so subsequent content changes can reuse it.
+      if (!clearGeometry) receiptGeometryKeep = true;
+      return;
+    }
+    if (!clearGeometry) {
+      // Content-only change (toast/alert/caption text or show/hide): unrelated HUD obstacles did
+      // not move, so keep their measured rects and re-measure only the lane/card/caption through
+      // the style-write eviction. Selector membership can change, so drop the query lists. The
+      // measured map survives the flush so the next content change can reuse it.
+      receiptGeometryReusable = true;
+      receiptGeometryKeep = true;
+      receiptGeometryRects.bm = null;
+      receiptGeometryRects.q = null;
+      receiptGeometryRects.resp = null;
+      return;
+    }
     // A layout/settings/content invalidation makes every cached rect and selector list stale.
     // The 10 Hz busy-lane safety tick re-places through `refreshReceiptLanePlacement` instead.
     receiptGeometryRects.clear();
@@ -1982,6 +2003,7 @@ export function createHud(ctx, alerts) {
     if (receiptLanePlacementDirty) return;
     receiptLanePlacementDirty = true;
     receiptGeometryReusable = receiptGeometryRects !== null;
+    receiptGeometryKeep = true;
   }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
@@ -3005,7 +3027,7 @@ export function createHud(ctx, alerts) {
       caption.classList.remove('show');
       caption.hidden = true;
       flightTextObstaclesStale = true;
-      invalidateReceiptLane();
+      invalidateReceiptLane(false);
       return;
     }
     caption.textContent = p.text;
@@ -3019,7 +3041,7 @@ export function createHud(ctx, alerts) {
       else setTimeout(releaseCaptionFlush, 16);
     }
     caption.classList.add('show');
-    invalidateReceiptLane();
+    invalidateReceiptLane(false);
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
     const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
@@ -3032,7 +3054,7 @@ export function createHud(ctx, alerts) {
         caption.hidden = true;
           externalCaptionsStale = true;
           flightTextObstaclesStale = true;
-          invalidateReceiptLane();
+          invalidateReceiptLane(false);
       }, 220); // let the fade-out finish before hiding
     }, ttl);
   });
@@ -6929,14 +6951,14 @@ export function createHud(ctx, alerts) {
     externalCaptionOpacity.set(el, el.style?.opacity || '');
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    invalidateReceiptLane();
+    invalidateReceiptLane(false);
     return true;
   }
   function refreshExternalFlightCaption(el) {
     if (!el || !externalFlightCaptions.has(el)) return false;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    invalidateReceiptLane();
+    invalidateReceiptLane(false);
     return true;
   }
   function releaseExternalFlightCaption(el) {
@@ -6947,7 +6969,7 @@ export function createHud(ctx, alerts) {
     clearExternalFlightCaptionPlacement(el);
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    invalidateReceiptLane();
+    invalidateReceiptLane(false);
     return true;
   }
   function placeOrdinaryCaptionInSafeBands(layout, w, h) {
@@ -6992,9 +7014,12 @@ export function createHud(ctx, alerts) {
       return;
     }
     // Content/layout invalidations measure from scratch; the busy-lane safety tick may re-place
-    // against the last measured geometry. The band memo is per-flush either way.
+    // against the last measured geometry. A content-only flush keeps the measured map for the
+    // next content change. The band memo is per-flush either way.
     const reuse = receiptGeometryReusable && receiptGeometryRects !== null;
+    const keep = receiptGeometryKeep || reuse;
     receiptGeometryReusable = false;
+    receiptGeometryKeep = false;
     if (!reuse) receiptGeometryRects = new Map();
     receiptGeometryRects.bm = null;
     try { placeReceiptLane(); }
@@ -7002,9 +7027,10 @@ export function createHud(ctx, alerts) {
       // A failed placement cannot retain a half-invalidated snapshot.
       receiptGeometryRects = null;
       receiptGeometryReusable = false;
+      receiptGeometryKeep = false;
       throw error;
     }
-    finally { if (!reuse) receiptGeometryRects = null; }
+    finally { if (!keep) receiptGeometryRects = null; }
   }
   function prepareReceiptLaneSize(laneRoot, laneWidth) {
     const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
@@ -7154,7 +7180,7 @@ export function createHud(ctx, alerts) {
   on('hud:receiptGeometryChanged', () => {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    invalidateReceiptLane();
+    invalidateReceiptLane(false);
   });
   if (typeof MutationObserver !== 'undefined') {
     const alertLaneOptions = {
@@ -7166,9 +7192,11 @@ export function createHud(ctx, alerts) {
       if (!alertLane || alertLaneObserver) return false;
       alertLaneObserver = new MutationObserver((records) => {
         if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
+        const layoutChange = !!records?.some((record) => record.target === document.documentElement
+          && record.attributeName === 'data-sf-mobile-flight');
         alertLanePlacementStale = true;
         flightTextObstaclesStale = true;
-        invalidateReceiptLane();
+        invalidateReceiptLane(layoutChange);
       });
       alertLaneObserver.observe(alertLane, alertLaneOptions);
       if (document.documentElement) alertLaneObserver.observe(document.documentElement, {
@@ -7319,7 +7347,7 @@ export function createHud(ctx, alerts) {
     for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe, #sf-sector-law[data-flight-critical="true"]:not([hidden])') || []) {
       externalFlightCaptions.add(el);
     }
-    if (externalFlightCaptions.size) invalidateReceiptLane();
+    if (externalFlightCaptions.size) invalidateReceiptLane(false);
   }
 
   refreshLeftContextClasses();

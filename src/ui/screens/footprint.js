@@ -29,6 +29,8 @@ import { createHeatDial, heatReading } from '../orrery/footprintDial.js';
 import { injectFootprintLayouts } from '../orrery/footprintLayouts.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { crestUrl } from '../orrery/crestOrbit.js';
+import { counted } from '../numberFormat.js';
+
 
 /** The bounty's produced token (assets/ui/generated/footprint/manifest.json); a chain carries its power's crest. */
 const BOUNTY_SEAL = new URL('../../../assets/ui/generated/footprint/bounty_seal.webp', import.meta.url).href;
@@ -793,8 +795,8 @@ export const footprintScreen = {
     this._titleWord.classList.toggle('fp-display--calm', display.tone === 'calm');
     const settledChains = chains.length - openChains;
     const chainWords = recordWord ? recordWord.toLowerCase()
-      : openChains ? `${openChains} open chain${openChains === 1 ? '' : 's'}`
-        : settledChains ? `${settledChains} chain${settledChains === 1 ? '' : 's'} settled`
+      : openChains ? `${counted(openChains, 'open chain', 'open chains')}`
+        : settledChains ? `${counted(settledChains, 'chain', 'chains')} settled`
           : 'no chain on the record';
     this._titleLine.textContent = heatLevel > 0
       ? `${bounty > 0 ? `${creditsText(bounty)} bounty · ` : ''}heat T${heatLevel} · ${said.clears} · ${chainWords}`
@@ -902,7 +904,7 @@ export const footprintScreen = {
     let rule = '';
     if (!reading || reading.level <= 0) {
       top = bounty > 0 ? 'No search on you · the bounty stands' : (recordWord ? 'No search on you' : 'Clean record · no search on you');
-      rule = recordWord ? '' : (settled ? `${settled} chain${settled === 1 ? '' : 's'} settled${older ? ` · ${older} older` : ''}` : 'No chain on the record');
+      rule = recordWord ? '' : (settled ? `${counted(settled, 'chain', 'chains')} settled${older ? ` · ${older} older` : ''}` : 'No chain on the record');
     } else {
       const zone = `Search zone ${Math.round(reading.radius).toLocaleString('en-US')} u`;
       if (reading.held === 'impound') top = 'Impounded · recover the hull at the pound';
@@ -1310,7 +1312,7 @@ export const footprintScreen = {
       .filter((chain) => chain && chain.open === true && !chainHeldOpen(chain, state, opts))
       .map((chain) => asString(chain.id))
       .filter((id) => (this._sources || []).some((entry) => entry.id === id));
-    const plural = (n) => `${n} source${n === 1 ? '' : 's'}`;
+    const sourceCount = (n) => counted(n, 'source', 'sources');
     if (action === 'pay-bounty') {
       if (!v.payBounty.enabled) return { action, settles: [], line: v.payBounty.reason };
       const settles = ['bounty', ...settlesBy({ bounty: 0 })];
@@ -1319,7 +1321,7 @@ export const footprintScreen = {
       return {
         action, settles,
         bountyHtml: this._bountyHtml(bounty, 0),
-        line: `Pays ${creditsText(bounty)} · settles ${plural(settles.length)}${clean ? ' · the record reads clean' : ''}`,
+        line: `Pays ${creditsText(bounty)} · settles ${sourceCount(settles.length)}${clean ? ' · the record reads clean' : ''}`,
       };
     }
     if (action === 'bribe') {
@@ -1327,7 +1329,7 @@ export const footprintScreen = {
       const settles = settlesBy({ bounty, calmFaction: v.factionId });
       return {
         action, settles,
-        line: `Pays ${creditsText(v.bribeState.cost)} · ${shortFactionName(v.factionId)} lifts to −29 · settles ${plural(settles.length)}`,
+        line: `Pays ${creditsText(v.bribeState.cost)} · ${shortFactionName(v.factionId)} lifts to −29 · settles ${sourceCount(settles.length)}`,
       };
     }
     if (action === 'find-accuser') {

@@ -28,7 +28,6 @@ import {
 } from '../presentation/flightOverheadMath.js';
 import { resolveSteeringView, racingRigOf } from '../systems/racingSteer.js';
 import { createRacingCameraBlend, stepRacingCameraBlend } from './racingCameraBlend.js';
-import { isSwarmControls } from '../data/swarmControls.js';
 // The settled chase-framing derivation (speed-zoom, threat/tether/gyre composition,
 // safe-rect, zoom ceilings) lives in src/render/tabletopPolicy.js — a Three-free module
 // the sim-lane projector (tableWorldToScreen) also consumes, so the worker's analytic
@@ -201,6 +200,9 @@ const MOTION_REDUCE_SHAKE_SCALE = 0.25;
 export const MASSLINE_RELEASE_ZOOM_MIN = 0.06;
 export const MASSLINE_RELEASE_ZOOM_MAX = 0.14;
 export const MASSLINE_RELEASE_ZOOM_DURATION_S = 0.65;
+// G18-03 — the release beat is a directed pull along the throw: ~3 world units on the shared
+// impact-kick envelope (the ~0.12 s pull the packet asks for), in every mode the Line works.
+export const MASSLINE_RELEASE_PULL_WU = 3;
 const TRAUMA_DECAY_PER_S = 1.8;
 const MAX_MOMENTUM_TRAUMA = 0.5;
 // PQ-159.00 impact kick: a DIRECTED, translational jolt — the whole frame slides a few world units
@@ -429,20 +431,25 @@ export const CAMERA_TRAUMA_TUNING = Object.freeze({
   }),
 });
 
+// G18-03 — the light kill nudge: about 2 world units along the kill direction, riding the
+// shared impact-kick envelope (fast rise, ~0.4 s settle tail). Throw-weight ships <= 32 t die
+// constantly, so their beat stays translational and small rather than borrowing the zoom kiss.
+export const LIGHT_KILL_KICK_WU = 2;
+
 // FB-084 — the kill camera beat scales with victim weight and agrees with the ear. The tier
 // boundaries are the SAME acoustic-mass law the collision/kill audio resolves (COLLISION_CUE in
 // src/audio/audioSystem.js, imported below — one shared source, so a beat and its sound cannot
 // disagree about the victim). Light kills — the wasp and the throw-weight darts under the law's
-// unknown-mass nominal — get NO beat; medium keeps the authored 0.96x/250 ms kiss verbatim;
-// heavy and capital push deeper and hold longer, the capital hush already being the ear's side
-// of the same tier. The beat is push-zoom + hold only: no translational shake, no hit-stop change.
+// unknown-mass nominal — get the directed nudge (G18-03), not the zoom kiss; medium keeps the
+// authored 0.96x/250 ms kiss verbatim; heavy and capital push deeper and hold longer, the
+// capital hush already being the ear's side of the same tier.
 export const KILL_BEAT_TUNING = Object.freeze({
   tiers: Object.freeze({
-    light: Object.freeze({ factor: 0, durationS: 0, holdS: 0 }),
+    light: Object.freeze({ factor: 0, durationS: 0, holdS: 0, kickWu: LIGHT_KILL_KICK_WU }),
     // The old one-size kill-cam kiss, kept verbatim as the medium tier.
-    medium: Object.freeze({ factor: -0.04, durationS: 0.25, holdS: 0 }),
-    heavy: Object.freeze({ factor: -0.07, durationS: 0.4, holdS: 0.2 }),
-    capital: Object.freeze({ factor: -0.1, durationS: 0.7, holdS: 0.35 }),
+    medium: Object.freeze({ factor: -0.04, durationS: 0.25, holdS: 0, kickWu: 0 }),
+    heavy: Object.freeze({ factor: -0.07, durationS: 0.4, holdS: 0.2, kickWu: 0 }),
+    capital: Object.freeze({ factor: -0.1, durationS: 0.7, holdS: 0.35, kickWu: 0 }),
   }),
 });
 
@@ -458,7 +465,7 @@ export function resolveKillBeatTier(victimMass, capital = false) {
   if (mass >= COLLISION_CUE.MASS_HEAVY) return 'capital';
   if (mass >= COLLISION_CUE.TIER_HEAVY_MASS) return 'heavy';
   // The light swarm class (wasp 16 through the <=32 throw-weight darts) sits below the law's
-  // unknown-mass nominal; those deaths flicker, they do not beat.
+  // unknown-mass nominal; those deaths get the small directed nudge, not the zoom kiss.
   if (mass >= COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN) return 'medium';
   return 'light';
 }
@@ -477,8 +484,11 @@ export function resolveKillBeat(victimMass, opts = {}) {
     factor: authored.factor,
     durationS: authored.durationS,
     holdS: authored.holdS,
+    kickWu: authored.kickWu || 0,
     reducedMotion,
     zoom: !reducedMotion && authored.factor < 0,
+    // The light-tier kick is pure vestibular motion like every impactKick — gone under reduce.
+    kick: !reducedMotion && (authored.kickWu || 0) > 0,
   };
 }
 
@@ -553,6 +563,26 @@ export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) 
     finiteOr(payload && payload.bonusDv, 0) || finiteOr(payload && payload.selfSlingBonusDv, 0));
   const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && bonusDv > 0);
   const strength = clamp01(bonusDv / 165);
+  // G18-03 — the throw direction: the self-sling receipt carries `exitAngle` (the release
+  // velocity's azimuth); fall back to a normalized velocity vector when a different receipt
+  // supplies one. No usable direction, no pull — the zoom beat still stands on its own.
+  let pullDirX = 0;
+  let pullDirZ = 0;
+  const exitAngle = payload && payload.exitAngle;
+  if (Number.isFinite(exitAngle)) {
+    pullDirX = Math.cos(exitAngle);
+    pullDirZ = Math.sin(exitAngle);
+  } else {
+    const v = payload && payload.velocity;
+    const vx = finiteOr(v && v.x, 0);
+    const vz = finiteOr(v && v.z, 0);
+    const len = Math.hypot(vx, vz);
+    if (len > 1e-6) {
+      pullDirX = vx / len;
+      pullDirZ = vz / len;
+    }
+  }
+  const hasDir = pullDirX * pullDirX + pullDirZ * pullDirZ > 1e-12;
   return {
     source: 'massline',
     physicsEarned: earned,
@@ -561,14 +591,17 @@ export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) 
       : MASSLINE_RELEASE_ZOOM_MIN
         + (MASSLINE_RELEASE_ZOOM_MAX - MASSLINE_RELEASE_ZOOM_MIN) * strength,
     durationS: motionReduced ? 0 : MASSLINE_RELEASE_ZOOM_DURATION_S,
+    pullWu: motionReduced || !earned || !hasDir ? 0 : MASSLINE_RELEASE_PULL_WU,
+    pullDirX,
+    pullDirZ,
   };
 }
 
 export function applyMasslineReleaseCameraCue(cameraController, state, payload = {}) {
+  // G18-03 — the release beat answers in every mode the Line works: Swarm keeps it now,
+  // the S6 survival gate is gone. The cue itself is a directed pull along the throw plus
+  // the standing zoom punch and recenter; reduced motion zeroes the moving parts in resolve.
   const cue = resolveMasslineReleaseCameraCue(payload, isMotionReduced(state));
-  // S6: in a live Swarm run Line moves never change the frame — the release keeps its
-  // recenter and receipt, the punch stays out.
-  if (isSwarmControls(state)) cue.zoomFactor = 0;
   const receipt = {
     schema: 'spaceface.masslineReleaseCameraCue.v1',
     releaseId: payload.releaseId || null,
@@ -576,6 +609,7 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
     physicsEarned: cue.physicsEarned,
     zoomFactor: cue.zoomFactor,
     durationS: cue.durationS,
+    pullWu: cue.pullWu,
     tick: Math.max(0, Math.trunc(finiteOr(state && state.tick, 0))),
   };
   if (cue.physicsEarned && cameraController && typeof cameraController.easeRecenter === 'function') {
@@ -583,6 +617,9 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
   }
   if (cue.zoomFactor > 0 && cameraController && typeof cameraController.pushZoom === 'function') {
     cameraController.pushZoom(cue.zoomFactor, cue.durationS);
+  }
+  if (cue.pullWu > 0 && cameraController && typeof cameraController.impactKick === 'function') {
+    cameraController.impactKick(cue.pullDirX, cue.pullDirZ, cue.pullWu);
   }
   if (state) {
     if (!state.render) state.render = {};
@@ -937,20 +974,33 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     killCam(victimMass, opts = {}) {
       // FB-084 weight-keyed kill beat: resolveKillBeat maps the victim's acoustic mass (the same
       // number the kill audio ladder keys) onto the tier table beside CAMERA_TRAUMA_TUNING.
-      // Light kills beat nothing; reduced motion keeps the hold and drops the zoom. No payload
-      // resolves through the unknown-mass law (the conservative medium kiss).
+      // Reduced motion keeps the hold and drops the zoom. No payload resolves through the
+      // unknown-mass law (the conservative medium kiss).
       const beat = resolveKillBeat(victimMass, {
         capital: opts.capital === true,
         reducedMotion: isMotionReduced(state),
       });
-      if (beat.tier === 'light' || (!beat.zoom && beat.holdS <= 0)) return null;
-      // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
-      if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
-      if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
+      if (beat.tier === 'light') {
+        // G18-03 — the light tier's beat is the directed nudge, not the zoom kiss. It needs the
+        // kill direction the presentation receipt carries (opts.direction); a direction-less or
+        // reduced-motion kill stays silent rather than nudging a random way.
+        if (!beat.kick) return null;
+        const dir = opts.direction;
+        const dx = dir && Number.isFinite(dir.x) ? dir.x : 0;
+        const dz = dir && Number.isFinite(dir.z) ? dir.z : 0;
+        if (dx * dx + dz * dz <= 1e-12) return null;
+        this.impactKick(dx, dz, beat.kickWu);
+      } else {
+        if (!beat.zoom && beat.holdS <= 0) return null;
+        // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
+        if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
+        if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
+      }
       _killBeatLog.push({
         tier: beat.tier,
         zoom: beat.zoom === true,
         holdS: beat.holdS,
+        kick: beat.kick === true,
         tick: Number.isFinite(state && state.tick) ? state.tick | 0 : 0,
       });
       if (_killBeatLog.length > KILL_BEAT_LOG_CAP) _killBeatLog.shift();

@@ -98,7 +98,7 @@ test('Orchard gust follows the saved phase through Continue and sector return wi
     assert.ok(forecast.localStrength > 0 && forecast.localStrength < ANVIL_ORCHARD_GUST_PROFILE.strength,
       'forecast reads the kernel-sampled local acceleration, not the nominal peak as a per-point force');
     assert.equal(hud._resolve(null, t.state.simTime, forecast).text.includes('FORECAST 1s'), true);
-    assert.equal(hud._resolve(null, t.state.simTime, forecast).text.includes('WU/s²'), true);
+    assert.equal(hud._resolve(null, t.state.simTime, forecast).text.includes('u/s²'), true);
     player.pos.x = geometry.center.x + 450 * Math.cos(1.25) * geometry.dir.x - 450 * Math.sin(1.25) * geometry.dir.z;
     player.pos.z = geometry.center.z + 450 * Math.sin(1.25) * geometry.dir.x + 450 * Math.cos(1.25) * geometry.dir.z;
     const safePocket = hud._resolveEnvironmental(t.state, t.state.simTime);

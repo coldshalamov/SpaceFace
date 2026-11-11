@@ -64,6 +64,8 @@ import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/
 import { LINE_BANK, lineWords, pinWords, pullWords, shoveWords, staticVerbSentence } from '../data/arsenalWords.js';
 import { collectorRailSlot } from '../data/collectorKnot.js';
 import { collectorFitted } from '../core/fields/fieldReadModel.js';
+import { pluralWord } from './numberFormat.js';
+
 
 export const BAND_DRIVE = 'DRIVE';
 export const BAND_PULL = 'PULL';
@@ -473,7 +475,7 @@ export function readRailModel(state, nowS) {
     // A stocked swarm call-in outranks the drift bomb on the press (input.js), so the socket names it.
     name: `${bombAct.name} ×${bombAct.stock}`, glyph: bombAct.id,
     state: 'ready', cooldownMs: 0, badge: 'CALL-IN', callin: true,
-    why: `Ready · ${bombAct.stock} ${bombAct.stock === 1 ? 'charge' : 'charges'} left this run`,
+    why: `Ready · ${bombAct.stock} ${pluralWord(bombAct.stock, 'charge', 'charges')} left this run`,
     description: `${bombAct.name}: one Bomb press calls it in and spends one. With none left, Bomb falls back to your drift bomb.`,
   } : bombUsesCharge(s) ? {
     name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,

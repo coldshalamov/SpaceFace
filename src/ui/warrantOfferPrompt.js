@@ -70,10 +70,10 @@ export const warrantOfferPrompt = {
       sender: `${hunter.callsign.toUpperCase()} — ${hunter.name.toUpperCase()}`,
       statusFlag: 'WARRANT',
       headline: 'SETTLE THE BOUNTY',
-      detail: `${line ? `${line} ` : ''}The bounty stands at ${owed} cr.${short ? ` You hold ${credits} cr.` : ''}`,
+      detail: `${line ? `${line} ` : ''}The bounty stands at ${owed.toLocaleString('en-US')} cr.${short ? ` You hold ${credits.toLocaleString('en-US')} cr.` : ''}`,
       deadlineAt: Number.isFinite(untilT) ? untilT : null,
       choices: [
-        { id: 'accept', label: `PAY ${owed} CR`, title: 'Pay the hunter the bounty on this channel — the warrant clears and she stands down. The economy re-checks your credits; nothing is charged twice.' },
+        { id: 'accept', label: `PAY ${owed.toLocaleString('en-US')} CR`, title: 'Pay the hunter the bounty on this channel — the warrant clears and she stands down. The economy re-checks your credits; nothing is charged twice.' },
         { id: 'decline', label: 'DECLINE', title: 'Close the channel. Nothing is sent; when the offer runs out the hunter opens fire.', cancel: true },
       ],
       onChoose: (choiceId) => this.choose(choiceId),
@@ -109,7 +109,7 @@ export const warrantOfferPrompt = {
         const owed = crOf(state && state.player && state.player.bounty);
         const credits = crOf(state && state.player && state.player.credits);
         bus.emit('toast', {
-          text: `SHORT — the bounty is ${owed} cr and you hold ${credits} cr. Nothing was charged.`,
+          text: `SHORT — the bounty is ${owed.toLocaleString('en-US')} cr and you hold ${credits.toLocaleString('en-US')} cr. Nothing was charged.`,
           kind: 'warn', ttl: 4,
         });
       }

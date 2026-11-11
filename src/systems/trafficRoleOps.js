@@ -12,6 +12,7 @@ import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroi
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { pilotPersonalityDef } from '../data/pilotPersonalities.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { RECORD_KIND } from '../world/worldRecords.js';
@@ -712,6 +713,18 @@ export const trafficRoleOps = {
     }
 
     if (CIVILIAN_HAULER_DUMP_ROLES.has(roleName)) {
+      // CH-61: the same stimulus does not always land the same way. A cocky pilot
+      // keeps the load and just runs; everyone else (and any untemperamented hull)
+      // dumps as before.
+      const pilotDef = pilotPersonalityDef(state, e);
+      if (pilotDef && pilotDef.dumpOnViolence === false) {
+        const reaction = 'hold_cargo_flee';
+        if (rec) rec.civilianReaction = reaction;
+        if (e.data) e.data.civilianReaction = reaction;
+        setIntent(e, 0, 1, !carrying, false, null, aim);
+        if (e.data && e.data.intent) e.data.intent.brake = false;
+        return true;
+      }
       const reaction = 'dump_cargo';
       if (rec) rec.civilianReaction = reaction;
       if (e.data) e.data.civilianReaction = reaction;
@@ -2666,6 +2679,34 @@ export const trafficRoleOps = {
       entity.data.salvorTargetKey = `salvor:${this.state.meta?.seed || 1}:${entity.id}:${entity.occupantGeneration}`;
     }
     return entity.data.salvorTargetKey;
+  },
+
+  // CH-61 spacing sight: the nearest live ship-like hull ahead of this one within
+  // the band, or -1 when the lane ahead reads clear. Bounded: one capped walk of
+  // the ship-like index, run only on this hull's plan-gated ticks (the drive site
+  // sits behind _ambientPlanGate, so this is a few walks per hull per second).
+  _nearestHullAhead(entity, bandWu) {
+    if (!entity || !entity.pos || !(bandWu > 0)) return -1;
+    const ships = this.state && this.state.entityIndex && this.state.entityIndex.shipLike;
+    if (!Array.isArray(ships)) return -1;
+    const cf = Math.cos(entity.rot || 0);
+    const sf = Math.sin(entity.rot || 0);
+    let best = -1;
+    const cap = Math.min(ships.length, 64);
+    for (let i = 0; i < cap; i++) {
+      const other = ships[i];
+      if (!other || other === entity || other.alive === false || !other.pos) continue;
+      const dx = other.pos.x - entity.pos.x;
+      const dz = other.pos.z - entity.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > bandWu * bandWu) continue;
+      // "Ahead" is honest geometry: inside the nose cone, not a sphere.
+      const fwd = cf * dx + sf * dz;
+      if (fwd <= 0) continue;
+      const d = Math.sqrt(d2);
+      if (best < 0 || d < best) best = d;
+    }
+    return best;
   },
 
   _releaseShelvedSalvorClaims(worldRecordId) {

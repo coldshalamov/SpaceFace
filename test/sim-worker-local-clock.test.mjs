@@ -714,6 +714,67 @@ test('coalesced journal keeps generation reuse ordering, type remaps, and SAB bo
   }
 });
 
+test('a stopped presentation heartbeat holds the worker clock instead of running ahead', { timeout: 120000 }, async () => {
+  const replies = [];
+  let receive;
+  let workerError;
+  const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
+  const state = createGameState(4242);
+  const effects = createTimeEffects(state);
+  effects.set('runtime:loading', { scale: 0 });
+  let lane;
+  try {
+    worker.on('message', (message) => {
+      replies.push(message);
+      if (message.kind === 'error') workerError = message;
+      receive?.(message);
+    });
+    worker.on('error', (error) => { workerError = error; });
+    lane = createSimLaneRuntime({
+      state, bus: createBus(), registry: {},
+      flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
+      helpers: {
+        scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+        scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'heartbeat-hold-wire',
+      },
+      channelFactory: () => ({
+        post(message) { worker.postMessage(message); },
+        onMessage(handler) { receive = handler; },
+        onError(handler) { worker.on('error', handler); }, terminate() {},
+      }),
+    });
+    await lane.readyPromise;
+    const boot = await laneRpc('newGameBoot', { opts: { seed: 4242 }, newGamePlus: null });
+    assert.equal(boot.ok, true, workerError?.message);
+    assert.equal(boot.result.ok, true);
+    laneSetMode(state, null, 'flight');
+    laneDomEvent({ type: 'keyup', code: 'CapsLock', pressed: false, repeat: false });
+    effects.clear('runtime:loading');
+    lane.runner.setClockActive(true);
+    const latest = () => replies.filter((reply) => reply.kind === 'clockTick').at(-1);
+    await waitFor(() => latest()?.clockDiagnostics?.scale === 1 && (latest()?.stateTick || 0) >= 4, 60000);
+    // Keep the beat for a moment, then stop it as a blocked presentation thread would.
+    lane.runner.heartbeat();
+    // The worker keeps stepping for the 250 ms hold window; wait past it before measuring.
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const before = latest()?.stateTick || 0;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const heldTick = latest()?.stateTick || 0;
+    assert.ok(heldTick - before <= 1,
+      `without beats the clock holds (advanced ${heldTick - before} ticks in 500 ms)`);
+    // A fresh beat resumes stepping from the held pose, without replaying the stall. The hold
+    // counter is published on that next reply.
+    lane.runner.heartbeat();
+    await waitFor(() => (latest()?.stateTick || 0) > heldTick + 2, 30000);
+    assert.ok((latest()?.clockDiagnostics?.heartbeatHolds || 0) > 0,
+      'the worker records the presentation-stall hold on the resumed reply');
+    assert.equal(workerError, undefined);
+  } finally {
+    lane?.close();
+    await worker.terminate();
+  }
+});
+
 test('worker-local clock is unsolicited and command FIFO remains serialized', async (t) => {
   const f = makeFixture(t);
   assert.equal(f.lane.getDiagnostics().clockOwner, 'worker-local');
