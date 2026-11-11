@@ -20,6 +20,7 @@
 // danger line (the loss statement) when a call site wants it out of the reading flow.
 
 import { planConfirmCopy } from './kit/motion.js';
+import { getStage } from './stage.js';
 
 let _openResolver = null;   // tracks the currently-open dialog's resolver so only one is live at a time
 // The value a live dialog resolves on an "away" dismiss (dismissConfirm/Esc/backdrop when a
@@ -34,8 +35,11 @@ function getRoot() {
   if (!root) {
     root = document.createElement('div');
     root.id = 'sf-confirm-root';
-    // mount at top level (above screens/toasts) — falls back to body if ui-root absent
-    (document.getElementById('ui-root') || document.body).appendChild(root);
+    // G16-02: the modal mounts inside the Stage's dialog slot (its z 5000 seat above every
+    // screen stays the kit.css contract) — falls back to ui-root/body where no Stage ran.
+    const stage = getStage();
+    const slot = stage && typeof stage.slotEl === 'function' ? stage.slotEl('dialog') : null;
+    (slot || document.getElementById('ui-root') || document.body).appendChild(root);
   }
   return root;
 }
@@ -297,8 +301,8 @@ export function dismissConfirm() {
 }
 
 /**
- * Session-lifecycle binding for the shared dialog. `#sf-confirm-root` mounts outside the
- * screen manager at the top of the UI stack (z 5000, above every screen and alert) with a
+ * Session-lifecycle binding for the shared dialog. `#sf-confirm-root` mounts inside the Stage's
+ * dialog slot at the top of the UI stack (z 5000, above every screen and alert) with a
  * document-level focus trap — a pending prompt left over a Game Over or title screen eats
  * the first click and every focus move underneath it (F-START-04). Any event that ends or
  * replaces the run must release it. Returns an unsubscribe function.
