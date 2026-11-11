@@ -26,6 +26,19 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 
 ---
 
+## Senior agent — Codex (GPT 6.1 Sol), called occasionally by the lead
+
+The strongest reviewer of bugs and architecture; also does 3D/Blender work and generates images
+(concept art, textures, mockups, transparent PNGs, animated GIFs). It sometimes makes bad assumptions,
+so **the lead verifies every finding and signs off** before anything acts on it. Run:
+`node scripts/fleet/run.mjs <PACKET> codex --timeout-min=120` (counts toward the four-worker cap).
+
+| ID | Job | State |
+|---|---|---|
+| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | READY (repeat after each batch) |
+| G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
+| LOOK-01 concept frames | Before LOOK-01: Codex paints 3 concept frames of the target look (golden-hour harbour, readable, warm) from current screenshots, for the lead to choose from | READY |
+
 ## Lane 1 — taste, creative, 3D, architecture, review
 
 | ID | Job | State |
@@ -38,43 +51,52 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 | G11-01-never-freeze | The freeze plan end to end (measure quietly → one clock → adaptive playout → cheaper sim); steps 1 and PERF-02a landed | READY |
 | G18-REVIEW | On a quiet machine: `node --test test/al-race-1-contested-line-4242.test.mjs` (two Hard circuits lost the anchored-lap margin after one feel); one Adventure trace of a throw into a ship | READY |
 | G08 silhouettes | Distinct shapes per Swarm enemy (3D; the Forge route in `docs/visual-assets/README.md`) | READY |
-| WRITE G16 one glass | Write the packet: one popup host, one style (spec: EC-G16 brief, PR #1024) | READY |
+| WRITE G16 one glass | Written: G16-01 (Lane 2), G16-02 (Lane 3) from Devin's recon | DONE |
 | WRITE G20 the Rig | Write the packet(s): one loadout screen for both doors (EC-G20, PR #1032; `design/game/11`) | READY |
 | WRITE G21 the Chart | Write the packet(s): full-screen live map, layers, timetable, routes (EC-G21, PR #1033) | READY |
 | WRITE G10 first ten minutes | Write the packet(s): keep the throw, cut the drills, stage the Skim on screen (EC-G10; `design/game/16` "Cold Start") | READY |
-| WRITE A01 Foundry floor | Write 3 packets: wall guns + buy pads, the moving crate, the forge + doors (`design/game/12`, `15`) | READY |
-| WRITE A01 freight lanes | Write the packet: timetabled freight across the arena (`design/game/12` "Traffic") | READY |
+| WRITE A01 Foundry floor | Written: A01-03 drops (Lane 3), A01-04 wall guns + Crate (Lane 2). A01-05 Forge + Taps (Lane 2). Still to write: A01-06 doors + traps; the five other Forged forms; Volatile Wake + Second Reel | READY |
+| WRITE A01 freight lanes | Written: `packets/A01-02-freight-lane.md` (Lane 2) | DONE |
 | WRITE G09 one next | Write the packet: one guidance voice (EC-G09) | READY |
-| WRITE G19-02 honest hold | Write the packet: the hold shows prices; the fake scan-risk number goes (EC-G19, PR #1029) | READY |
+| WRITE G19-02 honest hold | Written: `packets/G19-02-honest-hold.md` (Lane 2) | DONE |
 | WRITE S01 Helios | Write the town packets for Helios (`design/game/13`, `09` Town Recipe, EC-S01) | READY |
 
 ## Lane 2 — large engineering with a named seam
 
 | ID | Job | State |
 |---|---|---|
+| FIX-R2-reactions-respect-job-owners | Review finding: road rage / tailgater / rubberneckers must lease job-owned hulls through npcJobs, not overwrite them | READY |
 | PERF-01-where-the-frame-goes | Seven on/off experiments on the main thread; numbers only. **Only with no other game instance running** | READY |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
-| G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | READY |
+| A01-02-freight-lane | A container string crosses the Foundry every 40 s: amber lights, horn, crushes, ride it, cut one loose | TAKEN agent2 (devin3) |
+| A01-04-wall-guns-and-the-crate | Buy on the floor: two wall guns (500) and the Crate (950, moves after 3 pulls) in the Foundry | READY |
+| A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | HOLD on A01-04 |
+| G16-01-the-stage-exists | One Stage hosts every transient popup; priority queue per slot; nothing overlaps | TAKEN agent2 (devin1) |
+| G19-02-honest-hold | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | READY |
+| G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | TAKEN agent2 (devin2) |
 | MOB-01 pinch zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | READY |
 | MOB-02 phone HUD | spec: `drafts/MOB.md` §MOB-02 + ruling 3 (HUD ≤ 25 % of 390×844, measured ≈ 50 % today; contrast in scope); prove with `ui-bench --phone` shots | READY |
 | MOB-05 flick to throw | On a phone, drag-and-release while the Line holds a body throws it along the flick (`drafts/MOB.md` §7 q1) | READY |
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | READY |
 | PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
-| DOC-02 archive the old plans | Move superseded plan banks (list from DOC-01) into `design/archive/program-2026/` with `git mv`; first `grep -rn` every moved path across `scripts/ src/ test/ tools/` and leave any file a script reads in place; update links in live docs | HOLD on DOC-01 |
+| DOC-02 archive the old plans | Move superseded plan banks (list from DOC-01) into `design/archive/program-2026/` with `git mv`; first `grep -rn` every moved path across `scripts/ src/ test/ tools/` and leave any file a script reads in place; update links in live docs | READY |
 | LOOK-02 sectors on the grade | Each sector's lights and palette onto LOOK-01's grade | HOLD on LOOK-01 |
 
 ## Lane 3 — fully specified, medium
 
 | ID | Job | State |
 |---|---|---|
+| A01-03-swarm-drops | Eight drops on the repair-cell seam (Full Rack, Heavy Hands, Dead Weight, Magnet, Big Bang, Double Scrap, Loose Cannon, Free Forge) | READY |
+| G16-02-every-popup-through-one-door | Migrate 16 straggler popups onto the Stage and the kit frame, text unchanged | HOLD on G16-01 |
+| FIX-R1-review-2026-11-11 | Five verified review findings: rubberneckers' payload, held Shove counted twice, release camera pull, near-miss lamps, two seed tests | TAKEN agent3 (flash) |
 | MOB-04 phone quality tier | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | READY |
 | MOB-03 touch controls you can read | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | READY |
 | G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | READY |
 | G11 one clock, the rest | Per-ship idle spins and shader `uTime` uniforms outside the post route still run on the wall clock: multiply their time step by `presentedAdvanceRatio()` from `src/render/presentedClock.js` (see how `renderer.js` does `_bgTime`); find them with `grep -rn "performance.now\|clock.getElapsedTime\|uTime" src/render` | READY |
 | PERF-04 late shader compiles | Three programs compile mid-flight (`npm run perf:renderer-info` names them by frame); add them to the opening prewarm cohort so the count is 0 | READY |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat) |
-| PL-03 scavenger half | PL-03 shipped with the rubberneckers only (aecf72a9): add the scavenger that arrives within a minute of a wreck in a lane | READY |
+| PL-03 scavenger half | PL-03's scavenger is only an event (review 2026-11-11): dispatch a real salvor hull through the traffic/job seam within a minute of a wreck, checking the wreck still exists | READY |
 | PL-08-applause | Station lamps flash at a slingshot kill | READY |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
 
@@ -82,7 +104,7 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 
 | ID | Job | State |
 |---|---|---|
-| DOC-01 label the old plans | Add the exact banner in `packets/DOC-01-label-the-old-plans.md` to the top of every file it lists. Nothing else | READY |
+| DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
 | PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | READY (repeat) |
 | GATE-RUN | With no other game instance running: `npm run gate`; paste the output into `HANDOFF.md` §1 under "last gate" with the date and `git rev-parse --short HEAD` | READY (repeat) |
 
