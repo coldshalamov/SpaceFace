@@ -244,7 +244,7 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; }
   ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:52px !important; }
-  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:relative !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
   ${D} .sx-dossier__terms > li { grid-template-columns:112px minmax(0, 1fr) !important; }
   ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
   ${D} .sx-dossier > .k-caps { white-space:normal !important; letter-spacing:.1em !important; line-height:1.3 !important; }
@@ -265,7 +265,7 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; margin:0 0 4px !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:24px !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__w { letter-spacing:.08em !important; overflow-wrap:normal !important; }
-  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:relative !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
   ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
   ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
   ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
