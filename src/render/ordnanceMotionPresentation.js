@@ -28,6 +28,7 @@
 // determinism-safe, zero per-frame allocation.
 
 import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 import { resolveMaydayLamp, maydayViewportBurn } from './survivorPodVisual.js';
 
 function hashId(id) {
@@ -346,7 +347,10 @@ export function createOrdnanceMotionTracker() {
       return;
     }
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const animDt = dt * ratio;
     const rec = getState(entity.id, kind);
+    rec.animTime = rec.animTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.animTime + animDt);
     let presented = meshMotion.get(mesh);
     if (!presented) {
       presented = { id: entity.id, record: rec, scaleDirty: false, scaleX: 0, scaleY: 0, scaleZ: 0 };
@@ -376,10 +380,10 @@ export function createOrdnanceMotionTracker() {
     const sizeFactor = resolveSizeTumbleFactor(radius, cfg.sizeRef);
     if (!reducedMotion && kind !== 'beacon') {
       const rate = stuckBlend * sizeFactor;
-      rec.tumbleX += (rec.tumbleRateX * rate + rec.tumbleKickX * rate) * dt;
-      rec.tumbleZ += (rec.tumbleRateZ * rate + rec.tumbleKickZ * rate) * dt;
+      rec.tumbleX += (rec.tumbleRateX * rate + rec.tumbleKickX * rate) * animDt;
+      rec.tumbleZ += (rec.tumbleRateZ * rate + rec.tumbleKickZ * rate) * animDt;
       // Thrown kicks decay into the base tumble over ~2 s — the arrival spin settles to cruise.
-      const decay = Math.exp(-1.6 * dt);
+      const decay = Math.exp(-1.6 * animDt);
       rec.tumbleKickX *= decay;
       rec.tumbleKickZ *= decay;
     }
@@ -391,7 +395,7 @@ export function createOrdnanceMotionTracker() {
     const expireAt = Number(data.expireAt);
     const warn = kind === 'beacon' && Number.isFinite(expireAt) && expireAt - simTime < BEACON_WARN_S;
     if (!reducedMotion && kind === 'beacon') {
-      resolveBeaconSway(simTime, rec.phase, claimBeacon, warn, swayScratch);
+      resolveBeaconSway(simTime, rec.phase, claimBeacon, warn, swayScratch); // sim-clock: already stops with the world
       swayX = swayScratch.x;
       swayZ = swayScratch.z;
       // A working buoy leans toward a close player — the mooring straining at the visitor.
@@ -527,7 +531,7 @@ export function createOrdnanceMotionTracker() {
       // flashReduce: steady viewport burn only — a distress beacon stays legible without
       // strobing. reducedMotion alone halves the gain; the rhythm never silences.
       const gain = reducedFlash ? 0 : (reducedMotion ? 0.5 : 1);
-      const sample = resolveMaydayLamp(simTime, lamp.ejectedAt, lamp.expireAt, lamp.phase, gain);
+      const sample = resolveMaydayLamp(simTime, lamp.ejectedAt, lamp.expireAt, lamp.phase, gain); // ejectedAt/expireAt are sim times — same clock
       const burn = maydayViewportBurn(sample.flash);
       if (lamp.material && lamp.material.emissiveIntensity !== burn) {
         lamp.material.emissiveIntensity = burn;
