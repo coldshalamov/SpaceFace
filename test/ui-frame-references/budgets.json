@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "9b28976d6355ca01e5b9f533228c8e5be3abac429a88e4d658ad5cc6d798bfeb",
+  "uiSourceDigest": "2fcd6fba5b552bd1de76e254ebe481196472f9b63b9a0ec14972e7b802adea51",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -192,7 +192,7 @@
     "src/ui/orrery/crucible-resultsLayouts.js": "f8e4843f91d8fe29c34a95b7284f4f93d45744ca7ffc4ca28124630a9438622e",
     "src/ui/orrery/crucibleArmory.js": "167dc66b2851dff4a09a21d403da6708593f61363c2904290cbb901806f0b7c3",
     "src/ui/orrery/cruciblePreparation.js": "61d60d5a300b872f7663cdf18174482e5ad047e6c783ed46030173d715b2f3dc",
-    "src/ui/orrery/cruciblePreparationLayouts.js": "7fb43286cc4a7055f2b30bc929f70a77e0700a03c9644c22daad58d5cf1285a5",
+    "src/ui/orrery/cruciblePreparationLayouts.js": "cb54e9a7a279a21959a2f355da66e1fcd0c58cce4b9e853f9f42eceefdbcc37b",
     "src/ui/orrery/crucibleResultsLayouts.js": "56acefc20249f2fb0dc9e1f47067b95ee368983a6334a2e37dd1c470547c65a8",
     "src/ui/orrery/cssSidecar.js": "1d4cdc61d369ad2eb00a20031667321878db63f28d4d6c0a6fe58a77e914f2fb",
     "src/ui/orrery/deathDial.js": "d3b958011a57888791065a4f9ecc283065f8d2b9f3e4ce660a299f80e0261ffa",
