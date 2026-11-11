@@ -206,6 +206,21 @@ export function confirm(opts) {
   });
   setTimeout(recoverInitialFocus, 30);
 
+  // G16-03 the Stage enforces: the centre dialog rides the dialog slot's queue — while a
+  // station/menu screen holds the seat (screenManager) this waits below it and mounts when the
+  // screen closes; onMount re-runs the initial focus then, so a deferred dialog still lands on
+  // its safe default. Bare: the root's own fixed overlay and .sf-confirm chrome are the frame.
+  const stage = getStage();
+  let stageHandle = null;
+  if (stage && typeof stage.show === 'function') {
+    stageHandle = stage.show('dialog', root, {
+      id: 'sf-confirm',
+      severity: opts.danger ? 'danger' : 'warn',
+      bare: true,
+      onMount: () => { if (!settled && root._sfConfirmToken === token) focusInitial(); },
+    });
+  }
+
   // build the promise + a settle closure that tears down the dialog, restores focus, and resolves.
   let _resolve;
   const promise = new Promise((res) => { _resolve = res; });
@@ -215,6 +230,10 @@ export function confirm(opts) {
   const close = (v) => {
     if (settled) return;
     settled = true;
+    // Release the Stage seat first — keepEl leaves the root mounted for its exit beat; the
+    // emptied root is :empty (display:none) once teardown clears it, and a queued prompt that
+    // never mounted just leaves the queue.
+    if (stageHandle) { stageHandle.clear({ keepEl: true }); stageHandle = null; }
     root.classList.remove('sf-confirm--in');
     // Keep modal/input-fence ownership until delayed cleanup completes so keyboard cannot race
     // the fade-out while focus still lives on dialog controls. Supersession still works via
