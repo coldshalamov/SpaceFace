@@ -145,6 +145,7 @@ import { createToasts } from './toasts.js';
 import { createWatchlistHud } from './watchlistHud.js';
 import { createGlobalFind } from './globalFind.js';
 import { createDiscoveryPlate } from './discoveryPlate.js';
+import { createLineClassMoment } from './lineClassMoment.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
@@ -714,6 +715,8 @@ export const ui = {
     this.watchlistHud = createWatchlistHud(ctx);
     // Feature 20: first-discovery glass plate (POI / unique wreck / flagship ace receipts).
     this.discoveryPlate = createDiscoveryPlate(ctx);
+    // G19-01: a line class-up is a moment — the plate surface says it and the unlock cue plays.
+    this.lineClassMoment = createLineClassMoment({ bus: ctx.bus, plate: this.discoveryPlate });
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus, () => !!(this.screenManager

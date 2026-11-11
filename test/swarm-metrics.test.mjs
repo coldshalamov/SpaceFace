@@ -280,7 +280,11 @@ test('.01 opening reward-reference is 15; later waves still climb; concurrency u
   assert.equal(swarmQuota(2), 34);
   assert.ok(swarmQuota(2) > swarmQuota(1));
   assert.ok(swarmQuota(12) > swarmQuota(1));
-  assert.equal(swarmQuota(60), SWARM_QUOTA_CAP);
+  // C01-01: the course ends at wave 30 — the late ordinary rounds already sit at the cap,
+  // and the champion rounds carry the authored discount (wave 30 reads 35).
+  assert.equal(swarmQuota(26), SWARM_QUOTA_CAP);
+  assert.equal(swarmQuota(29), SWARM_QUOTA_CAP);
+  assert.equal(swarmQuota(30), 35, 'the final champion round discounts the quota');
   for (let wave = 1; wave <= 40; wave++) {
     assert.ok(swarmCurveIsSane(wave), `wave ${wave} stays sane under the opening-specific margin`);
     if (wave > 1 && !isSwarmBossWave(wave) && !isSwarmBossWave(wave - 1)) {
@@ -288,6 +292,8 @@ test('.01 opening reward-reference is 15; later waves still climb; concurrency u
       assert.ok(swarmConcurrent(wave) >= swarmConcurrent(wave - 1));
     }
   }
+  // C01-03: past the win the deep course holds the room at its own ceiling — a non-
+  // champion round that deep reads the run's maximum room, not the champion discount.
   assert.equal(swarmConcurrent(999), SWARM_CONCURRENT_MAX);
 });
 

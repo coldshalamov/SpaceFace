@@ -53,6 +53,8 @@ import {
   resolveClipFrames,
   releaseClipDownloadURLs,
 } from './clipExport.js';
+import { pluralWord } from '../numberFormat.js';
+
 
 export const CLIPS_LABEL = 'Clips';
 export const CLIPS_SCREEN_ID = 'clips';
@@ -1148,7 +1150,7 @@ function buildContent(container, ctx) {
 
   const read = el('div', 'orr-clips__read');
   const countEl = el('div', 'orr-clips__count', '0');
-  const countLabel = el('div', 'orr-clips__count-label', clips.length === 1 ? 'CLIP' : 'CLIPS');
+  const countLabel = el('div', 'orr-clips__count-label', pluralWord(clips.length, 'CLIP', 'CLIPS'));
   const runtimeEl = el('div', 'orr-clips__runtime');
   const runtimeNum = el('span', 'orr-clips__runtime-num', '0.0');
   runtimeEl.append(runtimeNum, el('span', 'orr-clips__runtime-unit', ' S TOTAL'));
