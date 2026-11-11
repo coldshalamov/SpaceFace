@@ -81,14 +81,51 @@ if (devin) {
 
 const log = createWriteStream(join(runDir, 'run.log'));
 const t0 = Date.now();
-const child = spawn(cmd, cmdArgs, { cwd: REPO, env, windowsHide: true });
-child.stdout.pipe(log, { end: false });
-child.stderr.pipe(log, { end: false });
-const timer = setTimeout(() => { log.write(`\n[fleet] timeout after ${timeoutMin} min\n`); child.kill(); }, timeoutMin * 60_000);
-console.log(`[fleet] ${packetId} on ${backend} -> ${runDir}`);
+const deadline = t0 + timeoutMin * 60_000;
+const MAX_ATTEMPTS = 12;
+let attempt = 0;
+let tail = '';
 
-child.on('close', (code) => {
-  clearTimeout(timer);
+// Devin (and the others) hit short provider rate limits. On a retryable failure, wait and resume
+// the same conversation (devin --continue) instead of losing the worker's progress.
+function launch(resume) {
+  attempt += 1;
+  let a = cmdArgs;
+  if (resume && devin) {
+    a = ['-lc', `devin-acct acct${devin[1]} -c -p "Continue the packet exactly where you left off. Finish it, then write the receipt." --model swe-2-max --permission-mode dangerous --respect-workspace-trust false --export "$FLEET_EXPORT"`];
+  } else if (resume && backend === 'deepseek') {
+    a = ['run', '-m', 'opencode-go/deepseek-v4.1-flash#max', '--auto', '--continue', 'Continue the packet exactly where you left off. Finish it, then write the receipt.'];
+  }
+  log.write(`
+[fleet] attempt ${attempt}${resume ? ' (resume)' : ''} at ${new Date().toISOString()}
+`);
+  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true });
+  const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
+  child.stdout.on('data', onData);
+  child.stderr.on('data', onData);
+  const timer = setTimeout(() => { log.write(`
+[fleet] timeout after ${timeoutMin} min
+`); child.kill(); }, Math.max(1000, deadline - Date.now()));
+  child.on('close', (code) => {
+    clearTimeout(timer);
+    const limited = /rate limit|retryable"?\s*:\s*true|429|overloaded|try again/i.test(tail);
+    const receiptDone = existsSync(join(runDir, 'RECEIPT.md'));
+    if (code !== 0 && limited && !receiptDone && attempt < MAX_ATTEMPTS && Date.now() + 120_000 < deadline) {
+      const waitS = Math.min(300, 45 * attempt);
+      log.write(`
+[fleet] rate limited; resuming in ${waitS}s
+`);
+      setTimeout(() => launch(true), waitS * 1000);
+      return;
+    }
+    finish(code);
+  });
+}
+console.log(`[fleet] ${packetId} on ${backend} -> ${runDir}`);
+launch(false);
+
+function finish(code) {
+
   const after = gitStatus();
   const headAfter = gitHead();
   let commits = '';
@@ -102,9 +139,9 @@ child.on('close', (code) => {
   writeFileSync(join(runDir, 'CHANGED.txt'),
     `commits since start (anyone's):\n${commits}\nnew working-tree changes (anyone's):\n${newDirt}\n`);
   const receipt = join(runDir, 'RECEIPT.md');
-  const exit = { packetId, backend, code, minutes: +((Date.now() - t0) / 60000).toFixed(1), receipt: existsSync(receipt) };
+  const exit = { packetId, backend, code, attempts: attempt, minutes: +((Date.now() - t0) / 60000).toFixed(1), receipt: existsSync(receipt) };
   writeFileSync(join(runDir, 'EXIT.json'), JSON.stringify(exit, null, 2));
   log.end();
   console.log(`[fleet] done ${JSON.stringify(exit)}`);
   if (existsSync(receipt)) console.log(readFileSync(receipt, 'utf8').split('\n').slice(0, 6).join('\n'));
-});
+}
