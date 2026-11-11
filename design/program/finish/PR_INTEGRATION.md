@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # PR integration map
 
 The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`; it is not a live open-count claim. This is an integration queue, not a merge queue: compare each head with current code before porting anything. Source ports below are identified by commit; ordinary player looks remain separate where marked pending. Do not treat an open PR, its test count, or its mergeability label as evidence that its player outcome is missing or accepted.

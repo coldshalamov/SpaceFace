@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # THE KIT — stretch every asset: visible fits, endless variants, places from parts
 
 *Creative direction, 2026-11-06 (see `DIRECTION.md`). Owner: "don't we have mostly pieces that we
