@@ -358,9 +358,12 @@ export function materializeWaveBatch(ctx, request) {
         // E4: the blocked-arrival search may legally settle closer than the materialisation
         // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
         // spot outside the line defers — the batch retries next window, it does not pop in.
+        // The clamp above pins the radius floor to exactly SWARM_MIN_ARRIVAL_WU, whose
+        // hypot lands a hair under 215 through float error — an on-line arrival is legal,
+        // so only a genuinely-inside point (hull-clearance range, tens of wu in) defers.
         const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
         if (!open || (player && player.pos
-          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
+          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU - 0.5)) {
           deferred++;
           continue;
         }

@@ -81,12 +81,17 @@ function startWave(h, wave) {
 
 test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, never doubled', () => {
   assert.deepEqual(validateSwarmEvents(), []);
+  // C01-03: through the win every fifth round is a champion so the Pit deals only minors;
+  // past it the deep clock's ≡5-mod-10 rounds are real non-champion rows and the major
+  // band deals again (35, 45, 55, … — never a decade mark: those are champions).
   for (let w = 1; w <= 100; w++) {
     const minor = isSwarmMinorEventWave(w);
     const major = isSwarmEventWave(w);
     assert.ok(!(minor && major), `wave ${w} cannot book both bands`);
-    const expected = w % 10 === 2 || w % 10 === 8;
+    // The residue law is boss-gated: ≡2/8 mod 10 AND not a champion round.
+    const expected = (w % 10 === 2 || w % 10 === 8) && !isSwarmBossWave(w);
     assert.equal(minor, expected, `wave ${w} minor flag`);
+    assert.equal(major, w > 30 && w % 10 === 5, `wave ${w} major flag`);
     if (isSwarmBossWave(w)) {
       assert.equal(minor, false, `boss wave ${w} never carries a minor`);
       assert.equal(swarmMinorEventFor({ arenaId: 'the_hive', wave: w, seed: SEED }), null);
@@ -98,18 +103,6 @@ test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, neve
     assert.equal(swarmMinorEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null);
     assert.equal(swarmEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null,
       `wave ${w} is no event wave at all`);
-  }
-  // Major waves are untouched — the every-5th law and the authored wager stand.
-  // Bosses hold the odd multiples of five (5, 15, 25…), so majors live on the even ones.
-  for (const w of [10, 20, 30, 40]) {
-    assert.equal(isSwarmEventWave(w), true);
-    assert.equal(isSwarmMinorEventWave(w), false);
-    assert.equal(swarmMinorEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null);
-    const major = swarmEventFor({ arenaId: 'helios_core', wave: w, seed: SEED });
-    assert.ok(major, `wave ${w} still deals its major card`);
-    assert.equal(major.band, undefined, 'a major card wears no band stamp');
-    assert.equal(major.wager.score, SWARM_EVENT_BY_ID[major.id].wager.score,
-      'the major bounty is the card\'s authored wager — not scaled');
   }
 });
 
@@ -246,20 +239,6 @@ test('boss and ordinary waves arm nothing — the director consult holds the cap
   }
 });
 
-test('a major round is untouched — authored wager, warn voice, no band stamp', () => {
-  const wave = 10;
-  const major = swarmEventFor({ arenaId: 'asteroid_mill', wave, seed: SEED });
-  assert.ok(major);
-  const h = armedDirector({ arenaId: 'asteroid_mill', wave });
-  startWave(h, wave);
-  const offers = telegraphed(h);
-  assert.equal(offers.length, 1, 'one offer — the minor band did not double-book');
-  assert.equal(offers[0].eventId, major.id);
-  assert.equal(offers[0].band, 'major');
-  assert.equal(offers[0].wager.score, SWARM_EVENT_BY_ID[major.id].wager.score,
-    'the major pays full freight');
-  const alert = named(h, 'alert').map((entry) => entry.payload)
-    .find((entry) => entry.text === major.telegraph);
-  assert.equal(alert.sev, 'warn');
-  h.director.destroy();
-});
+// Retired with C01-01: 'a major round is untouched — authored wager, warn voice, no band
+// stamp' pinned a major card dealing on wave 10. Every finite multiple of five is now a
+// champion round — no major deals inside the course. See test/RETIRED_SWARM_ENDLESS.md.
