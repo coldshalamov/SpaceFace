@@ -25,6 +25,7 @@
 
 import * as THREE from 'three';
 import { recordMountedRootForUnreadyScan } from './bloom.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 
 import { invalidateAsteroidInstancePool, registerAsteroidBaseLeaf, releaseAsteroidInstancesForEntity } from './asteroidInstancePool.js';
 import { syncOpticCellSkin } from './opticCellPresentation.js';
@@ -550,6 +551,8 @@ export function createAsteroidMotionTracker() {
   function updateAsteroidMotion(entity, mesh, simTime, frameDt, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const animDt = dt * ratio;
     const rec = getState(entity.id);
     if (rec.boundaryRoot !== mesh) {
       dropBoundaryIndex(rec);
@@ -575,17 +578,17 @@ export function createAsteroidMotionTracker() {
     // 1. Advance 3-axis tumble, size-scaled: big rocks carry their spin slowly.
     if (!reducedMotion) {
       const sizeFactor = resolveAsteroidSizeFactor(rec.radius);
-      rec.rotX += rec.spinX * sizeFactor * dt;
-      rec.rotY += rec.spinY * sizeFactor * dt;
-      rec.rotZ += rec.spinZ * sizeFactor * dt;
+      rec.rotX += rec.spinX * sizeFactor * animDt;
+      rec.rotY += rec.spinY * sizeFactor * animDt;
+      rec.rotZ += rec.spinZ * sizeFactor * animDt;
     }
 
     // 2. Impact wobble spring decay
     let wobbleOffsetX = 0;
     let wobbleOffsetZ = 0;
     if (rec.wobbleMag > 0.001) {
-      rec.wobblePhase += dt * 14.0;
-      rec.wobbleMag *= Math.exp(-3.2 * dt);
+      rec.wobblePhase += animDt * 14.0;
+      rec.wobbleMag *= Math.exp(-3.2 * animDt);
       if (!reducedMotion) {
         wobbleOffsetX = Math.sin(rec.wobblePhase) * rec.wobbleMag;
         wobbleOffsetZ = Math.cos(rec.wobblePhase * 1.3) * rec.wobbleMag;
@@ -599,9 +602,9 @@ export function createAsteroidMotionTracker() {
       || !!(entity.data && entity.data.isBeingMined);
 
     if (isBeingMined) {
-      rec.miningAgitation = Math.min(1.0, rec.miningAgitation + dt * 8.0);
+      rec.miningAgitation = Math.min(1.0, rec.miningAgitation + animDt * 8.0);
     } else {
-      rec.miningAgitation = Math.max(0, rec.miningAgitation - dt * 6.0);
+      rec.miningAgitation = Math.max(0, rec.miningAgitation - animDt * 6.0);
     }
 
     // 3b. Optic lattice skin — a discharged prism flips data.opticMaterial to 'spent' (and a
