@@ -237,8 +237,10 @@ test('pressure and quota rise, and the roster opens one archetype at a time', ()
   // the ceiling is a real swarm rather than a squad.
   assert.ok(swarmConcurrent(1) > 6);
   assert.equal(swarmConcurrent(29), SWARM_CONCURRENT_MAX);
-  assert.equal(swarmConcurrent(999), swarmConcurrent(30),
-    'past the course the clamped answer is the wave-30 champion room');
+  // C01-03: past the win the deep course keeps its own curve — a round that deep holds the
+  // room at the same ceiling the last ordinary rounds run at.
+  assert.equal(swarmConcurrent(999), SWARM_CONCURRENT_MAX,
+    'the deep course runs the same ceiling the cap set');
   assert.ok(SWARM_CONCURRENT_MAX >= 30, 'thirty hulls on you is the deep-run promise');
 });
 
@@ -660,17 +662,19 @@ test('the champion changes: every course row a different shape of boss wave, in 
     assert.ok(boss.label && boss.line, `${boss.id} names itself`);
   }
   assert.equal(seen.length, 6, 'six distinct champions across the course');
-  // The course ends at thirty — a deeper index clamps to the final champion, never a wrap.
-  assert.equal(swarmBossFor(35).id, 'forge_regent', 'past the course the final champion answers');
+  // C01-03 — past the win the deep course's own clock answers: 35 is an ordinary round and
+  // the decade marks re-open the authored rotation (40 rides the fourth row again).
+  assert.equal(swarmBossFor(35), null, 'a deep ≡5-mod-10 round fields no champion');
+  assert.equal(swarmBossFor(40).id, 'corsair_wing', 'the deep clock answers with its own row');
   assert.equal(swarmBossFor(7), null, 'an ordinary wave has no champion');
 });
 
 test('every fifth wave of the course is a boss wave, and no other wave owes one', () => {
-  // C01-01: champions on every fifth round through 30; deeper indices replay the clamped
-  // wave-30 champion row, so they still plan as boss rounds.
+  // C01-03: through the win champions hold every fifth round; past it the deep clock runs
+  // a champion on each decade mark, so a ≡5-mod-10 deep round plans an ordinary room.
   for (let wave = 1; wave <= 60; wave++) {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
-    const expected = wave <= 30 ? wave % 5 === 0 : true;
+    const expected = wave <= 30 ? wave % 5 === 0 : wave % 10 === 0;
     assert.equal(plan.swarm.boss, expected, `wave ${wave} boss flag`);
     assert.equal(plan.swarm.requireBoss, expected);
     assert.equal(
