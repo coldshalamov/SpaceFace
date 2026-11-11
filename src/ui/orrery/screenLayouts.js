@@ -248,9 +248,9 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-stage { position:relative; }
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-stage::before { content:""; position:absolute; inset:-24px -50px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .66), rgb(4 6 9 / .38) 64%, transparent); }
-/* the foot: STATION_STANDARD §5 keys — the one amber primary with the cut, the rest secondary
+/* the foot: STATION_STANDARD §5 keys — the one amber primary (an 8px rounded field), the rest secondary
    hairline keys (this sheet is the last word on these feet, so the treatment lives here). */
-html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-foot .k-word, html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word { background:rgb(236 230 216 / .05) !important; border:1px solid rgb(236 230 216 / .34) !important; border-image:none !important; border-radius:2px; box-shadow:none !important;
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-foot .k-word, html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word { background:rgb(236 230 216 / .05) !important; border:1px solid rgb(236 230 216 / .34) !important; border-image:none !important; border-radius:8px; box-shadow:none !important;
   min-height:36px !important; padding:0 14px !important; display:inline-flex !important; align-items:center; font-family:var(--dp-face-read, "Instrument Sans"); font-stretch:100%; font-variation-settings:normal; font-weight:600;
   font-size:14px !important; letter-spacing:.03em; text-transform:none; color:rgb(236 230 216 / .88) !important;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear; }
@@ -258,7 +258,7 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word.k-word--primary { color:var(--dp-metal-0, #0b0d10) !important; font-family:var(--dp-face-read, "Instrument Sans");
   font-variation-settings:normal; font-weight:700; font-size:15px !important; letter-spacing:.02em; text-shadow:none !important; min-height:42px !important; padding:0 20px !important;
   background:var(--dp-lamp, #f2b950) !important; background-image:none !important; border-color:rgb(242 185 80 / .9) !important;
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%); }
+  border-radius:8px !important; clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35); }
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important; text-shadow:none !important; box-shadow:0 0 14px rgb(242 185 80 / .24); }
 /* the lamp word's own label and key chip print in dark ink on the amber fill — an amber label on
    the amber key is invisible (bench crucible-refit, TAKE THE WIN) */
