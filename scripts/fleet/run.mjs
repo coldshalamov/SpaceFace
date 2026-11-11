@@ -14,7 +14,7 @@
 // Launch it in the background; it exits when the worker exits.
 
 import { spawn, execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, createWriteStream, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, createWriteStream, readdirSync, unlinkSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,6 +40,24 @@ if (!packetId || !backend) {
 const packetPath = join(PACKETS, `${packetId}.md`);
 if (!existsSync(packetPath)) { console.error(`no packet ${packetPath}`); process.exit(2); }
 
+// Machine safety (owner, 2026-11-11: two crashes under load): at most MAX_ACTIVE workers at once.
+const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 2);
+const ACTIVE = join(REPO, '.devshots', 'fleet', 'active');
+mkdirSync(ACTIVE, { recursive: true });
+const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+const live = readdirSync(ACTIVE).filter((f) => {
+  try { const r = JSON.parse(readFileSync(join(ACTIVE, f), 'utf8')); if (isAlive(r.pid)) return true; } catch { /* bad file */ }
+  try { unlinkSync(join(ACTIVE, f)); } catch { /* gone */ }
+  return false;
+});
+if (live.length >= MAX_ACTIVE) {
+  console.error(`[fleet] ${live.length} workers already running (${live.join(', ')}); the cap is ${MAX_ACTIVE}. Try again when one finishes.`);
+  process.exit(4);
+}
+const activeFile = join(ACTIVE, `${packetId}.${backend}.json`);
+writeFileSync(activeFile, JSON.stringify({ pid: process.pid, at: Date.now() }));
+process.on('exit', () => { try { unlinkSync(activeFile); } catch { /* gone */ } });
+
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const runDir = join(RUNS, `${packetId}.${backend}.${stamp}`);
 mkdirSync(runDir, { recursive: true });
@@ -50,6 +68,7 @@ const prompt = [
   `Step 1: read design/program/fleet/PROTOCOL.md in full and obey it.`,
   `Step 2: read design/program/fleet/packets/${packetId}.md in full. It is your whole job: do all of it.`,
   `Step 3: write your receipt to ${receiptRel} using the protocol's headings.`,
+  `MACHINE SAFETY: anything that starts the game, a browser or Electron (check:playable, player-truth, probes, ui-bench, the gate) must run through the lock: node scripts/fleet/game-lock.mjs run -- <command>. Never run two at once. Never run the whole test suite.`,
   `Work until the packet is finished or genuinely blocked. Do not ask questions; nobody will answer.`,
 ].join('\n');
 writeFileSync(join(runDir, 'PROMPT.txt'), prompt);

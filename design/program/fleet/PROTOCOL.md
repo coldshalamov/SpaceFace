@@ -29,7 +29,11 @@ tree. You must not damage them.
    five times.
 5. **Never run the full test suite or long jobs.** Run only the checks your packet names. A
    command that runs over 5 minutes: stop it and report it.
-6. Do not start the game server, browsers, or Electron unless the packet says to.
+6. **Machine safety (the owner's laptop crashed twice under load).** Start the game, a browser or
+   Electron only when the packet says to, and **always through the lock**:
+   `node scripts/fleet/game-lock.mjs run -- <command>` (e.g. `... run -- npm run check:playable`). It waits
+   if another game is running. Never start two at once; never run the whole test suite; close what you
+   started.
 7. Do not edit `test/references/**`, golden files, or expected outputs to make a check pass.
 
 ## How to work

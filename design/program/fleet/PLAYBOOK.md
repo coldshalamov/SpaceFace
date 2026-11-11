@@ -29,6 +29,14 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
   everyone's boot and replay. A lead who finds it preserves it on a `parked/<name>` branch (byte-for-
   byte, pushed), clears it from the folder, and queues a `PARK-` packet to land it properly.
 
+## 1b. Machine safety (owner, 2026-11-11)
+
+The owner's laptop (Dell Latitude 3550, integrated graphics) crashed hard twice this week while many
+game copies, browsers and agents ran at once; Windows also logs corrected PCIe errors on the SSD's
+root port. So: **at most two workers at once** (the runner refuses a third — `FLEET_MAX_ACTIVE`),
+**one game/browser/Electron at a time** (`scripts/fleet/game-lock.mjs`; `npm run gate` takes it
+itself), no whole-suite test runs, and push to origin after every batch so a crash loses nothing.
+
 ## 2. Who does what (calibrated 2026-11-10)
 
 Work is assigned by **lane** (`QUEUE.md`): Lane 1 = taste, creative, 3D, architecture, review; Lane 2
