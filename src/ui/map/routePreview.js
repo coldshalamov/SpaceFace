@@ -1,3 +1,4 @@
+import { pluralWord } from '../numberFormat.js';
 // Pure route-preview helpers shared by the galaxy-map screen.
 
 /** Find a shortest-hop preview through charted sectors, allowing an uncharted final destination. */
@@ -68,13 +69,13 @@ export function formatRoutePlanCost(route, fallbackPath = null) {
       fuel = legs.reduce((sum, leg) => sum + Number(leg.fuel), 0);
     }
     if (hops > 0 && Number.isFinite(fuel) && fuel >= 0) {
-      return `${hops} ${hops === 1 ? 'Jump' : 'Jumps'} (Fuel: ${Math.round(fuel)} Units)`;
+      return `${hops} ${pluralWord(hops, 'Jump', 'Jumps')} (Fuel: ${Math.round(fuel)} Units)`;
     }
   }
 
   if (Array.isArray(fallbackPath) && fallbackPath.length > 1) {
     const hops = fallbackPath.length - 1;
-    return `${hops} ${hops === 1 ? 'Jump' : 'Jumps'} (Fuel unavailable)`;
+    return `${hops} ${pluralWord(hops, 'Jump', 'Jumps')} (Fuel unavailable)`;
   }
   return null;
 }

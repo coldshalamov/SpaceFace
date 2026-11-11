@@ -43,6 +43,8 @@ import {
   isVarianceAdjustmentBerthEntity,
 } from './varianceAdjustmentBerth.js';
 import { SLATE_COLUMN } from './slate.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 // Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
 // to walk the whole entity map per call. The subset preserves entities.values() order and
@@ -203,7 +205,7 @@ function varianceAdjustmentStatusLine(state) {
   const raw = Number(state?.story?.flags?.[SLATE_COLUMN.spikeFlag]);
   const spikes = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
   const count = spikes === 0 ? 'NO WELD-SPIKES LOGGED YET'
-    : `${spikes} WELD-SPIKE${spikes === 1 ? '' : 'S'} LOGGED`;
+    : `${spikes} WELD-${pluralWord(spikes, 'SPIKE', 'SPIKES')} LOGGED`;
   return `${VARIANCE_ADJUSTMENT_BERTH.statusLine} · CURRENT SLATE LEDGER: ${count}.`;
 }
 

@@ -1,6 +1,12 @@
 <!-- LIFETIME: STABLE -->
 # `design/program/` agent notes
 
+**Since 2026-11-11 the only source of work is [`fleet/QUEUE.md`](./fleet/QUEUE.md) (four lanes; start at
+[`fleet/README.md`](./fleet/README.md)). The design is [`../game/`](../game/README.md). The notes below describe the
+older build-map / INFERENCE / finish systems and are kept for history; do not take work from them.
+World reactions ("plants") are queue rows PLANT-NEXT and PLANT-RADIO.**
+
+
 Admitted roadmap work, bounded INFERENCE work, and short mutation coordination. Not a replacement
 for source plans or live code.
 

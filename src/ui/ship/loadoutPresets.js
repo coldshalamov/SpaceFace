@@ -3,6 +3,8 @@ import { describeHullRole } from '../../data/shipRoleLattice.js';
 import { hash32 } from '../../core/rng.js';
 import { getDerivedStats } from '../../systems/ships.js';
 import { capabilityDefinitions } from './shipBandModels.js';
+import { counted } from '../numberFormat.js';
+
 
 export const LOADOUT_PRESET_CAP_PER_HULL = 6;
 
@@ -220,7 +222,7 @@ export function formatLoadoutApplyReason(applyResult, { dockLabel = 'Dock to ref
   if (reason === 'missing_modules') {
     if (missingText) return { ok: false, reason, text: missingText };
     const missingCount = Math.max(1, Math.round(finite(applyResult && applyResult.missingCount, 1)));
-    const text = `${missingCount} module${missingCount === 1 ? '' : 's'} not in hold`;
+    const text = `${counted(missingCount, 'module', 'modules')} not in hold`;
     return { ok: false, reason, text };
   }
   const segments = composeSlotBlockerSegments(slotBlockers);

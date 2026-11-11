@@ -36,6 +36,8 @@ import {
 import { frameBoth, framePreset, MAP_PRESET_SPAN_WU } from './mapCamera.js';
 import { sectorGlobalOrigin } from '../../data/sectorCoordinates.js';
 import { formatDistance } from '../units.js';
+import { counted } from '../numberFormat.js';
+
 
 export const MAP_NAV_CONTEXT_SCHEMA = 'map_nav_context_v1';
 
@@ -135,7 +137,7 @@ function destinationDetail(destination) {
   if (!destination) return 'Accept a contract, click a station or gate on the chart, or double-click a sector';
   if (destination.planned) {
     const n = destination.legCount;
-    return `${destination.legsRemaining} of ${n} leg${n === 1 ? '' : 's'} remaining`;
+    return `${destination.legsRemaining} of ${counted(n, 'leg', 'legs')} remaining`;
   }
   if (destination.local) {
     return 'Contract destination — in this sector, no jump route to plan';

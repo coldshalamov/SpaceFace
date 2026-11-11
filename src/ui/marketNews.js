@@ -31,6 +31,8 @@ import {
 import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
 import { playerCallsign } from './playerIdentity.js';
 import { claimDeliveryNote, claimLegFirstSeen, ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
+import { counted } from './numberFormat.js';
+
 
 // A headline names the place, not its id. An id that does not resolve is printed as given.
 function sectorDisplayName(id) {
@@ -528,7 +530,7 @@ export function createMarketNews(ctx) {
       eventId, sourceRef: eventId, source: 'law:killedAdjudicated', kind: 'pirate_rescue',
       sectorId: p.sectorId, savedHull: p.savedHull, witnessStableIds: p.witnessStableIds.slice(),
     };
-    const text = `Raider destroyed at ${sectorDisplayName(p.sectorId)}; ${p.savedHull.name} saved. Source: ${p.witnessCount} eyewitness report${p.witnessCount === 1 ? '' : 's'}.`;
+    const text = `Raider destroyed at ${sectorDisplayName(p.sectorId)}; ${p.savedHull.name} saved. Source: ${counted(p.witnessCount, 'eyewitness report', 'eyewitness reports')}.`;
     const committed = commitHeadline(text, metadata, { metadata });
     if (committed) {
       surfacedPirateKills.add(eventId);

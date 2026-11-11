@@ -56,7 +56,9 @@ test('a lawful patrol is a lawful patrol on the live backend', async () => {
 test('a patrol fires at a wanted player, then stops firing and stops closing once the warrant lapses', async () => {
   const { sim, state, patrol, counts, distance } = await rig();
   state.player.heat = 0.6;
-  sim.runTicks(60 * 3);
+  // The patrol flies its owed attack telegraph (engine_flare, f07ab9045abe) and holds fire while
+  // its committed aim is off-bore, so the first round lands ~6 s in: the window covers the warning.
+  sim.runTicks(60 * 8);
   assert.ok(counts.fires > 0, `the patrol engages a wanted player (${counts.fires} shots)`);
 
   state.player.heat = 0;

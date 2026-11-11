@@ -73,6 +73,18 @@ export function pointInsideAnvilOrchardGust(point, geometry) {
   return angle < ANVIL_ORCHARD_GUST_PROFILE.halfAngleRad + ANVIL_ORCHARD_GUST_PROFILE.edgeSoftRad;
 }
 
+// The storm severity each machinery family publishes at its own boundary — the same number
+// its charted approach zone uses, so the field edge and the warning circle read as one storm
+// with one bite (a machinery receipt must never downgrade the presence a chart zone raised).
+export const MACHINERY_STORM_INTENSITY = Object.freeze({
+  killMachine: 0.7,
+  cinderSluice: 0.7,
+  pallasReef: 0.55,
+  weather: 0.55,
+  aperture: 0.6,
+  metronome: 0.6,
+});
+
 // The machine faces back into the belt, while its current exhausts toward the Helios arrival side.
 // The root is the apex: cutting the ballast ejects it downstream, so returning it to the receiver
 // requires reading the warning/calm cycle instead of holding the site beam at a safe boundary.
@@ -883,7 +895,7 @@ export function killMachineHazardZones(sectorId) {
     type: machine.hazardType,
     center: machine.localPos,
     radius: machine.hazardRadius,
-    intensity: 0.7,
+    intensity: MACHINERY_STORM_INTENSITY.killMachine,
   }));
 }
 
@@ -970,7 +982,7 @@ export function pallasReefHazardZone() {
     type: 'debris_current',
     center: PALLAS_REEF_LOCAL_POS,
     radius: PALLAS_REEF_FIELD.radius,
-    intensity: 0.55,
+    intensity: MACHINERY_STORM_INTENSITY.pallasReef,
   });
 }
 
@@ -1314,7 +1326,7 @@ export function weatherHazardZones(sectorId) {
     type: volume.hazardType,
     center: volume.localPos,
     radius: volume.field.radius,
-    intensity: 0.55,
+    intensity: MACHINERY_STORM_INTENSITY.weather,
   }));
 }
 
@@ -1503,7 +1515,7 @@ export function apertureHazardZones(sectorId) {
     type: 'debris_current',
     center: APERTURE_LOCAL_POS,
     radius: 90,
-    intensity: 0.6,
+    intensity: MACHINERY_STORM_INTENSITY.aperture,
   })];
 }
 
@@ -1606,7 +1618,7 @@ export function metronomeHazardZone() {
     type: 'debris_current',
     center: METRONOME_LOCAL_POS,
     radius: METRONOME_FIELD.radius + 60,
-    intensity: 0.6,
+    intensity: MACHINERY_STORM_INTENSITY.metronome,
   });
 }
 

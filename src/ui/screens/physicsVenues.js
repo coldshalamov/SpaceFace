@@ -4,6 +4,7 @@
 // is the Lamp Key in the foot band. Launch flow, records and the readout contract are the
 // original board's (src/ui/physicsVenues.js owns staging, hooks and the HUD tape).
 import { el, cue, rows } from '../kit/index.js';
+import { pluralWord } from '../numberFormat.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectPhysicsRaceLayouts } from '../orrery/physics-raceLayouts.js';
 import { createLadderHand } from '../orrery/archiveInstruments.js';
@@ -92,7 +93,7 @@ export const physicsVenuesScreen = {
       head.append(el('p', 'pv-lane__name', name), count);
       const list = rows(entries.map(e => ({ id: e.id, name: e.label,
         sub: e.locked ? `Clear a ${e.lockPrev} event first` : (kind === 'league'
-          ? `${e.info} · ${e.shots} ${e.shots === 1 ? 'shot' : 'shots'}` : e.info),
+          ? `${e.info} · ${e.shots} ${pluralWord(e.shots, 'shot', 'shots')}` : e.info),
         num: e.locked || kind !== 'gallery' || e.best == null ? (kind === 'league' && e.cleared && !e.locked ? 'Cleared' : '')
           : e.best.toLocaleString('en-US'),
         selected: !!this._sel && e.kind === this._sel.kind && e.id === this._sel.id })), {
@@ -199,7 +200,7 @@ export const physicsVenuesScreen = {
     if (!entry) return 'Choose a challenge to launch.';
     const bits = [];
     if (entry.kind === 'gallery') bits.push(`${entry.family} venue`, entry.best != null ? `local best ${entry.best.toLocaleString('en-US')}` : 'no local best yet');
-    else bits.push(`${entry.family} event · ${entry.shots} ${entry.shots === 1 ? 'shot' : 'shots'}`, entry.cleared ? 'cleared before' : 'not yet cleared');
+    else bits.push(`${entry.family} event · ${entry.shots} ${pluralWord(entry.shots, 'shot', 'shots')}`, entry.cleared ? 'cleared before' : 'not yet cleared');
     bits.push(venueLaunchNeedsConfirm(state)
       ? 'launching replaces the current flight; save first to keep it'
       : 'ready — opens as a temporary flight');
