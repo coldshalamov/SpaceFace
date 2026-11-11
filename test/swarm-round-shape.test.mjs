@@ -32,7 +32,6 @@ import {
   SWARM_MIN_ARRIVAL_WU,
   SWARM_SPAWN_DISTANCE,
   resetSwarmPressureState,
-  swarmOpeningGroupCount,
 } from '../src/data/swarmMode.js';
 
 const DT = 1 / 60;
@@ -196,18 +195,22 @@ test('one gate per group: opening groups arrive on distinct bearings (waves 1-3)
   for (const wave of [1, 2, 3]) {
     const h = room(SEED, wave);
     const plan = beginWave(h, wave);
+    // C01-04: the course authors the groups — the law is that each lands on its own
+    // bearing (round 1's ten-Wasp charge is one group, one gate; rounds 2-3 spread).
     const opening = plan.packages.filter((p) => Number.isInteger(p.atTick));
     const gates = new Set(opening.map((p) => p.gateGroup).filter(Boolean));
-    assert.ok(gates.size >= Math.min(swarmOpeningGroupCount(wave), 2),
-      `wave ${wave} spreads its opening across gates (${[...gates]})`);
+    assert.equal(gates.size, opening.length,
+      `wave ${wave} gives every scheduled group its own gate (${[...gates]})`);
     tick(h, 90);
     const byGate = new Map();
     for (const m of h.events.filter((e) => e.event === 'run:waveMaterialized')) {
       const g = m.payload.gateGroup;
       byGate.set(g, (byGate.get(g) || 0) + 1);
     }
-    // Every admitted group reports exactly one gate — a group never splits across doors.
-    assert.ok(byGate.size >= 2, `wave ${wave} groups came through ${byGate.size} gates`);
+    // Every admitted group reports exactly one gate — a group never splits across doors,
+    // and every group due inside the window has reported.
+    const due = opening.filter((p) => p.atTick < 90).length;
+    assert.equal(byGate.size, due, `wave ${wave} groups came through ${byGate.size} gates`);
   }
 });
 
