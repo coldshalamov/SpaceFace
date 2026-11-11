@@ -26,6 +26,7 @@ import {
   swarmBossFor,
   swarmNextBossFor,
 } from '../src/data/swarmMode.js';
+import { swarmCourseFor } from '../src/data/swarmCourse.js';
 
 const ARENA = 'helios_core';
 const SEED = 7;
@@ -168,7 +169,11 @@ test('the boss wave itself stays quiet — it names itself on arrival', () => {
     h.emitted.length = 0;
     openWave(h, wave);
     assert.equal(h.previewTexts().length, 0, `boss wave ${wave} previews nothing`);
-    assert.ok(h.texts().some((t) => t.startsWith(`Wave ${wave}.`)), `wave ${wave} still opens`);
+    // G08-02 — inside the course the opener leads with the authored round name; the open
+    // ladder keeps the faceless "Wave N.".
+    const course = swarmCourseFor(wave);
+    const head = course ? `ROUND ${wave} — ${course.name}.` : `Wave ${wave}.`;
+    assert.ok(h.texts().some((t) => t.startsWith(head)), `wave ${wave} still opens`);
   }
   survivalAnnounce.destroy();
 });
