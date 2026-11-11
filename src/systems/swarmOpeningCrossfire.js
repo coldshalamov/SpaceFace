@@ -19,7 +19,7 @@ export function planSwarmOpeningCrossfire(state, run, wave, plan, miteRadius, sp
   const candidates = [];
   for (const rock of state.entities.values()) {
     if (!rock?.alive || rock.type !== 'asteroid' || !rock.data?.swarmArenaDebris
-      || !(rock.data.openingPocket || rock.data.openingLesson) || rock.collides === false
+      || rock.collides === false
       || !(rock.radius > 0 && rock.radius <= 9) || !Number.isFinite(rock.pos?.x)
       || !Number.isFinite(rock.pos?.z) || Math.hypot(rock.vel?.x || 0, rock.vel?.z || 0) > 2
       || !resolvePhysicsBodySpec(rock)?.dynamic) continue;

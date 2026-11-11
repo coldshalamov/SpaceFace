@@ -256,6 +256,7 @@ export function createBroodEngine(deps = {}) {
   const fieldList = typeof deps.fieldList === 'function' ? deps.fieldList : () => EMPTY_FIELDS;
   const getState = typeof deps.getState === 'function' ? deps.getState : () => null;
   const fortifyIngress = typeof deps.fortifyIngress === 'function' ? deps.fortifyIngress : () => null;
+  const openingPlacementState = typeof deps.openingPlacementState === 'function' ? deps.openingPlacementState : state => state;
   const routeDamage = typeof deps.routeDamage === 'function' ? deps.routeDamage : null;
 
   // body state
@@ -951,6 +952,9 @@ export function createBroodEngine(deps = {}) {
     if (openingRamp && (state.mode !== 'flight' || liveSwarmRun(state)?.phase !== 'active' || openingRamp.remaining > 1e-8)) return 0;
     cacheRocks(state);
     spawnRequested = true; // the arena owns the initial lesson release; retries cannot bypass it
+    // An interrupted continuation retains this request for the existing flight
+    // tick. Pausing during stone publication cannot admit the opening cohort.
+    if ((liveWave === 3 || liveWave === 4) && state?.mode !== 'flight') return 0;
     const now = finite(state?.simTime);
     nextSpawnAttemptAt = now + 0.5;
     const player = state?.entities?.get?.(state.playerId);
@@ -1054,10 +1058,11 @@ export function createBroodEngine(deps = {}) {
         openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: cystScene.course };
         assignMotherShares(); publish(); return 4;
       }
+      const openingState = liveWave === 3 || liveWave === 4 ? openingPlacementState(state) : state;
       const spitter = familyIndex.get('spitter');
       const mixedMite = familyIndex.get('mite');
       const mixed = mixedMite == null || spitter == null ? null : planSwarmOpeningCrossfire(
-        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mixedMite], liveFamilyRadius[spitter]);
+        openingState, state.run, liveWave, pendingPlan, liveFamilyRadius[mixedMite], liveFamilyRadius[spitter]);
       const mixedSlots = [];
       for (let i = 0; mixed && i < CAP && mixedSlots.length < 4; i++) if (!alive[i]) mixedSlots.push(i);
       if (mixed && mixedSlots.length === 4) {
@@ -1068,13 +1073,13 @@ export function createBroodEngine(deps = {}) {
         openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
           lives: mixedSlots.map(slot => ({ slot, life: serial[slot] })) };
         attackAfter[mixedSlots[3]] = Infinity;
-        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: mixed.course };
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: { ...mixed.course, player: state.entities.get(state.playerId) } };
         assignMotherShares();
         publish();
         return 4;
       }
       const debut = spitter == null ? null : planSwarmOpeningSpitter(
-        state, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]);
+        openingState, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]);
       const debutSlot = debut ? findFreeSlot() : -1;
       if (debut && debutSlot >= 0) {
         spawnAt(debutSlot, spitter, debut.pos.x, debut.pos.z);
@@ -1084,7 +1089,7 @@ export function createBroodEngine(deps = {}) {
         openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
           lives: [{ slot: debutSlot, life: serial[debutSlot] }] };
         attackAfter[debutSlot] = Infinity;
-        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: debut.course };
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: { ...debut.course, player: state.entities.get(state.playerId) } };
         assignMotherShares();
         publish();
         return 1;
@@ -4835,6 +4840,26 @@ export function createBroodEngine(deps = {}) {
     },
     planBank(state, candidate = null) {
       return this.canPrepareBank(state) ? planSwarmBank(state, state?.run, liveWave, pendingPlan, candidate) : null;
+    },
+    // Admission-only preview for the two opening lessons after an earned, moving
+    // fight. It spends no lives, RNG, time or scenery. The arena owns any new rock.
+    canPrepareOpeningContinuation(state) {
+      const run = state?.run;
+      return state?.mode === 'flight' && !openingVolleyAttempted && !!pendingPlan && liveWave === run?.wave
+        && (liveWave === 3 || liveWave === 4) && run?.kind === 'survival'
+        && run.phase === 'active' && run.ruleset === 'swarm' && run.arenaId === 'helios_core'
+        && !run.arenaMutators?.length && !(state?.rockCore?.ratingT > 0);
+    },
+    planOpeningContinuation(state, candidate = null) {
+      if (!this.canPrepareOpeningContinuation(state)) return null;
+      const spitter = familyIndexOf('spitter'), mite = familyIndexOf('mite');
+      if (spitter < 0 || (liveWave === 4 && mite < 0)) return null;
+      const placement = openingPlacementState(state);
+      if (!placement) return null;
+      const preview = candidate ? { ...placement, entities: new Map(placement.entities).set(candidate.id, candidate) } : placement;
+      return liveWave === 3
+        ? planSwarmOpeningSpitter(preview, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter])
+        : planSwarmOpeningCrossfire(preview, state.run, liveWave, pendingPlan, liveFamilyRadius[mite], liveFamilyRadius[spitter]);
     },
     step,
     clear,

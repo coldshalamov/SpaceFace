@@ -234,11 +234,11 @@ export const SWARM_DEBRIS_KEEP_RADIUS = 900;
 
 // A fresh rigid stamp must clear the bodies the native solver actually holds. A tiny gameplay
 // radius can describe a long offset wreck or compound hull; it is not their contact footprint.
-function opticPlacementFootprints(state, native, excluded = null) {
+function opticPlacementFootprints(state, native, excluded = null, allSolids = false) {
   const footprints = [];
   for (const entity of state.entities?.values?.() || state.entityList || []) {
     if (!entity || entity === excluded || entity.alive === false || entity.collides === false || entity.physicsBody === false
-      || !entity.pos || !WELL_SOLID_TYPES.has(entity.type) && entity.type !== 'ship' && entity.type !== 'drone') continue;
+      || !entity.pos || !allSolids && !WELL_SOLID_TYPES.has(entity.type) && entity.type !== 'ship' && entity.type !== 'drone') continue;
     const spec = resolvePhysicsBodySpec(entity);
     if (!spec || spec.material === 'sensor' || spec.material === 'massline_sensor') continue;
     const rec = native?.records.get(entity.id);
@@ -255,7 +255,7 @@ function opticPlacementFootprints(state, native, excluded = null) {
           translationWrtParent: () => c.translationWrtParent(),
         })) }) + Math.max(0, ...colliders.map(c => c.contactSkin?.() || 0));
       }
-      footprints.push({ alive: true, radius,
+      footprints.push({ ...(allSolids ? { entity } : {}), alive: true, radius,
         pos: { x: pos.x + native._frameOrigin.x, z: pos.z + native._frameOrigin.z },
         vel: { x: vel.x, z: vel.z } });
     } else {
@@ -263,7 +263,7 @@ function opticPlacementFootprints(state, native, excluded = null) {
       // Conservative cold bounds include the same resolved compound as the next native sync.
       const radius = excluded ? fractureBodyRadius(entity) : Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
         spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
-      footprints.push({ alive: true, radius, pos: entity.pos, vel: entity.vel });
+      footprints.push({ ...(allSolids ? { entity } : {}), alive: true, radius, pos: entity.pos, vel: entity.vel });
     }
   }
   return footprints;
@@ -766,6 +766,7 @@ export const swarmArena = {
     this._brood = createBroodEngine({
       bus: this.bus,
       getState: () => this.state,
+      openingPlacementState: state => this._openingPlacementState(state),
       fortifyIngress: () => this.registry?.get?.('swarmFortify')?.getIngressPolicy?.() || null,
       fieldList: () => {
         const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
@@ -1002,8 +1003,14 @@ export const swarmArena = {
       this._broodHeldUntil = now + this._lessonHoldS;
       this._lessonHoldS = null;
     } else if (this._brood) {
+      const state = this.state, brood = this._brood, ids = this._ids, wave = run.wave;
+      const continuing = brood.canPrepareOpeningContinuation(state);
+      this._prepareOpeningContinuation(run, now);
+      if (continuing && (this.state !== state || state.run !== run || run.wave !== wave
+        || run.phase !== 'active' || this._brood !== brood || this._ids !== ids)) return;
       this._prepareBankStone(run, now);
       this._brood.spawnWave(this.state);
+      if (continuing && this.state?.mode !== 'flight') return;
     }
     // The planning settle runs before the draft; the last round's fields and ricochets keep working
     // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
@@ -1045,6 +1052,82 @@ export const swarmArena = {
       if (id == null) return null;
       this._ids.push(id);
       this._emit('swarmArena:debris', { wave: run.wave, added: 1, total: this._ids.length, layoutId: 'bank_opportunity' });
+      return id;
+    }
+    return null;
+  },
+
+  // Both preview and actual opening admission see the entire native envelope,
+  // including offset compound limbs. These temporary query bodies never enter
+  // the world; movement, collision and the original entity identities stay owned.
+  _openingPlacementState(state) {
+    const footprints = opticPlacementFootprints(state, this.registry?.get?.('physics')?._sg02, null, true);
+    if (footprints.some(body => !(Number.isFinite(body.radius) && body.radius > 0))) return null;
+    const entities = new Map(state.entities);
+    for (const body of footprints) {
+      const entity = body.entity, spec = resolvePhysicsBodySpec(entity);
+      const radius = Math.max(body.radius, entity.radius || 0, spec.radius);
+      entities.set(entity.id, { ...entity, pos: body.pos, vel: body.vel,
+        // Keep the visible radius for stock-line eligibility. Geometry queries
+        // use the conservative physical radius through the existing body reader.
+        physicsBody: { ...spec, radius, shape: 'ball' } });
+    }
+    return { ...state, entities };
+  },
+
+  // A pilot who earned the next round may have flown far beyond the starter
+  // court. Preserve a surviving usable pebble first; otherwise seat one ordinary
+  // rock for the whole throw-and-dodge scene. Full/blocked rooms fall back normally.
+  _prepareOpeningContinuation(run, now) {
+    const state = this.state, brood = this._brood;
+    if (!brood?.canPrepareOpeningContinuation(state) || brood.planOpeningContinuation(state)
+      || typeof this.helpers?.spawnEntity !== 'function') return null;
+    const player = state.entities.get(state.playerId);
+    if (!player?.alive || !Number.isFinite(player.pos?.x) || !Number.isFinite(player.pos?.z)) return null;
+    const layout = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: run.wave, ratingT: 0 }));
+    const fightRadius = Math.max(SWARM_DEBRIS_FIGHT_RADIUS,
+      (layout?.outer || 0) + SWARM_DEBRIS_FIGHT_RADIUS - SWARM_DEBRIS_OUTER);
+    let total = 0, nearby = 0;
+    for (const entity of state.entities.values()) {
+      if (entity?.alive === false || !entity?.data?.[SWARM_DEBRIS_TAG]) continue;
+      total++;
+      if (Math.hypot(entity.pos?.x - player.pos.x, entity.pos?.z - player.pos.z) <= fightRadius) nearby++;
+    }
+    // Match the field owner's local cap and released-body ceiling; distant debris
+    // is neither teleported nor erased to manufacture the new lesson.
+    if (nearby >= SWARM_DEBRIS_MAX || total >= SWARM_DEBRIS_MAX * 2) return null;
+    const ownedIds = this._ids;
+    const radius = 6, nativeRadius = asteroidColliderRadius(TYPE_ID, radius), distance = 88;
+    const footprints = opticPlacementFootprints(state, this.registry?.get?.('physics')?._sg02);
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    for (let i = 0; i < 16; i++) {
+      const angle = heading + i * Math.PI / 8;
+      const pos = { x: player.pos.x + Math.cos(angle) * distance, z: player.pos.z + Math.sin(angle) * distance };
+      if (footprints.some(body => !Number.isFinite(body.radius)
+        || sweptDiscsOverlap(pos, nativeRadius, body, { clearance: 8 }))
+        || !swarmPlacementIsClear(state, pos, nativeRadius, { clearance: 8 })) continue;
+      const candidate = { id: Symbol('opening-continuation-preview'), type: 'asteroid', alive: true, collides: true,
+        pos, vel: { x: 0, z: 0 }, radius, mass: radius * radius * 40,
+        physicsBody: { radius: nativeRadius, dynamic: true },
+        data: { [SWARM_DEBRIS_TAG]: true, openingPocket: true } };
+      if (!brood.planOpeningContinuation(state, candidate)) continue;
+      const rng = mulberry32(debrisStreamSeed(Number.isInteger(run.seed) ? run.seed : 1, run.wave) ^ 0x52a17c83);
+      const created = this._spawnDebrisRock(pos.x, pos.z, radius, rng, now,
+        { material: 'rock', openingPocket: true, openingContinuation: run.wave }, true);
+      const id = created && typeof created === 'object' ? created.id : created;
+      if (id == null || id === false) return null;
+      const entity = created && typeof created === 'object' ? created : state.entities.get(id);
+      // Spawn publication is synchronous and may end or replace this run. Never
+      // claim an old stone in the replacement field, or retire an ID-reused body.
+      if (this.state !== state || state.run !== run || this._brood !== brood
+        || this._ids !== ownedIds || !brood.canPrepareOpeningContinuation(state)
+        || state.entities.get(id) !== entity) {
+        if (entity?.data) entity.data.despawnAt = Math.min(entity.data.despawnAt ?? Infinity,
+          (Number.isFinite(state.simTime) ? state.simTime : now) + SWARM_DEBRIS_RELEASE_S);
+        return null;
+      }
+      this._ids.push(id);
+      this._emit('swarmArena:debris', { wave: run.wave, added: 1, total: this._ids.length, layoutId: 'opening_continuation' });
       return id;
     }
     return null;
@@ -1747,7 +1830,7 @@ export const swarmArena = {
    * One debris monolith: same spec everywhere the system makes cover — the ambient field top-up,
    * the mass-gap wall, and (by tag, not by shape) SF-067 wear and fracture. Returns the id.
    */
-  _spawnDebrisRock(x, z, size, rng, now, extraData) {
+  _spawnDebrisRock(x, z, size, rng, now, extraData, returnEntity = false) {
     const helpers = this.helpers;
     if (!helpers || typeof helpers.spawnEntity !== 'function') return null;
     const oreHP = Math.round(360 + size * 14);
@@ -1795,7 +1878,7 @@ export const swarmArena = {
       collides: true,
       data: withBankStone(data),
     });
-    return spawned && typeof spawned === 'object' ? spawned.id : spawned;
+    return returnEntity ? spawned : spawned && typeof spawned === 'object' ? spawned.id : spawned;
   },
 
   /**
