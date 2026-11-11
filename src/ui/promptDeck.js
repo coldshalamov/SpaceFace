@@ -194,6 +194,29 @@ export function createPromptDeck(ctx = {}) {
   host.appendChild(root);
   host.appendChild(live);
 
+  // G16-03 the Stage enforces: while the deck is on the table it claims the prompt slot through
+  // the same door every rival (contact hail, nemesis channel) uses — one held sentinel so the
+  // ladder keeps its seat and a hail queues behind it instead of drawing over a live decision.
+  // The sentinel is a bare zero-size element; the deck root keeps its own authored position.
+  const stage = ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
+  let deckSeat = null;
+  function syncDeckSeat() {
+    if (!stage) return;
+    if (!root.hidden && !deckSeat) {
+      deckSeat = stage.show('prompt', doc.createElement('div'), {
+        id: 'sf-prompt-deck-seat', severity: 'warn', bare: true, hold: true,
+      });
+    } else if (root.hidden && deckSeat) {
+      deckSeat.clear();
+      deckSeat = null;
+    }
+  }
+  /** Every hidden toggle funnels here so the seat claim tracks the deck's real visibility. */
+  function setDeckHidden(v) {
+    if (root.hidden !== v) root.hidden = v;
+    syncDeckSeat();
+  }
+
   /** id → entry { spec, seq, el, chipEl, lastCountdown, announced } */
   const entries = new Map();
   let seqCounter = 0;
@@ -482,7 +505,7 @@ export function createPromptDeck(ctx = {}) {
       // Leaving nodes keep their exit window and unmount themselves; the root goes dark only when
       // the last one is out.
       reconcileMounted([]);
-      root.hidden = root.childElementCount === 0;
+      setDeckHidden(root.childElementCount === 0);
       syncClaim();
       return;
     }
@@ -538,7 +561,7 @@ export function createPromptDeck(ctx = {}) {
     }
 
     reconcileMounted(desired);
-    root.hidden = root.childElementCount === 0;
+    setDeckHidden(root.childElementCount === 0);
     if (clamp != null) root.style.maxHeight = clamp;
     syncChoiceHighlight();
     syncClaim();
@@ -617,15 +640,15 @@ export function createPromptDeck(ctx = {}) {
     }
     if (fenced() || !inFlight()) {
       // Suppressed, not cancelled: producers keep their deadlines and re-assert or resolve.
-      root.hidden = true;
+      setDeckHidden(true);
       syncClaim();
       return;
     }
-    if (!visibleEntries().length) { root.hidden = true; syncClaim(); return; }
+    if (!visibleEntries().length) { setDeckHidden(true); syncClaim(); return; }
     if (entries.size && root.hidden) {
       if (modalOpen()) { syncClaim(); return; }
       layout();
-      root.hidden = false;
+      setDeckHidden(false);
     }
     syncClaim();
   }
@@ -753,9 +776,9 @@ export function createPromptDeck(ctx = {}) {
       renderFrame(entry);
       entries.set(normalized.id, entry);
     }
-    if (fenced() || !inFlight()) { root.hidden = true; return true; }
+    if (fenced() || !inFlight()) { setDeckHidden(true); return true; }
     layout();
-    if (!modalOpen()) root.hidden = false;
+    if (!modalOpen()) setDeckHidden(false);
     // Entrance settles new cards only — a producer re-asserting a live offer must not replay the
     // slide, and a card mid-exit is already gone from the entries map so it never reaches here.
     if (isNew && !entry.frameEl.hidden) {
@@ -855,7 +878,7 @@ export function createPromptDeck(ctx = {}) {
         leaving.delete(id);
         for (const node of nodes) node.remove();
         // The last node out turns the root off; leaving nodes own the root's visibility tail.
-        if (root.isConnected && !root.childElementCount) root.hidden = true;
+        if (root.isConnected && !root.childElementCount) setDeckHidden(true);
       }, 170);
       leaving.set(id, { timer, nodes });
     } else {
@@ -869,7 +892,7 @@ export function createPromptDeck(ctx = {}) {
 
   function clearAll() {
     for (const id of [...entries.keys()]) remove(id);
-    root.hidden = true;
+    setDeckHidden(true);
   }
 
   function announce(entry) {
