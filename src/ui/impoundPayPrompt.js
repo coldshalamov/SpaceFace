@@ -179,9 +179,9 @@ export const impoundPayPrompt = {
       sender: 'IMPOUND CLERK',
       statusFlag: 'IMPOUND',
       headline: 'RELEASE THE SHIP',
-      detail: `The bill stands at ${owed} cr — pay it here, work the yard, or cut the lock.${short ? ` You hold ${credits} cr.` : ''}`,
+      detail: `The bill stands at ${owed.toLocaleString('en-US')} cr — pay it here, work the yard, or cut the lock.${short ? ` You hold ${credits.toLocaleString('en-US')} cr.` : ''}`,
       choices: [
-        { id: 'pay', label: `PAY ${owed} CR`, title: 'Hand the clerk the bill amount — the hull is released where it stands. The engine re-checks reach and credits; nothing is charged twice.' },
+        { id: 'pay', label: `PAY ${owed.toLocaleString('en-US')} CR`, title: 'Hand the clerk the bill amount — the hull is released where it stands. The engine re-checks reach and credits; nothing is charged twice.' },
         { id: 'leave', label: 'STEP AWAY', title: 'Close the counter. The yard shift and the lock stay open as ways out.' },
       ],
       onChoose: (choiceId) => this.choose(choiceId),
@@ -481,9 +481,9 @@ export function fineWarrantDetail(offer, state) {
   const explanation = fineWhyClause(state, offer);
   const why = explanation ? `${clock ? '. ' : ' '}${explanation}` : '';
   if (offer && offer.status === 'working') {
-    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}${why}`;
+    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount.toLocaleString('en-US')} cr and walk.${clock}${why}`;
   }
-  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}${why}`;
+  return `The warrant rides your transponder. Wire the ${amount.toLocaleString('en-US')} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits.toLocaleString('en-US')} cr.` : ''}${clock}${why}`;
 }
 
 /**

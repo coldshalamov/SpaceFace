@@ -48,6 +48,8 @@
 // golden.
 
 import { formatDistanceWU } from './mapNavContext.js';
+import { counted } from '../numberFormat.js';
+
 
 export const MAP_ROUTE_RIBBON_SCHEMA = 'map_route_ribbon_v1';
 
@@ -386,7 +388,7 @@ export function resolveRouteRibbon(input = {}) {
       ? `${interruption.label} — leg ${activeLegIndex + 1} of ${legCount}`
       : live
         ? `Flying leg ${activeLegIndex + 1} of ${legCount}`
-        : `${legCount} leg${legCount === 1 ? '' : 's'} plotted — not engaged`,
+        : `${counted(legCount, 'leg', 'legs')} plotted — not engaged`,
     status,
     engaged,
     live,

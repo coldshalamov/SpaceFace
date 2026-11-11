@@ -33,7 +33,7 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
-import { SWARM_FEEL_PROFILE, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
+import { oneFeelContact } from '../data/swarmFeelProfile.js';
 import { isAnchoredPhysicalBody } from './physicalResponse.js';
 import { resolveCraftProportions } from './craftProportions.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
@@ -280,12 +280,11 @@ export function preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz) {
 }
 
 
-// S1 Swarm feel — a body stamped at wave materialization (entity.data.swarmFeel === true)
-// resolves the profile's contact block. Unstamped bodies keep the shared constants below,
-// so every Adventure path is bit-identical to before the profile existed.
+// S1 Swarm feel, widened by EC-G18 (one feel): every non-player ship, and every body stamped at
+// Swarm wave materialization, resolves the profile's contact block — the bowling-pin rule holds
+// in both doors. Rocks, pods and the player keep the shared constants below.
 function swarmFeelContact(entity) {
-  const data = entity && entity.data;
-  return data && data[SWARM_FEEL_STAMP] === true ? SWARM_FEEL_PROFILE.contact : null;
+  return oneFeelContact(entity);
 }
 function tumbleRestitutionFor(rec) {
   const contact = swarmFeelContact(rec && rec.entity);

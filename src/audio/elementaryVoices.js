@@ -74,8 +74,10 @@ export function readDriveSpeed01(player) {
 
 /**
  * Coast, loaded acceleration, and braking are different work, not three volumes.
- * Pitch drops when throttle is ahead of speed. Braking speaks even at zero throttle.
- * A missing speed leaves the authored tier fundamental alone.
+ * Pitch drops when throttle is ahead of speed, and rises with the command itself — a
+ * half-stick reads lower than a firewall even before the hull catches up. Braking
+ * speaks even at zero throttle. A missing speed leaves the authored tier fundamental
+ * alone (command 1 recovers the old pitch exactly).
  */
 export function engineEffortVoice(tierHz, { throttle = 0, speed01 = null, braking = false } = {}) {
   const base = Number(tierHz) > 0 ? Number(tierHz) : ENGINE_TIER_HZ.thrust;
@@ -85,7 +87,7 @@ export function engineEffortVoice(tierHz, { throttle = 0, speed01 = null, brakin
   }
   const speed = speed01 == null || !Number.isFinite(Number(speed01)) ? thrust : clamp(Number(speed01), 0, 1);
   const unmet = clamp(thrust - speed, 0, 1);
-  const hz = Math.round(base * (1 - 0.16 * unmet) * 100) / 100;
+  const hz = Math.round(base * (1 - 0.16 * unmet - 0.15 * (1 - thrust)) * 100) / 100;
   let kind = 'coast';
   if (thrust >= 0.2 && unmet >= 0.35) kind = 'loaded';
   else if (thrust >= 0.2) kind = 'free';

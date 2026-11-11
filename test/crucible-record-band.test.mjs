@@ -73,9 +73,9 @@ test('closed entries sort ahead of open ones — the band is about what is still
     'once the open rows start, no closed row may appear after them');
 });
 
-test('lifetime figures are five named numbers and never NaN', () => {
+test('lifetime figures are six named numbers and never NaN', () => {
   const figs = lifetimeFigures(emptyCrucibleProfile());
-  assert.equal(figs.length, 5);
+  assert.equal(figs.length, 6);
   for (const f of figs) {
     assert.ok(Number.isFinite(f.value), `${f.key} must be a real number`);
     assert.ok(f.label && f.label.length, `${f.key} must keep its word`);

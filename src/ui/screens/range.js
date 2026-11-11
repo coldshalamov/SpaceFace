@@ -50,6 +50,8 @@ import {
   SKIM_COLLECTS_BAND_DRILL_ID,
   POWER_RUNG_IDS,
 } from '../../data/rangeRails.js';
+import { pluralWord } from '../numberFormat.js';
+
 
 // THE RANGE (F4). Field Hardware EDGE: the drill box on the sky; the teaching voice as one
 // sentence; the rung's name as a hull marking; the score as a quiet number; verbs and rungs as
@@ -3577,7 +3579,7 @@ export const rangeScreen = {
           { x: 290, centerZ: -165, tol: 92, state: 'pending' },
           { x: 560, centerZ: 105, tol: 92, state: 'pending' },
         ],
-        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${roomUnits} ${roomUnits === 1 ? 'unit' : 'units'} more room.`,
+        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${roomUnits} ${pluralWord(roomUnits, 'unit', 'units')} more room.`,
         headingHint: `Loaded mass set to ${loadedMass} t (80% cargo cap).`,
       };
     }
