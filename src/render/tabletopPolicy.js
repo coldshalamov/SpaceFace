@@ -751,6 +751,57 @@ export function resolveInitialChaseZoom(zoom) {
   return Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, requested));
 }
 
+// --- MOB-01 phone framing (design/game ruling 3) ---
+// A phone's default view shows the same horizontal world width the desktop default shows, and a
+// pinch carries the camera from 0.6x (in) to 1.5x (out) of that default. The chase rig keeps a
+// fixed vertical FOV, so the ground-plane horizontal extent scales with distance x aspect — the
+// matching distance is a ratio of glass half-extents, not a fixed zoom. On a 390x844 portrait
+// screen that lands near 554 wu (about twice today's horizontal glass), beyond the wheel's own
+// 330 ceiling: this is a device-scaled band, the same channel composition spends past
+// CAMERA_ZOOM_MAX, and the FOLLOW path consumes state.camera.zoom unclamped.
+export const DESKTOP_REFERENCE_ASPECT = 16 / 9;
+export const MOBILE_PINCH_ZOOM_MIN_FACTOR = 0.6;
+export const MOBILE_PINCH_ZOOM_MAX_FACTOR = 1.5;
+
+/**
+ * World units of horizontal world width on the ground plane — half the glass half-extent the
+ * chase camera resolves for a requested distance. Shared so the pinch test measures the exact
+ * framing the live path draws.
+ */
+export function glassHorizontalWidthWu(zoom, fovDeg, aspect, tiltDeg = 60) {
+  return glassHalfExtents(zoom, fovDeg, aspect, tiltDeg).halfX * 2;
+}
+
+/**
+ * The camera distance that puts the desktop default's horizontal world width on a viewport of
+ * `aspect` — the phone default. Not a manual-input clamp: only CAMERA_ZOOM_MIN applies, so a
+ * narrow screen's honest match is never capped short of the width the ruling guarantees.
+ */
+export function resolvePhoneDefaultZoom(fovDeg = 50, aspect = DESKTOP_REFERENCE_ASPECT, tiltDeg = 60) {
+  const fov = finiteOr(fovDeg, 50);
+  const a = Number.isFinite(aspect) && aspect > 0 ? aspect : DESKTOP_REFERENCE_ASPECT;
+  const tilt = finiteOr(tiltDeg, 60);
+  const desktopHalfX = glassHalfExtents(DEFAULT_ZOOM, fov, DESKTOP_REFERENCE_ASPECT, tilt).halfX;
+  const unitHalfX = glassHalfExtents(1, fov, a, tilt).halfX;
+  if (!(unitHalfX > 0) || !(desktopHalfX > 0)) return DEFAULT_ZOOM;
+  return Math.max(CAMERA_ZOOM_MIN, desktopHalfX / unitHalfX);
+}
+
+/**
+ * The camera request a live pinch resolves to: the distance held when the gesture began, scaled
+ * by the fingers' distance ratio since it armed, clamped to the 0.6x/1.5x device band. The
+ * default-zoom argument is the same aspect-aware phone default above so the band rides the
+ * ruling's own reference, not the desktop 144.
+ */
+export function resolvePinchZoomTarget(zoomAtGestureStart, fingerRatio, defaultZoom) {
+  const base = Number.isFinite(defaultZoom) && defaultZoom > 0 ? defaultZoom : DEFAULT_ZOOM;
+  const start = Number.isFinite(zoomAtGestureStart) && zoomAtGestureStart > 0 ? zoomAtGestureStart : base;
+  const ratio = Number.isFinite(fingerRatio) && fingerRatio > 0 ? fingerRatio : 1;
+  const lo = Math.max(CAMERA_ZOOM_MIN, base * MOBILE_PINCH_ZOOM_MIN_FACTOR);
+  const hi = base * MOBILE_PINCH_ZOOM_MAX_FACTOR;
+  return Math.min(hi, Math.max(lo, start * ratio));
+}
+
 // Entity types that can be battlefield threat context. Flyby Focus leases ships AND drones
 // (src/systems/flybyFocus.js:81 `isHostileShip`), so a ship-only filter here made a leased drone
 // invisible to threat composition — no bias, no zoom floor, not even counted as a nearby enemy.

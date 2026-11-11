@@ -14,7 +14,7 @@
 //   4. EPILOGUE   — one restrained outcome card after a final disposition or sandbox continuation.
 //
 // Pure DOM + event listeners. Reads ctx.state only for the backlog; never mutates sim state (§0.6).
-// CSS is injected once (injectCommsCss) so this module is self-contained.
+// CSS lives in styles/ui.css (G16-02 retired the injected sheet there).
 
 import { BINDINGS } from './bindings.js';
 import { createPirateParleyPrompt } from './pirateParleyPrompt.js';
@@ -32,7 +32,13 @@ import { openingInstructionSolo } from './hudAttention.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { isSwarmGlass } from './swarmGlass.js';
 
-const COMMS_STYLE_ID = 'sf-comms-style';
+// G16-02: the injected sheet retired to styles/ui.css. The backlog log and the endgame
+// choice scrim seat inside the Stage's dialog slot (the screens host — the same tier they
+// always held); the feed, the COMMS button, the trace host and the place graffiti stay on
+// their authored mounts — persistent HUD chrome and world-anchored lines, not popups.
+const dialogHost = (ctx) =>
+  (ctx && ctx.stage && typeof ctx.stage.slotEl === 'function' && ctx.stage.slotEl('dialog'))
+  || document.getElementById('ui-root');
 const PLACE_GRAFFITI_HOLD_MS = 8000;
 const PLACE_GRAFFITI_FADE_MS = 400;
 
@@ -306,7 +312,7 @@ export function createComms(ctx) {
     else if (bus && typeof bus.off === 'function') unsubscribers.push(() => bus.off(event, handler));
     return handler;
   }
-  injectCommsCss();
+  // Sheet retired to styles/ui.css (G16-02).
   // Actionable pirate hails live in their own compact, non-modal strip. Keeping the renderer in a
   // dedicated module prevents the general comms feed from becoming an interaction/state owner.
   const pirateParleyPrompt = createPirateParleyPrompt(ctx);
@@ -589,7 +595,7 @@ export function createComms(ctx) {
     '<button class="sf-comm-backlog__close">ESC</button></div>' +
     '<div class="sf-comm-backlog__hint">Most of these are not for you. The ones that are don\u2019t name you.</div>' +
     '<div class="sf-comm-backlog__list"></div>';
-  document.getElementById('ui-root').appendChild(backlogView);
+  dialogHost(ctx).appendChild(backlogView);
   const backlogList = backlogView.querySelector('.sf-comm-backlog__list');
 
   let backlogOpen = false;
@@ -672,7 +678,7 @@ export function createComms(ctx) {
       '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">YES</button><button class="sf-endgame__c-no">NO</button></div>' +
       '</div>';
-    document.getElementById('ui-root').appendChild(wrap);
+    dialogHost(ctx).appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add('open'));
     const cleanup = () => {
       choiceModalOpen = false;
@@ -748,7 +754,7 @@ export function createComms(ctx) {
       '<div class="sf-endgame__c-hint">They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">CUT LINE</button><button class="sf-endgame__c-no">REFUSE</button></div>' +
       '</div>';
-    document.getElementById('ui-root').appendChild(wrap);
+    dialogHost(ctx).appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add('open'));
     const cleanup = () => {
       choiceModalOpen = false;
@@ -982,147 +988,3 @@ function sampleCommsTraceState({
   };
 }
 
-// ── CSS (injected once; matches the HUD's industrial cyan/purple language) ──────────────────
-function injectCommsCss() {
-  if (document.getElementById(COMMS_STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = COMMS_STYLE_ID;
-  s.textContent = `
-  /* ===== comms feed — joined to the flight context rail when the HUD is present ===== */
-  #sf-comms { position:relative; width:100%; max-height:124px; display:flex;
-    flex-direction:column-reverse; gap:4px; pointer-events:none; z-index:20; overflow:hidden;
-    font-family:var(--hud-data, var(--mono, Consolas, monospace)); }
-  #ui-root > #sf-comms { position:absolute; left:20px; top:118px; width:340px; }
-  #sf-comms .sf-comm { pointer-events:auto; }
-  body.ui-modal-open #sf-comms,
-  body.ui-live-screen #sf-comms { opacity:0; pointer-events:none; }
-  body.ui-modal-open .sf-comm-backlog-btn,
-  body.ui-live-screen .sf-comm-backlog-btn { opacity:0; visibility:hidden; pointer-events:none; }
-  /* An open backlog is a HUD overlay, not a screen — without this it keeps painting at
-     z-index 2400 over whatever modal the player opens next (map over open comms, etc.). */
-  body.ui-modal-open .sf-comm-backlog,
-  body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
-  .sf-comm { --comm-color:var(--text-secondary); --comm-glow:none; position:relative; padding:7px 10px 8px;
-    border:1px solid rgba(147,174,195,.24); border-top-color:rgba(147,196,211,.42); border-radius:2px;
-    background:linear-gradient(108deg, rgba(17,25,36,.91), rgba(7,12,20,.78)); box-shadow:0 10px 24px rgba(0,0,0,.22);
-    color:var(--hud-paper,#e7edf5); font-size:12px; text-shadow:none;
-    cursor:pointer; transform:translateX(-130%); opacity:0; transition:transform .18s ease, opacity .18s ease; }
-  .sf-comm--in { transform:translateX(0); opacity:1; }
-  .sf-comm--out { transform:translateX(-130%); opacity:0; }
-  .sf-comm__head { display:flex; align-items:baseline; gap:7px; margin-bottom:3px; }
-  .sf-comm__tag { padding:1px 4px; background:color-mix(in srgb, var(--comm-color) 13%, transparent);
-    font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em; color:var(--comm-color); text-shadow:none; }
-  .sf-comm__sender { font:600 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em;
-    color:var(--hud-muted,#718298); text-transform:uppercase;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sf-comm__body { line-height:1.38; color:var(--hud-paper,#e7edf5); }
-  .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
-  /* Player-addressed traffic stands forward of the ambient channel noise: personal lines set one
-     step larger and brighter, ambient lines recede. Tag-only difference was unreadable at speed. */
-  .sf-comm--personal { font-size:13px; }
-  .sf-comm--personal .sf-comm__body { color:#f2f7ff; }
-  .sf-comm--ambient { opacity:.85; }
-
-  /* Joined top-left utility rail: explicit words beat another ambiguous glyph. */
-  .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:66px; height:32px; z-index:1060;
-    display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(180deg,rgba(20,29,41,.88),rgba(8,13,21,.9));
-    border:1px solid rgba(147,174,195,.34); border-radius:2px 0 0 2px; color:#aebdce;
-    font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em; cursor:pointer; pointer-events:auto;
-    transition:color .12s, border-color .12s; text-shadow:none; }
-  .sf-comm-backlog-btn:hover { border-color:var(--accent,#4f8fdd); color:#e7edf5; }
-  .sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:var(--accent,#4f8fdd);
-    animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
-  @keyframes sf-commpulse { from { box-shadow:inset 0 -2px rgba(79,143,221,.15); } to { box-shadow:inset 0 -2px var(--accent,#4f8fdd); } }
-  .sf-comm-backlog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97);
-    width:min(620px, 92vw); max-height:78vh; display:none; flex-direction:column; z-index:2400;
-    background:rgba(4,9,18,.96); border:1px solid var(--accent); border-radius:9px; box-shadow:0 10px 50px rgba(0,0,0,.7);
-    pointer-events:auto; opacity:0; transition:opacity .18s ease, transform .18s ease; }
-  .sf-comm-backlog.open { display:flex; opacity:1; transform:translate(-50%,-50%) scale(1); }
-  .sf-comm-backlog__head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px;
-    border-bottom:1px solid var(--panel-edge); }
-  .sf-comm-backlog__title { font-family:var(--mono); font-size:13px; letter-spacing:.06em; color:var(--accent); text-transform:uppercase; }
-  .sf-comm-backlog__close { background:none; border:1px solid var(--ink-mute); border-radius:4px; color:var(--ink-dim);
-    font-size:12px; padding:2px 9px; cursor:pointer; font-family:var(--mono); }
-  .sf-comm-backlog__close:hover { border-color:var(--accent); color:var(--accent); }
-  .sf-comm-backlog__hint { padding:7px 16px; font-size:12px; color:var(--ink-mute); font-style:italic;
-    border-bottom:1px solid rgba(79,143,221,.07); }
-  .sf-comm-backlog__list { overflow-y:auto; padding:4px 0; }
-  .sf-comm-backlog__list::-webkit-scrollbar { width:5px; }
-  .sf-comm-backlog__list::-webkit-scrollbar-thumb { background:var(--accent); border-radius:3px; }
-  .sf-comm-backlog__row { --comm-color:var(--ink-dim); padding:8px 16px; border-bottom:1px solid rgba(79,143,221,.05);
-    display:flex; flex-direction:column; gap:2px; }
-  .sf-comm-backlog__row:hover { background:rgba(79,143,221,.04); }
-  .sf-comm-backlog__sender { font-size:12px; letter-spacing:.06em; color:var(--comm-color); text-transform:uppercase; }
-  .sf-comm-backlog__text { font-size:12px; color:var(--ink); line-height:1.4; }
-  .sf-comm-backlog__note { margin-top:4px; font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.4;
-    border-left:1px solid var(--sf-edge); padding-left:8px; }
-  .sf-comm-backlog__empty { padding:30px 16px; text-align:center; color:var(--ink-mute); font-style:italic; }
-
-  /* ===== bulkhead graffiti (player's own ship) ===== */
-  .sf-bulkhead { position:absolute; left:clamp(300px, 24vw, 460px); top:24%; transform:none; z-index:9;
-    pointer-events:none; opacity:0; transition:opacity 1.2s ease; max-width:min(420px, 32vw); text-align:left; }
-  .sf-bulkhead--visible { opacity:.22; }
-  .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(12px, 1.2vw, 13px); letter-spacing:.06em;
-    color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
-    transform:rotate(-1.5deg); }
-  /* Flight place lines float over the scene; docked lines move into the berth tape's normal flow. */
-  .sf-airlock { position:absolute; left:50%; bottom:14%; transform:translateX(-50%); z-index:140;
-    pointer-events:none; opacity:0; transition:opacity .4s ease; max-width:min(520px, 84vw); text-align:center; }
-  .sf-airlock--station { position:relative; inset:auto; left:auto; bottom:auto; z-index:auto; transform:none;
-    flex:0 0 100%; width:100%; max-width:100%; margin:0; text-align:left; }
-  .sf-airlock--station .sf-airlock__line { display:block; max-width:100%; line-height:1.35; overflow-wrap:anywhere; text-align:left; }
-  .sf-airlock--visible { opacity:1; }
-  body.ui-modal-open .sf-airlock--visible { opacity:1; }
-  .sf-airlock__line { font-family:var(--mono); font-size:clamp(13px, 1.5vw, 16px); letter-spacing:.08em;
-    color:#d7deea; text-transform:uppercase; text-shadow:0 0 16px rgba(0,0,0,.9), 0 1px 2px #000; }
-  @media (prefers-reduced-motion: reduce) { .sf-airlock { transition:none; } }
-  html.sf-reduce-motion .sf-airlock { transition:none; }
-  @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; top:auto; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:12px; letter-spacing:.06em; }
-    #ui-root > #sf-comms { width:260px; top:88px; }
-    .sf-comm-backlog-btn { top:12px; }
-    .sf-comm { font-size:12px; padding:6px 9px; } }
-
-  /* ===== endgame choice modal ===== */
-  .sf-endgame { position:fixed; inset:0; z-index:2600; display:none; align-items:center; justify-content:center;
-    background:rgba(3,5,10,.94); opacity:0; transition:opacity .3s ease; }
-  .sf-endgame.open { display:flex; opacity:1; }
-  .sf-endgame__panel { width:min(880px, 94vw); max-height:90vh; overflow-y:auto; padding:24px 28px;
-    background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--accent); border-radius:10px;
-    box-shadow:0 0 60px rgba(79,143,221,.15), 0 20px 60px rgba(0,0,0,.6); }
-  .sf-endgame__head { text-align:center; margin-bottom:18px; }
-  .sf-endgame__title { margin:0; font-family:var(--mono); font-size:18px; letter-spacing:.06em; color:var(--accent);
-    text-transform:uppercase; text-shadow:0 0 14px rgba(79,143,221,.4); }
-  .sf-endgame__sub { margin-top:6px; font-size:12px; color:var(--ink-mute); font-style:italic; }
-  .sf-endgame__choices { display:flex; flex-direction:column; gap:14px; }
-  .sf-endgame__choice { padding:14px 16px; background:rgba(4,9,18,.6); border:1px solid var(--panel-edge); border-radius:7px;
-    transition:border-color .15s, background .15s; }
-  .sf-endgame__choice:hover { border-color:var(--accent-3); background:rgba(167,139,202,.05); }
-  .sf-endgame__choice-head { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
-  .sf-endgame__choice-id { font-size:20px; color:var(--accent-3); letter-spacing:.06em; }
-  .sf-endgame__choice-title { font-size:15px; color:var(--ink); letter-spacing:.04em; }
-  .sf-endgame__choice-board { font-size:12px; color:var(--accent); margin-bottom:6px; }
-  .sf-endgame__choice-noboard { color:var(--ink-mute); font-style:italic; }
-  .sf-endgame__choice-summary { font-size:12.5px; color:var(--ink); line-height:1.5; margin-bottom:6px; }
-  .sf-endgame__choice-cost { font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.5;
-    border-left:1px solid var(--sf-edge); padding-left:9px; }
-  .sf-endgame__choice-actions { margin-top:10px; display:flex; justify-content:flex-end; }
-  .sf-endgame__accept { background:rgba(167,139,202,.12); border:1px solid var(--accent-3); color:var(--accent-3);
-    font-family:var(--mono); font-size:12px; letter-spacing:.06em; padding:6px 18px; border-radius:5px; cursor:pointer; }
-  .sf-endgame__accept:hover { background:rgba(167,139,202,.25); color:#fff; }
-  .sf-endgame__footer { margin-top:18px; text-align:center; font-size:12px; color:var(--ink-mute); font-style:italic; }
-  /* Choice C inline prompt */
-  .sf-endgame--c .sf-endgame__panel--c { width:min(480px, 90vw); padding:28px; text-align:center; }
-  .sf-endgame__c-prompt { font-family:var(--mono); font-size:18px; letter-spacing:.06em; color:var(--danger);
-    text-transform:uppercase; margin-bottom:12px; text-shadow:0 0 14px rgba(255,84,112,.4); }
-  .sf-endgame__c-hint { font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.5; margin-bottom:18px; }
-  .sf-endgame__c-actions { display:flex; gap:14px; justify-content:center; }
-  .sf-endgame__c-yes { background:rgba(255,84,112,.15); border:1px solid var(--danger); color:var(--danger);
-    font-family:var(--mono); letter-spacing:.06em; padding:8px 24px; border-radius:5px; cursor:pointer; }
-  .sf-endgame__c-no { background:rgba(84,160,200,.12); border:1px solid var(--panel-edge-2); color:var(--ink-dim);
-    font-family:var(--mono); letter-spacing:.06em; padding:8px 24px; border-radius:5px; cursor:pointer; }
-  .sf-endgame__c-yes:hover { background:rgba(255,84,112,.3); color:#fff; }
-  .sf-endgame__c-no:hover { border-color:var(--accent); color:var(--accent); }
-  `;
-  document.head.appendChild(s);
-}
