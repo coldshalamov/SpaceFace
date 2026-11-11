@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Swarm Renaissance: target and current gaps
 
 Updated 2026-11-01. This summarizes the adopted Swarm/Foundry product target and the current route

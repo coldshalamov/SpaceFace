@@ -29,6 +29,14 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
   everyone's boot and replay. A lead who finds it preserves it on a `parked/<name>` branch (byte-for-
   byte, pushed), clears it from the folder, and queues a `PARK-` packet to land it properly.
 
+## 1b. Machine safety (owner, 2026-11-11)
+
+The owner's laptop (Dell Latitude 3550, integrated graphics) crashed hard twice this week while many
+game copies, browsers and agents ran at once; Windows also logs corrected PCIe errors on the SSD's
+root port. So: **at most four workers at once** (the runner refuses a fifth — `FLEET_MAX_ACTIVE`),
+**one game/browser/Electron at a time** (`scripts/fleet/game-lock.mjs`; `npm run gate` takes it
+itself), no whole-suite test runs, and push to origin after every batch so a crash loses nothing.
+
 ## 2. Who does what (calibrated 2026-11-10)
 
 Work is assigned by **lane** (`QUEUE.md`): Lane 1 = taste, creative, 3D, architecture, review; Lane 2
@@ -40,6 +48,7 @@ which model fits which lane.
 | **Lead (Claude, strongest model)** | diagnosis, architecture, feel and look decisions, reviewing, writing packets | grunt edits a worker can do |
 | **Devin SWE-2 Max** (3 accounts, free) | medium–large packets that name the seam (2–6 files + test); recon drafts; running probes and reporting numbers | judging what looks or feels good; 3D modelling |
 | **Gemini 3.8 Flash** (agy) | one written plant at a time (~15 min), small data rows | anything unreviewed; open design |
+| **Codex, GPT 6.1 Sol high** (senior, occasional) | hard backend/architecture reviews, batched reviews (`REVIEW-BATCH`), 3D/Blender, image generation (concept art, textures, mockups, transparent PNGs, GIFs) | final sign-off — it can make odd assumptions; the lead verifies every finding |
 | **DeepSeek (OpenCode Go)** | — produced nothing in 90 min headless; not in rotation | |
 
 Run at most three Devins + one Flash at once, never two on the same files. Devin hits short rate

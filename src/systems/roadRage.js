@@ -13,6 +13,7 @@
 
 import { occupantGenerationOf } from '../core/entity.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
+import { requestTrafficReaction, releaseTrafficReaction } from './trafficReactionLease.js';
 
 export const ROAD_RAGE_TUNING = Object.freeze({
   shoveWindowS: 30,           // shove twice within 30 s of sim time
@@ -58,16 +59,12 @@ export function isCivilianShip(entity) {
   return false;
 }
 
-function applyIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
-  const data = e.data || (e.data = {});
-  const intent = data.intent || (data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
-  intent.moveX = moveX;
-  intent.moveZ = moveZ;
-  intent.boost = boost;
-  intent.fire = fire;
-  intent.fireGroup = fireGroup;
-  intent.aimAngle = aimAngle;
-  intent.brake = false;
+function endRoadRage(row, e, rec, host) {
+  row.rageState = null;
+  if (rec) rec.civilianReaction = null;
+  if (e.data) e.data.civilianReaction = null;
+  // A job hull's steering rides the npcJobs lease; ending the reaction resumes the job.
+  releaseTrafficReaction(host, e);
 }
 
 export function getOrCreateRoadRageRow(memory, entity, now = 0) {
@@ -91,7 +88,11 @@ export function getOrCreateRoadRageRow(memory, entity, now = 0) {
     row = {
       generation,
       shoves: [],
+      seenDeployments: new Set(),
+      shoveDeployments: [],
       lastShoveAt: -Infinity,
+      lastReceiptAt: -Infinity,
+      lastAttackerId: null,
       rageState: null,       // null | 'ram' | 'flee'
       rageStartedAt: -Infinity,
       fleeStartedAt: -Infinity,
@@ -107,7 +108,7 @@ export function getOrCreateRoadRageRow(memory, entity, now = 0) {
  * Record a shove from attackerId to victim at simTime `now`.
  * Returns true if this shove triggered road rage.
  */
-export function recordRoadRageShove(state, victim, attackerId, now, memory) {
+export function recordRoadRageShove(state, victim, attackerId, now, memory, options = {}) {
   if (!state || !victim || !memory) return false;
   const playerId = state.playerId;
   if (!playerId || attackerId !== playerId) return false;
@@ -123,19 +124,50 @@ export function recordRoadRageShove(state, victim, attackerId, now, memory) {
   // Already raging: do not retrigger
   if (row.rageState) return false;
 
-  // Debounce consecutive impulses from the same physical contact frame
-  if (row.shoves.length > 0 && now - row.shoves[row.shoves.length - 1] < ROAD_RAGE_TUNING.shoveDebounceS) {
-    return false;
+  let deploymentId = null;
+  if (typeof options === 'string' || typeof options === 'number') {
+    deploymentId = options;
+  } else if (options && typeof options === 'object') {
+    deploymentId = options.deploymentId ?? options.fieldId ?? options.provenance?.deploymentId ?? options.provenance?.fieldId ?? null;
   }
+
+  if (!row.seenDeployments) row.seenDeployments = new Set();
+  if (!Array.isArray(row.shoveDeployments)) row.shoveDeployments = [];
+  if (row.lastReceiptAt == null) row.lastReceiptAt = -Infinity;
 
   // Filter out expired shoves (> 30s ago)
   row.shoves = row.shoves.filter((t) => now - t <= ROAD_RAGE_TUNING.shoveWindowS);
+  row.shoveDeployments = row.shoveDeployments.filter((entry) => now - entry.t <= ROAD_RAGE_TUNING.shoveWindowS);
+  row.seenDeployments = new Set(row.shoveDeployments.map((entry) => entry.id));
+
+  // Count one shove per distinct field deployment;
+  // if it has none, treat receipts from the same attacker within 1.0 s as one shove.
+  if (deploymentId != null) {
+    if (row.seenDeployments.has(deploymentId)) {
+      row.lastReceiptAt = now;
+      return false;
+    }
+    row.seenDeployments.add(deploymentId);
+    row.shoveDeployments.push({ id: deploymentId, t: now });
+  } else {
+    const shoveGroupingWindowS = 1.0;
+    if (row.lastAttackerId === attackerId && (now - row.lastReceiptAt) <= shoveGroupingWindowS) {
+      row.lastReceiptAt = now;
+      return false;
+    }
+  }
+
+  row.lastReceiptAt = now;
+  row.lastAttackerId = attackerId;
   row.shoves.push(now);
   row.lastShoveAt = now;
 
   if (row.shoves.length >= 2) {
     // Shoved twice within 30 seconds of sim time! Trigger Road Rage.
     row.shoves.length = 0;
+    if (row.seenDeployments) row.seenDeployments.clear();
+    if (row.shoveDeployments) row.shoveDeployments.length = 0;
+    row.lastReceiptAt = -Infinity;
     row.rageState = 'ram';
     row.rageStartedAt = now;
     row.fleeStartedAt = -Infinity;
@@ -150,8 +182,10 @@ export function recordRoadRageShove(state, victim, attackerId, now, memory) {
 /**
  * Step road rage behavior for one civilian entity.
  * Returns true while road rage is actively driving the civilian.
+ * `host` is the traffic owner: a hull with data.jobId is steered through the npcJobs
+ * interrupt/lease seam instead of a direct intent write (single writer per hull).
  */
-export function stepRoadRage(e, state, player, dt, memory, rec = null) {
+export function stepRoadRage(e, state, player, dt, memory, rec = null, host = null) {
   if (!e || !state || !memory) return false;
   const row = memory.get(e.id);
   if (!row || !row.rageState) return false;
@@ -159,9 +193,7 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
   const now = finite(state.simTime, 0);
 
   if (!player || player.alive === false || !player.pos || !e.pos) {
-    row.rageState = null;
-    if (rec) rec.civilianReaction = null;
-    if (e.data) e.data.civilianReaction = null;
+    endRoadRage(row, e, rec, host);
     return false;
   }
 
@@ -189,9 +221,7 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
   if (row.rageState === 'flee') {
     if (now - row.fleeStartedAt >= ROAD_RAGE_TUNING.fleeDurationS) {
       // Finished fleeing: return to whatever it was doing
-      row.rageState = null;
-      if (rec) rec.civilianReaction = null;
-      if (e.data) e.data.civilianReaction = null;
+      endRoadRage(row, e, rec, host);
       return false;
     }
 
@@ -199,7 +229,14 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
     const awayZ = e.pos.z - player.pos.z;
     const aim = Math.atan2(awayZ, awayX);
     // At top speed: moveZ = 1, boost = true, weapons cold
-    applyIntent(e, 0, 1, true, false, null, aim);
+    const owned = requestTrafficReaction(host, e, {
+      moveX: 0, moveZ: 1, boost: true, fire: false, fireGroup: null, aimAngle: aim, brake: false,
+    }, (row.fleeStartedAt + ROAD_RAGE_TUNING.fleeDurationS) - now);
+    if (!owned) {
+      // A job hull we cannot steer keeps its job: the rage ends quietly, one writer intact.
+      endRoadRage(row, e, rec, host);
+      return false;
+    }
     if (rec) rec.civilianReaction = 'road_rage_flee';
     if (e.data) e.data.civilianReaction = 'road_rage_flee';
     return true;
@@ -211,7 +248,13 @@ export function stepRoadRage(e, state, player, dt, memory, rec = null) {
     const towardZ = player.pos.z - e.pos.z;
     const aim = Math.atan2(towardZ, towardX);
     // Accelerates toward player, no weapons fired
-    applyIntent(e, 0, 1, false, false, null, aim);
+    const owned = requestTrafficReaction(host, e, {
+      moveX: 0, moveZ: 1, boost: false, fire: false, fireGroup: null, aimAngle: aim, brake: false,
+    }, (row.rageStartedAt + ROAD_RAGE_TUNING.ramDurationS + ROAD_RAGE_TUNING.fleeDurationS) - now);
+    if (!owned) {
+      endRoadRage(row, e, rec, host);
+      return false;
+    }
     if (rec) rec.civilianReaction = 'road_rage_ram';
     if (e.data) e.data.civilianReaction = 'road_rage_ram';
     return true;
@@ -246,7 +289,7 @@ export const roadRageOps = {
 
     const now = finite(state.simTime, 0);
     const memory = this._roadRageMemory();
-    recordRoadRageShove(state, victim, attackerId, now, memory);
+    recordRoadRageShove(state, victim, attackerId, now, memory, payload);
   },
 
   _onRoadRageImpact(payload) {
@@ -276,7 +319,7 @@ export const roadRageOps = {
   _reactRoadRage(e, rec, stations, state, player) {
     if (!state || (state.mode && state.mode !== 'flight')) return false;
     const memory = this._roadRageMemory();
-    return stepRoadRage(e, state, player, 1 / 60, memory, rec);
+    return stepRoadRage(e, state, player, 1 / 60, memory, rec, this);
   },
 };
 
@@ -303,7 +346,7 @@ export const roadRage = {
     const victim = this.state.entities?.get?.(p.victimId);
     if (!victim) return;
     const now = finite(this.state.simTime, 0);
-    recordRoadRageShove(this.state, victim, p.attackerId, now, this._mem);
+    recordRoadRageShove(this.state, victim, p.attackerId, now, this._mem, p);
   },
 
   _onImpact(p) {
@@ -334,7 +377,7 @@ export const roadRage = {
         row.rageState = null;
         continue;
       }
-      stepRoadRage(entity, state, player, dt, this._mem, null);
+      stepRoadRage(entity, state, player, dt, this._mem, null, this);
     }
   },
 };
