@@ -108,7 +108,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     },
     // Exposure a touch under 1.0 (owner 2026-10-27): the backdrop-heavy frame sits slightly
     // darker so lit hulls and emissives pop without any rig change.
-    post: { exposure: 1.09, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 1.02, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   core: freezeProfile({
     id: 'core',
@@ -144,7 +144,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         cometInterval: [30, 72], signatureHero: null,
       },
     },
-    post: { exposure: 1.06, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 0.99, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   belt: freezeProfile({
     id: 'belt',
@@ -183,7 +183,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         cometInterval: [22, 58], signatureHero: null,
       },
     },
-    post: { exposure: 1.04, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 0.97, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   fringe: freezeProfile({
     id: 'fringe',
@@ -237,7 +237,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 1.03, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 0.96, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   anomaly: freezeProfile({
     id: 'anomaly',
@@ -282,7 +282,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 1.04, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 0.97, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   // The sixth sky. Tethys is a junction, not a second Helios: one galactic spur, no hero planet,
   // no painted plate. Exactly this profile carries the galaxy.
@@ -328,7 +328,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         signatureHero: null,
       },
     },
-    post: { exposure: 1.02, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 0.96, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   // The Bolus is a wet interior, not a seventh copy of a family plate. No baked backdrop:
   // the trade-constellation, tidal-filament, dust-lane, scar and galactic plates stay with
@@ -377,7 +377,7 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         signatureHero: null,
       },
     },
-    post: { exposure: 1.00, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 0.94, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
 });
 

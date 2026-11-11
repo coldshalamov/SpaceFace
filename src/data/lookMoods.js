@@ -60,10 +60,10 @@ export const LOOK_BASE = deepFreeze({
     rimPower: 3.5,
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
-    rockFill: 0.95,
+    rockFill: 0.85,
     // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
     // dark geological faces without changing their hue or texture strata; it is never emission.
-    rockFloor: 0.14,
+    rockFloor: 0.12,
     rockRim: 0.20,
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
