@@ -1,3 +1,4 @@
+import { isReportInRestitution } from '../missions/restitutionReadout.js';
 // Shared mission helpers extracted from missions.js so the ops modules can import the
 // vocabulary without importing the composite. This module must never import './missions.js':
 // that edge is what made a direct ops import hit the composite's TDZ. Keep behaviour identical
@@ -1056,6 +1057,7 @@ export function missionNavReason(m, station, sector) {
   if (m.type === 'recon_scan' && p.poiSignalFollowup) {
     return `Scan the ${plainFollowupPlace(p.poiSignalFollowup)} in ${sectorName}`;
   }
+  if (isReportInRestitution(m)) return `Dock at ${stationName} to report in`;
   if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty}u ${cargo}, then deliver to ${stationName}`;
   if (p.workingBattlefield) return workingBattlefieldObjective(m);
   switch (m.type) {

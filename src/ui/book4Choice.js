@@ -1,3 +1,4 @@
+import { isReportInRestitution } from '../missions/restitutionReadout.js';
 // Read-only Book 4 guidance. Missions remains the sole branch and payout owner.
 import { campaign47aRouteKind, isStoryBranchIntroOffer } from '../systems/missionShared.js';
 import { describeBranchRepDeltas } from '../story/campaign47a/campaignIntents.js';
@@ -23,6 +24,21 @@ function alternatives(state) {
   const choices = stake ? [stake.branch] : ['patrol', 'traders', 'free'];
   return choices.map(b => `${labels[b]} at ${stake ? (stations.get(stake.stationId) || stake.stationId) : boards[b]} (${repText(b)})`).join('; ') + '.';
 }
+function activeIntroduction(state, branch) {
+  const active = Array.isArray(state.missions?.active) ? state.missions.active : [];
+  return active.find(m => m && m.status === 'active'
+    && m.storyBranch === branch && isStoryBranchIntroOffer(m, state));
+}
+function failedIntroduction(state, branch) {
+  const intro = STORY_BRANCH_INTROS.find(row => row.branch === branch);
+  if (!intro) return null;
+  const receipts = Array.isArray(state.missions?.receipts) ? state.missions.receipts : [];
+  return receipts.filter(r => r && r.type === intro.type
+    && r.factionId === intro.factionId && typeof r.sourceOfferId === 'string'
+    && r.sourceOfferId.endsWith(`_${branch}_intro`)
+    && ['expired', 'failed', 'abandoned'].includes(r.outcome))
+    .sort((a, b) => (Number(b.at_s) || 0) - (Number(a.at_s) || 0))[0] || null;
+}
 export function book4ChoiceAction(state) {
   if (state?.story?.beatIndex !== 4) return null;
   const story = state.story;
@@ -38,8 +54,22 @@ export function book4ChoiceAction(state) {
     return null;
   }
   if (pending) {
-    const mission = active.find(m => m.status === 'active' && m.storyBranch === pending && isStoryBranchIntroOffer(m, state));
+    const mission = activeIntroduction(state, pending);
     if (mission) return action('INTRODUCTION', `Complete ${mission.title || labels[pending]}`, `Introduction accepted. Finish this contract to settle your branch: ${repText(pending)}, separate from contract rewards. Its operation follows; Book 4 is not finished yet.`, mission.id);
+    const failure = failedIntroduction(state, pending);
+    if (failure) {
+      const successorId = typeof failure.mutatedToMissionId === 'string' && failure.mutatedToMissionId ? failure.mutatedToMissionId : null;
+      const followup = successorId && active.find(m => m.status === 'active' && m.id === successorId
+        && m.mutatedFromMissionId === failure.missionId && isReportInRestitution(m));
+      if (followup) {
+        const place = stations.get(followup.destStationId) || followup.destStationId || 'the destination';
+        return action('FOLLOW-UP', `Report to ${place}`, `${failure.title || labels[pending]} ${failure.outcome}. Dock to settle this separate report-in; no cargo is required. Your branch remains unset. A fresh introduction is a separate choice.`, followup.id);
+      }
+      const receipts = Array.isArray(state.missions?.receipts) ? state.missions.receipts : [];
+      const settled = successorId && receipts.find(r => r && r.missionId === successorId && r.outcome === 'completed');
+      const settleVerb = campaign47aRouteKind(state) === 'legacy' ? 'Accept' : 'Complete';
+      return action('INTRODUCTION', 'Choose a fresh introduction', `${failure.title || labels[pending]} ${failure.outcome}.${settled ? ' Its separate follow-up is complete.' : ''} Your branch remains unset. ${alternatives(state)} ${settleVerb} a fresh introduction to settle it.`);
+    }
     return action('INTRODUCTION', 'Introduction not complete', `The ${labels[pending] || pending} introduction is still pending, but no matching active contract is recorded. Check its Journal outcome and Missions board. No branch reward has settled.`);
   }
   const legacy = campaign47aRouteKind(state) === 'legacy';
@@ -59,9 +89,12 @@ export function book4MissionChips(m, state) {
   const pending = state.story.flags?.pick_a_side_pending;
   let text;
   if (state.story.branch) text = 'Branch already settled; this contract does not award the branch reputation again.';
-  else if (pending && (pending !== branch || m.status !== 'active')) text = 'An introduction is pending. Check the active Journal contract before choosing another.';
+  else if (pending && activeIntroduction(state, pending) && (pending !== branch || m.status !== 'active')) text = 'An introduction is pending. Check the active Journal contract before choosing another.';
+  else if (pending && !activeIntroduction(state, pending) && m.status !== 'active') text = legacy
+    ? `No active introduction remains. Acceptance settles your branch: ${repText(branch)}, separate from contract rewards. Earlier outcomes stay recorded.`
+    : `No active introduction remains. Acceptance starts a fresh introduction; completion settles your branch: ${repText(branch)}, separate from contract rewards. Earlier outcomes stay recorded.`;
   else text = `${legacy ? 'Acceptance settles' : 'Completion settles'} your branch: ${repText(branch)}, separate from contract rewards. ${legacy ? 'Book 4 advances on acceptance.' : 'Acceptance commits the introduction; its following operation must also be completed to finish Book 4.'}`;
   const chips = [{ kind: 'info', label: 'Branch', text }];
-  if (!pending && !state.story.branch && m.status !== 'active') chips.push({ kind: 'info', label: 'Choices', text: alternatives(state) });
+  if ((!pending || !activeIntroduction(state, pending)) && !state.story.branch && m.status !== 'active') chips.push({ kind: 'info', label: 'Choices', text: alternatives(state) });
   return chips;
 }

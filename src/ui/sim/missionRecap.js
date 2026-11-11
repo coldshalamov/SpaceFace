@@ -1,3 +1,4 @@
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 // Sim-safe mission recap and objective wording — extracted from ui/screens/missionLog.js.
 // Everything here is pure: data tables + state reads in, player-facing text out. No DOM,
 // no timers, no randomness — so the whole-sim worker lane (and any system) may import it.
@@ -121,6 +122,7 @@ export function objectiveText(m) {
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
   const dest = m.destStationId ? destStationName(m.destStationId) : 'destination';
+  if (isReportInRestitution(m)) return `Report in at ${dest} — no cargo required`;
   if (p.setPieceObjective === 'long_read_rumor_survey') {
     const rumorLabel = p.rumorAlreadyKnown ? 'RUMOR KNOWN' : 'RUMOR PURCHASED';
     return `${rumorLabel} ${p.rumorPurchased ? '✓' : '○'} / BEARING FIXED ${p.bearingFixed ? '✓' : '○'}`;

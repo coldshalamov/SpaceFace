@@ -1,3 +1,4 @@
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 import { book4ChoiceAction } from '../book4Choice.js';
 import { cinderJournalAction } from '../../missions/cinderRoute.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
@@ -486,6 +487,7 @@ function nextStepText(m, state) {
       return `Next: travel to ${sectorName} — ${dest} is another sector over.`;
     }
   }
+  if (isReportInRestitution(m)) return `Next: dock at ${dest} to report in. No cargo is required.`;
   switch (m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
@@ -523,6 +525,7 @@ function stripNextPrefix(text) {
 }
 
 function missionPurposeText(m) {
+  if (isReportInRestitution(m)) return 'Dock at ' + destStationName(m.destStationId) + ' to settle this separate report-in. No cargo is required; the original contract’s outcome stays on record.';
   if (registryContactReadout(m)) return 'Check the named vessel’s registry and choose how to resolve the writ.';
   if (!m) return 'Complete the contract and secure its payout.';
   // Paperwork deep-read: authorization / admin field / full contract body (B0 mass story).
