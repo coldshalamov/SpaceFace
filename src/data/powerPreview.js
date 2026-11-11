@@ -30,6 +30,7 @@ import {
   isForceableFieldBody, playerFieldSpec, pullMarkTargetEligible,
 } from '../core/fields/fieldReadModel.js';
 import { massSeedLaunchPlan } from '../systems/massSeed.js';
+import { swarmFieldRadiusScale } from '../systems/playerModifiers.js';
 import { chargeThrowPlan } from './impulseChargeReadModel.js';
 import { bombDropPlan, proximityTriggerEligible } from '../systems/bombs.js';
 import {
@@ -330,6 +331,7 @@ function planPull(state, player, rail, opts) {
   const knotThrow = planCollectorRelease(state, player);
   if (knotThrow) return knotThrow;
   const spec = playerFieldSpec('well', player, state);
+  spec.radius *= swarmFieldRadiusScale(state); // A01-05 — the ring the press will draw
   const areas = [fieldArea('field', spec)];
   const slot = rail[1];
   if (slot && slot.state === 'cooling') return { center: spec.center, radius: spec.radius, areas, moves: [], blocked: slot.why };
@@ -385,6 +387,7 @@ function planShove(state, player, rail, opts) {
   let note = null;
   if (!repCooling && !repOff) {
     const spec = playerFieldSpec('repulsor', player, state);
+    spec.radius *= swarmFieldRadiusScale(state); // A01-05
     areas.unshift(fieldArea('field', spec));
     ({ moves, seen } = fieldMoves(state, player, spec, { ...opts, live: liveFields(state), kicksById }));
   } else if (kicks.length || areas.length) {
@@ -409,6 +412,7 @@ function planShove(state, player, rail, opts) {
     // would be (drawn dim) so the key still answers.
     const slot = rail[2];
     const spec = playerFieldSpec('repulsor', player, state);
+    spec.radius *= swarmFieldRadiusScale(state); // A01-05
     return {
       center, radius: FIELD_DEFS.repulsor.radius, areas: [fieldArea('field', spec)], moves: [],
       blocked: (slot && slot.why) || note || 'Recharging',

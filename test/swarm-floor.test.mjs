@@ -159,18 +159,21 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
   };
 }
 
-test('a helios_core install arms three lit pads at the authored Foundry spots', () => {
+test('a helios_core install arms six lit pads at the authored Foundry spots', () => {
   const h = boot();
   try {
     assert.equal(h.events.armed.length, 1, 'one arm receipt');
     assert.equal(h.events.armed[0].arenaId, FOUNDRY_ARENA_ID);
-    assert.equal(h.events.armed[0].pads.length, 3);
+    assert.equal(h.events.armed[0].pads.length, 6);
     const plan = swarmFloorPlanFor(FOUNDRY_ARENA_ID);
     const south = h.padById('foundry-gun-south');
     const ne = h.padById('foundry-gun-ne');
     const crate = h.padById('foundry-crate');
-    assert.ok(south && ne && crate, 'all three pads spawned');
-    for (const pad of [south, ne, crate]) {
+    const forge = h.padById('foundry-forge');
+    const tapW = h.padById('foundry-tap-west');
+    const tapE = h.padById('foundry-tap-east');
+    assert.ok(south && ne && crate && forge && tapW && tapE, 'all six pads spawned');
+    for (const pad of [south, ne, crate, forge, tapW, tapE]) {
       assert.equal(pad.alive, true);
       assert.equal(pad.type, 'pickup', 'the radar pickup→beacon contract carries the floor mark');
       assert.equal(pad.data.playerCollectOnly, true, 'a hostile crossing never asks for a receipt');
@@ -368,7 +371,7 @@ test('teardown retires every pad and re-arm installs a fresh set', () => {
   const h = boot({ credits: 5000 });
   try {
     const first = h.pads().map((e) => e.id);
-    assert.equal(first.length, 3);
+    assert.equal(first.length, 6);
     h.destroy();
     for (const e of h.state.entityList) {
       if (e.data && e.data.swarmFloorPad) assert.equal(e.alive, false, 'pads retire with the room');
@@ -379,7 +382,7 @@ test('teardown retires every pad and re-arm installs a fresh set', () => {
     const h2 = boot({ credits: 0 });
     try {
       const second = h2.pads().map((e) => e.id);
-      assert.equal(second.length, 3);
+      assert.equal(second.length, 6);
       assert.ok(second.every((id) => !first.includes(id) || true), 'fresh install');
       assert.equal(h2.events.armed.length, 1);
     } finally { h2.destroy(); }
@@ -394,7 +397,7 @@ test('non-Foundry arenas and non-swarm rulesets arm or buy nothing', () => {
   } finally { storm.destroy(); }
   const scored = boot({ ruleset: 'scored', credits: 5000 });
   try {
-    assert.equal(scored.pads().length, 3, 'the furniture still installs under a scored run');
+    assert.equal(scored.pads().length, 6, 'the furniture still installs under a scored run');
     const south = scored.padById('foundry-gun-south');
     scored.collect(south);
     assert.equal(scored.state.run.credits, 5000, 'a non-swarm run buys nothing');

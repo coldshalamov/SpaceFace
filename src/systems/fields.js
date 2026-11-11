@@ -70,6 +70,7 @@ import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '
 import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
@@ -1252,7 +1253,9 @@ export const fields = {
     // kernel record, in Adventure exactly as in Swarm. Only the collector knot keeps its def.
     const swarmPhases = collector ? null : oneFeelPhaseTable(kind);
     const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
-    const deployCooldownS = swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS;
+    // A01-05 Wide Bore take: power cooldowns read the run ledger's own multiplier.
+    const deployCooldownS = (swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS)
+      * swarmFieldCooldownScale(state);
     const cd = rt.cooldowns[kind] || 0;
     if (!free && now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
@@ -1269,6 +1272,9 @@ export const fields = {
     const spec = collector
       ? { ...playerFieldSpec(kind, player, state), durationS: def.durationS }
       : { ...playerFieldSpec(kind, player, state), durationS: deployDurationS };
+    // A01-05 Wide Bore give: the player's own powers reach wider — authored one-off
+    // radii (swarm drops) pass through untouched below.
+    if (Number.isFinite(spec.radius)) spec.radius *= swarmFieldRadiusScale(state);
     if (opts && opts.radius > 0) spec.radius = opts.radius;
     const cx = spec.center.x, cz = spec.center.z;
 

@@ -51,6 +51,7 @@ import { findDivePull, livePullsOf } from './swarmDiveSeek.js';
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { maintainSwarmPlayerMods, swarmRamDealtScale } from './playerModifiers.js';
 import { validateRunState } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -207,6 +208,9 @@ export const swarmElites = {
    */
   update(dt) {
     this._maintainPassiveStack(this.state);
+    // A01-05 — the Forge/Tap ledger's stateful copies (hull, mass, boost, spool,
+    // forged names, Hot Core burn) share this same per-tick slot.
+    maintainSwarmPlayerMods(this.state, this.helpers, dt);
     const st = this.state;
     const run = liveSwarmRun(st);
     if (!run) { this._clearRides(); this._clearCovers(); return; }
@@ -932,7 +936,10 @@ export const swarmElites = {
       ? helpers.routeCombatDamage.bind(helpers)
       : null;
     if (!route) return;
-    const damage = Math.max(4, Math.round(SWARM_RAM_PLATE_DAMAGE * Math.min(2.5, dp / SWARM_RAM_PLATE_MIN_DP)));
+    // A01-05 Bumper Rails give: the run's own ram plate pays the ledger's dealt scale.
+    const damage = Math.max(4, Math.round(
+      SWARM_RAM_PLATE_DAMAGE * Math.min(2.5, dp / SWARM_RAM_PLATE_MIN_DP)
+      * swarmRamDealtScale(this.state)));
     const packet = scalarHitToDamagePacket({
       damage,
       damageType: 'collision',

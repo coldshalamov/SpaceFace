@@ -17,6 +17,10 @@ import { WEAPONS } from '../data/weapons.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../data/combatDefs.js';
 import { swarmChainFireRateScale, swarmChainDamageScale, swarmRunOwnsLegendary } from './swarmChain.js';
+import {
+  swarmModFireRateScale, swarmModHeatScale, swarmWeaponDamageScale,
+  swarmWeaponImpulseScale, swarmWeaponPierceRank,
+} from './playerModifiers.js';
 import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
   modelTruthBoltRadius,
@@ -403,8 +407,9 @@ function npcWeaponsSubsystemQuiet(state) {
 }
 
 // Overdrive shortens the player gun's cooldown only. Heat and capacitor still charge in full.
-function armedCooldown(playerGun, rof, fallback) {
-  const scale = playerGun ? swarmChainFireRateScale() : 1;
+// A01-05 Taps ride the same axis: overbore/hair_trigger bend the run's own rate, player guns only.
+function armedCooldown(playerGun, rof, fallback, state = null) {
+  const scale = playerGun ? swarmChainFireRateScale() * swarmModFireRateScale(state) : 1;
   const effective = rof > 0 ? rof * scale : 0;
   return effective > 0 ? 1 / effective : fallback;
 }
@@ -1392,7 +1397,12 @@ export const weapons = {
         { scaleEnvironment: false });
     }
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt
-      * (e.id === state.playerId ? swarmChainDamageScale(state) : 1);
+      * (e.id === state.playerId ? swarmChainDamageScale(state) : 1)
+      * swarmWeaponDamageScale(state, e, w.defId);
+    const knockScale = swarmWeaponImpulseScale(state, e, w.defId);
+    const wForPacket = knockScale !== 1
+      ? { ...w, impulsePerHit: (w.impulsePerHit != null ? w.impulsePerHit : def.impulsePerHit || 0) * knockScale }
+      : w;
     const damageType = w.damageType || def.damageType || 'energy';
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
     const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
@@ -1417,7 +1427,7 @@ export const weapons = {
         from: { x: origin.x, z: origin.z }, to,
         dmgType: damageType,
         dpsThisTick: damage,
-        damagePacket: beamDamagePacket(w, def, damage, damageType, dt),
+        damagePacket: beamDamagePacket(wForPacket, def, damage, damageType, dt),
         beamKey,
         opticFamilyId: beamMeta.opticFamilyId,
       });
@@ -1619,7 +1629,7 @@ export const weapons = {
 
     const spec = this._attackSpecFor(w, def, state, e);
     const heatScale = spec && spec.costs && Number.isFinite(spec.costs.heatScale) ? spec.costs.heatScale : 1;
-    const heatCost = heatPerShot * heatScale;
+    const heatCost = heatPerShot * heatScale * (isPlayer ? swarmModHeatScale(state) : 1);
 
     // --- commit: spend cap + heat, set cooldown ---
     capLeft -= energyCost;
@@ -1631,7 +1641,7 @@ export const weapons = {
       if (w._heat >= heatMax) this._beginVent(e, state, w);
     }
     const rof = w.rof != null ? w.rof : def.rof || 0;
-    w._cooldown = armedCooldown(isPlayer, rof, 0.1);
+    w._cooldown = armedCooldown(isPlayer, rof, 0.1, state);
 
     // consume missile lock so each missile needs a fresh lock
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
@@ -1679,13 +1689,19 @@ export const weapons = {
     if (!this._attackSpecCache) this._attackSpecCache = new Map();
     if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
     const modifiers = collectAttackModifiers(state, entity, def || w);
-    const key = `${def && def.id || w.defId}|${modifiers.map((row) => `${row[0]}:${row[1]}`).join(',')}`;
+    // A01-05 — a forged gun injects its pierce rank on the player's own ledger
+    // record (Wrecking Ball passes through up to two bodies). The trait stack is
+    // re-normalized inside compileAttackSpec, so a plain pair appends cleanly.
+    const forgePierce = entity && entity.id === (state && state.playerId)
+      ? swarmWeaponPierceRank(state, entity, w && w.defId || (def && def.id)) : 0;
+    const stacks = forgePierce > 0 ? [...modifiers, ['mod_piercing_core', forgePierce]] : modifiers;
+    const key = `${def && def.id || w.defId}|${stacks.map((row) => `${row[0]}:${row[1]}`).join(',')}`;
     let compiled = this._attackSpecCache.get(key);
     if (compiled) {
       this._attackMetrics.cacheHits += 1;
       return armoryVolleySpecView(compiled.spec, def);
     }
-    compiled = compileAttackSpec({ weapon: mergeWeaponView(w, def), modifiers });
+    compiled = compileAttackSpec({ weapon: mergeWeaponView(w, def), modifiers: stacks });
     this._attackSpecCache.set(key, compiled);
     this._attackMetrics.specsCompiled += 1;
     return armoryVolleySpecView(compiled && compiled.spec, def);
@@ -1782,12 +1798,19 @@ export const weapons = {
     // Chain Feeder: the run's legendary feeds the live kill chain into the packet.
     // Player guns only — NPC fire never reads the player's chain.
     const feederScale = state && e.id === state.playerId ? swarmChainDamageScale(state) : 1;
-    const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale * feederScale;
+    // A01-05 — a forged gun stamps its ×1.4 damage and ×1.35 knock into the same
+    // packet the base gun builds; the impulse lives in the packet, not the hit.
+    const forgeScale = swarmWeaponDamageScale(state, e, w.defId);
+    const knockScale = swarmWeaponImpulseScale(state, e, w.defId);
+    const wForPacket = knockScale !== 1
+      ? { ...w, impulsePerHit: (w.impulsePerHit != null ? w.impulsePerHit : def.impulsePerHit || 0) * knockScale }
+      : w;
+    const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale * feederScale * forgeScale;
     const damageType = w.damageType || def.damageType || 'kinetic';
     const data = {
       damage,
       damageType,
-      damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
+      damagePacket: buildWeaponDamagePacket(wForPacket, def, damage, damageType),
       ownerId: e.id,
       weaponId: w.defId,
       kind: isMissile ? 'missile' : 'bullet',
@@ -2063,7 +2086,8 @@ export const weapons = {
         dieAt: now + (def.mineLifeS != null ? def.mineLifeS : 30),
         triggerRadius: def.mineTriggerRadius != null ? def.mineTriggerRadius : 60,
         blastRadius: def.mineBlastRadius != null ? def.mineBlastRadius : 150,
-        impulse: w.impulsePerHit != null ? w.impulsePerHit : (def.impulsePerHit || 600),
+        impulse: (w.impulsePerHit != null ? w.impulsePerHit : (def.impulsePerHit || 600))
+          * swarmWeaponImpulseScale(state, e, w.defId),
         provenance: def.impulseProvenance || 'vector_mine_pulse',
         armed: false, spawnedAt: now,
       },
