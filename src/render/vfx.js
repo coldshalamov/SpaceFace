@@ -1,4 +1,5 @@
 import { npcPropulsionVisible } from './npcPropulsionOwnership.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 import { isLatchActor,latchNinePropulsionAwake,createLatchNinePlumeBatch } from './latchNineVisuals.js';
 import { createParticlePriorityIndex } from './particlePriorityIndex.js';
 // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
@@ -9247,7 +9248,7 @@ export const vfx = {
     const mx = mLocal.x, mz = mLocal.z;
     const visualTime = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime
-      : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000);
+      : (this._t || 0);
     const masslineA11y = resolveMasslineAccessibilityPolicy(this.state && this.state.settings);
     const motionTime = masslineA11y.animateMotion ? visualTime : 0;
     const pulseTime = masslineA11y.animatePulse ? visualTime : 0;
@@ -11198,7 +11199,8 @@ export const vfx = {
       // Exception: the Massline cable is already in the scene from init and is the taut-line
       // picture. Skipping it here left TWO_BODY swings with a live tether and a dark chord.
       this._syncFrameMembrane();
-      let freezeDt = frameDt;
+      const decorRatio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+      let freezeDt = frameDt * decorRatio;
       if (freezeDt > 0) {
         if (freezeDt > 0.1) freezeDt = 0.1;
         this._t += freezeDt;
@@ -11212,7 +11214,8 @@ export const vfx = {
     this._ironKrakenDebris?.update(
       Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t || 0,
       this._krakenDebrisOptions());
-    let dt = frameDt;
+    const decorRatio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    let dt = frameDt * decorRatio;
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
