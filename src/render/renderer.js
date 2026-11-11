@@ -19702,6 +19702,7 @@ export const render = {
     this._authoredClockAdvance = createAuthoredClock({
       simNow: () => Number(state.simTime) || 0,
       wallNow: () => (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001,
+      frozenByDesign: () => !!(state.ui && state.ui.docked) || state.mode !== 'flight',
     });
     this._authoredMotionUnbind = installAuthoredMotionBus(bus, {
       clock: () => this._authoredClockAdvance(),

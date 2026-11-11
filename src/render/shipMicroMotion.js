@@ -80,6 +80,7 @@ import {
   resolveSlipstreamInto,
   sampleBellThermal,
 } from '../presentation/flightOverheadMath.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 
 // Quiet parked craft still paid full RCS/gimbal/bell/haul springs every closure tick.
 // Settled fast-path keeps zero-G idle breath (Massline UVP) and skips the rest.
@@ -1968,7 +1969,10 @@ export function createShipMicroMotionTracker() {
         if (drill && drill.userData && drill.userData.drillBit) {
           const isMining = (entity.data && entity.data.miningBeamActive)
             || (options.playerMiningActive && entity.id === options.playerId);
-          if (isMining) drill.userData.drillBit.rotation.x += dt * 32.0;
+          if (isMining) {
+            const decorRatio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+            drill.userData.drillBit.rotation.x += dt * decorRatio * 32.0;
+          }
         }
         return;
       }
@@ -2590,7 +2594,8 @@ export function createShipMicroMotionTracker() {
       const isMining = (entity.data && entity.data.miningBeamActive)
         || (options.playerMiningActive && entity.id === options.playerId);
       if (isMining) {
-        drill.userData.drillBit.rotation.x += dt * 32.0;
+        const decorRatio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+        drill.userData.drillBit.rotation.x += dt * decorRatio * 32.0;
       }
     }
   }
@@ -2700,7 +2705,8 @@ export function createShipMicroMotionTracker() {
     const ease = 1 - k * k;
     const rate = (DEATH_SPIN_END + (DEATH_SPIN_START - DEATH_SPIN_END) * ease)
       * rec.spiralDir * (reduced ? 0.3 : 1.0);
-    const dy = rate * dt;
+    const decorRatio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const dy = rate * dt * decorRatio;
     rec.spiralY += dy;
     if (!boundHulk && mesh.rotation) {
       // Root yaw is pose-owned (absolute every synced frame): add the running TOTAL so the
@@ -2712,7 +2718,7 @@ export function createShipMicroMotionTracker() {
     const radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 6;
     const meshVisible = mesh.visible !== false;
     // Runaway attitude thrusters: alternating corner firings walking bow/stern.
-    rec.spiralRcsCd -= dt;
+    rec.spiralRcsCd -= dt * decorRatio;
     if (busRef && rec.spiralRcsCd <= 0 && meshVisible) {
       rec.spiralRcsSide = -rec.spiralRcsSide;
       const side = rec.spiralRcsSide;
