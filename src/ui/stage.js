@@ -168,10 +168,35 @@ export function createStage(ctx = {}) {
     return false;
   }
 
+  /** Insert a record into the queue at its rank: severity first, arrival order within it. */
+  function insertQueue(s, rec) {
+    const rank = stagePriority(rec.severity);
+    let at = s.queue.length;
+    for (let i = 0; i < s.queue.length; i++) {
+      const q = s.queue[i];
+      if (rank > stagePriority(q.severity) || (rank === stagePriority(q.severity) && rec.seq < q.seq)) { at = i; break; }
+    }
+    s.queue.splice(at, 0, rec);
+  }
+
+  function handleFor(s, rec) {
+    return {
+      id: rec.id, slot: s.name, el: rec.el,
+      get visible() { return rec.visible; },
+      get queued() { return s.queue.includes(rec); },
+      clear() { return removeRec(s, rec); },
+    };
+  }
+
   /**
    * The door: show content in a named slot. Returns a handle whose clear() releases the slot.
    * Re-showing the same id replaces the earlier record — a refreshed warning is one popup, not
-   * two. Items past the slot's visible capacity queue by priority, then arrival order.
+   * two. Items past the slot's visible capacity queue by priority, then arrival order, and a
+   * strictly higher priority preempts the lowest seat-holder: it re-queues at its own rank and
+   * comes back when the slot frees ("a later one waits — or replaces by priority", G16-03).
+   * `opts.bare` mounts the content element itself: hosts whose items already carry authored
+   * chrome (alert pills, receipt cards, deck frames) skip the shared glass wrapper so the kit
+   * frame never doubles a frame.
    */
   function show(name, content, opts = {}) {
     const s = slot(name);
@@ -182,32 +207,36 @@ export function createStage(ctx = {}) {
     for (const old of [...s.visible, ...s.queue]) if (old.id === id) removeRec(s, old, { promoteQueue: false });
 
     const rec = { id, seq, severity: opts.severity || 'info', el: null, visible: false };
-    const frame = doc.createElement('div');
-    const sev = SEVERITY_ALIASES[rec.severity] || rec.severity;
-    frame.className = `sf-stage__item sf-stage__item--${sev in SEV_RANK ? sev : 'info'} dp-glass`;
-    frame.setAttribute('data-stage-item', id);
     const body = normalizeContent(content);
-    if (body) frame.appendChild(body);
-    rec.el = frame;
-
-    if (s.visible.length < s.def.maxVisible) {
-      mount(s, rec);
+    if (opts.bare) {
+      rec.el = body || doc.createElement('div');
     } else {
-      const rank = stagePriority(rec.severity);
-      let at = s.queue.length;
-      for (let i = 0; i < s.queue.length; i++) {
-        const q = s.queue[i];
-        if (rank > stagePriority(q.severity) || (rank === stagePriority(q.severity) && rec.seq < q.seq)) { at = i; break; }
-      }
-      s.queue.splice(at, 0, rec);
+      const frame = doc.createElement('div');
+      const sev = SEVERITY_ALIASES[rec.severity] || rec.severity;
+      frame.className = `sf-stage__item sf-stage__item--${sev in SEV_RANK ? sev : 'info'} dp-glass`;
+      frame.setAttribute('data-stage-item', id);
+      if (body) frame.appendChild(body);
+      rec.el = frame;
     }
 
-    return {
-      id, slot: name, el: frame,
-      get visible() { return rec.visible; },
-      get queued() { return s.queue.includes(rec); },
-      clear() { return removeRec(s, rec); },
-    };
+    // Preempt: only a strictly higher rank takes a seat — equal rank still waits its turn
+    // (FIFO), and a held seat (the screens host) is never a demotion candidate.
+    const rank = stagePriority(rec.severity);
+    while (s.visible.length >= s.def.maxVisible) {
+      let lowest = null;
+      for (const v of s.visible) {
+        if (v.hold) continue;
+        if (!lowest || stagePriority(v.severity) < stagePriority(lowest.severity)
+          || (stagePriority(v.severity) === stagePriority(lowest.severity) && v.seq < lowest.seq)) lowest = v;
+      }
+      if (!lowest || stagePriority(lowest.severity) >= rank) break;
+      removeRec(s, lowest, { promoteQueue: false });
+      insertQueue(s, lowest);
+    }
+    if (s.visible.length < s.def.maxVisible) mount(s, rec);
+    else insertQueue(s, rec);
+
+    return handleFor(s, rec);
   }
 
   /** Release a slot item: the visible head, or the named record. A freed seat promotes the queue. */

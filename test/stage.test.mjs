@@ -6,12 +6,40 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createStage, STAGE_SLOTS, stagePriority } from '../src/ui/stage.js';
+import { createAlerts } from '../src/ui/alerts.js';
+import { createToasts } from '../src/ui/toasts.js';
+import { createPromptDeck } from '../src/ui/promptDeck.js';
+import { createScreenManager } from '../src/ui/screenManager.js';
+
+// A tiny synchronous bus: emit() runs this event's listeners in subscription order, matching the
+// fields the real emitters send (PROTOCOL — tests use the game's real payload shapes).
+function createBus() {
+  const handlers = new Map();
+  return {
+    on(name, fn) {
+      if (!handlers.has(name)) handlers.set(name, []);
+      handlers.get(name).push(fn);
+      return () => {
+        const list = handlers.get(name);
+        const at = list.indexOf(fn);
+        if (at >= 0) list.splice(at, 1);
+      };
+    },
+    emit(name, payload) { for (const fn of handlers.get(name) || []) fn(payload); },
+  };
+}
 
 function installDom() {
   class FakeClassList {
     constructor(owner) { this.owner = owner; this.values = new Set(); }
     add(...vs) { vs.forEach((v) => this.values.add(v)); this._sync(); }
     remove(...vs) { vs.forEach((v) => this.values.delete(v)); this._sync(); }
+    toggle(v, force) {
+      const on = force === undefined ? !this.values.has(v) : !!force;
+      if (on) this.values.add(v); else this.values.delete(v);
+      this._sync();
+      return on;
+    }
     contains(v) { return this.values.has(v); }
     _sync() { this.owner._className = Array.from(this.values).join(' '); }
   }
@@ -70,6 +98,39 @@ function installDom() {
       this.listeners.get(type).push(fn);
     }
     removeEventListener() {}
+    get firstElementChild() { return this.children[0] || null; }
+    get lastElementChild() { return this.children[this.children.length - 1] || null; }
+    get nextElementSibling() {
+      if (!this.parentNode) return null;
+      const at = this.parentNode.children.indexOf(this);
+      return at >= 0 ? (this.parentNode.children[at + 1] || null) : null;
+    }
+    get childElementCount() { return this.children.length; }
+    insertBefore(child, ref) {
+      if (child.parentNode) child.parentNode.removeChild(child);
+      child.parentNode = this;
+      const at = ref ? this.children.indexOf(ref) : -1;
+      if (at < 0) this.children.push(child);
+      else this.children.splice(at, 0, child);
+      return child;
+    }
+    remove() { if (this.parentNode) this.parentNode.removeChild(this); }
+    replaceChildren(...nodes) {
+      for (const c of [...this.children]) this.removeChild(c);
+      nodes.forEach((n) => this.appendChild(n));
+    }
+    removeAttribute(k) { this.attributes.delete(k); }
+    contains(node) {
+      for (let n = node; n; n = n.parentNode) if (n === this) return true;
+      return false;
+    }
+    querySelector() { return null; }
+    querySelectorAll() { return []; }
+    dispatch(type, event = {}) {
+      const ev = { type, target: this, preventDefault() {}, ...event };
+      for (const fn of this.listeners.get(type) || []) fn(ev);
+      return ev;
+    }
   }
   // The fixture mirrors index.html: documentElement > body > #ui-root > #hud — the same parents
   // the stage mounts its slot containers under.
@@ -80,11 +141,18 @@ function installDom() {
   documentElement.appendChild(body);
   body.appendChild(uiRoot);
   uiRoot.appendChild(hud);
+  const docListeners = new Map();
   const doc = {
     documentElement,
     body,
     activeElement: null,
+    defaultView: null,
     createElement: (tag) => new FakeElement(tag),
+    addEventListener(type, fn) {
+      if (!docListeners.has(type)) docListeners.set(type, []);
+      docListeners.get(type).push(fn);
+    },
+    removeEventListener() {},
     // Walks the tree like a real getElementById — a detached (wiped) element is not found.
     getElementById: (id) => {
       const walk = (el) => {
@@ -95,9 +163,14 @@ function installDom() {
       return walk(documentElement);
     },
   };
-  const previous = { document: globalThis.document, raf: globalThis.requestAnimationFrame };
+  const previous = {
+    document: globalThis.document,
+    raf: globalThis.requestAnimationFrame,
+    caf: globalThis.cancelAnimationFrame,
+  };
   globalThis.document = doc;
   globalThis.requestAnimationFrame = () => 1; // settle schedules; the classes land synchronously.
+  globalThis.cancelAnimationFrame = () => {};
   return {
     doc, uiRoot, hud,
     restore() {
@@ -105,6 +178,8 @@ function installDom() {
       else globalThis.document = previous.document;
       if (previous.raf === undefined) delete globalThis.requestAnimationFrame;
       else globalThis.requestAnimationFrame = previous.raf;
+      if (previous.caf === undefined) delete globalThis.cancelAnimationFrame;
+      else globalThis.cancelAnimationFrame = previous.caf;
     },
   };
 }
@@ -146,16 +221,19 @@ test('the queue orders by severity (danger > warning > info), then arrival', () 
   const { doc, restore } = installDom();
   try {
     const stage = createStage({ document: doc });
-    stage.show('dialog', 'first card');
+    const first = stage.show('dialog', 'first card');
     const info = stage.show('dialog', 'note', { severity: 'info' });
     const danger = stage.show('dialog', 'alarm', { severity: 'danger' });
     const warn = stage.show('dialog', 'caution', { severity: 'warning' });
-    assert.deepEqual(stage.queued('dialog'), [danger.id, warn.id, info.id],
-      'a later danger still outranks an earlier info');
-    stage.clear('dialog');
-    assert.deepEqual(stage.visible('dialog'), [danger.id]);
+    assert.deepEqual(stage.visible('dialog'), [danger.id],
+      'a later danger takes the info seat by priority (G16-03)');
+    assert.deepEqual(stage.queued('dialog'), [warn.id, first.id, info.id],
+      'warning queues ahead of the two infos; equal priority keeps arrival order');
     stage.clear('dialog');
     assert.deepEqual(stage.visible('dialog'), [warn.id]);
+    stage.clear('dialog');
+    assert.deepEqual(stage.visible('dialog'), [first.id],
+      'the demoted seat-holder returns ahead of its own priority class');
     stage.clear('dialog');
     assert.deepEqual(stage.visible('dialog'), [info.id]);
   } finally { restore(); }
@@ -268,10 +346,10 @@ test('a refreshed id keeps its seat — a queued rival is not promoted past it',
   const { doc, restore } = installDom();
   try {
     const stage = createStage({ document: doc });
-    stage.show('banner', 'first', { id: 'a', severity: 'warn' });
-    stage.show('banner', 'rival', { id: 'b', severity: 'danger' });
+    stage.show('banner', 'first', { id: 'a', severity: 'danger' });
+    stage.show('banner', 'rival', { id: 'b', severity: 'warn' });
     assert.deepEqual(stage.queued('banner'), ['b']);
-    const again = stage.show('banner', 'first, refreshed', { id: 'a', severity: 'warn' });
+    const again = stage.show('banner', 'first, refreshed', { id: 'a', severity: 'danger' });
     assert.ok(again.visible, 'the refreshed item is still the one on the stage');
     assert.deepEqual(stage.visible('banner'), ['a']);
     assert.deepEqual(stage.queued('banner'), ['b']);
@@ -293,4 +371,67 @@ test('banner and feed items join the host lane (#alerts, #toasts), never a secon
     assert.ok(toasts.children.some((c) => c.classList.contains('sf-stage__flow')), 'the flow is a child of #toasts');
     assert.equal(uiRoot.children.length > 0 && hud.children.length > 0, true);
   } finally { restore(); }
+});
+
+// ── G16-03 the Stage enforces (design/program/fleet/packets/G16-03-the-stage-enforces.md) ──────
+// Real hosts, real payloads: the packet's proof is that the four native hosts now ride the
+// slot queues instead of mounting beside them.
+
+function alertsFixture() {
+  const dom = installDom();
+  const stage = createStage({ document: dom.doc });
+  const alertsEl = dom.doc.createElement('div'); alertsEl.id = 'alerts';
+  dom.uiRoot.appendChild(alertsEl);
+  const bus = createBus();
+  const host = createAlerts({
+    bus, stage,
+    state: { ui: {}, playerId: 'p1', simTime: 0, entities: new Map(), world: {} },
+  });
+  return { ...dom, stage, bus, host, alertsEl };
+}
+
+const bannerFlow = (alertsEl) => alertsEl.children.find(
+  (c) => c.classList && c.classList.contains('sf-stage__flow'),
+);
+
+test('G16-03: two native alerts ride the banner FIFO — they never draw together', () => {
+  const f = alertsFixture();
+  try {
+    // Real `alert` payloads — no ttl means a persistent status pill (alerts.js raise()).
+    f.bus.emit('alert', { key: 'a', sev: 'info', text: 'FIRST' });
+    f.bus.emit('alert', { key: 'b', sev: 'info', text: 'SECOND' });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:a'], 'one alert on stage');
+    assert.deepEqual(f.stage.queued('banner'), ['alert:b'], 'the second waits, never overlaps');
+    assert.equal(bannerFlow(f.alertsEl).children.length, 1, 'one pill mounted in #alerts');
+    f.host.clear('a');
+    assert.deepEqual(f.stage.visible('banner'), ['alert:b'], 'the queued alert promotes');
+  } finally { f.restore(); }
+});
+
+test('G16-03: a danger alert replaces an info pill by priority; equals keep FIFO', () => {
+  const f = alertsFixture();
+  try {
+    f.host.raise({ key: 'a', sev: 'info', text: 'A', ttl: Infinity });
+    f.host.raise({ key: 'b', sev: 'info', text: 'B', ttl: Infinity });
+    f.host.raise({ key: 'lock', sev: 'danger', text: 'MISSILE LOCK', ttl: Infinity });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:lock'], 'danger takes the seat');
+    assert.deepEqual(f.stage.queued('banner'), ['alert:a', 'alert:b'], 'info pills wait in order');
+    f.host.clear('lock');
+    assert.deepEqual(f.stage.visible('banner'), ['alert:a'], 'the first info pill comes back');
+    f.host.clear('a');
+    assert.deepEqual(f.stage.visible('banner'), ['alert:b']);
+  } finally { f.restore(); }
+});
+
+test('G16-03: the one-voice floor is a banner item — a danger voice preempts a pill', () => {
+  const f = alertsFixture();
+  try {
+    f.host.raise({ key: 'dock', sev: 'dock', text: '[F] DOCK AT STATION', ttl: Infinity });
+    // The real voice:surface payload voiceArbiter emits (id/channel/priority/text/kind/ttl).
+    f.bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 1.5 });
+    assert.deepEqual(f.stage.visible('banner'), ['floor:alert:incoming'], 'the voice owns the strip');
+    assert.deepEqual(f.stage.queued('banner'), ['alert:dock'], 'the dock prompt waits');
+    f.bus.emit('voice:clear', { id: 'alert:incoming' });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:dock'], 'the pill returns when the voice clears');
+  } finally { f.restore(); }
 });
