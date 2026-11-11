@@ -68,7 +68,7 @@ function makeHost(state, jobs) {
 function makeJobHull(state, jobId, pos) {
   const hull = shipAt(pos.x, pos.z, {
     id: `hull-${jobId}`,
-    data: { trafficRole: 'hauler', jobId },
+    data: { trafficRole: 'hauler', jobId, cargo: { ore: 5 } },
   });
   const job = createJob({
     id: jobId,
