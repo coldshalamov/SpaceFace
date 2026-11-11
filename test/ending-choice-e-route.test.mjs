@@ -58,7 +58,8 @@ test('declining A-D adds the authored courier as the first Ash Cache contact', (
   const contacts = generateContacts(ASHCACHE, h.state);
   const courier = contacts[0];
   assert.equal(courier.id, 'contact_ashcache_next_run_courier');
-  assert.equal(courier.line, "Contract settled. New one's open.");
+  assert.match(courier.line, /Twelve hundred.*No pardon, no rank/);
+  assert.match(getChoices(courier.role, courier)[0].label, /Review.*1,200/);
   assert.deepEqual(getChoices(courier.role, courier).map((choice) => choice.id), [
     'accept_next_run', 'not_yet',
   ]);
@@ -81,7 +82,11 @@ test('accepting the courier files E, pays 47-A once, and opens 47-B without rese
   const courier = generateContacts(ASHCACHE, h.state)[0];
   const result = buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
 
-  assert.equal(result.endgameResolved, true);
+  assert.equal(result.endgameResolved, undefined);
+  assert.equal(h.state.story.endgameChoice, null);
+  assert.equal(h.state.story.endgamePending.choice, 'E');
+  assert.equal(h.events.length, 0);
+  h.bus.emit('ui:endgameConfirm', { choice: 'E' });
   assert.equal(h.state.story.endgameChoice, 'E');
   assert.equal(h.state.story.endgameResolved, true);
   assert.equal(h.state.story.flags.contract47bPending, true);
@@ -93,4 +98,56 @@ test('accepting the courier files E, pays 47-A once, and opens 47-B without rese
 
   buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
   assert.deepEqual(h.events.filter((event) => event.name === 'economy:grantCredits').map((event) => event.payload.amount), [1200]);
+});
+
+
+test('reading and cancelling courier terms does not decline E or pay; returning remains possible', () => {
+  const h = makeHarness(4723);
+  const courier = generateContacts(ASHCACHE, h.state)[0];
+  buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
+  assert.match(h.state.story.endgamePending.confirmHint, /1,200.*No pardon, no rank/);
+  h.bus.emit('ui:endgameDecline', { choice: 'E' });
+  assert.equal(h.state.story.endgamePending, null);
+  assert.ok(!h.state.story.endgameDeclined.includes('E'));
+  assert.equal(h.events.length, 0);
+  assert.equal(isChoiceECourierReady(h.state, ASHCACHE), true);
+  buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
+  h.bus.emit('ui:endgameConfirm', { choice: 'E' });
+  h.bus.emit('ui:endgameConfirm', { choice: 'E' });
+  assert.equal(h.events.filter(e => e.name === 'economy:grantCredits').length, 1);
+});
+
+test('a stale courier does not claim settlement when a different route becomes available', () => {
+  const h = makeHarness(4724);
+  const courier = generateContacts(ASHCACHE, h.state)[0];
+  h.state.story.endgameDeclined = [];
+  h.state.player.cargo = { items: { cmdty_personal_ledger: 1 }, usedVolume: 1, capVolume: 80 };
+  h.state.story.flags.hasLedger = true;
+  const reply = buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
+  assert.match(reply.text, /Decline.*LEDGER/);
+  assert.equal(reply.endgameResolved, undefined);
+  assert.equal(h.state.story.endgamePending, null);
+  assert.equal(h.events.length, 0);
+});
+
+test('a stale courier after another filed disposition does not announce that E was chosen', () => {
+  const h = makeHarness(4725);
+  const courier = generateContacts(ASHCACHE, h.state)[0];
+  h.state.story.endgameChoice = 'D'; h.state.story.endgameResolved = true;
+  const reply = buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
+  assert.match(reply.text, /already recorded/);
+  assert.equal(reply.endgameResolved, undefined);
+  assert.doesNotMatch(reply.text, /47-A closed/);
+  assert.equal(h.events.length, 0);
+});
+
+
+test('the filed courier farewell does not reopen or offer the settlement again', () => {
+  const h = makeHarness(4726), courier = generateContacts(ASHCACHE, h.state)[0];
+  buildReply(courier.role, 'accept_next_run', h.ctx, ASHCACHE, courier);
+  h.bus.emit('ui:endgameConfirm', { choice: 'E' });
+  const reply = buildReply(courier.role, 'closed', h.ctx, ASHCACHE, courier);
+  assert.match(reply.text, /47-A is closed; 47-B remains pending/);
+  assert.doesNotMatch(reply.text, /stays open/);
+  assert.equal(h.events.filter(e => e.name === 'economy:grantCredits').length, 1);
 });

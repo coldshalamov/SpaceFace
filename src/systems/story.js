@@ -1048,7 +1048,9 @@ export const story = {
     if (s.endgamePending && s.endgamePending.choice === choice) {
       s.endgamePending = null;
     }
-    if (isSandboxId(choice)) return;
+    // E is the working-pilot fallback, not an alternative that unlocks another door.
+    // Closing its terms leaves the courier available; it does not file or retire the offer.
+    if (isSandboxId(choice) || choice === 'E') return;
     if (!Array.isArray(s.endgameDeclined)) s.endgameDeclined = [];
     if (!s.endgameDeclined.includes(choice)) s.endgameDeclined.push(choice);
   },
@@ -1938,9 +1940,20 @@ export const story = {
     const s = this.state.story;
     if (!s) return;
     s.flags = s.flags || {};
-    // Re-surface bulkhead graffiti on every sector entry (it's on the player's own ship).
+    // Sector entry also fires during Continue. A filed life keeps the writing actually on
+    // its hull, rather than repainting the earlier chapter over the completed afterword.
     const content = BEAT_CONTENT[s.beatIndex];
-    if (content) {
+    if (s.endgameResolved) {
+      const hull = this.state.entities?.get?.(this.state.playerId)?.data?.livingHull;
+      const finale = s.writtenFinale;
+      const played = Array.isArray(finale?.beats)
+        ? finale.beats.slice(0, Math.max(0, finale.cursor | 0)).reverse()
+          .find(g => g.kind === 'graffiti' && g.where === 'bulkhead') : null;
+      const line = hull?.graffitiLine || played?.line;
+      if (line) this.bus.emit('graffiti:show', {
+        line, where: 'bulkhead', beat: s.beatIndex, author: hull?.graffitiLine ? hull.graffitiAuthor || null : null,
+      });
+    } else if (content) {
       for (const g of (content.graffiti || [])) {
         if (g.where === 'bulkhead') this.bus.emit('graffiti:show', { line: g.line, where: 'bulkhead', beat: s.beatIndex });
       }

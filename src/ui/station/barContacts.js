@@ -46,7 +46,7 @@ import {
   frontierRumorOwned,
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../data/frontierRumors.js';
-import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
+import { evaluateEndingEligibility, isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import {
   DOSS_ARCHIVE_CONTACT_ID,
   dossArchiveEvidence,
@@ -882,11 +882,11 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       role: 'courier',
       roleLabel: 'Contract Courier',
       factionId: null,
-      line: "Contract settled. New one's open.",
+      line: "Twelve hundred to close 47-A. No pardon, no rank. Read it before you sign.",
       canonicalKey: 'next_run_courier',
       endgameChoice: 'E',
       choices: [
-        { id: 'accept_next_run', label: 'Accept.' },
+        { id: 'accept_next_run', label: 'Review the 1,200 cr settlement.' },
         { id: 'not_yet', label: 'Not yet.' },
       ],
     }]
@@ -1765,17 +1765,24 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The room stays silent.' };
   }
   if (contact && contact.endgameChoice === 'E') {
+    const current = ctx?.state;
+    const filed = current?.story?.endgameResolved || current?.story?.endgameChoice
+      || current?.story?.flags?.sandboxContinued;
+    if (filed) return { text: current?.story?.endgameChoice === 'E'
+      ? 'Safe flying. 47-A is closed; 47-B remains pending.'
+      : 'Your final disposition is already recorded. This settlement cannot be filed again.' };
     if (choiceId === 'accept_next_run') {
-      if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {
-        return { text: 'That settlement is already filed.', endgameResolved: true };
+      if (!isChoiceECourierReady(current, stationId)) {
+        const reason = evaluateEndingEligibility(current, 'E').unmet[0]?.text;
+        return { text: reason || 'Meet the Settlement Courier at Ash Cache to review the terms.' };
       }
-      ctx.bus.emit('ui:endgameChoose', { choice: 'E', confirm: true, source: 'ashcache_courier' });
+      // Opening the terms is not acceptance. The shared disposition dialog owns confirmation.
+      ctx.bus.emit('ui:endgameChoose', { choice: 'E', confirm: false, source: 'ashcache_courier' });
       return {
-        text: '47-A closed. 47-B pending. The next manifest is already on the desk.',
-        endgameResolved: true,
+        text: 'The courier turns the settlement toward you. 1,200 cr closes 47-A. It does not certify the manifest, clear pursuit, or buy a rank. Nothing is filed until you confirm.',
       };
     }
-    return { text: "It stays open. The courier doesn't repeat the offer." };
+    return { text: 'It stays open. Come back when you have read the terms.' };
   }
   const state = ctx.state || {};
   if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {

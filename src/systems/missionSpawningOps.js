@@ -758,6 +758,17 @@ export const missionSpawningOps = {
     // first pass and accepting it on the next. Leave rejected provenance untouched. This is
     // the single authored civilian only; ordinary contracts retain their generic stamping.
     if (registryContract && !registryHold) return;
+    // Physical actors have an authored identity as well as a salvage verb. Restore the
+    // label from the accepted encounter on both spawn and Continue; salvageActions keeps
+    // authoredScanLabel while refreshing its canonical action and remaining stock.
+    if (ent.type === 'wreck' && ent.data.missionTag === targetOwner) {
+      const actor = authoredEncounterOf(authoredDefinitionOf(m))?.actors
+        ?.find(row => row.role === ent.data.physicalRole);
+      if (actor && actor.kind !== 'ship' && actor.kind !== 'asteroid') {
+        ent.data.authoredScanLabel = actor.scanLabel || actor.role;
+        ent.data.scanLabel = ent.data.authoredScanLabel;
+      }
+    }
     ent.data.missionTag = targetOwner;
     ent.data.missionId = targetOwner;
     ent.data.missionPinned = true;

@@ -1454,7 +1454,7 @@ const FINAL_DISPOSITION_ROUTES = Object.freeze({
   }),
   E: Object.freeze({
     interfaceLabel: 'ASH CACHE BAR · COURIER',
-    routeInstruction: 'After declining A-D, dock at Ash Cache, open Bar, and speak to the Courier.',
+    routeInstruction: 'Dock at Ash Cache, open Bar, and review the Settlement Courier’s terms. Only currently available alternatives need to be declined.',
   }),
 });
 const FINAL_DISPOSITION_PRIORITY = Object.freeze(['E', 'C', 'D', 'A', 'B']);

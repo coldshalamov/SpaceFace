@@ -354,7 +354,8 @@ function solvedPhrase(row) {
   if (row.stepId === 'foreman') return 'the yard feud settled';
   if (row.beat === 4 && row.stepId === 'operation') {
     if (row.verb === 'deliver') return 'the cargo spine held';
-    if (row.verb === 'clear') return 'the pack unmasked';
+    // Combat clearance does not prove that the pack was exposed or its evidence verified.
+    if (row.verb === 'clear') return 'the Weighing operation cleared';
     if (row.verb === 'tow') return 'the barn raised';
   }
   if (row.method === 'sling_in') return 'the core slung';
