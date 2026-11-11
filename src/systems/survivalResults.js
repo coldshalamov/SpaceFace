@@ -22,6 +22,8 @@ import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { captureKillReplay } from './killReplay.js';
 import { thinBlackBoxTape } from '../sim/blackBoxTape.js';
 import { normalizeRunShareWreck } from '../core/runShareCode.js';
+import { counted } from '../core/numberFormat.js';
+
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -479,7 +481,7 @@ export function stuntRoundRows(combo, options = {}) {
   const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const bestChain = n(c.bestChain);
   if (bestChain > 0) {
-    rows.push(['Best chain', `${bestChain} trick${bestChain === 1 ? '' : 's'} · ${n(c.bestChainPoints)} banked`]);
+    rows.push(['Best chain', `${counted(bestChain, 'trick', 'tricks')} · ${n(c.bestChainPoints)} banked`]);
   }
   const banked = n(c.banked);
   if (banked > 0) rows.push(['Banked style', String(banked)]);
@@ -556,6 +558,7 @@ export const survivalResults = {
     }));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', (p) => this._onRunEnded(p)));
+    this._unsubs.push(this.bus.on('run:swarmDeepContinued', () => this._onSwarmDeepContinued()));
   },
 
   destroy() {
@@ -610,6 +613,7 @@ export const survivalResults = {
     this._deathMark = null;
     this._defeatReceipt = null;
     this._stuntKills = [];
+    this._deepContinued = false;
     this._lastKillReplay = null;
     this._deadHull = null;
     this._collisionsTaken = 0;
@@ -999,6 +1003,19 @@ export const survivalResults = {
     this._publish(outcome);
   },
 
+  /**
+   * C01-03 — `Keep going` banked the win and kept flying. The terminal publish lock and the
+   * stop latch spent themselves on that plate; clear exactly those, never the counters —
+   * the deep run's ledger (waves cleared, deepest round, kills, chains) is one honest run.
+   */
+  _onSwarmDeepContinued() {
+    this._result = null;
+    this._resultEnded = false;
+    this._stopReason = null;
+    this._deepContinued = true;
+    this._resultSeq = (this._resultSeq || 0) + 1;
+  },
+
   _publish(outcome) {
     const run = this.state && this.state.run;
     if (!run || run.kind !== 'survival') return;
@@ -1110,6 +1127,11 @@ export const survivalResults = {
         recentCauses: run.style && Array.isArray(run.style.recentCauses) ? run.style.recentCauses.slice() : [],
       },
     };
+    // C01-01 — the whole line's sim duration, so a win's record time is measured on the
+    // same clock the fight ran on (never wall time).
+    result.durationS = this._runStartSimTime != null
+      ? Math.max(0, result.endedAt.simTime - this._runStartSimTime)
+      : null;
     const challenge = challengeFromRun(run);
     result.ruleset = challenge.ruleset;
     result.trialId = challenge.trialId;
@@ -1232,6 +1254,11 @@ export const survivalResults = {
     this._resultEnded = run.phase === 'ended' || run.phase === 'victory';
     this._resultSeq = (this._resultSeq || 0) + 1;
     this._emit('run:resultsReady', result);
+    // C01-03 — the shell's one-shot results latch spent itself on the banked win's plate, so
+    // a post-continue ending asks for its own surface (the same seam the milestone plate uses).
+    if (this._deepContinued) {
+      this._emit('ui:pushScreen', { id: 'crucibleResults', source: 'swarm:deep_continue' });
+    }
   },
 
   _emit(event, payload) {

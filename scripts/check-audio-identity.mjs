@@ -441,6 +441,14 @@ const EMITTED_CUES = {
   // Acceleration tier transition: heroManeuvers' dash voice and audioSystem's boost/sprint
   // changeover both emit the literal recipe id — the authored transition motif, never a click.
   sfx_accel_transition: { distinct: true },
+  // inf-lane-horn: a buzzed civilian's class horn, emitted by literal recipe id from the bark
+  // director's traffic:nearMiss answer — tap, double and held lean per family.
+  sfx_lane_horn_tap: { distinct: true },
+  sfx_lane_horn_double: { distinct: true },
+  sfx_lane_horn_lean: { distinct: true },
+  sfx_hauler_blast: { distinct: true },
+  sfx_hauler_blast_double: { distinct: true },
+  sfx_hauler_blast_lean: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

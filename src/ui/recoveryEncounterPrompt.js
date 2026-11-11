@@ -9,6 +9,7 @@
 
 import { stationName } from './sectorLawPresenter.js';
 import { getPromptDeck } from './promptDeck.js';
+import { counted } from './numberFormat.js';
 
 const RECEIPT_TTL_S = 6;
 
@@ -96,7 +97,7 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
   const activeRemaining = terminal ? null : remaining;
   const timerStatus = activeRemaining == null ? null : `${recoveryKind === 'surrendered' ? 'ESCAPE' : 'WINDOW'} ${activeRemaining} S`;
   const cargoText = recoveryKind === 'civilian_disabled' || payload.shape === 'civilian_freight_recovery'
-    ? `${cargo} CARGO` : `${credits} CREDIT CUSTODY`;
+    ? counted(cargo, 'CARGO UNIT', 'CARGO UNITS') : `${counted(credits, 'CREDIT', 'CREDITS')} CUSTODY`;
   const destinationText = destinationId ? destination.toUpperCase() : 'LAWFUL STATION';
   let flag = recoveryKind === 'civilian_disabled' ? 'CIVILIAN RECOVERY' : 'NONLETHAL CUSTODY';
   let status = timerStatus || 'OPEN';
@@ -110,14 +111,18 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
     status = success ? 'SUCCESS' : 'LOST';
     headline = String(payload.text || (success ? 'RECOVERY TRANSFER COMPLETE' : `RECOVERY LOST - ${words(payload.outcome)}`)).toUpperCase();
     meta = [
-      `${credits} CREDITS`,
-      payload.shape === 'civilian_freight_recovery' ? `${cargo} CARGO` : null,
+      counted(credits, 'CREDIT', 'CREDITS'),
+      payload.shape === 'civilian_freight_recovery' ? counted(cargo, 'CARGO UNIT', 'CARGO UNITS') : null,
       destinationId ? destination.toUpperCase() : null,
       success ? 'OUTCOME SUCCESS' : `REASON ${words(payload.outcome).toUpperCase()}`,
     ].filter(Boolean).join(' · ');
     detail = `Receipt ${String(payload.id)}.`;
   } else if (phase === 'tethered') {
-    detail = `Line attached. Reel to ${threshold} units for custody lock, then tow to ${destination}.`;
+    // words-field-counts: the custody threshold can be one unit.
+    const t = Math.max(0, Math.round(Number(threshold) || 0));
+    detail = t === 1
+      ? `Line attached. Reel to 1 unit for custody lock, then tow to ${destination}.`
+      : `Line attached. Reel to ${t} units for custody lock, then tow to ${destination}.`;
   } else if (phase === 'secured') {
     status = timerStatus || 'LOCKED';
     detail = `Custody locked. Tow ${label} to ${destination}.`;
@@ -137,13 +142,16 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
   } else if (payload.instruction && /relatch/i.test(payload.instruction)) {
     detail = String(payload.instruction);
   } else if (recoveryKind === 'drive_disabled') {
-    detail = `Drive disabled; Massline latch and reel inside ${threshold} units, then tow to ${destination}.`;
+    // words-field-counts: the reel threshold can be one unit, in every phase that names it.
+    detail = `Drive disabled; Massline latch and reel inside ${counted(threshold, 'unit', 'units')}, then tow to ${destination}.`;
   } else {
-    const cargoClause = recoveryKind === 'civilian_disabled' ? ` ${cargo} cargo` : '';
-    detail = `Massline latch and reel inside ${threshold} units${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
+    const cargoClause = recoveryKind === 'civilian_disabled'
+      ? ` ${counted(cargo, 'cargo unit', 'cargo units')}` : '';
+    detail = `Massline latch and reel inside ${counted(threshold, 'unit', 'units')}${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
   }
 
-  const timerAria = activeRemaining == null ? '' : ` ${activeRemaining} seconds remaining.`;
+  const timerAria = activeRemaining == null
+    ? '' : ` ${counted(activeRemaining, 'second', 'seconds')} remaining.`;
   const announcementKey = `${receiptRecoveryId(payload)}:${terminal ? `terminal:${payload.outcome || payload.lostReason || phase}` : phase}`;
   return Object.freeze({
     source: payload,

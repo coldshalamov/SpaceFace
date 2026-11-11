@@ -17,7 +17,7 @@ import { createRunState } from '../src/core/runState.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import { SURVIVAL_WAVES } from '../src/data/survivalWaves.js';
 import { ARENA_LAWS, survivalArenaById } from '../src/data/survivalArenas.js';
-import { swarmEventFor, validateSwarmEvents } from '../src/data/swarmEvents.js';
+import { swarmMinorEventFor, validateSwarmEvents } from '../src/data/swarmEvents.js';
 import {
   SWARM_ARENA_STAR_GATES,
   swarmArenaIsUnlocked,
@@ -85,10 +85,13 @@ test('both biomes register end to end: catalog, laws, ladder, events, recipes', 
   assert.equal(swarmArenaIsUnlocked({ arenas: {} }, HIVE_ARENA_ID), false,
     'a fresh ladder has not earned the Hive');
 
-  // Event tables validate and both arenas can draw cards.
+  // Event tables validate and both arenas can draw cards. C01-01: every fifth round is a
+  // champion now, so the course's only card slots are the minor band — waves 2 and 8 here.
   assert.deepEqual(validateSwarmEvents(), []);
-  const millCard = swarmEventFor({ arenaId: MILL_ARENA_ID, wave: 5, seed: SEED });
-  const hiveCard = swarmEventFor({ arenaId: HIVE_ARENA_ID, wave: 15, seed: SEED });
+  const millCard = swarmMinorEventFor({ arenaId: MILL_ARENA_ID, wave: 2, seed: SEED });
+  const hiveCard = swarmMinorEventFor({ arenaId: HIVE_ARENA_ID, wave: 8, seed: SEED });
+  assert.equal(millCard?.band, 'minor');
+  assert.equal(hiveCard?.band, 'minor');
   assert.ok(millCard && millCard.telegraph, 'the Mill draws a telegraphed event');
   assert.ok(hiveCard && hiveCard.telegraph, 'the Hive draws a telegraphed event');
 });
