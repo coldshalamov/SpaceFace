@@ -28,8 +28,11 @@ async function start() {
   // import is precisely the startup race this media-first handoff eliminates,
   // and its fetch/eval churn is what a slow host makes the intro pay for.
   // `ready` alone can be the poster deadline; `playbackReady` demands a real
-  // playback proof, releases for an invisible window, and is bounded by the
-  // controller's generous hold — the intro outranks every asset behind it.
+  // playback proof from the in-memory mint (a wire-backed movie is what the
+  // asset storm freezes), releases for an invisible window or a provably
+  // unavailable mint, and is bounded by the controller's generous hold — the
+  // intro outranks every asset behind it, and a few extra seconds are the
+  // agreed price of a loading movie that never freezes.
   await Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready]);
   await yieldForBootPaint();
   try {

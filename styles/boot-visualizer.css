@@ -8,8 +8,9 @@
 }
 /* A buffered/still frame gets restrained compositor-only camera drift. The
    state remains explicitly poster/buffering; this is not a readiness claim.
-   9s is a liveness floor: while the 12MB movie buffers (up to the 9s playback
-   hold) this drift plus the emblem turn are the whole picture — 12s read as frozen. */
+   This drift plus the emblem turn are the whole picture while the 12MB movie's
+   in-memory copy lands (bounded by the 20s playback hold) — a still frame that
+   still moves reads as holding, not frozen. */
 #boot-overlay[data-boot-visual-state="probing"] .boot-video[data-boot-native],
 #boot-overlay[data-boot-visual-state="buffering"] .boot-video[data-boot-native],
 #boot-overlay[data-boot-visual-state="poster"] .boot-video[data-boot-native] {

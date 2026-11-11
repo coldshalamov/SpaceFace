@@ -202,8 +202,9 @@ test('an explicit resume position outranks a pending session offset', async () =
   assert.deepEqual(f.video.seeks, [5.1], 'variant switch preserves position; the offset yields');
   f.ctl.destroy();
 });
-// In-memory transport: a minted blob URL must only ever enter the element while it is
-// paused, so the swap can never restart a playing movie.
+// In-memory transport: while the boot hold is open, a pending mint holds wire playback
+// (the session must not start on the transport the asset storm freezes); the swap onto
+// the minted blob URL itself still only ever happens while the element is paused.
 function mintFixture(options = {}) {
   const video = new Video(), timers = new Map(), states = [], revoked = []; let serial = 0, mints = 0;
   let grantMint; const pending = new Promise(r => { grantMint = r; });
@@ -213,30 +214,86 @@ function mintFixture(options = {}) {
     URL: { createObjectURL: () => `blob:mint-${++mints}`, revokeObjectURL(u) { revoked.push(u); } } };
   const ctl = createBootMediaPlayback({ video, host, onState: s => states.push(s), ...options });
   return { video, ctl, states, timers, mints: () => mints, revoked,
-    mint() { grantMint({ ok: true, blob: () => Promise.resolve({ size: 8 }) }); } };
+    mint() { grantMint({ ok: true, blob: () => Promise.resolve({ size: 8 }) }); },
+    deadline(count = Infinity) { const pending = [...timers.entries()].slice(0, count);
+      for (const [id, fn] of pending) timers.delete(id);
+      for (const [, fn] of pending) fn(); } };
 }
-test('the minted memory copy replaces wire transport while paused, keeping position', async () => {
-  const f = mintFixture(); f.ctl.start(); await microtasks();
-  assert.equal(f.video.src, BOOT_MEDIA.normal, 'first session plays from the path while the mint lands');
-  f.video.present(8); f.video.present(8.1);
-  f.mint(); await microtasks(); await microtasks();
-  f.ctl.stop(); await microtasks();
-  assert.equal(f.video.src, 'blob:mint-1', 'the paused element moves onto the mint');
-  assert.equal(f.video.loads, 2);
-  f.video.event('loadedmetadata');
-  assert.deepEqual(f.video.seeks, [8.1], 'the swap restores the parked frame, not a restart');
+test('the boot session holds wire playback until the memory copy lands, then plays from memory', async () => {
+  const f = mintFixture(); let held = true;
+  f.ctl.playbackReady.then(() => { held = false; });
   f.ctl.start(); await microtasks();
-  assert.equal(f.video.plays, 2); assert.equal(f.video.loads, 2); f.ctl.destroy();
+  assert.equal(f.video.paused, true, 'a pending mint never starts the wire movie');
+  assert.equal(f.ctl.inspect().status, 'probing');
+  assert.ok(!f.video.src, 'no wire copy is ever sourced while the mint is in flight');
+  assert.equal(f.video.loads, 0);
+  f.video.present(8); f.video.present(8.1); await microtasks();
+  assert.equal(held, true, 'a wire proof alone must not release the game import');
+  f.mint(); await microtasks(); await microtasks();
+  assert.equal(f.video.src, 'blob:mint-1', 'the session swapped onto memory, not the wire');
+  assert.equal(f.video.paused, false);
+  assert.equal(f.video.loads, 1, 'the one sourcing, straight onto the mint');
+  f.video.present(8.2); f.video.present(8.3); await microtasks();
+  assert.equal(held, false, 'memory playback is what the hold was waiting for');
+  assert.equal((await f.ctl.playbackReady).status, 'video');
+  f.ctl.destroy();
 });
-test('a mint that lands mid-session never swaps a playing movie', async () => {
-  const f = mintFixture(); f.ctl.start(); await microtasks();
+test('the parse-time mint is reused: no second download, no reload of its playing element', async () => {
+  const video = new Video(), timers = new Map(); let serial = 0; let fetched = 0;
+  const host = { setTimeout(fn) { const id = ++serial; timers.set(id, fn); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    __sfBootMint: { source: BOOT_MEDIA.normal, url: 'blob:parse-mint', failed: false, ready: Promise.resolve() },
+    fetch: () => { fetched++; throw new Error('the parse-time mint must be reused, not re-fetched'); },
+    URL: { createObjectURL: () => 'blob:never', revokeObjectURL() {} } };
+  // The inline kick already sourced and started the shared memory copy.
+  video.src = 'blob:parse-mint'; video.paused = false; video.readyState = 4;
+  const ctl = createBootMediaPlayback({ video, host });
+  ctl.start(); await microtasks();
+  assert.equal(fetched, 0, 'no second download of the movie');
+  assert.equal(video.loads, 0, 'an adopted memory element is never reloaded');
+  assert.equal(video.src, 'blob:parse-mint');
+  assert.equal(video.paused, false, 'adoption never pauses the playing movie');
+  video.present(3); video.present(3.1); await microtasks();
+  assert.equal((await ctl.playbackReady).status, 'video');
+  ctl.stop(); ctl.start(); await microtasks();
+  assert.equal(video.src, 'blob:parse-mint', 'every later session replays the same memory copy');
+  assert.equal(video.loads, 0); assert.equal(video.paused, false);
+  ctl.destroy();
+});
+test('a hung mint releases wire playback on the hold deadline, and a late mint never interrupts it', async () => {
+  const f = mintFixture(); let reason = '';
+  f.ctl.playbackReady.then(r => { reason = r.reason; });
+  f.ctl.start(); f.deadline(1); await microtasks();
   f.video.present(4); f.video.present(4.1);
+  assert.equal(f.video.paused, true, 'still held while the mint hangs');
+  f.deadline(1); await microtasks();
+  assert.equal(reason, 'playback-hold-deadline');
+  assert.equal(f.video.paused, false, 'the closed hold unblocks the wire movie');
   f.mint(); await microtasks(); await microtasks();
   f.ctl.refresh(); await microtasks();
-  assert.equal(f.video.src, BOOT_MEDIA.normal, 'playing transport is untouched');
+  assert.equal(f.video.src, BOOT_MEDIA.normal, 'a mint landing mid-playback never swaps a playing movie');
   f.ctl.stop(); await microtasks();
   assert.equal(f.video.src, 'blob:mint-1', 'the swap waits for the paused window');
+  f.video.event('loadedmetadata');
+  assert.deepEqual(f.video.seeks.slice(-1), [4.1], 'the swap restores the parked frame, not a restart');
   f.ctl.destroy();
+});
+test('a failed mint falls back to wire playback inside the hold', async () => {
+  const video = new Video(), timers = new Map(); let serial = 0; let grantFail;
+  const pending = new Promise((_r, reject) => { grantFail = reject; });
+  const host = { setTimeout(fn) { const id = ++serial; timers.set(id, fn); return id; },
+    clearTimeout(id) { timers.delete(id); },
+    fetch: () => pending,
+    URL: { createObjectURL: () => 'blob:unused', revokeObjectURL() {} } };
+  const ctl = createBootMediaPlayback({ video, host });
+  let settled = false; ctl.playbackReady.then(() => { settled = true; });
+  ctl.start(); await microtasks();
+  assert.equal(video.paused, true, 'held while the fetch is in flight');
+  grantFail(new Error('offline')); await microtasks(); await microtasks();
+  assert.equal(video.paused, false, 'a busted mint cannot hold the boot hostage');
+  video.present(1); video.present(1.1); await microtasks();
+  assert.equal(settled, true, 'a wire proof releases the hold once no mint is coming');
+  assert.equal(video.src, BOOT_MEDIA.normal); assert.equal(video.loads, 1); ctl.destroy();
 });
 test('a source whose mint fails keeps its path and retries only through fetch', async () => {
   const video = new Video(), timers = new Map(); let serial = 0;

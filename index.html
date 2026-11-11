@@ -1272,31 +1272,53 @@
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
-      <!-- The intro visualizer outranks every other boot asset: preload=auto makes its
-           bytes the first download of the page (parse time, before any script), and
-           bootEntry holds the game graph until the movie really plays. Native media is
-           the artwork; never put the live JS remix canvas over this loading surface. -->
+      <!-- The intro visualizer outranks every other boot asset. Native media is the artwork;
+           never put the live JS remix canvas over this loading surface. The element carries no
+           wire <source>: a streaming copy is exactly what the startup asset storm starves into a
+           frozen frame, so the movie only ever plays from memory (the parse-time mint below, and
+           the boot controller's own mint on hosts where the script cannot run). -->
       <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
-             preload="auto" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
-        <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />
+             poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
       </video>
-      <!-- Parse-time movie kick: the boot controller lands seconds later (module graph fetch +
-           eval); start the muted clip the moment its element exists so the intro's first visible
-           seconds are the movie, not a paused poster frame. The controller ADOPTS the
-           already-playing element (same clip: no reload, no restart). Reduced-motion/flash
-           users keep the authored poster — variant choice and pausing are the controller's
-           call, never a flash risk. -->
+      <!-- Parse-time memory mint: fetch the clip ONCE at parse time (before the module graph),
+           publish the mint on window for the boot controller to reuse — it never downloads the
+           movie again — and start the muted clip from memory the moment the bytes land. Until
+           then the authored poster is the picture; a wire-backed movie is never the picture.
+           The controller ADOPTS the already-playing memory element (same mint: no reload, no
+           restart) and holds the game graph until memory playback is proved. Reduced-motion/
+           flash users keep the authored poster — variant choice and pausing are the
+           controller's call, never a flash risk. -->
       <script>
         (function () {
           try {
             var video = document.getElementById('boot-intro-video');
-            if (!video || video.paused === false) return;
+            if (!video || video.paused === false || video.src) return;
             var root = document.documentElement;
             if (root.classList.contains('sf-reduce-motion')
               || root.classList.contains('sf-reduce-flash')
               || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-            var kick = video.play();
-            if (kick && kick.catch) kick.catch(function () { /* the boot controller retries */ });
+            var SOURCE = 'assets/cinematics/boot-visualizer.mp4';
+            var overlay = document.getElementById('boot-overlay');
+            var mint = { source: SOURCE, url: null, failed: false, ready: null };
+            window.__sfBootMint = mint;
+            if (overlay) overlay.dataset.bootVisualState = 'probing';
+            mint.ready = fetch(SOURCE, { priority: 'high' })
+              .then(function (response) {
+                if (!response || response.ok === false) throw new Error('http');
+                return response.blob();
+              })
+              .then(function (blob) {
+                if (!blob || !blob.size) throw new Error('empty');
+                mint.url = URL.createObjectURL(blob);
+                video.src = mint.url;
+                if (overlay) overlay.dataset.bootVisualState = 'video';
+                var kick = video.play();
+                if (kick && kick.catch) kick.catch(function () { /* the boot controller retries */ });
+              })
+              .catch(function () {
+                mint.failed = true; /* the boot controller owns the wire retry */
+                if (overlay) delete overlay.dataset.bootVisualState;
+              });
           } catch (error) { /* decoration never blocks boot */ }
         })();
       </script>
