@@ -9,7 +9,9 @@ function entitiesFixture() {
   const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, flags: {} };
   const hostile = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 80, z: 0 }, radius: 10, data: {} };
   const site = {
-    id: 3, type: 'wreck', alive: true, team: 2, pos: { x: 100, z: 20 }, radius: 2, flags: {},
+    // Same team as the player: a selected relay proxy is not a combat target, or the context
+    // gate would take the site-beam slice away while it is being aimed at.
+    id: 3, type: 'wreck', alive: true, team: 0, pos: { x: 100, z: 20 }, radius: 2, flags: {},
     data: { worldSiteTargetable: true, worldSiteId: 'world_site_helios_relay', worldSiteComponentId: 'relay_core' },
   };
   const asteroid = { id: 4, type: 'asteroid', alive: true, pos: { x: 40, z: 0 }, radius: 8, data: {} };
@@ -96,11 +98,13 @@ test('selected site precedence is explicit and aimed mining still follows the cu
   assert.equal(host._acquireTarget(player, 500, state), asteroid);
 });
 
-test('rebindable B is contextual to a selected site while LT remains the site beam', () => {
-  for (const scheme of Object.values(DEFAULTS.SCHEMES)) assert.deepEqual(scheme.siteBeam, ['KeyB']);
+test('the site-beam wheel slice is contextual to a selected site while LT remains the site beam', () => {
+  // G18-02: siteBeam has no default key — it is a wheel latch slice, still rebindable.
+  for (const scheme of Object.values(DEFAULTS.SCHEMES)) assert.deepEqual(scheme.siteBeam, []);
   const fixture = stateFixture();
   const host = inputHarness();
-  host._keys.KeyB = true;
+  host.state = fixture.state;
+  host.applyWheelVerb({ action: 'siteBeam', phase: 'toggle' });
   host.update(1 / 60, fixture.state);
   assert.equal(fixture.state.input.fireGroup, 2);
   assert.equal(fixture.state.input.actions.siteBeam, true);
@@ -109,8 +113,18 @@ test('rebindable B is contextual to a selected site while LT remains the site be
 
   fixture.state.player.targetId = fixture.asteroid.id;
   host.update(1 / 60, fixture.state);
-  assert.equal(fixture.state.input.fireGroup, null, 'ordinary asteroid B remains reserved for drill view');
+  assert.equal(fixture.state.input.fireGroup, null, 'the site latch claims nothing without a selected site');
   assert.equal(fixture.state.input.actions.siteBeam, false);
+  host.applyWheelVerb({ action: 'siteBeam', phase: 'toggle' });
+
+  // A saved KeyB binding restores the dedicated-key route through the same selected-site lane.
+  fixture.state.settings = { controls: { bindings: { siteBeam: ['KeyB'] } } };
+  host._keys.KeyB = true;
+  fixture.state.player.targetId = fixture.site.id;
+  host.update(1 / 60, fixture.state);
+  assert.equal(fixture.state.input.fireGroup, 2, 'a rebound siteBeam key drives the same lane');
+  assert.equal(fixture.state.input.actions.siteBeam, true);
+  host._keys.KeyB = false;
 
   const gp = {
     lastActiveMs: 1,
@@ -126,17 +140,30 @@ test('rebindable B is contextual to a selected site while LT remains the site be
   assert.equal(fixture.state.input.actions.aimedMine, false);
 });
 
-test('RMB and touch Mine retain aimed-rock semantics even while a World Site is selected', () => {
+test('wheel aimed-mine and touch Mine retain aimed-rock semantics even while a World Site is selected', () => {
   const fixture = stateFixture();
   const player = fixture.state.entities.get(fixture.state.playerId);
+  const miningHost = Object.assign(Object.create(mining), { _mineableScratch: [], _diag: {}, state: fixture.state });
 
+  // RMB is the Line now, however long it is held — it can never become a mining beam.
   const mouseHost = inputHarness();
   mouseHost._m2 = true;
   for (let i = 0; i < 19; i++) mouseHost.update(1 / 60, fixture.state);
   assert.equal(fixture.state.input.actions.siteBeam, false);
+  assert.equal(fixture.state.input.actions.aimedMine, false, 'RMB is the Line — never the beam');
+  assert.equal(fixture.state.input.fireGroup, null, 'a selected site cannot inherit the Line hold');
+  mouseHost._m2 = false;
+
+  // The wheel MINE BEAM latch is the cursor-aimed route: it ignores the selected site, which
+  // only the explicit site-beam slice or the pad LT claims.
+  const wheelHost = inputHarness();
+  wheelHost.state = fixture.state;
+  wheelHost.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
+  wheelHost.update(1 / 60, fixture.state);
+  assert.equal(fixture.state.input.actions.siteBeam, false);
   assert.equal(fixture.state.input.actions.aimedMine, true);
-  const miningHost = Object.assign(Object.create(mining), { _mineableScratch: [], _diag: {}, state: fixture.state });
   assert.equal(miningHost._acquireTarget(player, 500, fixture.state), fixture.asteroid);
+  wheelHost.applyWheelVerb({ action: 'aimedMine', phase: 'toggle' });
 
   const touch = {
     lastActiveMs: 2,

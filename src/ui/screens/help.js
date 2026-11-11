@@ -27,6 +27,7 @@ import { staticVerbSentence } from '../../data/arsenalWords.js';
 import { resolveArsenalPresentation } from '../../data/arsenalPresentation.js';
 import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS, gamepadButtonNames, gamepadButtonLabels } from '../../systems/gamepad.js';
 import { gamepadGlyphForAction } from '../bindings.js';
+import { SLICES } from '../contextWheel.js';
 import { BINDINGS } from '../bindings.js';
 import { isSwarmControls, SWARM_HELP_ROWS } from '../../data/swarmControls.js';
 import { contextActionAllowed, contextHelpRows, contextUiAllowed, inputContextFor } from '../../data/inputContexts.js';
@@ -109,6 +110,8 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Fire', 'fire', (g) => g],
   ['Mine beam', 'mine', (g) => g],
   ['Boost', 'boost', (g) => g],
+  // G18-02: the overflow verbs are the wheel's slices; hold-Y names the wheel itself.
+  ['Context wheel (hold: aim a slice, release to choose)', 'contextWheel', (g) => `hold ${g}`],
   ['Brake / full stop', 'brake', (g) => g],
   ['Shove (repulsor; sets off armed ordnance)', 'shove', (g) => g],
   ['Accept / confirm', 'accept', (g) => g],
@@ -153,7 +156,7 @@ const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
 // Gaps between action rows are the static ones above; see gamepadControlRows.
 const GAMEPAD_ROW_ORDER = Object.freeze([
   'Fly (yaw + throttle)', 'Aim weapons',
-  'Fire', 'Mine beam', 'Boost', 'Brake / full stop', 'Shove (repulsor; sets off armed ordnance)', 'Accept / confirm',
+  'Fire', 'Mine beam', 'Boost', 'Context wheel (hold: aim a slice, release to choose)', 'Brake / full stop', 'Shove (repulsor; sets off armed ordnance)', 'Accept / confirm',
   'Massline', 'Countermeasure', 'Bomb (selected ordnance)', 'Cycle ordnance',
   'Cycle target', 'Open star-map', 'Open codex', 'Open mission log', 'Pause', 'Dock / activate',
   'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
@@ -173,10 +176,18 @@ const GAMEPAD_STATIC_TEXT = Object.freeze({
 });
 
 // Two different reasons a row can name no button. A player who cleared a binding chose that; a
-// verb the game ships with no default button at all is the game's gap, and saying otherwise
-// blames the player's profile for the game's design.
+// verb the game ships with no default button at all is on the context wheel under G18-02 — the
+// sheet says where it lives instead of calling it a gap.
 const UNBOUND_BY_PLAYER = 'unbound — Settings → Controls';
-const UNBOUND_BY_DESIGN = 'no default button — bind it under Settings → Controls';
+// Pad actions that are wheel slices (the wheel itself keeps its hold-Y seat).
+const WHEEL_SLICE_PAD_ACTIONS = Object.freeze(new Set([
+  'mine', 'brake', 'countermeasure', 'travelBurn', 'cycleBomb', 'scanPulse', 'siteBeam',
+  'bulletTime', 'cloak', 'cruise', 'deployBeacon', 'deployShieldPylon', 'jettisonLot',
+  'gyreSnare', 'autoFire', 'reelIn', 'reelOut', 'strafeLeft', 'strafeRight',
+]));
+// Keyboard-side slice verbs, straight from the wheel's own list — one source for "no key
+// seat but still reachable".
+const WHEEL_SLICE_ACTIONS = Object.freeze(new Set(SLICES.map((s) => s.action)));
 
 const GAMEPAD_ROW_BY_LABEL = new Map(GAMEPAD_ROW_ACTIONS.map((row) => [row[0], row]));
 
@@ -196,10 +207,15 @@ export function gamepadControlRows(map) {
     const [, action, format] = GAMEPAD_ROW_BY_LABEL.get(label);
     const labels = gamepadButtonLabels(action, resolved, { dual: stock });
     if (!labels.length) {
+      // G18-02: a slice with no pad seat lives on the wheel — name the wheel's own button.
+      if (WHEEL_SLICE_PAD_ACTIONS.has(action)) {
+        const wheel = gamepadButtonLabels('contextWheel', resolved, { dual: stock }).join(' or ') || 'Y';
+        return [label, null, `hold ${wheel} — context wheel`];
+      }
       // A player who cleared a binding chose that; a verb the game ships with no default button is
       // the game's own gap, and saying otherwise blames the profile for the design.
       const shipped = gamepadButtonNames(action, GAMEPAD_DEFAULT_BINDINGS);
-      return [label, null, shipped.length ? UNBOUND_BY_PLAYER : UNBOUND_BY_DESIGN];
+      return [label, null, shipped.length ? UNBOUND_BY_PLAYER : 'no default button — bind it under Settings → Controls'];
     }
     // A dual Xbox/PlayStation spelling already uses ' / ' as its own separator, so a chord must
     // join with ' or ' — otherwise the two separators are indistinguishable in the cell.
@@ -254,8 +270,15 @@ export function controlSections(state) {
     holdLine && `Hold + ${holdLine}: reel/pay out/orbit`,
     pump && `${pump} pump`,
   ].filter(Boolean).join('; ');
+  // G18-02: a flight verb with no key seat lives on the context wheel — the row names the
+  // wheel instead of an em-dash, and a live rebind still overrides it (resolveActionLabel wins).
+  const wheelKey = resolveActionLabel(state, 'contextWheel', { sep: ' ' }) || 'Q';
+  const withWheelDef = (rows) => rows.map((r) => (r[1] && r.length === 2
+    && !resolveActionLabel(state, r[1])
+    ? [r[0], r[1], `hold ${wheelKey} — context wheel`]
+    : r));
   const sections = [
-    ['Flight', [
+    ['Flight', withWheelDef([
       ['Throttle forward', 'forward'],
       ['Reverse thrust', 'reverse'],
       ['Brake / full stop', 'brake'],
@@ -302,11 +325,13 @@ export function controlSections(state) {
       ['Shield pylons — place one endpoint, then link a second: hostile ships and shots stop at the wall between them, you and your allies pass; aim at a pylon to recall its pair (needs a Pylon Projector)', 'deployShieldPylon'],
       ['Jettison cargo lot', 'jettisonLot'],
       ['Travel burn (latch a long burn)', 'travelBurn'],
-    ]],
+      // The wheel itself is a held key, not a slice — every verb above that names it lives here.
+      ['Context wheel — hold, aim a slice, release to choose', 'contextWheel'],
+    ])],
     ['Interface (fixed keys)', [
       ['Aim weapons freely', null, 'Backspace, then Mouse'],
-      ['Select / inspect object', null, 'RMB tap'],
-      ['Mine / salvage / weld', null, 'hold RMB on object'],
+      ['The Line (fire / release; press also selects under the cursor)', null, 'RMB'],
+      ['Mine / salvage / weld', null, 'hold Q → MINE/SITE BEAM'],
       ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
       ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
       ['Cycle combat lock', null, 'Tab / Shift+Tab'],
@@ -346,7 +371,9 @@ export function controlSections(state) {
   const contextTitle = context === 'combat' ? 'Combat now'
     : context === 'station' ? 'Station now'
       : context === 'map' ? 'Map now' : 'Flight now';
-  const contextCard = contextHelpRows(state, (action) => resolveActionLabel(state, action, { sep: ' ' }))
+  // A wheel-only verb still needs a card row (the low-hull flee): it names the wheel.
+  const contextCard = contextHelpRows(state,
+    (action) => resolveActionLabel(state, action, { sep: ' ' }) || `${wheelKey} wheel`)
     .map(([keys, verb]) => [verb, null, keys]);
   // X5 final review: the long reference is checked by the same gates. A refused row says so
   // instead of teaching a key that does nothing where the player is.
@@ -358,7 +385,7 @@ export function controlSections(state) {
 }
 
 function keyLabel(state, action, def) {
-  if (action) return resolveActionLabel(state, action, { sep: ' / ' }) || '—';
+  if (action) return resolveActionLabel(state, action, { sep: ' / ' }) || def || '—';
   return def || '—';
 }
 
@@ -381,11 +408,12 @@ const RIG_STATIONS = Object.freeze([
   { id: 'fire', action: 'fire', verb: 'Fire', part: 'hardpoint', fx: 'fire', partName: 'hardpoint', side: 'left', padAction: 'fire', mouse: 'Mouse0' },
   { id: 'strafeLeft', action: 'strafeLeft', verb: 'Lateral left', part: 'flankL', fx: 'flankL', partName: 'port thruster', side: 'left' },
   { id: 'autoFire', action: 'autoFire', verb: 'Draw-to-fly', part: 'helm', fx: 'helm', partName: 'helm', side: 'left', padAction: 'autoTarget' },
-  { id: 'tether', action: 'tether', verb: 'Massline', part: 'winch', fx: 'winch', partName: 'winch', side: 'left', padAction: 'massline' },
+  // G18-02: RMB is the Line, so the mouse echo lights the winch card, not the mining head.
+  { id: 'tether', action: 'tether', verb: 'Massline', part: 'winch', fx: 'winch', partName: 'winch', side: 'left', padAction: 'massline', mouse: 'Mouse2' },
   { id: 'forward', action: 'forward', verb: 'Throttle', part: 'drive', fx: 'drive', partName: 'drive', side: 'left', stick: 'up', order: 0 },
   { id: 'brake', action: 'brake', verb: 'Brake', part: 'drive', fx: 'brake', partName: 'drive', side: 'left', padAction: 'brake', order: 1 },
   { id: 'yawRight', action: 'yawRight', verb: 'Steer right', part: 'bowR', fx: 'steerR', partName: 'bow', side: 'right', stick: 'right' },
-  { id: 'mine', action: null, verb: 'Mine beam', part: 'mining', fx: 'mine', partName: 'mining head', side: 'right', padAction: 'mine', mouse: 'Mouse2' },
+  { id: 'mine', action: null, verb: 'Mine beam', part: 'mining', fx: 'mine', partName: 'mining head', side: 'right', padAction: 'mine' },
   { id: 'reverse', action: 'reverse', verb: 'Reverse', part: 'bow', fx: 'retro', partName: 'bow', side: 'right', stick: 'down' },
   { id: 'strafeRight', action: 'strafeRight', verb: 'Lateral right', part: 'flankR', fx: 'flankR', partName: 'starboard thruster', side: 'right' },
   { id: 'countermeasure', action: 'countermeasure', verb: 'Countermeasure', part: 'belly', fx: 'belly', partName: 'belly', side: 'right', padAction: 'countermeasure' },
@@ -394,11 +422,13 @@ const RIG_STATIONS = Object.freeze([
 const STICK_GLYPH = { up: '↑', down: '↓', left: '←', right: '→' };
 
 // The fixed interface keys by KeyboardEvent.code, so the echo can light their ladder rows.
-function fixedRowCodes() {
+function fixedRowCodes(state) {
   const code = (b) => (b && b.code ? [b.code] : []);
   return new Map([
     ['Aim weapons freely', ['Backspace']],
-    ['Mine beam', ['Mouse2']],
+    // G18-02: RMB lights the Line row; the mine row lights on the live wheel key.
+    ['The Line (fire / release; press also selects under the cursor)', ['Mouse2']],
+    ['Mine / salvage / weld', resolveActionCodes(state, 'contextWheel')],
     ['Deep-core extraction', code(BINDINGS.drill)],
     ['Claim body / open base', code(BINDINGS.claimBase)],
     ['Cycle combat lock', ['Tab']],
@@ -447,15 +477,27 @@ function shortPad(label) {
 /** The rig's stations with their live bindings (keyboard from input.js, pad from the resolved map). */
 export function rigStations(state) {
   const padMap = resolveGamepadBindings(state && state.settings);
+  const wheelKey = resolveActionLabel(state, 'contextWheel', { sep: ' ' }) || 'Q';
   return RIG_STATIONS.map((s) => {
     let kb;
-    if (s.id === 'mine') kb = { main: 'RMB' };
+    if (s.id === 'mine') kb = { main: `hold ${wheelKey}`, alt: 'wheel' };
+    else if (s.id === 'tether') {
+      // RMB is the permanent Line seat; a rebound key comes back as the main glyph.
+      const codes = resolveActionCodes(state, 'tether');
+      kb = codes.length ? { main: formatBindingCode(codes[0]), alt: 'RMB' } : { main: 'RMB' };
+    }
     else if (s.id === 'boost') {
       const label = liveBoostLabel(state);
       kb = { main: label.length > 8 ? label.split('/')[0] : label };
     } else {
       const codes = resolveActionCodes(state, s.action);
-      if (!codes.length) kb = { main: s.action === 'fire' ? resolveActionLabel(state, 'fire') : '' };
+      // A wheel slice with no key seat stays reachable — the card names the wheel. A core verb
+      // the player unbound (forward, boost…) has no wheel seat and stays a dead "not bound".
+      if (!codes.length) kb = s.action === 'fire'
+        ? { main: resolveActionLabel(state, 'fire') }
+        : WHEEL_SLICE_ACTIONS.has(s.action)
+          ? { main: `hold ${wheelKey}`, alt: 'wheel' }
+          : { main: '' };
       else kb = { main: formatBindingCode(codes[0]), alt: codes[1] ? formatBindingCode(codes[1]) : '' };
     }
     if (s.action === 'fire' && kb.main !== 'LMB') kb.alt = 'LMB';
@@ -463,6 +505,11 @@ export function rigStations(state) {
     if (s.stick) pad = { main: 'L-stick', alt: STICK_GLYPH[s.stick] };
     else if (s.padAction) pad = padCell(s.padAction, padMap);
     else pad = { main: '' };
+    // A wheel-slice station with no pad seat names the wheel's own button; a slice a player
+    // deliberately unbound still reads honestly because the wheel keeps it reachable.
+    if (s.padAction && !pad.main && WHEEL_SLICE_PAD_ACTIONS.has(s.padAction)) {
+      pad = { main: `hold ${shortPad(gamepadButtonLabels('contextWheel', padMap)[0] || 'Y')}`, alt: 'wheel' };
+    }
     return { ...s, kb, pad };
   });
 }
@@ -480,7 +527,7 @@ function echoIndex(state, sections) {
     if (s.mouse) put(s.mouse, 'stations', s.id);
     if (s.action && s.id !== 'mine') for (const c of resolveActionCodes(state, s.action)) put(c, 'stations', s.id);
   }
-  const fixed = fixedRowCodes();
+  const fixed = fixedRowCodes(state);
   sections.forEach(([heading, rows], si) => {
     if (si > 1) return;
     rows.forEach(([label, action], ri) => {
@@ -881,7 +928,9 @@ export const helpScreen = {
         if (si > 1 && !(si === 2 && rig.device() === 'pad')) return;
         rows.forEach(([, action], ri) => { if (action && action === s.action) out.push(`${si}:${ri}`); });
       });
-      if (s.id === 'mine') out.push('1:1');
+      // Interface rows that no action resolves to: the Line is RMB (row 1), the beam is the wheel (row 2).
+      if (s.id === 'tether') out.push('1:1');
+      if (s.id === 'mine') out.push('1:2');
       return out;
     };
     const scrollToSec = (si) => {
