@@ -41,7 +41,7 @@ export const FLIGHT_ACTIONS = Object.freeze([
   'fire', 'autoFire', 'countermeasure', 'bomb', 'reelIn', 'reelOut',
   'siteBeam', 'tether', 'pull', 'shove', 'pin', 'rig', 'scanPulse', 'cruise',
   'deployShieldPylon', 'deployBeacon', 'bulletTime', 'cloak', 'gyreSnare',
-  'cycleBomb', 'jettisonLot', 'travelBurn', 'massline',
+  'cycleBomb', 'jettisonLot', 'travelBurn', 'massline', 'contextWheel',
 ]);
 
 // The fight set: movement, the gun, the Line, the five powers, the defensive/utility verbs that
@@ -51,7 +51,7 @@ export const COMBAT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'brake', 'boost',
   'fire', 'countermeasure', 'bomb', 'reelIn', 'reelOut', 'massline', 'tether',
   'pull', 'shove', 'pin', 'rig', 'scanPulse', 'bulletTime', 'cloak', 'gyreSnare',
-  'cycleBomb', 'jettisonLot', 'deployShieldPylon',
+  'cycleBomb', 'jettisonLot', 'deployShieldPylon', 'contextWheel',
 ]);
 
 /** A pilot under this hull fraction is in the fight whether or not they have a lock. */
@@ -192,6 +192,7 @@ const CARD_SPECS = Object.freeze({
     Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line — fire / release' }),
     Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Rig' }),
     Object.freeze({ actions: Object.freeze(['boost']), verb: 'Boost' }),
+    Object.freeze({ actions: Object.freeze(['contextWheel']), verb: 'Wheel — hold · aim · release' }),
     Object.freeze({ fixed: 'Tab / Backspace', verb: 'Target · clear' }),
     Object.freeze({ fixed: 'E', verb: 'Dock / interact' }),
     Object.freeze({ fixed: 'M', verb: 'Map' }),
@@ -204,6 +205,7 @@ const CARD_SPECS = Object.freeze({
     Object.freeze({ actions: Object.freeze(['tether']), verb: 'Line — fire / release' }),
     Object.freeze({ actions: Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']), verb: 'Pull · Shove · Pin · Bomb · Rig' }),
     Object.freeze({ actions: Object.freeze(['boost']), verb: 'Boost' }),
+    Object.freeze({ actions: Object.freeze(['contextWheel']), verb: 'Wheel — hold · aim · release' }),
     Object.freeze({ fixed: 'Tab / Backspace', verb: 'Target · clear' }),
     Object.freeze({ actions: Object.freeze(['countermeasure']), verb: 'Countermeasure' }),
     // X5 #10: only a pilot under the low-hull line is offered the flee, and only then is the key

@@ -69,7 +69,9 @@ function nowOf(state) { return Number.isFinite(state && state.simTime) ? state.s
  */
 export function resolvePylonHud(state) {
   if (!state || !(pylonCapacity(state) > 0)) return null;
-  const key = resolveActionLabel(state, 'deployShieldPylon') || '';
+  // G18-02: the deploy verb ships on the wheel — name the held wheel key when no rebind exists.
+  const key = resolveActionLabel(state, 'deployShieldPylon')
+    || `${resolveActionLabel(state, 'contextWheel') || 'Q'} wheel`;
   const next = pylonNextOperation(state);
   const m = pylonMirror(state);
   const now = nowOf(state);
