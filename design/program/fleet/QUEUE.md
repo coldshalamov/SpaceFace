@@ -42,7 +42,7 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | ID | Tier | Job | State |
 |---|---|---|---|
 | PERF-01-where-the-frame-goes | D | Seven on/off experiments on the main thread (HUD, post, render scale, shadows, skip-render, ACK limit, trace); numbers only | READY (quiet machine) |
-| PERF-02a-ship-never-steps-back | D | Owner's "snake's tongue" flicker: count backward steps, then error-smooth the player ship's drawn pose | TAKEN devin1 |
+| PERF-02a-ship-never-steps-back | D | Owner's "snake's tongue" flicker: count backward steps, then error-smooth the player ship's drawn pose | BUILT 849ea0da (back-steps 0→0, forward jumps 3–5→0 per run; owner must fly it) |
 | PERF-02b local prediction | L | Draw the player's ship from their input on the main thread (client-side prediction), reconciled to the worker — the full cure for input lag + flicker | HOLD on PERF-02a |
 | PERF-02 decouple the sim | L | Confirmed in code: `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops publishing at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`) — by design, to avoid post-stall teleports. So a saturated main thread slows the world itself. Loosen only after PERF-03 frees main-thread headroom; then raise the window and let PERF-02a's smoothing absorb catch-up | HOLD on PERF-01/03 |
 | PERF-03 biggest main-thread owner | L→D | Cut whatever PERF-01 names as the largest waste; lead writes the packet from the numbers | HOLD on PERF-01 |
@@ -52,11 +52,12 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 
 | ID | Tier | Job | State |
 |---|---|---|---|
-| RECON-MOB | D | One recon draft for MOB-01..04 (`drafts/MOB.md`) | TAKEN devin2 |
+| RECON-MOB | D | One recon draft for MOB-01..04 (`drafts/MOB.md`) | DONE — decisions in HANDOFF.md §4 |
 | MOB-01 pinch zoom | D | NEEDS-PACKET: pinch zooms the flight camera out to desktop framing; default phone zoom wider | NEEDS-PACKET |
 | MOB-02 phone HUD | D | NEEDS-PACKET: flight HUD covers ≤ 25 % of a 390×844 screen (`ui-bench --phone`) | NEEDS-PACKET |
 | MOB-03 touch controls you can read | D | NEEDS-PACKET: every touch control labelled on first use; what a tap does is shown | NEEDS-PACKET |
-| MOB-04 phone quality tier | D | NEEDS-PACKET: phones default to the low tier; 30 fps steady in the opening | NEEDS-PACKET |
+| MOB-04 phone quality tier | D | NEEDS-PACKET (recon done, `drafts/MOB.md`): phones default to the `low` preset; 30 fps steady in the opening | NEEDS-PACKET |
+| MOB-05 flick to throw | D | NEEDS-PACKET: on a phone, drag-and-release while the Line holds a body throws it along the flick | NEEDS-PACKET |
 
 ## The look (program D)
 
