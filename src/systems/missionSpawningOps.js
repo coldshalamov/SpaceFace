@@ -1,3 +1,4 @@
+import { syncSlateCore } from '../missions/slateCoreWorksite.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { syncMawWorksite } from '../missions/mawWorksite.js';
 import { registerMassScaleTow } from './cargoCustody.js';
@@ -951,6 +952,7 @@ export const missionSpawningOps = {
   },
 
   _spawnTargetsFor(m) {
+    if (syncSlateCore(this, m)) return;
     if (syncFurnaceWorksite(this, m)) return;
     if (syncMawWorksite(this, m, sectorLocalToGlobalForSector)) return;
     // Prefer live rematerialized hosts (Continue) over fresh spawns. Adoption repairs

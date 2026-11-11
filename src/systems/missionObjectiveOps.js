@@ -1,3 +1,4 @@
+import { isSlateCore, slateCoreAtReceiver, prepareSlateReceipt } from '../missions/slateCoreWorksite.js';
 import { registryWritContact, registryWritCustody, registryWritForce } from '../missions/registryWrit.js';
 import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
@@ -2342,6 +2343,7 @@ export const missionObjectiveOps = {
   },
 
   _entityAtStoryDestDock(entity, m) {
+    if (isSlateCore(m)) return slateCoreAtReceiver(this, m, entity);
     if (!entity || !entity.pos) return false;
     const station = this._storyDestStation(m);
     if (!station || !station.pos) return false;
@@ -2388,6 +2390,7 @@ export const missionObjectiveOps = {
       if (rows.length) this._sayStoryLine(`Still owed: ${rows.join('; ')}.`, 5);
       return false;
     }
+    if (!prepareSlateReceipt(this, m, method)) return false;
     m.params = m.params || {};
     m.params.completionMethod = method;
     if (isCampaign47aB2Rescue(m)) {
@@ -2634,6 +2637,11 @@ export const missionObjectiveOps = {
       if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.targetId)) continue;
       m.params = m.params || {};
+      if (isSlateCore(m) && m.params.slateCore?.entityId === target.id
+          && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
+        m.params.slateCore.handled = true;
+        this._sayStoryLine('Slate: Bring it 110 WU west to the receiving beacon. Within 70 WU, below 18 WU/s. Keep the line or release it clean.', 8);
+      }
       m.params.latchedRole = role;
       m.params.latchedTargetId = p.targetId;
       this._refreshTrackedMissionNav(m);

@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isSlateCore, slateCoreLayout } from '../src/missions/slateCoreWorksite.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -258,6 +259,23 @@ function completeSpineSetPiece(h, mission) {
       .map((id) => h.state.entities.get(id))
       .find((entity) => entity && entity.data && entity.data.physicalRole === role);
     assert.ok(target, `${mission.type} needs ${role}`);
+    if (isSlateCore(mission)) {
+      // Adapter fixture only: authenticate the player event and supply physical receiver
+      // state. Actual flight, towing and earned line handling are separate route proofs.
+      const receiver = slateCoreLayout().receiver;
+      h.bus.emit('tether:latched', { sourceId: h.state.playerId, targetId: target.id });
+      target.pos = { ...receiver };
+      target.vel = { x: 19, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'active', 'fast arrivals cannot settle the core');
+      target.vel = { x: 0, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'completed', 'handled core settles at the exterior receiver');
+      assert.equal(mission.params.slateReceipt.mass, 36);
+      assert.equal(target.alive, true, 'delivery retains the physical material');
+      return;
+    }
+
     let berth = [...h.state.entities.values()].find((entity) => (
       entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
     ));
