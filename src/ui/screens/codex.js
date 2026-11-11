@@ -2599,6 +2599,21 @@ export const codexScreen = {
       article.__cxReadEnd = true;
       article.addEventListener('scroll', atEnd, { passive: true });
     }
+    // the reading's lines settle after this first measure (web fonts, the rise-in, a resized column), so a
+    // reading that only overflows once they land must still lose is-at-end and gain its foot fade: re-measure
+    // when the column or any of its blocks changes size
+    if (typeof ResizeObserver === 'function') {
+      if (!article.__cxReadEndRo) {
+        article.__cxReadEndRo = new ResizeObserver(() => {
+          try { syncScrollExtent(article); } catch (_) { /* layout-free host */ }
+          atEnd();
+        });
+      }
+      const ro = article.__cxReadEndRo;
+      ro.disconnect();
+      ro.observe(article);
+      for (const child of article.children) ro.observe(child);
+    }
     try { syncScrollExtent(article); } catch (_) { /* layout-free host */ }
     atEnd();
   },
