@@ -81,17 +81,17 @@ function startWave(h, wave) {
 
 test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, never doubled', () => {
   assert.deepEqual(validateSwarmEvents(), []);
-  // C01-01: every fifth round inside the course is a champion, so the major band is
-  // empty — the minors on 2, 8, 12, 18, 22 and 28 are the only cards the Pit deals.
+  // C01-03: through the win every fifth round is a champion so the Pit deals only minors;
+  // past it the deep clock's ≡5-mod-10 rounds are real non-champion rows and the major
+  // band deals again (35, 45, 55, … — never a decade mark: those are champions).
   for (let w = 1; w <= 100; w++) {
     const minor = isSwarmMinorEventWave(w);
     const major = isSwarmEventWave(w);
     assert.ok(!(minor && major), `wave ${w} cannot book both bands`);
-    // The residue law is boss-gated: ≡2/8 mod 10 AND not a champion round. Past the
-    // course edge the champion clamp means no minor ever deals either.
+    // The residue law is boss-gated: ≡2/8 mod 10 AND not a champion round.
     const expected = (w % 10 === 2 || w % 10 === 8) && !isSwarmBossWave(w);
     assert.equal(minor, expected, `wave ${w} minor flag`);
-    assert.equal(major, false, `wave ${w} has no major round`);
+    assert.equal(major, w > 30 && w % 10 === 5, `wave ${w} major flag`);
     if (isSwarmBossWave(w)) {
       assert.equal(minor, false, `boss wave ${w} never carries a minor`);
       assert.equal(swarmMinorEventFor({ arenaId: 'the_hive', wave: w, seed: SEED }), null);

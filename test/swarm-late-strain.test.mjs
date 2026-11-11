@@ -103,41 +103,33 @@ function budget(engine) {
 // (a) The band law: below the gate, on champion waves, and on a starved mite row the
 // picker is silent — and it never spends the stream for a wave it rejects.
 test('the strain picker gates on wave band, champion and mite-count law', () => {
-  // C01-01: every strain gate (83/97/111) sits past round 30 — the marks are unreachable
-  // and the draw is silent everywhere the run can reach. The clauses that still exist:
-  // no in-course wave hatches a mark, champion rows stay clean, and past the finish the
-  // clamped champion row keeps the picker silent too. The deep-draw cases (volatile
-  // share, plated/commander cookings, debut law, count band) are retired — see
-  // test/RETIRED_SWARM_ENDLESS.md.
-  for (let w = 1; w <= 30; w++) {
+  // C01-03: the deep course is reachable again — the strain gates (83/97/111) hatch their
+  // marks on real waves. What still holds: no pre-debut wave hatches a mark, champion
+  // rows stay clean, and a mite row too thin to mark stays clean at any depth.
+  for (let w = 1; w < SWARM_BROOD_STRAIN_FROM_WAVE; w++) {
     assert.equal(swarmBroodStrainFor(w, 200, () => 0.5), null,
-      `in-course wave ${w} hatches a mark`);
+      `pre-debut wave ${w} hatches a mark`);
   }
   for (const w of [90, 100, 110, 140]) {
     assert.ok(isSwarmBossWave(w));
-    assert.equal(swarmBroodStrainFor(w, 200, () => 0.5), null, `clamped wave ${w} hatches clean`);
+    assert.equal(swarmBroodStrainFor(w, 200, () => 0.5), null, `champion wave ${w} hatches clean`);
   }
   for (const w of [SWARM_BROOD_STRAIN_FROM_WAVE, SWARM_BROOD_STRAIN_PLATED_FROM_WAVE,
     SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE]) {
-    assert.equal(swarmBroodStrainFor(w, 200, () => 0.5), null,
-      `the strain gate ${w} itself is past the course and stays silent`);
+    assert.ok(swarmBroodStrainFor(w, 200, () => 0.5),
+      `the strain gate ${w} debuts its cooking`);
     assert.equal(swarmBroodStrainFor(w, 1, () => 0.5), null, `wave ${w} one-mite wave hatches clean`);
     assert.equal(swarmBroodStrainFor(w, 0, () => 0.5), null, `wave ${w} no mite row, no mark`);
   }
-  // Deterministic: same stream position, same (empty) pick.
+  // Deterministic: same stream position, same pick.
   const rngA = () => 0.314;
   assert.deepEqual(swarmBroodStrainFor(83, 180, rngA), swarmBroodStrainFor(83, 180, rngA));
 });
 
-// (a cont.) The late table's authoring check honestly flags the unreachable rows.
+// (a cont.) The late table's authoring check passes clean — every debut sits on a real
+// non-champion row of the deep course.
 test('the late-table authoring check passes with the strain table', () => {
-  // C01-01: volatile/plated/commander debut past round 30 — they clamp onto the wave-30
-  // champion row, which is exactly what the validator is for.
-  assert.deepEqual(swarmBroodLateIssues(), [
-    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
-    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
-    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
-  ]);
+  assert.deepEqual(swarmBroodLateIssues(), []);
 });
 
 // (b) Earlier waves are untouched: pre-gate rooms spawn no mark and publish no strain.

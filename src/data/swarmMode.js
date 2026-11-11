@@ -49,6 +49,13 @@ export const SWARM_WAVE_DURATION_TICKS = 3600;
 export const SWARM_WAVE_MAX = 30;
 
 /**
+ * C01-03 — the win at thirty is not the ceiling: a run that Keeps going sails back into the
+ * old endless course, whose tables are authored without a reachable cap (matches the old
+ * SURVIVAL_ENDLESS_WAVE_MAX idiom — a number no honest run approaches).
+ */
+export const SWARM_DEEP_WAVE_MAX = 999;
+
+/**
  * Every round opens the cash armory. Every tenth also opens the refit/extraction bench.
  */
 export const SWARM_DRAFT_EVERY = 1;
@@ -736,9 +743,12 @@ export function swarmBossFor(wave) {
   const w = swarmWaveOf(wave);
   if (!isSwarmBossWave(w)) return null;
   if (SWARM_COURSE_BOSSES.has(w)) return swarmCourseBossFor(w);
-  // Past the authored course — unreachable while the Pit caps at thirty — the rotation clock
-  // still answers, so a raised cap never has to rebuild this function.
-  const step = Math.max(0, Math.floor((w - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY));
+  // C01-03 — past the win the old course's own clock answers: the rotation step is the
+  // round's decade minus one, so the deep champions sit at their authored waves —
+  // 60 quiet_choir, 70 brood_queen, 80 brood_tendril, 90 nest_carrier, 100 casket_worm,
+  // 110 furnace_maw, 120 yardmaster, 130 adjudicator_44c, 140 hive_hulk — and the next
+  // pass wraps escalated from wave 150.
+  const step = Math.max(0, Math.floor(w / 10) - 1);
   const row = SWARM_BOSS_ROTATION[step % SWARM_BOSS_ROTATION.length];
   const cycle = Math.floor(step / SWARM_BOSS_ROTATION.length);
   return cycle > 0 ? swarmEscalatedBoss(row, cycle) : row;
@@ -756,12 +766,16 @@ export const SWARM_CHAMPION_LEAD_WAVES = 3;
  * wave names the fight on the field). Returns the rotation row exactly as swarmBossFor
  * resolves it — the cycle numeral and wrap escort ride along — plus the `wave` it lands on
  * and the `distance` out, so a preview speaks without redoing the wrap math. Null past the
- * last legal boss wave: there is no champion beyond wave 30 to promise.
+ * last legal boss wave.
  */
 export function swarmNextBossFor(wave) {
   const w = swarmWaveOf(wave);
-  const at = Math.ceil((w - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY) * SWARM_BOSS_EVERY + SWARM_BOSS_FIRST;
-  if (at > SWARM_WAVE_MAX) return null;
+  // C01-03 — the course cadence and the deep cadence are different clocks: through the win
+  // the next champion is the next fifth round; past it the next tenth.
+  const at = w <= SWARM_WAVE_MAX
+    ? Math.ceil((w - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY) * SWARM_BOSS_EVERY + SWARM_BOSS_FIRST
+    : Math.ceil(w / 10) * 10;
+  if (at > SWARM_DEEP_WAVE_MAX) return null;
   const boss = swarmBossFor(at);
   if (!boss) return null;
   return { ...boss, wave: at, distance: at - w };
@@ -804,12 +818,16 @@ function clampInt(value, lo, hi) {
 
 /** Normalize any input to a legal swarm wave index. */
 export function swarmWaveOf(wave) {
-  return clampInt(wave, 1, SWARM_WAVE_MAX);
+  return clampInt(wave, 1, SWARM_DEEP_WAVE_MAX);
 }
 
 export function isSwarmBossWave(wave) {
   const w = swarmWaveOf(wave);
-  return w >= SWARM_BOSS_FIRST && (w - SWARM_BOSS_FIRST) % SWARM_BOSS_EVERY === 0;
+  if (w < SWARM_BOSS_FIRST || (w - SWARM_BOSS_FIRST) % SWARM_BOSS_EVERY !== 0) return false;
+  // C01-03 — past the win the old endless cadence resumes: a champion every tenth round
+  // (40, 50, 60, …), not the Pit's every-fifth sprint. Round 35 is not a boss round.
+  if (w > SWARM_WAVE_MAX && w % 10 !== 0) return false;
+  return true;
 }
 
 export function isSwarmDraftWave(wave) {
