@@ -18,6 +18,10 @@ export const SWARM_FLIGHT_ACTIONS = Object.freeze([
   'tether', 'reelIn', 'reelOut',
   'massline', // the pad's Line hold — the gamepad side of the RMB verb
   'callIn',
+  // G18-02b: the wheel is in BOTH doors — hold Q opens it here too (brake, winch and strafe
+  // latch slices, and the stocked Call-in). Without this admission the run's own overflow
+  // verbs were the ones with no seat: Q resolved to nothing and the wheel never opened.
+  'contextWheel',
 ]);
 const SWARM_FLIGHT_SET = new Set(SWARM_FLIGHT_ACTIONS);
 export function swarmFlightActionAllowed(state, action) {
@@ -49,7 +53,7 @@ export const SWARM_HELP_ROWS = Object.freeze([
   ['RMB', 'Line — fire / release'],
   ['1–5', 'Pull · Shove · Pin · Bomb · Rig'],
   ['Space', 'Boost / dash'],
-  ['Q', 'Call-in'],
+  ['Q', 'Wheel — hold · aim · release'],  // Call-in lives on the wheel (G18-02b)
   ['E', 'Interact'],
   ['Tab', 'Scoreboard'],
   ['Esc', 'Pause'],

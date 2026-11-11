@@ -290,19 +290,23 @@ test('One hostile, not One hostiles', () => {
 });
 
 test('the round slam and boss-down sit inside the frame, not clipped at its edge', () => {
-  // The C1 pass caught the ROUND label clipped at the screen edge. Both beats animate with
-  // sf-sj-slam, whose keyframes hold translateX(-50%) — the layer's own centring idiom, which
-  // only centres a left:50% box. A full-width (left:0;right:0) box under it rides -50vw after
-  // the `both` fill, so the centred title lands half off the left edge. Pin the contract:
-  // every rule that takes the slam keyframes anchors at left:50% with its own resting
-  // translateX(-50%) (animation:none under reduced motion still centres), never left:0;right:0.
+  // The C1 pass caught the ROUND label clipped at the screen edge: a full-width box under a
+  // keyframe that held translateX(-50%) rode -50vw. G16 moved the centring onto ONE column
+  // (.sf-sj__col: left:50% + translateX(-50%) + intrinsic width) with every beat a flow child.
+  // Pin it: the keyframes carry no translateX, and no slam-animated rule is absolute or full-width.
   const src = readFileSync(new URL('../src/ui/swarmJuiceHud.js', import.meta.url), 'utf8');
+  const col = (src.match(/\.sf-sj__col\s*\{[^}]*\}/) || [''])[0];
+  assert.match(col, /left:50%/, 'the column anchors at left:50%');
+  assert.match(col, /transform:translateX\(-50%\)/, 'the column carries the one centring translate');
+  assert.match(col, /width:max-content/, 'the column takes an intrinsic width');
+  const keyframes = src.match(/@keyframes sf-sj-(?:slam|drop)\s*\{[\s\S]*?\}\s*\}/g) || [];
+  assert.ok(keyframes.length >= 2);
+  for (const k of keyframes) assert.doesNotMatch(k, /translateX/, 'the column centres, not the keyframes');
   const rules = src.match(/\.sf-sj__[a-z]+[^{]*\{[^}]*animation:sf-sj-slam[^}]*\}/g) || [];
   assert.ok(rules.length >= 2, 'the slam keyframes drive at least the slam and boss-down rules');
   for (const rule of rules) {
-    assert.match(rule, /left:50%/, `slam-animated rule must anchor at left:50% — ${rule.slice(0, 60)}`);
-    assert.match(rule, /transform:translateX\(-50%\)/, `slam-animated rule needs the resting centre — ${rule.slice(0, 60)}`);
-    assert.doesNotMatch(rule, /right:0/, `a full-width box under translateX(-50%) is clipped — ${rule.slice(0, 60)}`);
+    assert.doesNotMatch(rule, /position:absolute/, `a slam-animated beat is a flow child — ${rule.slice(0, 60)}`);
+    assert.doesNotMatch(rule, /right:0/, `a full-width box is clipped — ${rule.slice(0, 60)}`);
   }
 });
 
