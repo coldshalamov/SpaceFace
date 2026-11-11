@@ -16,6 +16,7 @@ import { swarmArena } from '../systems/swarmArena.js';
 import { swarmFortify } from '../systems/swarmFortify.js';
 import { heroManeuvers } from '../systems/heroManeuvers.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
+import { swarmDrops } from '../systems/swarmDrops.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
 import { swarmElites } from '../systems/swarmElites.js';
@@ -363,6 +364,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['swarmFortify', swarmFortify],
     ['heroManeuvers', heroManeuvers],
     ['swarmSupply', swarmSupply],
+    ['swarmDrops', swarmDrops],
     ['swarmChain', swarmChain],
     ['swarmJuice', swarmJuice],
     ['swarmElites', swarmElites],

@@ -140,6 +140,7 @@ import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarm
 import { createSwarmLegendaryDirector } from './swarmLegendaries.js';
 import { createSwarmCallinsDirector } from './swarmCallins.js';
 import { createFreightLaneDirector } from './freightLane.js';
+import { createSwarmFloorDirector } from './swarmFloor.js';
 import { swarmEventFor } from '../data/swarmEvents.js';
 
 const CRYO_LOCK_REFRESH_LEAD_TICKS = 30;
@@ -1223,6 +1224,10 @@ export const survivalArena = {
     // with the room.
     this._freight = createFreightLaneDirector(ctx);
     this._freight.init();
+    // A01-04 — the floor's buyable pads ride the same slot: they arm on helios_core installs,
+    // buy through the run purse on fly-through, and tear down with the room.
+    this._floor = createSwarmFloorDirector(ctx);
+    this._floor.init();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:modifierRecorded', (p) => this._onCallinRecorded(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
@@ -1295,6 +1300,7 @@ export const survivalArena = {
     if (this._legendaries) this._legendaries.destroy();
     if (this._callins) this._callins.destroy();
     if (this._freight) this._freight.destroy();
+    if (this._floor) this._floor.destroy();
     this._teardown('destroy');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
@@ -1376,6 +1382,7 @@ export const survivalArena = {
     this._releaseRoundFields(st);
     if (this._swarmEvents) this._swarmEvents.update(_dt, st);
     if (this._freight) this._freight.update(_dt, st);
+    if (this._floor) this._floor.update(_dt, st);
     this._tickToys(_dt, st);
     this._tickPlayerSlams(st);
   },
@@ -1494,6 +1501,17 @@ export const survivalArena = {
     // any other arenaId.
     if (this._freight) {
       this._freight.arm({
+        arenaId: run.arenaId,
+        at: install.at || playerAnchor(state) || { x: 0, z: 0 },
+        installedAt: this._installedAt,
+        wave,
+        seed,
+      });
+    }
+    // A01-04 — the wall-gun pads and THE CRATE are Foundry furniture, not a wave law: they arm
+    // on every helios_core install beside the lane and self-clear on any other arenaId.
+    if (this._floor) {
+      this._floor.arm({
         arenaId: run.arenaId,
         at: install.at || playerAnchor(state) || { x: 0, z: 0 },
         installedAt: this._installedAt,
@@ -1650,6 +1668,7 @@ export const survivalArena = {
     if (this._legendaries) this._legendaries.teardown(reason);
     if (this._callins) this._callins.teardown(reason);
     if (this._freight) this._freight.teardown(reason);
+    if (this._floor) this._floor.teardown(reason);
     // NXB-019 — a swarm wave clear is a preparation interval: the cover the player displaced
     // and the wrecks/supplies it left are the next round's terrain, not trash. Fields, mines
     // and room solids are per-wave law and still release; anchor rocks retain their bodies
