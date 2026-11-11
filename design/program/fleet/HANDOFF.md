@@ -10,13 +10,13 @@ Read in this order: this page → `PLAYBOOK.md` (how the work runs, the four pro
    dirty file is a half-finished job. Match it to the in-flight list in §2. If the job committed
    (`git log --oneline -15`), the dirt is someone else's. Otherwise preserve it on a `parked/` branch
    (recipe in `PLAYBOOK.md` §1 and the PARK-01 packet) and re-run that packet from the start.
-   - **Already dirty at checkpoint and NOT from the fleet:** `src/ui/bootEntry.js`,
+   - **Already dirty at checkpoint and NOT from the fleet:** `index.html`, `src/ui/bootEntry.js`,
      `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs`
      (an outside agent made the boot movie wait for in-memory playback; hold raised from 9 s to 20 s).
      Its owner is unknown. Do not commit it blind; park it and review it (a 20 s boot hold is long).
 2. **Run the gate on a quiet machine** (no workers running): `npm run gate`. Then push master.
-   Before this checkpoint ~135 local commits were not yet on origin (the checkpoint pushes them if the
-   quick gate passes — see the last line of this file).
+   **Pushed at checkpoint:** master is on origin at `c233f72a` (quick gate PASS before merging 38
+   incoming UI-polish commits from origin; import lint PASS after; the full gate has not run since).
 3. **Review the BUILT rows** in `QUEUE.md` that are visible on screen (lead looks before `DONE`):
    G19-01 class-up plate, G08-01 enemy colours/sizes, C01-01 win screen, G18-03/04 camera beats, boost
    ring, puffs, PERF-02a (fly it: does the ship still flick?), the plants. Use
