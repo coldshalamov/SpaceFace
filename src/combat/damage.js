@@ -205,24 +205,27 @@ export function createDamageRouter(context, statusService, options = {}) {
     const target = entity(input && input.targetId);
     // Shield drains keep their authored strength and stop at the shield pool.
     const shieldOnly = packet.flags.shieldOnly === true;
+    // Structural hull loss (freight crush): the packet amount IS the hull points removed. A wall
+    // does not care about shields, plating, directional armor or difficulty, so none of them touch it.
+    const structural = packet.flags.structuralHull === true;
     // INF-025: authored directional armor. A heavy with data.directionalArmor sheds shots that
     // arrive on its mirror prow and takes bonus damage on its exposed stern, so circling changes
     // the outcome instead of inflating health. Pure geometry off hit.pos (attacker pos fallback);
     // packets without a source direction route neutrally (DoTs, fields, self-hits).
-    const directional = shieldOnly ? DIRECTIONAL_NEUTRAL : resolveDirectionalArmor(target, attacker, packet);
+    const directional = (shieldOnly || structural) ? DIRECTIONAL_NEUTRAL : resolveDirectionalArmor(target, attacker, packet);
     if (directional.factor !== 1) {
       for (const channel of catalog.damageModel.channelOrder) {
         packet.channels[channel] = (packet.channels[channel] || 0) * directional.factor;
       }
     }
-    const coreFactor = shieldOnly || difficultyInvariantDisablePacket(packet)
+    const coreFactor = shieldOnly || structural || difficultyInvariantDisablePacket(packet)
       ? 1 : ironKrakenCoreDamageMultiplier(state, target, input);
     if (coreFactor !== 1) {
       for (const channel of catalog.damageModel.channelOrder) packet.channels[channel] *= coreFactor;
     }
     // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
     // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
-    const diffScale = (shieldOnly || difficultyInvariantDisablePacket(packet))
+    const diffScale = (shieldOnly || structural || difficultyInvariantDisablePacket(packet))
       ? 1
       : difficultyDamageScale(state, input && input.attackerId, input && input.targetId);
     if (diffScale !== 1) {
@@ -288,7 +291,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     const penetration = (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(packet.penetration);
     // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the
     // shield directly to armor/hull/subsystems. 1.0 = shields ignored entirely.
-    const shieldBypass = (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(Number(packet.shieldBypass) || 0);
+    const shieldBypass = structural ? 1 : (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(Number(packet.shieldBypass) || 0);
     // Scratch slots: [0]=penetratingRaw, [1]=postShieldRaw, [2]=postFlatRaw, [3]=terminalRaw,
     // [4]=subsystemInput, [5]=hullInput. Zeroed across the active channel order before each use.
     const penetratingRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[0]);
@@ -315,7 +318,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // Flat armor is a per-packet deduction. A continuous source (beam) splits its damage into one
     // packet per tick, so it carries armorFlatScale (< 1) and pays the flat once per armor window
     // instead of once per tick. Absent = 1 (projectiles, rams, fields).
-    const armorFlat = Math.max(0, Number(target.armorFlat) || 0) * (packet.armorFlatScale == null ? 1 : packet.armorFlatScale);
+    const armorFlat = structural ? 0 : Math.max(0, Number(target.armorFlat) || 0) * (packet.armorFlatScale == null ? 1 : packet.armorFlatScale);
     const postFlatRaw = applyArmorFlatInto(postShieldRaw, armorFlat, model.channelOrder, ROUTE_SCRATCH[2]);
     const terminalRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[3]);
     let armorDamage = 0;
@@ -323,7 +326,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       const raw = postFlatRaw[channel] || 0;
       const multiplier = positiveMultiplier(model.armorMultipliers[channel]);
       const potentialHp = raw * multiplier;
-      const absorbedHp = Math.min(Math.max(0, target.armorHp || 0), potentialHp);
+      const absorbedHp = structural ? 0 : Math.min(Math.max(0, target.armorHp || 0), potentialHp);
       target.armorHp = Math.max(0, (target.armorHp || 0) - absorbedHp);
       armorDamage += absorbedHp;
       const consumedRaw = multiplier > 0 ? absorbedHp / multiplier : 0;
@@ -358,7 +361,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       if (subsystemResult.overflow > 0) addProportional(hullInput, subsystemInput, subsystemResult.overflow, model.channelOrder);
     }
 
-    const damageReduction = clamp(Number(target.data && target.data.derived && target.data.derived.damageReductionMult) || 1, 0, 1);
+    const damageReduction = structural ? 1 : clamp(Number(target.data && target.data.derived && target.data.derived.damageReductionMult) || 1, 0, 1);
     let hullDamage = 0;
     const hullByChannel = emptyChannels(model.channelOrder);
     for (const channel of model.channelOrder) {

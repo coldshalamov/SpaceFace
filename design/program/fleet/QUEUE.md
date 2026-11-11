@@ -37,14 +37,14 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | READY (repeat after each batch) |
 | G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
-| LOOK-01 concept frames | Before LOOK-01: Codex paints 3 concept frames of the target look (golden-hour harbour, readable, warm) from current screenshots, for the lead to choose from | READY |
+| LOOK-00-concept-frames | Three frames in `design/game/look/concepts/`; lead chose A (B = brightest a place may go, C = darkest) | DONE |
 
 ## Lane 1 — taste, creative, 3D, architecture, review
 
 | ID | Job | State |
 |---|---|---|
 | L1-REVIEW | Look at every visible `BUILT` row on screen (ui-bench shots; `npm run player-truth -- --mode=swarm --start-round=N --out=<dir>`; fly it) and mark `DONE` or `REDO <sentence>`. Today: G19-01, G08-01, C01-01, G18-03, G18-04, PERF-02a, the plants. Repeat every session. | READY (repeat) |
-| LOOK-01 one grade | Bright, warm, readable: one exposure/grade/bloom budget for the whole game, judged on five places side by side (`design/game/README.md` ruling 2) | READY |
+| LOOK-01 one grade | Concept A applied (771c32c1): warm key, blue shadows, ambient/fill restored, darkest moods floored at concept C, bloom only on true lights. Still to do: side-by-side capture vs concept A in five places (needs G17-02) | TAKEN lead |
 | PERF-03 biggest main-thread owner | Read PERF-01's numbers; write the packet that cuts the largest main-thread waste (Lane 2 builds it) | HOLD on PERF-01 |
 | PERF-02b local prediction | Draw the player's ship from their own input on the main thread (client-side prediction), reconciled to the worker — the cure for input lag and flicker | HOLD on PERF-02a review |
 | PERF-02 decouple the sim | `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`), so a saturated main thread slows the world. Loosen after PERF-03 frees headroom | HOLD on PERF-03 |
@@ -65,17 +65,18 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 
 | ID | Job | State |
 |---|---|---|
-| FIX-R2-reactions-respect-job-owners | Review finding: road rage / tailgater / rubberneckers must lease job-owned hulls through npcJobs, not overwrite them | TAKEN agent2 (devin2) |
+| FIX-R2-reactions-respect-job-owners | Review finding: road rage / tailgater / rubberneckers must lease job-owned hulls through npcJobs, not overwrite them | BUILT 824b9b9b |
+| G18-02b-the-wheel-opens | REDO: holding Q must open the context wheel on the real route; prove with `scripts/fleet/looks/context-wheel.mjs` | BUILT 321ab601 (lead looked: wheel opens mid-fight with FULL STOP / WINCH / STRAFE) |
 | PERF-01-where-the-frame-goes | Seven on/off experiments on the main thread; numbers only. **Only with no other game instance running** | READY |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
-| A01-02-freight-lane | A container string crosses the Foundry every 40 s: amber lights, horn, crushes, ride it, cut one loose | BUILT 09b4fd4c (lead looked: string + amber band visible at round 3) |
-| A01-04-wall-guns-and-the-crate | Buy on the floor: two wall guns (500) and the Crate (950, moves after 3 pulls) in the Foundry | TAKEN agent2 (devin3) |
-| A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | HOLD on A01-04 |
+| A01-02-freight-lane | A container string crosses the Foundry every 40 s: amber lights, horn, crushes, ride it, cut one loose | BUILT 09b4fd4c + lead-review d0d7e438, baaddae2 (crush through shields/armor via a freight-only structuralHull flag; no direct velocity writes; leftover bodies retired) + 5b975a1a (a passive ride never cuts loose; reel/swing/haul-back does; east exit releases the Line through the attachments owner) — lead accepted |
+| A01-04-wall-guns-and-the-crate | Buy on the floor: two wall guns (500) and the Crate (950, moves after 3 pulls) in the Foundry | BUILT 3e15a433 (lead looked: Crate pad + label visible at round 3) |
+| A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | TAKEN agent2 (devin3) |
 | G16-01-the-stage-exists | One Stage hosts every transient popup; priority queue per slot; nothing overlaps | TAKEN agent2 (devin1) |
 | G19-02-honest-hold | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | READY |
-| G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | BUILT b931aac8 (Q wheel not yet seen on screen) |
-| MOB-01 pinch zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | READY |
+| G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | BUILT b931aac8 + 321ab601 (wheel fixed and seen) |
+| MOB-01-pinch-zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | TAKEN agent2 (devin2) |
 | MOB-02 phone HUD | spec: `drafts/MOB.md` §MOB-02 + ruling 3 (HUD ≤ 25 % of 390×844, measured ≈ 50 % today; contrast in scope); prove with `ui-bench --phone` shots | READY |
 | MOB-05 flick to throw | On a phone, drag-and-release while the Line holds a body throws it along the flick (`drafts/MOB.md` §7 q1) | READY |
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | READY |
@@ -87,17 +88,18 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 
 | ID | Job | State |
 |---|---|---|
-| A01-03-swarm-drops | Eight drops on the repair-cell seam (Full Rack, Heavy Hands, Dead Weight, Magnet, Big Bang, Double Scrap, Loose Cannon, Free Forge) | TAKEN agent3 (flash) |
+| A01-03-swarm-drops | Eight drops on the repair-cell seam (Full Rack, Heavy Hands, Dead Weight, Magnet, Big Bang, Double Scrap, Loose Cannon, Free Forge) | BUILT 777d78d5 + lead-review dca33eb8 (registered in the runtime manifest + worker; Free Forge no longer breaks the run; Dead Weight/Big Bang/Magnet/Double Scrap/Loose Cannon go through their real owners; drops have their own crystal look) — not seen on screen |
 | G16-02-every-popup-through-one-door | Migrate 16 straggler popups onto the Stage and the kit frame, text unchanged | HOLD on G16-01 |
 | FIX-R1-review-2026-11-11 | Five verified review findings: rubberneckers' payload, held Shove counted twice, release camera pull, near-miss lamps, two seed tests | BUILT 015fbf27..772f8067 (lead checked real payloads) |
+| G17-02-start-in-any-sector | `?sector=<id>` + a script that photographs every sector (needed by LOOK-01 and the towns) | TAKEN agent3 (flash) |
 | MOB-04 phone quality tier | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | READY |
 | MOB-03 touch controls you can read | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | READY |
 | G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | READY |
 | G11 one clock, the rest | Per-ship idle spins and shader `uTime` uniforms outside the post route still run on the wall clock: multiply their time step by `presentedAdvanceRatio()` from `src/render/presentedClock.js` (see how `renderer.js` does `_bgTime`); find them with `grep -rn "performance.now\|clock.getElapsedTime\|uTime" src/render` | READY |
 | PERF-04 late shader compiles | Three programs compile mid-flight (`npm run perf:renderer-info` names them by frame); add them to the opening prewarm cohort so the count is 0 | READY |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat) |
-| PL-03 scavenger half | PL-03's scavenger is only an event (review 2026-11-11): dispatch a real salvor hull through the traffic/job seam within a minute of a wreck, checking the wreck still exists | READY |
-| PL-08-applause | Station lamps flash at a slingshot kill | READY |
+| PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
+| PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
 
 ## Lane 4 — mechanical, cannot go wrong
@@ -106,6 +108,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
 | PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | READY (repeat) |
+| UI-DIGEST | `node scripts/check-ui-budgets.mjs` reports `baseline:stale` (digest changed by G18-02, A01-04, G16-01). After G16-01 is BUILT, with no other game running: re-baseline exactly as the failure line says (`node scripts/fleet/game-lock.mjs run -- npm run capture:ui-matrix -- --budgets-out`), rerun the check, commit only the budget files it rewrites | HOLD on G16-01 |
 | GATE-RUN | With no other game instance running: `npm run gate`; paste the output into `HANDOFF.md` §1 under "last gate" with the date and `git rev-parse --short HEAD` | READY (repeat) |
 
 ---
