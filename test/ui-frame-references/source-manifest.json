@@ -296,7 +296,7 @@
   "src/ui/screens/codex.js": "8975e6de0a5f92c610ae80a34bee6dd96bc45ab6dab37717de857a9c6c9568c7",
   "src/ui/screens/codexRecord.js": "bb052b1cfaaa9fa3eaf7326b0a53b85f812017961b5ea24f59b7507a570dbcf2",
   "src/ui/screens/credits.js": "c3ca63ddf7bb3a7ddca229adc264daa2ffa998e240be2dffc8204fd1421f50ab",
-  "src/ui/screens/crucible.js": "635e867726360350f13caf08d0b23af727a4038273e5af506012bd35816ca190",
+  "src/ui/screens/crucible.js": "ab4b8c60186edf42eb3008ff050c9aac01594a4fe771e3aa9603d9d8c1606b2d",
   "src/ui/screens/crucibleDraft.js": "1ffeddac3065bd32b85881d2af894ce0155bd07e898598b14622fb1477967a84",
   "src/ui/screens/crucibleLabControls.js": "8d15c36c366b87de1ee9b61ee9d417c887706fb7ddecbf918d6722d4431ccc22",
   "src/ui/screens/crucibleLabTelemetry.js": "90b5e9f26ab148d527b373dbe45e4ad0ce116130b2468298d8789d7ea8cb3e39",
