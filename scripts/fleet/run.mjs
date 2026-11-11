@@ -71,6 +71,7 @@ const prompt = [
   `Step 2: read design/program/fleet/packets/${packetId}.md in full. It is your whole job: do all of it.`,
   `Step 3: write your receipt to ${receiptRel} using the protocol's headings.`,
   `MACHINE SAFETY: anything that starts the game, a browser or Electron (check:playable, player-truth, probes, ui-bench, the gate) must run through the lock: node scripts/fleet/game-lock.mjs run -- <command>. Never run two at once. Never run the whole test suite.`,
+  `Do not edit design/program/fleet/QUEUE.md — the lead keeps it while you run headless.`,
   `Work until the packet is finished or genuinely blocked. Do not ask questions; nobody will answer.`,
 ].join('\n');
 writeFileSync(join(runDir, 'PROMPT.txt'), prompt);

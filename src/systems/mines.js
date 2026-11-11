@@ -28,7 +28,11 @@ import { currentChainWreckWitness, isThrownMassTag } from '../combat/killCausali
 import { Masks } from '../core/entity.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isSwarmSpecialistRun } from '../data/swarmSpecialists.js';
+import { swarmMineMagnetRange } from './playerModifiers.js';
 
+// A01-05 Magnet Hull: the lure's creep speed toward the pilot (WU/s). Slow enough
+// to read as a drift, fast enough for the take to matter inside a lap.
+export const MINE_LURE_SPEED = 26;
 export const MINE_OWNER_CAP = 6;
 export const MINE_ARM_DELAY_S = 2.0;
 export const MINE_TRIGGER_RADIUS = 55;
@@ -258,9 +262,34 @@ export const mines = {
       // The proximity fuze senses hulls its IFF admits; the strike fuze answers mass the
       // pilot hurled into a fence that is not on the pilot's side (inf-mine-strike).
       if (mineFightsForPilot(state, mine, data)) continue;
+      // A01-05 Magnet Hull take: an enemy mine inside the hull's lure radius drifts
+      // toward the pilot. The fuze above still owns what the drifted body meets.
+      this._driftEnemyMineTowardPlayer(state, mine, data, stepS);
       const strike = this._findStrikingMass(state, mine, stepS);
       if (strike) this._strikeMine(state, mine, data, strike);
     }
+  },
+
+  /**
+   * A01-05 — Magnet Hull's take. Enemy mines inside the ledger's lure radius lean
+   * toward the player's hull: a slow position-and-velocity drift, deterministic on
+   * sim time. Player-owned or pilot-turned mines exit before this runs.
+   */
+  _driftEnemyMineTowardPlayer(state, mine, data, stepS) {
+    const reach = swarmMineMagnetRange(state);
+    if (!(reach > 0) || data.ownerId === state.playerId) return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos || !mine.pos) return;
+    const dx = player.pos.x - mine.pos.x, dz = player.pos.z - mine.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (!(dist > 1e-3) || dist > reach) return;
+    const pull = MINE_LURE_SPEED * stepS;
+    mine.pos.x += (dx / dist) * pull;
+    mine.pos.z += (dz / dist) * pull;
+    if (!mine.vel) mine.vel = { x: 0, z: 0 };
+    mine.vel.x += (dx / dist) * pull * 4;
+    mine.vel.z += (dz / dist) * pull * 4;
   },
 
   /**

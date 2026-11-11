@@ -645,8 +645,57 @@ function normalizeCourtRulings(raw) {
   return out;
 }
 
+const KNOWN_SECTOR_IDS = new Set(SECTORS.map((s) => s.id));
+
+const SECTOR_START_ALIASES = new Map([
+  // Profiles and short names
+  ['helios_core', 'sector_helios_prime'],
+  ['helios', 'sector_helios_prime'],
+  ['core', 'sector_helios_prime'],
+  ['tethys', 'sector_tethys_junction'],
+  ['tethys_junction', 'sector_tethys_junction'],
+  ['vesta_forge', 'sector_vesta_forge'],
+  ['vesta', 'sector_vesta_forge'],
+  ['ceres_belt', 'sector_ceres_belt'],
+  ['ceres', 'sector_ceres_belt'],
+  ['belt', 'sector_ceres_belt'],
+  ['pallas_drift', 'sector_pallas_drift'],
+  ['pallas', 'sector_pallas_drift'],
+  ['sker_haven', 'sector_sker_haven'],
+  ['sker', 'sector_sker_haven'],
+  ['io_reach', 'sector_io_reach'],
+  ['io', 'sector_io_reach'],
+  ['fringe', 'sector_io_reach'],
+  ['veil_nebula', 'sector_veil_nebula'],
+  ['veil', 'sector_veil_nebula'],
+  ['anomaly', 'sector_veil_nebula'],
+  ['charon_expanse', 'sector_charon_expanse'],
+  ['charon', 'sector_charon_expanse'],
+  ['ashfall_reach', 'sector_ashfall_reach'],
+  ['ashfall', 'sector_ashfall_reach'],
+  ['the_bolus', 'sector_the_bolus'],
+  ['bolus', 'sector_the_bolus'],
+  ['viscera', 'sector_the_bolus'],
+]);
+
+export function resolveStartSectorId(input) {
+  if (typeof input !== 'string') return null;
+  const raw = input.trim().toLowerCase();
+  if (!raw) return null;
+  if (KNOWN_SECTOR_IDS.has(raw)) return raw;
+  if (SECTOR_START_ALIASES.has(raw)) return SECTOR_START_ALIASES.get(raw);
+  const prefixed = `sector_${raw}`;
+  if (KNOWN_SECTOR_IDS.has(prefixed)) return prefixed;
+  if (raw.startsWith('sector_')) {
+    const stripped = raw.slice(7);
+    if (SECTOR_START_ALIASES.has(stripped)) return SECTOR_START_ALIASES.get(stripped);
+  }
+  return null;
+}
+
 export const world = {
   name: 'world',
+  resolveStartSectorId,
   // records/embodiment serializers already return owned trees; the remaining live overlays are
   // copied below so saveSystem does not duplicate the full world payload during autosave capture.
   saveSnapshotOwned: true,

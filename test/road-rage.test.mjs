@@ -346,3 +346,18 @@ test('held shove without deployment id: receipts within 1.0 s count as one shove
   assert.equal(triggeredSecond, true, 'second shove after > 1.0s gap triggers road rage');
   assert.equal(row.rageState, 'ram');
 });
+
+test('gun hits and bomb blasts are not shoves (real hitstun sources)', () => {
+  const bus = createBus();
+  const state = makeState(0);
+  const civ = state.entities.get('civ_1');
+  const player = state.entities.get('player_1');
+  traffic.init({ state, bus, helpers: {}, registry: null });
+  for (const [t, source] of [[0, 'gun'], [5, 'gun'], [10, 'bomb'], [15, 'gun']]) {
+    state.simTime = t;
+    state.tick = t * 60;
+    bus.emit('combat:hitstunImpulse', { attackerId: player.id, victimId: civ.id, deltaV: 12, source, tick: state.tick });
+    traffic.update(1 / 60, state);
+  }
+  assert.notEqual(civ.data.civilianReaction, 'road_rage_ram', 'gunfire never starts road rage');
+});
