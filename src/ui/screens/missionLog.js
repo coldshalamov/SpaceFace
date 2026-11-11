@@ -1,3 +1,4 @@
+import { cinderJournalAction } from '../../missions/cinderRoute.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
 import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
 import { COUNTERWEIGHT_EVENTS } from '../../features/counterweightCircuit/definition.js';
@@ -915,10 +916,12 @@ export function missionCommandBrief(m, state) {
   const stake = terms.find((item) => item.label === 'Stake');
   const registry = registryContactReadout(m);
   const firstSample = contract47aReadout(m);
+  const field = cinderJournalAction(state);
+  const cinder = field?.missionId === m.id ? field : null;
   return Object.freeze({
     what: objectiveText(m),
     where: registry?.where || firstSample?.where || destLabel(m),
-    how: stripNextPrefix(nextStepText(m, state)),
+    how: cinder?.body || stripNextPrefix(nextStepText(m, state)),
     why: missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
     risk: [term('Risk', 'R0 / route pending'), stake ? stake.text : 'no collateral'].join(' · '),
@@ -1862,6 +1865,8 @@ export function storyActionForBeat(beat, state) {
           meta: 'B2 · Registry Writ',
         };
       }
+      const cinder = cinderJournalAction(state);
+      if (cinder) return cinder;
       return {
         tone: 'primary',
         label: 'CINDER CONTRACT',
@@ -2028,7 +2033,8 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       tone: 'warn',
       label: 'UNTRACKED',
       title: 'Track ' + missionTitle(candidate),
-      body: 'Set one active contract as your nav target before leaving the station lane.',
+      body: (storyAction?.label === 'CINDER FIELD REPORT' && storyAction.missionId === candidate.id
+        ? storyAction.body + ' ' : '') + 'Set one active contract as your nav target before leaving the station lane.',
       meta: active.length === 1 ? '1 active' : active.length + ' active',
       action: 'track',
       actionLabel: 'TRACK NAV',

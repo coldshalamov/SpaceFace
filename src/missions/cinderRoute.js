@@ -267,8 +267,33 @@ function cinderPlayerTowForAccount(m, state, account) {
   return e;
 }
 
+// A field report from the finite mission evidence, not a second wreck ledger. An
+// unloaded/missing body remains recorded; only the canonical retirement marks a loss.
+export function cinderFieldReport(m, state) {
+  const a = cinderAccounting(m, state);
+  if (!a.valid) return null;
+  const cleared = completed(m).size, drivenOff = escaped(m).size;
+  const destroyed = marks(m).filter(ref => ref.disposition === 'destroyed').length;
+  const consumed = marks(m).filter(ref => ref.disposition === 'stripped').length;
+  const recorded = a.remaining.length;
+  const pending = Math.max(0, cleared - drivenOff - marks(m).length);
+  const parts = [`${cleared}/3 lane clearances.`];
+  if (drivenOff) parts.push(`${drivenOff} driven off: no hull left behind.`);
+  if (destroyed) parts.push(`${destroyed} marked ${destroyed === 1 ? 'hull destroyed' : 'hulls destroyed'}.`);
+  if (consumed) parts.push(`${consumed} marked ${consumed === 1 ? 'hull stripped or sold elsewhere' : 'hulls stripped or sold elsewhere'}: no Rook proof.`);
+  if (a.delivered) parts.push('Rook has the matching hull receipt.');
+  else {
+    if (recorded) parts.push(`${recorded} marked ${recorded === 1 ? 'hull remains recorded' : 'hulls remain recorded'} for recovery.`);
+    if (pending) parts.push(`${pending} cleared ${pending === 1 ? 'mark awaits' : 'marks await'} aftermath evidence; missing is not lost.`);
+    if (recorded === 1 && cleared === 3 && !pending) parts.push('This is the last recorded hull. Selling it to Quiet Line or stripping it forfeits the contract pay.');
+  }
+  return { cleared, drivenOff, destroyed, consumed, recorded, pending, delivered: a.delivered, text: parts.join(' ') };
+}
+
 function cinderIntakeReason(state, hull) {
-  const instruction = 'Hull inside the 100-WU ring at no more than 8 WU/s. Clearance and tow can finish in either order.';
+  const wanted = isPlayerWanted(state);
+  const refusal = 'ROOK REFUSES WHILE WANTED. Preserve this hull and resolve your status through the law. Quiet Line payment is not Rook proof.';
+  const instruction = wanted ? refusal : 'Hull inside the 100-WU ring at no more than 8 WU/s. Clearance and tow can finish in either order.';
   const pad = rookPadPosition(), check = rookDeliveryCheck(hull, pad);
   const distance = Math.hypot(hull.pos?.x - pad.x, hull.pos?.z - pad.z);
   if ((state.run?.kind && state.run.kind !== 'adventure') || state.mode !== 'flight'
@@ -279,17 +304,16 @@ function cinderIntakeReason(state, hull) {
     : `HULL ${Math.ceil(Math.max(0, distance - ROOK_BOOTH.padRadius))} WU OUTSIDE RING`;
   // Status uses the unrounded owner check; speed rounds upward so an over-limit
   // 8.04 never looks like an acceptable 8.0 while the reader asks the pilot to brake.
-  const action = check.speed > ROOK_BOOTH.restSpeed ? 'BRAKE THE HULL'
+  const action = wanted ? refusal : check.speed > ROOK_BOOTH.restSpeed ? 'BRAKE THE HULL'
     : check.inZone ? 'Inside and slow enough — hold for Rook' : 'Bring the hull into the ring';
   const displayedSpeed = (Math.ceil(check.speed * 10) / 10).toFixed(1);
-  const wanted = isPlayerWanted(state) ? ' ROOK REFUSES WHILE WANTED. Keep this hull; Quiet Line payment is not Rook proof.' : '';
-  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}.${wanted}`;
+  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}${wanted ? '' : '.'}`;
 }
 export function cinderRouteFocus(m, state) {
   if (!authoredCinderRoute(m)) return null;
   const account = cinderAccounting(m, state);
   const towing = cinderPlayerTowForAccount(m, state, account);
-  if (towing) return { label: "Rook's pad — brake the marked hull inside the ring", reason: cinderIntakeReason(state, towing),
+  if (towing) return { label: isPlayerWanted(state) ? "Rook's pad — WANTED blocks intake" : "Rook's pad — brake the marked hull inside the ring", reason: cinderIntakeReason(state, towing),
     pos: rookPadPosition(), sectorId: ROOK_BOOTH.sectorId, targetEntityId: null };
   const remaining = account.remaining || [], candidates = remaining.map(row => ({ row, body: markBody(state, row.markerId) }));
   const target = (m.targetEntityIds || []).map(id => state.entities?.get(id)).find(e => e?.alive !== false && targetSlot(m, e) !== null);
@@ -306,17 +330,42 @@ export function cinderRouteFocus(m, state) {
     || candidates.find(local) || candidates.find(({ body }) => body) || candidates[0];
   const marker = pick && findMarker(state, pick.row.markerId);
   const pos = pick?.body?.pos || marker?.pos;
+  if (pick && (!Number.isFinite(pos?.x) || !Number.isFinite(pos?.z))) return {
+    label: 'Cinder wreck evidence pending',
+    reason: 'The original marked identity is retained, but its physical position is not available yet. Canonical aftermath must restore that evidence; no replacement hull or loss credit is created.',
+    pos: cinderApproachPosition(), sectorId: ROOK_BOOTH.sectorId, targetEntityId: null };
   // The incident bucket is historical; a towed hull's current physical sector follows its global pose.
   const markerSector = marker?.pos ? sectorMembershipAtGlobal(marker.pos) : null;
   if (marker && !pick?.body && state.world?.currentSectorId === markerSector) return {
     label: 'Marked Cinder hull — recovery pending',
     reason: 'The real hull is recorded here, not lost. If protected recoveries fill the field capacity, finish one and return. No replacement hull or loss credit is created.',
     pos: { ...marker.pos }, sectorId: markerSector, targetEntityId: null };
-  return { label: account.delivered ? 'Cinder lane — receipt filed' : pick ? 'Recover a marked Cinder Wasp hull' : 'Cinder wreck evidence pending',
-    reason: pick ? 'Latch the marked hull and tow it to Rook. After Continue, reattach the Line; the hull keeps its real position. Stripped or destroyed hulls earn no tow credit.' : 'No replacement hull will be invented. Canonical aftermath must finish accounting for the marked material.',
+  return { label: account.delivered ? 'Cinder lane — receipt filed' : pick ? `Recover ${CINDER_WASPS[pick.row.slot]} · marked hull` : 'Cinder wreck evidence pending',
+    reason: pick ? `${isPlayerWanted(state) ? 'Rook refuses while WANTED. Preserve this hull until your status clears. ' : ''}${remaining.length === 1 && account.valid ? 'Last recorded marked hull. ' : ''}Latch the hull and tow it to Rook. After Continue, reattach the Line; its real position is retained. Stripping or selling to Quiet Line cannot earn Rook proof.` : 'No replacement hull will be invented. Canonical aftermath must finish accounting for the marked material.',
     pos: pos ? { ...pos } : cinderApproachPosition(), sectorId: pos ? sectorMembershipAtGlobal(pos) : ROOK_BOOTH.sectorId,
     targetEntityId: pick?.body?.id ?? null };
 }
+// The Journal asks for the current signed job, never a cached posting or a new
+// offer. It names the same physical objective as Track and retains losses on Continue.
+export function cinderJournalAction(state) {
+  if (state?.run?.kind && !['adventure', 'campaign'].includes(state.run.kind)) return null;
+  const active = (state?.missions?.active || []).filter(m => m?.status === 'active' && authoredCinderRoute(m));
+  if (active.length !== 1) return null;
+  const m = active[0], report = cinderFieldReport(m, state), focus = cinderRouteFocus(m, state);
+  if (!report || !focus) return null;
+  const law = !report.delivered && isPlayerWanted(state)
+    ? ' Rook refuses delivery while WANTED. Paying a hull price at Quiet Line does not clear that status or file Rook’s proof.' : '';
+  const towing = cinderPlayerTow(m, state);
+  const next = report.delivered ? 'Finish the remaining clearances; the booth payment and contract settlement are separate.'
+    : towing ? 'Keep the original hull on the Line. Rook buys inside his 100-WU ring at Expanse at 8 WU/s or slower.'
+    : report.cleared < 3 ? 'Clear the remaining marked Wasps on the Ashfall approach. Keep one real hull intact for Rook; clearance and delivery can finish in either order.'
+    : report.recorded > 0 ? (['Marked Cinder hull — recovery pending', 'Cinder wreck evidence pending'].includes(focus.label) ? focus.reason : 'Track follows the original marked hull at its recorded position. Reattach after Continue; tow it to Rook’s 100-WU ring at Expanse at 8 WU/s or slower.')
+    : 'Aftermath evidence is pending. Follow the recorded objective; no replacement hull or loss credit is invented.';
+  return { tone: 'primary', label: 'CINDER FIELD REPORT', title: focus.label, missionId: m.id,
+    body: `${report.text} ${next}${law}`,
+    meta: `${report.cleared}/3 clearances · ${report.delivered ? 'Rook proof filed' : 'Rook proof outstanding'}` };
+}
+
 export function driveCinderRoute(owner, m) {
   if (!authoredCinderRoute(m) || m.status !== 'active' || !owner.state.missions.active.includes(m)) return false;
   const a = cinderAccounting(m, owner.state);
