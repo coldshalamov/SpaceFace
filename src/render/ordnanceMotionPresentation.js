@@ -395,7 +395,7 @@ export function createOrdnanceMotionTracker() {
     const expireAt = Number(data.expireAt);
     const warn = kind === 'beacon' && Number.isFinite(expireAt) && expireAt - simTime < BEACON_WARN_S;
     if (!reducedMotion && kind === 'beacon') {
-      resolveBeaconSway(rec.animTime, rec.phase, claimBeacon, warn, swayScratch);
+      resolveBeaconSway(simTime, rec.phase, claimBeacon, warn, swayScratch); // sim-clock: already stops with the world
       swayX = swayScratch.x;
       swayZ = swayScratch.z;
       // A working buoy leans toward a close player — the mooring straining at the visitor.
@@ -531,7 +531,7 @@ export function createOrdnanceMotionTracker() {
       // flashReduce: steady viewport burn only — a distress beacon stays legible without
       // strobing. reducedMotion alone halves the gain; the rhythm never silences.
       const gain = reducedFlash ? 0 : (reducedMotion ? 0.5 : 1);
-      const sample = resolveMaydayLamp(rec.animTime, lamp.ejectedAt, lamp.expireAt, lamp.phase, gain);
+      const sample = resolveMaydayLamp(simTime, lamp.ejectedAt, lamp.expireAt, lamp.phase, gain); // ejectedAt/expireAt are sim times — same clock
       const burn = maydayViewportBurn(sample.flash);
       if (lamp.material && lamp.material.emissiveIntensity !== burn) {
         lamp.material.emissiveIntensity = burn;
