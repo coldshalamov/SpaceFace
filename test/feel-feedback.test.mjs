@@ -7,6 +7,12 @@
 //    survival gate is gone. Unearned releases stay silent.
 // 4. Reduced motion emits none of the moving beats.
 // 5. The starter ship's boost top speed is 2.0x its governed cruise.
+// G18-04 — the engine-feel garnish follows:
+// 6. Lighting the engine from rest (throttle edge while speed < 5) emits ONE 0.4 s dark-grey
+//    exhaust cough behind the ship; it does not re-fire while the throttle stays open, and it
+//    stays silent once the ship is already rolling.
+// 7. A hard turn (yaw rate above 70% of the hull's own max) vents small side-thruster puffs on
+//    the OUTSIDE of the turn, at most four a second. Both effects go quiet under reduced motion.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
@@ -16,6 +22,8 @@ import {
   createChaseCamera,
 } from '../src/render/camera.js';
 import { feel } from '../src/render/feel.js';
+import { vfx } from '../src/render/vfx.js';
+import { resolveActuatorScale } from '../src/render/rcsJets.js';
 import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
 import { getDerivedStats } from '../src/systems/ships.js';
 import { SHIPS } from '../src/data/ships.js';
@@ -199,4 +207,113 @@ test('G18-03: the starter boost top speed is 2.0x its governed cruise', () => {
   const ratio = boostTop / cruise;
   assert.ok(Math.abs(ratio - 2.0) <= 0.05,
     `starter boost/cruise ratio ${ratio.toFixed(3)} must land at 2.0 ± 0.05`);
+});
+
+// ---- G18-04: the ignition cough and the turn puffs ------------------------------------
+// Same headless shape as the feel harness: the vfx owner's update runs for real and only the
+// pooled-sprite sink plus the two cosmetic seam reads are stubbed.
+
+const SPR_PUFF_KIND = 2; // the pooled smoke/dust sprite the cough and side puffs ride (vfx.js)
+
+function vfxHost(state) {
+  const host = Object.create(vfx);
+  host.state = state;
+  host._scene = {}; // the only thing the update needs from init: a live scene
+  const spawned = [];
+  host._spawnSprite = (...args) => { spawned.push(args); return args; };
+  host._trailSocketWorldPose = () => null; // bare test rig has no authored ship mesh
+  host._engineColor = () => '#9fd0ff';
+  host._actuatorScratch = { main: 0, reverse: 0, lateral: 0, yaw: 0 };
+  host._mainDriveDemandScratch = { main: 0, reverse: 0, retroOnly: false };
+  host._rcsScaleCache = new Map();
+  host._rcsDefaultScale = resolveActuatorScale(null);
+  return { host, spawned };
+}
+
+function enginePlayer(state) {
+  const player = state.entities.get(PLAYER_ID);
+  player.data.driveId = 'drive_reaction_m';
+  player._flightFrame = { throttle: 0 };
+  player.angVel = 0;
+  return player;
+}
+
+test('G18-04: lighting the engine from rest emits one fading 0.4 s dark cough behind the ship', () => {
+  const { state } = flightState();
+  const player = enginePlayer(state);
+  const { host, spawned } = vfxHost(state);
+  host._updateEngineFeelPuffs(DT);
+  assert.equal(spawned.length, 0, 'a resting engine stays silent');
+  player._flightFrame.throttle = 0.9;
+  host._updateEngineFeelPuffs(DT);
+  assert.equal(spawned.length, 1, 'the 0→positive edge emits exactly one puff');
+  const [kind, x, , , life, , , op0, op1, color] = spawned[0];
+  assert.equal(kind, SPR_PUFF_KIND, 'the cough rides the pooled puff sprite');
+  assert.equal(life, 0.4, 'the cough lasts the authored 0.4 s');
+  assert.ok(op0 > 0 && op1 === 0, 'the cough fades out over its life');
+  assert.equal(color, host._SMOKE_DARK, 'the cough is the dark-grey exhaust tone');
+  assert.ok(x < -6, `rot 0 faces +x, so the cough lands behind the hull, got x ${x}`);
+  host._updateEngineFeelPuffs(DT);
+  host._updateEngineFeelPuffs(DT);
+  assert.equal(spawned.length, 1, 'a held throttle never re-coughs');
+  player._flightFrame.throttle = 0;
+  host._updateEngineFeelPuffs(DT);
+  player._flightFrame.throttle = 0.9;
+  host._updateEngineFeelPuffs(DT);
+  assert.equal(spawned.length, 2, 'killing and relighting the engine coughs again');
+});
+
+test('G18-04: lighting the engine while already rolling stays silent', () => {
+  const { state } = flightState();
+  const player = enginePlayer(state);
+  player.vel.x = 20; // speed 20 is well past the < 5 gate
+  const { host, spawned } = vfxHost(state);
+  host._updateEngineFeelPuffs(DT);
+  player._flightFrame.throttle = 1.0;
+  host._updateEngineFeelPuffs(DT);
+  assert.equal(spawned.length, 0, 'no cough once the ship is moving');
+});
+
+test('G18-04: a hard turn vents capped side-thruster puffs on the outside of the turn', () => {
+  const { state } = flightState();
+  const player = enginePlayer(state);
+  const profile = resolvePropulsionProfile(player, state);
+  assert.ok(profile.maxYawRate > 0, 'the hull publishes a finite max yaw rate');
+  player.angVel = profile.maxYawRate * 0.9; // above the 70% hard-turn band
+  const { host, spawned } = vfxHost(state);
+  const dt = 1 / 60;
+  for (let t = 0; t < 1.0; t += dt) {
+    state.simTime = t;
+    host._updateEngineFeelPuffs(dt);
+  }
+  assert.ok(spawned.length >= 3 && spawned.length <= 4,
+    `a sustained hard turn vents at most 4 puffs a second, got ${spawned.length}`);
+  const [, , , z, , , , , , , , vz] = spawned[0];
+  assert.ok(z < -4 && vz < 0,
+    `nose +x, spinning to starboard: the puff leaves the port side (z ${z.toFixed(2)}, vz ${vz.toFixed(2)})`);
+  const before = spawned.length;
+  player.angVel = -profile.maxYawRate * 0.9; // swing the turn the other way
+  state.simTime += 0.3; // step past the 0.25 s cadence window so the reversal can vent
+  host._updateEngineFeelPuffs(dt);
+  const [, , , z2] = spawned[before];
+  assert.ok(z2 > 4, 'reversing the turn puts the vent on the opposite (starboard) side');
+  spawned.length = 0;
+  player.angVel = profile.maxYawRate * 0.4; // ordinary helm, below the band
+  state.simTime += 1;
+  host._updateEngineFeelPuffs(dt);
+  assert.equal(spawned.length, 0, 'an ordinary turn does not vent');
+});
+
+test('G18-04: reduced motion silences the cough and the turn puffs', () => {
+  const { state } = flightState({ motionReduce: true });
+  const player = enginePlayer(state);
+  const profile = resolvePropulsionProfile(player, state);
+  const { host, spawned } = vfxHost(state);
+  player._flightFrame.throttle = 0.9;
+  player.angVel = profile.maxYawRate * 0.95;
+  for (let i = 0; i < 10; i += 1) {
+    state.simTime = i / 60;
+    host._updateEngineFeelPuffs(DT);
+  }
+  assert.equal(spawned.length, 0, 'reduced motion: neither effect emits');
 });

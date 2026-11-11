@@ -320,7 +320,7 @@ import {
   unregisterDynamicBufferOwner,
 } from './dynamicBufferRanges.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
-import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
+import { PROPULSION_PROFILES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import {
   resolveForceNeonScale,
   resolveMasslineCableProfile,
@@ -773,6 +773,10 @@ const SHIP_MANEUVER_VFX_HELPERS = Object.freeze({
   isReduced: (owner) => owner._isReduced(),
 });
 const TRAIL_NOZZLE_CLEARANCE = 0.35;
+// G18-04 (EC-G18 §3) — the engine-feel garnish: the ignition cough and the turn puffs.
+const IGNITION_COUGH_LIFE_S = 0.4;      // the packet's single short puff behind the ship
+const TURN_PUFF_PERIOD_S = 0.25;        // at most 4 side-thruster puffs a second
+const TURN_PUFF_YAW_FRACTION = 0.7;     // a hard turn is yaw rate above 70% of the hull's max
 const ENERGY_PLUME_NOZZLE_CLEARANCE = 1.15;
 const ENERGY_PLUME_WIDTH_CLEARANCE = 1.05;
 const TETHER_MARKER_SURFACE_EPS = 0.12;
@@ -11123,6 +11127,7 @@ export const vfx = {
 
     const sub = this._vfxSubsystemLast;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
+    this._updateEngineFeelPuffs(dt);
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
     if (this._projectileTrailsRelevant()) {
       const projWake = !this._projectileTrailsWereRelevant;
@@ -15223,6 +15228,77 @@ export const vfx = {
       this._trailEmitQuietIdle = false;
     }
     return true;
+  },
+
+  // G18-04 engine-feel garnish (EC-G18 §3), player-scoped and presentation-only — it writes no
+  // sim state and costs no physics:
+  //   · ignition cough — when the engine lights from rest (throttle edge 0 → >0 while speed
+  //     < 5), ONE short dark-grey exhaust puff behind the ship (0.4 s, fades). It rides the
+  //     same SPR_PUFF pool the damage smoke and contact dust already use.
+  //   · turn puffs — on a hard turn (yaw rate above 70% of the hull's own max) small
+  //     side-thruster puffs vent on the OUTSIDE of the turn, at most 4 a second.
+  // Both are silent under reduced motion and keep their edge/rate books honest while
+  // suppressed, so nothing banked fires the frame the setting lifts.
+  _updateEngineFeelPuffs(dt) {
+    const state = this.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const live = !!(this._scene && player && player.alive && player.type === 'ship'
+      && !(player.flags && player.flags.docked)
+      && !(state.mode && state.mode !== 'flight')
+      && !isCeresWorkfleetPropulsion(player));
+    if (!live) {
+      this._engineFeelPrevThrottle = 0;
+      this._engineFeelNextTurnPuffS = 0;
+      return;
+    }
+    const drive = this._engineDriveFor(player);
+    const throttle = drive.throttle;
+    const prev = this._engineFeelPrevThrottle || 0;
+    this._engineFeelPrevThrottle = throttle;
+    const now = Number.isFinite(state.simTime) ? state.simTime : (this._t || 0);
+    const a11y = resolveVfxAccessibilityProfile(state.settings);
+    if (a11y.id === 'reduced-motion' || a11y.id === 'reduced-motion-and-flash') {
+      this._engineFeelNextTurnPuffS = now;
+      return;
+    }
+    const rot = player.rot || 0;
+    const cf = Math.cos(rot);
+    const sf = Math.sin(rot);
+    if (prev <= 0.03 && throttle > 0.03 && drive.speed < 5) {
+      // Ignition cough — anchored at the same stern socket the boost ring reads, one spent puff.
+      const socket = this._trailSocketWorldPose(player);
+      const exhaustX = socket ? socket.forwardX : -cf;
+      const exhaustZ = socket ? socket.forwardZ : -sf;
+      const bx = (socket ? socket.x : player.pos.x - cf * (player.radius || 6))
+        + exhaustX * BOOST_BURST_NOZZLE_CLEARANCE;
+      const bz = (socket ? socket.z : player.pos.z - sf * (player.radius || 6))
+        + exhaustZ * BOOST_BURST_NOZZLE_CLEARANCE;
+      this._spawnSprite(SPR_PUFF, bx, 0.05, bz, IGNITION_COUGH_LIFE_S, 0.9, 2.8,
+        0.5, 0.0, this._SMOKE_DARK, exhaustX * 5, exhaustZ * 5,
+        1.4, Math.atan2(exhaustZ, exhaustX));
+    }
+    const angVel = Number.isFinite(player.angVel) ? player.angVel : 0;
+    const profile = resolvePropulsionProfile(player, state);
+    const maxYaw = profile && Number.isFinite(profile.maxYawRate) ? profile.maxYawRate : 0;
+    if (maxYaw > 0 && Math.abs(angVel) > TURN_PUFF_YAW_FRACTION * maxYaw) {
+      if (now >= (this._engineFeelNextTurnPuffS || 0)) {
+        this._engineFeelNextTurnPuffS = now + TURN_PUFF_PERIOD_S;
+        // angVel > 0 swings the nose to starboard (the rcsJets sign convention), so the outside
+        // of the turn is the port side — where the bow thruster's exhaust actually leaves.
+        const side = angVel > 0 ? -1 : 1;
+        const rx = -sf;
+        const rz = cf;
+        const radius = player.radius || 6;
+        const ox = player.pos.x + rx * side * radius * 0.85;
+        const oz = player.pos.z + rz * side * radius * 0.85;
+        this._spawnSprite(SPR_PUFF, ox, 0.05, oz, 0.45, 0.5, 1.9,
+          0.45, 0.0, this._engineColor(player), rx * side * 6, rz * side * 6,
+          1.3, Math.atan2(rz * side, rx * side));
+      }
+    } else {
+      // Out of the hard band — re-arm so the next onset puffs on its first frame.
+      this._engineFeelNextTurnPuffS = now;
+    }
   },
 
   // Persistent damage smoke/ember trail for wounded ships. Severe wounds smoke harder and add hot
