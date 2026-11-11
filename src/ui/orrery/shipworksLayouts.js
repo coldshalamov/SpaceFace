@@ -259,11 +259,13 @@ ${W} .sx-sw__stage > .sx-sw__nameplate::before { content:none; display:none; }
 @media (max-height:400px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:6px; } }
 @media (max-width:760px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:8px; } }
 @media (max-height:519px) { ${W} .sx-sw__stage > .sx-sw__nameplate { padding:8px 12px 5px !important; margin:4px 0 0 -13px !important; } }
-/* the jig's dense mid-width bands (701-1100 wide, ≤800 tall): the dial sizes itself around the
-   crest, and a card's rename row + padding cost the hull ~40px of its drawing at 960x540, so the
-   crest stands plain there, as before (the keep-out falls back to the ink) */
+/* ui-polish-415: the jig's dense mid-width bands (701-1100 wide, ≤800 tall) wear the card too, cut
+   down so the hull keeps its drawing: the dial sizes itself around the crest, and the full card's
+   padding + 6px drop cost the hull ~40px at 960x540. Here the card sits flush on the stage top
+   (the stage clips above it), with 4px/8px padding and a 1px-matched negative left margin, so the
+   crest moves ~5px down and ~0 sideways; radius 6 matches the densified sibling cards. */
 @media (min-width:701px) and (max-width:1100px) and (max-height:800px) {
-  ${W} .sx-sw__stage > .sx-sw__nameplate { border:0 !important; background:none !important; padding:0 !important; margin:0 !important; border-radius:0; }
+  ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:6px; padding:4px 8px 3px !important; margin:1px 0 0 -9px !important; }
 }
 ${W} .sx-sw-bands { gap:0 clamp(28px, 3vw, 56px) !important; }
 ${W} .sx-sw-hero { ${PLAIN} padding:2px 0 8px !important; min-height:0 !important; text-align:left; }
