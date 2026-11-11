@@ -1,3 +1,4 @@
+import { cinderReturnRead, cinderReturnContact, cinderReturnChoices, cinderReturnReply } from './cinderReturnConversation.js';
 // The disposal slip meets the bounty book. These are projections and UI intents;
 // missions, law, economy and aftermath retain every consequential writer.
 import { furnaceDetailRead } from '../../missions/furnaceArrivalScene.js';
@@ -20,6 +21,8 @@ export function cinderCeresFine(state) {
 }
 
 export function cinderDepartureRead(state, stationId, contact) {
+  const returned = cinderReturnRead(state, stationId, contact);
+  if (returned) return returned;
   const host = stationId === CERES && contact?.id === 'contact_station_ceres_0' && contact.role === 'barkeep';
   const rook = stationId === DESK && contact?.id === 'contact_station_tethys_rook' && contact.canonicalKey === 'rook';
   if ((!host && !rook) || state?.ui?.docked !== true || state.ui.dockedStationId !== stationId
@@ -60,6 +63,8 @@ function idFor(state, read, action) {
   return PREFIX + action + ':' + encodeURIComponent(JSON.stringify([state.meta?.seed ?? null, read]));
 }
 export function cinderDepartureContact(state, stationId) {
+  const returned = cinderReturnContact(state, stationId);
+  if (returned) return returned;
   const contact = { id: 'contact_station_tethys_rook', canonicalKey: 'rook', name: 'Rook',
     role: 'bounty_hunter', roleLabel: 'Bounty Broker · desk relay', factionId: 'faction_scn',
     line: 'Rook’s voice comes through the desk relay. “Three names. Bring me one hull with its name still on it.”' };
@@ -70,6 +75,7 @@ export function cinderDepartureChoices(state, stationId, contact) {
   const read = cinderDepartureRead(state, stationId, contact);
   if (!read) return [];
   const choice = (action, label) => ({ id: idFor(state, read, action), label });
+  if (read.place === 'return') return cinderReturnChoices(read).map(([action, label]) => choice(action, label));
   if (read.place === 'ceres') return [choice('next', 'Who is offering the next job?'),
     choice(read.job ? 'track' : 'desk', read.job ? 'Track my Cinder contract.' : 'Mark Rook’s desk at Tethys.')];
   return [choice('read', read.job ? 'Read back my Cinder contract.' : 'What do you want from the Cinder lane?'),
@@ -89,6 +95,7 @@ export function cinderDepartureReply(ctx, stationId, contact, choiceId) {
     return answer('The current slip is different. Ask again before choosing a destination or a contract.');
   }
   const action = choiceId.slice(PREFIX.length).split(':')[0];
+  if (read.place === 'return') return cinderReturnReply(ctx, read, action);
   const legal = read.wanted
     ? 'Your current WANTED status will keep Rook’s receiving ring dark. Resolve that through the law’s own choices before delivery; a bounty signature is not clearance.'
     : 'Rook’s ring is not refusing you for WANTED status now. That is not a promise that every fine has been paid.';
