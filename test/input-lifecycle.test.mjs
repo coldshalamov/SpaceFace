@@ -404,6 +404,8 @@ test('a hold-to-toggle verb held through a dock does not re-latch on the way bac
   state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
   state.input.autoTargetPath = { points: [], active: false };
   state.settings.accessibility = { holdToToggle: { gyreSnare: true } };
+  // G18-02: gyreSnare ships on the wheel, not a key — this profile deliberately rebound it.
+  state.settings.controls.bindings = { gyreSnare: ['Quote'] };
   const ctx = { state, bus: { emit() {} }, helpers: {} };
   try {
     host.init(ctx);
@@ -544,6 +546,8 @@ test('a keyboard-held gyre verb survives a screen opening — preserve is not to
   state.input.aimIntentActive = false;
   state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
   state.input.autoTargetPath = { points: [], active: false };
+  // G18-02: gyreSnare ships on the wheel, not a key — this profile deliberately rebound it.
+  state.settings.controls.bindings = { gyreSnare: ['Quote'] };
   const ctx = { state, bus: { emit() {} }, helpers: {} };
   try {
     host.init(ctx);
