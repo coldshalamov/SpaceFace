@@ -451,7 +451,7 @@ ${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__ghost { str
 ${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(${WARM} / .58); }
 ${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${BONE} / .38); }
 ${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .58); }
-${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
+${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; word-spacing:.16em; color:rgb(${BONE} / .82); }
 ${A} .con-medal-read__kicker span { margin:0 .3em; }
 ${A} .con-medal-read__kicker .con-medal-read__state { margin:0; white-space:nowrap; }
 ${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
