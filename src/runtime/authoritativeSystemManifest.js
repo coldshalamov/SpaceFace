@@ -29,7 +29,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
   'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'chainKills', 'killcamRecorder',
-  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmFortify', 'swarmSupply', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmFortify', 'swarmSupply', 'swarmDrops', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'spectrum', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'heroManeuvers', 'flightSlot',
@@ -208,6 +208,8 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // once per body and reads the same settled phase — after swarmJuice so the cohort stamps
   // precede the HUDs' readout this tick.
   'swarmElites',
+  // swarmDrops: the eight Pit drops; ticks effect timers, Loose Cannon and drop TTLs.
+  'swarmDrops',
   'heat', 'traffic', 'drill', 'claims', 'chronicler', 'longBerth', 'crew',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
@@ -587,6 +589,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'swarmJuice',
   // swarmElites: affix stamps and live perk effects read the wave the same tick it materializes.
   'swarmElites',
+  // swarmDrops: effect timers and the turret fire on the 60 Hz step.
+  'swarmDrops',
   // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.
   'wingmen', 'world', 'borrowedSun', 'heat',
   // Chronicler: fact events must land on the tick that creates them (its FB-090 quiet
@@ -760,6 +764,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   killcamRecorder: MODE_SCOPE_SWARM_ONLY,
   swarmJuice: MODE_SCOPE_SWARM_ONLY,
   swarmElites: MODE_SCOPE_SWARM_ONLY,
+  swarmDrops: MODE_SCOPE_SWARM_ONLY,
 
   // Flight & Swarm Combat systems (active when piloting or fighting, inactive when docked)
   autoTargetAssist: MODE_SCOPE_COMBAT_FLIGHT,

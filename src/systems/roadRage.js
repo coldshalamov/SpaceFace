@@ -59,6 +59,14 @@ export function isCivilianShip(entity) {
   return false;
 }
 
+// A gun hit, a bomb blast, a hull-grip hold, a tether share or a gravity well also publish a
+// hitstun receipt for the player, but none of them is a Shove. Repulsor/Shove fields ('weapon'
+// with a field deployment) and ramming contact ('collision') are the shoves this plant counts.
+const NOT_A_SHOVE_SOURCES = new Set(['gun', 'bomb', 'hull_grip', 'tether_share', 'well']);
+export function isRoadRageShoveSource(source) {
+  return !(typeof source === 'string' && NOT_A_SHOVE_SOURCES.has(source));
+}
+
 function endRoadRage(row, e, rec, host) {
   row.rageState = null;
   if (rec) rec.civilianReaction = null;
@@ -281,6 +289,7 @@ export const roadRageOps = {
     const victimId = payload.victimId;
     const deltaV = finite(payload.deltaV, 0);
     if (!(deltaV > 0) || !victimId) return;
+    if (!isRoadRageShoveSource(payload.source)) return;
 
     const state = this.state;
     if (!state || !state.entities || typeof state.entities.get !== 'function') return;
@@ -343,6 +352,7 @@ export const roadRage = {
     if (!p || !this.state) return;
     const deltaV = finite(p.deltaV, 0);
     if (!(deltaV > 0) || !p.victimId) return;
+    if (!isRoadRageShoveSource(p.source)) return;
     const victim = this.state.entities?.get?.(p.victimId);
     if (!victim) return;
     const now = finite(this.state.simTime, 0);
