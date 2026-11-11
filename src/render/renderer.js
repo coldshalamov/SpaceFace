@@ -19561,6 +19561,7 @@ export const render = {
     onBus('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
+    onBus('massline:throw', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     onBus('game:started', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
     onBus('save:loaded', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
