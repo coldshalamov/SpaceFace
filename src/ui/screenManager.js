@@ -50,6 +50,17 @@ export function createScreenManager(ctx) {
   if (!Array.isArray(state.ui.screenStack)) state.ui.screenStack = [];
   const stack = state.ui.screenStack;
 
+  // G16-03 the Stage enforces: while a station/menu screen is on the stack the Stage's dialog
+  // seat is held — a centre dialog raised underneath (confirm.js) waits in the slot's queue and
+  // mounts when the last screen closes, never drawn over the open screen.
+  const uiStage = ctx.stage && typeof ctx.stage.hold === 'function' ? ctx.stage : null;
+  let dialogHold = null;
+  function syncDialogHold(open) {
+    if (!uiStage) return;
+    if (open && !dialogHold) dialogHold = uiStage.hold('dialog');
+    else if (!open && dialogHold) { dialogHold.release(); dialogHold = null; }
+  }
+
   let pauseEmitted = false;
   // A worker-lane mode write is asynchronous: opening Pause can leave the main
   // mirror in `flight` while the queued `paused` write is still in flight. Keep
@@ -354,6 +365,7 @@ export function createScreenManager(ctx) {
       }
     }
     const open = stack.length > 0;
+    syncDialogHold(open);
     // Kit screens (design/frontend/direction/KIT_SPEC.md §11.1): `body.k-screen-top` removes the
     // legacy #screens still and gradient for a kit root only; `body[data-k-screen]` and the
     // `ui:screenTop` event let the kit derive the frame's temperature from the top screen.
@@ -796,6 +808,7 @@ export function createScreenManager(ctx) {
     registry.clear();
     focusStack.length = 0;
     stack.length = 0;
+    if (dialogHold) { dialogHold.release(); dialogHold = null; }
     if (screensRoot) {
       screensRoot.style.display = 'none';
       screensRoot.inert = true;
