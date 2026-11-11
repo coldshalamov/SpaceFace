@@ -13,6 +13,8 @@ import { formatOfflineReceiptLine, isOfflineReceiptShowable } from './automation
 import { CHRONICLER_DIGEST_WEEK_S, chroniclerDigestWeek, selectWeeklyDigest } from '../systems/chronicler.js';
 import { LONG_BERTH_STATION_ID, BERTH_STAGES } from '../data/longBerth.js';
 import { crewVetRankLabel } from '../data/crew.js';
+import { pluralWord } from './numberFormat.js';
+
 
 /** One sim day. A loaded save older than this may speak the offline summary. */
 const SIM_DAY_S = 600;
@@ -573,7 +575,7 @@ function longBerthHomeCard(state) {
   const parts = [`${hullName} on the rail`, stageLine];
   parts.push(crewNames.length ? `crew: ${crewNames.join(', ')}` : 'no crew aboard');
   parts.push(trophies.length
-    ? `yard: ${trophies.length} ${trophies.length === 1 ? 'trophy' : 'trophies'} — ${trophyNames.join(', ')}`
+    ? `yard: ${trophies.length} ${pluralWord(trophies.length, 'trophy', 'trophies')} — ${trophyNames.join(', ')}`
     : 'the yard stands empty');
   return {
     badge: 'HOME',

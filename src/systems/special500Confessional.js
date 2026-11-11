@@ -30,6 +30,8 @@ import { moralLedgerSummary } from './moralMemory.js';
 import { normalizeWrittenFinale } from '../story/endings/finaleRuntime.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { counted } from '../core/numberFormat.js';
+
 
 export const CONFESSIONAL_TITHE_CR = 40;
 export const CONFESSIONAL_CHOICE_EVENT = 'ui:confessionalChoose';
@@ -70,7 +72,7 @@ export function confessionalRecords(state) {
   const records = (s.pending | 0) + (s.revealed | 0) + (s.returned | 0)
     + (s.settled | 0) + (s.forgiven | 0) + (s.remembered | 0) + (s.openWitnesses | 0);
   const memory = state.story.moralMemory;
-  const lines = [`FILED RECORD · ${records} account${records === 1 ? '' : 's'}`];
+  const lines = [`FILED RECORD · ${counted(records, 'account', 'accounts')}`];
   // The moral owner's normalized indices are bounded (128 debts, 64 witnesses). Never
   // disclose a pending debt's hidden disposition. These are the records the pilot accepts.
   for (const id of memory.order) {
@@ -243,7 +245,7 @@ export function createSpecial500Confessional() {
       this._receipt('filed', offer, { records: pending.records, cr: CONFESSIONAL_TITHE_CR });
       bus.emit('comms:log', {
         from: 'DISPOSAL OF GUILT, PROFESSIONAL',
-        text: `The acolyte takes the tithe without ceremony and files ${pending.records} record${pending.records === 1 ? '' : 's'} `
+        text: `The acolyte takes the tithe without ceremony and files ${counted(pending.records, 'record', 'records')} `
           + 'into the cabinet. No absolution is offered, none expected. "It will be read back '
           + 'to you once, at the end, and then it is ours." The receipt grammar is the buoy\u2019s.',
         kind: 'special500',

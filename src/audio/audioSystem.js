@@ -82,7 +82,7 @@ import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
 import { bindIronKrakenAudio } from './ironKrakenAudio.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
-import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
+import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding, withRadioBand } from './barkVoice.js';
 
 // A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
 export function getReplayAudioSource() {
@@ -140,6 +140,8 @@ import { heatLevelFor } from '../systems/heat.js';
 import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
 import { hash32 } from '../core/rng.js';
 import { dyingFuseS } from '../combat/lifecycle.js';
+import { createWreckCoolingMemory, planWreckCooling } from './wreckCoolingVoice.js';
+import { GATE_THROAT_PEAK, admitGateThroatCaption, planGateThroat } from './gateThroatVoice.js';
 import {
   createSampleRuntime,
   resolveSampleBinding,
@@ -192,6 +194,9 @@ const POCKET_BEAT_MIN_GAP_S = 6;
 const POCKET_BEAT_GAIN = 0.45;
 const POCKET_BEAT_RATE_LO = 0.92;
 const POCKET_BEAT_RATE_HI = 1.08;
+// Wreck cooling voice (inf-wreck-cooling-voice): aftermath only — the same "combat owns the
+// mix" line the place accents hold, so a hulk's ticking waits out the fight that made it.
+const WRECK_COOL_THREAT_HOLD = 0.35;
 const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
@@ -6636,6 +6641,10 @@ export const audio = {
     // New Game or a save restore: the next run must be able to speak from tick zero.
     rt._combatFeedbackAdmit = null;
     rt._aftermathHush = null;
+    // Wreck cooling clocks are keyed by the outgoing session's entity ids.
+    rt._wreckCooling = null;
+    // So is the gate throat's once-per-visit caption memory.
+    rt._gateThroatCaption = null;
     this._clearDeferred();
     this._endDesiredLoops();
     this._releaseDockedFieldLoops();
@@ -6993,7 +7002,7 @@ export const audio = {
     return frac * frac * APPROACH_HUM_PEAK;
   },
 
-  /** Nearest live dockable station body (read-only; dockless platforms run no hum). */
+  /** Nearest live dockable station body (read-only; dockless platforms and gates run no hum). */
   _nearestDockableStation() {
     const state = this.state;
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
@@ -7004,11 +7013,122 @@ export const audio = {
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
       if (e.data && e.data.dockless === true) continue;
+      // Gates spawn as station bodies (data.isGate, wormholes included) but are no berth: they
+      // sing their own throat (_updateGateThroat) instead of a docking station's bed.
+      if (e.data && (e.data.isGate === true || e.data.isWormhole === true)) continue;
       const d2 = (e.pos.x - player.pos.x) * (e.pos.x - player.pos.x)
         + (e.pos.z - player.pos.z) * (e.pos.z - player.pos.z);
       if (d2 < bestD2) { bestD2 = d2; best = e; }
     }
     return best;
+  },
+
+  /**
+   * inf-gate-throat-voice (WF-13) — a jump gate sounds like a gate. The nearest live gate inside
+   * hearing sings its own throat (ring-hum for a jump gate, a sagging moan for a wormhole): one
+   * ambient loop panned on the gate's bearing, swelling with distance, detuned across the same
+   * 400 wu spin-up radius the picture's swirl winds up on. Silent docked, paused, suspended or
+   * off flight; bows under a live fight and the critical-cue duck; re-voices on a new gate; one
+   * authored caption per gate visit. Read-only over state; the planner owns the decision.
+   */
+  _updateGateThroat() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const stop = () => {
+      const held = rt.loops.gateThroat;
+      if (!held) return;
+      this._endLoopVoice(held);
+      delete rt.loops.gateThroat;
+    };
+    const state = this.state;
+    if (!state || rt._docked || rt._paused || rt._lifecycleSuspended
+      || (state.mode != null && state.mode !== 'flight')) { stop(); return; }
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) { stop(); return; }
+    const gates = state.entityIndex && state.entityIndex.gates;
+    const plan = planGateThroat(gates, player.pos, rt.threat,
+      rt._gateThroatPlan || (rt._gateThroatPlan = {}));
+    if (!plan) { stop(); return; }
+    let voice = rt.loops.gateThroat;
+    // A different gate (or a recycled id that is now a wormhole) re-voices on the next tick.
+    if (voice && (voice._gateId !== plan.gateId || voice.recipeId !== plan.recipeId)) { stop(); return; }
+    if (!voice) {
+      if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
+      const recipe = AUDIO_RECIPE_BY_ID[plan.recipeId];
+      const amp = this._ampFor(recipe) || 1;
+      voice = this._startLoopVoice(plan.recipeId, null, GATE_THROAT_PEAK / amp,
+        { busName: 'ambient', rate: plan.rate, follow: true });
+      if (!voice) return;
+      voice._gateId = plan.gateId;
+      rt.loops.gateThroat = voice;
+      const nowS = rt.ctx && Number.isFinite(rt.ctx.currentTime) ? rt.ctx.currentTime : 0;
+      if (admitGateThroatCaption(rt._gateThroatCaption || (rt._gateThroatCaption = {}), plan.gateId, nowS)) {
+        emitAdmittedRecipeCaption(this, plan.recipeId, recipe, { position: { x: plan.x, z: plan.z } }, 'ambient');
+      }
+    }
+    const t = rt.ctx ? rt.ctx.currentTime : 0;
+    const duck = Number.isFinite(rt._priorityDuckWeapon) ? rt._priorityDuckWeapon : 1;
+    // The duck pass composes _baseGain with the critical-cue duck; keep it on the distance read.
+    voice._baseGain = plan.gain;
+    this._setParam(voice.gain && voice.gain.gain, plan.gain * duck, t, 0.35);
+    if (voice._panner && voice._panner.pan) {
+      this._setParam(voice._panner.pan, clamp((plan.x - player.pos.x) / PAN_SPAN, -1, 1), t, 0.25);
+    }
+    this._detuneGateThroat(voice, plan.spinCents, t);
+  },
+
+  /** Glide every source of the throat voice to `cents` (the spin-up rides detune, not rate). */
+  _detuneGateThroat(voice, cents, t) {
+    if (!voice || voice._spinCents === cents) return;
+    voice._spinCents = cents;
+    const apply = (sources) => {
+      if (!sources) return;
+      for (let i = 0; i < sources.length; i++) {
+        const detune = sources[i] && sources[i].detune;
+        if (detune && typeof detune.setTargetAtTime === 'function') {
+          try { detune.setTargetAtTime(cents, t, 0.6); } catch (_) {}
+        }
+      }
+    };
+    apply(voice.sources);
+    if (voice.subVoices) {
+      for (let i = 0; i < voice.subVoices.length; i++) apply(voice.subVoices[i] && voice.subVoices[i].sources);
+    }
+  },
+
+  /**
+   * inf-wreck-cooling-voice (WF-13) — the hulks you just made sound their cooling. A sim-stamped
+   * fresh wreck ticks and groans on the same clock its fire and smoke read (wreckAftermathState),
+   * positioned on the hulk, densest just after the flame gutters, silent once cold; unstamped
+   * set dressing never speaks. Aftermath only: held while combat owns the mix, silent docked,
+   * paused or off the flight mode. Read-only over state; the planner owns the bounded clocks.
+   */
+  _updateWreckCooling() {
+    const rt = this.rt;
+    const state = this.state;
+    if (!rt || !state || rt._docked || rt._paused || rt._lifecycleSuspended) return 0;
+    if (state.mode != null && state.mode !== 'flight') return 0;
+    if (rt.threat != null && rt.threat >= WRECK_COOL_THREAT_HOLD) return 0;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return 0;
+    const memory = rt._wreckCooling || (rt._wreckCooling = createWreckCoolingMemory());
+    const rows = rt._wreckCoolingRows || (rt._wreckCoolingRows = []);
+    const wrecks = (state.entityIndex && state.entityIndex.wrecks) || state.entityList || null;
+    const count = planWreckCooling(wrecks, player.pos, Number(state.simTime) || 0, memory, rows);
+    for (let i = 0; i < count; i++) {
+      const row = rows[i];
+      // The first voice a hulk speaks carries its authored caption (bearing included); the rest
+      // of its cooling stays caption-owned so a ticking wreck never floods the caption floor.
+      this.play(row.recipeId, {
+        gain: row.gain,
+        rate: row.rate,
+        position: row.position,
+        captionOwned: !row.first,
+      });
+    }
+    return count;
   },
 
   _emitPresentationCaption(text, opts = {}) {
@@ -7391,7 +7511,12 @@ export const audio = {
     const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(this.state.playerId) : null;
     // Bearing pan only — radio carries the distance; gain stays flat (unlike world position,
-    // which would cull and attenuate a far hail the receiver still hears clearly).
+    // which would cull and attenuate a far hail the receiver still hears clearly). The distance
+    // rides the channel itself instead: a far hail is narrower, hissier, more driven (barkVoice's
+    // three bands), so the ear can hear how far away the speaker is without the words fading.
+    const speakerDistanceWu = speakerPos && player && player.pos
+      ? Math.hypot(speakerPos.x - player.pos.x, speakerPos.z - player.pos.z) : null;
+    const voiced = withRadioBand(resolved, speakerDistanceWu);
     const pan = speakerPos && player && player.pos
       ? Math.max(-1, Math.min(1, (speakerPos.x - player.pos.x) / PAN_SPAN)) : 0;
     // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
@@ -7402,7 +7527,7 @@ export const audio = {
       gain: resolved.gain * (rt && Number.isFinite(rt._barkVoiceScale) ? rt._barkVoiceScale : 1),
       rate,
       barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
-        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), resolved) : null,
+        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), voiced) : null,
       barkSampleId: resolved.sampleId,
       critical: true,
       pan,
@@ -8849,6 +8974,8 @@ export const audio = {
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);
     this._updateApproachHum(now);
+    this._updateGateThroat();
+    this._updateWreckCooling();
     this._updatePressureLayer();
     this._writeMixLedger(now);
 

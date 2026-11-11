@@ -2099,6 +2099,18 @@ function receiptTone(outcome) {
   return 'warn';
 }
 
+// The corridor log's own clock (words-corridor-log-ages): a receipt stamped by the fight
+// you just flew out of read "0 s ago", and one tick later "1 s ago" — a stopwatch, not
+// words. A same-instant stamp says "just now"; real seconds count in words; past two
+// minutes it counts minutes. Whole singular/plural sentences, never a bare "s".
+export function encounterAgeLabel(ageS) {
+  const s = Math.max(0, Math.round(Number(ageS) || 0));
+  if (s <= 0) return 'just now';
+  if (s < 120) return s === 1 ? '1 second ago' : `${s} seconds ago`;
+  const m = Math.round(s / 60);
+  return m === 1 ? '1 minute ago' : `${m} minutes ago`;
+}
+
 // The receipt says why in the same words the failure toast used (data/missionFailReasons.js).
 // A reason with no known words prints nothing rather than a title-cased internal id.
 function receiptReasonLabel(reason) {
@@ -3571,7 +3583,7 @@ export const missionLogScreen = {
     const list = el('div', 'k-rows sf-mlog-corridor-rows');
     for (const rec of receipts) {
       const ageS = Math.max(0, now - (Number(rec.t) || 0));
-      const age = ageS >= 120 ? `${Math.round(ageS / 60)} min ago` : `${Math.round(ageS)} s ago`;
+      const age = encounterAgeLabel(ageS);
       const title = String(rec.shape || 'encounter').replace(/_/g, ' ').toUpperCase();
       const outcome = String(rec.outcome || '').replace(/_/g, ' ').toUpperCase();
       const row = el('div', 'k-row k-row--static sf-mlog-receipt-row sf-mlog-receipt-row--corridor');

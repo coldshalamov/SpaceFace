@@ -250,6 +250,51 @@ export function resolveBarkVoice(input = {}) {
   });
 }
 
+// inf-radio-distance — the band carries the distance. The comms consumer pans a hail by bearing
+// and keeps its gain flat on purpose ("radio carries the distance, not the volume"), but every
+// hail rendered through its register's one fixed radio band, so a hauler alongside and a patrol
+// at the edge of scanner range sounded equally close. Three honest bands now: near keeps the
+// register byte-for-byte; mid narrows the passband and lifts the carrier hiss; far narrows it
+// further, hisses harder and drives the carrier a touch — the register (who is talking) always
+// survives, only the channel (how far away) changes. Pure; the bucket count keeps the PCM
+// cache bounded.
+export const RADIO_MID_WU = 1800;
+export const RADIO_FAR_WU = 3600;
+const RADIO_BANDS = Object.freeze({
+  near: Object.freeze({ squeeze: 0, noiseMul: 1, drivePlus: 0 }),
+  mid: Object.freeze({ squeeze: 0.15, noiseMul: 1.6, drivePlus: 0.04 }),
+  far: Object.freeze({ squeeze: 0.3, noiseMul: 2.4, drivePlus: 0.08 }),
+});
+
+/** The radio band a speaker at `distanceWu` rides. Non-finite distance reads near (no lie). */
+export function radioBandForDistance(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d < RADIO_MID_WU) return 'near';
+  return d < RADIO_FAR_WU ? 'mid' : 'far';
+}
+
+/**
+ * A resolved bark re-cut onto the band its distance earns. Near returns the same object; a named
+ * contact (factionId null — the instructor, the Hull Ghost) and the mechanic's shop speech are
+ * intimate voices and never ride a far carrier.
+ */
+export function withRadioBand(resolved, distanceWu) {
+  if (!resolved || !resolved.radio || resolved.mechanic || resolved.factionId == null) return resolved;
+  const band = radioBandForDistance(distanceWu);
+  if (band === 'near') return resolved;
+  const shape = RADIO_BANDS[band];
+  const lo = Number(resolved.radio.bandpassLo) || 300;
+  const hi = Number(resolved.radio.bandpassHi) || 3000;
+  const span = Math.max(0, hi - lo);
+  const radio = Object.freeze({
+    bandpassLo: Math.round(lo + span * shape.squeeze * 0.5),
+    bandpassHi: Math.round(hi - span * shape.squeeze * 0.5),
+    noise: Math.min(0.5, Math.round((Number(resolved.radio.noise) || 0) * shape.noiseMul * 1000) / 1000),
+    drive: Math.min(0.6, Math.round(((Number(resolved.radio.drive) || 0) + shape.drivePlus) * 1000) / 1000),
+  });
+  return Object.freeze({ ...resolved, radio, radioBand: band });
+}
+
 /**
  * Directed speech params for the first-hour instructor. Deterministic, hashed jitter like the
  * faction voices; no faction theme sting, no situation ladder — the instructor has one job.

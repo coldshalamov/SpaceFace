@@ -522,6 +522,60 @@ function collectCandidates(state, options = {}) {
     candidates.push(candidate);
   }
 
+  // CH-43 — the frenzy page. One page for the most recent cost-carrying cycle, derived above
+  // from receipts both owners already file; this projector writes nothing. Presence mode skips
+  // the derivation entirely: the probe answers on the raw rows.
+  if (!probe) {
+    const frenzy = frenzyCycle(state);
+    if (frenzy) {
+      const fenced = frenzy.fencedCr.toLocaleString('en-US');
+      const cost = frenzy.costCr.toLocaleString('en-US');
+      const kindsText = joinKinds(frenzy.kinds);
+      let line;
+      if (frenzy.fencedCr > 0 && frenzy.netCr >= 0) {
+        line = `The frenzy paid: ${fenced} cr fenced against ${cost} cr in ${kindsText}.`;
+      } else if (frenzy.fencedCr > 0) {
+        line = `The frenzy cost more than it fenced: ${fenced} cr fenced against ${cost} cr in ${kindsText}.`;
+      } else {
+        line = `The frenzy fenced nothing: ${cost} cr went out in ${kindsText}.`;
+      }
+      if (frenzy.bountyCr > 0) {
+        line += ` A ${frenzy.bountyCr.toLocaleString('en-US')} cr price still stands on the hull.`;
+      }
+      const sourceId = `frenzy:${frenzy.cycle}`;
+      const candidate = {
+        id: `ledger_${hash32(seed, 'frenzy', sourceId).toString(36)}`,
+        schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+        type: 'frenzy',
+        sourceId,
+        sourceKind: 'player.sessionSinks+player.tradeLedger',
+        at: frenzy.at,
+        cycle: frenzy.cycle,
+        cycleLabel: formatLedgerCycle((frenzy.cycle - 1) * SHIP_LEDGER_CYCLE_SECONDS),
+        templateId: 'frenzy.cycle',
+        text: line,
+        hand: 'captain',
+        annotationId: null,
+        annotation: null,
+        cause: kindsText,
+        beat: 'frenzy',
+        tokens: {
+          fencedCr: fenced,
+          costCr: cost,
+          netCr: String(frenzy.netCr),
+          kinds: kindsText,
+          bountyCr: frenzy.bountyCr > 0 ? frenzy.bountyCr.toLocaleString('en-US') : '',
+          soldCount: String(frenzy.soldCount),
+        },
+      };
+      observed++;
+      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !seen.has(candidate.id)) {
+        seen.add(candidate.id);
+        candidates.push(candidate);
+      }
+    }
+  }
+
   // FB-014 — stunt-minted salvage rights and their claims are durable economy receipts in
   // player.salvageRightsLog (stuntGrammar is the single writer); this projector only reads
   // them, exactly like the session sinks above. The prose is the ledger's own 'salvage' bank.
@@ -1172,6 +1226,66 @@ export function sessionSinkRollup(state) {
     count,
     byKind: [...byKind.values()].sort((a, b) => b.amount - a.amount || a.kind.localeCompare(b.kind)),
   };
+}
+
+// CH-43 — chaos pays, read. A rampage already leaves durable receipts on both sides: session
+// sinks file the fines, restitutions, impounds, repairs and insurance; the trade ledger files
+// whatever the night fenced. Nothing put the two together, so the only question a messy night
+// asks — did it pay? — had no page. This read groups both sides by ledger cycle and answers for
+// the most recent cycle that carried chaos costs. Sell receipts alone are ordinary trade and file
+// nothing; costs alone still file (the honest pure-loss read). Read-only over both owners.
+const FRENZY_COST_KINDS = new Set(['fine', 'restitution', 'impound', 'repair', 'insurance']);
+
+export function frenzyCycle(state) {
+  const sinksByCycle = new Map();
+  for (const record of sourceArray(state && state.player && state.player.sessionSinks)) {
+    if (!record) continue;
+    const kind = text(record.kind, '');
+    const amount = Math.round(Math.abs(finite(record.amount, 0)));
+    if (!FRENZY_COST_KINDS.has(kind) || !(amount > 0)) continue;
+    const at = Math.max(0, finite(record.at, 0));
+    const cycle = cycleOf(at);
+    const bucket = sinksByCycle.get(cycle) || { costCr: 0, kinds: new Map(), at: 0 };
+    bucket.costCr += amount;
+    bucket.kinds.set(kind, (bucket.kinds.get(kind) || 0) + 1);
+    bucket.at = Math.max(bucket.at, at);
+    sinksByCycle.set(cycle, bucket);
+  }
+  if (!sinksByCycle.size) return null;
+  const sellsByCycle = new Map();
+  for (const entry of sourceArray(state && state.player && state.player.tradeLedger)) {
+    if (!entry || entry.side !== 'sell') continue;
+    const total = Math.round(Math.abs(finite(entry.total, 0)));
+    if (!(total > 0)) continue;
+    const at = Math.max(0, finite(entry.seenAt, 0));
+    const cycle = cycleOf(at);
+    const bucket = sellsByCycle.get(cycle) || { total: 0, count: 0, at: 0 };
+    bucket.total += total;
+    bucket.count += 1;
+    bucket.at = Math.max(bucket.at, at);
+    sellsByCycle.set(cycle, bucket);
+  }
+  const latest = [...sinksByCycle.keys()].sort((a, b) => b - a)[0];
+  const cost = sinksByCycle.get(latest);
+  const sells = sellsByCycle.get(latest) || { total: 0, count: 0, at: 0 };
+  const bountyCr = Math.max(0, Math.round(finite(state && state.player && state.player.bounty, 0)));
+  return {
+    cycle: latest,
+    at: Math.max(cost.at, sells.at),
+    fencedCr: sells.total,
+    soldCount: sells.count,
+    costCr: cost.costCr,
+    kinds: [...cost.kinds.keys()].map((kind) => SINK_ROLLUP_LABEL[kind] || sessionSinkEventPhrase(kind)),
+    netCr: sells.total - cost.costCr,
+    bountyCr,
+  };
+}
+
+function joinKinds(kinds) {
+  const list = kinds.filter(Boolean);
+  if (!list.length) return 'law costs';
+  if (list.length === 1) return list[0];
+  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 }
 
 /**

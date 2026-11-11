@@ -350,7 +350,9 @@ test('SF-115 a closed cycle reconciles mined inputs, service costs and the sale 
     'the breakdown sums to real inventory movements',
   );
   const readout = describeProgrammedMinerOperation(group, def);
-  assert.match(readout.cycleText, /net -?\d+ cr/i);
+  // words-miner-cycle-line: the net is signed and grouped ("net +12,345 cr"); a zero net reads
+  // "broke even" instead of printing a signed nothing.
+  assert.match(readout.cycleText, /net [+-]?\d[\d,]* cr|broke even/i);
   assert.match(readout.accessibleSummary, /last run/i);
 });
 
