@@ -3,7 +3,7 @@
 // what they did not: actual danger extent, a readable warning, and a field that follows its source.
 // No billboards, light pools, post passes, sim writes, wall clocks, RNG, or private frame loop.
 import * as THREE from 'three';
-import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
+import { BOMB_DEFS, BOMB_DRIFT, bombDef, resolvedBombDef } from '../data/bombs.js';
 import { bombFieldEnvelope } from '../combat/bombDynamics.js';
 import { readFrameOrigin, interpolateGlobalToFrame } from './frameCoordinates.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
@@ -345,7 +345,7 @@ export class BombPresentationBatch {
     this.heatScale = accessibility.id === 'full' ? 1 : accessibility.flashOpacityScale;
     for (const bomb of source) {
       if (!bomb?.alive || bomb.type !== 'bomb' || !bomb.data || !bomb.pos) continue;
-      const d = bomb.data, def = bombDef(d.bombId);
+      const d = bomb.data, def = resolvedBombDef(d);
       interpolateGlobalToFrame(bomb.prevPos || bomb.pos, bomb.pos, alpha, this.origin, this.local);
       const x = this.local.x, z = this.local.z;
       this.sphere.center.set(x, 0, z); this.sphere.radius = def.radius + 8;

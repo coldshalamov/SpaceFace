@@ -3883,6 +3883,66 @@ function buildSwarmRepairCell(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Swarm drops (src/systems/swarmDrops.js): eight rare pickups that fall out of enemies. Each has
+// its own hue and none of them is the chip's gold, the repair cell's mint or an ore tint: a
+// faceted crystal in a double ring, the hue keyed by drop id, so the pickup reads as "a drop"
+// across the room before the toast names it.
+// ---------------------------------------------------------------------------------------------
+const SWARM_DROP_HUES = Object.freeze({
+  full_rack: '#ffd24a', heavy_hands: '#ff5a3d', dead_weight: '#a98bff', magnet: '#4fc3ff',
+  big_bang: '#ff4fa0', double_scrap: '#e8ff5a', loose_cannon: '#ff9a2a', free_forge: '#ffffff',
+});
+
+function isSwarmDropEntity(e) {
+  const d = (e && e.data) || {};
+  return d.kind === 'swarm_drop' || d.swarmDrop === true;
+}
+
+function buildSwarmDrop(e) {
+  const R = Math.max(1.8, Number(e && e.radius) || 2.6);
+  const hue = SWARM_DROP_HUES[e && e.data && e.data.dropId] || '#ffffff';
+  const g = new THREE.Group();
+  g.name = 'SF_SwarmDrop';
+  const crystal = getMaterial(`swarmdrop:crystal:${hue}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: new THREE.Color(hue).multiplyScalar(0.35), emissive: new THREE.Color(hue), emissiveIntensity: 1.9,
+    metalness: 0.2, roughness: 0.3, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const body = new THREE.Mesh(getGeometry('swarmdrop:crystal', () => new THREE.OctahedronGeometry(0.85, 0).scale(0.8, 1.35, 0.8)), crystal);
+  body.name = 'SwarmDropCrystal';
+  body.scale.setScalar(R);
+  body.frustumCulled = false;
+  g.add(body);
+  const ringMat = (opacity) => getMaterial(`swarmdrop:ring:${hue}:${opacity}`, () => new THREE.MeshBasicMaterial({
+    color: new THREE.Color(hue), transparent: true, opacity,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  const halo = new THREE.Mesh(getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)), ringMat(0.7));
+  halo.material = halo.material.clone();
+  halo.scale.setScalar(R * 1.15);
+  halo.userData.baseScale = R * 1.15;
+  halo.frustumCulled = false;
+  g.add(halo);
+  const outer = new THREE.Mesh(getGeometry('swarmdrop:outer', () => new THREE.TorusGeometry(2.1, 0.035, 6, 36)), ringMat(0.38));
+  outer.scale.setScalar(R * 1.15);
+  outer.frustumCulled = false;
+  g.add(outer);
+  g.userData.kind = 'pickup';
+  g.userData.interactionKind = 'pickup';
+  g.userData.gem = body;
+  g.userData.pickupHalo = halo;
+  g.userData.pickupShape = 'swarm_drop';
+  g.userData.pickupVisual = 'swarm_drop';
+  g.userData.visualLanguage = 'swarm-drop';
+  g.userData.pickupRole = null;
+  const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
+  body.onBeforeRender = () => {
+    body.rotation.y = nowSec() * 1.6 + ph;
+    outer.rotation.x = Math.PI / 2 + 0.35 * Math.sin(nowSec() * 2.1 + ph);
+  };
+  return g;
+}
+
 function buildPickup(e) {
   // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
   // the warning regardless of which spawn path dropped it.
@@ -3919,6 +3979,7 @@ function buildPickup(e) {
   // A vent-dropped repair cell is the swarm run's only way back to hull — it wears the
   // patch-kit silhouette, never the fallback octahedron next to a credit chip.
   if (isSwarmRepairEntity(e)) return buildSwarmRepairCell(e);
+  if (isSwarmDropEntity(e)) return buildSwarmDrop(e);
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
