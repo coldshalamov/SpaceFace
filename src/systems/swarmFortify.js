@@ -45,6 +45,7 @@ function fortifyRuntime(lifetime, create = false) {
       fortifiedIngress: false,
       structures: new Map(),
       structureRows: [],
+      lostDevices: new Map(),
       commandHighWatermark: 0,
       commandReceipts: new Map(),
     };
@@ -299,6 +300,10 @@ export const swarmFortify = {
       arena: runtime?.arenaAnchor ? { ...runtime.arenaAnchor, radius: null } : null,
       sockets,
       structures,
+      // One loss per socket, only for the just-played round. This is presentation
+      // history, not a device replacement or a promise that a rebuild is possible.
+      lostDevices: [...(runtime?.lostDevices?.values() || [])]
+        .filter(loss => loss.wave === run?.wave).map(loss => ({ ...loss })),
       terrain,
     };
   },
@@ -504,7 +509,10 @@ export const swarmFortify = {
       deviceId: device.id,
       socketId: socket.id,
     };
-    if (receipt.accepted) runtime.fortifiedIngress = true;
+    if (receipt.accepted) {
+      runtime.fortifiedIngress = true;
+      runtime.lostDevices?.delete(socket.id);
+    }
     return this._rememberCommand(runtime, result);
   },
 
@@ -775,6 +783,7 @@ export const swarmFortify = {
     for (const record of [...runtime.structures.values()]) {
       if (this._retireStructure(runtime, record, reason)) removed++;
     }
+    runtime.lostDevices?.clear();
     return removed;
   },
 
@@ -846,6 +855,16 @@ export const swarmFortify = {
       this.fieldOwner.unregisterAnchoredFields(this.state, entity.id, 'fortify_destroyed');
       runtime.structures.delete(entity.id);
       this._removeStructureRow(runtime, record);
+      const run = this.state?.run;
+      if (run?.kind === 'survival' && isSwarmRuleset(run.ruleset)
+        && ['active', 'cleanup'].includes(run.phase) && Number.isInteger(run.wave) && run.wave >= 1
+        && Number.isFinite(entity.hull) && entity.hull <= 0 && swarmFortifySocket(record.socketId)
+        && !runtime.structureRows.some(other => other.requestId === record.requestId)) {
+        if (!(runtime.lostDevices instanceof Map)) runtime.lostDevices = new Map();
+        runtime.lostDevices.set(record.socketId, {
+          deviceId: record.deviceId, socketId: record.socketId, wave: run.wave,
+        });
+      }
     }
   },
 

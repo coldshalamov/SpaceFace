@@ -48,6 +48,8 @@ export function projectSwarmFortifyView(raw) {
       plate: row.plate && Number.isFinite(row.plate.halfWidth) && Number.isFinite(row.plate.halfDepth)
         ? { halfWidth: row.plate.halfWidth, halfDepth: row.plate.halfDepth } : null,
     })),
+    lostDevices: list(raw.lostDevices, 6).filter(row => row && typeof row === 'object')
+      .map(row => ({ deviceId: text(row.deviceId), socketId: text(row.socketId), wave: number(row.wave) })),
     terrain: list(raw.terrain, 48).map(body => ({
       id: id(body.id), type: text(body.type), x: number(body.x), z: number(body.z), radius: number(body.radius),
     })),

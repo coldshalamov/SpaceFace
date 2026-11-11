@@ -1,3 +1,4 @@
+import { bindFortifyReadiness } from '../swarmFortifyReadiness.js';
 import { fortifyAvailable } from '../swarmFortifyPanel.js';
 import { SWARM_FORTIFY_DEVICES } from '../../data/swarmFortify.js';
 import { swarmFoundryRound } from '../../data/swarmFoundryScore.js';
@@ -1358,6 +1359,7 @@ export const crucibleDraftScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     bindScreenResultRefresh(this, this._ctx, ARMORY_RESULT_REFRESH_EVENTS);
+    bindFortifyReadiness(this, this._ctx);
     this._visualArmory?.setActive(true);
     if (this._ctx) this.refresh(this._ctx);
     this._offCancel?.();
@@ -1376,6 +1378,8 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1384,6 +1388,8 @@ export const crucibleDraftScreen = {
   },
 
   dispose() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -2492,6 +2498,7 @@ export const crucibleRefitScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     bindScreenResultRefresh(this, this._ctx, REFIT_RESULT_REFRESH_EVENTS);
+    bindFortifyReadiness(this, this._ctx);
     // A worker receipt may have landed while this modal was hidden and unsubscribed. Re-read
     // the canonical snapshot on every reopen rather than waiting for the next event edge.
     if (this._ctx) this.refresh(this._ctx);
@@ -2505,6 +2512,8 @@ export const crucibleRefitScreen = {
   },
 
   onHide() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     this._feedEndHold(false);
     unbindScreenResultRefresh(this);
     if (canAnimate()) cue('close');
@@ -2535,6 +2544,8 @@ export const crucibleRefitScreen = {
   },
 
   dispose() {
+    this._fortifyReadinessOff?.();
+    this._fortifyReadinessOff = null;
     unbindScreenResultRefresh(this);
     this._refitResultOff?.();
     this._refitResultOff = null;
