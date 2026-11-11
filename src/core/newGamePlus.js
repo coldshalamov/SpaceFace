@@ -21,7 +21,7 @@ import {
   createPostEndingContinuity,
   normalizePostEndingContinuity,
 } from '../story/endings/resolve.js';
-import { pluralWord } from './/numberFormat.js';
+import { pluralWord } from './numberFormat.js';
 
 
 export const NEW_GAME_PLUS_SCHEMA = 'spaceface.newGamePlus.v1';
