@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 You are the Lane 3 agent of the SpaceFace Finish Program: THE WORLD, THE GLASS & THE HOUSE.
 This is a medium-complexity lane with the most breadth: Adventure, the economy, the story, every 2D screen and the HUD, audio, and cutting the repository back to something an agent can navigate. Use GPT-6 Luna for most source coverage and implementation, with Codex as controller/integrator, per the current campaign direction below.
 

@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The playable demo — what it has to feel like, what was broken, what is left
 
 Owner, 2026-09-20: *"it's almost ready to demo I think, but it's not quite playable … the main ship

@@ -1,4 +1,7 @@
 <!-- LIFETIME: DURABLE -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # 3D world-object campaign — same bar, chase camera, no hitch collision
 
 The live ordered board is [`../../build_map.md`](../../build_map.md) **§13D** (`PQ-193`).

@@ -105,6 +105,7 @@ import {
   migrateDefaultMutedAudioProfile,
   migrateGameMotionDefault,
   migrateLegacyMasslineBindingProfile,
+  migrateOneSetOfKeysProfile,
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
 import {
@@ -10288,6 +10289,9 @@ function sanitizeRestoredSettings(settings) {
       && s.controls.masslineBindingProfile !== MASSLINE_BINDING_PROFILE_SPACE) {
     s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
   }
+  // G18-02: one-time move onto the unified defaults — strips only migration-written seats, so a
+  // profile with nothing of its own reads the new table while a real remap survives untouched.
+  migrateOneSetOfKeysProfile(s);
   if (!s.controls.gamepad || typeof s.controls.gamepad !== 'object' || Array.isArray(s.controls.gamepad)) {
     s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
   }
