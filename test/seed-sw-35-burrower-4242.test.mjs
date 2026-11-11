@@ -78,13 +78,9 @@ function firstFamily(engine, familyIndex) {
 
 test('the burrower continues the roster clock without breaking the base catalog', () => {
   assert.deepEqual(swarmBroodIssues(), []);
-  // C01-01: volatile/plated/commander strains debut past round 30 — unreachable, so they
-  // clamp onto the wave-30 champion row and the late table honestly flags them.
-  assert.deepEqual(swarmBroodLateIssues(), [
-    { message: 'volatile lands on a champion row', path: 'swarmBroodStrains[0]' },
-    { message: 'plated lands on a champion row', path: 'swarmBroodStrains[1]' },
-    { message: 'commander lands on a champion row', path: 'swarmBroodStrains[2]' },
-  ]);
+  // C01-03: the strains' debut waves are real deep-course rows again — the late table
+  // passes its authoring check clean.
+  assert.deepEqual(swarmBroodLateIssues(), []);
   const burrower = swarmBroodLateFamily('burrower');
   assert.ok(burrower, 'late table admits burrower');
   assert.equal(burrower.fromWave, 19);
@@ -186,6 +182,6 @@ test('a burrower hides in the rock and telegraphs before it bursts, seed 4242', 
   };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: state.simTime });
-  assert.equal(scene.objects.length, 7, 'bodies + marks + pools + lines + lanes + lobs + tendril segs');
+  assert.equal(scene.objects.length, 10, 'bodies + rings + pools + lines + lanes + lobs + segs + mother links/beams/auras');
   assert.equal(scene.objects[0].count, engine.census().alive, 'every live body, including the burrower, draws');
 });
