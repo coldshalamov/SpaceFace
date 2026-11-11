@@ -45,6 +45,8 @@ or does not.
 | PL-154 | **Wrong way.** Fly a freight lane against the flow and every hauler coming at you flashes hard; the lane's beacons turn amber as you pass. Far enough in, a tug meets you nose-on and simply waits | Turn around; or argue with a tug | DRAFT 2026-11-11 |
 | PL-176 | **Through the moorings.** Boost across a field of parked ships and every alarm chirps in sequence as you pass, a wave of complaint following you to the far side | Cut the boost; or listen to the whole field complain | DRAFT 2026-11-11 |
 | PL-177 | **The slow emergency.** A civilian's cargo hatch swings open and one pod hangs there, snagged, not falling. They have not noticed | Bump it back in and take a flash of thanks; take it, and they never knew; or bump it loose, and everyone knows | DRAFT 2026-11-11 |
+| PL-197 | **The dead lane.** A lane with all beacons dark, and traffic still runs it, from memory, on horns | Follow a local's tail through; or tow a lamp line down it and be thanked in horns for a day | DRAFT 2026-11-11 |
+| PL-198 | **The orphan.** A wreck nobody owns drifts across a lane for days, and everyone files around it, until the nearest town is arguing about it on open radio | Tow it to the dock and watch three owners appear; or enjoy the argument | DRAFT 2026-11-11 |
 
 ## B. Secrets
 
@@ -94,6 +96,13 @@ or does not.
 | PL-181 | Vesta | Two towns' problem. Rhea's hot cargo cooks whoever carries it. Vesta's coolant fall quenches it on the instant — if you can make the crossing | Make the crossing; or deliver it roasted | DRAFT 2026-11-11 |
 | PL-182 | Io | Not while it's down. While a flag is being repainted, the other side does not touch the painters. It is the one thing both sides keep | Watch the truce hold; or rag a flag mid-repaint, and find out what both sides agree on | DRAFT 2026-11-11 |
 | PL-183 | Sker | The weather. The Door's toll board re-chalks itself as ships Vane likes or dislikes pass through. You can read his opinion of anyone, before you ever meet him | Read the board; or ask him why it changed — *"Weather."* | DRAFT 2026-11-11 |
+| PL-199 | Tethys | The jug. Big Ansel fills one jug before the shutter goes up, and it goes to whoever looks like they need it. Look sorry enough and it is yours | Drink it; or steer it to a hull in worse shape — Ansel sees, and the jug finds you next anyway | DRAFT 2026-11-11 |
+| PL-200 | Vesta | Two taps. Off-shift, Drip Moreau walks the coolant trench tapping joints with a long pole, listening. One joint gets two taps | Watch that joint — it hisses before the hour is out; or learn her knock and find your own | DRAFT 2026-11-11 |
+| PL-201 | Sker | The odd queue. Outside Yusuf Tane's fitting berth, mismatched hulls queue in silence — the half-legal, the ugly, the wrong | Bring your worst; or count the hulls and wonder at all of it | DRAFT 2026-11-11 |
+| PL-202 | Pallas | The kept berth. One berth on Rib Street stands empty, chalked RESERVED, and every ship honours it | Park in it and feel the whole street stare until you move — a funeral tow is always coming; or honour it, and be seen to | DRAFT 2026-11-11 |
+| PL-203 | Charon | The tour. Em Sato points at the garden from her tender, naming each growth for nobody: wall, mouth, wall, wall, mouth | Follow the tour from flight, and learn which is which before you touch anything | DRAFT 2026-11-11 |
+| PL-204 | Ashfall | The hook. Lazlo's crane, idle, hangs its hook at hover height, and the scar's pilots sit on it to wait, swaying | Take a seat; or hover near — someone will offer you theirs | DRAFT 2026-11-11 |
+| PL-205 | Helios | The lit hull. In the Helios yard one hull is always lit, and nobody is ever seen aboard. Park beside it and the light inside moves, once | Leave it be; that light is hers | DRAFT 2026-11-11 |
 
 ## D. Chance meetings (anywhere)
 
@@ -125,6 +134,9 @@ or does not.
 | PL-158 | **The chased thief.** A laden skiff cuts across your bow with two angry haulers behind it | Line the thief and take a finder's cut; or block the haulers — *"Obliged."* — a crate tips your way, and Concord asks about it later | DRAFT 2026-11-11 |
 | PL-159 | **The tanker's wake.** The great tanker on the long route never changes course for anything. Pass close and its slow bulk drags you along for a second — the only thing out here that tows you | Ride the drag; or give it room like everyone else | DRAFT 2026-11-11 |
 | PL-184 | **The outrider.** Near a convoy's lane, one fast ship detaches, circles you once, and returns | Hold still for the circle and be waved through; or boost off, and the convoy closes ranks behind you | DRAFT 2026-11-11 |
+| PL-206 | **The measuring hull.** A ship with no markings matches your course for a full sector, never closing, never falling behind | Break off and lose them; turn and confront — they bolt; or let them follow, and wonder what they were measuring | DRAFT 2026-11-11 |
+| PL-207 | **The welder's sparks.** Wherever something is being fixed there are sparks, and behind the mask, Slate. Leave anything broken by the sparks overnight | Come back to it mended; leave something stolen, and it comes back mended and engraved with its owner's tag | DRAFT 2026-11-11 |
+| PL-208 | **Same time tomorrow.** Give way to a stranger once, at a beacon, and ever after they hold that beacon for you at that hour — an appointment nobody named | Keep it; or miss a day, and they wave you through late the next, no grudge | DRAFT 2026-11-11 |
 
 ## E. Lane Nine — Static reports what you did
 
@@ -154,6 +166,9 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-185 | You cut another ship's tow line | *"A line was cut out there. Neat work."* | DRAFT 2026-11-11 |
 | PL-186 | You quench Rhea's hot cargo at Vesta's fall | *"Steam over Vesta. Somebody's freight ran hot."* | DRAFT 2026-11-11 |
 | PL-187 | You thread the Charon arch on the inhale | *"Somebody threaded the arch on the inhale."* | DRAFT 2026-11-11 |
+| PL-209 | You relight a dead lane's beacons | *"Dead lane relit. Traffic appreciates it."* | DRAFT 2026-11-11 |
+| PL-210 | Slate mends something of yours overnight | *"Somebody left a welder work. It's done."* | DRAFT 2026-11-11 |
+| PL-211 | A Slipway kid beats you in a race | *"One of the crescent kids took a race."* | DRAFT 2026-11-11 |
 
 ## F. In the Pit
 
@@ -176,6 +191,8 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-164 | **The gate gawker.** Between rounds one gate stays open a crack, and a Wasp watches you shop, bobbing | Shop; or bob back — it bobs more | DRAFT 2026-11-11 |
 | PL-188 | **Reversed robbery.** A Reaver makes the gates with your Scrap. Line it in the gate mouth and it all falls out — yours, and two other pilots'. Kiln: *"Sponsors love a chase."* | Chase; or let it go and hear Kiln enjoy it | DRAFT 2026-11-11 |
 | PL-189 | **Rung.** Put an enemy through the gong and the crowd is louder than Kiln | Aim for it | DRAFT 2026-11-11 |
+| PL-212 | **The wave-back.** Flash your lamps at the stands between rounds and a whole section flashes back | Play to them; they came for this | DRAFT 2026-11-11 |
+| PL-213 | **The sweeper's route.** The janitor's path between rounds is the cleanest line on the floor — it sweeps round every hazard on the map | Follow it once and learn the room | DRAFT 2026-11-11 |
 
 ## G. Street life at the outposts and waystations
 
@@ -217,6 +234,9 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-191 | Veil | Less metal showing. In the storm wall, run lamps dark and the lightning finds the pylons; run lit, and it finds you | Run dark and slow; or run bright and mean it | DRAFT 2026-11-11 |
 | PL-192 | Hyperion | Again, maybe. Mags says one thing about every ship that clears the Cut. Clear it clean and yours is: *"Again, maybe."* | Earn the maybe | DRAFT 2026-11-11 |
 | PL-193 | Sedna | One short. Senna's lamp line runs out into the dark. Count the lamps and count her words: the line is always one lamp short of the names she reads | Count them yourself; or stop counting — it is easier out here | DRAFT 2026-11-11 |
+| PL-214 | Proteus | Pyrrha's box. Hand Pyrrha anything and she lifts it once, sets it down, and tells you what it is worth as a rumour. Arrive empty-handed and you get the speech: *"A reading's a rumor. Bring me a box."* | Bring her the strangest thing you can tow | DRAFT 2026-11-11 |
+| PL-215 | Kepler | Somebody's stall. One stall at the Scar sells a single item a night, and the item is always somebody's lost thing | Buy it back for its owner; or wonder how it keeps getting lost | DRAFT 2026-11-11 |
+| PL-216 | Nyx March | The blue minute. On nights no lot is due, the light on the Fence still turns blue for one minute — and every ship in Nyx March looks away | Look away with them; or watch the blue, and Clerk Yune will make a small note about you | DRAFT 2026-11-11 |
 
 ## H. The world reacts, part two
 
