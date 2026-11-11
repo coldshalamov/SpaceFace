@@ -44,7 +44,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | ID | Job | State |
 |---|---|---|
 | L1-REVIEW | Look at every visible `BUILT` row on screen (ui-bench shots; `npm run player-truth -- --mode=swarm --start-round=N --out=<dir>`; fly it) and mark `DONE` or `REDO <sentence>`. Today: G19-01, G08-01, C01-01, G18-03, G18-04, PERF-02a, the plants. Repeat every session. | READY (repeat) |
-| LOOK-01 one grade | Concept A applied (771c32c1): warm key, blue shadows, ambient/fill restored, darkest moods floored at concept C, bloom only on true lights. Still to do: side-by-side capture vs concept A in five places (needs G17-02) | TAKEN lead |
+| LOOK-01 one grade | Concept A applied and tuned on screen in 4 passes (771c32c1, 37c9ddcd, 5b11ca4c, ca53d481, 4f828c87): warm key, blue shadows, ambient/fill restored, darkest moods floored, bloom only on true lights, exposure ~+3%, empty space deep indigo. Capture: `design/game/look/captures/2026-11-11-after-look-pass.png` | BUILT (owner to judge) |
 | PERF-03 biggest main-thread owner | Read PERF-01's numbers; write the packet that cuts the largest main-thread waste (Lane 2 builds it) | HOLD on PERF-01 |
 | PERF-02b local prediction | Draw the player's ship from their own input on the main thread (client-side prediction), reconciled to the worker — the cure for input lag and flicker | HOLD on PERF-02a review |
 | PERF-02 decouple the sim | `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`), so a saturated main thread slows the world. Loosen after PERF-03 frees headroom | HOLD on PERF-03 |
@@ -72,7 +72,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
 | A01-02-freight-lane | A container string crosses the Foundry every 40 s: amber lights, horn, crushes, ride it, cut one loose | BUILT 09b4fd4c + lead-review d0d7e438, baaddae2 (crush through shields/armor via a freight-only structuralHull flag; no direct velocity writes; leftover bodies retired) + 5b975a1a (a passive ride never cuts loose; reel/swing/haul-back does; east exit releases the Line through the attachments owner) — lead accepted |
 | A01-04-wall-guns-and-the-crate | Buy on the floor: two wall guns (500) and the Crate (950, moves after 3 pulls) in the Foundry | BUILT 3e15a433 (lead looked: Crate pad + label visible at round 3) |
-| A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | BUILT 07dd5ac1 (review 2026-11-11-38b31504: six findings → Sonnet fixer running) |
+| A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | BUILT 07dd5ac1 (review 2026-11-11-38b31504: six findings fixed a642a272..b644a18d by a lead-review fixer) |
 | G16-01-the-stage-exists | One Stage hosts every transient popup; priority queue per slot; nothing overlaps | BUILT 72c45b9f + lead-review 5ba27322 (the Swarm centre callouts now share one column, one big beat at a time; a refreshed item keeps its seat; banner/feed join the alert/toast columns) |
 | G19-02-honest-hold | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | READY |
 | G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | BUILT b931aac8 + 321ab601 (wheel fixed and seen) |
@@ -111,6 +111,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
 | PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | READY (repeat) |
 | UI-DIGEST | `node scripts/check-ui-budgets.mjs` reports `baseline:stale` (digest changed by G18-02, A01-04, G16-01). After G16-01 is BUILT, with no other game running: re-baseline exactly as the failure line says (`node scripts/fleet/game-lock.mjs run -- npm run capture:ui-matrix -- --budgets-out`), rerun the check, commit only the budget files it rewrites | DONE (re-baselined inside G16-01) |
+| KEYS-TESTS-labels | Two UI tests still expect the old key labels (`4` vs `4/Y`) | TAKEN agent4 (flash) |
 | GATE-RUN | With no other game instance running: `npm run gate`; paste the output into `HANDOFF.md` §1 under "last gate" with the date and `git rev-parse --short HEAD` | READY (repeat) |
 
 ---
