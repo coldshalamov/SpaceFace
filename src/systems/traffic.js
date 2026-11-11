@@ -160,6 +160,7 @@ import { trafficEscortOps } from './trafficEscortOps.js';
 import { trafficRecoveryOps } from './trafficRecoveryOps.js';
 import { trafficCausalChainOps } from './trafficCausalChainOps.js';
 import { trafficNearMissOps } from './trafficNearMiss.js';
+import { roadRageOps } from './roadRage.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1625,6 +1626,7 @@ export const traffic = {
   ...trafficRecoveryOps,
   ...trafficCausalChainOps,
   ...trafficNearMissOps,
+  ...roadRageOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1731,6 +1733,8 @@ export const traffic = {
         salvorSourceTarget: (entry, entity) => this._salvorSourceTarget(entry, entity),
       };
     }
+
+    this._initRoadRage(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
@@ -4056,6 +4060,11 @@ export const traffic = {
           this._ensureAmbushLoadedHaulerManifest(e, rec);
         }
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
+        // PL-05: road rage reaction
+        if (this._reactRoadRage(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         this._reactCivilianViolence(e, rec, stations, state);
         // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
         // job runtime and emits the horn; the choreography keeps its single intent writer.
@@ -4066,6 +4075,11 @@ export const traffic = {
       // Retire only this exact rescue hull's old unleased generic tender assignment. Until
       // that owner releases it, the normal job and violence branches remain authoritative.
       if (rec.role === 'rescue' && e.data?.jobId) this._releaseLegacyRescueJob(e, rec);
+      // PL-05: twice-shoved civilian shoves back, then flees.
+      if (this._reactRoadRage(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {
