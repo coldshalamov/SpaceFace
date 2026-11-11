@@ -33,9 +33,9 @@ test('offline receipt line uses the stored numbers and skips empty/skipped recei
   const receipt = realReceipt();
   const line = formatOfflineReceiptLine(receipt);
   assert.match(line, /While you were away \(1\.0h\)/);
-  assert.match(line, /\+1200 cr earned/);
+  assert.match(line, /\+1,200 cr earned/);
   assert.match(line, /400 cr upkeep/);
-  assert.match(line, /1 lost/);
+  assert.match(line, /1 asset lost/);
   assert.match(line, /assets distressed/);
   assert.equal(isOfflineReceiptShowable(receipt), true);
   assert.equal(isOfflineReceiptShowable(buildOfflineReceipt({ skipped: true, skipReason: 'idempotent' })), false);
@@ -57,9 +57,9 @@ test('seed 47 stored receipt shows once on save:loaded and does not return', () 
   bus.emit('save:loaded', { slot: 1 });
   assert.equal(toasts.length, 1, 'first load shows the summary');
   assert.equal(toasts[0].kind, 'credits');
-  assert.match(toasts[0].text, /\+1200 cr earned/);
+  assert.match(toasts[0].text, /\+1,200 cr earned/);
   assert.match(toasts[0].text, /400 cr upkeep/);
-  assert.match(toasts[0].text, /1 lost/);
+  assert.match(toasts[0].text, /1 asset lost/);
 
   bus.emit('save:loaded', { slot: 1 });
   bus.emit('automation:offlineSummary', receipt);

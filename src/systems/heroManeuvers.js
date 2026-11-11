@@ -11,6 +11,8 @@ import {
 } from './phaseBlink.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { isHostileToPlayer } from './scanner.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const FLIGHT_PHASES = new Set(['active']);
 const START_CUE = 'sfx_massline_release';
@@ -778,7 +780,7 @@ export const heroManeuvers = {
     refreshReadModel(this.state, true);
     this._lastResult = { outcome, reason, contactCount: run.contacts.length, tick: this.state?.tick ?? null };
     const text = run.contacts.length
-      ? `Pinball Rush ${outcome.replaceAll('_', ' ')} · ${run.contacts.length} physical contact${run.contacts.length === 1 ? '' : 's'} · control returned`
+      ? `Pinball Rush ${outcome.replaceAll('_', ' ')} · ${counted(run.contacts.length, 'physical contact', 'physical contacts')} · control returned`
       : `Pinball Rush ${outcome.replaceAll('_', ' ')} · no committed contact · control returned`;
     this.bus?.emit('toast', { text, kind: outcome === 'pinball_success' || outcome === 'pinball_complete' ? 'info' : 'warn', ttl: 1.8 });
     return true;

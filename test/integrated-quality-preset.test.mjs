@@ -165,6 +165,8 @@ test('the automatic demo posture keeps Auto so the adaptive controller stays liv
   assert.equal(video.renderScale, 1, 'the auto posture keeps the native integrated scale');
   assert.equal(video.frameCap, 30);
   assert.equal(video.bloomLevels, 2, 'the authored two-level halo is restored');
+  assert.equal(video.particleQuality, 'medium', 'the authored sky/particle tier is restored');
+  assert.equal(video.sharpen, false, 'no legacy unsharp on a native frame');
   assert.equal(video.nocturne, true, 'authored Nocturne stays on');
   assert.equal(adaptiveResolutionEnabledForSettings({ tier: 'integrated' }, video), true,
     'Auto keeps dynamic resolution available on the integrated profile');

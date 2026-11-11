@@ -46,12 +46,21 @@ export function swarmPopupText({ word = '', score = 0, credits = 0 } = {}) {
   return parts.join(' ');
 }
 
-/** The countdown-era slam text: the round figure plus the card's sub-line. */
+/**
+ * The countdown-era slam text: the round figure plus the card's sub-line.
+ *
+ * S14 moved the champions onto 5, 15, 25…, so a boss round can also be a debut round: wave 5's
+ * Iron Maw lands with the Detonator Dart's first body, wave 15's Foreman with the Patrol
+ * Lawman's, and the Brood's undertow and pox sac debut under the wave-55 and wave-75
+ * champions. A boss round always raises the versus card and the boss bar, and both already
+ * name the champion. That leaves this one sub-line as the only place a new threat can be
+ * named. On a shared round it names the newcomer, not the boss a third time.
+ */
 export function swarmSlamSub({ boss = null, newcomer = null } = {}) {
-  if (boss && typeof boss.name === 'string' && boss.name) return `BOSS · ${boss.name}`;
-  if (newcomer && typeof newcomer.name === 'string' && newcomer.name) {
-    return `NEW THREAT · ${newcomer.name}`;
-  }
+  const bossName = boss && typeof boss.name === 'string' && boss.name ? boss.name : '';
+  const newName = newcomer && typeof newcomer.name === 'string' && newcomer.name ? newcomer.name : '';
+  if (newName) return `NEW THREAT · ${newName}`;
+  if (bossName) return `BOSS · ${bossName}`;
   return '';
 }
 
@@ -97,6 +106,9 @@ export const swarmJuiceHud = {
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
     this._unsubs.push(this.bus.on('swarm:chainTier', (p) => this._onChainTier(p)));
     this._unsubs.push(this.bus.on('swarm:chainShatter', (p) => this._onShatter(p)));
+    // inf-overdrive-mark: the opened window keeps a persistent mark on the chain hero while it
+    // holds — the one-shot announcement named it, the hero keeps saying it until the chain breaks.
+    this._unsubs.push(this.bus.on('swarm:overdrive', (p) => this._onHeroOverdrive(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', () => this._onFight()));
     this._unsubs.push(this.bus.on('run:started', () => this._resetModel()));
     this._unsubs.push(this.bus.on('run:ended', () => this._resetModel()));
@@ -121,6 +133,7 @@ export const swarmJuiceHud = {
     this._chainBest = 0;
     this._chainStep = 0;
     this._chainAt = null;
+    this._overdriveRate = 0;
     this._tierName = '';
     this._tierUntil = 0;
     this._calls = [];
@@ -167,7 +180,15 @@ export const swarmJuiceHud = {
       this._text(dom.heroTier, this._tierName && simNow < this._tierUntil
         ? this._tierName
         : swarmHeroTierText(this._chain));
-      const badge = this._chainStep === 2 ? 'MIXED +2' : '';
+      // inf-overdrive-mark: the window keeps its word on the hero — the tier line says it once
+      // here, not just in the one-shot announcement — until the chain breaks or the run ends.
+      const overdrive = this._overdriveRate > 0;
+      if ((dom.hero.dataset.overdrive === '1') !== overdrive) {
+        dom.hero.dataset.overdrive = overdrive ? '1' : '0';
+      }
+      const badge = overdrive
+        ? `OVERDRIVE · GUNS ×${this._overdriveRate}`
+        : (this._chainStep === 2 ? 'MIXED +2' : '');
       this._text(dom.heroMix, badge);
       dom.heroMix.hidden = !badge;
       const remaining = chainWindowRemaining(this._chainAt, simNow);
@@ -304,6 +325,13 @@ export const swarmJuiceHud = {
     this._chain = 0;
     this._chainStep = 0;
     this._chainAt = null;
+    // The overdrive window is the chain's gift: the break spends it.
+    this._overdriveRate = 0;
+  },
+
+  /** inf-overdrive-mark: the chain hero says OVERDRIVE · GUNS ×rate for the whole window. */
+  _onHeroOverdrive(p) {
+    this._overdriveRate = p && p.active ? Math.max(0, Number(p.rate) || 0) : 0;
   },
 
   _onChainTier(p) {
@@ -570,6 +598,9 @@ const CSS = `
 .sf-sj__hero[data-tier="singularity"] .sf-sj__herotier { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__heromix { font-weight:700; font-size:15px; letter-spacing:.18em;
   color:var(--dp-lamp-hot, #f2b950); }
+/* inf-overdrive-mark: the opened window reads hot, distinct from the amber MIXED badge — the
+   word carries the meaning; the color is reinforcement, never the sole channel. */
+.sf-sj__hero[data-overdrive="1"] .sf-sj__heromix { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__herobest { font-weight:500; font-size:12px; letter-spacing:.14em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
 .sf-sj__herotrack { width:130px; height:3px; background:var(--dp-rule-hi, rgb(232 226 212 / .20)); overflow:hidden; }
@@ -585,6 +616,9 @@ const CSS = `
 .sf-sj__call[data-kind="pileup"], .sf-sj__call[data-kind="collateral"] { color:var(--dp-lamp, #f2b950); }
 .sf-sj__call[data-kind="revenge"], .sf-sj__call[data-kind="closecall"] { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__call[data-kind="lastone"], .sf-sj__call[data-kind="bossdown"] { color:var(--dp-lamp-hot, #ffd98c); }
+/* inf-chain-star: the zone's chain star reads in the lamp's hot gold — the same ink the ladder's
+   stars wear on the Crucible screen; the words carry the meaning. */
+.sf-sj__call[data-kind="chainstar"] { color:var(--dp-lamp-hot, #ffd98c); }
 .sf-sj__shatter { position:absolute; top:24vh; left:50%; transform:translateX(-50%);
   font-weight:800; font-size:22px; letter-spacing:.26em; text-transform:uppercase;
   color:var(--dp-danger-hot, #ff5038); animation:sf-sj-drop .5s ease-out both; }

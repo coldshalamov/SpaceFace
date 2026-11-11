@@ -3,7 +3,8 @@ import { renderBarkUtterancePcm } from './barkVoice.js';
 // Context-local, bounded decoded line bodies. Destroying the host drops the entire cache.
 export function cachedBarkBuffer(ctx, cache, resolved) {
   if (!ctx || typeof ctx.createBuffer !== 'function') return null;
-  const key = `${resolved.registerId}:${resolved.hash}:${resolved.speech.durationS}`;
+  // inf-radio-distance: the band is part of the body — a far hail is a different buffer.
+  const key = `${resolved.registerId}:${resolved.hash}:${resolved.speech.durationS}:${resolved.radioBand || 'near'}`;
   if (cache.has(key)) {
     const buffer = cache.get(key);
     cache.delete(key); cache.set(key, buffer);

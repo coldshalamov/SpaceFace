@@ -73,6 +73,7 @@ import { factionBerthById } from '../data/factionBerths.js';
 import { placeDrawScaleFromRow } from '../data/modelTruthMounts.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } from '../data/swarmMode.js';
+import { swarmCharacterFor } from '../data/swarmCharacter.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
@@ -11830,7 +11831,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   kit.finalizeShip({
     root,
     hull,
-    entity,
+    entity: swarmScaledDrawEntity(entity),
     designRadius: 1,
     decals: bindings.decals,
     driveParts: primaryDrive,
@@ -12905,7 +12906,7 @@ function* instantiateFlightRootTemplateBodySteps(
   kit.finalizeShip({
     root,
     hull,
-    entity,
+    entity: swarmScaledDrawEntity(entity),
     designRadius: 1,
     decals: bindings.decals,
     driveParts: primaryDrive,
@@ -15356,25 +15357,38 @@ export function swarmRosterShipExemplarSpecs(idPrefix = 'crucible-warm:ship:', o
   const defs = scope
     ? swarmRosterEnemyDefs().filter((def) => scope.has(def.id))
     : swarmRosterEnemyDefs();
-  return defs.map((def) => ({
-    id: `${prefix}${def.id}`,
-    type: 'ship',
-    team: 1,
-    factionId: def.factionId,
-    radius: 8,
-    pos: { x: 0, y: 0, z: 0 },
-    prevPos: { x: 0, y: 0, z: 0 },
-    vel: { x: 0, y: 0, z: 0 },
-    rot: 0,
-    alive: true,
-    flags: {},
-    data: {
-      lootTableId: def.id,
-      defId: def.shipId,
-      silhouette: def.silhouette,
-      shipClass: def.shipClass,
-    },
-  }));
+  return defs.map((def) => {
+    // G08-01: a real materialization stamps data.swarmCharacter — the exemplar carries the
+    // same stamp so paletteFor and the warm coverage resolve exactly what the spawn will.
+    const character = swarmCharacterFor(def.id);
+    return {
+      id: `${prefix}${def.id}`,
+      type: 'ship',
+      team: 1,
+      factionId: def.factionId,
+      radius: 8,
+      pos: { x: 0, y: 0, z: 0 },
+      prevPos: { x: 0, y: 0, z: 0 },
+      vel: { x: 0, y: 0, z: 0 },
+      rot: 0,
+      alive: true,
+      flags: {},
+      data: {
+        lootTableId: def.id,
+        defId: def.shipId,
+        silhouette: def.silhouette,
+        shipClass: def.shipClass,
+        ...(character ? { swarmCharacter: {
+          silhouette: character.silhouette,
+          scale: character.scale,
+          hue: character.hue,
+          tier: character.tier,
+          abilityId: character.abilityId,
+          tellId: character.tellId,
+        } } : {}),
+      },
+    };
+  });
 }
 
 let _swarmRosterEnemyDefsCache = null;
@@ -18023,6 +18037,32 @@ function ensureStandardSockets(hull, hullRecord) {
 
 const FACTION_PERSONALITY = new Map(FACTION_META.map((f) => [f.id, f.personality]));
 
+// G08-01 — the Swarm character sheet's draw surface. waveMaterialization stamps
+// `data.swarmCharacter` on every cohort hull; this resolves the two things the stamp
+// changes about the draw: `scale` multiplies the hull's entity-radius fit and `hue`
+// (a 24-bit RGB number) repaints the accent/trim/engine emissives. Hull body paint
+// stays the faction's; `accentHex === null` means "keep the resolved palette accent".
+export function swarmCharacterDrawSpec(entity) {
+  const stamp = entity && entity.data && entity.data.swarmCharacter;
+  if (!stamp || typeof stamp !== 'object') return { scale: 1, accentHex: null };
+  const scale = Number.isFinite(stamp.scale) && stamp.scale > 0 ? stamp.scale : 1;
+  const hue = Number.isFinite(stamp.hue) && stamp.hue >= 0 ? (stamp.hue & 0xffffff) : null;
+  return {
+    scale,
+    accentHex: hue == null ? null : `#${hue.toString(16).padStart(6, '0')}`,
+  };
+}
+
+// kit.finalizeShip fits the hull group to `entity.radius`, so the draw-radius view it
+// reads is where the sheet scale lands. Collision radius/mass stay with the sim entity —
+// shield bubbles, sockets, and cull bounds built beside it keep the true radius.
+function swarmScaledDrawEntity(entity) {
+  const scale = swarmCharacterDrawSpec(entity).scale;
+  return scale !== 1 && entity && Number.isFinite(entity.radius)
+    ? { ...entity, radius: entity.radius * scale }
+    : entity;
+}
+
 function paletteFor(entity) {
   const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
   let base;
@@ -18044,13 +18084,19 @@ function paletteFor(entity) {
     base = { hull: civilian.hull, accent: civilian.accent, thruster: civilian.thruster, dark: civilian.dark };
   }
   const palette = paletteWithShipAppearance(entity, base);
+  // G08-01: a stamped Swarm hull keeps its body paint but wears its sheet hue on the
+  // accent/emissive parts — accent tint and engine glow, never the hull mesh.
+  const swarmAccent = swarmCharacterDrawSpec(entity).accentHex;
+  const resolved = swarmAccent
+    ? { ...palette, accent: swarmAccent, thruster: swarmAccent }
+    : palette;
   // A hull with no appearance record of its own wears its faction's stencils (an explicit
   // appearance — including a deliberate 'none' — always wins).
-  if (!palette.decalId && entity?.factionId) {
+  if (!resolved.decalId && entity?.factionId) {
     const decal = paintDecalForPersonality(FACTION_PERSONALITY.get(entity.factionId));
-    if (decal) return { ...palette, decalId: decal };
+    if (decal) return { ...resolved, decalId: decal };
   }
-  return palette;
+  return resolved;
 }
 
 function snapshotMounts(mounts) {
