@@ -1,18 +1,77 @@
 # Fleet queue
 
 States: `READY` (anyone of that tier may take it) · `TAKEN <who>` · `BUILT <hash>` (worker says
-done) · `DONE` (lead reviewed) · `REDO <one sentence>` (back to READY with a note) · `HOLD` (waits
-on another row). Tier: L = lead only, D = Devin SWE-2 Max or better, S = any worker.
+done) · `DONE` (lead reviewed) · `REDO <one sentence>` · `HOLD <on what>` · `NEEDS-PACKET` (the lead
+writes the packet first; the spec lives where the row says). Tier: **L** lead only, **D** Devin
+SWE-2 Max or better, **S** any worker (DeepSeek, Flash).
 
-Order follows `10_THE_GAME.md` §6: the floor, then Swarm finished, then the first hour, then the
-five towns. Take rows top-down within your tier.
+Order follows `10_THE_GAME.md` §6 (on branch EC-G13): stability first, then the floor, then Swarm
+finished, then the first hour, then the five towns. Take rows top-down within your tier.
 
-## Calibration (first run of each backend — sizes the rest of the queue)
+**After every batch the lead runs `npm run gate`. Red gate → fix or revert before anything else.**
 
-| ID | Tier | Commission | Job | State |
-|---|---|---|---|---|
-| G19-01-class-up-moment | D | EC-G19 | The rope's class-up shows a plate and the cable changes | TAKEN devin1 |
-| G08-01-enemies-wear-their-sheet | D | EC-G08 | Swarm enemies drawn at their sheet scale and hue | TAKEN devin2 |
-| G17-01-swarm-start-at-round | D | EC-G17 | `?swarmRound=N` and `--start-round=N` | TAKEN devin3 |
-| PL-08-applause | S | plants | Station lamps flash at a slingshot kill | TAKEN deepseek |
-| PL-05-road-rage | S | plants | A twice-shoved civilian shoves back, then runs | TAKEN flash |
+## Calibration results (2026-11-10)
+
+| Backend | Packet | Time | Verdict |
+|---|---|---|---|
+| Devin SWE-2 Max (acct1) | G19-01 class-up moment | 5 min | DONE — clean, honest receipt, reused the existing plate |
+| Devin SWE-2 Max (acct2) | G08-01 enemy sheet looks | 7 min | DONE — right seam, pure helper + test; not seen on screen |
+| Devin SWE-2 Max (acct3) | G17-01 start at round N | ~35 min | DONE — and found + fixed a master boot break (`.//` import) |
+| Gemini 3.8 Flash (agy) | PL-05 road rage | 16 min | DONE — wired correctly; left an unused duplicate block |
+| DeepSeek v4.1 Flash | PL-08 applause | — | prints nothing until exit; slow |
+
+Sizing that follows: Devin takes medium-to-large packets that name the seam and the files (2–6
+files, a test, a plain receipt). Flash and DeepSeek take one written plant at a time. Nobody but the
+lead looks at the screen, so every visible change needs a lead look before `DONE`.
+
+## Stability (owner, 2026-11-10: "glitchy, freezes, doesn't load sometimes, regresses constantly")
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| STAB-01-launchers-always-start | D | Both launchers reach the menu 10/10; plain-sentence errors | TAKEN devin1 |
+| STAB-02-stability-gate | D | `npm run gate` = Adventure boot + Swarm boot + deterministic replay | TAKEN devin2 |
+| STAB-03 import and boot lint | S | NEEDS-PACKET: a static check that every relative import resolves (the `.//` break), wired into `gate --quick` | NEEDS-PACKET |
+| G11 never freeze | L | The freeze-and-blip: sim falls behind real time, presentation holds then snaps. Spec: EC-G11 card + `MASTER_PLAN.md` E1/E10 | READY |
+| PARK-01-land-overnight-lane-b | D | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
+
+## Wave 0 — the floor
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| G18 slice 1 one feel | L | Pull/Shove/contacts identical in both doors (commit 21a3a741) | DONE |
+| G18-02-one-set-of-keys | D | Same keys both doors; everything else on a Q context wheel | READY |
+| G18-03 feedback | D | NEEDS-PACKET: camera beat on light kill + slingshot release, boost to 2x cruise with a ring, FEEL §2 engine set. Spec: EC-G18 brief §3 | NEEDS-PACKET |
+| G17-01-swarm-start-at-round | D | `?swarmRound=N`, `--start-round=N` | BUILT 2f8b164a |
+| G16 one glass | D | NEEDS-PACKET: Kit Page + the Stage popup host (every popup through one host, one style). Spec: EC-G16 #1024 | NEEDS-PACKET |
+
+## Wave 1 — Swarm, finished
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| G08-01-enemies-wear-their-sheet | D | Enemies drawn at sheet scale + hue | BUILT 3e94db0d |
+| C01-01-swarm-can-be-won | D | Thirty rounds, Forge Regent, `THE PIT IS YOURS` | TAKEN devin3 |
+| G08-02-thirty-named-rounds | D | `ROUND 7 — NAME` + twist via the existing seam | HOLD on C01-01 |
+| G19-01-class-up-moment | D | The rope's class-up is an event | BUILT 3c7e8338 |
+| A01 the Foundry floor | D | NEEDS-PACKET: wall guns + buy pads, the moving crate, the forge, doors (docs 12 "What is on the floor", 15 Foundry) — split in three | NEEDS-PACKET |
+| A01 freight lanes | D | NEEDS-PACKET: timetabled freight crossing the arena, horn + lights (doc 12 "Traffic") | NEEDS-PACKET |
+| G08 silhouettes | L | Distinct shapes per enemy (3D; Forge route) | READY |
+| G20 the Rig | D | NEEDS-PACKET: one loadout screen for both doors (EC-G20 #1032) | NEEDS-PACKET |
+| G19-02 honest hold | D | NEEDS-PACKET: the hold shows prices; the fake scan-risk number goes (EC-G19 #1029) | NEEDS-PACKET |
+
+## Wave 2 — the first hour
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| G10 first ten minutes | D | NEEDS-PACKET: keep the throw, cut the drills, stage the Skim in front of the ship (EC-G10, doc 16 "Cold Start") | NEEDS-PACKET |
+| G21 the Chart | D | NEEDS-PACKET: full-screen live map, five layers, timetable (EC-G21 #1033) | NEEDS-PACKET |
+| G09 one next | D | NEEDS-PACKET: one guidance voice (EC-G09) | NEEDS-PACKET |
+| S01 Helios | D | NEEDS-PACKET: town recipe for Helios (doc 13, EC-S01) | NEEDS-PACKET |
+
+## Always available (repeatable — run as many as you like)
+
+| ID | Tier | Job | State |
+|---|---|---|---|
+| PLANT-NEXT | S | Build the next OPEN world reaction in `INFERENCE_PLANTS.md` (96 open) | READY (repeat) |
+| PRX-NEXT | D | Finish the next leftover PR (#921–#998) from `.dev/pr-expansion/HANDOFF.md` | READY (repeat) |
+| PL-08-applause | S | Station lamps flash at a slingshot kill | TAKEN deepseek |
+| PL-05-road-rage | S | A twice-shoved civilian shoves back, then runs | BUILT b34318dd |
