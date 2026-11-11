@@ -47,6 +47,26 @@ function finite(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * "Loaded" as the traffic/job owners record it: a cargo map of commodity quantities, a causal
+ * manifest, a carrying flag, or the traffic record's manifest. An empty hauler is not cut off.
+ */
+export function isHaulerLoaded(entity, rec = null) {
+  const data = entity && entity.data;
+  if (!data) return false;
+  if (data.loaded === true || data.carrying || (rec && rec.carrying)) return true;
+  const manifest = data.cargoManifest || (rec && rec.manifest) || null;
+  if (manifest && (Number(manifest.totalQty) > 0 || (Array.isArray(manifest.lines) && manifest.lines.length > 0))) return true;
+  const cargo = data.cargo;
+  if (typeof cargo === 'number') return cargo > 0;
+  if (cargo && typeof cargo === 'object') {
+    if (Number(cargo.amount) > 0 || Number(cargo.units) > 0) return true;
+    if (Array.isArray(cargo.items) && cargo.items.length > 0) return true;
+    for (const k in cargo) { if (Number(cargo[k]) > 0) return true; }
+  }
+  return Number(data.cargoUnits) > 0 || Number(data.cargoAmount) > 0;
+}
+
 function isEntityDisabled(entity) {
   if (!entity || entity.alive === false) return true;
   const data = entity.data || {};
@@ -69,6 +89,7 @@ export function isLoadedHauler(entity, rec = null, state = null) {
   if (data.ai && (data.ai.pirate === true || data.ai.lawful === true)) return false;
   if (data.runCohort === 'survival') return false;
   if (isEntityDisabled(entity)) return false;
+  if (!isHaulerLoaded(entity, rec)) return false;
 
   const role = String(
     (rec && rec.role)

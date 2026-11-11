@@ -175,7 +175,10 @@ export function createPromptDeck(ctx = {}) {
   // injection is idempotent, so the deck can mount wherever uiRoot starts it.
   try { injectOrrery(doc); } catch (_) { /* the text countdown stays the honest fallback */ }
 
-  const host = doc.getElementById('ui-root') || doc.body;
+  // G16-01 the Stage: the deck mounts inside the prompt slot when the stage owns the transient
+  // slots; bare #ui-root stays the fallback for host pages without the markup (ui-bench).
+  const host = (ctx.stage && typeof ctx.stage.slotEl === 'function' ? ctx.stage.slotEl('prompt') : null)
+    || doc.getElementById('ui-root') || doc.body;
   const root = doc.createElement('div');
   root.id = 'sf-prompt-deck';
   root.setAttribute('role', 'group');
