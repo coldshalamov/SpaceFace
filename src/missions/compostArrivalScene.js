@@ -99,6 +99,15 @@ export function syncCompostArrival(owner, gardens) {
     text = `“We kept it.” The garden records ${amount(fed)}t of your material, but it has not made its first player-fed growth. ${next ? `${amount(Math.ceil(needed * 10) / 10)}t more feed reaches the next stage.` : 'This garden is already at its last stage; no further growth can show here.'} The used pod or wreck is gone; bringing its name back will not feed us twice. The ${UNDERSTORY_COMPOST_RUN.targetMass}t paid run is still a separate account.`;
     cue = next ? `Feed received; ${amount(Math.ceil(needed * 10) / 10)}t more for next growth`
       : 'Feed received; this garden has no further growth stage';
+  } else if (fed > 0 && !grewHere && held && !heard.returnLoad) {
+    id = 'returnLoad';
+    text = `“Another load. We still have the first one.” The garden has kept your ${amount(fed)}t. There is ${amount(held.mass)}t of new edible material on your Line. ${!next ? 'This garden has no further growth stage.' : held.mass + 1e-9 >= needed ? 'This load can make the first growth if all of it reaches the mouth.' : `After this load, ${amount(Math.ceil((needed - held.mass) * 10) / 10)}t more would still be needed.`} Keep the Line attached until intake; the ring belongs to this load. You can still take it away. No payment is promised for returning.`;
+    cue = 'New load, same garden; only material actually received counts';
+  } else if (fed > 0 && !grewHere && next && !held && heard.partial && !heard.resupply) {
+    id = 'resupply';
+    const route = compostRouteFocus({ state: s, registry: owner.ctx?.registry });
+    text = `“Do not buy us a promise. Bring what you can spare.” Your ${amount(fed)}t is still here; leaving will not erase it. ${route.reason} The current Journal follows the usable supply, then the receiving approach. Nothing has been added to your hold.`;
+    cue = 'Your feed is kept; check the Journal for the remaining supply';
   } else if (held && !heard.load) {
     id = 'load';
     text = `“We can use the ${amount(held.mass)}t on your Line.” The ring shows where this load's center enters the living mouth. Ease the load across from the west while the cockpit stays outside. Keep the Line attached until the garden takes it. Releasing a cargo pod near a station can sell it to the Dump Chute instead; sold cargo cannot feed the garden. ${!next ? 'This garden is at its last stage; this load cannot produce a new growth here.' : held.mass + 1e-9 >= needed ? 'This load is enough for the next growth if all of it reaches us.' : `${amount(Math.ceil((needed - held.mass) * 10) / 10)}t will still be needed after this load.`} The pod's handling weight is not necessarily its edible cargo mass.`;
