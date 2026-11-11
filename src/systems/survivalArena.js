@@ -139,6 +139,7 @@ import { orbitNodePose } from '../combat/orbitNodes.js';
 import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarmEvents.js';
 import { createSwarmLegendaryDirector } from './swarmLegendaries.js';
 import { createSwarmCallinsDirector } from './swarmCallins.js';
+import { createFreightLaneDirector } from './freightLane.js';
 import { swarmEventFor } from '../data/swarmEvents.js';
 
 const CRYO_LOCK_REFRESH_LEAD_TICKS = 30;
@@ -1217,6 +1218,11 @@ export const survivalArena = {
     // here, and the wave teardown removes every called body with the room.
     this._callins = createSwarmCallinsDirector(ctx);
     this._callins.init();
+    // A01-02 — the Foundry freight lane is ambient room machinery on the same slot: it arms on
+    // helios_core installs, drives its string through this tick's physics pass, and tears down
+    // with the room.
+    this._freight = createFreightLaneDirector(ctx);
+    this._freight.init();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:modifierRecorded', (p) => this._onCallinRecorded(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
@@ -1288,6 +1294,7 @@ export const survivalArena = {
     if (this._swarmEvents) this._swarmEvents.destroy();
     if (this._legendaries) this._legendaries.destroy();
     if (this._callins) this._callins.destroy();
+    if (this._freight) this._freight.destroy();
     this._teardown('destroy');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
@@ -1368,6 +1375,7 @@ export const survivalArena = {
     }
     this._releaseRoundFields(st);
     if (this._swarmEvents) this._swarmEvents.update(_dt, st);
+    if (this._freight) this._freight.update(_dt, st);
     this._tickToys(_dt, st);
     this._tickPlayerSlams(st);
   },
@@ -1480,6 +1488,18 @@ export const survivalArena = {
         wave,
       }));
       this._swarmEvents.setInstalledFields(this._installedFields);
+    }
+    // A01-02 — the freight lane is the Foundry's own machinery, not a wave law: it arms on
+    // every helios_core install regardless of phase (idle rooms included) and self-clears on
+    // any other arenaId.
+    if (this._freight) {
+      this._freight.arm({
+        arenaId: run.arenaId,
+        at: install.at || playerAnchor(state) || { x: 0, z: 0 },
+        installedAt: this._installedAt,
+        wave,
+        seed,
+      });
     }
     this._emit('survivalArena:installed', {
       wave,
@@ -1629,6 +1649,7 @@ export const survivalArena = {
     // wave clear / run end / new game. Purchases are untouched — they live on the run record.
     if (this._legendaries) this._legendaries.teardown(reason);
     if (this._callins) this._callins.teardown(reason);
+    if (this._freight) this._freight.teardown(reason);
     // NXB-019 — a swarm wave clear is a preparation interval: the cover the player displaced
     // and the wrecks/supplies it left are the next round's terrain, not trash. Fields, mines
     // and room solids are per-wave law and still release; anchor rocks retain their bodies

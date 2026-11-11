@@ -1,3 +1,6 @@
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # SpaceFace performance and whole-game handoff — November 5, 2026
 
 **STOPPED at the owner's explicit request: “write a detailed handoff and stop.”** Recorded at14:23UTC. Do not resume development, launch games/agents, publish or deploy without a new instruction. This is a handoff, not release approval. The game remains unfinished.

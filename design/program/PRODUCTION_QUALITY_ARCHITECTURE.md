@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PLAN — implementation recommendations; root architecture remains authoritative. -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # Architecture decisions for the selected production-quality wave
 
 Parent: [production plan](PRODUCTION_QUALITY_COMPOUNDING.md).

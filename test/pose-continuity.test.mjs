@@ -149,3 +149,12 @@ test('thresholds are the packet numbers', () => {
   assert.equal(POSE_CONTINUITY_JUMP_WU, 0.5);
   assert.equal(POSE_CONTINUITY_TELEPORT_WU, 40);
 });
+
+test('a stopped raw stream converges to the physical pose (review 2026-11-11 HIGH)', () => {
+  for (const v of [60, 210]) {
+    const pc = createPoseContinuity(); const out = {}; const dt = 1 / 60; let x = 0;
+    for (let i = 0; i < 60; i++) { x += v * dt; pc.sample(1, x, 0, 0, dt, out); }
+    for (let i = 0; i < 600; i++) pc.sample(1, x, 0, 0, dt, out);
+    assert.ok(Math.abs(out.x - x) < 0.05, `v=${v}: drawn ${out.x} must rejoin raw ${x}`);
+  }
+});

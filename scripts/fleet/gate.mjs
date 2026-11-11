@@ -8,7 +8,7 @@
 //                                               and resolves verbatim — the `.//` boot brick
 //   2. boot-adventure  npm run check:playable     real-route boot: menu, launch, hull, ship
 //                                               mesh, world, controls, no exception/shader error
-//   3. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1   headless Swarm boot
+//   3. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1 --duration=10   headless Swarm boot: 10 sim-s of live play (a whole round is too slow under software GL)
 //   4. sim-47a         npm run check:sim          deterministic 47-A replay
 //
 // Prints one line per step (PASS boot-adventure 74s / FAIL boot-swarm: <first error line>),
@@ -16,19 +16,31 @@
 // 0/1. Each step's full output lands in .devshots/fleet/gate-<step>.log. Total budget 12 min.
 
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT_DIR = join(REPO, '.devshots', 'fleet');
 const QUICK = process.argv.slice(2).includes('--quick');
-const BUDGET_MS = 12 * 60 * 1000;
+const BUDGET_MS = 20 * 60 * 1000;
+
+const SWARM_BOOT_CRITICAL = ['route', 'player_ship', 'player_control', 'spawn_motion', 'crucible_realm', 'sim_stalled', 'play_interrupted'];
+function judgeSwarmBoot() {
+  try {
+    const v = JSON.parse(readFileSync(join(REPO, 'scratch', 'player-truth', 'swarm', 'verdict.json'), 'utf8'));
+    const rows = Array.isArray(v.results) ? v.results : Object.values(v.results || {});
+    const bad = SWARM_BOOT_CRITICAL.filter((id) => (rows.find((r) => (r.id || r.name) === id) || {}).status !== 'PASS');
+    return bad.length ? `boot-critical checks not PASS: ${bad.join(', ')}` : null;
+  } catch (e) { return `no readable verdict: ${e.message}`; }
+}
 
 const STEPS = [
   { name: 'import-lint', args: ['run', 'check:src-imports'] },
   { name: 'boot-adventure', args: ['run', 'check:playable'] },
-  { name: 'boot-swarm', args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1'] },
+  // player-truth also grades polish (loadout descriptions, readability...). The gate asks only "did Swarm
+  // boot and play": judge the boot-critical rows of its verdict, not its exit code.
+  { name: 'boot-swarm', args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1', '--duration=10'], judge: judgeSwarmBoot },
   { name: 'sim-47a', args: ['run', 'check:sim'] },
 ];
 
@@ -93,7 +105,7 @@ let gateOk = true;
 for (const step of QUICK ? STEPS.slice(0, 2) : STEPS) {
   const remaining = deadline - Date.now();
   if (remaining <= 0) {
-    emit(`FAIL ${step.name}: gate time budget (12m) already spent`);
+    emit(`FAIL ${step.name}: gate time budget (20m) already spent`);
     gateOk = false;
     break;
   }
@@ -101,10 +113,11 @@ for (const step of QUICK ? STEPS.slice(0, 2) : STEPS) {
   const r = await runStep(step, remaining);
   const secs = Math.round((Date.now() - t0) / 1000);
   writeFileSync(join(OUT_DIR, `gate-${step.name}.log`), r.out);
-  if (r.code === 0 && !r.timedOut) {
+  const judged = step.judge && !r.timedOut ? step.judge() : undefined;
+  if (!r.timedOut && (step.judge ? judged === null : r.code === 0)) {
     emit(`PASS ${step.name} ${secs}s`);
   } else {
-    const detail = r.timedOut ? `timed out at ${secs}s (gate budget 12m)` : firstErrorLine(r.out);
+    const detail = r.timedOut ? `timed out at ${secs}s (gate budget 20m)` : (judged || firstErrorLine(r.out));
     emit(`FAIL ${step.name}: ${detail}`);
     emit(`  log: .devshots/fleet/gate-${step.name}.log (${secs}s)`);
     gateOk = false;

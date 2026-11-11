@@ -1,4 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
+> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
+
 # The finish in lanes — nine owners, one finished game
 
 Owner, 2026-09-24 (paraphrased): the plan pile is too granular. Every small job carries its own
