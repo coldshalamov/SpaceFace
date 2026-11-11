@@ -4,7 +4,7 @@
 // 3. Negative checks: wrong distance, wrong target, too soon to repeat.
 // 4. Civilians slow down and aim nose toward the wreck location.
 // 5. Player approaching within shoo distance (or shoving) shoos the rubbernecker: barks and flees.
-// 6. After 45 seconds, scavenger arrives at the wreck.
+// 6. (scavenger: see rubberneckers-scavenger.test.mjs)
 // 7. Full traffic system integration test via traffic.init and traffic.update.
 
 import test from 'node:test';
@@ -15,7 +15,6 @@ import {
   RUBBERNECKERS_TUNING,
   RUBBERNECKERS_ACTIVE_EVENT,
   RUBBERNECKERS_SHOO_EVENT,
-  RUBBERNECKERS_SCAVENGER_EVENT,
   isCivilianShip,
   rubberneckersOps,
 } from '../src/systems/rubberneckers.js';
@@ -285,57 +284,8 @@ test('player approaching within shoo distance shoos rubberneckers away with bark
   assert.equal(civ.data.civilianReaction, 'shooed');
 });
 
-test('scavenger arrives within a minute at wreck', () => {
-  const bus = createBus();
-  const scavengerEvents = [];
-  bus.on(RUBBERNECKERS_SCAVENGER_EVENT, (e) => scavengerEvents.push(e));
-
-  const victim = makeShip('v1', { x: 200, z: 150 });
-  const civ = makeShip('c1', { x: 250, z: 150 });
-  const player = makePlayer({ x: 500, z: 500 }); // Far away
-
-  const entities = new Map([[victim.id, victim], [civ.id, civ], [player.id, player]]);
-  const state = { mode: 'flight', simTime: 0.0, playerId: player.id, entities };
-  const host = { bus, state, ...rubberneckersOps };
-  host._initRubberneckers();
-
-  // Wreck at t = 0
-  host._onRubberneckersEntityKilled({
-    id: victim.id,
-    killerId: 'player_1',
-    type: victim.type,
-    pos: { x: victim.pos.x, z: victim.pos.z },
-  });
-
-  // At t = 20 s, scavenger has not arrived yet:
-  state.simTime = 20.0;
-  host._stepRubberneckers(state);
-  assert.equal(scavengerEvents.length, 0, 'scavenger not yet due');
-
-  // At t = 45 s, scavenger arrives:
-  state.simTime = 45.0;
-  host._stepRubberneckers(state);
-  assert.equal(scavengerEvents.length, 1, 'scavenger arrived');
-  assert.equal(scavengerEvents[0].wreckId, victim.id);
-  assert.equal(scavengerEvents[0].playerAtWreck, false, 'player is far away');
-
-  // If player is at wreck (< 45 wu) when scavenger arrives in a new scenario:
-  const host2 = { bus, state, ...rubberneckersOps };
-  host2._initRubberneckers();
-  player.pos = { x: 210, z: 150 }; // 10 wu away from wreck!
-  state.simTime = 100.0;
-  host2._onRubberneckersEntityKilled({
-    id: victim.id,
-    killerId: 'player_1',
-    type: victim.type,
-    pos: { x: victim.pos.x, z: victim.pos.z },
-  });
-
-  state.simTime = 145.0;
-  host2._stepRubberneckers(state);
-  assert.equal(scavengerEvents.length, 2);
-  assert.equal(scavengerEvents[1].playerAtWreck, true, 'detected player took/is at the wreck first');
-});
+// The scavenger half (a real salvor hull commissioned and flown to the wreck) is covered by
+// test/rubberneckers-scavenger.test.mjs.
 
 test('traffic system integration via update loop and bus', () => {
   const bus = createBus();
