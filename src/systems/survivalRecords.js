@@ -625,6 +625,7 @@ function emptyLifetime() {
     deepestWave: 0,
     bestScore: 0,
     bestKills: 0,
+    bestWinTimeS: null,
   };
 }
 
@@ -816,6 +817,10 @@ function migrateProfile(raw) {
   for (const key of Object.keys(lifetime)) {
     const n = lifetimeIn[key];
     if (Number.isInteger(n) && n >= 0) lifetime[key] = n;
+  }
+  // bestWinTimeS is a float, not an int — the count loop cannot carry it.
+  if (Number.isFinite(lifetimeIn.bestWinTimeS) && lifetimeIn.bestWinTimeS >= 0) {
+    lifetime.bestWinTimeS = lifetimeIn.bestWinTimeS;
   }
   const byKey = {};
   for (const key of Object.keys(byKeyIn)) {
@@ -1181,6 +1186,9 @@ function mergeRecordRow(ra, rb) {
   for (const key of ['attempts', 'victories', 'bestScore', 'deepestWave', 'bestKills', 'tieCount']) {
     out[key] = mergeInt(a[key], b[key]);
   }
+  // The fastest win is a minimum, not a maximum — the merge keeps the lower of the two times.
+  const winTimes = [a.bestWinTimeS, b.bestWinTimeS].filter((v) => Number.isFinite(v));
+  out.bestWinTimeS = winTimes.length ? Math.min(...winTimes) : null;
   // bestResult is the comparable run under recordRules — the stronger one wins; an incomparable
   // pair keeps the imported row (it is the newer claim to the slot).
   const ar = asObject(a.bestResult);
@@ -1551,6 +1559,8 @@ function emptyRecord() {
     deepestWave: 0,
     bestKills: 0,
     bestSeed: 0,
+    // C01-01 — the fastest win on this line, in sim seconds; null until the line is won.
+    bestWinTimeS: null,
     bestResult: null,
     tiedResults: [],
     tieCount: 0,
@@ -1577,15 +1587,26 @@ function applyRecord(row, compact) {
   if (score > next.bestScore) next.bestScore = score;
   if (deepest > next.deepestWave) next.deepestWave = deepest;
   if (kills > next.bestKills) next.bestKills = kills;
-  if (compact.outcome === 'victory') next.victories += 1;
+  if (compact.outcome === 'victory') {
+    next.victories += 1;
+    if (Number.isFinite(compact.durationS)
+      && (!Number.isFinite(next.bestWinTimeS) || compact.durationS < next.bestWinTimeS)) {
+      next.bestWinTimeS = compact.durationS;
+    }
+  }
   return next;
 }
 
 function applyLifetime(lifetime, compact) {
   const next = { ...emptyLifetime(), ...lifetime };
   next.runs += 1;
-  if (compact.outcome === 'victory') next.victories += 1;
-  else if (compact.outcome === 'aborted') next.aborted += 1;
+  if (compact.outcome === 'victory') {
+    next.victories += 1;
+    if (Number.isFinite(compact.durationS)
+      && (!Number.isFinite(next.bestWinTimeS) || compact.durationS < next.bestWinTimeS)) {
+      next.bestWinTimeS = compact.durationS;
+    }
+  } else if (compact.outcome === 'aborted') next.aborted += 1;
   else next.defeats += 1;
   const deepest = Number.isInteger(compact.deepestWave) ? compact.deepestWave : 0;
   const score = Number.isInteger(compact.score) ? compact.score : 0;
@@ -1719,6 +1740,8 @@ export function compactRunResult(result, run, newly) {
         ? run.telemetry.startWave
         : 1),
     deepestWave: result && Number.isInteger(result.deepestWave) ? result.deepestWave : 0,
+    // C01-01 — the run's sim duration rides the row so a win can hold the line's fastest time.
+    durationS: Number.isFinite(result && result.durationS) ? result.durationS : null,
     wavesCleared: result && Number.isInteger(result.wavesCleared) ? result.wavesCleared : 0,
     kills: result && Number.isInteger(result.kills) ? result.kills : 0,
     score: result && Number.isInteger(result.score) ? result.score : 0,
@@ -1829,8 +1852,12 @@ function hangarBankInput(result, run) {
     securedCredits: src.securedCredits != null
       ? src.securedCredits
       : (runSrc.telemetry && runSrc.telemetry.securedBounty),
-    // The results plate says "defeat". The hangar banks a death.
-    outcome: outcome === 'defeat' ? 'death' : (isCircuit && outcome === 'extracted' ? 'aborted' : outcome),
+    // The results plate says "defeat". The hangar banks a death. A Circuit stamps 'victory'
+    // only when its own completion law holds; a broken route's win label banks nothing, the
+    // same way its 'extracted' already settles as 'aborted'.
+    outcome: outcome === 'defeat' ? 'death'
+      : (isCircuit && (outcome === 'extracted' || (outcome === 'victory' && !circuitComplete))
+        ? 'aborted' : outcome),
     cashOut: isCircuit ? circuitComplete : src.cashOut === true,
     wavesCleared: src.wavesCleared != null ? src.wavesCleared : src.wave,
     wave: src.wave != null ? src.wave : runSrc.wave,

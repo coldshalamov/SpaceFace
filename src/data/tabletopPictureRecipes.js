@@ -21,6 +21,8 @@ import {
   resolveSectorVisualProfile,
   skyPlateLuminance,
 } from './sectorVisualProfiles.js';
+import { counted, pluralWord } from '../core/numberFormat.js';
+
 
 // ---------------------------------------------------------------------------
 // SF-215 — a quiet machine with visible residual life
@@ -142,13 +144,13 @@ function groupReadout(members) {
   const loadWord = loaded.length === 0 ? 'empty'
     : loaded.length === carrierCount ? 'loaded' : 'part-loaded';
   if (carrierCount > 0) {
-    parts.push(`${carrierCount === 1 ? 'one' : carrierCount} ${loadWord} carrier${carrierCount === 1 ? '' : 's'}`);
+    parts.push(`${carrierCount === 1 ? 'one' : carrierCount} ${loadWord} ${pluralWord(carrierCount, 'carrier', 'carriers')}`);
   }
   if (protectors.length > 0) {
     parts.push(`under escort`);
   }
   const support = members.length - carriers.length - protectors.length;
-  if (support > 0) parts.push(`${support} tender${support === 1 ? '' : 's'}`);
+  if (support > 0) parts.push(`${counted(support, 'tender', 'tenders')}`);
   return parts.length ? parts.join(' ') : 'no working read';
 }
 

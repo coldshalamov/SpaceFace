@@ -47,6 +47,11 @@ export function runRenderUpdatePhase({
     && typeof render.prepareFrame === 'function'
     && typeof render.drawPreparedFrame === 'function');
   const photoFrame = splitRender && shouldPresentPausedPhotoFrame(state);
+  // The world/fence is wall-paced by the accumulated present elapsed, not the last rAF callback.
+  // VFX, camera follow, feel and the UI's frame clock must advance at the same wall speed or a
+  // 30 Hz cap makes them run at 0.5x (0.25x on a 120 Hz panel) while the ship moves at 1x.
+  const presentDt = presentationFrame && Number.isFinite(presentationFrame.presentElapsedS)
+    ? Math.max(0, presentationFrame.presentElapsedS) : frameDt;
 
   if (state?.mode !== 'flight') {
     releaseBombPresentation(state);
@@ -115,11 +120,11 @@ export function runRenderUpdatePhase({
   try {
     // Photo advances only its camera controls. Every world presenter inside prepareFrame gets
     // zero elapsed time, even the lanes that do not multiply their delta by timeScale.
-    if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, photoFrame ? 0 : frameDt,
-      presentationFrame, frameDt) !== false;
+    if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, photoFrame ? 0 : presentDt,
+      presentationFrame, presentDt) !== false;
     else if (render && typeof render.renderFrame === 'function') {
       if (worldDrawFollows) warmUiStagePrewarm({ render, state });
-      render.renderFrame(alpha, frameDt, presentationFrame);
+      render.renderFrame(alpha, presentDt, presentationFrame);
     }
   } catch (err) {
     renderError = err;
@@ -136,7 +141,7 @@ export function runRenderUpdatePhase({
     catch (err) { vfxError ||= err; }
     // One cosmetic lane failing cannot suppress the existing detonation presenter either.
     if (vfx && typeof vfx.update === 'function') {
-      try { vfx.update(frameDt, state); }
+      try { vfx.update(presentDt, state); }
       catch (err) { vfxError ||= err; }
     }
   }
@@ -163,7 +168,7 @@ export function runRenderUpdatePhase({
 
   let feelError = null;
   let uiError = null;
-  const overlayErrors = runFeelAndUi({ feel, ui, frameDt, feelFrameDt: photoFrame ? 0 : frameDt,
+  const overlayErrors = runFeelAndUi({ feel, ui, frameDt: presentDt, feelFrameDt: photoFrame ? 0 : presentDt,
     state, record, clock });
   feelError = overlayErrors.feelError;
   uiError = overlayErrors.uiError;

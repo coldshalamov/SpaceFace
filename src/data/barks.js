@@ -1084,6 +1084,92 @@ export function hullRecognitionBarkFor(factionId, rng, tokens = {}) {
   return String(line).replace(/\{ship\}/g, ship).replace(/\{class\}/g, shipClass);
 }
 
+// ── Vent press — the crew across from you reads your guns going cold ──────────────────────────
+//
+// The pilot's forced heat vent locks every mount for its window. These are the lines the nearest
+// engaged crew calls when it sees the vent and pushes in (src/ai/ventPress.js). Same contract as
+// hull recognition — an event line, not a BARK_SITUATION, so the WAV index and the cell floor
+// are untouched. Every line names the vent itself; none claims a kill or a hit that did not land.
+export const VENT_PRESS_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Thermal lockout observed on the subject. Close the interval while the form is open.',
+    'Subject weapons venting. Ref 44-C authorizes the closing approach.',
+    'Their guns are cooling. Advance and file the result.',
+  ]),
+  faction_mts: Object.freeze([
+    'Their guns are cooling. Nothing is cheaper than now. Move in.',
+    'Overheated. Collect while the price is low.',
+    'Venting heat is a discount. Close the distance.',
+  ]),
+  faction_dmc: Object.freeze([
+    'Their guns cooked off. Go, while they cool.',
+    'Heat lockout on them. Push in before it clears.',
+    'They ran it too hot. Close it up, quick.',
+  ]),
+  faction_reach: Object.freeze([
+    'Guns are cooked! Push, push!',
+    'They overheated! Get in close and take it!',
+    'Venting! Now, before they cool!',
+  ]),
+  faction_quiet: Object.freeze([
+    'Vent. Close.',
+    'Their guns are down. Move.',
+    'Heat lock. Now.',
+  ]),
+  faction_choir: Object.freeze([
+    'Their fire gutters. Advance while the flame is out.',
+    'The vessel breathes out its heat. Close upon it.',
+    'Their guns fall silent. The Choir does not.',
+  ]),
+  faction_free: Object.freeze([
+    'Their guns are venting. Close in, quick.',
+    'They ran too hot. Move up while they cool.',
+    'Guns down on that hull. Push now.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 4: the counterparty’s arms are vented. Approach is permitted.',
+    'Thermal default observed. The interval is ours to occupy.',
+    'Their instruments cool. We advance under the term.',
+  ]),
+  faction_archive: Object.freeze([
+    'Their guns have gone quiet. Close and record.',
+    'Thermal gap noted. Advance before it is amended.',
+    'Weapons venting. The record favours the near.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Target weapons offline for cooling. Expedite approach.',
+    'Thermal hold detected on target. Rerouting to close range.',
+    'Venting window open. Delivery accelerated.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Their guns are cooked! Yard rules, go get it!',
+    'Venting heat, the fool! Close and strip!',
+    'Hot guns are no guns! In we go!',
+  ]),
+  faction_understory: Object.freeze([
+    'The prey has spent its heat. Close the petals.',
+    'Its guns cool like a dying sun. Feed now.',
+    'Venting. The garden moves in.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'Thermal null on the subject. The lattice closes.',
+    'Its fire is vented. Unmaking proceeds at close range.',
+    'Heat discharge observed. Contract the interval.',
+  ]),
+  faction_helix: Object.freeze([
+    'Helix variance: the subject’s guns are venting. Close the interval.',
+    'Helix variance: thermal lockout on the target. Lawful approach.',
+    'Helix variance: weapons cold. Advance before the window closes.',
+  ]),
+});
+
+/** One vent-press line for a faction (unknown ids speak the Frontier's plain register). */
+export function ventPressBarkFor(factionId, rng) {
+  const lines = (factionId && Object.hasOwn(VENT_PRESS_BARKS, factionId) && VENT_PRESS_BARKS[factionId])
+    || VENT_PRESS_BARKS.faction_free;
+  return String(lines[pickIndex(rng, lines.length)]);
+}
+
 // ── Living-world history recognition ──────────────────────────────────────────────────────────
 //
 // Where HULL_RECOGNITION names the hull, HISTORY_RECOGNITION names what the hull DID: the count of
@@ -2662,6 +2748,86 @@ export function oreFloodBarkFor(register, index, oreName) {
   return line.replace(/\{ore\}/g, ore);
 }
 
+// ── The station calls its own routine (CH-63 stations as places) ───────────────────────────────
+//
+// Event lines, not BARK_SITUATIONS. The station side-event director runs the berth's day — a
+// hauler on final, a patrol out of the bay, a drone on the plating, a tug on the ring, a dish
+// sweep, a dark runner, a slag pour — and draws it, but the station never said a word about its
+// own life. barkDirector speaks ONE line for a side event the pilot is close enough to see, in the
+// desk register economy.js and the ore-flood notice already split: Dock control for a lawful house,
+// Yardmaster for everyone else. A lawful desk never announces a lights-out runner — that kind has
+// only a Yardmaster line, and a missing kind is silence, never an invented line.
+export const STATION_PA_BARKS = Object.freeze({
+  dock_control: Object.freeze({
+    hauler_dock: Object.freeze([
+      'Dock control: inbound freighter on final. Keep the approach clear.',
+      'Dock control: hauler easing onto the berth line. Hold your drift off the ring.',
+    ]),
+    patrol_launch: Object.freeze([
+      'Dock control: patrol wing launching. Clear the apron.',
+      'Dock control: bay doors open, patrol outbound. Give them the lane.',
+    ]),
+    repair_drone: Object.freeze([
+      'Dock control: maintenance drone on the hull. Mind your wash near the plating.',
+      'Dock control: hull crew out on the skin this shift. Thrusters low near the ring.',
+    ]),
+    cargo_tractor: Object.freeze([
+      'Dock control: tractor towing a pod round the ring. Do not cut its line.',
+      'Dock control: cargo tug working the docking orbit. Pass astern of it.',
+    ]),
+    sensor_sweep: Object.freeze([
+      'Dock control: calibration boom slewing. Expect a ping across your scope.',
+      'Dock control: array sweep in progress. The return is ours, not yours.',
+    ]),
+    slag_pour: Object.freeze([
+      'Dock control: slag run from the crucible vents. Stay off the outbound chute.',
+      'Dock control: hot pour on the outbound lane. Do not fly the glow.',
+    ]),
+  }),
+  yardmaster: Object.freeze({
+    hauler_dock: Object.freeze([
+      'Yardmaster: freighter coming in heavy. Out of its way.',
+      'Yardmaster: hauler on the berth line. Park your drift somewhere else.',
+    ]),
+    patrol_launch: Object.freeze([
+      'Yardmaster: our guns are going out. The lane is theirs for a minute.',
+      'Yardmaster: escort launching. Don’t make them nervous.',
+    ]),
+    repair_drone: Object.freeze([
+      'Yardmaster: patch drone on the plating again. Wash low, it bills by the dent.',
+      'Yardmaster: crew’s welding the skin. Keep your exhaust to yourself.',
+    ]),
+    cargo_tractor: Object.freeze([
+      'Yardmaster: tug hauling a pod round the ring. Cut its line and you buy the pod.',
+      'Yardmaster: tractor working the orbit. Go round it.',
+    ]),
+    sensor_sweep: Object.freeze([
+      'Yardmaster: dish is swinging. If your scope blinks, that was us.',
+      'Yardmaster: array sweep running. Nothing to see, so don’t look.',
+    ]),
+    quiet_dock: Object.freeze([
+      'Yardmaster: runner coming in dark. You didn’t see it.',
+      'Yardmaster: lights-out arrival on the line. Eyes front, pilot.',
+    ]),
+    slag_pour: Object.freeze([
+      'Yardmaster: slag going out the chute. Fly the glow and you’re scrap.',
+      'Yardmaster: hot pour on the outbound. Keep clear unless you like melt.',
+    ]),
+  }),
+});
+
+/**
+ * The desk line for a side-event kind in a register, or null when that desk has nothing to say
+ * about that kind (an unknown kind, or a lawful desk asked about a dark runner).
+ */
+export function stationPaBarkFor(register, kind, index) {
+  const desk = register && Object.hasOwn(STATION_PA_BARKS, register) ? STATION_PA_BARKS[register] : null;
+  const lines = desk && kind && Object.hasOwn(desk, kind) ? desk[kind] : null;
+  if (!lines || !lines.length) return null;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── A tumbling heavy's point defence rakes its own battle line (THE WORLD ANSWERS, C10) ──────
 //
 // Spoken by a hull on the raked line (barkDirector, once per tumble episode) — the "check fire,
@@ -2930,6 +3096,77 @@ export function rivalScavengerLineFor(kind, rng) {
   const table = (kind && Object.hasOwn(RIVAL_SCAVENGER_REGISTER, kind)) ? RIVAL_SCAVENGER_REGISTER[kind] : null;
   if (!table || !table.length) return '';
   return table[pickIndex(rng, table.length)];
+}
+
+// Spill vultures (traffic spill convergence). The open-lane cousin of the rival
+// cutter: the arrival names the claim, the player's scoop earns one warning pass,
+// and the getaway names the take. One line each, per vulture.
+export const SPILL_VULTURE_REGISTER = Object.freeze({
+  dispatch: [
+    'Fresh spill on the scope. Moving for the pods — first cut is mine.',
+    'Cargo in the black, unclaimed. Coming about.',
+    'That wreck just opened its hold. Mine before it drifts.',
+  ],
+  race: [
+    'Those pods are spoken for. Back off, pilot.',
+    'I saw the spill first! That is theft of salvage.',
+    'Scoop my claim again and we have a problem.',
+  ],
+  departed: [
+    'Hold secured. The spill fed the vultures, like it always does.',
+    'Pods banked. You scooped the scraps — enjoy.',
+    'Full hold outbound. Slow hands eat vacuum.',
+  ],
+});
+
+export function spillVultureBarkFor(kind, rng) {
+  const table = (kind && Object.hasOwn(SPILL_VULTURE_REGISTER, kind)) ? SPILL_VULTURE_REGISTER[kind] : null;
+  if (!table || !table.length) return '';
+  return table[pickIndex(rng, table.length)];
+}
+
+// CH-61 — pilot personality hails. A tempered pilot answers a close pass in its
+// own register, not its role's: the voice is the tell that this hull drives
+// differently because someone with a temperament is in the seat.
+export const PILOT_PERSONALITY_HAILS = Object.freeze({
+  cautious: Object.freeze({ register: 'pilot-cautious', lines: Object.freeze([
+    'Wide berth coming through. No sudden moves, no incidents.',
+    'Slow and boring gets the freight there. Watch my spacing.',
+    'I brake early for a reason. The paperwork proves it.',
+  ]) }),
+  cocky: Object.freeze({ register: 'pilot-cocky', lines: Object.freeze([
+    'Lane is clear, pedal is down. Try to keep up.',
+    'Nobody carries this run faster. Nobody.',
+    'Tight gap, full burn. Space is wide if you are good.',
+  ]) }),
+  panicky: Object.freeze({ register: 'pilot-panicky', lines: Object.freeze([
+    'Too close! Too close! Give me room, give me room!',
+    'Who taught you to fly? Stay back from my hull!',
+    'Everything out here wants to kill me. Keep your distance!',
+  ]) }),
+  veteran: Object.freeze({ register: 'pilot-veteran', lines: Object.freeze([
+    'Twelve thousand runs and no claims. Steady as she goes.',
+    'Formation spacing is not decoration. Hold your line.',
+    'Seen every trick this lane has. Fly predictably, friend.',
+  ]) }),
+});
+
+export function pilotPersonalityHailFor(kind, rng) {
+  const cell = kind && Object.hasOwn(PILOT_PERSONALITY_HAILS, kind) ? PILOT_PERSONALITY_HAILS[kind] : null;
+  if (!cell || !cell.lines.length) return null;
+  return { register: cell.register, text: cell.lines[pickIndex(rng, cell.lines.length)] };
+}
+
+// Gratitude parcel — the captain whose load you saved sends it ahead. One line,
+// spoken from the hull that owed you, as the gift pod clears the bay.
+export const GRATITUDE_PARCEL_REGISTER = Object.freeze([
+  'There — a case sent ahead. You kept her flying, captain.',
+  'Owed you since the raid. Case is away — it is yours.',
+  'Delivery done, debt paid. Watch for my pod, friend.',
+]);
+
+export function gratitudeParcelBarkFor(rng) {
+  return GRATITUDE_PARCEL_REGISTER[pickIndex(rng, GRATITUDE_PARCEL_REGISTER.length)];
 }
 
 // A freight raider clearing its escape leash (encounterScripts freight-custody). The thief
@@ -3237,6 +3474,12 @@ export default {
   BAR_GREETING_BARKS,
   BAR_APPROACH_BARKS,
   RIVAL_SCAVENGER_REGISTER,
+  SPILL_VULTURE_REGISTER,
+  spillVultureBarkFor,
+  PILOT_PERSONALITY_HAILS,
+  pilotPersonalityHailFor,
+  GRATITUDE_PARCEL_REGISTER,
+  gratitudeParcelBarkFor,
   FREIGHT_RAIDER_ESCAPE_REGISTER,
   GRANDEE_REGISTER,
   sectorGreetingBarkFor,
