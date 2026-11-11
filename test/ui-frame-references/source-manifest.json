@@ -241,7 +241,7 @@
   "src/ui/orrery/station-contractsLayouts.js": "f99adfd1effbf9db5f7b5ae86bb51355803b51d58b76658f4feec1cae06c7655",
   "src/ui/orrery/station-factionsLayouts.js": "1deb4e1be93d7f8c5acf924fe76a42bc416b94284aeec9a0fb02d40fb72ed13b",
   "src/ui/orrery/station-industryLayouts.js": "fe48617b5643d32f89c8cfc12ef7f9a6fc70c77e667200f079561508bf96ce10",
-  "src/ui/orrery/station-ledgerLayouts.js": "8300706497642ef6af5fc52139f6f399a4f37fc10e2be1d794fab8e464d2146f",
+  "src/ui/orrery/station-ledgerLayouts.js": "498dcd51401387d3971e077d136f3e8558c700a6600d59cef948f1417aae2883",
   "src/ui/orrery/station-marketLayouts.js": "1927b2e1b76b9f3ca5d6866df4e8a65b7e4d024bc530c626e181f738e61f9689",
   "src/ui/orrery/station-shipworksLayouts.js": "bf6e612d18cace3f4ddfba446fab136de034dd6ac40faa77e14a3c0427928c28",
   "src/ui/orrery/stationLayouts.js": "aa770d6f3bac7f8add5e738c0244ef714fc277a7bd3cb9c7da330e261f13a6a8",
