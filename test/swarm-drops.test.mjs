@@ -665,3 +665,21 @@ test('run:ended cleans up active timed effects', () => {
   assert.equal(swarmDrops.killsSinceDrop(), 0);
 });
 
+
+test('Heavy Hands doubles the real knockback and restores it exactly (lead fix 2026-11-11)', async () => {
+  const { WEAPONS } = await import('../src/data/weapons.js');
+  const { swarmDrops } = await import('../src/systems/swarmDrops.js');
+  const def = WEAPONS.find((w) => Number.isFinite(w.impulsePerHit) && w.impulsePerHit !== 600);
+  const inherited = { id: def.id };                       // uses the def's value
+  const own = { id: def.id, impulsePerHit: 77 };          // has its own override
+  const player = { id: 1, data: { weapons: [inherited, own] } };
+  const sys = Object.create(swarmDrops);
+  sys.state = { simTime: 0 };
+  sys._player = () => player;
+  sys._applyHeavyHands(player);
+  assert.equal(inherited.impulsePerHit, def.impulsePerHit * 2);
+  assert.equal(own.impulsePerHit, 154);
+  sys._resetTimedEffects();
+  assert.equal(Object.prototype.hasOwnProperty.call(inherited, 'impulsePerHit'), false, 'inherited gun goes back to its def');
+  assert.equal(own.impulsePerHit, 77);
+});

@@ -6,6 +6,17 @@
 // Built on the same seam as swarmSupply repair cells.
 
 import { mulberry32 } from '../core/rng.js';
+import { WEAPONS } from '../data/weapons.js';
+
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+
+function restoreHeavyHands(w) {
+  const saved = w && w._heavyHandsSaved;
+  if (!saved) return;
+  if (saved.own) w.impulsePerHit = saved.value;
+  else delete w.impulsePerHit;
+  delete w._heavyHandsSaved;
+}
 import { validateRunState } from '../core/runState.js';
 import { runOwnsReward, createRewardDeathLedger } from '../combat/rewardEligibility.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
@@ -54,6 +65,15 @@ export const swarmDrops = {
     this._unsubs.push(this.bus.on('combat:collisionConsequence', (p) => this._onCollision(p)));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onImpact(p)));
     this._unsubs.push(this.bus.on('run:awardRequested', (p) => this._onAwardRequested(p)));
+    // A save taken mid-Heavy-Hands reloads without the 20 s timer: put every gun back.
+    this._unsubs.push(this.bus.on('save:loaded', () => {
+      const player = this._player && this._player();
+      if (player && player.data && Array.isArray(player.data.weapons)) {
+        for (const w of player.data.weapons) restoreHeavyHands(w);
+      }
+      this._heavyHandsActive = false;
+      this._heavyHandsUntil = null;
+    }));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
   },
 
@@ -123,12 +143,7 @@ export const swarmDrops = {
     if (this._heavyHandsActive) {
       const player = this._player();
       if (player?.data?.weapons) {
-        for (const w of player.data.weapons) {
-          if (w._baseImpulsePerHit != null) {
-            w.impulsePerHit = w._baseImpulsePerHit;
-            delete w._baseImpulsePerHit;
-          }
-        }
+        for (const w of player.data.weapons) restoreHeavyHands(w);
       }
     }
     this._heavyHandsActive = false;
@@ -383,10 +398,17 @@ export const swarmDrops = {
     this._heavyHandsUntil = now + 20;
     if (player && player.data && Array.isArray(player.data.weapons)) {
       for (const w of player.data.weapons) {
-        if (w._baseImpulsePerHit == null) {
-          w._baseImpulsePerHit = w.impulsePerHit != null ? w.impulsePerHit : 600;
+        // Double the gun's REAL knockback: its own override if it has one, else its weapon def's
+        // value (weapons.js reads `w.impulsePerHit ?? def.impulsePerHit`). Remember whether the
+        // instance had its own value so expiry restores exactly what was there (lead fix
+        // 2026-11-11: the first version assumed 600 and wrote 600 back permanently).
+        if (w._heavyHandsSaved === undefined) {
+          const def = WEAPON_BY_ID.get(w.id) || null;
+          const own = Number.isFinite(w.impulsePerHit);
+          w._heavyHandsSaved = { own, value: own ? w.impulsePerHit : null };
+          const base = own ? w.impulsePerHit : (def && Number.isFinite(def.impulsePerHit) ? def.impulsePerHit : 0);
+          w.impulsePerHit = base * 2;
         }
-        w.impulsePerHit = w._baseImpulsePerHit * 2;
       }
     }
   },
@@ -398,12 +420,7 @@ export const swarmDrops = {
       this._heavyHandsUntil = null;
       const player = this._player();
       if (player && player.data && Array.isArray(player.data.weapons)) {
-        for (const w of player.data.weapons) {
-          if (w._baseImpulsePerHit != null) {
-            w.impulsePerHit = w._baseImpulsePerHit;
-            delete w._baseImpulsePerHit;
-          }
-        }
+        for (const w of player.data.weapons) restoreHeavyHands(w);
       }
     }
   },
