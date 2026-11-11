@@ -229,8 +229,8 @@ test('bindings come from the remappable owner: a remap moves the label, an unbou
   const state = makeState();
   let { entries } = read(state);
   assert.equal(entries.pull.binding.label, '1');
-  assert.equal(entries.gyre.binding.label, "'");
-  assert.equal(entries.cloak.binding.label, '`');
+  assert.equal(entries.gyre.binding.label, '');
+  assert.equal(entries.cloak.binding.label, '');
   // remap Gyre and Pull
   state.settings = { controls: { bindings: { gyreSnare: ['KeyV'], pull: ['KeyZ', 'Digit1'] } } };
   ({ entries } = read(state));
@@ -376,7 +376,7 @@ test('the combination example is the production sequence: Pull, then Gyre, then 
   assert.deepEqual(out.combo.order, ['pull', 'gyre', 'throw']);
   assert.equal(out.combo.steps.length, 3);
   assert.match(out.combo.steps[0].text, /^Pull \(1\) drops a well on a pile of loose rocks and they gather\./);
-  assert.match(out.combo.steps[1].text, /^Hold Gyre \('\) over the pile/);
+  assert.match(out.combo.steps[1].text, /^Hold Gyre \(unbound\) over the pile/);
   assert.match(out.combo.steps[2].text, /^Release Gyre to throw the ball/);
   assert.match(out.combo.note, /Solve it any way the room allows/, 'the player may solve the scene another way');
   assert.deepEqual(combinationExample(out.entries).order, out.combo.order);
