@@ -1,4 +1,4 @@
-import { presentedAdvanceRatio } from './presentedClock.js';
+import { presentedAdvanceRatio, beginPresentedFrame } from './presentedClock.js';
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
 import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
@@ -30815,6 +30815,11 @@ export const render = {
   },
 
   prepareFrame(alpha, frameDt, presentationFrame = null, cameraFrameDt = frameDt) {
+    // One drawn-world clock sample per frame; every decoration reads it (presentedClock.js).
+    const sfState = this.state;
+    beginPresentedFrame(typeof performance !== 'undefined' ? performance.now() : NaN, {
+      frozenByDesign: !!(sfState && ((sfState.ui && sfState.ui.docked) || sfState.mode !== 'flight')),
+    });
     this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
