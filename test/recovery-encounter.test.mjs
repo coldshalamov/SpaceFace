@@ -71,7 +71,9 @@ test('custody guidance view preserves authoritative timers, cargo, destination, 
   assert.equal(civilian.status, 'WINDOW 75 S');
   assert.match(civilian.meta, /8 CARGO.*TETHYS TRADE HUB/i);
   assert.doesNotMatch(civilian.meta, /T\+|deadline/i);
-  assert.match(civilian.detail, /Massline latch.*reel inside 60 WU/i);
+  // words-recovery-phase-counts: the detail reads real words ("60 units", counted cargo), not the
+  // retired "WU" symbol — this pin sat red against the copy change until this re-pin.
+  assert.match(civilian.detail, /Massline latch.*reel inside 60 units/i);
   assert.match(civilian.ariaLabel, /75 seconds remaining/i);
   assert.doesNotMatch(civilian.detail, /\b[A-Z]\b|keyboard|controller/i);
 
@@ -80,7 +82,8 @@ test('custody guidance view preserves authoritative timers, cargo, destination, 
     phase: 'tethered', escapeAt: 145, rewardCr: 180, destinationStationId: 'station_tethys', secureReel_wu: 60,
   }, state, state.simTime);
   assert.equal(surrendered.status, 'ESCAPE 45 S');
-  assert.match(surrendered.detail, /Line attached.*reel.*60 WU/i);
+  // words-recovery-phase-counts: same retired-symbol re-pin as the awaiting_tether phase above.
+  assert.match(surrendered.detail, /Line attached.*reel.*60 units/i);
 
   const disabled = recoveryCustodyView({
     id: 'surrender:11', entityId: 11, label: 'Disabled Raider', recoveryKind: 'drive_disabled',

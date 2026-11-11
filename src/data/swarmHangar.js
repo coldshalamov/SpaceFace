@@ -65,12 +65,13 @@ export function bossWasCleared(result) {
  */
 export const PARTIAL_BANK_FRACTION = 0.5;
 
-/** Death banks half. A chosen cash-out after a boss banks all. An early cash-out banks half. */
+/** A win banks all. Death banks half. A chosen cash-out after a boss banks all; early half. */
 export function bankFraction(result) {
   if (!result) return 0;
   const outcome = String(result.outcome || '');
   const died = outcome === 'dead' || outcome === 'died' || outcome === 'death';
   const cashed = result.cashOut === true || outcome === 'extracted';
+  if (outcome === 'victory') return 1;
   if (died) return 0.5;
   if (cashed && bossWasCleared(result)) return 1;
   if (cashed) return 0.5;

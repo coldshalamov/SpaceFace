@@ -69,9 +69,12 @@ const PEACE_MEMORY_S = 1800; // three sim days: fresh news, then history
 export function stationWarPostureLineFor(state, factionId) {
   const conflicts = state && state.conflicts;
   if (!conflicts || typeof conflicts !== 'object' || !factionId) return null;
+  // inf-desk-compose — the kit-miss fallback names the house honestly, the way the slot card and
+  // the epilogue already do. A sub-house id the kits never carried used to print its stripped
+  // remnant ('vael_rc') as if it were a name; a desk never mints a name it does not know.
   const factionNameOf = (id) => {
     const kit = FACTION_KITS.find((entry) => entry && entry.id === id);
-    return (kit && (kit.short || kit.name)) || String(id).replace(/^faction_/, '');
+    return (kit && (kit.short || kit.name)) || 'an unlisted house';
   };
   for (const pairKey of Object.keys(conflicts)) {
     const rec = conflicts[pairKey];
@@ -97,9 +100,9 @@ export function stationWarPostureLineFor(state, factionId) {
     const loser = typeof flip.previousOwner === 'string' && flip.previousOwner ? flip.previousOwner : null;
     if (!winner || !loser || winner === loser) continue;
     const sector = SECTORS.find((entry) => entry && entry.id === flip.sectorId);
-    const ground = (sector && sector.name)
-      || String(flip.sectorId || '').replace(/^sector_/, '').replace(/_/g, ' ').trim()
-      || 'the contested lane';
+    // inf-desk-compose — an authored sector names itself; an unmapped one is never minted into
+    // a fake place name: the desk says the honest noun it already used for a blank ground.
+    const ground = (sector && sector.name) || 'the contested lane';
     return localizeText(
       'The war is over — {winner} took {ground} from {loser}. The guns have gone quiet, but the docks still watch their cargo.',
       { winner: factionNameOf(winner), loser: factionNameOf(loser), ground },
@@ -136,17 +139,30 @@ export function buildStationArrivalGreeting(state, stationId) {
   const body = host.canonicalKey || host.depthProgram
     ? host.line
     : barGreetingBarkFor(host.factionId, host.role, hash32(`${host.id}_arrival`)) || host.line;
-  // One NEW title per visit: the newest un-greeted sighting names itself in the greeting. The
-  // stamp waits for actual delivery (finish), so a crowded-out greeting keeps its chance.
+  // Desk composition (inf-desk-compose) — the greeting is one voice with three bands, never a
+  // stack: the keeper's line and the recognition band always speak (that is the desk itself);
+  // on top of them rides AT MOST ONE news band, however many are live.
+  //
+  // Priority + fairness: the once-only band outranks the per-visit band. A NEW title waits for
+  // no one — if the house's war outranked it, the war would still be live next visit and the
+  // title could starve for the whole war; a title that wins here is stamped delivered on this
+  // very bark and never competes again, so the war posture loses at most this one visit and
+  // repeats from the next, exactly like every recognition band. Inside the conflict band the
+  // live war already outranks peace news (stationWarPostureLineFor), so at most one conflict
+  // clause can exist. The acknowledgment stamp (titleSeenId) rides only a band that actually
+  // speaks — a crowded-out title keeps its one chance.
   const title = titleGreetingLineFor(state);
-  // The house's own war rides the same welcome (inf-war-desk): posture repeats per visit.
-  const war = stationWarPostureLineFor(state, host.factionId);
-  const text = `${pilot}, ${body || 'welcome aboard.'} ${ARRIVAL_LINES[band]}${title ? ` ${title.line}` : ''}${war ? ` ${war}` : ''}`;
+  const conflict = title ? null : stationWarPostureLineFor(state, host.factionId);
+  const newsBand = title
+    ? { kind: 'title', line: title.line }
+    : (conflict ? { kind: 'conflict', line: conflict } : null);
+  const text = `${pilot}, ${body || 'welcome aboard.'} ${ARRIVAL_LINES[band]}${newsBand ? ` ${newsBand.line}` : ''}`;
   return {
     stationId, contactId: host.id, speakerName: host.name, factionId: host.factionId,
     band, text,
-    ...(title ? { titleSeenId: title.seenId, titleId: title.titleId } : {}),
-    ...(war ? { warLine: war } : {}),
+    ...(newsBand && newsBand.kind === 'title'
+      ? { titleSeenId: title.seenId, titleId: title.titleId, newsBand: 'title' } : {}),
+    ...(newsBand && newsBand.kind === 'conflict' ? { warLine: conflict, newsBand: 'conflict' } : {}),
   };
 }
 

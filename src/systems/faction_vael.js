@@ -53,6 +53,8 @@ import { hash32 } from '../core/rng.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const FACTION_ID = 'faction_vael';
 const TAU = Math.PI * 2;
@@ -1303,7 +1305,7 @@ export const vaelLiens = {
         const openInv = v.invoices.filter((r) => r.state === 'open');
         const total = openInv.reduce((a, r) => a + r.amount, 0);
         const mass = Math.round(num(player.mass));
-        const text = `HULL READ · ${mass}t · ${openInv.length} OPEN INVOICE${openInv.length === 1 ? '' : 'S'} · ${total} CR ON THE BOOK`;
+        const text = `HULL READ · ${mass}t · ${counted(openInv.length, 'OPEN INVOICE', 'OPEN INVOICES')} · ${total} CR ON THE BOOK`;
         this.bus.emit('vael:reading', {
           entityId: e.id, hullMass: mass, openInvoices: openInv.length, invoiceTotal: total, tick: state.tick,
         });

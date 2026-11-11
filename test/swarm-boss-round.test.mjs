@@ -11,10 +11,9 @@ import assert from 'node:assert/strict';
 
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
-  SWARM_BOSS_ROTATION,
   SWARM_FODDER_ROLES,
   SWARM_RULESET,
-  isSwarmBossWave,
+  swarmBossFor,
   swarmConcurrent,
   swarmQuota,
   swarmRosterFor,
@@ -43,29 +42,31 @@ test('a boss wave fields its champion at tick 0 and owes it as a real kill', () 
   assert.ok(plan.schedule.some((e) => e.champion === true));
 });
 
-test('the champion rotation walks the roster clock — capital rows are the exceptions', () => {
-  const expected = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil',
-    'quiet_choir', 'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
-    'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk'];
-  for (const [i, wave] of [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135].entries()) {
+test('the champion rotation walks the thirty-round course — capital rows are the exceptions', () => {
+  // C01-01: the finite course's six champion rounds — a champion on every fifth round.
+  const expected = new Map([[5, 'iron_maw'], [10, 'corsair_wing'], [15, 'mirrorjaw_foreman'],
+    [20, 'yardmaster'], [25, 'the_anvil'], [30, 'forge_regent']]);
+  for (const [wave, bossId] of expected) {
     const plan = swarmPlan(wave);
-    assert.equal(plan.swarm.bossId, expected[i], `wave ${wave}`);
-    assert.equal(plan.swarm.bossRoom, SWARM_BOSS_ROTATION[i].room);
+    assert.equal(plan.swarm.bossId, bossId, `wave ${wave}`);
+    assert.equal(plan.swarm.bossRoom, swarmBossFor(wave).room);
     const championIds = plan.packages.filter((p) => p.champion === true).map((p) => p.enemyId);
     const rosterIds = new Set(swarmRosterFor(wave).map((e) => e.enemyId));
     for (const id of championIds) {
       assert.ok(
         rosterIds.has(id) || id === 'dreadnought_boss'
-          || id === 'mirrorjaw_foreman' || id === 'forge_regent'
-          || id === 'brood_queen' || id === 'brood_tendril'
-          || id === 'nest_carrier' || id === 'casket_worm' || id === 'furnace_maw'
-          || id === 'yardmaster' || id === 'adjudicator_44c' || id === 'hive_hulk',
+          || id === 'mirrorjaw_foreman' || id === 'yardmaster' || id === 'forge_regent',
         `wave ${wave} champion ${id} must be an archetype the player already met — or an authored capital debut`,
       );
     }
   }
-  const plan = swarmPlan(145);
-  assert.equal(plan.swarm.bossId, 'iron_maw', 'the rotation loops after the fourteenth');
+  // C01-03 — past the win the deep clock answers with its own rows: 35 is an ordinary
+  // round again and the decade mark re-opens the rotation on its fourth row, no cycle.
+  const deep = swarmPlan(35);
+  assert.equal(deep.swarm.boss, false, 'a deep ≡5-mod-10 round plans an ordinary room');
+  const decade = swarmPlan(40);
+  assert.equal(decade.swarm.bossId, 'corsair_wing', 'the deep decade fields its authored row');
+  assert.equal(decade.swarm.bossCycle, 0, 'the first deep pass wears no numeral');
 });
 
 test('the opening chaff is pure ammunition — light pursuer roles only', () => {

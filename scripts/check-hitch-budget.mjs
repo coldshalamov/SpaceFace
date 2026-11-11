@@ -2,6 +2,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
+import { cpus } from 'node:os';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -143,12 +144,16 @@ try {
   await warmStressPipelines(page);
   console.log('[hitch-budget] stress pipelines ready');
   await waitForStressAssets(page);
+  // Wall-time acceptance is only valid on a quiet host. Record the CPU-busy ratio across the
+  // measured window so a contended run is labelled instead of read as a clean pass/fail.
+  const hostLoadStart = readCpuTimes();
   const sample = await sampleHitches(page, {
     warmupMs: WARMUP_MS,
     durationMs: DURATION_MS,
     frameBudgetMs: FRAME_BUDGET_MS,
     pumpDuringSettle: !!(argv['pump-during-settle'] || argv.pumpDuringSettle),
   });
+  const hostLoad = summarizeHostLoad(hostLoadStart);
   const attribution = await page.evaluate(() => ({
     longtasks: (window.__HITCH_LONGTASKS__ || []).filter((t) => t.ms >= 50).slice(-40),
     resources: (window.__HITCH_RESOURCES__ || []).slice(-40),
@@ -160,8 +165,13 @@ try {
   const pageWarnings = issues.warningIssues().slice(0, 12);
   const pass = sample.settleWait === 'settled'
     && sample.frameMs.samples > 0
+    && sample.presented.samples > 0
+    && sample.presented.p95 <= 40
     && sample.frameMs.unexpectedOverBudget === 0
     && sample.programEvents.length === 0
+    && (!sample.presentedHolds
+      || (sample.presentedHolds.gapsOver100 === 0 && sample.presentedHolds.heldDeltaMs <= 100))
+    && !(Number(hostLoad.busyPct) >= 70)
     && pageErrors.length === 0;
   const report = {
     schema: 'spaceface.hitchBudget.v1',
@@ -186,12 +196,18 @@ try {
       },
     },
     scenario: stress,
+    hostLoad,
+    systemProfile: sample.systemProfile,
     frameMs: sample.frameMs,
+    presented: sample.presented,
+    presentedHolds: sample.presentedHolds,
     settleWait: sample.settleWait,
     settleQueue: sample.settleQueue || null,
     histogram: sample.histogram,
     spikes: sample.spikes.slice(0, 20),
+    unexpectedSpikes: sample.unexpectedSpikes,
     programEvents: sample.programEvents,
+    unresolvedProgramEvents: sample.unresolvedProgramEvents,
     topSpikeSources: sample.topSpikeSources,
     renderWarmup,
     diagnostics: sample.diagnostics,
@@ -199,12 +215,15 @@ try {
     failureEvidence: buildFailureEvidence({
       frameBudgetMs: sample.frameBudgetMs,
       frameMs: sample.frameMs,
+      presented: sample.presented,
+      presentedHolds: sample.presentedHolds,
       settleWait: sample.settleWait,
       settleQueue: sample.settleQueue,
       spikes: sample.spikes,
       topSpikeSources: sample.topSpikeSources,
       programEvents: sample.programEvents,
       pageErrors,
+      hostLoad,
       out: OUT,
     }),
     pass,
@@ -431,6 +450,9 @@ async function sampleHitches(page, opts) {
     const spikes = [];
     let last = null;
     let sampleStart = null;
+    let presentedHoldStart = null;
+    const presentIntervals = [];
+    let lastPresentFrame = 0;
     let settledAt = null;
     let finished = false;
     let watchdog = null;
@@ -440,6 +462,7 @@ async function sampleHitches(page, opts) {
     let previousProgramCount = 0;
     let previousProgramKeys = new Set();
     const programEvents = [];
+    const unresolvedProgramEvents = [];
     let settleQueue = null;
     let effectiveFrameBudgetMs = Number(frameBudgetMs) > 0 ? Number(frameBudgetMs) : 0;
 
@@ -524,12 +547,53 @@ async function sampleHitches(page, opts) {
       };
       const diagnostics = readDiagnostics();
       settleQueue = settleQueue || authoredQueueSnapshot();
+      const lane = window.SF?.simLaneDiag?.() || null;
+      const systemProfile = lane?.workerSystemProfile
+        ? {
+          step: lane.workerSystemProfile.step,
+          ticksMeasured: lane.workerSystemProfile.ticksMeasured,
+          skippedTicks: lane.workerSystemProfile.skippedTicks,
+          totalMeasuredMs: lane.workerSystemProfile.totalMeasuredMs,
+          topLevelMeasuredMs: lane.workerSystemProfile.topLevelMeasuredMs,
+          systems: Array.isArray(lane.workerSystemProfile.systems)
+            ? lane.workerSystemProfile.systems.slice(0, 20) : [],
+        }
+        : null;
+      const sortedPresents = presentIntervals.slice().sort((a, b) => a - b);
+      const presented = {
+        samples: presentIntervals.length,
+        p50: round(percentile(sortedPresents, 0.50)),
+        p95: round(percentile(sortedPresents, 0.95)),
+        max: round(sortedPresents.length ? sortedPresents[sortedPresents.length - 1] : 0),
+        over40: presentIntervals.filter((value) => value > 40).length,
+        over50: presentIntervals.filter((value) => value > 50).length,
+        over66: presentIntervals.filter((value) => value > 66.7).length,
+      };
+      const presentedEnd = presentedHoldSnapshot();
+      const episodesInSample = presentedEnd && Array.isArray(presentedEnd.episodes)
+        ? presentedEnd.episodes.filter((episode) => Number(episode.atMs) >= sampleStart)
+        : [];
+      const maxEpisodeMs = episodesInSample.reduce((max, episode) => (
+        Number(episode.heldMs) > max ? Number(episode.heldMs) : max), 0);
+      const heldDelta = presentedHoldStart && presentedEnd
+        ? Math.max(0, (presentedEnd.maxHeldMs || 0) - (presentedHoldStart.maxHeldMs || 0))
+        : 0;
+      const presentedHolds = presentedHoldStart && presentedEnd ? {
+        gapsOver100: Math.max(0, (presentedEnd.gapsOver100 || 0) - (presentedHoldStart.gapsOver100 || 0)),
+        heldDeltaMs: Math.max(maxEpisodeMs, heldDelta),
+        episodes: episodesInSample.slice(-4),
+      } : null;
       resolve({
         frameMs,
         frameBudgetMs: budgetMs,
+        presented,
+        presentedHolds,
+        systemProfile,
         settleWait,
         settleQueue,
         programEvents,
+        unresolvedProgramEvents,
+        unexpectedSpikes: unexpectedSpikes.slice(0, 40),
         histogram: histogram(frames),
         spikes: spikes.sort((a, b) => b.ms - a.ms),
         topSpikeSources: topSpikeSources(diagnostics.perf),
@@ -571,6 +635,8 @@ async function sampleHitches(page, opts) {
               const stress = window.__SF_HITCH_STRESS__;
               if (stress) stress.nextBurstAt = now + 120;
               sampleStart = now;
+              presentedHoldStart = presentedHoldSnapshot();
+              lastPresentFrame = Number(window.SF?.state?.render?.renderer?.info?.render?.frame) || 0;
               resolveFrameBudgetMs();
               last = now;
               resetRuntimeProbes();
@@ -584,6 +650,17 @@ async function sampleHitches(page, opts) {
       } else {
         pumpStress(now);
         monitorPrograms(now);
+        // Acceptance is the PRESENTED cadence, not callback cadence. A 30 fps cap still runs a
+        // 60 Hz rAF; a callback miss is only a hitch if the present interval grew. lastPresentDtMs
+        // is stamped per presented frame, so record one sample per render frame.
+        const presentFrame = Number(window.SF?.state?.render?.renderer?.info?.render?.frame);
+        if (Number.isFinite(presentFrame) && presentFrame > lastPresentFrame) {
+          lastPresentFrame = presentFrame;
+          const presentMs = Number(window.SF?.state?.render?.lastPresentDtMs);
+          if (Number.isFinite(presentMs) && presentMs > 0 && presentMs < 2000) {
+            presentIntervals.push(presentMs);
+          }
+        }
         const dt = now - last;
         frames.push(dt);
         if (dt > resolveFrameBudgetMs()) {
@@ -593,6 +670,13 @@ async function sampleHitches(page, opts) {
           const upgrade = renderState?.scene?.userData?.authoredUpgradeDiagnostics || null;
           const callbackMs = Number(perf.frameCallback?.last);
           const lastJob = Array.isArray(upgrade?.jobs) ? upgrade.jobs.at(-1) || null : null;
+          // Snapshot the job at spike time: the live object keeps mutating (endedAtMs/phases land
+          // later), so serializing it at finish made a just-ended job look recent.
+          const lastJobSnapshot = lastJob ? {
+            ...lastJob,
+            phases: lastJob.phases && typeof lastJob.phases === 'object'
+              ? { ...lastJob.phases } : null,
+          } : null;
           const lastPartLoad = Array.isArray(upgrade?.partLoads) ? upgrade.partLoads.at(-1) || null : null;
           const recentResources = performance.getEntriesByType('resource')
             .filter((entry) => /\.(?:glb|png|jpg|ktx2|json)(?:\?|$)/i.test(String(entry.name || ''))
@@ -632,11 +716,14 @@ async function sampleHitches(page, opts) {
               activeJobs: upgrade.activeJobs,
               maxConcurrentJobs: upgrade.maxConcurrentJobs,
               maxConcurrentDecode: upgrade.maxConcurrentDecode,
-              lastJob,
+              lastJob: lastJobSnapshot,
               lastPartLoad,
             } : null,
             recentResources,
-            unexpected: attribution.length > 0,
+            // App-owned means the measured callback itself exceeded the frame budget. An active
+            // authored job or a nearby resource fetch is a correlate, not proof that this frame's
+            // 44 ms gap came from our code; scheduler-only frames stay in their own bucket.
+            unexpected: Number.isFinite(callbackMs) && callbackMs > resolveFrameBudgetMs(),
             attribution: attribution.length > 0 ? attribution : ['scheduler-only'],
             stress: window.__SF_HITCH_STRESS__ ? {
               nextWeapon: window.__SF_HITCH_STRESS__.nextWeapon,
@@ -653,6 +740,17 @@ async function sampleHitches(page, opts) {
 
     watchdog = setTimeout(finish, warmupMs + warmupMs + durationMs + 30000);
     requestAnimationFrame(tick);
+
+    function presentedHoldSnapshot() {
+      try {
+        const d = window.SF?.loop?.getDiagnostics?.() || {};
+        return {
+          gapsOver100: Number(d.presentedGapsOver100) || 0,
+          maxHeldMs: Number(d.maxHeldPresentMs) || 0,
+          episodes: Array.isArray(d.heldPresentEpisodes) ? d.heldPresentEpisodes.slice() : [],
+        };
+      } catch (_) { return null; }
+    }
 
     function authoredQueueSnapshot() {
       const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
@@ -714,11 +812,33 @@ async function sampleHitches(page, opts) {
             const currentKey = properties && properties.currentProgram
               ? programKey(properties.currentProgram) : null;
             if (!currentKey || !addedSet.has(currentKey)) continue;
+            // A program link is only actionable if the artifact names the family that paid it.
+            // The object name is usually empty, so record the ancestor chain that carries the
+            // owner's qualifier (SF_<family> / entity root) and the material's own name.
+            const chain = [];
+            for (let node = object; node && chain.length < 6; node = node.parent) {
+              chain.push(node.name || node.type || '?');
+            }
+            const idMatch = /^Asteroid_(\d+)$/.exec(object.name || '');
+            const ownerEntity = idMatch && state?.entities?.get
+              ? state.entities.get(Number(idMatch[1])) : null;
             owners.push({
               object: object.name || object.type,
               objectType: object.type,
+              parentChain: chain.slice(1),
+              entityTypeId: ownerEntity?.data?.typeId || null,
+              entityType: ownerEntity?.type || null,
               material: material.name || material.type,
               materialType: material.type,
+              materialUuid: material.uuid || null,
+              materialUserData: material.userData && typeof material.userData === 'object'
+                ? {
+                  role: material.userData.spacefaceSharedMaterialRole || null,
+                  family: material.userData.spacefaceProgramFamily || null,
+                  abi: material.userData.spacefaceMaterialAbiVersion || null,
+                  illustrated: material.userData.spacefaceIllustratedSurface === true,
+                } : null,
+              geometry: object.geometry?.name || null,
               transparent: !!material.transparent,
               blending: material.blending,
               side: material.side,
@@ -734,7 +854,18 @@ async function sampleHitches(page, opts) {
           }
         });
       }
-      if (owners.length === 0) return;
+      if (owners.length === 0) {
+        // A cache entry with no live owner is not a draw hitch, but dropping it entirely hides
+        // recompiles that the program-count diff did see. Keep it as separate audit evidence.
+        if (unresolvedProgramEvents.length < 8) {
+          unresolvedProgramEvents.push({
+            atMs: round(sampleStart == null ? 0 : now - sampleStart),
+            count: programs.length,
+            addedKeys,
+          });
+        }
+        return;
+      }
       programEvents.push({
         atMs: round(sampleStart == null ? 0 : now - sampleStart),
         count: programs.length,
@@ -772,13 +903,19 @@ async function sampleHitches(page, opts) {
         rigidBatchWaitStartedAt = null;
       }
       let queue = { pending: 0, running: false };
+      let activeAdmissions = 0;
       try {
+        const scene = state.render && state.render.scene;
         const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
         if (typeof queueStats === 'function') {
-          queue = queueStats(state.render && state.render.scene) || queue;
+          queue = queueStats(scene) || queue;
         }
-        if (queue.pending > 0 || queue.running) {
-          settleWait = `authored-queue:${queue.pending}:${queue.running ? 1 : 0}`;
+        // The queue can report idle while a job is still inside its compose/compile/commit legs.
+        // Sampling then starts inside a known main-thread admission — the artifact then blames the
+        // first frame's gap on "external scheduling". Wait for the job itself, not just the queue.
+        activeAdmissions = Number(scene?.userData?.authoredUpgradeDiagnostics?.activeJobs) || 0;
+        if (queue.pending > 0 || queue.running || activeAdmissions > 0) {
+          settleWait = `authored-queue:${queue.pending}:${queue.running ? 1 : 0}:${activeAdmissions}`;
           return false;
         }
       } catch (_) {}
@@ -795,7 +932,8 @@ async function sampleHitches(page, opts) {
           const admissionBusy = meshQueueRemaining > 0
             || !!render._meshReconcileDirty
             || queue.pending > 0
-            || queue.running;
+            || queue.running
+            || activeAdmissions > 0;
           if (admissionBusy) {
             settleWait = `mesh-missing:${entity.type || 'unknown'}:${entity.id}`;
             return false;
@@ -873,10 +1011,54 @@ async function dismissOnboarding(page) {
   });
 }
 
+function readCpuTimes() {
+  try {
+    const list = cpus();
+    if (!Array.isArray(list) || list.length === 0) return { logicalCpus: 0, idle: 0, total: 0 };
+    let idle = 0;
+    let total = 0;
+    for (const cpu of list) {
+      const times = cpu && cpu.times ? cpu.times : {};
+      const busy = (times.user || 0) + (times.nice || 0) + (times.sys || 0) + (times.irq || 0);
+      idle += times.idle || 0;
+      total += busy + (times.idle || 0);
+    }
+    return { logicalCpus: list.length, idle, total };
+  } catch (_) {
+    return { logicalCpus: 0, idle: 0, total: 0 };
+  }
+}
+
+function summarizeHostLoad(start) {
+  const end = readCpuTimes();
+  const idleDelta = end.idle - (start?.idle || 0);
+  const totalDelta = end.total - (start?.total || 0);
+  const measured = start?.logicalCpus > 0 && end.logicalCpus === start.logicalCpus && totalDelta > 0;
+  return {
+    available: measured,
+    busyPct: measured ? Math.round(1000 * (1 - idleDelta / totalDelta)) / 10 : null,
+    logicalCpus: end.logicalCpus,
+  };
+}
+
 function printReport(report) {
   console.log(`[hitch-budget] scenario=${report.scenario.baseScenario} enemies=${report.scenario.enemies} asteroids=${report.scenario.asteroids}`);
   console.log(`[hitch-budget] frames=${report.frameMs.samples} avg=${report.frameMs.avg}ms p95=${report.frameMs.p95}ms p99=${report.frameMs.p99}ms worst=${report.frameMs.max}ms`);
   console.log(`[hitch-budget] settle=${report.settleWait}`);
+  console.log(`[hitch-budget] host busy=${report.hostLoad?.busyPct != null ? `${report.hostLoad.busyPct}%` : 'n/a'} (contended at >=70%)`);
+  if (report.presentedHolds) {
+    console.log(`[hitch-budget] presented gaps>=100ms=${report.presentedHolds.gapsOver100}`
+      + ` maxRepeatedMomentHold=${Math.round(report.presentedHolds.heldDeltaMs)}ms`);
+  }
+  if (report.systemProfile?.step) {
+    const step = report.systemProfile.step;
+    console.log(`[hitch-budget] worker step ms: p50=${step.p50} p95=${step.p95} p99=${step.p99}`
+      + ` max=${step.max} last=${step.lastMs}`);
+    for (const row of (report.systemProfile.systems || []).slice(0, 10)) {
+      console.log(`  ${String(row.id).padEnd(34)} share=${(row.share * 100).toFixed(1)}%`
+        + ` perTick=${row.meanMsPerTick}ms p95=${row.p95}ms calls=${row.calls}`);
+    }
+  }
   if (report.settleQueue) {
     console.log(`[hitch-budget] settleQueue pending=${report.settleQueue.pending} running=${report.settleQueue.running} activeJobs=${report.settleQueue.activeJobs} last=${report.settleQueue.lastJobKey || '-'} ${report.settleQueue.lastJobStatus || ''}`);
   }
@@ -887,6 +1069,9 @@ function printReport(report) {
       const owners = event.owners.map((owner) => `${owner.object}/${owner.material}`).join(', ') || 'unresolved';
       console.log(`  +${event.atMs}ms programs=${event.count} owners=${owners}`);
     }
+  }
+  if (report.unresolvedProgramEvents?.length) {
+    console.log(`[hitch-budget] unresolved program additions (no live owner): ${report.unresolvedProgramEvents.length}`);
   }
   console.log('[hitch-budget] histogram:');
   for (const bin of report.histogram) console.log(`  ${bin.label.padEnd(8)} ${bin.count}`);
@@ -910,7 +1095,8 @@ function printReport(report) {
 }
 
 function buildFailureEvidence({
-  frameBudgetMs, frameMs, settleWait, settleQueue, spikes, topSpikeSources, programEvents, pageErrors, out,
+  frameBudgetMs, frameMs, presented, presentedHolds, settleWait, settleQueue, spikes,
+  topSpikeSources, programEvents, pageErrors, hostLoad, out,
 }) {
   const reasons = [];
   if (settleWait !== 'settled') {
@@ -920,10 +1106,24 @@ function buildFailureEvidence({
     reasons.push(`runtime did not settle before sampling: ${settleWait}${queueNote}`);
   }
   if (frameMs.samples === 0) reasons.push('no post-warmup frames were sampled');
+  if (!presented || presented.samples === 0) {
+    reasons.push('no presented frames were recorded; the cadence claim is unmeasured');
+  } else if (presented.p95 > 40) {
+    reasons.push(`presented p95 ${presented.p95} ms exceeded the 30 fps cadence bar (40 ms)`);
+  }
   if (frameMs.unexpectedOverBudget > 0) {
     reasons.push(`${frameMs.unexpectedOverBudget} application-owned post-warmup frames exceeded ${frameBudgetMs} ms`);
   }
+  if (presentedHolds && presentedHolds.gapsOver100 > 0) {
+    reasons.push(`${presentedHolds.gapsOver100} presented gap(s) of >=100 ms occurred during the sample`);
+  }
+  if (presentedHolds && presentedHolds.heldDeltaMs > 100) {
+    reasons.push(`the presented world repeated a moment for ${Math.round(presentedHolds.heldDeltaMs)} ms`);
+  }
   if (programEvents.length > 0) reasons.push(`${programEvents.length} new GPU program events appeared after warm-up`);
+  if (Number(hostLoad?.busyPct) >= 70) {
+    reasons.push(`host CPU was ${hostLoad.busyPct}% busy during the sample — not a valid acceptance window`);
+  }
   if (pageErrors.length > 0) reasons.push(`${pageErrors.length} browser page errors were reported`);
   if (!reasons.length) reasons.push('no failure recorded');
   return {
@@ -1006,6 +1206,9 @@ function isPortFree(port) {
 function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
+  // E2 per-system worker profile on the same run. The lane reads this at init; without it the
+  // step cost is a single number with no owner and the next edit is a guess.
+  u.searchParams.set('simProfile', '1');
   return String(u);
 }
 

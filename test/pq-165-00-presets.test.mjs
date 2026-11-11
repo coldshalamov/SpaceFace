@@ -79,8 +79,8 @@ test('preset switch is captured: only presentation keys move, no content changes
   assert.ok(applied.changed.includes('qualityPreset'), 'the preset id is recorded as changed');
   // Only the declared presentation keys may differ from the medium default.
   const moved = applied.changed.filter((key) => key !== 'qualityPreset').sort();
-  assert.deepEqual(moved, ['frameCap', 'particleQuality', 'qualityMode', 'sharpen'].sort(),
-    'High performance now keeps the native picture (render scale, pixel-ratio cap, bloom depth) and moves cadence, policy, particle density and sharpening only');
+  assert.deepEqual(moved, ['frameCap', 'qualityMode'].sort(),
+    'High performance now keeps the authored picture and moves only cadence and policy');
   assert.equal(before.player.credits, beforeSnapshot.credits, 'credits untouched');
   assert.equal(Array.isArray(before.entityList) ? before.entityList.length : 0, beforeSnapshot.entityCount,
     'entity/actor count untouched — presets never cut content');

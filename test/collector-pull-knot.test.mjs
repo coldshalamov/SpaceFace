@@ -18,6 +18,7 @@ import { gyreSnare } from '../src/systems/gyreSnare.js';
 import { physics } from '../src/core/physics.js';
 import { FIELD_FLAGS, FIELD_DEFS, FIELD_END_REASONS } from '../src/data/fields.js';
 import { COLLECTOR_KNOT as K, COLLECTOR_MODULE_ID } from '../src/data/collectorKnot.js';
+import { ONE_FEEL } from '../src/data/swarmFeelProfile.js';
 import { GYRE_SNARE as G } from '../src/data/gyreSnare.js';
 import { MATTER_REFUSAL } from '../src/matter/aggregateMass.js';
 import { powerPreviewPlan, powerHeld } from '../src/data/powerPreview.js';
@@ -104,7 +105,7 @@ test('a collector throw stops powering and disarms when cargo ownership adopts i
   }
 });
 
-test('unfitted: Pull is the plain well it always was (no collector, no knot, nothing changes)', async () => {
+test('unfitted: Pull is the plain one-feel well (no collector, no knot, nothing changes)', async () => {
   const t = await boot({ fitted: false });
   try {
     t.press({ x: 300, z: 0 });
@@ -112,7 +113,8 @@ test('unfitted: Pull is the plain well it always was (no collector, no knot, not
     assert.ok(rec && rec.kind === 'well');
     assert.equal(rec.collector, undefined);
     assert.equal(t.state.entities.get(rec.emitterId).data.collector, undefined);
-    assert.ok(near(rec.expireAt - rec.deployedAt, FIELD_DEFS.well.durationS, 1e-9));
+    // EC-G18 one feel: the unfitted well is the yank-then-hold, in Adventure as in Swarm.
+    assert.ok(near(rec.expireAt - rec.deployedAt, ONE_FEEL.pull.yankS + ONE_FEEL.pull.holdS, 1e-9));
     t.rock(300, 20);
     t.steps(180);
     assert.equal(t.pub().active, false, 'no knot without the Collector Maw');

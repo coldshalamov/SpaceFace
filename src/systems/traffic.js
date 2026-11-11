@@ -11,6 +11,9 @@ export { CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST, CERES_ACTIVITY_CAST_BY_SLOT_
 import { ownsWinnowRecoveryHull, normalizeWinnowRecovery, admitWinnowRecovery, reconcileWinnowRecovery, stepWinnowRecovery, winnowPickupReceipt, winnowSpillReceipt, winnowKilledReceipt, winnowDestroyedReceipt } from '../world/vestaWinnowRecovery.js';
 import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
+import { spillVulturesSpillReceipt, spillVulturesPickupReceipt, spillVulturesDestroyed, stepSpillVultures, releaseSpillVultures } from '../world/spillVultures.js';
+import { gratitudeParcelArrivalReceipt, stepGratitudeParcel, releaseGratitudeParcel } from '../world/gratitudeParcel.js';
+import { pilotPersonalityDef, pilotPersonalityDrive, pilotPersonalityFor } from '../data/pilotPersonalities.js';
 import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
 import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
@@ -156,6 +159,11 @@ import { trafficTugOps } from './trafficTugOps.js';
 import { trafficEscortOps } from './trafficEscortOps.js';
 import { trafficRecoveryOps } from './trafficRecoveryOps.js';
 import { trafficCausalChainOps } from './trafficCausalChainOps.js';
+import { trafficNearMissOps } from './trafficNearMiss.js';
+import { roadRageOps } from './roadRage.js';
+import { tailgaterOps } from './tailgater.js';
+import { rubberneckersOps } from './rubberneckers.js';
+import { nearMissPlantOps } from './nearMissPlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1620,6 +1628,11 @@ export const traffic = {
   ...trafficEscortOps,
   ...trafficRecoveryOps,
   ...trafficCausalChainOps,
+  ...trafficNearMissOps,
+  ...roadRageOps,
+  ...tailgaterOps,
+  ...rubberneckersOps,
+  ...nearMissPlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1727,6 +1740,11 @@ export const traffic = {
       };
     }
 
+    this._initRoadRage(ctx);
+    this._initTailgater(ctx);
+    this._initRubberneckers(ctx);
+    this._initNearMissPlant(ctx);
+
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
     this.bus.on('save:loaded', () => this._materializeEndingWorldPresence());
@@ -1798,6 +1816,12 @@ export const traffic = {
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresClampPodPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    // Spill vultures: a violence-spilled pod is a contest, not free loot on the floor.
+    this.bus.on('freight:cargoSpilled', p => spillVulturesSpillReceipt(this, p || {}));
+    this.bus.on('pickup:collected', p => spillVulturesPickupReceipt(this, p || {}));
+    this.bus.on('entity:destroyed', p => spillVulturesDestroyed(this, p || {}));
+    // Gratitude parcel: the hauler you saved owes a gift pod on its next close pass.
+    this.bus.on('freight:arrival', p => gratitudeParcelArrivalReceipt(this, p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
     this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
@@ -3393,6 +3417,9 @@ export const traffic = {
       ent.data.trafficLabel = (def && def.label) || role;
     }
     ent.data.role = role; // readability for target panel / scanner
+    // CH-61: the seat's temperament is part of the hull's stable identity — hashed
+    // from the run seed and hull id, so it survives rematerialization unchanged.
+    pilotPersonalityFor(this.state, ent);
     ent.homeSectorId = sectorId;
     ent.data.homeSectorId = sectorId;
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
@@ -3638,6 +3665,11 @@ export const traffic = {
     this._resetTransientCausalLedgers(true);
     this._resetCeresCausalChain('cleanup');
     this._clearCivilianViolenceMemory();
+    // The spill convergence is sector-scoped transient work: a hard exit folds it
+    // rather than letting a vulture chase a spill into the next sector.
+    releaseSpillVultures(this);
+    // The armed gratitude pass folds too; the unpaid debt waits for a later arrival.
+    releaseGratitudeParcel(this);
     // The core system exposes helpers.removeEntity (marks alive=false; the renderer/physics GC it).
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
@@ -3890,6 +3922,9 @@ export const traffic = {
     }
     reconcileWinnowRecovery(this);
     reconcileCharonSupply(this);
+    stepSpillVultures(this);
+    stepGratitudeParcel(this);
+    this._stepRubberneckers(state);
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
@@ -4035,16 +4070,65 @@ export const traffic = {
           this._ensureAmbushLoadedHaulerManifest(e, rec);
         }
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
+        // PL-05: road rage reaction
+        if (this._reactRoadRage(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        // PL-06: tailgater reaction (loaded hauler cut off pursues for 20 s with horn down)
+        if (this._reactTailgater(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        // PL-03: rubberneckers reaction (passing civilians slow to look at wreck, shooed by player)
+        if (this._reactRubberneckers(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        // PL-01: near miss plant reaction (swerve, flash lamps, "Lane's not yours, pal!", report on 3rd)
+        if (this._reactNearMissPlant(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         this._reactCivilianViolence(e, rec, stations, state);
+        // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
+        // job runtime and emits the horn; the choreography keeps its single intent writer.
+        this._reactPlayerNearMiss(e, rec, stations, state, player);
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
       // Retire only this exact rescue hull's old unleased generic tender assignment. Until
       // that owner releases it, the normal job and violence branches remain authoritative.
       if (rec.role === 'rescue' && e.data?.jobId) this._releaseLegacyRescueJob(e, rec);
+      // PL-05: twice-shoved civilian shoves back, then flees.
+      if (this._reactRoadRage(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-06: loaded hauler cut off pursues for 20 s with horn down
+      if (this._reactTailgater(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-03: rubberneckers reaction (passing civilians slow to look at wreck, shooed by player)
+      if (this._reactRubberneckers(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-01: near miss plant reaction (swerve, flash lamps, "Lane's not yours, pal!", report on 3rd)
+      if (this._reactNearMissPlant(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // inf-lane-horn: a fast close pass by the player jinks the hull off the line and leans on
+      // its horn. Ambient hulls fly the jink here; a job hull's jink is leased to npcJobsRuntime.
+      if (this._reactPlayerNearMiss(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
@@ -4171,7 +4255,27 @@ export const traffic = {
       }
       // drive: face the target, thrust forward. moveZ=1 means forward along the nose.
       const expressBoost = !!(role.express && massline2Flag('hitchhiking'));
-      setIntent(e, 0, 1, expressBoost, false, null, aimAngle);
+      // CH-61: a pilot with a temperament flies the leg differently — spacing to
+      // the hull ahead, boost appetite, weave, early approach braking. The
+      // decision is pure and stamped per hull; a hull with no temperament (or a
+      // temperament with nothing to say this tick) flies the historical default
+      // verbatim, so scenario casts and determinism envelopes are untouched.
+      let drive = null;
+      const pDef = this.state && !e.data?.scenarioActorId
+        ? pilotPersonalityDef(this.state, e) : null;
+      if (pDef) {
+        const ahead = this._nearestHullAhead(e, Math.max(pDef.spacingLookaheadWu || 0, pDef.boostWhenClearWu || 0, pDef.boostWhenNearWu || 0));
+        drive = pilotPersonalityDrive(pDef, {
+          distToTarget: dist,
+          distToHullAhead: ahead,
+          simTime: state.simTime,
+          hullId: e.id,
+        });
+      }
+      const throttleZ = drive && drive.moveZ != null ? drive.moveZ : 1;
+      const boost = expressBoost || !!(drive && drive.boost);
+      const aim = aimAngle + (drive && drive.aimAngleOffset ? drive.aimAngleOffset : 0);
+      setIntent(e, 0, throttleZ, boost, false, null, aim);
       this._syncTrafficRecordToData(e, rec);
       // V3 reads this intent and applies real thrust. Traffic never writes velocity, so a latched
       // player receives only the Rapier constraint pull and whatever momentum the liner earns.
