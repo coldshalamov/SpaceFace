@@ -43,6 +43,7 @@ import { CINDER_ARENA_ID, stepCinderMachinery } from '../systems/cinderSluiceAre
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 import { LAGRANGE_ARENA_ID } from '../systems/lagrangeCrucible.js';
 import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 import {
   STORM_ARENA_ID,
   STORM_CONDUCT_RANGE,
@@ -1673,7 +1674,8 @@ export function createLawArenaDressing() {
       }
     }
     if (!room.root) return;
-    const dt = Math.max(0, frameDt || 0);
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const dt = Math.max(0, frameDt || 0) * ratio;
     const reduced = !!(options && options.reducedMotion);
     const calmFlash = !!(options && options.reducedFlash);
     const simNow = Number.isFinite(simTime) ? simTime : 0;
@@ -1920,7 +1922,8 @@ export function createLawArenaDressing() {
 
     const reduced = !!(options && options.motionReduce);
     const calmFlash = !!(options && options.flashReduce);
-    const dt = Math.max(0, frameDt || 0);
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const dt = Math.max(0, frameDt || 0) * ratio;
     rec.clock += dt;
     const alive = entity.alive !== false;
     if (rec.phase !== 'release' && !alive) {
