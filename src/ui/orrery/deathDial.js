@@ -15,6 +15,8 @@
 import { svg, polar, arcD, ticksD, circularText } from './svg.js';
 import { injectOrrery } from './tokens.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { counted } from '../numberFormat.js';
+
 
 const STYLE_ID = 'orr-death-dial-style';
 
@@ -164,7 +166,7 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
   if (groups.length) {
     const list = doc.createElement('p');
     list.className = 'orr-deathdial__groups';
-    list.textContent = groups.map((grp) => `${initials(grp.weapon)}  ${grp.weapon} \u2014 ${grp.hits} hit${grp.hits === 1 ? '' : 's'}, ${grp.amount}`).join('   \u00b7   ');
+    list.textContent = groups.map((grp) => `${initials(grp.weapon)}  ${grp.weapon} \u2014 ${counted(grp.hits, 'hit', 'hits')}, ${grp.amount}`).join('   \u00b7   ');
     cap.appendChild(list);
   }
   host.append(pool, under, hull, layer, cap);

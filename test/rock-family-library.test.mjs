@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import * as THREE from 'three';
@@ -11,7 +11,7 @@ import {
   preloadRockFamilyLibrary,
   rockFamilyFor,
 } from '../src/render/rockFamilyLibrary.js';
-import { createVisualFactory } from '../src/render/visualFactory.js';
+import { asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, createVisualFactory, upgradeFamilylessRockMaterials } from '../src/render/visualFactory.js';
 import { preloadRockSurfaceLibrary } from '../src/render/rockSurfaceLibrary.js';
 
 // An asteroid only builds once the common-rock library is ready (the same precondition the other rock tests meet).
@@ -57,6 +57,21 @@ test('before the library decodes, family types keep the flat tinted material', (
     assert.equal(material.map, null, `${typeId} must not publish a half-loaded family`);
     assert.equal(material.emissiveMap, null);
   }
+});
+
+let preDecodeMetallicRoot = null;
+
+test('family-less rocks are tagged for a later re-skin before the family maps decode', () => {
+  assert.equal(getReadyRockFamilies(), null);
+  preDecodeMetallicRoot = withCanvasStub(() => createVisualFactory().build({
+    id: 41, type: 'asteroid', radius: 12, data: { typeId: 'ast_metallic' },
+  }));
+  assert.notEqual(preDecodeMetallicRoot.userData.visualBuildFailed, true);
+  const material = preDecodeMetallicRoot.userData.asteroidInstanceBody.material;
+  assert.equal(material.map, null, 'no half-loaded family map');
+  assert.ok(material.roughnessMap, 'the procedural metal surface uses the noise roughness map');
+  assert.equal(material.userData.spacefaceFamilylessRock?.typeId, 'ast_metallic',
+    'the pre-decode material is tagged so the family-ready continuation can re-skin it');
 });
 
 test('a failed decode publishes nothing and resolves null instead of throwing', async () => {
@@ -115,4 +130,47 @@ test('decoded families are configured, GPU-warmed once each, and worn by their a
   }
 
   assert.equal(bodyMaterial('ast_icy').map, null, 'ice keeps its glass material');
+});
+
+test('decoded family maps re-skin a rock that was built before the decode', () => {
+  assert.ok(preDecodeMetallicRoot, 'the pre-decode fixture exists');
+  const before = preDecodeMetallicRoot.userData.asteroidInstanceBody.material;
+  const changed = upgradeFamilylessRockMaterials(preDecodeMetallicRoot);
+  const after = preDecodeMetallicRoot.userData.asteroidInstanceBody.material;
+  assert.equal(changed, 1, 'the live rock is re-skinned once');
+  assert.notEqual(after, before, 'the procedural material is replaced');
+  assert.equal(after.map, rockFamilyFor('metal').baseColor, 'the decoded family map is worn');
+  assert.equal(after.userData.spacefaceFamilylessRock, undefined, 'the stale tag leaves with the material');
+  assert.equal(upgradeFamilylessRockMaterials(preDecodeMetallicRoot), 0, 'a second pass is a no-op');
+});
+
+test('the family-ready re-warm re-skins live rocks before compiling the family group', () => {
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source, /async _runRockFamilyDecodeRewarm\(liveScene\)[\s\S]{0,2500}?upgradeFamilylessRockMaterials\(mesh\)/,
+    'a family that lands after a rock was built must re-skin the live mesh, not only warm a new group');
+});
+
+test('a tinted common rock is warmed with the same program axes as a live tinted rock', () => {
+  const specs = asteroidVisualExemplarSpecs();
+  const spec = specs.find((row) => row.id.endsWith('ast_common_rock:tinted'));
+  assert.ok(spec, 'the survival exemplar list carries a tinted common rock');
+  const warm = withCanvasStub(() => createVisualFactory().build(spec));
+  const live = withCanvasStub(() => createVisualFactory().build({
+    id: 52, type: 'asteroid', radius: 12, data: { typeId: 'ast_common_rock', tint: '#ffcc88' },
+  }));
+  const warmMat = warm.userData.asteroidInstanceBody.material;
+  const liveMat = live.userData.asteroidInstanceBody.material;
+  assert.equal(warmMat.map, null, 'tinted common rocks keep the flat tint + noise branch');
+  assert.equal(liveMat.map, null);
+  assert.equal(!!warmMat.roughnessMap, !!liveMat.roughnessMap,
+    'the warm exemplar carries the same roughness-map axis');
+  assert.equal(warmMat.vertexColors, liveMat.vertexColors);
+  assert.equal(warmMat.flatShading, liveMat.flatShading);
+
+  const leafWarm = buildAsteroidLeafWarmGroup();
+  let mounted = 0;
+  leafWarm.traverse((node) => {
+    if (node.userData?.rosterPrewarmLeaf === 'asteroid:ast_common_rock:tinted') mounted += 1;
+  });
+  assert.equal(mounted, 1, 'the opening leaf warm group mounts the tinted common exemplar');
 });

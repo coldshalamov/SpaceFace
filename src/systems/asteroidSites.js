@@ -81,6 +81,8 @@ import {
   handleMotionFossilAction, tickMotionFossil, interruptMotionFossil, copyMotionFossilState, captureMotionFossilState,
   MOTION_FOSSIL_SITE,
 } from '../world/motionFossil.js';
+import { counted } from '../core/numberFormat.js';
+
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
@@ -1533,14 +1535,14 @@ export const asteroidSites = {
       const lost = delta(site.fleet && site.fleet.lost, 'lost');
       const waiting = Math.max(0, Math.round(bufferU - (Number(base.bufferU) || 0)));
       if (shipped > 0) parts.push(`${shipped}u shipped`);
-      if (delivered > 0) parts.push(`${delivered} courier${delivered === 1 ? '' : 's'} home`);
-      if (lost > 0) parts.push(`${lost} courier${lost === 1 ? '' : 's'} lost`);
+      if (delivered > 0) parts.push(`${counted(delivered, 'courier', 'couriers')} home`);
+      if (lost > 0) parts.push(`${counted(lost, 'courier', 'couriers')} lost`);
       if (waiting > 0) parts.push(`${waiting}u in the hopper`);
     }
     const machines = Array.isArray(site.machines) ? site.machines.length : 0;
     const text = parts.length
       ? `Your claim at ${place} kept working — ${parts.join(', ')}.`
-      : `Your claim at ${place} still stands — ${machines} machine${machines === 1 ? '' : 's'} on the face.`;
+      : `Your claim at ${place} still stands — ${counted(machines, 'machine', 'machines')} on the face.`;
     this.bus.emit('comms:log', { from: 'CLAIM', text, kind: 'site' });
   },
 
@@ -1780,7 +1782,7 @@ export const asteroidSites = {
       const freeVolume = cargo ? cargo.capVolume - cargo.usedVolume : NaN;
       if (!Number.isFinite(freeVolume) || freeVolume < requiredVolume) {
         this.bus.emit('toast', { kind: 'warn', ttl: 4,
-          text: `Make room for ${refundU} control unit${refundU === 1 ? '' : 's'} before dismantling.` });
+          text: `Make room for ${counted(refundU, 'control unit', 'control units')} before dismantling.` });
         return { ok: false, reason: 'refund-hold-full', requiredVolume };
       }
     }

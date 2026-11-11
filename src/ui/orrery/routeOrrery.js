@@ -15,6 +15,8 @@ import { SECTORS, dangerIndex } from '../../data/sectors.js';
 import { svg, polar, arcD, ticksD } from './svg.js';
 import { injectOrrery } from './tokens.js';
 import { reducedMotion, createSpring } from './motion.js';
+import { pluralWord } from '../numberFormat.js';
+
 
 const STYLE_ID = 'orr-route-orrery-style';
 const BONE = '236 230 216';
@@ -576,7 +578,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       const mids = route.slice(1, -1).map((id) => (SECTOR.get(id).name || id).toUpperCase());
       const destSector = (SECTOR.get(dest).name || dest).toUpperCase();
       jumps.textContent = String(n);
-      via.textContent = `${n === 1 ? 'JUMP' : 'JUMPS'} · ${mids.length ? `VIA ${mids.join(' · ')} TO ` : 'TO '}${destSector}`;
+      via.textContent = `${pluralWord(n, 'JUMP', 'JUMPS')} · ${mids.length ? `VIA ${mids.join(' · ')} TO ` : 'TO '}${destSector}`;
     }
     caption.append(jumps, via);
     // the screen may draw the reading itself, on a line from its own key to this origin

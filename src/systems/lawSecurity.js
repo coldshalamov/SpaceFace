@@ -94,6 +94,8 @@ import {
   entityIndexLaneVersion,
 } from '../world/livingWorldViews.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { counted } from '../core/numberFormat.js';
+
 
 export const LAW_SECURITY_VERSION = 2;
 
@@ -2016,11 +2018,11 @@ export const lawSecurity = {
       this._reconcileWitnessChoice(incident);
     }
     if (dispatched.length) {
-      this._say('alert', `CONTROL: ${dispatched.length} patrol unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
+      this._say('alert', `CONTROL: ${counted(dispatched.length, 'patrol unit', 'patrol units')} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
       this._recordReceipt({
         incidentId: incident.id, cause: incident.cause, outcome: 'patrol_dispatched',
         attackerId: incident.attackerId, targetId: incident.victimId, stationId: incident.stationId,
-        text: `PATROL DISPATCHED — ${dispatched.length} unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`,
+        text: `PATROL DISPATCHED — ${counted(dispatched.length, 'unit', 'units')} intercepting the aggressor.`,
       });
     } else {
       this._say('alert', 'CONTROL: no patrol in range. Distress remains active.', `law:dispatch:none:${incident.id}`, incident.factionId);
@@ -2754,8 +2756,8 @@ export const lawSecurity = {
       targetId: null,
       stationId: jurisdiction.stationId,
       text: responders.length > 0
-        ? `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; ${responders.length} unit${responders.length === 1 ? '' : 's'} in range.`
-        : `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; no patrol in range.`,
+        ? `THEFT REPORTED — ${counted(witnesses.length, 'witness', 'witnesses')}; ${counted(responders.length, 'unit', 'units')} in range.`
+        : `THEFT REPORTED — ${counted(witnesses.length, 'witness', 'witnesses')}; no patrol in range.`,
     });
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_validated', {
@@ -3197,7 +3199,7 @@ export const lawSecurity = {
       attackerId: state.playerId,
       targetId: payload.id,
       stationId: receipt.stationId,
-      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${counted(witnessStableIds.length, 'witness', 'witnesses')} on record.`,
     });
     this._noteCrimeRestitution(victim, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
@@ -4692,7 +4694,7 @@ export const lawSecurity = {
       attackerId: state.playerId,
       targetId: report.victimEntityId,
       stationId: receipt.stationId,
-      text: `KILL ADJUDICATED — courier testimony filed at ${receipt.stationId || 'a lawful berth'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+      text: `KILL ADJUDICATED — courier testimony filed at ${receipt.stationId || 'a lawful berth'}; ${counted(witnessStableIds.length, 'witness', 'witnesses')} on record.`,
     });
     this._noteStoredRestitution(report, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
@@ -8502,7 +8504,7 @@ function publicMemorial(row, finderId) {
     namedParty: uncertain ? null : (row.namedParty ?? null),
     statement: uncertain
       ? `${name} was destroyed. Who did it was not seen.`
-      : `${name} was destroyed. ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'} on the record.`,
+      : `${name} was destroyed. ${counted(witnesses.length, 'witness', 'witnesses')} on the record.`,
     witnessEntityIds: witnesses.slice(),
     finderWasThere,
     foundBy: Array.isArray(row.foundBy) ? row.foundBy.slice() : [],

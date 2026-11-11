@@ -26,6 +26,7 @@ import {
   STARTER_FIELD_MACHINE,
   ALL_KILL_MACHINES,
   ALL_KILL_MACHINE_BY_ID,
+  MACHINERY_STORM_INTENSITY,
   PALLAS_REEF_FIELD,
   PALLAS_REEF_SECTOR_ID,
   PALLAS_REEF_SITE_ID,
@@ -503,6 +504,7 @@ export const environmentalMachinery = {
     if (inside !== this._metronomePlayerInside) {
       this._emitHazardBoundary(inside, HAZARD_TYPE, METRONOME_FIELD.id, METRONOME_POI_ID, undefined, {
         phase: 'sweep',
+        intensity: MACHINERY_STORM_INTENSITY.metronome,
         remainingS: inside ? 0
           : (player && player.pos ? metronomeBeamEtaAt(player.pos, simTime) : null),
       });
@@ -548,7 +550,8 @@ export const environmentalMachinery = {
     }
     this._metronomeRegistered = false;
     if (this._metronomePlayerInside) {
-      this._emitHazardBoundary(false, HAZARD_TYPE, METRONOME_FIELD.id, METRONOME_POI_ID, why);
+      this._emitHazardBoundary(false, HAZARD_TYPE, METRONOME_FIELD.id, METRONOME_POI_ID, why,
+        { intensity: MACHINERY_STORM_INTENSITY.metronome });
       this._metronomePlayerInside = false;
     }
   },
@@ -889,7 +892,8 @@ export const environmentalMachinery = {
       if (keep.has(machine.id)) continue;
       this._removeKillMachineFields(machine);
       if (this._killPlayerInside.has(machine.id)) {
-        this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, 'wrong_sector');
+        this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, 'wrong_sector',
+          { intensity: MACHINERY_STORM_INTENSITY.killMachine });
         this._killPlayerInside.delete(machine.id);
       }
       this._mouthIds.delete(machine.id);
@@ -1114,6 +1118,7 @@ export const environmentalMachinery = {
     if (watching === this._aperturePlayerInside) return;
     this._aperturePlayerInside = watching;
     this._emitHazardBoundary(watching, HAZARD_TYPE, APERTURE_ID, APERTURE_ID, undefined, {
+      intensity: MACHINERY_STORM_INTENSITY.aperture,
       remainingS: phase.remainingS,
       phase: phase.phase,
     });
@@ -1412,7 +1417,8 @@ export const environmentalMachinery = {
       && pointInsidePallasReef(player.pos));
     if (inside === this._reefPlayerInside) return;
     this._reefPlayerInside = inside;
-    this._emitHazardBoundary(inside, HAZARD_TYPE, PALLAS_REEF_FIELD.id, PALLAS_REEF_SITE_ID);
+    this._emitHazardBoundary(inside, HAZARD_TYPE, PALLAS_REEF_FIELD.id, PALLAS_REEF_SITE_ID, undefined,
+      { intensity: MACHINERY_STORM_INTENSITY.pallasReef });
   },
 
   _upsertField(phase) {
@@ -1521,7 +1527,8 @@ export const environmentalMachinery = {
       && pointInsideCinderSluice(player.pos));
     if (inside === this._playerInside) return;
     this._playerInside = inside;
-    this._emitHazardBoundary(inside, HAZARD_TYPE, CINDER_SLUICE_FIELD.id, CINDER_SLUICE_SITE_ID);
+    this._emitHazardBoundary(inside, HAZARD_TYPE, CINDER_SLUICE_FIELD.id, CINDER_SLUICE_SITE_ID, undefined,
+      { intensity: MACHINERY_STORM_INTENSITY.cinderSluice });
   },
 
   _updateKillMachinePlayerBoundary(state, machine, player, fieldActive) {
@@ -1531,22 +1538,35 @@ export const environmentalMachinery = {
     if (inside === wasInside) return;
     if (inside) this._killPlayerInside.add(machine.id);
     else this._killPlayerInside.delete(machine.id);
-    this._emitHazardBoundary(inside, machine.hazardType, machine.id, machine.id);
+    this._emitHazardBoundary(inside, machine.hazardType, machine.id, machine.id, undefined,
+      { intensity: MACHINERY_STORM_INTENSITY.killMachine });
   },
 
+  // Every boundary this adapter measures is the player's hull: each _update*PlayerBoundary
+  // caller resolves state.playerId and tests that hull against the field, and the shutdown /
+  // sector-exit clears only fire when the player was inside. Name the hull on the receipt —
+  // the picture's storm read (vfx, resolveStormCrossingBeat / resolveStormDepartureBeat) and
+  // the HUD pill guard both drop an anonymous receipt as "not mine", which is exactly how a
+  // machine's kill field used to stay silent on the hull while the identical chart storm
+  // spoke. `intensity` is the family's authored severity (MACHINERY_STORM_INTENSITY) so the
+  // field edge and its charted approach circle read as one storm, never a downgrade.
   _emitHazardBoundary(inside, zoneType, zoneId, siteId, why, extras) {
     if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const entityId = this.state && this.state.playerId != null ? this.state.playerId : null;
+    const intensity = extras && Number.isFinite(extras.intensity) ? extras.intensity : null;
     if (inside) {
       this.bus.emit('hazard:enter', {
+        entityId,
         zoneType,
         zoneId,
         siteId,
+        intensity,
         remainingS: extras && Number.isFinite(extras.remainingS) ? extras.remainingS : null,
         phase: extras && extras.phase ? extras.phase : null,
       });
       return;
     }
-    this.bus.emit('hazard:exit', { zoneType, zoneId, siteId, why });
+    this.bus.emit('hazard:exit', { entityId, zoneType, zoneId, siteId, why, intensity });
   },
 
   _publishPhaseTransition(phase) {
@@ -1603,7 +1623,8 @@ export const environmentalMachinery = {
   _clearCinder(why) {
     this._removeField();
     if (this._playerInside) {
-      this._emitHazardBoundary(false, HAZARD_TYPE, CINDER_SLUICE_FIELD.id, CINDER_SLUICE_SITE_ID, why);
+      this._emitHazardBoundary(false, HAZARD_TYPE, CINDER_SLUICE_FIELD.id, CINDER_SLUICE_SITE_ID, why,
+        { intensity: MACHINERY_STORM_INTENSITY.cinderSluice });
     }
     this._playerInside = false;
     this._lastPhase = null;
@@ -1615,7 +1636,8 @@ export const environmentalMachinery = {
     for (const machine of ALL_KILL_MACHINES) {
       this._removeKillMachineFields(machine);
       if (this._killPlayerInside.has(machine.id)) {
-        this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, why);
+        this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, why,
+          { intensity: MACHINERY_STORM_INTENSITY.killMachine });
       }
     }
     this._killPlayerInside.clear();
@@ -1628,7 +1650,8 @@ export const environmentalMachinery = {
     this._removeApertureFields();
     this._releaseAperturePlug();
     if (this._aperturePlayerInside) {
-      this._emitHazardBoundary(false, HAZARD_TYPE, APERTURE_ID, APERTURE_ID, why);
+      this._emitHazardBoundary(false, HAZARD_TYPE, APERTURE_ID, APERTURE_ID, why,
+        { intensity: MACHINERY_STORM_INTENSITY.aperture });
     }
     this._aperturePlayerInside = false;
     this._apertureJammedAtS = null;
@@ -1638,7 +1661,8 @@ export const environmentalMachinery = {
   _clearReef(why) {
     this._removeReefField();
     if (this._reefPlayerInside) {
-      this._emitHazardBoundary(false, HAZARD_TYPE, PALLAS_REEF_FIELD.id, PALLAS_REEF_SITE_ID, why);
+      this._emitHazardBoundary(false, HAZARD_TYPE, PALLAS_REEF_FIELD.id, PALLAS_REEF_SITE_ID, why,
+        { intensity: MACHINERY_STORM_INTENSITY.pallasReef });
     }
     this._reefPlayerInside = false;
     this._reefEnsured = false;
@@ -1841,6 +1865,7 @@ export const environmentalMachinery = {
     if (inside) this._weatherPlayerInside.add(volume.id);
     else this._weatherPlayerInside.delete(volume.id);
     this._emitHazardBoundary(inside, volume.hazardType, volume.id, volume.id, undefined, {
+      intensity: MACHINERY_STORM_INTENSITY.weather,
       remainingS: phase.remainingS,
       phase: phase.phase,
     });
@@ -1850,7 +1875,8 @@ export const environmentalMachinery = {
     for (const volume of ALL_WEATHER_VOLUMES) {
       this._removeWeatherField(volume);
       if (this._weatherPlayerInside.has(volume.id)) {
-        this._emitHazardBoundary(false, volume.hazardType, volume.id, volume.id, why);
+        this._emitHazardBoundary(false, volume.hazardType, volume.id, volume.id, why,
+          { intensity: MACHINERY_STORM_INTENSITY.weather });
       }
     }
     this._weatherPlayerInside.clear();
