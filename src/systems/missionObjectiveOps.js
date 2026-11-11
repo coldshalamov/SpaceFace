@@ -1,3 +1,4 @@
+import { registryWritContact, registryWritCustody, registryWritForce } from '../missions/registryWrit.js';
 import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
@@ -281,6 +282,7 @@ export const missionObjectiveOps = {
       if (!starterRamKill(p)) return;
     }
     if (m.storyTag === CONTRACT_47A_B2_TAG) {
+      if (!registryWritForce(this.state, m, p)) return;
       this._resolveContract47aB2(m, i, 'force', p.id);
       return;
     }
@@ -1245,13 +1247,9 @@ export const missionObjectiveOps = {
       && mission.type === 'bounty_hunt'
     ));
     if (!m || m.params && m.params.investigationStage === 'identified') return false;
-    if (this.state.world.currentSectorId !== m.destSectorId) return false;
     const selectedId = p && p.targetId != null ? p.targetId : this.state.player && this.state.player.targetId;
-    if (selectedId == null || !m.targetEntityIds.includes(selectedId)) return false;
-    const target = this.state.entities.get(selectedId);
-    const player = this.state.entities.get(this.state.playerId);
-    if (!target || target.alive === false || !target.pos || !player || !player.pos) return false;
-    if (distSq(target.pos, player.pos) > CONTRACT_47A_B2_SCAN_RADIUS_WU * CONTRACT_47A_B2_SCAN_RADIUS_WU) return false;
+    const contact = registryWritContact(this.state, m, selectedId);
+    if (!contact || contact.distance > CONTRACT_47A_B2_SCAN_RADIUS_WU) return false;
 
     m.params = m.params || {};
     m.params.investigationStage = 'identified';
@@ -1264,19 +1262,16 @@ export const missionObjectiveOps = {
     }, this.state.simTime || 0);
     this._refreshTrackedMissionNav(m);
     this.bus.emit('mission:updated', { missionId: m.id, investigationStage: 'identified' });
-    this._sayStoryLine('Registry match: civilian maintenance vessel. Choose your response.', 6);
+    this._sayStoryLine('Registry match: civilian maintenance vessel. For custody, keep the living vessel on your Line within 60 WU and reel. Force remains a choice.', 10);
     return true;
   },
 
   _onContract47aB2TetherReel(p) {
     if (!p || p.actorId !== this.state.playerId || p.targetId == null) return false;
-    const after = Number(p.after);
-    if (!Number.isFinite(after) || after > CONTRACT_47A_B2_CUSTODY_REEL_WU) return false;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG || m.type !== 'bounty_hunt') continue;
-      if (!m.targetEntityIds.includes(p.targetId)) continue;
-      if (!m.params || m.params.investigationStage !== 'identified') return false;
+      if (!registryWritCustody(this.state, m, p, CONTRACT_47A_B2_CUSTODY_REEL_WU)) continue;
       this._resolveContract47aB2(m, i, 'custody', p.targetId);
       return true;
     }

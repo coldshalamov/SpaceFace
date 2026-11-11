@@ -1104,6 +1104,17 @@ export const missionStoryOps = {
     const follow = m.params && m.params.poiSignalFollowup;
     const world = this.registry && this.registry.get && this.registry.get('world');
     const targetIds = new Set(m.targetEntityIds || []);
+    // Custody retires the mission's world slot, not its witness's life. Use the existing
+    // terminal 'defeated' latch (save-normalized and never rematerialized), with explicit
+    // custody provenance in the record's preserved extra. No kill event or wreck is made.
+    const registryCustody = m.status === 'completed' && m.storyTag === 'campaign47a:b2:elroy'
+      && m.type === 'bounty_hunt' && m.storyTarget?.id === 'npc_elroy'
+      && m.storyTarget?.role === 'register_mark' && m.params?.investigationOutcome === 'custody';
+    const retirementOutcome = registryCustody ? 'defeated' : 'destroyed';
+    const noteCustody = (rec) => {
+      if (registryCustody && rec) rec.extra = { ...(rec.extra || {}),
+        custodyOutcome: 'registry_custody', custodyMissionId: m.id };
+    };
     if (follow) {
       // O(1) holder arm under a proven single count — the walk predicate pins the same
       // recordId plus living-actor membership, so a counted unique holder is the only
@@ -1192,19 +1203,28 @@ export const missionStoryOps = {
       if (sharedIds.has(id)) continue; // another live contract still owns this subject
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
-        if (this._handoffFleeingTarget(e)) {
+        if (!registryCustody && this._handoffFleeingTarget(e)) {
           if (e.data.worldRecordId != null) releasedRecordIds.add(e.data.worldRecordId);
           const budget = this.helpers && this.helpers.spawnBudget;
           if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
           continue;
         }
+        // Fresh mission targets can carry durable identity before save/demotion has made
+        // their first record. Capture through the world owner while the witness is still
+        // live, then apply the same canonical terminal custody disposition below.
+        if (registryCustody && e.data?.worldRecordId != null
+          && !sharedRecordIds.has(e.data.worldRecordId)
+          && !this.state.world?.records?.byId?.[e.data.worldRecordId]
+          && typeof world?.upsertWorldRecord === 'function') {
+          world.upsertWorldRecord(e);
+        }
         e.alive = false; // swept end-of-step
         // A silent sweep must retire durable memory too, or re-entry resurrects the target.
         if (e.data && e.data.worldRecordId != null && !sharedRecordIds.has(e.data.worldRecordId)
           && world && typeof world.markWorldRecordDestroyed === 'function') {
-          world.markWorldRecordDestroyed(e.data.worldRecordId, {
-            outcome: 'destroyed', reason: 'mission_settled',
-          });
+          noteCustody(world.markWorldRecordDestroyed(e.data.worldRecordId, {
+            outcome: retirementOutcome, reason: registryCustody ? 'registry_custody' : 'mission_settled',
+          }));
         }
         const budget = this.helpers && this.helpers.spawnBudget;
         if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
@@ -1219,10 +1239,11 @@ export const missionStoryOps = {
         rec.missionTag = null;
         if (rec.kind === 'mission_target') rec.kind = 'npc';
       } else if (world && typeof world.markWorldRecordDestroyed === 'function') {
-        world.markWorldRecordDestroyed(rec.recordId, { outcome: 'destroyed', reason: 'mission_settled' });
+        noteCustody(world.markWorldRecordDestroyed(rec.recordId, { outcome: retirementOutcome, reason: registryCustody ? 'registry_custody' : 'mission_settled' }));
       } else {
         rec.alive = false;
-        rec.outcome = 'destroyed';
+        rec.outcome = retirementOutcome;
+        noteCustody(rec);
       }
     }
     m.targetEntityIds = [];
@@ -2725,7 +2746,8 @@ export const missionStoryOps = {
       legacy: campaign47aRouteKind(this.state) === 'legacy',
     });
     if (!offer || !offer.stationId) return false;
-    if (authoredCinderRoute(offer) && departedStationId !== offer.stationId) return false;
+    const registryOffer = offer.storyTag === 'campaign47a:b2:elroy' && offer.type === 'bounty_hunt';
+    if ((authoredCinderRoute(offer) || registryOffer) && departedStationId !== offer.stationId) return false;
     const board = this.ensureBoard(offer.stationId);
     const row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
     if (!row) return false;

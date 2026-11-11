@@ -79,7 +79,7 @@ export function registryContactReadout(m) {
     return {
       objective: 'Registry identified — choose custody or force',
       where,
-      next: 'Civilian maintenance vessel. For custody, tether Elroy and reel to 60 WU or less; or destroy the vessel to resolve by force.',
+      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 WU and reel the Line to 60 WU or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
     };
   }
   if (p.investigationStage != null) return null;

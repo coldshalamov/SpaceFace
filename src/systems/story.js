@@ -710,7 +710,7 @@ export const story = {
   // =========================================================================================
   // B2 — FIRST BLOOD (Elroy): the civilian tag flicker.
   // =========================================================================================
-  _onElroyResolved({ entityId }) {
+  _onElroyResolved({ entityId, outcome }) {
     const s = this.state && this.state.story;
     if (!s) return;
     s.flags = s.flags || {};
@@ -728,7 +728,9 @@ export const story = {
     this._fireComms({
       id: 'elroy_after_action_seal',
       sender: 'AFTER-ACTION / LOGISTICS OVERSIGHT',
-      text: 'CASE FILE SEALED — LOGISTICS OVERSIGHT — REF 44-C.',
+      text: outcome === 'custody'
+        ? 'CUSTODY FILE — LIVING WITNESS SECURED. REGISTRY DISCREPANCY PRESERVED — REF 44-C.'
+        : 'CASE FILE SEALED — LOGISTICS OVERSIGHT — REF 44-C.',
       category: 'story',
       ttl: 8,
       persist: false,
