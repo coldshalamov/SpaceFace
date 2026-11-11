@@ -287,7 +287,7 @@
   "src/ui/screenMemory.js": "e98d531c00ab00da32cfa5b8203324ebae91c7beb561da6e7f8e5deff728fc20",
   "src/ui/screens/achievements.js": "e49d74f5576ddbbd5fc0b6e923dbe03db746ca855e052d557597e1721de38961",
   "src/ui/screens/automationPanel.js": "cad543eef11343e5620407ab0afb885c46cf89de266298d3b2ffcd0dca5a5ec8",
-  "src/ui/screens/base.js": "3d9af171b9746e1424f1d3dd4b942ae7b8c118ffbed013ffcb5eae008214eab5",
+  "src/ui/screens/base.js": "a421dde878d91cf028d4825c171e3c0c66a89574f4af69466fa9aa4593992a9d",
   "src/ui/screens/clipExport.js": "1d68dce0572da66a55e37edef757ca92ed6e9601d5e2dd13ced8439f143b2cec",
   "src/ui/screens/clips.js": "dcd27e0cad98096c73334435157e4dcbc76c0c920575647763f85cfa7a761195",
   "src/ui/screens/codex.js": "8975e6de0a5f92c610ae80a34bee6dd96bc45ab6dab37717de857a9c6c9568c7",

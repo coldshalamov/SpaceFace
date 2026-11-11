@@ -45,7 +45,9 @@ function injectStyle() {
     var(--dp-glass);
   -webkit-backdrop-filter:blur(18px) saturate(1.15);
   backdrop-filter:blur(18px) saturate(1.15);
-  border:0; border-radius:0; box-shadow:none;
+  /* one hairline card edge (bone ~24%, radius 10) in place of the four corner brackets, which sat
+     inside the padding and crossed the title on short and phone frames */
+  border:1px solid rgb(var(--orr-bone) / .24); border-radius:10px; box-shadow:none;
   padding:0; min-width:0; max-width:min(94vw, 1120px);
   gap:0; overflow:hidden; isolation:isolate; z-index:101;
   -webkit-mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
@@ -67,19 +69,7 @@ function injectStyle() {
 }
 html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-empty,
 html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { animation:none; }
-#screens .screen.sf-menu.orr-base.orr-base::before {
-  content:""; display:block; position:absolute; inset:36px; z-index:2; pointer-events:none;
-  background:
-    linear-gradient(to right, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left top / 20px 1.5px,
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left top / 1.5px 20px,
-    linear-gradient(to left, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right top / 20px 1.5px,
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right top / 1.5px 20px,
-    linear-gradient(to right, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left bottom / 20px 1.5px,
-    linear-gradient(to top, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left bottom / 1.5px 20px,
-    linear-gradient(to left, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right bottom / 20px 1.5px,
-    linear-gradient(to top, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right bottom / 1.5px 20px;
-  background-repeat:no-repeat;
-}
+#screens .screen.sf-menu.orr-base.orr-base::before { content:none; display:none; }
 #screens .screen.sf-menu.orr-base.orr-base > canvas.orr-base__lattice {
   position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;
 }
@@ -560,7 +550,6 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
    description to one word per line; they stack. The foot drops the Esc keycap (touch) so Close and
    Dispatch sit on one line, and the plate gives back its 44px gutters. */
 @media (max-width:560px) {
-  #screens .screen.sf-menu.orr-base.orr-base::before { inset:12px; }
   #screens .orr-base #sf-base { padding:34px 24px 28px; gap:10px; }
   #screens .orr-base.is-claimed #sf-base .base-title { font-size:28px; }
   #screens .orr-base #sf-base .orr-base__moon { display:none; }
