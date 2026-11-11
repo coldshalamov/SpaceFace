@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-line-shield-bite",
-      "date": "2026-11-04",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Latching a shielded hull bites the membrane at hit parity, a strained line keeps the lattice lit while it carries the load, and a break lands one last bite",
-      "fingerprint": "verb=answer,subject=shield-membrane,sector=tether-duel,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "e5f677b2d8d8",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-pa-market-desk",
       "date": "2026-11-04",
       "wf": "WF-13",
@@ -1715,6 +1702,22 @@
       "evidence": ".devshots/fleet/runs/PLANT-NEXT.flash.2026-11-11T03-09-11/RECEIPT.md",
       "kind": "plant",
       "player": "Passing civilians slow down and look at wrecks for twenty seconds until shooed away, and a scavenger arrives."
+    },
+    {
+      "id": "PL-01",
+      "date": "2026-11-11",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "PL-01 plant: near miss within ship-length swerves, flashes lamps, barks, and reports on third pass",
+      "fingerprint": "verb=swerve,subject=near-miss-civilian,sector=lanes,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "894706179784",
+      "verification": "focused_green",
+      "evidence": ".devshots/fleet/runs/PLANT-NEXT.flash.2026-11-11T03-43-44/RECEIPT.md",
+      "kind": "plant",
+      "player": "Passing a civilian ship within a ship-length at speed makes them swerve, flash lamps, and say Lane's not yours, pal!, and the third pass reports you."
     }
   ],
   "knownDefects": [
