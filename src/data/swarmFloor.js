@@ -1,4 +1,4 @@
-// A01-04 — the Foundry floor's buyable pads (arena helios_core, Lane 2).
+// A01-04/A01-05 — the Foundry floor's buyable pads (arena helios_core, Lane 2).
 //
 // 12_SWARM_THE_PIT: the player spends mid-round BY FLYING THROUGH things in the room — kills
 // pay Scrap, and the floor carries the places that spend it while the fight is still on. Every
@@ -9,6 +9,11 @@
 //   * CONCUSSION CANNON in the northeast corner between the bank plates — 500
 //   * THE CRATE, a movable pad that sells a random compatible gun — 950; after three pulls it
 //     lifts off and settles at one of three authored spots, never the same one twice in a row.
+//   * THE FORGE on the north wall behind the furnace — 5000: upgrades the gun you hold,
+//     once per gun per run.
+//   * Two TAPS mid-floor, west and east — run-long modifiers at stepping prices; the pair
+//     shares one four-purchase till for the run. Casting Hall and Scrap Yard taps are
+//     deferred until those doors exist.
 //
 // Coordinates are offsets from the room anchor (`at` in the install frame — the arena follows
 // the player, so an offset is the same spot in the room no matter where the fight re-anchors).
@@ -48,10 +53,14 @@ export function wallGunLabel(name, price = SWARM_FLOOR_WALL_GUN_PRICE) {
 
 export const SWARM_FLOOR_CRATE_LABEL = `THE CRATE · ${SWARM_FLOOR_CRATE_PRICE}`;
 
+/** The Forge reads bigger than a gun pad: it is a furnace-side anvil, not a floor plate. */
+export const SWARM_FLOOR_FORGE_RADIUS = 16;
+
 /**
  * Authored pad layout per arena. Each wall gun fixes its defId and its spot; the Crate owns a
- * spot list its pad hops between. `swarmFloorPlanFor` is the only reader — arenas without a row
- * mount nothing.
+ * spot list its pad hops between; the Forge and the two Taps fix their kind and their spots —
+ * what a tap sells is rolled per round, never authored here. `swarmFloorPlanFor` is the only
+ * reader — arenas without a row mount nothing.
  */
 export const SWARM_FLOOR_PLANS = Object.freeze({
   helios_core: Object.freeze({
@@ -63,6 +72,14 @@ export const SWARM_FLOOR_PLANS = Object.freeze({
       Object.freeze({ dx: 190, dz: 90 }),
       Object.freeze({ dx: -220, dz: -140 }),
       Object.freeze({ dx: 20, dz: 230 }),
+    ]),
+    // A01-05 — the Forge sits on the north wall, behind the furnace from the south-gate
+    // approach; the two Taps stand mid-floor flanking the fight line, ≥80 WU clear of the
+    // freight lane's centreline just like the Crate spots.
+    forge: Object.freeze({ id: 'foundry-forge', dx: 0, dz: -300 }),
+    taps: Object.freeze([
+      Object.freeze({ id: 'foundry-tap-west', dx: -300, dz: 110 }),
+      Object.freeze({ id: 'foundry-tap-east', dx: 300, dz: 110 }),
     ]),
   }),
 });

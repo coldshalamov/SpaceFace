@@ -142,6 +142,7 @@ import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
+import { createStage } from './stage.js';
 import { createWatchlistHud } from './watchlistHud.js';
 import { createGlobalFind } from './globalFind.js';
 import { createDiscoveryPlate } from './discoveryPlate.js';
@@ -645,6 +646,8 @@ export const ui = {
     this._screenRegistrationCycle = null;
     this.toasts?.destroy?.();
     this.toasts = null;
+    this.stage?.destroy?.();
+    this.stage = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
@@ -708,6 +711,12 @@ export const ui = {
     if (typeof this._confirmBusOff === 'function') { try { this._confirmBusOff(); } catch (_) {} }
     this._confirmBusOff = bindConfirmBus(this.bus);
 
+    // EC-G16 "one glass" (packet G16-01): the Stage owns the four transient popup slots — the
+    // centre dialog (#modal-backdrop + #screens), the top banner (#alerts), the receipt feed
+    // (#toasts) and the prompt deck. Built before the hosts so each mounts inside its named
+    // slot; whatever is shown through stage.show() queues instead of overlapping.
+    this.stage = createStage(ctx);
+    ctx.stage = this.stage;
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
     // PQ-183.01 the watch list: pinned readings render inside the receipts lane (#toasts), above
@@ -2221,6 +2230,8 @@ export const ui = {
     this.worldObject = null;
     this.toasts?.destroy?.();
     this.toasts = null;
+    this.stage?.destroy?.();
+    this.stage = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();

@@ -233,18 +233,18 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
   const expected = {
     // DEFAULT_BLOOM_STRENGTH 0.40 (owner 2026-10-27 bloom discipline) x each profile's scale (1.0 for
     // every sector since 2026-11-11: identity shapes light, not extra bloom; no threshold bias).
-    helios_core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.09 },
-    core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.06 },
-    belt: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.04 },
-    fringe: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.03 },
-    anomaly: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.04 },
-    tethys: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.02 },
+    helios_core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.02 },
+    core: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.99 },
+    belt: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    fringe: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    anomaly: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    tethys: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
     // Per-sector rigs inherit their palette family's post block.
-    ceres_belt: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.04 },
-    vesta_forge: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.04 },
-    pallas_drift: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.03 },
-    sker_haven: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1.03 },
-    viscera: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 1 },
+    ceres_belt: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    vesta_forge: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.97 },
+    pallas_drift: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    sker_haven: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.96 },
+    viscera: { bloomStrength: 0.40, bloomThreshold: 1.00, exposure: 0.94 },
   };
 
   assert.equal(DEFAULT_BLOOM_STRENGTH, 0.40);

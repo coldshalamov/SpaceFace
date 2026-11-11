@@ -362,10 +362,20 @@ export function createDamageRouter(context, statusService, options = {}) {
     }
 
     const damageReduction = structural ? 1 : clamp(Number(target.data && target.data.derived && target.data.derived.damageReductionMult) || 1, 0, 1);
+    // A01-05 Bumper Rails take: collision-family hits on a hull carrying the run's own
+    // ram-taken stamp pay at the ledger's rate. The stamp lives on the player's mutable
+    // swarmMods bag (the derived descriptor is frozen); read where the general
+    // reduction reads — one clamp, no second packet path.
+    const srcKind = packet && packet.source && packet.source.kind;
+    const collisionFamily = (origin && origin.kind === 'collision')
+      || (typeof srcKind === 'string' && (srcKind.startsWith('collision') || srcKind === 'ram_plate'));
+    const ramTaken = collisionFamily && !structural
+      ? clamp(Number(target.data && target.data.swarmMods && target.data.swarmMods.ramDamageTakenMult) || 1, 0, 1)
+      : 1;
     let hullDamage = 0;
     const hullByChannel = emptyChannels(model.channelOrder);
     for (const channel of model.channelOrder) {
-      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction;
+      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken;
       hullByChannel[channel] = applied;
       hullDamage += applied;
     }
