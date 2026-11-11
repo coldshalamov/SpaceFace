@@ -26,6 +26,8 @@ import {
   bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse, bombInteractionState,
 } from '../combat/bombDynamics.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { counted } from '../core/numberFormat.js';
+
 
 export const BOMB_TYPE = 'bomb';
 export const BOMB_SHOVE_CAP = 8;
@@ -929,7 +931,7 @@ export const bombs = {
       moved += move;
     }
     this.bus.emit('economy:chargeCredits', { amount: BOMB_RACK.restockFeeCr, reason: 'service:ordnance_restock' });
-    this._rackChanged(`Rack restocked — ${moved} unit${moved === 1 ? '' : 's'} loaded, ${BOMB_RACK.restockFeeCr} cr yard fee.`);
+    this._rackChanged(`Rack restocked — ${counted(moved, 'unit', 'units')} loaded, ${BOMB_RACK.restockFeeCr} cr yard fee.`);
     return true;
   },
 
@@ -1017,7 +1019,7 @@ export const bombs = {
       rec.consumed = true;
       this._rackChanged(
         plan.roundsLoaded > 0
-          ? `Rack prepared — ${plan.roundsLoaded} unit${plan.roundsLoaded === 1 ? '' : 's'} loaded, ${plan.totalCost} cr.`
+          ? `Rack prepared — ${counted(plan.roundsLoaded, 'unit', 'units')} loaded, ${plan.totalCost} cr.`
           : `Rack prepared — ${plan.totalCost > 0 ? `${plan.totalCost} cr.` : 'no charge.'}`,
       );
       return true;

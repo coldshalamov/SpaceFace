@@ -6,6 +6,8 @@ import { hullEnvelopeWu } from '../../data/collisionProxyManifests.js';
 import { WORLD_SITE_MANIFESTS } from '../../data/worldSiteManifests.js';
 import { asteroidColliderRadius } from '../../data/asteroidColliders.js';
 import { forEachFieldRock } from '../../world/livingWorldViews.js';
+import { counted } from '../../core/numberFormat.js';
+
 
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 const now = state => Number.isFinite(state.simTime) ? state.simTime : 0;
@@ -306,7 +308,7 @@ export const shipbreakingYard = {
     actions.push({ id: 'work', label: 'WORK TICKET' }, { id: 'leave', label: 'BACK TO FLYING', cancel: true });
     const condition = Math.round(record.condition * 100);
     const status = TERMINAL_PARTS.has(record.status) ? record.status.toUpperCase()
-      : attached.length ? `${attached.length} live connection${attached.length === 1 ? '' : 's'}` : 'FREE · READY TO TOW';
+      : attached.length ? `${counted(attached.length, 'live connection', 'live connections')}` : 'FREE · READY TO TOW';
     const text = `${spec.label}: ${condition}% intact, ${yardPartValue(spec, record)} cr, ${spec.mass} mass. ${status}. `
       + (warnings.length ? warnings.join(' ') + ' ' : '')
       + (delivery && !delivery.ok ? WHY[delivery.reason] || delivery.reason : '')

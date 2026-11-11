@@ -47,6 +47,8 @@ import { quillCopyable, quillNextSecret, quillSecretAt, quillDriftHome } from '.
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { hash32 } from '../core/rng.js';
+import { counted } from '../core/numberFormat.js';
+
 
 // ── THE LEDGER ───────────────────────────────────────────────────────────────
 // `state.story.quillLedger` — a JSON-safe subtree this system owns outright (the
@@ -648,7 +650,7 @@ export function createQuill() {
       if (!this._deskHinted && held.length > 0) {
         this._deskHinted = true;
         this._say('quill_desk_open',
-          `The desk is open — ${held.length} page${held.length === 1 ? '' : 's'} held. My buyers take one at a time.`, 7);
+          `The desk is open — ${counted(held.length, 'page', 'pages')} held. My buyers take one at a time.`, 7);
       }
       if (now < ledger.quietUntil || now < ledger.nextSaleAt || held.length === 0) return;
       ledger.nextSaleAt = now + QUILL_DESK.cadenceS;

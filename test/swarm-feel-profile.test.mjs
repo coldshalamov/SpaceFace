@@ -195,8 +195,11 @@ test('Swarm field deploy registers the profile phase table and profile cooldown'
   });
   sysA._deployRadial(adventure, adventure.fields, 'well');
   const depA = Object.values(adventure.fields.deployed)[0];
-  assert.equal(depA.swarmFeelPhases, undefined, 'Adventure well keeps the authored law');
-  assert.equal(adventure.fields.cooldowns.well, adventure.simTime + FIELD_DEFS.well.cooldownS);
+  // EC-G18 one feel: Adventure's Pull is the same yank, on the same cooldown, as Swarm's.
+  assert.ok(depA.swarmFeelPhases, 'Adventure well deploys the one-feel phase table');
+  assert.equal(depA.swarmFeelPhases.punchS, SWARM_FEEL_PROFILE.pull.yankS);
+  assert.equal(adventure.fields.cooldowns.well, adventure.simTime + SWARM_FEEL_PROFILE.pull.cooldownS,
+    'Adventure pull recharges on the one-feel cooldown');
 });
 
 test('Swarm deployed phases: well yank� hold, repulsor punch� fading berm', () => {
@@ -297,7 +300,17 @@ test('contact owner: the bowling-pin bound only rises for projectile partners at
   const adventure = { entity: { id: 'adventure', data: {} }, _tumbling: false, expected: { vx: 0, vz: 0 } };
   owner.records.set('adventure', adventure);
   owner._stepContactReceipts = [{ aId: 'adventure', bId: 'thrower', preSolveClosingSpeed: 60 }];
-  assert.equal(owner._victimDvBound(adventure), 40, 'unstamped bodies keep the Adventure cap');
+  assert.equal(owner._victimDvBound(adventure), 40, 'unstamped non-ship bodies keep the plain cap');
+  // EC-G18 one feel: an Adventure ship (unstamped, type 'ship') takes the bowling-pin bound.
+  const adventureShip = { entity: { id: 'adventure-ship', type: 'ship', data: {} }, _tumbling: false, expected: { vx: 0, vz: 0 } };
+  owner.records.set('adventure-ship', adventureShip);
+  owner._stepContactReceipts = [{ aId: 'adventure-ship', bId: 'thrower', preSolveClosingSpeed: 60 }];
+  assert.equal(owner._victimDvBound(adventureShip), SWARM_FEEL_PROFILE.contact.impactTransferDv,
+    'an Adventure ship struck by a thrown body takes the full transfer bound');
+  const pilot = { entity: { id: 'pilot', type: 'ship', isPlayer: true, data: {} }, _tumbling: false, expected: { vx: 0, vz: 0 } };
+  owner.records.set('pilot', pilot);
+  owner._stepContactReceipts = [{ aId: 'pilot', bId: 'thrower', preSolveClosingSpeed: 60 }];
+  assert.equal(owner._victimDvBound(pilot), 40, 'the player keeps the plain cap');
 });
 
 test('every public starter kit kills fodder inside the profile budget', () => {
@@ -420,8 +433,12 @@ test('contact receipts keep the overlap cap until a stamped victim sees a real p
   receipt = capturePair(owner);
   assert.equal(receipt.impulse, 24 * 40, 'a tumbling partner still needs a real impact on the stamped victim');
   delete a.entity.data[SWARM_FEEL_STAMP];
+  a.entity.type = 'ship';
   receipt = capturePair(owner);
-  assert.equal(receipt.impulse, 24 * 160, 'unstamped bodies retain the old tumble-pair receipt semantics');
+  assert.equal(receipt.impulse, 24 * 40, 'EC-G18 one feel: an unstamped Adventure ship keeps the same projectile rule');
+  a.entity.type = 'asteroid';
+  receipt = capturePair(owner);
+  assert.equal(receipt.impulse, 24 * 160, 'unstamped non-ship bodies retain the old tumble-pair receipt semantics');
 });
 
 test('throw provenance ignores zero impulses and expires on the same tick in receipts and recovery', async (t) => {

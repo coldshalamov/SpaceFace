@@ -128,10 +128,12 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
   const api = runInNewContext(`let receiptPlacementMode = ${JSON.stringify(mode)};
     let receiptGeometryRects = new Map();
     let receiptGeometryReusable = false;
+    let receiptGeometryKeep = false;
     let flightTextObstacleSnapshotAt = -Infinity;
     let flightTextObstacleRetry = null;
     const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
     ${owners.join('\n')}; ${extraCode}; ({ freeOverlayBands, flushReceiptLane, placeReceiptLane, readReceiptRect,
+      contentInvalidate: () => { receiptGeometryKeep = true; receiptGeometryReusable = receiptGeometryRects !== null; receiptLanePlacementDirty = true; },
       placeCaptionInSafeSlot, ${owners.some(s => s.startsWith('function setReceiptPlacementMode')) ? 'setReceiptPlacementMode,' : ''}
       ${owners.some(s => s.startsWith('function setReceiptStyle')) ? 'setReceiptStyle,' : ''}
       ${externalOwner ? 'registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,' : ''}
@@ -180,6 +182,19 @@ test('actual geometry writes invalidate the whole settled stage; unchanged write
   fx.setReceiptStyle(fx.obstacle, 'top', '40px');
   fx.freeOverlayBands(fx.slot, 720, fx.layout);
   assert.equal(fx.reads.get('mission:rect'), 2);
+});
+
+test('a content change reuses settled obstacle geometry', () => {
+  const fx = fixture();
+  fx.flushReceiptLane(); // initial full measure
+  fx.contentInvalidate(); // content change: keep the measured map
+  fx.flushReceiptLane();
+  fx.resetMeasurements();
+  fx.contentInvalidate();
+  fx.flushReceiptLane();
+  assert.equal(fx.reads.get('mission:rect') || 0, 0, 'an unmoved obstacle is not re-read');
+  assert.equal(fx.reads.get('touch:rect') || 0, 0, 'the touch control is not re-read');
+  assert.ok(fx.reads.size > 0, 'the content flush still measures what it needs');
 });
 
 test('the next flush measures current mission/control geometry with no TTL or stale snapshot', () => {

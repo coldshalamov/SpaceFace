@@ -12,6 +12,8 @@ import { isSwarmGlass } from './swarmGlass.js';
 const QUEUE_MAX = 3;
 const RECEIPT_SPACING_MS = 3500;
 const QUIET_SPEED = 30;
+const MOMENT_TTL_S = 4;
+const MOMENT_EXIT_MS = 500;
 
 function humanizeId(value) {
   const s = String(value || '').replace(/[_:.-]+/g, ' ').trim();
@@ -28,11 +30,59 @@ export function createDiscoveryPlate(ctx) {
   const getState = typeof ctx === 'object' && ctx && ctx.state !== undefined
     ? () => ctx.state
     : (typeof ctx === 'function' ? ctx : () => null);
-  if (!bus || typeof bus.on !== 'function') return { tick() {}, push() {}, destroy() {} };
+  if (!bus || typeof bus.on !== 'function') return { tick() {}, push() {}, show() { return false; }, destroy() {} };
   const queue = [];
   const seen = new Set();
   let nextReceiptAt = 0;
   let destroyed = false;
+  let momentEl = null;
+  let momentOutAt = 0;
+  let momentRemoveAt = 0;
+
+  function removeMoment() {
+    if (momentEl && momentEl.parentNode) momentEl.parentNode.removeChild(momentEl);
+    momentEl = null;
+    momentOutAt = 0;
+    momentRemoveAt = 0;
+  }
+
+  // A moment plate (G19-01): the same .sf-discovery-plate surface the codex plates were drawn
+  // with, shown right now for rec.ttlS seconds rather than queued behind the quiet-flight gate.
+  // rec = { title, lines?: string[], ttlS?: seconds }. Returns false where there is no DOM.
+  function show(rec) {
+    const doc = typeof document !== 'undefined' ? document : null;
+    if (destroyed || !doc || typeof doc.createElement !== 'function' || !rec || !rec.title) return false;
+    const host = doc.getElementById ? (doc.getElementById('hud') || doc.body) : doc.body;
+    if (!host || typeof host.appendChild !== 'function') return false;
+    removeMoment();
+    const el = doc.createElement('div');
+    el.className = 'sf-discovery-plate';
+    const frame = doc.createElement('div');
+    frame.className = 'sf-discovery-plate__frame';
+    frame.setAttribute('role', 'status');
+    const title = doc.createElement('div');
+    title.className = 'sf-discovery-plate__title';
+    title.textContent = rec.title;
+    frame.appendChild(title);
+    for (const line of Array.isArray(rec.lines) ? rec.lines.slice(0, 3) : []) {
+      const meta = doc.createElement('div');
+      meta.className = 'sf-discovery-plate__meta';
+      meta.textContent = line;
+      frame.appendChild(meta);
+    }
+    el.appendChild(frame);
+    host.appendChild(el);
+    momentEl = el;
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => { if (momentEl === el) el.classList.add('sf-discovery-plate--in'); });
+    } else {
+      el.classList.add('sf-discovery-plate--in');
+    }
+    const ttlS = Number.isFinite(rec.ttlS) && rec.ttlS > 0 ? rec.ttlS : MOMENT_TTL_S;
+    momentOutAt = performance.now() + ttlS * 1000;
+    momentRemoveAt = momentOutAt + MOMENT_EXIT_MS;
+    return true;
+  }
 
   function push(rec) {
     if (destroyed || !rec || !rec.title) return;
@@ -120,10 +170,19 @@ export function createDiscoveryPlate(ctx) {
 
   return {
     push,
+    show,
     tick() {
+      const now = performance.now();
+      if (momentEl) {
+        if (now >= momentRemoveAt) removeMoment();
+        else if (now >= momentOutAt) {
+          momentEl.classList.remove('sf-discovery-plate--in');
+          momentEl.classList.add('sf-discovery-plate--out');
+          momentOutAt = Infinity;
+        }
+      }
       // Swarm glass (design/program/finish/swarm S2): no codex/discovery plates during a round.
       if (destroyed || !queue.length || isSwarmGlass(getState()) || !quietForDiscovery(getState())) return;
-      const now = performance.now();
       if (now < nextReceiptAt) return;
       const rec = queue[0];
       const text = `Discovery: ${rec.title} · saved to Codex`;
@@ -136,6 +195,7 @@ export function createDiscoveryPlate(ctx) {
       destroyed = true;
       for (const off of unsubs) if (typeof off === 'function') off();
       queue.length = 0;
+      removeMoment();
     },
   };
 }

@@ -47,7 +47,7 @@ import { buildRuudVisual } from './characters/ruudModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
-import { rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
+import { getReadyRockFamilies, rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -2470,6 +2470,16 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         spacefaceBareRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
       };
     }
+    // Non-common rocks built before their family maps decode keep the procedural tint/noise
+    // material. Tag them so the family-ready continuation can re-material them onto the decoded
+    // maps; without this an old rock sits on the poorer surface AND on a program the family
+    // warm never links, so its first draw pays the whole illustrated-surface link in flight.
+    if (!family && typeId !== 'ast_common_rock' && def.variant !== 'ice') {
+      material.userData = {
+        ...(material.userData || {}),
+        spacefaceFamilylessRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
+      };
+    }
     return commonSurface
       ? configureCommonRockPbr(material)
       : stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
@@ -2489,6 +2499,30 @@ export function upgradeBareRockMaterials(root) {
     if (!tag) return;
     const typeId = canonicalAstTypeId(tag.typeId);
     const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
+    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint, tag.variant);
+    if (next && next !== node.material) {
+      node.material = next;
+      count += 1;
+    }
+  });
+  return count;
+}
+
+/**
+ * Re-skin every non-common rock under `root` that was built before its generated family maps
+ * decoded. Unlike the bare common-rock path this also improves the picture: the procedural
+ * tint/noise material is replaced by the decoded base-colour/normal/emissive family.
+ */
+export function upgradeFamilylessRockMaterials(root) {
+  if (!root || typeof root.traverse !== 'function' || !getReadyRockFamilies()) return 0;
+  let count = 0;
+  root.traverse((node) => {
+    const tag = node && node.material && node.material.userData
+      && node.material.userData.spacefaceFamilylessRock;
+    if (!tag) return;
+    const typeId = canonicalAstTypeId(tag.typeId);
+    const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
+    if (!rockFamilyFor(def.variant)) return;
     const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint, tag.variant);
     if (next && next !== node.material) {
       node.material = next;
@@ -4308,7 +4342,7 @@ export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:h
  */
 export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:asteroid:') {
   const prefix = String(idPrefix || 'survival-roster-prewarm:asteroid:');
-  return Object.keys(AST_TYPE).map((typeId) => ({
+  const specs = Object.keys(AST_TYPE).map((typeId) => ({
     id: `${prefix}${typeId}`,
     type: 'asteroid',
     pos: { x: 0, y: 0, z: 0 },
@@ -4316,13 +4350,26 @@ export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:
     alive: true,
     data: { typeId },
   }));
+  // A tinted common rock takes the flat tint + noise branch instead of the packed common
+  // surface, so its program is not the untinted exemplar's. Warm one representative tint;
+  // the colour value is a uniform and every tint shares the same program.
+  specs.push({
+    id: `${prefix}ast_common_rock:tinted`,
+    type: 'asteroid',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 12,
+    alive: true,
+    data: { typeId: 'ast_common_rock', tint: '#ffffff' },
+  });
+  return specs;
 }
 
 /**
  * The shared leaf pair (displaced geometry + surface material) for one asteroid type and
  * displacement variant — the exact cached objects buildAsteroid hands to the live leaf mesh.
  * The pool warm binds these so a pre-created chunk is byte-identical to what real rocks
- * register with; tint only repaints the material color uniform, so untinted covers it.
+ * register with. A tint is a different material key and a different map set for common rock,
+ * so untinted does not cover a tinted sector rock; buildAsteroidLeafWarmGroup mounts one.
  */
 export function asteroidLeafResources(typeId, variantIdx) {
   const canonical = canonicalAstTypeId(typeId);
@@ -4448,6 +4495,18 @@ export function buildAsteroidLeafWarmGroup() {
       exemplar.userData.rosterPrewarmLeaf = `asteroid:${typeId}:full`;
       root.add(exemplar);
     }
+  }
+  // Sector-tinted common rocks deliberately skip the pooled common surface (flat tint + noise),
+  // so the untinted exemplars above do not link their program — the first tinted rock admitted
+  // in flight paid an illustrated-surface link (Asteroid_652/653/654). Tint is a colour uniform,
+  // not a program axis: one representative tinted exemplar covers every tint value.
+  const tintedCommon = buildAsteroid({
+    id: 'leafwarm:ast_common_rock:tinted', type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
+    radius: 12, alive: true, data: { typeId: 'ast_common_rock', tint: '#ffffff' },
+  });
+  if (tintedCommon) {
+    tintedCommon.userData.rosterPrewarmLeaf = 'asteroid:ast_common_rock:tinted';
+    root.add(tintedCommon);
   }
   return root;
 }
