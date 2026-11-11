@@ -1587,9 +1587,12 @@ export const mining = {
     // Fitted tractor modules publish magnetRange through derived (ships.getDerivedStats);
     // fall back to the legacy player.magnetRange knobs so labs/tests without fittings still work.
     const magnet = playerPickupMagnetRange(state, player);
+    // Swarm Magnet drop (src/systems/swarmDrops.js): while its window is open every ordinary
+    // pickup is inside the vacuum. Drops and repair cells keep the normal range.
+    const dropMagnet = swarmDropMagnetRange(state);
     // Generous scoop so scrap doesn't require golf-putting the nose onto a gem.
     const collectRadius = (player.radius || 6) + PICKUP_COLLECT_PAD;
-    const queryRadius = Math.max(magnet, collectRadius) + PICKUP_RADIUS;
+    const queryRadius = Math.max(magnet, dropMagnet, collectRadius) + PICKUP_RADIUS;
     const emptyPickupDomain = hasAuthoritativeEmptyPickupIndex(state);
     const pickups = emptyPickupDomain
       ? clearScratch(this._pickupScratch)
@@ -1657,12 +1660,13 @@ export const mining = {
       // the body still collects it, which is the theft the law owner already charges.
       const crewCut = e.type === 'pickup' && pickupData.npcMiningSource
         && typeof pickupData.npcMiningSource === 'object';
-      if (e.type === 'pickup' && !crewCut && (combatLoot ? !beatPending : dist <= magnet)) {
+      const reach = dropMagnet > magnet && !pickupData.swarmDrop && !pickupData.swarmRepair ? dropMagnet : magnet;
+      if (e.type === 'pickup' && !crewCut && (combatLoot ? !beatPending : dist <= reach)) {
         // Homing vacuum: inherit player velocity, then accelerate relative approach.
         // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
         // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
         const nx = dx / dist, nz = dz / dist;
-        const rangeT = clamp01(dist / Math.max(1, magnet));
+        const rangeT = clamp01(dist / Math.max(1, reach));
         const approach = MAGNET_APPROACH_MIN + (MAGNET_APPROACH_MAX - MAGNET_APPROACH_MIN) * rangeT;
         // Closer scrap rushes in harder so final scoop doesn't feel floaty.
         const closeBoost = dist < collectRadius * 2.5 ? 1.4 : 1;
@@ -3498,6 +3502,14 @@ function playerModSum(state, key) {
     if (Number.isFinite(value)) sum += value;
   }
   return sum;
+}
+
+/** Reach of the Swarm Magnet drop while its window is open (0 otherwise). Written by swarmDrops. */
+export const SWARM_DROP_MAGNET_RANGE = 6000;
+export function swarmDropMagnetRange(state) {
+  const until = state && state.swarmDropMagnetUntil;
+  return Number.isFinite(until) && Number.isFinite(state.simTime) && state.simTime < until
+    ? SWARM_DROP_MAGNET_RANGE : 0;
 }
 
 /**

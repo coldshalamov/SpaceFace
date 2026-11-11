@@ -12,6 +12,24 @@ export const SWARM_DROP_MAX_LIVE = 2;
 /** TTL in seconds before an unclaimed drop despawns */
 export const SWARM_DROP_TTL_S = 12;
 
+/** Timed effects (seconds). */
+export const SWARM_DROP_HEAVY_HANDS_S = 20;
+export const SWARM_DROP_DEAD_WEIGHT_S = 20;
+export const SWARM_DROP_DOUBLE_SCRAP_S = 30;
+export const SWARM_DROP_LOOSE_CANNON_S = 60;
+/** How long the Magnet's vacuum window stays open. */
+export const SWARM_DROP_MAGNET_S = 5;
+/** Big Bang's Shove radius: the Pit floor reaches about this far from the middle. */
+export const SWARM_DROP_ARENA_RADIUS = 1200;
+/** Dead Weight: a heavy keeps this fraction of its max hull taken off per touch (spec: 60 %). */
+export const SWARM_DROP_HEAVY_FRACTION = 0.6;
+/** Loose Cannon turret: weapon it fires, seconds between shots, reach. */
+export const SWARM_DROP_CANNON = Object.freeze({
+  weaponId: 'wpn_autocannon_s', intervalS: 0.5, range: 450, damage: 8,
+});
+/** Earnings reasons Double Scrap doubles (run:awardRequested.reason). Refunds, sell-backs and pacts are not earnings. */
+export const SWARM_DROP_EARNING_REASON = /^(chip_scooped|sweep:|brood$|style_stipend$|swarm:millOre$)/;
+
 /**
  * The eight drops: names, effects and lines exactly as specified.
  * Equal weights (1.0), with free_forge at 1/4 weight (0.25).

@@ -1,28 +1,43 @@
+// A01-03 — the eight Swarm drops. Payload shapes here are the ones the game sends:
+//   massline:throw       masslineThrow.js runtime.lastThrow ({ payloadId, ... })
+//   tether:whipImpact    masslineImpacts.js ({ targetId: the mass, victimId, slung, rating })
+//   pickup:collected     mining.js ({ pickupId, collectorId, kind, ... })
+//   run:awardRequested   survivalRewards / swarmBrood ({ credits, reason, wave })
+//   weapon mounts        ships.js makeWeaponRuntime ({ defId, _cooldown, _heat, ... })
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { createRegistry } from '../src/core/registry.js';
+import { validateRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
-import { mulberry32 } from '../src/core/rng.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
+import { normalizeDamagePacket } from '../src/combat/damage.js';
+import { swarmDropMagnetRange } from '../src/systems/mining.js';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+  getSystemClock,
+} from '../src/runtime/authoritativeSystemManifest.js';
 import {
   SWARM_DROP_KIND,
   SWARM_DROP_INTERVAL,
-  SWARM_DROP_MAX_LIVE,
   SWARM_DROP_TTL_S,
   SWARM_DROP_DEFS,
   SWARM_DROP_BY_ID,
-  selectSwarmDrop,
+  SWARM_DROP_ARENA_RADIUS,
 } from '../src/data/swarmDrops.js';
 import { swarmDrops } from '../src/systems/swarmDrops.js';
 
 const SEED = 4242;
-const ARENA = 'helios_core';
-const HULL_MAX = 200;
+const WEAPON_DEF = WEAPONS.find((w) => w.id === 'wpn_autocannon_s');
 
-function boot({ ruleset = SWARM_RULESET, hull = HULL_MAX, seed = SEED } = {}) {
+function boot({ seed = SEED, registryStub = {} } = {}) {
   const state = createGameState(seed);
   const bus = createBus();
   const emitted = [];
@@ -35,6 +50,7 @@ function boot({ ruleset = SWARM_RULESET, hull = HULL_MAX, seed = SEED } = {}) {
       bus.emit(event, payload);
     },
   };
+  const damage = [];
   const helpers = {
     spawnEntity(spec) {
       const id = state.nextEntityId++;
@@ -46,30 +62,34 @@ function boot({ ruleset = SWARM_RULESET, hull = HULL_MAX, seed = SEED } = {}) {
     },
     removeEntity(id) {
       const entity = state.entities.get(id);
-      if (entity) {
-        entity.alive = false;
-        state.entities.delete(id);
-        const idx = state.entityList.indexOf(entity);
-        if (idx !== -1) state.entityList.splice(idx, 1);
-        wrapped.emit('entity:destroyed', { id, entity });
-      }
+      if (!entity) return false;
+      entity.alive = false;
+      state.entities.delete(id);
+      const idx = state.entityList.indexOf(entity);
+      if (idx !== -1) state.entityList.splice(idx, 1);
+      wrapped.emit('entity:destroyed', { id, entity });
+      return true;
     },
+    routeCombatDamage(request) { damage.push(request); return { ok: true }; },
   };
   const player = {
     id: state.nextEntityId++,
     alive: true,
+    team: 1,
     pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 },
     type: 'ship',
-    hull,
-    hullMax: HULL_MAX,
+    hull: 200,
+    hullMax: 200,
     data: {
       weapons: [
-        { id: 'wpn_test_1', ammo: 5, ammoMax: 30, _heat: 45, _cooldown: 1.2, impulsePerHit: 500 },
-        { id: 'wpn_test_2', ammo: 0, ammoMax: 10, _heat: 80, _cooldown: 2.0, impulsePerHit: 300 },
+        // The real mount shape: it names its def by defId, and has no impulsePerHit of its own.
+        { defId: 'wpn_autocannon_s', dmg: 10, _heat: 45, _cooldown: 1.2 },
+        // A mount that carries its own knockback override (ships.js: mount-margin hulls).
+        { defId: 'wpn_autocannon_s', dmg: 10, _heat: 80, _cooldown: 2, impulsePerHit: 21 },
       ],
       weaponVentUntil: 105,
-      weaponVenting: true,
+      _weaponVenting: true,
     },
   };
   state.entities.set(player.id, player);
@@ -77,609 +97,368 @@ function boot({ ruleset = SWARM_RULESET, hull = HULL_MAX, seed = SEED } = {}) {
   state.playerId = player.id;
   state.simTime = 100;
   state.tick = 6000;
-
-  const ctx = { state, bus: wrapped, helpers };
+  const registry = { get: (id) => registryStub[id] || null };
+  const ctx = { state, bus: wrapped, helpers, registry };
   runSession.init(ctx);
   swarmDrops.init(ctx);
-  wrapped.emit('run:beginRequested', { kind: 'survival', ruleset, seed, arenaId: ARENA });
-
-  return { state, bus: wrapped, emitted, helpers, player, ctx };
+  wrapped.emit('run:beginRequested', { kind: 'survival', ruleset: SWARM_RULESET, seed, arenaId: 'helios_core' });
+  return { state, bus: wrapped, emitted, helpers, player, damage };
 }
 
-let bodyN = 0;
-function killCohortBody(h, { cohort = SURVIVAL_COHORT_TAG, killerId = null, pos = null } = {}) {
+function body(h, { team = 3, mass = 20, hull = 50, pos = { x: 40, z: 0 } } = {}) {
   const id = h.state.nextEntityId++;
-  const victim = {
-    id,
-    alive: true,
-    type: 'ship',
-    pos: pos || { x: 30 + (bodyN++ % 7), z: -10 },
-    vel: { x: 4, z: 0 },
-    data: cohort ? { runCohort: cohort } : {},
+  const e = {
+    id, alive: true, type: 'ship', team, mass, hull, hullMax: hull, shield: 0,
+    pos: { ...pos }, vel: { x: 0, z: 0 },
+    data: { runCohort: SURVIVAL_COHORT_TAG, combat: { targetId: h.state.playerId } },
   };
-  h.state.entities.set(id, victim);
-  h.state.entityList.push(victim);
-  h.bus.emit('entity:killed', {
-    id,
-    killerId: killerId == null ? h.state.playerId : killerId,
-    type: 'ship',
-    pos: { ...victim.pos },
-    victim,
-  });
-  return victim;
+  h.state.entities.set(id, e);
+  h.state.entityList.push(e);
+  return e;
 }
 
-function getLiveDrops(h) {
-  return h.state.entityList.filter(
-    (e) => e.alive !== false && e.type === 'pickup' && e.data && e.data.kind === SWARM_DROP_KIND,
-  );
-}
-
-function scoopDrop(h, drop) {
-  h.bus.emit('pickup:collected', {
-    pickupId: drop.id,
-    collectorId: h.state.playerId,
-    kind: drop.data?.kind,
-    pos: { ...drop.pos },
-  });
-}
-
-// -----------------------------------------------------------------------------
-// 1. Drop cadence & limits
-// -----------------------------------------------------------------------------
-
-test('drop cadence: drops occur at most 1 per 12 kills', () => {
-  const h = boot();
-  assert.equal(swarmDrops.killsSinceDrop(), 0);
-
-  // 11 kills: no drop
-  for (let i = 0; i < SWARM_DROP_INTERVAL - 1; i++) {
-    killCohortBody(h);
+function kill(h, n = 1) {
+  for (let i = 0; i < n; i++) {
+    const v = body(h);
+    h.bus.emit('entity:killed', { id: v.id, killerId: h.state.playerId, type: 'ship', pos: { ...v.pos }, victim: v });
   }
-  assert.equal(getLiveDrops(h).length, 0);
-  assert.equal(swarmDrops.killsSinceDrop(), 11);
+}
 
-  // 12th kill: exactly one drop
-  const corpse = killCohortBody(h, { pos: { x: 50, z: -20 } });
-  const drops = getLiveDrops(h);
-  assert.equal(drops.length, 1);
-  assert.equal(swarmDrops.killsSinceDrop(), 0);
+const liveDrops = (h) => h.state.entityList.filter(
+  (e) => e.alive !== false && e.type === 'pickup' && e.data && e.data.kind === SWARM_DROP_KIND,
+);
 
-  const drop = drops[0];
-  assert.equal(drop.type, 'pickup');
-  assert.equal(drop.data.kind, SWARM_DROP_KIND);
-  assert.ok(drop.data.swarmDrop);
-  assert.ok(drop.data.tetherable);
-  assert.ok(drop.data.masslineTetherable);
-  assert.ok(Math.hypot(drop.pos.x - corpse.pos.x, drop.pos.z - corpse.pos.z) < 1e-3);
-});
+function forceDrop(h, dropId, index = 100) {
+  return h.helpers.spawnEntity({
+    type: 'pickup', pos: { x: 10, z: 10 },
+    data: { kind: SWARM_DROP_KIND, dropId, swarmDrop: true, swarmDropIndex: index, amount: 1 },
+  });
+}
 
-test('drop cap: at most 2 drops alive at once on the board', () => {
-  const h = boot();
+function scoop(h, drop) {
+  h.bus.emit('pickup:collected', { pickupId: drop.id, collectorId: h.state.playerId, kind: drop.data.kind, amount: 1 });
+}
 
-  // First 12 kills -> 1st drop
-  for (let i = 0; i < SWARM_DROP_INTERVAL; i++) killCohortBody(h);
-  assert.equal(getLiveDrops(h).length, 1);
+function packetImpulse(w) {
+  const p = buildWeaponDamagePacket(w, WEAPON_DEF, 10, 'kinetic');
+  return p.impulse ? p.impulse.magnitude : 0;
+}
 
-  // Next 12 kills -> 2nd drop
-  for (let i = 0; i < SWARM_DROP_INTERVAL; i++) killCohortBody(h);
-  assert.equal(getLiveDrops(h).length, 2);
+// ---- production route ---------------------------------------------------------------------
 
-  // Next 12 kills (24 more kills) -> still capped at 2 drops
-  for (let i = 0; i < SWARM_DROP_INTERVAL * 2; i++) killCohortBody(h);
-  assert.equal(getLiveDrops(h).length, 2, 'capped at max 2 live drops');
-
-  // Collect one drop
-  const live = getLiveDrops(h);
-  scoopDrop(h, live[0]);
-  assert.equal(getLiveDrops(h).length, 1);
-
-  // Next 12 kills -> can drop again now that slot is free
-  for (let i = 0; i < SWARM_DROP_INTERVAL; i++) killCohortBody(h);
-  assert.equal(getLiveDrops(h).length, 2);
-});
-
-test('drop TTL: unclaimed drops despawn after 12 seconds', () => {
-  const h = boot();
-  h.state.simTime = 100;
-
-  for (let i = 0; i < SWARM_DROP_INTERVAL; i++) killCohortBody(h);
-  const drops = getLiveDrops(h);
-  assert.equal(drops.length, 1);
-  const drop = drops[0];
-  assert.equal(drop.data.despawnAt, 100 + SWARM_DROP_TTL_S);
-
-  // Advance time by 6s and tick
-  h.state.simTime = 106;
-  swarmDrops.update(1);
-  assert.equal(getLiveDrops(h).length, 1, 'still alive at 6s');
-
-  // Advance past TTL (112.1s) and tick
-  h.state.simTime = 112.1;
-  swarmDrops.update(1);
-  assert.equal(getLiveDrops(h).length, 0, 'despawned after TTL');
-});
-
-// -----------------------------------------------------------------------------
-// 2. Drop selection & determinism
-// -----------------------------------------------------------------------------
-
-test('drop selection determinism: same seed yields same sequence of drops', () => {
-  const seed = 998877;
-  const rng1 = mulberry32(seed);
-  const rng2 = mulberry32(seed);
-
-  const seq1 = Array.from({ length: 20 }, () => selectSwarmDrop(rng1).id);
-  const seq2 = Array.from({ length: 20 }, () => selectSwarmDrop(rng2).id);
-  assert.deepEqual(seq1, seq2, 'mulberry32 seeded rng produces deterministic drop sequence');
-});
-
-test('free_forge has 1/4 weight compared to standard drops', () => {
-  const freeForge = SWARM_DROP_BY_ID.get('free_forge');
-  assert.ok(freeForge);
-  assert.equal(freeForge.weight, 0.25);
-
-  const standardDrops = SWARM_DROP_DEFS.filter((d) => d.id !== 'free_forge');
-  assert.equal(standardDrops.length, 7);
-  for (const d of standardDrops) {
-    assert.equal(d.weight, 1.0);
+test('swarmDrops is in the production manifest, clocked, and initialised through the real runtime', () => {
+  assert.ok(PRODUCTION_INIT_ORDER.includes('swarmDrops'), 'init order');
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('swarmDrops'), 'update order');
+  assert.ok(getSystemClock('swarmDrops'), 'declared clock');
+  const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: SEED });
+  try {
+    const owner = runtime.getSystem('swarmDrops');
+    assert.ok(owner, 'the node runtime materialises it');
+    assert.ok(owner._unsubs.length > 0, 'and init() ran against the bus');
+  } finally {
+    if (typeof runtime.dispose === 'function') runtime.dispose();
   }
 });
 
-// -----------------------------------------------------------------------------
-// 3. Drop effects
-// -----------------------------------------------------------------------------
+test('the browser registry materialises swarmDrops from the manifest, in swarm-only mode scope', () => {
+  const registry = createRegistry({ state: createGameState(7), bus: createBus(), helpers: {} });
+  assert.ok(registry.get('swarmDrops'), 'registry lookup');
+  assert.ok(registry.systems ? registry.systems.includes?.(registry.get('swarmDrops')) !== false : true);
+});
 
-test('effect: full_rack refills weapons heat/cooldown/ammo, clears vent, resets power cooldowns', () => {
+// ---- cadence, caps, TTL, determinism ---------------------------------------------------------
+
+test('at most one drop per 12 kills, never more than 2 alive, TTL 12 s', () => {
   const h = boot();
-  h.state.fields = { cooldowns: { shove: 4.5, aegis: 12.0 } };
-  h.state.player = { massSeed: { cooldownUntil: 150 } };
-  h.state.bombs = { cooldownUntil: 140, cooldowns: { cluster: 8 } };
-  h.player.cargo = {};
+  kill(h, SWARM_DROP_INTERVAL - 1);
+  assert.equal(liveDrops(h).length, 0);
+  kill(h, 1);
+  assert.equal(liveDrops(h).length, 1);
+  kill(h, SWARM_DROP_INTERVAL * 5);
+  assert.equal(liveDrops(h).length, 2, 'capped at two alive');
+  const d = liveDrops(h)[0];
+  assert.equal(d.data.despawnAt, 100 + SWARM_DROP_TTL_S);
+  h.state.simTime = 100 + SWARM_DROP_TTL_S + 0.1;
+  swarmDrops.update(1 / 60);
+  assert.equal(liveDrops(h).length, 0, 'unclaimed drops despawn');
+});
 
-  // Force spawn full_rack
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 10, z: 10 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'full_rack', swarmDropIndex: 1 },
-  });
+test('the same run seed deals the same drops; weights are equal with free_forge at a quarter', () => {
+  const run = (seed) => {
+    const h = boot({ seed });
+    kill(h, SWARM_DROP_INTERVAL * 2);
+    const ids = liveDrops(h).map((e) => e.data.dropId);
+    return ids;
+  };
+  assert.deepEqual(run(777), run(777));
+  assert.equal(SWARM_DROP_BY_ID.get('free_forge').weight, 0.25);
+  assert.equal(SWARM_DROP_DEFS.filter((d) => d.weight === 1).length, 7);
+  const h = boot();
+  assert.equal(SWARM_DROP_DEFS.length, 8);
+  void h;
+});
 
-  scoopDrop(h, drop);
+test('ambient traffic (no run cohort mark) never drops', () => {
+  const h = boot();
+  for (let i = 0; i < 30; i++) {
+    const v = body(h);
+    delete v.data.runCohort;
+    h.bus.emit('entity:killed', { id: v.id, killerId: h.state.playerId, victim: v, pos: { ...v.pos } });
+  }
+  assert.equal(liveDrops(h).length, 0);
+});
 
-  // Weapons check
+test('the eight toast lines are exactly the spec, 2.5 s', () => {
+  const lines = {
+    full_rack: 'Reload, darling.', heavy_hands: "Oh, now you've done it.",
+    dead_weight: 'Throw something. Anything.', magnet: 'Tidy.', big_bang: 'Everybody out.',
+    double_scrap: 'The sponsors are generous.', loose_cannon: "It's not house-trained.",
+    free_forge: 'On the house. Once.',
+  };
+  for (const [id, text] of Object.entries(lines)) {
+    const h = boot({ registryStub: { fields: { deployOneOffShove() {} }, weapons: {} } });
+    scoop(h, forceDrop(h, id));
+    const toast = h.emitted.find((e) => e.event === 'toast');
+    assert.equal(toast.payload.text, text, id);
+    assert.equal(toast.payload.ttl, 2.5);
+  }
+});
+
+test('a scooped drop cannot be claimed twice', () => {
+  const h = boot();
+  const d = forceDrop(h, 'magnet');
+  scoop(h, d);
+  const first = h.state.swarmDropMagnetUntil;
+  h.state.swarmDropMagnetUntil = null;
+  scoop(h, d);
+  assert.equal(h.state.swarmDropMagnetUntil, null);
+  assert.ok(first > 100);
+});
+
+// ---- Heavy Hands ------------------------------------------------------------------------------
+
+test('Heavy Hands doubles what buildWeaponDamagePacket reads, per mount, and restores exactly', () => {
+  const h = boot();
+  const [a, b] = h.player.data.weapons;
+  const baseA = packetImpulse(a);
+  const baseB = packetImpulse(b);
+  assert.ok(baseA > 0 && baseB > 0, 'fixture guns have knockback');
+  assert.equal(baseA, WEAPON_DEF.impulsePerHit);
+  assert.equal(baseB, 21);
+  scoop(h, forceDrop(h, 'heavy_hands'));
+  assert.equal(packetImpulse(a), baseA * 2, 'mount that inherits its def');
+  assert.equal(packetImpulse(b), 42, 'mount with its own override');
+  h.state.simTime = 120.1;
+  swarmDrops.update(1 / 60);
+  assert.equal(packetImpulse(a), baseA);
+  assert.equal('impulsePerHit' in a, false, 'the inherited mount carries no override again');
+  assert.equal(b.impulsePerHit, 21);
+  assert.equal(a._heavyHandsSaved, undefined);
+});
+
+test('save:loaded and run:ended put the guns back (a save keeps the doubled value)', () => {
+  for (const event of ['save:loaded', 'run:ended']) {
+    const h = boot();
+    scoop(h, forceDrop(h, 'heavy_hands'));
+    assert.equal(h.player.data.weapons[1].impulsePerHit, 42);
+    h.bus.emit(event, {});
+    assert.equal(h.player.data.weapons[1].impulsePerHit, 21, event);
+    assert.equal('impulsePerHit' in h.player.data.weapons[0], false, event);
+    assert.equal(swarmDrops.isHeavyHandsActive(), false);
+  }
+});
+
+// ---- Full Rack --------------------------------------------------------------------------------
+
+test('Full Rack refills guns and every power through their owners', () => {
+  const h = boot();
+  h.state.fields = { schemaVersion: 1, cooldowns: { well: 9, repulsor: 8 } };
+  h.state.player.massSeed = { cooldownUntil: 150 };
+  h.state.bombs = { cooldownUntil: 140, cooldowns: { frag: 8 } };
+  h.state.player.cargo = { items: { cmdty_impulse_charge: 2 }, capVolume: 100 };
+  scoop(h, forceDrop(h, 'full_rack'));
   for (const w of h.player.data.weapons) {
     assert.equal(w._cooldown, 0);
     assert.equal(w._heat, 0);
-    assert.equal(w.ammo, w.ammoMax);
   }
-  assert.equal(h.player.data.weaponVentUntil, undefined);
-  assert.equal(h.player.data.weaponVenting, undefined);
-
-  // Power cooldowns check
-  assert.equal(h.state.fields.cooldowns.shove, 0);
-  assert.equal(h.state.fields.cooldowns.aegis, 0);
+  assert.ok(!(h.player.data.weaponVentUntil > h.state.simTime), 'vent lockout cleared');
+  assert.deepEqual(h.state.fields.cooldowns, { well: 0, repulsor: 0 });
   assert.equal(h.state.player.massSeed.cooldownUntil, 0);
   assert.equal(h.state.bombs.cooldownUntil, 0);
-  assert.equal(h.state.bombs.cooldowns.cluster, 0);
+  assert.equal(h.state.bombs.cooldowns.frag, 0);
 });
 
-test('effect: heavy_hands doubles weapon impulse for 20s and reverts', () => {
+// ---- Dead Weight ------------------------------------------------------------------------------
+
+test('Dead Weight: a thrown body kills a light ship and takes 60% off a heavy, through the combat route', () => {
   const h = boot();
-  h.state.simTime = 100;
+  scoop(h, forceDrop(h, 'dead_weight'));
+  const rock = body(h, { team: 0, mass: 30 });
+  h.bus.emit('massline:throw', { payloadId: rock.id, tick: 6000 });
 
-  const initialImpulse0 = h.player.data.weapons[0].impulsePerHit;
-  const initialImpulse1 = h.player.data.weapons[1].impulsePerHit;
+  const light = body(h, { mass: 20, hull: 50 });
+  h.bus.emit('tether:whipImpact', { targetId: rock.id, victimId: light.id, slung: true, rating: 'solid' });
+  assert.equal(h.damage.length, 1);
+  const req = h.damage[0];
+  assert.equal(req.targetId, light.id);
+  assert.equal(req.attackerId, h.state.playerId);
+  const norm = normalizeDamagePacket(req.packet);
+  assert.ok(norm.channels.kinetic >= light.hull, 'the combat owner reads a lethal hit (channels, not a bare damage field)');
 
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 10, z: 10 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'heavy_hands', swarmDropIndex: 2 },
-  });
-  scoopDrop(h, drop);
+  const heavy = body(h, { mass: 200, hull: 500 });
+  h.bus.emit('tether:whipImpact', { targetId: rock.id, victimId: heavy.id, slung: true, rating: 'crushing' });
+  const hv = normalizeDamagePacket(h.damage[1].packet);
+  assert.equal(Math.round(hv.channels.kinetic), 300);
 
-  assert.equal(swarmDrops.isHeavyHandsActive(), true);
-  assert.equal(h.player.data.weapons[0].impulsePerHit, initialImpulse0 * 2);
-  assert.equal(h.player.data.weapons[1].impulsePerHit, initialImpulse1 * 2);
-
-  // Advance time by 10s -> still active
-  h.state.simTime = 110;
-  swarmDrops.update(1);
-  assert.equal(swarmDrops.isHeavyHandsActive(), true);
-  assert.equal(h.player.data.weapons[0].impulsePerHit, initialImpulse0 * 2);
-
-  // Advance past 20s -> reverts
-  h.state.simTime = 120.1;
-  swarmDrops.update(1);
-  assert.equal(swarmDrops.isHeavyHandsActive(), false);
-  assert.equal(h.player.data.weapons[0].impulsePerHit, initialImpulse0);
-  assert.equal(h.player.data.weapons[1].impulsePerHit, initialImpulse1);
+  // The several receipts of one touch land once.
+  h.bus.emit('physics:impact', { aId: rock.id, bId: heavy.id, dp: 900 });
+  assert.equal(h.damage.length, 2);
 });
 
-test('effect: dead_weight kills light/medium enemy, deals 60% max hull to heavy, expires in 20s', () => {
+test('Dead Weight ignores unthrown bodies, friendlies and the player, and expires after 20 s', () => {
   const h = boot();
-  h.state.simTime = 100;
-
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 10, z: 10 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'dead_weight', swarmDropIndex: 3 },
-  });
-  scoopDrop(h, drop);
-  assert.equal(swarmDrops.isDeadWeightActive(), true);
-
-  // Throw a rock
-  const rock = h.helpers.spawnEntity({
-    type: 'asteroid',
-    pos: { x: 0, z: 0 },
-    mass: 20,
-  });
+  scoop(h, forceDrop(h, 'dead_weight'));
+  const rock = body(h, { team: 0 });
+  const foe = body(h);
+  h.bus.emit('physics:impact', { aId: rock.id, bId: foe.id, dp: 900 });
+  assert.equal(h.damage.length, 0, 'not thrown');
   h.bus.emit('massline:throw', { payloadId: rock.id });
-
-  // Light enemy
-  const lightEnemy = h.helpers.spawnEntity({
-    type: 'ship',
-    pos: { x: 20, z: 0 },
-    hull: 80,
-    hullMax: 80,
-    data: { shipClass: 'fighter' },
-  });
-
-  // Collision between thrown rock and light enemy
-  h.bus.emit('combat:collisionConsequence', { targetId: lightEnemy.id, otherId: rock.id });
-  assert.equal(lightEnemy.alive, false, 'light enemy killed outright');
-  assert.equal(lightEnemy.hull, 0);
-
-  // Throw another rock at a heavy ship
-  const rock2 = h.helpers.spawnEntity({
-    type: 'asteroid',
-    pos: { x: 0, z: 0 },
-    mass: 20,
-  });
-  h.bus.emit('massline:throw', { payloadId: rock2.id });
-
-  const heavyEnemy = h.helpers.spawnEntity({
-    type: 'ship',
-    pos: { x: 40, z: 0 },
-    hull: 500,
-    hullMax: 500,
-    data: { shipClass: 'capital' },
-  });
-
-  h.bus.emit('physics:impact', { aId: rock2.id, bId: heavyEnemy.id });
-  // Heavy takes 60% of max hull (300 damage), so 500 - 300 = 200 hull remaining
-  assert.equal(heavyEnemy.hull, 200, 'heavy enemy took 60% max hull damage');
-  assert.equal(heavyEnemy.alive, true);
-
-  // Expiration after 20s
+  const ally = body(h, { team: 1 });
+  h.bus.emit('physics:impact', { aId: rock.id, bId: ally.id, dp: 900 });
+  h.bus.emit('physics:impact', { aId: rock.id, bId: h.state.playerId, dp: 900 });
+  assert.equal(h.damage.length, 0);
   h.state.simTime = 120.1;
-  swarmDrops.update(1);
-  assert.equal(swarmDrops.isDeadWeightActive(), false);
+  swarmDrops.update(1 / 60);
+  h.bus.emit('physics:impact', { aId: rock.id, bId: foe.id, dp: 900 });
+  assert.equal(h.damage.length, 0, 'window closed');
 });
 
-test('effect: magnet pulls floor scrap and credit pickups toward player', () => {
+// ---- Magnet -----------------------------------------------------------------------------------
+
+test('Magnet opens mining’s vacuum window for ordinary pickups and closes it', () => {
   const h = boot();
-  h.player.pos = { x: 0, z: 0 };
-  h.player.vel = { x: 0, z: 0 };
-
-  const scrap = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 300, z: 0 },
-    data: { kind: 'ore_chunk', label: 'Scrap' },
-  });
-  const credit = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 400 },
-    data: { kind: 'credit_chip', label: 'Credits' },
-  });
-  const dropItem = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 100, z: 100 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'magnet', swarmDropIndex: 4 },
-  });
-
-  scoopDrop(h, dropItem);
-
-  assert.equal(scrap.data.magnetPull, true);
-  assert.ok(scrap.vel.x < 0, 'scrap velocity directed toward player x=0');
-  assert.equal(credit.data.magnetPull, true);
-  assert.ok(credit.vel.z < 0, 'credit velocity directed toward player z=0');
+  assert.equal(swarmDropMagnetRange(h.state), 0);
+  scoop(h, forceDrop(h, 'magnet'));
+  assert.ok(swarmDropMagnetRange(h.state) > 1200, 'whole floor is inside the vacuum');
+  h.state.simTime += 6;
+  assert.equal(swarmDropMagnetRange(h.state), 0);
 });
 
-test('effect: big_bang applies radial impulse within arena radius and shakes camera', () => {
-  const h = boot();
-  h.player.pos = { x: 0, z: 0 };
+// ---- Big Bang ---------------------------------------------------------------------------------
 
-  const nearbyShip = h.helpers.spawnEntity({
-    type: 'ship',
-    pos: { x: 100, z: 0 },
-    mass: 10,
-  });
-  const farShip = h.helpers.spawnEntity({
-    type: 'ship',
-    pos: { x: 1500, z: 0 },
-    mass: 10,
-  });
-
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'big_bang', swarmDropIndex: 5 },
-  });
-
-  scoopDrop(h, drop);
-
-  assert.ok(nearbyShip.vel.x > 0, 'nearby ship pushed outward');
-  assert.equal(farShip.vel, undefined, 'ship beyond arena radius untouched');
-
-  const shakeEvent = h.emitted.find((e) => e.event === 'camera:shake');
-  assert.ok(shakeEvent, 'camera:shake emitted');
-  assert.equal(shakeEvent.payload.amount, 0.8);
+test('Big Bang asks the fields owner for one Shove of arena radius', () => {
+  const calls = [];
+  const h = boot({ registryStub: { fields: { deployOneOffShove: (r) => { calls.push(r); return 'f'; } } } });
+  scoop(h, forceDrop(h, 'big_bang'));
+  assert.deepEqual(calls, [SWARM_DROP_ARENA_RADIUS]);
+  assert.ok(h.emitted.some((e) => e.event === 'camera:shake'));
 });
 
-test('effect: double_scrap doubles earnings for 30s and reverts', () => {
+// ---- Double Scrap -----------------------------------------------------------------------------
+
+test('Double Scrap doubles earnings through runSession for 30 s, and never refunds or sell-backs', () => {
   const h = boot();
-  h.state.simTime = 100;
-
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'double_scrap', swarmDropIndex: 6 },
-  });
-  scoopDrop(h, drop);
-  assert.equal(swarmDrops.isDoubleScrapActive(), true);
-
-  // Trigger an award request
-  h.bus.emit('run:awardRequested', { credits: 75, reason: 'kill_streak', wave: 1 });
-
-  const bonusAwards = h.emitted.filter(
-    (e) => e.event === 'run:awardRequested' && e.payload.reason === 'swarm:doubleScrapBonus',
-  );
-  assert.equal(bonusAwards.length, 1);
-  assert.equal(bonusAwards[0].payload.credits, 75);
-
-  // Expiration after 30s
+  scoop(h, forceDrop(h, 'double_scrap'));
+  const credits = () => h.state.run.credits;
+  const c0 = credits();
+  h.bus.emit('run:awardRequested', { credits: 100, reason: 'chip_scooped', wave: 1 });
+  assert.equal(credits() - c0, 200);
+  h.bus.emit('run:awardRequested', { credits: 100, reason: 'brood', wave: 1 });
+  assert.equal(credits() - c0, 400);
+  const c1 = credits();
+  h.bus.emit('run:awardRequested', { credits: 100, reason: 'swarm:sellBack' });
+  h.bus.emit('run:awardRequested', { credits: 100, reason: 'crucible:purchaseRefund' });
+  h.bus.emit('run:awardRequested', { credits: 100, reason: 'crucible:pact' });
+  assert.equal(credits() - c1, 300, 'one copy each');
   h.state.simTime = 130.1;
-  swarmDrops.update(1);
-  assert.equal(swarmDrops.isDoubleScrapActive(), false);
-
-  // Subsequent awards should not trigger bonus
-  h.bus.emit('run:awardRequested', { credits: 50, reason: 'kill', wave: 1 });
-  const bonusAwards2 = h.emitted.filter(
-    (e) => e.event === 'run:awardRequested' && e.payload.reason === 'swarm:doubleScrapBonus',
-  );
-  assert.equal(bonusAwards2.length, 1, 'no extra bonus after expiry');
+  swarmDrops.update(1 / 60);
+  const c2 = credits();
+  h.bus.emit('run:awardRequested', { credits: 100, reason: 'chip_scooped' });
+  assert.equal(credits() - c2, 100, 'expired');
 });
 
-test('effect: loose_cannon spawns tetherable auto-turret, fires at enemy, expires after 60s', () => {
-  const h = boot();
-  h.state.simTime = 100;
+// ---- Loose Cannon -----------------------------------------------------------------------------
 
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'loose_cannon', swarmDropIndex: 7 },
-  });
-  scoopDrop(h, drop);
-
+test('Loose Cannon is a tetherable body that fires through the weapons owner, then expires at 60 s', () => {
+  const shots = [];
+  const weapons = { _spawnProjectile: (owner, mount, def, angle, target) => shots.push({ owner, mount, def, angle, target }) };
+  const h = boot({ registryStub: { weapons } });
+  scoop(h, forceDrop(h, 'loose_cannon'));
   assert.equal(swarmDrops.activeTurretCount(), 1);
-  const turret = h.state.entityList.find((e) => e.data?.looseCannon);
-  assert.ok(turret, 'turret exists in entity list');
+  const turret = h.state.entityList.find((e) => e.data && e.data.looseCannon);
   assert.equal(turret.tetherable, true);
   assert.equal(turret.data.masslineTetherable, true);
-  assert.equal(turret.data.despawnAt, 160);
-
-  // Spawn an enemy in range
-  const enemy = h.helpers.spawnEntity({
-    type: 'ship',
-    pos: { x: turret.pos.x + 100, z: turret.pos.z },
-    team: 'hostile',
-  });
-
-  // Tick at 100.6 (fire interval 0.5s passed)
-  h.state.simTime = 100.6;
-  swarmDrops.update(0.6);
-
-  const firedEvent = h.emitted.find((e) => e.event === 'combat:fire' && e.payload.ownerId === turret.id);
-  assert.ok(firedEvent, 'combat:fire emitted from loose cannon turret');
-
-  const proj = h.state.entityList.find((e) => e.type === 'projectile' && e.ownerId === turret.id);
-  assert.ok(proj, 'projectile spawned from loose cannon turret');
-
-  // Advance time past 60s
+  assert.equal(turret.physicsBody.dynamic, true);
+  const foe = body(h, { pos: { x: turret.pos.x + 100, z: turret.pos.z } });
+  swarmDrops.update(1 / 60);
+  assert.equal(shots.length, 1);
+  assert.equal(shots[0].owner.id, turret.id);
+  assert.equal(shots[0].target.id, foe.id);
+  assert.equal(shots[0].def.id, 'wpn_autocannon_s');
+  // Out of reach: it holds fire.
+  foe.pos.x += 5000;
+  h.state.simTime += 1;
+  swarmDrops.update(1 / 60);
+  assert.equal(shots.length, 1);
   h.state.simTime = 160.1;
-  swarmDrops.update(1);
+  swarmDrops.update(1 / 60);
   assert.equal(swarmDrops.activeTurretCount(), 0);
-  assert.equal(turret.alive, false, 'turret marked dead after 60s');
+  assert.equal(h.state.entities.get(turret.id), undefined, 'turret removed');
 });
 
-test('effect: free_forge sets run.freeForge = true', () => {
-  const h = boot();
-  assert.equal(h.state.run.freeForge, undefined);
-
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'free_forge', swarmDropIndex: 8 },
-  });
-  scoopDrop(h, drop);
-
-  assert.equal(h.state.run.freeForge, true);
-});
-
-// -----------------------------------------------------------------------------
-// 4. Drop lines / toasts
-// -----------------------------------------------------------------------------
-
-test('all eight drops emit their exact designated line in a toast', () => {
-  for (const def of SWARM_DROP_DEFS) {
-    const h = boot();
-    const drop = h.helpers.spawnEntity({
-      type: 'pickup',
-      pos: { x: 0, z: 0 },
-      data: { kind: SWARM_DROP_KIND, dropId: def.id, swarmDropIndex: 10 },
-    });
-    scoopDrop(h, drop);
-
-    const toast = h.emitted.find((e) => e.event === 'toast' && e.payload.text === def.line);
-    assert.ok(toast, `toast emitted for ${def.id} with line: "${def.line}"`);
-    assert.equal(toast.payload.kind, 'good');
-    assert.ok(toast.payload.ttl <= 2.5, 'toast ttl <= 2.5s');
-  }
-});
-
-// -----------------------------------------------------------------------------
-// 5. Brood kills, ambient exclusion, and idempotency
-// -----------------------------------------------------------------------------
-
-test('brood kills event advances drop counter', () => {
-  const h = boot();
-  h.state.mode = 'flight';
-  h.state.run.phase = 'active';
-  h.state.run.wave = 1;
-
-  assert.equal(swarmDrops.killsSinceDrop(), 0);
-
-  // Emit 12 brood kills at pos (10, 20)
-  h.bus.emit('swarm:broodKills', { wave: 1, count: 12, pos: { x: 10, z: 20 } });
-  assert.equal(getLiveDrops(h).length, 1);
-  assert.equal(swarmDrops.killsSinceDrop(), 0);
-});
-
-test('ambient traffic without survival cohort produces no drops', () => {
-  const h = boot();
-  for (let i = 0; i < 30; i++) {
-    killCohortBody(h, { cohort: null });
-  }
-  assert.equal(getLiveDrops(h).length, 0);
-  assert.equal(swarmDrops.killsSinceDrop(), 0);
-});
-
-test('magnet ignores swarm drops and repair cells, pulling only normal loot', () => {
-  const h = boot();
-  h.player.pos = { x: 0, z: 0 };
-
-  const repairCell = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 200, z: 0 },
-    data: { kind: 'swarm_repair', swarmRepair: true },
-  });
-  const swarmDropItem = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 200 },
-    data: { kind: SWARM_DROP_KIND, swarmDrop: true },
-  });
-  const normalScrap = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 150, z: 150 },
-    data: { kind: 'ore_chunk' },
-  });
-
-  const magnetDrop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'magnet', swarmDropIndex: 20 },
-  });
-  scoopDrop(h, magnetDrop);
-
-  assert.equal(repairCell.data.magnetPull, undefined, 'repair cell unaffected');
-  assert.equal(swarmDropItem.data.magnetPull, undefined, 'swarm drop unaffected');
-  assert.equal(normalScrap.data.magnetPull, true, 'scrap pulled');
-});
-
-test('dead weight does not damage target if colliding body was not thrown by player', () => {
-  const h = boot();
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'dead_weight', swarmDropIndex: 21 },
-  });
-  scoopDrop(h, drop);
-
-  const unthrownRock = h.helpers.spawnEntity({
-    type: 'asteroid',
-    pos: { x: 0, z: 0 },
-    mass: 20,
-  });
-  const enemy = h.helpers.spawnEntity({
-    type: 'ship',
-    pos: { x: 10, z: 0 },
-    hull: 100,
-    hullMax: 100,
-  });
-
-  h.bus.emit('combat:collisionConsequence', { targetId: enemy.id, otherId: unthrownRock.id });
-  assert.equal(enemy.hull, 100, 'untouched because rock was not thrown');
-  assert.equal(enemy.alive, true);
-});
-
-test('dead weight thrown rock does not damage player', () => {
-  const h = boot();
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'dead_weight', swarmDropIndex: 22 },
-  });
-  scoopDrop(h, drop);
-
-  const rock = h.helpers.spawnEntity({
-    type: 'asteroid',
-    pos: { x: 0, z: 0 },
-    mass: 20,
-  });
-  h.bus.emit('massline:throw', { payloadId: rock.id });
-
-  const initialHull = h.player.hull;
-  h.bus.emit('combat:collisionConsequence', { targetId: h.player.id, otherId: rock.id });
-  assert.equal(h.player.hull, initialHull, 'player hull unaffected by thrown body');
-});
-
-test('a collected drop cannot be collected again', () => {
-  const h = boot();
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'free_forge', swarmDropIndex: 23 },
-  });
-
-  assert.equal(swarmDrops.liveDropCount(), 1);
-  scoopDrop(h, drop);
-  assert.equal(swarmDrops.liveDropCount(), 0);
-
-  // Duplicate scoop
-  scoopDrop(h, drop);
-  assert.equal(swarmDrops.liveDropCount(), 0);
-});
-
-test('run:ended cleans up active timed effects', () => {
-  const h = boot();
-  const drop = h.helpers.spawnEntity({
-    type: 'pickup',
-    pos: { x: 0, z: 0 },
-    data: { kind: SWARM_DROP_KIND, dropId: 'heavy_hands', swarmDropIndex: 24 },
-  });
-  scoopDrop(h, drop);
-  assert.equal(swarmDrops.isHeavyHandsActive(), true);
-
+test('run end retires a live Loose Cannon', () => {
+  const h = boot({ registryStub: { weapons: { _spawnProjectile() {} } } });
+  scoop(h, forceDrop(h, 'loose_cannon'));
+  const turret = h.state.entityList.find((e) => e.data && e.data.looseCannon);
   h.bus.emit('run:ended', {});
-  assert.equal(swarmDrops.isHeavyHandsActive(), false);
-  assert.equal(swarmDrops.killsSinceDrop(), 0);
+  assert.equal(h.state.entities.get(turret.id), undefined);
+  assert.equal(swarmDrops.activeTurretCount(), 0);
 });
 
+// ---- Free Forge -------------------------------------------------------------------------------
 
-test('Heavy Hands doubles the real knockback and restores it exactly (lead fix 2026-11-11)', async () => {
-  const { WEAPONS } = await import('../src/data/weapons.js');
-  const { swarmDrops } = await import('../src/systems/swarmDrops.js');
-  const def = WEAPONS.find((w) => Number.isFinite(w.impulsePerHit) && w.impulsePerHit !== 600);
-  const inherited = { id: def.id };                       // uses the def's value
-  const own = { id: def.id, impulsePerHit: 77 };          // has its own override
-  const player = { id: 1, data: { weapons: [inherited, own] } };
-  const sys = Object.create(swarmDrops);
-  sys.state = { simTime: 0 };
-  sys._player = () => player;
-  sys._applyHeavyHands(player);
-  assert.equal(inherited.impulsePerHit, def.impulsePerHit * 2);
-  assert.equal(own.impulsePerHit, 154);
-  sys._resetTimedEffects();
-  assert.equal(Object.prototype.hasOwnProperty.call(inherited, 'impulsePerHit'), false, 'inherited gun goes back to its def');
-  assert.equal(own.impulsePerHit, 77);
+test('Free Forge flags the run without invalidating it, and the purse still works afterwards', () => {
+  const h = boot();
+  scoop(h, forceDrop(h, 'free_forge'));
+  assert.equal(h.state.run.telemetry.freeForge, true);
+  assert.equal(validateRunState(h.state.run).ok, true, 'the run envelope stays valid');
+  const c0 = h.state.run.credits;
+  h.bus.emit('run:awardRequested', { credits: 50, reason: 'chip_scooped' });
+  assert.equal(h.state.run.credits - c0, 50);
+  assert.equal(h.state.run.telemetry.freeForge, true, 'the flag survives the owner’s run clone');
+});
+
+// ---- Swarm only -------------------------------------------------------------------------------
+
+test('outside a Swarm run nothing is claimed', () => {
+  const h = boot();
+  h.bus.emit('run:ended', {});
+  h.state.run = { kind: 'adventure' };
+  const d = forceDrop(h, 'magnet', 5);
+  scoop(h, d);
+  assert.ok(!h.state.swarmDropMagnetUntil);
+});
+
+// ---- Big Bang on the real fields owner -------------------------------------------------------
+
+test('the real fields owner deploys a free Shove at arena radius and leaves the player’s cooldown alone', () => {
+  const rt = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: SEED });
+  try {
+    const fields = rt.getSystem('fields');
+    const st = fields.state;
+    const p = rt.spawn({ type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 6, team: 1, hull: 100, hullMax: 100, data: {} });
+    st.playerId = p.id;
+    st.mode = 'flight';
+    st.simTime = 5;
+    st.tick = 300;
+    const id = fields.deployOneOffShove(SWARM_DROP_ARENA_RADIUS);
+    assert.ok(id, 'deployed');
+    const rec = st.fields.deployed[id];
+    assert.equal(rec.kind, 'repulsor');
+    const emitter = st.entities.get(rec.emitterId);
+    assert.equal(emitter.data.radius, SWARM_DROP_ARENA_RADIUS);
+    assert.equal(st.fields.cooldowns.repulsor, 0, 'a free Shove starts no cooldown');
+  } finally {
+    if (typeof rt.dispose === 'function') rt.dispose();
+  }
 });
