@@ -438,7 +438,7 @@ html body #screens > .k-screen.con-achievements .con-medal-read__dial[data-state
 html body #screens > .k-screen.con-achievements .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(248 244 234 / .58); }
 html body #screens > .k-screen.con-achievements .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(236 230 216 / .38); }
 html body #screens > .k-screen.con-achievements .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(236 230 216 / .58); }
-html body #screens > .k-screen.con-achievements .con-medal-read__kicker { font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:112%; font-weight:650; text-transform:uppercase; font-variation-settings:normal; font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(236 230 216 / .82); }
+html body #screens > .k-screen.con-achievements .con-medal-read__kicker { font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:112%; font-weight:650; text-transform:uppercase; font-variation-settings:normal; font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; word-spacing:.16em; color:rgb(236 230 216 / .82); }
 html body #screens > .k-screen.con-achievements .con-medal-read__kicker span { margin:0 .3em; }
 html body #screens > .k-screen.con-achievements .con-medal-read__kicker .con-medal-read__state { margin:0; white-space:nowrap; }
 html body #screens > .k-screen.con-achievements .con-medal-read__name { font-family:var(--dp-face-display, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:125%; font-weight:800; font-variation-settings:"wght" 800, "wdth" 125;
