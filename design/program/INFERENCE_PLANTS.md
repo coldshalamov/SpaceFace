@@ -163,7 +163,7 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-51 | You ring the Ceres Bell twice in a minute | *"Somebody rang the Ceres Bell. Twice."* | OPEN |
 | PL-52 | You throw a ship into a station | *"Whoever parked that in the dock: bold."* | SHIPPED 028d546081ef |
 | PL-53 | You ride a freight string out of a sector | *"Stowaway on the noon freight. We see you."* | OPEN |
-| PL-54 | Ten near misses in one minute | *"Traffic advisory: there's one of those out today."* | OPEN |
+| PL-54 | Ten near misses in one minute | *"Traffic advisory: there's one of those out today."* | CLAIMED flash 2026-11-11 |
 | PL-55 | You are killed by traffic | *"Lane lights exist. Just saying."* | SHIPPED 22f4977395b2 |
 | PL-56 | Your Line goes up a class | *"New rope in the lanes. Mind your cargo."* | SHIPPED 1490116 |
 | PL-57 | The Fridge changes sector | *"Fridge update."* and the sector's name | OPEN |
