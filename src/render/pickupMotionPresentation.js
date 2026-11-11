@@ -21,6 +21,7 @@
 
 import { presentationTableDrawWu } from './presentationSimClock.js';
 import { worthReadFor } from './pickupWorthRead.js';
+import { presentedAdvanceRatio } from './presentedClock.js';
 
 function hashId(id) {
   const s = String(id || '');
@@ -271,9 +272,12 @@ export function createPickupMotionTracker() {
   function updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
+    const animDt = dt * ratio;
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
+    rec.animTime = rec.animTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.animTime + animDt);
 
     // Check distance to player for tractor beam suction vortex
     let isMagnetized = false;
@@ -298,9 +302,9 @@ export function createPickupMotionTracker() {
     // Dynamic tumble acceleration under tractor pull, released again as the intake claims it.
     const tumbleMultiplier = isMagnetized ? (1.0 + pullFactor * 3.5 * (1 - alignment)) : 1.0;
     if (!reducedMotion) {
-      rec.rotX += rec.pitchSpin * tumbleMultiplier * dt;
-      rec.rotY += rec.spinSpeed * tumbleMultiplier * dt;
-      rec.rotZ += rec.rollSpin * tumbleMultiplier * dt;
+      rec.rotX += rec.pitchSpin * tumbleMultiplier * animDt;
+      rec.rotY += rec.spinSpeed * tumbleMultiplier * animDt;
+      rec.rotZ += rec.rollSpin * tumbleMultiplier * animDt;
     }
 
     // Magnetic spiral vortex offset
@@ -308,7 +312,7 @@ export function createPickupMotionTracker() {
     let vortexOffsetZ = 0;
     const spiralLimit = spiralVisualRangeWu(presentationTableDrawWu());
     if (!reducedMotion && isMagnetized && distToPlayer < spiralLimit) {
-      rec.vortexAngle += dt * resolveTractorVortexRate(pullFactor);
+      rec.vortexAngle += animDt * resolveTractorVortexRate(pullFactor);
       const vortex = resolveTractorVortex(distToPlayer, rec.vortexAngle, vortexScratch, spiralLimit);
       vortexOffsetX = vortex.x;
       vortexOffsetZ = vortex.z;
@@ -316,10 +320,10 @@ export function createPickupMotionTracker() {
 
     // Snapping scale compression into cargo bay
     const targetScale = resolveTractorScaleTarget(distToPlayer);
-    rec.scaleRatio += (targetScale - rec.scaleRatio) * (1 - Math.exp(-12.0 * dt));
+    rec.scaleRatio += (targetScale - rec.scaleRatio) * (1 - Math.exp(-12.0 * animDt));
 
     // Vertical zero-G levitation bobbing
-    const bob = reducedMotion ? 0 : Math.sin(simTime * 2.2 + rec.phase) * (isMagnetized ? 0.15 : 0.45);
+    const bob = reducedMotion ? 0 : Math.sin(rec.animTime * 2.2 + rec.phase) * (isMagnetized ? 0.15 : 0.45);
 
     // Apply to mesh root / child group
     const targetObj = (mesh.userData && mesh.userData.gem)
@@ -339,7 +343,7 @@ export function createPickupMotionTracker() {
     // Transponder strobe: aviation-grade double-flash carried as a scale ping (two sharp kicks
     // ~150ms apart per cycle, phased per drop). Deterministic, zero-allocation.
     let strobe = 0;
-    const cyc = (simTime * 0.62 + rec.phase / (Math.PI * 2)) % 1;
+    const cyc = (rec.animTime * 0.62 + rec.phase / (Math.PI * 2)) % 1;
     if (cyc < 0.10) strobe = Math.exp(-cyc * 60);
     else if (cyc > 0.14 && cyc < 0.24) strobe = Math.exp(-(cyc - 0.14) * 60) * 0.7;
     if (reducedMotion) strobe *= 0.5;
@@ -388,7 +392,7 @@ export function createPickupMotionTracker() {
       const mat = halo.material;
       if (mat && 'opacity' in mat) mat.opacity = 0;
     } else if (halo) {
-      const pose = resolvePickupHaloPose(simTime, rec.phase, reducedMotion, haloPoseScratch,
+      const pose = resolvePickupHaloPose(rec.animTime, rec.phase, reducedMotion, haloPoseScratch,
         worthRead.haloFloor, worthRead.haloKick);
       halo.rotation.x = pose.spinX;
       halo.rotation.y = pose.spinY;
