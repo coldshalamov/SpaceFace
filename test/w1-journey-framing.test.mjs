@@ -111,11 +111,12 @@ test('the Journal B4 action names the chosen door until its operation is live', 
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('traders')).title, 'Run Spine Break');
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('patrol')).title, 'Run The Weighing');
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('free')).title, 'Run Barn Raising');
-  assert.equal(storyActionForBeat(STORY_BEATS[4], state(null)).title, 'Choose a sponsor',
-    'before the door is chosen the sponsor prompt remains');
+  assert.equal(storyActionForBeat(STORY_BEATS[4], state(null)).title, 'Choose an introduction',
+    'before the door is chosen the introduction choices remain');
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('traders', [{
     id: 'b4-op', status: 'active', storyTag: 'campaign47a:b4:operation',
-  }])).title, 'Choose a sponsor', 'an active operation already owns Current action');
+    storyBranch: 'traders', title: 'Spine Break',
+  }])).title, 'Complete Spine Break', 'an active operation guides completion instead of another choice');
 });
 
 test('the Journal B2 what-next follows the same ordered steps as the tracker', () => {

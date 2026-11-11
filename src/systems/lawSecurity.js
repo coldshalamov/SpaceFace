@@ -1,3 +1,4 @@
+import { ENEMY_TYPES } from '../data/enemies.js';
 import { massDiscrepancy } from './cargoCustody.js';
 // lawSecurity.js — jurisdiction, motive, and response authority for live space.
 //
@@ -962,6 +963,46 @@ export const lawSecurity = {
       const combat = data.combat || (data.combat = {});
       const intent = data.intent || (data.intent = {});
       const activity = ai.activity;
+      // Accepted quarry must remain alive for the contract, so ambient egress cannot retire
+      // it. End sanctuary's one-shot burn once it is physically clear instead of leaving a
+      // passive, mission-pinned hull boosting forever. Protection still holds weapons cold;
+      // only an active authored combat quarry may resume after both hulls are clear.
+      if (activeSanctuaryMissionQuarry(state, entity) && !protectedStationAt(state, entity)) {
+        intent.moveX = 0;
+        intent.moveZ = 0;
+        intent.turnIntent = 0;
+        intent.boost = false;
+        intent.brake = true;
+        intent.fire = false;
+        intent.fireGroup = null;
+        const player = entityById(state, state.playerId);
+        const returnAnchor = sanctuaryMissionReturnAnchor(state, entity, activity);
+        const def = ENEMY_TYPES.find((row) => row.id === (data.lootTableId || data.enemyTypeId));
+        // An accepted combat quarry keeps its authored hostility, unlike a satisfied ambient
+        // pirate. Resume its archetype only after BOTH hulls are outside sanctuary. The new
+        // patrol anchor is a safe perimeter of the saved sanctuary, not its far escaped
+        // position. Ordinary AI must fly it home; no body is moved or slot recreated.
+        if (returnAnchor && player?.alive !== false && player && !protectedStationAt(state, player)
+          && def?.aiDoctrine?.defaultActivity === ActivityKind.ATTACK_RUN
+          && def.aiDoctrine.roe === RulesOfEngagement.WEAPONS_FREE) {
+          ai.passive = false;
+          ai.sanctuaryWithdrawn = false;
+          ai.pirateDisengaged = false;
+          ai.motiveSatisfied = false;
+          ai.engagementTrigger = 'accepted_warrant';
+          ai.roe = RulesOfEngagement.WEAPONS_FREE;
+          ai.activity = normalizeActivity({
+            kind: def.aiDoctrine.defaultActivity, reason: `archetype:${def.id}`,
+            anchor: returnAnchor,
+            leashRadius: def.aiDoctrine.leashRadius || 2600,
+            preferredRange: def.aiDoctrine.preferredRange || 0,
+            startedTick: state.tick | 0, targetId: player.id,
+          });
+          delete intent.aimAngle;
+          intent.brake = false;
+        }
+        continue;
+      }
       let targetId = combat.targetId != null ? combat.targetId : combat.lockTarget;
       if (targetId == null && activity && activity.targetId != null) targetId = activity.targetId;
       if (targetId == null && (ai.forcePlayerTarget || ai.huntPlayer || intent.fire)) {
@@ -8784,4 +8825,50 @@ function stationDisplayName(stationId) {
     for (const sector of SECTORS) for (const station of (sector.stations || [])) stationNamesById.set(station.id, station.name);
   }
   return stationNamesById.get(stationId) || String(stationId);
+}
+
+/** Derive a real destination from the withdrawal's saved protection volume, never a pose. */
+function sanctuaryMissionReturnAnchor(state, entity, activity) {
+  const center = activity && activity.anchor;
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
+  const dx = entity.pos.x - center.x, dz = entity.pos.z - center.z;
+  const distance = Math.hypot(dx, dz);
+  if (!(distance > 0)) return null;
+  const radius = Math.max(1600, Number(activity.leashRadius) || 0) + 320;
+  const anchor = { x: center.x + dx / distance * radius, z: center.z + dz / distance * radius };
+  if (protectedStationAt(state, { pos: anchor })) return null;
+  return anchor;
+}
+
+/** Exact durable combat-slot provenance, including old saves predating bounded withdrawal. */
+function activeSanctuaryMissionQuarry(state, entity) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!ai || ai.sanctuaryWithdrawn !== true || ai.passive !== true
+    || ai.roe !== RulesOfEngagement.HOLD_FIRE || ai.activity?.kind !== ActivityKind.DISENGAGE
+    || !String(ai.activity.reason || '').startsWith('station_jurisdiction:')
+    || ai.motive !== 'accepted_combat_contract' || ai.spawnContext !== 'mission') return false;
+  const prefix = `mission:${data.missionId}:`;
+  const suffix = String(data.identityKey || '').startsWith(prefix)
+    ? String(data.identityKey).slice(prefix.length) : '';
+  const slot = data.missionTargetSlot == null && /^\d+$/.test(suffix)
+    ? Number(suffix) : data.missionTargetSlot;
+  const mission = state.missions?.active?.find((row) => row.id === data.missionId);
+  if (!mission || mission.status !== 'active'
+    || (mission.type !== 'patrol_clear' && mission.type !== 'bounty_hunt')
+    || !Number.isInteger(slot) || slot < 0 || slot >= mission.objectiveTarget
+    || mission.completedTargetSlots?.includes(slot)
+    || data.missionTag !== mission.id || data.identityKey !== `mission:${mission.id}:${slot}`
+    || data.worldRecordId !== stableRecordId(state.meta?.seed || 1,
+      mission.destSectorId, RECORD_KIND.MISSION_TARGET, data.identityKey)
+    || [entity.homeSectorId, data.homeSectorId, data.sectorId]
+      .some((id) => id != null && id !== mission.destSectorId)) return false;
+  // Continue remaps numeric ids and rebinds the mission roster later. The durable slot is
+  // authority, but two live carriers or a recycled entity must never both be adopted.
+  if (state.entities?.get(entity.id) !== entity) return false;
+  let carriers = 0;
+  for (const live of state.entityList || []) {
+    if (live?.alive !== false && live?.data?.worldRecordId === data.worldRecordId) carriers++;
+  }
+  return carriers === 1;
 }

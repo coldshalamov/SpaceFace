@@ -1,3 +1,4 @@
+import { book4ChoiceAction } from '../book4Choice.js';
 import { cinderJournalAction } from '../../missions/cinderRoute.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
 import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
@@ -32,7 +33,6 @@ import { journeyActForBeat, journeyActLabel, journeyActStoryClosed } from '../..
 import { localizeText } from '../../localization/sourceText.js';
 import { CONTRACT_47A_B0_BODY } from '../../data/narrative.js';
 import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
-import { embodiedMissionAt } from '../../story/campaign47a/embodiedMissions.js';
 import {
   evaluateEndingEligibility,
   snapshotEndingFacts,
@@ -823,7 +823,8 @@ function contract47aPaperwork(m) {
 export function activeMissionContractTerms(m, state) {
   if (!m) return [];
   const terms = [];
-  const consequences = missionConsequenceSummary(m);
+  const consequences = missionConsequenceSummary(m, state);
+  terms.push(...consequences.chips.filter(chip => chip.label === 'Branch' || chip.label === 'Book 4'));
   const paperwork = contract47aPaperwork(m);
   const pays = [];
   if (consequences.reward > 0) pays.push('+' + formatCredits(consequences.reward));
@@ -1181,7 +1182,7 @@ function careerConsequencePreview(chip, state) {
   if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
     const m = state.missions.active.find((x) => x && x.id === linkedId);
     if (m) {
-      const c = missionConsequenceSummary(m);
+      const c = missionConsequenceSummary(m, state);
       const bits = [];
       if (c.reward > 0) bits.push('+' + formatCredits(c.reward));
       if (c.repReward > 0) bits.push('+' + c.repReward + ' rep');
@@ -1767,16 +1768,6 @@ export function journalJourneyActStrip(state) {
 }
 
 /** The chosen B4 door's authored operation, from the same book data that posts it. */
-function b4DoorOperation(branch) {
-  if (!branch) return null;
-  const beat = embodiedMissionAt(4);
-  const contract = ((beat && beat.bookContracts) || []).find((row) => row && row.branch === branch);
-  if (!contract) return null;
-  const title = String(contract.title || '').trim();
-  const name = title.split(/\s+[—–-]\s+/)[0].trim();
-  return name ? { name, title } : null;
-}
-
 export function storyActionForBeat(beat, state) {
   const story = state && state.story || {};
   const postEnding = postEndingStoryAction(state);
@@ -1883,30 +1874,8 @@ export function storyActionForBeat(beat, state) {
         body: 'Run short hauls, mining, or safe bounty work until a tier-2 hull is affordable.',
         meta: ((state && state.player && state.player.credits) || 0).toLocaleString() + ' cr',
       };
-    case 4: {
-      // Once the door is chosen, the intro has done its job: the Journal names that door's
-      // operation until it is live. An active operation already owns CURRENT ACTION, so the
-      // pre-choice sponsor prompt is the only honest fallback left here.
-      const activeOperation = (state?.missions?.active || []).some((mission) =>
-        mission?.status === 'active' && mission.storyTag === 'campaign47a:b4:operation');
-      const door = b4DoorOperation(branch);
-      if (branch && door && !activeOperation) {
-        return {
-          tone: 'primary',
-          label: 'OPERATION',
-          title: 'Run ' + door.name,
-          body: door.title + ' is posted on the book board. Accept it from Missions and run the door you chose.',
-          meta: 'B4 · ' + storyBeatDisplayName(branch),
-        };
-      }
-      return {
-        tone: 'primary',
-        label: 'FACTION',
-        title: 'Choose a sponsor',
-        body: 'Accept an intro contract from MTS, SCN, or the Free Captains to lock your first path.',
-        meta: 'Branch',
-      };
-    }
+    case 4:
+      return book4ChoiceAction(state);
     case 5:
       return {
         tone: 'primary',
@@ -2531,7 +2500,7 @@ export const missionLogScreen = {
         const active = (ctx.state.missions && ctx.state.missions.active) || [];
         const m = active.find((x) => x.id === missionId);
         const title = (m && (m.title || m.name)) || 'this mission';
-        const consequences = m ? missionConsequenceSummary(m) : null;
+        const consequences = m ? missionConsequenceSummary(m, ctx.state) : null;
         const loss = ['You will lose all progress on this contract.'];
         if (consequences && consequences.collateral > 0) loss.push(formatCredits(consequences.collateral) + ' stake forfeited');
         if (consequences && consequences.repPenalty < 0) loss.push(consequences.repPenalty + ' contract standing');

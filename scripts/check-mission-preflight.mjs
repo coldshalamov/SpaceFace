@@ -45,8 +45,8 @@ assert.match(missionPreflightSrc, /sectorSignalFor/,
   'mission preflight route intel must read the same sector signal contract as Star Map risk');
 assert.match(missionPreflightSrc, /forecastTransitFor/,
   'mission preflight route intel must reuse the shared transit forecast contract');
-assert.match(missionModelSrc, /missionConsequenceSummary\(mission\)/,
-  'station mission model must use the shared consequence helper');
+assert.match(missionModelSrc, /missionConsequenceSummary\(mission, state\)/,
+  'station mission model must pass live state to the shared consequence helper');
 assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
   'shared mission consequence helper must be exported');
 assert.match(missionPreflightSrc, /export function missionRiskRewardSummary/,
