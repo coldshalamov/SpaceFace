@@ -42,7 +42,7 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 | WRITE G20 the Rig | Write the packet(s): one loadout screen for both doors (EC-G20, PR #1032; `design/game/11`) | READY |
 | WRITE G21 the Chart | Write the packet(s): full-screen live map, layers, timetable, routes (EC-G21, PR #1033) | READY |
 | WRITE G10 first ten minutes | Write the packet(s): keep the throw, cut the drills, stage the Skim on screen (EC-G10; `design/game/16` "Cold Start") | READY |
-| WRITE A01 Foundry floor | Written: A01-03 drops (Lane 3), A01-04 wall guns + Crate (Lane 2). Still to write: A01-05 the Forge + Taps, A01-06 doors + traps | READY |
+| WRITE A01 Foundry floor | Written: A01-03 drops (Lane 3), A01-04 wall guns + Crate (Lane 2). A01-05 Forge + Taps (Lane 2). Still to write: A01-06 doors + traps; the five other Forged forms; Volatile Wake + Second Reel | READY |
 | WRITE A01 freight lanes | Written: `packets/A01-02-freight-lane.md` (Lane 2) | DONE |
 | WRITE G09 one next | Write the packet: one guidance voice (EC-G09) | READY |
 | WRITE G19-02 honest hold | Write the packet: the hold shows prices; the fake scan-risk number goes (EC-G19, PR #1029) | READY |
@@ -57,6 +57,7 @@ States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DON
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | READY |
 | A01-02-freight-lane | A container string crosses the Foundry every 40 s: amber lights, horn, crushes, ride it, cut one loose | TAKEN agent2 (devin3) |
 | A01-04-wall-guns-and-the-crate | Buy on the floor: two wall guns (500) and the Crate (950, moves after 3 pulls) in the Foundry | READY |
+| A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | HOLD on A01-04 |
 | G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | TAKEN agent2 (devin2) |
 | MOB-01 pinch zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | READY |
 | MOB-02 phone HUD | spec: `drafts/MOB.md` §MOB-02 + ruling 3 (HUD ≤ 25 % of 390×844, measured ≈ 50 % today; contrast in scope); prove with `ui-bench --phone` shots | READY |
