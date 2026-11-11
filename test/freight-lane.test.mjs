@@ -226,6 +226,41 @@ test('the player loses 40% of max hull and is shoved out of the lane', () => {
   } finally { h.destroy(); }
 });
 
+test('a shielded player still loses exactly 40% of max hull; the shield is not the buffer', () => {
+  const h = boot();
+  try {
+    const pilot = h.spawn({ mass: 60, radius: 10, hull: 200, hullMax: 200, shield: 500, shieldMax: 500, pos: { x: -100, z: -2 } });
+    h.state.playerId = pilot.id;
+    h.tickUntil(24);
+    assert.ok(h.events.contacts.find((c) => c.targetId === pilot.id && c.player), 'the string touched the pilot');
+    assert.ok(Math.abs(pilot.hull - (200 - FREIGHT_PLAYER_HULL_FRACTION * 200)) < 0.5,
+      `hull lost 40% despite a full shield (hull now ${pilot.hull})`);
+    assert.equal(pilot.shield, 500, 'the shield was not drained by the crush');
+  } finally { h.destroy(); }
+});
+
+test('an armored heavy loses 60% of max hull; plating does not absorb the crush', () => {
+  const h = boot();
+  try {
+    const heavy = h.spawn({ mass: 200, radius: 14, hull: 100, hullMax: 100, armorFlat: 50, armorHp: 400, shield: 300, pos: { x: -150, z: 3 } });
+    h.tickUntil(24);
+    assert.ok(h.events.contacts.find((c) => c.targetId === heavy.id), 'the string touched the heavy');
+    assert.ok(Math.abs(heavy.hull - (100 - FREIGHT_HEAVY_HULL_FRACTION * 100)) < 0.5,
+      `hull lost 60% despite armor and shield (hull now ${heavy.hull})`);
+    assert.equal(heavy.armorHp, 400, 'armor HP untouched');
+    assert.equal(heavy.shield, 300, 'shield untouched');
+  } finally { h.destroy(); }
+});
+
+test('a shielded, armored light hull still dies', () => {
+  const h = boot();
+  try {
+    const wasp = h.spawn({ mass: 24, radius: 8, hull: 40, hullMax: 40, shield: 900, armorFlat: 60, armorHp: 900, pos: { x: -200, z: 0 } });
+    h.tickUntil(23);
+    assert.equal(wasp.alive, false);
+  } finally { h.destroy(); }
+});
+
 test('a latched container cuts loose after 0.5 s above the hold threshold', () => {
   const h = boot();
   try {

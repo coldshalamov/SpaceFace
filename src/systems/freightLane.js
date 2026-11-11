@@ -300,7 +300,7 @@ export function createFreightLaneDirector(ctx) {
       const damage = isPlayer
         ? hullMax * FREIGHT_PLAYER_HULL_FRACTION
         : (mass <= FREIGHT_LIGHT_KILL_MASS_T
-          ? Math.max(1, 4 * (finite(target.hull) + finite(target.shield) + finite(target.armor) + finite(target.armorFlat)))
+          ? Math.max(1, finite(target.hull) + 1)
           : hullMax * FREIGHT_HEAVY_HULL_FRACTION);
       const packet = scalarHitToDamagePacket({
         damage,
@@ -317,7 +317,7 @@ export function createFreightLaneDirector(ctx) {
         },
       });
       packet.shieldBypass = 1;
-      packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true };
+      packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true, structuralHull: true };
       k.routeDamage({
         attackerId,
         targetId: target.id,
