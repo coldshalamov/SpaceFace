@@ -61,6 +61,10 @@ export const FREIGHT_HOLD_TICKS = 30;
  * between riding the string and hauling on it.
  */
 export const FREIGHT_HOLD_TENSION_RATIO = 0.75;
+/** A reel counts as "active hauling" for this many ticks after the last reel step. */
+export const FREIGHT_REEL_ACTIVE_TICKS = 15;
+/** Anchor-side speed across the lane (a swing) or against it (a haul-back) that counts as active. */
+export const FREIGHT_ACTIVE_SPEED_WU_S = 40;
 const FREIGHT_THROW_PROVENANCE_TICKS = Math.round(SWARM_FEEL_PROFILE.contact.thrownProvenanceS * 60);
 /** Velocity servo — the same law the shutters ride, tuned for a 400 t body at 140 WU/s. */
 const FREIGHT_SERVO = Object.freeze({ gainPos: 6, gainVel: 2.5, maxSpeed: 200 });
@@ -353,6 +357,29 @@ export function createFreightLaneDirector(ctx) {
     }
   }
 
+  /** Riding is passive; only the other end's own reel, swing, or haul-back counts as hauling. */
+  function _hauling(state, a, member) {
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (Number.isFinite(a.lastReelTick) && tick - a.lastReelTick <= FREIGHT_REEL_ACTIVE_TICKS) return true;
+    const otherId = a.ownerId === member.id ? a.targetId : a.ownerId;
+    const other = state.entities && typeof state.entities.get === 'function' ? state.entities.get(otherId) : null;
+    if (!other || !other.vel) return false;
+    const lane = armed.lane;
+    const along = finite(other.vel.x) * lane.dirX + finite(other.vel.z) * lane.dirZ;
+    const across = finite(other.vel.x) * -lane.dirZ + finite(other.vel.z) * lane.dirX;
+    return Math.abs(across) > FREIGHT_ACTIVE_SPEED_WU_S || along < 0;
+  }
+
+  function _cutLines(member, reason) {
+    const k = kernel();
+    const atts = k && k.attachments && typeof k.attachments.listForEntity === 'function'
+      ? k.attachments.listForEntity(member.id, true) : null;
+    if (!atts) return;
+    for (const a of atts) {
+      if (a && a.state === 'active' && typeof k.attachments.cut === 'function') k.attachments.cut(a.id, null, reason);
+    }
+  }
+
   function _lineTensionCut(state, rec, member) {
     // An active Line held over the break-warning ratio for FREIGHT_HOLD_TICKS cuts
     // the container loose from the string.
@@ -368,7 +395,7 @@ export function createFreightLaneDirector(ctx) {
           ? k.attachments.breakPolicy(a.id)
           : null;
         const maxT = policy && Number.isFinite(policy.maxTension) ? policy.maxTension : Infinity;
-        if (finite(a.lastTension) > FREIGHT_HOLD_TENSION_RATIO * maxT) { over = true; break; }
+        if (finite(a.lastTension) > FREIGHT_HOLD_TENSION_RATIO * maxT && _hauling(state, a, member)) { over = true; break; }
       }
     }
     if (over) {
@@ -423,6 +450,7 @@ export function createFreightLaneDirector(ctx) {
         _contactSweep(st, rec, member);
         // East exit.
         if (finite(member.pos && member.pos.x) >= lane.x1) {
+          _cutLines(member, 'freight_east_exit');
           member.alive = false;
           emit('entity:retired', {
             id: member.id, occupantGeneration: member.occupantGeneration,
@@ -445,6 +473,7 @@ export function createFreightLaneDirector(ctx) {
     for (const rec of strings) {
       for (const member of rec.members) {
         if (member && member.alive !== false) {
+          _cutLines(member, 'freight_teardown');
           member.alive = false;
           emit('entity:retired', {
             id: member.id, occupantGeneration: member.occupantGeneration,
