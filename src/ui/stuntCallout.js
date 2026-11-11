@@ -37,6 +37,7 @@ import { onFrame } from './orrery/motion.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { isAdventureFlight, plainCallout } from './attentionGlass.js';
+import { getStage } from './stage.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -63,8 +64,6 @@ export const TOUCH_EDGE_SELECTOR = '#sf-touch-overlay .mf-edge';
 export const TOUCH_DOCK_SELECTOR = '#sf-touch-overlay .mf-dock';
 export const HUD_PRIORITY_CLEARANCE_PX = 12;
 
-const BONE = '236 230 216';
-
 // The four authored tiers (stuntRecognition derives rarity from baseScore; stuntCombo's
 // RARITY_MULT is the same ladder). A receipt carrying anything else degrades to common —
 // never a bespoke attribute value, never heavier than a common read.
@@ -73,63 +72,6 @@ function calloutRarity(value) {
   return STUNT_RARITY_LADDER.has(value) ? value : 'common';
 }
 
-const CSS = `
-.sf-stuntcall { position:fixed; left:calc(var(--sf-hud-edge, 16px) + var(--sf-safe-inset-x, 0px)); bottom:32vh; z-index:12; display:flex; flex-direction:column;
-  align-items:flex-start; gap:5px; pointer-events:none; }
-.sf-stuntcall[hidden] { display:none; }
-.sf-stuntcall__line { display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
-  padding:3px 9px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
-  background:linear-gradient(180deg, rgb(16 20 28 / .86), rgb(11 14 20 / .86));
-  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .60); }
-.sf-stuntcall__lines { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.sf-stuntcall__name { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
-  font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
-.sf-stuntcall__line[data-rarity="common"] .sf-stuntcall__name { font-weight:450;
-  color:rgb(248 244 234 / .78); }
-.sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
-  color:rgb(248 244 234 / .88); }
-.sf-stuntcall__line[data-rarity="rare"] .sf-stuntcall__name { font-weight:700;
-  color:rgb(248 244 234 / .96); }
-.sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
-  color:rgb(248 244 234 / 1); }
-.sf-stuntcall__pts { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:500;
-  font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.02em; color:rgb(${BONE} / .76); }
-.sf-stuntcall__line.is-bank { border-color:rgb(242 185 80 / .36); }
-.sf-stuntcall__line.is-bank .sf-stuntcall__name { color:var(--dp-hand, #f2b950); }
-.sf-stuntcall__line.is-bank .sf-stuntcall__pts { color:var(--dp-hand, #f2b950); }
-.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px;
-  padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
-  background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88)); }
-.sf-stuntcall__rowtop { display:flex; align-items:baseline; gap:10px; }
-.sf-stuntcall__mult { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:600;
-  font-size:24px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums;
-  color:rgb(248 244 234 / .95); }
-.sf-stuntcall__names { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
-  font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:rgb(${BONE} / .78); }
-.sf-stuntcall__scale { position:relative; width:190px; height:3px; border-radius:1.5px;
-  background:rgb(${BONE} / .20); }
-.sf-stuntcall__scale-fill { position:absolute; inset:0; transform-origin:left center;
-  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .82); }
-.sf-stuntcall__scale-notch { position:absolute; top:-3px; width:1px; height:9px;
-  background:rgb(${BONE} / .55); }
-.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-num, "Spline Sans Mono", monospace);
-  font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.04em; text-transform:uppercase;
-  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .64); }
-.sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
-@keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
-html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
-@media (prefers-reduced-motion:reduce) { .sf-stuntcall__rise { animation:none; } }
-.sf-stuntcall__sr { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
-  clip:rect(0 0 0 0); white-space:nowrap; }
-`;
-
-function injectStyle(doc) {
-  if (!doc || !doc.head || typeof doc.getElementById !== 'function' || doc.getElementById(STUNT_CALLOUT_STYLE_ID)) return;
-  const style = doc.createElement('style');
-  style.id = STUNT_CALLOUT_STYLE_ID;
-  style.textContent = CSS;
-  doc.head.appendChild(style);
-}
 
 /* --- pure builders. Everything the layer says is decided here, DOM-free. --------------------- */
 
@@ -416,7 +358,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   const inert = { root: null, update() {}, destroy() {}, active: () => false, setFlightTextGeometryChangeListener() {} };
   if (!usable(doc)) return inert;
   injectOrrery(doc);
-  injectStyle(doc);
+  // G16-02: the injected sheet retired to styles/ui.css; the layer seats in the Stage's feed
+  // slot — inside #hud, where the slot itself already re-seats after a hud rebuild.
 
   const root = mk(doc, 'div', 'sf-stuntcall');
   root.hidden = true;
@@ -466,7 +409,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   sr.setAttribute('role', 'status');
   sr.setAttribute('aria-live', 'polite');
   root.appendChild(sr);
-  (host || doc.body).appendChild(root);
+  // The feed slot lives inside #hud — its rebuild wipes the layer along with the slot, so the
+  // same seat routine re-appends on the next update when the mount point came from the Stage.
+  const seatHost = () => host
+    || (doc === globalThis.document && getStage() && typeof getStage().slotEl === 'function'
+      ? getStage().slotEl('feed') : null)
+    || doc.body;
+  seatHost().appendChild(root);
 
   // One model, written by bus handlers, rendered by update(). The rendered strings are cached so
   // the frame step writes DOM only on change (flight HUD budget).
@@ -703,6 +652,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   /** The whole render step. `now` is wall ms (performance.now scale). Returns true while alive. */
   function update(now) {
     if (destroyed) return false;
+    // A hud rebuild wiped the feed slot — re-seat on the same host the first mount used.
+    if (root.isConnected === false) seatHost().appendChild(root);
     const st = getState();
     const scope = calloutScope(st);
     if (!scope) {

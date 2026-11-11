@@ -20,6 +20,9 @@ import { requestTrafficReaction, releaseTrafficReaction } from './trafficReactio
 export const RUBBERNECKERS_ACTIVE_EVENT = 'traffic:rubberneckersActive';
 export const RUBBERNECKERS_SHOO_EVENT = 'traffic:rubberneckerShooed';
 export const RUBBERNECKERS_SCAVENGER_EVENT = 'traffic:scavengerArrived';
+export const RUBBERNECKERS_SCAVENGER_DISPATCHED_EVENT = 'traffic:scavengerDispatched';
+export const RUBBERNECKERS_SCAVENGER_TURNED_BACK_EVENT = 'traffic:scavengerTurnedBack';
+export const RUBBERNECKERS_SCAVENGER_MISSED_EVENT = 'traffic:scavengerMissed';
 
 export const RUBBERNECKERS_TUNING = Object.freeze({
   maxViewDistWu: 420,          // passing civilians within 420 WU can notice the wreck
@@ -27,7 +30,13 @@ export const RUBBERNECKERS_TUNING = Object.freeze({
   lookDurationS: 20,           // two passing civilians slow down to look for 20 s
   shooDistanceWu: 50,          // player getting within 50 WU shoos them away
   fleeDurationS: 8,            // shooed civilians flee at speed for 8 s
-  scavengerDelayS: 45,         // scavenger arrives within a minute (45 s)
+  scavengerDelayS: 45,         // scavenger commissioned well inside the minute
+  scavengerNoticeS: 6,         // the salvor notices the wreck this long after the death
+  scavengerGraceS: 15,         // give up commissioning at scavengerDelayS + this (60 s)
+  scavengerCheckS: 0.5,        // sim seconds between scavenger checks
+  scavengerFlightMaxS: 60,     // an en-route salvor is reported missed after this long
+  scavengerArriveWu: 70,       // within this of the wreck counts as arrived
+  wreckBodyRadiusWu: 160,      // the wreck body the kill left sits within this of the death point
   cooldownS: 60,               // cooldown between rubbernecking incidents
   maxRubberneckers: 2,         // exactly two passing civilians
   slowThrottle: 0.12,          // crawl throttle while looking
@@ -87,6 +96,7 @@ export const rubberneckersOps = {
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', (p) => this._onRubberneckersEntityKilled(p));
       this.bus.on('sector:exit', () => this._resetRubberneckers());
+      this.bus.on('save:loaded', () => this._resetRubberneckers());
       this.bus.on('combat:hitstunImpulse', (p) => this._onRubberneckerShoved(p));
     }
   },
@@ -160,7 +170,7 @@ export const rubberneckersOps = {
       for (const e of state.entityList) checkEntity(e);
     }
 
-    if (candidates.length === 0) return;
+    // No passers-by is still a wreck: the scavenger half of the plant needs no audience.
 
     // Pick up to 2 closest passing civilians:
     candidates.sort((a, b) => a.dist - b.dist);
@@ -190,11 +200,13 @@ export const rubberneckersOps = {
       at: now,
       scavengerAt: now + RUBBERNECKERS_TUNING.scavengerDelayS,
       scavengerDispatched: false,
+      phase: 'seek',
+      nextCheckAt: 0,
       rubberneckerIds: chosenIds,
     };
     this._incidentCooldownUntil = now + RUBBERNECKERS_TUNING.cooldownS;
 
-    if (this.bus && typeof this.bus.emit === 'function') {
+    if (chosenIds.length > 0 && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit(RUBBERNECKERS_ACTIVE_EVENT, {
         wreckId,
         wreckPos,
@@ -332,7 +344,17 @@ export const rubberneckersOps = {
   },
 
   /**
-   * Stepper called each traffic update tick to handle scavenger timing.
+   * Stepper called each traffic update tick: the scavenger half of PL-03.
+   *
+   * The scavenger is the sector's own general salvor (trafficRoleOps/trafficTugOps): a real
+   * cutter hull commissioned from the nearest yard station through helpers.npcJobs, flying the
+   * job route yard -> wreck. The incident only hurries the notice the salvor would otherwise
+   * take 18-45 s to have (salvorNoticeAt) and asks the existing dispatcher to commission. The
+   * salvor job itself turns back if the wreck is taken or emptied first (_maintainGeneralSalvorJobs).
+   *
+   *   seek     -> find the real wreck body the kill left (it can spawn a few ticks after the kill)
+   *   enroute  -> the salvor is claimed to the wreck and flying; watch it arrive or turn back
+   *   done     -> arrived / turned back / out of time
    */
   _stepRubberneckers(state) {
     if (!state || (state.mode && state.mode !== 'flight')) return;
@@ -340,30 +362,91 @@ export const rubberneckersOps = {
     if (!incident || incident.scavengerDispatched) return;
 
     const now = finite(state.simTime, 0);
-    if (now >= incident.scavengerAt) {
+    const T = RUBBERNECKERS_TUNING;
+    if (now < (incident.nextCheckAt || 0)) return;
+    incident.nextCheckAt = now + T.scavengerCheckS;
+    const deadline = incident.at + T.scavengerDelayS + T.scavengerGraceS;
+    const finish = (event, extra = {}) => {
       incident.scavengerDispatched = true;
-      const player = state.entities && state.playerId != null
-        ? state.entities.get(state.playerId) : null;
-
-      // Did the player take or approach the wreck first?
-      let playerAtWreck = false;
-      if (player && player.alive !== false && player.pos) {
-        const dx = player.pos.x - incident.wreckPos.x;
-        const dz = player.pos.z - incident.wreckPos.z;
-        if (Math.hypot(dx, dz) <= 45) {
-          playerAtWreck = true;
-        }
-      }
-
       if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit(RUBBERNECKERS_SCAVENGER_EVENT, {
+        this.bus.emit(event, {
           wreckId: incident.wreckId,
           wreckPos: incident.wreckPos,
+          bodyId: incident.bodyId ?? null,
+          scavengerId: incident.scavengerId ?? null,
           scavengerRole: 'salvor',
-          playerAtWreck,
           t: now,
+          ...extra,
         });
       }
+    };
+
+    const entities = state.entities && typeof state.entities.get === 'function' ? state.entities : null;
+
+    if (incident.phase !== 'enroute') {
+      if (now >= deadline) return finish(RUBBERNECKERS_SCAVENGER_MISSED_EVENT);
+      if (typeof this._listSalvageTargets !== 'function' || typeof this._dispatchGeneralSalvors !== 'function') return;
+      // The body the kill left: a salvageable wreck beside the death point.
+      this._salvageTargetCache = null;
+      this._salvageTargetCacheTick = null;
+      let body = null;
+      let bodyD2 = T.wreckBodyRadiusWu * T.wreckBodyRadiusWu;
+      for (const target of this._listSalvageTargets()) {
+        if (!target || target.type !== 'wreck' || !target.pos) continue;
+        const dx = target.pos.x - incident.wreckPos.x;
+        const dz = target.pos.z - incident.wreckPos.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 <= bodyD2) { bodyD2 = d2; body = target; }
+      }
+      if (!body) return;
+      incident.bodyId = body.id;
+      const data = body.data || (body.data = {});
+      // Hurry the salvor's notice: it saw the death, it does not have to stumble on the hulk.
+      const hurried = incident.at + T.scavengerNoticeS;
+      if (!Number.isFinite(data.salvorNoticeAt) || data.salvorNoticeAt > hurried) data.salvorNoticeAt = hurried;
+      if (now < data.salvorNoticeAt) return;
+      const sectorId = state.world && state.world.currentSectorId;
+      this._dispatchGeneralSalvors(sectorId);
+      const claimId = typeof this._salvorClaimantOf === 'function' ? this._salvorClaimantOf(body) : null;
+      if (!claimId) return; // no free cutter or no yard yet: ask again next check
+      let salvor = null;
+      if (entities && Array.isArray(state.traffic && state.traffic.freighters)) {
+        for (const rec of state.traffic.freighters) {
+          if (!rec || rec.role !== 'salvor') continue;
+          const ent = entities.get(rec.id);
+          if (ent && ent.data && ent.data.worldRecordId === claimId) { salvor = ent; break; }
+        }
+      }
+      if (!salvor) return;
+      incident.phase = 'enroute';
+      incident.scavengerId = salvor.id;
+      incident.dispatchedAt = now;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit(RUBBERNECKERS_SCAVENGER_DISPATCHED_EVENT, {
+          wreckId: incident.wreckId, bodyId: body.id, scavengerId: salvor.id, t: now,
+        });
+      }
+      return;
     }
+
+    // enroute
+    const body = entities && incident.bodyId != null ? entities.get(incident.bodyId) : null;
+    const salvor = entities && incident.scavengerId != null ? entities.get(incident.scavengerId) : null;
+    const bodyOpen = !!(body && body.alive !== false && body.pos
+      && typeof this._salvagePoolTotal === 'function' && this._salvagePoolTotal(body.data && body.data.salvagePool) > 0);
+    if (!bodyOpen) {
+      // The player took the wreck first: the salvor job releases and heads home on its own.
+      return finish(RUBBERNECKERS_SCAVENGER_TURNED_BACK_EVENT, { playerTook: true });
+    }
+    if (!salvor || salvor.alive === false || !salvor.pos) return finish(RUBBERNECKERS_SCAVENGER_MISSED_EVENT);
+    const dx = salvor.pos.x - body.pos.x;
+    const dz = salvor.pos.z - body.pos.z;
+    if (Math.hypot(dx, dz) <= T.scavengerArriveWu) {
+      const player = state.playerId != null && entities ? entities.get(state.playerId) : null;
+      const playerAtWreck = !!(player && player.alive !== false && player.pos
+        && Math.hypot(player.pos.x - body.pos.x, player.pos.z - body.pos.z) <= 45);
+      return finish(RUBBERNECKERS_SCAVENGER_EVENT, { playerAtWreck });
+    }
+    if (now >= incident.dispatchedAt + T.scavengerFlightMaxS) finish(RUBBERNECKERS_SCAVENGER_MISSED_EVENT);
   },
 };
