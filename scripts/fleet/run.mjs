@@ -41,7 +41,7 @@ const packetPath = join(PACKETS, `${packetId}.md`);
 if (!existsSync(packetPath)) { console.error(`no packet ${packetPath}`); process.exit(2); }
 
 // Machine safety (owner, 2026-11-11: two crashes under load): at most MAX_ACTIVE workers at once.
-const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 2);
+const MAX_ACTIVE = Number(process.env.FLEET_MAX_ACTIVE || 4);
 const ACTIVE = join(REPO, '.devshots', 'fleet', 'active');
 mkdirSync(ACTIVE, { recursive: true });
 const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };

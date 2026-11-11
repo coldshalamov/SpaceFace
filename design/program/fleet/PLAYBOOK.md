@@ -33,7 +33,7 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
 
 The owner's laptop (Dell Latitude 3550, integrated graphics) crashed hard twice this week while many
 game copies, browsers and agents ran at once; Windows also logs corrected PCIe errors on the SSD's
-root port. So: **at most two workers at once** (the runner refuses a third — `FLEET_MAX_ACTIVE`),
+root port. So: **at most four workers at once** (the runner refuses a fifth — `FLEET_MAX_ACTIVE`),
 **one game/browser/Electron at a time** (`scripts/fleet/game-lock.mjs`; `npm run gate` takes it
 itself), no whole-suite test runs, and push to origin after every batch so a crash loses nothing.
 
