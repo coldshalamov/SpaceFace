@@ -27,6 +27,7 @@
 // from placement: the lane the sluice floods, the mines' berth, the plate the storm rides.
 
 import { isSwarmBossWave, swarmWaveOf } from './swarmMode.js';
+import { swarmCourseFor } from './swarmCourse.js';
 
 export const SWARM_EVENT_SCHEMA_VERSION = 1;
 
@@ -320,9 +321,19 @@ function seededEventDraw(label, seed, w) {
 /**
  * The card a wave draws. Deterministic: same (arenaId, wave, seed) → same event, so a ghost
  * replay and a share code see the same room do the same thing. Returns the frozen def or null.
+ *
+ * G08-02 — an authored course round with a resolvable twistId deals its own card on its own
+ * round, ahead of the seeded draw: the course IS the draw for that round. Band rounds
+ * (≡2,8 mod 10) are skipped here on purpose — their twist is served by the minor consult
+ * at the band's scaled wager and quieter voice, so this function still answers null there.
  */
 export function swarmEventFor({ arenaId, wave, seed } = {}) {
   const w = swarmWaveOf(wave);
+  const course = swarmCourseFor(w);
+  if (course && course.twistId && !isSwarmMinorEventWave(w)) {
+    const card = SWARM_EVENT_BY_ID[course.twistId];
+    if (card) return card;
+  }
   if (!isSwarmEventWave(w)) return null;
   const own = (arenaId && SWARM_EVENT_TABLES[arenaId]) || [];
   if (own.length === 0 && SWARM_SHARED_EVENTS.length === 0) return null;
@@ -344,15 +355,33 @@ export function swarmMinorEventPool(arenaId) {
   return swarmEventPool(arenaId).filter((id) => SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].minor);
 }
 
+/** A minor-band copy of a card: stamped `band: 'minor'`, wager scaled to the band's price. */
+function stampMinorCard(def) {
+  return Object.freeze({
+    ...def,
+    band: 'minor',
+    wager: def.wager
+      ? { ...def.wager, score: Math.max(1, Math.round((Number(def.wager.score) || 0) * SWARM_MINOR_WAGER_SCALE)) }
+      : def.wager,
+  });
+}
+
 /**
  * The card a minor-band wave deals — supply and mine cards weigh double, so the quiet band
  * serves salvage and hazards far more often than even a small surge. The returned def is a
  * frozen copy stamped `band: 'minor'` whose wager.score is scaled by SWARM_MINOR_WAGER_SCALE:
  * the same wager seam, proportionally smaller pressure and bounty.
+ *
+ * G08-02 — a course round on the band deals its own authored twist ahead of the seeded
+ * draw, but only when that twist is a minor-tagged card: the band's voice and price still
+ * apply, and a card the band could not carry is not the band's to deal.
  */
 export function swarmMinorEventFor({ arenaId, wave, seed } = {}) {
   const w = swarmWaveOf(wave);
   if (!isSwarmMinorEventWave(w)) return null;
+  const course = swarmCourseFor(w);
+  const courseCard = course && course.twistId ? SWARM_EVENT_BY_ID[course.twistId] : null;
+  if (courseCard && courseCard.minor === true) return stampMinorCard(courseCard);
   const pool = swarmMinorEventPool(arenaId);
   if (pool.length === 0) return null;
   const draw = seededEventDraw(`swarm-event-minor-v1|${arenaId || 'arena'}|w${w}`, seed, w);
@@ -370,13 +399,7 @@ export function swarmMinorEventFor({ arenaId, wave, seed } = {}) {
   }
   const def = SWARM_EVENT_BY_ID[id];
   if (!def) return null;
-  return Object.freeze({
-    ...def,
-    band: 'minor',
-    wager: def.wager
-      ? { ...def.wager, score: Math.max(1, Math.round((Number(def.wager.score) || 0) * SWARM_MINOR_WAGER_SCALE)) }
-      : def.wager,
-  });
+  return stampMinorCard(def);
 }
 
 /** Validate the tables — run by the data test, not at import. */
