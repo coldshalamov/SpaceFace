@@ -44,7 +44,7 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | PERF-01-where-the-frame-goes | D | Seven on/off experiments on the main thread (HUD, post, render scale, shadows, skip-render, ACK limit, trace); numbers only | READY (quiet machine) |
 | PERF-02a-ship-never-steps-back | D | Owner's "snake's tongue" flicker: count backward steps, then error-smooth the player ship's drawn pose | TAKEN devin1 |
 | PERF-02b local prediction | L | Draw the player's ship from their input on the main thread (client-side prediction), reconciled to the worker — the full cure for input lag + flicker | HOLD on PERF-02a |
-| PERF-02 decouple the sim | L | The sim's pace must not depend on the main thread's frame rate; decide from PERF-01's ACK/skip-render rows | HOLD on PERF-01 |
+| PERF-02 decouple the sim | L | Confirmed in code: `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops publishing at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`) — by design, to avoid post-stall teleports. So a saturated main thread slows the world itself. Loosen only after PERF-03 frees main-thread headroom; then raise the window and let PERF-02a's smoothing absorb catch-up | HOLD on PERF-01/03 |
 | PERF-03 biggest main-thread owner | L→D | Cut whatever PERF-01 names as the largest waste; lead writes the packet from the numbers | HOLD on PERF-01 |
 | PERF-04 late shader compiles | D | NEEDS-PACKET: 3 programs compile mid-flight (`perf:renderer-info`); prewarm them with the opening cohort | NEEDS-PACKET |
 
