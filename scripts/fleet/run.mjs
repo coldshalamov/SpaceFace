@@ -131,6 +131,19 @@ function launch(resume) {
   const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
   child.stdout.on('data', onData);
   child.stderr.on('data', onData);
+  // Flash and Devin sometimes sit "waiting" forever after writing their receipt. Once the receipt
+  // exists and the log has been silent for 3 minutes, end the worker so its slot frees up.
+  let lastOutputAt = Date.now();
+  child.stdout.on('data', () => { lastOutputAt = Date.now(); });
+  child.stderr.on('data', () => { lastOutputAt = Date.now(); });
+  const idleWatch = setInterval(() => {
+    if (existsSync(join(runDir, 'RECEIPT.md')) && Date.now() - lastOutputAt > 180_000) {
+      log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
+      clearInterval(idleWatch);
+      try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+    }
+  }, 30_000);
+  child.on('close', () => clearInterval(idleWatch));
   const timer = setTimeout(() => { log.write(`
 [fleet] timeout after ${timeoutMin} min
 `); child.kill(); }, Math.max(1000, deadline - Date.now()));
