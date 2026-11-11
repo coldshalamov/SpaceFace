@@ -108,4 +108,5 @@ lead looks at the screen, so every visible change needs a lead look before `DONE
 | PLANT-NEXT | S | Build the next OPEN world reaction in `INFERENCE_PLANTS.md` (96 open) | READY (repeat) |
 | PRX-NEXT | D | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955); the rest wait for wave 4–5 | READY (repeat) |
 | PL-08-applause | S | Station lamps flash at a slingshot kill — DeepSeek timed out with nothing; back to READY | READY |
+| PL-03 scavenger half | S | PL-03 shipped (aecf72a9) with the rubberneckers only; add its second half — a scavenger arrives within a minute of a wreck in a lane | READY |
 | PL-05-road-rage | S | A twice-shoved civilian shoves back, then runs | BUILT b34318dd |
