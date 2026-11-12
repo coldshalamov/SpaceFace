@@ -1,3 +1,4 @@
+import { planSwarmMawBallast } from '../systems/swarmMawBallast.js';
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 
 /** Call INSIDE _spawnCapitalBossTargets, before helpers.spawnEntity(spec). Mutates a NEW spec, not GameState. */
@@ -20,19 +21,25 @@ export function decorateCapitalBossSpawnSpec(spec,actor,encounter,{missionId,ind
  * never did. Place each non-hull actor once, on the boss's pose, through the same ledger a
  * mission uses. A filled slot is a tombstone: a second start does not mint another rock.
  */
-export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spawnEntity }) {
+export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spawnEntity, state = null }) {
   if (!fightId || !encounter || !boss || !boss.pos || !ledger || typeof spawnEntity !== 'function') {
     throw new TypeError('Swarm ballast needs the fight, the placed boss, a ledger, and a spawn port');
   }
   const offsets = encounter.score && encounter.score.arena && encounter.score.arena.ballastOffsets;
   if (!offsets || !offsets.length) return [];
   const bossSpawn = { pos: { x: boss.pos.x, z: boss.pos.z }, rot: boss.rot || 0 };
+  const arrangement = planSwarmMawBallast(state, boss, encounter);
   const ids = [];
   for (const actor of encounter.actors || []) {
     if (!actor || actor.role === 'capital_hull') continue;
     const want = Math.max(1, actor.count || 1);
     for (let actorIndex = 0; actorIndex < want; actorIndex++) {
-      const anchored = capitalBossBallastPosition(encounter, bossSpawn, actorIndex);
+      const slot = `${fightId}/${actor.role}/${actorIndex}`;
+      if (Object.hasOwn(ledger, slot)) continue;
+      const anchored = arrangement ? arrangement[slot.slice(fightId.length + 1)]
+        : capitalBossBallastPosition(encounter, bossSpawn, actorIndex);
+      // An impossible optional seat is spent once, not a delayed ammo dispenser.
+      if (!anchored) { ledger[slot] = { state: 'unplaced', entityId: null }; continue; }
       const spec = {
         type: actor.kind === 'asteroid' ? 'asteroid' : 'wreck',
         team: 2,

@@ -232,7 +232,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
         const ledgers=(store.swarmBallastLedgers??={});
         const ledger=(ledgers[id]??={});
         spawnSwarmCapitalBallast({
-          fightId:id,encounter:requireCapitalBossEncounter(encounterId),boss,ledger,spawnEntity:spawn,
+          fightId:id,encounter:requireCapitalBossEncounter(encounterId),boss,ledger,spawnEntity:spawn,state:ctx.state,
         });
       };
       if(old) {
