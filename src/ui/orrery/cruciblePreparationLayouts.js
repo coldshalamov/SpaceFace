@@ -28,6 +28,9 @@ ${D} .orr-prep-tab[aria-selected=true] { color:rgb(${BONE} / .96); background:no
 ${D} .orr-prep-tab[aria-selected=true]::after { opacity:1; }
 ${D} .orr-prep-tab:focus:not(:focus-visible) { outline:none !important; }
 ${D} .orr-prep-tab:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
+/* ui-polish-512: the focus ring was a hard square box hugging the label; it takes the rounded field
+   corner the other keys wear, a little softer than full bone, and breathes a few px past the word. */
+${D} .orr-prep-tab:focus-visible { border-radius:6px; outline-color:rgb(${BONE} / .78) !important; outline-offset:4px !important; }
 ${D} .orr-prep-step { font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.08em; color:rgb(${BONE} / .55); }
 ${D} .orr-prep-tab[aria-selected=true] .orr-prep-step { color:var(--dp-hand); }
 ${D} .orr-prep-nextstep { display:inline-flex; align-items:center; gap:10px; margin:0; padding:14px 0; min-height:48px; font:600 16px var(--dp-face-label); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .42); pointer-events:none; user-select:none; }
