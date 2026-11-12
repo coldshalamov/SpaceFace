@@ -56,7 +56,8 @@ try {
       const bus = { on(name, fn) { const list = handlers.get(name) || []; list.push(fn); handlers.set(name, list); return () => {}; }, emit(name, payload) { for (const fn of handlers.get(name) || []) fn(payload); } };
       createToasts({ bus, state });
       bus.emit('toast', { text: 'Helios Freight Spine', kind: 'info', ttl: 60 });
-      bus.emit('toast', { text: 'Survey: That bearing is a lamp, not a star. We look anyway.', kind: 'info', ttl: 60 });
+      // 6db9d8455379 intentionally keeps multi-sentence prose off Adventure flight glass.
+      bus.emit('toast', { text: 'Course set to the recovery point beyond Helios Freight Spine', kind: 'info', ttl: 60 });
       await document.fonts.ready;
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }, scenario);
@@ -79,7 +80,7 @@ try {
         assert.ok(!overlaps, `Receipt clears ${control.name} in ${scenario.width}x${scenario.height} ${scenario.layout}`);
       }
     }
-    assert.match(geometry.announcement, /Survey: That bearing is a lamp/, 'Polite announcement retains the bark');
+    assert.match(geometry.announcement, /Course set to the recovery point/, 'Polite announcement retains the full receipt');
     const name = `${scenario.width}x${scenario.height}-${scenario.layout}`;
     await page.screenshot({ path: path.join(out, `${name}.png`) });
     results.push({ ...scenario, ...geometry });

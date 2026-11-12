@@ -4401,10 +4401,14 @@ export const economy = {
       const def = commodityDef(state, cid);
       return (def && def.name) || cid;
     });
-    this.bus.emit('toast', {
-      text: `${voice}, ${name}: Cold chain broken — ${labels.join(', ')} spoiling.`,
-      kind: 'warn', ttl: 6,
-    });
+    // Open-world news, not arena news: during a Swarm run the station keeps its ledger but the player is not
+    // told mid-fight (it printed over round 3, lead look). The economy state above is unchanged either way.
+    if (!(state.run && state.run.kind === 'survival')) {
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: Cold chain broken — ${labels.join(', ')} spoiling.`,
+        kind: 'warn', ttl: 6,
+      });
+    }
   },
 
   /** The 5 s market-play sweep: expire contracts, rot cold stock, cool Penn's lead. */
