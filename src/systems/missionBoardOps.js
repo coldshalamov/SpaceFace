@@ -31,6 +31,8 @@ import { QUIET_BERTH_TYPE, SPLIT_MANIFEST_TYPE, YARD_BOARD_STATION_ID, YARD_WORK
 import { syncWakeHandoffOffer } from './wakeHandoffRuntime.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
+import { driveTender, tenderSpotRowRetained, TENDER_SPOT_SOURCE } from '../missions/tenderHaul.js';
+import { TENDER_HAUL_TUNING, TENDER_HAUL_TYPE, buildTenderOffer } from '../data/missions.js';
 import { buildEndgameBoardOffers, buildMissionBoardContract, getPickSideStake } from '../story/campaign47a/index.js';
 import { activeOwnedShip, nextStarterStep } from '../data/starterJobs.js';
 import { raceCourseForSector } from '../data/raceCourses.js';
@@ -71,6 +73,7 @@ export const missionBoardOps = {
       const cylinderChanged = this._syncCleanCylinderOffer(info, board);
       const warmCargoChanged = this._syncWarmCargoOffer(info, board);
       const quietPassageChanged = this._syncQuietPassageOffer(info, board);
+      const tenderChanged = this._syncTenderOffer(info, board, epoch);
       this._syncWakeHandoffOffer(info, board);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
@@ -82,7 +85,7 @@ export const missionBoardOps = {
       const captainChanged = syncCaptainStandingOrders(this, info, board);
       const reyChanged = syncColdburnBid(this, info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged || captainChanged || reyChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || tenderChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged || captainChanged || reyChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -159,6 +162,15 @@ export const missionBoardOps = {
     const retainedHeistOffers = previousSlots.filter((offer) => (
       offer && offer.type === PQ019C_HEIST_TYPE
     )).slice(0, 1);
+    // W-TENDER: the standing tender row is authored work carried through refresh while unresolved
+    // — append-only, like the heist retention above. The fail-forward spot row carries only while
+    // its reason still stands (tenderSpotRowRetained: contract ore still aboard, inside its
+    // time_limit_s — the mega-heist retention's completedEndgamePull shape), so a row the pilot
+    // never accepted cannot sit on the desk board forever with its stale hold brief.
+    const retainedTenderOffers = previousSlots.filter((offer) => (
+      offer && (offer.type === TENDER_HAUL_TYPE
+        || (offer.source === TENDER_SPOT_SOURCE && tenderSpotRowRetained(state, offer, epoch)))
+    ));
     // BREAKAWAY: the standing Third Shift row is authored progress for the same reason.
     const retainedBreakawayOffers = previousSlots.filter((offer) => (
       offer && offer.type === BREAKAWAY_RECOVERY_TYPE
@@ -214,6 +226,7 @@ export const missionBoardOps = {
         // on a fresh board and on a same-epoch cached board after story advancement. Any retained
         // row placed before the generated block pushes the intro off the head.
         ...retainedHeistOffers,
+        ...retainedTenderOffers,
         ...retainedBreakawayOffers,
         ...retainedCounterweightOffers,
         ...retainedYardOffers,
@@ -239,6 +252,7 @@ export const missionBoardOps = {
     this._syncCleanCylinderOffer(info, board);
     this._syncWarmCargoOffer(info, board);
     this._syncQuietPassageOffer(info, board);
+    this._syncTenderOffer(info, board, epoch);
     this._syncWakeHandoffOffer(info, board);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncMegaHeistOffers(info, board, epoch);
@@ -273,6 +287,43 @@ export const missionBoardOps = {
 
   _syncWakeHandoffOffer(info, board) {
     return syncWakeHandoffOffer(this, info, board);
+  },
+
+  /**
+   * W-TENDER — keep exactly one authored Tender row on the Tethys junction rail board, under the
+   * live DMC–MTS front board. The row is authored work posted once per run: a settlement (completed,
+   * floor-failed, or abandoned) promotes to the durable `missions.tenderTally` ledger, which this
+   * sync reads — the standing row never reposts over a settled run, and the retention filter above
+   * carries an unresolved row (and the fail-forward spot row) through every epoch refresh.
+   * Appended, never unshifted: the authored story rows own the board head (same reason the heist
+   * appends). The tender's three conditions stamp onto `clauses` HERE, the only seam that can —
+   * missionsData is canonical data only and cannot import the condition catalog.
+   */
+  _syncTenderOffer(info, board, epoch = this._epoch()) {
+    if (!info || info.id !== TENDER_HAUL_TUNING.railStationId) return false;
+    if (!board || !Array.isArray(board.slots)) return false;
+    const state = this.state;
+    // A settled run never reposts: the durable ledger (and its story flag) outlives the receipt ring.
+    if (state.missions && state.missions.tenderTally && state.missions.tenderTally.missionId) return false;
+    if (state.story && state.story.flags && state.story.flags.tender_tally_filed === true) return false;
+    const exists = board.slots.some((offer) => offer && offer.type === TENDER_HAUL_TYPE)
+      || (state.missions.active || []).some((m) => m && m.status === 'active' && m.tender);
+    if (exists) return false;
+    const offer = buildTenderOffer({ epoch });
+    if (!offer) return false;
+    offer.clauses = ['tender_window', 'grader_declared', 'manifest_undisclosed']
+      .map((id) => serializableMissionCondition(id))
+      .filter(Boolean);
+    // Legibility: the terms are told in the one-line brief before accept, exactly as the rolled
+    // and variant seams fold them (_withConditions / _withVariantClauses).
+    const termBrief = offer.clauses
+      .map((row) => missionConditionById(row.conditionId))
+      .map((def) => def && def.brief)
+      .filter(Boolean)
+      .join(' ');
+    if (termBrief) offer.brief = withClauseBriefSuffix(String(offer.brief || '').trim(), termBrief);
+    board.slots.push(offer);
+    return true;
   },
 
   _syncWarmCargoOffer(info, board) {
@@ -650,6 +701,17 @@ export const missionBoardOps = {
       }
       return m.counterweight.settledOutcome;
     });
+  },
+
+  /**
+   * W-TENDER — one tick of one tender run, then settlement when the intake window resolves. The
+   * tender offer declares no duration_s, so the ordinary deadline path in missions.update can never
+   * mint the red EXPIRED this contract forbids: late re-prices at base, and only a hold the desk
+   * finished under the floor fails — forward, into a posted spot row. Settlement routes through the
+   * ordinary paths; the module never pays, charges, or fails anything itself.
+   */
+  _driveTender(m, index) {
+    driveTender(this, m, index);
   },
 
   /**
