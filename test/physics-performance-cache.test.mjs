@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { physics } from '../src/core/physics.js';
 import {
   clearPhysicsAuthority,
   queueProjectileContinuation,
@@ -11,6 +12,7 @@ import {
   writePhysicsTelemetry,
 } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { createSimulation } from '../src/core/sim.js';
 
 const DT = 1 / 60;
 
@@ -116,6 +118,65 @@ function assertYawCacheInvalid(rec, message) {
   assert.equal(rec._preStepYawCaptureOpen, false, `${message}: cache must be closed`);
   assert.equal(rec._preStepYawValid, false, `${message}: cache must be invalid`);
 }
+
+test('production SG-02 steps defer collider and CCD counts until diagnostics are read', async (t) => {
+  const sim = createSimulation({ seed: 4242, systems: [physics] });
+  const { state } = sim;
+  state.mode = 'flight';
+  state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  const spec = ship(1, true);
+  spec.physicsBody.shape = 'capsule';
+  spec.physicsBody.ccd = true;
+  spec.flags.boosting = true;
+  const actor = sim.spawn(spec);
+  state.playerId = actor.id;
+  const facade = sim.registry.get('physics');
+  try {
+    assert.equal(await facade.prepareBackend(state), true);
+    const owner = facade._sg02;
+    const retained = owner.diagnostics();
+    const full = t.mock.method(owner, 'diagnostics');
+    const colliders = t.mock.method(owner, 'countColliders');
+    const ccd = t.mock.method(owner, 'countCcdBodies');
+
+    const beforeX = actor.pos.x;
+    sim.step(DT);
+    assert.ok(actor.pos.x > beforeX, 'the normal step still integrates native motion');
+    assert.equal(full.mock.callCount(), 0);
+    assert.equal(colliders.mock.callCount(), 0);
+    assert.equal(ccd.mock.callCount(), 0);
+
+    const nativeColliderCount = owner.records.get(actor.id).colliders.length;
+    assert.ok(nativeColliderCount > 1, 'the fixture has a measured compound hull');
+    const report = state.physicsRuntime.diagnostics;
+    assert.equal(report.sg02Bodies, 1);
+    assert.equal(report.sg02DynamicBodies, 1);
+    assert.equal(report.colliders, nativeColliderCount);
+    assert.equal(report.ccdBodies, 1);
+    assert.equal(colliders.mock.callCount(), 1);
+    assert.equal(ccd.mock.callCount(), 1);
+    assert.ok(Object.keys(report).includes('colliders') && Object.keys(report).includes('ccdBodies'));
+
+    actor.flags.boosting = false;
+    sim.step(DT);
+    assert.equal(colliders.mock.callCount(), 1, 'the next tick also skips detailed diagnostics');
+    assert.equal(ccd.mock.callCount(), 1);
+    assert.equal(report.ccdBodies, 0, 'the retained report reads the current CCD gate');
+
+    assert.equal(owner.step(0), retained, 'the default step still returns the retained full report');
+    assert.equal(full.mock.callCount(), 1);
+    assert.equal(retained.colliders, nativeColliderCount);
+    assert.equal(retained.ccdBodies, 0);
+
+    state.settings.gameplay.physicsBackend = 'custom';
+    sim.step(DT);
+    assert.equal(report.colliders, 0);
+    assert.equal(report.ccdBodies, 0);
+  } finally {
+    facade._disableSg02DynamicAuthority();
+    sim.dispose();
+  }
+});
 
 test('pre-step angular sampling removes duplicate Rapier getter work', async () => {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });

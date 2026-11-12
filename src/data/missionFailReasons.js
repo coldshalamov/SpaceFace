@@ -38,6 +38,12 @@ export const FAIL_REASON_WORD = Object.freeze({
   target_unavailable: 'the mark could not be found',
   obligation_already_settled: 'the obligation was already settled',
   receiver_refused: 'the receiver refused the delivery',
+  // W-TENDER: the desk refused the short lot — the fail-forward names the market, not a scolding.
+  tender_floor: 'the desk refused the short lot',
+  // W-TENDER: the grace-end sell-out miss — the desk never finished the count, so the hold may
+  // carry the full lot unsold. Not the floor fail's 'short lot' words, which would contradict the
+  // spot row beside it ('440u still in your hold').
+  tender_unsold: 'the desk never finished the count',
 });
 
 /** The lower-case clause for a failure reason id, or null when no words are known. */
