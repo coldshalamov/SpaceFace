@@ -808,7 +808,7 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch::after { animation:non
 #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word) { color:#1c1406 !important; background-image:none !important; text-shadow:none !important;
   padding:0 34px 0 26px !important; min-height:52px !important; font-size:17px !important; letter-spacing:.16em; }
 #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word):is(:hover, :focus-visible) { color:#1c1406 !important; text-shadow:none !important; background-image:none !important; }
-#screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)::after { left:0 !important; top:0 !important; width:auto !important; height:auto !important; margin:0 !important; border-radius:0 !important;
+#screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)::after { left:0 !important; top:0 !important; width:auto !important; height:auto !important; margin:0 !important; border-radius:8px !important;
   box-shadow:none !important; animation:orr-lampkey-sheen 6s linear infinite !important; }
 #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)[aria-disabled="true"] { color:rgb(28 20 6 / .55) !important; }
 html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)::after { animation:none !important; display:block !important; background-position:-80% 0 !important; }
