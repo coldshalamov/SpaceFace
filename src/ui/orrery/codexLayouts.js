@@ -142,6 +142,10 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
     outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px;
   }
 }
+
+/* 8. The reader's PREVIOUS / NEXT keys sat on a baseline row: their glyphs (‹ before, › after) gave them different
+   baselines, so NEXT hung 3-4px lower than PREVIOUS at every size. Both 28px keys now centre on one line. */
+${CX} .cx-reader__turn { align-items:center !important; }
 `;
 
 /** Inject the Codex's own composition layer once (after the archive sheet). */
