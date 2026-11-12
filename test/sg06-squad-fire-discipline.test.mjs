@@ -69,6 +69,37 @@ test('production roster carries deterministic activity metadata into tactical ca
   }
 });
 
+test('a dense sensor frame reads observer damage once for range and contact confidence', () => {
+  const h = squadHarness();
+  const observer = h.attackers[0];
+  observer.pos = { x: 0, z: 0 };
+  observer.data.ai.sensorRange = 1000;
+  const targets = Array.from({ length: 32 }, (_, i) => ship(1000 + i, 0, (i + 1) * 10, 0, null));
+  installEntities(h.state, [observer, ...targets]);
+  h.state.playerId = targets[0].id;
+  h.state.spatialHash.rebuild(h.state.entityList);
+  const sensor = { health: 50, maxHealth: 100 };
+  let reads = 0;
+  h.state.combat.entities = { [observer.id]: { subsystems: {
+    get subsystem_sensor() { reads++; return sensor; },
+  } } };
+
+  for (const [tick, health] of [[60, 50], [61, 75]]) {
+    h.state.tick = tick;
+    sensor.health = health;
+    reads = 0;
+    const frame = h.helpers.aiSensors.liveFramesFor([observer.id], tick, { ephemeral: true }).get(observer.id);
+    const fraction = health / sensor.maxHealth;
+    const range = 1000 * (0.35 + fraction * 0.65);
+    assert.equal(frame.contacts.length, targets.length);
+    for (const contact of frame.contacts) {
+      const expected = (1 - contact.pos.x / range) * (0.55 + fraction * 0.45);
+      assert.equal(contact.confidence, expected);
+    }
+    assert.equal(reads, 2, 'one sensor read for frame math and one for the published self subsystem view');
+  }
+});
+
 test('production sensor batches reuse ephemeral containers without changing durable sensor truth', () => {
   const h = squadHarness();
   const roster = h.helpers.aiRoster.liveListSquads(60);
