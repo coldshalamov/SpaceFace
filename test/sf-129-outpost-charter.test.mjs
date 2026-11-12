@@ -77,6 +77,11 @@ function boot({ credits = 500000, researched = [] } = {}) {
   const bus = makeBus();
   const ctx = { state, bus, helpers: {}, registry: { get: () => null } };
   bus.on('economy:chargeCredits', (p) => {
+    if (p.requireFull) {
+      if (p.expectedCredits !== state.player.credits || state.player.credits < p.amount
+        || p.commit?.() !== true) return;
+      p.result = true;
+    }
     state.player.credits = Math.max(0, (state.player.credits || 0) - Math.max(0, Math.round(p.amount || 0)));
   });
   bus.on('economy:grantCredits', (p) => {
