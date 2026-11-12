@@ -90,7 +90,9 @@ function familySlot(engine, familyId) {
 }
 
 /** The first live cell of the named family, alone in the room: every other cell is
- *  moved far away and killed, so no burst or shard can reach the probe. */
+ *  moved far away and killed, so no burst or shard can reach the probe — or chain
+ *  off a bursting neighbor into it. Victims park at 150-unit spacing: the authored
+ *  shatter reaches 40. */
 function isolate(h, engine, familyId, wave) {
   const i = familySlot(engine, familyId);
   assert.ok(i >= 0, `wave ${wave} fields ${familyId}`);
@@ -98,8 +100,8 @@ function isolate(h, engine, familyId, wave) {
   engine._bodies.pz[i] = 9000;
   for (let k = 0; k < SWARM_BROOD_MAX; k++) {
     if (!engine._bodies.alive[k] || k === i) continue;
-    engine._bodies.px[k] = 9000 + k;
-    engine._bodies.pz[k] = 9000;
+    engine._bodies.px[k] = 20000 + k * 150;
+    engine._bodies.pz[k] = 20000;
     engine._killDirectForTest(k, 'terrain');
   }
   engine._bodies.vx[i] = 0;
