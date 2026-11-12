@@ -2535,7 +2535,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     if (production) host.inputPublishes.length = 0;
     // Work budget: the local-clock catch-up path (workBudgetMs set by the
     // worker pump) may stop early once the reply has consumed its share of the
-    // frame — un-executed steps behave like shed debt so the world slows down
+    // frame. The clock can keep any remaining steps as debt for a later task
     // instead of compounding one heavy step into a multi-hundred-ms reply.
     // Explicit-step directives carry no budget and always run exactly.
     const workBudgetNs = Number.isFinite(msg.workBudgetMs) && msg.workBudgetMs > 0

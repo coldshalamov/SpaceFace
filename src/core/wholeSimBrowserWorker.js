@@ -55,8 +55,8 @@ const LOCAL_FIXED_DT = 1 / 60;
 const LOCAL_MAX_STEPS = 4;
 // Reply work budget for the local accumulator's catch-up batch: once the host
 // has spent this much wall time inside one tick directive it stops early and
-// the un-executed steps count as shed debt. A heavy step then stretches the
-// world into slow motion instead of compounding into a multi-hundred-ms reply.
+// leaves the unexecuted steps in the bounded accumulator. A heavy step yields
+// a reply before the worker spends another task on the remaining ticks.
 // Explicit-step directives (tape/replay/verification) carry no budget and
 // always run exactly the steps requested.
 const LOCAL_WORK_BUDGET_MS = 24;
@@ -67,9 +67,8 @@ const LOCAL_DURABLE_LIMIT = 4096;
 // actually published. Rows retained across a long ACK wait are stale by the
 // time they land, and an unbounded tail is what turns a slow consumer into the
 // multi-second main-lane apply that stops the world. Keep the newest bounded
-// tail — journal ordering is carried by pack segments and correctness
-// receipts ride the other durable keys, so shedding dead triggers can never
-// gap authoritative state.
+// tail of expendable impact effects. Some events also carry correctness
+// receipts, including save settlement and run lifecycle, so those stay queued.
 const LOCAL_EVENT_RETAIN_LIMIT = 512;
 // Same class: each stepped tick clones the full input state into a durable row,
 // but the presentation side only ever consumes the newest few through a
@@ -154,6 +153,7 @@ const localClock = {
   timerFires: 0,
   stepCount: 0,
   shedStepCount: 0,
+  budgetDeferredStepCount: 0,
   commandCount: 0,
   // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
   stallCycle: null,
@@ -460,14 +460,21 @@ function localMergeReply(previous, next) {
     if (!Array.isArray(previous[key])) previous[key] = [];
     previous[key].push(...incoming);
   }
-  // Shed the oldest presentation triggers once the retained tail is definitely
-  // stale; the newest window still carries recent triggers for the publish
-  // that finally lands. Without this bound the durable row count marches to
-  // LOCAL_DURABLE_LIMIT on event volume alone and the clock hard-stops.
+  // Drop the oldest background impact effects first. The sim already consumed
+  // them, but the main bus still needs save/run lifecycle events and player hits.
   if (Array.isArray(previous.events) && previous.events.length > LOCAL_EVENT_RETAIN_LIMIT) {
-    const shed = previous.events.length - LOCAL_EVENT_RETAIN_LIMIT;
-    previous.events.splice(0, shed);
-    localClock.shedEventCount = (localClock.shedEventCount || 0) + shed;
+    const events = previous.events;
+    let remaining = events.length - LOCAL_EVENT_RETAIN_LIMIT;
+    let write = 0;
+    for (const event of events) {
+      if (remaining > 0 && event?.t === 'physics:impact' && event.p?.playerInvolved !== true) {
+        remaining -= 1;
+      } else {
+        events[write++] = event;
+      }
+    }
+    localClock.shedEventCount += events.length - write;
+    events.length = write;
   }
   if (Array.isArray(previous.inputPublishes) && previous.inputPublishes.length > LOCAL_INPUT_PUBLISH_RETAIN_LIMIT) {
     const shed = previous.inputPublishes.length - LOCAL_INPUT_PUBLISH_RETAIN_LIMIT;
@@ -815,12 +822,16 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
-  // The host may have stopped the catch-up batch early on the work budget; the
-  // debited debt is treated as shed (slow-motion beats a stalled picture).
+  // A budget limit is a yield between steps. Restore the part of the reserved
+  // debt that did not execute. The next turn still applies the normal debt cap.
   const executed = Number.isSafeInteger(reply.stepsExecuted) ? reply.stepsExecuted : steps;
   if (executed < steps) {
-    localClock.stepCount += executed - steps;
-    localClock.budgetShedStepCount = (localClock.budgetShedStepCount || 0) + (steps - executed);
+    const deferred = steps - executed;
+    localClock.stepCount -= deferred;
+    if (!hasExplicitSteps) {
+      localClock.accumulator += deferred * LOCAL_FIXED_DT;
+      localClock.budgetDeferredStepCount += deferred;
+    }
   }
   refreshLocalClockScale();
   // Only advance the watermark after tick() returns. A thrown authoritative
@@ -845,7 +856,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     directiveTicks: localClock.directiveTick,
     steps: localClock.stepCount,
     shedSteps: localClock.shedStepCount,
-    budgetShedSteps: localClock.budgetShedStepCount || 0,
+    budgetDeferredSteps: localClock.budgetDeferredStepCount,
     commands: localClock.commandCount,
     pendingCommands: localClock.pendingCommands.length,
     appliedCommandSequence: localClock.appliedCommandSequence,
