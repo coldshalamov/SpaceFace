@@ -240,6 +240,32 @@ const CSS = `
   .sf-drawer--entity > .sf-drawer__apron { margin-left: 88px; margin-right: 28px; }
 }
 
+/* ── 2b. The desktop sheet has an edge ───────────────────────────────────────────────────── */
+/* The sheet hugs its content, so on desktop its foot is a hard horizontal cut while its leading edge
+   dissolved over 72px: two edge languages on one sheet, and the station read straight through the
+   dissolve (a contract title ran into the dossier mid-word). The sheet is now a card set against the
+   right edge: opaque glass from its first pixel, a hairline on its open sides, a 12px corner where
+   they meet, and a soft shadow lifting it off the screen. The 88px gutter the dissolve needed
+   closes to 40px, giving the record that width back. */
+@media (min-width: 641px) {
+  .sf-drawerlayer > .sf-drawer--entity {
+    -webkit-mask-image: none; mask-image: none; box-sizing: border-box;
+    background: linear-gradient(180deg, rgb(13 15 21 / .95), rgb(8 10 14 / .97));
+    border-left: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 15%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 15%, transparent);
+    border-bottom-left-radius: 12px;
+    box-shadow: -24px 0 56px -16px rgb(0 0 0 / .65);
+  }
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 40px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 40px; }
+  /* Opening moves focus onto the sheet itself (entityLinks). The dissolve used to mask the
+     container's ring from consoleStandard's #screens [tabindex] rule (!important, with a 2px radius);
+     unmasked it drew a lamp frame around the card and squared its corner. The deck, rungs and
+     verbs keep their own focus marks. */
+  .sf-drawerlayer > .sf-drawer--entity:focus-visible,
+  #screens .sf-drawerlayer > .sf-drawer--entity:focus-visible { outline: none !important; border-radius: 0 0 0 12px; }
+}
+
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
 /* The quiet etched chevron — the door mark. Bone at rest, the lamp under the hand; it slides a
    few px toward the exit it names. */
