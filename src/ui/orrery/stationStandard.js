@@ -797,6 +797,10 @@ ${P} .sx-bar .sx-choice::before { content:counter(sfch) !important; display:grid
   margin:-11px 0 0 !important; padding:0 !important; transform:none !important; translate:none !important; scale:none !important; background:rgb(0 0 0 / .35) !important; border:${LINE} !important; border-radius:2px !important;
   font-family:${NUM} !important; font-size:12px !important; line-height:20px !important; font-weight:500 !important; color:rgb(${BONE} / .85) !important; box-shadow:none !important; }
 ${P} .sx-bar .sx-choice::after { content:none !important; display:none !important; }
+/* ui-polish-443: a reply carries its price and standing in one line ("File the Lost Ledger with Concord
+   (3,500 cr · Concord +14 · Meridian −…)"), and the button kit's nowrap cut it at the 480px measure
+   with no ellipsis (ui-bench station-bar-story-buyer, 960×540 and 1280×720). Replies wrap instead. */
+${P} .sx-bar .sx-choice { white-space:normal !important; overflow-wrap:anywhere; text-wrap:pretty; line-height:1.3 !important; }
 ${P} .sx-bar .sx-choice:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .14) !important; background-image:none !important; outline:none !important; }
 ${P} .sx-bar .sx-choice:focus-visible { outline:2px solid rgb(${AMBER}) !important; outline-offset:2px !important; }
 ${P} .sx-bar .sx-choice:disabled { opacity:.45; cursor:not-allowed; }
