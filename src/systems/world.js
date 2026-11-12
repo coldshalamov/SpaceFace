@@ -1397,7 +1397,7 @@ export const world = {
       state.render.sectorShellAdmissionSerial = state.world.enterSerial;
     }
     this.bus.emit('sector:enter', enterPayload);
-    return active;
+    return superseded() || state.world.activeSector !== active ? null : active;
   },
 
   // --- residency foundation (M2a) -----------------------------------------------------------
@@ -6609,28 +6609,40 @@ export const world = {
     const target = jump.targetSectorId;
     const via = jump.via;
     const unfiled = jump._unfiled === true;
-    const fromSectorId = state.world.currentSectorId;
-    const sector = state.world.sectors[target] || SECTOR_BY_ID.get(target);
-    const drive = this._activeDrive();
-
+    const departureWorld = state.world;
+    const fromSectorId = departureWorld.currentSectorId;
+    const sector = departureWorld.sectors[target] || SECTOR_BY_ID.get(target);
     const warning = via === 'drive' ? jump._interdiction : null;
-    const interdicted = !!warning;
-    let ambushCount = 0;
+    const ownsJump = () => state.world === departureWorld && state.jump === jump
+      && jump.state === 'JUMPING' && jump.targetSectorId === target && jump.via === via;
 
     // Intentional jump: residency plan + place player at target entry. Does not global-wipe
     // other bounded residents (scoped demote/evict only when over the materialization cap).
-    this.enterSector(target, { fromJump: true, via, fromSectorId });
+    const entered = this.enterSector(target, { fromJump: true, via, fromSectorId });
+    if (!ownsJump()) return;
+    const arrivalEpoch = departureWorld.enterSerial;
+    const arrivalBag = departureWorld.activeSector;
+    const ownsArrival = () => entered !== null && departureWorld.currentSectorId === target
+      && departureWorld.enterSerial === arrivalEpoch && departureWorld.activeSector === arrivalBag;
 
-    if (via === 'drive' && interdicted) {
-      ambushCount = this._spawnAmbush(sector, warning.count, null, null, null, warning.bearing).length;
+    let announcedArrival = false;
+    if (ownsArrival()) {
+      const ambushCount = warning
+        ? this._spawnAmbush(sector, warning.count, null, null, null, warning.bearing).length
+        : 0;
+      // Ambush and arrival receipts can synchronously advance another route.
+      if (!ownsJump()) return;
+      if (ownsArrival()) {
+        const player = state.entities.get(state.playerId);
+        const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
+        const arrivePayload = { sectorId: target, fromSectorId, interdicted: !!warning, ambushCount, toPos, playerId: state.playerId,
+          ...(warning ? { interdiction: { ...warning } } : {}) };
+        if (unfiled) arrivePayload.unfiled = true;
+        announcedArrival = true;
+        this.bus.emit('jump:arrive', arrivePayload);
+        if (!ownsJump()) return;
+      }
     }
-
-    const player = state.entities.get(state.playerId);
-    const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-    const arrivePayload = { sectorId: target, fromSectorId, interdicted, ambushCount, toPos, playerId: state.playerId,
-      ...(warning ? { interdiction: { ...warning } } : {}) };
-    if (unfiled) arrivePayload.unfiled = true;
-    this.bus.emit('jump:arrive', arrivePayload);
 
     jump.state = via === 'gate' ? (GATE_COOLDOWN > 0 ? 'COOLDOWN' : 'IDLE') : 'COOLDOWN';
     jump.cooldownT = via === 'gate'
@@ -6643,6 +6655,15 @@ export const world = {
     jump._unfiled = false;
     jump._unfiledConfirmed = false;
     jump._interdiction = null;
+    if (!announcedArrival) {
+      // Clear the travel presentation and route handoff without publishing a
+      // successful destination. The fare was already paid when the tunnel began.
+      this.bus.emit('jump:chargeAbort', {
+        reason: 'superseded',
+        fuelHeld: Math.floor(state.fuel.current) || 0,
+        ...(unfiled ? { unfiled: true } : {}),
+      });
+    }
   },
 
   _spawnAmbush(sector, count, origin = null, enemyTypeId = null, requestMeta = null, bearing = null) {

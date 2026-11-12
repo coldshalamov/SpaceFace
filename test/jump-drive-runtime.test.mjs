@@ -165,3 +165,39 @@ test('Advanced Navigation reduces only valid drive-jump cooldowns', () => {
       `invalid multiplier ${String(multiplier)} fails closed`);
   }
 });
+
+for (const [event, replacementSectorId] of [
+  ['sector:exit', 'sector_tethys_junction'],
+  ['sector:enter', 'sector_ceres_belt'],
+]) test(`a jump superseded during ${event} cannot publish arrival or spawn its ambush`, (t) => {
+  const h = buildHarness();
+  h.world.enterSector('sector_helios_prime');
+  h.world._interdictChance = () => 1;
+  const heldFuel = h.state.fuel.current;
+  const { charge, fuel } = startDriveJump(h);
+  h.world._tickCharging(charge, h.state);
+  assert.equal(h.state.jump.state, 'JUMPING');
+  assert.ok(h.state.jump._interdiction);
+
+  const arrivals = [];
+  const ambushes = [];
+  const aborts = [];
+  const spawnAmbush = t.mock.method(h.world, '_spawnAmbush');
+  h.bus.on('jump:arrive', (receipt) => arrivals.push(receipt));
+  h.bus.on('interdiction:triggered', (receipt) => ambushes.push(receipt));
+  h.bus.on('jump:chargeAbort', (receipt) => aborts.push(receipt));
+  const off = h.bus.on(event, () => {
+    off();
+    h.world.enterSector(replacementSectorId);
+  });
+  h.world._tickJumping(1.2, h.state);
+
+  assert.equal(h.state.world.currentSectorId, replacementSectorId);
+  assert.deepEqual(arrivals, [], 'the replacement owns the arrival even when the sector id matches');
+  assert.deepEqual(ambushes, [], 'interdiction cannot materialize against the replacement sector');
+  assert.equal(spawnAmbush.mock.callCount(), 0, 'the departed sector does not attempt any ambush work');
+  assert.deepEqual(aborts.map(({ reason }) => reason), ['superseded']);
+  assert.equal(h.state.jump.state, 'COOLDOWN', 'the canceled tunnel cannot retry next tick');
+  assert.equal(h.state.jump.targetSectorId, null);
+  assert.equal(h.state.fuel.current, heldFuel - fuel, 'already-spent fuel is not charged again or refunded');
+});
