@@ -1,0 +1,27 @@
+# A household becomes a neighbor: mutual-aid pickup
+
+## Player experience and bounded ownership
+After raising and provisioning a Free homestead, the existing Frontier board can pair a stranded household with a supplied neighbor. This is an existing physical debt-marker job, not a new mission chain or invented economic reward. The creditor now stages its marker outside the solid household rather than only40 WU off its radius. Its message names the recipient, the marker identifies its12t load, and the starting Pelican can catch and carry the actual12t body into the debtor's existing receiving volume. The arrival steadies that household and pays through the existing owner once.
+
+This is the nearest selected disjoint continuation, not completion of opening Adventure. Fresh fetch still returns origin/master `f95de0eb1ba7560839209936afba48c7b96fe41a`; Lane B reservation in coordination `6ebfabe` remains respected. No encounter/onboarding/first-hour/audio, held mission, model, workflow or credential path changed. Source owner already belongs to this agent, with all prior Barn/provision changes preserved.
+
+Four paths: `src/systems/faction_frontier.js`, new `src/missions/frontierAidPickup.js`, new `test/frontier-aid-pickup.test.mjs`, this note. Prior exact owner snapshot `/tmp/faction_frontier.before-aid-pocket.js` SHA256 `06549617ad57bb9f475845b4d998517c5de02e3c2469900528a22809dc897f35`. The incremental patch preserves earlier `barnReceivingContact`, `homesteadProvisionContact`, and `barnFirstProvision` dependencies. No publication/worktree/model production performed.
+
+## Physical and accounting decisions
+`_postDebt` retains the existing finite debt identity, nine-minute expiry, marker generation, fee and settlement owner. New helper searches16 angular slots at320/420/520 WU from the creditor. It rejects collidable body envelopes plus110 WU and the debtor's arrival volume plus90 WU, preventing a newly staged marker from immediately paying itself. It also checks the procedural asteroid-field query. This is bounded endpoint clearance, not a traversable-corridor guarantee. If no pocket or spawn exists, no debt is posted; normal board cadence can retry later.
+
+The marker now has explicit ball physics mass12 and persistence/home sector, and a readable scanner label. Earlier nominal mass12 alone was not a native mass proof; this report does not claim a measured baseline mass. Existing saved markers are not resized, relocated or upgraded by this code. Existing `_tickDebts` still determines arrival by marker distance <=260 plus debtor radius, without requiring a tether or clean release. The alternative ordinary supply-covered debt path and all existing payment rules remain unchanged. Existing generation-sensitive cleanup behavior outside `_postDebt` is not broadened or repaired by this increment.
+
+## Tests and actual flight
+`node --test test/frontier-aid-pickup.test.mjs test/faction-frontier-expansion.test.mjs test/barn-first-provision.test.mjs`
+
+Author **42/42 pass**, including five new tests: staged finite marker and actual one-shot settlement, obstructed/failed creation without phantom debts, nearby-debtor no automatic payout, native starting-Pelican carry, and fresh persistent entity restore with moved marker/ledger generation rebind. Ordinary fixture tests raise actual six-module homesteads through the current owner; the native test uses two explicitly fixture-built stationary homesteads and posts their existing debt through `_postDebt`. It does not play an entire campaign or wait for two natural households.
+
+Native Rapier flight/cursor-catch/line-progression/tow/winch result: **383.95 simulated seconds, actual body mass12t, marker consumed by existing owner, one320-credit aid payment, player survives**. There are **31 player/marker impact events**, so this is not collision-free or polished route acceptance. The initial direct shortcut crossed the creditor's hull and timed out. The final route flies through outside staging before pickup and around the solid household. No post-boot player/marker teleport is used. An attempted assertion on `player.tether.overClass` was removed because that is not the owning state location; actual mass and completed native movement establish the narrower control claim instead.
+
+Persistence test uses the actual entity serializer, `_spawnPersistentEntities` in a fresh simulation, Frontier deserialize, saved-ID map and `save:loaded` rebind. It verifies the moved12t body, exactly one matching aid ID and open debt remain. This is stronger than same-world flag cloning, but not UI/disk Save/Continue or rendered acceptance. Existing lost/expired/covered-path regression tests remain green. CRLF-aware diff check passes; owner line endings retained.
+
+## Acceptance gaps
+Native route still needs contact reduction and rendered readability review. Full ordinary campaign discovery, two naturally raised settlements, rendered scanner/message layout and UI Save/Continue are not verified. No screenshot, published commit, integrated game or user acceptance is claimed. SF-GAME, SF-LIVING-WORLD and SF-SECTOR-COHERENCE remain open. Next action is render/play this neighbor-to-neighbor carry and inspect the31 contacts before calling it a finished encounter.
+
+Independent read-only review reproduced42/42 and approved source/tests/evidence within the listed limits. Test header and unused copied imports/helpers were cleaned afterward; focused5/5 rerun passed.

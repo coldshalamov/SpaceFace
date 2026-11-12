@@ -1,3 +1,4 @@
+import {provisionFreightCandidate,offerProvisionFreight,clearProvisionFreightOffers} from '../missions/frontierProvisionFreight.js';
 // faction_frontier.js — W-FRONTIER (build_map §34.5 row 532, bible 02 §7).
 //
 // "Every captain on this board believes they are temporary." Done-when:
@@ -51,6 +52,13 @@ import {
   FRONTIER_HOMESTEAD,
   FRONTIER_BARKS,
 } from '../data/factions/free.js';
+import { retainFrontierClaimCarry, releaseFrontierClaimCarry, reconcileFrontierClaimRetention, frontierClaimRetentionSnapshot } from '../missions/frontierClaimContinuity.js';
+import { tickFrontierSalvageChoice } from '../missions/frontierSalvageChoice.js';
+import { tickFrontierAidReceiving } from '../missions/frontierAidReceiving.js';
+import { frontierAidPickup } from '../missions/frontierAidPickup.js';
+import { tickBarnFirstProvision } from '../missions/barnFirstProvision.js';
+import { tickHomesteadProvisionContact } from '../missions/homesteadProvisionContact.js';
+import { tickBarnReceivingContact } from '../missions/barnReceivingContact.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { strideDt } from '../core/catchupPolicy.js';
@@ -462,9 +470,12 @@ export const frontierHomesteads = {
   name: 'frontierHomesteads',
 
   init(ctx) {
+    clearProvisionFreightOffers(this);
     this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     ensureFrontierState(this.state);
     this._subs = [
+      this.bus.on('sector:enter', () => clearProvisionFreightOffers(this)),
+      this.bus.on('save:restoring', () => clearProvisionFreightOffers(this)),
       this.bus.on('entity:killed', (p) => this._onKilled(p)),
       this.bus.on('mission:accepted', (p) => this._onBarnMissionAccepted(p)),
       this.bus.on('mission:failed', (p) => this._onBarnMissionEnded(p)),
@@ -483,6 +494,7 @@ export const frontierHomesteads = {
   },
 
   destroy() {
+    clearProvisionFreightOffers(this);
     for (const off of this._subs || []) {
       try { off && off(); } catch { /* listener hygiene */ }
     }
@@ -497,7 +509,9 @@ export const frontierHomesteads = {
   serialize() {
     const state = this.state;
     if (!state) return {};
-    return JSON.parse(JSON.stringify(ensureFrontierState(state)));
+    const snapshot = JSON.parse(JSON.stringify(ensureFrontierState(state)));
+    snapshot.claimCarryBindings = frontierClaimRetentionSnapshot(state);
+    return snapshot;
   },
 
   deserialize(data) {
@@ -512,6 +526,7 @@ export const frontierHomesteads = {
    *  exist by then, so recorded occupant generations can rebind to the live hulls
    *  that still carry the matching tags. */
   _afterRestore() {
+    clearProvisionFreightOffers(this);
     const state = this.state;
     if (!state) return;
     if (this._restoredFromSave !== true) {
@@ -522,12 +537,14 @@ export const frontierHomesteads = {
     this._restoredFromSave = false;
     ensureFrontierState(state);
     this._rebindGenerations(state);
+    reconcileFrontierClaimRetention(state, { restored: true });
   },
 
   /** New run boundary: the board's bag is run-scoped. Clearing to null lets
    *  ensureFrontierState rebuild the fresh record on the next touch — the same
    *  shape the save bleed-over arm installs. */
   _clearBoard() {
+    clearProvisionFreightOffers(this);
     const state = this.state;
     if (!state) return;
     state.frontier = null;
@@ -577,6 +594,8 @@ export const frontierHomesteads = {
         || !this._validBarnReceipt(attempt, receipt)) return;
     attempt.status = 'completed';
     attempt.completedAt = num(this.state.simTime);
+    // New validated mission completion only; old completed saves never mint starter stock.
+    if (attempt.adoptedSite === false) attempt.firstProvisionPending = true;
   },
 
   _validBarnReceipt(attempt, receipt) {
@@ -771,12 +790,14 @@ export const frontierHomesteads = {
     if (remap instanceof Map) {
       const mapped = id => id == null ? null : remap.get(String(id));
       const steads = new Map();
+      const savedSteadGenerations = new Map();
       for (const rec of f.homesteads) {
         if (rec.gone === true) continue;
         const oldId = rec.entityId, newId = mapped(oldId), body = get(newId);
         if (newId == null || !body || body.alive === false || body.data?.homestead !== true
             || (rec.frontierMissionId != null && (body.data.frontierMissionId !== rec.frontierMissionId
               || body.data.frontierSite !== rec.frontierSite))) continue;
+        savedSteadGenerations.set(oldId, rec.gen);
         steads.set(oldId, newId);
         rec.entityId = newId;
         rec.gen = body.occupantGeneration ?? null;
@@ -787,12 +808,19 @@ export const frontierHomesteads = {
         for (const row of rows) if (row.steadId != null) row.steadId = steadId(row.steadId);
       }
       for (const row of f.debts) {
+        if (row.receivingDebtorGen != null) {
+          row.receivingDebtorGen = steads.has(row.debtorId) && row.receivingDebtorGen === savedSteadGenerations.get(row.debtorId)
+            ? get(steadId(row.debtorId))?.occupantGeneration : null;
+        }
         row.debtorId = steadId(row.debtorId);
         row.creditorId = steadId(row.creditorId);
         const marker = get(mapped(row.markerId));
         if (marker?.alive !== false && marker?.data?.frontierAidId === row.id) row.markerId = marker.id;
       }
       for (const row of f.disputes) {
+        if (Array.isArray(row.receivingGens)) row.receivingGens = row.steadIds.map((id, i) =>
+          steads.has(id) && row.receivingGens[i] === savedSteadGenerations.get(id)
+            ? get(steadId(id))?.occupantGeneration : null);
         row.steadIds = row.steadIds.map(steadId);
         const wreck = get(mapped(row.wreckId));
         if (wreck?.alive !== false && wreck?.data?.frontierDisputeId === row.id) row.wreckId = wreck.id;
@@ -1438,12 +1466,13 @@ export const frontierHomesteads = {
       if (supplyPods === null) {
         supplyPods = [];
         for (const e of state.entityList) {
-          if (e && e.alive !== false && e.data?.supplyCargo === true) supplyPods.push(e);
+          if (e && e.alive !== false && (e.data?.supplyCargo === true || provisionFreightCandidate(this, e))) supplyPods.push(e);
         }
       }
       for (const e of supplyPods) {
         // A pod consumed by the first stead in reach is gone for the next one.
-        if (!e || e.alive === false || e.data?.supplyCargo !== true) continue;
+        if (!e || e.alive === false) continue;
+        if (e.data?.supplyCargo !== true && !offerProvisionFreight(this, e, rec, ent, FRONTIER_HOMESTEAD.supplyRadius, FRONTIER_BOARD.supplyFeeCr * this._tierMult(f))) continue;
         if (dist2(e.pos, ent.pos) > FRONTIER_HOMESTEAD.supplyRadius ** 2) continue;
         e.data.supplyCargo = false;
         rec.supplies += 1;
@@ -1589,23 +1618,27 @@ export const frontierHomesteads = {
     const id = `debt:${debtor.rec.entityId}:${f.seq++}`;
     const debt = {
       id, debtorId: debtor.rec.entityId, debtorName: debtor.rec.name,
+      receivingDebtorGen: debtor.ent.occupantGeneration,
       creditorId: creditor.rec.entityId, creditorName: creditor.rec.name,
       postedAt: num(state.simTime), expiresAt: num(state.simTime) + FRONTIER_MUTUAL_AID.markerTtlS,
       feeCr: FRONTIER_MUTUAL_AID.feeCr, state: 'open', markerId: null, markerGen: null,
     };
-    // The marker pod rides at the creditor's ring — tow it to the debtor.
-    const a = frac('marker-ang', creditor.rec.entityId, f.seq) * Math.PI * 2;
-    const r = (Number(creditor.ent.radius) || 60) + 40;
+    // The marker waits in an external pickup pocket; tow it to the debtor.
+    const pickup = frontierAidPickup(state, creditor.ent, debtor.ent, FRONTIER_MUTUAL_AID.settleR);
+    if (!pickup) return null;
     const pod = this.helpers.spawnEntity({
       type: 'payload', team: 0, factionId: FACTION_ID,
-      pos: { x: creditor.ent.pos.x + Math.cos(a) * r, z: creditor.ent.pos.z + Math.sin(a) * r },
+      pos: pickup, homeSectorId: creditor.rec.sectorId, flags: { persistent: true },
+      physicsBody: { shape: 'ball', radius: 8, mass: 12, dynamic: true },
       vel: { x: 0, z: 0 }, radius: 8, mass: 12, hull: 40, hullMax: 40, collides: true,
       data: {
         frontierAidId: id, aidMarker: true,
         name: `Mutual-aid marker — ${debtor.rec.name}`,
-        scanLabel: `MUTUAL AID · carry to ${debtor.rec.name}`,
+        scanLabel: `MUTUAL AID · 12t · carry to ${debtor.rec.name}`,
+        scannable: true, masslineTetherable: true,
       },
     });
+    if (!pod) return null;
     debt.markerId = pod.id;
     debt.markerGen = pod.occupantGeneration ?? null;
     f.debts.push(debt);
@@ -1613,7 +1646,7 @@ export const frontierHomesteads = {
       debtId: id, debtorId: debt.debtorId, creditorId: debt.creditorId,
       markerId: pod.id, feeCr: debt.feeCr, tick: state.tick,
     });
-    this._log(state, `${creditor.rec.name} carries a marker for ${debtor.rec.name} — the board pays the carrier.`);
+    this._log(state, `${creditor.rec.name}: We have set a 12t aid marker outside our hull for ${debtor.rec.name}. Catch it and tow it to their receiving range; the board pays the carrier.`);
     return debt;
   },
 
@@ -1637,7 +1670,9 @@ export const frontierHomesteads = {
     // The debtor steadies: the marker carried goods, or the player's own stood in.
     const rec = this._steadRec(state, debt.debtorId);
     if (rec) {
-      rec.supplies += 1;
+      // Covered aid was already counted by the physical supply intake.
+      // Only a carried marker brings a separate delivery into the household.
+      if (how === 'carried') rec.supplies += 1;
       rec.stranded = false;
       rec.lastSupplyAt = num(state.simTime);
       // Its supply ask is answered too — the supply-land path filters these
@@ -1711,6 +1746,7 @@ export const frontierHomesteads = {
           id, wreckId: w.id, wreckGen: w.occupantGeneration ?? null,
           steadIds: claimants.map((c) => c.rec.entityId),
           steadNames: claimants.map((c) => c.rec.name),
+          receivingGens: claimants.map((c) => c.ent.occupantGeneration),
           sectorId: state.world?.currentSectorId || null,
           postedAt: num(state.simTime), expiresAt: num(state.simTime) + FRONTIER_SALVAGE_CLAIMS.windowS,
           state: 'open',
@@ -1738,6 +1774,7 @@ export const frontierHomesteads = {
         this._closeDispute(state, d, 'lapsed', null);
         continue;
       }
+      retainFrontierClaimCarry(state, d, w);
       // A claimant settles when the player hauls the wreck inside its ring.
       let settled = false;
       for (const sid of d.steadIds) {
@@ -1820,6 +1857,7 @@ export const frontierHomesteads = {
     d.state = outcome;
     d.settledAt = num(state.simTime);
     const w = state.entities.get(d.wreckId);
+    releaseFrontierClaimCarry(d, w);
     if (w && w.data && w.data.frontierDisputeId === d.id) w.data.frontierDisputeId = null;
     if (outcome === 'jumped') {
       if (this._paidOnce(f, `jumped:${d.id}`)) {
@@ -2323,6 +2361,8 @@ export const frontierHomesteads = {
 
   update(dt, state) {
     const f = ensureFrontierState(state);
+    reconcileFrontierClaimRetention(state);
+    if (state.run?.kind === 'survival') { tickFrontierSalvageChoice(this, FRONTIER_SALVAGE_CLAIMS.settleRadius); tickFrontierAidReceiving(this, FRONTIER_MUTUAL_AID.settleR); tickBarnReceivingContact(this); tickHomesteadProvisionContact(this); }
     // An arena has no ambient homestead/site business. Keep every existing
     // board obligation and physical weld/frame path on the normal update.
     if (state.run?.kind === 'survival' && !f.barnAttempt && !f.deeds && !f.nextDebtAt
@@ -2336,11 +2376,16 @@ export const frontierHomesteads = {
     this._tickBarnAttempt(state);
     this._tickSiteSeeding(state);
     this._tickRaising(state, dt);
+    tickBarnReceivingContact(this);
+    tickBarnFirstProvision(this);
     this._tickHomesteads(state);
+    tickHomesteadProvisionContact(this);
     this._tickWeldHeads(state, dt);
     this._tickLeads(state);
     this._tickDebts(state);
+    tickFrontierAidReceiving(this, FRONTIER_MUTUAL_AID.settleR);
     this._tickDisputes(state);
+    tickFrontierSalvageChoice(this, FRONTIER_SALVAGE_CLAIMS.settleRadius);
     const raidDt = strideDt(this, 'raids', dt, 3, state);
     if (raidDt > 0) this._tickRaids(state, raidDt);
     this._tickVendettas(state);
