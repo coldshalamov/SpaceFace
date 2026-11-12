@@ -740,6 +740,14 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
     mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent); }
   html body #screens #sf-automation.au-orrery .au-metric .v { white-space: nowrap; }
 }
+/* ui-polish-433: on taller desktop windows below the 1080p band (e.g. 1280×720) the board's purchase rungs scrolled out
+   under the frame's corner brackets on a hard cut (MK3 sliced at the glass edge). The body fades
+   over its last 24px there too, with the padding to let the last rung scroll clear of the fade. */
+@media (min-width: 761px) and (min-height: 581px) and (max-height: 999px) {
+  html body #screens #sf-automation.au-orrery .au-body { padding-bottom: 28px;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent); }
+}
 /* polish134: under ~860 wide the 340px board column left the stats too narrow, so NET FLOW broke
    as "0 / cr/min"; the stat gutters tighten and columns size to their values, keeping the board. */
 @media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
