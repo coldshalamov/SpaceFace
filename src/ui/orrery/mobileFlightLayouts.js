@@ -126,16 +126,9 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   ${FLIGHT} #hud .sf-cargo-bar { margin-top:4px; padding:3px 8px!important; font-size:12px!important; line-height:1.3; }
   ${FLIGHT} #hud .sf-mission-tracker::before { display:none!important; }
   ${FLIGHT} #hud .sf-mt-obj { display:none!important; }
-  ${FLIGHT} #hud .sf-mt-title {
-    display:inline-block!important; max-width:45%; overflow:hidden; text-overflow:ellipsis; vertical-align:baseline;
-    white-space:nowrap; border-bottom:0!important; padding-bottom:0; margin:0; font-size:14px; line-height:1.3;
-  }
-  /* setDisplay writes an inline display:block/none on the title; the inline block must yield to the
-     owner's hide, but never revert to a stacked block line. */
-  ${FLIGHT} #hud .sf-mt-title[style*="none"] { display:none!important; }
-  ${FLIGHT} #hud .sf-mission-tracker:has(.sf-mt-title:not(:empty)) .sf-mt-compact-action::before {
-    content:'·'; margin:0 6px; color:var(--dp-line-faint,rgb(232 226 212 / .5));
-  }
+  /* The line is the objective: the chapter name ("ACT I - THE PIT") cut the instruction to "Recover the 47-…"
+     on the real route (lead look). The chapter stays in the details sheet the line opens. */
+  ${FLIGHT} #hud .sf-mt-title { display:none!important; }
   ${FLIGHT} #hud .sf-mt-compact { display:contents; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
   ${FLIGHT} #hud .sf-mt-compact-action { display:inline; }
   ${FLIGHT} #hud .sf-mt-compact-readings { display:none!important; }
@@ -244,7 +237,6 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   ${FLIGHT} #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
   ${FLIGHT} #hud > .sf-leftcontext { top:calc(44px + var(--sf-safe-top,0px))!important; width:236px!important; }
-  ${FLIGHT} #hud .sf-mt-title { max-width:58%; }
   /* Use landscape's width: results at the upper edge, context at the lower edge, with the
      central ship between them. These seats also clear the mirrored left-hand action cluster. */
   ${FLIGHT} body #hud #toasts,
