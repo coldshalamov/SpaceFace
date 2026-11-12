@@ -24,6 +24,14 @@ import {
 // it), so a literal index silently points at a different lesson.
 const DOCK_BEAT = BEATS.findIndex((beat) => beat.key === 'dock');
 const CHOICE_BEAT = BEATS.findIndex((beat) => beat.key === 'choice');
+const MARKER_BEAT = BEATS.findIndex((beat) => beat.key === 'marker');
+
+function completePostDockDrills(state) {
+  // e14ae4e294f5 moved these flight drills between the first dock and job choice.
+  for (const key of ['marker', 'focus', 'burst', 'disengage']) {
+    state.onboarding.beatDoneAt[key] = state.simTime - 10;
+  }
+}
 
 function freshOnboarding(currentBeat = DOCK_BEAT) {
   return {
@@ -71,7 +79,7 @@ function makeHarness(seed = 47) {
   return { state, bus, missions, onboarding };
 }
 
-test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and retires the rail', () => {
+test('B4 resolves at the Helios berth; accepting the Tethys run tracks it and retires the rail', () => {
   const h = makeHarness();
   h.state.world.currentSectorId = 'sector_helios_prime';
   // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
@@ -81,6 +89,8 @@ test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and ret
     'docking is the lesson: selling, fitting and the next job are local and never wait on Ceres');
   assert.equal(h.state.onboarding.choiceStationId, 'station_helios',
     'the choice opens at the berth the player is standing in');
+  assert.equal(h.state.onboarding.currentBeat, DOCK_BEAT,
+    'the berth does not start an in-flight marker exercise');
 
   // The tick advances onto B5; selling still surfaces the board from there.
   h.state.onboarding.currentBeat = CHOICE_BEAT;
@@ -89,7 +99,7 @@ test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and ret
 
   const firstTrade = h.missions._instanceFromOffer(buildFirstTradeOffer(47));
   assert.equal(firstTrade.destStationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID,
-    'the authored delivery keeps its truthful Ceres terms');
+    'the authored delivery keeps its truthful Tethys terms');
   h.state.missions.active.push(firstTrade);
   h.state.ui.trackedMissionId = firstTrade.id;
   h.state.nav.waypoint = {
@@ -104,11 +114,26 @@ test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and ret
   });
   assert.equal(h.state.onboarding.recommendedMissionId, firstTrade.id);
   assert.equal(h.state.onboarding.finished, true,
-    'taking the Ceres run is choosing real work: no stale tutorial objective rides along');
+    'taking the Tethys run is choosing real work: no stale tutorial objective rides along');
   assert.equal(h.state.nav.waypoint.kind, 'mission');
   assert.equal(h.state.nav.waypoint.missionId, firstTrade.id);
   assert.equal(h.state.nav.waypoint.stationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID,
     'the accepted delivery owns navigation to its real destination');
+});
+
+test('the first post-dock flight drill starts when flight and the silence interval resume', () => {
+  const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(h.state.onboarding.currentBeat, DOCK_BEAT);
+  h.state.mode = 'flight';
+  h.state.ui.dockedStationId = null;
+  h.bus.emit('dock:undocked', { stationId: 'station_helios' });
+  h.onboarding._tryAdvanceBeat();
+  assert.equal(h.state.onboarding.currentBeat, DOCK_BEAT, 'the silence gate still applies in flight');
+  h.state.simTime += 5;
+  h.onboarding._tryAdvanceBeat();
+  assert.equal(h.state.onboarding.currentBeat, MARKER_BEAT);
 });
 
 test('starter-progression: undocking from B5 without a job retires the rail and keeps the offers', () => {
@@ -133,7 +158,7 @@ test('starter-progression: B5 opens at the berth with sim time frozen; undocking
   h.state.world.currentSectorId = 'sector_helios_prime';
   // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
   h.state.ui.dockedStationId = null;
-  h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
+  completePostDockDrills(h.state);
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.ok(h.state.onboarding.beatDoneAt.dock != null);
   assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT, 'B5 opens at the berth: the station pauses sim time');
@@ -147,7 +172,7 @@ test('starter-progression: a docked save on B5 keeps the berth and its three cho
   const h = makeHarness();
   h.state.world.currentSectorId = 'sector_helios_prime';
   h.state.ui.dockedStationId = null;
-  h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
+  completePostDockDrills(h.state);
   h.state.onboarding.missingThree = { completed: false };
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   h.missions.ensureOnboardingChoiceOffers('station_helios');

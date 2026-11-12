@@ -1935,6 +1935,9 @@ export const onboarding = {
     // A reordered route can put lessons this pilot already completed ahead of the current beat.
     while (nextIndex < BEATS.length && ob.beatDoneAt[BEATS[nextIndex].key] != null) nextIndex += 1;
     if (nextIndex >= BEATS.length) return;
+    // A paused berth may open the job board immediately. A flight exercise needs the
+    // undocked rail and its ordinary silence gate, even when it follows this dock beat.
+    if (opts.atBerth && nextIndex !== CHOICE_BEAT_INDEX) return;
     // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
     // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
     // silence gate enforces below already covers the rescue line — no second timer needed.
