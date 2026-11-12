@@ -1335,7 +1335,7 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 
 /* The departure checklist must remain readable over the station's changing content. */
-#screens .sx-berth .sx-pop--dep { background: #0b0e12 !important; }
+#screens .sx-berth .sx-pop--dep { background: var(--sf-pop-glass) !important; }
 @media (forced-colors: active) {
   #screens .sx-berth .sx-pop--dep { background: Canvas !important; }
 }

@@ -1668,11 +1668,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   arriving = true; // the first navigate does not settle the panel: arrive() choreographs it
   const remembered = ctx && ctx.screenMemory && ctx.screenMemory.read('station', 'destination', null);
   navigate(DESTINATIONS.some((d) => d.id === remembered) ? remembered : 'market');
-  applyDockAttention({ allowAutoOpen: true });
   arriving = false;
   let pendingArrival = true;
+  function resetDockAttention() {
+    pendingArrival = true;
+    attentionAutoOpenedThisDock = false;
+  }
+  for (const event of ['game:new', 'game:newGame', 'save:loaded']) subscribe(event, resetDockAttention);
   // Undock (moment 5): the panel and the foot k-out in 140 ms before uiRoot's existing fade.
   subscribe('dock:undocked', () => {
+    resetDockAttention();
     bodyEl.classList.add('k-out');
     footEl.classList.add('k-out');
   });
@@ -1689,8 +1694,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     navigate,
     onShow() {
       shown = true; commands.setEnabled(true); effects.show();
-      // Fresh dock session: allow one auto-open for the highest-priority physical station action.
-      attentionAutoOpenedThisDock = false;
+      // A child screen such as Manifest covers this same dock. Returning must resume the
+      // player's chosen destination, even when a ready mission still deserves a badge.
+      const enteringDock = pendingArrival;
       bodyEl.classList.remove('k-out');
       footEl.classList.remove('k-out');
       renderStatus();
@@ -1706,6 +1712,21 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
       arrivalPresenter.show();
       lifePresenter.show();
+      const allowAutoOpen = enteringDock && !kiteOpen && !attentionAutoOpenedThisDock;
+      const attention = applyDockAttention({ allowAutoOpen, refreshActive: false });
+      if (!(allowAutoOpen && attention?.autoOpen)) {
+        const scr = activeScreen();
+        if (scr && typeof scr.onShow === 'function') {
+          try {
+            scr.onShow({
+              ...ctx,
+              missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
+              attention: lastMissionAttention,
+              focusSurface: lastMissionAttention?.surface,
+            });
+          } catch (_) {}
+        }
+      }
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
       // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
@@ -1719,19 +1740,6 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         activeTile.addEventListener('keydown', clearQuietFocus);
         activeTile.addEventListener('blur', clearQuietFocus);
         try { activeTile.focus({ preventScroll: true }); } catch (_) {}
-      }
-      const attention = applyDockAttention({ allowAutoOpen: !kiteOpen, refreshActive: !kiteOpen });
-      if (!(attention && attention.autoOpen)) {
-        const scr = activeScreen();
-        if (scr && typeof scr.onShow === 'function') {
-          try {
-            scr.onShow({
-              ...ctx,
-              missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
-              attention: lastMissionAttention,
-            });
-          } catch (_) {}
-        }
       }
     },
     onHide() {
@@ -1749,7 +1757,6 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       restoreDestinationGloss();
       lastMissionAttention = null;
       berth.setActive(false);
-      pendingArrival = true; // the next show is a new arrival
       const scr = activeScreen();
       if (kiteOpen) closeKite(false);
       else if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }

@@ -15,575 +15,16 @@ import { commodityDisplayName } from '../commodityNames.js';
 import { formatDistance } from '../units.js';
 import { escapeHtml } from '../comms.js';
 import { icon } from '../station/icons.js';
+import { openGalaxyMap } from '../mapAuthority.js';
 import { BINDINGS } from '../bindings.js';
 import { confirm, isConfirmOpen } from '../confirm.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 
-const STYLE_ID = 'sf-base-style';
+import { injectBaseLayout } from '../orrery/baseLayouts.js';
+
+const SPEC_ICON = { spec_refinery: 'industry', spec_relay: 'route', spec_bastion: 'shield' };
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_refinery', 'mod_sensor_post', 'mod_throughline_sling', 'mod_defense', 'mod_teleporter'];
-
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = `
-/* ORRERY Base instrument (Wave 3 Surface 2): the claim registry as a terminal of light.
-   The menu plate and the deckplate pass underneath dissolve here into borderless Glass; every
-   rule is scoped #screens .orr-base so it outranks both without touching them. Law: ONE amber
-   Hand + ONE amber Lamp Key per screen; bone rest rgb(236 230 216); red for threat only. */
-#screens .screen.sf-menu.orr-base.orr-base {
-  --orr-bone:236 230 216;
-  --orr-ink:var(--dp-ink, #e8e2d4);
-  --orr-dim:var(--dp-ink-dim, #b7b4a6);
-  --orr-mute:var(--dp-ink-mute, #8f8c80);
-  --orr-hand:var(--dp-hand, var(--dp-lamp, #f2b950));
-  --orr-danger:var(--dp-danger, #ff5038);
-  --dp-glass:rgb(26 35 48 / .82);
-  background:
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .09), rgb(var(--orr-bone) / 0) 24%),
-    var(--dp-glass);
-  -webkit-backdrop-filter:blur(18px) saturate(1.15);
-  backdrop-filter:blur(18px) saturate(1.15);
-  border:0; border-radius:0; box-shadow:none;
-  padding:0; min-width:0; max-width:min(94vw, 1120px);
-  gap:0; overflow:hidden; isolation:isolate; z-index:101;
-  -webkit-mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
-  -webkit-mask-composite:source-in;
-  mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
-  mask-composite:intersect;
-}
-#screens .screen.sf-menu.orr-base.orr-base.is-empty {
-  align-self:flex-end; width:min(92vw, 880px); margin:0 auto 6vh;
-  animation:orr-base-unfold 420ms cubic-bezier(.16, 1, .3, 1) both;
-}
-#screens .screen.sf-menu.orr-base.orr-base.is-claimed {
-  width:min(94vw, 1120px); max-height:90vh;
-  animation:orr-base-unfold 420ms cubic-bezier(.16, 1, .3, 1) both;
-}
-@keyframes orr-base-unfold {
-  from { opacity:0; transform:translateY(10px); }
-  to { opacity:1; transform:none; }
-}
-html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-empty,
-html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { animation:none; }
-#screens .screen.sf-menu.orr-base.orr-base::before {
-  content:""; display:block; position:absolute; inset:36px; z-index:2; pointer-events:none;
-  background:
-    linear-gradient(to right, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left top / 20px 1.5px,
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left top / 1.5px 20px,
-    linear-gradient(to left, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right top / 20px 1.5px,
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right top / 1.5px 20px,
-    linear-gradient(to right, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left bottom / 20px 1.5px,
-    linear-gradient(to top, rgb(var(--orr-bone) / .46) 20px, transparent 20px) left bottom / 1.5px 20px,
-    linear-gradient(to left, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right bottom / 20px 1.5px,
-    linear-gradient(to top, rgb(var(--orr-bone) / .46) 20px, transparent 20px) right bottom / 1.5px 20px;
-  background-repeat:no-repeat;
-}
-#screens .screen.sf-menu.orr-base.orr-base > canvas.orr-base__lattice {
-  position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;
-}
-#screens .orr-base #sf-base {
-  --k-signal: var(--dp-lamp);
-  position:relative; z-index:1;
-  flex:1 1 auto; min-height:0;
-  display:flex; flex-direction:column; gap:14px;
-  padding:52px 56px 30px; min-width:0;
-  overflow-y:auto; overscroll-behavior:contain; pointer-events:auto;
-  scrollbar-width:thin; scrollbar-color:rgb(var(--orr-bone) / .22) transparent;
-  color:var(--orr-ink);
-}
-#screens .orr-base #sf-base .base-title {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:22px; font-weight:800; font-stretch:100%;
-  letter-spacing:.02em; line-height:1.2; text-transform:none;
-  color:var(--orr-dim); margin:0; padding:0;
-}
-#screens .orr-base.is-claimed #sf-base .base-title {
-  font-size:clamp(26px, min(3vw, 4.5vh), 38px); font-weight:800; font-stretch:125%;
-  font-variation-settings:"wght" 800, "wdth" 125;
-  letter-spacing:.01em; line-height:1.05; color:var(--orr-ink);
-}
-#screens .orr-base #sf-base .base-sub {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:14px; line-height:1.45; color:var(--orr-ink); margin:0; padding:0;
-}
-#screens .orr-base #sf-base .base-sub + .base-sub { color:var(--orr-dim); }
-/* The foot (chart key, Close, Dispatch) is a band of glass at the plate's bottom edge, OUTSIDE the
-   #sf-base scroller (the plate is a flex column: scroller flex:1 above, band flex:none below). It
-   never overlays the column's text — at any scroll position the fold cuts the content at the
-   scroller's own edge and the way out stands clear below it, so nothing is ever buried. */
-#screens .orr-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end;
-  flex:none; position:relative; z-index:3;
-  margin:0; padding:14px 56px;
-  background:rgb(26 35 48 / .995); }
-#screens .orr-base .base-foot .orr-base__chartkey { margin-right:auto; }
-#screens .orr-base .orr-base__esc, #screens .orr-base .orr-base__key {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:24px; padding:4px 2px; border:0;
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
-  color:rgb(var(--orr-bone) / .6); white-space:nowrap;
-}
-#screens .orr-base .orr-base__esc::before, #screens .orr-base .orr-base__key::before { display:none; }
-/* A blocked verb is a dotted word, not a bordered chip: disabled reads as dim + dotted
-   underline (the ORRERY family's disabled verb), never as another box on the glass. */
-#screens .orr-base #sf-base .k-word.orr-base__chip:disabled {
-  color:rgb(var(--orr-bone) / .55);
-  border:0; clip-path:none; padding:4px 2px; opacity:1;
-  text-decoration:underline dotted rgb(var(--orr-bone) / .4);
-  text-decoration-thickness:1px; text-underline-offset:5px;
-}
-#screens .orr-base #sf-base .k-word.orr-base__chip:disabled::after { display:none; }
-/* The legacy deckplate sheet (src/ui/deckplate/screens.js, "THE LAST OLD PANELS") paints
-   .base-spec.active and the :hover states of slots/identities/modules with field fills —
-   filled boxes on the glass. This instrument keeps its boxes off: the active identity is the
-   amber tick and the ACTIVE word, and hover is the brightening tick, never a fill. Doubled
-   .orr-base outranks the legacy selectors (which win on element count at equal id+class). */
-#screens .orr-base.orr-base #sf-base .base-spec.active,
-#screens .orr-base.orr-base #sf-base .base-plan--ok,
-#screens .orr-base.orr-base #sf-base .base-plan--warn,
-#screens .orr-base.orr-base #sf-base .base-plan--bad { background:none; }
-#screens .orr-base.orr-base #sf-base :is(.base-slot, .base-spec, .base-mod):is(:hover, :focus-within) { background:none; }
-#screens .orr-base .orr-base__chartkey .orr-base__key { margin-left:10px; }
-#screens .orr-base .orr-lampkey.orr-base__lamp {
-  min-width:180px; min-height:52px !important; justify-content:center;
-}
-#screens .orr-base #sf-base .k-word {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:14px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
-  color:rgb(var(--orr-bone) / .85); padding:8px 2px; width:auto;
-  translate:none; box-shadow:none; filter:none; text-align:left;
-}
-#screens .orr-base #sf-base .k-word::after {
-  background:rgb(var(--orr-bone) / .5); height:1.5px; width:100%;
-  transform:scaleX(0); transform-origin:left center; transition:transform .16s linear;
-}
-#screens .orr-base #sf-base .k-word:hover, #screens .orr-base #sf-base .k-word:focus-visible, #screens .orr-base #sf-base .k-word:active { color:rgb(var(--orr-bone)); }
-#screens .orr-base #sf-base .k-word:hover::after, #screens .orr-base #sf-base .k-word:focus-visible::after { transform:scaleX(1); }
-#screens .orr-base #sf-base .k-word--primary { color:rgb(var(--orr-bone) / .85); }
-#screens .orr-base #sf-base .k-word--primary:is(:hover, :focus-visible, :active) { color:rgb(var(--orr-bone)); }
-#screens .orr-base #sf-base .k-word:disabled { color:rgb(var(--orr-bone) / .38); opacity:1; }
-#screens .orr-base #sf-base .k-word:disabled::after { display:none; }
-#screens .orr-base #sf-base .k-word:focus-visible { outline:1.5px solid rgb(var(--orr-bone) / .8); outline-offset:4px; }
-#screens .orr-base #sf-base .base-ico { display:inline-flex; align-items:center; margin-right:8px; vertical-align:-2px; }
-#screens .orr-base #sf-base .base-ico svg { display:block; }
-#screens .orr-base #sf-base .base-plan {
-  position:relative; border:0; border-radius:0; box-shadow:none; background:none;
-  display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:6px 28px; align-items:center;
-  padding:18px 0 18px 26px; margin:8px 0 0;
-}
-#screens .orr-base #sf-base .base-plan::before {
-  content:""; position:absolute; left:0; top:16px; bottom:16px; width:2px;
-  background:rgb(var(--orr-bone) / .72); box-shadow:0 0 12px rgb(var(--orr-bone) / .35);
-}
-#screens .orr-base #sf-base .base-plan .base-plan-k, #screens .orr-base #sf-base .base-ledger > .base-plan-k {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--orr-mute); margin:0;
-}
-#screens .orr-base #sf-base .base-plan .base-plan-title {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:17px; font-weight:700; letter-spacing:0; text-transform:none;
-  color:var(--orr-ink); margin:0;
-}
-#screens .orr-base #sf-base .base-plan .base-plan-body {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:14px; line-height:1.45; color:var(--orr-dim); margin:0;
-}
-#screens .orr-base #sf-base .base-plan .base-plan-k { grid-column:1; grid-row:1; }
-#screens .orr-base #sf-base .base-plan .base-plan-title { grid-column:1; grid-row:2; }
-#screens .orr-base #sf-base .base-plan .base-plan-body { grid-column:1; grid-row:3; }
-#screens .orr-base #sf-base .base-plan > .k-word { grid-column:2; grid-row:1 / span 3; align-self:center; justify-self:end; white-space:nowrap; }
-#screens .orr-base #sf-base .base-plan--ok, #screens .orr-base #sf-base .base-plan--warn, #screens .orr-base #sf-base .base-plan--bad { background:none; border:0; }
-#screens .orr-base #sf-base .base-plan--ok .base-plan-k, #screens .orr-base #sf-base .base-plan--warn .base-plan-k, #screens .orr-base #sf-base .base-plan--bad .base-plan-k { color:var(--orr-mute); }
-#screens .orr-base #sf-base .base-sec-h {
-  display:flex; align-items:center; gap:12px;
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase;
-  color:var(--orr-mute); margin:14px 0 0; padding:0;
-}
-#screens .orr-base #sf-base .base-sec-h::before { content:""; width:12px; height:1.5px; background:rgb(var(--orr-bone) / .46); flex:none; }
-#screens .orr-base #sf-base .base-sec-h::after { content:""; flex:1; height:1px; background:rgb(var(--orr-bone) / .16); }
-#screens .orr-base #sf-base .base-slots {
-  position:relative; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:4px 20px;
-  border:0; background:none; padding:26px 0 4px; margin:0;
-}
-#screens .orr-base #sf-base .base-slots::before {
-  content:""; position:absolute; left:0; right:0; top:0; height:7px; background:rgb(var(--orr-bone) / .085);
-}
-#screens .orr-base #sf-base .base-slots::after {
-  content:""; position:absolute; left:0; right:0; top:3px; height:1.5px; background:rgb(var(--orr-bone) / .46);
-  box-shadow:0 0 8px rgb(var(--orr-bone) / .22);
-}
-#screens .orr-base #sf-base .base-slot {
-  position:relative; border:0; border-radius:0; box-shadow:none; background:none;
-  padding:14px 0 0 2px; margin:0; opacity:1; min-width:0;
-}
-#screens .orr-base #sf-base .base-slot::before {
-  content:""; position:absolute; left:9px; top:-22px; width:1.5px; height:22px;
-  background:rgb(var(--orr-bone) / .46);
-}
-#screens .orr-base #sf-base .base-slot::after {
-  content:""; position:absolute; left:7.25px; top:-26px; width:5px; height:5px; border-radius:50%;
-  background:rgb(248 244 234); box-shadow:0 0 8px rgb(255 240 214 / .5);
-}
-#screens .orr-base #sf-base .base-slot.empty::after {
-  background:transparent; box-shadow:none; box-sizing:border-box;
-  border:1.5px solid rgb(var(--orr-bone) / .46);
-}
-#screens .orr-base #sf-base .base-slot .nm {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:13px; font-weight:600; letter-spacing:0; text-transform:none;
-  color:var(--orr-ink); margin:0 0 4px;
-}
-#screens .orr-base #sf-base .base-slot .eff {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; letter-spacing:.08em; text-transform:uppercase;
-  font-variant-numeric:tabular-nums; color:var(--orr-dim); margin:0;
-}
-#screens .orr-base #sf-base .base-slot.empty { color:var(--orr-mute); font-size:13px; }
-#screens .orr-base #sf-base .base-specializations {
-  position:relative; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px 28px;
-  border:0; background:none; padding:26px 0 0; margin:0;
-}
-#screens .orr-base #sf-base .base-specializations::before {
-  content:""; position:absolute; left:0; right:0; top:0; height:7px; background:rgb(var(--orr-bone) / .085);
-}
-#screens .orr-base #sf-base .base-specializations::after {
-  content:""; position:absolute; left:0; right:0; top:3px; height:1.5px; background:rgb(var(--orr-bone) / .46);
-  box-shadow:0 0 8px rgb(var(--orr-bone) / .22);
-}
-#screens .orr-base #sf-base .base-spec {
-  position:relative; border:0; border-radius:0; box-shadow:none; background:none;
-  display:flex; flex-direction:column; gap:7px; align-content:start;
-  padding:14px 0 0 12px; margin:0;
-}
-#screens .orr-base #sf-base .base-spec::before {
-  content:""; position:absolute; left:0; top:-22px; width:1.5px; height:22px;
-  background:rgb(var(--orr-bone) / .46);
-}
-#screens .orr-base #sf-base .base-spec:hover::before, #screens .orr-base #sf-base .base-spec:focus-within::before {
-  top:-22px; bottom:0; height:auto;
-  background:rgb(var(--orr-bone) / .8);
-  box-shadow:0 0 8px rgb(var(--orr-bone) / .3);
-}
-#screens .orr-base #sf-base .base-spec.active::before {
-  top:-22px; bottom:0; height:auto;
-  background:var(--orr-hand);
-  box-shadow:0 0 10px rgb(242 185 80 / .5);
-}
-#screens .orr-base #sf-base .base-spec::after {
-  content:""; position:absolute; left:-2.75px; top:-27px; width:7px; height:7px; border-radius:50%;
-  box-sizing:border-box; background:transparent;
-  border:1.5px solid rgb(var(--orr-bone) / .46);
-  transition:background-color .18s linear, border-color .18s linear, box-shadow .18s linear;
-}
-#screens .orr-base #sf-base .base-spec:hover::after, #screens .orr-base #sf-base .base-spec:focus-within::after {
-  background:rgb(var(--orr-bone)); border-color:rgb(var(--orr-bone));
-  box-shadow:0 0 8px rgb(255 240 214 / .5);
-}
-#screens .orr-base #sf-base .base-spec.active::after {
-  background:var(--orr-hand); border-color:var(--orr-hand);
-  box-shadow:0 0 10px rgb(242 185 80 / .6);
-}
-html.sf-reduce-motion #screens .orr-base #sf-base .base-spec::after { transition:none; }
-#screens .orr-base #sf-base .base-spec .base-spec-tick {
-  position:absolute; left:10px; top:-31px;
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.08em; color:var(--orr-dim);
-}
-#screens .orr-base #sf-base .base-spec .nm {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:15px; font-weight:700; letter-spacing:0; text-transform:none;
-  color:var(--orr-ink); margin:0;
-}
-#screens .orr-base #sf-base .base-spec .verb {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:700; line-height:1.4; color:var(--orr-ink); margin:0;
-}
-#screens .orr-base #sf-base .base-spec .effect, #screens .orr-base #sf-base .base-spec .risk {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:13px; line-height:1.4; color:var(--orr-dim); margin:0;
-}
-#screens .orr-base #sf-base .base-spec .k-word { align-self:flex-start; margin-top:4px; }
-#screens .orr-base #sf-base .base-ledger {
-  border:0; border-radius:0; box-shadow:none; background:none;
-  display:flex; flex-direction:column; gap:14px; padding:8px 0 0; margin:0;
-}
-#screens .orr-base #sf-base .base-ledger-hero { display:flex; align-items:baseline; gap:16px; padding:4px 0 2px; margin:0; }
-#screens .orr-base #sf-base .base-ledger-heronum {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:84px; font-weight:250; font-stretch:100%; line-height:1; letter-spacing:-.02em;
-  font-variant-numeric:tabular-nums; color:rgb(248 244 234); margin:0;
-}
-#screens .orr-base #sf-base .base-ledger-herok {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--orr-mute); margin:0;
-}
-#screens .orr-base #sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px 24px; margin:0; padding:0; }
-#screens .orr-base #sf-base .base-ledger-cell { border:0; border-left:0; padding:0; margin:0; }
-#screens .orr-base #sf-base .base-ledger-k {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--orr-mute); margin:0;
-}
-#screens .orr-base #sf-base .base-ledger-v {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:15px; font-weight:500; font-variant-numeric:tabular-nums;
-  color:var(--orr-ink); margin:5px 0 0;
-}
-#screens .orr-base #sf-base .base-ledger-v.is-threat { color:var(--orr-danger); }
-#screens .orr-base #sf-base .base-freight { display:flex; gap:8px 28px; flex-wrap:wrap; margin:2px 0 0; padding:0; }
-#screens .orr-base #sf-base .base-receipt {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-  color:rgb(var(--orr-bone) / .8); margin:0;
-}
-#screens .orr-base #sf-base .base-shop {
-  position:relative; display:flex; flex-direction:column; gap:2px;
-  border:0; background:none; padding:2px 0 2px 30px; margin:0;
-}
-#screens .orr-base #sf-base .base-shop::before {
-  content:""; position:absolute; left:0; top:12px; bottom:12px; width:7px;
-  background:rgb(var(--orr-bone) / .085);
-}
-#screens .orr-base #sf-base .base-shop::after {
-  content:""; position:absolute; left:3px; top:12px; bottom:12px; width:1.5px;
-  background:rgb(var(--orr-bone) / .46);
-  box-shadow:0 0 8px rgb(var(--orr-bone) / .22);
-}
-#screens .orr-base #sf-base .base-mod {
-  position:relative; border:0; border-radius:0; box-shadow:none; background:none;
-  display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(0, 1fr) auto; gap:4px 24px; align-items:center;
-  padding:12px 0; margin:0;
-}
-#screens .orr-base #sf-base .base-mod::before {
-  content:""; position:absolute; left:-23px; top:50%; width:16px; height:1.5px; margin-top:-1px;
-  background:rgb(var(--orr-bone) / .46);
-}
-#screens .orr-base #sf-base .base-mod::after {
-  content:""; position:absolute; left:-27px; top:50%; width:7px; height:7px; margin-top:-3.5px; border-radius:50%;
-  box-sizing:border-box; background:transparent;
-  border:1.5px solid rgb(var(--orr-bone) / .46);
-}
-#screens .orr-base #sf-base .base-mod:hover::after, #screens .orr-base #sf-base .base-mod:focus-within::after {
-  background:var(--orr-hand); border-color:var(--orr-hand);
-  box-shadow:0 0 10px rgb(242 185 80 / .6);
-}
-#screens .orr-base #sf-base .base-mod .nm {
-  grid-column:1; grid-row:1;
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:15px; font-weight:700; letter-spacing:0; text-transform:none;
-  color:var(--orr-ink); margin:0;
-}
-#screens .orr-base #sf-base .base-mod .desc {
-  grid-column:1; grid-row:2;
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:13px; line-height:1.45; color:var(--orr-dim); margin:0; min-height:0;
-}
-#screens .orr-base #sf-base .base-mod .meta {
-  grid-column:2; grid-row:1 / span 2; align-self:center;
-  display:block;
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-variant-numeric:tabular-nums; color:var(--orr-dim); margin:0;
-}
-#screens .orr-base #sf-base .base-mod .k-word { grid-column:3; grid-row:1 / span 2; align-self:center; justify-self:end; white-space:nowrap; }
-#screens .orr-base #sf-base .base-mod .orr-base__built { color:rgb(var(--orr-bone) / .6); font-weight:600; font-size:12px; letter-spacing:.08em; }
-#screens .orr-base #sf-base .base-slot .base-well { display:flex; align-items:center; gap:10px; padding:0; margin:0; }
-#screens .orr-base #sf-base .base-slot .base-well-plus {
-  display:inline-flex; align-items:center; justify-content:center; flex:none;
-  width:18px; height:18px; border-radius:50%; box-sizing:border-box;
-  border:1.5px solid rgb(var(--orr-bone) / .6);
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:14px; font-weight:400; line-height:1; color:rgb(var(--orr-bone) / .85);
-}
-#screens .orr-base #sf-base .base-slot .base-well .k-word { color:rgb(var(--orr-bone) / .85); }
-#screens .orr-base #sf-base .base-ledger-v--sub {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:13px; font-weight:500; font-variant-numeric:tabular-nums;
-  color:var(--orr-dim); margin:3px 0 0;
-}
-#screens .orr-base.is-claimed #sf-base .base-title { position:relative; z-index:1; }
-#screens .orr-base #sf-base .orr-base__moon {
-  position:absolute; top:14px; right:20px; width:min(320px, 38%); height:auto;
-  z-index:0; pointer-events:none;
-}
-#screens .orr-base #sf-base .orr-base__cands {
-  position:relative; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px 20px;
-  border:0; background:none; padding:24px 0 0; margin:2px 0 0;
-}
-#screens .orr-base #sf-base .orr-base__cands::before {
-  content:""; position:absolute; left:0; right:0; top:0; height:7px; background:rgb(var(--orr-bone) / .085);
-}
-#screens .orr-base #sf-base .orr-base__cands::after {
-  content:""; position:absolute; left:0; right:0; top:3px; height:1.5px; background:rgb(var(--orr-bone) / .46);
-  box-shadow:0 0 8px rgb(var(--orr-bone) / .22);
-}
-#screens .orr-base #sf-base .orr-base__cand {
-  position:relative; border:0; border-radius:0; box-shadow:none; background:none;
-  padding:12px 0 0 12px; margin:0; min-width:0; text-align:left; cursor:pointer;
-}
-#screens .orr-base #sf-base .orr-base__cand::before {
-  content:""; position:absolute; left:0; top:-21px; width:1.5px; height:21px;
-  background:rgb(var(--orr-bone) / .46);
-}
-#screens .orr-base #sf-base .orr-base__cand::after {
-  content:""; position:absolute; left:-2.75px; top:-24px; width:7px; height:7px; border-radius:50%;
-  box-sizing:border-box; background:transparent;
-  border:1.5px solid rgb(var(--orr-bone) / .46);
-  transition:background-color .18s linear, border-color .18s linear, box-shadow .18s linear;
-}
-#screens .orr-base #sf-base .orr-base__cand:hover::after, #screens .orr-base #sf-base .orr-base__cand:focus-visible::after {
-  background:rgb(var(--orr-bone)); border-color:rgb(var(--orr-bone));
-  box-shadow:0 0 8px rgb(255 240 214 / .5);
-}
-#screens .orr-base #sf-base .orr-base__cand.is-armed::after {
-  background:var(--orr-hand); border-color:var(--orr-hand);
-  box-shadow:0 0 10px rgb(242 185 80 / .6);
-}
-#screens .orr-base #sf-base .orr-base__cand.is-armed::before { background:var(--orr-hand); }
-html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { transition:none; }
-#screens .orr-base #sf-base .orr-base__cand:focus-visible { outline:1.5px solid rgb(var(--orr-bone) / .8); outline-offset:4px; }
-#screens .orr-base #sf-base .orr-base__cand-num {
-  position:absolute; left:10px; top:-27px;
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; font-weight:600; letter-spacing:.08em; color:var(--orr-dim);
-}
-#screens .orr-base #sf-base .orr-base__cand-name {
-  font-family:"Instrument Sans", system-ui, sans-serif;
-  font-size:13px; font-weight:600; letter-spacing:0; color:var(--orr-ink); margin:0;
-}
-#screens .orr-base #sf-base .orr-base__cand-range {
-  font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
-  font-size:12px; letter-spacing:.08em; text-transform:uppercase;
-  font-variant-numeric:tabular-nums; color:var(--orr-dim); margin:2px 0 0;
-}
-@media (max-width:1366px) {
-  #screens .orr-base #sf-base { padding:44px 44px 26px; }
-  #screens .orr-base #sf-base .base-ledger-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-  #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
-  #screens .orr-base #sf-base .base-plan .base-plan-title { font-size:15px; }
-  #screens .orr-base #sf-base .base-plan .base-plan-body { font-size:13px; }
-  #screens .orr-base #sf-base .base-mod { grid-template-columns:minmax(0, 1fr) auto; }
-  #screens .orr-base #sf-base .base-mod .meta { grid-column:1; grid-row:3; }
-  #screens .orr-base #sf-base .base-mod .k-word { grid-column:2; grid-row:1 / span 3; }
-}
-@media (max-width:760px) {
-  #screens .orr-base #sf-base .base-specializations { grid-template-columns:1fr; }
-  #screens .orr-base #sf-base .base-ledger-grid { grid-template-columns:1fr 1fr; }
-  #screens .orr-base #sf-base .base-plan { grid-template-columns:minmax(0, 1fr); }
-  #screens .orr-base #sf-base .base-plan > .k-word { grid-column:1; grid-row:auto; justify-self:start; }
-}
-@media (max-height:800px) {
-  #screens .screen.sf-menu.orr-base.orr-base.is-claimed { max-height:94vh; }
-  #screens .orr-base #sf-base { padding:28px 40px 20px; gap:8px; }
-  #screens .orr-base #sf-base .base-sub + .base-sub { display:none; }
-  #screens .orr-base #sf-base .base-plan { padding:10px 0 10px 22px; gap:4px 20px; }
-  #screens .orr-base #sf-base .base-plan .base-plan-title { font-size:15px; }
-  #screens .orr-base #sf-base .base-plan .base-plan-body { font-size:13px; }
-  #screens .orr-base #sf-base .base-slot { padding:8px 0 0 2px; }
-  #screens .orr-base #sf-base .base-sec-h { margin:8px 0 0; }
-  #screens .orr-base #sf-base .base-specializations { gap:4px 20px; }
-  #screens .orr-base #sf-base .base-spec { padding:8px 0 0 12px; gap:4px; }
-  #screens .orr-base #sf-base .base-spec .nm { font-size:14px; }
-  #screens .orr-base #sf-base .base-ledger { gap:8px; padding:4px 0 0; }
-  #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
-  #screens .orr-base #sf-base .base-ledger-grid { gap:8px 16px; }
-  #screens .orr-base #sf-base .base-ledger-v { font-size:14px; margin:2px 0 0; }
-  #screens .orr-base .base-foot { padding:12px 40px; }
-  #screens .orr-base #sf-base .orr-base__moon { width:min(240px, 34%); top:10px; right:12px; }
-}
-/* Short desktop glass (≤640 tall: 960×540, 800×600): the plate scrolls, so the fold cuts the
-   first screen's tail. Tighten the stack above Operating Identity and slim the foot so each
-   card's verb and consequence clear the fold at scroll 0; TRADEOFF stays in the card, one scroll down. */
-@media (max-height:640px) and (min-width:761px) {
-  #screens .orr-base #sf-base { gap:5px; }
-  #screens .orr-base #sf-base .base-plan { padding:4px 0 4px 22px; }
-  #screens .orr-base #sf-base .base-slot { padding:4px 0 0 2px; }
-  #screens .orr-base #sf-base .base-sec-h { margin:4px 0 0; }
-  #screens .orr-base #sf-base .base-spec { padding-top:2px; gap:3px; }
-  #screens .orr-base #sf-base .base-spec .verb { line-height:1.3; }
-  #screens .orr-base #sf-base .base-spec .effect, #screens .orr-base #sf-base .base-spec .risk { line-height:1.3; }
-  #screens .orr-base .base-foot { padding:8px 40px 12px; }
-}
-/* Short desktop glass (761+ wide, ≤580 tall: 960×540, 1280×540; capped below 600 so 1366×600 keeps the stored-output panel clear): the three identity cards sit side by side, so the
-   card verbs (CLEAR SITE STORAGE · ACTIVE) landed under the band when it floated over the column.
-   The band now stands outside the scroller; close the stack a little more and slim the foot so every
-   verb clears the fold at scroll 0; Build module stays one scroll down. */
-@media (max-height:580px) and (min-width:761px) {
-  #screens .orr-base #sf-base { gap:2px; }
-  #screens .orr-base #sf-base .base-plan { padding:2px 0 2px 22px; }
-  #screens .orr-base .base-foot { padding-inline:40px; padding-block:6px 10px; }
-}
-/* Desktop: every module slot stands on the one rail. auto-fit wrapped a five-slot body to 4 + 1 at
-   960 wide, and the orphan's tick climbed out of the second row into nothing. */
-@media (min-width:761px) {
-  #screens .orr-base #sf-base .base-slots { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); gap:4px 16px; }
-}
-/* Narrow (≤760): the slots and identities stack in one column, where the horizontal rail's ticks
-   climbed through the card above. The rail turns into the same left spine the module list uses. */
-@media (max-width:760px) {
-  #screens .orr-base #sf-base .base-slots,
-  #screens .orr-base #sf-base .base-specializations {
-    grid-template-columns:minmax(0, 1fr); gap:0; padding:0 0 0 30px; margin:4px 0 0;
-  }
-  #screens .orr-base #sf-base .base-slots { gap:6px; }
-  #screens .orr-base #sf-base .base-slots::before,
-  #screens .orr-base #sf-base .base-specializations::before {
-    right:auto; top:14px; bottom:14px; width:7px; height:auto;
-  }
-  #screens .orr-base #sf-base .base-slots::after,
-  #screens .orr-base #sf-base .base-specializations::after {
-    left:3px; right:auto; top:14px; bottom:14px; width:1.5px; height:auto;
-  }
-  #screens .orr-base #sf-base .base-slot { padding:8px 0; min-height:44px; display:flex; flex-direction:column; justify-content:center; }
-  #screens .orr-base #sf-base .base-slot::before,
-  #screens .orr-base #sf-base .base-spec::before,
-  #screens .orr-base #sf-base .base-spec:is(:hover, :focus-within, .active)::before {
-    left:-23px; top:22px; bottom:auto; width:16px; height:1.5px;
-  }
-  #screens .orr-base #sf-base .base-slot::before { top:50%; margin-top:-1px; }
-  #screens .orr-base #sf-base .base-slot::after { left:-29px; top:50%; margin-top:-2.5px; }
-  #screens .orr-base #sf-base .base-slot.empty::after { left:-30px; width:7px; height:7px; margin-top:-3.5px; }
-  #screens .orr-base #sf-base .base-slot.empty { padding:8px 12px; }
-  #screens .orr-base #sf-base .base-slot .nm { margin:0 0 2px; }
-  #screens .orr-base #sf-base .base-spec { padding:12px 0 14px 0; gap:6px; }
-  #screens .orr-base #sf-base .base-spec + .base-spec { border-top:1px solid rgb(var(--orr-bone) / .1); }
-  #screens .orr-base #sf-base .base-spec.active { padding-left:12px; padding-right:12px; }
-  #screens .orr-base #sf-base .base-spec.active::before { width:23px; }
-  #screens .orr-base #sf-base .base-spec::after { left:-27px; top:19px; }
-  #screens .orr-base #sf-base .base-spec .base-spec-tick { display:none; }
-}
-/* Phone (≤560): the module rows kept a nowrap RESEARCH button column, which squeezed every
-   description to one word per line; they stack. The foot drops the Esc keycap (touch) so Close and
-   Dispatch sit on one line, and the plate gives back its 44px gutters. */
-@media (max-width:560px) {
-  #screens .screen.sf-menu.orr-base.orr-base::before { inset:12px; }
-  #screens .orr-base #sf-base { padding:34px 24px 28px; gap:10px; }
-  #screens .orr-base.is-claimed #sf-base .base-title { font-size:28px; }
-  #screens .orr-base #sf-base .orr-base__moon { display:none; }
-  #screens .orr-base #sf-base .base-ledger-heronum { font-size:56px; }
-  #screens .orr-base #sf-base .base-ledger-hero { flex-wrap:wrap; gap:4px 12px; }
-  #screens .orr-base #sf-base .base-ledger-grid { gap:10px 16px; }
-  #screens .orr-base #sf-base .base-shop { padding-left:26px; }
-  #screens .orr-base #sf-base .base-mod { grid-template-columns:minmax(0, 1fr); gap:4px; padding:14px 0; }
-  #screens .orr-base #sf-base .base-mod::before { left:-19px; top:24px; margin-top:0; width:12px; }
-  #screens .orr-base #sf-base .base-mod::after { left:-23px; top:24px; margin-top:-3px; }
-  #screens .orr-base #sf-base .base-mod :is(.nm, .desc, .meta) { grid-column:1; grid-row:auto; }
-  #screens .orr-base #sf-base .base-mod .meta { align-self:start; }
-  #screens .orr-base #sf-base .base-mod .k-word {
-    grid-column:1; grid-row:auto; justify-self:start; margin-top:6px;
-    white-space:normal; text-align:left; font-size:12px; letter-spacing:.1em; max-width:100%;
-  }
-  #screens .orr-base .base-foot { gap:14px; margin:0; padding:12px 24px; }
-  #screens .orr-base .base-foot .orr-base__esc { display:none; }
-  #screens .orr-base .base-foot .orr-lampkey.orr-base__lamp { flex:1 1 auto; min-width:0; white-space:nowrap; justify-content:center; font-size:13px !important; letter-spacing:.08em !important; padding:0 18px 0 14px !important; }
-}
-  `;
-  document.head.appendChild(s);
-}
 
 function pretty(id) { return (id || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
@@ -874,122 +315,6 @@ function safeDressLamp(button, opts) {
   }
 }
 
-function baseReduceMotion() {
-  try {
-    const doc = typeof document !== 'undefined' ? document : null;
-    const html = doc && doc.documentElement;
-    return !!(html && html.classList && typeof html.classList.contains === 'function'
-      && html.classList.contains('sf-reduce-motion'));
-  } catch (_) {
-    return false;
-  }
-}
-
-/** The Sensor Lattice (ORRERY section 4, element 14), faintly: bone points on a fixed pitch with
- *  a soft lens under the pointer. Deterministic — no randomness, no clock. */
-function paintBaseLattice(canvas, w, h, pointer) {
-  let g = null;
-  try {
-    g = canvas.getContext('2d');
-  } catch (_) {
-    g = null;
-  }
-  if (!g) return;
-  try {
-    g.clearRect(0, 0, w, h);
-    const pitch = 30;
-    const lensR = 190;
-    const px = pointer && Number.isFinite(pointer.x) ? pointer.x : -1e9;
-    const py = pointer && Number.isFinite(pointer.y) ? pointer.y : -1e9;
-    for (let y = (h % pitch) / 2; y < h; y += pitch) {
-      for (let x = (w % pitch) / 2; x < w; x += pitch) {
-        const dx = x - px;
-        const dy = y - py;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        let a = 0.3;
-        let s = 2;
-        if (d < lensR) {
-          const k = 1 - d / lensR;
-          a = 0.3 + 0.18 * k * k;
-          s = 2 + 1.2 * k;
-        }
-        g.fillStyle = 'rgba(236, 230, 216, ' + a.toFixed(3) + ')';
-        g.fillRect(x - s / 2, y - s / 2, s, s);
-      }
-    }
-  } catch (_) {
-    /* the glass stands without its lattice */
-  }
-}
-
-/** Mount the lattice canvas behind the column; a host without canvas 2D skips it. */
-function mountBaseLattice(rootEl) {
-  try {
-    if (!rootEl || typeof document === 'undefined' || typeof document.createElement !== 'function') return;
-    const canvas = document.createElement('canvas');
-    if (!canvas || typeof canvas.getContext !== 'function') return;
-    canvas.className = 'orr-base__lattice';
-    if (typeof canvas.setAttribute === 'function') canvas.setAttribute('aria-hidden', 'true');
-    if (typeof rootEl.appendChild === 'function') rootEl.appendChild(canvas);
-    else if (typeof rootEl.append === 'function') rootEl.append(canvas);
-    else return;
-    rootEl._orrBaseCanvas = canvas;
-    const repaint = () => {
-      try {
-        const box = typeof rootEl.getBoundingClientRect === 'function' ? rootEl.getBoundingClientRect() : null;
-        const w = Math.max(1, Math.floor((box && box.width) || rootEl.clientWidth || 800));
-        const h = Math.max(1, Math.floor((box && box.height) || rootEl.clientHeight || 400));
-        canvas.width = w;
-        canvas.height = h;
-        paintBaseLattice(canvas, w, h, null);
-      } catch (_) {
-        /* keep the glass, drop the lattice */
-      }
-    };
-    repaint();
-    rootEl._orrBaseRepaint = repaint;
-    try {
-      if (rootEl._orrBaseRO) rootEl._orrBaseRO.disconnect();
-    } catch (_) {
-      /* no previous observer */
-    }
-    if (typeof ResizeObserver === 'function') {
-      try {
-        const ro = new ResizeObserver(() => repaint());
-        ro.observe(rootEl);
-        rootEl._orrBaseRO = ro;
-      } catch (_) {
-        /* one paint is enough */
-      }
-    }
-    if (!rootEl._orrBaseLens && !baseReduceMotion() && typeof rootEl.addEventListener === 'function'
-      && typeof canvas.getBoundingClientRect === 'function') {
-      rootEl._orrBaseLens = true;
-      rootEl.addEventListener('pointermove', (ev) => {
-        if (rootEl._orrBaseLensQueued) return;
-        rootEl._orrBaseLensQueued = true;
-        const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => fn();
-        raf(() => {
-          rootEl._orrBaseLensQueued = false;
-          try {
-            const live = rootEl._orrBaseCanvas;
-            if (!live || typeof live.getBoundingClientRect !== 'function') return;
-            const r = live.getBoundingClientRect();
-            paintBaseLattice(live, live.width, live.height, {
-              x: ev.clientX - r.left,
-              y: ev.clientY - r.top,
-            });
-          } catch (_) {
-            /* the lens is dressing */
-          }
-        });
-      });
-    }
-  } catch (_) {
-    /* the instrument stands without its lattice */
-  }
-}
-
 /** A convoy leg's progress as a whole percent, or null when the leg has no clock. Capped
  *  at 99: a convoy still in flight never reads complete. */
 function convoyProgress(state, convoy) {
@@ -1030,33 +355,6 @@ function describeDispatchAction(body = {}) {
     : 0;
   if (have < need) return { enabled: false, reason: 'needs ' + Math.ceil(need - have) + 'u more freight at the site' };
   return { enabled: true, reason: '' };
-}
-
-/** A moon limb behind the title zone — two strokes, no plate, nothing filled. */
-function buildMoonArc() {
-  const NS = 'http://www.w3.org/2000/svg';
-  try {
-    if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return null;
-    const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('class', 'orr-base__moon');
-    svg.setAttribute('aria-hidden', 'true');
-    svg.setAttribute('focusable', 'false');
-    svg.setAttribute('viewBox', '0 0 320 180');
-    const limb = (r, alpha, w) => {
-      const c = document.createElementNS(NS, 'circle');
-      c.setAttribute('cx', '300');
-      c.setAttribute('cy', '360');
-      c.setAttribute('r', String(r));
-      c.setAttribute('fill', 'none');
-      c.setAttribute('stroke', 'rgb(236 230 216 / ' + alpha + ')');
-      c.setAttribute('stroke-width', String(w));
-      return c;
-    };
-    svg.append(limb(230, 0.2, 6), limb(230, 0.75, 1.5));
-    return svg;
-  } catch (_) {
-    return null;
-  }
 }
 
 /** Paint the empty state's full-frame field: lattice at half the glass alpha + one dim arc. */
@@ -1167,14 +465,12 @@ export const baseScreen = {
   // onShow()/_render(), NOT here. Doing it in mount() would freeze the screen on the FIRST body
   // opened and show its stale data on every subsequent open (the bug this file is fixing).
   mount(rootEl, ctx) {
-    injectStyle();
+    injectBaseLayout();
     // Fascia classes live on the screen root, not on the #sf-base child _render() rebuilds:
     // rootEl.innerHTML = '' clears children, never classes, so this survives every re-render.
     // styles/menu.css scopes its tokens to .screen.sf-menu and custom properties inherit, so
     // #sf-base picks the whole palette up as a descendant.
     rootEl.classList.add('panel', 'sf-menu', 'orr-base');
-    // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-    rootEl.dataset.stamp = 'CLAIM REGISTRY / OPERATIONS';
     this._rootEl = rootEl;
     this._ctx = ctx;
     // Doctrine keys + the build key, answered at the root so a re-render never drops them:
@@ -1184,7 +480,7 @@ export const baseScreen = {
       rootEl.addEventListener('keydown', (ev) => {
         if (!ev || ev.defaultPrevented || ev.altKey || ev.ctrlKey || ev.metaKey) return;
         const key = typeof ev.key === 'string' ? ev.key : '';
-        const idx = '123'.indexOf(key);
+        const idx = key.length === 1 ? '123'.indexOf(key) : -1;
         if (idx >= 0) {
           if (this._lastEmpty === true) {
             ev.preventDefault();
@@ -1226,10 +522,6 @@ export const baseScreen = {
         }
       });
     }
-    // The lattice is decor — data-independent, so it mounts once here (under the hidden
-    // warm, not the open frame) and _render() preserves it across its rebuild clears.
-    // Its ResizeObserver repaints when the screen first lays out.
-    mountBaseLattice(rootEl);
   },
 
   // Arm one survey tick without rebuilding the glass (keys, pointer, walk all land here).
@@ -1289,36 +581,31 @@ export const baseScreen = {
         describeBaseInvestmentConfirm(mod, player, body),
         () => claims.buildModule(body.id, mod.id),
       );
-      if (didCommit === true) this._render();
+      if (didCommit === true) this._refreshAfterAction(btn);
       else if (didCommit === 'denied' && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
     };
 
     rootEl.classList.remove('is-claimed');
     rootEl.classList.add('is-empty');
-    // Clear the rebuilt body but preserve the lattice canvas mounted at mount() — a full
-    // remount would re-create the canvas, repaint, and churn a ResizeObserver inside every
-    // open/commit frame for identical decor. The preserved canvas only needs a repaint at
-    // the now-laid-out size (its RO also covers later resizes).
-    const lattice = rootEl._orrBaseCanvas;
-    for (const node of Array.from(rootEl.childNodes)) {
-      if (node !== lattice) node.remove();
-    }
-    if (!lattice || lattice.parentNode !== rootEl) {
-      mountBaseLattice(rootEl);
-    } else if (typeof rootEl._orrBaseRepaint === 'function') {
-      rootEl._orrBaseRepaint();
-    }
+    for (const node of Array.from(rootEl.childNodes)) node.remove();
     const wrap = document.createElement('div');
     wrap.id = 'sf-base';
+    const header = document.createElement('header');
+    header.className = 'base-hero';
+    const kicker = document.createElement('div');
+    kicker.className = 'base-kicker';
+    kicker.textContent = body ? 'Base operations' : 'Claim registry';
+    header.appendChild(kicker);
+    wrap.appendChild(header);
 
     if (!body) {
-      const title = document.createElement('div');
+      const title = document.createElement('h2');
       title.className = 'base-title';
-      title.textContent = 'No body selected';
+      title.textContent = 'Surveyed claims';
       const sub = document.createElement('div');
       sub.className = 'base-sub';
-      sub.textContent = 'Press ' + BINDINGS.claimBase.label + ' near a claimed body to manage it — or claim a body to build here — the surveyor marks candidates.';
-      wrap.append(title, sub);
+      sub.textContent = 'Select a prospect to locate it on the chart. Press ' + BINDINGS.claimBase.label + ' near a claimed body to manage the site.';
+      header.append(title, sub);
       // The registry dreaming: the first three unclaimed survey ticks ride the glass; the
       // chart key arms the chosen one.
       let cands = [];
@@ -1328,6 +615,10 @@ export const baseScreen = {
         cands = CLAIMABLE_BODY_SITES.filter((s) => !owned.has(s.id)).slice(0, 3);
       } catch (_) {
         cands = [];
+      }
+      if (!cands.length) {
+        title.textContent = 'All prospects claimed';
+        sub.textContent = 'Open the chart to find an owned site, then press ' + BINDINGS.claimBase.label + ' near it.';
       }
       if (cands.length) {
         this._candidateIdx = Math.max(0, Math.min(cands.length - 1, Number(this._candidateIdx) || 0));
@@ -1361,31 +652,22 @@ export const baseScreen = {
       }
       const foot = document.createElement('div');
       foot.className = 'base-foot';
-      const sm = ctx.screenManager;
-      // The bench's hasScreen stub answers from the live stack, which is still empty while the
-      // first screen mounts; the game answers from the definition registry. An empty stack at
-      // render time is the bench's first mount, where the chart route is assumed.
-      const stackEmpty = sm && typeof sm.top === 'function' && sm.top() == null;
-      if (sm && typeof sm.pushScreen === 'function'
-        && (typeof sm.hasScreen !== 'function' || sm.hasScreen('starmap') || stackEmpty)) {
+      if (ctx.bus || ctx.screenManager?.pushScreen) {
         const chart = document.createElement('button');
         chart.type = 'button';
-        chart.className = 'k-word k-word--emph orr-base__chartkey';
-        chart.textContent = '› Open chart';
+        chart.className = 'orr-base__chartkey orr-base__lamp';
+        chart.textContent = 'Open chart';
         chart.setAttribute('aria-label', 'Open the star chart to find a claimable body'
           + (cands[this._candidateIdx] ? ' — ' + cands[this._candidateIdx].name + ' armed' : ''));
         if (cands[this._candidateIdx]) chart.title = 'Open chart — ' + cands[this._candidateIdx].name + ' armed';
-        const key = document.createElement('span');
-        key.className = 'orr-base__key';
-        key.setAttribute('aria-hidden', 'true');
-        key.textContent = (BINDINGS.starmap && BINDINGS.starmap.label) || 'N';
-        chart.appendChild(key);
-        // Route through ui:pushScreen so the map authority hands the push to galaxyMap —
-        // legacy 'starmap' stays registered for tools/checks, not player reach.
         chart.addEventListener('click', () => {
-          if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: 'starmap', source: 'base:chart' });
-          else sm.pushScreen('starmap');
+          const site = cands[this._candidateIdx];
+          openGalaxyMap(ctx, {
+            focus: site && site.sectorId === state.world?.currentSectorId ? 'system' : 'galaxy',
+            sectorId: site?.sectorId, pos: site?.pos, label: site?.name, source: 'base:chart',
+          });
         });
+        safeDressLamp(chart);
         foot.appendChild(chart);
       }
       const esc = document.createElement('span');
@@ -1395,12 +677,11 @@ export const baseScreen = {
       foot.appendChild(esc);
       const close = document.createElement('button');
       close.type = 'button';
+      close.className = 'k-word';
       close.textContent = 'Return';
       close.setAttribute('aria-label', 'Return (Escape)');
       close.addEventListener('click', () => { if (ctx.screenManager) ctx.screenManager.popScreen(); });
       foot.appendChild(close);
-      close.classList.add('orr-base__lamp');
-      safeDressLamp(close);
       rootEl.appendChild(wrap);
       // The foot is a plate child outside the #sf-base scroller: Esc/Return stay visible at
       // every scroll position and the band never overlays the column's text.
@@ -1414,13 +695,10 @@ export const baseScreen = {
     this._lastEmpty = false;
     removeBaseField(this);
 
-    const moon = buildMoonArc();
-    if (moon && typeof wrap.appendChild === 'function') wrap.appendChild(moon);
-
-    const title = document.createElement('div');
+    const title = document.createElement('h2');
     title.className = 'base-title';
     title.textContent = body.name || 'Claimed body';
-    wrap.appendChild(title);
+    header.appendChild(title);
 
     const sub = document.createElement('div');
     sub.className = 'base-sub';
@@ -1428,16 +706,15 @@ export const baseScreen = {
     sub.textContent = body.size + '-class body · ' + usedSlots + '/' + body.slots + ' module slots · '
       + String(body.sectorId || '?').replace(/^sector_/, '').replace(/_/g, ' ')
         .replace(/\b\w/g, (c) => c.toUpperCase());
-    wrap.appendChild(sub);
+    header.appendChild(sub);
 
-    // Authored identity (INFERENCE): a claimed body keeps the micro-history its arrival plate
-    // told. Looks the site up by poiId and reuses the existing .base-sub token — no new styling.
+    // Keep the authored survey history with the site's name when the claim is reopened.
     const site = body.poiId && CLAIMABLE_BODY_SITES.find((s) => s.id === body.poiId);
     if (site && site.why) {
       const why = document.createElement('div');
       why.className = 'base-sub';
       why.textContent = site.why;
-      wrap.appendChild(why);
+      header.appendChild(why);
     }
 
     const ledger = claims.ledger(body.id);
@@ -1447,6 +724,7 @@ export const baseScreen = {
     const planMod = plan.state === 'available' && plan.moduleId ? BODY_MODULE_BY_ID.get(plan.moduleId) : null;
     const planBuild = planMod ? describeBaseBuildAction(planMod, player, body) : null;
     const planEl = document.createElement('div');
+    planEl.dataset.baseSection = 'plan';
     planEl.className = 'base-plan base-plan--' + plan.kind;
     planEl.setAttribute('aria-label', [plan.label, plan.title, plan.body].filter(Boolean).join(': '));
     planEl.innerHTML =
@@ -1456,6 +734,7 @@ export const baseScreen = {
     if (planMod && planBuild && !planBuild.disabled) {
       const cta = document.createElement('button');
       cta.type = 'button';
+      cta.dataset.baseAction = 'plan-build';
       cta.className = 'k-word k-word--emph k-word--primary';
       cta.textContent = 'Build ' + planMod.name;
       cta.title = planBuild.title;
@@ -1466,6 +745,10 @@ export const baseScreen = {
     wrap.appendChild(planEl);
 
     // ---- installed modules (slot grid) ----
+    const slotHead = document.createElement('h3');
+    slotHead.className = 'base-sec-h';
+    slotHead.textContent = 'Installed modules';
+    wrap.appendChild(slotHead);
     const slotsWrap = document.createElement('div');
     slotsWrap.className = 'base-slots';
     for (let i = 0; i < body.slots; i++) {
@@ -1475,25 +758,21 @@ export const baseScreen = {
         const mod = BODY_MODULE_BY_ID.get(modId);
         slot.className = 'base-slot';
         slot.innerHTML = '<div class="nm">' + escapeHtml(mod ? mod.name : pretty(modId)) + '</div>' +
-          '<div class="eff">' + (mod ? '◆ ' + escapeHtml(mod.effect.toUpperCase()) : '') + '</div>';
+          '<div class="eff">Installed</div>';
       } else {
         slot.className = 'base-slot empty';
         // a vacant well reads as opportunity: a ghost plus-bead and the build verb
         const well = document.createElement('div');
         well.className = 'base-well';
-        const plus = document.createElement('span');
-        plus.className = 'base-well-plus';
-        plus.textContent = '+';
-        plus.setAttribute('aria-hidden', 'true');
         const wb = document.createElement('button');
         wb.type = 'button';
         wb.className = 'k-word k-word--emph';
-        wb.textContent = 'Build ▸ B';
+        wb.textContent = '+ Build module';
         wb.setAttribute('aria-label', 'Build a module in this empty slot (key B)');
         wb.addEventListener('click', () => {
           if (typeof this._buildTop === 'function') this._buildTop();
         });
-        well.append(plus, wb);
+        well.appendChild(wb);
         slot.appendChild(well);
       }
       slotsWrap.appendChild(slot);
@@ -1501,7 +780,7 @@ export const baseScreen = {
     wrap.appendChild(slotsWrap);
 
     // ---- operating identity (M5 / SPEC3-F6): one claim, one visible job ----
-    const specHead = document.createElement('div');
+    const specHead = document.createElement('h3');
     specHead.className = 'base-sec-h';
     specHead.textContent = 'Operating identity';
     wrap.appendChild(specHead);
@@ -1511,21 +790,26 @@ export const baseScreen = {
     BODY_SPECIALIZATIONS.forEach((spec, specIdx) => {
       const specAction = describeSpecializationAction(spec, player, body);
       const card = document.createElement('section');
+      card.dataset.baseSection = spec.id;
       card.className = 'base-spec' + (body.spec && body.spec.id === spec.id ? ' active' : '');
       card.setAttribute('aria-label', spec.name + ': ' + spec.desc);
 
       const name = document.createElement('div');
       name.className = 'nm';
-      name.textContent = spec.name + (specAction.state === 'active' ? ' · ACTIVE' : '');
+      name.textContent = spec.name;
+      const specHead = document.createElement('div');
+      specHead.className = 'base-spec-head';
+      specHead.innerHTML = icon(SPEC_ICON[spec.id] || 'info', 24);
+      specHead.appendChild(name);
       const verb = document.createElement('div');
       verb.className = 'verb';
-      verb.textContent = '▶ YOUR VERB · ' + spec.playerVerb;
+      verb.textContent = spec.playerVerb;
       const effect = document.createElement('div');
       effect.className = 'effect';
-      effect.textContent = '✓ CONSEQUENCE · ' + spec.consequence;
+      effect.textContent = spec.consequence;
       const risk = document.createElement('div');
       risk.className = 'risk';
-      risk.textContent = '△ TRADEOFF · ' + spec.riskLine;
+      risk.textContent = spec.riskLine;
       const btn = document.createElement('button');
       btn.className = 'k-word k-word--emph k-word--primary' + (specAction.disabled ? ' orr-base__chip' : '');
       btn.textContent = specAction.label;
@@ -1541,23 +825,22 @@ export const baseScreen = {
           describeBaseInvestmentConfirm(spec, player, body, { kind: 'specialization' }),
           () => claims.specialize(body.id, spec.id),
         );
-        if (didCommit === true) this._render();
+        if (didCommit === true) this._refreshAfterAction(btn);
         else if (didCommit === 'denied' && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       });
-      const tickNum = document.createElement('span');
-      tickNum.className = 'base-spec-tick';
-      tickNum.textContent = String(specIdx + 1);
-      tickNum.setAttribute('aria-hidden', 'true');
-      card.append(tickNum, name, verb, effect, risk, btn);
+      card.append(specHead, verb, effect, risk, btn);
       specGrid.appendChild(card);
     });
     wrap.appendChild(specGrid);
 
+    let ledgerHeading = null;
     if (ledger && ledger.specId) {
       const ledgerEl = document.createElement('section');
       ledgerEl.className = 'base-ledger';
+      ledgerEl.dataset.baseSection = 'ledger';
       ledgerEl.setAttribute('aria-label', ledger.specName + ' operations ledger');
-      const ledgerTitle = document.createElement('div');
+      const ledgerTitle = document.createElement('h3');
+      ledgerHeading = ledgerTitle;
       ledgerTitle.className = 'base-plan-k';
       ledgerTitle.textContent = ledger.specName + ' · ' + String(ledger.status || 'offline').toUpperCase();
       ledgerEl.appendChild(ledgerTitle);
@@ -1638,12 +921,13 @@ export const baseScreen = {
           if (!available) continue;
           const deliver = document.createElement('button');
           const amount = Math.min(10, available);
+          deliver.dataset.baseAction = 'deliver-' + goodId;
           deliver.className = 'k-word k-word--emph';
           deliver.textContent = 'Deliver ' + amount + 'u · ' + commodityDisplayName(goodId);
           deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + commodityDisplayName(goodId) + ' to ' + body.name);
           deliver.addEventListener('click', () => {
             claims.deliverToClaim(body.id, goodId, amount);
-            this._render();
+            this._refreshAfterAction(deliver);
           });
           freight.appendChild(deliver);
         }
@@ -1653,6 +937,7 @@ export const baseScreen = {
       if (storedOutputU > 0 || strandedInputU > 0) {
         const collect = document.createElement('button');
         collect.type = 'button';
+        collect.dataset.baseAction = 'collect';
         collect.className = 'k-word k-word--emph k-word--primary';
         collect.textContent = storedOutputU > 0 && strandedInputU > 0
           ? 'Collect output · ' + ledgerValue(storedOutputU, 'u') + ' + ' + ledgerValue(strandedInputU, 'u') + ' stranded'
@@ -1662,7 +947,7 @@ export const baseScreen = {
         collect.setAttribute('aria-label', 'Collect stored goods from ' + body.name);
         collect.addEventListener('click', () => {
           claims.collectFromClaim(body.id);
-          this._render();
+          this._refreshAfterAction(collect);
         });
         freight.appendChild(collect);
       }
@@ -1698,7 +983,7 @@ export const baseScreen = {
     }
 
     // ---- build shop ----
-    const shopHead = document.createElement('div');
+    const shopHead = document.createElement('h3');
     shopHead.className = 'base-sec-h';
     shopHead.textContent = 'Build module';
     wrap.appendChild(shopHead);
@@ -1708,6 +993,7 @@ export const baseScreen = {
     for (const mod of BODY_MODULES) {
       const card = document.createElement('div');
       card.className = 'base-mod';
+      card.dataset.baseSection = mod.id;
       const built = body.modules.includes(mod.id);
       const buildAction = describeBaseBuildAction(mod, player, body);
       const techLabel = mod.techReq ? ' · ' + techName(mod.techReq) : '';
@@ -1757,6 +1043,22 @@ export const baseScreen = {
     // close + the screen's ONE Lamp Key: dispatch the convoy.
     const foot = document.createElement('div');
     foot.className = 'base-foot';
+    const jump = document.createElement('nav');
+    jump.className = 'base-jump';
+    jump.setAttribute('aria-label', 'Base sections');
+    for (const [label, heading] of [['Overview', title], ['Ledger', ledgerHeading], ['Construction', shopHead]]) {
+      if (!heading) continue;
+      heading.tabIndex = -1;
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.textContent = label;
+      link.addEventListener('click', () => {
+        heading.focus({ preventScroll: true });
+        (heading === title ? header : heading).scrollIntoView({ block: 'start' });
+      });
+      jump.appendChild(link);
+    }
+    foot.appendChild(jump);
     const esc = document.createElement('span');
     esc.className = 'orr-base__esc';
     esc.setAttribute('aria-hidden', 'true');
@@ -1764,6 +1066,7 @@ export const baseScreen = {
     foot.appendChild(esc);
     const close = document.createElement('button');
     close.className = 'k-word k-word--emph';
+    close.dataset.baseAction = 'close';
     close.textContent = 'Close';
     close.setAttribute('aria-label', 'Return (Escape)');
     close.addEventListener('click', () => { if (ctx.screenManager) ctx.screenManager.popScreen(); });
@@ -1774,15 +1077,12 @@ export const baseScreen = {
       dispatch.enabled = false;
       dispatch.reason = 'dispatch armed — the relay flies on the next tick';
     }
-    const fire = document.createElement('button');
-    fire.type = 'button';
-    fire.textContent = 'Dispatch convoy';
-    fire.disabled = !dispatch.enabled;
-    fire.title = dispatch.enabled
-      ? 'Dispatch a convoy now from ' + (body.name || 'this claim')
-      : 'Dispatch convoy — ' + dispatch.reason;
-    fire.setAttribute('aria-label', fire.title);
     if (dispatch.enabled) {
+      const fire = document.createElement('button');
+      fire.type = 'button';
+      fire.className = 'orr-base__lamp';
+      fire.textContent = 'Dispatch convoy';
+      fire.setAttribute('aria-label', 'Dispatch a convoy now from ' + (body.name || 'this claim'));
       fire.addEventListener('click', () => {
         // Arm the owner's own schedule: the next claims tick dispatches (its destination,
         // market and minimum-load checks all still apply). The UI arms; the owner decides.
@@ -1793,16 +1093,42 @@ export const baseScreen = {
         }
         this._dispatchArmed = armKey;
         if (ctx.bus) ctx.bus.emit('toast', { text: 'Convoy dispatch armed — the relay flies on the next tick', kind: 'info', ttl: 3 });
-        this._render();
+        this._refreshAfterAction(close);
       });
+      safeDressLamp(fire);
+      foot.appendChild(fire);
+    } else {
+      const status = document.createElement('span');
+      status.className = 'base-dispatch-state';
+      status.textContent = body.spec?.convoy
+        ? dispatch.reason.charAt(0).toUpperCase() + dispatch.reason.slice(1)
+        : 'Dispatch: ' + dispatch.reason;
+      foot.appendChild(status);
     }
-    foot.appendChild(fire);
-    fire.classList.add('orr-base__lamp');
-    safeDressLamp(fire);
     rootEl.appendChild(wrap);
     // The foot is a plate child outside the #sf-base scroller (see the empty path): the band
     // never overlays the ledger, so nothing reads buried under Esc / Close / Dispatch.
     rootEl.appendChild(foot);
+  },
+
+  // Transactions can remove their own button (last delivery or newly installed module).
+  // Keep the operator at that site section, with a useful next Tab stop.
+  _refreshAfterAction(button) {
+    const root = this._rootEl;
+    const oldPage = root.querySelector('#sf-base');
+    const scroll = oldPage.scrollTop;
+    const action = button.dataset.baseAction;
+    const section = button.closest('[data-base-section]')?.dataset.baseSection;
+    this._render();
+    const currentPage = root.querySelector('#sf-base');
+    currentPage.scrollTop = scroll;
+    const nextButton = action && [...root.querySelectorAll('[data-base-action]')].find(el => el.dataset.baseAction === action && !el.disabled);
+    const nextSection = section && [...root.querySelectorAll('[data-base-section]')].find(el => el.dataset.baseSection === section);
+    const target = nextButton || nextSection;
+    if (target) {
+      if (!nextButton) target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+    }
   },
 
   // Read the requested body FRESH on each open — input.js (the 'C' keybind) sets

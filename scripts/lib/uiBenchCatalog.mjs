@@ -13,7 +13,7 @@ export const BACKDROPS = Object.freeze({
  *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot). `defeat` picks the
  *  Game Over fixture (seedGameOverShot): 'populated' mounts a real buildDefeatReceipt plate,
  *  'empty' the clean state. `seed` overrides the run seed a shot writes into state.meta.seed.
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, mobile?: string, defeat?: string, seed?: number}[]} */
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, manifestStake?: number, mobile?: string, defeat?: string, seed?: number}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -75,6 +75,10 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'comms-radial', screen: 'flight', overlay: 'comms', backdrop: 'world' },
   { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
   // Popups: the layers that rise over a screen — confirmation, find palette, tier-2 tooltip, dossier drawer.
+  { id: 'popup-decision', screen: 'flight', overlay: 'decision', backdrop: 'world' },
+  { id: 'popup-cargo', screen: 'flight', overlay: 'cargo', backdrop: 'world' },
+  { id: 'popup-receipt', screen: 'flight', overlay: 'receipt', backdrop: 'world' },
+  { id: 'popup-story-choice', screen: 'flight', overlay: 'story-choice', backdrop: 'world' },
   { id: 'popup-confirm', screen: 'station', overlay: 'confirm', backdrop: 'shell' },
   { id: 'popup-confirm-danger', screen: 'station', overlay: 'confirm-danger', backdrop: 'shell' },
   { id: 'popup-find', screen: 'station', overlay: 'find', backdrop: 'shell' },
@@ -107,6 +111,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'station-contracts', screen: 'station', tab: 'contracts', backdrop: 'shell' },
   { id: 'station-factions', screen: 'station', tab: 'factions', backdrop: 'shell' },
   { id: 'station-bar', screen: 'station', tab: 'bar', backdrop: 'shell' },
+  { id: 'manifest', screen: 'manifest', backdrop: 'shell' },
+  { id: 'manifest-hand', screen: 'manifest', backdrop: 'shell', manifestStake: 25 },
   // Story-reward readers (tools/ui-bench.js seedStoryRewardShot): the Concord docket officer for a
   // held Lost Ledger at Helios; the Cassandra Treaty line on the Choir's own berth.
   { id: 'station-bar-story-buyer', screen: 'station', tab: 'bar', backdrop: 'shell', story: 'ledger' },

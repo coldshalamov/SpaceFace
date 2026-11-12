@@ -236,13 +236,9 @@
    choice — never a rounded, shadowed card with a bordered input. */
 :is(#screens .sx-observatory, .sx-observatory) .so-command-palette {
   position: fixed; inset: 13vh 0 auto; width: min(600px,calc(100vw - 28px)); max-height: min(660px,80dvh);
-  padding: 24px 28px; margin: 0 auto; border: 0; border-radius: 0; color: var(--so-ink); box-shadow: none; overflow: auto;
-  background:
-    linear-gradient(90deg, rgb(236 230 216 / .55), rgb(236 230 216 / .16) 26%, rgb(236 230 216 / .16) 74%, rgb(236 230 216 / .55)) 0 0 / 100% 1px no-repeat,
-    linear-gradient(90deg, rgb(236 230 216 / .1), rgb(236 230 216 / .1)) 0 100% / 100% 1px no-repeat,
-    linear-gradient(90deg, rgb(236 230 216 / .14), rgb(236 230 216 / .14)) 0 0 / 1px 100% no-repeat,
-    linear-gradient(90deg, rgb(236 230 216 / .14), rgb(236 230 216 / .14)) 100% 0 / 1px 100% no-repeat,
-    linear-gradient(160deg, rgb(15 18 23 / .94), rgb(9 11 15 / .9));
+  box-sizing: border-box; padding: 24px 28px; margin: 0 auto; overflow: auto; color: var(--so-ink);
+  background: var(--sf-pop-glass); border: 1px solid var(--sf-pop-seam); border-top: 2px solid var(--dp-phos);
+  box-shadow: var(--sf-pop-shadow);
 }
 :is(#screens .sx-observatory, .sx-observatory) .so-command-palette::backdrop { background: rgb(7 8 9 / .78); }
 :is(#screens .sx-observatory, .sx-observatory) .so-command-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }:is(#screens .sx-observatory, .sx-observatory) .so-command-head h2 { font: 550 29px/1.15 var(--so-display); margin: 5px 0 0; letter-spacing: -.04em; }:is(#screens .sx-observatory, .sx-observatory) .so-command-head button { padding: 7px; min-height: 30px; background: transparent; }

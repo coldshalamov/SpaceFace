@@ -3466,6 +3466,9 @@ export function createHud(ctx, alerts) {
     z-index: 5;
   }
   .sf-cargo-block {
+    font: inherit;
+    color: inherit;
+    text-align: left;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -3773,6 +3776,7 @@ export function createHud(ctx, alerts) {
   const cargoPanel = document.createElement('div');
   cargoPanel.className = 'sf-cargo-panel';
   cargoPanel.setAttribute('role', 'dialog');
+  cargoPanel.setAttribute('aria-modal', 'true');
   cargoPanel.setAttribute('aria-label', 'Cargo hold');
   cargoPanel.innerHTML = `
     <div class="sf-cargo-panel__head">
@@ -3902,6 +3906,7 @@ export function createHud(ctx, alerts) {
   const supplyTreeFx = createSupplyTree(supplyTreeMount, { width: 520, height: 140 });
 
   let cargoPanelOpen = false;
+  let cargoOpener = null;
   if (state.ui) state.ui.cargoPanelOpen = false;
   let activeTab = 'cargo';
   let selectedCommodityId = null;
@@ -3979,6 +3984,7 @@ export function createHud(ctx, alerts) {
   }
 
   function updateInspector(commodityId) {
+    cargoPanel.querySelector('.sf-cargo-body').toggleAttribute('data-has-selection', !!commodityId);
     const emptyEl = cargoPanel.querySelector('.sf-inspector-empty');
     const contentEl = cargoPanel.querySelector('.sf-inspector-content');
 
@@ -4295,8 +4301,10 @@ export function createHud(ctx, alerts) {
       if (def && def.legality === 'restricted') legalClass = 'restricted';
       if (def && def.legality === 'contraband') legalClass = 'contraband';
 
-      const block = document.createElement('div');
+      const block = document.createElement('button');
+      block.type = 'button';
       block.className = `sf-cargo-block ${legalClass}`;
+      block.setAttribute('aria-pressed', String(selectedCommodityId === id));
       if (selectedCommodityId === id) block.classList.add('selected');
       block.dataset.id = id;
       block.style.flex = `${Math.max(1, Math.round(vol))} ${Math.max(1, Math.round(vol))} 140px`;
@@ -4313,22 +4321,24 @@ export function createHud(ctx, alerts) {
       }
 
       block.innerHTML = `
-        <div class="sf-cargo-block-top">
+        <span class="sf-cargo-block-top">
           <span class="sf-cargo-block-name">${name}</span>
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
-        </div>
-        <div class="sf-cargo-block-bottom">
+        </span>
+        <span class="sf-cargo-block-bottom">
           <span class="sf-cargo-block-qty">${qty} units</span>
           <span class="sf-cargo-block-vol">${vol.toFixed(1)} u vol</span>
           ${badgeHtml}
-        </div>
+        </span>
       `;
 
       block.addEventListener('click', (ev) => {
         ev.stopPropagation();
         selectedCommodityId = id;
-        schematicEl.querySelectorAll('.sf-cargo-block').forEach(b => b.classList.remove('selected'));
-        block.classList.add('selected');
+        for (const item of schematicEl.querySelectorAll('button.sf-cargo-block')) {
+          item.classList.toggle('selected', item === block);
+          item.setAttribute('aria-pressed', String(item === block));
+        }
         updateInspector(id);
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       });
@@ -4357,7 +4367,10 @@ export function createHud(ctx, alerts) {
     if (!selectedCommodityId && keys.length > 0) {
       selectedCommodityId = keys[0];
       const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-id="${selectedCommodityId}"]`);
-      if (firstBlock) firstBlock.classList.add('selected');
+      if (firstBlock) {
+        firstBlock.classList.add('selected');
+        firstBlock.setAttribute('aria-pressed', 'true');
+      }
     }
 
     if (selectedCommodityId) {
@@ -4411,31 +4424,23 @@ export function createHud(ctx, alerts) {
 
   // Toggle function
   function toggleCargoPanel() {
-    cargoPanelOpen = !cargoPanelOpen;
-    if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
-    cargoPanel.classList.toggle('open', cargoPanelOpen);
-
-    gridFx.setActive(cargoPanelOpen);
-    hexFx.setActive(cargoPanelOpen);
-    beamFx.setActive(cargoPanelOpen);
-    gaugeUsedFx.setActive(cargoPanelOpen);
-    gaugeRiskFx.setActive(cargoPanelOpen);
-
-    if (cargoPanelOpen) {
-      refreshCargoPanel();
-      try { cargoCloseBtn.focus({ preventScroll: true }); } catch { /* pointer still closes the hold */ }
-      gridFx.reveal({
-        resolveTo: (c, r, cols, rows) => {
-          return 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5);
-        },
-        durationMs: 400
-      });
-    } else {
-      clearCargoGaugeSettle(cargoGaugeSettle.used);
-      clearCargoGaugeSettle(cargoGaugeSettle.risk);
-      beamFx.setPath([], { active: false });
-    }
-    ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
+    if (cargoPanelOpen) return closeCargoPanel();
+    cargoOpener = document.activeElement;
+    cargoPanelOpen = true;
+    if (state.ui) state.ui.cargoPanelOpen = true;
+    cargoPanel.classList.add('open');
+    gridFx.setActive(true);
+    hexFx.setActive(true);
+    beamFx.setActive(true);
+    gaugeUsedFx.setActive(true);
+    gaugeRiskFx.setActive(true);
+    refreshCargoPanel();
+    try { cargoCloseBtn.focus({ preventScroll: true }); } catch { /* pointer still closes the hold */ }
+    gridFx.reveal({
+      resolveTo: (c, r) => 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5),
+      durationMs: 400,
+    });
+    ctx.bus.emit('audio:cue', { id: 'ui_open' });
   }
 
   // close function
@@ -4444,6 +4449,8 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = false;
     if (state.ui) state.ui.cargoPanelOpen = false;
     cargoPanel.classList.remove('open');
+    if (cargoOpener?.isConnected && !cargoOpener.closest('[inert]')) cargoOpener.focus?.({ preventScroll: true });
+    cargoOpener = null;
 
     gridFx.setActive(false);
     hexFx.setActive(false);
@@ -4486,6 +4493,16 @@ export function createHud(ctx, alerts) {
   // Close on ESC when panel focus is inside it; ui/input.js handles the global flight case.
   cargoPanel.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') { ev.stopPropagation(); closeCargoPanel(); }
+    if (ev.key === 'Tab') {
+      const stops = [...cargoPanel.querySelectorAll('button:not([disabled]), a[href], [tabindex="0"]')]
+        .filter(node => node.getClientRects().length);
+      const edge = ev.shiftKey ? stops[0] : stops[stops.length - 1];
+      if (document.activeElement === edge) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        (ev.shiftKey ? stops[stops.length - 1] : stops[0]).focus();
+      }
+    }
   });
 
   // ---------------------------------------------------------------------------
@@ -7060,6 +7077,8 @@ export function createHud(ctx, alerts) {
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
     placeAlertLaneInSafeBands(layout, w, h);
+    // Fix the dock prompt in its flight seat before the receipt solver measures its bounds.
+    placeFlightReadouts(w, h);
     if (!laneRoot || !layout.receipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
@@ -7077,7 +7096,6 @@ export function createHud(ctx, alerts) {
     }
     if (!activeReceipt && !captionVisible) {
       placeExternalFlightCaptions(layout, w, h);
-      placeFlightReadouts(w, h);
       refreshFlightTextObstacleSnapshot();
       return;
     }
@@ -7087,7 +7105,6 @@ export function createHud(ctx, alerts) {
       // both receipt/caption slots before calling it when no receipt is present.
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
-      placeFlightReadouts(w, h);
       refreshFlightTextObstacleSnapshot();
       return;
     }
@@ -7106,7 +7123,6 @@ export function createHud(ctx, alerts) {
     if (!activeReceipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
-      placeFlightReadouts(w, h);
       refreshFlightTextObstacleSnapshot();
       return;
     }
@@ -7169,7 +7185,6 @@ export function createHud(ctx, alerts) {
         sharedGeometry ? captionScrollHeight : null);
     }
     placeExternalFlightCaptions(layout, w, h);
-    placeFlightReadouts(w, h);
     refreshFlightTextObstacleSnapshot();
   }
   if (typeof window !== 'undefined' && window.addEventListener) {

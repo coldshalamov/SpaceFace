@@ -81,6 +81,16 @@ class HudElement {
     this.children.length = 0;
     if (value != null && String(value) !== '') this.appendChild(new HudText(String(value)));
   }
+  get firstChild() { return this.childNodes[0] || null; }
+  insertBefore(child, reference) {
+    if (reference == null) return this.appendChild(child);
+    if (!this.childNodes.includes(reference)) throw new DOMException('Reference is not a child', 'NotFoundError');
+    if (child === reference) return child;
+    child.parentNode?.removeChild(child);
+    this.childNodes.splice(this.childNodes.indexOf(reference), 0, child);
+    child.parentNode = this;
+    return child;
+  }
   appendChild(child) {
     if (!child) return null;
     if (child.parentNode && child.parentNode.removeChild) child.parentNode.removeChild(child);
@@ -110,6 +120,12 @@ class HudElement {
     if (name.startsWith('data-')) this.dataset[dataKey(name.slice(5))] = text;
   }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
+  toggleAttribute(name, force) {
+    const enabled = force === undefined ? !this.attributes.has(name) : Boolean(force);
+    if (!enabled) this.removeAttribute(name);
+    else if (!this.attributes.has(name)) this.setAttribute(name, '');
+    return enabled;
+  }
   removeAttribute(name) {
     this.attributes.delete(name);
     if (name.startsWith('data-')) delete this.dataset[dataKey(name.slice(5))];

@@ -1,6 +1,7 @@
 // The armory's visual inspection and explicit transaction surface. Owns no wallet or fitting:
 // the caller supplies a fresh offer and sends the existing purchase intent when the key is used.
 import { equipmentSvg } from './equipmentGlyphs.js';
+import { armoryPlate, equipmentPlate } from './armoryIllustrations.js';
 import { weaponClipUrl } from '../weaponClips.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
@@ -28,8 +29,12 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const build = make('details', 'orr-armory-build');
   const buildSummary = make('summary', '', 'Current build');
   const buildList = make('ul', ''); build.append(buildSummary, buildList);
-  visual.append(item, label, parts.jig, build); reading.prepend(visual);
-  const crew = createPipSpannerCrew({ host: visual, doc });
+  visual.append(item, label); reading.prepend(visual);
+  const support = make('div', 'orr-armory-support');
+  build.appendChild(parts.jig);
+  support.appendChild(build);
+  const crew = createPipSpannerCrew({ host: support, doc });
+  reading.appendChild(support);
   const fitline = make('p', 'orr-armory-fitline', '');
   parts.act.after(fitline);
   // The words remain accessible even when the catalog is empty or no illustration is available.
@@ -38,16 +43,34 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   parts.buy.replaceChildren(buy, refusal);
   const wallet = make('div', 'orr-armory-wallet');
   const balance = make('strong', '', '');
-  wallet.append(balance, make('span', '', 'Run credits · not campaign credits'));
-  root.querySelector('.k-title').appendChild(wallet);
+  const amount = make('span', 'orr-wallet-amount');
+  balance.append(amount, make('small', '', 'cr'));
+  wallet.setAttribute('aria-label', 'Run credits');
+  wallet.append(make('span', 'orr-wallet-caption', 'Run credits'), balance);
+  const header = root.querySelector('.k-title');
+  header.appendChild(wallet);
+  const stage = root.querySelector('.sf-cru-stage');
+  const body = make('div', 'orr-armory-body');
   const motionQuery = doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)');
   const motionReduced = () => !!doc.documentElement?.classList.contains('sf-reduce-motion')
     || !!motionQuery?.matches;
   const preview = createArmoryPreviewMedia({ motionReduced });
   let lastArt = null, lastFit = null, lastOffer = null, disposed = false;
   return {
-    wallet(credits, visible = true) { wallet.hidden = !visible; balance.textContent = `${Math.max(0, Number(credits) || 0).toLocaleString('en-US')} cr`; },
-    show(offer, lines, { credits = 0, hullId = '', rows = [], armed = true, receipt = null, generation = null } = {}) {
+    wallet(credits, visible = true) {
+      wallet.hidden = !visible;
+      amount.textContent = Math.max(0, Number(credits) || 0).toLocaleString('en-US');
+      // One narrow scrollport contains header, catalog and detail. The action rail owns
+      // its measured height; the same cached screen restores Rearm's original DOM on exit.
+      if (visible && !body.parentNode) {
+        root.insertBefore(body, header);
+        body.append(header, stage, reading);
+      } else if (!visible && body.parentNode) {
+        for (const child of [header, stage, reading]) root.insertBefore(child, body);
+        body.remove();
+      }
+    },
+    show(offer, lines, { hullId = '', rows = [], armed = true, receipt = null, generation = null } = {}) {
       if (disposed) return;
       const offerKey = JSON.stringify([offer.kind, offer.id ?? offer.defId ?? offer.hullId, offer._ownedIndex]);
       if (offerKey !== lastOffer) {
@@ -86,7 +109,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           ? weaponClipUrl(offer.defId)
           : null;
         if (clip) {
-          item.appendChild(equipmentSvg(offer, doc));
+          item.appendChild(equipmentPlate(offer, doc));
           const video = make('video', '');
           video.muted = true; video.loop = true;
           video.playsInline = true; video.preload = 'auto';
@@ -96,8 +119,8 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
             if (!preview.owns(token)) return;
             if (video.error?.code === 4) missingClips.add(offer.defId);
             preview.clear();
-            item.replaceChildren(equipmentSvg(offer, doc));
-            label.textContent = 'Equipment schematic';
+            item.replaceChildren(equipmentPlate(offer, doc));
+            label.textContent = armoryPlate(offer) ? 'Hardware family' : 'Equipment schematic';
           }, { once: true });
           video.addEventListener('canplay', () => {
             if (!preview.owns(token)) return;
@@ -107,15 +130,15 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           }, { once: true });
           video.src = clip;
         } else if (url) {
-          item.appendChild(equipmentSvg(offer, doc));
+          item.appendChild(equipmentPlate(offer, doc));
           const image = make('img', ''); image.alt = ''; image.decoding = 'async';
           image.addEventListener('load', () => {
             if (preview.owns(token)) item.replaceChildren(image);
           }, { once: true });
           // The schematic remains visible if the image is slow or missing.
           image.src = url;
-        } else item.appendChild(equipmentSvg(offer, doc));
-        label.textContent = offer.kind === 'hull' ? 'Ship preview' : 'Equipment schematic';
+        } else item.appendChild(equipmentPlate(offer, doc));
+        label.textContent = offer.kind === 'hull' ? 'Ship preview' : armoryPlate(offer) ? 'Hardware family' : 'Equipment schematic';
       }
       fitline.textContent = lines.slot || (offer.kind === 'service' ? 'Applies to this run.' : 'Inspect before you fit.');
       const price = Math.max(0, Number(offer.price) || 0);
@@ -126,7 +149,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       buy.setAttribute('aria-label', `${buy.textContent}: ${lines.name}`);
       refusal.textContent = offer.purchased ? 'This item is part of your current build.'
         : !offer.available ? offer.unavailableReason || 'This offer cannot be fitted to the current build.'
-          : `${Math.max(0, credits - price).toLocaleString('en-US')} cr remaining after purchase${offer.replaces ? ` · replaces ${offer.replacesName || 'the fitted item'}` : ''}.`;
+          : '';
       crew?.scope(generation); crew?.inspect(offer); crew?.receipt(receipt);
     },
     pending(offer) { crew?.pending(offer); buy.disabled = true; buy.setAttribute('aria-disabled', 'true'); },

@@ -153,6 +153,11 @@ class FakeElement {
     }
     return child;
   }
+  insertAdjacentElement(position, element) {
+    assert.equal(position, 'afterend');
+    const siblings = this.parentNode.children;
+    return this.parentNode.insertBefore(element, siblings[siblings.indexOf(this) + 1] || null);
+  }
   insertBefore(child, reference) {
     if (reference == null) return this.appendChild(child);
     if (child === reference) return child;
@@ -751,6 +756,29 @@ for (const scenario of [
   } finally {
     app.dispose();
   }
+}
+
+
+// Returning from Manifest uncovers the same berth. Only another physical arrival
+// should redirect a player from their chosen destination to a ready mission.
+{
+  installDom();
+  const ctx = makeCtx(4242);
+  ctx.state.missions.active = [{ id: 'escort-home', type: 'escort', status: 'active',
+    title: 'Return convoy', destStationId: 'station_helios', objectives: [] }];
+  const { app, rootEl } = mountStationApp(ctx);
+  app.onShow();
+  assert.equal(rootEl.dataset.operation, 'contracts', 'the first dock surfaces ready work');
+  app.navigate('bar');
+  app.onHide();
+  app.onShow();
+  assert.equal(rootEl.dataset.operation, 'bar', 'returning from Manifest resumes the bar');
+  app.onHide();
+  ctx.bus.emit('dock:undocked', { committed: true, source: 'test' });
+  app.onShow();
+  assert.equal(rootEl.dataset.operation, 'contracts', 'the next physical arrival surfaces work again');
+  app.dispose();
+  console.log('ok   returning from Manifest preserves the active bar until a new dock');
 }
 
 console.log('station-exit-confirmation: all acceptance tests PASS');

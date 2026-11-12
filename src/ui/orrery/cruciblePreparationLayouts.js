@@ -1,6 +1,7 @@
 // One composition sheet for the Crucible preparation family. Materials and typography inherit
 // Deckplate/ORRERY; no new token root, runtime filter, full-screen canvas or animation loop.
 import { injectOrrery } from './tokens.js';
+import { runtimeAssetUrl } from '../../core/runtimeAssetUrl.js';
 const BONE = '236 230 216';
 const VOID = '5 7 10';
 const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-preparation[data-prep-step]';
@@ -9,6 +10,7 @@ const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-ref
 const RD = `html:root:not([data-sf-mobile="1"]) ${R.replace(/^html /, '')}`;
 /* Scored Gauntlet rearm: three sky cards, no shop/orr-armory class. Armory densify (A) misses it. */
 const RE = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory:not(.orr-armory)';
+const WORKSHOP_URL = runtimeAssetUrl('assets/ui/generated/armory/workshop.webp', import.meta.url);
 const CSS = `
 ${D} .orr-prep-daily { color:var(--dp-phos); font:500 14px var(--dp-face-body,'Instrument Sans'),sans-serif; margin:8px 0 16px; }
 ${D} .orr-cabinet-preview { position:absolute; top:4%; right:8%; width:80%; max-width:380px; z-index:3; pointer-events:none; background:var(--dp-void); }
@@ -110,13 +112,13 @@ ${D} .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !impo
 ${D} :is(button,summary,input):focus-visible, ${A} :is(button,input,summary):focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
 /* The armory's three planes: catalog, object/ship, transaction. */
 ${A} { display:grid !important; grid-template-columns:minmax(320px,.9fr) minmax(0,1.55fr) !important; grid-template-rows:auto minmax(0,1fr) auto !important; gap:24px 38px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
-${A} > .k-title { grid-column:1 / -1 !important; grid-row:1; padding:0 !important; margin:0 !important; position:relative; }
-${A} > .k-title h1 { font:800 44px/1 var(--dp-face-display,'Archivo') !important; letter-spacing:-.02em !important; }
-${A} > .k-title .sf-cru-sub { font-size:14px !important; margin:10px 200px 0 0; color:var(--dp-ink-dim) !important; }
+${A} .k-title { grid-column:1 / -1 !important; grid-row:1; padding:0 !important; margin:0 !important; position:relative; }
+${A} .k-title h1 { font:800 44px/1 var(--dp-face-display,'Archivo') !important; letter-spacing:-.02em !important; }
+${A} .k-title .sf-cru-sub { font-size:14px !important; margin:10px 200px 0 0; color:var(--dp-ink-dim) !important; }
 ${A} .orr-armory-wallet { position:absolute; right:0; top:0; text-align:right; }
 ${A} .orr-armory-wallet strong { display:block; font:300 40px/1 var(--dp-face-numeral); font-variant-numeric:tabular-nums; }
 ${A} .orr-armory-wallet span { display:block; font:500 12px/1.4 var(--dp-face-label); letter-spacing:.08em; text-transform:uppercase; color:var(--dp-ink-dim); margin-top:6px; }
-${A} > .sf-cru-stage { grid-column:1 !important; grid-row:2 !important; display:flex !important; flex-direction:column !important; position:relative !important; inset:auto !important; max-width:none !important; width:100% !important; height:100% !important; min-height:0 !important; padding:0 !important; margin:0 !important; overflow:hidden !important; }
+${A} .sf-cru-stage { grid-column:1 !important; grid-row:2 !important; display:flex !important; flex-direction:column !important; position:relative !important; inset:auto !important; max-width:none !important; width:100% !important; height:100% !important; min-height:0 !important; padding:0 !important; margin:0 !important; overflow:hidden !important; }
 ${A} .sf-cru-filters { display:flex !important; flex-wrap:wrap !important; gap:4px 14px !important; padding:0 0 12px !important; margin:0 !important; flex:none !important; }
 ${A} .sf-cru-filters > button { padding:8px 0 !important; font:500 12px var(--dp-face-label) !important; min-height:36px !important; letter-spacing:0 !important; color:var(--dp-ink-dim) !important; }
 ${A} .sf-cru-filters > button[aria-pressed=true] { color:var(--dp-ink) !important; border-bottom:1px solid var(--dp-hand) !important; }
@@ -401,7 +403,7 @@ ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__contrast { margin:2px 0 0 !impo
 ${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-act { align-self:center; }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }
- ${D} > .k-title h1, ${A} > .k-title h1 { font-size:36px !important; }
+ ${D} > .k-title h1, ${A} .k-title h1 { font-size:36px !important; }
  ${D} .orr-prep-nav { flex:none; gap:12px; flex-wrap:wrap; }
  ${D} .orr-prep-tabs { gap:20px; }
  ${D} .orr-prep-tab { font-size:14px; }
@@ -419,10 +421,10 @@ ${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-act { align-self:center; }
  ${D} .orr-tile .fh-tile-legend { font-size:12px !important; }
  ${D} .orr-prep-stake-number { font-size:22px; }
  ${D} .orr-prep-stake-pressure { font-size:12px; }
- ${A} > .k-title :is(.sf-cru-sub,.sf-cru-preview,.sf-cru-cradle) { margin-right:0; max-width:100%; }
+ ${A} .k-title :is(.sf-cru-sub,.sf-cru-preview,.sf-cru-cradle) { margin-right:0; max-width:100%; }
  ${A} .orr-armory-wallet { position:static; text-align:left; display:flex; align-items:baseline; gap:12px; margin-top:16px; }
  ${A} .orr-armory-wallet strong { font-size:30px; }
- ${A} > .sf-cru-stage { height:420px !important; flex:none !important; }
+ ${A} .sf-cru-stage { height:420px !important; flex:none !important; }
  ${A} .orr-armory-reading.orr-armory-reading { display:flex !important; flex-direction:column !important; height:auto !important; flex:none !important; padding:16px 0 !important; border-left:0; border-top:1px solid var(--dp-line); overflow:visible !important; }
  ${A} .orr-armory-reading[hidden] { display:none !important; }
  ${A} .orr-armory-visual { flex-direction:row; flex:none; width:100%; }
@@ -542,11 +544,11 @@ ${A} .sf-cru-fine { color:rgb(${BONE} / .78) !important; position:relative; z-in
 ${A} .orr-armory-hintword { color:rgb(${BONE} / .78) !important; }
 
 /* Secondary contrast — bone alphas where washed --dp-ink-dim was the problem. */
-${A} > .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
-${A} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; margin:6px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
-${A} > .k-title .sf-cru-cradle { color:rgb(${BONE} / .8) !important; margin:4px 0 0; font:400 12.5px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
+${A} .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; margin:6px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} .k-title .sf-cru-cradle { color:rgb(${BONE} / .8) !important; margin:4px 0 0; font:400 12.5px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
 /* Right gutter for the wallet only where there's room; phones keep full text width. */
-@media (min-width:761px) { ${A} > .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin-right:200px; } }
+@media (min-width:761px) { ${A} .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin-right:200px; } }
 ${A} .orr-armory-wallet span { color:rgb(${BONE} / .8) !important; }
 ${A} .sf-cru-filters > button { color:rgb(${BONE} / .82) !important; }
 ${A} .sf-cru-filters > button[aria-pressed=true] {
@@ -593,8 +595,8 @@ ${A} .sf-cru-note { color:rgb(${BONE} / .88) !important; }
 /* 1080p lift — type/spacing without CSS zoom (door learned zoom clips the foot). */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${A} { padding:28px 52px 20px !important; gap:22px 42px !important; }
-  ${A} > .k-title h1 { font-size:52px !important; }
-  ${A} > .k-title .sf-cru-sub { font-size:15px !important; }
+  ${A} .k-title h1 { font-size:52px !important; }
+  ${A} .k-title .sf-cru-sub { font-size:15px !important; }
   ${A} .orr-armory-wallet strong { font-size:44px; }
   ${A} .sf-cru-card.sf-cru-card { min-height:96px !important; padding:14px 4px 14px 14px !important; }
   ${A} .sf-cru-card .sf-cru-name { font-size:17px !important; }
@@ -740,13 +742,13 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
    the catalog are unchanged. */
 @media (min-width:761px) and (max-height:500px) {
   ${A} { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; gap:10px 24px !important; padding:14px 24px 8px !important; }
-  ${A} > .k-title h1 { font-size:30px !important; }
-  ${A} > .k-title .sf-cru-sub { font-size:13px !important; margin-top:4px !important; }
-  ${A} > .k-title { display:grid !important; grid-template-columns:auto minmax(0,1fr); column-gap:20px; align-items:baseline; }
-  ${A} > .k-title > :is(h1,.sf-cru-sub) { grid-column:1 / -1; }
-  ${A} > .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin:4px 0 0 !important; font-size:12px !important; line-height:1.4 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  ${A} > .k-title .sf-cru-cradle { grid-column:1; grid-row:3; }
-  ${A} > .k-title .sf-cru-preview { grid-column:2; grid-row:3; }
+  ${A} .k-title h1 { font-size:30px !important; }
+  ${A} .k-title .sf-cru-sub { font-size:13px !important; margin-top:4px !important; }
+  ${A} .k-title { display:grid !important; grid-template-columns:auto minmax(0,1fr); column-gap:20px; align-items:baseline; }
+  ${A} .k-title > :is(h1,.sf-cru-sub) { grid-column:1 / -1; }
+  ${A} .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin:4px 0 0 !important; font-size:12px !important; line-height:1.4 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${A} .k-title .sf-cru-cradle { grid-column:1; grid-row:3; }
+  ${A} .k-title .sf-cru-preview { grid-column:2; grid-row:3; }
   ${A} .orr-armory-wallet strong { font-size:30px; }
   ${A} .orr-armory-wallet span { margin-top:4px; }
   ${A} .sf-cru-filters { gap:2px 10px !important; padding:0 0 6px !important; align-items:center !important; }
@@ -774,7 +776,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${A} .sf-cru-fine .sf-cru-hint { margin-left:0; }
   /* review: the next-round line ran to one ellipsized line and lost its tail ("… Choir Ze…", "new: Choir
      Zealot"); it takes two lines before it clips. */
-  ${A} > .k-title .sf-cru-preview { white-space:normal; display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; }
+  ${A} .k-title .sf-cru-preview { white-space:normal; display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; }
   /* review: the keycaps (ESC, 1 2 3, TAB) were 11px; 12px in this band. */
   ${A} .k-foot .sf-cru-kbd, ${A} .sf-cru-fine .orr-armory-keycap { font-size:12px !important; letter-spacing:.12em !important; }
 }
@@ -788,7 +790,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${A} .k-foot .k-words { justify-content:flex-start !important; flex-wrap:wrap !important; flex:1 1 auto !important; min-width:0 !important; }
   ${A} .sf-cru-fine { margin:0 !important; flex:1 0 100% !important; text-align:left !important; }
   /* the second foot row costs the height the two-line preview needs, so here it stays one line (PURCHASE stays on-frame) */
-  ${A} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
+  ${A} .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
 }
 /* review: a phone's larger type at ≤400 tall (844×390 landscape) has no room for the second preview line either;
    it pushed PURCHASE half under the foot, so there it stays one line too. */
@@ -945,6 +947,206 @@ ${RE} .k-foot .k-words { position:relative; z-index:1; }
   ${RE} .k-foot .k-words { gap:8px 12px !important; }
   ${RE} .k-foot .k-word { font-size:12px !important; min-height:30px !important; padding:0 8px !important; white-space:normal !important; }
 }
+/* The service bay. The dealt hand and the searchable stock share a single inspection desk. */
+${A} .orr-armory-body { display:contents; }
+${A} {
+  --armory-rule:rgb(165 194 194 / .36);
+  --armory-cool:#9fd5cf;
+  --armory-panel:#10191e;
+  box-sizing:border-box;
+  grid-template-columns:minmax(0,1.58fr) minmax(330px,1fr) !important;
+  gap:clamp(14px,2vh,24px) clamp(18px,2vw,36px) !important;
+  padding:clamp(16px,2.8vh,36px) clamp(20px,3.7vw,74px) 16px !important;
+  background:#090f14 !important;
+}
+${A}::before {
+  background:linear-gradient(0deg,#090f14 10%,rgb(9 15 20 / .09) 84%),
+    linear-gradient(90deg,#090f14 6%,rgb(9 15 20 / .72) 35%,transparent 62%),
+    url("${WORKSHOP_URL}") right 52% / cover no-repeat !important;
+  height:clamp(162px,27vh,360px) !important; inset:0 0 auto !important;
+}
+${A} .k-title {
+  min-height:clamp(114px,17vh,188px); align-self:start; box-sizing:border-box;
+  padding:4px 0 14px !important; border-bottom:1px solid var(--armory-rule);
+}
+${A} .k-title h1 { font:820 clamp(40px,4.5vw,78px)/.98 var(--dp-face-display,'Archivo'),sans-serif !important; letter-spacing:-.045em !important; }
+${A} .k-title .sf-cru-sub { max-width:66ch; margin:8px 190px 5px 0 !important; font:500 15px/1.4 var(--dp-face-read,'Instrument Sans'),sans-serif !important; }
+${A} .k-title .sf-cru-cradle { font:550 13px/1.4 var(--dp-face-read,'Instrument Sans'),sans-serif !important; color:var(--armory-cool) !important; }
+${A} .orr-armory-briefing { max-width:70ch; margin:4px 0; color:var(--dp-ink); }
+${A} .orr-armory-briefing summary { width:fit-content; padding:4px 4px 4px 0; font:600 13px/1.4 var(--dp-face-read),sans-serif; cursor:pointer; }
+${A} .k-title .sf-cru-preview { margin:2px 0 6px !important; padding:8px 12px; border-left:2px solid var(--armory-cool); background:rgb(9 15 20 / .94); white-space:normal !important; overflow:visible !important; display:block !important; }
+${A} .orr-armory-wallet { position:absolute; top:0; right:0; min-width:122px; padding:12px 16px; margin:0; display:grid; gap:3px; background:rgb(9 16 19 / .93); border:1px solid var(--armory-rule); border-top:2px solid var(--dp-hand); text-align:left; }
+${A} .orr-armory-wallet .orr-wallet-caption { margin:0; font:600 12px/1.3 var(--dp-face-read),sans-serif; color:#c3d6d8 !important; letter-spacing:.08em; text-transform:uppercase; }
+${A} .orr-armory-wallet strong { display:flex; align-items:baseline; gap:6px; font:720 clamp(26px,2.4vw,40px)/1 var(--dp-face-display,'Archivo'),sans-serif; font-variation-settings:normal; letter-spacing:-.04em; color:var(--dp-ink); }
+${A} .orr-armory-wallet .orr-wallet-amount { display:inline; margin:0; font:inherit; color:inherit !important; letter-spacing:inherit; font-variant-numeric:tabular-nums lining-nums; }
+${A} .orr-armory-wallet small { font:650 14px/1 var(--dp-face-read),sans-serif; color:var(--dp-hand); letter-spacing:0; text-transform:uppercase; }
+${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 8px 1px !important; }
+${A} .orr-armory-section { font:700 20px/1.2 var(--dp-face-display),sans-serif; letter-spacing:-.02em; color:var(--dp-ink); margin:0 0 14px; text-transform:none; flex:none; }
+${A} .sf-cru-circuit { padding:12px 16px; margin:0 0 14px; border:1px solid var(--armory-rule); background:var(--armory-panel); }
+${A} .sf-cru-dealt { gap:clamp(8px,1.1vw,18px) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt {
+  box-sizing:border-box; padding:0 clamp(12px,1.1vw,20px) 16px !important; gap:8px !important;
+  min-width:0; min-height:0 !important; border:1px solid var(--armory-rule) !important; border-radius:3px !important;
+  background:linear-gradient(160deg,#1b2a30,var(--armory-panel) 57%) !important;
+}
+${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt:is(:hover,:focus-visible,.is-lit) { border-color:var(--dp-hand) !important; }
+${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt::before { display:none !important; }
+${A} .sf-cru-dealt .sf-cru-dealtface {
+  min-height:0 !important; height:clamp(100px,12.9vw,235px); width:auto; position:relative;
+  margin:0 calc(-1 * clamp(12px,1.1vw,20px)) 3px !important;
+  background:radial-gradient(ellipse at 48% 68%,#3b4850 0%,#233037 38%,#132028 78%);
+  border-bottom:1px solid var(--armory-rule) !important; overflow:hidden;
+}
+${A} .orr-equipment-plate { position:relative; display:grid; width:100%; height:100%; min-height:0; min-width:0; place-items:center; }
+${A} .orr-equipment-plate > img { position:absolute; inset:5% 5%; width:90%; height:90%; object-fit:contain; }
+${A} .orr-equipment-plate > .orr-equipment-glyph { position:absolute; left:7px; bottom:7px; width:27px; height:27px; box-sizing:border-box; padding:4px; color:#dde7df; border:1px solid var(--armory-rule); background:#131b1f; }
+${A} .orr-equipment-plate.is-schematic > .orr-equipment-glyph { position:static; width:64%; height:68%; background:none; border:none; }
+${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph { width:50% !important; height:60% !important; color:var(--armory-cool); }
+${A} .sf-cru-dealt .sf-cru-cardhead { min-height:0 !important; }
+${A} .sf-cru-dealt .sf-cru-verb { color:var(--armory-cool) !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-price { font:700 16px/1.2 var(--dp-face-read),sans-serif !important; color:var(--dp-hand) !important; font-variant-numeric:tabular-nums; letter-spacing:0 !important; }
+${A} .sf-cru-dealt .sf-cru-name { font:720 clamp(17px,1.5vw,26px)/1.12 var(--dp-face-display),sans-serif !important; font-variation-settings:normal !important; overflow:visible !important; }
+${A} .sf-cru-dealt .sf-cru-blurb { padding:0 0 8px; }
+${A} .sf-cru-dealt .sf-cru-activation { border-top:1px solid var(--armory-rule); padding-top:10px; }
+${A} .sf-cru-dealt .sf-cru-card--dealt:is(.is-unavail,.is-fitted) { opacity:1 !important; }
+${A} .sf-cru-card.is-unavail .sf-cru-price, ${A} .sf-cru-dealt .sf-cru-afford { color:#f5bca5 !important; }
+${A} .sf-cru-dealt .is-unavail .sf-cru-dealtface { background:var(--armory-panel); }
+${A} .sf-cru-note:empty { min-height:0; margin:0 !important; }
+${A} .sf-cru-stage > .sf-cru-cards { padding:4px !important; }
+${A} .sf-cru-cards .sf-cru-card { border:1px solid var(--armory-rule) !important; padding:8px 14px !important; background:var(--armory-panel) !important; min-height:66px !important; }
+${A} .sf-cru-cards .sf-cru-card + .sf-cru-card { margin-top:3px !important; }
+${A} .sf-cru-cards .sf-cru-card:is(.is-lit,:focus-visible) { border-color:var(--dp-hand) !important; }
+${A} .sf-cru-cards .sf-cru-card.is-unavail { opacity:.85 !important; }
+${A} .sf-cru-cards .orr-equipment-glyph { color:var(--armory-cool); }
+${A} .orr-armory-reading.orr-armory-reading {
+  display:grid !important; grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important;
+  grid-auto-rows:max-content !important; gap:0 !important; align-content:start; box-sizing:border-box;
+  background:linear-gradient(145deg,#17252b,var(--armory-panel) 68%); border:1px solid var(--armory-rule);
+  border-radius:3px; padding:clamp(15px,1.55vw,28px) !important;
+}
+${A} .orr-armory-reading.orr-armory-reading[hidden] { display:none !important; }
+${A} .orr-armory-reading__words { order:0; }
+${A} .orr-armory-reading__verb { color:var(--armory-cool) !important; }
+${A} .orr-armory-reading__name { font-variation-settings:normal; margin:6px 0 10px !important; }
+${A} .orr-armory-reading__compare, ${A} .orr-armory-reading__budget { margin:8px 0 !important; }
+${A} .orr-armory-reading__buy { margin:10px 0 !important; }
+${A}:has(.sf-cru-dealt:not([hidden])) .orr-armory-visual:not(:has(video)) { display:none; }
+${A} .orr-armory-visual { display:grid; grid-template-columns:100%; gap:4px; margin:0 0 16px; width:100%; order:1; }
+${A} .orr-armory-item { width:100%; height:clamp(140px,18vh,215px); min-height:0; background:radial-gradient(ellipse,#35454b,#101b21 72%); margin:8px 0 0; border:1px solid var(--armory-rule); overflow:hidden; }
+${A} .orr-armory-item::before { display:none; }
+${A} .orr-armory-object-label { display:block; }
+${A} .orr-armory-support { order:2; margin-top:10px; border-top:1px solid var(--armory-rule); }
+${A} .orr-pip-spanner { border-top:1px solid var(--armory-rule); padding:10px 0 0; }
+${A} .orr-armory-reading__jig { width:100% !important; }
+${A} .orr-crew-names { white-space:normal; }
+${A} .orr-armory-purchase { background:var(--armory-cool); color:#091215; clip-path:none; border:1px solid var(--armory-cool); border-radius:2px; }
+${A} .orr-armory-purchase:disabled { border-color:var(--armory-rule); }
+${A} .orr-armory-purchase:enabled:is(:hover,:focus-visible) { background:#c3f1e8; }
+${A} .sf-cru-foot { box-shadow:none !important; background:none !important; }
+${A} .k-foot .k-words { flex-wrap:wrap !important; gap:8px 12px !important; }
+${A} .orr-armory-compare__fill { stroke:var(--armory-cool); }
+${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
+@media (min-width:761px) and (max-width:1080px) {
+  ${A} { grid-template-columns:minmax(0,1.25fr) minmax(300px,.9fr) !important; }
+  ${A} .sf-cru-dealt { grid-template-columns:1fr !important; }
+}
+@media (max-width:760px) {
+  ${A} { display:grid !important; grid-template-columns:minmax(0,1fr) !important; grid-template-rows:minmax(0,1fr) auto !important; padding:12px !important; gap:8px !important; overflow:hidden !important; }
+  ${A} .orr-armory-body { grid-area:1 / 1; display:flex; flex-direction:column; gap:16px; overflow:auto; min-height:0; min-width:0; scrollbar-width:thin; }
+  ${A} .orr-armory-body > * { flex:none; }
+  ${A} .k-title { flex:none !important; height:auto !important; min-height:0; width:100%; }
+  ${A} .k-title h1 { padding:4px 114px 2px 0; font-size:clamp(32px,9vw,52px) !important; }
+  ${A} .k-title .sf-cru-sub { margin:14px 0 5px !important; }
+  ${A} .orr-armory-wallet { min-width:78px; padding:5px 10px; }
+  ${A} .orr-armory-wallet strong { font-size:24px; }
+  ${A} .orr-armory-section { font-size:18px; margin:0 0 10px; }
+  ${A} .sf-cru-stage { height:auto !important; overflow:visible !important; }
+  ${A} > .k-foot { grid-area:2 / 1 !important; position:relative !important; inset:auto !important; z-index:8; padding:6px !important; border:1px solid var(--armory-rule); background:#101820 !important; box-shadow:none !important; }
+  ${A} .k-foot .k-words { flex-wrap:wrap !important; gap:4px !important; justify-content:flex-start !important; }
+  ${A} .k-foot .k-words > li { flex:1 0 auto !important; }
+  ${A} .k-foot .k-words > li > .k-word { justify-content:center !important; width:100%; font-size:12px !important; min-height:34px !important; padding:6px 8px !important; }
+  ${A} .k-foot .k-words > li:has(.k-word--primary), ${A} .k-foot .k-words > li:has([aria-expanded]) { order:-1; }
+  ${A} .k-foot .sf-cru-kbd { display:none !important; }
+  ${A} .sf-cru-stage > .sf-cru-cards:not([hidden]) { flex:auto !important; height:clamp(255px,50svh,500px) !important; max-height:clamp(255px,50svh,500px) !important; }
+  ${A} .sf-cru-dealt { grid-template-columns:1fr !important; }
+  ${A} .orr-armory-reading.orr-armory-reading { overflow:visible !important; height:auto !important; }
+  ${A} .k-foot .sf-cru-fine { display:none !important; }
+}
+@media (max-width:1080px) {
+  ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt {
+    display:grid !important; grid-template-columns:clamp(80px,20%,120px) minmax(0,1fr) !important;
+    grid-template-rows:auto !important; grid-auto-rows:auto; column-gap:12px !important; row-gap:4px !important; padding:10px !important;
+  }
+  ${A} .sf-cru-dealt .sf-cru-dealtface { grid-column:1; grid-row:1 / span 8; align-self:stretch; width:100%; height:auto; min-height:92px !important; margin:0 !important; border:1px solid var(--armory-rule); }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt > :not(.sf-cru-dealtface) { grid-column:2 !important; grid-row:auto !important; }
+  ${A} .sf-cru-dealt .sf-cru-cardhead { flex-wrap:nowrap !important; }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt :is(.sf-cru-activation,.sf-cru-slot) { display:none !important; }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt .sf-cru-blurb { font-size:13px !important; line-height:1.35 !important; }
+  ${A} .sf-cru-dealt .sf-cru-dealtface { grid-row:1 / span 4; }
+  ${A} .sf-cru-fine .orr-armory-keycap, ${A} .sf-cru-fine .orr-armory-hintword { white-space:nowrap; }
+  ${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-verb { order:0; flex:1 !important; }
+  ${A} .sf-cru-dealt .sf-cru-name { margin:0 !important; }
+  ${A} .sf-cru-dealt .sf-cru-activation { padding-top:4px; }
+  ${A} .sf-cru-dealt .sf-cru-blurb { padding-bottom:0; }
+}
+@media (min-width:1081px) and (max-height:780px) {
+  ${A} .sf-cru-dealt .sf-cru-dealtface { height:clamp(96px,16vh,125px); }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt :is(.sf-cru-activation,.sf-cru-slot) { display:none !important; }
+}
+@media (min-width:761px) and (max-height:600px) {
+  ${A} { gap:8px 16px !important; padding-block:10px !important; }
+  ${A} .k-title { min-height:0; display:block !important; padding-bottom:5px !important; }
+  ${A} .k-title h1 { font-size:34px !important; }
+  ${A} .k-title .sf-cru-sub { font-size:13px !important; margin-top:4px !important; }
+  ${A} .orr-armory-section { margin:0 0 6px; }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt .sf-cru-blurb { display:none !important; }
+  ${A} .sf-cru-dealt .sf-cru-dealtface { min-height:65px !important; }
+  ${A} .k-foot { gap:5px !important; }
+  ${A} .k-foot .k-words { flex:1 1 auto !important; gap:4px 6px !important; justify-content:flex-start !important; }
+  ${A} .k-foot .k-words .k-word { min-height:34px !important; padding:4px 9px !important; font-size:13px !important; }
+}
+/* Landscape handhelds keep all three offers beside the inspector and its install key. */
+@media (min-width:560px) and (max-height:500px) and (orientation:landscape) {
+  ${A} { display:grid !important; grid-template: auto minmax(0,1fr) auto / minmax(0,1.1fr) minmax(0,1fr) !important; gap:6px 12px !important; padding:8px 12px !important; overflow:hidden !important; }
+  ${A} .orr-armory-body { display:contents; }
+  ${A} .k-title { grid-area:1 / 1 / 2 / -1 !important; position:relative; display:block !important; min-height:0; padding:0 112px 5px 0 !important; }
+  ${A} .k-title h1 { display:inline; padding:0; margin:0 !important; font-size:31px !important; }
+  ${A} .k-title .sf-cru-sub { display:none !important; }
+  ${A} .k-title .sf-cru-cradle { display:block; margin:2px 0 0 !important; font-size:12px !important; }
+  ${A} .k-title .orr-armory-briefing { display:inline-block; margin:0 0 0 14px; vertical-align:middle; }
+  ${A} .orr-armory-briefing[open] > .sf-cru-preview { position:absolute; z-index:10; top:100%; left:0; width:min(420px,100%); box-sizing:border-box; border:1px solid var(--armory-rule); }
+  ${A} .orr-armory-wallet { min-width:86px; padding:4px 9px; }
+  ${A} .orr-armory-wallet strong { font-size:23px; }
+  ${A} .sf-cru-stage { grid-area:2 / 1 !important; min-height:0 !important; height:100% !important; overflow:auto !important; }
+  ${A} .orr-armory-section { font-size:16px; margin:0 0 5px; }
+  ${A} .sf-cru-dealt { display:grid !important; grid-template-columns:1fr !important; gap:5px !important; }
+  ${A} .sf-cru-dealt[hidden] { display:none !important; }
+  ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt { display:grid !important; grid-template: auto auto / 46px minmax(0,1fr) !important; align-content:center; column-gap:9px !important; row-gap:1px !important; padding:5px 8px !important; }
+  ${A} .sf-cru-dealt .sf-cru-dealtface { grid-area:1 / 1 / span 2 / 2 !important; align-self:center; height:43px; width:46px; min-height:0 !important; margin:0 !important; border:1px solid var(--armory-rule); }
+  ${A} .sf-cru-dealt .sf-cru-dealtface .orr-equipment-glyph { display:none; }
+  ${A} .sf-cru-dealt .sf-cru-dealtface .is-schematic > .orr-equipment-glyph { display:block; }
+  ${A} .sf-cru-dealt .sf-cru-cardhead { grid-area:1 / 2 !important; }
+  ${A} .sf-cru-dealt .sf-cru-name { grid-area:2 / 2 !important; margin:0 !important; font-size:16px !important; }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt :is(.sf-cru-blurb,.sf-cru-activation,.sf-cru-slot,.sf-cru-afford) { display:none !important; }
+  ${A} .sf-cru-stage > .sf-cru-cards:not([hidden]) { min-height:80px !important; height:auto !important; flex:1 1 auto !important; }
+  ${A} .orr-armory-reading.orr-armory-reading { grid-area:2 / 2 !important; min-height:0 !important; height:100% !important; overflow:auto !important; padding:10px 12px !important; }
+  ${A} .orr-armory-reading__words { display:flex !important; flex-direction:column; align-items:stretch; }
+  ${A} .orr-armory-reading__verb { order:-3; }
+  ${A} .orr-armory-reading__name { order:-2; font-size:22px !important; margin:2px 0 5px !important; }
+  ${A} .orr-armory-reading__buy { order:-1; margin:2px 0 7px !important; }
+  ${A} .orr-armory-purchase { min-height:35px; padding:6px 10px; }
+  ${A} > .k-foot { grid-area:3 / 1 / 4 / -1 !important; position:relative !important; padding:5px 0 0 !important; background:#0a1014 !important; border:0; border-top:1px solid var(--armory-rule); box-shadow:none !important; }
+  ${A} .k-foot .k-words { flex:1 0 100% !important; gap:4px !important; justify-content:flex-start !important; }
+  ${A} .k-foot .k-words > li { flex:0 1 auto !important; }
+  ${A} .k-foot .k-words > li:has(.k-word--primary), ${A} .k-foot .k-words > li:has([aria-expanded]) { order:-1; }
+  ${A} .k-foot .k-words .k-word { min-height:34px !important; padding:4px 8px !important; font-size:12px !important; }
+  ${A} .k-foot .sf-cru-fine, ${A} .k-foot .sf-cru-kbd { display:none !important; }
+}
+@media (forced-colors:active) {
+  ${A} :is(.orr-armory-reading,.sf-cru-dealtface,.orr-armory-wallet) { border-color:CanvasText; }
+  ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt.is-lit { outline:2px solid Highlight !important; }
+}
+
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;
