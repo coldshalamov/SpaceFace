@@ -399,14 +399,10 @@ export function createComms(ctx) {
     // comms feed — the whole channel is narrative chatter, not the fight.
     // X3 Adventure glass: ordinary flight is the same case. The left-edge feed is prose
     // texture; it belongs to the bar, codex or station, not over the action.
-    // A durable story receipt is the exception: its state record is the real destination, and
-    // this entry still lands in the backlog so the act line is never silently dropped.
-    if (glassed && !durableStory) return;
-    if (glassed && durableStory) {
-      backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'story', note: p.note || null, at: Date.now() });
-      while (backlog.length > MAX_BACKLOG) backlog.pop();
-      if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
-      else rebuildBacklog();
+    // Explicit log-only atmosphere and durable story receipts still go to the
+    // backlog during flight, with no feed or trace animation.
+    if (glassed) {
+      if (durableStory || p.logOnly === true) appendBacklog(p, durableStory ? 'story' : 'ambient');
       return;
     }
     traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
@@ -422,10 +418,7 @@ export function createComms(ctx) {
     // the same voice twice. Explicit log-only atmosphere also lands immediately in that same history.
     // Ambient chatter (unmarked) still fills the feed as the channel texture.
     if (p._viaVoice || p.logOnly === true) {
-      backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'ambient', note: p.note || null, at: Date.now() });
-      while (backlog.length > MAX_BACKLOG) backlog.pop();
-      if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
-      else rebuildBacklog();
+      appendBacklog(p, 'ambient');
       return;
     }
     if (!durableStory && !fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
@@ -609,6 +602,12 @@ export function createComms(ctx) {
 
   let backlogOpen = false;
   if (state.ui) state.ui.commsBacklogOpen = false;
+  function appendBacklog(p, fallbackCategory) {
+    backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || fallbackCategory, note: p.note || null, at: Date.now() });
+    while (backlog.length > MAX_BACKLOG) backlog.pop();
+    if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
+    else rebuildBacklog();
+  }
   function openBacklog() {
     backlogOpen = true;
     if (state.ui) state.ui.commsBacklogOpen = true;
