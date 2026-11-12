@@ -123,7 +123,7 @@ import {
   receiptLaneRect,
   shipGlyphBox,
 } from './hudAttention.js';
-import { counted } from './numberFormat.js';
+import { counted, pluralWord } from './numberFormat.js';
 
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
