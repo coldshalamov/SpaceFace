@@ -187,13 +187,26 @@ export function flattenEventPayload(value, depth = 0, hits = null, path = '') {
   return REJECT;
 }
 
-// Per-type adapters for payloads that carry non-entity live objects the generic
-// projection cannot flatten. Adapters return the complete wire shape; returning
+// Per-type adapters for payloads outside the generic projection's shape.
+// Adapters return the complete wire shape; returning
 // undefined falls back to the generic deep-flat path.
 export const EVENT_BRIDGE_ADAPTERS = {
   ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
   ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
   'run:wavePlanned': projectSurvivalWavePlan,
+  // Cryo's prop points and Storm's pylon/relay poses are authored room geometry.
+  // Project the room view as its own bounded subtree so those points survive
+  // while the rest of the install receipt keeps the ordinary depth limit.
+  'survivalArena:installed': (p) => {
+    if (!isPlainObject(p) || !isPlainObject(p.roomSpec)) return undefined;
+    const { roomSpec, ...receipt } = p;
+    const flat = flattenEventPayload(receipt);
+    const { at, thermal, islandRadius, fieldRadius, props, pylons, relays } = roomSpec;
+    const room = flattenEventPayload({ at, thermal, islandRadius, fieldRadius, props, pylons, relays });
+    if (flat === REJECT || room === REJECT) return undefined;
+    flat.roomSpec = room;
+    return flat;
+  },
   // The full Cinderglass view is a worker-owned mirrored domain. Its nested
   // contact/actions do not fit the generic event depth; this wakes the panel
   // after that mirror has been applied without shipping the view twice.
