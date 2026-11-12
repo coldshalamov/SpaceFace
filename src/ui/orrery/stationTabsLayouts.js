@@ -1702,6 +1702,12 @@ ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { display:inline !important; }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:inline !important; float:none !important; margin:0 0 0 12px !important; padding:0 !important; text-align:left !important; justify-self:auto !important;
   font-family:var(--dp-face-numeral, "Archivo") !important; font-weight:600 !important; font-size:12.5px !important; letter-spacing:.02em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
+/* ui-polish-495: on a phone the type chip ran inline ahead of the title in a ~266px column, so the title broke after
+   its first word or two under PASSENGER TRANSPORT and the price trailed onto a third fragment. The chip stands as the
+   row's eyebrow and the title and price read on their own line beneath it. */
+@media (max-width:650px) {
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title > .sx-ct-row__type { display:flex !important; width:max-content; max-width:100%; margin:0 0 3px !important; }
+}
 /* the bead sits at the rail junction (on the spine), the arm runs from it to the words */
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { left:5px !important; width:6px !important; height:6px !important; margin-top:-3px !important; border-radius:50% !important;
   background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
