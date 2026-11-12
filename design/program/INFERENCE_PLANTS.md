@@ -31,7 +31,7 @@ or does not.
 | PL-01 | **Near miss.** Pass a civilian within a ship-length at speed: they swerve, flash their lamps and say *"Lane's not yours, pal!"* | Do it again; the third time they report you | SHIPPED 894706179784 |
 | PL-02 | **Fender bender.** Bump a parked ship: an alarm lamp strobes and the owner undocks to look at the dent | Stay and get shouted at, or leave and be described to the dock | CLAIMED flash 2026-11-11 |
 | PL-03 | **Rubberneckers.** After any wreck, two passing civilians slow down to look; a scavenger arrives within a minute | Shoo them, or take the wreck first | SHIPPED 7c744edb21c4 |
-| PL-04 | **Scramble.** When cargo spills in a lane, nearby civilians each grab a pod and scatter; the owner hails for help | Help the owner, join the scramble, or grab the thieves | OPEN |
+| PL-04 | **Scramble.** When cargo spills in a lane, nearby civilians each grab a pod and scatter; the owner hails for help | Help the owner, join the scramble, or grab the thieves | CLAIMED flash 2026-11-11 |
 | PL-05 | **Road rage.** Shove the same civilian twice and they shove back once, badly, then run | Laugh; or it knocks you into something | SHIPPED b34318ddee21 |
 | PL-06 | **Tailgater.** Cut off a loaded hauler and it follows you for twenty seconds with its horn down | Outrun it, or lead it somewhere it will regret | SHIPPED 4fb8e0a3fb72 |
 | PL-07 | **Witness.** A crime seen by the bus is mentioned by Benny on open radio and the fine is waiting at your next dock | Stop the bus leaving, or do not be seen | OPEN |
@@ -168,7 +168,7 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-56 | Your Line goes up a class | *"New rope in the lanes. Mind your cargo."* | SHIPPED 1490116 |
 | PL-57 | The Fridge changes sector | *"Fridge update."* and the sector's name | OPEN |
 | PL-58 | You win the Pit | *"Lights came up at the Pit last night."* | SHIPPED 86ea9fb8b546 |
-| PL-59 | You lose a search while wanted | *"Concord would like a word with a certain rope."* | OPEN |
+| PL-59 | You lose a search while wanted | *"Concord would like a word with a certain rope."* | SHIPPED 99136ecd8ae0 |
 | PL-60 | You finish a town's first job | the town's name, and *"says thanks, whoever you are."* | OPEN |
 | PL-111 | You beat the recovery tug to a wreck | *"Today, the tug came second."* | DRAFT 2026-11-11 |
 | PL-112 | You ride the Plume | *"Heard the Plume had a passenger."* | DRAFT 2026-11-11 |
