@@ -247,6 +247,7 @@ export default defineFlavorPack({
         { id: 'static_77', eventKey: 'player.won_pit', text: 'Lights came up at the Pit last night.' },
         { id: 'static_78', eventKey: 'player.throw_ship_station', text: 'Whoever parked that in the dock: bold.' },
         { id: 'static_79', eventKey: 'player.ten_near_misses', text: "Traffic advisory: there's one of those out today." },
+        { id: 'static_80', eventKey: 'player.lost_wanted_search', text: 'Concord would like a word with a certain rope.' },
       ],
     },
     {
