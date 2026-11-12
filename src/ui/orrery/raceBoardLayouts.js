@@ -89,6 +89,12 @@ ${R} .race-board-course > .race-map { width:100% !important; height:auto !import
 ${R} .race-board-course > p.k-sentence { ${READ} font-size:13.5px !important; line-height:1.45 !important;
   color:rgb(${BONE} / .78) !important; max-width:none !important; margin:0 0 6px !important; }
 ${R} .race-board-course > .race-map + p + p { ${ETCH} font-size:12px !important; letter-spacing:.04em !important; font-stretch:92% !important; font-variation-settings:"wdth" 92, "wght" 600 !important; color:var(--dp-ink-mute, #b0aea6) !important; font-variant-numeric:tabular-nums; }
+/* Side by side, the course titles wrapped to one line on some cards and two on others, so each card's
+   track map and copy started at a different height and the row read ragged. Off the phone column the
+   title holds two lines, and the maps line up across the row. */
+@media (min-width:651px) {
+  ${R} > .race-board-grid > .race-board-course > h2.k-t-sub { min-height:2.2em !important; }
+}
 ${R} .race-board-contract { display:grid !important; justify-items:start; gap:4px !important; padding:12px 0 !important;
   border-top:1px solid rgb(${BONE} / .1); }
 ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) { margin-top:6px !important; }
