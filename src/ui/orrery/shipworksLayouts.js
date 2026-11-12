@@ -1453,6 +1453,12 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 @media (min-width:1101px) and (max-width:1200px) and (max-height:800px) {
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) { top:154px !important; }
 }
+/* ui-polish-490: at 1280x720 / 1366x768 the power dial's 119px box carried ~50px of empty band around a ~67px arc,
+   pushing the bomb rack's Third socket key under the side plate's foot. A 78px box seats the dial a touch smaller and keeps
+   the whole rack inside the plate without a scroll. */
+@media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
+  ${D} .sx-sw-circuit__core, ${D} .sx-sw-circuit__core .orr-power { height:78px; }
+}
 /* ui-polish-404: the foot fold (ROUND 9 scroll-driven mask) also dissolved the card's hairline at the foot and
    up its sides. Keep the fade on the reading, and composite the border ring back in at full strength:
    fade (border-box) + [border-box minus padding-box]. */
