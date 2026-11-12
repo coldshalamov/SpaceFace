@@ -91,12 +91,14 @@ test('main save facade returns the settled owner refusal, not a truthy transport
   } finally { main.release(); lane.shutdown(); }
 });
 
-test('latest Continue uses the same real gzip owner through the cloned command/reply and main facade', async () => {
+test('latest Continue finds newly staged gzip bytes after the worker cached an empty slot index', async () => {
   const lane = await boot();
-  const envelope = slotFixture(lane);
   const main = mainFacade(lane);
   try {
-    assert.equal(await main.save.load('latest'), true);
+    stageLaneStorage({});
+    assert.equal(await main.save.load('latest'), false, 'prime the worker index before staging the slot');
+    const envelope = slotFixture(lane);
+    assert.equal(await main.save.load('latest'), true, 'Continue finds the valid slot staged by main');
     assert.equal(main.replies.at(-1).rpcAcks.at(-1).result.result, true);
     assert.equal(lane.host.state.world.currentSectorId, envelope.data.world.currentSectorId);
     assert.equal(lane.host.state.entities.get(lane.host.state.playerId)?.alive, true);
