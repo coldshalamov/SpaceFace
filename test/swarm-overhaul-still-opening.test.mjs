@@ -33,7 +33,11 @@ test('the lesson well is planted asleep and wakes when the lesson releases the p
   sys.helpers = null;
   sys._ids = [];
   sys._wellIds = [];
-  sys._installOpeningLesson({ holdTicks: 600, rock: { x: 78, z: 16, radius: 6 }, well: { x: -24, z: 108, radius: 96, strength: 90 } });
+  const lesson = { holdTicks: 600, rock: { x: 78, z: 16, radius: 6 }, well: { x: -24, z: 108, radius: 96, strength: 90 } };
+  sys._installOpeningLesson(lesson);
+  // 6d6b0658e1bc — the well now plants in its own later phase, after the pocket and the
+  // mass-gap wall, so quietWellCenter can walk around furniture that exists by then.
+  sys._plantOpeningLessonWell(lesson);
   assert.equal(registered.length, 1);
   assert.equal(registered[0].strength, 0, 'no pull before the pilot has the room');
   sys._broodHeldUntil = 10;
