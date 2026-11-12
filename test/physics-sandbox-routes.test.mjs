@@ -275,17 +275,32 @@ test('crucible route: cone, repulsor, and well move generated debris the authore
       if (r.alive === false) continue;
       const dx = r.pos.x - centroid.x, dz = r.pos.z - centroid.z;
       const d = Math.hypot(dx, dz);
-      if (d >= FIELD_DEFS.repulsor.radius + r.radius) continue; // already shoved out of the volume
       const radial = d > 1e-4 ? (r.vel.x * dx + r.vel.z * dz) / d : 0;
+      // A covered rock keeps measurable outward velocity whether it still sits inside the
+      // volume or was already shoved beyond it — since 21a3a741cd30 gave Adventure the
+      // Swarm punch table, the shove launches light rocks past the emitter edge inside
+      // the sample window.
       assert.ok(radial > 0.05, `repulsor gives each covered generated rock outward velocity (got ${radial.toFixed(2)})`);
       pushed.push(r.id);
     }
     assert.ok(pushed.length >= 3, 'at least three generated rocks took the repulsor shove');
+    // Tear the repulsor down the honest way — its emitter dies. The field is persistent for
+    // 7 s, and since 21a3a741cd30 gave Adventure the Swarm punch table its out-shove would
+    // still dominate the well pull below (start distances were calibrated against the old
+    // soft Adventure powers).
+    const repEmitter = state.entityList.find((e) => e.alive !== false && e.data?.fieldKind === 'repulsor');
+    assert.ok(repEmitter, 'the repulsor deploys a real emitter entity');
+    repEmitter.hull = 0;
+    repEmitter.alive = false;
+    sim.step(DT);
 
     // Well — aimed near generated rocks: distance to the well shrinks, and once the field is
     // torn down (the real counterplay: its emitter dies) the pulled rocks keep their launch
     // momentum — no residual damping term survives the field.
-    const rocks2 = arenaDebris(state).filter((r) => !group.includes(r));
+    // Choose a pair the repulsor never swept: the 21a3a741cd30 punch table leaves covered
+    // rocks carrying ~200+ WU/s of undamped exit velocity — they cross the well's radius
+    // before its pull can act. Rocks still at drift speed are the available pull targets.
+    const rocks2 = arenaDebris(state).filter((r) => !group.includes(r) && speed(r) < 30);
     let pair = null;
     for (const a of rocks2) {
       const near = rocks2.filter((b) => b !== a && dist(a, b) <= 150);
@@ -311,11 +326,20 @@ test('crucible route: cone, repulsor, and well move generated debris the authore
     const emitter = state.entityList.find((e) => e.alive !== false && e.data?.fieldKind === 'well');
     assert.ok(emitter, 'the well deploys a real emitter entity');
     const startD = pair.map((r) => Math.hypot(r.pos.x - emitter.pos.x, r.pos.z - emitter.pos.z));
-    for (let i = 0; i < 60; i++) sim.step(DT);
+    // Track the closest approach, not the endpoint: since 21a3a741cd30 gave Adventure the
+    // Swarm punch table the Pull yanks hard enough to slingshot a rock through the emitter
+    // and out the far side, so post-window distance alone cannot prove the pull.
+    const minD = [...startD];
+    for (let i = 0; i < 60; i++) {
+      sim.step(DT);
+      pair.forEach((r, j) => {
+        const dj = Math.hypot(r.pos.x - emitter.pos.x, r.pos.z - emitter.pos.z);
+        if (dj < minD[j]) minD[j] = dj;
+      });
+    }
     pair.forEach((r, i) => {
-      const dNow = Math.hypot(r.pos.x - emitter.pos.x, r.pos.z - emitter.pos.z);
-      assert.ok(dNow < startD[i] - 5,
-        `well reduces the generated rock's distance to it (${startD[i].toFixed(1)} → ${dNow.toFixed(1)})`);
+      assert.ok(minD[i] < startD[i] - 5,
+        `well pulls the generated rock toward it (start ${startD[i].toFixed(1)}, closest approach ${minD[i].toFixed(1)})`);
     });
     // The real counterplay end: a deployed emitter that dies unregisters its field.
     emitter.hull = 0;
@@ -636,8 +660,12 @@ test('adventure route: heating generated volatile detonates once and generated c
     assert.equal(crystalLive.alive, false, 'the generated crystal fractured');
     const ownFractures = fractures.filter((p) => p.id === crystalLive.id);
     assert.equal(ownFractures.length, 1, 'the crystal fractured exactly once');
+    // Attribute fragments to this fracture, not proximity: the volatile blast can
+    // legitimately impact-fracture neighbouring rocks (calcite shards land inside the
+    // same window since 1edfe576233e/db43eb2b3fa9 added the substance+calcite layer).
     const shards = state.entityList.filter((e) => e.alive !== false
       && e.data?.materialFragment === true
+      && e.data?.materialFragmentOf?.id === crystalLive.id
       && Math.hypot(e.pos.x - crystalPos.x, e.pos.z - crystalPos.z) < 90);
     assert.ok(shards.length >= 4, `fracture produced generated shards (${shards.length})`);
     for (const s of shards) {

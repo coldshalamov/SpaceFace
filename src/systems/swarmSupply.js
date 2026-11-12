@@ -289,11 +289,9 @@ export const swarmSupply = {
   _onCollected(payload) {
     const id = payload && payload.pickupId;
     if (id == null || !this._live.has(id)) return;
-    const entity = this.state.entities && typeof this.state.entities.get === 'function'
-      ? this.state.entities.get(id) : null;
-    const dropIndex = entity && entity.data ? entity.data.swarmDropIndex : null;
-    this._live.delete(id);
-    if (dropIndex != null) this._spent.add(dropIndex);
+    // Both physical collectors use this receipt to decide whether the cell is consumed.
+    payload.acceptedAmount = 0;
+    payload.rejectedAmount = 1;
     const run = liveSwarmRun(this.state);
     if (!run) return;
     if (payload.collectorId != null && payload.collectorId !== this.state.playerId) return;
@@ -308,6 +306,11 @@ export const swarmSupply = {
     // uniqueLootAbilities.js:343 do: the combat kernel is the single authority on DAMAGE, and
     // there is no healing kernel to route through. The clamp to hullMax is the whole contract.
     player.hull = healed;
+    const dropIndex = this.state.entities?.get(id)?.data?.swarmDropIndex;
+    this._live.delete(id);
+    if (dropIndex != null) this._spent.add(dropIndex);
+    payload.acceptedAmount = 1;
+    payload.rejectedAmount = 0;
     this._emit('swarm:supplyCollected', {
       id,
       wave: run.wave,
