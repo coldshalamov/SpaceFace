@@ -120,6 +120,8 @@ import {
   receiptLaneRect,
   shipGlyphBox,
 } from './hudAttention.js';
+import { counted } from './numberFormat.js';
+
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
 export function stepHudGLagSpring(spring, targetX, targetY, dt, reducedMotion = false) {
@@ -313,7 +315,7 @@ function mtRouteGuidance(state, waypoint) {
     return {
       next: `Next jump: ${mtSectorName(first.to)}`,
       destination: first.to === waypoint.sectorId ? '' : `To ${mtSectorName(waypoint.sectorId)}`,
-      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+      summary: `${counted(hops, 'hop', 'hops')} / ${fuel}F`,
     };
   }
   return {
@@ -802,6 +804,21 @@ export function flightDestinationSurface(state, command) {
       const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
       deadline = mtFmtTime(remaining);
       urgent = remaining < 120;
+    } else if (tracked && tracked.type === 'tender_haul' && tracked.params
+      && Number.isFinite(Number(tracked.params.tenderCloseAt_s))) {
+      // W-TENDER: no deadline — the desk's intake window is the clock. It re-prices the run at the
+      // close rather than expiring it, so it reads as a window and never takes the urgent tone.
+      // Once the close has armed the sell-out grace, the clock reads graceUntilS — the clock the
+      // settle actually keeps — so a pilot holding the lot past the close always sees time left.
+      const graceArmed = !!(tracked.tender && tracked.tender.windowClosedAt_s != null
+        && Number.isFinite(Number(tracked.tender.graceUntilS)));
+      const deadlineS = graceArmed
+        ? Number(tracked.tender.graceUntilS)
+        : Number(tracked.params.tenderCloseAt_s);
+      const remaining = Math.max(0, deadlineS - (state.simTime || 0));
+      deadline = remaining > 0
+        ? `${graceArmed ? 'grace' : 'window'} ${mtFmtTime(remaining)}`
+        : 'window closed';
     }
     // A cross-sector objective has no local fix — the honest answer is the gate that starts the
     // trip, with the plot step named, never a bare "ROUTE PENDING" the pilot cannot act on.
@@ -1012,7 +1029,7 @@ export function contactOverflowSummary(contacts, visibleCount) {
   }
   const parts = [];
   for (const [key, count] of Object.entries(counts)) {
-    if (count) parts.push(`${count} ${key.toUpperCase()}${count === 1 ? '' : 'S'}`);
+    if (count) parts.push(`${count} ${pluralWord(count, key.toUpperCase(), key.toUpperCase() + 'S')}`);
   }
   if (parts.length === 1) return `+${parts[0]}`;
   return `+${omitted.length} · ${parts.join(' · ')}`;
@@ -2198,7 +2215,14 @@ export function createHud(ctx, alerts) {
     // slot this same tracker owns. Progress never voices; the break voices once at mission
     // priority (announceTermBreak skips the already-voiced 'forfeit' half).
     on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
-    on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
+    // W-TENDER: tender_window's count of 2 is internal bookkeeping (the desk-sale stamp, then the
+    // "sold before close" stamp), not a fraction the player works toward — a '1/2' would read as
+    // if the premium needed two of something. Its progress tick is not surfaced; the objective
+    // line keeps the desk's own count ('Sell 190u … at Forge Foundry') as the measure.
+    on('mission:conditionProgress', (p) => {
+      if (p && p.conditionId === 'tender_window') return;
+      noteMissionTermEvent(state, p, 'progress');
+    });
     on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
     on('mission:conditionBroken', (p) => {
       noteMissionTermEvent(state, p, 'broken');
@@ -5612,6 +5636,7 @@ export function createHud(ctx, alerts) {
   // NOW and sailing past the station IS the gameplay. The route follower auto-brakes; manual does
   // not, and that asymmetry is deliberate.
   const VTAPE_HEADROOM = 1.14;   // scale runs to 114% of V-MAX so the ceiling is a line, not the edge
+  let travelTapePhone = null; // MOB-02: the phone reads a shorter stop line; rewrite it the frame the layout flips
   function updateTravelTape(p, dtS, slow) {
     if (!vt.root) return;
     if (!travelFlag('travelBurn') || !p) {
@@ -5716,8 +5741,15 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcStop, 'width', (clamp01(cue.stopDistance / span) * 100).toFixed(1) + '%');
       setStyle(vt.arcRing, 'left', (clamp01(cue.distance / span) * 100).toFixed(1) + '%');
       setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
-      if (slow) {
-        const arcText = cue.overshoot
+      // MOB-02: on a phone the objective line already reads the distance to the target, and the
+      // full sentence wrapped the narrow tape onto three lines — the phone keeps stop + verb.
+      const phoneTape = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+      if (slow || phoneTape !== travelTapePhone) {
+        travelTapePhone = phoneTape;
+        const arcText = phoneTape
+          ? (cue.overshoot ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u'
+            : 'STOP ' + Math.round(cue.stopDistance) + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase())
+          : cue.overshoot
           ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u / ARRIVAL ' + Math.round(cue.distance) + ' u'
           : 'STOP ' + Math.round(cue.stopDistance) + ' u · ARRIVAL ' + Math.round(cue.distance)
             + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase();

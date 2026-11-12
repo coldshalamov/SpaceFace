@@ -1,5 +1,6 @@
 import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
+import { isTenderRivalHull, isTenderRivalRecord, releaseTenderRivalHull } from '../missions/tenderHaul.js';
 import { isSpineBreakOperation } from '../missions/spineBreakWorksite.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
@@ -14,6 +15,7 @@ import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { entityIndexVersion, isLivingWorldActor } from '../world/livingWorldViews.js';
 import { EGRESS_DISTANCE_WU, EGRESS_FADE_S, fleeOrderActive } from '../ai/egressExit.js';
 import { hash32 } from '../core/rng.js';
+import { counted } from '../core/numberFormat.js';
 import { addCargo } from './cargo.js';
 import { normalizeBlackFlagJobs } from '../missions/blackFlagMissions.js';
 import { normalizeLanternWardReward } from '../missions/lanternWardStory.js';
@@ -1187,6 +1189,18 @@ export const missionStoryOps = {
         const budget = this.helpers && this.helpers.spawnBudget;
         if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
       }
+      // W-TENDER: the rival queue's hulls outlive their run the same way a failed escort's wings
+      // do — settlement releases them to lane life (unpinned, unstamped, budget unbound, world
+      // record's mission claim cleared) with the tally-run scan label retired to a standing-off
+      // line, so a Gate checkpoint never reads HOLDING FOR COUNT after the run has settled.
+      // The durable identity (isTenderRivalHull) matches a hull rematerialized mid-run too — a
+      // reload drops the runtime tenderRivalOf stamp, and the generic sweep below would kill
+      // FLAT RATE and COLDER LEDGER at settle though the player never fired on them.
+      if (isTenderRivalHull(e, m) && releaseTenderRivalHull(e, m)) {
+        if (e.data.worldRecordId != null) releasedRecordIds.add(e.data.worldRecordId);
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+      }
     });
     for (const id of targetIds) {
       if (sharedIds.has(id)) continue; // another live contract still owns this subject
@@ -1214,7 +1228,11 @@ export const missionStoryOps = {
     for (const rec of Object.values(records || {})) {
       if (!rec || String(rec.missionId || rec.missionTag || '') !== String(m.id)
           || sharedRecordIds.has(rec.recordId)) continue;
-      if (releasedRecordIds.has(rec.recordId)) {
+      // W-TENDER: a rival queue record releases with the run even when its hull was never live
+      // here — the player can settle at the desk while the Gate sector is demoted, so FLAT RATE
+      // and COLDER LEDGER exist only as records. Their durable identityKey is the queue slot
+      // (isTenderRivalRecord); destroying the record would kill hulls the player never fired on.
+      if (releasedRecordIds.has(rec.recordId) || isTenderRivalRecord(rec, m)) {
         rec.missionId = null;
         rec.missionTag = null;
         if (rec.kind === 'mission_target') rec.kind = 'npc';
@@ -2005,7 +2023,7 @@ export const missionStoryOps = {
       text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
     });
     const salvageCue = salvageWreckCount > 0
-      ? ` Optional salvage: ${salvageWreckCount} wreck${salvageWreckCount === 1 ? '' : 's'}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
+      ? ` Optional salvage: ${counted(salvageWreckCount, 'wreck', 'wrecks')}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
       : '';
     this.bus.emit('toast', {
       text: `Unknown Black Line ship took 12.4 t. Escorts and drone lost.${salvageCue}`,
@@ -2954,6 +2972,11 @@ export const missionStoryOps = {
     if (m.yardContracts && Object.keys(m.yardContracts).length) {
       serialized.yardContracts = { ...m.yardContracts };
     }
+    // W-TENDER: the durable tender settlement ledger. Preserves absence like yardContracts — only a
+    // filed ledger reaches the save payload, so saves without a settled tender stay byte-identical.
+    if (m.tenderTally && typeof m.tenderTally === 'object' && m.tenderTally.missionId) {
+      serialized.tenderTally = { ...m.tenderTally };
+    }
     // Optional extension state must preserve absence for reduced headless registries that do not
     // register careerContracts; materializing a null key only after reload changes sim hashes.
     if (m.careerContracts) {
@@ -3029,6 +3052,12 @@ export const missionStoryOps = {
       state.missions.yardContracts = { ...data.yardContracts };
     } else {
       delete state.missions.yardContracts;
+    }
+    if (data.tenderTally && typeof data.tenderTally === 'object' && !Array.isArray(data.tenderTally)
+      && data.tenderTally.missionId) {
+      state.missions.tenderTally = { ...data.tenderTally };
+    } else {
+      delete state.missions.tenderTally;
     }
     if (data.starterJobStep && typeof data.starterJobStep === 'object' && !Array.isArray(data.starterJobStep)) {
       state.missions.starterJobStep = { ...data.starterJobStep };

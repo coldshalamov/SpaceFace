@@ -23,11 +23,13 @@ import {
   isMutationRecovery,
   partialDeliverySettlement,
 } from '../../systems/missions.js';
+import { authoredTenderHaul } from '../../missions/tenderHaul.js';
 
 const CARRY_TYPES = new Set(['cargo_delivery', 'salvage_retrieval']);
 // Types whose record names a destination the pilot travels to and closes out at.
 const DESTINATION_TYPES = new Set([
   'cargo_delivery', 'passenger_transport', 'smuggling_run', 'salvage_retrieval', 'bulk_trade',
+  'tender_haul',
 ]);
 
 function cleanInt(value) {
@@ -85,15 +87,32 @@ function blockedClauses(mission) {
 }
 
 function clockRow(state, mission) {
-  const deadline = Number(mission && mission.deadline_s);
+  const rawDeadline = mission && mission.deadline_s;
+  let deadline = Number(rawDeadline);
+  let kind = 'deadline';
+  // W-TENDER: the authored tender carries no deadline (deadline_s null) — its clock is the desk's
+  // intake window, which re-prices the run at the close instead of expiring it. Same clock,
+  // 'window' tone.
+  if ((rawDeadline == null || !Number.isFinite(deadline)) && authoredTenderHaul(mission)) {
+    // Once the close has armed the sell-out grace, the clock reads graceUntilS — the clock the
+    // settle actually keeps. Still 'window': the close re-prices the run, it never expires it.
+    const graceArmed = !!(mission.tender && mission.tender.windowClosedAt_s != null
+      && Number.isFinite(Number(mission.tender.graceUntilS)));
+    deadline = graceArmed
+      ? Number(mission.tender.graceUntilS)
+      : Number(mission.params.tenderCloseAt_s);
+    kind = 'window';
+  }
   if (!Number.isFinite(deadline)) return null;
   const now = Number(state && state.simTime);
   const remainingS = Number.isFinite(now) ? deadline - now : null;
   return {
     deadlineS: deadline,
+    kind,
     remainingS: remainingS != null && Number.isFinite(remainingS) ? Math.round(remainingS) : null,
-    // Same urgency line continueRecap draws (< 2 min): the clock is a risk, not a phase.
-    urgent: remainingS != null && Number.isFinite(remainingS) && remainingS < 120,
+    // Same urgency line continueRecap draws (< 2 min): the clock is a risk, not a phase. The
+    // tender window never takes it — the close re-prices the run, it does not expire it.
+    urgent: kind !== 'window' && remainingS != null && Number.isFinite(remainingS) && remainingS < 120,
   };
 }
 
@@ -215,6 +234,55 @@ export function missionNextActionRow(state, mission) {
     }
   }
 
+  // W-TENDER: the desk sale is the one act that settles the run, and the lot may land in several
+  // sales across several runs — so the tender answers from the desk's own count
+  // (objectiveTarget − objectiveProgress) AHEAD of the carry machinery, which reads the full
+  // params.qty and would send a laden hauler back to "acquire". Contract ore aboard means sell it.
+  if (type === 'tender_haul') {
+    const params = mission.params || {};
+    const commodityId = typeof params.cmdtyId === 'string' ? params.cmdtyId : null;
+    const deskNeeds = Math.max(0, cleanInt(mission.objectiveTarget) - cleanInt(mission.objectiveProgress));
+    let aboard = 0;
+    try {
+      aboard = commodityId ? cleanInt(sellableCargoQuantity(state, commodityId)) : 0;
+    } catch {
+      aboard = 0;
+    }
+    if (commodityId && deskNeeds > 0 && aboard > 0) {
+      const destination = row.destination;
+      const location = locationRow(state, destination);
+      row.carry = Object.freeze({
+        commodityId,
+        need: deskNeeds,
+        have: aboard,
+        deliverable: Math.min(aboard, deskNeeds),
+        partialSettlement: null,
+      });
+      row.phase = location.inSector ? 'perform' : 'travel';
+      row.action = Object.freeze(location.inSector
+        ? {
+          kind: 'trade',
+          stationId: destination ? destination.stationId : null,
+          commodityId,
+          qty: Math.min(aboard, deskNeeds),
+          desk: 'sell into the desk',
+        }
+        : {
+          kind: 'travel',
+          stationId: destination ? destination.stationId : null,
+          sectorId: destination ? destination.sectorId : null,
+        });
+      return Object.freeze(row);
+    }
+    if (commodityId && deskNeeds > 0) {
+      // Nothing of the lot aboard: the next act is filling the hold with what the desk still needs.
+      row.carry = Object.freeze({ commodityId, need: deskNeeds, have: 0, deliverable: 0, partialSettlement: null });
+      row.phase = 'acquire';
+      row.action = Object.freeze({ kind: 'acquire', commodityId, qty: deskNeeds, partialDeliverable: 0 });
+      return Object.freeze(row);
+    }
+  }
+
   // 3-5. Carry contracts answer from the hold's own truth, then from the destination.
   const carry = carryRow(state, mission);
   if (carry) row.carry = Object.freeze(carry);
@@ -248,6 +316,15 @@ export function missionNextActionRow(state, mission) {
     row.phase = location.inSector ? 'perform' : 'travel';
     row.action = Object.freeze(location.inSector
       ? { kind: 'trade', stationId: destination ? destination.stationId : null }
+      : { kind: 'travel', stationId: destination ? destination.stationId : null, sectorId: destination ? destination.sectorId : null });
+    return Object.freeze(row);
+  }
+  if (type === 'tender_haul') {
+    // W-TENDER fallback: the desk-count branch above answers every well-formed tender; this one
+    // only catches a record without a contract commodity, and still points at the desk.
+    row.phase = location.inSector ? 'perform' : 'travel';
+    row.action = Object.freeze(location.inSector
+      ? { kind: 'trade', stationId: destination ? destination.stationId : null, desk: 'sell into the desk' }
       : { kind: 'travel', stationId: destination ? destination.stationId : null, sectorId: destination ? destination.sectorId : null });
     return Object.freeze(row);
   }
