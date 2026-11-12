@@ -35,13 +35,30 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
     state.onboarding = { active: true, finished: false, currentBeat: 0 };
     const owner = registry.get('missions');
+    const tutorial = registry.get('onboarding');
     owner._installContract47aColdStart();
     const mission = state.missions.active.find(m => m.storyTag === 'campaign47a:b0:recovery');
-    // The ordinary quick-save made on the Ceres-to-Helios route carries this old unbound Ceres fix.
-    mission.params.samplePos = { x: -12960.599947088484, z: 8615.2890039627 };
     // OPENING-1: install now binds the source on the first frame — the old-save shape the
     // correction path owns is an unbound fix, so the fixture drops the new binding to stay one.
+    const legacyHeliosFix = { ...mission.params.samplePos };
     delete mission.params.sampleSource;
+    state.world.currentSectorId = 'sector_ceres_belt';
+    tutorial._enterBeat(BEATS[0]);
+    await publish();
+    assert.equal(main.world.currentSectorId, 'sector_ceres_belt');
+    assert.notEqual(main.nav.waypoint?.label, '47-A Recovery Site',
+      'an unbound Helios fix must not become a local recovery marker in Ceres');
+    assert.deepEqual(mission.params.samplePos, legacyHeliosFix, 'guidance must preserve the saved fix');
+
+    state.world.currentSectorId = 'sector_helios_prime';
+    tutorial._enterBeat(BEATS[0]);
+    await publish();
+    assert.equal(main.nav.waypoint?.label, '47-A Recovery Site');
+    assert.deepEqual(main.nav.waypoint?.pos, legacyHeliosFix,
+      'the legacy fix remains usable on return to its destination sector');
+
+    // The ordinary quick-save made on the Ceres-to-Helios route carries this old unbound Ceres fix.
+    mission.params.samplePos = { x: -12960.599947088484, z: 8615.2890039627 };
     await publish(); // The facade has already seen the active contract before the fix exists.
     owner._refreshNavigation({ silent: true });
     const source = owner._resolveContract47aSampleSource(mission);
@@ -57,7 +74,7 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     // game:started enters the flight drill (beat 0 under the story-first rail), whose waypoint
     // is the bound 47-A site. The zero-steps publish never ticks the system, so enter the beat
     // the way the route does; the missions writer itself stays suppressed behind the rail.
-    registry.get('onboarding')._enterBeat(BEATS[0]);
+    tutorial._enterBeat(BEATS[0]);
     await publish();
     let mirrored = main.missions.active.find(m => m.id === mission.id);
     assert.deepEqual(main.nav.waypoint.pos, { x: source.pos.x, z: source.pos.z });

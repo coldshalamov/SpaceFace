@@ -3180,17 +3180,18 @@ export const missions = {
   // OPENING-1: the recovery site's display fix, durable across the far-actor regime. The bound
   // body shelves to its field record when the player flies off; the mark must keep the site's
   // recorded fix (the same `sample_site` fallback _missionWaypoint paints) rather than vanish.
-  // Pure read — { pos, live } or null while B0 is unbound, recovered, or off-sector.
+  // A legacy unbound fix is local to its destination sector too.
   contract47aSampleSite() {
     const m = (this.state.missions && this.state.missions.active || [])
       .find((x) => x && x.status === 'active' && x.storyTag === CONTRACT_47A_B0_TAG
         && !(x.params && x.params.sampleRecovered));
     if (!m) return null;
-    const live = this.contract47aSampleEntity();
-    if (live && live.pos) return { pos: { x: live.pos.x, z: live.pos.z }, live: true };
     const binding = m.params && m.params.sampleSource;
     const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (m.destSectorId && m.destSectorId !== sectorId) return null;
     if (binding && binding.sectorId && binding.sectorId !== sectorId) return null;
+    const live = this.contract47aSampleEntity();
+    if (live && live.pos) return { pos: { x: live.pos.x, z: live.pos.z }, live: true };
     const pos = m.params && m.params.samplePos;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
     return { pos: { x: pos.x, z: pos.z }, live: false };
