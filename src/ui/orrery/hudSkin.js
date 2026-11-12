@@ -53,6 +53,11 @@ ${S} .sf-alert.sf-alert--floor, ${S} .sf-alert.sf-alert--dock { position:relativ
   border:0 !important; ${HALO} }
 ${S} .sf-alert.sf-alert--floor::before, ${S} .sf-alert.sf-alert--dock::before { ${pool('-12px -36px')} }
 ${S} .sf-alert.sf-alert--floor { color:var(--dp-ink, #e8e2d4); }
+@media (max-height:540px) {
+  ${S}.sf-swarm-flight .sf-alert.sf-alert--floor { box-sizing:border-box; max-width:100%; white-space:normal; text-align:left;
+    background:var(--dp-glass-flight, rgb(8 10 14 / .82)) !important; }
+  ${S}.sf-swarm-flight .sf-alert.sf-alert--floor::before { display:none; }
+}
 
 /* ---- the band key: a compact instrument pill, lit while a channel is tuned ---------------------- */
 ${S} #hud .sf-band-hud__button { position:relative; background:linear-gradient(180deg, rgb(18 22 30 / .90), rgb(11 14 20 / .90)) !important;

@@ -6538,7 +6538,7 @@ export function createHud(ctx, alerts) {
     }
     add('caption', caption);
     for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
-    for (const el of qsa(document, '#alerts > .sf-alert:not([hidden])')) add('alert', el);
+    for (const el of qsa(document, '#alerts .sf-alert:not([hidden])')) add('alert', el);
     for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
     if (state.run?.ruleset === 'swarm') {
       for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) add('swarm-callout', el);
@@ -6779,7 +6779,7 @@ export function createHud(ctx, alerts) {
       ...qsa(document, '.sf-stuntcall:not([hidden])'),
       ...swarmCallouts,
       ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
-      ...qsa(document, '#alerts > .sf-alert:not([hidden])'),
+      ...qsa(document, '#alerts .sf-alert:not([hidden])'),
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
       ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
     ];
@@ -6886,7 +6886,7 @@ export function createHud(ctx, alerts) {
     const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     const shortSwarm = h <= 540 && document.body?.classList?.contains('sf-swarm-flight');
     if (!mobileFlight && !shortSwarm) { restoreAlertLanePlacement(lane); return; }
-    const alertCards = [...(lane.querySelectorAll?.(':scope > .sf-alert:not([hidden])') || [])];
+    const alertCards = [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
     const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
     const visibleCards = alertCards.filter((el) => {
       if (!el || el.hidden || el.style?.display === 'none' || el.style?.visibility === 'hidden') return false;
