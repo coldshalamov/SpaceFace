@@ -271,6 +271,11 @@ ${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:28px !important;
   transition:color .18s linear, opacity .18s linear; }
 ${D} .orr-tile[aria-pressed=true] .orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
 ${D} .orr-prep-stake-number { font-size:29px !important; font-weight:250 !important; letter-spacing:-.01em; }
+/* ui-polish-515: the stake marks are drawn on a 128 grid, so at 28px their 2-unit stroke rendered as a .44px
+   hairline: four grey specks over the purses. They sit at 36px with a stroke that lands near 1.4px, the weight
+   of the mode marks above them, so the service ladder reads as marks rather than dust. */
+${D} .sf-crd-stake .fh-tile-art { height:36px !important; }
+${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:36px !important; height:36px !important; stroke-width:5; opacity:.9; }
 ${D} .orr-prep-stake-pressure { margin-top:3px; font:400 12px/1.3 var(--dp-face-label); letter-spacing:.1em; text-transform:uppercase; }
 ${D} .orr-prep-stake-yield { margin-top:2px; font:400 12px/1.3 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
 /* arena: one strip of five; the words carry the choice, the hero carries the rooms */
