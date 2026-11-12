@@ -10,15 +10,22 @@ import {
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
+  TENDER_HAUL_TYPE,
 } from '../data/missions.js';
+import { MODULES } from '../data/modules.js';
+import { SHIPS } from '../data/ships.js';
+import { missionConditionById } from '../data/missionConditions.js';
 import { SECTORS } from '../data/sectors.js';
 import { stationBerthRefusal } from '../data/frontierRumors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
+import { authoredTenderHaul } from '../missions/tenderHaul.js';
 import {
   smugglingPreflightCopy,
   buildIllicitStacksFromCargo,
   buildProjectedMissionStacks,
 } from '../economy/customsRisk.js';
+import { counted } from './numberFormat.js';
+
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -31,8 +38,8 @@ for (const sector of SECTORS) {
     STATION_BY_ID.set(station.id, station);
   }
 }
-const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
-const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
+const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'tender_haul']);
+const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport', 'tender_haul']);
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
 const STORY_BRANCH_INTRO_BY_FACTION = new Map(STORY_BRANCH_INTROS.map((intro) => [intro.factionId, intro]));
 const TIMER_TIGHT_S = 5 * 60;
@@ -71,11 +78,21 @@ export function missionClauseTerms(m) {
     const rewardMult = Number(clause.rewardMult);
     const bonusPct = Number.isFinite(rewardMult) && rewardMult > 1
       ? Math.round((rewardMult - 1) * 100) : 0;
+    // The catalog, not the serializable row, is the truth about what a broken or unmet term costs:
+    // a non-blocking require (honest_sling, tender_window, grader_declared) and a forfeit-grade
+    // forbid (manifest_undisclosed) re-price the run — the premium drops, the contract still
+    // settles. The chips used to hard-code 'breach fails the contract', which lied about those.
+    const def = clause.conditionId ? missionConditionById(clause.conditionId) : null;
+    const nonBlocking = !!(def && (
+      (def.kind === 'require' && def.blocking !== true)
+      || (def.kind === 'forbid' && def.onBreach === 'forfeit')
+    ));
     return {
       id: String(clause.id),
       label: String(clause.label || clause.id).replace(/_/g, ' '),
       prose: String(clause.prose || 'Keep this condition until settlement.'),
       bonusPct,
+      nonBlocking,
     };
   });
 }
@@ -241,7 +258,9 @@ export function missionConsequenceSummary(m) {
     chips.push({
       kind: 'warn',
       label: `Clause: ${clause.label}`,
-      text: `${clause.prose} Keep it${bonus}; breach fails the contract.`,
+      text: clause.nonBlocking
+        ? `${clause.prose} Keep it${bonus}; unmet or breached forfeits the premium — the contract still settles.`
+        : `${clause.prose} Keep it${bonus}; breach fails the contract.`,
     });
   }
 
@@ -319,6 +338,68 @@ function fmtClock(value) {
 
 function commodityName(id) {
   return id ? commodityDisplayName(id) : 'cargo';
+}
+
+// W-TENDER: the priced rack ladder the CAUTION line names — read from the module catalog so the
+// numbers are the shop's own, never re-authored here — filtered to the racks the active hull's
+// cargo slots can actually take (a module fits a slot of its own size or larger, the shipped
+// sizeFits rule in systems/ships.js).
+const TENDER_LADDER_MODULE_IDS = ['mod_cargo_net_s', 'mod_cargo_pod_m', 'mod_cargo_expander_l'];
+const MODULE_BY_ID = new Map(MODULES.map((def) => [def && def.id, def]));
+const SHIP_BY_ID = new Map(SHIPS.map((def) => [def && def.id, def]));
+const CARGO_SLOT_RANK = Object.freeze({ S: 1, M: 2, L: 3 });
+
+/** The active hull's def (read from the player entity's def id, the hud.js pattern), or null. */
+function tenderHullDef(state) {
+  const ship = playerShip(state);
+  const defId = ship && ship.data && ship.data.defId;
+  return defId ? SHIP_BY_ID.get(defId) || null : null;
+}
+
+/** Cargo slot ranks on the active hull, or null when the hull is unknown. */
+function tenderCargoSlotRanks(state) {
+  const def = tenderHullDef(state);
+  const slots = def && def.slots && Array.isArray(def.slots.cargo) ? def.slots.cargo : null;
+  if (!slots) return null;
+  return slots.map((size) => CARGO_SLOT_RANK[String(size || '').toUpperCase()] || 0);
+}
+
+function tenderLadderFits(def, slotRanks) {
+  if (!slotRanks) return true; // unknown hull: name the whole ladder rather than guess
+  const rank = CARGO_SLOT_RANK[String(def && def.size || '').toUpperCase()] || 0;
+  return slotRanks.some((slotRank) => slotRank >= rank);
+}
+
+function tenderLadderUnits(def) {
+  return Math.max(0, Math.round(Number(def && def.mods && def.mods.cargoFlat) || 0));
+}
+
+/** The most the ladder can add on this hull: the best-fitting rack in each cargo slot. */
+function tenderBestRackUnits(slotRanks) {
+  if (!slotRanks) return null;
+  let total = 0;
+  for (const slotRank of slotRanks) {
+    let best = 0;
+    for (const id of TENDER_LADDER_MODULE_IDS) {
+      const def = MODULE_BY_ID.get(id);
+      if (!def || !tenderLadderFits(def, [slotRank])) continue;
+      best = Math.max(best, tenderLadderUnits(def));
+    }
+    total += best;
+  }
+  return total;
+}
+
+function tenderRackOutsLine(slotRanks) {
+  const outs = TENDER_LADDER_MODULE_IDS.map((id) => {
+    const def = MODULE_BY_ID.get(id);
+    if (!def || !tenderLadderFits(def, slotRanks)) return null;
+    const units = tenderLadderUnits(def);
+    const price = Math.max(0, Math.round(Number(def.price) || 0));
+    const techGated = def.requiresTech ? ', tech-gated' : '';
+    return `${def.name} (+${units}u @${price.toLocaleString('en-US')} cr${techGated})`;
+  }).filter(Boolean);
+  return outs.length ? outs.join(', ') : 'fit a bigger hold at the shipworks';
 }
 
 function missionCargoTargetUnits(m) {
@@ -554,7 +635,7 @@ export function missionBriefingDiagram(m, state, originLabel) {
   const jumps = m.jumps != null ? m.jumps : (m.routeJumps != null ? m.routeJumps : 0);
   const distance = Number(m && m.distance);
   const span = jumps > 0
-    ? `${jumps} jump${jumps > 1 ? 's' : ''}`
+    ? `${counted(jumps, 'jump', 'jumps')}`
     : (Number.isFinite(distance) && distance > 0 ? `${Math.round(distance).toLocaleString('en-US')}u` : null);
   const danger = intel ? intel.danger : null;
   // missionTimePacing prefixes its chip 'Critical ' / 'Tight ' exactly when those bands apply.
@@ -612,6 +693,11 @@ export function missionTimePacing(m, state) {
     ? Math.max(0, deadline - simTime)
     : Number(m && (m.expiresInS != null ? m.expiresInS : (m.timeLimitS != null ? m.timeLimitS : m.time_limit_s)));
   if (!Number.isFinite(timeLimit) || timeLimit <= 0) return null;
+  // W-TENDER: the offer's time_limit_s is the desk's intake window (params.windowS), not a
+  // deadline — the window close re-prices the run instead of expiring it, the same contract the
+  // board's clock row keeps ('window left', never a timer). The offer carries no deadline_s, so
+  // the chip names the window and keeps the timer bands' ordinary-contract meaning.
+  const intakeWindow = !Number.isFinite(deadline) && authoredTenderHaul(m);
   const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
   // NXB-039: the estimate answers for the fitted ship, not a reference hull; and an
   // uncharted off-sector leg must mark the window an estimate, not a promise.
@@ -631,7 +717,7 @@ export function missionTimePacing(m, state) {
   return {
     chip: {
       kind: critical ? 'bad' : (tight || uncertain ? 'warn' : 'ok'),
-      text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} timer${uncertain ? ' · est' : ''}`,
+      text: (critical ? 'Critical ' : (tight ? 'Tight ' : '')) + `${fmtClock(timeLimit)} ${intakeWindow ? 'intake window' : 'timer'}${uncertain ? ' · est' : ''}`,
     },
     warning: critical
       ? 'Timer is critical; accept only if the route is staged and the ship is ready to launch.'
@@ -723,9 +809,11 @@ export function missionPreflight(m, state) {
 
   for (const clause of missionClauseTerms(m)) {
     const bonus = clause.bonusPct > 0 ? `; +${clause.bonusPct}% clean payout` : '';
-    const breach = collateral > 0
-      ? '; breach fails the contract and forfeits collateral'
-      : '; breach fails the contract';
+    const breach = clause.nonBlocking
+      ? '; unmet or breached forfeits the premium — the contract still settles'
+      : (collateral > 0
+        ? '; breach fails the contract and forfeits collateral'
+        : '; breach fails the contract');
     chips.push({
       kind: 'warn',
       text: `Fine print: ${clause.label} — ${clause.prose}${bonus}${breach}`,
@@ -746,7 +834,9 @@ export function missionPreflight(m, state) {
     chips.push(destBerth.chip);
   }
 
-  const route = missionRouteScope(m, state);
+  // W-TENDER prints its own one-jump route chip below (both ends named), so the shared scope chip
+  // would only repeat it.
+  const route = m && m.type === TENDER_HAUL_TYPE ? null : missionRouteScope(m, state);
   if (route) chips.push(route);
 
   const routeIntel = missionRouteIntel(m, state);
@@ -784,6 +874,75 @@ export function missionPreflight(m, state) {
     const staging = missionCargoStaging(m, state);
     if (staging && staging.chip) chips.push(staging.chip);
     if (staging && staging.warning) warnings.push(staging.warning);
+  }
+
+  // W-TENDER: the tender prints its own preflight truth — the desk fee as the payout (the stake is
+  // refundable on any settled run, so it is never subtracted) and the honest rack-ladder CAUTION.
+  // Deliberately NOT a hard block: the sim's ONE_LOAD gate never fires for tender_haul (the set
+  // doesn't carry it), a two-run plan under-racked is an honest accept, and the fine print says
+  // so — the world does not wait for ACCEPT, so the window is already running while the player
+  // shops the ladder.
+  if (m && m.type === TENDER_HAUL_TYPE) {
+    const tenderParams = m.params || {};
+    const lotUnits = Math.max(0, Math.floor(Number(tenderParams.qty) || 0));
+    const deskFee = missionRewardCredits(m);
+    const stake = missionCollateral(m);
+    if (lotUnits > 0 && deskFee > 0) {
+      // The ceiling is the fee under both premium rows the offer carries (tender_window,
+      // grader_declared) — read from the catalog, never re-authored here.
+      const premiumMult = ['tender_window', 'grader_declared'].reduce((mult, id) => {
+        const def = missionConditionById(id);
+        const rowMult = Number(def && def.rewardMult);
+        return mult * (Number.isFinite(rowMult) && rowMult >= 1 ? rowMult : 1);
+      }, 1);
+      const feeMax = Math.round(deskFee * premiumMult);
+      chips.push({
+        kind: 'info',
+        text: `Desk fee ${deskFee.toLocaleString('en-US')} cr`
+          + (feeMax > deskFee ? `, up to ${feeMax.toLocaleString('en-US')} cr with premiums` : '')
+          + (stake > 0 ? `; ${stake.toLocaleString('en-US')} cr stake held and returned on settle` : ''),
+      });
+    }
+    // The route truth the desk prints: one jump, named both ends, because the sectors are direct
+    // neighbors — it stands in for the shared route-scope chip, which is skipped for the tender.
+    const originSectorId = m.stationId ? STATION_SECTOR_BY_ID.get(m.stationId) : null;
+    const destSectorId = missionDestSectorId(m);
+    const destSector = destSectorId ? SECTOR_BY_ID.get(destSectorId) : null;
+    if (originSectorId && destSectorId && originSectorId !== destSectorId) {
+      const oneJump = Array.isArray(destSector && destSector.neighbors)
+        && destSector.neighbors.includes(originSectorId);
+      chips.push({
+        kind: 'info',
+        text: `Jump route: ${sectorName(originSectorId)} → ${sectorName(destSectorId)}`
+          + (oneJump ? ' — one jump; the sectors are direct neighbors' : ''),
+      });
+    }
+    const tenderCargo = state && state.player && state.player.cargo || {};
+    const capVolume = Number.isFinite(tenderCargo.capVolume) ? tenderCargo.capVolume : 0;
+    const usedVolume = Number.isFinite(tenderCargo.usedVolume) ? tenderCargo.usedVolume : 0;
+    const freeHold = Math.max(0, capVolume - usedVolume);
+    if (lotUnits > 0 && freeHold < lotUnits) {
+      chips.push({
+        kind: 'warn',
+        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)}u; this hold carries ${fmtHoldUnits(freeHold)}u`,
+      });
+      // Only the racks this hull's cargo slots can take are named. When even the fullest fit
+      // (the hull's base hold plus the best rack in every cargo slot — a rack already fitted is
+      // inside capVolume, so the larger of the two is the ceiling) cannot carry the lot, the
+      // honest line is the two-run plan, not a rack the hull can't mount.
+      const slotRanks = tenderCargoSlotRanks(state);
+      const bestRack = tenderBestRackUnits(slotRanks);
+      const hull = tenderHullDef(state);
+      const baseHold = Math.max(0, Number(hull && hull.cargo) || 0);
+      const fullFitFree = bestRack == null
+        ? null
+        : Math.max(capVolume, baseHold + bestRack) - usedVolume;
+      if (fullFitFree != null && fullFitFree < lotUnits) {
+        warnings.push(`The lot cannot ride one hold on this hull, even fully racked (${fmtHoldUnits(Math.max(0, fullFitFree))}u at best). The honest plan is two runs: haul what fits, sell it into the desk, and come back for the rest — the window is already running.`);
+      } else {
+        warnings.push(`The lot cannot ride one hold at this fit. The honest outs: ${tenderRackOutsLine(slotRanks)}. A two-run plan under-racked still accepts — the window is already running.`);
+      }
+    }
   }
 
   const shipReadiness = missionShipReadiness(m, state);
