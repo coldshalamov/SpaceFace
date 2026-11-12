@@ -44,12 +44,20 @@ export function visibleRects(list) {
  */
 export function createAvoidRects(doc, opts = {}) {
   const selectors = opts.selectors || AVOID_SELECTORS;
-  const ttl = opts.ttlMs ?? 120;
+  // 400 ms, not one frame: a rect read forces layout, and at Swarm-20 load (12 fps, 83 ms frames) a 120 ms
+  // window re-read nearly every frame — 5.2 % of the main thread (lead profile 2026-11-12). HUD panels and the
+  // centre column move rarely; a label yielding a few frames late is invisible, a forced layout per frame is not.
+  const ttl = opts.ttlMs ?? 400;
   const now = opts.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
   const exclude = opts.exclude || null;
   const query = selectors.join(',');
   let cache = [];
   let at = -Infinity;
+  // A resize moves every panel: read fresh on the next ask.
+  try {
+    const win = doc && doc.defaultView;
+    if (win && typeof win.addEventListener === 'function') win.addEventListener('resize', () => { at = -Infinity; }, { passive: true });
+  } catch (_) { /* no window (tests) */ }
   return {
     get() {
       const t = now();
