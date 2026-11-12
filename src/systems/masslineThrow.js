@@ -202,7 +202,7 @@ export const masslineThrow = {
     const flickPressed = !!flick && flick.targetId === payload.id && flick.attachmentId === tether.attachmentId;
     const mouseArmed = !!actions?.throwArm;
     const armed = mouseArmed || flickPressed;
-    const pressed = flickPressed || (mouseArmed && !this._throwArmWasHeld);
+    const pressed = flickPressed || actions?.throwTap === true || (mouseArmed && !this._throwArmWasHeld);
     this._throwArmWasHeld = mouseArmed;
     if (!armed) this._armAuthorized = false;
     if (pressed) this._armAuthorized = true;
@@ -254,7 +254,7 @@ export const masslineThrow = {
     const fieldSampler = this._buildFieldSampler(state, payload);
     const solution = sampleThrowSolution(this._throwPrediction, payload, aim.target, {
       tick: state.tick, omega: kin.omega, identity, fieldSampler,
-      requireFresh: armed || !!this._pendingSnap,
+      requireFresh: armed || pressed || !!this._pendingSnap,
     });
     solution.degraded = turn.degraded;
     solution.turnRate = turn.turnRate;

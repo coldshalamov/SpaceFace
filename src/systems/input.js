@@ -1059,6 +1059,8 @@ export function domMouseDownEvent(host, d = {}) {
   domPointerMoveEvent(host, d);
   if (d.offCanvas === true || (!host._canvas && d.uiCommand === true)) {
     host._m0 = false; host._m1 = false; host._m2 = false;
+    host._throwLineAtPress = null;
+    host._pendingThrowLineAtPress = null;
     return;
   }
   if (d.button === 0) host._m0 = true;
@@ -1068,6 +1070,7 @@ export function domMouseDownEvent(host, d = {}) {
     const line = host.state?.player?.tether;
     host._throwLineAtPress = line?.active && line.targetId != null
       ? { targetId: line.targetId, attachmentId: line.attachmentId } : null;
+    host._pendingThrowLineAtPress = host._throwLineAtPress;
   }
   host._kbmActivityPending = true;
 }
@@ -1393,6 +1396,8 @@ export const input = {
     }
     this._m2 = false;
     this._throwLineAtPress = null;
+    this._pendingThrowLineAtPress = null;
+    this._throwTapGuard = null;
     if (hadField) delete inp.worldObjectTargetId;
   },
 
@@ -1774,6 +1779,7 @@ export const input = {
     const touchThrow = this._touchThrow;
     this._touchThrow = null;
     if (acts.touchThrow) delete acts.touchThrow;
+    if (acts.throwTap) delete acts.throwTap;
     const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
     if (flightInputNeutralized) {
       // Keep ordinary pad holds fenced for the whole non-flight interval. This covers direct
@@ -2096,11 +2102,21 @@ export const input = {
     // masslineThrow owns the solution/auto-cut — "RMB throws THEM". The same RMB hold feeds the
     // Line grammar below. The press that grabbed a body belongs to the latch,
     // even when the new attachment becomes active before the mouse lifts.
-    const throwLine = this._throwLineAtPress;
-    const throwArmHeld = massline2Flag('throw') && this._m2 === true && !!throwLine && tether?.active
+    // Both pointer edges can reach the worker before the next tick. The pending press keeps
+    // that click actionable for snap/off without pretending the button is still held for arm.
+    const mouseHeld = this._m2 === true;
+    const throwLine = mouseHeld ? this._throwLineAtPress : this._pendingThrowLineAtPress;
+    this._pendingThrowLineAtPress = null;
+    const throwInput = massline2Flag('throw') && !!throwLine && tether?.active
       && throwLine.targetId === tether.targetId && throwLine.attachmentId === tether.attachmentId
       && isThrowArmPayload(state);
-    inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
+    const throwArmHeld = mouseHeld && throwInput;
+    if (throwInput && !mouseHeld) acts.throwTap = true;
+    inp.fireGroup = (mineHeld && !throwInput) ? 2 : (inp.fire ? 1 : null);
+    // THROW-01: a press that armed a throw owns its own release. The short-press tap grammar below
+    // would read the click-up as a tap-to-cut and fling the PLAYER; remember the press so that cut
+    // can be withheld (F still frees the player; non-throwable payloads never set this).
+    if (throwArmHeld) this._throwTapGuard = true;
 
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
@@ -2240,6 +2256,10 @@ export const input = {
           : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
         silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
       });
+    if (this._throwTapGuard && masslineCommand.cut && !mouseHeld && tetherEdge?.pressed !== false) {
+      masslineCommand.cut = false; // THROW-01: the click that threw (or queued a throw) is not a cut.
+    }
+    if (!mouseHeld) this._throwTapGuard = null;
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.massline = masslineCommand;
     acts.tetherFire = masslineCommand.latch;

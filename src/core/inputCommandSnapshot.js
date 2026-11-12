@@ -18,6 +18,7 @@ const ACTION_KEYS = Object.freeze([
   'bulletTime',
   'cloakToggle',
   'throwArm',
+  'throwTap',
   'travelBurn',
   'deployMassSeed',
   'deployWell',
