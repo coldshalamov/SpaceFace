@@ -222,8 +222,12 @@ export const shipbreakingYard = {
     this._selectedModuleId = null; this._selectedJobId = null;
     this._observeAll();
     const jobs = YARD_LAYOUT_IDS.map(id => this.getJob(id)).filter(Boolean);
+    const firstShift = jobs.find(job => job.layoutId === 'lark' && job.status === 'offered'
+      && job.variant >= 6 && job.variant <= 11 && this._row.cycles.lark === 0);
     this.bus.emit('shipbreakingYard:offer', { kind: 'catalog', revision: this._row.revision,
-      title: 'CERES · SHIPBREAKING YARD', detail: 'Inspect a claimed wreck before paying. A damaged part earns less; every original you deliver is paid separately. You may leave unfinished work and return.',
+      title: 'CERES · SHIPBREAKING YARD', detail: 'Inspect a retired wreck before paying. '
+        + (firstShift ? 'LARK’s postal sorting refit has an 18t motor and a separate 16t relay cassette. The frame is still heavy; recover the small machinery one piece at a time. ' : '')
+        + 'A damaged part earns less; every original you deliver is paid separately. You may leave unfinished work and return.',
       actions: jobs.map(job => ({ id: 'inspect', layoutId: job.layoutId,
         label: `${this._layout(job).title} · ${job.status === 'offered' ? `${this._layout(job).fee} cr claim` : job.status.toUpperCase()}`,
         title: `${this._layout(job).summary} Likely remaining value ${this._remainingValue(job)} cr.` })).concat([{ id: 'leave', label: 'LEAVE WITHOUT SPENDING', cancel: true }]) });

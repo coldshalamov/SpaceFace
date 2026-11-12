@@ -25,7 +25,7 @@ import { SHIPBREAKING_LAYOUTS, SHIPBREAKING_YARD_SITE as SITE, createYardLayout 
 import { yardBodyIdentity } from '../src/features/shipbreakingYard/physics.js';
 import { createShipbreakingYardPresentation, shipbreakingDecisionSpec, SHIPBREAKING_DECISION_ID } from '../src/features/shipbreakingYard/presentation.js';
 import { createShipbreakingYardAudio } from '../src/features/shipbreakingYard/audio.js';
-import { normalizeYardState } from '../src/features/shipbreakingYard/model.js';
+import { normalizeYardState, freshYardState, createYardJob } from '../src/features/shipbreakingYard/model.js';
 import { save } from '../src/save/saveSystem.js';
 import { buildEncounterCatalog } from '../src/data/encounters/catalog.js';
 import * as yardEncounter from '../src/data/encounters/8201-pro-yard.js';
@@ -114,7 +114,7 @@ async function fixture({ discover = true, seed = 8201, playerTow = false, collec
   return { sim, s, owner, player, native, kernel, offers, cues, receipts, tick, admit, job, body, near, accept, disconnect, receiver, tow, deliver, close };
 }
 
-test('explicit next-lot request exposes a light sorting motor and actual pilot inputs tow it to one paid handover', async () => {
+test('first unclaimed LARK exposes a light sorting motor and actual starter pilot inputs earn one paid handover', async () => {
   const sim = createSimulation({ seed: 1, systems: [ships, economy, flightV3, physics, combat, tetherGameplay, shipbreakingYard] });
   const s = sim.state, native = sim.registry.get('physics'), yard = sim.registry.get('shipbreakingYard');
   try {
@@ -133,10 +133,9 @@ test('explicit next-lot request exposes a light sorting motor and actual pilot i
       aimWorld: { ...start }, aimIntentActive: true, actions: {} };
     okay(yard.discover({ anchor })); assert.equal(await native.prepareBackend(s), true);
     for (let index = 0; index < 5; index++) sim.step(DT);
-    okay(yard.accept('lark', s.shipbreakingYard.revision));
-    okay(yard.forfeit(yard.getJob('lark').id, s.shipbreakingYard.revision));
-    okay(yard.command({ actionId: 'next-lot', layoutId: 'lark', revision: s.shipbreakingYard.revision }));
-    for (let index = 0; index < 5; index++) sim.step(DT);
+    assert.equal(s.shipbreakingYard.cycles.lark, 0);
+    assert.equal(yard.getJob('lark').paidCr, 0);
+    assert.equal(s.shipbreakingYard.stats.spentCr, 0, 'no sacrificial claim before useful work');
     const job = yard.getJob('lark'), original = yard.physics.body(job, 'engine');
     assert.ok(job.variant >= 6 && job.variant <= 11);
     assert.equal(original.mass, 18);
@@ -169,6 +168,7 @@ test('explicit next-lot request exposes a light sorting motor and actual pilot i
     }
     assert.equal(delivered, true, 'normal pilot inputs must reach a real delivery gate');
     console.log(JSON.stringify({ refitNativeSeconds: s.simTime, movedOriginal: id, mass: 18, receipt: job.modules.engine.receipt }));
+    assert.equal(s.shipbreakingYard.stats.spentCr, 80, 'one honest claim fee');
     assert.equal(job.modules.engine.status, 'delivered'); assert.equal(original.alive, false);
     assert.ok(s.player.credits > credits); const paid = s.player.credits;
     assert.equal(yard.deliver('engine', s.shipbreakingYard.revision, job.id).ok, false); assert.equal(s.player.credits, paid);
@@ -180,7 +180,9 @@ test('legacy paid lots retain exact layouts while new refits survive the actual 
   const h = await fixture();
   try {
     okay(h.accept()); const legacy = copy(h.s.shipbreakingYard), oldId = h.job().id;
-    const oldLayout = createYardLayout('lark', h.job().variant);
+    // Explicit historical save: variants 0–5 are the original heavy postal lots.
+    legacy.jobs[oldId].variant %= 6;
+    const oldLayout = createYardLayout('lark', legacy.jobs[oldId].variant);
     okay(h.owner.forfeit(oldId, h.s.shipbreakingYard.revision));
     okay(h.owner.command({ actionId: 'next-lot', layoutId: 'lark', revision: h.s.shipbreakingYard.revision }));
     await h.admit(); okay(h.accept());
@@ -219,11 +221,11 @@ test('ordinary inspection deck requests the refit once; later cycles return to o
   } finally { h.close(); }
 });
 
-test('fresh native yard hydration preserves a paid refit, its released motor and settled cassette receipt', async () => {
+test('fresh native yard hydration preserves the paid first-shift refit, its released motor and settled cassette receipt', async () => {
   const first = await fixture(); let second;
   try {
-    okay(first.accept()); okay(first.owner.forfeit(first.job().id, first.s.shipbreakingYard.revision));
-    okay(first.owner.nextLot('lark', first.s.shipbreakingYard.revision)); await first.admit(); okay(first.accept());
+    assert.equal(first.s.shipbreakingYard.cycles.lark, 0);
+    okay(first.accept());
     okay(first.disconnect()); okay(first.disconnect('cargo-clamp')); okay(first.deliver('cargo'));
     const data = {}; [...serializeShipbreakingYardSteps({ state: first.s, registry: first.sim.registry }, data)];
     second = await fixture({ discover: false });
@@ -239,4 +241,35 @@ test('fresh native yard hydration preserves a paid refit, its released motor and
     assert.equal(second.owner.deliver('cargo', second.s.shipbreakingYard.revision, second.job().id).ok, false);
     assert.equal(second.s.player.credits, credits);
   } finally { second?.close(); first.close(); }
+});
+
+
+test('new first-shift terms are visible and historical paid heavy originals hydrate at their saved mass and pose', async () => {
+  const first = await fixture(); let historical;
+  try {
+    first.owner.offerCatalog();
+    assert.match(first.offers.at(-1).detail, /18t motor.*16t relay cassette/);
+    assert.match(first.offers.at(-1).detail, /frame is still heavy/);
+    okay(first.owner.inspect('lark'));
+    assert.match(first.offers.at(-1).detail, /Claim 80 cr/);
+    // Construct an actual historical schema-one heavy layout, not a relabeled refit.
+    const saved = freshYardState(8201); saved.discovered = true; saved.anchor = { x: 500, z: 500 };
+    saved.cycles.lark = 2;
+    const job = createYardJob(saved, 'lark');
+    saved.cycles.lark = 0; // Historical first-lot saves used these same 0–5 variants.
+    assert.ok(job.variant < 6);
+    job.status = 'working'; job.paidCr = 80; job.paidAt = 1;
+    job.modules.engine.pose = { x: 470, z: 500, vx: 0, vz: 0, rot: 0, spin: 0 };
+    saved.jobs[job.id] = job; saved.slots.lark = job.id; saved.activeJobId = job.id;
+    historical = await fixture({ discover: false });
+    const credits = historical.s.player.credits;
+    historical.owner.deserialize(copy(saved)); historical.owner.afterContinue(); await historical.admit();
+    const original = historical.body();
+    assert.equal(historical.job().variant, job.variant);
+    assert.equal(original.mass, 65);
+    assert.ok(Math.abs(historical.native._sg02.records.get(original.id).body.mass() - 65) < .001);
+    assert.ok(Math.hypot(original.pos.x - 470, original.pos.z - 500) < 1, 'saved heavy original stays at the recorded work site');
+    assert.equal(historical.job().paidCr, 80); assert.equal(historical.s.player.credits, credits);
+    historical.owner.offerCatalog(); assert.doesNotMatch(historical.offers.at(-1).detail, /18t motor/);
+  } finally { historical?.close(); first.close(); }
 });

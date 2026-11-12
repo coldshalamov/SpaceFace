@@ -85,7 +85,7 @@ export function createYardLayout(id, variant = 0) {
   const source = yardLayoutById(id); if (!source) return null;
   const seed = Math.max(0, Math.trunc(Number(variant) || 0));
   const layout = structuredClone(source), mirror = seed % 2 === 0 ? 1 : -1;
-  // New return lots only. Historical variants 0–5 retain their exact physical contract.
+  // New first arrivals and return refits. Historical variants 0–5 retain their exact physical contract.
   if (id === 'lark' && seed >= 6 && seed <= 11) {
     layout.name = 'LARK / postal sorting refit';
     layout.title = 'LARK · SORTING REFIT';

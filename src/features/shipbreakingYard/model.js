@@ -24,8 +24,10 @@ export function freshYardState(seed = 1) {
 export function createYardJob(row, layoutId) {
   const serial = row.nextJob++;
   const cycle = row.cycles[layoutId] || 0;
+  // New unclaimed arrivals begin with the existing sorting refit. Saved originals
+  // retain their recorded variant; later replacement cycles keep their old sequence.
   const variant = (hash32(row.seed, layoutId) + cycle) % 6
-    + (layoutId === 'lark' && cycle % 2 === 1 ? 6 : 0);
+    + (layoutId === 'lark' && (cycle === 0 || cycle % 2 === 1) ? 6 : 0);
   const layout = createYardLayout(layoutId, variant);
   if (!layout || !row.anchor) throw new Error('A yard lot requires a known layout and berth.');
   const berth = SITE.berthOffsets[YARD_LAYOUT_IDS.indexOf(layoutId)];
