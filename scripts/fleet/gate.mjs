@@ -16,8 +16,8 @@
 // 0/1. Each step's full output lands in .devshots/fleet/gate-<step>.log. Total budget 20 min.
 
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { delimiter, join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -61,11 +61,22 @@ export function createSwarmBootStep(outputRoot) {
   };
 }
 
-// Inside `npm run gate`, npm_execpath is the npm CLI itself: `node <npm-cli> run ...` works on
-// every platform. Outside npm, fall back to the npm executable on PATH.
-const NPM = process.env.npm_execpath
-  ? { file: process.execPath, base: [process.env.npm_execpath] }
-  : { file: process.platform === 'win32' ? 'npm.cmd' : 'npm', base: [] };
+function npmCommand() {
+  const inheritedCli = process.env.npm_execpath;
+  if (inheritedCli) return { file: process.execPath, base: [inheritedCli] };
+  if (process.platform !== 'win32') return { file: 'npm', base: [] };
+
+  // Windows cannot spawn the batch shim directly. Run the same JS entry with
+  // Node and keep each argument separate, including the generated output path.
+  const directories = [dirname(process.execPath), ...(process.env.PATH || '').split(delimiter)];
+  for (const directory of directories) {
+    const root = directory.trim().replace(/^"(.*)"$/, '$1');
+    if (!root) continue;
+    const cli = resolve(root, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+    if (existsSync(cli)) return { file: process.execPath, base: [cli] };
+  }
+  throw new Error('npm-cli.js was not found beside Node or in an npm installation on PATH');
+}
 
 const ERRORISH = /\bFAIL\b|\berror\b|exception|assert|ENVIRONMENT|could not run|timed out|not ok|✗|✘/i;
 
@@ -87,11 +98,18 @@ function killTree(pid) {
 
 function runStep(step, timeoutMs) {
   return new Promise((resolvePromise) => {
-    const child = spawn(NPM.file, [...NPM.base, ...step.args], {
-      cwd: REPO, env: process.env,
-      detached: process.platform !== 'win32', // own process group so killTree works on POSIX
-      windowsHide: true,
-    });
+    let child;
+    try {
+      const { file, base } = npmCommand();
+      child = spawn(file, [...base, ...step.args], {
+        cwd: REPO, env: process.env,
+        detached: process.platform !== 'win32', // own process group so killTree works on POSIX
+        windowsHide: true,
+      });
+    } catch (error) {
+      resolvePromise({ code: -1, out: `spawn error: ${error.message}`, timedOut: false });
+      return;
+    }
     let out = '';
     const onData = (d) => {
       out += d.toString();
