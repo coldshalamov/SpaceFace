@@ -497,6 +497,7 @@ if (isCLI && !process.argv.includes('--forward-set') && !process.argv.includes('
 // why a literal scan missed it. Sim-side subscription was verified at the same
 // sites the literal census lists.
 const DYNAMIC_FORWARD = [
+  { type: 'achievement:unlocked', emitters: ['src/systems/achievements.js'], note: 'main achievement ledger emits via ACHIEVEMENT_UNLOCKED_EVENT; sim chronicler subscribes through FACT_EVENTS' },
   { type: 'rigWorkshop:choose', emitters: ['src/features/rigWorkshop/presentation.js'], note: 'dual-realm public physical workshop choice adapter' },
   { type: 'shipbreakingYard:action', emitters: ['src/features/shipbreakingYard/browser.js'], note: 'dual-realm public yard choice adapter' },
   ...['salvageTender:action', 'salvageTender:inspect'].map(type => ({
