@@ -1721,6 +1721,22 @@
       "evidence": ".devshots/fleet/runs/PLANT-RADIO.flash.2026-11-11T23-50-09/RECEIPT.md",
       "kind": "plant",
       "player": "Ten near misses in one minute prompts the Static to broadcast a traffic advisory."
+    },
+    {
+      "id": "PL-04",
+      "date": "2026-11-12",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "PL-04 plant: civilians scramble for spilled cargo while owner hails for help (rebuild of ac34b298, reverted 8069dd80)",
+      "fingerprint": "verb=grab,subject=scramble-thieves,sector=lanes,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "1332907af733",
+      "verification": "focused_green",
+      "evidence": ".devshots/fleet/runs/PL-04-REDO.devin2.2026-11-12T09-37-01/RECEIPT.md",
+      "kind": "plant",
+      "player": "When a hauler spills cargo, nearby civilians each grab a pod and scatter while the owner hails for help; kill or shove a thief and it drops the pod."
     }
   ],
   "knownDefects": [
