@@ -785,6 +785,52 @@ test('a stopped presentation heartbeat holds the worker clock instead of running
   }
 });
 
+test('a budget-limited batch retains unexecuted ticks for later clock turns', { timeout: 60000 }, async () => {
+  let receive;
+  let limited;
+  let lane;
+  let heartbeat;
+  const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), {
+    type: 'module', workerData: { slowPhysicsStep: true },
+  });
+  try {
+    worker.on('message', (reply) => {
+      if (reply.clockDiagnostics?.budgetShedSteps > 0 || reply.clockDiagnostics?.budgetDeferredSteps > 0) {
+        limited ??= reply;
+      }
+      receive?.(reply);
+    });
+    const state = createGameState(4242);
+    lane = createSimLaneRuntime({
+      state, bus: createBus(), registry: {},
+      flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
+      helpers: {
+        scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+        scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'clock-budget-wire',
+      },
+      channelFactory: () => ({
+        post(message) { worker.postMessage(message); },
+        onMessage(handler) { receive = handler; },
+        onError(handler) { worker.on('error', handler); }, terminate() {},
+      }),
+    });
+    await lane.readyPromise;
+    const boot = await laneRpc('newGameBoot', { opts: { seed: 4242 }, newGamePlus: null });
+    assert.equal(boot.result.ok, true);
+    laneSetMode(state, null, 'flight');
+    lane.runner.setClockActive(true);
+    heartbeat = setInterval(() => lane.runner.heartbeat(), 16);
+    await waitFor(() => limited, 10000);
+    assert.equal(limited.stepsExecuted, 1, 'the host yields after its expensive step');
+    assert.ok(limited.clockAccumulator >= 1 / 60, 'at least one unexecuted tick is still owed');
+    assert.ok(lane.getDiagnostics().workerClockLastDiagnostics.budgetDeferredSteps > 0, 'main can attribute the work limit');
+  } finally {
+    clearInterval(heartbeat);
+    lane?.close();
+    await worker.terminate();
+  }
+});
+
 test('worker-local clock is unsolicited and command FIFO remains serialized', async (t) => {
   const f = makeFixture(t);
   assert.equal(f.lane.getDiagnostics().clockOwner, 'worker-local');
