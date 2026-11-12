@@ -47,6 +47,8 @@ import {
   swarmActIssues,
   swarmActPackages,
   swarmArenaPhase,
+  swarmCastPackages,
+  swarmCastStreamFor,
   swarmFodderRoster,
   swarmFreeGateFor,
   swarmLevel,
@@ -59,6 +61,7 @@ import {
   swarmRewards,
   swarmWaveOf,
 } from '../data/swarmMode.js';
+import { swarmCastFor, swarmCastIssues } from '../data/swarmCourseCast.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizeThreatIds, swarmThreatPressureMult } from '../data/swarmThreats.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
@@ -430,13 +433,24 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     ? buildSummary.dominant
     : null;
   const heaviesOnly = list.includes('heavies_only');
+  // C01-04 — the course's cast table authors the mix on rounds 1–30: its row owns the opening
+  // packages and the stream outright, so the generated helpers that would otherwise fight it
+  // (the roster-clock debut, the mass-gap wall, the kraken cameo, the mooring_line act) all
+  // yield on cast waves. The mutator and the Circuit still own their rooms outright —
+  // heavies_only and a journey round suppress the cast exactly like they suppress the act.
+  const cast = !heaviesOnly && !circuitRound ? swarmCastFor(w) : null;
+  if (cast) {
+    const castIssues = swarmCastIssues(w);
+    if (castIssues.length) return invalid(castIssues);
+  }
   const biasedRoster = dominant && !heaviesOnly
-    ? biasSwarmRosterForBuild(swarmRosterFor(w), dominant)
+    ? biasSwarmRosterForBuild(cast ? swarmCastStreamFor(w) : swarmRosterFor(w), dominant)
     : null;
   // SF-062 — the mass-and-gap round. A light-pursuer opening is ammunition first; the wall and
   // its late heavies turn one side of the room into a corridor the player navigates or breaks.
-  // The mutator owns the room outright, so heavies_only suppresses the shape entirely.
-  const massGap = !heaviesOnly && isSwarmMassGapWave(w);
+  // The mutator owns the room outright, so heavies_only suppresses the shape entirely; the
+  // course cast owns it on authored rounds — a cast row's own arrivals are the corridor.
+  const massGap = !heaviesOnly && !cast && isSwarmMassGapWave(w);
   // SF-068 — a boss round's reduced swarm is ammunition, not chores: the champion is the work,
   // so its opening chaff draws from the same light bodies the mass-gap wall feeds — the shapes
   // the room's berm, mines and pull can actually turn on the boss. heavies_only owns outright.
@@ -456,7 +470,9 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // The debut is a function of the wave number alone — no tutorial state, and later waves field
   // the same archetype through the ordinary roster like everything else.
   const newcomer = swarmNewcomerFor(w);
-  const debuting = !!newcomer && w === newcomer.fromWave;
+  // On a cast wave the row's own `debut:` flags are the first sightings — the clock's
+  // newcomer may not even be fielded by the cast, so the generated debut machinery stays off.
+  const debuting = !cast && !!newcomer && w === newcomer.fromWave;
   // NXB-017 — the three-round act authors the opening recipe outright on its three slots
   // (waves 25–27 carry no debut, mass-gap or boss flag, so nothing else competes for them).
   // The mutator owns the room outright: heavies_only suppresses the act exactly like the wall.
@@ -469,7 +485,11 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     ? (fodderRoster || biasedRoster || swarmRosterFor(w))
       .filter((entry) => entry.enemyId !== newcomer.enemyId)
     : (fodderRoster || biasedRoster || undefined);
-  let packages = act ? swarmActPackages(w) : swarmOpeningPackages(w, rng, openingRoster, bossOverride);
+  let packages = cast
+    ? swarmCastPackages(w, bossOverride)
+    : act
+      ? swarmActPackages(w)
+      : swarmOpeningPackages(w, rng, openingRoster, bossOverride);
   if (debuting) {
     // The debut is one of the wave's bodies, not an extra: hand its seat back from the largest
     // ordinary group so the opening budget stays exactly what the pressure math asked for.
@@ -553,7 +573,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   }
   // Character heavies have their own finite seat. Weighted roster picks would turn a
   // readable eight-arm arrival into a random three-Kraken reinforcement pack.
-  const character = !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
+  const character = !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap && !cast
     ? ironKrakenForSwarmWave(w) : null;
   let characterLanded = false;
   if (character) {
@@ -573,7 +593,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
-  const swarm = swarmPlanBlock(w, bossOverride);
+  const swarm = swarmPlanBlock(w, bossOverride, cast);
   if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
     name: character.name, variant: character.variant };
   if (biasedRoster) {
@@ -611,7 +631,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // bodies too (SF-068), so the champion's room never reads as a heavy-escort checklist —
   // and an act round's stream keeps the loose-mass lesson supplied the same way.
   // Build pressure still wins when it is live — the read on the run's build outranks either.
-  if ((massGapBlock || bossWave || (act && act.streamBias === 'fodder')) && !biasedRoster) {
+  if (!cast && (massGapBlock || bossWave || (act && act.streamBias === 'fodder')) && !biasedRoster) {
     swarm.roster = swarmRosterFor(w).map((entry) => ({
       enemyId: entry.enemyId,
       role: entry.role,
