@@ -635,6 +635,13 @@ html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
   background: linear-gradient(180deg, var(--sf-pop-edge) 0 22px, rgb(232 226 212 / .2) 22px); }
 #sf-why-tip::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
   background: linear-gradient(90deg, rgb(232 226 212 / .45), transparent 70%); }
+/* Card pass (shadcn drift): the tip is a small hairline card with an 8px radius and a soft drop,
+   so it reads as lifted off whatever it overlaps (station gauges, mission rows) instead of a flat
+   slab with one ruled corner. The head edge stays a shade brighter, the old leader's job. */
+#sf-why-tip { border: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 15%, transparent);
+  border-top-color: color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 28%, transparent); border-radius: 8px;
+  padding: 11px 16px 12px; box-shadow: 0 16px 40px -12px rgb(0 0 0 / .7); }
+#sf-why-tip::before, #sf-why-tip::after { content: none; }
 @media (prefers-reduced-motion: reduce) { #sf-why-tip { animation: none; } }
 html.sf-reduce-motion #sf-why-tip { animation: none; }
 @media (forced-colors: active) { #sf-why-tip { background: Canvas; color: CanvasText; border: 1px solid CanvasText; } }
