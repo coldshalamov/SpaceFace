@@ -41,3 +41,8 @@ nits, no "consider adding tests" without a concrete gap, no speculative findings
 review with three real findings is better than one with twenty guesses.
 
 Commit only the report: `git add -- <report> && git commit -m "review: fleet batch <from>..<head>" -- <report>`.
+
+## Also review (added 2026-11-12)
+Commits starting `feat(`, `perf(`, `fix(` and `lead-review(` — the lead and a stand-in lead fixed and built a lot directly.
+Priority: anything touching the sim worker clock (`wholeSimBrowserWorker.js`, `snapshotFence.js`), save/restore, the
+manifest, purse/credit owners, and any system that emits an event another owner listens to.
