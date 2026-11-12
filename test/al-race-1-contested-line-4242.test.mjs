@@ -1,6 +1,6 @@
 // Row 394 AL-RACE-1 — the line is contested (seed 4242). Real rivals use the Massline's own
-// verbs: they take physical anchors through canonical kernel attachments. Faster anchored
-// laps remain an open tuning clause; these tests cover qualified use and exclusive ropes.
+// verbs: they take physical anchors through canonical kernel attachments. The checks cover
+// qualified use, exclusive ropes and the measured lap advantage.
 // Native bodies + the real combat-physics port throughout — no pose teleports.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,8 +23,7 @@ const DT = 1 / 60;
 
 function levelById(id) { return RACE_LEVELS.find((l) => l.course.courseId === id); }
 
-async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnchorCues = false,
-  earlyPhysics = false } = {}) {
+async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnchorCues = false } = {}) {
   const level = levelById(levelId);
   const contract = RACE_CONTRACTS.find((r) => r.levelId === level.id);
   const state = createGameState(racingSeedFor(contract.id));
@@ -51,15 +50,11 @@ async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnch
   const ports = Object.create(aiPorts); ports.init(ctx);
   const tactical = createTacticalAISystem(); tactical.init(ctx);
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
-  // Production order: the physics port exists before the heat starts, so start() subscribes
-  // the physics:impact queue (rival↔set-piece contacts open real contact recoveries and, on
-  // an armed player shove, takedown receipts). Opt-in flag keeps the older fixtures' behavior
-  // unchanged — their assertions predate the live impact path.
-  if (earlyPhysics) helpers.combatPhysics = createSg02CombatPhysicsPort(owner);
+  // Subscribe to native contacts when the heat starts, as on the ordinary race route.
+  helpers.combatPhysics = createSg02CombatPhysicsPort(owner);
   pack.update(mission); pieces.update(mission);
   const rivalIds = pack.inspect().rivals.map((r) => r.entityId);
   const rivalIdSet = new Set(rivalIds);
-  if (!earlyPhysics) helpers.combatPhysics = createSg02CombatPhysicsPort(owner);
   // The kernel the opponents owner resolves through kernelFor() — driven each tick so live
   // tension telemetry reaches the loaded-tick counter, exactly as combat's postPhysics does.
   const kernel = getCombatKernel({ state, bus, helpers });
@@ -117,6 +112,11 @@ async function raceFixture(levelId, { laps = 2, difficulty = 'expert', stripAnch
       }
       const t = lapTimes && lapTimes[row.id];
       if (t && row.lap > t.lap) { t.crossedAt.push({ lap: t.lap, simS: state.simTime }); t.lap = row.lap; }
+      // A finish publishes its interpolated time without incrementing the final lap index.
+      if (t && row.status === 'finished' && row.lap === t.lap) {
+        t.crossedAt.push({ lap: t.lap, simS: mission.params.raceStartSimS + row.elapsedS });
+        t.lap++;
+      }
     }
   }
 
@@ -176,8 +176,7 @@ test('Mira ropes the Quarry Hook on at least two laps', async () => {
 
 // Matched fixtures — identical course/seed/hazards, only the anchor cues withheld in the
 // control. The mechanism is causal: the control takes zero anchors, the anchored run's uses
-// all ride canonical attachments. The remaining done-when (anchored mean ≥0.8 s faster) is
-// the OPEN tuning clause on the board — the swing's steer/release geometry is not yet paying.
+// all ride canonical attachments. A separate paired run checks the lap advantage.
 test('the anchor path is causal — control fixture takes none, anchored fixture qualifies them', async () => {
   const anchored = await raceFixture('circuit_helios_belt', { laps: 2 });
   const control = await raceFixture('circuit_helios_belt', { laps: 2, stripAnchorCues: true });
@@ -206,7 +205,7 @@ function lapDurations(crossedAt, startS = 0.5) {
 // fixtures — same course, seed, hazards; the control simply never sees the anchor cues.
 // Measured per rival across the pack's first two completed laps, mean delta.
 for (const courseId of ['circuit_helios_belt', 'circuit_tethys_tally', 'circuit_veil_wash']) {
-  test(`anchored laps beat unanchored by ≥0.8 s on ${courseId} (Hard)`, async () => {
+  test(`anchored laps beat unanchored by ≥0.8 s on ${courseId} (Hard)`, async (t) => {
     const anchored = await raceFixture(courseId, { laps: 2 });
     const control = await raceFixture(courseId, { laps: 2, stripAnchorCues: true });
     try {
@@ -216,11 +215,11 @@ for (const courseId of ['circuit_helios_belt', 'circuit_tethys_tally', 'circuit_
       for (const row of anchored.pack.inspect().rivals) {
         const aLaps = lapDurations(tA[row.id]?.crossedAt || []);
         const cLaps = lapDurations(tC[row.id]?.crossedAt || []);
-        assert.ok(aLaps.length >= 1 && cLaps.length >= 1, `${row.id} completed a lap in both runs`);
-        const pairs = Math.min(aLaps.length, cLaps.length);
-        for (let i = 0; i < pairs; i++) deltas.push(cLaps[i] - aLaps[i]);
+        assert.deepEqual([aLaps.length, cLaps.length], [2, 2], `${row.id} completed both laps in both runs`);
+        for (let i = 0; i < aLaps.length; i++) deltas.push(cLaps[i] - aLaps[i]);
       }
       const mean = deltas.reduce((s, x) => s + x, 0) / deltas.length;
+      t.diagnostic(`Paired lap advantage ${mean.toFixed(3)} s (${deltas.map(d => d.toFixed(3)).join(', ')})`);
       assert.ok(mean >= 0.8,
         `anchored laps average ${mean.toFixed(2)}s faster than unanchored (deltas ${deltas.map((d) => d.toFixed(2)).join(',')})`);
     } finally { anchored.dispose(); control.dispose(); }
@@ -232,7 +231,7 @@ for (const courseId of ['circuit_helios_belt', 'circuit_tethys_tally', 'circuit_
 // rides a synthetic player impact while the rival's set-piece contact is the real physics
 // collision — the receipt and the rejoin are the production path.
 test('a shoved rival pays ≥2 s for the piece hit and rejoins within 6 s', async () => {
-  const f = await raceFixture('circuit_tethys_tally', { laps: 1, earlyPhysics: true });
+  const f = await raceFixture('circuit_tethys_tally', { laps: 1 });
   try {
     const miraId = f.pack.inspect().rivals.find((r) => r.id === 'mira')?.entityId;
     assert.ok(miraId != null, 'mira on the grid');
