@@ -27,6 +27,7 @@ import {
   swarmEventFrame,
   SWARM_EVENT_BOUNTY_REASON,
 } from '../src/systems/swarmEvents.js';
+import { swarmCourseFor } from '../src/data/swarmCourse.js';
 import { isSwarmBossWave } from '../src/data/swarmMode.js';
 
 const SEED = 4242;
@@ -112,8 +113,16 @@ test('minor-band waves deal only minor-tagged cards at the scaled bounty', () =>
   for (const arenaId of Object.keys(SWARM_EVENT_TABLES)) {
     for (let w = 2; w <= 98; w++) {
       if (!isSwarmMinorEventWave(w)) continue;
+      // e43158f9386a: a course twist that names a room mechanic owns its band round —
+      // rounds 12/18/22/28 deal no card, the room does the twist.
+      const course = swarmCourseFor(w);
+      const mechanicOwned = course && course.twistId && !SWARM_EVENT_BY_ID[course.twistId];
       for (const seed of [SEED, 7, 991]) {
         const draw = swarmMinorEventFor({ arenaId, wave: w, seed });
+        if (mechanicOwned) {
+          assert.equal(draw, null, `${arenaId} w${w} s${seed} is the mechanic's round, no card`);
+          continue;
+        }
         assert.ok(draw, `${arenaId} w${w} s${seed} deals a minor card`);
         const authored = SWARM_EVENT_BY_ID[draw.id];
         assert.ok(authored, `${draw.id} resolves to a real card`);
@@ -151,6 +160,9 @@ test('supply and mines out-deal the one small surge in the band', () => {
   let quiet = 0;
   for (let w = 2; w <= 198; w++) {
     if (!isSwarmMinorEventWave(w)) continue;
+    // e43158f9386a: mechanic-owned course rounds deal no card to count.
+    const course = swarmCourseFor(w);
+    if (course && course.twistId && !SWARM_EVENT_BY_ID[course.twistId]) continue;
     for (const seed of [SEED, 13, 77, 555]) {
       const draw = swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave: w, seed });
       if (draw.id === 'sling_gust') gust++; else quiet++;
