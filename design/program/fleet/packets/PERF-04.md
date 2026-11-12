@@ -30,3 +30,9 @@ post-picture loading (the pending ledger holds the first flight draw, not the fi
 **both** numbers against a fresh HEAD baseline in the same session: late programs = 0 and first picture ≤ baseline + 1 s.
 If renderer.js shows as fully rewritten (line endings), keep CRLF — `git diff --ignore-cr-at-eol --stat` must show only
 your real lines. Commit only measured work.
+
+## Continue again (2026-11-12 ~07:00 UTC)
+The last run timed out waiting for the game lock before it could measure (150 min). The working tree still holds your
+uncommitted change (`git diff --ignore-cr-at-eol --stat -- src/render`). Go straight to the measurement: one HEAD-baseline
+run and one with your change, back to back, through the lock — then commit if late programs = 0 and first picture ≤
+baseline + 1 s, or report the numbers and stop. Do not add more code before measuring.
