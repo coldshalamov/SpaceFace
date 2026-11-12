@@ -249,6 +249,71 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,106fr) minmax(0,100fr) minmax(0,98fr) minmax(0,116fr) minmax(0,134fr) !important;
     grid-template-areas:"hull fuel hold note muni" !important; }
 }
+/* …and at that ~493px strip a figure beside its word did not fit: FUEL ran 8px into "100 / 100", HOLD 5px into
+   "0 / 40 u", MUNITIONS 3px into "0 / 100", and HULL kept 4px. Here each reading is a small stat: the word, its
+   figure under it, then the track and the verb. Stacked, the figures need only their own ink, so the cells give
+   their width to the verbs (HULL's Repair/Insure and LEDGER's Draw no longer run past their cell) and to 10px gutters,
+   so LEDGER's CREDIT LINE OPEN no longer reads on into MUNITIONS' figure. The figure stands in the cell's flow (the
+   track is drawn under it), so a longer one ("120 / 120 u") widens its column instead of printing over the next.
+   1024-1100 keeps the side-by-side cells: they fit there, and stacking would only cost the head 14px. */
+@media (min-width:960px) and (max-width:1023px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(min-content,92fr) minmax(min-content,62fr) minmax(min-content,53fr)
+    minmax(min-content,129fr) minmax(min-content,117fr) !important; column-gap:10px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note :is(.sxb-vital__value, .orr-vnum.is-word) { text-align:left !important; }
+  /* The cell is a four-row grid (word, figure, track, verbs). The word and its track live in the head (the Hold head is the
+     manifest button), so the head spans rows 1-3 as a subgrid and the figure takes row 2 between them: the track sits
+     under the figure in flow, and a figure that wraps or grows pushes the track and verbs down instead of being crossed. */
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) { display:grid !important; grid-template-columns:minmax(0,1fr) !important;
+    grid-template-rows:auto auto auto auto !important; align-content:start !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__head { grid-area:1 / 1 / 4 / 2 !important; display:grid !important;
+    grid-template-columns:minmax(0,1fr) !important; grid-template-rows:subgrid !important; min-height:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__label { grid-row:1 !important; min-height:18px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__value { grid-area:2 / 1 !important; position:static !important;
+    display:flex !important; width:max-content !important; max-width:none !important; margin:0 0 4px !important; line-height:18px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__track,
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni .sxb-vital__head::after { grid-row:3 !important; position:relative !important; top:auto !important;
+    left:auto !important; width:100% !important; margin:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__acts { grid-area:4 / 1 !important; margin-top:0 !important; }
+}
+/* At 461-508 tall the head's fold is ~173px and the stacked cell's extra line put Repair and Rearm under it (960x461).
+   Win the 14px back (and LEDGER's Draw sits 1px under its figure, so its foot clears the fold too): the word and figure rows close to their ink (15px), the track thins to 2px with the verbs 1px under it,
+   and the credit plate above the readings loses 2px of padding top and bottom.
+   Through 508 tall this also keeps Station/Bar HULL Insure above the fold at 960-1023 x 501-507 (it sat 3px under at 501). */
+@media (min-width:960px) and (max-width:1023px) and (min-height:461px) and (max-height:508px) {
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__label { min-height:15px !important; line-height:15px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__value { margin:0 !important; padding-top:2px !important; line-height:15px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__track,
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni .sxb-vital__head::after { height:2px !important; margin:0 0 1px !important; }
+  ${P} .sxb-crown .sxb-purse { padding-top:1px !important; padding-bottom:1px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note > .sxb-vital__acts { margin-top:1px !important; }
+}
+/* The same compact cell on the Market and Shipworks tabs at 509-640 tall, whose heads stay short (Market 195-220px,
+   Shipworks 145px): stacked at full rhythm, HULL's Insure fell 4px under the fold at Market 1000x620 and only the top
+   6px of Repair/Rearm showed on Shipworks. Station and Bar keep the full rhythm in their 40vh heads above 508. */
+@media (min-width:960px) and (max-width:1023px) and (min-height:509px) and (max-height:640px) {
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__label {
+    min-height:15px !important; line-height:15px !important; }
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__value {
+    margin:0 !important; padding-top:2px !important; line-height:15px !important; }
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__track,
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital--muni .sxb-vital__head::after {
+    height:2px !important; margin:0 0 1px !important; }
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-purse { padding-top:1px !important; padding-bottom:1px !important; }
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital--note > .sxb-vital__acts { margin-top:1px !important; }
+}
+/* The head here is a 145-173px scrollport, so its fold cut the verbs (and the next step's sentence) mid-line.
+   While more head lies below, its foot fades over the last 8px (resting verbs, 8px up at Market 960x540, stay at full contrast), driven by the head's own scroll; with no
+   overflow the timeline is inactive and the head stays fully opaque. */
+@property --sxb-head-foot { syntax:"<number>"; inherits:false; initial-value:1; }
+@keyframes sxb-head-foot { from { --sxb-head-foot:.06; } 96% { --sxb-head-foot:.9; } to { --sxb-head-foot:1; } }
+@supports (animation-timeline: scroll()) {
+  @media (min-width:960px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+    ${P} .sxb-berth.dp-frame__head {
+      -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 8px), rgb(0 0 0 / var(--sxb-head-foot)) 100%) !important;
+      mask-image:linear-gradient(180deg, #000 calc(100% - 8px), rgb(0 0 0 / var(--sxb-head-foot)) 100%) !important;
+      animation:sxb-head-foot linear both; animation-timeline:scroll(self block); }
+  }
+}
 
 /* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
    ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
