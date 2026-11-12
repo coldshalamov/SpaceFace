@@ -2149,7 +2149,7 @@ export const tetherGameplay = {
     }
     this._active = null;
     this._pendingCut = null;
-    this._ignoreReleaseCutUntilReelIdle = false;
+    this._cancelDrillApproach('tether_cut');
     this._lastLineControlDenial = null;
     this._lastCutDenial = null;
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
@@ -2358,7 +2358,7 @@ export const tetherGameplay = {
     this._active = null;
     this._pendingCut = null;
     this._deferredLineEcho = null;
-    this._ignoreReleaseCutUntilReelIdle = false;
+    this._cancelDrillApproach(reason || 'endpoint_lost');
     const playerId = state.playerId;
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;

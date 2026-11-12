@@ -83,6 +83,32 @@ for (const { name, breakApproach, reason } of [
     breakApproach(h) { h.bus.emit('save:loaded'); },
     reason: 'save_loaded',
   },
+  {
+    name: 'helm transfer retires the original ship’s Line',
+    breakApproach(h) {
+      h.bus.emit('ship:controlChanging', { operationId: 'transfer', fromId: h.player.id, toId: 'next-ship' });
+    },
+    reason: 'helm_transfer',
+  },
+  {
+    name: 'player recovery retires the defeated ship’s Line',
+    breakApproach(h) {
+      h.bus.emit('player:death', { recoverable: true });
+      h.bus.emit('player:respawn', { stationId: 'test-station', source: 'after_action' });
+    },
+    reason: 'endpoint_lost',
+  },
+  {
+    name: 'an Anchor Kick cuts the Line during a tether update',
+    breakApproach(h) {
+      h.bus.emit('charge:combo', {
+        combo: 'anchorKick', chargeId: 'plate', ownerId: h.player.id, anchorId: h.asteroid.id,
+        pos: { ...h.asteroid.pos },
+      });
+      tick(h);
+    },
+    reason: 'tether_cut',
+  },
 ]) {
   test(`drill approach cancels exactly once when ${name}`, () => {
     const h = harness();
@@ -91,8 +117,7 @@ for (const { name, breakApproach, reason } of [
     assert.equal(h.events.started.length, 1);
 
     breakApproach(h);
-    assert.equal(h.events.cancelled.length, 1);
-    assert.equal(h.events.cancelled[0].reason, reason);
+    assert.deepEqual(h.events.cancelled, [{ ...request(h), reason }]);
     assert.equal(h.events.completed.length, 0);
     assert.equal(h.system._ignoreReleaseCutUntilReelIdle, false);
 
