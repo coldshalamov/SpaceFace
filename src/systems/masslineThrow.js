@@ -24,6 +24,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
 import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/masslineSwingTrace.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
@@ -37,12 +38,37 @@ const SLING_RELEASE_SPEED_FRACTION = 0; // compatibility export: no free release
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
 const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no throw below this
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
+const FLICK_AIM_RANGE = 240;
 // RELEASE-TRUTH C4 — corridor-relevance horizon. Must equal the contact horizon the release
 // solve actually claims (solveCadenceRelease's own 6 s default): a field intersecting that
 // corridor anywhere can bend the claimed contact, so the preview must not call it irrelevant.
 const THROW_FIELD_CORRIDOR_HORIZON_S = 6;
 
 const AIMABLE_TYPES = new Set(['ship', 'drone', 'asteroid', 'station', 'wreck', 'payload']);
+const THROW_ARM_COMBAT_ARCHETYPES = new Set([
+  'pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer',
+  'hunter', 'mercenary', 'miniboss_capital',
+]);
+
+/** Hostile hulls, fractured chunks and tow payloads use the throw control. */
+export function isThrowArmPayload(state) {
+  const tether = state?.player?.tether;
+  if (!tether?.active || tether.targetId == null) return false;
+  const target = state.entities?.get(tether.targetId);
+  if (!target || target.alive === false) return false;
+  if (target.type === 'ship' || target.type === 'drone') {
+    const player = state.entities?.get(state.playerId);
+    if (player && isHostileToPlayer(target, player.team, state)) return true;
+    // A passive combat hull still carries throwable mass. Civilian and rescue
+    // hulls keep their weld and tow controls.
+    const data = target.data || {};
+    const ai = data.ai;
+    const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role))
+      || data.role || data.scenarioRole || '').toLowerCase();
+    return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
+  }
+  return target.type === 'payload' || (target.type === 'asteroid' && !!target.data?.isChunk);
+}
 
 // INF-016 — turning-target confidence. The intercept solver extrapolates the aim target
 // ballistically, so a target changing course invalidates the release read without invalidating
@@ -98,6 +124,7 @@ export const masslineThrow = {
     // so a held mouse/right-stick/touch aim mutates transient truth instead of allocating per tick.
     this._pointerEntityReleaseTarget = entityReleaseTarget(null, 'pointer');
     this._pointerPointReleaseTarget = pointReleaseTarget('point', 'pointer', 0, 0, 2);
+    this._flickPointReleaseTarget = pointReleaseTarget('point', 'touch-flick', 0, 0, 2);
     this._solutionWasOn = false;
     this._throwArmWasHeld = false;
     this._pendingSnap = null;
@@ -170,16 +197,30 @@ export const masslineThrow = {
     this._swing = { anchorId: payload.id, playerMass: Math.max(0.1, finite(player.mass, 1)),
       taut: String(tether.phase || 'slack') !== 'slack',
       load: String(tether.phase || 'slack') === 'slack' ? 0 : clamp01(finite(tether.load, 0)) };
-    const armed = !!(state.input && state.input.actions && state.input.actions.throwArm);
-    const pressed = armed && !this._throwArmWasHeld;
-    this._throwArmWasHeld = armed;
+    const actions = state.input?.actions;
+    const flick = actions?.touchThrow;
+    const flickPressed = !!flick && flick.targetId === payload.id && flick.attachmentId === tether.attachmentId;
+    const mouseArmed = !!actions?.throwArm;
+    const armed = mouseArmed || flickPressed;
+    const pressed = flickPressed || (mouseArmed && !this._throwArmWasHeld);
+    this._throwArmWasHeld = mouseArmed;
     if (!armed) this._armAuthorized = false;
     if (pressed) this._armAuthorized = true;
     runtime.armed = armed || !!this._pendingSnap;
     runtime.payloadId = payload.id;
     runtime.selfSolution = this._selfSolution(state, player, kin.omega);
-    const aim = this._resolveThrowAim(state, player, payload, runtime);
-    const mode = releaseAssistMode(state);
+    if (flickPressed) {
+      const target = this._flickPointReleaseTarget;
+      target.pos.x = payload.pos.x + flick.x * FLICK_AIM_RANGE;
+      target.pos.z = payload.pos.z + flick.z * FLICK_AIM_RANGE;
+      runtime.releaseTarget = target;
+    }
+    const touchRelease = flickPressed || this._pendingSnap?.touch === true;
+    const aim = this._resolveThrowAim(state, player, payload, runtime, !touchRelease);
+    const assist = releaseAssistMode(state);
+    // A completed flick is a discrete press. It can use the short snap window,
+    // even if the pilot's held-button assist normally waits for a release arc.
+    const mode = touchRelease && assist === 'arm' ? 'snap' : assist;
     const identity = releasePredictionIdentity(payload.id, runtime.releaseTarget);
     if (this._pendingSnap && (this._pendingSnap.identity !== identity
         || this._pendingSnap.attachmentId !== tether.attachmentId || !aim)) {
@@ -268,7 +309,7 @@ export const masslineThrow = {
     if (!pressed) return;
     if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
     if (window.reliable && window.enterS > 0 && window.enterS <= SNAP_WINDOW_MS / 1000) {
-      this._pendingSnap = { identity, attachmentId: tether.attachmentId,
+      this._pendingSnap = { identity, attachmentId: tether.attachmentId, touch: flickPressed,
         deadlineTick: state.tick + Math.ceil(window.enterS * 60 - 1e-6) + SNAP_DEADLINE_SLACK_TICKS };
       runtime.armed = true;
       return;
@@ -328,11 +369,11 @@ export const masslineThrow = {
     this._releaseLatchAttachmentId = null;
   },
 
-  _resolveThrowAim(state, player, payload, runtime) {
+  _resolveThrowAim(state, player, payload, runtime, allowPointer = true) {
     const aimWorld = state.input && state.input.aimWorld;
     const preciseAim = !!(state.input && state.input.aimIntentActive === true
       && aimWorld && Number.isFinite(aimWorld.x) && Number.isFinite(aimWorld.z));
-    if (preciseAim) {
+    if (allowPointer && preciseAim) {
       const candidates = queryNearbyEntities(
         state, { x: aimWorld.x, z: aimWorld.z }, AIM_QUERY_RADIUS, this._aimScratch, state.entityList || [],
       );
