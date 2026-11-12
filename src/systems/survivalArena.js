@@ -1,3 +1,4 @@
+import { readCryoWeatherCue } from './cryoWeatherRead.js';
 // Survival arena participation (CRU / PQ-133 follow-on).
 //
 // The ten-wave Survival ruleset authors an `arenaPhase` per wave, validates it, carries it into the
@@ -1437,6 +1438,8 @@ export const survivalArena = {
             toyId: role === 'coolant' ? 'coolant_tank' : 'heat_manifold',
             home: { x: spot.x, z: spot.z },
             charge: CRYO_PROP_VENT_TICKS,
+            weatherRead: { alive: true, docked: true, active: true, charge: CRYO_PROP_VENT_TICKS },
+            weatherSeen: new Set(),
           });
         }
       }
@@ -1732,6 +1735,7 @@ export const survivalArena = {
         && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z);
       if (!alive) {
         room.props[role] = [];
+        this._readCryoWeather(vent, role, { alive: false, docked: false, active: false, charge: vent.charge });
         continue;
       }
       const dx = body.pos.x - vent.home.x;
@@ -1746,11 +1750,22 @@ export const survivalArena = {
       } else {
         room.props[role] = [];
       }
+      this._readCryoWeather(vent, role, { alive: true, docked: !displaced,
+        active: room.props[role].length > 0, charge: vent.charge });
       if (system && typeof system.updateExternal === 'function') {
         const center = room.props[role][0] || vent.home;
         system.updateExternal(slotId, { center: { x: center.x, z: center.z } });
       }
     }
+  },
+
+  _readCryoWeather(vent, role, current) {
+    const seen = vent.weatherSeen || (vent.weatherSeen = new Set());
+    const cue = readCryoWeatherCue(vent.weatherRead, current, role, seen);
+    vent.weatherRead = current;
+    if (!cue) return;
+    seen.add(cue.id);
+    this._emit('toast', { text: cue.text, kind: 'info', ttl: 4 });
   },
 
   _tickCryo(state) {
