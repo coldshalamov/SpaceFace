@@ -3068,3 +3068,16 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
     transition: none !important; animation: none !important;
   }
 }
+
+/* ── Rope class-up / discovery moment plate (discoveryPlate.js show()) ──────────────────────
+   Inside a Stage frame the shared glass is the only face: the plate's own legacy card (cyan
+   edge, gradient, border, shadow) retires, and the three authored lines get a real hierarchy —
+   one amber title, then the lines in bone on a readable measure. */
+.sf-stage__item .sf-discovery-plate__frame {
+  padding: 0; background: none; border: 0; box-shadow: none; max-width: 292px; text-align: left; }
+.sf-stage__item .sf-discovery-plate__title {
+  font-family: var(--dp-face-label, var(--hud-data)); font-size: 15px; font-weight: 800;
+  letter-spacing: .08em; line-height: 1.2; margin: 0 0 7px; color: var(--dp-amber, #e8c98a); }
+.sf-stage__item .sf-discovery-plate__meta {
+  font-family: var(--dp-face-read, var(--hud-data)); font-size: 13px; font-weight: 500;
+  letter-spacing: .01em; line-height: 1.35; margin-top: 4px; color: var(--dp-ink, #e8e2d4); }
