@@ -108,6 +108,7 @@ const LOCAL_STALE_ACK_MS = 3000;
 // small under mild congestion; the retained merge still bounds deep stalls.
 const LOCAL_MAX_UNACKED = 4;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
+const LOCAL_MAX_CONSECUTIVE_TASK_WAKES = 4;
 // Main-thread presentation heartbeat. Every rAF callback posts one; a stall stops the beats.
 // The fence has ~150-300 ms of history, so after that it holds the picture. If the worker kept
 // stepping through the stall, the first frame after it would re-seat seconds ahead — the
@@ -132,7 +133,8 @@ const localClock = {
   accumulator: 0,
   anchorMs: 0,
   deadlineMs: 0,
-  timer: null,
+  wake: null,
+  consecutiveTaskWakes: 0,
   directiveTick: 0,
   replySequence: 0,
   commandSequence: 0,
@@ -248,6 +250,8 @@ function localElapsedSeconds(elapsedMs) {
 }
 
 function resetLocalClockTiming() {
+  if (localClock.wake?.token) cancelLocalClockWake();
+  localClock.consecutiveTaskWakes = 0;
   localClock.anchorMs = localNowMs();
   localClock.deadlineMs = 0;
   // A pause/rate/epoch boundary starts a new wall interval. Preserve only the sub-tick phase;
@@ -978,7 +982,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     active: localClock.active,
     scale: localClock.scale,
     accumulator: localClock.accumulator,
-    timerPending: localClock.timer !== null,
+    timerPending: localClock.wake !== null,
     timerFires: localClock.timerFires,
     directiveTicks: localClock.directiveTick,
     steps: localClock.stepCount,
@@ -1070,9 +1074,51 @@ function requestAsyncSaveReply() {
   });
 }
 
+let localClockWakeChannel = null;
+let localClockWakeToken = 0;
+
+function cancelLocalClockWake() {
+  const wake = localClock.wake;
+  localClock.wake = null;
+  if (wake && wake.timerHandle !== null) clearTimeout(wake.timerHandle);
+}
+
+function closeLocalClockWakeChannel() {
+  if (localClockWakeChannel) {
+    localClockWakeChannel.port1.close();
+    localClockWakeChannel.port2.close();
+  }
+  localClockWakeChannel = null;
+}
+
+function postLocalClockWake(wake) {
+  try {
+    if (!localClockWakeChannel) {
+      localClockWakeChannel = new MessageChannel();
+      const port = localClockWakeChannel.port1;
+      const receiveWake = (token) => {
+        const pending = localClock.wake;
+        if (pending && pending.token === token) pending.fire();
+      };
+      // Node's worker port can deliver the token directly. Its DOM MessageEvent
+      // accessor can fail inside the simulation fixture's worker environment.
+      if (typeof port.on === 'function') port.on('message', receiveWake);
+      else port.onmessage = (event) => receiveWake(event.data);
+    }
+    wake.token = ++localClockWakeToken;
+    localClockWakeChannel.port2.postMessage(wake.token);
+    return true;
+  } catch (_) {
+    closeLocalClockWakeChannel();
+    localClockWakeChannel = false;
+    wake.token = 0;
+    return false;
+  }
+}
+
 function scheduleLocalClock() {
   if (!localClock.enabled || localClock.stopped || !localClock.active
-    || localClock.scale <= 0 || localClock.timer !== null || localClock.backpressured) return;
+    || localClock.scale <= 0 || localClock.wake !== null || localClock.backpressured) return;
   const now = localNowMs();
   // Include authoritative work since the last batch began. If that work itself left a whole
   // tick owed, yield to one new task promptly instead of waiting another fixed interval.
@@ -1081,25 +1127,45 @@ function scheduleLocalClock() {
   const hasWholeDebt = pendingDebt + 1e-12 >= LOCAL_FIXED_DT;
   if (!hasWholeDebt) localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, now);
   const delayMs = hasWholeDebt ? 0 : Math.max(0, localClock.deadlineMs - now);
+  // A task avoids the nested-timer delay only while whole ticks are already owed and
+  // presentation is responsive. After four tasks, yield a timer turn to other work.
+  const useTask = hasWholeDebt && !localClock.heartbeatHeld && localClock.lastHeartbeatAtMs > 0
+    && now - localClock.lastHeartbeatAtMs <= LOCAL_HEARTBEAT_HOLD_MS
+    && localClock.consecutiveTaskWakes < LOCAL_MAX_CONSECUTIVE_TASK_WAKES
+    && localClockWakeChannel !== false && typeof MessageChannel === 'function';
+  if (useTask && localClock.tickQueued) return;
   const generation = localClock.generation;
-  localClock.timer = setTimeout(() => {
-    localClock.timer = null;
+  const lifecycleGeneration = localClock.lifecycleGeneration;
+  const anchorMs = localClock.anchorMs;
+  const isCurrent = () => !localClock.stopped && localClock.active && localClock.scale > 0
+    && generation === localClock.generation;
+  const wake = { timerHandle: null, token: 0, fire: null };
+  wake.fire = () => {
+    if (localClock.wake !== wake) return;
+    localClock.wake = null;
     localClock.timerFires++;
-    if (localClock.stopped || !localClock.active || generation !== localClock.generation) return;
+    if (!isCurrent()) return;
+    localClock.consecutiveTaskWakes = wake.token ? localClock.consecutiveTaskWakes + 1 : 0;
     localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, localNowMs());
-    // Keep at most one timer-driven tick queued. When the worker is busy, a
-    // timer per 16.67 ms would create an unbounded promise queue and turn a
+    // Keep at most one autonomous tick queued. When the worker is busy, a
+    // wake per 16.67 ms would create an unbounded promise queue and turn a
     // bounded catch-up policy into a delayed burst. The next run measures the
     // whole elapsed interval and consumes another bounded batch from its capped debt.
     if (localClock.tickQueued) return;
     localClock.tickQueued = true;
-    chain = chain.then(() => runLocalClockTick(false)).catch((error) => {
+    chain = chain.then(() => {
+      if (!isCurrent() || (wake.token && (anchorMs !== localClock.anchorMs
+        || lifecycleGeneration !== localClock.lifecycleGeneration))) return;
+      return runLocalClockTick(false);
+    }).catch((error) => {
       self.postMessage({ kind: 'error', message: error?.message || String(error), stack: error?.stack || null });
     }).finally(() => {
       localClock.tickQueued = false;
       scheduleLocalClock();
     });
-  }, delayMs);
+  };
+  localClock.wake = wake;
+  if (!useTask || !postLocalClockWake(wake)) wake.timerHandle = setTimeout(wake.fire, delayMs);
 }
 
 function refreshLocalClockScale(fallback) {
@@ -1124,10 +1190,7 @@ async function handleLocalClockControl(msg) {
   refreshLocalClockScale(msg.timeScale);
   localClock.active = msg.active === true;
   resetLocalClockTiming();
-  if (localClock.timer !== null) {
-    clearTimeout(localClock.timer);
-    localClock.timer = null;
-  }
+  cancelLocalClockWake();
   if (localClock.active) scheduleLocalClock();
 }
 
@@ -1285,10 +1348,8 @@ async function dispatchDirective(msg) {
       localClock.stopped = true;
       localClock.active = false;
       localDisarmStaleAckWatchdog();
-      if (localClock.timer !== null) {
-        clearTimeout(localClock.timer);
-        localClock.timer = null;
-      }
+      cancelLocalClockWake();
+      closeLocalClockWakeChannel();
       localClock.deadlineMs = 0;
       shutdown();
       // storageOps rides every reply kind — writes must not wait for a
@@ -1389,6 +1450,8 @@ self.onmessage = (event) => {
       localClock.heartbeatHoldStartMs = 0;
       localClock.anchorMs = now;
       localClock.accumulator = 0;
+      if (localClock.wake?.token) cancelLocalClockWake();
+      localClock.consecutiveTaskWakes = 0;
       scheduleLocalClock();
     }
     return;

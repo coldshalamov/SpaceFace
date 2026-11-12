@@ -918,6 +918,131 @@ test('a foreground heartbeat arriving before a throttled timer discards the hidd
   }
 });
 
+test('overdue worker wakes yield a timer and discard obsolete posted tasks', async (t) => {
+  const previousSelf = globalThis.self;
+  const previousChannel = Object.getOwnPropertyDescriptor(globalThis, 'MessageChannel');
+  const replies = [];
+  const tasks = [];
+  const closedPorts = [];
+  let now = 10;
+  const send = (data) => globalThis.self.onmessage({ data });
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  const ticks = () => replies.filter((reply) => reply.kind === 'clockTick').length;
+  globalThis.self = { postMessage(reply) {
+    replies.push(reply);
+    if (reply.kind !== 'clockTick') return;
+    // Charge more than one tick of work after the host records the turn's start.
+    now += 18;
+    send({ kind: 'clockAck', clockSequence: reply.clockSequence });
+  } };
+  const setChannel = (value) => Object.defineProperty(globalThis, 'MessageChannel', {
+    configurable: true, writable: true, value,
+  });
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?overdue-wake-${Date.now()}`);
+    send({
+      kind: 'init', seq: 'overdue-wake', profile: 'production', clockMode: 'worker-local',
+      timeScale: 1, seed: 4242, settings: {},
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'overdue-wake',
+    });
+    await waitFor(() => replies.some((reply) => reply.kind === 'ready'));
+
+    const timers = new Map();
+    let timerId = 0;
+    t.mock.method(performance, 'now', () => now);
+    t.mock.method(globalThis, 'setTimeout', (fire, delay) => {
+      timers.set(++timerId, { fire, delay });
+      return timerId;
+    });
+    t.mock.method(globalThis, 'clearTimeout', (id) => timers.delete(id));
+    const clockTimer = () => Array.from(timers.entries()).find(([, timer]) => timer.delay < 30);
+    const fireTimer = async () => {
+      const pending = clockTimer();
+      assert.ok(pending, 'a clock timer is armed');
+      const [id, { fire, delay }] = pending;
+      timers.delete(id);
+      if (delay > 0) now += delay + 0.01;
+      fire();
+      await settle();
+    };
+    const control = (generation, active) => send({ kind: 'clockControl', active, generation, timeScale: 1 });
+    const heartbeat = () => send({ kind: 'laneHeartbeat' });
+
+    setChannel(undefined);
+    control(1, true);
+    await settle();
+    heartbeat();
+    assert.ok(clockTimer()[1].delay > 0, 'a future deadline uses a delayed timer');
+    await fireTimer();
+    assert.equal(clockTimer()[1].delay, 0, 'a worker without MessageChannel uses a timer for debt');
+
+    setChannel(class {
+      constructor() {
+        const receive = this.port1 = { onmessage: null, close: () => closedPorts.push(1) };
+        this.port2 = {
+          postMessage: (data) => tasks.push(() => receive.onmessage({ data })),
+          close: () => closedPorts.push(2),
+        };
+      }
+    });
+    await fireTimer();
+    for (let i = 0; i < 4; i++) {
+      assert.equal(tasks.length, 1, 'one task is pending for the whole-tick debt');
+      assert.equal(clockTimer(), undefined);
+      tasks.shift()();
+      await settle();
+    }
+    assert.equal(tasks.length, 0);
+    assert.equal(clockTimer()[1].delay, 0, 'four task wakes give the timer queue a turn');
+    await fireTimer();
+    assert.equal(tasks.length, 1, 'task wakes resume after the fairness timer');
+
+    const obsolete = tasks.shift();
+    control(2, false);
+    await settle();
+    control(3, true);
+    await settle();
+    assert.ok(clockTimer()[1].delay > 0);
+    await fireTimer();
+    assert.equal(tasks.length, 1);
+    const beforeObsolete = ticks();
+    obsolete();
+    await settle();
+    assert.equal(ticks(), beforeObsolete, 'an obsolete task cannot trigger a new generation');
+
+    const missed = tasks.shift();
+    now += 1000;
+    heartbeat();
+    missed();
+    await settle();
+    assert.equal(ticks(), beforeObsolete, 'a pending task cannot charge a missed heartbeat');
+    assert.ok(clockTimer()[1].delay > 0, 'foreground return starts a fresh deadline');
+
+    now += 1000 / 60 + 1;
+    await fireTimer();
+    assert.equal(tasks.length, 1);
+    const beforeShutdown = ticks();
+    send({ kind: 'shutdown', seq: 'overdue-wake-shutdown' });
+    await settle();
+    assert.deepEqual(closedPorts, [1, 2]);
+    assert.equal(clockTimer(), undefined);
+    tasks.shift()();
+    await settle();
+    assert.equal(ticks(), beforeShutdown, 'a posted task cannot run after shutdown');
+  } finally {
+    if (!replies.some((reply) => reply.kind === 'bye') && typeof globalThis.self.onmessage === 'function') {
+      send({ kind: 'shutdown', seq: 'overdue-wake-cleanup' });
+      await settle();
+    }
+    t.mock.restoreAll();
+    if (previousChannel) Object.defineProperty(globalThis, 'MessageChannel', previousChannel);
+    else delete globalThis.MessageChannel;
+    if (previousSelf === undefined) delete globalThis.self;
+    else globalThis.self = previousSelf;
+  }
+});
+
 test('a budget-limited batch retains unexecuted ticks for later clock turns', { timeout: 60000 }, async () => {
   let receive;
   let limited;
