@@ -314,6 +314,14 @@ export const survivalWave = {
     this._wave = wave;
     this._plan = plan;
     this._sourcePlan = sourcePlan;
+    // The chord is planted at planning time. Its delayed muscle belongs to that
+    // physical room, not a new gate that follows every pilot sidestep.
+    const roomPlayer = this.state?.entities?.get?.(this.state.playerId);
+    if (swarm?.massGap && Number.isFinite(roomPlayer?.pos?.x)
+      && Number.isFinite(roomPlayer?.pos?.z)) {
+      this._massGapAnchor = { x: roomPlayer.pos.x, z: roomPlayer.pos.z };
+    }
+
     if (swarm && swarm.circuit && typeof swarm.circuit === 'object') {
       swarm.circuit = {
         ...swarm.circuit,
@@ -1080,6 +1088,8 @@ export const survivalWave = {
         swarm: !!this._swarm,
         champion: entry.champion === true,
         distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
+        wall: entry.wall === true,
+        roomAnchor: entry.wall === true ? this._massGapAnchor : null,
         // PQ-133.08: law arenas stamp their wave-10 boss's dressing kind off this id.
         arenaId: run && run.arenaId,
         // FB-024: the capital champion's single hull runs the authored score. FB-027: a
@@ -2092,6 +2102,7 @@ export const survivalWave = {
     this._resolved = 0;
     this._carriedAdmitted = 0;
     this._spawnDistance = SURVIVAL_SPAWN_DISTANCE;
+    this._massGapAnchor = null;
     this._swarm = null;
     this._foundry = null;
     this._foundryTicks = 0;

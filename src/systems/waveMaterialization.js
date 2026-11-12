@@ -287,7 +287,13 @@ export function materializeWaveBatch(ctx, request) {
     ? ingressPolicy.anchor : null;
   const fortifiedIngress = req.swarm === true && fixedAnchor
     && Number.isFinite(fixedAnchor.x) && Number.isFinite(fixedAnchor.z);
-  const anchor = fortifiedIngress ? fixedAnchor : playerAnchor(ctx);
+  // Only the authored wall batch may use the room's original planning anchor.
+  // Fortify still owns its corridors. Arrival admission below continues checking
+  // the CURRENT pilot, so crossing the chord cannot cause a close-range spawn.
+  const roomAnchor = req.swarm === true && req.wall === true
+    && Number.isFinite(req.roomAnchor?.x) && Number.isFinite(req.roomAnchor?.z)
+    ? req.roomAnchor : null;
+  const anchor = fortifiedIngress ? fixedAnchor : roomAnchor || playerAnchor(ctx);
   const distance = Number.isFinite(req.distance) && req.distance > 0
     ? req.distance
     : SURVIVAL_SPAWN_DISTANCE;
