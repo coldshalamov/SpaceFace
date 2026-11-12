@@ -81,12 +81,19 @@ Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
 - `6f9b48b15603` — accepted. Test now checks the deliberate paired-momentum law from `51ead0a695b1` and separately enforces the fixed-wall graze cap.
 - `35d89e15725c` — accepted. One outgoing sector capture per handoff, identical matched residency and save records, v27 green. Whole-transition timing remains open.
 - `d27e25933d8d` — accepted as a follow-up packet. A suspended Continue neighbor can overwrite a newer FULL sector; the inactive schedule stays off.
+- `400ad062f147` — accepted. One sensor state read per observer frame, same tactical confidence and restored behavior.
+- `c8306a90b07b` — focused fixture accepted. The revised finish detector counts both laps; Veil gained 2.628 s and Tethys 1.443 s. Helios gained 0.248 s against 0.800 s and stays open. Veil launch and on-screen anchor witness pending.
+- `277b592a3f77` — accepted. Periodic autosave skips revalidating its own previous bytes, validates unseen bytes, and rotates both into recovery. 28 focused checks passed.
+- `d53cba3fed8d` — accepted. The event trace keeps identical ordered snapshots after wrap, clear and teardown. At saturation the 16 matched Node pairs took 236.15 → 23.61 ms median to ingest 40,000 events. v27 passed.
 
 ### Launches and open work
 
 - Launched Codex backend recon and boot deadline workers, then reassigned them to Swarm, physics, presentation, performance and race owners. Launched the Codex economy worker for market and sector lifecycle work.
 - Launched Devin1 on read-only `PERF-01-ADVENTURE-RUN` and `PERF-01-SWARM-RUN`. Inherited Devin1 PARK-01, Devin2 SWARM-GRIND-01, Devin3 PERF-04 and Flash MOB-03. No Devin frontend assignment.
+- Launched Devin2 on read-only `PERF-01-ADVENTURE-RENDER-RUN`. All six arms completed. Rendering off gained 11.0 fps against neighboring Adventure baselines and removed 65.5 long tasks per window. No-post lost 5.9 fps. The flight evolved between arms.
+- Devin1 finished all eight Swarm 20 arms. The first matrix ran at 6–9 fps and 0.58–0.66 sim/wall at baseline. CPU stacks traced 9–11% of sampled baseline main-thread time to the title cinematic over the fight. `883a1ba367ce` retires the cinematic on leaving menu and guards the delayed mount. The route needs a post-fix look.
 - Sent back PERF-04 in `97046bf6f9fd`. The measured pass cut 10 late programs to zero but raised internal first-picture time from 8.9 to 16.1 s. The detached patch was unmeasured at review; the dirty renderer paths belong to the concurrent worker.
 - Full shared-tree gate passed import lint, Adventure, Swarm and v27 replay. Exact-source quick gate passed at `366db36709a6` and that batch is on `origin/master`. Early comms and HUD-area probes accidentally ran outside the lock and were rerun through it.
 - Lead repairs include comms backlog `6db15505ffb9`, mobile quality `94d3cf2dff90`, worker event retention/input reset `52cbcc21e35e`, squad cleanup `ed46120885ed`, idle floor labels `bb7766185116`, owed worker ticks `366db36709a6`, phone receipt/objective copy `6450485b722f`, the desktop latch press `b7ca1a06387e`, and touch tap/flick `9b6018fb3250` and `bc18ca94075d`.
+- The title's Circuits verb had the wrong accessible name and subtitle. `aa5e458c669a` now describes racing and time trials. `9319f3c4e1fb` separates floor tags at the same projected position. `8e93ed933682` applies the compact opening objective when the waypoint owns navigation without a tracked mission. Their focused checks passed; the narrow screenshots are pending.
 - Open: ≥30% idle and ≥0.98 sim/wall in Adventure and Swarm 20, steady 30 fps on a phone, physical iPhone play, satisfying live Massline kills, and the owner's full five-item card. C01-05 stays held. Pinned Adventure settled at 0.96 sim/wall with <1% main-thread idle. The first 390×844 live route passed 33 input/UI checks and submitted about 19.5 world frames/s.

@@ -51,7 +51,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | PERF-03 biggest main-thread owner | Attribute the largest main-thread cost and reduce it without changing the look | BUILT bb7766185116 for idle floor-label layout. Renderer attribution pending |
 | PERF-02b local prediction | Draw the player's ship from their own input on the main thread (client-side prediction), reconciled to the worker — the cure for input lag and flicker | HOLD on PERF-02a review |
 | PERF-02 decouple the sim | `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`), so a saturated main thread slows the world. Loosen after PERF-03 frees headroom | HOLD on PERF-03 |
-| G11-01-never-freeze | The freeze plan end to end (measure quietly → one clock → adaptive playout → cheaper sim) | BUILT in slices. Adaptive playout, bounded clock debt and cheaper economy/physics/AI checks pass. Quiet live targets remain open |
+| G11-01-never-freeze | The freeze plan end to end (measure quietly → one clock → adaptive playout → cheaper sim) | BUILT in slices. Adaptive playout, bounded clock debt and cheaper economy/physics/AI/save/trace checks pass. Quiet live targets remain open |
 | G18-REVIEW | On a quiet machine: `node --test test/al-race-1-contested-line-4242.test.mjs` (two Hard circuits lost the anchored-lap margin after one feel); one Adventure trace of a throw into a ship | READY |
 | G08 silhouettes | Distinct shapes per Swarm enemy (3D; the Forge route in `docs/visual-assets/README.md`) | READY |
 | WRITE G16 one glass | Written: G16-01 (Lane 2), G16-02 (Lane 3) from Devin's recon | DONE |
@@ -70,13 +70,16 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | FIX-R2-reactions-respect-job-owners | Review finding: road rage / tailgater / rubberneckers must lease job-owned hulls through npcJobs, not overwrite them | BUILT 824b9b9b |
 | G18-02b-the-wheel-opens | REDO: holding Q must open the context wheel on the real route; prove with `scripts/fleet/looks/context-wheel.mjs` | BUILT 321ab601 (lead looked: wheel opens mid-fight with FULL STOP / WINCH / STRAFE) |
-| PERF-01-where-the-frame-goes | Seven on/off experiments on the main thread; numbers only. **Only with no other game instance running** | READY |
+| PERF-01-where-the-frame-goes | Main-thread render, HUD and post experiments in quiet Adventure and Swarm 20 | BUILT. In Adventure, render-off gained 11.0 fps across neighboring baselines. The first Swarm matrix exposed title animation running over flight. Verify cadence after `883a1ba367ce` |
 | STAB-05-continue-latest-primary | Continue must restore the latest stable save when another session writes during decode | BUILT 8867962b594c |
 | STAB-06-model-truth-deadline | A stalled model truth census request must reach the boot error boundary and allow retry | BUILT 931c4ffa37f3 |
 | STAB-07-worker-save-restage | Worker Continue must invalidate its latest-slot cache after the main thread stages changed save keys | BUILT 2e613ca67717 |
 | STAB-08-swarm-gate-flare | The round-entry light stays fixed at the gate and has no collision or tether body | DONE d699dc7747de (full gate spawn-motion PASS) |
 | STAB-09-swarm-repair-cell | A repair cell stays available until a wounded player actually uses it | BUILT 39a766463914 |
 | PERF-05-physics-step-summary | Avoid the unused collider and CCD diagnostic walks in each production physics step | BUILT 76863da5a26f (matched Node timing inconclusive) |
+| PERF-06-cinematic-owner | Release the title cinematic, input fence and optical work when an automatic launch leaves the menu | BUILT 883a1ba367ce (20 focused checks; fresh title and Swarm 20 look pending) |
+| PERF-07-event-trace-retention | Keep the production event history bounded without shifting every retained receipt | BUILT d53cba3fed8d (matched Node output and v27 checks pass) |
+| STAB-10-autosave-generation | Reuse the prior autosave's verified bytes when rotating recovery | BUILT 277b592a3f77 (periodic owner skips repeat validation and still validates a foreign generation) |
 | G11-03-continue-neighbor-scheduling | Split a measured blocking neighbor chunk without letting a superseded restore publish | HOLD on a matched Continue trace (d27e25933d8d records the stale-resume repro) |
 | G11-sector-retirement | Retire the outgoing FULL sector once without changing resident actors or durable state | BUILT 35d89e15725c (59 focused and v27 pass; live hitch remains open) |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
@@ -131,8 +134,8 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
 | PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | READY (repeat; last: PL-54 a753e2f6 + lead fix b7df23fb) |
 | PERF-01-ADVENTURE-RUN | Execute the existing locked Adventure diagnostic matrix against the pinned source manifest and report the measurements | BUILT (8 of 12 arms, sector crossing stopped the run before skip-render and trace) |
-| PERF-01-SWARM-RUN | Run the locked Swarm 20 diagnostic matrix against the pinned source and report the measurements | TAKEN agent4 (devin1) |
-| PERF-01-ADVENTURE-RENDER-RUN | Measure render-off and no-post on the same quiet Adventure scene, with a traced baseline | TAKEN agent3 (devin2) |
+| PERF-01-SWARM-RUN | Run the locked Swarm 20 diagnostic matrix against the pinned source and report the measurements | DONE. Eight matched arms; cinematic work contaminated flight results. Follow-up in PERF-06 |
+| PERF-01-ADVENTURE-RENDER-RUN | Measure render-off and no-post on the same quiet Adventure scene, with a traced baseline | DONE. Six matched arms; render-off +11.0 fps, no-post −5.9 fps on this route |
 | UI-DIGEST | `node scripts/check-ui-budgets.mjs` reports `baseline:stale` (digest changed by G18-02, A01-04, G16-01). After G16-01 is BUILT, with no other game running: re-baseline exactly as the failure line says (`node scripts/fleet/game-lock.mjs run -- npm run capture:ui-matrix -- --budgets-out`), rerun the check, commit only the budget files it rewrites | DONE (re-baselined inside G16-01) |
 | KEYS-TESTS-labels | Two UI tests still expect the old key labels (`4` vs `4/Y`) | BUILT f90f0f3f |
 | GATE-RUN | With no other game instance running: `npm run gate`; paste the output into `HANDOFF.md` §1 under "last gate" with the date and `git rev-parse --short HEAD` | READY (repeat) |
