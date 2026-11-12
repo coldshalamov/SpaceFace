@@ -68,6 +68,10 @@ export const LOOK_BASE = deepFreeze({
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
     paintCeiling: 0.72,
+    // LOOK-04 two energy bands: everything a lit surface returns that is NOT emission — pigment, local lamp
+    // light, rim, clear coat, specular — soft-clips toward this ceiling (scene-linear, measured like the bloom
+    // bright-pass). It sits under bloom's knee (threshold 1.0 − knee 0.1), so only authored emission blooms.
+    surfaceCeiling: 0.85,
     // Scale on the shared scene IBL (foundry HDRI) as seen by lit hulls, multiplied by each
     // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
     // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and

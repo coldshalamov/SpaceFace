@@ -304,6 +304,7 @@ export function installIllustratedSurface(material) {
         uniform float sfLookCoatSun;
         uniform float sfLookCoatEdge;
         uniform float sfLookPaintCeiling;
+        uniform float sfLookSurfaceCeiling;
         uniform float sfLookRimStrength;
         uniform float sfLookRimPower;
         uniform float sfLookRockFill;
@@ -418,8 +419,20 @@ export function installIllustratedSurface(material) {
           float sfRoom = sfLookPaintCeiling - sfKnee;
           sfBoundedPigment *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
-        vec3 outgoingLight = sfBoundedPigment + sfLocalIllumination
-          + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
+        // LOOK-04 two energy bands: a lit surface never reaches the bloom bright-pass; only emission does.
+        // Measured the way bloom measures (luminance, or 0.82 × the hottest channel), soft-kneed toward the
+        // ceiling so highlights keep their gradient instead of clipping flat.
+        vec3 sfSurfaceLight = sfBoundedPigment + sfLocalIllumination
+          + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular;
+        float sfSurfaceY = max(dot(sfSurfaceLight, vec3(0.2126, 0.7152, 0.0722)),
+          max(sfSurfaceLight.r, max(sfSurfaceLight.g, sfSurfaceLight.b)) * 0.82);
+        float sfSurfaceKnee = sfLookSurfaceCeiling * 0.65;
+        if (sfSurfaceY > sfSurfaceKnee) {
+          float sfSurfaceOver = sfSurfaceY - sfSurfaceKnee;
+          float sfSurfaceRoom = sfLookSurfaceCeiling - sfSurfaceKnee;
+          sfSurfaceLight *= (sfSurfaceKnee + sfSurfaceOver * sfSurfaceRoom / (sfSurfaceOver + sfSurfaceRoom)) / sfSurfaceY;
+        }
+        vec3 outgoingLight = sfSurfaceLight + totalEmissiveRadiance;`);
     installNocturneProbeShader(shader);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
