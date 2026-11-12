@@ -47,7 +47,7 @@ globalThis.document = {
   body: bodyEl,
 };
 
-function makeWorld({ hitPips = true, damageNumbers = true, flashReduce = false } = {}) {
+function makeWorld({ hitPips = true, damageNumbers = true, flashReduce = false, helpers = {} } = {}) {
   const hud = stubEl('div'); hud.id = 'hud'; elementsById.set('hud', hud);
   const bus = createBus();
   const target = { id: 'npc_1', type: 'ship', alive: true, pos: { x: 100, z: -40 } };
@@ -60,10 +60,33 @@ function makeWorld({ hitPips = true, damageNumbers = true, flashReduce = false }
       accessibility: { flashReduce },
     },
   };
-  const ft = createFloatingText({ state, bus, helpers: {} });
+  const ft = createFloatingText({ state, bus, helpers });
   const layer = hud.children.find((c) => c.id === 'sf-floattext');
   return { bus, state, ft, layer, target };
 }
+
+test('world labels read layout only when a tag needs to be drawn', () => {
+  const world = makeWorld({ helpers: { worldToScreen: (pos) => pos.x < 0
+    ? { x: 0, y: 0, onScreen: false }
+    : { x: 200, y: 100, onScreen: true } } });
+  const padLayer = world.layer.children.find((el) => el.id === 'sf-floorpads');
+  let widthReads = 0;
+  Object.defineProperty(padLayer, 'clientWidth', { get() { widthReads++; return 800; } });
+  world.ft.update(0.016);
+  assert.equal(widthReads, 0, 'empty flight never asks the browser for layout');
+
+  world.target.data = { swarmFloorPad: { label: 'REPAIR' } };
+  world.target.pos.x = -100;
+  world.ft.update(0.016);
+  assert.equal(widthReads, 0, 'a tag that cannot be projected needs no layout');
+  assert.equal(padLayer.children[0].style.display, 'none');
+
+  world.target.pos.x = 100;
+  world.ft.update(0.016);
+  assert.equal(widthReads, 1);
+  assert.equal(padLayer.children[0].textContent, 'REPAIR');
+  assert.equal(padLayer.children[0].style.display, 'block');
+});
 
 function liveNodes(world) {
   return world.layer.children.filter((el) => el.style.display === 'block');
