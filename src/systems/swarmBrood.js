@@ -1071,6 +1071,7 @@ export function createBroodEngine(deps = {}) {
         pendingPlan.find(part => part.id === 'mite').count -= 3;
         pendingPlan.find(part => part.id === 'spitter').count -= 1;
         openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
+          standOff: { slot: mixedSlots[3], life: serial[mixedSlots[3]] },
           lives: mixedSlots.map(slot => ({ slot, life: serial[slot] })) };
         attackAfter[mixedSlots[3]] = Infinity;
         openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: { ...mixed.course, player: state.entities.get(state.playerId) } };
@@ -1926,7 +1927,7 @@ export function createBroodEngine(deps = {}) {
         const machineSteer = def && (def.formation || def.linkShield || def.repairs || def.assembles);
         const openingReach = openingBeat?.standOff;
         if (openingReach?.slot === i && openingReach.life === serial[i] && dp > 1e-4) {
-          // The lone no-stone debut keeps its acid distance for this one beat.
+          // The marked-acid opener keeps its distance for this one beat.
           // Ordinary acceleration/drag, fields and contacts still move it; no
           // frozen pose or new motion owner. Killing it or leaving the beat retires this.
           const seek = Math.max(-9, Math.min(9, (dp - 140) * 0.5));
