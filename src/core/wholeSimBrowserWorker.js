@@ -59,7 +59,13 @@ const LOCAL_MAX_STEPS = 4;
 // a reply before the worker spends another task on the remaining ticks.
 // Explicit-step directives (tape/replay/verification) carry no budget and
 // always run exactly the steps requested.
-const LOCAL_WORK_BUDGET_MS = 24;
+// PERF-02: every directive also pays a fixed tail (command drain, vitals walk,
+// domain diff, journal pack, postMessage, wake turnaround) measured at ~15 ms.
+// A heavy scene's ~28 ms step overshot the old 24 ms budget alone, so each
+// directive paid that tail for a single executed step — ~40% overhead on top
+// of step time. Three-step batches amortize the same tail without touching
+// step semantics; the hitch cap and accumulator bound still govern bursts.
+const LOCAL_WORK_BUDGET_MS = 72;
 const LOCAL_HITCH_CATCHUP_STEPS = 2;
 const LOCAL_MAX_DEBT_SECONDS = 0.25;
 const LOCAL_DURABLE_LIMIT = 4096;
@@ -107,6 +113,13 @@ const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 // stepping through the stall, the first frame after it would re-seat seconds ahead — the
 // freeze-then-teleport jump. Hold the clock instead; the world resumes from the held pose.
 const LOCAL_HEARTBEAT_HOLD_MS = 250;
+// PERF-02 lane accounting window. The clockDiagnostics scalars already diff
+// across any two reads; a completed window adds the distribution facts (per-step
+// worker cost, measured wake cadence) that bare counters cannot carry. Samples
+// live only inside one 15 s window — the published shape stays scalar-only like
+// the rest of clockDiagnostics.
+const LOCAL_PERF_WINDOW_MS = 15000;
+const LOCAL_PERF_SAMPLE_LIMIT = 8192;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
 const LOCAL_MERGED_PACK_MAX_RECORDS = 32768;
 const LOCAL_MERGED_PACK_MAX_SEGMENTS = 64;
@@ -136,6 +149,12 @@ const localClock = {
   lastHeartbeatAtMs: 0,
   heartbeatHeld: false,
   heartbeatHolds: 0,
+  heartbeatHoldStartMs: 0,
+  heartbeatHeldMs: 0,
+  heartbeatHeldTurns: 0,
+  // Ticks the wall clock has owed while active — stepped vs owed is the
+  // sim/wall numerator and denominator the lane attributes.
+  owedTicks: 0,
   unackedSequences: [],
   ackWatchdogTimer: null,
   staleAckRecoveries: 0,
@@ -744,6 +763,108 @@ async function publishLocalReply(reply) {
   postTickLikeReply(reply);
 }
 
+// ---- PERF-02 windowed lane accounting --------------------------------------
+// One bounded sample set per window: per-directive work cost, per-step cost,
+// and measured timer-wake gaps, plus marks of the cumulative counters. At
+// rotation the window publishes one flat scalar row on clockDiagnostics so the
+// main lane can attribute a slow sim/wall to step cost, the heartbeat hold, or
+// the catch-up cap without a trace or a behavior change.
+const localPerf = {
+  windowStartMs: 0,
+  windowIndex: 0,
+  workMs: [],
+  stepMs: [],
+  wakeGapMs: [],
+  marks: null,
+  lastWindow: null,
+};
+
+function localPerfPercentile(samples, p) {
+  if (!samples.length) return null;
+  const sorted = samples.slice().sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * p) - 1)];
+}
+
+const localPerfRound = (value) => (Number.isFinite(value) ? Math.round(value * 100) / 100 : null);
+
+// Held time is a monotonic read — closed episodes plus the still-open segment —
+// so a window or a probe diff that ends mid-hold still attributes the held time.
+function localHeartbeatHeldMsTotal(now) {
+  return localClock.heartbeatHeldMs
+    + (localClock.heartbeatHeld && localClock.heartbeatHoldStartMs > 0
+      ? Math.max(0, now - localClock.heartbeatHoldStartMs) : 0);
+}
+
+function localPerfMark(now) {
+  return {
+    steps: localClock.stepCount,
+    owedTicks: localClock.owedTicks,
+    shed: localClock.shedStepCount,
+    deferred: localClock.budgetDeferredStepCount,
+    heldMs: localHeartbeatHeldMsTotal(now),
+    holds: localClock.heartbeatHolds,
+    heldTurns: localClock.heartbeatHeldTurns,
+    fires: localClock.timerFires,
+    directives: localClock.directiveTick,
+    backpressureMs: localClock.backpressureTotalMs,
+    staleAckRecoveries: localClock.staleAckRecoveries,
+  };
+}
+
+function localPerfSample(reply, elapsedMs, timerTurn) {
+  if (timerTurn && Number.isFinite(elapsedMs)
+    && localPerf.wakeGapMs.length < LOCAL_PERF_SAMPLE_LIMIT) {
+    localPerf.wakeGapMs.push(elapsedMs);
+  }
+  if (reply && Number.isFinite(reply.workMs) && localPerf.workMs.length < LOCAL_PERF_SAMPLE_LIMIT) {
+    localPerf.workMs.push(reply.workMs);
+  }
+  const executed = Number.isSafeInteger(reply?.stepsExecuted) ? reply.stepsExecuted : 0;
+  if (executed > 0 && Number.isFinite(reply.stepsMs)
+    && localPerf.stepMs.length < LOCAL_PERF_SAMPLE_LIMIT) {
+    localPerf.stepMs.push(reply.stepsMs / executed);
+  }
+}
+
+function localPerfRotate(now) {
+  if (!localPerf.marks) {
+    localPerf.windowStartMs = now;
+    localPerf.marks = localPerfMark(now);
+    return;
+  }
+  if (now - localPerf.windowStartMs < LOCAL_PERF_WINDOW_MS) return;
+  const start = localPerf.marks;
+  const end = localPerfMark(now);
+  localPerf.lastWindow = {
+    index: ++localPerf.windowIndex,
+    endedAtMs: Math.round(now),
+    wallMs: Math.round(now - localPerf.windowStartMs),
+    timerFires: end.fires - start.fires,
+    directives: end.directives - start.directives,
+    steps: end.steps - start.steps,
+    owedTicks: localPerfRound(end.owedTicks - start.owedTicks),
+    shedSteps: end.shed - start.shed,
+    budgetDeferredSteps: end.deferred - start.deferred,
+    heartbeatHeldMs: Math.round(end.heldMs - start.heldMs),
+    heartbeatHolds: end.holds - start.holds,
+    heartbeatHeldTurns: end.heldTurns - start.heldTurns,
+    backpressureMs: Math.round(end.backpressureMs - start.backpressureMs),
+    staleAckRecoveries: end.staleAckRecoveries - start.staleAckRecoveries,
+    samples: localPerf.workMs.length,
+    workMsP50: localPerfRound(localPerfPercentile(localPerf.workMs, 0.5)),
+    workMsP95: localPerfRound(localPerfPercentile(localPerf.workMs, 0.95)),
+    stepMsP50: localPerfRound(localPerfPercentile(localPerf.stepMs, 0.5)),
+    stepMsP95: localPerfRound(localPerfPercentile(localPerf.stepMs, 0.95)),
+    wakeGapMsP50: localPerfRound(localPerfPercentile(localPerf.wakeGapMs, 0.5)),
+    wakeGapMsP95: localPerfRound(localPerfPercentile(localPerf.wakeGapMs, 0.95)),
+  };
+  localPerf.marks = end;
+  localPerf.windowStartMs = now;
+  localPerf.workMs.length = 0;
+  localPerf.stepMs.length = 0;
+  localPerf.wakeGapMs.length = 0;
+}
+
 async function runLocalClockTick(force = false, explicitSteps = 0, publishReply = true) {
   if (!localClock.enabled || localClock.stopped) return;
   // The injected stall is part of this tick's wall cost: it elapses BEFORE the elapsed
@@ -759,7 +880,9 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     if (!localClock.heartbeatHeld) {
       localClock.heartbeatHeld = true;
       localClock.heartbeatHolds += 1;
+      localClock.heartbeatHoldStartMs = now;
     }
+    localClock.heartbeatHeldTurns += 1;
     localClock.anchorMs = now;
     localClock.accumulator = 0;
     scheduleLocalClock();
@@ -779,7 +902,9 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   if (hasExplicitSteps) {
     steps = Math.min(LOCAL_MAX_STEPS, explicitSteps);
   } else if (localClock.active && localClock.scale > 0) {
-    localClock.accumulator += localElapsedSeconds(elapsedMs) * localClock.scale;
+    const owedSeconds = localElapsedSeconds(elapsedMs) * localClock.scale;
+    localClock.accumulator += owedSeconds;
+    localClock.owedTicks += owedSeconds / LOCAL_FIXED_DT;
     // Cap carried simulation debt, not the work consumed by this one timer turn. A late wake
     // must not permanently slow the sim by dropping every tick beyond its small work batch.
     if (localClock.accumulator > LOCAL_MAX_DEBT_SECONDS) {
@@ -833,6 +958,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
       localClock.budgetDeferredStepCount += deferred;
     }
   }
+  localPerfSample(reply, elapsedMs, !force && !hasExplicitSteps);
   refreshLocalClockScale();
   // Only advance the watermark after tick() returns. A thrown authoritative
   // batch must never look consumed to the main lane.
@@ -847,6 +973,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   // It is intentionally scalar-only so a stuck loading route can distinguish
   // an inactive/scale-zero clock from transport churn without retaining a
   // per-tick history or changing simulation state.
+  localPerfRotate(now);
   reply.clockDiagnostics = {
     active: localClock.active,
     scale: localClock.scale,
@@ -870,6 +997,10 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     stallTotalMs: localClock.stallTotalMs || 0,
     heartbeatHolds: localClock.heartbeatHolds || 0,
     heartbeatHeld: localClock.heartbeatHeld === true,
+    heartbeatHeldMs: Math.round(localHeartbeatHeldMsTotal(now)),
+    heartbeatHeldTurns: localClock.heartbeatHeldTurns || 0,
+    owedTicks: localPerfRound(localClock.owedTicks),
+    perfWindow: localPerf.lastWindow,
     heartbeatAgeMs: localClock.lastHeartbeatAtMs > 0
       ? Math.max(0, now - localClock.lastHeartbeatAtMs) : null,
     backpressured: localClock.backpressured,
@@ -1244,6 +1375,8 @@ self.onmessage = (event) => {
     localClock.lastHeartbeatAtMs = now;
     if (localClock.heartbeatHeld) {
       localClock.heartbeatHeld = false;
+      localClock.heartbeatHeldMs += Math.max(0, now - localClock.heartbeatHoldStartMs);
+      localClock.heartbeatHoldStartMs = 0;
       localClock.anchorMs = now;
       localClock.accumulator = 0;
       scheduleLocalClock();
