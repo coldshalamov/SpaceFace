@@ -203,8 +203,8 @@ export const salvageTender = {
 
   inspect(page = 'home') {
     if (!this._eligible() || !this._row.discovered || (!this._near(C.offerRange)
-      && !(['cargo', 'restock', 'packing'].includes(page) && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
-    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history', 'departure'].includes(page) ? page : 'home';
+      && !(['cargo', 'restock', 'packing', 'supply_return'].includes(page) && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
+    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history', 'departure', 'supply_return'].includes(page) ? page : 'home';
     const row = this._row, body = this.physical.find(row), choices = [];
     const hull = `${Math.ceil(body?.hull || row.physical.tender.hull)}/${TENDER_PHYSICAL.hullMax}`;
     const stateWord = row.physical.disabled ? 'DISABLED' : row.physical.mode === 'released' ? 'MOVING · services paused' : 'SECURED';
@@ -249,6 +249,17 @@ export const salvageTender = {
       if (!plan.sources.length) detail += ' No surviving original locker currently offers a missing service supply. Use what is aboard, recover supplies elsewhere, or leave without full service; nothing is replenished here.';
       choices.push(choice('home_course', 'Mark Morrowlight return berth · no autopilot', { action: 'course', destination: 'home' }));
       choices.push(choice('service_return', 'Back to booked work / service', { action: 'menu', page: 'service' }));
+    } else if (this._page === 'supply_return') {
+      const plan = tenderDeparturePlan(this.state, row, this.physical.recoveryBodies(row));
+      headline = `${row.name} · supplies aboard, work still ahead`;
+      detail = 'The locker transfers supplies into your hold, not into the tender’s machinery. '
+        + plan.need.map(n => `${n.hold} unsealed ${n.name} aboard; ${n.units} estimated for current ship deficits${n.missing ? `, ${n.missing} short` : ', enough in the hold for that estimate'}.`).join(' ')
+        + (row.stage < 2 ? ' Ship repairs still need the Working Bench; scrap aboard does not unlock it.' : '')
+        + (row.service ? ` Your existing prepaid work is still booked. Return alongside in its bound ship at matched speed${row.service.manualPaused === true ? ', then choose Resume prepaid work when ready' : ' to continue eligible work'}; this estimate does not subtract prepaid work.` : ' Return alongside at matched speed, then choose service. Nothing is booked or spent by this check.')
+        + (row.physical.disabled ? ' Morrowlight is disabled: repair your home before expecting service.' : row.physical.mode === 'released' ? ' Morrowlight is moving: secure it before service can run.' : '')
+        + ' The return mark follows your actual home, not an old supply-run starting point. Taking more is optional; original lockers never refill for free.';
+      choices.push(choice('return_home', 'Mark actual Morrowlight · no autopilot', { action: 'supply_return_course' }));
+      choices.push(choice('return_cargo', 'Back to the original lockers', { action: 'menu', page: 'cargo' }));
     } else if (this._page === 'service') {
       detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 wu at matched speed. Leaving pauses prepaid work.`;
       if (row.service) {
@@ -303,6 +314,7 @@ export const salvageTender = {
               commodityId: line.commodityId, quantity: 1 }));
         }
       }
+      if (row.owned) choices.push(choice('supply_return_menu', 'Check recovered supplies / return to Morrowlight', { action: 'menu', page: 'supply_return' }));
       if (row.owned) choices.push(choice('restock_menu', 'Rack / pack / patch Morrowlight', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'restock') {
       detail = 'Choose an original pod to pack from your hold. Each click moves one unsealed supply, with no purchase or free refill. Keep within 75 wu at matched speed. Original compartment limits remain unchanged; lost pods are not replaced.';
@@ -382,6 +394,14 @@ export const salvageTender = {
     if (!this._eligible()) return fail('Adventure flight only.');
     if (revision !== this._row.revision) return this._feedback(fail('This offer changed. Inspect Morrowlight again.'));
     if (action === 'menu') return this.inspect(options.page);
+    if (action === 'supply_return_course') {
+      if (!this._row.owned || !this._sameSector() || (!this._near(C.offerRange) && !this._nearbyCrate())) return fail('Return alongside an original locker or Morrowlight to check the supply run.');
+      if (!this.physical.find(this._row)) return fail('The original Morrowlight is unavailable.');
+      const row = this._row, offer = this._offer;
+      const result = this._course('home');
+      if (result.ok && owners.get(this.state) === this && this._row === row && this._offer === offer && !this._restoring) { this._dismissed = true; this._hide(); }
+      return result;
+    }
     if (action === 'supply_course') {
       if (!this._row.owned || !this._near(C.offerRange) || !this._sameSector()) return fail('Return alongside your tender to plan the supply run.');
       const plan = tenderDeparturePlan(this.state, this._row, this.physical.recoveryBodies(this._row));
