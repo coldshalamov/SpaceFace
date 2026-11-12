@@ -336,6 +336,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   /* the dossier half opens on which job ACCEPT takes: kind and title, then the verbs, then the terms */
   ${D} .sx-dossier > .k-caps { order:-3 !important; }
   ${D} .sx-dossier > .sx-dossier__title { order:-2 !important; margin-bottom:8px !important; }
+  /* the dossier plate sat 26px in from the left but flush right, its rounded hairline merging into the panel frame: an even
+     12px inset on both sides keeps the plate's width (the title still holds one line) and shows all four corners */
+  ${D} .sx-ct__dossier { padding-left:12px !important; padding-right:12px !important; }
 }
 /* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
    and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
