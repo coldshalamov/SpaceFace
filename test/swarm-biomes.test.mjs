@@ -14,6 +14,7 @@ import { test } from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
+import { physics } from '../src/core/physics.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import { SURVIVAL_WAVES } from '../src/data/survivalWaves.js';
 import { ARENA_LAWS, survivalArenaById } from '../src/data/survivalArenas.js';
@@ -243,6 +244,40 @@ test('the mill shakes ore loose: a fracture spawns chunks that pay the run walle
     swarmArena._fractureDebris(rock2);
     const ore2 = h2.spawned.filter((e) => e.type === 'pickup');
     assert.equal(ore2.length, 0, 'the Foundry does not pay ore');
+  } finally {
+    swarmArena.destroy();
+  }
+});
+
+test('a mill ore a drone scoops is refused — the chunk and its credit both survive', () => {
+  const h = arenaBoot({ wave: 1, arenaId: MILL_ARENA_ID });
+  const contact = Object.assign(Object.create(physics), { _diag: { pickupCollections: 0 } });
+  try {
+    h.bus.emit('run:wavePlanned', { wave: 1, plan: {} });
+    const rock = {
+      id: 9201, alive: true, type: 'asteroid', collides: true,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 20, hull: 5, hullMax: 40,
+      data: { swarmArenaDebris: true },
+    };
+    h.state.entities.set(rock.id, rock);
+    swarmArena._fractureDebris(rock);
+    const ore = h.spawned.find((e) => e.type === 'pickup' && e.data && e.data.kind === MILL_ORE_KIND);
+    assert.ok(ore);
+    const drone = { id: h.state.playerId + 900, alive: true, type: 'drone', pos: { ...ore.pos }, radius: 6 };
+    h.state.entities.set(drone.id, drone);
+    const awards = () => named(h, 'run:awardRequested');
+    const before = awards().length;
+    assert.equal(contact._applyPickupCollection(ore, drone, h.bus, h.state), false,
+      'the real contact path reads the refusal, not a legacy consume');
+    assert.equal(ore.alive, true, 'the rejected chunk stays physical');
+    assert.ok(swarmArena._millOres.has(ore.id), 'a refused scoop never spends the ledger');
+    assert.equal(awards().length, before, 'a wrong collector is never paid');
+    assert.equal(contact._applyPickupCollection(ore, h.player, h.bus, h.state), true,
+      'the same chunk still collects for the pilot');
+    assert.equal(ore.alive, false, 'an accepted collect spends the body');
+    assert.equal(awards().length, before + 1, 'the wallet pays exactly once');
+    assert.equal(awards().at(-1).payload.reason, 'swarm:millOre');
+    assert.ok(!swarmArena._millOres.has(ore.id), 'paid is spent — the ledger cannot pay twice');
   } finally {
     swarmArena.destroy();
   }

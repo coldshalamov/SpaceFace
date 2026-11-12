@@ -677,7 +677,7 @@ test('the result revision moves on every write — a retry cannot repeat a plate
 
 // ── The quieter flags: collector gate, score factor, door parity, fresh reading ──
 
-test('a pod a drone ate pays nobody — the collector gate mirrors the repair cell', () => {
+test('a pod a drone scoops is refused outright — the pilot can still claim it', () => {
   const h = boot();
   beginSwarm(h, { stake: 'contender' });
   h.state.run.phase = 'active';
@@ -688,9 +688,15 @@ test('a pod a drone ate pays nobody — the collector gate mirrors the repair ce
   const awards = () => named(h.emitted, 'run:awardRequested')
     .filter((e) => e.payload && e.payload.reason === 'swarm:supplyPod');
   director._pods.set(77, 60);
-  h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 40 });
-  assert.equal(awards().length, 0, 'an NPC collector consumes but never pays');
-  assert.ok(!director._pods.has(77), 'the pod is still spent');
+  const foreign = { pickupId: 77, collectorId: 40 };
+  h.bus.emit('pickup:collected', foreign);
+  assert.equal(awards().length, 0, 'an NPC collector is refused, never paid');
+  assert.equal(foreign.acceptedAmount, 0, 'explicit rejection leaves the pod physical');
+  assert.equal(foreign.rejectedAmount, 60, 'the full stamped worth stays unclaimed');
+  assert.ok(director._pods.has(77), 'a refused scoop never spends the ledger');
+  h.bus.emit('pickup:collected', { pickupId: 77, collectorId: 9 });
+  assert.equal(awards().length, 1, 'the same pod still pays the pilot afterward');
+  assert.ok(!director._pods.has(77), 'paid is spent — the ledger cannot pay twice');
   // Absent claims (the publishers disagree on payload shape); the player's id claims.
   for (const collectorId of [undefined, 9]) {
     director._pods.set(88, 60);
