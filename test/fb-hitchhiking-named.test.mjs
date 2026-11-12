@@ -449,7 +449,8 @@ test('FB-012: a wrecking ball outside a run is named once; an ordinary kill is n
 
 test('FB-012: the flight HUD path mounts the layer and releases it with the HUD', () => {
   const hudSource = readFileSync(fileURLToPath(new URL('../src/ui/hud.js', import.meta.url)), 'utf8');
-  assert.match(hudSource, /ensureStuntCallout\(\{ state, bus: ctx\.bus \}\)/,
+  // 9dec955de450 wired the callout to the HUD's transient-geometry invalidation.
+  assert.match(hudSource, /ensureStuntCallout\(\{ state, bus: ctx\.bus, onFlightTextGeometryChange: invalidateTransientOverlayGeometry \}\)/,
     'createHud mounts the stunt callout layer');
   assert.match(hudSource, /releaseStuntCallout\(\)/,
     'the HUD destroy releases the mount');
