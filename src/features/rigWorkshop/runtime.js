@@ -1,4 +1,4 @@
-import { workshopAftermath } from './aftermath.js';
+import { workshopAftermath, workshopNextWork } from './aftermath.js';
 // RATCHET: one simulation owner for the bench, its machines and work orders.
 // All decisions arrive through promptDeck; movement and contacts stay with native physics.
 import { installRelayCargoImpacts } from './cargoImpact.js';
@@ -470,10 +470,34 @@ export function createRigWorkshopSystem() {
         view.nearby ? view.detail : `${view.job.delivered.length}/${view.job.cargo.length} originals recorded; ${view.job.paid} cr already paid. Return to the original gantry to hear the receiving crew’s account. Closing work never reissues its cargo.`, [
           { id: 'return', label: 'Mark original receiving gantry', disabled: !view.receiver, run: () => mark() },
           ...(view.nearby ? view.originals.map(o => ({ id: `received:${o.id}`, label: `${o.name} · ${o.integrity}% · crew custody`, run: () => mark(o) })) : []),
+          { id: 'next-work', label: 'Ask the crew what work follows', disabled: !view.nearby, run: () => this._showWorkHandoff(id) },
           { id: 'read', label: 'Read current receiving account', disabled: !view.nearby, run: () => this._showAftermath(id) },
           { id: 'back', label: 'Back to work board', run: () => this._showJobs() },
           this._option('leave', 'Leave the crew to work', 'close', {}, { cancel: true }),
         ]);
+    },
+    _showWorkHandoff(id) {
+      const w = this.workshop, view = workshopAftermath(this.state, w, id);
+      if (!isWorkshopAdventure(this.state) || !view?.nearby) { this._showAftermath(id); return; }
+      const next = workshopNextWork(w);
+      const stillHere = () => {
+        const current = workshopAftermath(this.state, this.workshop, id);
+        return isWorkshopAdventure(this.state) && this.workshop === w && current?.job === view.job
+          && current.nearby && current.receiver === view.receiver;
+      };
+      const proceed = action => {
+        if (!stillHere()) { this.feedback('reject', 'Return to the receiving crew to continue this conversation.'); this._showAftermath(id); return; }
+        // Re-read after an interruption; a new order must not inherit an old card's advice.
+        const current = workshopNextWork(w);
+        if (current.kind !== next.kind || current.id !== next.id) { this._showWorkHandoff(id); return; }
+        action();
+      };
+      this._show('work-handoff', next.title, next.detail, [
+        ...(next.kind === 'active' ? [{ id: 'current-order', label: 'Read current order destinations', run: () => proceed(() => this._showGuide()) }] : []),
+        { id: 'bench-return', label: 'Mark original workshop bench · no autopilot', run: () => proceed(() => { this.jobs.guide(w, 'bench'); this._close(); }) },
+        { id: 'back', label: 'Back to receiving account', run: () => this._showAftermath(id) },
+        this._option('leave', 'Leave the crew to work', 'close', {}, { cancel: true }),
+      ]);
     },
     _showGuide() {
       const job = this.workshop.jobs[this.workshop.activeJobId];

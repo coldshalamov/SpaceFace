@@ -1,4 +1,4 @@
-import { RIG_JOB_DEFS } from './jobs.js';
+import { RIG_JOB_DEFS, rigJobAvailability } from './jobs.js';
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 /** Completed work remains a place and a conversation, not another payable contract. */
 export function workshopAftermath(state, w, id) {
@@ -36,4 +36,27 @@ export function workshopAftermath(state, w, id) {
     + (originals.length < n ? ' Some received originals are no longer here intact. The old receipts remain history, not proof of their current condition.' : '')
     + (originals.some(o => o.integrity < 90) ? ' The pieces still here show wear; the crew has not repaired or replaced them.' : '');
   return { job, receiver: receiverLive ? receiver : null, nearby, originals, detail, title: def.title, outcome };
+}
+
+/** Receiving crews connect the work already witnessed to the next actual order.
+ * This is advice, not a new unlock, contract, reward, or promise of installation. */
+export function workshopNextWork(w) {
+  const active = w.jobs?.[w.activeJobId];
+  if (active && !active.settled) return { kind: 'active', id: active.id,
+    title: 'Continue the open work order',
+    detail: `You already have ${active.title} open. Its remaining originals and receiving gantry are the next work; this conversation does not replace that agreement. Read the current destinations before taking another load.` };
+  const next = RIG_JOB_DEFS.find(d => !w.jobs?.[d.id] && rigJobAvailability(w, d.id).ok);
+  if (next) {
+    const reasons = {
+      needle: 'The survey crew still needs three separate cores from the Needle Orchard. Their freight throat asks for a narrow rig, not another heavy-lift solution. The collector and bumpers can be changed at the bench; no new rig is issued.',
+      kiln: 'The coolant tender still needs the kiln’s two thermal stores. Survey work was about fitting through a throat; this job is about mass, balance and braking. The workshop’s powered sled was built for that kind of load. Check its surviving parts and fit at the bench before deciding to accept.',
+      relay: 'Both receiving crews have an original on record and their orders are settled. That earns the Quiet Relay offer: a delicate signal coil and a heavier protective housing for the night shift. Take them one at a time if needed. Returning to the bench only lets you read the terms; it does not accept the order.',
+    };
+    return { kind: 'offer', id: next.id, title: `Next work · ${next.title}`, detail: reasons[next.id] };
+  }
+  if (!w.jobs?.relay && !rigJobAvailability(w, 'relay').ok) return { kind: 'closed', id: 'relay',
+    title: 'The missing receipt stays missing',
+    detail: 'The local orders are closed, but at least one receiving crew has no delivered original on record. The night shift will not offer the Quiet Relay on an empty receipt. Those closed contracts cannot be paid or reopened. Your machine remains yours to change and use elsewhere; nothing here respawns the lost work.' };
+  return { kind: 'finished', id: null, title: 'No further order on this board',
+    detail: 'These three work orders are settled. Keep the rig you built: you can bring it back to the bench, change it, repair its surviving parts or take it elsewhere. The crews keep the delivery receipts; those records do not guarantee that every original still survives here. There is no repeat contract or second completion payment.' };
 }
