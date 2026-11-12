@@ -78,7 +78,7 @@ export const TECH_NODES = [
     unlocks: { ships: ['ship_leviathan'], modules: ['wpn_siege_lance_l'] },
   },
   {
-    id: 'tech_attack_topology', name: 'Attack Topology', branch: 'combat', prereqs: ['tech_combat_basics'],
+    id: 'tech_attack_topology', name: 'Attack angles', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 3333, rp: 6 },
     unlocks: { modules: ['mod_twin_mount', 'mod_triad_mount', 'mod_piercing_core', 'mod_forked_core', 'mod_herald_fan'] },
   },
@@ -88,7 +88,7 @@ export const TECH_NODES = [
     unlocks: { modules: ['mod_bank_shot', 'mod_smart_bank', 'mod_bank_relay', 'mod_repulsion_trap_s'] },
   },
   {
-    id: 'tech_payload_conduction', name: 'Payload Conduction', branch: 'combat', prereqs: ['tech_attack_topology', 'tech_plasma_dynamics'],
+    id: 'tech_payload_conduction', name: 'Cargo handling', branch: 'combat', prereqs: ['tech_attack_topology', 'tech_plasma_dynamics'],
     cost: { credits: 17500, rp: 21 },
     unlocks: { modules: ['mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_relay_arc', 'mod_conductive_path', 'mod_cryo_payload', 'mod_fire_lance_s_mk2'] },
   },
