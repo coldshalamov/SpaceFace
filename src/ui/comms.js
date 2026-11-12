@@ -39,6 +39,15 @@ import { isSwarmGlass } from './swarmGlass.js';
 const dialogHost = (ctx) =>
   (ctx && ctx.stage && typeof ctx.stage.slotEl === 'function' && ctx.stage.slotEl('dialog'))
   || document.getElementById('ui-root');
+// G16-03: a transient centre dialog (endgame choice, scavenger claim) is admitted through the
+// Stage's dialog seat — it queues behind an open station/menu screen or another dialog and
+// mounts when the seat frees. Buttons keep their own click ownership; `open` lands on mount.
+function seatDialog(ctx, wrap, id) {
+  const stage = ctx && ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
+  const open = () => requestAnimationFrame(() => wrap.classList.add('open'));
+  if (!stage) { dialogHost(ctx).appendChild(wrap); open(); return null; }
+  return stage.show('dialog', wrap, { id, severity: 'warn', bare: true, onMount: open });
+}
 const PLACE_GRAFFITI_HOLD_MS = 8000;
 const PLACE_GRAFFITI_FADE_MS = 400;
 
@@ -390,14 +399,10 @@ export function createComms(ctx) {
     // comms feed — the whole channel is narrative chatter, not the fight.
     // X3 Adventure glass: ordinary flight is the same case. The left-edge feed is prose
     // texture; it belongs to the bar, codex or station, not over the action.
-    // A durable story receipt is the exception: its state record is the real destination, and
-    // this entry still lands in the backlog so the act line is never silently dropped.
-    if (glassed && !durableStory) return;
-    if (glassed && durableStory) {
-      backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'story', note: p.note || null, at: Date.now() });
-      while (backlog.length > MAX_BACKLOG) backlog.pop();
-      if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
-      else rebuildBacklog();
+    // Explicit log-only atmosphere and durable story receipts still go to the
+    // backlog during flight, with no feed or trace animation.
+    if (glassed) {
+      if (durableStory || p.logOnly === true) appendBacklog(p, durableStory ? 'story' : 'ambient');
       return;
     }
     traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
@@ -413,10 +418,7 @@ export function createComms(ctx) {
     // the same voice twice. Explicit log-only atmosphere also lands immediately in that same history.
     // Ambient chatter (unmarked) still fills the feed as the channel texture.
     if (p._viaVoice || p.logOnly === true) {
-      backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'ambient', note: p.note || null, at: Date.now() });
-      while (backlog.length > MAX_BACKLOG) backlog.pop();
-      if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
-      else rebuildBacklog();
+      appendBacklog(p, 'ambient');
       return;
     }
     if (!durableStory && !fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
@@ -600,6 +602,12 @@ export function createComms(ctx) {
 
   let backlogOpen = false;
   if (state.ui) state.ui.commsBacklogOpen = false;
+  function appendBacklog(p, fallbackCategory) {
+    backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || fallbackCategory, note: p.note || null, at: Date.now() });
+    while (backlog.length > MAX_BACKLOG) backlog.pop();
+    if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
+    else rebuildBacklog();
+  }
   function openBacklog() {
     backlogOpen = true;
     if (state.ui) state.ui.commsBacklogOpen = true;
@@ -678,11 +686,12 @@ export function createComms(ctx) {
       '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">YES</button><button class="sf-endgame__c-no">NO</button></div>' +
       '</div>';
-    dialogHost(ctx).appendChild(wrap);
-    requestAnimationFrame(() => wrap.classList.add('open'));
+    const seat = seatDialog(ctx, wrap, 'comms-choice');
+    wrap._sfSeat = seat;
     const cleanup = () => {
       choiceModalOpen = false;
       ownedModals.delete(wrap);
+      if (seat) seat.clear({ keepEl: true });
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
@@ -754,11 +763,12 @@ export function createComms(ctx) {
       '<div class="sf-endgame__c-hint">They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.</div>' +
       '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">CUT LINE</button><button class="sf-endgame__c-no">REFUSE</button></div>' +
       '</div>';
-    dialogHost(ctx).appendChild(wrap);
-    requestAnimationFrame(() => wrap.classList.add('open'));
+    const seat = seatDialog(ctx, wrap, 'comms-choice');
+    wrap._sfSeat = seat;
     const cleanup = () => {
       choiceModalOpen = false;
       ownedModals.delete(wrap);
+      if (seat) seat.clear({ keepEl: true });
       wrap.classList.remove('open');
       setTimeout(() => wrap.remove(), 220);
     };
@@ -835,7 +845,7 @@ export function createComms(ctx) {
     ]) {
       try { if (child && typeof child.destroy === 'function') child.destroy(); } catch (_) {}
     }
-    for (const modal of ownedModals) modal.remove();
+    for (const modal of ownedModals) { if (modal._sfSeat) modal._sfSeat.clear(); modal.remove(); }
     ownedModals.clear();
     live.length = 0;
     held.length = 0;

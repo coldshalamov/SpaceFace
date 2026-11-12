@@ -1031,6 +1031,11 @@ export const fields = {
       strength: swarmAnchor || spinupTicks > 0 ? 0 : strength,
       damping: positive(anchor.damping, def.damping || 0),
       falloff: positive(anchor.falloff, def.falloff),
+      // SWARM-GRIND-01 — annular hold keys ride the anchor like every other authored shape
+      // knob. Zero/nonpositive reads as "no dead zone" exactly as it does on a def.
+      innerRadius: positive(anchor.innerRadius, def.innerRadius || 0),
+      innerSoft: positive(anchor.innerSoft, def.innerSoft || 0),
+      innerDamping: positive(anchor.innerDamping, def.innerDamping || 0),
       durationS: Infinity,
       sourceId: entity.id,
       ownerId: entity.id,

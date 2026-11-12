@@ -12,6 +12,8 @@ import { SECTORS } from '../data/sectors.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
+import { floatLedger, floatPriority, seatOutOfRects } from './floatingTextRules.js';
+import { createAvoidRects } from './hudAvoidRects.js';
 
 const POOL = 56;
 
@@ -140,6 +142,9 @@ export function weakPointFloatingTextSpec(payload) {
 
 export function createFloatingText(ctx) {
   const { state, helpers, bus } = ctx;
+  const ledger = ctx.floatLedger || floatLedger;
+  const avoid = ctx.avoidRects || createAvoidRects(typeof document !== 'undefined' ? document : null,
+    { exclude: (el) => !!(el.closest && el.closest('#sf-floattext, #sf-floorpads')) });
   const unsubscribers = [];
   const on = (event, listener, options = undefined) => {
     if (!bus || typeof bus.on !== 'function') return null;
@@ -173,7 +178,8 @@ export function createFloatingText(ctx) {
     el.appendChild(label);
     layer.appendChild(el);
     nodes.push({ el, mark, label, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0, oy: 0,
-      targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null });
+      targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null,
+      entry: null, w: 0, h: 0, textDirty: true });
   }
   let head = 0;
   let activeCount = 0;
@@ -186,30 +192,35 @@ export function createFloatingText(ctx) {
   const padLayer = document.createElement('div');
   padLayer.id = 'sf-floorpads';
   padLayer.setAttribute?.('aria-hidden', 'true');
-  layer.appendChild(padLayer);
+  // The pad tags sit UNDER the HUD panels (first child of #hud, z 0) so a till tag drifting behind
+  // the round panel or the radar never covers it; the floats keep the layer above.
+  if (root && typeof root.insertBefore === 'function' && root.firstChild) root.insertBefore(padLayer, root.firstChild);
+  else layer.appendChild(padLayer);
   const padNodes = new Map();   // entityId -> { el, lastText, denied }
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
 
   function syncPadLabels() {
-    if (padNodes.size === 0 && !(state.entities && typeof state.entities.values === 'function')) return;
-    if (!helpers.worldToScreen) return;
+    if (!helpers.worldToScreen || typeof state.entities?.values !== 'function') return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    const seen = new Set();
+    let seen = null;
+    let padW;
+    let padH;
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
+      seen ??= new Set();
       seen.add(e.id);
       let node = padNodes.get(e.id);
       if (!node) {
         const el = document.createElement('div');
         el.className = 'sf-fp';
         padLayer.appendChild(el);
-        node = { el, lastText: '', denied: null };
+        node = { el, lastText: '', denied: null, w: 0 };
         padNodes.set(e.id, node);
       }
       const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
-      if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; }
+      if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; node.w = 0; node.h = 0; }
       // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
       // refusedUntil in sim time, so the red reads exactly as long as the pad is lit denied.
       const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
@@ -225,12 +236,33 @@ export function createFloatingText(ctx) {
       if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;
       if (show) {
         // Sit just above the body's mark so the pad's own light stays visible under the words.
-        const nextTransform = `translate3d(${s.x}px,${s.y - 26}px,0) translate(-50%,-50%)`;
+        // Keep the whole chip on the plate: a pad at the room's edge slides its tag inward
+        // rather than being cut by the layer. Width is measured once per text change.
+        if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
+        // Reading client dimensions can force layout for the whole HUD. An empty
+        // flight or a tag outside the projection doesn't need either dimension.
+        padW ??= padLayer.clientWidth || layer.clientWidth || 0;
+        const half = node.w / 2 + 6;
+        const px = padW > half * 2 ? Math.min(Math.max(s.x, half), padW - half) : s.x;
+        let py = Math.max(s.y - 26, 16);
+        // G16-04: a tag never draws inside the Swarm centre column or a HUD corner panel — it
+        // slides to the nearest clear seat, and dims to 35% only when none exists.
+        let fade = 1;
+        let cx = px;
+        if (node.w > 0 && node.h > 0) {
+          padH ??= padLayer.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 720);
+          const seat = seatOutOfRects({ x: px - node.w / 2, y: py - node.h / 2, w: node.w, h: node.h },
+            avoid.get(), { w: padW || (typeof window !== 'undefined' ? window.innerWidth : 1280), h: padH });
+          cx = seat.x + node.w / 2; py = seat.y + node.h / 2; fade = seat.fade;
+        }
+        const nextTransform = `translate3d(${cx}px,${py}px,0) translate(-50%,-50%)`;
         if (node.el.style.transform !== nextTransform) node.el.style.transform = nextTransform;
+        const nextOp = fade < 1 ? String(fade) : '';
+        if (node.op !== nextOp) { node.op = nextOp; node.el.style.opacity = nextOp; }
       }
     }
     for (const [id, node] of padNodes) {
-      if (seen.has(id)) continue;
+      if (seen?.has(id)) continue;
       node.el.parentNode && node.el.parentNode.removeChild(node.el);
       padNodes.delete(id);
     }
@@ -239,6 +271,7 @@ export function createFloatingText(ctx) {
   function retire(n) {
     if (!n || !n.alive) return;
     n.alive = false;
+    if (n.entry) { ledger.release(n.entry); n.entry = null; }
     if (activeCount > 0) activeCount--;
     n.el.style.display = 'none';
     n.label.textContent = '';
@@ -253,11 +286,33 @@ export function createFloatingText(ctx) {
     if (!opts.controlReceipt && (!state.settings || state.settings.showDamageNumbers === false
       || state.settings.gameplay?.damageNumbers === false)) return;
     if (opts.controlReceipt === 'pip' && state.settings?.gameplay?.hitPips === false) return;
+    // G16-04: pip marks and control receipts are flat marks; every other word goes through the
+    // shared ledger — identical words merge, four at most, lowest priority gives way.
+    let entry = null;
+    if (!opts.controlReceipt && !/sf-ft--pip/.test(cls)) {
+      let sx = 0, sy = 0;
+      if (helpers.worldToScreen) {
+        _ftWorld.x = wx; _ftWorld.z = wz;
+        const p = helpers.worldToScreen(_ftWorld, _ftScreen);
+        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) { sx = p.x; sy = p.y; }
+      }
+      const adm = ledger.admit({ text, x: sx, y: sy, priority: floatPriority(cls),
+        mergeable: !opts.damage });
+      if (adm.action === 'dropped') return;
+      if (adm.action === 'merged') return adm.entry.node || undefined;
+      entry = adm.entry;
+    }
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
     if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
     activeCount++;
     n.alive = true; n.age = 0; n.life = opts.life || 0.95;
+    n.entry = entry; n.w = 0; n.h = 0;
+    if (entry) {
+      entry.node = n;
+      entry.refresh = (t) => { n.label.textContent = t; n.age = 0; n.w = 0; n.h = 0; };
+      entry.evict = () => { entry.node = null; n.entry = null; retire(n); };
+    }
     n.targetId = targetId != null ? targetId : null;
     n.entity = targetId != null ? state.entities.get(targetId) : null;
     n.damage = opts.damage || 0;
@@ -500,7 +555,16 @@ export function createFloatingText(ctx) {
       const rise = n.vy * n.age + n.oy;     // integrated rise (px), plus the birth offset
       const drift = n.vx * n.age;
       const sc = reduced ? 1 : popScale(n.age);
-      const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
+      let px = s.x + drift, py = s.y + rise, seatFade = 1;
+      if (n.entry) { n.entry.x = px; n.entry.y = py; }
+      // G16-04: a word never sits in the Swarm centre column or over a HUD corner panel — slide it to
+      // the nearest clear seat, or dim it to 35% when there is none.
+      if (!n.w && n.el.style.display !== 'none') { n.w = n.el.offsetWidth || 0; n.h = n.el.offsetHeight || 0; }
+      if (n.w > 0 && n.h > 0 && !/sf-ft--pip/.test(n.el.className)) {
+        const seat = seatOutOfRects({ x: px - n.w / 2, y: py - n.h / 2, w: n.w, h: n.h }, avoid.get(), { w: vw, h: vh });
+        px = seat.x + n.w / 2; py = seat.y + n.h / 2; seatFade = seat.fade;
+      }
+      const nextTransform = `translate3d(${px}px,${py}px,0) translate(-50%,-50%) scale(${sc})`;
       if (n._sfHudTransform !== nextTransform) {
         n._sfHudTransform = nextTransform;
         n.el.style.transform = nextTransform;
@@ -517,7 +581,7 @@ export function createFloatingText(ctx) {
         const overX = Math.max(0, Math.abs(ex - vw * 0.5) - vw * 0.5) / (vw * 0.12);
         const overY = Math.max(0, Math.abs(ey - vh * 0.5) - vh * 0.5) / (vh * 0.12);
         const over = Math.max(overX, overY);
-        nextOpacity = String(over >= 1 ? 0 : (1 - t * t) * (1 - over));
+        nextOpacity = String(over >= 1 ? 0 : (1 - t * t) * (1 - over) * seatFade);
       }
       if (n._sfOpacity !== nextOpacity) {
         n._sfOpacity = nextOpacity;
@@ -610,14 +674,17 @@ function injectStyle() {
   /* A01-04 floor pads — a till's price tag rides its lit body, constant screen size so the pad
      reads from anywhere in the room. Lamp warm (a place you spend) at rest, danger red for the
      sim-timed refusal flash. Same keyline law as the floats; never above the prompt deck. */
-  #sf-floorpads { position:absolute; inset:0; pointer-events:none; }
+  #sf-floorpads { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
   .sf-fp { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%);
+    box-sizing:border-box; padding:3px 9px 4px; border-radius:3px;
     font-family:var(--dp-face-read, "Archivo", sans-serif);
-    font-weight:760; font-variant-numeric:tabular-nums lining-nums;
-    font-size:13px; letter-spacing:.07em; white-space:nowrap; will-change:transform;
+    font-weight:700; font-variant-numeric:tabular-nums lining-nums;
+    font-size:13px; line-height:1.15; letter-spacing:.07em; white-space:nowrap; will-change:transform;
     color:var(--dp-lamp, #f2b950);
-    text-shadow:0 0 7px rgb(0 0 0 / .94), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
-  .sf-fp--deny { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); }
+    background:rgb(8 10 14 / .78); border:1px solid rgb(242 185 80 / .42);
+    box-shadow:0 0 0 1px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .5);
+    text-shadow:var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-fp--deny { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); border-color:rgb(255 92 92 / .6); }
   `;
   document.head.appendChild(s);
 }

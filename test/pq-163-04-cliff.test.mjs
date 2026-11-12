@@ -138,6 +138,10 @@ function makeState(seed) {
   state.entities.set(1, player);
   state.entityList.push(player);
 
+  // A live session always knows its sector; since 51ead0a695b1 the 47-A resolver refuses to
+  // pick a rock while the player is anywhere but the contract's destination sector.
+  state.world.currentSectorId = 'sector_helios_prime';
+
   // The 47-A sample source + the Helios delivery berth, as contract-47a-first-loop places them.
   const asteroid = makeEntity({
     type: 'asteroid',
