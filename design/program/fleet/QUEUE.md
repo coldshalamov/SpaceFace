@@ -113,7 +113,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | C01-04-each-round-fields-its-cast | Every round's cast matches its name (formations, enemy mix) | BUILT 4757ab20 (lead looks at round 7 next) |
 | C01-05-the-room-does-the-twist | Nine round mechanics (Delivery, Lights Out, Highway Robbery theft, The Law, Yardmaster, Chain Gang, Everything Must Go, Black Friday, Quiet) | HOLD on the lead's Swarm 1–5 look |
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
-| PERF-04 | Three programs compile mid-flight (`npm run perf:renderer-info` names them by frame); add them to the opening prewarm cohort so the count is 0 | TAKEN agent3 (devin3) |
+| PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | REDO — devin3 measured 10 → 0 late programs in Adventure and 8.9 → 16.1 s for the internal first-picture phase. The final detached variant was unmeasured. |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat; last: PL-02 44deb6c4 + lead fix 7a15cdf6 — no player dock:undocked, strobe drawn) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
