@@ -44,6 +44,7 @@ import { QUIET_APPROACH_RANGE_WU } from '../data/missionConditions.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CONTRACT_47A_B2_TAG, missionTargetSlotOf } from './missionShared.js';
+import { authoredTenderHaul, isTenderRivalHull, spawnTenderRivals } from '../missions/tenderHaul.js';
 
 export const missionSpawningOps = {
   // =========================================================================================
@@ -60,6 +61,9 @@ export const missionSpawningOps = {
     const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
     if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
     if (m && (m.type === 'escort' || m.type === 'salvage_retrieval')) archetypes.add('mule_trader');
+    // W-TENDER: the rival queue is two civilian mules holding the Tally scan face — the render
+    // lane must pre-decode them like any other placed hull set.
+    if (m && authoredTenderHaul(m)) archetypes.add('mule_trader');
     if (m && m.params && m.params.ghostConvoy) { archetypes.add('reaver_pirate'); archetypes.add('wasp_swarmer'); }
     // The restore stub covers these crews' hulls; the live jump projection must name them
     // too or claim-site/rescue spawns decode at the glass.
@@ -94,7 +98,11 @@ export const missionSpawningOps = {
     const active = (this.state.missions && this.state.missions.active) || [];
     for (const m of active) {
       if (!m || m.status !== 'active' || !m.needsTargets) continue;
-      if (String(m.destSectorId || '') !== String(targetSectorId || '')) continue;
+      // W-TENDER: the queue lives at the Customs Gate sector, not at the desk's.
+      const liveSectorId = authoredTenderHaul(m)
+        ? (m.params && m.params.gateSectorId) || m.destSectorId
+        : m.destSectorId;
+      if (String(liveSectorId || '') !== String(targetSectorId || '')) continue;
       this._emitMissionTargetProjection(m);
     }
   },
@@ -103,7 +111,12 @@ export const missionSpawningOps = {
   _ensureMissionTargets(m) {
     if (m.params?.mercyIncidentId || m.params?.wreckCourtCaseId) { m.needsTargets = false; return; }
     if (!m.needsTargets) return;
-    if (this.state.world.currentSectorId !== m.destSectorId) return; // defer until the player arrives
+    // W-TENDER: the run's placed content is the rival queue at the Customs Gate — the target
+    // sector for the deferred spawn lifecycle is the gate sector, not the desk's.
+    const targetSectorId = authoredTenderHaul(m)
+      ? (m.params && m.params.gateSectorId) || m.destSectorId
+      : m.destSectorId;
+    if (this.state.world.currentSectorId !== targetSectorId) return; // defer until the player arrives
     m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {
       const entity = this.state.entities.get(id);
       return entity && entity.alive !== false;
@@ -173,6 +186,11 @@ export const missionSpawningOps = {
     }
     const candidates = list.filter((e) => {
       if (!e || !e.alive || e.isPlayer) return false;
+      // W-TENDER: the rival haulers are civilian world content, not the run's targets. They are
+      // tracked only on the module's own ledger (m.tender.rivals), so the map never marks them
+      // as objectives to engage — by the runtime stamp on a fresh spawn, or by the durable
+      // mission identity a rematerialized hull keeps after reload (capture drops tenderRivalOf).
+      if (isTenderRivalHull(e, m)) return false;
       if (isSpineBreakOperation(m) && e.data?.escortee === 'lead') {
         const worksite = ensureSpineBreakWorksite(m);
         const data = e.data;
@@ -703,7 +721,12 @@ export const missionSpawningOps = {
   _stampMissionTargetIdentity(ent, m, seq) {
     if (!ent || !m) return;
     if (!ent.data) ent.data = {};
-    const sectorId = m.destSectorId
+    // W-TENDER: the run's placed hulls are the rival queue at the Customs Gate, so they (and their
+    // world records) are filed under the gate sector, not the desk's destSectorId.
+    const missionSectorId = authoredTenderHaul(m)
+      ? (m.params && m.params.gateSectorId) || m.destSectorId
+      : m.destSectorId;
+    const sectorId = missionSectorId
       || ent.homeSectorId
       || ent.data.homeSectorId
       || (this.state.world && this.state.world.currentSectorId);
@@ -918,6 +941,13 @@ export const missionSpawningOps = {
     this._adoptLiveMissionTargets(m);
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity) return;
+    // W-TENDER: the rival queue is the run's placed content — two rival haulers holding the
+    // Customs Gate scan face on authored dwells, issued once per durable slot (the module owns
+    // the ledger; this seam only gives it the spawn ports).
+    if (authoredTenderHaul(m)) {
+      spawnTenderRivals(this, m);
+      return;
+    }
     // The adopt view never yields asteroids: re-attach the authored capital cast by durable key
     // BEFORE the finite-ledger spawn pass decides what is still owed.
     this._reattachCapitalBossCastTargets(m);

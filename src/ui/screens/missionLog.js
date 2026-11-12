@@ -177,8 +177,11 @@ function clockScaleHtml(m, simTime) {
     for (let k = 0; k <= 40; k += 1) ticks += '<i' + (k % 5 === 0 ? ' class="is-major"' : '') + ' style="left:' + pctCss(k / 40) + '"></i>';
     return { scale: '<span class="ml-clock is-none">' + ticks + '</span>', read: '<span class="ml-clock__read">No clock</span>' };
   }
-  const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
-  const urgent = remaining > 0 && remaining < 120;
+  const windowClock = tenderWindowClock(m, simTime);
+  const remaining = windowClock ? windowClock.remainingS : Math.max(0, (Number(m.deadline_s) || 0) - simTime);
+  // The tender's window never takes the threat tone — the close re-prices the run, it does not
+  // expire it (missionNextAction's clockRow precedent).
+  const urgent = !windowClock && remaining > 0 && remaining < 120;
   const total = share > 0 ? remaining / share : Math.max(1, remaining);
   const major = total > 1800 ? 600 : total > 600 ? 300 : 60;
   const minor = total / major > 16 ? major : major / 5;
@@ -195,7 +198,7 @@ function clockScaleHtml(m, simTime) {
   if (last < 0.995) ticks += '<i class="is-major is-left" style="left:100%"></i>';
   return {
     scale: '<span class="ml-clock' + (urgent ? ' is-threat' : '') + '">' + ticks + '<span class="ml-clock__now" style="left:' + pctCss(now) + '"></span></span>',
-    read: '<span class="ml-clock__read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left<span class="ml-clock__of"> of ' + escapeHtml(fmtTime(total)) + '</span></span>',
+    read: '<span class="ml-clock__read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>' + (windowClock ? (windowClock.label || 'window left') : 'left') + '<span class="ml-clock__of"> of ' + escapeHtml(fmtTime(total)) + '</span></span>',
   };
 }
 
@@ -261,18 +264,21 @@ function emptyRouteBandHtml(state) {
 /** The traced contract's reading under the dial, in ice: how far it has come, its clock. */
 function traceReadHtml(state, m) {
   const simTime = Number(state && state.simTime) || 0;
-  const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
+  const windowClock = tenderWindowClock(m, simTime);
+  const remaining = windowClock ? windowClock.remainingS : Math.max(0, (Number(m.deadline_s) || 0) - simTime);
   const clock = missionClockFrac(m, simTime);
+  const urgent = !windowClock && remaining > 0 && remaining < 120;
   return 'Tracing<b>' + Math.round(missionProgressFrac(m) * 100) + '%</b>'
-    + (clock != null ? '· <b' + (remaining > 0 && remaining < 120 ? ' class="is-threat"' : '') + '>' + escapeHtml(fmtTime(remaining)) + '</b><span class="orr-mdial__trace-left">left</span>' : '· no clock');
+    + (clock != null ? '· <b' + (urgent ? ' class="is-threat"' : '') + '>' + escapeHtml(fmtTime(remaining)) + '</b><span class="orr-mdial__trace-left">' + (windowClock ? (windowClock.label || 'window left') : 'left') + '</span>' : '· no clock');
 }
 
 /** The contract dial's markup: the arcs, the destination's art in its heart, the two readings, the ghost's place. */
 function missionDialInnerHtml(state, m) {
   const simTime = Number(state && state.simTime) || 0;
+  const windowClock = tenderWindowClock(m, simTime);
   const clock = missionClockFrac(m, simTime);
-  const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
-  const urgent = remaining > 0 && remaining < 120;
+  const remaining = windowClock ? windowClock.remainingS : Math.max(0, (Number(m.deadline_s) || 0) - simTime);
+  const urgent = !windowClock && remaining > 0 && remaining < 120;
   const frac = missionProgressFrac(m);
   return '<span class="orr-mdial__face"><img src="' + escapeHtml(destArtUrl(m)) + '" alt="" decoding="async"></span>'
     + missionDialSvg({ progress: frac, time: clock, urgent })
@@ -280,7 +286,7 @@ function missionDialInnerHtml(state, m) {
     + '<div class="orr-mdial__read"><span class="orr-mdial__pct">' + Math.round(frac * 100) + '<small>%</small></span>'
     + '<span class="orr-mdial__w">Complete</span></div>'
     + (clock != null
-      ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left</div>'
+      ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>' + (windowClock ? (windowClock.label || 'window left') : 'left') + '</div>'
       : '<div class="orr-mdial__clock-read">No clock</div>')
     + '<div class="orr-mdial__trace-read" hidden></div>';
 }
@@ -292,8 +298,40 @@ function missionProgressFrac(m) {
   return Math.max(0, Math.min(1, prog / tgt));
 }
 
+/**
+ * The authored tender's clock: the run carries no deadline_s — the desk's intake window
+ * (params.tenderCloseAt_s, stamped at accept) is the clock, and the close re-prices the run
+ * instead of expiring it. missionNextAction's clockRow precedent: same clock, non-urgent window
+ * tone. Once the close has armed the sell-out grace (tender.windowClosedAt_s), the clock reads
+ * graceUntilS — the clock the settle actually keeps — so a pilot past the close holding the lot
+ * sees time left, never a clamp at 0. Null for every other contract.
+ */
+function tenderWindowClock(m, simTime) {
+  const params = (m && m.params) || {};
+  const deadline = Number(params.tenderCloseAt_s);
+  if (!m || m.type !== 'tender_haul' || !Number.isFinite(deadline) || deadline <= 0) return null;
+  const graceArmed = !!(m.tender && m.tender.windowClosedAt_s != null
+    && Number.isFinite(Number(m.tender.graceUntilS)));
+  const clockEndS = graceArmed ? Number(m.tender.graceUntilS) : deadline;
+  const remainingS = Math.max(0, clockEndS - (Number(simTime) || 0));
+  // The clock's span: the authored grace while it runs, else the authored intake window (or the
+  // accept-to-close run it stamped).
+  let total = graceArmed ? Math.max(1, Number(m.tender.graceS) || 0) : Number(params.windowS);
+  if (!graceArmed && (!Number.isFinite(total) || total <= 0)) {
+    const accepted = Number(m.acceptedAt_s);
+    total = Number.isFinite(accepted) && deadline > accepted ? deadline - accepted : 0;
+  }
+  return {
+    remainingS,
+    label: graceArmed ? 'grace left' : 'window left',
+    frac: total > 0 ? Math.max(0, Math.min(1, remainingS / total)) : null,
+  };
+}
+
 /** The share of a contract's clock still left (null when it has no clock). */
 function missionClockFrac(m, simTime) {
+  const windowClock = tenderWindowClock(m, simTime);
+  if (windowClock && windowClock.frac != null) return windowClock.frac;
   const deadline = Number(m && m.deadline_s);
   if (!Number.isFinite(deadline) || deadline <= 0) return null;
   const remaining = Math.max(0, deadline - (Number(simTime) || 0));

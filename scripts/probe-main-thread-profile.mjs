@@ -38,6 +38,11 @@
 //                         choose the diagnostic domain mirror shape before the worker initializes;
 //                         the default empty profile remains unchanged.
 //   --trace-stacks        with --trace, include style/layout invalidation records and source stacks.
+//   --swarm-round=20     start the real Swarm run at the requested round, seed 4242.
+//   --experiments=hide-hud,no-post,render-scale=0.5,no-shadows,skip-render
+//                         bracket each named arm with baselines in one flight. Use --ms=15000
+//                         and --trace for an additional traced baseline, or --experiments=baseline
+//                         for one baseline. Each individual arm also has a --<arm> flag.
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
@@ -185,7 +190,12 @@ const TRACE = process.argv.includes('--trace');
 const TRACE_STACKS = TRACE && process.argv.includes('--trace-stacks');
 // --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
-const CRUCIBLE = process.argv.includes('--crucible');
+const swarmRoundArg = argValue('--swarm-round');
+const SWARM_ROUND = swarmRoundArg === null ? null : Number(swarmRoundArg);
+if (SWARM_ROUND !== null && (!Number.isInteger(SWARM_ROUND) || SWARM_ROUND < 1 || SWARM_ROUND > 30)) {
+  throw new Error('--swarm-round must be an integer from 1 through 30');
+}
+const CRUCIBLE = process.argv.includes('--crucible') || SWARM_ROUND !== null;
 const WARM_SECOND_LAUNCH = process.argv.includes('--warm-second-launch');
 const CADENCE_ONLY = process.argv.includes('--cadence-only');
 if (WARM_SECOND_LAUNCH && !FROM_LAUNCH) {
@@ -213,6 +223,34 @@ const GPU_TIMERS = process.argv.includes('--gpu-timers');
 // within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
 // Eval scripts can await __sfProfileScreenshot(label) to save a compositor screenshot in the output directory.
 const EVAL_FILE = argValue('--eval-file');
+if (SWARM_ROUND !== null && (FROM_LAUNCH || GAUNTLET || RACING)) {
+  throw new Error('--swarm-round requires steady Swarm flight');
+}
+const perfArmNames = ['hide-hud', 'no-post', 'no-shadows', 'skip-render'];
+const perfSingleArms = perfArmNames.filter(name => process.argv.includes(`--${name}`));
+const perfScaleArg = argValue('--render-scale');
+if (perfScaleArg !== null) perfSingleArms.push(`render-scale=${perfScaleArg}`);
+const perfExperimentArg = argValue('--experiments');
+if (perfSingleArms.length > 1 || (perfExperimentArg !== null && perfSingleArms.length)) {
+  throw new Error('Use one experimental flag, or list the arms in --experiments');
+}
+if (argValue('--ack-limit') !== null) {
+  throw new Error('--ack-limit has no probe seam in the worker');
+}
+const requestedPerfArms = perfExperimentArg === null ? perfSingleArms
+  : perfExperimentArg === 'baseline' ? ['baseline']
+    : ['baseline', ...perfExperimentArg.split(',').flatMap(name => [name, 'baseline'])];
+const PERF_ARMS = requestedPerfArms.map(name => {
+  if (name === 'baseline' || perfArmNames.includes(name)) return { name };
+  const factor = name.startsWith('render-scale=') ? Number(name.slice('render-scale='.length)) : NaN;
+  if (!(factor >= 0.5 && factor < 1)) throw new Error(`Invalid experiment arm: ${name}`);
+  return { name, factor };
+});
+if (PERF_ARMS.length && (FROM_LAUNCH || EVAL_FILE || CADENCE_ONLY || WORKER_PROFILE || GPU_TIMERS
+  || !Number.isFinite(WINDOW_MS) || WINDOW_MS <= 0)) {
+  throw new Error('Experiments require positive --ms and the steady CPU profile without an eval or additional profilers');
+}
+if (PERF_ARMS.length > 1 && TRACE) PERF_ARMS.push({ name: 'baseline-trace' });
 if (LATE_ENABLE_NOCTURNE_SHADOWS && (!FROM_LAUNCH || CRUCIBLE || GAUNTLET || RACING || WARM_SECOND_LAUNCH || EVAL_FILE)) {
   throw new Error('--late-enable-nocturne-shadows requires a single public Adventure --from-launch route without --eval-file');
 }
@@ -1409,18 +1447,28 @@ async function enableNocturneShadowsThroughPublicSettings(page) {
 /** The Crucible button's own route (default kit, fixed seed); every armory draft is answered with 'keep'. */
 async function launchCrucible(page) {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
-  const launched = await page.evaluate(async (gauntlet) => {
+  if (SWARM_ROUND !== null) {
+    await page.waitForFunction(() => {
+      const ui = window.SF.registry?.get?.('ui');
+      return (ui?.screenManager || ui?.manager)?.hasScreen?.('crucibleDraft');
+    }, null, { timeout: 150_000 });
+  }
+  const launched = await page.evaluate(async ({ gauntlet, round }) => {
     const launch = await import('/src/ui/crucibleLaunch.js');
-    const setup = launch.crucibleSetupFor({ seed: 4242, ruleset: gauntlet ? 'scored' : undefined });
+    const setup = launch.crucibleSetupFor({
+      seed: 4242, ruleset: gauntlet ? 'scored' : undefined, startWave: round ?? 1,
+    });
     if (!setup || !setup.ok) return false;
+    const access = window.SF.state.settings?.accessibility;
+    if (round !== null && access) access.firstLightOffered = true;
     window.__SF_PROFILE_DRAFT_ANSWER__ = setInterval(() => {
       const st = window.SF && window.SF.state;
       if (st && st.run && st.run.phase === 'draft') window.SF.bus.emit('run:draftPickRequested', { offerId: null });
     }, 250);
     return launch.requestCrucibleRun(window.SF.bus, setup.value, setup.ruleset) !== false;
-  }, GAUNTLET);
+  }, { gauntlet: GAUNTLET, round: SWARM_ROUND });
   if (!launched) throw new Error('Crucible run did not launch');
-  log('Crucible run requested (seed 4242, default kit)');
+  log(`Crucible run requested (seed 4242, default kit, round ${SWARM_ROUND ?? 1})`);
 }
 
 /** Rebind only the diagnostic recorder after flight is real; both source arms share this delay. */
@@ -1524,6 +1572,227 @@ async function decodePresentedFootageSamplesInPage({ ticks = [], lastTick = null
   return { installed: true, samples, decodeFailures, lastDecoded };
 }
 
+function installPerfArmInPage({ name, factor }) {
+  const { bus, registry, state } = window.SF;
+  const owner = registry.get('render');
+  const renderer = owner.renderer;
+  const video = state.settings.video;
+  const pixelRatioBefore = renderer.getPixelRatio();
+  const shadowsWereOff = video.shadows === false && video.nocturneShadows === false;
+  let skippedDraws = 0;
+  let restore = () => {};
+  switch (name) {
+    case 'hide-hud': {
+      const style = document.createElement('style');
+      style.textContent = '#gl-canvas ~ :not(script,style,link,template) { display: none !important; }';
+      document.head.append(style);
+      restore = () => style.remove();
+      break;
+    }
+    case 'no-post': {
+      const previous = owner._selectPostRoute;
+      const fallbackReason = owner._postNativeFallbackReason;
+      // A bloom settings toggle keeps the full-screen composite. Select the native draw path.
+      owner._selectPostRoute = () => 'straight';
+      restore = () => {
+        owner._selectPostRoute = previous;
+        owner._postNativeFallbackReason = fallbackReason;
+      };
+      break;
+    }
+    case 'no-shadows': {
+      const changed = ['shadows', 'nocturneShadows'].filter(key => video[key] !== false);
+      const original = changed.map(key => video[key]);
+      const update = (key, value) => {
+        video[key] = value;
+        bus.emit('settings:changed', { section: 'video', key, persist: false, source: 'profile-probe' });
+      };
+      for (const key of changed) update(key, false);
+      restore = () => changed.forEach((key, index) => update(key, original[index]));
+      break;
+    }
+    case 'skip-render': {
+      const previous = renderer.render;
+      renderer.render = () => { skippedDraws++; };
+      restore = () => { renderer.render = previous; };
+      break;
+    }
+    default:
+      if (factor) {
+        const previous = renderer.setPixelRatio;
+        renderer.setPixelRatio = function (ratio) { return previous.call(this, ratio * factor); };
+        restore = () => {
+          renderer.setPixelRatio = previous;
+          owner._applySize();
+        };
+        // The same resize owner fits all post targets to the diagnostic drawing buffer.
+        owner._applySize();
+      }
+  }
+  const tasks = [];
+  let observer = null;
+  if (globalThis.PerformanceObserver?.supportedEntryTypes?.includes('longtask')) {
+    observer = new PerformanceObserver(list => tasks.push(...list.getEntries()));
+    observer.observe({ type: 'longtask' });
+  }
+  window.__SF_PROFILE_ARM__ = {
+    read() {
+      const live = window.SF.state;
+      const player = live.entities.get(live.playerId);
+      const gl = renderer.getContext();
+      return {
+        mode: live.mode, phase: live.run?.phase ?? null,
+        round: live.run?.kind === 'survival' ? live.run.wave : null,
+        timeScale: live.timeScale, sector: live.world.currentSectorId, tick: live.tick,
+        entityCount: live.entities.size, position: player ? [player.pos.x, player.pos.z] : null,
+        viewport: [innerWidth, innerHeight], buffer: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+        pixelRatioBefore, pixelRatio: renderer.getPixelRatio(), postRoute: owner._lastRenderPath,
+        shadowsWereOff, shadows: video.shadows, nocturneShadows: video.nocturneShadows,
+        hudHidden: getComputedStyle(document.querySelector('#ui-root')).display === 'none',
+        skippedDraws,
+      };
+    },
+    longTaskCount(from, to) {
+      if (!observer) return null;
+      tasks.push(...observer.takeRecords());
+      return tasks.filter(entry => entry.startTime >= from && entry.startTime < to).length;
+    },
+    cleanup() {
+      observer?.disconnect();
+      restore();
+      delete window.__SF_PROFILE_ARM__;
+    },
+  };
+}
+
+function analyzeExperimentTrace(traceFile) {
+  const events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
+  let fromUs = Infinity, toUs = -Infinity;
+  const durations = new Map();
+  for (const event of events) {
+    if (event.ph === 'M' || !Number.isFinite(event.ts) || event.ts <= 0) continue;
+    fromUs = Math.min(fromUs, event.ts);
+    toUs = Math.max(toUs, event.ts + (event.dur || 0));
+    if (event.ph === 'X' && event.dur > 0) {
+      durations.set(event.name, (durations.get(event.name) || 0) + event.dur);
+    }
+  }
+  const summary = summarizeMainThread(events, { windows: [{ id: 'steady flight', fromUs, toUs }] });
+  const topInclusiveEvents = [...durations.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const rows = topInclusiveEvents.map(([name, us]) => `| ${(us / 1000).toFixed(1)} | \`${name}\` |`);
+  fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), [
+    renderTraceSummaryMarkdown(summary),
+    '## Largest total event durations', '', 'Inclusive duration can count nested events and parallel threads.',
+    '', '| Total ms | Event |', '|---:|---|', ...rows, '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.json'), JSON.stringify({ ...summary, topInclusiveEvents }, null, 1));
+}
+
+async function runPerfExperiments(page, cdp, seed) {
+  const rows = [];
+  const holdThrust = !HOLD_STILL;
+  const metrics = ['fps', 'idlePct', 'simWallRatio', 'longTasks'];
+  const powerStateStart = await captureHostPowerState(page);
+  const gpu = await page.evaluate(() => {
+    const gl = window.SF.state.render.renderer.getContext();
+    const debug = gl.getExtension('WEBGL_debug_renderer_info');
+    return debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : null;
+  });
+  for (const [index, arm] of PERF_ARMS.entries()) {
+    const traced = TRACE && index === PERF_ARMS.length - 1;
+    log(`experiment ${index + 1}/${PERF_ARMS.length}: ${arm.name}${traced ? ' with trace' : ''}`);
+    await page.evaluate(installPerfArmInPage, arm);
+    let start, end, cadence, longTasks, profile;
+    try {
+      // Separate switch setup (including target resize) from the timed window.
+      await page.waitForTimeout(1000);
+      start = await page.evaluate(() => window.__SF_PROFILE_ARM__.read());
+      if (traced) await startTrace(cdp);
+      await cdp.send('Profiler.start');
+      await page.evaluate(installGameCadenceProbe);
+      if (holdThrust) await page.keyboard.down('KeyW');
+      await page.waitForTimeout(WINDOW_MS);
+      ({ cadence, longTasks } = await page.evaluate(() => {
+        const record = window.__SF_GAME_CADENCE__.stop();
+        const arm = window.__SF_PROFILE_ARM__;
+        return { cadence: record, longTasks: arm.longTaskCount(record.started, record.ended) };
+      }));
+      profile = (await cdp.send('Profiler.stop')).profile;
+      if (traced) {
+        const traceFile = path.join(OUT_DIR, 'trace.json');
+        await stopTraceToFile(cdp, traceFile);
+        deferredTraceAnalyses.push(() => analyzeExperimentTrace(traceFile));
+      }
+      end = await page.evaluate(() => window.__SF_PROFILE_ARM__.read());
+    } finally {
+      if (holdThrust) await page.keyboard.up('KeyW').catch(() => {});
+      await page.evaluate(() => window.__SF_PROFILE_ARM__?.cleanup()).catch(() => {});
+    }
+    const { browserFps: fps, simWallRatio } = summarizeGameCadence(cadence);
+    const summary = summarizeProfile(profile, profileIndex(profile));
+    const percent = micros => summary.totalMicros > 0 ? 100 * micros / summary.totalMicros : null;
+    const applied = arm.name === 'hide-hud' ? end.hudHidden
+      : arm.name === 'no-post' ? end.postRoute === 'straight'
+      : arm.name === 'no-shadows' ? end.shadows === false && end.nocturneShadows === false
+      : arm.name === 'skip-render' ? end.skippedDraws > start.skippedDraws
+      : arm.factor ? Math.abs(end.pixelRatio / end.pixelRatioBefore - arm.factor) < 0.01 : true;
+    const sameFlight = start.mode === 'flight' && end.mode === 'flight'
+      && start.sector === end.sector && start.round === end.round
+      && start.timeScale > 0 && end.timeScale > 0
+      && (start.round === null || (start.phase === 'active' && end.phase === 'active'))
+      && (SWARM_ROUND === null || end.round === SWARM_ROUND);
+    const row = { name: arm.name, traced, applied, sameFlight, start, end, fps,
+      idlePct: percent(summary.buckets.idle), simWallRatio, longTasks,
+      topSelf: summary.self.slice(0, 3).map(({ node, micros }) => ({
+        owner: nodeLabel(node), pct: percent(micros),
+      })),
+    };
+    rows.push(row);
+    fs.writeFileSync(path.join(OUT_DIR, `arm-${String(index + 1).padStart(2, '0')}.cpuprofile`), JSON.stringify(profile));
+    log(`experiment result: ${JSON.stringify({ name: arm.name, fps, idlePct: row.idlePct, simWallRatio, longTasks, applied, sameFlight })}`);
+    if (!sameFlight) break;
+  }
+  const sourceDigestAfter = await digestServedSourcePaths();
+  const sourceStable = sourceDigest === sourceDigestAfter;
+  const complete = rows.length === PERF_ARMS.length && rows.every(row => row.applied && row.sameFlight) && sourceStable;
+  const meta = {
+    seed, swarmRound: SWARM_ROUND, sourceDigest, sourceDigestAfter, sourceStable, probeDigest,
+    profileCommit: repositoryCommit, windowMs: WINDOW_MS, holdThrust, displayHz, gpu, complete,
+    sourceOverlay: sourceOverlayMetadata(),
+    powerState: { start: powerStateStart, end: await captureHostPowerState(page) },
+  };
+  for (const [index, row] of rows.entries()) {
+    const before = rows[index - 1], after = rows[index + 1];
+    if (row.name === 'baseline' || !row.applied || !row.sameFlight
+      || before?.name !== 'baseline' || after?.name !== 'baseline'
+      || !before.sameFlight || !after.sameFlight || before.traced || after.traced
+      || before.end.sector !== row.end.sector || after.end.sector !== row.end.sector
+      || before.end.round !== row.end.round || after.end.round !== row.end.round || !sourceStable) continue;
+    row.deltaFromNeighborMean = Object.fromEntries(metrics.map(key => [
+      key, [row[key], before[key], after[key]].every(Number.isFinite)
+        ? row[key] - (before[key] + after[key]) / 2 : null,
+    ]));
+  }
+  fs.writeFileSync(path.join(OUT_DIR, 'experiments.json'), JSON.stringify({ meta, rows }, null, 1));
+  const fmt = number => Number.isFinite(number) ? number.toFixed(2) : '—';
+  fs.writeFileSync(path.join(OUT_DIR, 'report.md'), [
+    '# Main-thread flight experiments', '',
+    `Seed ${seed}, ${WINDOW_MS} ms per arm, ${holdThrust ? 'held thrust' : 'no flight input'}. ${complete ? 'Complete.' : 'Incomplete.'}`,
+    'Windows share one flight, so world state can evolve. See start/end snapshots in experiments.json.',
+    ...(rows.some(row => row.name === 'no-shadows' && row.start.shadowsWereOff)
+      ? ['Both shadow settings were already off when the no-shadows arm began.'] : []),
+    '', '| Arm | rAF fps | Idle % | Sim / wall | Long tasks | Top self time |',
+    '|---|---:|---:|---:|---:|---|',
+    ...rows.map(row => `| ${row.name} | ${metrics.map(key => fmt(row[key])).join(' | ')} | ${row.topSelf.map(item => `${item.owner} (${fmt(item.pct)}%)`).join(', ')} |`),
+    '', '## Differences from neighboring baselines', '',
+    '| Arm | Δ rAF fps | Δ idle points | Δ sim / wall | Δ long tasks |', '|---|---:|---:|---:|---:|',
+    ...rows.filter(row => row.deltaFromNeighborMean).map(row => (
+      `| ${row.name} | ${metrics.map(key => fmt(row.deltaFromNeighborMean[key])).join(' | ')} |`
+    )), '',
+  ].join('\n'));
+  if (!complete) process.exitCode = 1;
+}
+
 async function runSteadyFlightProfile(page, cdp) {
   await installFlightFailureObserver(page, { timeoutMs: 150_000 });
   try {
@@ -1554,6 +1823,12 @@ async function runSteadyFlightProfile(page, cdp) {
   const expectedSeed = CRUCIBLE || GAUNTLET ? 4242 : RACING ? null : FIXED_SEED;
   if (expectedSeed != null && launchedSeed !== expectedSeed) throw new Error(`Universe seed mismatch: requested ${expectedSeed}, launched ${launchedSeed}`);
   log(`authoritative launched seed ${launchedSeed}`);
+  if (SWARM_ROUND !== null || ((CRUCIBLE || GAUNTLET) && PERF_ARMS.length)) {
+    await page.waitForFunction(round => {
+      const state = window.SF?.state;
+      return state?.mode === 'flight' && state.run?.phase === 'active' && state.run.wave === round;
+    }, SWARM_ROUND ?? 1, { timeout: 150_000 });
+  }
   await installProfileFootageSource(page);
   if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
   if (TRAVEL_MS > 0) {
@@ -1562,6 +1837,7 @@ async function runSteadyFlightProfile(page, cdp) {
     try { await page.waitForTimeout(TRAVEL_MS); }
     finally { await page.keyboard.up('KeyW').catch(() => {}); }
   }
+  if (PERF_ARMS.length) return runPerfExperiments(page, cdp, launchedSeed);
   if (EVAL_FILE) {
     const powerStateStart = await captureHostPowerState(page);
     const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
@@ -2131,7 +2407,7 @@ try {
 
   if (FROM_LAUNCH) await runLaunchProfile(page, cdpSession, profileNote);
   else await runSteadyFlightProfile(page, cdpSession);
-  if (fs.existsSync(path.join(OUT_DIR, 'cadence.json'))) {
+  if (!PERF_ARMS.length && fs.existsSync(path.join(OUT_DIR, 'cadence.json'))) {
     const record = JSON.parse(fs.readFileSync(path.join(OUT_DIR, 'cadence.json'), 'utf8'));
     record.metadata.sourceDigestAfter = await digestServedSourcePaths();
     record.metadata.sourceStable = record.metadata.sourceDigest === record.metadata.sourceDigestAfter;
