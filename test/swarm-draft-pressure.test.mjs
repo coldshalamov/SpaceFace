@@ -34,7 +34,7 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 
 const SEED = 4242;
 const ARENA = 'helios_core';
-const WAVE = 23; // past every unlock — a plain wave where pressure owns the mix
+const WAVE = 31; // past every unlock and the course's cast — a plain generated wave where pressure owns the mix
 
 function boot(hullId = 'ship_hornet') {
   const state = createGameState(SEED);
