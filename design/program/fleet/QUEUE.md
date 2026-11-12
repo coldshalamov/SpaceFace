@@ -77,7 +77,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | A01-04-wall-guns-and-the-crate | Buy on the floor: two wall guns (500) and the Crate (950, moves after 3 pulls) in the Foundry | BUILT 3e15a433 (lead looked: Crate pad + label visible at round 3) |
 | A01-05-the-forge-and-taps | The Forge (5000, Forged forms, Wrecking Ball) and ten Taps with exact trades — after A01-04 | BUILT 07dd5ac1 (review 2026-11-11-38b31504: six findings fixed a642a272..b644a18d by a lead-review fixer) |
 | G16-01-the-stage-exists | One Stage hosts every transient popup; priority queue per slot; nothing overlaps | BUILT 72c45b9f + lead-review 5ba27322 (the Swarm centre callouts now share one column, one big beat at a time; a refreshed item keeps its seat; banner/feed join the alert/toast columns) |
-| G19-02-honest-hold [FE] | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | TAKEN agent4 (flash; lead looks after) |
+| G19-02-honest-hold [FE] | Cargo bar shows the hold's worth; towed cargo counts; fake SCAN RISK removed; plain labels | BUILT 21dd8214 + lead 99978f29 (hidden when empty / in Swarm; wraps) |
 | G18-02-one-set-of-keys | Same keys in both doors; everything else on a Q context wheel | BUILT b931aac8 + 321ab601 (wheel fixed and seen) |
 | MOB-01-pinch-zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | BUILT 9c0a921e + lead acaec5ff (default halfway to desktop width; pinch 0.5–2.0×) |
 | MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | TAKEN lead (devin2 timed out with the work uncommitted; lead finishes and looks) |
@@ -107,7 +107,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | C01-05-the-room-does-the-twist | Nine round mechanics (Delivery, Lights Out, Highway Robbery theft, The Law, Yardmaster, Chain Gang, Everything Must Go, Black Friday, Quiet) | HOLD on the lead's Swarm 1–5 look |
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
 | PERF-04 | Three programs compile mid-flight (`npm run perf:renderer-info` names them by frame); add them to the opening prewarm cohort so the count is 0 | TAKEN agent3 (devin3) |
-| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat) |
+| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | TAKEN agent4 (flash) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
