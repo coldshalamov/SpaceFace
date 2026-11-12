@@ -1,4 +1,5 @@
 import { clamp, canFly, distanceToRect, isPhoneLayout, stickRadius, wheelSlot } from './model.js';
+import { seatNote } from './noteSeat.js';
 import { CAMERA_ZOOM_MAX, DEFAULT_ZOOM, resolvePhoneDefaultZoom, resolvePinchZoomTarget } from '../../render/tabletopPolicy.js';
 import { POWER_PAGES, icon } from './catalog.js';
 import { MOBILE_CSS_PATH } from './styles.js';
@@ -143,6 +144,25 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
   }
   function closeWheel() { pinned = false; selected = -1; model.wheel = null; wheel.close(); markWheel(false); edge.setAttribute('aria-expanded', 'false'); schedule(); }
   let captionTimer = 0;
+  // MOB-03: a caption or toast never sits on the key cluster, the reel, the dock key or the powers handle,
+  // in either hand and at any control scale. The stylesheet gives the natural seat; this measures it
+  // against the live keys and moves the note only when they collide. Re-run when its inputs change.
+  function seatNotes() {
+    const vw = win.innerWidth, vh = win.innerHeight;
+    const scale = root.style.getPropertyValue?.('--mf-scale') || '1';
+    let blockers = null;
+    for (const el of [toast, caption]) {
+      if (el.hidden || !el.offsetWidth) continue;
+      const key = [vw, vh, hand(), scale, doc.documentElement.dataset.sfMobileWheel || '', reel.hidden, dockKey.hidden, el.textContent].join('|');
+      if (el._seatKey === key) continue;
+      el._seatKey = key;
+      for (const prop of ['left', 'right', 'top', 'bottom', 'marginInline', 'maxWidth']) el.style[prop] = '';
+      blockers = blockers || [gunKey, tetherKey, reel, dockKey, edge].filter(item => item && !item.hidden && item.offsetWidth)
+        .map(item => item.getBoundingClientRect());
+      const seat = seatNote({ vw, vh, note: { left: el.offsetLeft, top: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }, blockers });
+      if (seat) Object.assign(el.style, { left: `${seat.left}px`, right: 'auto', top: `${seat.top}px`, bottom: 'auto', marginInline: '0', maxWidth: `${seat.maxWidth + 2}px` }); // +2: offsetWidth rounds down, and a hairline short wraps the line
+    }
+  }
   const setTimer = (fn, ms) => (win.setTimeout || globalThis.setTimeout)?.(fn, ms);
   const clearTimer = id => (win.clearTimeout || globalThis.clearTimeout)?.(id);
   function showCaption(id) {
@@ -152,6 +172,7 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
     caption.dataset.control = id;
     caption.hidden = false;
     captionUntil = clock() + 2500;
+    seatNotes();
     if (captionTimer) clearTimer(captionTimer);
     captionTimer = setTimer(() => {
       if (clock() >= captionUntil) {
@@ -174,6 +195,7 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
     toast.textContent = text;
     toast.hidden = false;
     messageUntil = clock() + 1800;
+    seatNotes();
     schedule();
   }
   function use(power) {
@@ -538,6 +560,7 @@ export function mountMobileView({ state, model, activate, onFlick, reset, config
     if (dockKey.hidden === dockReady) dockKey.hidden = !dockReady;
     if (clock() >= messageUntil && !toast.hidden) toast.hidden = true;
     if (clock() >= captionUntil && !caption.hidden) caption.hidden = true;
+    seatNotes();
     if (clock() - lastNumbers > STATUS_MS) { lastNumbers = clock(); paintStatus(player); }
   }
   applyConfig(); render();
