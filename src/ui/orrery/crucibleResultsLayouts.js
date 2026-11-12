@@ -53,7 +53,7 @@ ${R} > .k-foot .k-word, ${RP} > .k-foot .k-word {
   display:inline-flex !important; align-items:center; min-height:38px; padding:0 16px;
   font:600 14px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${R} > .k-foot .k-word:is(:hover, :focus-visible), ${RP} > .k-foot .k-word:is(:hover, :focus-visible) {
@@ -64,7 +64,7 @@ ${R} > .k-foot .k-word.k-word--primary, ${RP} > .k-foot .k-word.k-word--primary 
   font:700 15px var(--dp-face-read, "Instrument Sans") !important;
   color:var(--dp-metal-0, #0b0d10) !important;
   background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9);
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  border-radius:8px; clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
 }
 ${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) {
   color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important;
