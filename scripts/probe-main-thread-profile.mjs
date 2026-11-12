@@ -1925,7 +1925,7 @@ async function runSteadyFlightProfile(page, cdp) {
     log(`gpu timers: ${gpuOn}`);
   }
   const powerStateStart = await captureHostPowerState(page);
-  log(`profiling ${WINDOW_MS} ms of held-thrust flight`);
+  log(`profiling ${WINDOW_MS} ms of ${HOLD_STILL ? 'no-input' : 'held-thrust'} flight`);
   if (TRACE) await startTrace(cdp);
   const machineStart = os.cpus();
   const identity = await page.evaluate(() => {
@@ -1945,9 +1945,12 @@ async function runSteadyFlightProfile(page, cdp) {
   // after diagnostic setup, so that setup is not reported as a gameplay freeze.
   const clockStart = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
   await page.evaluate(installGameCadenceProbe);
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(WINDOW_MS);
-  await page.keyboard.up('KeyW').catch(() => {});
+  if (!HOLD_STILL) await page.keyboard.down('KeyW');
+  try {
+    await page.waitForTimeout(WINDOW_MS);
+  } finally {
+    if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
+  }
   const cadence = await page.evaluate(gpuTimers => {
     const record = window.__SF_GAME_CADENCE__.stop();
     if (gpuTimers) window.SF.state.render.gpuTimers?.pauseSubmissions();
@@ -2001,7 +2004,7 @@ async function runSteadyFlightProfile(page, cdp) {
     domainProfileRequested: requestedDomainProfile,
     domainProfileActual: identity.domainProfileActual,
     requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
-    sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
+    sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS, holdThrust: !HOLD_STILL,
     clockStart, clockEnd,
     replyApply: replyApply ? {
       count: replyApply.count,
