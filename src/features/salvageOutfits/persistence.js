@@ -114,6 +114,7 @@ export function normalizeSalvageOutfits(raw) {
       row.lastRequestAt = -10; row.overcommitted = c.overcommitted === true;
       row.stalls = integer(c.stalls, 100); row.favorsPlayer = c.favorsPlayer === true;
       row.cautious = c.cautious === true;
+      row.repairHold = c.repairHold === true;
       row.learnedMassLimit = c.learnedMassLimit === true;
     }
     if (plain(src.receipts)) for (const [key, receipt] of Object.entries(src.receipts).slice(0, 24)) {

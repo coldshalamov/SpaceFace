@@ -140,7 +140,7 @@ export const salvageOutfits = {
       if (!activeCrew(c)) continue;
       const e = this.physical.ensureActor(m, c, def);
       if (e) { c.entityId = e.id; c.generation = e.occupantGeneration;
-        e.data.scanLabel = `${def.name} · ${c.status} · ${m.bodies[c.targetId]?.label || 'awaiting the next load'}`; }
+        e.data.scanLabel = `${def.name} · ${c.repairHold ? 'repair stop' : c.status} · ${m.bodies[c.targetId]?.label || 'awaiting the next load'}`; }
     }
   },
   _label(m, b, e) {
@@ -200,6 +200,8 @@ export const salvageOutfits = {
       this._materialize(m); this._capture(m);
       if (m.status === 'complete') { this._depart(m); continue; }
       for (const def of OUTFITS) this._work(m, def, step);
+      if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+        || this._row.meetings[m.id] !== m) return;
       this._receivePlayer(m);
       this._settleAgreement(m);
       if (Object.values(m.bodies).every(b => !activeBody(b))) {
@@ -223,6 +225,12 @@ export const salvageOutfits = {
       const actor = this.physical.find(c.key);
       if (!actor) continue;
       c.status = 'departing'; c.targetId = null;
+      if (c.repairHold) {
+        c.repairHold = false;
+        this._say(c.id, 'The worksite is clear. Heading back without a load; the hull still needs repair.');
+        if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+          || this._row.meetings[m.id] !== m || this.physical.find(c.key) !== actor) return;
+      }
       const destination = { x: m.receiver.x + 900, z: m.receiver.z + (c.id === 'keel' ? -120 : 120) };
       const result = this.physical.navigate(actor, destination);
       if (result.arrived && distance(this._player()?.pos, actor.pos) > 700
@@ -255,7 +263,28 @@ export const salvageOutfits = {
   },
   _work(m, def, dt) {
     const c = m.crews[def.id], actor = this.physical.find(c.key);
-    if (!activeCrew(c) || !actor || this._now() < c.startsAt) return;
+    if (this.state.mode !== 'flight' || this.state.timeScale === 0 || !activeCrew(c) || !actor || this._now() < c.startsAt) return;
+    // Actual damaged workboats can stand down without losing their original load
+    // or cancelling the deal. Hysteresis keeps small repairs from chattering the tow.
+    const ratio = actor.hullMax > 0 ? actor.hull / actor.hullMax : 1;
+    if (ratio > 0 && (ratio <= 0.35 || c.repairHold && ratio < 0.6)) {
+      const first = !c.repairHold;
+      c.repairHold = true;
+      this.physical.stop(actor);
+      if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+        || this._row.meetings[m.id] !== m || this.physical.find(c.key) !== actor) return;
+      if (first) this._say(c.id, 'Hull is below working margin. I am letting the cable go and braking here. No cargo changes hands. If you want to help, the repair beam spends your credits or unsealed scrap; get me to 60% hull and I can work again. No rescue fee or fresh cargo.', 'warn');
+      return;
+    }
+    if (c.repairHold) {
+      c.repairHold = false;
+      if (c.status === 'tow') c.status = 'approach';
+      this._say(c.id, c.status === 'stalled'
+        ? 'Hull back above working margin. The cradle is still too much for my cable; the rescue choices are unchanged.'
+        : 'Hull back above working margin. Picking up the same job; the agreement and remaining originals have not changed.');
+      if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+        || this._row.meetings[m.id] !== m || this.physical.find(c.key) !== actor) return;
+    }
     if (c.status === 'stalled') { this.physical.stop(actor); return; }
     if (c.status === 'idle' || !activeBody(m.bodies[c.targetId])) {
       this.physical.cancelTow(actor); this._retarget(m, c);
@@ -625,6 +654,11 @@ export const salvageOutfits = {
     if (!m) m = Object.values(this._row.meetings).find(row => row.sectorId === this.state.world?.currentSectorId
       && distance(this._player()?.pos, row.anchor) <= L.offerRange);
     if (!m) return;
+    const stopped = Object.values(m.crews).find(c => c.repairHold && activeCrew(c) && this.physical.find(c.key) === e);
+    if (stopped) {
+      this._say(stopped.id, 'I am stopped for hull repairs, not offering another contract. Repair this same workboat to 60% with your normal repair beam, credits or unsealed scrap; the cargo and agreement stay where they are. Helping does not erase an earlier broken deal.');
+      return;
+    }
     if (m.status === 'complete') {
       if (!m.heardReturn) { m.heardReturn = true;
         const text = Object.values(m.bodies).map(b => `${b.label}: ${b.status === 'delivered' ? `received by ${outfit(b.deliveredBy)?.name || 'you'}` : b.status}`).join('; ');
