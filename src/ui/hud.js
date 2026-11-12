@@ -690,6 +690,17 @@ function mtObjectiveAction(action, wp) {
   return `${verb} · ${destination}`;
 }
 
+function compactRecoveryAction(mission, waypoint) {
+  if (mission?.storyTag === CONTRACT_47A_B0_TAG && mission.params?.sampleRecovered) {
+    return localizeText('Deliver 47-A to Helios Station');
+  }
+  if (mission?.storyTag === CONTRACT_47A_B0_TAG
+    || (waypoint?.kind === 'mission' && waypoint.label === '47-A Recovery Site')) {
+    return localizeText('Recover 47-A from marked rock');
+  }
+  return '';
+}
+
 /**
  * Resolve the sole flight command without combining state from different navigation owners.
  * A matching mission waypoint may carry its tracked mission's timer; every other live waypoint
@@ -849,11 +860,8 @@ export function flightDestinationSurface(state, command) {
     if (term) urgent = urgent || term.tone === 'broken';
     const objectiveLine = term ? `${action} · ${term.text}` : action;
     const dest = { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
-    if (!term && tracked?.storyTag === CONTRACT_47A_B0_TAG) {
-      dest.compactAction = tracked.params?.sampleRecovered
-        ? localizeText('Deliver 47-A to Helios Station')
-        : localizeText('Recover 47-A from marked rock');
-    }
+    const compactAction = !term && compactRecoveryAction(tracked, waypoint);
+    if (compactAction) dest.compactAction = compactAction;
     return dest;
   }
   if (command.owner === 'navigation') {
@@ -876,12 +884,17 @@ export function flightDestinationSurface(state, command) {
         `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
       : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
         travel.etaS == null ? '' : travel.etaText);
-    return {
+    const dest = {
       show: true,
       line: readings ? `${action}\n${readings}` : action,
       urgent: false,
       actLine,
     };
+    // The mission waypoint can reach the HUD before the tracked mission row
+    // does, or stay selected after tracking is cleared.
+    const compactAction = compactRecoveryAction(null, wp);
+    if (compactAction) dest.compactAction = compactAction;
+    return dest;
   }
   if (command.owner === 'untracked-mission') {
     const candidate = command.mission;
@@ -6525,7 +6538,7 @@ export function createHud(ctx, alerts) {
     }
     add('caption', caption);
     for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
-    for (const el of qsa(document, '#alerts > .sf-alert:not([hidden])')) add('alert', el);
+    for (const el of qsa(document, '#alerts .sf-alert:not([hidden])')) add('alert', el);
     for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
     if (state.run?.ruleset === 'swarm') {
       for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) add('swarm-callout', el);
@@ -6639,6 +6652,13 @@ export function createHud(ctx, alerts) {
       // the status strip. Use the actual gap to its right and before the radar as one
       // text column; a full-width band makes that key and the radar block every row.
       const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+      if (!mobileFlight && document.body?.classList?.contains('sf-swarm-flight')) {
+        const centre = plateBox(root.querySelector('.sf-sj__col'));
+        const moment = plateBox(document.querySelector('#sf-stage-banner .sf-discovery-plate__frame')?.parentElement);
+        const left = Math.max(w * .68, (centre?.right || 0) + 12, (moment?.right || 0) + 12);
+        const right = layout.safe.right - 12;
+        if (right - left >= 200) return { x: left, width: right - left, wide: false };
+      }
       const cameraKey = mobileFlight ? plateBox(root.querySelector('#race-tape .race-tape-options-trigger')) : null;
       if (cameraKey && cameraKey.top < h / 3 && dockVisible) {
         const left = Math.max(layout.safe.left + 12, cameraKey.right + 8, railVisible ? rail.right + 12 : 0);
@@ -6752,11 +6772,14 @@ export function createHud(ctx, alerts) {
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
+    const swarmCallouts = document.body?.classList?.contains('sf-swarm-flight')
+      ? qsa(document, '.sf-crun, .sf-sj__col') : [];
     const candidates = [
       ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
       ...qsa(document, '.sf-stuntcall:not([hidden])'),
+      ...swarmCallouts,
       ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
-      ...qsa(document, '#alerts > .sf-alert:not([hidden])'),
+      ...qsa(document, '#alerts .sf-alert:not([hidden])'),
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
       ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
     ];
@@ -6861,8 +6884,9 @@ export function createHud(ctx, alerts) {
     const lane = alertsEl;
     if (!lane) { alertLanePlacementStale = true; return; }
     const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
-    if (!mobileFlight) { restoreAlertLanePlacement(lane); return; }
-    const alertCards = [...(lane.querySelectorAll?.(':scope > .sf-alert:not([hidden])') || [])];
+    const shortSwarm = h <= 540 && document.body?.classList?.contains('sf-swarm-flight');
+    if (!mobileFlight && !shortSwarm) { restoreAlertLanePlacement(lane); return; }
+    const alertCards = [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
     const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
     const visibleCards = alertCards.filter((el) => {
       if (!el || el.hidden || el.style?.display === 'none' || el.style?.visibility === 'hidden') return false;
@@ -7136,12 +7160,27 @@ export function createHud(ctx, alerts) {
     }
     setReceiptStyle(target, 'overflowY', 'visible');
   }
+  let observedSwarmColumn = null;
+  let swarmColumnObserver = null;
+  if (typeof ResizeObserver === 'function') {
+    swarmColumnObserver = new ResizeObserver(() => {
+      alertLanePlacementStale = true;
+      flightTextObstaclesStale = true;
+      invalidateReceiptLane();
+    });
+    hudUnsubscribers.push(() => swarmColumnObserver.disconnect());
+  }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
+    if (swarmColumnObserver && state.run?.ruleset === 'swarm' && !observedSwarmColumn?.isConnected) {
+      observedSwarmColumn = document.querySelector('.sf-sj__col');
+      swarmColumnObserver.disconnect();
+      if (observedSwarmColumn) swarmColumnObserver.observe(observedSwarmColumn);
+    }
     placeAlertLaneInSafeBands(layout, w, h);
     if (!laneRoot || !layout.receipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
@@ -7256,7 +7295,10 @@ export function createHud(ctx, alerts) {
     refreshFlightTextObstacleSnapshot();
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
-    const repositionHudOverlays = () => invalidateReceiptLane();
+    const repositionHudOverlays = () => {
+      alertLanePlacementStale = true;
+      invalidateReceiptLane();
+    };
     window.addEventListener('resize', repositionHudOverlays);
     hudUnsubscribers.push(() => window.removeEventListener('resize', repositionHudOverlays));
   }
