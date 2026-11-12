@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "1d0bfeede8b9fdbde6a5c191bb87690375651ed666e3915231cc4fcf60dee6e8",
+  "uiSourceDigest": "91f109e8464c2cdb0308021c02d168442af6f7427285ec2c98a1dcbe99cbfa8e",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -105,7 +105,7 @@
     "src/ui/globalFind.js": "864d7cd912543f02d5cd4f53be96de19222049f9c9d6fba0b0f198ef6b124302",
     "src/ui/glyphs.js": "f54a95acd99ab8030e27a3d9ccfcd79f39f023b30b735f2dc3adeda2ac858865",
     "src/ui/gravityMarkOverlay.js": "28a1da02ea27126cb3346c0327f81cc755dc0baa5f59b183aef4d806e53389ab",
-    "src/ui/hud.js": "4ac497b18ffae6fe416acb9d12bc3493024529d7f35e7520b2368b776c7a9a3a",
+    "src/ui/hud.js": "61edd9c9c8ebd3e23946b81b28139237816db015d69aec4cf8e52aefade26991",
     "src/ui/hudAttention.js": "e5b8ce32a5e9a6498bb7cb7ae3dec33a3536f03e377928acb450941c78a61745",
     "src/ui/hudAvoidRects.js": "d6c580d34cbf51160b0c966a3370e195e2938f7747bde4a5654da3f597a59e1c",
     "src/ui/hudBrackets.js": "8c4ea67e725b6a8c912190a14a4c1587ec8640319af9405c1568d840c0d743eb",
