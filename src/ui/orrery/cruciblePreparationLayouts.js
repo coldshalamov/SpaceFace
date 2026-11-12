@@ -506,8 +506,8 @@ ${A} .k-foot .k-word--primary {
   display:inline-flex !important; align-items:center; min-height:42px; padding:0 20px;
   font:700 15px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:var(--dp-metal-0, #0b0d10) !important; text-shadow:none !important;
-  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9); border-radius:2px;
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9); border-radius:8px;
+  clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
   transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear;
 }
 ${A} .k-foot .k-word--primary:is(:hover, :focus-visible) {
@@ -520,7 +520,7 @@ ${A} .k-foot .k-word:not(.k-word--primary) {
   display:inline-flex !important; align-items:center; min-height:36px; padding:0 14px;
   font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important; font-weight:600 !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${A} .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) {
@@ -620,7 +620,7 @@ ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp) {
   display:inline-flex !important; align-items:center; min-height:36px; padding:0 14px;
   font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important; font-weight:600 !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp):is(:hover, :focus-visible) {
@@ -633,8 +633,8 @@ ${R} .k-foot .k-word.k-word--primary:not(.is-lamp) {
   color:var(--dp-metal-0, #0b0d10) !important; font-weight:700 !important;
   text-shadow:none !important;
   background:var(--dp-lamp, #f2b950) !important; background-image:none !important;
-  border:1px solid rgb(242 185 80 / .9); border-radius:2px;
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  border:1px solid rgb(242 185 80 / .9); border-radius:8px;
+  clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
   transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear;
 }
 ${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
