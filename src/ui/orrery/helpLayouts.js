@@ -151,6 +151,8 @@ ${H} .orr-hreg__row { position:relative; display:grid; grid-template-columns:min
 ${H} .orr-hreg__row::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
 ${H} .orr-hreg__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.3; color:rgb(${BONE} / .92); }
 ${H} .orr-hreg__row .orr-hkey { justify-self:end; max-width:210px; }
+/* ui-polish-436: a long verb list (Pull · Shove · Pin · Bomb · Rig) wrapped to leave "Rig" alone on its own line */
+${H} .orr-hreg__name { text-wrap:balance; }
 ${H} .orr-hreg__row.is-echo::before { width:20px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(143 203 255 / .8); }
 ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
 ${H} .orr-hreg__row.is-echo .orr-hkey { color:rgb(255 255 255); text-shadow:0 0 12px rgb(143 203 255 / .9); }
