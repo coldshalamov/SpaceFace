@@ -2899,12 +2899,12 @@ body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
 @keyframes sf-commpulse { from { box-shadow:inset 0 -2px rgba(79,143,221,.15); } to { box-shadow:inset 0 -2px var(--accent,#4f8fdd); } }
 .sf-comm-backlog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97);
   width:min(620px, 92vw); max-height:78vh; display:none; flex-direction:column; z-index:2400;
-  background:rgba(4,9,18,.96); border:1px solid var(--accent); border-radius:9px; box-shadow:0 10px 50px rgba(0,0,0,.7);
+  background:var(--sf-pop-glass); border:1px solid var(--sf-pop-seam); border-top:2px solid var(--dp-phos); border-radius:2px; box-shadow:var(--sf-pop-shadow);
   pointer-events:auto; opacity:0; transition:opacity .18s ease, transform .18s ease; }
 .sf-comm-backlog.open { display:flex; opacity:1; transform:translate(-50%,-50%) scale(1); }
 .sf-comm-backlog__head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px;
   border-bottom:1px solid var(--panel-edge); }
-.sf-comm-backlog__title { font-family:var(--mono); font-size:13px; letter-spacing:.06em; color:var(--accent); text-transform:uppercase; }
+.sf-comm-backlog__title { font:650 15px/1.3 var(--dp-face-display); letter-spacing:.04em; color:var(--dp-ink); text-transform:uppercase; }
 .sf-comm-backlog__close { background:none; border:1px solid var(--ink-mute); border-radius:4px; color:var(--ink-dim);
   font-size:12px; padding:2px 9px; cursor:pointer; font-family:var(--mono); }
 .sf-comm-backlog__close:hover { border-color:var(--accent); color:var(--accent); }
@@ -2917,7 +2917,7 @@ body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
   display:flex; flex-direction:column; gap:2px; }
 .sf-comm-backlog__row:hover { background:rgba(79,143,221,.04); }
 .sf-comm-backlog__sender { font-size:12px; letter-spacing:.06em; color:var(--comm-color); text-transform:uppercase; }
-.sf-comm-backlog__text { font-size:12px; color:var(--ink); line-height:1.4; }
+.sf-comm-backlog__text { font-family:var(--dp-face-read); font-size:14px; color:var(--ink); line-height:1.4; }
 .sf-comm-backlog__note { margin-top:4px; font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.4;
   border-left:1px solid var(--sf-edge); padding-left:8px; }
 .sf-comm-backlog__empty { padding:30px 16px; text-align:center; color:var(--ink-mute); font-style:italic; }
@@ -2974,18 +2974,20 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
   font-family:var(--mono); font-size:12px; letter-spacing:.06em; padding:6px 18px; border-radius:5px; cursor:pointer; }
 .sf-endgame__accept:hover { background:rgba(167,139,202,.25); color:#fff; }
 .sf-endgame__footer { margin-top:18px; text-align:center; font-size:12px; color:var(--ink-mute); font-style:italic; }
-/* Choice C inline prompt */
-.sf-endgame--c .sf-endgame__panel--c { width:min(480px, 90vw); padding:28px; text-align:center; }
-.sf-endgame__c-prompt { font-family:var(--mono); font-size:18px; letter-spacing:.06em; color:var(--danger);
-  text-transform:uppercase; margin-bottom:12px; text-shadow:0 0 14px rgba(255,84,112,.4); }
-.sf-endgame__c-hint { font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.5; margin-bottom:18px; }
-.sf-endgame__c-actions { display:flex; gap:14px; justify-content:center; }
-.sf-endgame__c-yes { background:rgba(255,84,112,.15); border:1px solid var(--danger); color:var(--danger);
-  font-family:var(--mono); letter-spacing:.06em; padding:8px 24px; border-radius:5px; cursor:pointer; }
-.sf-endgame__c-no { background:rgba(84,160,200,.12); border:1px solid var(--panel-edge-2); color:var(--ink-dim);
-  font-family:var(--mono); letter-spacing:.06em; padding:8px 24px; border-radius:5px; cursor:pointer; }
-.sf-endgame__c-yes:hover { background:rgba(255,84,112,.3); color:#fff; }
-.sf-endgame__c-no:hover { border-color:var(--accent); color:var(--accent); }
+/* Physical-story decisions share the same instrument field as the station confirmation. */
+.sf-endgame--c { background: var(--sf-pop-scrim); }
+.sf-endgame--c .sf-endgame__panel--c {
+  box-sizing: border-box; width: min(500px, calc(100vw - 24px)); padding: clamp(18px,3vw,30px);
+  background: var(--sf-pop-glass); border: 1px solid var(--sf-pop-seam); border-top: 2px solid var(--dp-lamp);
+  border-radius: 2px; box-shadow: var(--sf-pop-shadow); text-align: left;
+}
+.sf-endgame__c-prompt { margin: 0 0 10px; font: 700 clamp(20px,3vw,28px)/1.15 var(--dp-face-display); color: var(--dp-ink); overflow-wrap: anywhere; }
+.sf-endgame__c-hint { margin: 0 0 18px; font: 450 15px/1.5 var(--dp-face-read); color: var(--dp-ink-dim); }
+.sf-endgame__c-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid var(--dp-rule-hi); }
+.sf-endgame__c-actions button { min-height: 42px; padding: 8px 18px; font: 650 13px/1.25 var(--dp-face-etch);
+  letter-spacing: .045em; cursor: pointer; color: var(--dp-ink); border: 1px solid var(--sf-pop-seam); border-radius: 2px; background: var(--dp-field); }
+.sf-endgame__c-actions .sf-endgame__c-yes { border-color: var(--dp-lamp); color: var(--dp-lamp-hot); }
+.sf-endgame__c-actions button:is(:hover,:focus-visible) { border-color: var(--dp-lamp-hot); background: var(--dp-field-ink-hi); }
 
 /* ── Nemesis transmission (nemesisComms.js — G16-02: the <style> embedded in its innerHTML
    retired here verbatim; the card rides the Stage's prompt slot while visible) ───────────── */
@@ -3019,8 +3021,8 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
 .sf-ending-epilogue__panel {
   width: min(760px, 100%); max-height: min(760px, 92vh); overflow: auto;
   padding: clamp(26px, 5vw, 58px); box-sizing: border-box;
-  border: 1px solid rgba(105, 205, 236, .42); border-inline-width: 0;
-  background: linear-gradient(180deg, rgba(10, 20, 30, .84), rgba(5, 11, 19, .72));
+  border: 1px solid var(--sf-pop-seam); border-top: 2px solid var(--dp-phos);
+  background: var(--sf-pop-glass);
   box-shadow: 0 32px 90px rgba(0, 0, 0, .58); text-align: left;
 }
 .sf-ending-epilogue__eyebrow,
@@ -3030,7 +3032,7 @@ html.sf-reduce-motion .sf-airlock { transition:none; }
 }
 .sf-ending-epilogue__eyebrow { font-size: 12px; margin-bottom: 14px; }
 .sf-ending-epilogue__title {
-  margin: 0; max-width: 18ch; font-family: var(--mono, monospace); font-size: clamp(30px, 6vw, 62px);
+  margin: 0; max-width: 18ch; font-family: var(--dp-face-display, "Archivo", sans-serif); font-size: clamp(30px, 6vw, 62px);
   line-height: .98; letter-spacing: .025em; font-weight: 650; text-wrap: balance;
 }
 .sf-ending-epilogue__resolution {

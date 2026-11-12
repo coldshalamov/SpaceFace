@@ -657,6 +657,52 @@ export function createComms(ctx) {
   });
 
   // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
+  function presentStoryChoice(title, hint, yes, no) {
+    if (choiceModalOpen) return;
+    const opener = document.activeElement;
+    const wrap = document.createElement('div');
+    choiceModalOpen = true;
+    ownedModals.add(wrap);
+    wrap.className = 'sf-endgame sf-endgame--c';
+    wrap.tabIndex = -1;
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.setAttribute('aria-label', title);
+    wrap.innerHTML =
+      '<div class="sf-endgame__panel sf-endgame__panel--c">' +
+      '<div class="sf-endgame__c-prompt">' + escapeHtml(title) + '</div>' +
+      '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
+      '<div class="sf-endgame__c-actions"><button type="button" class="sf-endgame__c-yes"></button><button type="button" class="sf-endgame__c-no"></button></div></div>';
+    const buttons = [wrap.querySelector('.sf-endgame__c-yes'), wrap.querySelector('.sf-endgame__c-no')];
+    for (const [i, action] of [yes, no].entries()) {
+      const button = buttons[i];
+      button.textContent = action.label;
+      button.addEventListener('click', () => {
+        if (!ownedModals.delete(wrap)) return;
+        choiceModalOpen = false;
+        wrap.remove();
+        if (opener?.isConnected) opener.focus?.({ preventScroll: true });
+        action.run();
+      });
+    }
+    // Both paths have consequences. Leave initial focus on the question so a held confirm
+    // cannot make the choice. Tab and Shift+Tab move between the two verbs.
+    wrap.addEventListener('keydown', ev => {
+      if (ev.key !== 'Tab') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const active = document.activeElement;
+      const next = active === wrap ? (ev.shiftKey ? 1 : 0) : Number(active === buttons[0]);
+      buttons[next].focus();
+    });
+    dialogHost(ctx).appendChild(wrap);
+    requestAnimationFrame(() => {
+      if (!wrap.isConnected) return;
+      wrap.classList.add('open');
+      wrap.focus({ preventScroll: true });
+    });
+  }
+
   function presentPhysicalChoice(
     choice,
     promptText,
@@ -665,39 +711,21 @@ export function createComms(ctx) {
     intentEvent = 'ui:endgameChoose',
     decision = null,
   ) {
-    if (choiceModalOpen) return;
-    const wrap = document.createElement('div');
-    choiceModalOpen = true;
-    ownedModals.add(wrap);
-    wrap.className = 'sf-endgame sf-endgame--c';
-    wrap.setAttribute('role', 'dialog');
-    wrap.setAttribute('aria-modal', 'true');
-    wrap.innerHTML =
-      '<div class="sf-endgame__panel sf-endgame__panel--c">' +
-      '<div class="sf-endgame__c-prompt">' + escapeHtml(promptText) + '</div>' +
-      '<div class="sf-endgame__c-hint">' + escapeHtml(hint) + '</div>' +
-      '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">YES</button><button class="sf-endgame__c-no">NO</button></div>' +
-      '</div>';
-    dialogHost(ctx).appendChild(wrap);
-    requestAnimationFrame(() => wrap.classList.add('open'));
-    const cleanup = () => {
-      choiceModalOpen = false;
-      ownedModals.delete(wrap);
-      wrap.classList.remove('open');
-      setTimeout(() => wrap.remove(), 220);
-    };
-    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => {
-      if (decision && typeof decision.onYes === 'function') decision.onYes();
-      else bus.emit(intentEvent, { choice, confirm: true });
-      cleanup();
-    });
-    wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
-      if (decision && typeof decision.onNo === 'function') decision.onNo();
-      else {
-        bus.emit('ui:endgameDecline', { choice });
-        if (typeof declineEffect === 'function') declineEffect();
-      }
-      cleanup();
+    presentStoryChoice(promptText, hint, {
+      label: 'Yes',
+      run: () => {
+        if (decision?.onYes) decision.onYes();
+        else bus.emit(intentEvent, { choice, confirm: true });
+      },
+    }, {
+      label: 'No',
+      run: () => {
+        if (decision?.onNo) decision.onNo();
+        else {
+          bus.emit('ui:endgameDecline', { choice });
+          if (declineEffect) declineEffect();
+        }
+      },
     });
   }
   listen('endgame:promptChoiceC', ({ promptText }) => presentPhysicalChoice(
@@ -741,35 +769,10 @@ export function createComms(ctx) {
     state.ui.endgameEligibility = Array.isArray(rows) ? rows.slice() : [];
   });
   listen('scenario:safeOpeningDemand', () => {
-    if (choiceModalOpen) return;
-    const wrap = document.createElement('div');
-    choiceModalOpen = true;
-    ownedModals.add(wrap);
-    wrap.className = 'sf-endgame sf-endgame--c';
-    wrap.setAttribute('role', 'dialog');
-    wrap.setAttribute('aria-modal', 'true');
-    wrap.innerHTML =
-      '<div class="sf-endgame__panel sf-endgame__panel--c">' +
-      '<div class="sf-endgame__c-prompt">SCAVENGER CLAIM: SEALED SPINDLE</div>' +
-      '<div class="sf-endgame__c-hint">They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.</div>' +
-      '<div class="sf-endgame__c-actions"><button class="sf-endgame__c-yes">CUT LINE</button><button class="sf-endgame__c-no">REFUSE</button></div>' +
-      '</div>';
-    dialogHost(ctx).appendChild(wrap);
-    requestAnimationFrame(() => wrap.classList.add('open'));
-    const cleanup = () => {
-      choiceModalOpen = false;
-      ownedModals.delete(wrap);
-      wrap.classList.remove('open');
-      setTimeout(() => wrap.remove(), 220);
-    };
-    wrap.querySelector('.sf-endgame__c-yes').addEventListener('click', () => {
-      bus.emit('scenario:scavengerResponse', { choice: 'yield' });
-      cleanup();
-    });
-    wrap.querySelector('.sf-endgame__c-no').addEventListener('click', () => {
-      bus.emit('scenario:scavengerResponse', { choice: 'refuse' });
-      cleanup();
-    });
+    presentStoryChoice('Scavenger claim: sealed spindle',
+      'They hold fire in a wedge. Cut loose safely, or refuse and use the twelve-second escape window.',
+      { label: 'Cut line', run: () => bus.emit('scenario:scavengerResponse', { choice: 'yield' }) },
+      { label: 'Refuse', run: () => bus.emit('scenario:scavengerResponse', { choice: 'refuse' }) });
   });
 
   // ── tick: fade sweep (called by uiRoot.frame via the returned api) ────────────────────────

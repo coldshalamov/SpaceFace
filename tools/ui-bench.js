@@ -18,6 +18,7 @@ import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS, applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
+import { TECH_NODES } from '../src/data/tech.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { ships as shipsSystem } from '../src/systems/ships.js';
@@ -65,6 +66,7 @@ const SCREENS = Object.freeze({
   codex: () => import('../src/ui/screens/codex.js').then((m) => m.codexScreen),
   missionLog: () => import('../src/ui/screens/missionLog.js').then((m) => m.missionLogScreen),
   credits: () => import('../src/ui/screens/credits.js').then((m) => m.creditsScreen),
+  manifest: () => import('../src/ui/screens/manifest.js').then((m) => m.manifestScreen),
   achievements: () => import('../src/ui/screens/achievements.js').then((m) => m.achievementsScreen),
   statistics: () => import('../src/ui/screens/statistics.js').then((m) => m.statisticsScreen),
   gameOver: () => import('../src/ui/screens/gameOver.js').then((m) => m.gameOverScreen),
@@ -295,6 +297,8 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
   for (let i = 0; i < fitted.length; i++) if (!fitted[i]) fitted[i] = null;
   gameState.player.ownedShips = [{ defId: starter.hullId, fittings: fitted }];
   gameState.player.activeShipIndex = 0;
+  // Crucible launch grants the ephemeral run its arsenal before the armory opens.
+  gameState.player.researchedNodes = TECH_NODES.map(node => node.id);
   gameState.player.moduleInventory = spares.map((defId, index) => ({ instanceId: 9100 + index, defId }));
   // Mint the same process-local lifetime the live run owner gives every armory action.
   // A bare schema record intentionally cannot authorize a preparation receipt.
@@ -846,6 +850,7 @@ const bus = {
     listeners.get(key).add(fn);
     return () => listeners.get(key)?.delete(fn);
   },
+  off(key, fn) { listeners.get(key)?.delete(fn); },
   emit(key, payload = {}) {
     if (key === 'ui:pushScreen' && payload && payload.id) {
       if (isMapScreenId(payload.id)) {
@@ -981,6 +986,8 @@ let current = null;
 /** The shot being mounted (the chart reads its planner through the registry). */
 let currentShot = null;
 let currentScreen = null;
+let releaseFlightPopup = null;
+let manifestFixture = null;
 let currentAlias = null;
 /** The save system the load screen reads: null (no saves) unless the shot files some. */
 let benchSaves = null;
@@ -1042,6 +1049,8 @@ async function finishShot(shot) {
 }
 
 async function goto(rawId) {
+  releaseFlightPopup?.();
+  releaseFlightPopup = null;
   const requestedShot = resolveShot(rawId);
   if (requestedShot?.mapAlias) {
     // Mount the real chart fixture, then send the same legacy event uiRoot handles.
@@ -1057,6 +1066,13 @@ async function goto(rawId) {
   }
   currentAlias = null;
   window.__BENCH_READY = false;
+  if (manifestFixture) {
+    currentScreen?.dispose?.();
+    manifestFixture.table.dispose();
+    state.player.credits = manifestFixture.credits;
+    state.ui.manifestOpponent = manifestFixture.opponent;
+    manifestFixture = null;
+  }
   // The drill module owns a live session and its own frame loop. Retire that instance before
   // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
   // and onShow skips the new board, leaving the walk on the empty claim screen.
@@ -1135,7 +1151,7 @@ async function goto(rawId) {
       root.dataset.screen = shot.screen || id;
       root.setAttribute('role', 'dialog');
       root.setAttribute('aria-modal', 'true');
-      if (shot.screen === 'station') {
+      if (shot.screen === 'station' || shot.screen === 'manifest') {
         state.ui.docked = true;
         state.ui.dockedStationId = shot.dock || 'station_helios';
       } else {
@@ -1193,8 +1209,21 @@ async function goto(rawId) {
       if (id === 'gameOver') seedGameOverShot(state, shot);
       const screen = await loader();
       const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+      if (id === 'manifest') {
+        const { createManifestTable } = await import('../src/systems/manifestGame.js');
+        const { generateContacts } = await import('../src/ui/station/barContacts.js');
+        benchEconomyOwner();
+        manifestFixture = { table: createManifestTable(ctx), credits: state.player.credits, opponent: state.ui.manifestOpponent };
+        const opponent = state.ui.manifestOpponent || generateContacts(state.ui.dockedStationId, state)[0];
+        state.ui.manifestOpponent = { id: opponent.id, name: opponent.name };
+        state.player.credits = 200;
+      }
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
+      if (id === 'manifest' && Number.isFinite(shot.manifestStake)) {
+        const opponent = state.ui.manifestOpponent;
+        bus.emit('ui:manifestStart', { stake: shot.manifestStake, opponentId: opponent.id, opponentName: opponent.name });
+      }
       if (shot.record) screen._focus?.('record:deeds');
       // ...and opens the receipt list the way a player does, through its own Show toggle.
       if (shot.receipts) root.querySelector('[aria-controls="sf-mlog-completed-list"]')?.click();
@@ -1263,6 +1292,48 @@ async function openOverlay(kind) {
     const node = document.getElementById('sf-wingman-radial');
     window.__BENCH_OVERLAY = node && !node.hidden ? 'wingman open' : 'wingman did not open';
     if (node && !node.hidden) window.__BENCH_OVERLAY_EL = node;
+    return;
+  }
+  if (kind === 'decision') {
+    const { createPromptDeck } = await import('../src/ui/promptDeck.js');
+    const deck = createPromptDeck(ctx);
+    deck.offerDecision({
+      id: 'bench-clearance', kind: 'warn', sender: 'Port Authority', statusFlag: 'Inspection',
+      headline: 'The convoy requests clearance', detail: 'Read the manifest before the convoy departs.',
+      deadlineAt: state.simTime + 50,
+      choices: [{ id: 'inspect', label: 'Request the sealed manifest' }, { id: 'release', label: 'Release the convoy' }],
+      onChoose: () => deck.resolveDecision('bench-clearance'),
+    });
+    releaseFlightPopup = () => deck.destroy();
+    window.__BENCH_OVERLAY = document.querySelector('#sf-prompt-deck [data-choice-id]') ? 'decision open' : 'decision did not open';
+    return;
+  }
+  if (kind === 'story-choice') {
+    const { createComms } = await import('../src/ui/comms.js');
+    const comms = createComms(ctx);
+    bus.emit('endgame:promptChoiceD', {});
+    releaseFlightPopup = () => comms.destroy();
+    window.__BENCH_OVERLAY = document.querySelector('.sf-endgame') ? 'story choice open' : 'story choice did not open';
+    return;
+  }
+  if (kind === 'cargo') {
+    const cargo = state.player.cargo;
+    const before = structuredClone(cargo);
+    cargo.items = { cmdty_ore_iron: 4, cmdty_fuel_cells: 3 };
+    cargo.usedVolume = 6.4;
+    bus.emit('ui:toggleCargo');
+    releaseFlightPopup = () => { bus.emit('ui:closeCargo'); state.player.cargo = before; };
+    window.__BENCH_OVERLAY = document.querySelector('.sf-cargo-panel.open') ? 'cargo open' : 'cargo did not open';
+    return;
+  }
+  if (kind === 'receipt') {
+    let lane = document.getElementById('toasts');
+    if (!lane) { lane = document.createElement('div'); lane.id = 'toasts'; hudEl.appendChild(lane); }
+    const { createToasts } = await import('../src/ui/toasts.js');
+    const receipts = createToasts(ctx);
+    bus.emit('toast', { text: 'Port Authority requests a cargo inspection.', kind: 'warn', ttl: 30 });
+    releaseFlightPopup = () => receipts.destroy();
+    window.__BENCH_OVERLAY = lane.querySelector('.sf-toast') ? 'receipt visible' : 'receipt did not open';
     return;
   }
   if (kind === 'confirm' || kind === 'confirm-danger') {
@@ -1554,6 +1625,12 @@ async function mountCrucibleHud() {
 async function back() {
   stack.pop();
   const previous = stack[stack.length - 1];
+  if (current === 'manifest') {
+    // Both direct table fixtures and the station's Play control return to the same docked Bar.
+    if (previous === 'station') stack.pop();
+    await goto('station-bar');
+    return;
+  }
   if (previous && previous !== current) { stack.pop(); await goto(previous); }
   else if (current) await goto(current);
 }

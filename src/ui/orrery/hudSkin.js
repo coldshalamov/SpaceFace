@@ -8,7 +8,7 @@
 // ring of light where a card had a bar. Every rule is scoped to body[data-hud-skin="orrery"], which
 // the Cluster mount sets, so the old look returns untouched if ORRERY is ever unmounted.
 //
-// No material imitation (the standing no-bevel law): no borders, no fills, no inner glows.
+// Instruments stay light over the world. Interactive sheets and receipts carry their own contrast.
 
 const STYLE_ID = 'sf-orrery-hud-skin';
 const S = 'body[data-hud-skin="orrery"]';
@@ -37,17 +37,24 @@ ${S} #hud .sf-discovery-plate__title { font-family:var(--dp-face-display, "Archi
 ${S} #hud .sf-discovery-plate__meta { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; letter-spacing:.06em;
   color:var(--dp-ink-dim, #b7b4a6); margin-top:7px; }
 
-/* ---- receipts: signals, not cards — a small ring, the line of text, a pool of shadow ------------- */
-${S} #hud .sf-toast { position:relative; background:none !important; box-shadow:none !important; border:0 !important;
-  padding:3px 0 3px 24px; font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; line-height:1.35;
-  color:var(--dp-ink, #e8e2d4); ${HALO} }
-${S} #hud .sf-toast::before { ${pool('-12px -30px -12px -10px')} }
-${S} #hud .sf-toast::after { content:""; position:absolute; left:0; top:50%; width:15px; height:1px;
-  background:linear-gradient(90deg, transparent, rgb(232 226 212 / .75)); }
-${S} #hud .sf-toast--warn::after, ${S} #hud .sf-toast--error::after, ${S} #hud .sf-toast--danger::after {
-  height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-danger, #ff5038)); box-shadow:0 0 6px rgb(255 80 56 / .35); }
-${S} #hud .sf-toast--discovery::after {
-  height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-phos, #dfeeff)); box-shadow:0 0 6px var(--dp-phos-halo, rgb(150 210 255 / .35)); }
+/* The feed owns a seat above world markers. Its individual receipts still receive pointer events. */
+${S} #hud #toasts, ${S} #hud #sf-stage-feed { z-index:80; }
+${S}:has(#hud .sf-cargo-panel.open):not(.ui-modal-open):not(.ui-live-screen) #alerts { z-index:9 !important; }
+/* Receipts share the popup seam and an opaque text bed over the moving flight scene. */
+${S} #hud .sf-toast {
+  --receipt-mark: var(--dp-phos);
+  position:relative; display:flex; align-items:center; gap:8px; box-sizing:border-box;
+  padding:7px 10px; background:var(--sf-pop-glass) !important; box-shadow:none !important;
+  border:1px solid var(--sf-pop-seam) !important; border-inline-start:2px solid var(--receipt-mark) !important;
+  font:500 14px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif); color:var(--dp-ink, #e8e2d4);
+  text-shadow:none;
+}
+${S} #hud .sf-toast::before, ${S} #hud .sf-toast::after { content:none; }
+${S} #hud .sf-toast__icon { display:inline-flex; align-items:center; justify-content:center; flex:none; color:var(--receipt-mark); }
+${S} #hud .sf-toast__text { min-width:0; overflow-wrap:anywhere; }
+${S} #hud .sf-toast--warn { --receipt-mark:var(--dp-hand, #f2b950); }
+${S} #hud .sf-toast--error, ${S} #hud .sf-toast--danger { --receipt-mark:var(--dp-danger, #ff5038); }
+${S} #hud .sf-toast--good, ${S} #hud .sf-toast--success { --receipt-mark:var(--sf-you); }
 ${S} #hud .sf-toast__count { font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff);
   background:none; border:0; box-shadow:none; margin-left:8px; }
 
@@ -122,8 +129,7 @@ ${S} #hud .sf-news-ticker { font-family:var(--dp-face-read, "Instrument Sans", s
 
 /* ---- the radar: its frame is ORRERY light drawn outside the canvas, so the wrap must not clip ---- */
 ${S} #hud .sf-target:not([hidden]):not(:empty),
-${S} #hud #sf-sector-law:not([hidden]):not(:empty),
-${S} #hud .sf-cargo-panel:not([hidden]):not(:empty) {
+${S} #hud #sf-sector-law:not([hidden]):not(:empty) {
   background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90)) !important;
   border:1px solid rgb(236 230 216 / .13) !important;
   border-radius:4px !important;
@@ -132,6 +138,43 @@ ${S} #hud .sf-cargo-panel:not([hidden]):not(:empty) {
   font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
   letter-spacing:.015em;
   word-spacing:.08em;
+}
+${S} #hud .sf-cargo-panel:not([hidden]):not(:empty) {
+  background:var(--sf-pop-glass) !important; border:1px solid var(--sf-pop-seam) !important;
+  border-top:2px solid var(--dp-phos) !important; border-radius:2px !important;
+  box-shadow:var(--sf-pop-shadow) !important; padding:0 !important; box-sizing:border-box;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
+}
+@media (max-width:760px) {
+  ${S} #hud .sf-cargo-panel:not([hidden]):not(:empty) {
+    inset:50% auto auto 50%; width:calc(100% - 20px); height:min(720px, calc(100dvh - 32px)); max-height:none;
+  }
+  ${S} #hud .sf-cargo-panel__head { display:grid; grid-template-columns:minmax(0, 1fr) auto;
+    align-items:center; gap:10px; padding:12px; }
+  ${S} #hud .sf-cargo-title-group { min-width:0; }
+  ${S} #hud .sf-cargo-panel__title { font:700 18px/1.12 var(--dp-face-display, Archivo, sans-serif); letter-spacing:.005em; color:var(--dp-ink); }
+  ${S} #hud .sf-cargo-status-tag { display:none; }
+  ${S} #hud .sf-cargo-panel__close { grid-column:2; grid-row:1; min-height:40px; padding:0 10px;
+    border:1px solid var(--sf-pop-seam); color:var(--dp-ink); }
+  ${S} #hud .sf-cargo-gauges { grid-column:1 / -1; grid-row:2; flex-wrap:wrap; gap:8px 18px; align-items:baseline; }
+  ${S} #hud .sf-cargo-gauge-item { min-width:0; gap:0; }
+  ${S} #hud .sf-cargo-gauge-item > :not(.sf-gauge-label) { display:none; }
+  ${S} #hud .sf-gauge-label { color:var(--dp-ink-dim); }
+  ${S} #hud .sf-gauge-label > span { color:var(--dp-ink); }
+  ${S} #hud .sf-cargo-body { display:flex; flex-direction:column; min-height:0; overflow-y:auto; overflow-x:hidden; }
+  ${S} #hud .sf-cargo-left-rail { box-sizing:border-box; flex:none; width:100%; display:flex; flex-direction:row;
+    align-items:stretch; overflow-x:auto; padding:5px 8px; gap:4px; border:0; border-bottom:1px solid var(--sf-pop-seam); }
+  ${S} #hud .sf-cargo-rail-btn { flex:1 0 auto; width:auto; min-height:40px; padding:0 4px; font-size:13px; text-align:center; }
+  ${S} #hud .sf-cargo-centerpiece { flex:1 0 auto; min-width:0; min-height:130px; width:100%; overflow:visible; }
+  ${S} #hud .sf-cargo-schematic { flex:0 0 auto; min-height:100px; gap:8px; padding:12px; overflow:visible; }
+  ${S} #hud .sf-cargo-block { box-sizing:border-box; min-width:0; max-width:100%; padding:10px; }
+  ${S} #hud .sf-cargo-supply-tree { height:auto; padding:12px; }
+  ${S} #hud .sf-cargo-supply-chart { height:auto; }
+  ${S} #hud .sf-cargo-supply-chart svg { display:block; width:100%; height:auto; }
+  ${S} #hud .sf-cargo-inspector { box-sizing:border-box; flex:none; width:100%; height:auto; padding:14px;
+    border:0; border-top:1px solid var(--sf-pop-seam); overflow:visible; }
+  ${S} #hud .sf-inspector-content { height:auto; }
+  ${S} #hud .sf-cargo-body:not([data-has-selection]) :is(.sf-cargo-inspector, .sf-cargo-supply-tree) { display:none; }
 }
 ${S} #hud .sf-target { text-align:left !important; gap:6px !important; }
 ${S} #hud .sf-target__head { align-items:flex-start !important; justify-content:space-between !important; gap:8px !important; }

@@ -77,7 +77,12 @@ function testBuildModuleWritesModuleReceipt() {
 }
 
 function testTeleporterLinksAndRequestsTravel() {
-  const h = makeHarness({ researchedNodes: ['tech_graviton_drives'] });
+  const moves = [];
+  const world = { relocatePlayerInSector(position, options) {
+    moves.push({ position, options });
+    return true;
+  } };
+  const h = makeHarness({ researchedNodes: ['tech_graviton_drives'], world });
   h.sys.claim(makePoi({ id: 'poi_lane', name: 'Lane Moon', size: 'L', pos: { x: 10, z: 0 } }));
   const body = h.state.claims.bodies[0];
   const teleporter = BODY_MODULE_BY_ID.get('mod_teleporter');
@@ -89,11 +94,11 @@ function testTeleporterLinksAndRequestsTravel() {
     'teleporter build emits a module receipt');
 
   assert.equal(h.sys.teleportFrom(body.id), true, 'linked teleporter requests travel');
-  assert.equal(h.events.some((e) =>
-    e.event === 'claim:teleportRequest' &&
-    e.payload.bodyId === body.id &&
-    e.payload.targetStationId === 'station_near'), true,
-  'teleport request carries the body and linked station ids');
+  assert.equal(moves.length, 1, 'the linked teleporter asks the world owner to move the hull once');
+  const station = h.state.entityIndex.byStationId.get(body.linkedStationId);
+  assert.equal(moves[0].options.reason, 'claim_teleporter');
+  assert.equal(moves[0].position.z, station.pos.z);
+  assert.ok(moves[0].position.x > station.pos.x, 'the arrival berth clears the linked station centre');
 }
 
 function testSerializeDeserializePreservesLedgerAndNextId() {
@@ -135,7 +140,8 @@ function testBaseScreenReadsClaimLedger() {
     [/for \(let i = 0; i < body\.slots; i\+\+\) \{[\s\S]*const modId = body\.modules\[i\];/, 'base screen renders installed modules by slot'],
     [/slot\.className = 'base-slot empty';[\s\S]*empty slot/, 'base screen shows empty ledger slots'],
     [/state\.ui\.pendingClaimBodyId = null;/, 'base screen consumes pending claim handoff'],
-    [/claims\.buildModule\(body\.id, mod\.id\)\) this\._render\(\);/, 'base screen rebuilds from the ledger after a module build'],
+    [/applyConfirmedBaseInvestment\([\s\S]*?\(\) => claims\.buildModule\(body\.id, mod\.id\),[\s\S]*?if \(didCommit === true\) this\._refreshAfterAction\(btn\)/, 'a confirmed module build refreshes the ledger'],
+    [/_refreshAfterAction\(button\) \{[\s\S]*?this\._render\(\)/, 'the refresh reads live claim state'],
     [/body\.modules\.includes\('mod_teleporter'\)/, 'base screen exposes teleporter state from built modules'],
     [/claims\.teleportFrom\(body\.id\);/, 'base screen routes teleport through claims system'],
   ];
@@ -148,6 +154,7 @@ function makeHarness({
   credits = 100000,
   researchedNodes = [],
   initialBodies = [],
+  world = null,
 } = {}) {
   const events = [];
   const stationNear = {
@@ -181,7 +188,7 @@ function makeHarness({
   };
   const bus = { emit: (event, payload) => events.push({ event, payload }) };
   const sys = { ...claimsBase };
-  sys.init({ state, bus, ctx: {} });
+  sys.init({ state, bus, registry: { get: (name) => name === 'world' ? world : null } });
   sys.deserialize({ bodies: initialBodies.map((body) => ({ ...body, modules: (body.modules || []).slice() })) });
   return { state, bus, events, sys };
 }

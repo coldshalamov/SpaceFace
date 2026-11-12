@@ -1025,10 +1025,9 @@
    verb stays the kit's PRIMARY key: wave-c4-drill-kit pins the className and the two
    fh-key rules below, and the amber plate is this overlay's own Lamp Key. */
 .ast-summary-box {
-  background: rgb(8 11 16 / .92);
-  background-image: linear-gradient(180deg, rgb(236 230 216 / .5) 0 2px, transparent 2px);
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  background: var(--sf-pop-glass);
   box-sizing: border-box;
   padding: 22px 26px 24px;
   width: min(420px, calc(100vw - 32px));
@@ -1038,8 +1037,9 @@
   color: var(--orr-bone-dim);
   font-family: var(--aw-font, system-ui, sans-serif);
   text-transform: none;
-  border: 0;
-  box-shadow: 0 24px 70px rgb(0 0 0 / .6);
+  border: 1px solid var(--sf-pop-seam);
+  border-top: 2px solid var(--dp-phos);
+  box-shadow: var(--sf-pop-shadow);
 }
 .ast-summary-box .title {
   font-family: "Archivo", var(--aw-font, sans-serif);

@@ -1,44 +1,5 @@
-// popupsLayouts.js — the popup tier's layout home (ORRERY register): the shared chrome for the
-// three popup instruments this unit owns — the find palette (globalFind.js), the entity dossier
-// drawer (entityLinks.js) and the quiet states of its apron verbs.
-//
-// WHY A JS-INJECTED SHEET: the popup tier's base look lives in the shared stylesheets
-// (styles/kit.css "Confirm / Tier-2 tooltip / Find palette", styles/ui.css "§14 entity links +
-// drawer") which several screens share — this lane does not edit shared sheets. The established
-// composition idiom for lane-owned styling is a guarded <style> injection (src/ui/orrery/chartHub.js
-// injectHubStyle, src/ui/orrery/hoverTag.js). Every rule here SCOPES to or augments the existing
-// classes; none redefines the tier.
-//
-// THE THREE MOVES (each judged on the bench PNGs, popup-find / popup-dossier):
-//   1. ONE PANE. The palette was two unrelated glass slabs plus a caption floating on the scrim —
-//      a web command palette, not the popup tier's single instrument. globalFind.js now wraps
-//      input + results + hint in one .sf-find__pane; this sheet gives the pane the tier's chrome —
-//      corner brackets, one drawn head rule, the wash — and strips the per-slab glass so the
-//      surface reads as one instrument. Rows arrive on the tier's stagger (28 ms), not as a block.
-//   2. THE SHEET HUGS ITS CONTENT. A four-line dossier left ~380 px of dead glass above the apron
-//      at 1920×1080 — the exact "unfinished sidebar" read the drawer's own history fights. The
-//      sheet now runs top → content, capped at the viewport; a tall record still scrolls and the
-//      sticky apron still rides the foot.
-//   3. RUNGS READ AS DOORS AT REST. A dossier link rung was indistinguishable from body text
-//      until hovered (the underline deliberately returns only on intent). Each rung now carries a
-//      quiet etched chevron — the door mark — which warms to the lamp under the hand. And a
-//      disabled apron verb now LOOKS disabled (the FB-050 "needs a docked quote" state shipped
-//      with no disabled treatment at all).
-//   5. THE PALETTE SHARPENS ONLY OVER A STILL WORLD. The pane's 22px blur painted per-frame over
-//      live flight whenever find opened with no screen up — the flight-hosted palette
-//      (.sf-find--host, globalFind mounts it bare on #screens) sat over the running world, and P9
-//      makes backdrop-filter in flight an S1. The blur now scopes to the screen-hosted pane; the
-//      flight-hosted pane takes the flight glass' flat --dp-glass-flight fill instead.
-//   4. THE PALETTE STEPS BACK FOR THE DRAWER. A dossier opened from a palette row painted under
-//      the palette's own scrim (palette z 4500, drawer layer z 40); the drawer is announced on
-//      the bus (ui:entityDrawer, entityLinks.js) and the palette recedes to .25 opacity while it
-//      is up — "the palette waits behind the drawer" made true at the pixels.
-//
-// LAW: colours are --dp-* / the tier's existing --sf-pop-* only, alpha via color-mix; no new
-// token root; nothing below the 12 px floor; no bordered rectangle (brackets and rules only);
-// reduced motion kills every animation and transition here under BOTH the media query and
-// html.sf-reduce-motion (the game's own accessibility setting).
-
+// Layout of the global entity search and dossier. The popup material and role marks
+// come from styles/kit.css. The independent record and action scrollports live here.
 const STYLE_ID = 'sf-orrery-popups-layouts';
 
 const CHEVRON = 'url("data:image/svg+xml,'
@@ -49,110 +10,72 @@ const CHEVRON = 'url("data:image/svg+xml,'
   + '")';
 
 const CSS = `
-/* ── 1. The find palette is one pane ─────────────────────────────────────────────────────── */
+/* Search has one listening field, one result ladder and a fixed key legend. */
 .sf-find .sf-find__pane {
-  position: relative;
-  display: flex; flex-direction: column;
-  width: min(calc(660px * var(--k-s, 1)), 92vw);
-  box-sizing: border-box;
-  background:
-    radial-gradient(70% 130px at 50% 0, var(--sf-pop-wash, rgb(232 226 212 / .055)), transparent),
-    var(--sf-pop-glass, linear-gradient(180deg, rgb(18 21 28 / .9), rgb(8 10 14 / .96)));
-  animation: sf-popups-unfold 420ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) backwards;
+  display: flex; flex-direction: column; box-sizing: border-box; width: min(620px, calc(100% - 24px));
+  max-height: calc(100dvh - 16vh - 20px); border: 1px solid var(--sf-pop-seam); border-top: 2px solid var(--dp-phos);
+  background: var(--sf-pop-glass); box-shadow: var(--sf-pop-shadow);
 }
-/* P9: blur only over a paused/static world. The screen-hosted pane keeps the 22px wash; the
-   flight-hosted palette (globalFind mounts it bare on #screens as .sf-find--host while the
-   world runs) paints the flight glass' flat --dp-glass-flight fill instead — no per-frame
-   blur over live flight. */
-.sf-find:not(.sf-find--host) .sf-find__pane {
-  -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15);
+.sf-find .sf-find__field {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--sf-pop-seam);
 }
-.sf-find.sf-find--host .sf-find__pane {
-  background: var(--dp-glass-flight, rgb(18 23 29 / .82));
-  -webkit-backdrop-filter: none; backdrop-filter: none;
+.sf-find .sf-find__field::before {
+  content: ""; width: 40px; height: 40px; flex: none; background: var(--sf-pop-sweep) center / contain no-repeat;
 }
-/* Same P9 law on the host scrim itself: .sf-find's blur(9px) otherwise repaints the whole
-   viewport behind the pane every frame the palette is up over live flight. The dim wash stays —
-   only the per-frame blur goes. */
-.sf-find.sf-find--host {
-  -webkit-backdrop-filter: none; backdrop-filter: none;
+.sf-find .sf-find__field:focus-within { border-bottom-color: var(--dp-lamp); }
+.sf-find .sf-find__field input.sf-find__input {
+  flex: 1; min-width: 0; width: 0; padding: 8px 0; font-size: clamp(16px, 2vw, 22px);
+  background: transparent; animation: none; backdrop-filter: none;
 }
-/* The edge: four corner brackets floating just outside the glass — the tier's edge language,
-   never a border. */
-.sf-find .sf-find__pane::before { content: ""; position: absolute; inset: -8px; pointer-events: none;
-  background:
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) left top / 16px 1px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) left top / 1px 16px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) right top / 16px 1px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) right top / 1px 16px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) left bottom / 16px 1px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) left bottom / 1px 16px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) right bottom / 16px 1px,
-    linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) right bottom / 1px 16px;
-  background-repeat: no-repeat;
-  animation: sf-popups-brackets 520ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 40ms backwards; }
-/* One drawn rule along the head: 1 px core + bloom as geometry, the tier's lit head. */
-.sf-find .sf-find__pane::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--sf-pop-edge, rgb(232 226 212 / .5)) 16%, var(--sf-pop-edge, rgb(232 226 212 / .5)) 84%, transparent);
-  box-shadow: 0 0 22px 3px var(--sf-pop-bloom, rgb(232 226 212 / .16));
-  transform-origin: 50% 50%;
-  animation: sf-popups-draw 560ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 80ms backwards; }
-
-/* The field loses its own slab: the pane carries the glass, the field keeps only its resting
-   rule — which warms to the lamp under focus (the palette's one amber leader). */
-.sf-find .sf-find__pane input.sf-find__input,
-.sf-find .sf-find__pane input.sf-find__input:hover,
-.sf-find .sf-find__pane input.sf-find__input:focus {
-  background:
-    linear-gradient(90deg, transparent, var(--dp-rule-hi, rgb(232 226 212 / .22)) 10%, var(--dp-rule-hi, rgb(232 226 212 / .22)) 90%, transparent) bottom / 100% 1px no-repeat;
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-  animation: none;
+.sf-find .sf-find__dismiss {
+  position: relative; flex: none; width: 40px; height: 40px; padding: 0;
+  border: 1px solid var(--sf-pop-seam); border-radius: 2px; color: var(--dp-ink); background: transparent; cursor: pointer;
 }
-.sf-find .sf-find__pane input.sf-find__input:focus {
-  background:
-    linear-gradient(90deg, transparent, var(--dp-lamp, #f2b950) 8%, var(--dp-lamp-hot, #ffd98c) 50%, var(--dp-lamp, #f2b950) 92%, transparent) bottom / 100% 1.5px no-repeat; }
-/* The results lose their second slab: one continuous surface under the field. */
+.sf-find .sf-find__dismiss::before, .sf-find .sf-find__dismiss::after {
+  content: ""; position: absolute; left: 30%; top: 48%; width: 40%; height: 2px; background: currentColor; rotate: 45deg;
+}
+.sf-find .sf-find__dismiss::after { rotate: -45deg; }
+.sf-find .sf-find__dismiss:is(:hover,:focus-visible) { color: var(--dp-lamp-hot); border-color: currentColor; }
 .sf-find .sf-find__pane .sf-find__results {
-  background: none;
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-  padding-top: 2px;
+  width: auto; min-height: 0; overflow: auto; padding: 4px; background: none; animation: none; backdrop-filter: none;
 }
-
-/* Rows arrive on the tier's stagger — 28 ms per rung, the scales-tick cadence — never as a block. */
-.sf-find .sf-find__pane .sf-find__row { animation: sf-popups-rise 300ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) backwards; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(1) { animation-delay: 140ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(2) { animation-delay: 168ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(3) { animation-delay: 196ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(4) { animation-delay: 224ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(5) { animation-delay: 252ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(6) { animation-delay: 280ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(7) { animation-delay: 308ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(8) { animation-delay: 336ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(9) { animation-delay: 364ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(10) { animation-delay: 392ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(11) { animation-delay: 420ms; }
-.sf-find .sf-find__pane .sf-find__row:nth-child(12) { animation-delay: 448ms; }
-
-/* The hint is the pane's foot — one surface, a hairline where the ladder ends. Its etched-caps
-   typography stays the shared sheet's; this only seats it and keeps the 12 px floor. */
+.sf-find .sf-find__row {
+  grid-template-columns: 6em minmax(0,1fr) minmax(0,auto); gap: 10px; padding: 10px 14px;
+  min-height: 42px; border-bottom: 1px solid var(--dp-rule); align-items: center;
+}
+.sf-find .sf-find__kind { color: var(--dp-phos); letter-spacing: .045em; }
+.sf-find .sf-find__name, .sf-find .sf-find__detail { white-space: normal; overflow-wrap: anywhere; }
 .sf-find .sf-find__pane .sf-find__hint {
-  position: relative; width: 100%;
-  padding: 12px 28px 14px;
-  background: linear-gradient(90deg, var(--dp-rule, rgb(232 226 212 / .1)), transparent 85%) top / 100% 1px no-repeat;
-  animation-delay: 220ms;
+  width: auto; padding: 10px 18px; border-top: 1px solid var(--dp-rule); background: rgb(0 0 0 / .13);
+  font: 500 13px/1.45 var(--dp-face-read); text-transform: none; letter-spacing: .02em; animation: none;
 }
-/* A dossier opened from a row paints under this palette's scrim; while it is up the palette
-   steps back (entityLinks announces it via ui:entityDrawer → globalFind toggles the class): the
-   viewport veil lifts with the pane, so the drawer reads in front and the palette holds its
-   place behind it as a quiet ghost. */
-.sf-find.sf-find--recede { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.sf-find.sf-find--recede .sf-find__pane { opacity: .25; pointer-events: none; transition: opacity 180ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)); }
-
+@media (max-width: 540px) {
+  .sf-find .sf-find__row { grid-template-columns: 5.5em minmax(0,1fr); row-gap: 3px; }
+  .sf-find .sf-find__detail { grid-column: 2; }
+  .sf-find .sf-find__field { padding: 8px; gap: 8px; }
+}
+.sf-find.sf-find--host, .sf-find.sf-find--recede { backdrop-filter: none; }
+.sf-find.sf-find--recede { background: none; }
+.sf-find.sf-find--recede .sf-find__pane { opacity: .24; pointer-events: none; }
+/* Screen-hosted search and dossier are siblings. The drawer must receive pointer hits as well as focus. */
+.sf-find--recede ~ .sf-drawerlayer { z-index: 4501; }
 /* ── 2. The dossier sheet hugs its content ───────────────────────────────────────────────── */
 /* Full height on a four-line dossier read as an unfinished sidebar; top-anchored with a viewport
    cap, a short record ends at its apron and a long one still scrolls (overflow from the base
    .sf-drawer rule). Same selector as the shared sheet, injected after it — the tie breaks late. */
-.sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: auto; max-height: 100%; display: flex; flex-direction: column; }
+.sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: auto; max-height: 100%; display: flex; flex-direction: column;
+  box-sizing: border-box; background: var(--sf-pop-glass); border: 1px solid var(--sf-pop-seam);
+  border-top: 2px solid var(--dp-phos); box-shadow: var(--sf-pop-shadow); mask-image: none; backdrop-filter: none;
+}
+.sf-drawer--entity .sf-drawer__kicker { letter-spacing: .065em; }
+.sf-drawer--entity .sf-drawer__kicker::before {
+  width: 34px; height: 34px; mask: none; background: var(--sf-pop-record) center / contain no-repeat;
+}
+.sf-drawer--entity .sf-tile__k, .sf-drawer--entity .sf-deck__label { letter-spacing: .06em; }
+.sf-drawer--entity .sf-drawer__x { border: 1px solid var(--sf-pop-seam); border-radius: 2px; }
+.sf-drawer--entity .sf-entity-link--row { padding-right: 16px; }
+.sf-drawer--entity .sf-drawer__deck { padding-left: clamp(20px, 3vw, 40px); }
+
 /* The record and action rail are flex siblings: the rail reserves its actual height, including
    Back and price-alert rows, while the record takes the remaining scrollable space. A long rail
    is independently scrollable so enlarged text cannot consume the entire record viewport. */
@@ -160,8 +83,9 @@ const CSS = `
 .sf-drawer--entity > .sf-drawer__deck:focus-visible { outline: 2px solid var(--dp-lamp, #f2b950); outline-offset: -2px; }
 .sf-drawer--entity > .sf-drawer__apron {
   position: relative; bottom: auto; flex: 0 0 auto; min-height: 0; max-height: 50vh;
+  background: transparent; box-shadow: none;
   box-sizing: border-box; overflow-y: auto; scroll-padding-block: 8px;
-  margin: 24px 36px 0 88px;
+  margin: 18px 36px 0 clamp(20px, 3vw, 40px);
 }
 .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb {
   box-sizing: border-box; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
@@ -182,8 +106,8 @@ const CSS = `
    holds 480px, its column starts 12px nearer the fade, and the verbs tighten (same keys, same order) so the three sit on one row. */
 @media (min-width: 641px) and (max-width: 1100px) {
   .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
-  .sf-drawer--entity .sf-drawer__deck { padding-left: 76px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 76px; column-gap: 10px; }
+  .sf-drawer--entity .sf-drawer__deck { padding-left: 32px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 32px; column-gap: 10px; }
   .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
 }
 
@@ -211,18 +135,16 @@ const CSS = `
   .sf-drawer--entity .sf-entity-link--row { padding: 5px 2px 5px 0; font-size: 14px; }
   .sf-drawer--entity > .sf-drawer__apron {
     position: relative; left: auto; right: auto; bottom: auto;
-    z-index: 2; margin: 8px 28px 0 76px; height: auto; box-sizing: border-box;
+    z-index: 2; margin: 8px 28px 0 32px; height: auto; box-sizing: border-box;
     padding-top: 10px; padding-bottom: 10px;
-    background: rgb(9 11 15);
-    box-shadow: 0 -16px 14px -6px rgb(9 11 15);
   }
   .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 14px 0 12px; }
-  .sf-drawer--entity .sf-drawer__x { top: 8px; right: 12px; width: 28px; height: 28px; }
+  .sf-drawer--entity .sf-drawer__x { top: 8px; right: 12px; width: 36px; height: 36px; }
 }
 /* Wider short frames retain the same content and action inset. */
 @media (min-width: 1101px) and (max-height: 560px) {
-  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 88px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 88px; margin-right: 28px; }
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 40px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 40px; margin-right: 28px; }
 }
 
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
@@ -247,29 +169,12 @@ const CSS = `
 .sf-drawer__verb[disabled]:hover, .sf-drawer__verb:disabled:hover,
 .sf-drawer__verb[disabled]:active, .sf-drawer__verb:disabled:active { transform: none; box-shadow: none; }
 
-/* ── Reduced motion: every state arrives instantly, both guards ──────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .sf-find .sf-find__pane, .sf-find .sf-find__pane::before, .sf-find .sf-find__pane::after,
-  .sf-find .sf-find__pane .sf-find__row, .sf-find .sf-find__pane .sf-find__hint { animation: none; }
-  .sf-find.sf-find--recede .sf-find__pane { transition: none; }
-  .sf-entity-link--row::after { transition: none; }
+@media (forced-colors: active) {
+  .sf-find .sf-find__pane, .sf-drawerlayer > .sf-drawer--entity { background: Canvas; color: CanvasText; border-color: CanvasText; }
+  .sf-find .sf-find__dismiss:focus-visible { outline: 2px solid Highlight !important; }
 }
-html.sf-reduce-motion .sf-find .sf-find__pane,
-html.sf-reduce-motion .sf-find .sf-find__pane::before,
-html.sf-reduce-motion .sf-find .sf-find__pane::after,
-html.sf-reduce-motion .sf-find .sf-find__pane .sf-find__row,
-html.sf-reduce-motion .sf-find .sf-find__pane .sf-find__hint { animation: none; }
-html.sf-reduce-motion .sf-find.sf-find--recede .sf-find__pane { transition: none; }
+@media (prefers-reduced-motion: reduce) { .sf-entity-link--row::after { transition: none; } }
 html.sf-reduce-motion .sf-entity-link--row::after { transition: none; }
-
-/* ── Keyframes: the tier's own names, declared here so the pane never depends on load order ── */
-@keyframes sf-popups-unfold {
-  from { opacity: 0; clip-path: inset(46% -30px 46% -30px); transform: translateY(8px) scale(.985); }
-  to   { opacity: 1; clip-path: inset(-30px -30px -30px -30px); transform: none; }
-}
-@keyframes sf-popups-draw { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
-@keyframes sf-popups-brackets { from { opacity: 0; inset: -26px; } to { opacity: 1; inset: -8px; } }
-@keyframes sf-popups-rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 `;
 
 /** Idempotent injection — called by the popup modules when they are created (uiRoot mount and
