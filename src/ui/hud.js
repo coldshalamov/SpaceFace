@@ -20,6 +20,8 @@ import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
 import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
+import { createAvoidRects } from './hudAvoidRects.js';
+import { seatPhoneTell } from './phoneTellSeat.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
@@ -3151,6 +3153,7 @@ export function createHud(ctx, alerts) {
       will-change:transform, opacity; opacity:0;
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
+    .sf-tell.is-compact :is(.sf-tell__icon, .sf-tell__hint, .sf-tell__dir) { display:none; }
     .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
     .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
@@ -3190,6 +3193,7 @@ export function createHud(ctx, alerts) {
     return el;
   })();
   const tellSlots = [];
+  const tellPhoneAvoid = createAvoidRects(document, { exclude: (el) => !!el.closest?.('.sf-tells') });
   for (let i = 0; i < TELL_POOL_SIZE; i++) {
     const linkEl = document.createElement('div');
     linkEl.className = 'sf-tell-link';
@@ -3226,7 +3230,8 @@ export function createHud(ctx, alerts) {
       const rect = entry.contentRect;
       const box = entry.borderBoxSize?.[0];
       if (slot && rect?.width > 0 && rect?.height > 0) {
-        slot.geometry = {
+        // A phone chip shrunk to its kind word must not become the size the full chip is seated at.
+        if (!slot.el.classList.contains('is-compact')) slot.geometry = {
           width: (box?.inlineSize ?? rect.width + 14) + 8,
           height: (box?.blockSize ?? rect.height + 8) + 8,
         };
@@ -3248,7 +3253,7 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = -1;
     slot.age = Infinity;
     slot.announced = '';
-    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse',
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'is-compact',
       'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING');
     slot.el.hidden = true;
     slot.linkEl.hidden = true;
@@ -3352,6 +3357,7 @@ export function createHud(ctx, alerts) {
     const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
     const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
     refreshFlightTextObstacleSnapshot();
+    const phoneTells = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     const reserved = getFlightTextObstacles()
       .filter(row => TELL_OBSTACLE_OWNERS.has(row.owner))
       .map(row => ({ x: row.left, y: row.top, width: row.width, height: row.height }));
@@ -3374,7 +3380,17 @@ export function createHud(ctx, alerts) {
       tellProjectionWorld.x = ent.pos.x;
       tellProjectionWorld.z = ent.pos.z;
       const proj = w2s(tellProjectionWorld, tellProjectionScreen);
-      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, reserved, slot.layoutOffset, slot.geometry);
+      let placement;
+      if (phoneTells) {
+        // Phone: seat clear of the deck, shrink to the kind word, else hide (MOB-08).
+        const blockers = reserved.concat(tellPhoneAvoid.get());
+        const seat = seatPhoneTell((dims) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, dims),
+          blockers, slot.geometry);
+        placement = seat && seat.placement;
+        setClass(slot.el, 'is-compact', !!(seat && seat.compact));
+      } else {
+        placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, reserved, slot.layoutOffset, slot.geometry);
+      }
       if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
       reserved.push({ x: placement.x - placement.width / 2, y: placement.y - placement.height / 2,
         width: placement.width, height: placement.height });
