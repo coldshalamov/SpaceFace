@@ -193,11 +193,14 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
 });
 
 test('a swarm plan is deterministic and pure JSON, like every other plan', () => {
-  const a = planWave({ seed: SEED, arenaId: ARENA, wave: 13, ruleset: SWARM_RULESET });
-  const b = planWave({ seed: SEED, arenaId: ARENA, wave: 13, ruleset: SWARM_RULESET });
+  // Course rounds 1-30 field an authored cast: their schedule is seed-independent by design.
+  // Wave 31 is past the finite course (and not an act slot), so its composition still rolls
+  // on the seed.
+  const a = planWave({ seed: SEED, arenaId: ARENA, wave: 31, ruleset: SWARM_RULESET });
+  const b = planWave({ seed: SEED, arenaId: ARENA, wave: 31, ruleset: SWARM_RULESET });
   assert.deepEqual(a, b);
   assert.deepEqual(JSON.parse(JSON.stringify(a)), a);
-  const other = planWave({ seed: SEED + 1, arenaId: ARENA, wave: 13, ruleset: SWARM_RULESET });
+  const other = planWave({ seed: SEED + 1, arenaId: ARENA, wave: 31, ruleset: SWARM_RULESET });
   assert.notDeepEqual(other.schedule, a.schedule);
 });
 
@@ -633,13 +636,16 @@ test('a refused champion remains owed until the spawn budget has room', () => {
   const h = boot(); beginSwarm(h);
   while (killOne(h)) {}
   // During a live run the budget refuses non-wave requesters, so the hold must
-  // reserve under a survival-wave id to actually occupy every slot.
-  h.budget.request(h.budget.max(), 'survival-wave:9:test-hold');
-  forceWave(h, 5); tick(h, 30);
-  assert.equal(liveBosses(h, 5).length, 0);
+  // reserve under a survival-wave id to actually occupy every slot. Wave 40 is a
+  // post-course boss round: its generated opening leaves enough owed bodies on the
+  // ledger that the freeze reads as a full room, the same shape this scenario rode
+  // while the course's own rounds were still generated.
+  h.budget.request(h.budget.max(), 'survival-wave:40:test-hold');
+  forceWave(h, 40); tick(h, 30);
+  assert.equal(liveBosses(h, 40).length, 0);
   assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
-  h.budget.release('survival-wave:9:test-hold'); tick(h, 60);
-  assert.ok(liveBosses(h, 5).length > 0, 'the deferred boss materializes');
+  h.budget.release('survival-wave:40:test-hold'); tick(h, 60);
+  assert.ok(liveBosses(h, 40).length > 0, 'the deferred boss materializes');
 });
 
 test('the champion changes: every course row a different shape of boss wave, in step with the roster', () => {

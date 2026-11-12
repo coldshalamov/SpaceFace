@@ -92,3 +92,31 @@ test('representative decoration: asteroid tumble stops advancing when fence hold
     resetPresentedClock();
   }
 });
+
+test('frame-owned: several reads per frame all see the frame ratio, which stays ~1 in real-time play', async () => {
+  const { beginPresentedFrame } = await import('../src/render/presentedClock.js');
+  resetPresentedClock();
+  const fence = { presentedTimeS: 10 };
+  let t = 0;
+  let reads = [];
+  for (let i = 0; i < 120; i++) {
+    t += 16.7; fence.presentedTimeS += 0.0167;
+    beginPresentedFrame(t, { fence });
+    // three decoration owners read during the frame, 5 ms apart
+    reads = [presentedAdvanceRatio(t + 5, fence), presentedAdvanceRatio(t + 10, fence), presentedAdvanceRatio(t + 15, fence)];
+  }
+  for (const r of reads) assert.ok(Math.abs(r - 1) < 0.05, `read ${r} should be ~1`);
+  resetPresentedClock();
+});
+
+test('frozen by design (docked, menu) pins the frame ratio at 1 while the world clock holds', async () => {
+  const { beginPresentedFrame } = await import('../src/render/presentedClock.js');
+  resetPresentedClock();
+  const fence = { presentedTimeS: 10 };
+  let t = 0;
+  for (let i = 0; i < 60; i++) { t += 16.7; beginPresentedFrame(t, { fence, frozenByDesign: true }); }
+  assert.equal(presentedAdvanceRatio(t + 1, fence), 1);
+  for (let i = 0; i < 60; i++) { t += 16.7; beginPresentedFrame(t, { fence }); }
+  assert.ok(presentedAdvanceRatio(t + 1, fence) < 0.05, 'a flight stall still stills decoration');
+  resetPresentedClock();
+});
