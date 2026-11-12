@@ -67,9 +67,8 @@ const LOCAL_DURABLE_LIMIT = 4096;
 // actually published. Rows retained across a long ACK wait are stale by the
 // time they land, and an unbounded tail is what turns a slow consumer into the
 // multi-second main-lane apply that stops the world. Keep the newest bounded
-// tail — journal ordering is carried by pack segments and correctness
-// receipts ride the other durable keys, so shedding dead triggers can never
-// gap authoritative state.
+// tail of expendable impact effects. Some events also carry correctness
+// receipts, including save settlement and run lifecycle, so those stay queued.
 const LOCAL_EVENT_RETAIN_LIMIT = 512;
 // Same class: each stepped tick clones the full input state into a durable row,
 // but the presentation side only ever consumes the newest few through a
@@ -460,14 +459,21 @@ function localMergeReply(previous, next) {
     if (!Array.isArray(previous[key])) previous[key] = [];
     previous[key].push(...incoming);
   }
-  // Shed the oldest presentation triggers once the retained tail is definitely
-  // stale; the newest window still carries recent triggers for the publish
-  // that finally lands. Without this bound the durable row count marches to
-  // LOCAL_DURABLE_LIMIT on event volume alone and the clock hard-stops.
+  // Drop the oldest background impact effects first. The sim already consumed
+  // them, but the main bus still needs save/run lifecycle events and player hits.
   if (Array.isArray(previous.events) && previous.events.length > LOCAL_EVENT_RETAIN_LIMIT) {
-    const shed = previous.events.length - LOCAL_EVENT_RETAIN_LIMIT;
-    previous.events.splice(0, shed);
-    localClock.shedEventCount = (localClock.shedEventCount || 0) + shed;
+    const events = previous.events;
+    let remaining = events.length - LOCAL_EVENT_RETAIN_LIMIT;
+    let write = 0;
+    for (const event of events) {
+      if (remaining > 0 && event?.t === 'physics:impact' && event.p?.playerInvolved !== true) {
+        remaining -= 1;
+      } else {
+        events[write++] = event;
+      }
+    }
+    localClock.shedEventCount += events.length - write;
+    events.length = write;
   }
   if (Array.isArray(previous.inputPublishes) && previous.inputPublishes.length > LOCAL_INPUT_PUBLISH_RETAIN_LIMIT) {
     const shed = previous.inputPublishes.length - LOCAL_INPUT_PUBLISH_RETAIN_LIMIT;

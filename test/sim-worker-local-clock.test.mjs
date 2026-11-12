@@ -374,6 +374,9 @@ test('retained replies shed stale presentation events instead of marching to the
       events: events(from, to),
     });
     const first = reply(1, 0, 400);
+    const saveReceipt = { t: 'save:durabilitySettled', p: { token: 'save-a', ok: true, localSaved: true } };
+    const playerImpact = { t: 'physics:impact', p: { playerInvolved: true } };
+    first.events.unshift(saveReceipt, playerImpact);
     first.commandAcks = [{ seq: 'a' }];
     first.storageOps = [{ op: 'put', key: 'sf.slot.1' }];
     first.inputPublishes = Array.from({ length: 100 }, (_, i) => ({ seq: i }));
@@ -382,7 +385,9 @@ test('retained replies shed stale presentation events instead of marching to the
 
     const merged = worker.localMergeReply(first, second);
     assert.equal(merged.events.length, 512, 'the retained event tail is capped at the shed limit');
-    assert.equal(merged.events[0].p.seq, 188, 'the oldest stale triggers are shed first');
+    assert.deepEqual(merged.events.slice(0, 2), [saveReceipt, playerImpact],
+      'the save waiter and player feedback retain their original order');
+    assert.equal(merged.events[2].p.seq, 190, 'the oldest ambient impact triggers are shed first');
     assert.equal(merged.events.at(-1).p.seq, 699, 'the newest triggers are kept for the next publish');
     assert.equal(merged.inputPublishes.length, 64, 'input snapshots are bounded to the newest tail');
     assert.equal(merged.inputPublishes[0].seq, 36, 'stale input clones shed before live ones');
@@ -393,7 +398,8 @@ test('retained replies shed stale presentation events instead of marching to the
     // accumulating event volume until the durable tripwire stops the clock.
     const mergedAgain = worker.localMergeReply(merged, reply(3, 700, 1200));
     assert.equal(mergedAgain.events.length, 512);
-    assert.equal(mergedAgain.events[0].p.seq, 688);
+    assert.deepEqual(mergedAgain.events.slice(0, 2), [saveReceipt, playerImpact]);
+    assert.equal(mergedAgain.events[2].p.seq, 690);
     assert.equal(mergedAgain.events.at(-1).p.seq, 1199);
 
     // Merges below the cap lose nothing — ordinary congestion keeps every trigger.
@@ -416,6 +422,7 @@ test('public Bullet Time composes across the real worker clock, loading veil, hi
   const effects = createTimeEffects(state);
   effects.set('runtime:loading', { scale: 0 });
   let lane;
+  let heartbeat;
   try {
     worker.on('message', (message) => {
       replies.push(message);
@@ -438,6 +445,9 @@ test('public Bullet Time composes across the real worker clock, loading veil, hi
     });
     await lane.readyPromise;
     lane.runner.setClockActive(true);
+    heartbeat = setInterval(() => lane.runner.heartbeat(), 16);
+    // b931aac851fb2 moved Bullet Time from CapsLock to the context wheel's latch.
+    const toggleBulletTime = () => laneDomEvent({ type: 'wheelVerb', action: 'bulletTime', phase: 'toggle' });
     const latestScale = () => replies.filter((r) => r.kind === 'clockTick').at(-1)?.clockDiagnostics?.scale;
     const probe = async () => {
       const result = await laneRpc('probeState');
@@ -455,14 +465,13 @@ test('public Bullet Time composes across the real worker clock, loading veil, hi
       assert.equal(held.timeEffects['presentation:runtime:loading'], undefined, 'sim boot has retired its own overlapping lease');
       assert.equal(latestScale(), 0);
       assert.equal(held.bulletTime?.active, false, 'the old run request is cleared before the veil releases');
-      laneDomEvent({ type: 'keyup', code: 'CapsLock', pressed: false, repeat: false });
       effects.clear('runtime:loading');
       const released = await probe();
       assert.equal(Object.keys(released.timeEffects).some((key) => key.endsWith('runtime:loading')), false);
       assert.equal(released.timeScale, 1);
     }
     await launch();
-    laneDomEvent({ type: 'keydown', code: 'CapsLock', pressed: true, repeat: false });
+    toggleBulletTime();
     await waitFor(() => latestScale() === 0.35 && state.timeScale === 0.35);
     const held = await probe();
     assert.equal(held.bulletTime.active, true);
@@ -485,13 +494,13 @@ test('public Bullet Time composes across the real worker clock, loading veil, hi
     await waitFor(() => latestScale() === 0.12);
     effects.clear('feel:hit-stop');
     await waitFor(() => latestScale() === 0.35);
-    laneDomEvent({ type: 'keyup', code: 'CapsLock', pressed: false, repeat: false });
+    toggleBulletTime();
     await waitFor(() => latestScale() === 1 && state.timeScale === 1);
     const released = await probe();
     assert.equal(released.bulletTime.active, false);
     assert.equal(released.timeEffects['player:bullet-time'], undefined);
 
-    laneDomEvent({ type: 'keydown', code: 'CapsLock', pressed: true, repeat: false });
+    toggleBulletTime();
     await waitFor(() => latestScale() === 0.35);
     effects.set('runtime:loading', { scale: 0 });
     await launch();
@@ -503,6 +512,7 @@ test('public Bullet Time composes across the real worker clock, loading veil, hi
     assert.equal(current.timeScale, 1);
     assert.equal(workerError, undefined);
   } finally {
+    clearInterval(heartbeat);
     lane?.close();
     await worker.terminate();
   }
