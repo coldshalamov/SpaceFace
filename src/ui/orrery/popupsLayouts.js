@@ -188,6 +188,9 @@ const CSS = `
 }
 /* Every rail left margin below is the deck's text inset minus that 6px, so the first key's face
    still lines up with the record text above it (88/76/40/20 -> 82/70/34/14). */
+/* The rail's top hairline (ui.css .sf-drawer__apron::before, left/right 0) spans the padding box, so
+   it started 6px left of the record text; inset it by the same 6px on both sides. */
+.sf-drawer--entity > .sf-drawer__apron::before { left: 6px; right: 6px; }
 .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb {
   box-sizing: border-box; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
 }
