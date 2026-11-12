@@ -105,7 +105,10 @@ test('quota, concurrency and hull are untouched — the shape changes, not the n
     assert.ok(!plan.error);
     assert.equal(plan.swarm.level, 1);
     assert.equal(plan.swarm.concurrent, swarmConcurrent(w), `wave ${w} concurrency must stay authored`);
-    assert.equal(plan.swarm.killTarget, swarmQuota(w), `wave ${w} quota must stay authored`);
+    // 52a2ee3c4483: round 24's own twist doubles the bodies it sells — the authored
+    // course number, not mass-gap inflation.
+    const authored = w === 24 ? swarmQuota(w) * 2 : swarmQuota(w);
+    assert.equal(plan.swarm.killTarget, authored, `wave ${w} quota must stay authored`);
   }
 });
 
