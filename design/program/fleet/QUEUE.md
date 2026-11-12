@@ -104,7 +104,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | FIX-R1-review-2026-11-11 | Five verified review findings: rubberneckers' payload, held Shove counted twice, release camera pull, near-miss lamps, two seed tests | BUILT 015fbf27..772f8067 (lead checked real payloads) |
 | G17-02-start-in-any-sector | `?sector=<id>` + a script that photographs every sector (needed by LOOK-01 and the towns) | BUILT 7040bd2c |
 | FIX-R4b-invalid-sector | Review b14da677: an invalid `?sector=` must leave the ordinary boot alone | BUILT d396d7c4 |
-| MOB-04 phone quality tier [FE] | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | READY |
+| MOB-04 phone quality tier [FE] | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | TAKEN agent1 (lead) |
 | MOB-03-touch-controls-you-can-read [FE] | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | TAKEN agent3 (flash; lead looks after) |
 | G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | BUILT aad98992 (names + twist lines; 7 twists wired — the rest are C01-04/05) |
 | C01-04-each-round-fields-its-cast | Every round's cast matches its name (formations, enemy mix) | BUILT 4757ab20 (lead looks at round 7 next) |
