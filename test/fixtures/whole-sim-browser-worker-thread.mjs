@@ -15,6 +15,17 @@ workerSelf.postMessage = function postMessage(message, transfer) {
 };
 globalThis.self = workerSelf;
 
+// An intentionally expensive authoritative step exercises the real host budget.
+if (workerData?.slowPhysicsStep === true) {
+  const { Sg02DynamicBodyOwner } = await import('../../src/core/sg02DynamicBodyOwner.js');
+  const stepFixed = Sg02DynamicBodyOwner.prototype._stepFixed;
+  const delay = new Int32Array(new SharedArrayBuffer(4));
+  Sg02DynamicBodyOwner.prototype._stepFixed = function (...args) {
+    Atomics.wait(delay, 0, 0, 28);
+    return stepFixed.apply(this, args);
+  };
+}
+
 // D204's active-clock failure happens in a separate worker realm, so the
 // parent cannot inspect the owner just before Rapier's first step.  This is an
 // opt-in fixture diagnostic; normal worker tests never install the wrapper.

@@ -124,6 +124,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },
   { id: 'crucible-results', screen: 'crucibleResults', backdrop: 'world' },
   { id: 'crucibleResults', screen: 'crucibleResults', backdrop: 'world' },
+  // C01-03: the round-30 Swarm win (THE PIT IS YOURS / Take the win / Keep going).
+  { id: 'crucible-results-win', screen: 'crucibleResults', backdrop: 'world', ruleset: 'swarm', win: true },
 
   { id: 'asteroid-works', screen: 'drill', backdrop: 'world' },
   { id: 'drill', screen: 'drill', backdrop: 'world' },

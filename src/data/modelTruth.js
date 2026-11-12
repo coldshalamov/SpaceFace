@@ -103,6 +103,7 @@ function byIdMap() {
 }
 
 let censusLoadPromise = null;
+const CENSUS_DOWNLOAD_TIMEOUT_MS = 15_000;
 const isNodeRuntime = typeof process !== 'undefined'
   && typeof import.meta.url === 'string'
   && import.meta.url.startsWith('file:')
@@ -128,9 +129,17 @@ export function loadModelTruthCensus(assetUrl = null) {
       jsonText = await readFile(new URL('./modelTruthCensus.json', import.meta.url), 'utf8');
     } else {
       const url = assetUrl || new URL('./modelTruthCensus.json', import.meta.url);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Model truth census fetch failed (${response.status})`);
-      jsonText = await response.text();
+      const signal = AbortSignal.timeout(CENSUS_DOWNLOAD_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw new Error(`Model truth census fetch failed (${response.status})`);
+        jsonText = await response.text();
+      } catch (error) {
+        if (signal.aborted) {
+          throw new Error(`Model truth census download timed out after ${CENSUS_DOWNLOAD_TIMEOUT_MS} ms`, { cause: error });
+        }
+        throw error;
+      }
     }
     return installCensusJson(jsonText);
   })();
