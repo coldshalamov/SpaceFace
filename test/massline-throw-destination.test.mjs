@@ -306,6 +306,42 @@ test('waypoint and pointer-point release targets are transient and reset on latc
   system.destroy();
 });
 
+test('a touch flick aims the held body and releases through the attachment owner', (t) => {
+  const h = createHarness();
+  const held = makeHostile(200, { x: 0, z: 140 }, { x: 90, z: 0 });
+  h.add(held);
+  h.latch(held.id, { attachmentId: 'the-line' });
+  const { state } = h;
+  state.settings.gameplay.masslineReleaseAssist = 'off';
+  state.input.aimIntentActive = true;
+  state.input.aimWorld = { x: -140, z: -100 };
+  const cuts = [];
+  const receipts = [];
+  const system = Object.create(masslineThrow);
+  system.init({
+    state, helpers: {}, bus: { on: () => () => {}, emit: (...args) => receipts.push(args) },
+    registry: { get: (id) => id === 'actions' ? { kernel: { attachments: {
+      cut: (...args) => { cuts.push(args); return { ok: true }; },
+    } } } : null },
+  });
+  t.after(() => system.destroy());
+  state.input.actions.touchThrow = { targetId: held.id, attachmentId: 'old-line', x: 1, z: 0 };
+  stepThrowSystem(system, state, false);
+  assert.equal(cuts.length, 0, 'a previous latch cannot throw a replacement body');
+  state.tick++;
+  state.input.actions.touchThrow.attachmentId = 'the-line';
+  const runtime = stepThrowSystem(system, state, false);
+  assert.deepEqual(runtime.releaseTarget.pos, { x: 240, z: 140 });
+  assert.equal(runtime.releaseTarget.source, 'touch-flick');
+  assert.deepEqual(cuts, [['the-line', PLAYER_ID, 'tether_cut']]);
+  assert.deepEqual(runtime.lastThrow.impulses, [], 'release does not inject motion');
+  assert.equal(receipts.filter(([event]) => event === 'massline:throw').length, 1);
+  delete state.input.actions.touchThrow;
+  state.tick++;
+  stepThrowSystem(system, state, false);
+  assert.equal(cuts.length, 1);
+});
+
 // ---- harness ----------------------------------------------------------------------------------
 
 function createHarness() {
