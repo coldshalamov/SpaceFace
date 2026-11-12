@@ -89,9 +89,18 @@ test('the opening chaff is pure ammunition — light pursuer roles only', () => 
 });
 
 test('the stream keeps feeding light bodies on a boss wave — fodder share bends up', () => {
-  const plan = swarmPlan(5);
+  // On a course round the stream IS the authored cast: Iron Maw's chaff feeds Detonators,
+  // the ammunition its counter asks for — the generated roster never enters the mix.
+  const course = swarmPlan(5);
+  assert.deepEqual(
+    course.swarm.roster.map((e) => e.enemyId).sort(),
+    ['detonator_dart', 'wasp_swarmer'],
+    'wave 5 streams its authored cast, not the generated roster',
+  );
+  // The generated ammunition bend still owns the deep ladder's boss rounds.
+  const plan = swarmPlan(40);
   const stream = plan.swarm.roster;
-  const legal = swarmRosterFor(5);
+  const legal = swarmRosterFor(40);
   assert.equal(stream.length, legal.length, 'every unlocked role keeps its seat');
   for (const entry of stream) {
     const base = legal.find((e) => e.enemyId === entry.enemyId);
@@ -113,8 +122,8 @@ test('the swarm is reduced, not inflated — quota and concurrency shrink, hull 
 });
 
 test('a non-boss wave keeps the plain roster, and heavies_only owns its room outright', () => {
-  const plain = swarmPlan(9);
-  const legal = swarmRosterFor(9);
+  const plain = swarmPlan(31); // past the course — the open ladder's generated composition
+  const legal = swarmRosterFor(31);
   assert.equal(plain.swarm.massGap, undefined);
   assert.ok(!plain.swarm.boss);
   for (const entry of plain.swarm.roster) {
@@ -138,10 +147,11 @@ test('a non-boss wave keeps the plain roster, and heavies_only owns its room out
 });
 
 test('build pressure outranks the ammunition bend — the run read wins', () => {
-  const plan = swarmPlan(20, { buildSummary: { dominant: 'collision' } });
+  // Wave 40: the deep ladder's boss round, where the generated bend is still the machinery.
+  const plan = swarmPlan(40, { buildSummary: { dominant: 'collision' } });
   assert.ok(!plan.error);
   assert.equal(plan.swarm.buildPressure, 'collision');
-  const legal = swarmRosterFor(20);
+  const legal = swarmRosterFor(40);
   const wasp = plan.swarm.roster.find((e) => e.enemyId === 'wasp_swarmer');
   const baseWasp = legal.find((e) => e.enemyId === 'wasp_swarmer');
   assert.equal(wasp.weight, baseWasp.weight,

@@ -873,8 +873,10 @@ test('opening publication settles the chase camera before classifying first-pict
 test('the first flight submit preserves the prepared opening graph instead of selecting a new LOD', () => {
   const source = renderSystem.prepareFrame.toString();
   assert.match(source, /holdOpeningPicture\s*=\s*this\._openingFirstPicturePrepared\s*===\s*true/);
+  // d9719a4308a2 hands the camera the smoothed cameraFrameDt inside a tryPresentedCall; the
+  // pinned contract is that the follow still lives inside the same !holdOpeningPicture gate.
   assert.match(source,
-    /if\s*\(!holdOpeningPicture\)\s*\{[\s\S]*?this\.syncEntityViews\(alpha\)[\s\S]*?this\.cam\.follow\(frameDt,/,
+    /if\s*\(!holdOpeningPicture\)\s*\{[\s\S]*?this\.syncEntityViews\(alpha\)[\s\S]*?this\.cam\.follow\(cameraFrameDt,/,
     'ordinary pose, visibility, LOD, and camera selection resume only after the exact first picture is submitted');
 });
 

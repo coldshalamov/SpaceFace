@@ -45,6 +45,12 @@ const HIDDEN_KEEPALIVE_SERVICES = Object.freeze([
   Object.freeze({ name: 'stationServices', method: 'update', clock: 'wall', stateArg: true, when: 'wall-positive' }),
   Object.freeze({ name: 'lawSecurity', method: 'keepalive', clock: 'wall', stateArg: false, when: 'wall-positive' }),
   Object.freeze({ name: 'latchNine', method: 'keepalive', clock: 'wall', stateArg: false, when: 'always' }),
+  // PQ-163.03: the frozen dock ticks are the only ticks onboarding gets while berthed - the
+  // dock freeze skips every non-keepalive system, so the flight-side caller in onboarding.update
+  // cannot deliver the deferred store sentence at the dock that owns the store page it hooks.
+  // The method self-gates on ui.docked, so it stays silent under every other freeze (menu,
+  // pause, sector-shell cook) and costs one boolean read per frozen tick.
+  Object.freeze({ name: 'onboarding', method: 'dockSentenceKeepalive', clock: 'sim', stateArg: true, when: 'always' }),
 ]);
 
 export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(
