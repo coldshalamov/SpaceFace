@@ -60,7 +60,7 @@ for (const label of ['Hull Debris', 'Salvage Wreck', 'Starboard Stabilizer Break
     const h = setup(wreck);
     try {
       kill(h, wreck);
-      assert.equal(h.spoken[0].text, 'Cargo recovery notice: bounty after the spill.');
+      assert.equal(h.spoken[0].text, 'Bounty after the spill.');
       assert.equal(h.logs[0].from, 'Cargo recovery notice');
       assert.equal(h.logs[0].text, h.spoken[0].text);
       assert.equal(h.receipts[0].reaction, 'bounty');
@@ -92,7 +92,7 @@ test('a wreck fallback on a freight spill keeps the real restitution debit and r
       carrierId: 42, attackerId: 1, playerCaused: true, levyCr: 180,
       commodityId: 'cmdty_ore_iron', qty: 4, cause: 'combat_fire',
     });
-    assert.equal(h.spoken[0].text, 'Cargo recovery notice: restitution after the spill.');
+    assert.equal(h.spoken[0].text, 'Restitution after the spill.');
     assert.equal(h.receipts[0].reaction, 'restitution');
     assert.equal(h.logs[0].reaction, 'restitution');
     assert.equal(h.state.player.credits, 820);

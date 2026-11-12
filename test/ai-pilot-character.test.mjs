@@ -230,6 +230,21 @@ test('an incumbent auto stamp survives a mid-fight doctrine reassignment', () =>
   assert.equal(ships[1].data.ai.squadRecipe, undefined);
 });
 
+test('a lone survivor of the second auto flight returns to solo doctrine', () => {
+  const state = { playerId: 'player', tick: 100 };
+  const ships = [11, 12, 13, 14, 15, 16].map(id => mkShip(id));
+  assert.equal(assignAutoSquadRecipes(state, ships, 7), 6);
+  assert.equal(ships[4].data.ai.squadFrameId, 's1#1');
+  assert.ok(ships[4].data.ai.squadSocket);
+
+  ships[5].alive = false;
+  assignAutoSquadRecipes(state, ships, 7);
+  for (const ship of ships.slice(0, 4)) assert.equal(ship.data.ai.squadFrameId, 's1#0');
+  assert.equal(ships[4].data.ai.squadRecipe, undefined);
+  assert.equal(ships[4].data.ai.squadFrameId, undefined);
+  assert.equal(ships[4].data.ai.squadSocket, undefined);
+});
+
 test('authored recipes, passive hulls, and solo hostiles are left alone', () => {
   const state = { playerId: 'player', tick: 1 };
   const authored = mkShip(31);
