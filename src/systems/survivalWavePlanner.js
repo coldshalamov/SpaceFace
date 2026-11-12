@@ -4,6 +4,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { ironKrakenForSwarmWave } from '../data/ironKraken.js';
+import { composeSwarmPackOpening, swarmPackFor } from '../data/swarmPack.js';
 import {
   SPAWN_BUDGET_DEFAULT_MAX,
   SPAWN_BUDGET_HARD_MAX,
@@ -571,9 +572,15 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       characterLanded = true;
     }
   }
+  // The Pack gives the first block a repeatable physical vocabulary while retaining
+  // the native pressure budget and every owed champion/debut. Circuit and mutator
+  // replacements keep their own authored contract.
+  const pack = !heaviesOnly && !circuitRound && !act ? swarmPackFor(w) : null;
+  if (pack) packages = composeSwarmPackOpening(w, packages);
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w, bossOverride);
+  if (pack) swarm.pack = { round: w, question: pack.question };
   if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
     name: character.name, variant: character.variant };
   if (biasedRoster) {

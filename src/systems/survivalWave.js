@@ -1455,6 +1455,16 @@ export const survivalWave = {
       const held = roster.filter((entry) => entry.enemyId !== newcomerId);
       if (held.length > 0) roster = held;
     }
+    // A staged commitment in the Pack is still owed. Its first sighting must be
+    // the announced bearing, not an early reinforcement that wins a random pick.
+    if (this._swarm?.pack && Array.isArray(roster)) {
+      const staged = new Set(this._pending.filter(item => item?.entry?.staged === true)
+        .map(item => item.entry.enemyId));
+      if (staged.size) {
+        const held = roster.filter(entry => !staged.has(entry.enemyId));
+        if (held.length) roster = held;
+      }
+    }
     const archetype = pickSwarmArchetype(this._wave, rng(), roster);
     const gateGroup = swarmGateFor(this._wave, index + 4);
     const ownerId = waveOwnerId(this._wave);
