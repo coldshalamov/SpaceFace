@@ -308,8 +308,10 @@ test('settlement composes secured salvage with whatever the ending pays on the r
   assert.equal(walked.result.cashOut, true);
 
   // An early cash-out (no boss cleared) halves only the remainder — the stamp is untouched.
+  // C01-01/C01-03 cadence: a champion rides every fifth round through the win, so nine
+  // cleared waves DO include a boss — "early" means below the wave-5 champion.
   const early = settle(storage, {
-    outcome: 'extracted', cashOut: true, wavesCleared: 9, credits: 200, secured: 50,
+    outcome: 'extracted', cashOut: true, wavesCleared: 4, credits: 200, secured: 50,
     runId: 'early-walk-after-bank',
   });
   assert.equal(early.result.bankedBounty, 150);
