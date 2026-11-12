@@ -722,37 +722,44 @@ async function boot() {
         setTimeout(launchWhenArmoryKnown, 300);
       }
     }
-    // Dev-only Adventure sector jump (G17-02): `?sector=<id>` skips the title and launches a
-    // fresh Adventure game with the default seed (or `?seed=N`), placing the player in sector `<id>`
-    // at that sector's normal arrival point, in flight. `?shot=1` sets window.__sfShotReady = true
-    // after the sector finishes loading and 3 s of simulation have passed.
-    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined'
-      && new URLSearchParams(location.search).has('sector')) {
-      const devSectorQuery = new URLSearchParams(location.search);
+    async function applyDevSectorJump({
+      searchParams,
+      state,
+      bus,
+      registry,
+      sessionStorage = typeof globalThis.sessionStorage !== 'undefined' ? globalThis.sessionStorage : null,
+      resolveSector = null,
+      newGameDefaults = null,
+      dismissConfirm = null,
+      logger = console.log,
+      windowRef = typeof window !== 'undefined' ? window : null,
+      pollArrival = true,
+    } = {}) {
+      const devSectorQuery = searchParams || new URLSearchParams();
       const rawSectorId = devSectorQuery.get('sector');
-      const { resolveStartSectorId } = await import('./systems/world.js');
-      const targetSectorId = resolveStartSectorId(rawSectorId);
+      const resolveFn = resolveSector || (await import('./systems/world.js')).resolveStartSectorId;
+      const targetSectorId = resolveFn(rawSectorId);
       if (!targetSectorId) {
-        console.log(`[SpaceFace] unknown sector '${rawSectorId}', starting normally`);
+        logger(`[SpaceFace] unknown sector '${rawSectorId}', starting normally`);
+        return { launched: false, targetSectorId: null };
       }
+
       // Emulate a returning player so First Light cannot intercept the launch.
       const access = state && state.settings && state.settings.accessibility;
       if (access && typeof access === 'object') access.firstLightOffered = true;
-      try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+      try { if (sessionStorage) sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
 
       const devSeed = devSectorQuery.has('seed') ? Number.parseInt(devSectorQuery.get('seed'), 10) : undefined;
       const seedOpt = Number.isFinite(devSeed) && devSeed > 0 ? { seed: devSeed } : {};
 
       const wantsShot = devSectorQuery.get('shot') === '1';
 
-      if (targetSectorId) {
-        const { NEW_GAME } = await import('./data/newGameDefaults.js');
-        NEW_GAME.startingSectorId = targetSectorId;
-      }
+      const NEW_GAME = newGameDefaults || (await import('./data/newGameDefaults.js')).NEW_GAME;
+      NEW_GAME.startingSectorId = targetSectorId;
 
       try {
-        const { dismissConfirm } = await import('./ui/confirm.js');
-        dismissConfirm();
+        const dismiss = dismissConfirm || (await import('./ui/confirm.js')).dismissConfirm;
+        dismiss();
       } catch (_) {}
 
       bus.emit('game:new', seedOpt);
@@ -762,10 +769,10 @@ async function boot() {
         const checkArrival = async () => {
           if (state && state.mode === 'flight') {
             try {
-              const { dismissConfirm } = await import('./ui/confirm.js');
-              dismissConfirm();
+              const dismiss = dismissConfirm || (await import('./ui/confirm.js')).dismissConfirm;
+              dismiss();
             } catch (_) {}
-            const worldSystem = registry.get('world');
+            const worldSystem = registry && registry.get('world');
             if (targetSectorId && worldSystem && state.world && state.world.currentSectorId !== targetSectorId) {
               worldSystem.enterSector(targetSectorId);
             }
@@ -773,8 +780,8 @@ async function boot() {
               const startSimTime = Number.isFinite(state.simTime) ? state.simTime : 0;
               const checkShot = () => {
                 if (state && state.mode === 'flight' && (state.simTime - startSimTime) >= 3) {
-                  if (typeof window !== 'undefined') {
-                    window.__sfShotReady = true;
+                  if (windowRef) {
+                    windowRef.__sfShotReady = true;
                   }
                   return;
                 }
@@ -790,7 +797,24 @@ async function boot() {
         };
         setTimeout(checkArrival, 100);
       };
-      ensureArrivalAndShot();
+      if (pollArrival) {
+        ensureArrivalAndShot();
+      }
+      return { launched: true, targetSectorId };
+    }
+
+    // Dev-only Adventure sector jump (G17-02): `?sector=<id>` skips the title and launches a
+    // fresh Adventure game with the default seed (or `?seed=N`), placing the player in sector `<id>`
+    // at that sector's normal arrival point, in flight. `?shot=1` sets window.__sfShotReady = true
+    // after the sector finishes loading and 3 s of simulation have passed.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined'
+      && new URLSearchParams(location.search).has('sector')) {
+      await applyDevSectorJump({
+        searchParams: new URLSearchParams(location.search),
+        state,
+        bus,
+        registry,
+      });
     }
   } catch (err) {
     showBootError(err);
