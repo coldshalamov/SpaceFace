@@ -58,7 +58,7 @@ for(const kind of ['missing','moving','oversize','heavy','sensor','native_failur
  if(kind==='missing')h.surface.alive=false;
  if(kind==='moving')h.surface.vel.x=20;
  if(kind==='oversize')h.surface.physicsBody={...h.surface.physicsBody,radius:20};
- if(kind==='heavy')h.surface.physicsBody={...h.surface.physicsBody,mass:100};
+ if(kind==='heavy')h.surface.physicsBody={...h.surface.physicsBody,mass:221};
  if(kind==='sensor')h.surface.physicsBody={...h.surface.physicsBody,material:'massline_sensor'};
  if(kind==='native_failure')markPhysicsBodyNativeFailure(h.surface,{});
  if(kind==='expiring')h.surface.data.despawnAt=10;
@@ -68,6 +68,13 @@ for(const kind of ['missing','moving','oversize','heavy','sensor','native_failur
  if(kind==='held'){h.state.player??={};h.state.player.tether={active:true,targetId:h.surface.id};}
  const before=JSON.stringify(h.state.entityList.map(e=>({id:e.id,pos:e.pos,vel:e.vel})));
  assert.equal(planSwarmOpeningGlassback(h.state,h.state.run,13,plan,6.2),null);assert.equal(JSON.stringify(h.state.entityList.map(e=>({id:e.id,pos:e.pos,vel:e.vel}))),before);
+});
+for(const mass of [84, 100, 220])test(`shell court reuses surviving throwable native mass ${mass}`,t=>{
+ const h=fixture(t,13);for(const e of h.state.entityList)if(['asteroid','wreck'].includes(e.type)&&e!==h.surface)e.collides=false;
+ h.surface.physicsBody={...h.surface.physicsBody,mass};
+ const before=JSON.stringify(h.state.entityList.map(e=>({id:e.id,pos:e.pos,vel:e.vel})));
+ assert.equal(planSwarmOpeningGlassback(h.state,h.state.run,13,[{id:'glassback',count:1}],6.2)?.rockId,h.surface.id);
+ assert.equal(JSON.stringify(h.state.entityList.map(e=>({id:e.id,pos:e.pos,vel:e.vel}))),before);
 });
 test('the lone shell rejects direct gun damage, retaining the exact finite life',t=>{
  const h=fixture(t,13);noteSwarmPilotAction(h.state);h.tick(481);const b=h.engine._bodies,i=b.alive.findIndex(Boolean);assert.equal(b.liveFamilyId[b.family[i]],'glassback');const hp=b.hp[i];

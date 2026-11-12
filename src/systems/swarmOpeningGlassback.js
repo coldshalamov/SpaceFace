@@ -28,8 +28,10 @@ export function planSwarmOpeningGlassback(state, run, wave, plan, radius) {
       || !Number.isFinite(rock.vel?.x) || !Number.isFinite(rock.vel?.z)
       || Math.hypot(rock.vel.x, rock.vel.z) > 2) continue;
     const body = resolvePhysicsBodySpec(rock);
-    // Starter-sized real matter, not a bank dressed up as throwable ammunition.
-    if (!body?.dynamic || !(body.mass > 0 && body.mass <= 35)
+    // Reuse the real arena stock already learned in the throw-and-dodge court.
+    // Native geology masses exceed the old hand-authored 35-unit test pebble;
+    // the same 220-unit ceiling as that court keeps heavy banks out.
+    if (!body?.dynamic || !(body.mass > 0 && body.mass <= 220)
       || !(body.radius > 0 && body.radius <= 9)
       || PHYSICS_MATERIALS[body.material]?.ghost === true
       || ['sensor', 'massline_sensor'].includes(body.material)) continue;
