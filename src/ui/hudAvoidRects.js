@@ -42,59 +42,100 @@ export const AVOID_SELECTORS = Object.freeze([
   '#hud .sf-radar-wrap',
 ]);
 
+function visibleRect(r) {
+  if (!r) return null;
+  const w = r.width ?? r.w;
+  const h = r.height ?? r.h;
+  const x = r.left ?? r.x;
+  const y = r.top ?? r.y;
+  return w > 1 && h > 1 && Number.isFinite(x) && Number.isFinite(y) ? { x, y, w, h } : null;
+}
+
 /** Keep only rects with real area, as plain {x,y,w,h}. */
 export function visibleRects(list) {
   const out = [];
   for (const r of list) {
-    if (!r) continue;
-    const w = r.width != null ? r.width : r.w;
-    const h = r.height != null ? r.height : r.h;
-    const x = r.left != null ? r.left : r.x;
-    const y = r.top != null ? r.top : r.y;
-    if (w > 1 && h > 1 && Number.isFinite(x) && Number.isFinite(y)) out.push({ x, y, w, h });
+    const rect = visibleRect(r);
+    if (rect) out.push(rect);
   }
   return out;
 }
 
+function readRectRows(doc, query, exclude) {
+  let elements;
+  try { elements = doc?.querySelectorAll?.(query) || []; }
+  catch (_) { elements = []; }
+  const rows = [];
+  for (const el of elements) {
+    if (exclude?.(el) || el.hidden || el.closest?.('[hidden]')) continue;
+    const rect = visibleRect(el.getBoundingClientRect?.());
+    if (rect) rows.push({ el, rect });
+  }
+  return rows;
+}
+
+const DEFAULT_TTL_MS = 400;
+const defaultQuery = AVOID_SELECTORS.join(',');
+const sharedHudSnapshots = new WeakMap();
+
+function createRectSnapshot(doc, query, ttl, exclude) {
+  let rows = [];
+  let at = -Infinity;
+  const invalidate = () => { at = -Infinity; };
+  doc?.defaultView?.addEventListener?.('resize', invalidate, { passive: true });
+  return {
+    get(t) {
+      if (t - at >= ttl) {
+        rows = readRectRows(doc, query, exclude);
+        at = t;
+      }
+      return rows;
+    },
+    invalidate,
+  };
+}
+
 /**
  * @param {Document} doc
- * @param {{ selectors?: readonly string[], ttlMs?: number, now?: () => number, exclude?: (el: Element) => boolean }} [opts]
+ * @param {{ selectors?: readonly string[], extraSelectors?: readonly string[], ttlMs?: number, now?: () => number, exclude?: (el: Element) => boolean }} [opts]
  */
 export function createAvoidRects(doc, opts = {}) {
-  const selectors = opts.selectors || AVOID_SELECTORS;
-  // 400 ms, not one frame: a rect read forces layout, and at Swarm-20 load (12 fps, 83 ms frames) a 120 ms
-  // window re-read nearly every frame — 5.2 % of the main thread (lead profile 2026-11-12). HUD panels and the
-  // centre column move rarely; a label yielding a few frames late is invisible, a forced layout per frame is not.
-  const ttl = opts.ttlMs ?? 400;
-  const now = opts.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
-  const exclude = opts.exclude || null;
-  const query = selectors.join(',');
+  const ttl = opts.ttlMs ?? DEFAULT_TTL_MS;
+  const now = opts.now || (() => (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now()));
+  const extraQuery = opts.extraSelectors?.join(',');
+  // Share the expensive default query and geometry reads. The faster touch reader and any
+  // custom queries keep their own refresh schedule and apply exclusions before layout reads.
+  const shared = doc && !opts.selectors && !opts.now && ttl === DEFAULT_TTL_MS;
+  let snapshot;
+  if (shared) {
+    snapshot = sharedHudSnapshots.get(doc);
+    if (!snapshot) {
+      snapshot = createRectSnapshot(doc, defaultQuery, ttl);
+      sharedHudSnapshots.set(doc, snapshot);
+    }
+  } else {
+    const query = [opts.selectors?.join(',') ?? defaultQuery, extraQuery].filter(Boolean).join(',');
+    snapshot = createRectSnapshot(doc, query, ttl, opts.exclude);
+  }
+
+  let source;
   let cache = [];
-  let at = -Infinity;
-  // A resize moves every panel: read fresh on the next ask.
-  try {
-    const win = doc && doc.defaultView;
-    if (win && typeof win.addEventListener === 'function') win.addEventListener('resize', () => { at = -Infinity; }, { passive: true });
-  } catch (_) { /* no window (tests) */ }
   return {
     get() {
-      const t = now();
-      if (t - at < ttl) return cache;
-      at = t;
-      const found = [];
-      let els = [];
-      try { els = doc && doc.querySelectorAll ? Array.from(doc.querySelectorAll(query)) : []; }
-      catch (_) { els = []; }
-      for (const el of els) {
-        if (exclude && exclude(el)) continue;
-        if (el.hidden || (el.closest && el.closest('[hidden]'))) continue;
-        if (typeof el.getBoundingClientRect !== 'function') continue;
-        found.push(el.getBoundingClientRect());
+      const rows = snapshot.get(now());
+      if (source === rows) return cache;
+      source = rows;
+      let found = shared && opts.exclude ? rows.filter(({ el }) => !opts.exclude(el)) : rows;
+      if (shared && extraQuery) {
+        const existing = new Set(found.map(({ el }) => el));
+        const extras = readRectRows(doc, extraQuery, (el) => existing.has(el) || opts.exclude?.(el));
+        // Match querySelectorAll's document order, including ties in label seating.
+        found = [...found, ...extras].sort((a, b) => a.el.compareDocumentPosition(b.el) & 4 ? -1 : 1);
       }
-      cache = visibleRects(found);
+      cache = found.map(({ rect }) => rect);
       return cache;
     },
-    invalidate() { at = -Infinity; },
+    invalidate: snapshot.invalidate,
   };
 }
 

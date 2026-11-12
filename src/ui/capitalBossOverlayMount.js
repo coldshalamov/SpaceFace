@@ -10,7 +10,7 @@ import { createCapitalBossOverlay, capitalBossReadouts } from '../presentation/c
 import { svg } from './orrery/svg.js';
 import { scale } from './orrery/instruments.js';
 import { resolveObjectiveHudLayout } from './hud.js';
-import { AVOID_SELECTORS, createAvoidRects, visibleRects } from './hudAvoidRects.js';
+import { createAvoidRects, visibleRects } from './hudAvoidRects.js';
 
 const reducedMotionOf = (state) => !!(state && state.settings && state.settings.video
   && state.settings.video.motionReduce);
@@ -227,7 +227,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   // column, the Stage banner and the receipts, read from the DOM (cached ~400 ms by the helper).
   // The pad price labels and the cursor's object read-out ride the world too, so they count.
   const avoid = createAvoidRects(typeof document !== 'undefined' ? document : null,
-    { selectors: [...AVOID_SELECTORS, '#sf-floorpads .sf-fp', '.sf-woi'] });
+    { extraSelectors: ['#sf-floorpads .sf-fp', '.sf-woi'] });
   let avoidSource = null;
   let avoidBoxes = [];
   const reserveLiveText = () => {

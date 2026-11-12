@@ -94,11 +94,52 @@ test('ledger: merges across layers, caps at four, drops an outranked newcomer', 
   assert.equal(L.admit({ text: '+3 SHUNTED', x: 100, y: 100, priority: 2 }).action, 'new', 'window elapsed: no merge');
 });
 
-import { seatBelowColumn, visibleRects } from '../src/ui/hudAvoidRects.js';
+import { AVOID_SELECTORS, createAvoidRects, seatBelowColumn, visibleRects } from '../src/ui/hudAvoidRects.js';
 
 test('class-up plate seats just below the Swarm centre column, or stays put with no column', () => {
   const col = visibleRects([{ left: 330, top: 10, width: 180, height: 40 }, { left: 300, top: 50, width: 240, height: 70 }]);
   assert.equal(seatBelowColumn(col), 130);
   assert.equal(seatBelowColumn([]), null);
   assert.equal(visibleRects([{ left: 0, top: 0, width: 0, height: 20 }]).length, 0);
+});
+
+test('HUD obstacles share one read and keep consumer exclusions, extra blockers, and resize timing', () => {
+  let now = 0;
+  let reads = 0;
+  const queries = [];
+  const resize = [];
+  const obstacle = (order) => ({
+    order,
+    getBoundingClientRect() { reads++; return { left: order, top: 0, width: 80, height: 24 }; },
+    compareDocumentPosition(other) { return order < other.order ? 4 : 2; },
+  });
+  const round = obstacle(1);
+  const pad = obstacle(2);
+  const toast = obstacle(3);
+  const commonQuery = AVOID_SELECTORS.join(',');
+  const doc = {
+    defaultView: { performance: { now: () => now }, addEventListener(name, cb) { resize.push(cb); } },
+    querySelectorAll(query) {
+      queries.push(query);
+      return query === commonQuery ? [round, toast] : [round, pad];
+    },
+  };
+  const floating = createAvoidRects(doc, { exclude: (el) => el === toast });
+  const boss = createAvoidRects(doc, { extraSelectors: ['.pad'] });
+  const phone = createAvoidRects(doc, { ttlMs: 90 });
+  const positions = (reader) => reader.get().map(({ x }) => x);
+  assert.deepEqual(positions(floating), [1]);
+  assert.deepEqual(positions(boss), [1, 2, 3]);
+  assert.deepEqual(queries, [commonQuery, '.pad']);
+  assert.equal(reads, 3);
+  assert.deepEqual(positions(phone), [1, 3]);
+
+  toast.hidden = true;
+  now = 91;
+  assert.deepEqual(positions(phone), [1]);
+  assert.deepEqual(positions(boss), [1, 2, 3]);
+  resize.forEach((cb) => cb());
+  assert.deepEqual(positions(boss), [1, 2]);
+  assert.deepEqual(positions(floating), [1]);
+  assert.equal(queries.filter((query) => query === commonQuery).length, 4);
 });
