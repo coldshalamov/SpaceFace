@@ -53,6 +53,7 @@ import { TENDER_RECORD_SCHEMA, TENDER_SPOT_SOURCE } from '../src/missions/tender
 // Load order matters: missionSpawningOps and missions.js import each other — missions.js must
 // finish initializing before missionSpawningOps's own importers see it (the ops-object spread).
 import { missions } from '../src/systems/missions.js';
+import { economy } from '../src/systems/economy.js';
 
 const T = TENDER_HAUL_TUNING;
 const SEED = 4242;
@@ -61,8 +62,8 @@ const GATE = T.gateStationId;
 const RAIL = T.railStationId;
 
 /** Boot the real missions owner in a focused sim; capture every intent the owner emits. */
-function boot(seed = SEED) {
-  const sim = createSimulation({ seed, systems: [missions], updateOrder: [] });
+function boot(seed = SEED, { includeEconomy = false } = {}) {
+  const sim = createSimulation({ seed, systems: includeEconomy ? [economy, missions] : [missions], updateOrder: [] });
   const { state, bus } = sim;
   state.mode = 'flight';
   state.player.credits = 50000;
@@ -414,6 +415,33 @@ test('a late lot re-prices at base and the red EXPIRED can never mint', () => {
     'a late settle prints no bend and names no spare seconds');
   assert.deepEqual(byName(h, 'mission:expired'), [], 'still no EXPIRED anywhere in the run');
   h.sim.dispose();
+});
+
+test('a grace-end tender deducts stamped duty from the payout even with an empty wallet', () => {
+  const h = boot(SEED, { includeEconomy: true });
+  try {
+    const { m } = acceptTender(h);
+    loadHold(h, { [T.cmdtyId]: T.lotUnits, cmdty_silicate: 30 });
+    h.bus.emit('dock:docked', { stationId: DESK });
+    assert.equal(m.params.weighDutyCr, 120);
+    sellLot(h, T.lotUnits / 2);
+    h.bus.emit('economy:chargeCredits', { amount: h.state.player.credits, reason: 'test:spend-wallet' });
+    assert.equal(h.state.player.credits, 0);
+
+    h.state.simTime = m.params.tenderCloseAt_s + 0.5;
+    h.missionsSys.update(SIM_DT, h.state);
+    h.state.simTime = m.tender.graceUntilS + 0.5;
+    h.missionsSys.update(SIM_DT, h.state);
+
+    assert.equal(m.status, 'completed');
+    assert.deepEqual(byName(h, 'credits:changed')
+      .filter(({ payload }) => payload.reason === `tender_duty:${m.id}`)
+      .map(({ payload }) => payload.delta), [-120]);
+    assert.equal(h.state.player.credits, 705);
+    assert.equal(byName(h, 'mission:completed').length, 1);
+  } finally {
+    h.sim.dispose();
+  }
 });
 
 // ── 7. The floor ──────────────────────────────────────────────────────────────────────────────

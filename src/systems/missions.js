@@ -4844,9 +4844,6 @@ export const missions = {
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
-    // W-TENDER: the duty stamped at either weigh charges here, once — settle never re-reads the
-    // hold, so the receipt remembers whether the pilot queued, ran, or dumped.
-    if (m.tender) this._chargeTenderDuty(m);
     if (m.cause?.reyBid) this.bus.emit('coldburnRey:playerDelivered', { missionId: m.id });
     // SP2-053: Quinn's stool regulars get the +1 cr nudge on contracts offered at her bars
     // (tiny, real — the flag read lives with the counter leg that writes it).
@@ -4923,6 +4920,9 @@ export const missions = {
     if (m.collateral_cr > 0) {
       this.bus.emit('economy:grantCredits', { amount: m.collateral_cr, reason: `collateral_refund:${m.id}` });
     }
+    // Settle stamped tender duty against the payout and returned collateral.
+    // An empty balance before payout must not zero out the debit.
+    if (m.tender) this._chargeTenderDuty(m);
     // RC-MISSION-VOICE: the payday speaks in the payer's voice — a bounty is crossed off the wall,
     // a fence settles fast, a logged yard pays by the book. One receipt line, on the toast lane
     // every other settle fact rides.
