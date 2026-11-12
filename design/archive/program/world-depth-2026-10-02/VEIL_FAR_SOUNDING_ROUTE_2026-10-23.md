@@ -1,0 +1,36 @@
+<!-- LIFETIME: DURABLE -->
+# Veil Far Sounding: three ranges become a connected research route
+
+## Scope and source
+Successor to reviewed Triton PR #518, production head 48c5be52d35c6a857769d98b4a546c57cff34d7f, on public master 5e5b619b57c53be410e90c7e5f21bbb2fd0127f5. Allocation: CLAIM_VEIL_FAR_SOUNDING_2026-10-23.md at 41f15b975ead9609fb5c023e98159934069cba7e. Publication must preserve the pending test-only causal-retirement amendment rather than overwriting its test/report. This report does not assert publication, merge or deployment.
+
+Far Sounding already exists at local (3100,-2400), type wormhole, with authored gravity_well_sounding / sound. The master owner stores the descriptor but never makes a live interaction: Veil has no planetary_mass zone. A bounded owner/event reproduction at seed4242 produced no sounding progress, aftermath or offer. The new focused tests also fail against the reviewed Triton precursor, where the Far Sounding row remains absent.
+
+The correction independently plans a 300-WU footprint at that exact existing place. Its synthetic planner category selects the existing sound grammar only; it creates no planetary body, gravity force, globally registered zone or portal. Existing sector placement, generic plans and separate route_veil_ashfall gates are untouched. No claim is made that Far Sounding is a sensor-buoy mesh: its existing catalog type is wormhole and rendered identity was not inspected here.
+
+## Player action and consequence
+Actual scanner pulses must cover three radial bands: close <105 WU, middle 105–<210 WU, far 210–300 WU. Bearings at the same range do not substitute. Boundaries105/210 belong to middle/far;300 is included. The map-facing objective contains all ranges. Far Sounding-only progress guidance names remaining bands, observed through the actual toast event, without changing generic gravity-well wording or UI layout. Local-map/radar readers consume label/progress, NOT the objective distances. The ordinary owner tick now observes just the active Far Sounding/player pair and emits first-approach guidance through the existing voice/entry bookkeeping. It preserves generic current-zone identity. Valid same-band scanner requests recover remaining-range guidance after the existing3.5-second progress TTL, without new progress; same-time repeats are silent and a backwards clock can recover. Rendered distance/readability acceptance remains open.
+
+Seed4242 owner route: scanner readings → station_veil normal causal offer → actual mission acceptance → owner-created signal in sector_io_reach, record poicr:sector_io_reach:qm51wh → scanner classification1/2, tracking and close investigation → one mission completion, one economy grant,780 credits and11 research points. Amounts are observed seeded results, not new fixed rewards. Triton's mission is not a prerequisite.
+
+The shared authored-place guards still require current sector, unsuspended presence, matching supplied sector identity and finite in-footprint coordinates, even for explicit zone IDs. Stale arrival epochs cannot resume a departed row. Exact POI identity binds the anchor; an unrelated coincident entity is never annotated instead. Generic zone behavior is unchanged.
+
+## Persistence and verification
+- Fourteen new focused cases pass. Nine unchanged Triton cases pass under the successor, including its960-credit/13-point Veil route. Existing living-poi-behaviors passes22/22. These are45 distinct named tests, not an aggregate.
+- Actual Save.save('quick') and Save.load('quick') retain the accepted mission and already resolved sounding aftermath; sector return and further scans do not repost the offer. Storage is an explicitly in-memory fixture behind real Save entry points.
+- Partial range progress still resets on owner deserialize/replan, matching the existing serialization contract. Resolved charted_sounding lasts five days; expiry reopens it. Generic anomaly aftermath coexists. The transient departure guard is absent from save/readouts and resets on New Game.
+- Tests cover band edges, same-range repetition, outside/malformed coordinates, explicit-ID bypass, off-sector/exit/reentry, exact anchor, ordinary generic planning, actual scanner settlement and lifecycle.
+- Initial9/10 result was a fixture error: inherited Triton generic bearing coordinates crossed Veil's overlapping zone boundaries. The corrected generic-coexistence fixture chooses positions that the real zone resolver maps to the generic anomaly; all three are still scanned through the actual scanner.
+- The inherited read-only loader verifies public source hashes before applying the two declared production overlays. This increment reuses its established source inventory/dependencies; it is not a fresh whole-checkout or dependency-tarball audit. No disk logs, broad aggregates or anvil-receiver-delivery test were run.
+
+Exact shipping scope: two production files, test/veil-far-sounding-route.test.mjs, one additive check:veil-far-sounding-route package command wired to check, and this report. The package transform preserves all pre-existing scripts, check order and source bytes outside the two additions.
+
+## Acceptance boundaries
+Accelerated player positions and sector-entry inputs, fixture annotation entities and in-memory storage are disclosed. No native flight, live-camera or phone UX, whole-game performance, complete sector acceptance or new asset is claimed. Existing lore, gradiometer, Guide, Orchard, Pallas, traffic/mining/contactHail and NPC runtime owners remain unchanged. All broader goals stay open. Independent review and exact remote readback are required before publication is described as delivered.
+
+## Independent-review correction
+Initial source2935b1506e7dc4b7114d6da45a1a70bcc6863129 and ten tests passed mechanics, but review found that the authored site receives no static world-zone entry and that map/radar do not display objective prose. Therefore a config/readout assertion was not evidence of first-approach comprehension, and expired guidance could not be recovered at the same range. The correction adds the bounded owner-tick first cue and repeat-scan refresh above, plus two actual sim.step/voice-contract tests. They verify zero automatic progress/reward, generic zone preservation, no repeated tick spam, stale-sector/exit/epoch and nonfinite-position rejection, valid reentry and repeat guidance. The voice helper is a capturing test implementation, not an actual rendered/heard session. Existing entry memory means a previously introduced site need not repeat its approach on every return; an ordinary valid scan recovers remaining instructions. Deferred tutorial guidance follows the existing arbiter convention; no new timer or global entity loop is introduced.
+
+A final lifecycle guard keeps resolved/restored aftermath without prior approach memory quiet on owner ticks; it cannot repeatedly speak merely because an accelerated scanner completion preceded the first update. The thirteenth regression exercises both forms.
+
+Tutorial deferral is also bounded: the first eligible tick records one deferred approach/readout; subsequent tutorial-owned ticks perform no readout rebuild or speech. Releasing tutorial voice produces one cue, then stays quiet. A20-tick negative/release regression preserves zero scan progress and zero offers.

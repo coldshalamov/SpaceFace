@@ -1,0 +1,181 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 1 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.298659
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 2 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 4.702911
+  ...
+# Subtest: mesh collect surfaces a far hull on the decode runway before its build horizon
+ok 3 - mesh collect surfaces a far hull on the decode runway before its build horizon
+  ---
+  duration_ms: 1.488125
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 4 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.380206
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 5 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.578424
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 6 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.258502
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 7 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.260638
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 8 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.256959
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 9 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 0.934136
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 10 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.356991
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 11 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 4.372364
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 12 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.768452
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 13 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.58516
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 14 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.642657
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 15 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.393986
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 16 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 8.381413
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 17 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 2.101837
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 18 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.126606
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 19 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 2.07148
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 20 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.458558
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 21 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.317074
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 22 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 1.070296
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 23 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.122303
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 24 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 1.480721
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 25 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 2.474454
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 26 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 1.087283
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 27 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.297813
+  ...
+# Subtest: quiet latch engages when far empty and no virt candidates
+ok 28 - quiet latch engages when far empty and no virt candidates
+  ---
+  duration_ms: 7.983382
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 29 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 1.061812
+  ...
+# Subtest: bench toggle off refuses latch
+ok 30 - bench toggle off refuses latch
+  ---
+  duration_ms: 0.779431
+  ...
+# Subtest: far rows present never skip restore path
+ok 31 - far rows present never skip restore path
+  ---
+  duration_ms: 2.356906
+  ...
+# Subtest: dormant far ship still shelves when latch off-window
+ok 32 - dormant far ship still shelves when latch off-window
+  ---
+  duration_ms: 1.107558
+  ...
+# Subtest: rescan clears latch after window
+ok 33 - rescan clears latch after window
+  ---
+  duration_ms: 1.214697
+  ...
+# Subtest: the far shelf gives the wreck cathedral and the cinder sluice back on approach
+ok 34 - the far shelf gives the wreck cathedral and the cinder sluice back on approach
+  ---
+  duration_ms: 140.052186
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 639.597073

@@ -1,0 +1,209 @@
+From c4f5d9c26960f64e2f10bbabfac095e5b164976d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:47:42 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20trail=20em?=
+ =?UTF-8?q?it=20drive=20walk=20(~7=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight walked all shipLike trail candidates through
+_engineDriveFor every emit tick even when every drive was below the idle
+band. Latch after first empty emit; wake on cheap throttle/speed/actuator
+proxy (+ entityIndexVersion). Empty _updateRibbonTrails shares the latch
+when the ribbon map is empty. Soft-GPU fps not claimed.
+---
+ src/render/vfx.js | 126 ++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 122 insertions(+), 4 deletions(-)
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 937bc9116..04047e012 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1347,6 +1347,13 @@ export const vfx = {
+     // entityIndexVersion bump). Soft-GPU fps not claimed.
+     this._tumbleBodyQuietEmpty = false;
+     this._tumbleBodyQuietEpoch = -1;
++    // Quiet settled flight: _emitTrails walked all shipLike candidates through
++    // _engineDriveFor every emit tick even when every drive was below the idle
++    // band. Latch after first empty emit; wake on cheap throttle/speed/actuator
++    // proxy (+ entityIndexVersion). Soft-GPU fps not claimed. Shared with empty
++    // _updateRibbonTrails when the ribbon map is empty.
++    this._trailEmitQuietIdle = false;
++    this._trailEmitQuietIndexVersion = -1;
+     this._energyPlumeWasRelevant = false;
+     // Quiet settled flight: _hideEnergyPlumes used to re-run plasma/retro/fleet.reset
+     // every idle tick (fleet walks ships + family plume/rcs and clears the #100
+@@ -2202,12 +2209,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -14496,10 +14503,102 @@ export const vfx = {
+   },
+ 
+   // per-frame engine-trail emission for every thrusting ship/drone (steady-state, pooled)
++  // Cheap wake while `_trailEmitQuietIdle`: input / actuators / throttle / boost /
++  // speed-proxy only — no full `_engineDriveFor` walk. Conservative: may
++  // false-wake into one emit walk (re-latches); must not miss a real
++  // thrust/coast wake. Soft-GPU fps not claimed.
++  _trailEmitQuietMaybeAwake() {
++    const state = this.state;
++    if (!state) return true;
++    if (state.mode && state.mode !== 'flight') return true;
++    const version = entityIndexVersion(state);
++    if (version !== this._trailEmitQuietIndexVersion) return true;
++    const player = state.entities && state.entities.get(state.playerId);
++    if (player && player.alive && (player.type === 'ship' || player.type === 'drone')) {
++      if (player.flags && player.flags.boosting) return true;
++      const actuators = this._actuatorsFor(player);
++      if (actuators && (
++        Math.abs(actuators.lateral || 0) > 0.001
++        || Math.abs(actuators.yaw || 0) > 0.001
++        || (actuators.reverse || 0) > 0.001
++        || (actuators.main || 0) > 0.03
++      )) return true;
++      const inp = state.input;
++      if (inp) {
++        if (Number.isFinite(inp.turnIntent) && Math.abs(inp.turnIntent) > 0.2) return true;
++        if (Number.isFinite(inp.moveZ) && inp.moveZ > 0.05) return true;
++      }
++      const frame = player._flightFrame || {};
++      if ((Number.isFinite(frame.throttle) && frame.throttle > 0.03)
++        || (Number.isFinite(frame.commandedThrottle) && frame.commandedThrottle > 0.03)) {
++        return true;
++      }
++      const vx = player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0;
++      const vz = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
++      if (vx !== 0 || vz !== 0) {
++        const speed = Math.hypot(vx, vz);
++        const maxFromEntity = Number.isFinite(player.maxSpeed) ? player.maxSpeed : 0;
++        const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
++        const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
++        const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
++        // Idle emit band is drive < 0.055 ≈ speedDrive*0.40 when throttle/boost idle.
++        if (speedDrive * 0.40 >= 0.055) return true;
++      }
++    }
++    const list = this._trailCandidates;
++    if (!list || !list.length) return false;
++    for (let i = 0; i < list.length; i++) {
++      const e = list[i];
++      if (!e || !e.alive || (e.type !== 'ship' && e.type !== 'drone')) continue;
++      if (player && e.id === player.id) continue;
++      if (e.flags && e.flags.docked) continue;
++      if (e.flags && e.flags.boosting) return true;
++      const frame = e._flightFrame || {};
++      if ((Number.isFinite(frame.throttle) && frame.throttle > 0.03)
++        || (Number.isFinite(frame.commandedThrottle) && frame.commandedThrottle > 0.03)) {
++        return true;
++      }
++      const actuators = this._actuatorsFor(e);
++      if (actuators && (
++        Math.abs(actuators.lateral || 0) > 0.001
++        || Math.abs(actuators.yaw || 0) > 0.001
++        || (actuators.reverse || 0) > 0.001
++        || (actuators.main || 0) > 0.03
++      )) return true;
++      const vx = e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0;
++      const vz = e.vel && Number.isFinite(e.vel.z) ? e.vel.z : 0;
++      if (vx !== 0 || vz !== 0) {
++        const speed = Math.hypot(vx, vz);
++        const maxFromEntity = Number.isFinite(e.maxSpeed) ? e.maxSpeed : 0;
++        const maxFromFrame = Number.isFinite(frame.maxSpeed) ? frame.maxSpeed : 0;
++        const maxSpeed = Math.max(1, maxFromEntity || maxFromFrame || 120);
++        const speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
++        if (speedDrive * 0.40 >= 0.055) return true;
++      }
++    }
++    return false;
++  },
++
+   _emitTrails(dt) {
++    // Leaving flight clears the quiet latch; do not require mode==='flight' to
++    // emit (harnesses and pre-flight ticks still walk candidates).
++    if (this.state && this.state.mode && this.state.mode !== 'flight') {
++      this._trailEmitQuietIdle = false;
++    }
+     this._trailAcc = (this._trailAcc || 0) + dt;
+     // emit at ~60 Hz cadence (one trail particle per ship per ~16ms)
+     if (this._trailAcc < 0.016) return false;
++    // Quiet idle residual: consecutive emit ticks still walked all shipLike
++    // candidates through `_engineDriveFor` with every drive below the idle band.
++    // Latch after first empty emit (no engine trail / no damage smoke this tick);
++    // wake on cheap maybe-awake. Soft-GPU fps not claimed.
++    if (this._trailEmitQuietIdle) {
++      this._refreshTrailCandidates();
++      if (!this._trailEmitQuietMaybeAwake()) {
++        this._trailAcc = 0;
++        return false;
++      }
++    }
+     const step = this._trailAcc; this._trailAcc = 0;
+     this._trailFrameIndex++;
+     resetTrailBudgetDiag(this._trailBudgetDiag);
+@@ -14508,6 +14607,7 @@ export const vfx = {
+     const ctx = this._trailContext();
+     const screenChecks = this._trailScreenChecks();
+     let reducedEmitted = 0;
++    let anyBusy = false;
+     this._trailBudgetDiag.trailCandidates = list.length;
+ 
+     for (let i = 0; i < list.length; i++) {
+@@ -14535,16 +14635,26 @@ export const vfx = {
+       }
+       const spawned = this._emitEngineTrail(e, driveInfo.drive, step, this._trailSpawnScratch);
+       this._recordTrailBudget(tier, spawned);
++      anyBusy = true;
+       // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
+       // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
+       // critical (<18%) adds orange embers + denser smoke. Even a stationary/idle damaged ship
+       // smokes, so you can spot a limping enemy without HUD readouts.
+       if (tier !== TRAIL_TIER.SKIP && e.hullMax && e.hull < e.hullMax) {
+         const frac = e.hull / e.hullMax;
+-        if (frac < 0.40) this._emitDamageSmoke(e, frac, step);
++        if (frac < 0.40) {
++          this._emitDamageSmoke(e, frac, step);
++          anyBusy = true;
++        }
+       }
+     }
+     this._publishTrailBudgetDiag();
++    if (!anyBusy) {
++      this._trailEmitQuietIdle = true;
++      this._trailEmitQuietIndexVersion = entityIndexVersion(this.state);
++    } else {
++      this._trailEmitQuietIdle = false;
++    }
+     return true;
+   },
+ 
+@@ -14594,6 +14704,14 @@ export const vfx = {
+       return false;
+     }
+     this._ribbonTrailsEnabledLast = true;
++    // Share `_trailEmitQuietIdle`: when no ribbon owners are live and emit is
++    // quiet-latched, skip the candidate drive/tier walk. Retiring wakes still
++    // need the loop while `_ribbonTrails.size > 0`. Soft-GPU fps not claimed.
++    if (this._trailEmitQuietIdle
++      && this._ribbonTrails.size === 0
++      && !this._trailEmitQuietMaybeAwake()) {
++      return false;
++    }
+     this._refreshTrailCandidates();
+     const state = this.state;
+     const ctx = this._trailContext();
+-- 
+2.47.3
+

@@ -1,0 +1,660 @@
+{
+  "assetId": "large_capital_berth_outrigger",
+  "category": "large",
+  "description": "capital berth outrigger",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_large.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Join_A",
+      "position": [
+        -36.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Dock_Approach",
+      "position": [
+        44.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Berth",
+      "position": [
+        36.0,
+        4.8,
+        -15.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Service",
+      "position": [
+        -26.0,
+        3.25,
+        3.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -4.0,
+          2.0,
+          5.0
+        ],
+        "size": [
+          64.0,
+          1,
+          1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -4.0,
+          2.0,
+          -5.0
+        ],
+        "size": [
+          64.0,
+          1,
+          1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -36.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          14.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -20.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          14.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -4.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          14.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          12.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          14.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          28.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          14.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          30.0,
+          0.0,
+          10.0
+        ],
+        "size": [
+          15.620499351813308,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.0,
+          -0.3404252529144287,
+          0.0,
+          0.9402716159820557
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.0,
+          1.0,
+          15.0
+        ],
+        "size": [
+          5,
+          6,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          30.0,
+          0.0,
+          -10.0
+        ],
+        "size": [
+          15.620499351813308,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.3404252529144287,
+          0.0,
+          0.9402716159820557
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.0,
+          1.0,
+          -15.0
+        ],
+        "size": [
+          5,
+          6,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -26.0,
+          3.0,
+          -0.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -28.0,
+          4.0,
+          -3.0
+        ],
+        "size": [
+          10,
+          3,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          34.0,
+          4.3,
+          15.0
+        ],
+        "size": [
+          5,
+          1,
+          7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.8,
+          2.0,
+          16.5
+        ],
+        "size": [
+          1.4,
+          4,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.8,
+          2.0,
+          15.0
+        ],
+        "size": [
+          1.4,
+          4,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.8,
+          2.0,
+          13.5
+        ],
+        "size": [
+          1.4,
+          4,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          34.0,
+          4.3,
+          -15.0
+        ],
+        "size": [
+          5,
+          1,
+          7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.8,
+          2.0,
+          -13.5
+        ],
+        "size": [
+          1.4,
+          4,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.8,
+          2.0,
+          -15.0
+        ],
+        "size": [
+          1.4,
+          4,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.8,
+          2.0,
+          -16.5
+        ],
+        "size": [
+          1.4,
+          4,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -26.0,
+          2.5,
+          -0.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -26.0,
+          2.5,
+          3.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -26.0,
+          3.0,
+          3.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "large",
+    "reusable",
+    "Forge",
+    "metre-scale"
+  ],
+  "bounds": {
+    "min": [
+      -36.75,
+      -2.2199997901916504,
+      -18.5
+    ],
+    "max": [
+      38.5,
+      5.739999771118164,
+      18.5
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "large_capital_berth_outrigger_lod0.glb",
+      "triangles": 14156,
+      "draws": 7,
+      "bytes": 982852,
+      "method": "source",
+      "sha256": "7c6740bf5daec4e2fcee465d42ac2fe37bd5ac2a303b1bf94b2b23fe21bbab6f"
+    },
+    {
+      "level": 1,
+      "file": "large_capital_berth_outrigger_lod1.glb",
+      "triangles": 9236,
+      "draws": 6,
+      "bytes": 743704,
+      "method": "authored-topology",
+      "sha256": "2ac52b2a49cbfe833750c375f6f43bbe901fe4c069193530c3358108b41041f3"
+    },
+    {
+      "level": 2,
+      "file": "large_capital_berth_outrigger_lod2.glb",
+      "triangles": 2656,
+      "draws": 6,
+      "bytes": 436912,
+      "method": "authored-topology",
+      "sha256": "bb0d1c7faa365e714e0fc165a375eb13b34283daec1aabbd4da1cbcf5614a96c"
+    }
+  ],
+  "materialSlots": [
+    {
+      "name": "Material_Armor",
+      "finish": "paint2",
+      "role": "hull"
+    },
+    {
+      "name": "Material_BrushedMetal",
+      "finish": "bare",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_Hull",
+      "finish": "paint",
+      "role": "hull"
+    },
+    {
+      "name": "Material_Emissive_Warm",
+      "finish": "glow_warm",
+      "role": "signal"
+    },
+    {
+      "name": "Material_Accent",
+      "finish": "stripe",
+      "role": "accent"
+    },
+    {
+      "name": "Material_Mechanical",
+      "finish": "gunmetal",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_MechanicalDark",
+      "finish": "dark",
+      "role": "mechanical"
+    }
+  ],
+  "pivot": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "space": "glTF asset-local metres",
+    "normalization": "none"
+  },
+  "stateCapability": {
+    "type": "static",
+    "motion": "none; assembly visibility states belong to recipe",
+    "damage": "none; no invented destruction rig"
+  },
+  "provenance": {
+    "source": "tools/blender/forge/asset_bank_large.py",
+    "method": "original Forge procedural authored construction; no external model sources",
+    "sourceSHA256": "138252af96a36049fa91ac4f4c39dfcc96f493373757d8cbd5d687c29ba62fcf"
+  }
+}

@@ -1,0 +1,1932 @@
+import { createSaveStage } from '../views/saveFrame.js';
+// Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
+// ORRERY (design/frontend/ORRERY.md §6 Meta): the lives on file are a filmstrip on a curved rail
+// (src/ui/orrery/saveFilmstrip.js), each save a frame of its hull on its own station, an empty slot an
+// open station; the amber Hand swings along the rail to the chosen save. Its hull stands alone on the
+// glass; beside it the page of its record (where, how rich, how long, when, and the hull's scars,
+// yard repairs, titles, rap sheet and grudge): the credits roll, the readings decrypt, and its one primary verb is
+// the Lamp Key (composition: src/ui/orrery/saveLayouts.js). Keys for Load / Save here / Delete / Export /
+// Import / Back; every slot and confirm stays reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
+// is read defensively from the save system's public API if present, else from localStorage
+// (manifest: SaveLoadScreen reads sf.save.index).
+
+import { livingHullPatchedScars, livingHullScars, normalizeLivingHull } from '../../core/livingHull.js';
+import { FACTION_META } from '../../data/factions.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { SECTORS } from '../../data/sectors.js';
+import { contestedSectorForPair } from '../../data/conflictZones.js';
+import { SHIPS } from '../../data/ships.js';
+import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
+import { rankFromRep } from '../../systems/factions.js';
+import { localizeText } from '../../localization/sourceText.js';
+import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { boundSlotThumbnail } from '../../save/slotStill.js';
+import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
+import { wantedClearClause } from '../wantedReason.js';
+import { confirm } from '../confirm.js';
+import { el, rows, words, hero, settle, cue } from '../kit/index.js';
+import { decorateEntityNode } from '../entityResolver.js';
+import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
+import { injectDeckplate, dpMark } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
+import { injectSaveLayouts } from '../orrery/saveLayouts.js';
+import { injectSaveLoadLayouts } from '../orrery/save-loadLayouts.js';
+import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+import { rollTo, decrypt } from '../orrery/text.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { capturePhotoPngAsync } from './pause.js';
+import {
+  backupKeptLine,
+  importDestination,
+  profileImportedLine,
+  recoveryFailedLine,
+  recoveryNotice,
+  importResultLine,
+} from './saveNotices.js';
+
+const SLOT_COUNT = 5;        // quick + 4 manual slots shown
+const LS_PREFIX = 'sf.save.';
+const RECOVERY_PREFIX = 'sf.recovery.';
+const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+const ACE_MEMORY_META = new Set([
+  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle', 'aces',
+]);
+const TITLE_BY_ID = new Map(TITLES.map((title) => [title.id, title]));
+const SHIP_NAME_BY_ID = new Map(SHIPS.map((def) => [def.id, def.name]));
+const PORTRAIT_SCAR_MAX = 3;
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  hazard: { file: 'key.hazard', width: '18px', minW: '96px', minH: '32px', pad: '0 12px', font: '12px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '72px', minH: '28px', pad: '0 8px', font: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+// Deckplate (FRONTEND_PROGRAM Wave 2): the Field Hardware PNG plates, keys and tiles are drawn by
+// the deckplate bridge now (src/ui/deckplate/screens.js, FH_BRIDGE), so pins keep geometry, type
+// and colour only. Forced colours keeps every pin: there the system palette is the material.
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
+  return node;
+}
+function installShell(root) {
+  root.classList.add('fh-shell');
+  pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
+}
+function paintMarking(node) {
+  if (!node) return node;
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  node.classList.add('fh-legend');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    ...platePins(variant, spec.width),
+    'box-sizing': 'border-box',
+    padding: '8px 12px',
+    ...extra,
+  });
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
+      ...(kind === 'legend' ? { padding: spec.pad } : {}),
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      ...capPins(kind, state, spec.width),
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    const lit = button.getAttribute('aria-pressed') === 'true' || button.getAttribute('aria-selected') === 'true';
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (button.dataset.fhBound !== '1') {
+    button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' && button.getAttribute('aria-pressed') === 'true' ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function paintSlotRow(row, selected) {
+  if (!row) return row;
+  row.classList.add('fh-row');
+  row.classList.toggle('is-selected', !!selected);
+  if (selected && !forcedColorsActive()) {
+    return pin(row, {
+      ...rowPins('8px 16px'),
+      'box-shadow': 'none',
+      color: 'var(--fh-text)',
+    });
+  }
+  return pin(row, {
+    'border-image-source': 'none',
+    'border-width': '1px 0 0 0',
+    'border-style': 'solid',
+    'border-color': 'var(--k-hair)',
+    'box-shadow': 'none',
+    background: 'transparent',
+  });
+}
+
+export const SAVE_PORTRAIT_SEED = 15610;
+export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'repairs', 'titles', 'standing', 'rapSheet', 'grudge']);
+
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+
+function nav(ctx, method, arg) {
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
+  ctx.bus.emit('ui:' + method, { id: arg });
+}
+
+/** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
+function readSlots(ctx) {
+  const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  // Preferred: save system exposes a slot index. Index cards first — the per-render read
+  // must not pay the authoritative blob scan on a stale generation; the validated merge
+  // repaints on 'save:slotsValidated' (listener below) and every load click re-validates
+  // real bytes through _prepareEnvelopeStringAsync anyway.
+  if (sys) {
+    if (typeof sys.listSlotsIndexCards === 'function') { try { return normalize(sys.listSlotsIndexCards()); } catch (e) {} }
+    if (typeof sys.listSlots === 'function') { try { return normalize(sys.listSlots()); } catch (e) {} }
+    if (sys.index && typeof sys.index === 'object') { try { return normalize(sys.index); } catch (e) {} }
+  }
+  // Fallback: scan localStorage for sf.save.* entries.
+  const out = {};
+  try {
+    if (typeof localStorage !== 'undefined') {
+      // explicit index blob, if the save system wrote one
+      const idxRaw = localStorage.getItem(LS_PREFIX + 'index');
+      if (idxRaw) { try { return normalize(JSON.parse(idxRaw)); } catch (e) {} }
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(LS_PREFIX)) continue;
+        const slot = k.slice(LS_PREFIX.length);
+        if (slot === 'index') continue;
+        // sf.save.* also carries deletion tombstones and side-channel records (achievements,
+        // crucible meta) — only a real save envelope may claim a slot row.
+        let meta = null;
+        try {
+          const env = JSON.parse(localStorage.getItem(k));
+          if (!env || env.fmt !== 'spaceface-save') continue;
+          meta = env.meta || { savedAt: env.savedAt, playtimeS: env.playtimeS };
+        } catch (e) { continue; }
+        out[slot] = meta || {};
+      }
+    }
+  } catch (e) {}
+  return out;
+}
+
+function normalize(idx) {
+  // idx may be {slot:meta} or [{slot,...}]
+  if (Array.isArray(idx)) {
+    const o = {}; idx.forEach((e) => { if (e && e.slot != null) o[String(e.slot)] = e; }); return o;
+  }
+  return idx || {};
+}
+
+function slotLabel(id) {
+  if (id === 'quick' || id === 'autosave' || id === 'auto') return id[0].toUpperCase() + id.slice(1);
+  return 'Slot ' + id;
+}
+
+export function fmtPlaytime(playtimeS) {
+  const s = Number(playtimeS);
+  if (!Number.isFinite(s) || s < 0) return '';
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? (h + 'h ' + (m % 60) + 'm played') : (m + 'm played');
+}
+
+export function fmtCredits(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  return Math.round(n).toLocaleString('en-US') + ' CR';
+}
+
+function titleCaseWords(s) {
+  return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+export function shipLabel(id) {
+  if (!id) return '';
+  // Catalog name wins. ship_kestrel's player-facing name is Hitch; title-casing the id
+  // would put the legacy "Kestrel" on the load portrait.
+  const known = SHIP_NAME_BY_ID.get(id);
+  if (known) return known;
+  return titleCaseWords(String(id).replace(/^ship_/, ''));
+}
+
+function fmtSavedAt(meta) {
+  const when = meta.savedAt || meta.lastSavedAt;
+  if (!when) return '';
+  const d = new Date(when);
+  if (!Number.isFinite(d.getTime())) return '';
+  return 'saved ' + d.toLocaleString();
+}
+
+/** "today", "yesterday", "3 days ago", else the date — the title's "last flown" phrase. */
+export function fmtLastFlown(savedAt, now = Date.now()) {
+  const t = Date.parse(savedAt || '');
+  if (!t) return '';
+  const days = Math.floor((now - t) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return days + ' days ago';
+  return new Date(t).toLocaleDateString();
+}
+
+/** "22 Sep 2026, 15:41": the ledger's stamp for when a save was filed. */
+export function fmtSavedStamp(savedAt) {
+  const t = Date.parse(savedAt || '');
+  if (!t) return '';
+  const d = new Date(t);
+  const date = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return date + ', ' + time;
+}
+
+/** The sector the live run is in, by name. */
+function liveSectorName(state) {
+  const world = state && state.world;
+  const id = world && world.currentSectorId;
+  if (!id) return '';
+  const sector = world.sectors && world.sectors[id];
+  return (sector && sector.name) || titleCaseWords(String(id).replace(/^sector_/, ''));
+}
+
+/** The title's sub: "Four saves · last flown yesterday", "One save · last flown today", "No saves yet". */
+export function saveCountLine(slots, now = Date.now()) {
+  const occupied = Object.keys(slots || {}).filter((slot) => isOccupied(slots[slot]));
+  if (!occupied.length) return 'No saves yet';
+  const n = occupied.length;
+  const count = n < COUNT_WORDS.length ? COUNT_WORDS[n] : String(n);
+  const latest = latestOccupiedSlot(slots);
+  const meta = latest ? slots[latest] : null;
+  const flown = fmtLastFlown(meta && (meta.savedAt || meta.lastSavedAt), now);
+  return count + (n === 1 ? ' save' : ' saves') + (flown ? ' · last flown ' + flown : '');
+}
+
+export function slotSummaryLines(meta) {
+  if (!isOccupied(meta)) return { context: 'Empty slot', detail: 'No save data yet' };
+  const context = [
+    meta && meta.sectorName,
+    shipLabel(meta && meta.shipName),
+  ].filter(Boolean).join(' - ') || 'Saved game';
+  const detail = [
+    slotObjectiveSummary(meta),
+    fmtPlaytime(meta && meta.playtimeS),
+    fmtCredits(meta && meta.credits),
+    fmtSavedAt(meta),
+  ].filter(Boolean).join(' - ') || 'Saved';
+  return { context, detail };
+}
+
+export function slotConfirmSummary(meta) {
+  if (!isOccupied(meta)) return 'Empty slot';
+  const summary = slotSummaryLines(meta);
+  return [summary.context, summary.detail]
+    .filter((text) => text && text !== 'Empty slot' && text !== 'No save data yet' && text !== 'Saved')
+    .join(' - ') || 'Saved game';
+}
+
+/**
+ * The trusted-slot confirmation sentence for a load.
+ *
+ * Exported because the death screen's "Load latest" (PRO-14) must go through the SAME confirmation
+ * the save browser uses: a one-click load of the newest slot is the most dangerous load in the game
+ * (it silently discards whatever the player has since the last write), so it gets the same named
+ * slot, the same summary, and the same warning. Never let a second caller write its own wording.
+ */
+export function loadConfirmBody(id, meta) {
+  return 'Loading will replace your current game with ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. Unsaved progress is lost.';
+}
+
+function overwriteConfirmBody(id, meta) {
+  return 'This will replace the existing save in ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
+}
+
+function deleteConfirmBody(id, meta) {
+  return 'This will delete ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
+}
+
+export function importConfirmBody(file) {
+  const name = (typeof file === 'string' ? file : (file && file.name)) || 'selected save file';
+  const dest = importSlotWord || 'the selected slot';
+  return 'Importing ' + name + ' into ' + dest + ' will validate and load that save immediately. Unsaved progress is lost.';
+}
+
+let importSlotWord = '';
+
+export function armImportDestination(slot) {
+  importSlotWord = slot ? (slot === 'quick' || slot === 'autosave' || slot === 'auto'
+    ? slot.charAt(0).toUpperCase() + slot.slice(1)
+    : 'Slot ' + slot) : 'the selected slot';
+  return importSlotWord;
+}
+
+/** Import success belongs to the save authority, including asynchronous compressed saves. */
+export async function importValidatedSave(sys, text, slot) {
+  try {
+    if (sys && typeof sys.importString === 'function') return !!(await sys.importString(text, slot));
+    if (sys && typeof sys.importSave === 'function') return !!(await sys.importSave(text, slot));
+  } catch { /* the importer refused; never overwrite its destination with raw JSON */ }
+  return false;
+}
+
+export function slotObjectiveSummary(meta) {
+  if (!meta) return '';
+  return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
+}
+
+// An empty slot says "empty" once: one heading plus one sentence. The berth
+// mark and the etched line stay silent — no badge, no second caption.
+export function emptySlotDetailCopy(saveAllowed) {
+  return {
+    heading: 'Empty slot',
+    sentence: saveAllowed
+      ? 'Nothing is filed here — save here to file the run you are flying now.'
+      : 'Nothing is filed here yet — a new game starts a life you can save to this slot.',
+  };
+}
+
+export function slotBadges(id, meta, currentSlot, latestSlot) {
+  if (!isOccupied(meta)) return [];
+  const badges = [];
+  if (meta && meta.recoveryAvailable) badges.push('Recovery');
+  if (currentSlot && id === currentSlot) badges.push('Current');
+  if (latestSlot && id === latestSlot && id !== currentSlot) badges.push('Latest');
+  if (meta && meta.version != null) badges.push('v' + meta.version);
+  return badges;
+}
+
+export function slotBadgeRole(badge) {
+  if (badge === 'Recovery') return 'foe';
+  if (badge === 'Current') return 'you';
+  if (badge === 'Latest') return 'goal';
+  return 'calm';
+}
+
+function isOccupied(meta) {
+  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
+}
+
+// PRO-20 — the slot's game-mode word in player language. The card resolves `mode`
+// from the envelope; a legacy card without one still names Adventure, and an empty
+// slot names no mode at all. Never a raw identifier.
+export function slotModeLabel(meta) {
+  if (!isOccupied(meta)) return '';
+  return meta && meta.mode === 'racing' ? 'Racing' : 'Adventure';
+}
+
+/**
+ * The slot row's sub line: the mode word first, then the hull, the sector, the
+ * playtime, and any save notice. Pure, so the row render and the test read one line.
+ * The playtime phrase is one unbreakable run — on the filmstrip's narrow station
+ * columns "played" dangled on its own line under "6h 39m", and "6h / 30m" split.
+ */
+export function slotRowSubLine(meta, noteText) {
+  if (!isOccupied(meta)) return 'Empty slot';
+  const played = fmtPlaytime(meta && meta.playtimeS).replace(/ /g, '\u00A0');
+  return [slotModeLabel(meta), meta && meta.shipName && shipLabel(meta.shipName),
+    meta && meta.sectorName, played, noteText]
+    .filter(Boolean).join(' · ') || 'Saved game';
+}
+
+export function latestOccupiedSlot(slots) {
+  return selectLatestOccupiedSlot(slots);
+}
+
+function exportSlotChoice(ctx, slots) {
+  const selected = refs && refs.selected;
+  if (selected && isOccupied(slots[selected])) return selected;
+  const current = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
+  if (current && isOccupied(slots[current])) return current;
+  if (isOccupied(slots.quick)) return 'quick';
+  return latestOccupiedSlot(slots);
+}
+
+export function canSave(ctx) {
+  const state = ctx && ctx.state;
+  return !!(state && state.playerId != null && state.entities
+    && typeof state.entities.get === 'function' && state.entities.get(state.playerId));
+}
+
+export function saveSlotIntent(slot, options = {}) {
+  const intent = { slot, label: options.label };
+  // Canvas belongs to this browser. Bound its still before the intent crosses the sim lane.
+  if (options.thumbnail !== undefined) {
+    intent.thumbnail = boundSlotThumbnail(options.thumbnail, options.thumbnailSource) ?? null;
+  }
+  return intent;
+}
+
+export function shouldOfferNewGameShortcut(meta, saveAllowed) {
+  // Empty-slot New Game is a title/no-active-run convenience. During a live run, Save/Load is a
+  // preservation surface; do not offer a shortcut that routes toward replacing current progress.
+  return !isOccupied(meta) && !saveAllowed;
+}
+
+/** The save's hull id (the index stores the def id under shipName); the starter when a save has
+ * none — or names a hull this build no longer ships: saves outlive the catalog, and the stage can
+ * only draw a def it can resolve (the readable label stays the save's own via shipLabel). */
+function slotShipId(meta, player) {
+  const fromPlayer = activeOwnedShip(player) && activeOwnedShip(player).defId;
+  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer) && SHIP_NAME_BY_ID.has(fromPlayer)) {
+    return fromPlayer;
+  }
+  const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
+  return (id && SHIP_NAME_BY_ID.has(id)) ? id : NEW_GAME.shipId;
+}
+
+function unwrapSaveData(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  if (input.data && typeof input.data === 'object' && !Array.isArray(input.data)) return input.data;
+  if (input.player || input.missions || input.story || input.aceMemory) return input;
+  return null;
+}
+
+function storyFromPortraitSource(data, state) {
+  if (state && state.story && typeof state.story === 'object' && !Array.isArray(state.story)) return state.story;
+  if (data && data.story && typeof data.story === 'object' && !Array.isArray(data.story)) return data.story;
+  const missions = data && data.missions;
+  if (missions && missions.story && typeof missions.story === 'object' && !Array.isArray(missions.story)) {
+    return missions.story;
+  }
+  if (missions && missions.missions && missions.missions.story
+      && typeof missions.missions.story === 'object' && !Array.isArray(missions.missions.story)) {
+    return missions.missions.story;
+  }
+  return null;
+}
+
+function activeOwnedShip(player) {
+  if (!player || !Array.isArray(player.ownedShips) || !player.ownedShips.length) return null;
+  const index = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  return player.ownedShips[index] || player.ownedShips[0] || null;
+}
+
+function portraitLine(value, fallback) {
+  if (typeof value === 'string') {
+    const text = value.replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+  if (value && typeof value === 'object' && typeof value.line === 'string') {
+    const text = value.line.replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+  return fallback;
+}
+
+function isPlayerHeldTitle(record) {
+  if (!record || typeof record !== 'object' || record.status !== 'held') return false;
+  const key = String(record.holderKey || '');
+  if (key === 'player' || key === 'player_ship' || key.startsWith('player')) return true;
+  if (record.trickId) return true;
+  return false;
+}
+
+function titleDisplayName(record, titleId) {
+  const authored = TITLE_BY_ID.get(titleId);
+  if (authored && authored.title) return authored.title;
+  if (titleId === THUNDERCHILD_TITLE_ID) return THUNDERCHILD.title;
+  if (record && typeof record.title === 'string' && record.title.trim()) return record.title.trim();
+  return titleCaseWords(String(titleId || '').replace(/^title_/, '')) || 'Title';
+}
+
+function collectPlayerTitles(story) {
+  const names = [];
+  const seen = new Set();
+  const byId = story && story.titles && story.titles.byId && typeof story.titles.byId === 'object'
+    ? story.titles.byId
+    : {};
+  for (const titleId of Object.keys(byId)) {
+    const record = byId[titleId];
+    if (!isPlayerHeldTitle(record)) continue;
+    const name = titleDisplayName(record, record.titleId || titleId);
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    names.push(name);
+  }
+  return names;
+}
+
+function aceRecords(memory) {
+  if (!memory || typeof memory !== 'object' || Array.isArray(memory)) return [];
+  const bag = memory.aces && typeof memory.aces === 'object' && !Array.isArray(memory.aces)
+    ? memory.aces
+    : memory;
+  const out = [];
+  for (const aceId of Object.keys(bag)) {
+    if (ACE_MEMORY_META.has(aceId)) continue;
+    const rec = bag[aceId];
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) continue;
+    out.push([aceId, rec]);
+  }
+  return out;
+}
+
+function pickGrudge(memory) {
+  let best = null;
+  for (const [aceId, rec] of aceRecords(memory)) {
+    if (rec.fled !== true || rec.defeated === true) continue;
+    const name = (typeof rec.name === 'string' && rec.name.trim())
+      ? rec.name.trim()
+      : titleCaseWords(String(rec.id || aceId).replace(/^ace_/, ''));
+    if (!name) continue;
+    const returnTier = Math.max(0, Math.floor(Number(rec.returnTier) || 0));
+    const fleeCount = Math.max(0, Math.floor(Number(rec.fleeCount) || 0));
+    const score = returnTier * 1000 + fleeCount;
+    if (best && score < best.score) continue;
+    best = {
+      aceId: rec.id || aceId,
+      name,
+      returnTier,
+      fleeCount,
+      returnsBigger: rec.returnsBigger === true,
+      score,
+    };
+  }
+  return best;
+}
+
+function formatScarLine(scar) {
+  const facing = scar && scar.facing ? scar.facing : 'hull';
+  const band = scar && scar.band ? scar.band : 'marked';
+  const patched = scar && scar.patchedAtT != null;
+  return facing + ', ' + band + (patched ? ' (patched)' : '');
+}
+
+function buildScarsField(livingHull, meta) {
+  const scars = livingHullScars(livingHull);
+  if (scars.length) {
+    const newest = scars.slice(-PORTRAIT_SCAR_MAX);
+    const extra = scars.length - newest.length;
+    const line = newest.map(formatScarLine).join(' · ')
+      + (extra > 0 ? ' · and ' + extra + ' more' : '');
+    return {
+      count: scars.length,
+      open: scars.filter((scar) => scar.patchedAtT == null).length,
+      patched: scars.filter((scar) => scar.patchedAtT != null).length,
+      line,
+    };
+  }
+  return { count: 0, open: 0, patched: 0, line: portraitLine(meta && meta.scars, 'Clean plates') };
+}
+
+function countPhrase(n, singular, plural) {
+  const count = Math.max(0, Math.floor(Number(n) || 0));
+  const word = count < COUNT_WORDS.length ? COUNT_WORDS[count] : String(count);
+  return word + ' ' + (count === 1 ? singular : plural);
+}
+
+/** Yard repairs are the living hull's repair count, plus scars the yard already covered. */
+function buildRepairsField(livingHull, meta) {
+  if (!livingHull || typeof livingHull !== 'object' || Array.isArray(livingHull)) {
+    return {
+      repairPatches: 0,
+      patchedScars: 0,
+      line: portraitLine(meta && meta.repairs, 'No yard repairs'),
+    };
+  }
+  const hull = normalizeLivingHull(livingHull, 0);
+  const patches = hull.repairPatches;
+  const patched = livingHullPatchedScars(hull);
+  if (!patches && patched.length === 0) {
+    return { repairPatches: 0, patchedScars: 0, line: 'No yard repairs' };
+  }
+  const parts = [];
+  if (patches) parts.push(countPhrase(patches, 'yard repair', 'yard repairs'));
+  if (patched.length) parts.push(countPhrase(patched.length, 'scar patched', 'scars patched'));
+  return { repairPatches: patches, patchedScars: patched.length, line: parts.join(' · ') };
+}
+
+function buildTitlesField(story, meta) {
+  const names = collectPlayerTitles(story);
+  if (names.length) return { names, line: names.join(' · ') };
+  const fromMeta = portraitLine(meta && meta.titles, '');
+  if (fromMeta && fromMeta !== 'No titles') return { names: [fromMeta], line: fromMeta };
+  return { names: [], line: 'No titles' };
+}
+
+function buildRapSheetField(player, meta) {
+  const heat = Number(player && player.heat);
+  const bounty = Number(player && player.bounty);
+  const info = wantedTierInfo(Number.isFinite(heat) ? heat : 0);
+  const parts = [];
+  if (info && info.id && info.id !== WANTED_TIER.NONE) {
+    parts.push(info.label);
+    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0).replace(/^ · /, '');
+    if (clock) parts.push(clock);
+  }
+  if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');
+  if (parts.length) return { tier: info.id, heat: Number.isFinite(heat) ? heat : 0, bounty: bounty || 0, line: parts.join(' · ') };
+  return {
+    tier: WANTED_TIER.NONE,
+    heat: Number.isFinite(heat) ? heat : 0,
+    bounty: 0,
+    line: portraitLine(meta && meta.rapSheet, 'Clean'),
+  };
+}
+
+function buildGrudgeField(memory, meta) {
+  const grudge = pickGrudge(memory);
+  if (grudge) {
+    return {
+      aceId: grudge.aceId,
+      name: grudge.name,
+      returnTier: grudge.returnTier,
+      line: grudge.name + ' hates you' + (grudge.returnsBigger ? ' · comes back harder' : ''),
+    };
+  }
+  return { aceId: null, name: '', returnTier: 0, line: portraitLine(meta && meta.grudge, 'No one hunts you') };
+}
+
+// THE STANDING LINE (inf-slot-standing): the slot card named the hull, the scars, the titles,
+// the rap and the grudge — everything the run did to its hull and its enemies, and nothing
+// about who the run was to the houses. The strongest standing the run earned (a rep at or past
+// the Trusted floor in either direction) reads back as "<House> · <rank title>" in the houses'
+// own ladder vocabulary, and a war still burning at save time rides the same line, so a
+// returned save opens on the world it left. A run with no deep standing and no war stands
+// alone — the honest empty line, never an invented house.
+const STANDING_FLOOR = 150;
+const FACTION_NAME_BY_ID = new Map(FACTION_META.map((row) => [row.id, row.short || row.name]));
+const SECTOR_NAME_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
+
+function factionCardName(factionId) {
+  // A house the current catalog no longer lists (a retired id riding in an old save) reads
+  // as an honest generic noun (words-standing-house-fallback) — never the mangled remnant
+  // a prefix-strip leaves behind, dressed up as a proper name.
+  return FACTION_NAME_BY_ID.get(factionId) || 'an unlisted house';
+}
+
+function frontCardName(sectorId) {
+  return (sectorId && SECTOR_NAME_BY_ID.get(sectorId)) || 'the contested lane';
+}
+
+/** The saved envelope stores { factions: bag, conflicts: bag }; a live state stores both flat. */
+function unwrapStandingBags(data, state) {
+  const saved = data && data.factions && typeof data.factions === 'object' && !Array.isArray(data.factions)
+    ? data.factions
+    : null;
+  if (saved && saved.factions && typeof saved.factions === 'object') {
+    return { factions: saved.factions, conflicts: saved.conflicts || null };
+  }
+  if (saved && !Array.isArray(saved) && !saved.factions) {
+    // A legacy envelope that stored the flat rep bag directly.
+    return { factions: saved, conflicts: null };
+  }
+  if (state && state.factions && typeof state.factions === 'object') {
+    return { factions: state.factions, conflicts: state.conflicts || null };
+  }
+  return { factions: null, conflicts: null };
+}
+
+function buildStandingField(factionsBag, conflictsBag, meta) {
+  let best = null;
+  if (factionsBag && typeof factionsBag === 'object') {
+    for (const id of Object.keys(factionsBag)) {
+      if (!/^faction_/.test(String(id))) continue;
+      const rep = Number(factionsBag[id] && factionsBag[id].rep);
+      if (!Number.isFinite(rep) || Math.abs(rep) < STANDING_FLOOR) continue;
+      if (!best || Math.abs(rep) > Math.abs(best.rep)) best = { id, rep };
+    }
+  }
+  let war = null;
+  if (conflictsBag && typeof conflictsBag === 'object') {
+    for (const pairKey of Object.keys(conflictsBag)) {
+      const rec = conflictsBag[pairKey];
+      if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+      const [aId, bId] = String(pairKey).split(':');
+      if (!aId || !bId) continue;
+      war = { aId, bId, frontSectorId: contestedSectorForPair(pairKey) };
+      break;
+    }
+  }
+  if (!best && !war) {
+    return { factionId: null, warPair: null, line: localizeText('No house stands with you') };
+  }
+  let line = '';
+  if (best) {
+    line = localizeText('{house} · {rank}', { house: factionCardName(best.id), rank: rankFromRep(best.rep, best.id).name });
+  }
+  if (war) {
+    const clause = localizeText('The {a} and {b} front at {front} still burns', {
+      a: factionCardName(war.aId), b: factionCardName(war.bId), front: frontCardName(war.frontSectorId),
+    });
+    line = line ? `${line} · ${clause}` : clause;
+  }
+  return { factionId: best ? best.id : null, warPair: war ? `${war.aId}:${war.bId}` : null, line };
+}
+
+/** Headless model of the load-stage portrait: hull + scars + repairs + titles + rap sheet + grudge. */
+export function buildSavePortrait(source = {}) {
+  const data = unwrapSaveData(source.data || source.envelope || source.save);
+  const state = source.state && typeof source.state === 'object' && !Array.isArray(source.state)
+    ? source.state
+    : null;
+  const meta = source.meta && typeof source.meta === 'object' && !Array.isArray(source.meta)
+    ? source.meta
+    : {};
+  const useState = !data && !!state;
+  const player = (data && data.player) || (useState && state.player) || {};
+  const story = storyFromPortraitSource(data, useState ? state : null);
+  const aceMemory = (data && data.aceMemory) || (useState && state.aceMemory) || {};
+  const standingBags = unwrapStandingBags(data, useState ? state : null);
+  const ship = activeOwnedShip(player);
+  const defId = slotShipId(meta, player);
+  const hullName = (typeof source.shipName === 'string' && source.shipName.trim())
+    || (typeof meta.shipDisplayName === 'string' && meta.shipDisplayName.trim())
+    || shipLabel(defId)
+    || 'Hull';
+  const fittings = Array.isArray(ship && ship.fittings)
+    ? ship.fittings
+    : (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : []);
+  return {
+    hull: { id: defId, name: hullName, fittings, line: hullName },
+    scars: buildScarsField(ship && ship.livingHull, meta),
+    repairs: buildRepairsField(ship && ship.livingHull, meta),
+    titles: buildTitlesField(story, meta),
+    standing: buildStandingField(standingBags.factions, standingBags.conflicts, meta),
+    rapSheet: buildRapSheetField(player, meta),
+    grudge: buildGrudgeField(aceMemory, meta),
+  };
+}
+
+export function savePortraitFieldsPresent(portrait) {
+  if (!portrait || typeof portrait !== 'object') return false;
+  return SAVE_PORTRAIT_FIELDS.every((field) => {
+    const part = portrait[field];
+    return !!(part && typeof part.line === 'string' && part.line.trim());
+  });
+}
+
+function paintEntityLine(node, ref, text) {
+  if (!node) return;
+  node.textContent = text;
+  // A plain text holder (a headless model, a test stub) takes the words and nothing else.
+  if (!node.classList || typeof node.removeAttribute !== 'function') return;
+  node.classList.remove('sf-entity-link');
+  node.removeAttribute('data-entity');
+  node.removeAttribute('role');
+  node.removeAttribute('tabindex');
+  if (ref) decorateEntityNode(node, ref);
+}
+
+export function paintSavePortrait(nodes, portrait) {
+  if (!nodes || !portrait) return portrait;
+  paintEntityLine(nodes.hull, portrait.hull && portrait.hull.id ? 'hull:' + portrait.hull.id : null, portrait.hull.line);
+  if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
+  if (nodes.repairs) nodes.repairs.textContent = portrait.repairs.line;
+  if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
+  if (nodes.standing) {
+    paintEntityLine(nodes.standing, portrait.standing && portrait.standing.factionId
+      ? 'faction:' + portrait.standing.factionId : null, portrait.standing.line);
+  }
+  if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
+  paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
+  return portrait;
+}
+
+export function roundTripSavePortrait(source) {
+  const first = buildSavePortrait(source);
+  const raw = source && (source.data || source.envelope || source.save);
+  const cloned = raw ? JSON.parse(JSON.stringify(raw)) : JSON.parse(JSON.stringify({
+    player: source && source.state && source.state.player,
+    story: source && source.state && source.state.story,
+    aceMemory: source && source.state && source.state.aceMemory,
+    meta: source && source.meta,
+  }));
+  const second = buildSavePortrait({ data: cloned, meta: source && source.meta, shipName: source && source.shipName });
+  return { first, second, ok: JSON.stringify(first) === JSON.stringify(second) };
+}
+
+// Bounded per-slot memo keyed on the save store's generation signature: 'gen:' equality
+// already implies byte-identical slot bytes for every tracked writer, so a same-generation
+// stage re-render, re-pick, or scrub back-track reuses {raw, data} instead of paying another
+// getItem + full multi-MB parse per selection. A write bumps the generation and the entry
+// falls through. raws are shared string refs; `data` is the retained part — cap the map so
+// a long dwell can't grow it.
+const _slotDataMemo = new Map();
+const _SLOT_DATA_MEMO_MAX = 6;
+
+function readSlotSaveData(ctx, slot) {
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
+  const hit = _slotDataMemo.get(slot);
+  if (hit && sig && hit.sig === sig) {
+    // Refresh recency — the oldest entry is evicted first.
+    _slotDataMemo.delete(slot);
+    _slotDataMemo.set(slot, hit);
+    return hit;
+  }
+  // The multi-MB getItem + JSON.parse a data fill needs stays off the pick task — the
+  // stage chrome renders from the card meta now, the blob materializes lazily inside
+  // the deferred fill/spec paths, and the portrait lands when the fill settles (or
+  // the spec arm's worker-parsed envelope arrives first).
+  const entry = { sig, slot, raw: null, data: null };
+  _slotDataMemo.delete(slot);
+  _slotDataMemo.set(slot, entry);
+  while (_slotDataMemo.size > _SLOT_DATA_MEMO_MAX) {
+    _slotDataMemo.delete(_slotDataMemo.keys().next().value);
+  }
+  return entry;
+}
+
+// A pick burst only parses the row it settles on — same trailing-debounce idiom as the
+// spec arm's dispatch park.
+let _slotDataFillTimer = null;
+let _slotDataFillSlot = null;
+let _slotDataFillCtx = null;
+const _SLOT_DATA_FILL_MS = 180;
+
+function readSlotBlob(slot) {
+  try {
+    return (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+  } catch (e) { return null; }
+}
+
+function fillSlotData(ctx, slot) {
+  const entry = _slotDataMemo.get(slot);
+  if (!entry || entry.data || entry.attempted) return;
+  entry.attempted = true;
+  // A covering spec arm already parses these bytes in the worker — flush its parked
+  // dispatch and let save:envelopeSpecPrepared fill the row instead of duplicating
+  // the multi-MB JSON.parse on this settle task.
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  const spec = sys && typeof sys.coveringSpeculativePrepare === 'function'
+    ? sys.coveringSpeculativePrepare(slot) : null;
+  if (spec && typeof spec.dispatch === 'function') {
+    try {
+      Promise.resolve(spec.dispatch()).then((prepared) => {
+        // An ok verdict only fills the row when the arm's emit still fires — it is
+        // also gated on spec identity, live sig, and mode, so a supersede, disarm,
+        // or generation bump mid-flight resolves ok with no emit and no fill.
+        // Only skip the lazy tail when the emit could still run; coveringSpeculativePrepare
+        // re-proves identity + slot + live sig in one call.
+        if (prepared && prepared.ok === true
+            && sys.coveringSpeculativePrepare(slot) === spec) return;
+        try { fillSlotDataLazy(ctx, slot, entry); } catch (e) { /* best-effort */ }
+      });
+    } catch (e) {
+      try { fillSlotDataLazy(ctx, slot, entry); } catch (e2) { /* best-effort */ }
+    }
+    return;
+  }
+  fillSlotDataLazy(ctx, slot, entry);
+}
+
+function unwrapSlotDataRaw(raw) {
+  try { return unwrapSaveData(JSON.parse(raw)); } catch (e) { return null; }
+}
+
+function fillSlotDataLazy(ctx, slot, entry) {
+  // Re-resolve the live memo entry — between the consult and this deferred run an
+  // LRU eviction or a generation bump can replace it; writing the captured object
+  // would be silently lost (the new entry refills on its own consult either way).
+  entry = _slotDataMemo.get(slot) || entry;
+  if (!entry || entry.data) return;
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  // A validated slot-index scan already parsed this blob into a card projection — consume
+  // it instead of materializing the multi-MB raw and posting it for an identical worker
+  // parse (W139-G2). The projection lives inside the sig-keyed cache, so a same-slot write
+  // re-mints it rather than serving stale data.
+  if (sys && typeof sys.slotCardData === 'function') {
+    let cached = null;
+    try { cached = sys.slotCardData(slot); } catch (e) { cached = null; }
+    if (cached) {
+      entry.data = cached;
+      if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+      return;
+    }
+  }
+  const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
+  if (!raw) return;
+  // The save worker parses + projects the portrait fields off-thread — the same
+  // multi-MB JSON.parse class the spec arm already moved. The sync tail is the
+  // byte-identical fallback for the no-worker lane or a peek failure.
+  if (sys && typeof sys.peekSaveCardData === 'function') {
+    let peek = null;
+    try { peek = sys.peekSaveCardData(raw); } catch (e) { peek = null; }
+    if (peek && typeof peek.then === 'function') {
+      const fillEntry = entry;
+      peek.then((cardData) => {
+        try {
+          // A same-slot write between dispatch and resolve re-mints the memo entry —
+          // only write onto the identity we consulted, or pre-bump card data gets
+          // stamped onto the new generation's entry and suppresses its fresh refill
+          // (a re-minted entry reschedules its own fill via attempted:false).
+          if (!fillEntry || _slotDataMemo.get(slot) !== fillEntry || fillEntry.data) return;
+          fillEntry.data = cardData || unwrapSlotDataRaw(raw);
+          if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+        } catch (e) { /* speculative fill is best-effort */ }
+      });
+      return;
+    }
+  }
+  entry.data = unwrapSlotDataRaw(raw);
+  if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+}
+
+function scheduleSlotDataFill(ctx, slot) {
+  _slotDataFillCtx = ctx;
+  _slotDataFillSlot = slot;
+  if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
+  _slotDataFillTimer = (typeof setTimeout === 'function')
+    ? setTimeout(() => {
+      _slotDataFillTimer = null;
+      try { fillSlotData(_slotDataFillCtx, _slotDataFillSlot); } catch (e) { /* best-effort */ }
+    }, _SLOT_DATA_FILL_MS)
+    : null;
+  if (_slotDataFillTimer == null) fillSlotData(ctx, slot);
+}
+
+function shipDisplayName(ctx, defId) {
+  const ships = ctx && ctx.state && ctx.state.content && ctx.state.content.ships;
+  let def = null;
+  if (Array.isArray(ships)) def = ships.find((s) => s && s.id === defId) || null;
+  else if (ships && typeof ships === 'object') def = ships[defId] || null;
+  return (def && def.name) || shipLabel(defId);
+}
+
+let refs = null;
+
+export const saveLoadScreen = {
+  id: 'saveLoad',
+
+  mount(rootEl, ctx) {
+
+    injectDeckplate();
+    // ORRERY (design/frontend/ORRERY.md §6 Meta): the saves are a filmstrip on a curved rail under the
+    // chosen save's hull, alone on the glass; the reading beside it pins nothing (the composition sheet
+    // src/ui/orrery/saveLayouts.js lays it out). Forced colours keep the pinned kit page: there the
+    // system palette is the material, and the pins carry its borders.
+    const orr = !forcedColorsActive();
+    rootEl.innerHTML = '';
+    rootEl.classList.add('k-screen', 'of-saveload');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', 'Load');
+    if (orr) { injectSaveLayouts(); injectSaveLoadLayouts(); rootEl.classList.add('orr-saveload'); } else installShell(rootEl);
+
+    // Title: "Load" and the count.
+    const title = el('header', 'k-title');
+    const heading = el('h1', 'k-display k-t-title', 'Load');
+    if (!orr) { pin(title, { 'border-bottom': '0' }); heading.classList.add('fh-title'); paintMarking(heading); }
+    title.appendChild(heading);
+    const sub = el('p', 'k-t-emph k-62', '');
+    title.appendChild(sub);
+    rootEl.appendChild(title);
+
+    // The saves: frames on their stations along the rail (ORRERY), or engraved rows on a plate down
+    // the left (forced colours); rebuilt by _render.
+    const hang = el('div', 'k-hang');
+    if (!orr) paintPlate(hang, 'sunk', { padding: '4px', overflow: 'hidden auto' });
+    rootEl.appendChild(hang);
+    // The strip is the screen's instrument: scrub it and the save under the Hand comes up on the berth;
+    // a beam runs from the chosen frame to the berth (the ring the hull stands on, or the empty ring).
+    this._film = orr ? createSaveFilmstrip({
+      host: hang,
+      onScrub: (id) => this._select(ctx, id),
+      beamTarget: () => {
+        const st = refs && refs.stage;
+        if (!st || typeof st.getBoundingClientRect !== 'function') return null;
+        const r = st.getBoundingClientRect();
+        if (!(r.width > 0) || !(r.height > 0)) return null;
+        // the front of the berth's near rim (the sheet sets the berth at 66% + 22% of the stage)
+        return { x: r.left + r.width / 2, y: r.top + r.height * 0.871 };
+      },
+    }) : null;
+
+    const { stage, caption, shipName, portrait, scars, repairs, titles, standing, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
+    stage.classList.add('sf-save-stage');
+    caption.classList.add('sf-save-ledger');
+    // The slot card's name is a content header (the header voice, set by the sheet), not a title.
+    shipName.classList.add('sf-slot-card-title');
+    if (!orr) {
+      pin(stage, { background: 'transparent', 'border-width': '0' });
+      paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
+      shipName.classList.add('fh-title');
+      if (portrait) pin(portrait, { 'border-left': '0' });
+    }
+    if (objective) objective.classList.add('sf-slot-detail');
+    if (fine) fine.classList.add('sf-slot-context');
+    // The page of the record, top to bottom: which slot and when (fine), the hull, where the run
+    // was headed, the run's facts as readings, then the hull's own record as labelled lines.
+    caption.insertBefore(fine, shipName);
+    caption.insertBefore(objective, portrait);
+    const facts = el('dl', 'sf-ledger-facts');
+    facts.setAttribute('aria-label', 'Save facts');
+    caption.insertBefore(facts, portrait);
+    portrait.prepend(el('p', 'sf-ledger-head', 'Hull record'));
+    for (const [node, label] of [[scars, 'Scars'], [repairs, 'Repairs'], [titles, 'Titles'], [standing, 'Standing'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
+      if (!node) continue;
+      const line = el('div', 'sf-ledger-line');
+      portrait.insertBefore(line, node);
+      line.appendChild(el('span', 'sf-ledger-k', label));
+      line.appendChild(node);
+    }
+    // Credits read in the facts; the hero numeral block stays built but off the page.
+    if (credits && credits.parentNode) credits.remove();
+    // An empty slot at the title has no ship to show: its page stands beside the unlit save mark.
+    const vacant = el('div', 'sf-save-vacant');
+    vacant.setAttribute('aria-hidden', 'true');
+    vacant.innerHTML = dpMark('mark-save', { size: 'hero' });
+    // ORRERY: the unlit mark gives way to an empty berth ring. The pane says
+    // "empty" once — heading plus one sentence — so the stage stays a mark.
+    stage.appendChild(vacant);
+    // ORRERY: the reading is its own column beside the hull (not a caption hung off the stage's foot),
+    // and the hull stands alone on its berth: no dock interior behind it, no photograph. The produced
+    // render is the stage (one ship, one pose, one light; the live mount drifted round to the ship's
+    // dark stern); a hull with no render still gets the live mount.
+    if (orr) { caption.remove(); rootEl.appendChild(caption); }
+    rootEl.appendChild(stage);
+    this.hull = createStageHull(stage, { rootEl, dock: !orr, live: !orr });
+    // Loading a save hands the stage to the loading shell for the whole load, and this screen stays
+    // laid out underneath it, so the hull kept drifting, linking and uploading on its own WebGL
+    // context until flight: the waste the New Game stage had (2.2 s of drift renders, and a second
+    // context competing with the flight context's shader compiles). Load stops the drift at once and
+    // frees the context once the shell covers the stage; a failed start brings back a fresh hull.
+    let loadRequested = false;
+    let hullRelease = null;
+    const cancelHullRelease = () => {
+      if (hullRelease !== null) clearTimeout(hullRelease);
+      hullRelease = null;
+    };
+    const unsubLoading = ctx.bus.on('game:loadingProgress', () => {
+      if (!loadRequested || hullRelease !== null) return;
+      hullRelease = setTimeout(() => {
+        if (loadRequested && this.hull) this.hull.release();
+      }, STAGE_HULL_RELEASE_MS);
+    });
+    const unsubStartFailed = ctx.bus.on('game:startFailed', () => {
+      if (!loadRequested) return;
+      loadRequested = false;
+      cancelHullRelease();
+      if (!this.hull) return;
+      if (this.hull.restore() && refs) refs.shownShipId = null;
+      if (refs) this._render(ctx);
+      if (this.hull.hasMount()) this.hull.activate(ctx);
+    });
+    // SFQ-B228: a restore that fails before the start transition emits save:error, not
+    // game:startFailed — the shell lifts (loadingPresenter) but this screen kept the load
+    // latched and its stage hull released. Reset the same way so the slot is retryable now,
+    // not after the next full remount. Load-shaped means the restore receipts AND the
+    // envelope-stage refusals a requested load can die behind (parse/checksum/version/
+    // migration/size — the _prepareEnvelope* vocabulary); a latched load that never reached
+    // a restore must still give the stage back. The loadRequested guard keeps write-path
+    // and import noise (this screen's own importer, autosave quota) away from the stage.
+    const LOAD_STAGE_REASONS = new Set([
+      'load_failed', 'restore_prepare_failed',
+      'read_failed', 'no_save', 'no_data', 'parse_failed', 'bad_format', 'checksum',
+      'newer_version', 'migration_failed', 'invalid_player', 'save_size_limit',
+    ]);
+    const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
+      const reason = payload && payload.reason;
+      if (!LOAD_STAGE_REASONS.has(reason) && !String(reason || '').startsWith('import_')) return;
+      if (!loadRequested) return;
+      loadRequested = false;
+      cancelHullRelease();
+      if (!this.hull) return;
+      if (this.hull.restore() && refs) refs.shownShipId = null;
+      if (refs) this._render(ctx);
+      if (this.hull.hasMount()) this.hull.activate(ctx);
+    });
+    // The slot list re-reads the store the moment it changes, not on the next periodic tick.
+    const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
+    const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
+    const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
+    this._notices = this._notices || {};
+    const noteAndRender = (note) => {
+      if (!note || note.slot == null || note.slot === '') return;
+      const prev = this._notices[note.slot];
+      if (note.kind === 'backup' && prev && prev.kind === 'recovered') return;
+      this._notices[note.slot] = note;
+      if (refs) this._render(ctx);
+    };
+    const unsubRecovered = ctx.bus.on('save:recovered', (payload) => noteAndRender(recoveryNotice(payload)));
+    const unsubBackup = ctx.bus.on('save:backup', (payload) => noteAndRender(backupKeptLine(payload)));
+    const unsubRecoveryFailed = ctx.bus.on('save:error', (payload = {}) => {
+      noteAndRender(recoveryFailedLine(payload));
+    });
+    const unsubProfile = ctx.bus.on('save:profile-imported', (payload) => {
+      const note = profileImportedLine(payload);
+      this._importLine = note.text;
+      if (note.focus && refs) refs.selected = note.focus;
+      noteAndRender(note);
+      const row = refs && refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
+      if (row && typeof row.focus === 'function') row.focus();
+    });
+    // A speculative prepare that resolves carries the worker-parsed envelope — the picked
+    // row's portrait fills straight from it without a main-thread parse.
+    const unsubSpecPrepared = ctx.bus.on('save:envelopeSpecPrepared', (payload = {}) => {
+      try {
+        const slot = payload.slot;
+        const data = unwrapSaveData(payload.data);
+        if (typeof slot !== 'string' || !slot || !data) return;
+        const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+        const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
+        const entry = _slotDataMemo.get(slot) || { sig, slot, raw: null, data: null };
+        if (!entry.data) { entry.data = data; entry.sig = sig; _slotDataMemo.set(slot, entry); }
+        if (refs && refs.selected === slot) this._renderStage(ctx);
+      } catch (e) { /* speculative fill is best-effort */ }
+    });
+
+    // Foot: Export, Import (the hidden file input stays), Back.
+    const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
+    if (!orr) pin(foot, { 'border-top': '0' });
+    const footWord = (label) => {
+      const b = el('button', 'k-word k-word--emph', label);
+      b.type = 'button'; b.dataset.action = label.toLowerCase();
+      foot.appendChild(b);
+      return b;
+    };
+    const bExport = footWord('Export');
+    if (!orr) paintKey(bExport, 'small');
+    const bImport = footWord('Import');
+    if (!orr) paintKey(bImport, 'small');
+    const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = '.json,application/json'; fileIn.hidden = true;
+    foot.appendChild(fileIn);
+    const back = footWord('Back');
+    back.classList.add('sf-back');
+    rootEl.appendChild(foot);
+
+    bExport.addEventListener('click', () => { cue('confirm'); this._export(ctx); });
+    bImport.addEventListener('click', () => { cue('confirm'); fileIn.click(); });
+    fileIn.addEventListener('change', () => this._import(ctx, fileIn));
+    back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
+
+    refs = {
+      root: rootEl, title, heading, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
+      caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
+      objective, credits, fine, actions, facts,
+      selected: null, shownShipId: null, ids: [], slots: {},
+      saveSys: ctx && ctx.registry && ctx.registry.get ? ctx.registry.get('save') : null,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
+      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile, unsubSpecPrepared,
+      markLoadRequested: () => { loadRequested = true; },
+      clearLoadRequest: () => { loadRequested = false; },
+    };
+    this._render(ctx);
+  },
+
+  _render(ctx) {
+    if (!refs) return;
+    this._slSig = this._slInputs(ctx);
+    const slots = readSlots(ctx);
+    const saveAllowed = canSave(ctx);
+    const ids = ['quick'];
+    if (slots.autosave || slots.auto) ids.push(slots.autosave ? 'autosave' : 'auto');
+    for (let i = 1; i <= SLOT_COUNT - 1; i++) ids.push(String(i));
+    // Include only standard player-facing extras from the index. Anything else in the store
+    // (dev harness worlds like "m2-seamless-world", import scratch slots) is internal: it has
+    // no save/load actions of its own and rendered as an incomplete row, so it is filtered.
+    Object.keys(slots).forEach((k) => {
+      if (!ids.includes(k) && /^(quick|autosave|auto|\d+)$/.test(k)) ids.push(k);
+    });
+    if (!refs.selected || !ids.includes(refs.selected)) {
+      refs.selected = (ctx.state.save && ctx.state.save.currentSlot && ids.includes(ctx.state.save.currentSlot))
+        ? ctx.state.save.currentSlot
+        : (latestOccupiedSlot(slots) || 'quick');
+      // A restored selection never gets a pick event — arm its envelope decode on mount
+      // instead of leaving a non-default restore (currentSlot != latest-occupied) to
+      // click cold. Idempotent: the arm early-outs on same slot+sig and self-gates to
+      // frozen/menu + occupied slots.
+      if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+        const picked = _slotDataMemo.get(refs.selected) || null;
+        ctx.bus.emit('save:loadSpeculationTarget', {
+          slot: refs.selected,
+          raw: picked && picked.raw,
+          sig: picked && picked.sig,
+        });
+      }
+    }
+    refs.ids = ids;
+    refs.slots = slots;
+    refs.saveAllowed = saveAllowed;
+    refs.sub.textContent = saveCountLine(slots);
+
+    const currentSlot = ctx.state.save && ctx.state.save.currentSlot;
+    const latestSlot = latestOccupiedSlot(slots);
+
+    const items = ids.map((id) => {
+      const meta = slots[id];
+      const occupied = isOccupied(meta);
+      const summary = slotSummaryLines(meta);
+      const note = this._notices && this._notices[id];
+      return {
+        id,
+        name: (meta && meta.label) || slotLabel(id),
+        sub: occupied
+          ? slotRowSubLine(meta, note && note.text)
+          : [summary.context, note && note.text].filter(Boolean).join(' · '),
+        num: occupied ? fmtCredits(meta.credits) : '',
+        selected: refs.selected === id,
+        occupied,
+        badges: slotBadges(id, meta, currentSlot, latestSlot),
+      };
+    });
+    const list = rows(items, {
+      cols: 'minmax(0, 1fr) auto',
+      ariaLabel: 'Saves',
+      onPick: (id) => this._select(ctx, id, { quiet: true }), // rows() already cued the pick
+    });
+    // Hooks the checks and the localization probe read (`.sf-slot`, `.sf-slot-name`, `.sf-slot-sub`,
+    // `.sf-slot-badge`); an empty slot's name reads at 38 %; the badges ride the sub line.
+    for (const row of list.querySelectorAll('.k-row')) {
+      const item = items.find((entry) => entry.id === row.dataset.id);
+      row.classList.add('sf-slot');
+      if (!item.occupied) row.classList.add('empty');
+      if (!refs.orr) paintSlotRow(row, item.selected);
+      else {
+        // The frame above the rail: the save's hull as produced art (its starboard elevation); a
+        // hull with no render stands as a quiet ring; an empty station is its corners alone.
+        const frame = el('span', 'sf-slot-frame');
+        frame.setAttribute('aria-hidden', 'true');
+        frame.appendChild(el('span', 'sf-slot-berth'));
+        const filed = slots[item.id];
+        const still = filed && typeof filed.thumbnail === 'string' ? filed.thumbnail : null;
+        const art = item.occupied ? (still || hullPosterUrl(slotShipId(slots[item.id], null), 'side')) : null;
+        if (art) {
+          const img = el('img', 'sf-slot-thumb');
+          img.alt = '';
+          img.decoding = 'async';
+          img.draggable = false;
+          img.src = art;
+          frame.appendChild(img);
+          frame.classList.add('has-art');
+        } else frame.classList.add(item.occupied ? 'is-filed' : 'is-empty');
+        row.insertBefore(frame, row.firstChild);
+      }
+      const name = row.querySelector('.k-row__name');
+      if (name) { name.classList.add('sf-slot-name'); if (!item.occupied) name.classList.add('k-38'); }
+      const subLine = row.querySelector('.k-row__sub');
+      if (subLine) subLine.classList.add('sf-slot-sub');
+      // The badges ride the name line as etched words (CURRENT, LATEST, RECOVERY, the format).
+      if (name && item.badges.length) {
+        const tags = el('span', 'sf-slot-badges');
+        for (const badge of item.badges) {
+          // A badge never breaks mid-word: the filmstrip's label column wraps anywhere so a long
+          // pilot name stays inside its station (saveLayouts D249), and that wrap inherited into
+          // the badge broke CURRENT as "CU / RRENT" on the rail at 1366 and 1920. A badge wraps
+          // as a whole between the name's words, or takes its own line.
+          const tag = el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge);
+          tag.style.whiteSpace = 'nowrap';
+          tag.style.overflowWrap = 'normal';
+          tags.appendChild(tag);
+        }
+        name.insertAdjacentElement('afterend', tags);
+      }
+    }
+    // The stage follows focus, not only a click: arrowing down the rows turns the portraits.
+    list.addEventListener('focusin', (event) => {
+      const row = event.target && event.target.closest ? event.target.closest('.k-row') : null;
+      if (row && row.dataset.id && row.dataset.id !== refs.selected) this._select(ctx, row.dataset.id, { quiet: true });
+    });
+    if (refs.orr && this._film) {
+      // The strip runs left to right, so Left/Right walk it too (the list's roving focus keeps
+      // Up/Down, Home and End); focus arriving on a frame selects it through focusin above.
+      list.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        const all = [...list.querySelectorAll('.k-row')];
+        const at = all.findIndex((row) => row === document.activeElement || row.contains(document.activeElement));
+        if (at < 0) return;
+        event.preventDefault();
+        const next = all[Math.max(0, Math.min(all.length - 1, at + (event.key === 'ArrowRight' ? 1 : -1)))];
+        if (next && next !== all[at]) { next.focus(); cue('move'); }
+      });
+      // Every frame is a stop for the pad: its spatial move only sees tabindex >= 0, and the list's
+      // roving focus parks the frames it is not on at -1, so a controller could never leave the chosen
+      // save. Re-open them after roving's own focusin (registered first, so it runs first).
+      const openStops = () => { for (const row of list.querySelectorAll('.k-row')) row.tabIndex = 0; };
+      list.addEventListener('focusin', openStops);
+      openStops();
+      // Only the old list leaves: the rail the strip draws in the same box stays.
+      if (refs.list && refs.list.parentNode) refs.list.remove();
+      refs.hang.appendChild(list);
+      refs.list = list;
+      this._film.attach(list, { chosen: refs.selected, arrive: refs.arrive });
+      refs.arrive = false;
+    } else {
+      refs.hang.innerHTML = '';
+      refs.hang.appendChild(list);
+      refs.list = list;
+    }
+    this._renderStage(ctx);
+  },
+
+  _select(ctx, id, { quiet = false } = {}) {
+    if (!refs || !refs.ids.includes(id)) return;
+    refs.selected = id;
+    if (refs.list) {
+      for (const row of refs.list.querySelectorAll('.k-row')) {
+        const live = row.dataset.id === id;
+        row.setAttribute('aria-selected', String(live));
+        if (!refs.orr) paintSlotRow(row, live);
+      }
+    }
+    if (this._film) this._film.choose(id);
+    if (!quiet) cue('move');
+    this._renderStage(ctx);
+    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
+    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots). The
+    // stage read already materialized the bytes this generation, so the arm rides the memo's
+    // raw instead of a second getItem on the same click task.
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      const picked = _slotDataMemo.get(id) || null;
+      ctx.bus.emit('save:loadSpeculationTarget', {
+        slot: id,
+        raw: picked && picked.raw,
+        sig: picked && picked.sig,
+      });
+    }
+  },
+
+  _renderStage(ctx) {
+    if (!refs) return;
+    const id = refs.selected;
+    const meta = refs.slots[id];
+    const occupied = isOccupied(meta);
+    const saveAllowed = refs.saveAllowed;
+    const saved = occupied ? readSlotSaveData(ctx, id) : null;
+    // A memo miss defers the whole fill — the blob materializes lazily inside the
+    // settle task (or the spec arm's worker parse fills it first).
+    if (saved && !saved.data && !saved.attempted) scheduleSlotDataFill(ctx, id);
+    const saveData = saved && saved.data;
+    const currentSlot = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
+    const portrait = occupied
+      ? buildSavePortrait({
+        data: saveData,
+        state: (!saveData && currentSlot === id) ? ctx.state : null,
+        meta,
+        shipName: shipDisplayName(ctx, slotShipId(meta, saveData && saveData.player)),
+      })
+      : null;
+    if (portrait && !saveData && currentSlot !== id) {
+      for (const field of ['scars', 'repairs', 'titles', 'rapSheet', 'grudge']) {
+        portrait[field].line = 'Record not read';
+      }
+    }
+    // The ship on the stage: the save's own; on an empty slot mid-run, the ship Save here would
+    // file; on an empty slot at the title, none (the page stands beside the unlit save mark).
+    const livePlayer = ctx && ctx.state && ctx.state.player;
+    // ORRERY: an empty slot shows its empty berth (the strip's scrub passes through the open ones too)
+    const defId = occupied
+      ? (portrait && portrait.hull && portrait.hull.id) || slotShipId(meta, saveData && saveData.player)
+      : (saveAllowed && !refs.orr ? slotShipId(null, livePlayer) : null);
+    const liveShip = !occupied && saveAllowed ? activeOwnedShip(livePlayer) : null;
+    const fittings = occupied
+      ? (portrait && portrait.hull && portrait.hull.fittings) || (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null)
+      : (liveShip && Array.isArray(liveShip.fittings) ? liveShip.fittings : null);
+    refs.stage.classList.toggle('is-vacant', !defId);
+    refs.stage.dataset.slotState = occupied ? 'filed' : (saveAllowed ? 'open' : 'empty');
+    refs.root.dataset.slotState = refs.stage.dataset.slotState;
+    // No third caption on an empty slot: heading plus one sentence says "empty" once.
+    // the title follows the verb: an empty slot in a live run is where you save
+    if (refs.orr && refs.heading) {
+      const word = !occupied && saveAllowed ? 'Save' : 'Load';
+      if (refs.heading.textContent !== word) refs.heading.textContent = word;
+    }
+    if (this._film) this._film.relayBeam();
+
+    // Which slot, and when: the etched line at the top of the page.
+    const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
+    const flown = occupied ? fmtLastFlown(meta.savedAt || meta.lastSavedAt) : '';
+    const notice = this._notices && this._notices[id];
+    // Each reading is its own unbreakable run, so a narrow column wraps between them, never mid-phrase.
+    const contextParts = [
+      slotLabel(id) + ' save',
+      ...badges.filter((badge) => !/^v\d/.test(badge)),
+      occupied && (flown ? 'flown ' + flown : 'filed'),
+    ].filter(Boolean);
+    refs.fine.replaceChildren();
+    contextParts.forEach((part, i) => {
+      if (i) refs.fine.append(' · ');
+      refs.fine.append(el('span', 'sf-slot-context__part', String(part)));
+    });
+    // A notice is a sentence, so it may wrap inside itself.
+    if (notice && notice.text) refs.fine.append(' · ', String(notice.text));
+
+    const emptyCopy = occupied ? null : emptySlotDetailCopy(saveAllowed);
+    paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
+      occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : emptyCopy.heading);
+    if (occupied && portrait) {
+      paintSavePortrait({
+        scars: refs.scars, repairs: refs.repairs, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
+      }, portrait);
+      if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.actions);
+    } else if (refs.portrait.parentNode) {
+      refs.portrait.remove();
+    }
+    const objective = occupied ? slotObjectiveSummary(meta) : '';
+    refs.objective.textContent = occupied
+      ? (objective || 'Saved game')
+      : emptyCopy.sentence;
+
+    // The run's facts as readings. An empty slot mid-run reads the live run (what Save here files);
+    // an empty slot at the title keeps the same lines, blank, so the page is designed, not missing.
+    const liveState = ctx && ctx.state;
+    const factRows = occupied
+      ? [
+        ['Credits', fmtCredits(meta.credits) || '—', 'figure'],
+        ['Sector', meta.sectorName || '—'],
+        ['Played', fmtPlaytime(meta.playtimeS).replace(/ played$/, '') || '—'],
+        ['Saved', fmtSavedStamp(meta.savedAt || meta.lastSavedAt) || '—'],
+      ]
+      : saveAllowed
+        ? [
+          ['Credits', fmtCredits(livePlayer && livePlayer.credits) || '—', 'figure'],
+          ['Ship', shipDisplayName(ctx, slotShipId(null, livePlayer)) || '—'],
+          ['Sector', liveSectorName(liveState) || '—'],
+          ['Played', fmtPlaytime(liveState && liveState.meta && liveState.meta.playtimeS).replace(/ played$/, '') || '—'],
+        ]
+        : [['Credits', '—', 'figure'], ['Sector', '—'], ['Played', '—'], ['Saved', '—']];
+    if (refs.orr) {
+      const creditsN = occupied ? meta.credits : (saveAllowed ? livePlayer && livePlayer.credits : null);
+      this._paintFacts(factRows, Number.isFinite(Number(creditsN)) && creditsN != null ? Number(creditsN) : null);
+    } else {
+      refs.facts.innerHTML = '';
+      for (const [label, value, kind] of factRows) {
+        const cell = el('div', 'sf-ledger-fact' + (kind ? ' sf-ledger-fact--' + kind : ''));
+        cell.appendChild(el('dt', '', label));
+        cell.appendChild(el('dd', value === '—' ? 'is-blank' : '', value));
+        refs.facts.appendChild(cell);
+      }
+    }
+
+    // The hull as it is in that save (def id + fittings from the envelope when the index has them).
+    // the open berth between two hulls: the next hull shown lands on it
+    if (refs.orr && !defId && refs.shownShipId != null) refs.shownShipId = 'vacant';
+    const showKey = defId ? defId + ':' + (Array.isArray(fittings) ? fittings.join(',') : '') : null;
+    if (defId && this.hull && (this.hull.hasMount() || refs.orr) && refs.shownShipId !== showKey) {
+      const landing = refs.orr && refs.shownShipId != null;
+      refs.shownShipId = showKey;
+      this.hull.show(defId, { fittings: Array.isArray(fittings) ? fittings : null });
+      // a new hull lands on the berth (drop and settle), not a cut
+      if (landing && refs.stage.classList) {
+        refs.stage.classList.remove('is-landing');
+        void refs.stage.offsetWidth;
+        refs.stage.classList.add('is-landing');
+      }
+    }
+
+    // The save's words: Load, Save here, Delete — or New game on an empty slot at the title.
+    const items = [];
+    if (occupied) {
+      items.push({ action: 'load', label: 'Load', primary: true });
+      if (saveAllowed) items.push({ action: 'save', label: 'Save here' });
+      items.push({ action: 'delete', label: 'Delete', danger: true });
+    } else if (saveAllowed) {
+      items.push({ action: 'save', label: 'Save here', primary: true });
+    } else if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
+      items.push({ action: 'newGame', label: 'New game', primary: true });
+    }
+    refs.actions.innerHTML = '';
+    if (!refs.labelField) {
+      const field = el('label', 'sf-slot-label');
+      field.style.display = 'grid';
+      field.style.gap = '4px';
+      field.style.width = 'min(28ch, 100%)';
+      field.appendChild(el('span', 'k-caps', 'Name'));
+      const input = el('input', 'k-input');
+      input.type = 'text';
+      input.maxLength = 48;
+      input.setAttribute('aria-label', 'Save name');
+      input.placeholder = 'Name this save';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      field.appendChild(input);
+      refs.labelField = field;
+      refs.labelInput = input;
+    }
+    if (refs.labelField.parentNode !== refs.caption) refs.caption.insertBefore(refs.labelField, refs.actions);
+    refs.labelField.hidden = !saveAllowed;
+    refs.labelField.style.display = saveAllowed ? 'grid' : 'none';
+    refs.labelInput.disabled = !saveAllowed;
+    if (refs.labelInput && document.activeElement !== refs.labelInput) {
+      const next = (occupied && meta && meta.label) || '';
+      if (refs.labelInput.value !== next) refs.labelInput.value = next;
+    }
+    if (!items.length) return;
+    const list = words(items, {
+      row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
+      onPick: (action) => this._act(ctx, action, id, meta, occupied),
+    });
+    if (refs.orr) {
+      // The save's one primary verb is the screen's Lamp Key; the rest are small verbs with a notch.
+      for (const button of list.querySelectorAll('.k-word')) {
+        if (button.classList.contains('k-word--primary')) dressLampKey(button);
+        else button.classList.add('sf-save-verb', ...(button.dataset.action === 'delete' ? ['sf-save-verb--danger'] : []));
+      }
+      refs.actions.appendChild(list);
+      return;
+    }
+    list.classList.add('of-pause');
+    for (const button of list.querySelectorAll('.k-word')) {
+      const action = button.dataset.action;
+      // Save here beside Load is a secondary key (a ghost field with the cut), never a tab word.
+      const kind = action === 'delete' ? 'hazard'
+        : button.classList.contains('k-word--primary') ? 'primary'
+        : 'small';
+      paintKey(button, kind);
+    }
+    refs.actions.appendChild(list);
+  },
+
+  /** ORRERY facts: one cell per fact, kept across renders, so the credits roll from the last save's
+   *  figure to this one and a reading that changed decrypts in place (ORRERY §4 #4, #5). */
+  _paintFacts(factRows, creditsN) {
+    if (!refs) return;
+    if (!refs.factCells || refs.factCells.length !== factRows.length) {
+      refs.facts.innerHTML = '';
+      refs.factCells = factRows.map(([, , kind]) => {
+        const cell = el('div', 'sf-ledger-fact' + (kind ? ' sf-ledger-fact--' + kind : ''));
+        const dt = el('dt', '', '');
+        const dd = el('dd', '', '');
+        cell.appendChild(dt);
+        cell.appendChild(dd);
+        let n = null;
+        let u = null;
+        if (kind === 'figure') {
+          n = el('span', 'sf-fact-n', '');
+          u = el('span', 'sf-fact-u', 'CR');
+          dd.appendChild(n);
+          dd.appendChild(u);
+        }
+        refs.facts.appendChild(cell);
+        return { dt, dd, n, u };
+      });
+    }
+    factRows.forEach(([label, value], i) => {
+      const cell = refs.factCells[i];
+      if (!cell) return;
+      if (cell.dt.textContent !== label) cell.dt.textContent = label;
+      const blank = value === '—';
+      cell.dd.classList.toggle('is-blank', blank);
+      if (cell.n) {
+        const next = blank || creditsN == null ? '—' : String(Math.round(creditsN));
+        if (cell.n.dataset.v !== next) { cell.n.dataset.v = next; rollTo(cell.n, next === '—' ? '—' : Number(next)); }
+        cell.u.hidden = next === '—';
+      } else if (cell.dd.dataset.v !== value) {
+        cell.dd.dataset.v = value;
+        decrypt(cell.dd, value, { duration: 300, delay: 70 * i });
+      }
+    });
+  },
+
+  async _act(ctx, action, id, meta, occupied) {
+    if (action === 'newGame') { nav(ctx, 'pushScreen', 'newGame'); return; }
+    if (action === 'load') {
+      const ok = await confirm({
+        title: 'Load this save?',
+        body: loadConfirmBody(id, meta),
+        confirmLabel: 'Load', danger: true,
+      });
+      if (!ok) return;
+      refs.selected = id;
+      // The loading shell is about to cover the stage: stop the hull now; mount() frees its context.
+      refs.markLoadRequested();
+      if (this.hull) this.hull.deactivate();
+      ctx.bus.emit('game:load', { slot: id });
+      return;
+    }
+    if (action === 'save') {
+      if (!canSave(ctx)) {
+        ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
+        this._render(ctx);
+        return;
+      }
+      // Overwrite confirmation if the slot is already occupied (UX-2) — saving clobbers the
+      // previous save irreversibly. Empty slots save without a prompt.
+      if (occupied) {
+        const ok = await confirm({
+          title: 'Overwrite save?',
+          body: overwriteConfirmBody(id, meta),
+          confirmLabel: 'Overwrite', danger: true,
+        });
+        if (!ok) return;
+      }
+      refs.selected = id;
+      const presenting = !!(ctx.state && ctx.state.render && ctx.state.render.photoMode && ctx.state.render.photoMode.active);
+      let thumbnail;
+      let thumbnailSource;
+      if (!presenting && typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+        const canvas = document.querySelector('canvas');
+        // toBlob twin — the PNG readback+encode rides the browser's async path
+        // instead of toDataURL's synchronous block on this click task.
+        const shot = await capturePhotoPngAsync(canvas);
+        if (shot && shot.ok) {
+          thumbnail = shot.dataUrl;
+          thumbnailSource = canvas;
+        }
+      }
+      ctx.bus.emit('game:save', saveSlotIntent(id, {
+        label: refs.labelInput ? refs.labelInput.value : '',
+        thumbnail,
+        thumbnailSource,
+      }));
+      setTimeout(() => this._render(ctx), 120);
+      return;
+    }
+    if (action === 'delete') {
+      const ok = await confirm({
+        title: 'Delete this save?',
+        body: deleteConfirmBody(id, meta),
+        confirmLabel: 'Delete', danger: true,
+      });
+      if (!ok) return;
+      const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+      let deleted = false;
+      if (sys && typeof sys.deleteSlot === 'function') { try { sys.deleteSlot(id); deleted = true; } catch (e) {} }
+      if (!deleted) {
+        // Bare-storage fallback: removing only the primary leaves the recovery copy and the index
+        // row behind, and the deleted slot resurrects on the next render/Continue scan.
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(LS_PREFIX + id);
+            localStorage.removeItem(RECOVERY_PREFIX + id);
+            const idxRaw = localStorage.getItem(LS_PREFIX + 'index');
+            if (idxRaw) {
+              const idx = JSON.parse(idxRaw);
+              if (idx && typeof idx === 'object' && !Array.isArray(idx)) {
+                delete idx[id];
+                localStorage.setItem(LS_PREFIX + 'index', JSON.stringify(idx));
+              }
+            }
+            deleted = true;
+          }
+        } catch (e) {}
+      }
+      ctx.bus.emit('toast', { text: deleted ? slotLabel(id) + ' deleted' : 'Delete failed', kind: deleted ? 'info' : 'warn', ttl: 2500 });
+      this._render(ctx);
+    }
+  },
+
+  async _export(ctx) {
+    const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    const slots = readSlots(ctx);
+    const slot = exportSlotChoice(ctx, slots);
+    let blobText = null;
+    if (!slot) { ctx.bus.emit('toast', { text: 'Nothing to export', kind: 'warn', ttl: 2500 }); return; }
+    if (refs) refs.selected = slot;
+    if (sys && typeof sys.exportSlotAsync === 'function') {
+      try { blobText = await sys.exportSlotAsync(slot); } catch (e) { blobText = null; }
+      if (blobText) { this._render(ctx); return; }
+    } else if (sys && typeof sys.exportSlot === 'function') {
+      try { blobText = sys.exportSlot(slot); } catch (e) { blobText = null; }
+      if (blobText) { this._render(ctx); return; }
+    }
+    if (sys && typeof sys.exportSave === 'function') { try { blobText = sys.exportSave(slot); } catch (e) {} }
+    if (blobText == null) {
+      // fallback: export the chosen slot raw from localStorage
+      try { blobText = (typeof localStorage !== 'undefined' && localStorage.getItem(LS_PREFIX + slot)) || null; } catch (e) {}
+    }
+    if (!blobText) { ctx.bus.emit('toast', { text: 'Nothing to export', kind: 'warn', ttl: 2500 }); return; }
+    try {
+      const blob = new Blob([blobText], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'spaceface_' + slot + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (e) { ctx.bus.emit('toast', { text: 'Export failed', kind: 'warn', ttl: 2500 }); }
+  },
+
+  async _import(ctx, fileIn) {
+    this._importLine = '';
+    const f = fileIn.files && fileIn.files[0];
+    if (!f) return;
+    const rejectOversize = (actual) => {
+      ctx.bus.emit('save:error', {
+        slot: 'import', reason: 'import_too_large', limit: SAVE_IMPORT_MAX_BYTES, actual,
+      });
+      ctx.bus.emit('toast', { text: 'Import failed: file is too large', kind: 'warn', ttl: 3000 });
+      fileIn.value = '';
+      this._render(ctx);
+    };
+    const fileBytes = Number(f.size);
+    // File.size is available before FileReader starts; reject here so the fallback path never
+    // allocates a reader for a known-over-limit import.
+    if (Number.isFinite(fileBytes) && fileBytes > SAVE_IMPORT_MAX_BYTES) {
+      rejectOversize(fileBytes);
+      return;
+    }
+    const slot = importDestination(refs && refs.selected, refs && refs.ids);
+    const destinationWord = armImportDestination(slot);
+    const confirmed = await confirm({
+      title: 'Import save file?',
+      body: importConfirmBody(f),
+      confirmLabel: 'Import & Load', danger: true,
+    });
+    if (!confirmed) { fileIn.value = ''; return; }
+    const finish = (ok) => {
+      const spoken = this._importLine;
+      this._importLine = '';
+      ctx.bus.emit('toast', {
+        text: importResultLine(ok, destinationWord, spoken),
+        kind: ok ? 'good' : 'warn',
+        ttl: 2800,
+      });
+      fileIn.value = '';
+      this._render(ctx);
+    };
+    const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    if (sys && typeof sys.importFile === 'function') {
+      try { sys.importFile(f, finish, slot); } catch (e) { finish(false); }
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const text = String(reader.result || '');
+      // A synthetic/legacy File may not expose a trustworthy size. Keep the raw-text check before
+      // any fallback JSON.parse or save-system import call in that case.
+      const textBytes = saveImportByteLength(text);
+      if (textBytes > SAVE_IMPORT_MAX_BYTES) {
+        rejectOversize(textBytes);
+        return;
+      }
+      finish(await importValidatedSave(sys, text, slot));
+    };
+    reader.onerror = () => finish(false);
+    reader.readAsText(f);
+  },
+
+  onShow(ctx) {
+    if (!refs) return;
+    // Screen instances outlive runs. Only the save authority's current receipt
+    // can describe this run's recovery; discard cached receipts before hydration.
+    for (const [slot, note] of Object.entries(this._notices || {})) {
+      if (note.kind === 'recovered') delete this._notices[slot];
+    }
+    const retained = ctx && ctx.state && ctx.state.save && ctx.state.save.lastRecovery;
+    if (retained) {
+      const note = recoveryNotice(retained);
+      if (note) this._notices[note.slot] = note;
+    }
+    cue('open');
+    refs.cancelHullRelease();
+    refs.clearLoadRequest();
+    if (this.hull && this.hull.restore()) refs.shownShipId = null;
+    // ORRERY arrival: the rail draws itself and the frames rise onto their stations, one by one.
+    refs.arrive = !!refs.orr;
+    this._render(ctx);
+    try {
+      settle(refs.title, { from: 'top', state: 'saveLoad:open' });
+      if (!refs.orr) settle(refs.hang, { from: 'left', state: 'saveLoad:open' });
+      else settle(refs.caption, { from: 'left', state: 'saveLoad:open' });
+      settle(refs.stage, { from: 'right', state: 'saveLoad:open' });
+      settle(refs.foot, { from: 'bottom', state: 'saveLoad:open' });
+    } catch (e) { /* motion is cosmetic */ }
+    if (this.hull && this.hull.hasMount()) {
+      this.hull.activate(ctx);
+      // _render already showed the selected save's hull; activating starts its slow yaw.
+    }
+    try {
+      const selectedRow = refs.list && refs.list.querySelector('.k-row[aria-selected="true"]');
+      (selectedRow || refs.list.querySelector('.k-row')).focus({ preventScroll: true });
+    } catch (e) {}
+  },
+  onHide() {
+    cue('close');
+    // A pick armed 150ms before exit must not keep its parked dispatch — drop the arm so
+    // the clone + worker parse + visual warm don't land inside the next screen's window.
+    try {
+      const sys = refs && refs.saveSys;
+      if (sys && typeof sys.disarmSpeculativePrepare === 'function') sys.disarmSpeculativePrepare();
+    } catch (e) {}
+    if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
+    if (this.hull) this.hull.deactivate();
+  },
+  // Everything the render reads is either captured by this cheap signature (save allowed, current
+  // slot, selection) or arrives by bus event ('save:store-synced'/'save:completed' re-render), so
+  // the periodic pass can skip the full slot re-read + list/stage rebuild when nothing changed.
+  _slInputs(ctx) {
+    return [
+      canSave(ctx) ? '1' : '0',
+      (ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot) || '',
+      (refs && refs.selected) || '',
+    ].join('\u0000');
+  },
+  refresh(ctx, options = {}) {
+    if (options && options.periodic && refs && this._slSig != null
+      && this._slSig === this._slInputs(ctx)) return;
+    this._render(ctx);
+  },
+  dispose() {
+    if (refs) {
+      refs.cancelHullRelease();
+      try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubLoadFailed(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
+      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile', 'unsubSpecPrepared']) {
+        if (typeof refs[key] === 'function') refs[key]();
+      }
+      try {
+        if (refs.saveSys && typeof refs.saveSys.disarmSpeculativePrepare === 'function') {
+          refs.saveSys.disarmSpeculativePrepare();
+        }
+      } catch (e) {}
+    }
+    if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
+    if (this.hull) { this.hull.dispose(); this.hull = null; }
+    if (this._film) { this._film.dispose(); this._film = null; }
+    refs = null;
+    this._notices = null;
+  },
+};

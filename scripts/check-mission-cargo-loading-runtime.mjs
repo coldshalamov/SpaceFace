@@ -1,0 +1,570 @@
+#!/usr/bin/env node
+// check-mission-cargo-loading-runtime.mjs - browser smoke for tracked contract cargo loading.
+// Complements check-mission-accept-handoff-runtime.mjs by proving the Market Buy button can load
+// tracked contract cargo, flip the guidance from "load cargo" to "cargo aboard", then undock
+// without dropping mission nav. Probe-only mission/credits are injected after live boot.
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { createServer as createNetServer } from 'node:net';
+import { fileURLToPath } from 'node:url';
+import { collectPageIssues } from './lib/browser-issues.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const START_TIMEOUT_MS = 90000;
+// Headless software GL stretches the pre-menu warmup past the generic 10s wait (the station-tabs
+// probe budgets the same environment at 60s). Budget the environment, assert the behavior.
+const MENU_TIMEOUT_MS = 60000;
+// Same starvation allowance for short render/state waits: the loaded headless host brick-walls
+// frames for hundreds of ms, so waits that would pass in well under a second on a quiet host
+// need real headroom. These budget wall-clock, not gameplay behavior.
+const UI_TIMEOUT_MS = 30000;
+const { chromium } = await loadPlaywright();
+let server = null;
+let browser = null;
+
+try {
+  server = await startFreshServer();
+  browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  installCspSafePlaywrightPolling(page);
+  // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
+  // harnesses never touch the machine save drawer, and store calls take the localStorage path.
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
+  await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
+
+  // This probe is an intentionally controlled in-process fixture: it seeds missions.boards and
+  // the fallback onboarding state directly, then arms nav.autopilot directly for its ETA proof.
+  // Those writes are not worker commands, so the canonical worker route would overwrite them;
+  // keep this fixture explicit and leave worker acceptance to egress/player-truth.
+  await page.goto(server.baseUrl + '?simLane=main', { waitUntil: 'domcontentloaded' });
+  assert.equal(new URL(page.url()).search, '?simLane=main',
+    'cargo-loading probe must pin the main lane for fixture state writes');
+  // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
+  // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
+  // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
+  // headless against this 15,000 ms budget — an 80% margin that any load at all tips over, and
+  // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
+  // this is an environment allowance, not a behavioural assertion being loosened. Everything
+  // these checks actually assert happens after boot and is untouched.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  await waitVisible(page, '[data-screen="mainMenu"]', 'main menu', MENU_TIMEOUT_MS);
+  assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
+  await waitVisible(page, '[data-screen="newGame"] .sf-ng-route', 'new-game first-session rail');
+  await page.evaluate(() => {
+    window.__sfMissionCargoLaunch = { started: false, failure: null };
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    bus.on('game:started', () => { window.__sfMissionCargoLaunch.started = true; });
+    bus.on('game:startFailed', (payload) => {
+      window.__sfMissionCargoLaunch.failure = {
+        code: String(payload?.code || '').slice(0, 200),
+        stage: String(payload?.stage || '').slice(0, 200),
+        error: String(payload?.error || payload?.message || payload || '').slice(0, 400),
+      };
+    });
+  });
+  assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
+  await page.waitForFunction(() => {
+    if (window.__sfMissionCargoLaunch?.failure) {
+      throw new Error(`game:startFailed ${JSON.stringify(window.__sfMissionCargoLaunch.failure)}`);
+    }
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const render = state && state.render;
+    return !!(state && state.mode === 'flight'
+      && window.__sfMissionCargoLaunch?.started === true
+      && player && player.alive && player.hull > 0
+      && render && render.flightVeilHoldsSim !== true
+      && Number.isFinite(render.firstPlayableFrameAt));
+  }, null, { timeout: START_TIMEOUT_MS, polling: 250 }).catch(async (error) => {
+    const detail = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const render = state && state.render;
+      const renderOwner = window.SF?.registry?.get?.('render') || null;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      const renderer = render && render.renderer;
+      const rendererFrame = renderer && renderer.info && renderer.info.render
+        ? renderer.info.render.frame : null;
+      const witness = state && state.runtimeWitness;
+      const presentation = witness && typeof witness.snapshot === 'function'
+        ? witness.snapshot() : null;
+      const recentPresentation = witness && typeof witness.recent === 'function'
+        ? witness.recent().slice(-4) : [];
+      const presentationVerdict = witness && typeof witness.verdict === 'function'
+        ? witness.verdict() : null;
+      const startup = window.__SF_STARTUP__ && typeof window.__SF_STARTUP__.snapshot === 'function'
+        ? window.__SF_STARTUP__.snapshot() : null;
+      const firstPictureFailure = render && render.openingFirstPictureFailure;
+      const submissionValidation = render && render.openingSubmissionValidation;
+      return {
+        launch: window.__sfMissionCargoLaunch,
+        mode: state && state.mode,
+        tick: state && state.tick,
+        simTime: state && state.simTime,
+        player: player ? { id: player.id, alive: player.alive !== false, hull: player.hull } : null,
+        flightVeilHoldsSim: render && render.flightVeilHoldsSim,
+        firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
+          ? render.firstPlayableFrameAt : null,
+        firstPlayableGate: {
+          gameStarted: window.__sfMissionCargoLaunch?.started === true,
+          flightMode: state?.mode === 'flight',
+          playerAlive: player?.alive !== false && player?.hull > 0,
+          veilReleased: render?.flightVeilHoldsSim !== true,
+          firstPlayableStamped: Number.isFinite(render?.firstPlayableFrameAt),
+          openingPictureReady: render?.openingFirstPictureReady === true,
+          openingFirstDrawSubmittedAt: Number.isFinite(render?.openingSubmissionFirstDrawSubmittedAt)
+            ? render.openingSubmissionFirstDrawSubmittedAt : null,
+          firstPlayablePaintAt: Number.isFinite(render?.firstPlayablePaintAt)
+            ? render.firstPlayablePaintAt : null,
+          worldSubmittedFrames: render?.worldSubmittedFrames ?? null,
+          paintReleaseScheduled: renderOwner?._firstPlayablePaintScheduled === true,
+          paintReleaseRearms: renderOwner?._firstPlayablePaintRearms ?? null,
+          paintReleaseScheduledAtMs: Number.isFinite(renderOwner?._firstPlayablePaintScheduledAtMs)
+            ? renderOwner._firstPlayablePaintScheduledAtMs : null,
+          openingPicturePrepared: renderOwner?._openingFirstPicturePrepared === true,
+          meshStreamingDeferred: renderOwner?._deferNoncriticalMeshStreaming === true,
+        },
+        firstPicturePhase: render && render.openingFirstPicturePhase != null
+          ? render.openingFirstPicturePhase : null,
+        openingFailures: {
+          currentSector: render && render.openingCurrentSectorFailure || null,
+          firstPicture: firstPictureFailure ? {
+            stage: firstPictureFailure.stage || null,
+            pass: firstPictureFailure.pass || null,
+            pendingCount: firstPictureFailure.pendingCount ?? null,
+            elapsedMs: firstPictureFailure.elapsedMs ?? null,
+            budgetMs: firstPictureFailure.budgetMs ?? null,
+            pending: Array.isArray(firstPictureFailure.pending)
+              ? firstPictureFailure.pending.slice(0, 8) : null,
+            meshCount: Array.isArray(firstPictureFailure.meshes) ? firstPictureFailure.meshes.length : null,
+          } : null,
+          submissionValidation: submissionValidation ? {
+            ok: submissionValidation.ok ?? null,
+            reason: submissionValidation.reason || null,
+            validationState: submissionValidation.validationState || null,
+          } : null,
+        },
+        presentation: presentation ? {
+          lifecycle: presentation.lifecycle || null,
+          suspended: presentation.suspended === true,
+          visibilityState: presentation.visibilityState || null,
+          executedFrames: presentation.executedFrames ?? null,
+          renderUpdates: presentation.renderUpdates ?? null,
+          rendererFrame: presentation.rendererFrame ?? rendererFrame,
+          worldSubmittedFrames: presentation.worldSubmittedFrames ?? render?.worldSubmittedFrames ?? null,
+          lastFrameError: presentation.lastFrameError || null,
+          frameErrorCount: presentation.frameErrorCount ?? null,
+          contextLost: presentation.contextLost === true,
+        } : null,
+        presentationVerdict,
+        recentPresentation,
+        startup: startup ? {
+          status: startup.current?.status || null,
+          phase: startup.current?.phase || null,
+          sample: startup.current?.sample || null,
+          events: Array.isArray(startup.current?.events) ? startup.current.events.slice(-12) : [],
+        } : null,
+      };
+    }).catch(() => null);
+    throw new Error(`${error.message} :: Mission cargo launch state ${JSON.stringify(detail)} :: page issues ${JSON.stringify(issues.errorIssues().slice(-5))}`);
+  });
+
+  await finishOnboardingForProbe(page);
+
+  const dockTarget = await page.evaluate(() => {
+    const sf = window.SF;
+    const station = sf.state.entityList.find((e) => e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId && !e.data.isGate);
+    if (!station) throw new Error('No dockable station entity found in first-session sector');
+    sf.bus.emit('dock:docked', { stationId: station.data.stationId });
+    return { stationId: station.data.stationId, label: station.data.name || station.data.stationName || station.data.stationId };
+  });
+  await waitVisible(page, '[data-screen="station"]', 'station hub after dock', UI_TIMEOUT_MS)
+    .catch(async (err) => {
+      const dump = await page.evaluate(() => {
+        const sf = window.SF;
+        const screens = [...document.querySelectorAll('[data-screen]')].map((el) => ({
+          id: el.dataset.screen,
+          display: getComputedStyle(el).display,
+          ariaHidden: el.getAttribute('aria-hidden'),
+          w: Math.round(el.getBoundingClientRect().width),
+        }));
+        const st = sf && sf.state;
+        return {
+          mode: st && st.mode,
+          docked: st && st.ui && st.ui.docked,
+          dockedStationId: st && st.ui && st.ui.dockedStationId,
+          screens,
+        };
+      });
+      throw new Error(err.message + ' :: screen state ' + JSON.stringify(dump)
+        + ' :: page issues ' + JSON.stringify(issues.errorIssues().slice(-5)));
+    });
+
+  await stationTab(page, 'missions');
+  const seeded = await page.evaluate(() => {
+    const sf = window.SF;
+    const state = sf.state;
+    const stationId = state.ui && state.ui.dockedStationId;
+    const market = state.economy && state.economy.markets && state.economy.markets[stationId] || {};
+    const cmdtyId = Object.keys(market).find((id) => market[id] && market[id].role !== 'none' && Number.isFinite(market[id].lastBuy) && market[id].lastBuy > 0 && market[id].stock >= 2);
+    const dest = firstOtherStation(state, stationId);
+    if (!stationId || !cmdtyId || !dest) return { ok: false, stationId, cmdtyId, dest };
+    const unit = Math.max(1, Math.ceil(market[cmdtyId].lastBuy || market[cmdtyId].lastMid || 1));
+    const safeCredits = Math.max(250, unit * 3 + 50);
+    if ((state.player.credits || 0) < safeCredits) {
+      sf.bus.emit('economy:grantCredits', { amount: safeCredits - (state.player.credits || 0), reason: 'probe:contract_cargo_loading' });
+    }
+    const board = state.missions.boards[stationId] || { refreshEpoch: 0, slots: [] };
+    board.slots = (board.slots || []).filter((slot) => slot && slot.id !== 'cargo_loading_probe_bulk_trade');
+    board.slots.unshift({
+      id: 'cargo_loading_probe_bulk_trade', type: 'bulk_trade', stationId, factionId: 'faction_scn',
+      reward_cr: Math.max(300, unit * 4), time_limit_s: 900, collateral_cr: 0, riskTier: 0,
+      destStationId: dest.stationId, destSectorId: dest.sectorId, distance: 600,
+      params: { cmdtyId, qty: 1, fValue: 1, taskTime: 30, cargoValue: unit },
+      title: 'Probe contract cargo loading', expiresAtEpoch: (board.refreshEpoch || 0) + 1, storyTag: null,
+    });
+    state.missions.boards[stationId] = board;
+    sf.bus.emit('mission:updated', { missionId: null });
+    return { ok: true, stationId, cmdtyId, destStationId: dest.stationId, destName: dest.name };
+
+    function firstOtherStation(s, currentStationId) {
+      for (const entity of s.entityList || []) {
+        const data = entity && entity.data;
+        if (entity && entity.type === 'station' && data && data.stationId && data.stationId !== currentStationId) {
+          return { stationId: data.stationId, sectorId: s.world && s.world.currentSectorId, name: data.name || data.stationName || data.stationId };
+        }
+      }
+      for (const sector of Object.values(s.world && s.world.sectors || {})) {
+        for (const station of sector.stations || []) {
+          if (station && station.id && station.id !== currentStationId) return { stationId: station.id, sectorId: sector.id, name: station.name || station.id };
+        }
+      }
+      return null;
+    }
+  });
+  assert.equal(seeded.ok, true, 'probe should seed an affordable one-unit contract cargo offer: ' + JSON.stringify(seeded));
+
+  assert.equal(await page.evaluate(() => {
+    const row = document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="cargo_loading_probe_bulk_trade"]');
+    if (!row) return false;
+    row.click();
+    const button = document.querySelector('[data-screen="station"] .sx-ct-commit[data-accept="cargo_loading_probe_bulk_trade"]');
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }), true, 'seeded contract should expose an enabled Accept + Track button');
+
+  await page.waitForFunction(() => {
+    const state = window.SF.state;
+    const mission = state.missions.active.find((m) => m.title === 'Probe contract cargo loading' && m.status === 'active');
+    return !!(mission && state.ui.trackedMissionId === mission.id && state.nav.waypoint && state.nav.waypoint.missionId === mission.id);
+  }, null, { timeout: UI_TIMEOUT_MS }).catch(async (err) => {
+    const report = await page.evaluate(() => {
+      const state = window.SF.state;
+      const mission = state.missions.active.find((m) => m.title === 'Probe contract cargo loading');
+      return {
+        mission: mission && { id: mission.id, status: mission.status, title: mission.title },
+        activeCount: state.missions.active.length,
+        trackedMissionId: state.ui && state.ui.trackedMissionId,
+        waypoint: state.nav && state.nav.waypoint,
+        onboarding: state.onboarding && {
+          active: state.onboarding.active,
+          finished: state.onboarding.finished,
+          beat: state.onboarding.beat,
+        },
+      };
+    });
+    throw new Error('Timed out waiting for accepted contract nav: ' + JSON.stringify(report) + ' :: ' + err.message);
+  });
+
+  await stationTab(page, 'market');
+  let marketReport = await trackedMarketReport(page);
+  assert.equal(marketReport.calloutVisible, true, 'Market should show tracked-contract callout before loading cargo');
+  assert.match(marketReport.calloutText, /TRACKED CONTRACT/i, 'Market callout should label tracked contract context');
+  assert.match(marketReport.calloutText + ' ' + marketReport.rowMissionLine, /load\s+1u more|load\s+1u|before undocking/i,
+    'Market should tell the player to load missing contract cargo: ' + JSON.stringify(marketReport));
+  assert.match(marketReport.rowClass, /is-tracked/, 'tracked commodity row should be highlighted before buying');
+
+  const buyReport = await page.evaluate(() => {
+    const state = window.SF.state;
+    const mission = state.missions.active.find((m) => m.id === state.ui.trackedMissionId);
+    const cmdtyId = mission && mission.params && mission.params.cmdtyId;
+    const row = cmdtyId && document.querySelector(`[data-screen="station"] .sx-mkt-row[data-cmdty="${cmdtyId}"]`);
+    if (!mission || !cmdtyId || !row) return { ok: false, reason: 'missing mission row', cmdtyId };
+    row.click();
+    const buy = document.querySelector('[data-screen="station"] .sx-trade__go[data-go]');
+    if (!buy || buy.disabled) return { ok: false, reason: 'buy disabled', buyText: text(buy), rowText: text(row) };
+    const beforeOwned = state.player.cargo.items[cmdtyId] || 0;
+    buy.click();
+    return { ok: true, missionId: mission.id, cmdtyId, beforeOwned, buyText: text(buy) };
+    function text(el) { return (el && el.textContent || '').replace(/\s+/g, ' ').trim(); }
+  });
+  assert.equal(buyReport.ok, true, 'Market should let the player buy the tracked contract commodity: ' + JSON.stringify(buyReport));
+  // The ORRERY market rewrite authored `Buy ${qty}` on the commit affordance (the quoted total
+  // sits beside it) — the pin is verb + explicit quantity, not the pre-rewrite "Confirm Purchase".
+  assert.match(buyReport.buyText || '', /^Buy\s+\d/i, 'Buy affordance should name the verb and quantity it commits');
+  await page.waitForFunction(({ cmdtyId, beforeOwned }) => (window.SF.state.player.cargo.items[cmdtyId] || 0) >= beforeOwned + 1,
+    { cmdtyId: buyReport.cmdtyId, beforeOwned: buyReport.beforeOwned }, { timeout: UI_TIMEOUT_MS });
+
+  marketReport = await trackedMarketReport(page);
+  assert.equal(marketReport.trackedMissionId, buyReport.missionId, 'cargo purchase should preserve tracked mission id');
+  assert.equal(marketReport.waypointMissionId, buyReport.missionId, 'cargo purchase should preserve mission waypoint');
+  assert.equal(marketReport.objectiveProgress, 0, 'buying cargo should not prematurely progress a bulk-trade sell objective');
+  assert(marketReport.owned >= 1, 'player hold should include the tracked contract cargo after buying: ' + JSON.stringify(marketReport));
+  assert.match(marketReport.calloutText + ' ' + marketReport.rowMissionLine, /aboard|undock and follow nav|cargo is aboard/i,
+    'Market should advance from missing-cargo copy to cargo-aboard guidance after buying: ' + JSON.stringify(marketReport));
+
+  assert.equal(await undockFromStation(page), true, 'station should still expose Undock after cargo loading');
+  await page.waitForFunction(() => {
+    const state = window.SF && window.SF.state;
+    return !!(state && state.mode === 'flight' && state.ui && state.ui.docked === false);
+  }, null, { timeout: UI_TIMEOUT_MS });
+  await page.waitForFunction(() => {
+    const tracker = document.querySelector('.sf-mission-tracker');
+    const arrow = document.querySelector('.sf-objarrow');
+    if (!tracker || !arrow) return false;
+    const tcs = getComputedStyle(tracker);
+    const acs = getComputedStyle(arrow);
+    const text = (tracker.textContent || '').replace(/\s+/g, ' ');
+    const box = tracker.getBoundingClientRect();
+    return tcs.display !== 'none' && box.width > 20 && /sell/i.test(text) && acs.display !== 'none';
+  }, null, { timeout: UI_TIMEOUT_MS }).catch(async (err) => {
+    throw new Error('Timed out waiting for flight destination line after cargo loading: '
+      + JSON.stringify(await readFlightObjectiveHud(page)) + ' :: ' + err.message);
+  });
+  const hud = await readFlightObjectiveHud(page);
+  assert.equal(hud.mode, 'flight', 'undock should return to flight mode');
+  assert.equal(hud.waypointMissionId, hud.missionId, 'flight nav should still target the loaded contract mission');
+  // ETA is omitted from the readings when closing speed is unknown (hud.js drops the placeholder
+  // dash on purpose) — a parked ship legitimately shows none. Engage the autopilot on the contract
+  // waypoint itself (waypoint untouched; ui:setCourse would steal it) so the tracker prints a
+  // real ETA earned through the flight system rather than asserting the retired placeholder.
+  await page.evaluate(() => {
+    const state = window.SF.state;
+    const wp = state.nav && state.nav.waypoint && state.nav.waypoint.pos;
+    if (!wp) return;
+    state.nav.autopilot = {
+      active: true,
+      target: { x: wp.x, z: wp.z },
+      targetEntityId: state.nav.waypoint.targetEntityId ?? null,
+      label: state.nav.waypoint.label || 'Contract destination',
+      arrivalRadius: 12,
+      status: 'armed',
+    };
+    window.SF.bus.emit('nav:autopilot', state.nav.autopilot);
+  });
+  await page.waitForFunction(
+    () => /ETA/i.test((document.querySelector('.sf-mission-tracker') || {}).textContent || ''),
+    null, { timeout: UI_TIMEOUT_MS });
+  const hudMoving = await readFlightObjectiveHud(page);
+  // Park the ship again: the check asserts the destination surface, not an approach leg.
+  await page.evaluate(() => {
+    const ap = window.SF.state.nav && window.SF.state.nav.autopilot;
+    if (ap) { ap.active = false; ap.status = 'idle'; }
+  });
+  // Live flight HUD after this route (observed, not inferred): the tracker is one destination
+  // line — "Sell 1u Iron Ore at Coalition HQ · 1.4k u · ETA — · ↙". CURRENT OBJECTIVE and
+  // AMBER DIAMOND / GOAL were retired as tracker chrome; the world diamond is the goal marker.
+  assert.equal(hud.trackerVisible, true,
+    'flight HUD should show the loaded contract destination line: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /sell/i,
+    'flight HUD should carry the loaded contract sell action: ' + JSON.stringify(hud));
+  assert(hud.waypointLabel && hud.trackerText.includes(hud.waypointLabel),
+    'flight HUD should carry the loaded contract destination: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /\d+(?:\.\d+)?k?\s*u\b/i,
+    'flight HUD destination line should carry distance to the loaded contract: ' + JSON.stringify(hud));
+  assert.match(hudMoving.trackerText, /ETA/i,
+    'flight HUD destination line should carry ETA to the loaded contract once closing: ' + JSON.stringify(hudMoving));
+  assert.match(hud.trackerText, /[↑↗→↘↓↙←↖]/,
+    'flight HUD destination line should carry bearing to the loaded contract: ' + JSON.stringify(hud));
+  assert.equal(hud.markerVisible, true,
+    'flight HUD should keep the loaded contract world goal marker visible: ' + JSON.stringify(hud));
+  assert.match(hud.markerClass, /sf-objarrow--(?:onscreen|edge)/,
+    'loaded contract goal marker should sit on-camera or at the screen edge: ' + JSON.stringify(hud));
+  assert(hud.cargoQty >= 1, 'contract cargo should remain aboard after undock: ' + JSON.stringify(hud));
+  assert.deepEqual(issues.errorIssues(), [], 'mission cargo-loading runtime probe should not record page errors');
+
+  console.log('Mission cargo loading OK: accept tracked contract -> buy cargo in Market -> cargo-aboard guidance -> undock with nav intact');
+  console.log('Dock target:', dockTarget.stationId, dockTarget.label);
+} finally {
+  if (browser) await browser.close();
+  if (server && server.kill) server.kill();
+}
+
+function readFlightObjectiveHud(page) {
+  return page.evaluate(() => {
+    const state = window.SF.state;
+    const mission = state.missions.active.find((m) => m.id === state.ui.trackedMissionId);
+    const tracker = document.querySelector('.sf-mission-tracker');
+    const arrow = document.querySelector('.sf-objarrow');
+    const tcs = tracker ? getComputedStyle(tracker) : null;
+    const box = tracker ? tracker.getBoundingClientRect() : null;
+    return {
+      mode: state.mode,
+      missionId: mission && mission.id,
+      cargoQty: mission && mission.params && state.player.cargo.items[mission.params.cmdtyId] || 0,
+      waypointMissionId: state.nav.waypoint && state.nav.waypoint.missionId,
+      waypointLabel: state.nav.waypoint && (state.nav.waypoint.label || state.nav.waypoint.stationName || state.nav.waypoint.sectorName || state.nav.waypoint.mapLabel),
+      trackerText: (tracker?.textContent || '').replace(/\s+/g, ' ').trim(),
+      trackerVisible: !!(tracker && tcs && tcs.display !== 'none' && tcs.visibility !== 'hidden' && box && box.width > 20),
+      markerVisible: !!(arrow && getComputedStyle(arrow).display !== 'none'),
+      markerClass: (arrow && arrow.className) || '',
+    };
+  });
+}
+
+function trackedMarketReport(page) {
+  return page.evaluate(() => {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const state = window.SF.state;
+    const trackedId = state.ui.trackedMissionId;
+    const mission = state.missions.active.find((m) => m.id === trackedId);
+    const cmdtyId = mission && mission.params && mission.params.cmdtyId;
+    const callout = document.querySelector('[data-screen="station"] .sx-mkt-tracked');
+    const row = cmdtyId && document.querySelector(`[data-screen="station"] .sx-mkt-row[data-cmdty="${cmdtyId}"]`);
+    return {
+      trackedMissionId: trackedId,
+      missionId: mission && mission.id,
+      objectiveProgress: mission && mission.objectiveProgress,
+      owned: cmdtyId ? (state.player.cargo.items[cmdtyId] || 0) : 0,
+      waypointMissionId: state.nav.waypoint && state.nav.waypoint.missionId,
+      calloutVisible: !!callout && !callout.hidden && getComputedStyle(callout).display !== 'none',
+      calloutText: norm(callout && callout.textContent),
+      rowClass: row && row.className || '',
+      rowMissionLine: norm(row && row.querySelector('.sx-mkt-row__flag') && row.querySelector('.sx-mkt-row__flag').getAttribute('title')),
+    };
+  });
+}
+
+async function stationTab(page, tabId) {
+  const operationId = tabId === 'missions' ? 'contracts' : tabId;
+  const selector = operationId === 'contracts' ? '.sx-ct' : operationId === 'market' ? '.sx-mkt' : '';
+  const opened = await page.evaluate((id) => {
+    const tab = document.querySelector('[data-screen="station"] [data-nav="' + id + '"]');
+    if (!tab) return false;
+    tab.click();
+    return true;
+  }, operationId);
+  assert.equal(opened, true, 'station ' + tabId + ' tab should exist');
+  await waitVisible(page, '[data-screen="station"] .sx-app[data-operation="' + operationId + '"] #sx-panel ' + selector,
+    'station ' + tabId + ' panel');
+}
+
+async function undockFromStation(page) {
+  const clicked = await page.evaluate(() => {
+    const button = document.querySelector('[data-screen="station"] [data-act="undock"]');
+    if (!button || button.disabled || button.classList.contains('is-disabled')) return false;
+    button.click();
+    return true;
+  });
+  if (!clicked) return false;
+  const needsConfirmation = await page.evaluate(() => {
+    const pop = document.querySelector('[data-screen="station"] .sx-pop--dep');
+    return !!(pop && !pop.hidden);
+  });
+  if (needsConfirmation) {
+    return page.evaluate(() => {
+      const launch = document.querySelector('[data-screen="station"] .sx-pop--dep [data-pop-launch]');
+      if (!launch || launch.disabled) return false;
+      launch.click();
+      return true;
+    });
+  }
+  return true;
+}
+
+async function finishOnboardingForProbe(page) {
+  const report = await page.evaluate(() => {
+    const sf = window.SF;
+    const system = sf && sf.ctx && sf.ctx.registry && sf.ctx.registry.get('onboarding');
+    if (system && typeof system._finish === 'function') system._finish();
+    else {
+      const onboarding = sf.state.onboarding || (sf.state.onboarding = {});
+      onboarding.finished = true;
+      onboarding.active = false;
+      sf.bus.emit('tutorial:finished', { source: 'mission-cargo-loading-probe' });
+    }
+    return {
+      active: !!(sf.state.onboarding && sf.state.onboarding.active),
+      finished: !!(sf.state.onboarding && sf.state.onboarding.finished),
+    };
+  });
+  assert.deepEqual(report, { active: false, finished: true },
+    'cargo-loading probe must enter the ordinary post-tutorial mission flow');
+}
+
+async function waitVisible(page, selector, label, timeout = UI_TIMEOUT_MS) {
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
+  }, selector, { timeout }).catch((err) => { throw new Error('Timed out waiting for ' + label + ': ' + err.message); });
+}
+
+function clickButton(page, label) {
+  return page.evaluate((wanted) => {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const exact = [...document.querySelectorAll('button')].find((b) => norm(b.textContent) === norm(wanted));
+    const button = exact || [...document.querySelectorAll('button')].find((b) => norm(b.textContent).includes(norm(wanted)));
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }, label);
+}
+
+async function startFreshServer() {
+  const port = await findFreePort(8170);
+  const child = spawnProbeServer(port);
+  const baseUrl = `http://127.0.0.1:${port}/`;
+  await waitReachable(baseUrl, child);
+  return { baseUrl, kill: () => child.kill() };
+}
+
+function spawnProbeServer(port) {
+  // SPACEFACE_PLAYER_STORE_DIR='' is the designed explicit unmount — a probe must not write
+  // autosaves into the machine's real player save drawer. The unmounted route 404s fast and
+  // the client takes its localStorage fallback, so no store request can stall under load.
+  const child = spawn(process.execPath, ['server.js', String(port)], {
+    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+  });
+  let output = '';
+  const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
+  child.stdout.on('data', capture);
+  child.stderr.on('data', capture);
+  child.probeOutput = () => output.trim();
+  return child;
+}
+
+async function waitReachable(url, child) {
+  for (let i = 0; i < 80; i++) {
+    if (child.exitCode != null) throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput()}`);
+    if (await reachable(url)) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  child.kill();
+  throw new Error('Dev server did not become reachable at ' + url);
+}
+
+async function findFreePort(start) {
+  for (let port = start; port < start + 80; port++) if (await isPortFree(port)) return port;
+  throw new Error('No free local port found for mission cargo-loading runtime check');
+}
+
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const server = createNetServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => server.close(() => resolve(true)));
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function reachable(url) {
+  try { return !!(await fetch(url, { method: 'GET' })).ok; } catch (_) { return false; }
+}

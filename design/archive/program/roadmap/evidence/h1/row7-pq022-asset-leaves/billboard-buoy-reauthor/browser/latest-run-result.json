@@ -1,0 +1,38 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-09-07T14:28:18.836Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 87337,
+  "pidRecord": {
+    "pid": 22816,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq022-corridor-asset-leaves.mjs",
+      "--only=billboard-buoy",
+      "--runtime=browser"
+    ],
+    "startedAt": "2026-09-07T14:26:51.498Z",
+    "platform": "win32",
+    "finishedAt": "2026-09-07T14:28:18.835Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq022-billboard-buoy-reauthor-browser",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 22816
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "6706297dae2d54d8d0e98772cb843b5ae0324ce2316542653c40ae22cc1740cf",
+  "regressionDigest": "8bd64ec83a7f22736bcaedd7b89ba81ad8d8d9a271a5a864ee841fcbbd934be3",
+  "candidateDigest": "7da5886085a235cfcc02a1975186a8841ac84fc4da1ef0f4e5f4793b48a2d032"
+}

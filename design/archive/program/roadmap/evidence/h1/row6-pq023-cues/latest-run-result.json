@@ -1,0 +1,39 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-29T08:47:05.289Z",
+  "status": "fail",
+  "exitCode": 1,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 200893,
+  "pidRecord": {
+    "pid": 1028,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq023-corridor-cues.mjs"
+    ],
+    "startedAt": "2026-07-29T08:43:44.390Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-29T08:47:05.283Z",
+    "exitCode": 1,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq023-corridor-cues",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 1028
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": "7ff04a8ea6ab0485fe5b94ff19cbbdf47f9b10fa0c3f808b4e9aa2851f1000fa",
+  "family": "browser/acceptance-probe/node/none/none/internal-modules-run-main-triggeruncaughtexception-page-waitforfunction-timeout-ms-exceeded-at-waitforpqcathedralstate-c-users-rob-sf-h-scripts-capture-combat-vfx-acceptance-mjs-at-capturepqworldsitesequences-c-users-rob-sf-h-scripts-capture-combat-vfx-acceptance-mjs-at-async-file-c-users-rob-sf-h-scripts-capture-combat-vfx-acceptance-mjs-log-name-timeouterror-node-js-v-video-c-users-rob-sf-h-devshots-pq-corridor-cues-combat-vfx-normal-route-webm-exitcode",
+  "routeDigest": "b7869714ca477161517a7bd51662ee2000d8d747b3cda8b4efdb16a89724561c",
+  "regressionDigest": "0ded0eb6ea7bbefed2ff0662eba86361195b7f2d64fc16433ae3e5770bb76dba",
+  "candidateDigest": "317f02f82b1ac15d482018ff6569fe4e754a2d101622c45d454923b25c32d595",
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. durationMs, startedAt, finishedAt, and all other time-valued process metadata are informational only and are not performance evidence. Matched performance remains Phase H3.",
+  "noPerformanceEvidence": true
+}

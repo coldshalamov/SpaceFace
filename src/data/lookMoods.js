@@ -1,0 +1,380 @@
+// The Look: one authored source for the picture's vibe.
+//
+// SpaceFace reads as a bright, fast arcade game: glossy lacquered machinery, neon signal light,
+// hard complementary colour contrast, black space. Some places turn that down into a darker
+// neon-noir. Both are the SAME system with different numbers — a mood.
+//
+// A mood is a flat bag of numbers. Every global stage that shapes the picture reads it:
+//   surface  -> src/render/illustratedSurface.js   (how every lit hull answers light)
+//   post     -> src/render/bloom.js                 (grade, contrast, ink, bloom colour, vignette)
+//   rig      -> src/render/renderer.js              (key / rim / fill / ambient colours)
+// The runtime owner is src/render/look.js: it lerps between moods on sector change and writes
+// the shared shader uniforms. Nothing else in the renderer hardcodes a look constant.
+//
+// Authoring rules:
+//  - Colours are linear-light multipliers unless the name ends in `Hex` (sRGB hex, light colour).
+//  - A mood only names what it changes; everything else inherits LOOK_BASE.
+//  - Moods differ in COLOUR RELATIONSHIPS (which two hues fight) and DARKNESS, never in
+//    material physics: a hull is the same substance in every sector.
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+export const LOOK_VERSION = 'spaceface-look-v2';
+
+// The house look. "Arcade daylight": clean warm-white sun, electric cyan edge light,
+// ultramarine shadows, saturated paint under a clear coat.
+export const LOOK_BASE = deepFreeze({
+  surface: {
+    // Paint value. 1.0 shows the authored albedo; <1 lifts it toward pastel (the retired
+    // Lacquer & Starlight pass shipped 0.80, which is what bleached the fleet).
+    albedoGamma: 0.92,
+    // Paint chroma around its own luminance. >1 deepens colour without changing value.
+    albedoSaturation: 1.26,
+    // Share of form shading replaced by graphic light bands. 0 = physical falloff, 1 = poster.
+    // Kept moderate so ships, stations, and enemies share a unified physical PBR light response.
+    bandMix: 0.20,
+    // Colour of the unlit side and of the lit side (multipliers on diffuse light).
+    // Raised shadow floor prevents dark hulls and unlit enemies from vanishing into pitch-black voids.
+    // Deep slate-ultramarine shadow floor fights warm solar key for two-color contrast.
+    shadowTint: [0.76, 0.74, 0.84],
+    lightTint: [1.08, 1.03, 0.96],
+    // Dark contour where the hull turns away from the camera. 0 = none.
+    contour: 0.25,
+    // Clear coat: a second specular lobe over smooth dielectric paint.
+    // Calibrated to give a sleek aerospace finish without creating piercing armor-like glare.
+    coat: 0.70,
+    coatRoughness: 0.32,
+    coatEnv: 0.54,
+    // Gain on the coat's sun glint. Kept balanced so glints glisten cleanly without flaring out into white bars.
+    coatSun: 0.32,
+    // Coat reflectance at the grazing limb (facing reflectance is a fixed lacquer 0.05).
+    coatEdge: 0.42,
+    coatTint: [1.0, 1.0, 1.0],
+    // Edge light: a coloured grazing-angle rim, strongest away from the key.
+    rim: [0.20, 0.62, 1.0],
+    rimStrength: 0.52,
+    rimPower: 3.5,
+    // Rough terrain receives a soft reflected fill and limb light even without lacquer.
+    // Only rock-role materials consume these values; black space and hull paint stay put.
+    rockFill: 0.85,
+    // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
+    // dark geological faces without changing their hue or texture strata; it is never emission.
+    rockFloor: 0.12,
+    rockRim: 0.28,
+    // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
+    // threshold of 1.0: paint never emits.
+    paintCeiling: 0.74,
+    // Scale on the shared scene IBL (foundry HDRI) as seen by lit hulls, multiplied by each
+    // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
+    // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and
+    // blew pale paint flat (LOOK_UNIFY.md pass 2).
+    sceneEnv: 0.32,
+  },
+  post: {
+    // How hard the sector wears the grade below (0 = ungraded) and its corner darkening.
+    grade: 0.7,
+    vignette: 0.2,
+    // Split-tone multipliers for dark and bright pixels.
+    shadowTint: [0.86, 0.96, 1.14],
+    highlightTint: [1.06, 1.01, 0.94],
+    // Contrast around mid-grey (1 = none) and global saturation (1 = none).
+    // Slightly lifted to give depth, clean separation against black space and pop on hull forms.
+    contrast: 1.07,
+    saturation: 1.25,
+    // Extra saturation for muted colours only, so skin-of-paint pops without neon clipping.
+    vibrance: 0.32,
+    // Painted-edge ink and value steps from the retired illustration pass. 0 = clean.
+    ink: 0.08,
+    // Colour of bloom spill: subtle electric blue-white aura.
+    bloomTint: [0.98, 1.01, 1.05],
+    // Corner darkening colour (multiplied in at full vignette): deep cosmic midnight.
+    vignetteTint: [0.01, 0.02, 0.04],
+  },
+  rig: {
+    keyHex: 0xfff0dc, rimHex: 0x4fc8ff, fillHex: 0x5c7cff, ambientHex: 0x27345c,
+    // Darkness (owner, 2026-10-20: "dark, with lonely lights piercing the darkness"). Gains on the
+    // sector's authored ambient and fill intensities. The key stays a hard rake and the rim keeps
+    // silhouettes, so the side a sun does not reach is left for real lamps to find.
+    ambientGain: 0.6,
+    fillGain: 0.5,
+  },
+});
+
+// Ship headlights: real SpotLights from a fixed pool (src/render/headlights.js). A headlight is
+// seen only where it lands on a hull, rock or station; vacuum has nothing to scatter it, so no
+// beam geometry is ever drawn. Material-physics-like: the same lamp in every mood.
+export const LOOK_HEADLIGHT = deepFreeze({
+  colorHex: 0xffe6c4,      // warm sodium-white
+  intensity: 25200,        // calibrated to the previous lamp at a 60 WU reference distance
+  decay: 2.0,              // physical inverse-square response shared by NOCTURNE local lights
+  range: 450,              // WU; hard cutoff of the light
+  angle: 0.46,             // radians, half-angle of the cone (~26°)
+  penumbra: 0.75,          // soft-edged pool, no hard disc
+  height: 20,              // WU above the play plane: a lamp high on the bow, pitched down
+  aimDistance: 105,        // WU ahead of the bow where the beam's axis meets...
+  aimHeight: 0,            // ...this height (the play plane), so the pool lands on what is ahead
+  noseFactor: 0.7,         // bow offset as a share of the entity radius
+  npcReach: 380,           // NPC hulls within this distance of the player may carry a lit lamp
+  npcIntensity: 0.75,      // NPC lamp gain relative to the player's
+  fadeSeconds: 0.35,       // a lamp hand-off fades out and back in, never pops
+});
+
+// Named moods. Only differences from LOOK_BASE.
+export const LOOK_MOODS = deepFreeze({
+  // Helios, core trade space, Tethys: the bright showroom. Base numbers.
+  arcade: {},
+
+  // Frontier / lawless space: dark, magenta against cyan. The cyberpunk end of the dial.
+  neon_noir: {
+    surface: {
+      rockFill: 0.65,
+      albedoSaturation: 1.28,
+      bandMix: 0.26,
+      shadowTint: [0.68, 0.50, 1.16],
+      lightTint: [1.10, 0.98, 1.02],
+      contour: 0.32,
+      coatEnv: 0.70,
+      rim: [1.0, 0.16, 0.72],
+      rimStrength: 0.70,
+      rimPower: 3.2,
+    },
+    post: {
+      shadowTint: [0.88, 0.82, 1.22],
+      grade: 0.9, vignette: 0.26,
+      highlightTint: [1.10, 0.97, 1.02],
+      contrast: 1.08,
+      saturation: 1.28,
+      vibrance: 0.34,
+      ink: 0.12,
+      bloomTint: [1.06, 0.92, 1.10],
+      vignetteTint: [0.05, 0.01, 0.08],
+    },
+    rig: { keyHex: 0xffd9ec, rimHex: 0x19e6ff, fillHex: 0xd24bff, ambientHex: 0x2a1f52,
+      ambientGain: 0.45, fillGain: 0.35 },
+  },
+
+  // Sker Haven: a yard at night under sodium lamps. Amber against deep blue.
+  sodium_yard: {
+    surface: {
+      rockFill: 0.65, // dark moods keep a lower rock floor than the base (neon_noir sits here too)
+      bandMix: 0.26,
+      shadowTint: [0.55, 0.68, 1.18],
+      lightTint: [1.14, 1.0, 0.84],
+      contour: 0.30,
+      rim: [0.16, 0.74, 1.0],
+      rimStrength: 0.65,
+    },
+    post: {
+      shadowTint: [0.80, 0.94, 1.22],
+      grade: 0.85, vignette: 0.24,
+      highlightTint: [1.14, 1.0, 0.84],
+      contrast: 1.07,
+      saturation: 1.26,
+      ink: 0.10,
+      bloomTint: [1.08, 0.98, 0.88],
+      vignetteTint: [0.01, 0.02, 0.06],
+    },
+    rig: { keyHex: 0xffb45e, rimHex: 0x32c8ff, fillHex: 0x3a5cff, ambientHex: 0x1c2a58,
+      ambientGain: 0.45, fillGain: 0.35 },
+  },
+
+  // Vesta Forge: furnace orange against teal. The classic hot/cold split, pushed.
+  forge_heat: {
+    surface: {
+      shadowTint: [0.52, 0.76, 1.02],
+      lightTint: [1.16, 1.0, 0.82],
+      rim: [0.10, 0.86, 0.84],
+      rimStrength: 0.60,
+    },
+    post: {
+      shadowTint: [0.80, 1.0, 1.12],
+      grade: 0.8, vignette: 0.24,
+      highlightTint: [1.16, 1.0, 0.84],
+      contrast: 1.06,
+      bloomTint: [1.10, 0.98, 0.86],
+      vignetteTint: [0.05, 0.01, 0.01],
+    },
+    rig: { keyHex: 0xffc98f, rimHex: 0x2fe0d0, fillHex: 0xd0703a, ambientHex: 0x3a2c34 },
+  },
+
+  // Pallas Drift: ice. Blue-white key, violet edge, steel shadows, the highest gloss.
+  cold_drift: {
+    surface: {
+      albedoSaturation: 1.18,
+      shadowTint: [0.62, 0.68, 1.14],
+      lightTint: [0.96, 1.02, 1.10],
+      coatRoughness: 0.28,
+      coatEnv: 0.68,
+      rim: [0.62, 0.42, 1.0],
+      rimStrength: 0.58,
+    },
+    post: {
+      shadowTint: [0.86, 0.94, 1.18],
+      grade: 0.75, vignette: 0.24,
+      highlightTint: [0.98, 1.02, 1.08],
+      contrast: 1.05,
+      saturation: 1.18,
+      bloomTint: [0.96, 1.02, 1.08],
+      vignetteTint: [0.01, 0.02, 0.05],
+    },
+    rig: { keyHex: 0xd9e6ff, rimHex: 0xa880ff, fillHex: 0x6f9cff, ambientHex: 0x27345c },
+  },
+
+  // Ceres and the belts: gold dust light against slate teal. Working daylight, warmer and rougher.
+  dust_gold: {
+    surface: {
+      shadowTint: [0.58, 0.72, 1.08],
+      lightTint: [1.12, 1.02, 0.88],
+      rim: [0.24, 0.72, 0.92],
+      rimStrength: 0.52,
+    },
+    post: {
+      shadowTint: [0.84, 0.98, 1.12],
+      highlightTint: [1.12, 1.02, 0.88],
+      bloomTint: [1.04, 1.0, 0.94],
+    },
+    rig: { keyHex: 0xffdfae, rimHex: 0x52c4e8, fillHex: 0xb89468, ambientHex: 0x33364e },
+  },
+
+  // The anomaly: wrong-coloured light. Violet key, acid-green edge.
+  void_signal: {
+    surface: {
+      rockFill: 0.65, // dark moods keep a lower rock floor than the base (neon_noir sits here too)
+      albedoSaturation: 1.28,
+      bandMix: 0.28,
+      shadowTint: [0.46, 0.82, 0.80],
+      lightTint: [1.04, 0.96, 1.12],
+      contour: 0.32,
+      rim: [0.22, 1.0, 0.56],
+      rimStrength: 0.72,
+      rimPower: 3.2,
+    },
+    post: {
+      shadowTint: [0.78, 1.04, 1.02],
+      grade: 0.9, vignette: 0.26,
+      highlightTint: [1.06, 0.96, 1.10],
+      contrast: 1.08,
+      saturation: 1.26,
+      vibrance: 0.34,
+      ink: 0.10,
+      bloomTint: [0.96, 1.06, 1.04],
+      vignetteTint: [0.04, 0.01, 0.07],
+    },
+    rig: { keyHex: 0xc8b6ff, rimHex: 0x54ffb0, fillHex: 0x4ddc92, ambientHex: 0x2c2a52,
+      ambientGain: 0.45, fillGain: 0.35 },
+  },
+});
+
+// Emissive gain, applied once when a Forge material is admitted. Light is part of the ship:
+// a nav light or neon strip is a few pixels at the chase camera, and only a source well above
+// the bloom threshold spills far enough to read as a lamp instead of paint. Point lamps and
+// trim get the most. Window rows (`glow_warm`) are many and broad: lifted as hard, a lit
+// liner hides its own hull behind a white haze, so they get just enough to read as lit glass.
+// Keyed by Forge finish first, material role second. This is material physics, so it is the
+// same in every mood.
+export const LOOK_EMISSIVE_GAIN = Object.freeze({
+  finish: Object.freeze({ glow_warm: 1.2, glow_drive: 1.5 }),
+  role: Object.freeze({ signal: 2.2, drive: 1.5 }),
+});
+
+export function resolveLookEmissiveGain(role, forgeFinish) {
+  const finish = String(forgeFinish || '').split('.')[0];
+  if (Object.prototype.hasOwnProperty.call(LOOK_EMISSIVE_GAIN.finish, finish)) return LOOK_EMISSIVE_GAIN.finish[finish];
+  return LOOK_EMISSIVE_GAIN.role[role] || 1;
+}
+
+export const DEFAULT_LOOK_MOOD = 'arcade';
+
+// Which mood a sector visual profile wears (profile ids from sectorVisualProfiles.js).
+// A profile may also name its mood directly with `look: '<mood>'`; that wins.
+export const LOOK_MOOD_BY_PROFILE = deepFreeze({
+  helios_core: 'arcade',
+  core: 'arcade',
+  tethys: 'neon_noir',
+  belt: 'dust_gold',
+  ceres_belt: 'dust_gold',
+  vesta_forge: 'forge_heat',
+  fringe: 'neon_noir',
+  pallas_drift: 'cold_drift',
+  sker_haven: 'sodium_yard',
+  anomaly: 'void_signal',
+});
+
+export function resolveLookMoodId(profile) {
+  const direct = profile && typeof profile.look === 'string' ? profile.look : null;
+  if (direct && Object.prototype.hasOwnProperty.call(LOOK_MOODS, direct)) return direct;
+  const mapped = profile && LOOK_MOOD_BY_PROFILE[profile.id];
+  return mapped && Object.prototype.hasOwnProperty.call(LOOK_MOODS, mapped) ? mapped : DEFAULT_LOOK_MOOD;
+}
+
+/** A mood with every field present: LOOK_BASE overlaid by the named mood. Frozen. */
+const RESOLVED = new Map();
+export function resolveLookMood(id) {
+  const key = Object.prototype.hasOwnProperty.call(LOOK_MOODS, id) ? id : DEFAULT_LOOK_MOOD;
+  let mood = RESOLVED.get(key);
+  if (!mood) {
+    const over = LOOK_MOODS[key];
+    mood = deepFreeze({
+      id: key,
+      surface: { ...LOOK_BASE.surface, ...(over.surface || {}) },
+      post: { ...LOOK_BASE.post, ...(over.post || {}) },
+      rig: { ...LOOK_BASE.rig, ...(over.rig || {}) },
+    });
+    RESOLVED.set(key, mood);
+  }
+  return mood;
+}
+
+/**
+ * The light rig a sector runs: the mood's four colours, with the sector profile's authored
+ * intensities and any explicit per-channel colour override it carries.
+ */
+/**
+ * The post numbers a sector runs: its profile's exposure and bloom shaping, plus the mood's
+ * grade and vignette amounts. A profile that names `grade`/`vignette` itself overrides the mood.
+ */
+const POST_BY_PROFILE = new WeakMap();
+export function resolveLookPost(profile) {
+  if (!profile || typeof profile !== 'object') return null;
+  const cached = POST_BY_PROFILE.get(profile);
+  if (cached) return cached;
+  const mood = resolveLookMood(resolveLookMoodId(profile));
+  const authored = profile.post || {};
+  const post = Object.freeze({
+    ...authored,
+    grade: Number.isFinite(authored.grade) ? authored.grade : mood.post.grade,
+    vignette: Number.isFinite(authored.vignette) ? authored.vignette : mood.post.vignette,
+  });
+  POST_BY_PROFILE.set(profile, post);
+  return post;
+}
+
+const LIGHTING_BY_PROFILE = new WeakMap();
+function gained(value, gain) {
+  return Number.isFinite(value) ? value * (Number.isFinite(gain) ? gain : 1) : value;
+}
+
+export function resolveLookLighting(profile) {
+  // One frozen object per profile: the renderer's transition guard compares rigs by identity.
+  const cached = profile && typeof profile === 'object' ? LIGHTING_BY_PROFILE.get(profile) : null;
+  if (cached) return cached;
+  const mood = resolveLookMood(resolveLookMoodId(profile));
+  const authored = (profile && profile.lighting) || {};
+  const pick = (channel, hex) => (Number.isFinite(authored[channel]) ? authored[channel] : hex);
+  const lighting = Object.freeze({
+    ambient: gained(authored.ambient, mood.rig.ambientGain),
+    key: authored.key,
+    rim: authored.rim,
+    fill: gained(authored.fill, mood.rig.fillGain),
+    keyColor: pick('keyColor', mood.rig.keyHex),
+    rimColor: pick('rimColor', mood.rig.rimHex),
+    fillColor: pick('fillColor', mood.rig.fillHex),
+    ambientColor: pick('ambientColor', mood.rig.ambientHex),
+  });
+  if (profile && typeof profile === 'object') LIGHTING_BY_PROFILE.set(profile, lighting);
+  return lighting;
+}

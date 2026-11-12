@@ -1,0 +1,526 @@
+{
+  "assetId": "ossuary_spine_segment",
+  "category": "ancient",
+  "description": "ossuary spine segment; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -1.5,
+        0.3,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        1.5,
+        0.3,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.34,
+          -0.0
+        ],
+        "size": [
+          3,
+          0.32,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.17,
+          0.32,
+          0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2,
+          0.27,
+          0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.17,
+          0.32,
+          -0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2,
+          0.27,
+          -0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.57,
+          0.3704882590884738,
+          0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.6,
+          0.27,
+          0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.57,
+          0.3704882590884738,
+          -0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.6,
+          0.27,
+          -0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.03,
+          0.37455784560954086,
+          0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.27,
+          0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.03,
+          0.37455784560954086,
+          -0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.27,
+          -0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6299999999999999,
+          0.328467200483592,
+          0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5999999999999999,
+          0.27,
+          0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6299999999999999,
+          0.328467200483592,
+          -0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5999999999999999,
+          0.27,
+          -0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.23,
+          0.27459185028152433,
+          0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.2,
+          0.27,
+          0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.23,
+          0.27459185028152433,
+          -0.71
+        ],
+        "size": [
+          0.43200000000000005,
+          0.2,
+          0.9440000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.2,
+          0.27,
+          -0.23
+        ],
+        "size": [
+          0.22,
+          0.35,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.5,
+      0.0950000137090683,
+      -1.2943480014801025
+    ],
+    "max": [
+      1.5,
+      0.6299999952316284,
+      1.2943480014801025
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ossuary_spine_segment_lod0.glb",
+      "triangles": 6388,
+      "draws": 2,
+      "bytes": 324376,
+      "method": "source",
+      "sha256": "7d679348e23c7a880b541be7af69b046618604eebb32c175060f7eb4c588b46b"
+    },
+    {
+      "level": 1,
+      "file": "ossuary_spine_segment_lod1.glb",
+      "triangles": 6388,
+      "draws": 2,
+      "bytes": 324412,
+      "method": "authored-topology",
+      "sha256": "49d23f3e6224d532ff99e07ea91798084ce3bada82e9476eb17c4967b86c900f"
+    },
+    {
+      "level": 2,
+      "file": "ossuary_spine_segment_lod2.glb",
+      "triangles": 5008,
+      "draws": 2,
+      "bytes": 256228,
+      "method": "authored-topology",
+      "sha256": "a0b70828640881f10a32eb0122b46b5e3c545bd45c699ac610c74fc491f1e44d"
+    }
+  ]
+}

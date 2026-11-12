@@ -1,0 +1,2833 @@
+{
+  "schema": "spaceface.everydaySpaceProps.production.v1",
+  "packet": "PQ-045-PROP-PROMOTION-001",
+  "family": "everyday_space_props",
+  "provenance": {
+    "builderPath": "tools/blender/build_everyday_space_props_production.py",
+    "builderSha256": "0c66875fbe2a2888c1fd52bd56c33ea0d1471f96da153e33de34d19989da9df3",
+    "kitBuilderSha256": "48abd26a0374c9a231b8f765a3c1604029849e07234b20866c97cb95ec9de46f",
+    "blenderVersion": "5.1.2",
+    "selectionAuthority": "design/reference-sector/BINDING_REVIEW_AND_SELECTION_LEDGER.md \u00a74.2"
+  },
+  "assets": [
+    {
+      "id": "cargo_pod_standard",
+      "placeId": "place_cargo_pod_standard",
+      "status": "production_candidate",
+      "role": "Berth-standard 6x3x3 freight pod \u2014 the unit of this economy",
+      "family": "cargo",
+      "placement": "racks, hauler spines, platform decks, customs cradles \u2014 everywhere",
+      "lodTriangles": {
+        "lod0": 168,
+        "lod1": 156,
+        "lod2": 36
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_PaintTeal",
+        "Material_Struct"
+      ],
+      "textureFootprintMB_est": 9.0,
+      "sockets": [
+        "SOCKET_Clamp_Dorsal",
+        "SOCKET_Hoist_Center"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          0.015
+        ],
+        "halfExtentsM": [
+          3.06,
+          1.7,
+          1.615
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        6.12,
+        3.4,
+        3.23
+      ],
+      "bytes": 691088,
+      "sha256": "22387a5122defa854158cfc1351cc087cdf744a200a73d4b4e5e1f8de6eef634",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 168,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 120,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 36,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 3
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 156,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 120,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 24,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [
+            "pod_plate"
+          ],
+          "draw_estimate": 3
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 36,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 24,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [
+            "pod_plate"
+          ],
+          "draw_estimate": 3,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_BareSteel"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "container_rack",
+      "placeId": "place_container_rack",
+      "status": "production_candidate",
+      "role": "six-bay pod rack; the lit green bay says \"space available\"",
+      "family": "cargo",
+      "placement": "station aprons, freight platforms, trade corridors",
+      "lodTriangles": {
+        "lod0": 6600,
+        "lod1": 6528,
+        "lod2": 928
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_LightFlood",
+        "Material_LightNavGreen",
+        "Material_PaintTeal",
+        "Material_Struct",
+        "Material_Tank",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 16.5,
+      "sockets": [
+        "SOCKET_Approach",
+        "SOCKET_Bay_Free"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -0.0,
+          1.78
+        ],
+        "halfExtentsM": [
+          6.7693,
+          4.18,
+          5.85
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        13.539,
+        8.36,
+        11.7
+      ],
+      "bytes": 1972272,
+      "sha256": "549c84672581097048994be6c1c4a65adc25c5bd530c206e5027df16a42ec912",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 6600,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 600,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 48,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightNavGreen",
+              "tris": 100,
+              "material": "Material_LightNavGreen"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintTeal",
+              "tris": 48,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 192,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Tank",
+              "tris": 12,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 5600,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 6528,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 600,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 48,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightNavGreen",
+              "tris": 100,
+              "material": "Material_LightNavGreen"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintTeal",
+              "tris": 48,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 120,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Tank",
+              "tris": 12,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 5600,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "plate",
+            "pod0_plate",
+            "pod1_plate",
+            "pod2_plate",
+            "pod3_plate",
+            "pod4_plate"
+          ],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 928,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Tank",
+              "tris": 12,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 48,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintTeal",
+              "tris": 48,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightNavGreen",
+              "tris": 100,
+              "material": "Material_LightNavGreen"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 120,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 600,
+              "material": "Material_BareSteel"
+            }
+          ],
+          "removed_close_only": [
+            "plate",
+            "pod0_plate",
+            "pod1_plate",
+            "pod2_plate",
+            "pod3_plate",
+            "pod4_plate"
+          ],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "freight_platform",
+      "placeId": "place_freight_platform",
+      "status": "production_candidate",
+      "role": "open freight deck: rack rows, crew cab, flood masts, handed approach",
+      "family": "cargo",
+      "placement": "trade corridors, station aprons; the small-depot answer (hero hubs stay stations)",
+      "lodTriangles": {
+        "lod0": 4152,
+        "lod1": 4116,
+        "lod2": 836
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Cabin",
+        "Material_Deck",
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_LightNavGreen",
+        "Material_LightNavRed",
+        "Material_PaintTeal",
+        "Material_Struct",
+        "Material_Tank",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 19.5,
+      "sockets": [
+        "SOCKET_Approach",
+        "SOCKET_Crane_Mount"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          -0.025,
+          4.1423
+        ],
+        "halfExtentsM": [
+          13.2,
+          7.225,
+          4.9923
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        26.4,
+        14.45,
+        9.985
+      ],
+      "bytes": 2097000,
+      "sha256": "72ef8f4f02d2406d39d6f523dc397db98a166392c241c2f0674b04f7ea5d528f",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 4152,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 360,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Cabin",
+              "tris": 12,
+              "material": "Material_Cabin"
+            },
+            {
+              "name": "LOD0_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 36,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightNavGreen",
+              "tris": 100,
+              "material": "Material_LightNavGreen"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightNavRed",
+              "tris": 100,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintTeal",
+              "tris": 24,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 180,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Tank",
+              "tris": 24,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 3280,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 11
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 4116,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 360,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Cabin",
+              "tris": 12,
+              "material": "Material_Cabin"
+            },
+            {
+              "name": "LOD1_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 36,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightNavGreen",
+              "tris": 100,
+              "material": "Material_LightNavGreen"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightNavRed",
+              "tris": 100,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintTeal",
+              "tris": 24,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 144,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Tank",
+              "tris": 24,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 3280,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "pod0_plate",
+            "pod1_plate",
+            "pod2_plate"
+          ],
+          "draw_estimate": 11
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 836,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Cabin",
+              "tris": 12,
+              "material": "Material_Cabin"
+            },
+            {
+              "name": "LOD2_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintTeal",
+              "tris": 24,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD2_Merged_Material_Tank",
+              "tris": 24,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 36,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightNavGreen",
+              "tris": 100,
+              "material": "Material_LightNavGreen"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightNavRed",
+              "tris": 100,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 144,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 360,
+              "material": "Material_BareSteel"
+            }
+          ],
+          "removed_close_only": [
+            "pod0_plate",
+            "pod1_plate",
+            "pod2_plate"
+          ],
+          "draw_estimate": 11,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "transfer_arm",
+      "placeId": "place_transfer_arm",
+      "status": "production_candidate",
+      "role": "slew-ring cargo crane, two-segment boom, four-finger grapple",
+      "family": "cargo",
+      "placement": "freight platforms, refinery aprons, dock edges \u2014 reach must overlap a rack",
+      "lodTriangles": {
+        "lod0": 1128,
+        "lod1": 1028,
+        "lod2": 308
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_PaintTeal",
+        "Material_Pipe",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 14.25,
+      "sockets": [
+        "SOCKET_Grapple",
+        "SOCKET_Slew_Base"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          6.25,
+          0.0,
+          5.175
+        ],
+        "halfExtentsM": [
+          10.15,
+          2.3,
+          5.225
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        20.3,
+        4.6,
+        10.45
+      ],
+      "bytes": 1236132,
+      "sha256": "8dab3eb3ae34c7dd057add5ad8a46f413845477e8cd4e4a50e7e2614d62e9f42",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 1128,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 80,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 124,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD0_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 140,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 720,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 1028,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 80,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD1_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 140,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 720,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "elbow_strobe"
+          ],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 308,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 80,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 140,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [
+            "elbow_strobe"
+          ],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "radiator_bank",
+      "placeId": "place_radiator_bank",
+      "status": "production_candidate",
+      "role": "six-fin heat rejection bank, cores glowing furnace-amber",
+      "family": "mining",
+      "placement": "shadow side of any process plant; NEVER between a habitat and its view",
+      "lodTriangles": {
+        "lod0": 880,
+        "lod1": 280,
+        "lod2": 184
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_Hazard",
+        "Material_Ore",
+        "Material_Pipe",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 8.25,
+      "sockets": [
+        "SOCKET_Coolant_In"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          2.475
+        ],
+        "halfExtentsM": [
+          8.5,
+          0.8,
+          3.525
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        17.0,
+        1.6,
+        7.05
+      ],
+      "bytes": 1056312,
+      "sha256": "e44f4147c36dff097f8e7ab31ae7fd0bf3359e4871b9427d64a89c5f5e154714",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 880,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 72,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_Ore",
+              "tris": 72,
+              "material": "Material_Ore"
+            },
+            {
+              "name": "LOD0_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 96,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 600,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 280,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 72,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_Ore",
+              "tris": 72,
+              "material": "Material_Ore"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 96,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_Truss"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 184,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 72,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_Ore",
+              "tris": 72,
+              "material": "Material_Ore"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss",
+            "LOD2_Merged_Material_Struct"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "slurry_tank",
+      "placeId": "place_slurry_tank",
+      "status": "production_candidate",
+      "role": "three formed spheres in a hazard-ended cradle + insulated downpipe",
+      "family": "mining",
+      "placement": "refinery process side; pipe-out aims at the next vessel",
+      "lodTriangles": {
+        "lod0": 2368,
+        "lod1": 1180,
+        "lod2": 460
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Hazard",
+        "Material_Insulation",
+        "Material_LightFlood",
+        "Material_PaintOchre",
+        "Material_Pipe",
+        "Material_Struct",
+        "Material_Tank",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 18.0,
+      "sockets": [
+        "SOCKET_Pipe_Out"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.455,
+          0.0,
+          0.02
+        ],
+        "halfExtentsM": [
+          5.595,
+          2.252,
+          2.88
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        11.19,
+        4.504,
+        5.76
+      ],
+      "bytes": 1820352,
+      "sha256": "2a2049b0d81af1facdc9876ecd50c8a73d9b6166abcc3d47d841829702028185",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 2368,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 44,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_Insulation",
+              "tris": 40,
+              "material": "Material_Insulation"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 12,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD0_Merged_Material_Pipe",
+              "tris": 100,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 228,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Tank",
+              "tris": 1188,
+              "material": "Material_Tank"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 720,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 9
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 1180,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 12,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_Insulation",
+              "tris": 40,
+              "material": "Material_Insulation"
+            },
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 44,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Pipe",
+              "tris": 100,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 228,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 720,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 9,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_Tank"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 460,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 12,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_Insulation",
+              "tris": 40,
+              "material": "Material_Insulation"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 44,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_Pipe",
+              "tris": 100,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 228,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 9,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Tank",
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "drill_platform",
+      "placeId": "place_drill_platform",
+      "status": "production_candidate",
+      "role": "anchored seam drill: four outrigger anchors, ring deck, lit bit",
+      "family": "mining",
+      "placement": "ON an asteroid seam \u2014 feet must contact rock; pairs with power_skid via trunk",
+      "lodTriangles": {
+        "lod0": 2008,
+        "lod1": 1896,
+        "lod2": 456
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_LightMining",
+        "Material_PaintOchre",
+        "Material_Scorch",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 15.0,
+      "sockets": [
+        "SOCKET_Drill_Bit",
+        "SOCKET_Power_In"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          -1.63
+        ],
+        "halfExtentsM": [
+          7.35,
+          7.35,
+          5.87
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        14.7,
+        14.7,
+        11.74
+      ],
+      "bytes": 1495960,
+      "sha256": "4d5f93db1414e13e13ab8e54fe56d61d1d9bc5c7e80a12510f9a5eccac62e401",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 2008,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 52,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 48,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 136,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightMining",
+              "tris": 52,
+              "material": "Material_LightMining"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintOchre",
+              "tris": 60,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD0_Merged_Material_Scorch",
+              "tris": 52,
+              "material": "Material_Scorch"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 168,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 1440,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 8
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 1896,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 52,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 48,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightMining",
+              "tris": 52,
+              "material": "Material_LightMining"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintOchre",
+              "tris": 60,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD1_Merged_Material_Scorch",
+              "tris": 52,
+              "material": "Material_Scorch"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 156,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 1440,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "plate",
+            "strobe"
+          ],
+          "draw_estimate": 8
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 456,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 48,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 52,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightMining",
+              "tris": 52,
+              "material": "Material_LightMining"
+            },
+            {
+              "name": "LOD2_Merged_Material_Scorch",
+              "tris": 52,
+              "material": "Material_Scorch"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintOchre",
+              "tris": 60,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 156,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [
+            "plate",
+            "strobe"
+          ],
+          "draw_estimate": 8,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "conveyor_truss",
+      "placeId": "place_conveyor_truss",
+      "status": "production_candidate",
+      "role": "24 m span-gauge bucket conveyor with drive house, part-loaded",
+      "family": "mining",
+      "placement": "crusher/sorter to containers; chains end-to-end (integer bays)",
+      "lodTriangles": {
+        "lod0": 2824,
+        "lod1": 2724,
+        "lod2": 1444
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Deck",
+        "Material_LightFlood",
+        "Material_Ore",
+        "Material_PaintOchre",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 11.25,
+      "sockets": [
+        "SOCKET_Discharge_End",
+        "SOCKET_Feed_End"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.6,
+          -0.8,
+          -1.015
+        ],
+        "halfExtentsM": [
+          13.5,
+          2.3,
+          3.415
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        27.0,
+        4.6,
+        6.83
+      ],
+      "bytes": 1612912,
+      "sha256": "64b0c6050f257e25360f302895fb417b0bf8af4d2b80ae5c3fd7f785d3c667e6",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 2824,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 208,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 112,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_Ore",
+              "tris": 1200,
+              "material": "Material_Ore"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 1280,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 2724,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 208,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 12,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_Ore",
+              "tris": 1200,
+              "material": "Material_Ore"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 1280,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "drive_strobe"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 1444,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 12,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 208,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_Ore",
+              "tris": 1200,
+              "material": "Material_Ore"
+            }
+          ],
+          "removed_close_only": [
+            "drive_strobe"
+          ],
+          "draw_estimate": 6,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "extraction_mast",
+      "placeId": "place_extraction_mast",
+      "status": "production_candidate",
+      "role": "yard mast in extraction fit: three amber floods + claim strobe",
+      "family": "mining",
+      "placement": "worksite perimeter, one per ~40 m of active face",
+      "lodTriangles": {
+        "lod0": 728,
+        "lod1": 248,
+        "lod2": 148
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_LightSignal",
+        "Material_PaintOchre",
+        "Material_Pipe",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 12.0,
+      "sockets": [
+        "SOCKET_Head"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          1.98,
+          0.9828,
+          6.5147
+        ],
+        "halfExtentsM": [
+          2.97,
+          2.0672,
+          6.5453
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        5.94,
+        4.134,
+        13.091
+      ],
+      "bytes": 1073200,
+      "sha256": "07116c678b895edfc52a2d98d9cf85639ebf32a9c35ec1e42cbb249e03f87f79",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 728,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightSignal",
+              "tris": 100,
+              "material": "Material_LightSignal"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD0_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 48,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 480,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 248,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 48,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightSignal",
+              "tris": 100,
+              "material": "Material_LightSignal"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_Truss"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 148,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintOchre",
+              "tris": 12,
+              "material": "Material_PaintOchre"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 48,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss",
+            "LOD2_Merged_Material_LightSignal"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "worklight_tower",
+      "placeId": "place_worklight_tower",
+      "status": "production_candidate",
+      "role": "yard mast in flood fit: three big white-warm heads (work happens here)",
+      "family": "service",
+      "placement": "every active worksite; aim heads AT the work, not at the camera",
+      "lodTriangles": {
+        "lod0": 768,
+        "lod1": 208,
+        "lod2": 108
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_LightSignal",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 8.25,
+      "sockets": [
+        "SOCKET_Head"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          7.91
+        ],
+        "halfExtentsM": [
+          1.5,
+          1.5,
+          7.91
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        3.0,
+        3.0,
+        15.82
+      ],
+      "bytes": 630764,
+      "sha256": "7ae35faf9a5459b6cb8207acfc03dcf8ed1ba12246038f153c0aa643513f9961",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 768,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightSignal",
+              "tris": 100,
+              "material": "Material_LightSignal"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 60,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 560,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 208,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 60,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightSignal",
+              "tris": 100,
+              "material": "Material_LightSignal"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_Truss"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 108,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 60,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss",
+            "LOD2_Merged_Material_LightSignal"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "transponder_gate",
+      "placeId": "place_transponder_gate",
+      "status": "production_candidate",
+      "role": "lane gate: green pass pods on the crossbeam, red hold edges, white crest",
+      "family": "law",
+      "placement": "across a lane; approach face is +X (lenses face the incoming pilot)",
+      "lodTriangles": {
+        "lod0": 1916,
+        "lod1": 156,
+        "lod2": 96
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_LightNavRed",
+        "Material_PaintNavy",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 11.25,
+      "sockets": [
+        "SOCKET_Lane_Center"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          6.579
+        ],
+        "halfExtentsM": [
+          1.2,
+          11.2,
+          6.621
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        2.4,
+        22.4,
+        13.242
+      ],
+      "bytes": 1049908,
+      "sha256": "e01e355ceeb072e061c3015bd179dfe0c8d90e6df0b472018d880412f1e2dbd7",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 1916,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightNavRed",
+              "tris": 24,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintNavy",
+              "tris": 60,
+              "material": "Material_PaintNavy"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 12,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 1760,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 156,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 12,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightNavRed",
+              "tris": 24,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintNavy",
+              "tris": 60,
+              "material": "Material_PaintNavy"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_Truss"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 96,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 12,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightNavRed",
+              "tris": 24,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 36,
+              "material": "Material_LightFlood"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss",
+            "LOD2_Merged_Material_PaintNavy"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "interdiction_buoy",
+      "placeId": "place_interdiction_buoy",
+      "status": "production_candidate",
+      "role": "interdiction buoy: spiked bicone that reads THREAT, not guidance",
+      "family": "law",
+      "placement": "closed lanes, exclusion rings, impound perimeters \u2014 in the flight path",
+      "lodTriangles": {
+        "lod0": 646,
+        "lod1": 430,
+        "lod2": 230
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Hazard",
+        "Material_LightAuthority",
+        "Material_LightNavRed",
+        "Material_Ore"
+      ],
+      "textureFootprintMB_est": 6.0,
+      "sockets": [
+        "SOCKET_Field_Emitter"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.0,
+          0.0,
+          0.27
+        ],
+        "halfExtentsM": [
+          3.7,
+          3.2138,
+          2.47
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        7.4,
+        6.428,
+        4.94
+      ],
+      "bytes": 950960,
+      "sha256": "11b8a9a838fc0467ef5dcf20dca3bf5f548fe7764bab27234debfb7d40111153",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 646,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 216,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 52,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightAuthority",
+              "tris": 100,
+              "material": "Material_LightAuthority"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightNavRed",
+              "tris": 200,
+              "material": "Material_LightNavRed"
+            },
+            {
+              "name": "LOD0_Merged_Material_Ore",
+              "tris": 78,
+              "material": "Material_Ore"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 430,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 52,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_Ore",
+              "tris": 78,
+              "material": "Material_Ore"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightAuthority",
+              "tris": 100,
+              "material": "Material_LightAuthority"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightNavRed",
+              "tris": 200,
+              "material": "Material_LightNavRed"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_BareSteel"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 230,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 52,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_Ore",
+              "tris": 78,
+              "material": "Material_Ore"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightAuthority",
+              "tris": 100,
+              "material": "Material_LightAuthority"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 5,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_BareSteel",
+            "LOD2_Merged_Material_LightNavRed"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "sensor_mast",
+      "placeId": "place_sensor_mast",
+      "status": "production_candidate",
+      "role": "listening mast: one big + two small dishes and a signals drum",
+      "family": "law",
+      "placement": "checkpoint flanks, border sectors; big dish aims along the watched lane",
+      "lodTriangles": {
+        "lod0": 1248,
+        "lod1": 768,
+        "lod2": 468
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Hazard",
+        "Material_LightAuthority",
+        "Material_PaintNavy",
+        "Material_Pipe",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 14.25,
+      "sockets": [
+        "SOCKET_Listen"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          1.655,
+          0.2,
+          6.6347
+        ],
+        "halfExtentsM": [
+          2.645,
+          2.0,
+          6.6653
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        5.29,
+        4.0,
+        13.331
+      ],
+      "bytes": 1233972,
+      "sha256": "42fc1350ca68f7a7d9a6a315d23e315f93b7d1d685307071ccb336b69c592d04",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 1248,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 300,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightAuthority",
+              "tris": 100,
+              "material": "Material_LightAuthority"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintNavy",
+              "tris": 24,
+              "material": "Material_PaintNavy"
+            },
+            {
+              "name": "LOD0_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 292,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 480,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 768,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintNavy",
+              "tris": 24,
+              "material": "Material_PaintNavy"
+            },
+            {
+              "name": "LOD1_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightAuthority",
+              "tris": 100,
+              "material": "Material_LightAuthority"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 292,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 300,
+              "material": "Material_BareSteel"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_Truss"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 468,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 12,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintNavy",
+              "tris": 24,
+              "material": "Material_PaintNavy"
+            },
+            {
+              "name": "LOD2_Merged_Material_Pipe",
+              "tris": 40,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightAuthority",
+              "tris": 100,
+              "material": "Material_LightAuthority"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 292,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss",
+            "LOD2_Merged_Material_BareSteel"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "scrap_cage",
+      "placeId": "place_scrap_cage",
+      "status": "production_candidate",
+      "role": "scrap holding cage, crushed hull chunks inside, gate swung open",
+      "family": "salvage",
+      "placement": "shipbreaking yards, black-market aprons; gate faces the work",
+      "lodTriangles": {
+        "lod0": 588,
+        "lod1": 96,
+        "lod2": 72
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Deck",
+        "Material_LightHooded",
+        "Material_PaintRust",
+        "Material_Scorch",
+        "Material_Struct"
+      ],
+      "textureFootprintMB_est": 11.25,
+      "sockets": [
+        "SOCKET_Gate"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          -0.8365,
+          0.09,
+          0.0981
+        ],
+        "halfExtentsM": [
+          5.5365,
+          3.11,
+          2.8519
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        11.073,
+        6.22,
+        5.704
+      ],
+      "bytes": 1029640,
+      "sha256": "64196553d82979b7fdd247008a0e361de9c901718fd99f4540504023d0b02017",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 588,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 24,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightHooded",
+              "tris": 12,
+              "material": "Material_LightHooded"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintRust",
+              "tris": 492,
+              "material": "Material_PaintRust"
+            },
+            {
+              "name": "LOD0_Merged_Material_Scorch",
+              "tris": 24,
+              "material": "Material_Scorch"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 24,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 96,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightHooded",
+              "tris": 12,
+              "material": "Material_LightHooded"
+            },
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 24,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Scorch",
+              "tris": 24,
+              "material": "Material_Scorch"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 24,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD1_Merged_Material_PaintRust"
+          ]
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 72,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Deck",
+              "tris": 12,
+              "material": "Material_Deck"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightHooded",
+              "tris": 12,
+              "material": "Material_LightHooded"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 24,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_Scorch",
+              "tris": 24,
+              "material": "Material_Scorch"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_PaintRust",
+            "LOD2_Merged_Material_Struct"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "improvised_dock",
+      "placeId": "place_improvised_dock",
+      "status": "production_candidate",
+      "role": "cobbled dock: pod-turned-shack, two-gauge scavenged arm, dim red window",
+      "family": "salvage",
+      "placement": "pirate coves, unlicensed claims, anywhere authority is not",
+      "lodTriangles": {
+        "lod0": 876,
+        "lod1": 852,
+        "lod2": 572
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_LightHooded",
+        "Material_PaintRust",
+        "Material_PaintTeal",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 15.75,
+      "sockets": [
+        "SOCKET_Berth"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          1.52,
+          4.5297,
+          0.6265
+        ],
+        "halfExtentsM": [
+          4.58,
+          6.2297,
+          2.2265
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        9.16,
+        12.459,
+        4.453
+      ],
+      "bytes": 1365540,
+      "sha256": "2266e6b455361c6d66cf885c959c5b3958634041189f51bab57204326d6c8430",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 876,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 224,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightHooded",
+              "tris": 24,
+              "material": "Material_LightHooded"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintRust",
+              "tris": 240,
+              "material": "Material_PaintRust"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 96,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 280,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 852,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 212,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightHooded",
+              "tris": 24,
+              "material": "Material_LightHooded"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintRust",
+              "tris": 240,
+              "material": "Material_PaintRust"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 84,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 280,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "hookplate",
+            "shack_plate"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 572,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_PaintTeal",
+              "tris": 12,
+              "material": "Material_PaintTeal"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightHooded",
+              "tris": 24,
+              "material": "Material_LightHooded"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 84,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 212,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintRust",
+              "tris": 240,
+              "material": "Material_PaintRust"
+            }
+          ],
+          "removed_close_only": [
+            "hookplate",
+            "shack_plate"
+          ],
+          "draw_estimate": 6,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    },
+    {
+      "id": "maintenance_gantry",
+      "placeId": "place_maintenance_gantry",
+      "status": "production_candidate",
+      "role": "portal gantry a small hull parks under: trolley hoist + tool booms",
+      "family": "service",
+      "placement": "repair yards, construction sites; berth socket is the client position",
+      "lodTriangles": {
+        "lod0": 1716,
+        "lod1": 1692,
+        "lod2": 172
+      },
+      "lodStrictlyReducing": true,
+      "materials": [
+        "Material_BareSteel",
+        "Material_Hazard",
+        "Material_LightFlood",
+        "Material_PaintService",
+        "Material_Pipe",
+        "Material_Struct",
+        "Material_Truss"
+      ],
+      "textureFootprintMB_est": 14.25,
+      "sockets": [
+        "SOCKET_Berth",
+        "SOCKET_Hook"
+      ],
+      "collision": {
+        "kind": "box",
+        "centerM": [
+          0.45,
+          0.0,
+          5.3144
+        ],
+        "halfExtentsM": [
+          2.0,
+          10.05,
+          5.3556
+        ],
+        "source": "evaluated_lod0_vertices"
+      },
+      "sizeM": [
+        4.0,
+        20.1,
+        10.711
+      ],
+      "bytes": 1291500,
+      "sha256": "62e3e9152346ceb9e40eb7def717b46a0ae21077d96e9023481cea9e7b7651ce",
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "ratio": 1.0,
+          "triangles": 1716,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_BareSteel",
+              "tris": 44,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD0_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD0_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD0_Merged_Material_PaintService",
+              "tris": 24,
+              "material": "Material_PaintService"
+            },
+            {
+              "name": "LOD0_Merged_Material_Pipe",
+              "tris": 20,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD0_Merged_Material_Struct",
+              "tris": 60,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD0_Merged_Material_Truss",
+              "tris": 1520,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "ratio": 0.4,
+          "triangles": 1692,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_BareSteel",
+              "tris": 32,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD1_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD1_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD1_Merged_Material_PaintService",
+              "tris": 24,
+              "material": "Material_PaintService"
+            },
+            {
+              "name": "LOD1_Merged_Material_Pipe",
+              "tris": 20,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD1_Merged_Material_Struct",
+              "tris": 48,
+              "material": "Material_Struct"
+            },
+            {
+              "name": "LOD1_Merged_Material_Truss",
+              "tris": 1520,
+              "material": "Material_Truss"
+            }
+          ],
+          "removed_close_only": [
+            "ladder",
+            "plate"
+          ],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod2",
+          "ratio": 0.16,
+          "triangles": 172,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Pipe",
+              "tris": 20,
+              "material": "Material_Pipe"
+            },
+            {
+              "name": "LOD2_Merged_Material_Hazard",
+              "tris": 24,
+              "material": "Material_Hazard"
+            },
+            {
+              "name": "LOD2_Merged_Material_LightFlood",
+              "tris": 24,
+              "material": "Material_LightFlood"
+            },
+            {
+              "name": "LOD2_Merged_Material_PaintService",
+              "tris": 24,
+              "material": "Material_PaintService"
+            },
+            {
+              "name": "LOD2_Merged_Material_BareSteel",
+              "tris": 32,
+              "material": "Material_BareSteel"
+            },
+            {
+              "name": "LOD2_Merged_Material_Struct",
+              "tris": 48,
+              "material": "Material_Struct"
+            }
+          ],
+          "removed_close_only": [
+            "ladder",
+            "plate"
+          ],
+          "draw_estimate": 7,
+          "forcedReduction": true,
+          "droppedMeshes": [
+            "LOD2_Merged_Material_Truss"
+          ]
+        }
+      ],
+      "gameplayDistanceNote": "Not rendered this run; silhouette designed for 90\u2013140 WU camera band."
+    }
+  ]
+}

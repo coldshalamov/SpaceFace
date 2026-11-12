@@ -1,0 +1,32 @@
+floor round 0: median=13.282 min=11.974 beforeUs=7.978 wake=true
+floor round 1: median=12.958 min=8.311 beforeUs=7.711 wake=true
+floor round 2: median=12.615 min=11.89 beforeUs=7.768 wake=true
+floor round 3: median=13.216 min=11.54 beforeUs=7.694 wake=true
+floor round 4: median=12.401 min=11.244 beforeUs=7.627 wake=true
+{
+  "rounds": 5,
+  "medians": [
+    13.282,
+    12.958,
+    12.615,
+    13.216,
+    12.401
+  ],
+  "mins": [
+    11.974,
+    8.311,
+    11.89,
+    11.54,
+    11.244
+  ],
+  "floorMin": 8.311,
+  "floorMedianOfMedians": 12.958,
+  "absBeforeUs": [
+    7.978,
+    7.711,
+    7.768,
+    7.694,
+    7.627
+  ],
+  "dirtyWakeOk": true
+}

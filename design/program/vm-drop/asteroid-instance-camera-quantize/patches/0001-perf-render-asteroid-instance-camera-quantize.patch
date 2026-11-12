@@ -1,0 +1,264 @@
+From aa1322c4194c2b04405d25d80243001f9f98b654 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:29:02 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quantize=20asteroid=20instance?=
+ =?UTF-8?q?=20camera=20cull=20dirty=20(~3.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet chase follow damping moved the camera every frame by <<1 WU, so
+exact cameraStateChanged in syncAsteroidInstancePool marked cameraDirty
+continuously and forced every registered rock through frustum +
+matrixWorld evaluate. Quantize translation to 0.25 WU and basis/projection
+to 1e-3 (same contract as authored-instance #53). Soft-GPU fps not claimed.
+---
+ src/render/asteroidInstancePool.js            | 130 +++++++++++++++++-
+ ...asteroid-instance-camera-quantize.test.mjs |  70 ++++++++++
+ 2 files changed, 197 insertions(+), 3 deletions(-)
+ create mode 100644 test/asteroid-instance-camera-quantize.test.mjs
+
+diff --git a/src/render/asteroidInstancePool.js b/src/render/asteroidInstancePool.js
+index cbeb964fe..17b251503 100644
+--- a/src/render/asteroidInstancePool.js
++++ b/src/render/asteroidInstancePool.js
+@@ -558,6 +558,35 @@ function prepareFrustum(camera, projection, frustum) {
+   return true;
+ }
+ 
++// Chase follow damping moves the camera every frame by <<1 WU. Exact matrix equality
++// marked cameraDirty continuously, forcing every registered rock through frustum +
++// matrixWorld evaluate under prepareFrame → syncAsteroidInstancePool. Quantize
++// translation to 0.25 WU and basis/projection to 1e-3 (same contract as authored
++// instance cull #53) so quiet micro-moves reuse the static submission path; real
++// pans/zooms still dirty. Soft-GPU fps not claimed.
++const ASTEROID_CAMERA_CULL_POS_QUANT_WU = 0.25;
++const ASTEROID_CAMERA_CULL_BASIS_EPS = 1e-3;
++// Bench-only: force exact matrix compare (pre-quantize residual).
++let _asteroidCameraCullExactCompare = false;
++export function setAsteroidInstanceCameraCullExactCompare(enabled) {
++  _asteroidCameraCullExactCompare = enabled === true;
++  return _asteroidCameraCullExactCompare;
++}
++export function getAsteroidInstanceCameraCullExactCompare() {
++  return _asteroidCameraCullExactCompare === true;
++}
++
++function quantizeAsteroidCullCameraValue(value, kind, matrixIndex = -1) {
++  const n = Number(value) || 0;
++  if (kind === 'pos') {
++    return Math.round(n / ASTEROID_CAMERA_CULL_POS_QUANT_WU) * ASTEROID_CAMERA_CULL_POS_QUANT_WU;
++  }
++  if (kind === 'world' && (matrixIndex === 12 || matrixIndex === 13 || matrixIndex === 14)) {
++    return Math.round(n / ASTEROID_CAMERA_CULL_POS_QUANT_WU) * ASTEROID_CAMERA_CULL_POS_QUANT_WU;
++  }
++  return Math.round(n / ASTEROID_CAMERA_CULL_BASIS_EPS) * ASTEROID_CAMERA_CULL_BASIS_EPS;
++}
++
+ function createCameraState() {
+   return { initialized: false, present: false, values: new Float64Array(45) };
+ }
+@@ -588,6 +617,7 @@ function cameraStateChanged(camera, state) {
+   const world = camera.matrixWorld && camera.matrixWorld.elements;
+   const projection = camera.projectionMatrix && camera.projectionMatrix.elements;
+   const values = state.values;
++  const exact = _asteroidCameraCullExactCompare;
+   for (let index = 0; index < 13; index++) {
+     let raw = 0;
+     switch (index) {
+@@ -606,19 +636,113 @@ function cameraStateChanged(camera, state) {
+       case 12: raw = camera.zoom; break;
+       default: break;
+     }
+-    const value = Number(raw) || 0;
++    const kind = index <= 2 ? 'pos' : 'basis';
++    const value = exact ? (Number(raw) || 0) : quantizeAsteroidCullCameraValue(raw, kind);
+     if (values[index] !== value) changed = true;
+     values[index] = value;
+   }
+   for (let index = 0; index < 16; index++) {
+-    const value = world ? Number(world[index]) || 0 : 0;
++    const raw = world ? Number(world[index]) || 0 : 0;
++    const value = exact ? raw : quantizeAsteroidCullCameraValue(raw, 'world', index);
+     if (values[index + 13] !== value) changed = true;
+     values[index + 13] = value;
+   }
+   for (let index = 0; index < 16; index++) {
+-    const value = projection ? Number(projection[index]) || 0 : 0;
++    const raw = projection ? Number(projection[index]) || 0 : 0;
++    const value = exact ? raw : quantizeAsteroidCullCameraValue(raw, 'basis');
+     if (values[index + 29] !== value) changed = true;
+     values[index + 29] = value;
+   }
+   return changed;
+ }
++
++/**
++ * Portable microbench harness for asteroid-instance camera cull quantize.
++ * Soft-GPU fps not claimed. exactCameraDirty=true restores pre-quantize residual.
++ */
++export function runAsteroidInstanceCameraDirtyMicrobench(options = {}) {
++  const rockCount = Math.max(2, Math.floor(Number(options.rockCount) || 80));
++  const frames = Math.max(10, Math.floor(Number(options.frames) || 2000));
++  const jitterWu = Number.isFinite(Number(options.jitterWu)) ? Number(options.jitterWu) : 0.05;
++  const exact = options.exactCameraDirty === true;
++  const scene = new THREE.Scene();
++  const pool = createAsteroidInstancePool(scene);
++  const geometries = new Array(ASTEROID_INSTANCE_VARIANT_COUNT);
++  for (let v = 0; v < ASTEROID_INSTANCE_VARIANT_COUNT; v++) {
++    geometries[v] = new THREE.IcosahedronGeometry(1, 1);
++  }
++  const material = new THREE.MeshStandardMaterial({ color: 0x4a4540 });
++  const roots = [];
++  for (let id = 1; id <= rockCount; id++) {
++    const variant = id % ASTEROID_INSTANCE_VARIANT_COUNT;
++    const root = new THREE.Group();
++    root.position.set((id % 20) * 40, 0, Math.floor(id / 20) * 40);
++    const leaf = new THREE.Mesh(geometries[variant], material);
++    leaf.scale.setScalar(8);
++    leaf.userData.asteroidInstanceTypeId = ASTEROID_INSTANCE_TYPE_ID;
++    leaf.userData.asteroidInstanceVariant = variant;
++    root.userData.asteroidInstanceBody = leaf;
++    root.add(leaf);
++    scene.add(root);
++    roots.push(root);
++    registerAsteroidBaseLeaf(pool, { id, type: 'asteroid' }, root);
++  }
++  const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 8000);
++  camera.position.set(0, 120, 180);
++  camera.lookAt(0, 0, 0);
++  camera.updateMatrixWorld(true);
++  camera.updateProjectionMatrix();
++  const shadowCamera = new THREE.OrthographicCamera(-400, 400, 400, -400, 0.1, 4000);
++  shadowCamera.position.set(80, 200, 80);
++  shadowCamera.lookAt(0, 0, 0);
++  shadowCamera.updateMatrixWorld(true);
++  shadowCamera.updateProjectionMatrix();
++
++  const priorExact = _asteroidCameraCullExactCompare;
++  _asteroidCameraCullExactCompare = exact;
++  try {
++    pool.cameraState.view.initialized = false;
++    pool.cameraState.view.values.fill(0);
++    pool.cameraState.shadow.initialized = false;
++    pool.cameraState.shadow.values.fill(0);
++    pool.dirty = true;
++    syncAsteroidInstancePool(pool, { camera, shadowCamera, recordsDirty: false });
++    pool.dirty = false;
++
++    let dirtyFrames = 0;
++    let matrixEvals = 0;
++    let matrixReuses = 0;
++    const t0 = performance.now();
++    for (let f = 0; f < frames; f++) {
++      camera.position.x += jitterWu * Math.sin(f * 0.17);
++      camera.position.z += jitterWu * 0.5 * Math.cos(f * 0.13);
++      camera.updateMatrixWorld(true);
++      // Capture pre-sync dirty via a probe: reset initialized false would cheat. Instead
++      // compare cameraState after sync — if reuse path, matrixEvaluations stay 0.
++      const beforeEvals = pool.stats.matrixEvaluations;
++      const stats = syncAsteroidInstancePool(pool, { camera, shadowCamera, recordsDirty: false });
++      const evals = (stats && stats.matrixEvaluations | 0) - (beforeEvals | 0);
++      // stats.matrixEvaluations is absolute counter reset each sync — read directly.
++      if ((stats.matrixEvaluations | 0) > 0) dirtyFrames++;
++      matrixEvals += stats.matrixEvaluations | 0;
++      matrixReuses += stats.matrixReuses | 0;
++    }
++    const ms = performance.now() - t0;
++    return {
++      rockCount,
++      frames,
++      jitterWu,
++      exact,
++      ms,
++      dirtyFrames,
++      dirtyRate: dirtyFrames / frames,
++      matrixEvals,
++      matrixReuses,
++    };
++  } finally {
++    _asteroidCameraCullExactCompare = priorExact;
++    disposeAsteroidInstancePool(pool);
++    for (const g of geometries) g.dispose();
++    material.dispose();
++  }
++}
+diff --git a/test/asteroid-instance-camera-quantize.test.mjs b/test/asteroid-instance-camera-quantize.test.mjs
+new file mode 100644
+index 000000000..fab379aaf
+--- /dev/null
++++ b/test/asteroid-instance-camera-quantize.test.mjs
+@@ -0,0 +1,70 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import * as THREE from 'three';
++import {
++  ASTEROID_INSTANCE_TYPE_ID,
++  ASTEROID_INSTANCE_VARIANT_COUNT,
++  createAsteroidInstancePool,
++  disposeAsteroidInstancePool,
++  registerAsteroidBaseLeaf,
++  runAsteroidInstanceCameraDirtyMicrobench,
++  setAsteroidInstanceCameraCullExactCompare,
++  syncAsteroidInstancePool,
++} from '../src/render/asteroidInstancePool.js';
++
++test('asteroid camera cull quantize reuses static path under micro jitter', () => {
++  setAsteroidInstanceCameraCullExactCompare(false);
++  const scene = new THREE.Scene();
++  const pool = createAsteroidInstancePool(scene);
++  const geometry = new THREE.IcosahedronGeometry(1, 1);
++  const material = new THREE.MeshStandardMaterial();
++  for (let id = 1; id <= 12; id++) {
++    const variant = id % ASTEROID_INSTANCE_VARIANT_COUNT;
++    const root = new THREE.Group();
++    root.position.set(id * 8, 0, -id * 4);
++    const leaf = new THREE.Mesh(geometry, material);
++    leaf.userData.asteroidInstanceTypeId = ASTEROID_INSTANCE_TYPE_ID;
++    leaf.userData.asteroidInstanceVariant = variant;
++    root.userData.asteroidInstanceBody = leaf;
++    root.add(leaf);
++    scene.add(root);
++    assert.equal(registerAsteroidBaseLeaf(pool, { id, type: 'asteroid' }, root), true);
++  }
++  const camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 8000);
++  camera.position.set(0, 100, 160);
++  camera.lookAt(0, 0, 0);
++  camera.updateMatrixWorld(true);
++  camera.updateProjectionMatrix();
++  pool.dirty = true;
++  assert.ok(syncAsteroidInstancePool(pool, { camera, recordsDirty: false }).submitted > 0);
++  pool.dirty = false;
++
++  camera.position.x += 0.05;
++  camera.position.z += 0.03;
++  camera.updateMatrixWorld(true);
++  const micro = syncAsteroidInstancePool(pool, { camera, recordsDirty: false });
++  assert.equal(micro.matrixEvaluations, 0, '0.05 WU drift stays in 0.25 WU cell → reuse');
++  assert.ok(micro.matrixReuses > 0);
++
++  camera.position.x += 2.0;
++  camera.updateMatrixWorld(true);
++  const large = syncAsteroidInstancePool(pool, { camera, recordsDirty: false });
++  assert.ok(large.matrixEvaluations > 0, '2 WU pan dirties cull and re-evaluates');
++
++  disposeAsteroidInstancePool(pool);
++  geometry.dispose();
++  material.dispose();
++});
++
++test('asteroid camera cull exact bench toggle restores always-dirty micro jitter', () => {
++  const exact = runAsteroidInstanceCameraDirtyMicrobench({
++    rockCount: 20, frames: 200, jitterWu: 0.05, exactCameraDirty: true,
++  });
++  const quant = runAsteroidInstanceCameraDirtyMicrobench({
++    rockCount: 20, frames: 200, jitterWu: 0.05, exactCameraDirty: false,
++  });
++  assert.equal(exact.dirtyRate, 1);
++  assert.ok(quant.dirtyRate < 0.5, `quantize dirtyRate ${quant.dirtyRate}`);
++  assert.ok(exact.ms > quant.ms * 1.3, `exact ${exact.ms} should beat quant ${quant.ms}`);
++  setAsteroidInstanceCameraCullExactCompare(false);
++});
+-- 
+2.47.3
+

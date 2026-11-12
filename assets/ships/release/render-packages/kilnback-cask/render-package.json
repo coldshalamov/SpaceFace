@@ -1,0 +1,1203 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.kilnback-cask.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.30000001192092896,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.30000001192092896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.anchor.socket-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.kilnback-cask",
+  "collisions": [
+    {
+      "id": "sf.render.kilnback-cask.node.collision-kilnback-cask-cask.collision",
+      "nodeId": "sf.render.kilnback-cask.node.collision-kilnback-cask-cask",
+      "reference": "COLLISION_KILNBACK_CASK_CASK"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "8b36055c0759bd0b978df33ed1ac3bf228e28445f74b476d8ce97eae1fdab8fa",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.500286340713501,
+          1.5178554220770328,
+          1.5182827161644639
+        ],
+        "min": [
+          -3.500286340713501,
+          -1.5178554220770328,
+          -1.5182827161644639
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dddf9bf23c10665f50f5c12148ca182528089d6577504e4e7a0740c6cf50c20a",
+      "id": "sf.render.kilnback-cask.node.collision-kilnback-cask-cask.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_KILNBACK_CASK_CASK",
+      "nodeId": "sf.render.kilnback-cask.node.collision-kilnback-cask-cask",
+      "primitiveIndex": 0,
+      "vertexCount": 842
+    },
+    {
+      "bounds": {
+        "max": [
+          2.880000114440918,
+          1.5200269166887794,
+          1.5200269166887794
+        ],
+        "min": [
+          -2.880000114440918,
+          -1.5200269166887794,
+          -1.5200269166887794
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d715e7d675efece4d857cac645bea55d956a57564e894093bf2bdac5ff2fe0f",
+      "id": "sf.render.kilnback-cask.node.lod0-armor.primitive.0",
+      "indexCount": 3432,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.kilnback-cask.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1088
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5,
+          1.499786370433668,
+          1.499786370433668
+        ],
+        "min": [
+          -3.5,
+          -1.499786370433668,
+          -1.499786370433668
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6fdf5d3459db281ead36b4c86f8204d51cbe7c8095746cde0c656a8aa79eeba",
+      "id": "sf.render.kilnback-cask.node.lod0-ceramic.primitive.0",
+      "indexCount": 2580,
+      "indexed": true,
+      "materialHash": "00092562ffc834fd4cbecefad65bf86983e37a2f35810b0a4b88bb89e2e8e678",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Ceramic",
+      "nodeId": "sf.render.kilnback-cask.node.lod0-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 680
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9750000238418579,
+          1.5674962142267128,
+          0.06998504764171422
+        ],
+        "min": [
+          -0.9750000238418579,
+          1.5325036904058555,
+          -0.06998504764171422
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "327d06826e010a57fc28cd2c160c8c5801e2c61183c7a80908e20bf983487055",
+      "id": "sf.render.kilnback-cask.node.lod0-lights-cyan.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "9fe725acc1b7a8daa90d7bc110cc91c62f12ef3445d00ffcf6500648fcb5d104",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.kilnback-cask.node.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7799999713897705,
+          1.5201891991138008,
+          1.5201891991138008
+        ],
+        "min": [
+          -2.7799999713897705,
+          -1.5201891991138008,
+          -1.5201891991138008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "adde78fa60c730d47e653499ee795eddd7b83f74bc9a83df36352f4a6f317557",
+      "id": "sf.render.kilnback-cask.node.lod0-livery.primitive.0",
+      "indexCount": 384,
+      "indexed": true,
+      "materialHash": "6241932292a392647f613f9c31edce8a9370737788d64800f19d9ed0f5207ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.kilnback-cask.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          3.6500000953674316,
+          1.5350056464720492,
+          0.21994995613190116
+        ],
+        "min": [
+          -1.2000000476837158,
+          -0.22000554454810672,
+          -0.21994995613190116
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5499d5817b44759a9c96188a3f2e1affc314f6b3454d644127d5f5c2e6139e21",
+      "id": "sf.render.kilnback-cask.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 1512,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.kilnback-cask.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 496
+    }
+  ],
+  "hlods": [],
+  "kind": "prop",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "00092562ffc834fd4cbecefad65bf86983e37a2f35810b0a4b88bb89e2e8e678",
+      "id": "material:00092562ffc834fd4cbecefa",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6241932292a392647f613f9c31edce8a9370737788d64800f19d9ed0f5207ec3",
+      "id": "material:6241932292a392647f613f9c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9fe725acc1b7a8daa90d7bc110cc91c62f12ef3445d00ffcf6500648fcb5d104",
+      "id": "material:9fe725acc1b7a8daa90d7bc1",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "id": "material:dd561c3542e7148a59592c48",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "id": "material:ee853317e7d398ff08adab58",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.kilnback-cask.node.collision-kilnback-cask-cask",
+      "localTransform": [
+        3.500286340713501,
+        0,
+        0,
+        0,
+        0,
+        3.500286340713501,
+        0,
+        0,
+        0,
+        0,
+        3.500286340713501,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_KILNBACK_CASK_CASK",
+      "nodeName": "COLLISION_KILNBACK_CASK_CASK",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        3.500286340713501,
+        0,
+        0,
+        0,
+        0,
+        3.500286340713501,
+        0,
+        0,
+        0,
+        0,
+        3.500286340713501,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.lod0-armor",
+      "localTransform": [
+        2.880000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.880000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.880000114440918,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        2.880000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.880000114440918,
+        0,
+        0,
+        0,
+        0,
+        2.880000114440918,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.lod0-ceramic",
+      "localTransform": [
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Ceramic",
+      "nodeName": "LOD0_Ceramic",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        3.5,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.lod0-lights-cyan",
+      "localTransform": [
+        0.9750000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.9750000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.9750000238418579,
+        0,
+        0,
+        1.5499999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        0.9750000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.9750000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.9750000238418579,
+        0,
+        0,
+        1.5499999523162842,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.lod0-livery",
+      "localTransform": [
+        2.7799999713897705,
+        0,
+        0,
+        0,
+        0,
+        2.7799999713897705,
+        0,
+        0,
+        0,
+        0,
+        2.7799999713897705,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        2.7799999713897705,
+        0,
+        0,
+        0,
+        0,
+        2.7799999713897705,
+        0,
+        0,
+        0,
+        0,
+        2.7799999713897705,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.lod0-mechanicaldark",
+      "localTransform": [
+        2.4250000715255737,
+        0,
+        0,
+        0,
+        0,
+        2.4250000715255737,
+        0,
+        0,
+        0,
+        0,
+        2.4250000715255737,
+        0,
+        1.225000023841858,
+        0.6575000509619713,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        2.4250000715255737,
+        0,
+        0,
+        0,
+        0,
+        2.4250000715255737,
+        0,
+        0,
+        0,
+        0,
+        2.4250000715255737,
+        0,
+        1.225000023841858,
+        0.6575000509619713,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PROP_KILNBACK_CASK_ROOT",
+      "nodeName": "SF_PROP_KILNBACK_CASK_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.30000001192092896,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.30000001192092896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-cask.node.socket-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Massline",
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-cask.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.399999976158142,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "ae189379517404b97c1f3e24141ec6cd4be010a0c0b72c3a6d38524e01b4df15"
+    },
+    "sourceGlb": {
+      "bytes": 354424,
+      "sha256": "c180f3923bb305e1955a7b5d284db7cbecbbe0648507d6440571d2b4762972e1",
+      "uri": "kilnback_cask.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 356020,
+    "sha256": "ceac3955b9d156f1e5e246c804f9d9cb467b325968c55be21a051b3a94f52c34",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.07485687732696533,
+        0.02365350755645601,
+        0
+      ],
+      "max": [
+        3.6500000953674316,
+        1.5674962142267128,
+        1.5201891991138008
+      ],
+      "min": [
+        -3.500286340713501,
+        -1.5201891991138008,
+        -1.5201891991138008
+      ],
+      "size": [
+        7.150286436080933,
+        3.0876854133405134,
+        3.0403783982276016
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.30000001192092896,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.kilnback-cask.anchor.socket-camera-focus",
+              "sf.render.kilnback-cask.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -1.399999976158142,
+          0,
+          1
+        ],
+        "name": "SOCKET_Massline",
+        "planIndex": 9,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Massline",
+            "recordIds": [
+              "sf.render.kilnback-cask.anchor.socket-massline",
+              "sf.render.kilnback-cask.node.socket-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "ceramic": 1,
+      "hull": 1,
+      "mechanical": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.880000114440918,
+          0,
+          0,
+          0,
+          0,
+          2.880000114440918,
+          0,
+          0,
+          0,
+          0,
+          2.880000114440918,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          3.5,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Ceramic",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9750000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.9750000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.9750000238418579,
+          0,
+          0,
+          1.5499999523162842,
+          0,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.7799999713897705,
+          0,
+          0,
+          0,
+          0,
+          2.7799999713897705,
+          0,
+          0,
+          0,
+          0,
+          2.7799999713897705,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.4250000715255737,
+          0,
+          0,
+          0,
+          0,
+          2.4250000715255737,
+          0,
+          0,
+          0,
+          0,
+          2.4250000715255737,
+          0,
+          1.225000023841858,
+          0.6575000509619713,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/wholeships/kilnback_cask.glb"
+  },
+  "runtimeHash": "fac4099bd7ac1c0e6e6c3c29042d782e7c6e50b5af883b1968bf2cd1bf5c88a1",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.6500000953674316,
+          1.5674962142267128,
+          1.5201891991138008
+        ],
+        "min": [
+          -3.500286340713501,
+          -1.5201891991138008,
+          -1.5201891991138008
+        ]
+      },
+      "id": "sf.render.kilnback-cask.body",
+      "nodeIds": [
+        "sf.render.kilnback-cask.node.collision-kilnback-cask-cask",
+        "sf.render.kilnback-cask.node.lod0-armor",
+        "sf.render.kilnback-cask.node.lod0-ceramic",
+        "sf.render.kilnback-cask.node.lod0-lights-cyan",
+        "sf.render.kilnback-cask.node.lod0-livery",
+        "sf.render.kilnback-cask.node.lod0-mechanicaldark",
+        "sf.render.kilnback-cask.node.sf-prop-kilnback-cask-root",
+        "sf.render.kilnback-cask.node.socket-camera-focus",
+        "sf.render.kilnback-cask.node.socket-massline"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,355 @@
+// src/systems/asteroidFormations.js — runtime owner of DISCOVERED asteroid-formation knowledge
+// (packet A02: "Formation IDs and geology persist/reconstruct without bloating saves or rerolling
+// discoveries").
+//
+// WHAT PERSISTS AND WHAT NEVER DOES — the whole packet in two sentences:
+//   • The AMBIENT formation model of a sector is TRANSIENT. It is re-derived on demand from the
+//     live asteroid entities through the pure A01 kernel (buildAsteroidFormations) and is never
+//     serialized — that is the "without bloating saves" half of the contract.
+//   • A DISCOVERED formation is DURABLE. The moment discover() records it, its compact strategic
+//     record (ids, archetype, geology/yield/risk reads, centroid) is copied verbatim into
+//     state.formations and restores byte-for-byte on load — that is the "without rerolling
+//     discoveries" half. A later epoch may re-roll the rock; the player's surveyed knowledge of
+//     what WAS there never re-rolls out from under them. Same anchored/unanchored philosophy as
+//     asteroidSites.serialize (only anchored sites ship).
+//
+// OWNERSHIP: this system owns state.formations and nothing else. It writes no other state, moves
+// no entities, and touches no physics. The save key ('formations', additive, no version bump — a
+// v11 save without it deserializes to defaults) is applied by the save owner; see saveSystem.js.
+//
+// DETERMINISM: derivation seed is hash32(meta.seed, sectorId, epoch, 'formations'), the same
+// (seed, sectorId, epoch) recipe world.js uses for sector content, so within one epoch the same
+// field derives the same formation ids (A01 kernel property: ids depend on seed + anchor key,
+// structure on bodies alone). No wall clock and no ambient RNG anywhere; discovery timestamps
+// use state.simTime.
+
+import { hash32 } from '../core/rng.js';
+import { buildAsteroidFormations, FORMATION_MODEL_VERSION } from './asteroidFormationModel.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
+
+export const FORMATIONS_SCHEMA_VERSION = 1;
+
+/** The strategic fields a discovered record keeps. Everything else the kernel derives is
+ * reconstructable from a fresh derivation; these are the reads the player actually learned. */
+export const DISCOVERED_RECORD_FIELDS = Object.freeze([
+  'id', 'version', 'designation', 'archetype', 'archetypeName', 'label',
+  'anchorAsteroidId', 'memberIds', 'count',
+  'mass', 'spanRadius', 'packing', 'elongation', 'resourceContinuity', 'dominantTypeId',
+  'yieldTotal', 'richness', 'gasRisk', 'thermalRisk', 'sensorSignature', 'siteAffinity',
+  'coreCandidateId', 'centroid', 'principalAxisRad', 'bestApproachBearingRad',
+]);
+
+export function makeDefaultFormations() {
+  return {
+    schemaVersion: FORMATIONS_SCHEMA_VERSION,
+    // formationId -> discovered record (compact strategic copy + observation binding).
+    discovered: {},
+    // Discovery order, explicit like sites.order so save byte-layout never depends on object
+    // key enumeration.
+    order: [],
+  };
+}
+
+/** Deterministic label seed for one sector materialization. Exported for tests. */
+export function formationSeedFor(metaSeed, sectorId, epoch) {
+  return hash32(metaSeed >>> 0, String(sectorId || ''), (epoch >>> 0) || 0, 'formations') >>> 0;
+}
+
+/**
+ * SAVE-STABLE anchor key for one asteroid body. The A01 kernel's own JSDoc warns that the default
+ * `a.id` key is only safe "if entity ids re-roll" never happens — and they DO: world.enterSector
+ * rematerializes durable records under fresh entity ids, and asteroidSites._repairAnchors respawns
+ * an anchored rock with a new id. Keying formations by entity id therefore re-labelled the SAME
+ * physical rock after a reload (the 4891099a..edca7c7e review's central finding). Identity here is
+ * physical instead: the durable world record when the body carries one, else the rock's quantized
+ * pose + type + size — the same fields asteroidSites' anchor recipe treats as the durable truth of
+ * "which rock this is". Two rocks inside one world unit with identical type and radius are
+ * physically indistinguishable as anchors, so colliding there is correct rather than risky.
+ */
+export function formationBodyKey(body) {
+  if (!body || typeof body !== 'object') return 'invalid';
+  const data = body.data && typeof body.data === 'object' ? body.data : {};
+  if (data.worldRecordId != null) return `rec:${data.worldRecordId}`;
+  const pos = body.pos && typeof body.pos === 'object' ? body.pos : body;
+  const typeId = typeof data.typeId === 'string' ? data.typeId : '?';
+  const radius = Number.isFinite(body.radius) ? Math.round(body.radius) : 0;
+  return `pos:${quantizeAnchorCoord(pos.x)}|${quantizeAnchorCoord(pos.z)}|${typeId}|${radius}`;
+}
+
+/**
+ * Integer key coordinate, STABLE UNDER THE ANCHOR CYCLE. asteroidSites._anchorSite freezes a
+ * rock's pose at tenth precision (Math.round(v * 10) / 10) and _repairAnchors respawns it there,
+ * so a naive integer round straddled that map at half-boundaries: x 0.49 keyed to 0 before the
+ * anchor cycle and to 1 after it (0.49 → anchored 0.5 → round 1), re-labelling the formation the
+ * knowledge was about (the round-3 review's reproduction). Normalising through the SAME tenth
+ * grid FIRST makes the composition idempotent: quantize(x) === quantize(anchorRound(x)) for every
+ * x, because the tenth-rounding step is itself idempotent.
+ */
+export function quantizeAnchorCoord(v) {
+  if (!Number.isFinite(v)) return 0;
+  const tenths = Math.round(v * 10) / 10;
+  const q = Math.round(tenths);
+  return q === 0 ? 0 : q; // normalise -0
+}
+
+/** Compact, JSON-safe copy of one kernel formation record (strategic subset only). Pure. */
+export function compactFormationRecord(formation) {
+  if (!formation || typeof formation !== 'object') return null;
+  const out = {};
+  for (const key of DISCOVERED_RECORD_FIELDS) {
+    const v = formation[key];
+    out[key] = v === undefined ? null : JSON.parse(JSON.stringify(v));
+  }
+  return out;
+}
+
+export const asteroidFormations = {
+  name: 'asteroidFormations',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    ctx.asteroidFormations = this;
+
+    const state = this.state;
+    if (!state.formations) state.formations = makeDefaultFormations();
+    this._normalize(state.formations);
+
+    // Transient caches only — never serialized. `surveyed` is the set of body keys the scan
+    // pulse has highlighted this epoch; discovery durable state lives in state.formations, so
+    // this set may be dropped freely (a re-survey simply re-completes against durable records).
+    this._rt = { model: null, sectorId: null, epoch: -1, seed: 0, surveyed: new Set() };
+    // asteroid:destroyed is emitted before mining flips alive=false. Retain the exact body
+    // identity through synchronous later listeners so an eager read cannot cache it back in.
+    this._destroyedBodies = new Map();
+
+    this.bus.on('sector:enter', () => { this._destroyedBodies.clear(); this._invalidate(); });
+    this.bus.on('save:loaded', () => { this._destroyedBodies.clear(); this._invalidate(); });
+    // Mining removes a body within the current sector epoch. The cached ambient model and its
+    // cumulative survey keys must stop naming the old field immediately after that producer's
+    // receipt; the durable discovered copy remains untouched.
+    this.bus.on('asteroid:destroyed', (payload = {}) => {
+      const body = this.state.entities && this.state.entities.get?.(payload.id)
+        || this.state.entityList?.find((entity) => entity && entity.id === payload.id);
+      if (body && body.type === 'asteroid') this._destroyedBodies.set(body.id, body);
+      this._invalidate();
+    });
+    // The core removal receipt covers combat, culling, and other entity owners. Its queued
+    // payload carries the removed generation even after the id is reusable; invalidate only
+    // asteroid removals and retire a matching mining tombstone once the entity is already gone.
+    this.bus.on('entity:destroyed', (payload = {}) => {
+      const body = payload.entity;
+      if (payload.type !== 'asteroid' && body?.type !== 'asteroid') return;
+      const id = payload.id ?? body?.id;
+      if (id == null) return;
+      if (body && this._destroyedBodies.get(id) === body) this._destroyedBodies.delete(id);
+      this._invalidate();
+    });
+    // Reachability (default route): the scanner's sector pulse stamps scanHighlightUntil on every
+    // asteroid it resolves, then emits scan:completed. A formation whose members have ALL been
+    // highlighted (cumulatively, within this epoch) is surveyed → durably discovered. Cumulative
+    // because a formation can span beyond one pulse radius; epoch-scoped because a re-rolled field
+    // is genuinely new knowledge to earn.
+    this.bus.on('scan:completed', (p) => this._onScanCompleted(p || {}));
+  },
+
+  update(_dt, state = this.state) {
+    // Mining publishes its pre-death receipt synchronously, then flips alive=false before this
+    // system's tick. Drop the body-reference tombstone after that write (or an id recycle).
+    for (const [id, body] of this._destroyedBodies) {
+      const current = state.entities && state.entities.get?.(id)
+        || state.entityList?.find((entity) => entity && entity.id === id);
+      if (!body || body.alive === false || current !== body) {
+        this._destroyedBodies.delete(id);
+      }
+    }
+  },
+
+  newGame() {
+    this.state.formations = makeDefaultFormations();
+    this._destroyedBodies.clear();
+    this._invalidate();
+  },
+
+  // ── persistence (mirrors the asteroidSites serialize/deserialize shape) ────────────────────
+
+  serialize() {
+    const src = this.state.formations || makeDefaultFormations();
+    const discovered = {};
+    const order = [];
+    for (const id of src.order) {
+      const rec = src.discovered[id];
+      if (!rec) continue;
+      discovered[id] = JSON.parse(JSON.stringify(rec));
+      order.push(id);
+    }
+    return { schemaVersion: FORMATIONS_SCHEMA_VERSION, discovered, order };
+  },
+
+  deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each formation clone is record-atomic — yields sit only at record boundaries.
+  *deserializeChunked(data) {
+    const next = makeDefaultFormations();
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const order = Array.isArray(data.order)
+        ? data.order
+        : Object.keys(data.discovered || {}).sort();
+      for (const id of order) {
+        const rec = data.discovered && data.discovered[id];
+        if (!rec || typeof rec !== 'object') continue;
+        if (next.discovered[id]) continue; // duplicate id in order: first wins, never doubled
+        next.discovered[id] = JSON.parse(JSON.stringify(rec));
+        next.order.push(id);
+        yield 'formations-record';
+      }
+    }
+    this.state.formations = next;
+    this._normalize(next);
+    this._invalidate();
+  },
+
+  _normalize(formations) {
+    if (!formations.discovered || typeof formations.discovered !== 'object') formations.discovered = {};
+    if (!Array.isArray(formations.order)) formations.order = Object.keys(formations.discovered).sort();
+    formations.schemaVersion = FORMATIONS_SCHEMA_VERSION;
+    // Every ordered id must exist; every existing id must be ordered exactly once.
+    formations.order = formations.order.filter((id, i) => formations.discovered[id] && formations.order.indexOf(id) === i);
+    for (const id of Object.keys(formations.discovered)) {
+      if (!formations.order.includes(id)) formations.order.push(id);
+    }
+  },
+
+  // ── transient derivation ───────────────────────────────────────────────────────────────────
+
+  _invalidate() {
+    this._rt = { model: null, sectorId: null, epoch: -1, seed: 0, surveyed: new Set() };
+  },
+
+  _currentEpoch(sectorId) {
+    const world = this.state.world;
+    const rec = world && world.residentSectors && world.residentSectors[sectorId];
+    return rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+  },
+
+  /**
+   * The ambient formation model for the current sector, derived from live asteroid entities and
+   * cached until sector/epoch changes. Never serialized. Returns the frozen A01 kernel model.
+   */
+  currentModel() {
+    const state = this.state;
+    const sectorId = state.world && state.world.currentSectorId || null;
+    const epoch = this._currentEpoch(sectorId);
+    const rt = this._rt;
+    if (rt.model && rt.sectorId === sectorId && rt.epoch === epoch) return rt.model;
+
+    const metaSeed = state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+    const seed = formationSeedFor(metaSeed, sectorId, epoch);
+    const asteroids = [];
+    const list = indexedTypeScan(state, 'asteroids');
+    for (const e of list) {
+      const destroyed = this._destroyedBodies.get(e && e.id);
+      if (destroyed && destroyed !== e) this._destroyedBodies.delete(e.id); // entity id was recycled
+      if (destroyed === e) continue; // mining receipt precedes the entity's alive=false write
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      asteroids.push(e);
+    }
+    const model = buildAsteroidFormations(asteroids, { seed, keyOf: formationBodyKey });
+    // The surveyed set is epoch-scoped ("a re-rolled field is genuinely new knowledge to earn",
+    // init). Carrying it across an epoch boundary let a stale quantized body key count toward a
+    // NEW formation, so the first scan of a re-rolled field could auto-complete it. Sector
+    // changes already drop the whole record via _invalidate on sector:enter.
+    const sameField = rt.sectorId === sectorId && rt.epoch === epoch;
+    this._rt = { model, sectorId, epoch, seed, surveyed: sameField ? rt.surveyed : new Set() };
+    return model;
+  },
+
+  /**
+   * scan:completed → formation discovery. The scanner has already stamped every resolved
+   * asteroid's scanHighlightUntil this tick, so a body key joins the surveyed set iff its rock
+   * was inside a pulse's near radius. A formation is discovered the first scan on which ALL of
+   * its member bodies have been surveyed this epoch — discover() itself is idempotent, so
+   * already-known formations cost one map lookup.
+   */
+  _onScanCompleted(p) {
+    const found = p && p.found;
+    if (!found || !(found.asteroids > 0)) return;
+    const model = this.currentModel();
+    if (!model.count) return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const surveyed = this._rt.surveyed;
+    let added = false;
+    const list = indexedTypeScan(this.state, 'asteroids');
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      const data = e.data;
+      if (!data || !(Number(data.scanHighlightUntil) > now)) continue;
+      const key = formationBodyKey(e);
+      if (!surveyed.has(key)) { surveyed.add(key); added = true; }
+    }
+    if (!added) return; // no new bodies surveyed → no formation can newly complete
+    const known = this.state.formations && this.state.formations.discovered;
+    for (const f of model.formations) {
+      if (known && known[f.id]) continue;
+      let all = f.memberIds.length > 0;
+      for (const mid of f.memberIds) {
+        if (!surveyed.has(mid)) { all = false; break; }
+      }
+      if (all) this.discover(f.id);
+    }
+  },
+
+  // ── discovery (the one durable write) ──────────────────────────────────────────────────────
+
+  /**
+   * Record a formation from the current ambient model as durably discovered. Idempotent: a
+   * second discovery of the same id is a no-op (knowledge does not duplicate and never
+   * regresses). Returns the discovered record or null when the id is not in the ambient model.
+   */
+  discover(formationId) {
+    const model = this.currentModel();
+    const formation = model.formations.find((f) => f.id === formationId) || null;
+    if (!formation) return null;
+
+    const formations = this.state.formations;
+    if (formations.discovered[formationId]) return formations.discovered[formationId];
+
+    const record = compactFormationRecord(formation);
+    record.observed = {
+      sectorId: this._rt.sectorId,
+      epoch: this._rt.epoch,
+      seed: this._rt.seed,
+      modelVersion: FORMATION_MODEL_VERSION,
+      atSimTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+    formations.discovered[formationId] = record;
+    formations.order.push(formationId);
+    if (this.bus) this.bus.emit('formation:discovered', {
+      formationId,
+      sectorId: record.observed.sectorId,
+      designation: record.designation || null,
+      archetype: record.archetype || null,
+      archetypeName: record.archetypeName || null,
+      count: Number.isFinite(record.count) ? record.count : null,
+    });
+    return record;
+  },
+
+  /** Discovered record by id, or null. Reads durable knowledge only — never derives. */
+  discoveredRecord(formationId) {
+    const formations = this.state.formations;
+    return (formations && formations.discovered[formationId]) || null;
+  },
+
+  /**
+   * Re-link a discovered record to the live field: returns the CURRENT ambient formation with
+   * the same id, or null when the knowledge is stale (rock re-rolled in a later epoch, field
+   * mined out, different sector). The discovered record itself is never mutated by staleness.
+   */
+  liveFormationFor(formationId) {
+    const model = this.currentModel();
+    return model.formations.find((f) => f.id === formationId) || null;
+  },
+};

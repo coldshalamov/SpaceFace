@@ -1,0 +1,43 @@
+{
+  "schema": "bar-probe-lifecycle-evidence-v1",
+  "fixtureBaseBlob": "35a2fa307f5f0750f839de9b3767db9585a00ae6",
+  "sourceBlobs": {
+    "scripts/check-bar-mission-readiness-live.mjs": "de8d9ab62b44ed772f5605a9a9999cee2110f01e",
+    "scripts/lib/barProbeLifecycle.mjs": "cbaa872ae42fd49ed731e0d38b335501d41b1d8d",
+    "test/bar-probe-lifecycle.test.mjs": "5584f495e22b7eb78549a9f7b72f21424e364284"
+  },
+  "execution": "RAM/stdin Node-only. Test module's helper import was replaced with a data URL containing exact helper bytes, and its fixture read with the exact candidate source string. No browser/game run. No canonical checkout writes.",
+  "positive": {
+    "exitCode": 0,
+    "stdout": "✔ seven bounded milestones carry independent wall and elapsed clocks (2.050405ms)\n✔ only bounded process and completion details are serialized (0.548629ms)\n✔ diagnostic clock and sink failures never throw or retry milestones (0.511637ms)\n✔ unavailable clock numbers become null rather than invented timing (0.235766ms)\n✔ fixture preserves assertions, success text and cleanup ordering without new waits (0.825939ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 11.246\n"
+  },
+  "negativeControls": [
+    {
+      "mutation": "remove dedup guard",
+      "result": {
+        "exitCode": 1,
+        "stdout": "✖ seven bounded milestones carry independent wall and elapsed clocks (4.952256ms)\n✔ only bounded process and completion details are serialized (1.38325ms)\n✖ diagnostic clock and sink failures never throw or retry milestones (0.893552ms)\n✔ unavailable clock numbers become null rather than invented timing (0.295633ms)\n✔ fixture preserves assertions, success text and cleanup ordering without new waits (0.850047ms)\nℹ tests 5\nℹ suites 0\nℹ pass 3\nℹ fail 2\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 24.612683\n\n✖ failing tests:\n\ntest at [eval1]:10:1\n✖ seven bounded milestones carry independent wall and elapsed clocks (4.952256ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  14 !== 7\n  \n      at TestContext.<anonymous> (file:///[REDACTED_EXECUTION_DIRECTORY]/[eval1]:19:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.start (node:internal/test_runner/test:1242:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 14,\n    expected: 7,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at [eval1]:36:1\n✖ diagnostic clock and sink failures never throw or retry milestones (0.893552ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  2 !== 1\n  \n      at TestContext.<anonymous> (file:///[REDACTED_EXECUTION_DIRECTORY]/[eval1]:41:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 1,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+      }
+    },
+    {
+      "mutation": "replace elapsed monotonic clock with wall clock",
+      "result": {
+        "exitCode": 1,
+        "stdout": "[bar-probe-lifecycle] {\"event\":\"fixture-start\",\"epochMs\":1792865248446,\"elapsedMs\":null}\n✖ seven bounded milestones carry independent wall and elapsed clocks (3.570106ms)\n✖ only bounded process and completion details are serialized (0.907565ms)\n✔ diagnostic clock and sink failures never throw or retry milestones (1.305199ms)\n✔ unavailable clock numbers become null rather than invented timing (0.357509ms)\n✔ fixture preserves assertions, success text and cleanup ordering without new waits (0.712744ms)\nℹ tests 5\nℹ suites 0\nℹ pass 3\nℹ fail 2\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 25.107847\n\n✖ failing tests:\n\ntest at [eval1]:10:1\n✖ seven bounded milestones carry independent wall and elapsed clocks (3.570106ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    [\n  +   900,\n  +   898,\n  +   896,\n  +   894,\n  +   892,\n  +   890,\n  +   888\n  -   0,\n  -   5,\n  -   10,\n  -   15,\n  -   20,\n  -   25,\n  -   30\n    ]\n  \n      at TestContext.<anonymous> (file:///[REDACTED_EXECUTION_DIRECTORY]/[eval1]:21:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.start (node:internal/test_runner/test:1242:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [Array],\n    expected: [Array],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n\ntest at [eval1]:25:1\n✖ only bounded process and completion details are serialized (0.907565ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n  + actual - expected\n  \n    {\n      code: null,\n  +   elapsedMs: 122,\n  -   elapsedMs: 0,\n      epochMs: 123,\n      event: 'server-exit',\n      pid: 42,\n      signal: 'SIGTERM'\n    }\n  \n      at TestContext.<anonymous> (file:///[REDACTED_EXECUTION_DIRECTORY]/[eval1]:31:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1382:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)\n      at Test.postRun (node:internal/test_runner/test:1522:19)\n      at Test.run (node:internal/test_runner/test:1447:12)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: [Object],\n    expected: [Object],\n    operator: 'deepStrictEqual',\n    diff: 'simple'\n  }\n"
+      }
+    }
+  ],
+  "syntax": "node --check --input-type=module on all three source strings: all exit 0.",
+  "ownership": "78 open PRs; all changed-file pages scanned. No overlap on these three paths. Shared runner excluded because PR480/483 modify it.",
+  "subprocessReproducer": {
+    "rawStdout": "{\"event\":\"wrapper-created\",\"atMs\":6.6,\"pid\":13}\n{\"event\":\"stdout\",\"atMs\":147.88,\"line\":\"{\\\"event\\\":\\\"owned-child-ready\\\",\\\"pid\\\":14}\"}\n{\"event\":\"timeout-fired\",\"atMs\":248.88,\"wrapperPid\":13}\n{\"event\":\"wrapper-exit\",\"atMs\":251.63,\"code\":null,\"signal\":\"SIGKILL\"}\n{\"event\":\"stdout\",\"atMs\":755.21,\"line\":\"{\\\"event\\\":\\\"OK\\\",\\\"pid\\\":14}\"}\n{\"event\":\"wrapper-close\",\"atMs\":771.52,\"code\":null,\"signal\":\"SIGKILL\"}\n{\"event\":\"complete\",\"atMs\":777.96,\"okAfterTimeout\":true}",
+    "exitCode": 0,
+    "method": "Owned shell runs Node child followed by shell no-op; child prints ready and waits600ms to print OK; kill owned wrapper100ms after child ready; record exit/stdout/close. Only wrapper PID13 signaled, child14 completed naturally; safety timer cleared.",
+    "interpretation": "Proves possible post-timeout OK and delayed close, not historical Bar failure phase."
+  },
+  "limits": "No historical attribution, no gameplay or cleanup fix, no timeouts/assertions/signals/workflows changed.",
+  "sanitization": {
+    "derivative": true,
+    "note": "Public-safe derivative, not verbatim original evidence. Execution-directory paths in negative-control stack traces are replaced with [REDACTED_EXECUTION_DIRECTORY]. Internal tool result identifiers and wrapper metadata are omitted. Source hashes, stdout timing values, assertion text and test counts are retained."
+  }
+}

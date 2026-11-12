@@ -1,0 +1,184 @@
+From 51f09af5547002585df345af5ff2a8ada47870af Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:21:01 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quantize=20clearance=20floor=20?=
+ =?UTF-8?q?retain=20key=20(~2.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet chase drift missed #73 floor retain every frame (bit-identical cam
+keys). Quantize the retain KEY to 0.25 WU (same cell as #53/#77). Exact
+floats still drive the AABB walk on cell change. Soft-GPU fps not claimed.
+---
+ src/render/renderer.js                      | 48 +++++++++++----
+ test/camera-clearance-floor-retain.test.mjs | 66 +++++++++++++++++++++
+ 2 files changed, 103 insertions(+), 11 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c61a9196d..9fc58a51e 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1617,9 +1617,11 @@ export function getCameraClearanceAsteroidNeverRoofExcludeForBench() {
+   return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE !== false;
+ }
+ 
+-// Settled chase: cam X/Y/Z bit-identical after damp settle. Retain the last floor so a quiet
+-// follow() skips the structural walk + box-cache hits. Box rewrites bump a module epoch so a
+-// drifting capital rock / authored stamp change cannot return a stale roof. Soft-GPU fps not claimed.
++// Settled / quiet-chase clearance: retain the last floor so follow() skips the structural
++// walk + box-cache hits. Retain KEY quantizes cam X/Y/Z to 0.25 WU (same cell as #53/#77);
++// exact floats still drive the AABB walk on cell change. Box rewrites bump a module epoch
++// so a drifting capital rock / authored stamp change cannot return a stale roof.
++// Soft-GPU fps not claimed.
+ let CAMERA_CLEARANCE_FLOOR_RETAIN = true;
+ let _clearanceBoxEpoch = 0;
+ export function setCameraClearanceFloorRetainForBench(enabled) {
+@@ -1630,6 +1632,26 @@ export function getCameraClearanceFloorRetainForBench() {
+   return CAMERA_CLEARANCE_FLOOR_RETAIN !== false;
+ }
+ 
++// Quiet chase drift used to miss floor retain every frame: cam floats creep by ≪ glass,
++// so bit-identical keys never matched in flight (#73 settled-only). Quantize the retain
++// KEY (not the AABB walk) to the same 0.25 WU cell as authored-instance / presentation
++// query retain. Exact floats still drive the structural walk on cell change. Margin is
++// 16 WU, so a one-cell delay at an AABB edge is negligible. Soft-GPU fps not claimed.
++const CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANT_WU = 0.25;
++let CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE = true;
++export function setCameraClearanceFloorRetainPosQuantizeForBench(enabled) {
++  CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE = enabled !== false;
++  return CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE;
++}
++export function getCameraClearanceFloorRetainPosQuantizeForBench() {
++  return CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE !== false;
++}
++function quantizeClearanceRetainPos(value) {
++  if (CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANTIZE === false) return value;
++  const q = CAMERA_CLEARANCE_FLOOR_RETAIN_POS_QUANT_WU;
++  return Math.round(value / q) * q;
++}
++
+ function asteroidClearanceSpanHint(data) {
+   const body = data && data.asteroidBody;
+   if (!body || !body.scale) return 0;
+@@ -1753,14 +1775,18 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+       boxEpoch: -1,
+       floor: -Infinity,
+     });
++    const qCamX = quantizeClearanceRetainPos(camX);
++    const qCamZ = quantizeClearanceRetainPos(camZ);
++    const qCamY = quantizeClearanceRetainPos(camY);
+     if (staticStructural
+-        && cache.camX === camX && cache.camZ === camZ && cache.camY === camY
++        && cache.camX === qCamX && cache.camZ === qCamZ && cache.camY === qCamY
+         && cache.meshesVersion === owner._clearanceMeshesVersion
+         && cache.boxEpoch === _clearanceBoxEpoch) {
+-      // Quiet flight is almost always off-roof (floor === -Infinity). Trust cam
+-      // identity there — spawn/despawn bumps _meshesVersion. Under a roof, also
+-      // confirm authored stamps so pending→authored on a station cannot keep a
+-      // stale empty floor (PIC-07 style in-place stamp without map churn).
++      // Quiet flight is almost always off-roof (floor === -Infinity). Trust the
++      // quantized cam cell there — spawn/despawn bumps _meshesVersion. Under a
++      // roof, also confirm authored stamps so pending→authored on a station
++      // cannot keep a stale empty floor (PIC-07 style in-place stamp without
++      // map churn). Exact floats still drive the AABB walk below on cell miss.
+       if (cache.floor === -Infinity) return cache.floor;
+       let stampsFresh = true;
+       for (let i = 0; stampsFresh && i < structural.length; i++) {
+@@ -1784,9 +1810,9 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+       if (camY >= roof) continue;
+       if (roof > floor) floor = roof;
+     }
+-    cache.camX = camX;
+-    cache.camZ = camZ;
+-    cache.camY = camY;
++    cache.camX = qCamX;
++    cache.camZ = qCamZ;
++    cache.camY = qCamY;
+     cache.meshesVersion = owner._clearanceMeshesVersion;
+     cache.boxEpoch = _clearanceBoxEpoch;
+     cache.floor = floor;
+diff --git a/test/camera-clearance-floor-retain.test.mjs b/test/camera-clearance-floor-retain.test.mjs
+index 3bafa52dd..2efd2432d 100644
+--- a/test/camera-clearance-floor-retain.test.mjs
++++ b/test/camera-clearance-floor-retain.test.mjs
+@@ -10,6 +10,8 @@ import {
+   cameraClearanceFloorAt,
+   setCameraClearanceFloorRetainForBench,
+   getCameraClearanceFloorRetainForBench,
++  setCameraClearanceFloorRetainPosQuantizeForBench,
++  getCameraClearanceFloorRetainPosQuantizeForBench,
+   setCameraClearanceAsteroidSpanRejectForBench,
+   setCameraClearanceAsteroidNeverRoofExcludeForBench,
+ } from '../src/render/renderer.js';
+@@ -120,3 +122,67 @@ test('bench-off skips the retain cache', () => {
+   assert.ok(owner._clearanceFloorCache == null);
+   setCameraClearanceFloorRetainForBench(true);
+ });
++
++test('pos-quantize is on by default and bench toggle restores bit-identical keys', () => {
++  assert.equal(getCameraClearanceFloorRetainPosQuantizeForBench(), true);
++  setCameraClearanceFloorRetainPosQuantizeForBench(false);
++  assert.equal(getCameraClearanceFloorRetainPosQuantizeForBench(), false);
++  setCameraClearanceFloorRetainPosQuantizeForBench(true);
++  assert.equal(getCameraClearanceFloorRetainPosQuantizeForBench(), true);
++});
++
++test('quiet chase drift within 0.25 WU cell retains off-roof floor', () => {
++  setCameraClearanceAsteroidSpanRejectForBench(true);
++  setCameraClearanceAsteroidNeverRoofExcludeForBench(true);
++  setCameraClearanceFloorRetainForBench(true);
++  setCameraClearanceFloorRetainPosQuantizeForBench(true);
++  // Far from station AABB — off-roof.
++  const owner = ownerWith(stationAt(0, 0));
++  const baseX = 400;
++  const baseZ = 400;
++  const baseY = 90;
++  const first = cameraClearanceFloorAt(owner, baseX, baseZ, baseY);
++  assert.equal(first, -Infinity);
++  for (let i = 0; i < 20; i++) {
++    const x = baseX + ((i * 0.011) % 0.12);
++    const z = baseZ + ((i * 0.007) % 0.12);
++    const y = baseY + ((i * 0.003) % 0.12);
++    assert.equal(
++      cameraClearanceFloorAt(owner, x, z, y),
++      -Infinity,
++      `drift i=${i} should retain off-roof`,
++    );
++  }
++});
++
++test('quantize-off misses retain on sub-cell chase drift', () => {
++  setCameraClearanceFloorRetainForBench(true);
++  setCameraClearanceFloorRetainPosQuantizeForBench(false);
++  const owner = ownerWith(stationAt(0, 0));
++  const baseX = 400;
++  const baseZ = 400;
++  const baseY = 90;
++  cameraClearanceFloorAt(owner, baseX, baseZ, baseY);
++  const cacheBefore = owner._clearanceFloorCache
++    ? { ...owner._clearanceFloorCache }
++    : null;
++  assert.ok(cacheBefore);
++  // Bit-identical miss: cam floats change, cache keys (exact) diverge, walk rewrites cache.
++  const drifted = cameraClearanceFloorAt(owner, baseX + 0.05, baseZ + 0.03, baseY + 0.01);
++  assert.equal(drifted, -Infinity);
++  assert.notEqual(owner._clearanceFloorCache.camX, cacheBefore.camX);
++  setCameraClearanceFloorRetainPosQuantizeForBench(true);
++});
++
++test('crossing a 0.25 WU cell forces a fresh off-roof walk', () => {
++  setCameraClearanceFloorRetainForBench(true);
++  setCameraClearanceFloorRetainPosQuantizeForBench(true);
++  const owner = ownerWith(stationAt(0, 0));
++  const a = cameraClearanceFloorAt(owner, 400, 400, 90);
++  assert.equal(a, -Infinity);
++  const cellCamX = owner._clearanceFloorCache.camX;
++  // Jump by a full cell.
++  const b = cameraClearanceFloorAt(owner, 400 + 0.25, 400, 90);
++  assert.equal(b, -Infinity);
++  assert.notEqual(owner._clearanceFloorCache.camX, cellCamX);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,515 @@
+// Swarm residual readability contracts outside the Perf Lane.
+// Threat markers are a thin camera-facing crimson rim plus a heading wedge.
+// There is no filled faction card: a disc the size of the hull reads as a red coin.
+// The rim is a thin stroke, depthTest off, so cover cannot hide it.
+// Foundry room solids are dark furniture. The generic station (white greeble, rings, blinkers)
+// read as a geodesic sitting on the pilot.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { createVisualFactory, syncSwarmThreatPlate } from '../src/render/visualFactory.js';
+import { ARENA_PALETTE } from '../src/render/arenaFinish.js';
+import { foundryFurnitureProxy, foundryFurnitureShape } from '../src/data/foundryFurniture.js';
+
+function hostile(team, radius) {
+  return { id: `ship-${team}`, type: 'ship', team, radius, alive: true };
+}
+
+function plateOn(entity, meshQuat, camQuat) {
+  const mesh = new THREE.Group();
+  if (meshQuat) mesh.quaternion.copy(meshQuat);
+  const camera = new THREE.Object3D();
+  if (camQuat) camera.quaternion.copy(camQuat);
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  return { mesh, camera, plate: mesh.getObjectByName('sf-swarm-threat-plate') };
+}
+
+test('a hostile ship wears one opaque threat rim that faces the camera', () => {
+  const camQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.4, -0.7, 0.15));
+  const meshQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.2, 1.1, 0.55));
+  const { mesh, camera, plate } = plateOn(hostile(1, 8), meshQuat, camQuat);
+  assert.ok(plate && plate.isMesh, 'hostile team 1 mounts a mesh rim');
+  assert.equal(plate.isSprite, undefined);
+  assert.equal(plate.geometry.type, 'RingGeometry');
+  assert.equal(plate.geometry.parameters.innerRadius, 0.92);
+  assert.equal(plate.geometry.parameters.outerRadius, 1);
+  const pos = plate.geometry.attributes.position;
+  let minR = Infinity;
+  let maxR = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const r = Math.hypot(pos.getX(i), pos.getY(i));
+    if (r < minR) minR = r;
+    if (r > maxR) maxR = r;
+  }
+  assert.ok(minR >= 0.92 - 1e-3, `ring reaches into the hull (min ${minR})`);
+  assert.ok(maxR <= 1 + 1e-3, `ring extends past the silhouette (max ${maxR})`);
+  assert.equal(plate.renderOrder, 12);
+  assert.equal(plate.frustumCulled, true);
+  assert.equal(plate.scale.x, 8);
+  assert.equal(plate.scale.y, 8);
+  assert.equal(plate.material.isMeshBasicMaterial, true);
+  assert.equal(plate.material.color.getHex(), 0xff1a3a);
+  assert.equal(plate.material.side, THREE.DoubleSide);
+  assert.equal(plate.material.transparent, false);
+  assert.equal(plate.material.depthWrite, false, 'the rim must not occlude the hull');
+  assert.equal(plate.material.depthTest, false);
+  assert.equal(plate.material.blending, THREE.NormalBlending);
+  assert.notEqual(plate.material.blending, THREE.AdditiveBlending);
+  assert.equal(plate.material.toneMapped, true, 'an unmapped rim blooms into a white ring');
+  assert.ok(plate.material.opacity > 0.02);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined, 'a filled card paints the ship into a red coin');
+
+  const worldQ = plate.getWorldQuaternion(new THREE.Quaternion());
+  const plateZ = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQ);
+  const camZ = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+  assert.ok(plateZ.dot(camZ) > 0.999, 'plate +Z matches the camera +Z, so the face looks back at the lens');
+
+  const again = mesh.getObjectByName('sf-swarm-threat-plate');
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-plate'), again, 'a second sync reuses the plate');
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined);
+
+  const other = plateOn(hostile(3, 1), null, null).plate;
+  assert.ok(other);
+  assert.equal(other.scale.x, 2, 'radius floor is 2');
+  assert.equal(other.geometry, plate.geometry, 'rims share one ring');
+  assert.equal(other.material, plate.material);
+});
+
+test('a scaled hull does not inflate the threat plate past the ship', () => {
+  const mesh = new THREE.Group();
+  mesh.scale.setScalar(4);
+  const camera = new THREE.Object3D();
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const world = plate.getWorldScale(new THREE.Vector3());
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined);
+  assert.ok(Math.abs(world.x - 8) < 1e-3, `world radius ${world.x} should be 1×8`);
+  assert.ok(Math.abs(world.y - 8) < 1e-3);
+  // Outer edge sits on the silhouette. It must not grow past the ship into the
+  // readability background ring (d > 1.2r).
+  assert.ok(world.x <= 8 * 1.05);
+  assert.ok(world.x >= 8 * 0.99);
+});
+
+test('a cohort mark is clamped to 1.12× and the wedge stays on the nose', () => {
+  const mesh = new THREE.Group();
+  // entity.rot = PI/2 is world heading +Z. The renderer applies mesh.rotation.y = -entity.rot.
+  mesh.rotation.y = -Math.PI / 2;
+  const camera = new THREE.Object3D();
+  camera.quaternion.setFromEuler(new THREE.Euler(0.4, 1.2, 0.2));
+  const entity = { type: 'ship', team: 1, radius: 12, alive: true, data: { swarmMarkRadius: 20 } };
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
+  const plateWorld = plate.getWorldScale(new THREE.Vector3());
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined, 'the cohort mark is a rim, not a filled card');
+  assert.ok(Math.abs(plateWorld.x - 12 * 1.12) < 1e-3, `bracket world radius ${plateWorld.x} should clamp to 1.12×12`);
+  assert.ok(chevron && chevron.isMesh);
+  assert.equal(chevron.geometry.type, 'ConeGeometry');
+  assert.equal(chevron.material, plate.material);
+  assert.equal(chevron.material.depthTest, false);
+  // Cone tip is geometric +Y. After the mount it must agree with the mesh nose (+X),
+  // which this yaw sends to world +Z. The camera quat above is a different direction.
+  const tip = new THREE.Vector3(0, 1, 0).applyQuaternion(chevron.getWorldQuaternion(new THREE.Quaternion()));
+  const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(tip.dot(nose) > 0.99, `chevron tip ${tip.x.toFixed(2)},${tip.y.toFixed(2)},${tip.z.toFixed(2)} leaves the nose`);
+  assert.ok(tip.z > 0.99 && Math.abs(tip.x) < 0.05, 'yawed hull points the wedge at world +Z');
+  const camFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+  assert.ok(Math.abs(tip.dot(camFwd)) < 0.95, 'the wedge is not a camera billboard');
+  // A requested bracket of 20 is clamped to 1.12× the hull. The wedge stays on
+  // the nose, inside the hull sample, even when the caller asks for a sky-sized halo.
+  const plateReach = chebyshevReach(mesh, plate);
+  const chevronReach = chebyshevReach(mesh, chevron);
+  assert.ok(plateReach <= 12 * 1.12 + 1e-3, `rim reaches ${plateReach}, past the 1.12 cap`);
+  assert.ok(chevronReach <= 12 * 0.7 + 1e-3, `wedge reaches ${chevronReach}, into the background ring`);
+  assert.ok(chevronReach > 12 * 0.4, 'the wedge still reads as a nose, not a speck at the origin');
+  syncSwarmThreatPlate(mesh, { type: 'ship', team: 0, radius: 12 }, camera);
+  assert.equal(chevron.visible, false);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-glyph').visible, false);
+});
+
+test('the hostile glyph fills the hull sample and follows the projected nose', () => {
+  const mesh = new THREE.Group();
+  // rotation.y = π sends mesh +X to world −X. Identity camera looks down −Z,
+  // so the nose lies in the plate and the glyph must aim at world −X.
+  mesh.rotation.y = Math.PI;
+  const camera = new THREE.Object3D();
+  const entity = {
+    type: 'ship', team: 1, radius: 12, alive: true,
+    data: { ai: { swarmFireHeld: false } },
+  };
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
+  const lamp = glyph.getObjectByName('sf-swarm-threat-lamp');
+  assert.equal(glyph.geometry.type, 'ShapeGeometry');
+  assert.notEqual(glyph.geometry.type, 'CircleGeometry');
+  assert.equal(glyph.material, plate.material, 'the glyph cannot become its own additive layer');
+  assert.equal(glyph.material.blending, THREE.NormalBlending);
+  assert.equal(glyph.material.depthTest, false);
+  assert.equal(lamp.material.isMeshBasicMaterial, true);
+  assert.equal(lamp.material.blending, THREE.NormalBlending);
+  assert.notEqual(lamp.material.blending, THREE.AdditiveBlending);
+  assert.equal(lamp.material.depthTest, false);
+  assert.equal(lamp.material.depthWrite, false);
+  assert.equal(lamp.material.toneMapped, true);
+  assert.equal(lamp.visible, true, 'a live gun shows the nose lamp');
+  const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(nose.dot(new THREE.Vector3(-1, 0, 0)) > 0.99, `glyph nose ${nose.x.toFixed(2)},${nose.y.toFixed(2)},${nose.z.toFixed(2)} leaves world −X`);
+  const glyphZ = new THREE.Vector3(0, 0, 1).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  const camZ = new THREE.Vector3(0, 0, 1);
+  assert.ok(glyphZ.dot(camZ) > 0.999, 'glyph +Z faces the camera, same as the rim');
+  const reach = chebyshevReach(mesh, glyph);
+  assert.ok(reach <= 12 * 0.7 + 1e-3, `glyph reaches ${reach}, outside the hull sample`);
+  assert.ok(reach > 12 * 0.5, `glyph reach ${reach} is a speck`);
+  const lampReach = chebyshevReach(mesh, lamp);
+  assert.ok(lampReach <= 12 * 0.7 + 1e-3, `lamp reaches ${lampReach}, into the background ring`);
+  const pos = glyph.geometry.attributes.position;
+  let maxEuclid = 0;
+  for (let i = 0; i < pos.count; i++) {
+    maxEuclid = Math.max(maxEuclid, Math.hypot(pos.getX(i), pos.getY(i), pos.getZ(i)));
+  }
+  assert.ok(maxEuclid <= 1 + 1e-3, `unit glyph vertex at ${maxEuclid} can leave the 0.7r sample when the camera tilts`);
+  const filled = geometryAreaXY(glyph.geometry);
+  const frac = filled * (glyph.scale.x / 12) ** 2 / (1.4 ** 2);
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = (r, g, b) => {
+    const y = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
+    return 116 * f - 16;
+  };
+  const lift = frac * (L(1, 0x1a / 255, 0x3a / 255) - L(0.02, 0.02, 0.03));
+  assert.ok(lift >= 8, `glyph covers ${frac.toFixed(3)} of the hull sample, mean ΔL ${lift.toFixed(1)}`);
+
+  syncSwarmThreatPlate(mesh, { ...entity, data: { ai: { swarmFireHeld: true } } }, camera);
+  assert.equal(lamp.visible, false, 'a held gun keeps the mark and drops the muzzle lamp');
+  assert.equal(glyph.visible, true);
+  syncSwarmThreatPlate(mesh, { type: 'ship', team: 1, radius: 12 }, camera);
+  assert.equal(lamp.visible, true, 'no swarmFireHeld field (gauntlet) leaves the lamp on');
+
+  // Nose parallel to an identity camera (local +X → world −Z). The heading
+  // falls back to plate +X, which is world +X, and must not invent −Z.
+  mesh.rotation.y = Math.PI / 2;
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const fallback = new THREE.Vector3(1, 0, 0).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(fallback.dot(new THREE.Vector3(1, 0, 0)) > 0.99, `parallel nose fallback ${fallback.x.toFixed(2)},${fallback.y.toFixed(2)},${fallback.z.toFixed(2)}`);
+  assert.ok(Math.abs(fallback.z) < 0.05, 'a nose along the view does not spin the glyph onto the view axis');
+});
+
+function geometryAreaXY(geometry) {
+  const pos = geometry.attributes.position;
+  const index = geometry.index;
+  let area = 0;
+  const tri = (i0, i1, i2) => {
+    const ax = pos.getX(i0); const ay = pos.getY(i0);
+    area += Math.abs((pos.getX(i1) - ax) * (pos.getY(i2) - ay) - (pos.getX(i2) - ax) * (pos.getY(i1) - ay)) * 0.5;
+  };
+  if (index) {
+    for (let i = 0; i < index.count; i += 3) tri(index.getX(i), index.getX(i + 1), index.getX(i + 2));
+  } else {
+    for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2);
+  }
+  return area;
+}
+
+/** Farthest vertex from the mesh origin, Chebyshev, in the mesh's local frame. */
+function chebyshevReach(mesh, child) {
+  const pos = child.geometry.attributes.position;
+  const v = new THREE.Vector3();
+  const inv = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
+  let maxD = 0;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(child.matrixWorld).applyMatrix4(inv);
+    const d = Math.max(Math.abs(v.x), Math.abs(v.y), Math.abs(v.z));
+    if (d > maxD) maxD = d;
+  }
+  return maxD;
+}
+
+test('the threat crimson clears the low-contrast bar against a dark field', () => {
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = (r, g, b) => {
+    const y = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
+    return 116 * f - 16;
+  };
+  const plateL = L(1, 0x1a / 255, 0x3a / 255);
+  const fieldL = L(0.02, 0.02, 0.03);
+  assert.ok(Math.abs(plateL - fieldL) >= 8, `ΔL ${plateL - fieldL} is below the readability floor`);
+});
+
+test('friendly teams and non-ships grow no threat plate', () => {
+  for (const team of [null, undefined, 0, 2]) {
+    const built = plateOn({ type: 'ship', team, radius: 8 }, null, null);
+    assert.equal(built.plate, undefined, `team ${team} stays unmarked`);
+    assert.equal(built.mesh.getObjectByName('sf-swarm-threat-core'), undefined, `team ${team} grows no card`);
+  }
+  const rockBuilt = plateOn({ type: 'asteroid', team: 1, radius: 8 }, null, null);
+  assert.equal(rockBuilt.plate, undefined);
+  assert.equal(rockBuilt.mesh.getObjectByName('sf-swarm-threat-core'), undefined);
+  assert.equal(syncSwarmThreatPlate(null, hostile(1, 8), null), undefined);
+});
+
+test('a hostile hull is tinted on a clone and the shared material stays put', () => {
+  const shared = new THREE.MeshStandardMaterial({
+    color: 0x222222, emissive: 0x111111, emissiveIntensity: 0.2,
+  });
+  const mesh = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared);
+  hull.name = 'hull';
+  mesh.add(hull);
+  const camera = new THREE.Object3D();
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  assert.notEqual(hull.material, shared);
+  assert.equal(hull.material.emissive.getHex(), 0xff2438);
+  assert.equal(hull.material.emissiveIntensity, 0.35);
+  assert.equal(hull.material.userData.spacefaceSharedAsset, true, 'despawn must not free a tint shared by other hulls');
+  assert.equal(shared.emissive.getHex(), 0x111111);
+  assert.equal(shared.emissiveIntensity, 0.2);
+  assert.equal(shared.color.getHex(), 0x222222);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  assert.ok(plate);
+  assert.notEqual(plate.material, hull.material);
+  assert.equal(plate.material.userData && plate.material.userData.swarmHostileTint, undefined);
+  const stamped = hull.material;
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  assert.equal(hull.material, stamped, 'a stable child count does not clone again');
+  const other = new THREE.Group();
+  const otherHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared);
+  other.add(otherHull);
+  syncSwarmThreatPlate(other, hostile(1, 8), camera);
+  assert.equal(otherHull.material, stamped, 'one tinted clone per source material');
+  const basicShared = new THREE.MeshBasicMaterial({ color: 0x8899aa });
+  const basicMesh = new THREE.Group();
+  const basicHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), basicShared);
+  basicMesh.add(basicHull);
+  syncSwarmThreatPlate(basicMesh, hostile(1, 8), camera);
+  const mixed = new THREE.Color(0x8899aa).lerp(new THREE.Color(0xff2438), 0.15);
+  assert.equal(basicHull.material.color.getHex(), mixed.getHex());
+  assert.equal(basicShared.color.getHex(), 0x8899aa);
+  assert.notEqual(basicHull.material, basicShared);
+});
+
+function foundry(kind, radius = 16) {
+  const vf = createVisualFactory();
+  const root = vf.build({
+    id: `survival-room-${kind}`,
+    type: 'station',
+    radius,
+    data: { roomOwner: 'survival-arena', roomKind: kind },
+  });
+  assert.ok(root && root.isObject3D, `${kind} builds`);
+  return root;
+}
+
+function meshesOf(root) {
+  const meshes = [];
+  root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  return meshes;
+}
+
+/** Per-triangle paint and facing. Every deck helper paints one flat colour per face. */
+function paintedFaces(geometry) {
+  const pos = geometry.getAttribute('position');
+  const col = geometry.getAttribute('color');
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  const ac = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  const faces = [];
+  for (let i = 0; i < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i);
+    b.fromBufferAttribute(pos, i + 1);
+    c.fromBufferAttribute(pos, i + 2);
+    normal.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).normalize();
+    const hex = new THREE.Color(col.getX(i), col.getY(i), col.getZ(i)).getHex();
+    const r = (hex >> 16 & 255) / 255;
+    const g = (hex >> 8 & 255) / 255;
+    const bl = (hex & 255) / 255;
+    faces.push({
+      normalY: normal.y,
+      hex,
+      luma: 0.2126 * r + 0.7152 * g + 0.0722 * bl,
+    });
+  }
+  return faces;
+}
+
+function shareOf(faces, predicate) {
+  return faces.filter(predicate).length / Math.max(1, faces.length);
+}
+
+test('a foundry room solid is dark furniture, not a lit station', () => {
+  const kinds = {
+    // X1: the bank plate is one vertex-coloured steel deck (value lives in the colour
+    // attribute, not the base colour); the animated/solid furniture is a machined box or
+    // cylinder with one small work lamp at most, never a lit station. Gate/block/shutter carry
+    // the same three-value deck in their one body mesh (X1 third review).
+    plate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true, roughness: 0.72, metalness: 0.38 },
+    gate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true, roughness: 0.82, metalness: 0.18 },
+    furnace: { color: 0x3a2418, geo: 'ExtrudeGeometry' },
+    crate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true, roughness: 0.82, metalness: 0.18 },
+  };
+  for (const [kind, expect] of Object.entries(kinds)) {
+    const root = foundry(kind);
+    assert.equal(root.userData.roomToy, kind);
+    assert.equal(root.userData.kind, 'station');
+    assert.equal(root.userData.hlodAttached, true);
+    const meshes = meshesOf(root);
+    assert.ok(meshes.length >= 1 && meshes.length <= 2, `${kind} stays a couple of solids`);
+    let sawBody = false;
+    let sawMouth = false;
+    let lamps = 0;
+    let lampMesh = null;
+    for (const mesh of meshes) {
+      assert.equal(mesh.isSprite, undefined);
+      assert.equal(mesh.isPoints, undefined);
+      const mat = mesh.material;
+      assert.ok(!Array.isArray(mat));
+      assert.notEqual(mat.blending, THREE.AdditiveBlending);
+      assert.equal(mat.transparent, false);
+      assert.equal(mat.type === 'ShaderMaterial', false);
+      assert.equal(mesh.geometry.type === 'TorusGeometry', false, `${kind} has no ring`);
+      assert.equal(mesh.geometry.type === 'SphereGeometry', false, `${kind} has no blinker lens`);
+      assert.equal(mesh.geometry.type === 'IcosahedronGeometry', false);
+      assert.equal(mesh.userData.blink, undefined);
+      // X1 §3.4: a working prop may carry one real lamp; it is not the body's value.
+      if (mat.name === 'sf-arena-lamp') {
+        lamps += 1;
+        lampMesh = mesh;
+        assert.notEqual(mat.emissive.getHex(), 0, `${kind} lamp is a real emitter`);
+        continue;
+      }
+      const bright = mat.color.r > 0.75 && mat.color.g > 0.75 && mat.color.b > 0.75;
+      assert.equal(bright && mat.vertexColors !== true, false, `${kind} material stays off white`);
+      if (mat.isMeshStandardMaterial) {
+        sawBody = true;
+        if (expect.vertexColors) {
+          // White base colour is the vertex-colour carrier; the authored deck paint must
+          // still stay below a lit white surface.
+          assert.equal(mat.vertexColors, true);
+          assert.equal(mat.roughness, expect.roughness);
+          assert.equal(mat.metalness, expect.metalness);
+          const colors = mesh.geometry.getAttribute('color');
+          assert.ok(colors && colors.count > 0, `${kind} carries its value in the colour attribute`);
+          // Only the lamp lens bar may read as a bright surface; every other band is paint.
+          let brightVertices = 0;
+          for (let i = 0; i < colors.count; i++) {
+            const peak = Math.max(colors.getX(i), colors.getY(i), colors.getZ(i));
+            if (peak > 0.78) brightVertices++;
+          }
+          assert.ok(brightVertices / colors.count <= 0.15,
+            `${kind} deck paint stays below a lit white surface (lens only)`);
+          if (kind !== 'plate') {
+            // X1 final review: a whole-geometry distinct count also passed when the gate's visible
+            // side was ONE value and only the caps supplied the third. Assert the share each value
+            // owns on the surfaces the camera can see.
+            const faces = paintedFaces(mesh.geometry);
+            const side = faces.filter((f) => Math.abs(f.normalY) <= 0.55);
+            const top = faces.filter((f) => f.normalY > 0.55);
+            const bottom = faces.filter((f) => f.normalY < -0.55);
+            if (kind === 'gate') {
+              const hexOf = (value) => new THREE.Color(value).getHex();
+              const bands = {
+                light: hexOf(ARENA_PALETTE.light),
+                mid: hexOf(ARENA_PALETTE.mid),
+                dark: hexOf(ARENA_PALETTE.dark),
+              };
+              assert.ok(side.length >= 12, `${kind} has a real side surface`);
+              for (const [name, hex] of Object.entries(bands)) {
+                const share = shareOf(side, (f) => f.hex === hex);
+                assert.ok(share >= 0.2,
+                  `${kind} visible side ${name} band covers ${(share * 100).toFixed(0)}%; all three values must read on the side`);
+              }
+              assert.ok(shareOf(top, (f) => f.hex === bands.light) >= 0.9,
+                `${kind} cap is the light value`);
+              assert.ok(shareOf(bottom, (f) => f.hex === bands.dark) >= 0.9,
+                `${kind} base is the dark value`);
+            } else {
+              // The block/shutter wear the bank deck in one body: the top carries light panels,
+              // mid clamp rails and the dark recessed channel; the sides stay dark mechanical.
+              const band = (f) => (f.luma >= 0.55 ? 'light' : f.luma >= 0.32 ? 'mid' : 'dark');
+              for (const name of ['light', 'mid', 'dark']) {
+                const share = shareOf(top, (f) => band(f) === name);
+                assert.ok(share >= 0.05,
+                  `${kind} top ${name} share is ${(share * 100).toFixed(0)}%; the deck must read all three values`);
+              }
+              assert.ok(shareOf(side, (f) => band(f) === 'dark') >= 0.6,
+                `${kind} side wall is dominated by the dark mechanical value`);
+              assert.ok(shareOf(side, (f) => band(f) === 'light') <= 0.4,
+                `${kind} side wall never turns into a light card; the light chamfer is an edge, not the wall`);
+            }
+          }
+        } else {
+          assert.equal(mat.color.getHex(), expect.color);
+          assert.equal(mat.roughness, 0.94);
+          assert.equal(mat.metalness, 0.06);
+          if (kind === 'furnace') assert.equal(mat.emissiveIntensity, 0.16);
+          else assert.equal(mat.emissiveIntensity, 0);
+        }
+        assert.equal(mesh.geometry.type, expect.geo);
+      }
+      if (mat.isMeshBasicMaterial) {
+        sawMouth = true;
+        assert.equal(kind, 'furnace');
+        assert.equal(mat.color.getHex(), 0x6a3014);
+        assert.equal(mat.depthWrite, true);
+      }
+    }
+    assert.ok(lamps <= 1, `${kind} carries at most one work lamp`);
+    assert.equal(sawBody, true, `${kind} has a matte body`);
+    assert.equal(sawMouth, kind === 'furnace');
+    if (kind === 'gate' || kind === 'crate') {
+      assert.ok(lampMesh, `${kind} has a real work lamp`);
+      const bodyMesh = meshes.find((m) => m.material.name !== 'sf-arena-lamp');
+      const bodyBox = new THREE.Box3().setFromObject(bodyMesh);
+      const lampBox = new THREE.Box3().setFromObject(lampMesh);
+      assert.ok(lampBox.max.y > bodyBox.max.y + 0.05,
+        `${kind} lamp must read above the deck, not be buried in the body`);
+    }
+  }
+});
+
+test('the gate lamp sits inside the hex contact polygon, not merely inside its AABB', () => {
+  const radius = 16;
+  const entity = {
+    id: 'survival-room-gate', type: 'station', radius,
+    data: { roomOwner: 'survival-arena', roomKind: 'gate' },
+  };
+  const root = createVisualFactory().build(entity);
+  const proxy = foundryFurnitureProxy(entity);
+  assert.equal(proxy?.id, 'foundry:furniture-gate');
+  const lamp = root.getObjectByName('sf-arena-lamp');
+  assert.ok(lamp, 'the gate carries its work lamp');
+  root.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(lamp);
+  const hull = proxy.compactHull.map((p) => ({ x: p.x * radius, z: p.z * radius }));
+  const inside = (x, z) => {
+    let hit = false;
+    for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) {
+      const a = hull[i], b = hull[j];
+      if ((a.z > z) !== (b.z > z)
+        && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x) hit = !hit;
+    }
+    return hit;
+  };
+  for (const [x, z] of [
+    [box.min.x, box.min.z], [box.min.x, box.max.z],
+    [box.max.x, box.min.z], [box.max.x, box.max.z],
+  ]) {
+    assert.ok(inside(x, z), `gate lamp corner ${x.toFixed(2)},${z.toFixed(2)} leaves the hex`);
+  }
+  const shape = foundryFurnitureShape(entity);
+  // The cap lamp may sit slightly proud of the top face; the contact contract is the planar hex.
+  assert.ok(box.max.y <= shape.body.height * shape.scale / 2 + 0.35,
+    'gate lamp housing stays on the post cap, not floating above it');
+});

@@ -1,0 +1,19 @@
+{
+  "id": "spectrum-props",
+  "note": "Procedural XZ silhouettes rendered by src/render/spectrum. Not GLBs and not camera-facing cards.",
+  "approximation": "Kinematic tone in world-units per second. Not radio Doppler.",
+  "props": [
+    { "id": "buoy", "role": "Nav buoy", "kind": "mast-and-ring" },
+    { "id": "relay", "role": "Survey relay", "kind": "mast-and-dish" },
+    { "id": "decoy", "role": "Towable decoy", "kind": "chevron" },
+    { "id": "slab", "role": "Movable occulter", "kind": "chamfered-slab" },
+    { "id": "black-box", "role": "Flight recorder", "kind": "chamfered-box" },
+    { "id": "lifeboat", "role": "Lifeboat hull", "kind": "capsule" },
+    { "id": "lantern", "role": "False lantern", "kind": "caged-lamp" },
+    { "id": "jammer", "role": "Jam mast", "kind": "crossed-mast" },
+    { "id": "courier", "role": "Courier hull", "kind": "wedge" },
+    { "id": "wreck", "role": "Skimming wreck", "kind": "broken-ring" },
+    { "id": "reflector", "role": "Charted mirror wall", "kind": "wall-segment" },
+    { "id": "arm", "role": "Vent sweep arm", "kind": "bar" }
+  ]
+}

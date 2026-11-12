@@ -1,0 +1,2610 @@
+// src/ui/screens/automationPanel.js — Automation / passive-fleet screen (ARCHITECTURE §5, spec 09).
+// Tabs: Drones / Traders / Outposts / Fleet. Reads state.automation (+ static defs for the
+// purchasable catalog). Buy / assign / order buttons emit ui:fleetOrder{shipId,order,targetRef}
+// (the automation system is the sole handler — §4.4). Shows passive-income rate + a passive-cap
+// bar derived from the active-income reference curve. READ-ONLY on state; emits intents only.
+//
+// Export: automationScreen  (id 'automation'). No 'three' import.
+
+import { DRONES, TRADERS, BUILDABLE_OUTPOSTS as OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { MODULES } from '../../data/modules.js';
+import { CLAIM_REFINERY_RECIPES } from '../../data/sites.js';
+import { COMMODITIES } from '../../data/commodities.js';
+import { TECH_NODES } from '../../data/tech.js';
+import { droneBayCapacityForState, droneRecoveryCost, normalizeAutomationRecordId, passiveCapPerMinForTier } from '../../systems/automation.js';
+import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
+import { shipworksStationAccess } from '../../systems/ships.js';
+import { escapeHtml } from '../comms.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { enhanceSelects } from '../uiPrimitives.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { laneInputWrite } from '../../core/simLaneCommands.js';
+import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
+import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
+import { SECTORS } from '../../data/sectors.js';
+import { MAX_PROGRAM_STEPS, MAX_PROGRAM_NAME_LENGTH, validateProgram } from '../../systems/alphabet.js';
+
+const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
+const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
+const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+const STATION_NAMES = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
+
+function fleetAssignmentForShip(ship, fleet) {
+  return ship?.fleetAssignmentId == null ? null
+    : (fleet || []).find((row) => row && row.id === ship.fleetAssignmentId) || null;
+}
+
+function trackedVesselAtBerth(state, ship) {
+  const sj = state?.player?.shipjack || state?.shipjack;
+  const v = ship?.vesselId && sj?.vesselsById?.[ship.vesselId];
+  return !!(v && v.custodian === 'player' && v.defId === ship.defId && v.condition?.hull > 0
+    && state.ui?.docked && v.location?.kind === 'berth' && v.location.stationId === state.ui.dockedStationId
+    && !sj.yards?.[ship.vesselId] && !sj.fleetOperations?.[ship.vesselId]);
+}
+
+/** Earnings are ceilings on one shared bucket; depot receipts settle physical throughput. */
+export function describeDroneEarnings(state, assetOrDef = {}) {
+  const def = DRONES.find((d) => d.id === (assetOrDef.defId || assetOrDef.id)) || assetOrDef;
+  const grossPerMin = (def.mineRate || 0) * 60 * DRONE_DISPLAY_ORE_VALUE * Math.max(1, assetOrDef.count || 1);
+  const capPerMin = passiveCapPerMin(state);
+  if (assetOrDef.program?.kind === 'custom') return { settlement: 'throughput', grossPerMin: 0, capPerMin,
+    cappedPerMin: null, text: 'Shipment sales · settled at the actual sale receipt' };
+  if (assetOrDef.program?.templateId === 'mine_to_depot') {
+    return { settlement: 'throughput', grossPerMin, capPerMin, cappedPerMin: null, text: 'Depot sales · settled at the actual sale receipt' };
+  }
+  const cappedPerMin = Math.min(grossPerMin, capPerMin);
+  return { settlement: 'passive', grossPerMin, capPerMin, cappedPerMin,
+    text: `Up to ~${Math.round(cappedPerMin)} cr/min capped · shared ceiling, before upkeep` };
+}
+
+function droneRecoveryText(state, drone) {
+  if (!drone.recovery) return '';
+  const station = STATION_NAMES.get(drone.recovery.stationId);
+  if (drone.recovery.delivered) {
+    return `Stranded Drone — delivered${station ? ` to ${station}` : ''}. Waiting for payment: ${droneRecoveryCost(state, drone).totalCr} cr for fuel and unpaid upkeep.`;
+  }
+  return station
+    ? `Stranded Drone — tow to ${station}. Fuel and unpaid upkeep are charged on recovery.`
+    : 'Stranded Drone — Tow to a station. Fuel and unpaid upkeep are charged on recovery.';
+}
+
+/** Escape a restored automation identity before placing it in an HTML data-ref attribute. */
+export function automationRecordRefAttr(value, fallback = '') {
+  return escapeHtml(normalizeAutomationRecordId(value, fallback) || '');
+}
+
+const PROGRAM_OPTIONS = Object.freeze([
+  { value: '', label: 'Manual (mine → bank)', meta: 'Banks ore in the drone buffer; recall to cash out. The buffer ledger calls this "dead rock."' },
+  { value: 'mine_to_depot', label: 'Mine → Haul → Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work — margin lives on whichever leg stalls.' },
+  { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort. It files every interdiction in the shift log, whether or not you read it.' },
+  { value: 'scout_report', label: 'Scout → Report', meta: 'Tests beacon movement and a short overwatch loop.' },
+]);
+
+const TABS = [
+  { id: 'drones',   label: 'Drones'   },
+  { id: 'traders',  label: 'Traders'  },
+  { id: 'outposts', label: 'Outposts' },
+  { id: 'fleet',    label: 'Fleet'    },
+];
+
+export function describeAutomationPurchase(kind, def, state = {}) {
+  if (!def) {
+    return {
+      state: 'missing',
+      disabled: true,
+      label: 'Unavailable',
+      title: 'Select an automation asset to inspect purchase options.',
+    };
+  }
+  const player = (state && state.player) || {};
+  const researched = new Set(player.researchedNodes || []);
+  const credits = Math.max(0, Number(player.credits) || 0);
+  const assetName = prettyLabel(def.id);
+  const cost = automationPurchaseCost(kind, def);
+
+  if (kind === 'drone') {
+    const tier = playerTierFromState(state);
+    if ((def.tier || 1) > tier) {
+      const req = techName(droneTierTechId(def.tier));
+      return {
+        state: 'tier',
+        disabled: true,
+        label: 'Research ' + req,
+        title: assetName + ' requires drone tier ' + def.tier + ', unlocked by ' + req + '.',
+      };
+    }
+    const bay = droneBayCapacityForState(state);
+    if (bay.compatibleSlotCount <= 0) {
+      return {
+        state: 'drone_hull',
+        disabled: true,
+        label: bay.droneControlResearched ? 'Need L-utility hull' : 'Research + L-utility hull',
+        title: bay.droneControlResearched
+          ? 'Acquire or switch to a hull with an L utility slot, then fit Drone Bay L before deploying ' + assetName + '.'
+          : 'Research Drone Control, then acquire or switch to a hull with an L utility slot and fit Drone Bay L before deploying ' + assetName + '.',
+      };
+    }
+    if (!bay.droneControlResearched) {
+      return {
+        state: 'drone_tech',
+        disabled: true,
+        label: 'Research Drone Control',
+        title: 'Research Drone Control before fitting Drone Bay L and deploying ' + assetName + '.',
+      };
+    }
+    if (bay.capacity <= 0) {
+      return {
+        state: 'drone_bay',
+        disabled: true,
+        label: 'Fit Drone Bay L',
+        title: 'Fit a Drone Bay L on the active ship before deploying ' + assetName + '.',
+      };
+    }
+    if (bay.used >= bay.capacity) {
+      return {
+        state: 'drone_capacity',
+        disabled: true,
+        label: `Bay full ${bay.used}/${bay.capacity}`,
+        title: `Active-ship Drone Bay capacity is full (${bay.used}/${bay.capacity}). Recall a drone or fit more capacity.`,
+      };
+    }
+  } else if (kind === 'trader' && !researched.has('tech_autonomous_fleets')) {
+    const req = techName('tech_autonomous_fleets');
+    return {
+      state: 'tech',
+      disabled: true,
+      label: 'Research ' + req,
+      title: assetName + ' hiring requires ' + req + '.',
+    };
+  } else if (kind === 'outpost' && !researched.has('tech_outpost_charter')) {
+    const req = techName('tech_outpost_charter');
+    return {
+      state: 'tech',
+      disabled: true,
+      label: 'Research ' + req,
+      title: assetName + ' construction requires ' + req + '.',
+    };
+  }
+
+  if (credits < cost) {
+    const missing = Math.max(0, cost - credits);
+    return {
+      state: 'funding',
+      disabled: true,
+      label: 'Need ' + fmtCr(missing) + ' cr',
+      title: assetName + ' costs ' + fmtCr(cost) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+    };
+  }
+
+  const verb = kind === 'trader' ? 'Hire' : kind === 'outpost' ? 'Build' : 'Buy';
+  return {
+    state: 'available',
+    disabled: false,
+    label: verb + ' ' + fmtCr(cost) + ' cr',
+    title: verb + ' ' + assetName + ' for ' + fmtCr(cost) + ' cr.',
+  };
+}
+
+// Pure view model for the outpost flow strip. Production telemetry is authoritative for live
+// throughput; authored recipes only explain its ratios. A legacy save with no telemetry stays
+// explicitly pending instead of presenting the theoretical rate as observed output.
+export function describeOutpostOperation(outpost = {}, def = {}) {
+  const production = outpost.production && typeof outpost.production === 'object'
+    ? outpost.production
+    : null;
+  const recipe = (def && def.recipe) || outpost.recipe || null;
+  const book = recipe && recipe.book === 'claim_refinery' ? CLAIM_REFINERY_RECIPES : null;
+  // Book-driven refineries report the recipe they actually ran on the production ledger; a
+  // legacy ledger without that stamp shows the goods it consumed, and a cold one shows the
+  // book's first recipe as the line's shape.
+  const activeBookRecipe = book
+    ? (book.find((r) => production && r.id === production.recipeId) || null)
+    : null;
+  let recipeInputs;
+  if (activeBookRecipe) {
+    recipeInputs = Object.entries(activeBookRecipe.inputs);
+  } else if (book) {
+    const flowed = new Set([
+      ...Object.keys((production && production.consumedByGood) || {}),
+      ...Object.keys((production && production.missingByGood) || {}),
+    ]);
+    if (flowed.size) {
+      const outRecipe = book.find((r) => Object.keys(r.output)[0] === (production && production.outputGoodId));
+      recipeInputs = [...flowed].map((id) => [id, (outRecipe && outRecipe.inputs[id]) || 1]);
+    } else {
+      recipeInputs = Object.entries(book[0].inputs);
+    }
+  } else {
+    recipeInputs = recipe && recipe.inputs && typeof recipe.inputs === 'object'
+      ? Object.entries(recipe.inputs)
+        .filter(([, amount]) => Number(amount) > 0)
+        .sort(([left], [right]) => String(left).localeCompare(String(right)))
+      : [];
+  }
+  const recipeOutput = (activeBookRecipe || recipe) && (activeBookRecipe || recipe).output
+    && typeof (activeBookRecipe || recipe).output === 'object'
+    ? Object.entries((activeBookRecipe || recipe).output).find(([, amount]) => Number(amount) > 0)
+    : null;
+  const outputPerBatch = recipeOutput ? Number(recipeOutput[1]) : 1;
+  const outputGoodId = (production && production.outputGoodId)
+    || (recipeOutput && recipeOutput[0])
+    || (recipe && recipe.passive ? 'credits' : null);
+  const observedActualRate = finiteNumber(production && production.actualRate);
+  const requestedRate = finiteNumber(production && production.requestedRate);
+  const hasTelemetry = observedActualRate != null && requestedRate != null;
+  const rawStatus = String(outpost.status || (production && production.status) || '').toLowerCase();
+
+  let state = 'pending';
+  if (rawStatus === 'distressed') state = 'distressed';
+  else if (rawStatus === 'raided') state = 'raided';
+  else if (rawStatus === 'storage_full') state = 'storage_full';
+  else if (rawStatus === 'starved') state = 'starved';
+  else if (hasTelemetry && (rawStatus === 'producing' || (production && production.status === 'producing'))) state = 'producing';
+
+  // Distress, raids, and a full output bay stop the line even if their last telemetry sample was
+  // recorded while producing. The status is newer authority than that stale sample.
+  const lineStopped = state === 'distressed' || state === 'raided' || state === 'storage_full';
+  const actualRate = lineStopped ? 0 : hasTelemetry ? observedActualRate : null;
+  const limitingGoodId = (production && production.limitingGoodId)
+    || firstPositiveKey(production && production.missingByGood);
+  const limitingLabel = limitingGoodId ? commodityName(limitingGoodId) : null;
+
+  let statusLabel = 'Awaiting telemetry';
+  let detail = 'Production telemetry will appear after the next simulation update.';
+  let tone = 'neutral';
+  if (state === 'producing') {
+    statusLabel = 'Producing';
+    detail = recipe && recipe.passive
+      ? 'Passive output is flowing into local storage.'
+      : 'Feedstock is reaching the line and output is accumulating.';
+    tone = 'ok';
+  } else if (state === 'starved') {
+    statusLabel = limitingLabel ? `Starved: ${limitingLabel}` : 'Starved';
+    detail = limitingLabel
+      ? `${limitingLabel} feed is below this recipe's current demand.`
+      : 'One or more required inputs are not reaching this facility.';
+    tone = 'warn';
+  } else if (state === 'storage_full') {
+    statusLabel = 'Storage full';
+    detail = outpost.autoSell
+      ? 'Output bay is full; the next autosell cycle will clear room.'
+      : 'Output bay is full; manual logistics must clear room.';
+    tone = 'warn';
+  } else if (state === 'raided') {
+    statusLabel = 'Raided';
+    detail = 'Production is paused during raid recovery.';
+    tone = 'bad';
+  } else if (state === 'distressed') {
+    statusLabel = 'Distressed';
+    detail = 'Production halted while upkeep is unpaid.';
+    tone = 'bad';
+  }
+
+  const inputs = recipeInputs.map(([goodId, amountPerBatchRaw]) => {
+    const amountPerBatch = Number(amountPerBatchRaw);
+    const perMinute = actualRate != null && outputPerBatch > 0
+      ? roundFlow((actualRate * amountPerBatch / outputPerBatch) * 60)
+      : null;
+    return {
+      goodId,
+      label: commodityName(goodId),
+      actualPerMin: perMinute,
+      short: !!(production && Number(production.missingByGood && production.missingByGood[goodId]) > 0),
+    };
+  });
+  const output = {
+    goodId: outputGoodId,
+    label: outputGoodId === 'credits' ? 'Credits' : commodityName(outputGoodId),
+    actualPerMin: actualRate == null ? null : roundFlow(actualRate * 60),
+    targetPerMin: requestedRate == null ? null : roundFlow(requestedRate * 60),
+    unit: outputGoodId === 'credits' ? 'cr/min' : 'u/min',
+  };
+  const capacity = Math.max(0, Number(outpost.storageCap != null ? outpost.storageCap : def.storageCap) || 0);
+  const stored = Math.max(0, Number(outpost.storage) || 0);
+  const storage = {
+    stored: Math.round(stored),
+    capacity: Math.round(capacity),
+    unit: outputGoodId === 'credits' ? 'cr' : 'u',
+    fill: capacity > 0 ? Math.max(0, Math.min(1, stored / capacity)) : 0,
+  };
+
+  let feeders;
+  if (recipe && recipe.passive) {
+    feeders = { state: 'not-needed', count: 0, label: 'No feedstock required', availability: 'Self-contained' };
+  } else {
+    const feederCount = finiteNumber(production && production.localFeeders);
+    if (feederCount == null) {
+      feeders = { state: 'pending', count: null, label: 'Feeder telemetry pending', availability: 'Availability pending' };
+    } else {
+      const count = Math.max(0, Math.floor(feederCount));
+      const feederState = state === 'starved' ? 'short' : count > 0 ? 'linked' : 'none';
+      feeders = {
+        state: feederState,
+        count,
+        label: count === 1 ? '1 local feeder detected' : `${count || 'No'} local feeders detected`,
+        availability: feederState === 'short' ? 'Feed unavailable' : feederState === 'linked' ? 'Feed linked' : 'No feed linked',
+      };
+    }
+  }
+
+  const inputSummary = inputs.length
+    ? inputs.map((entry) => `${entry.label} ${spokenRate(entry.actualPerMin, 'units per minute')}`).join(', ')
+    : 'no feedstock required';
+  const outputSummary = `${output.label} ${spokenComparisonRate(output.actualPerMin, output.targetPerMin, outputGoodId === 'credits' ? 'credits per minute' : 'units per minute')}`;
+  const accessibleSummary = `${statusLabel}. Input draw: ${inputSummary}. Output: ${outputSummary}. Storage ${storage.stored} of ${storage.capacity} ${outputGoodId === 'credits' ? 'credits' : 'units'}. ${feeders.label}; ${feeders.availability}. ${detail}`;
+
+  return { state, tone, statusLabel, detail, inputs, output, storage, feeders, accessibleSummary };
+}
+
+const STYLE_ID = 'sf-automation-style';
+// A desktop window 760px wide or narrower. A phone (data-sf-mobile) has its own sheet in
+// orrery/mobileScreenLayouts.js, so these rules leave it alone.
+const AU_NARROW = 'html:root:not([data-sf-mobile="1"]) body #screens #sf-automation.au-orrery';
+const CSS = `
+/* Operations board on the shared plate vocabulary (styles/menu.css): one flat dark surface, a
+   19px title, tabs and buttons that match Settings / Codex / Help, IBM Plex for words and Plex
+   Mono for numerals. Every size is in px at or above the 12px floor — the previous block sized
+   text in em against the 15px root (.62em = 9.3px), which check:type-floor cannot see. */
+#sf-automation { width: min(94vw, 1100px); height: min(88vh, 860px); display: flex; flex-direction: column;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, #0d1527) 0%, color-mix(in srgb, var(--panel) 92%, #050a14) 100%);
+  border: 1px solid var(--panel-edge); border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  overflow: hidden; pointer-events: auto;
+  font-family: var(--sf-body-face); font-size: 14px; color: var(--ink); }
+#sf-automation .au-head { padding: 18px 24px 14px; border-bottom: 1px solid var(--panel-edge);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  display: flex; flex-direction: column; gap: 12px; }
+#sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+#sf-automation .au-top-right { display: flex; align-items: center; gap: 16px; }
+#sf-automation .au-title { font-family: var(--sf-display-face); font-weight: 700; font-size: 19px; line-height: 1.2;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+#sf-automation .au-title::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; box-shadow: 0 0 8px var(--accent); }
+#sf-automation .au-credits { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); background: color-mix(in srgb, var(--panel-2) 60%, transparent); padding: 4px 10px; border-radius: 3px; border: 1px solid var(--panel-edge); }
+#sf-automation .au-close { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 4px; color: var(--ink-dim); background: color-mix(in srgb, var(--panel-2) 50%, transparent); border: 1px solid var(--panel-edge); box-shadow: none; cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-close:hover { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); translate: 0 -1px; }
+#sf-automation .au-close:active { translate: 0 1px; }
+#sf-automation .au-close:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+#sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-size: 13px; background: color-mix(in srgb, var(--panel) 40%, transparent); padding: 8px 12px; border-radius: 4px; border: 1px solid var(--panel-edge); }
+#sf-automation .au-income .lbl { color: var(--ink-dim); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+#sf-automation .au-income .val { color: var(--accent); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent); }
+#sf-automation .au-capbar { flex: 1; height: 8px; border-radius: 3px; background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-edge); position: relative; overflow: hidden; min-width: 120px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
+#sf-automation .au-capfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+  background: linear-gradient(90deg, #38bdf8 0%, var(--accent) 100%); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent); transition: width .18s ease; }
+#sf-automation .au-captxt { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+#sf-automation .au-tabs { display: flex; gap: 6px; flex-wrap: wrap; background: rgba(0, 0, 0, 0.25); padding: 4px; border-radius: 6px; border: 1px solid var(--panel-edge); width: fit-content; }
+#sf-automation .au-tab { padding: 6px 16px; font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); background: transparent; border: 1px solid transparent; border-radius: 4px; box-shadow: none; cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-tab:hover { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
+#sf-automation .au-tab:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+#sf-automation .au-tab.active { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 70%, transparent); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent), 0 1px 4px rgba(0,0,0,0.3); text-shadow: none; }
+#sf-automation .au-body { flex: 1; overflow-y: auto; padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; scrollbar-color: rgba(148, 178, 205, 0.25) transparent; }
+#sf-automation .au-command { display: grid; grid-template-columns: minmax(240px, 1.08fr) minmax(0, 1.92fr);
+  gap: 14px; align-items: stretch; }
+#sf-automation .au-next, #sf-automation .au-summary {
+  border: 1px solid var(--panel-edge); border-radius: 6px; background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  padding: 16px 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-left: 2px solid var(--accent); }
+#sf-automation .au-kicker { font-family: var(--sf-body-face); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); }
+#sf-automation .au-next-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+#sf-automation .au-next-body { font-size: 13px; line-height: 1.5; color: var(--ink-dim); }
+#sf-automation .au-next-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 6px; }
+#sf-automation .au-next-meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); }
+#sf-automation .au-cta { padding: 8px 16px; white-space: nowrap; border: 1px solid var(--accent); border-radius: 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #fff) 0%, var(--accent) 100%); color: #020617; font-weight: 700; font-size: 13px; box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent); cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-cta:hover { filter: brightness(1.1); translate: 0 -1px; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 50%, transparent); }
+#sf-automation .au-cta:active { translate: 0 1px; box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+#sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+#sf-automation .au-metric { min-width: 0; border: 1px solid var(--panel-edge); border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent); padding: 10px 12px; transition: border-color .15s ease, background .15s ease; }
+#sf-automation .au-metric:hover { border-color: var(--panel-edge-2); background: color-mix(in srgb, var(--panel) 85%, transparent); }
+#sf-automation .au-metric .k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); }
+#sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
+#sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
+#sf-automation .au-metric__part { white-space: nowrap; }
+#sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
+#sf-automation .au-industry { margin: 0; }
+#sf-automation .au-industry .au-note { margin-top: 0; }
+#sf-automation .au-industry-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#sf-automation .au-industry-rows li { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; line-height: 1.4; color: var(--ink); }
+html body #screens #sf-automation.au-orrery .au-industry-rows li { color: rgb(var(--au-bone)); font-size: 13px; }
+#sf-automation .au-section-h { font-family: var(--sf-body-face); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-dim); border-bottom: 1px solid var(--panel-edge); padding-bottom: 8px; margin-bottom: 2px; }
+#sf-automation .au-card { display: flex; align-items: center; gap: 16px; padding: 14px 16px;
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent); border: 1px solid var(--panel-edge); border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03); transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+#sf-automation .au-card:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--panel-edge)); background: color-mix(in srgb, var(--panel-2) 70%, transparent); box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+#sf-automation .au-card .nm { font-size: 15px; font-weight: 600; color: var(--ink); }
+#sf-automation .au-card .meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); margin-top: 5px;
+  display: flex; gap: 14px; flex-wrap: wrap; }
+#sf-automation .au-card .grow { flex: 1; min-width: 0; }
+#sf-automation .au-card button { padding: 7px 16px; white-space: nowrap; font-size: 13px; border-radius: 4px; box-shadow: none; cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-card button:not(:disabled):active { translate: 0 1px; }
+#sf-automation .au-card.au-outpost { align-items: stretch; padding: 14px 16px; }
+#sf-automation .au-card.au-outpost > .au-recall { align-self: center; min-height: 38px; }
+#sf-automation .au-outpost-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+#sf-automation .au-outpost-head .nm { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+#sf-automation .au-outpost-flow { display: grid; grid-template-columns: minmax(150px, 1fr) 30px minmax(145px, .92fr) 30px minmax(170px, 1.12fr);
+  align-items: stretch; gap: 5px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--panel-edge); border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 60%, transparent); }
+#sf-automation .au-flow-node, #sf-automation .au-flow-core { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+#sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid var(--panel-edge); border-right: 1px solid var(--panel-edge); }
+#sf-automation .au-flow-k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+#sf-automation .au-flow-node strong, #sf-automation .au-flow-core strong { overflow: hidden; text-overflow: ellipsis; color: var(--ink); font-size: 13px; }
+#sf-automation .au-flow-core strong { white-space: normal; }
+#sf-automation .au-flow-v { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-dim); }
+#sf-automation .au-flow-v + .au-flow-v { margin-top: 1px; }
+#sf-automation .au-storebar { width: 72px; height: 6px; margin-left: 5px; border-radius: 2px; background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-edge); overflow: hidden; display: inline-block; vertical-align: middle; }
+#sf-automation .au-storebar > i { display: block; height: 100%; }
+#sf-automation .au-flow-link { align-self: center; position: relative; height: 1px; background: var(--panel-edge-2); }
+#sf-automation .au-flow-link::after { content: ''; position: absolute; right: -1px; top: -3px; width: 6px; height: 6px;
+  border-top: 1px solid currentColor; border-right: 1px solid currentColor; transform: rotate(45deg); color: var(--ink-mute); }
+#sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link { background: var(--good); }
+#sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link::after { color: var(--good); }
+#sf-automation .au-outpost-flow[data-state="starved"] .au-flow-link,
+#sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link { background: var(--warn); }
+#sf-automation .au-outpost-flow[data-state="starved"] .au-flow-link::after,
+#sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link::after { color: var(--warn); }
+#sf-automation .au-outpost-flow[data-state="raided"] .au-flow-link,
+#sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link { background: var(--danger); }
+#sf-automation .au-outpost-flow[data-state="raided"] .au-flow-link::after,
+#sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link::after { color: var(--danger); }
+#sf-automation .au-operation-status { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+#sf-automation .au-operation-status::before { content: ''; width: 6px; height: 6px; border: 1px solid currentColor; transform: rotate(45deg); }
+#sf-automation .au-operation-status.ok { color: var(--good); }
+#sf-automation .au-operation-status.warn { color: var(--warn); }
+#sf-automation .au-operation-status.bad { color: var(--danger); }
+#sf-automation .au-operation-status.neutral { color: var(--ink-dim); }
+#sf-automation .au-miner-ops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--panel-edge); border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 60%, transparent); }
+#sf-automation .au-miner-ops .au-flow-k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+#sf-automation .au-miner-ops strong { display: block; margin-top: 2px; font-size: 13px; color: var(--ink); }
+#sf-automation .au-card button.au-refuel { background: color-mix(in srgb, var(--accent) 15%, transparent); border: 1px solid var(--accent); color: var(--accent); font-weight: 600; }
+#sf-automation .au-card button.au-refuel:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); translate: 0 -1px; box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent); }
+#sf-automation .au-outpost-detail { margin-top: 8px; font-size: 13px; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent); font-weight: 600; }
+#sf-automation .au-outpost-detail summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--panel-edge); }
+/* Verbs: the primary (buy / deploy) is the one accent fill; ordering is an accent outline; recall
+   is destructive and stays a quiet danger outline. */
+#sf-automation .au-buy { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #fff) 0%, var(--accent) 100%); border-color: var(--accent); color: #020617; font-weight: 700; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); }
+#sf-automation .au-buy:hover:not(:disabled) { filter: brightness(1.1); translate: 0 -1px; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+#sf-automation .au-buy:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
+#sf-automation .au-order { background: color-mix(in srgb, var(--panel-2) 60%, transparent); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+#sf-automation .au-order:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, transparent); translate: 0 -1px; border-color: var(--accent); }
+#sf-automation .au-recall { background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 50%, transparent); color: var(--danger); font-weight: 600; }
+#sf-automation .au-recall:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 22%, transparent); border-color: var(--danger); translate: 0 -1px; box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 30%, transparent); }
+#sf-automation .au-empty { font-size: 13px; color: var(--ink-dim); padding: 12px 14px; line-height: 1.5; background: color-mix(in srgb, var(--panel-2) 30%, transparent); border: 1px dashed var(--panel-edge); border-radius: 4px; }
+#sf-automation .au-pill { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px;
+  border: 1px solid var(--panel-edge); color: var(--ink-dim); background: rgba(0,0,0,0.25); }
+#sf-automation .au-pill.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 50%, transparent); background: color-mix(in srgb, var(--good) 12%, transparent); }
+#sf-automation .au-pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+#sf-automation .au-pill.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+#sf-automation .au-program-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
+#sf-automation .au-program-label { font-size: 12px; font-weight: 600; color: var(--ink-dim); letter-spacing: .06em; text-transform: uppercase; }
+#sf-automation .au-program { font-family: var(--sf-body-face); font-size: 13px; padding: 4px 8px; border-radius: 3px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--panel-edge); cursor: pointer; }
+#sf-automation .au-program-badge { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); margin-left: 6px; }
+#sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 2px; background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-edge); overflow: hidden; display: inline-block; vertical-align: middle; }
+#sf-automation .au-minibar > i { display: block; height: 100%; background: linear-gradient(90deg, #10b981, #34d399); }
+#sf-automation .au-locked { font-size: 13px; color: var(--warn); }
+html body #screens #sf-automation.au-orrery .au-shop .nm > .au-locked--mark {
+  display: inline-block; width: 11px; height: 11px; margin-left: 9px; vertical-align: -1px;
+  /* the unlit lamp: a 1px bone outline of the cut shape, no dark fill, no words — the dotted
+     verb beside it already names the research that unlocks the tier. */
+  background-image:
+    linear-gradient(to bottom right, transparent 42%, rgb(var(--au-bone) / .5) 42%, rgb(var(--au-bone) / .5) 58%, transparent 58%),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5)),
+    linear-gradient(rgb(var(--au-bone) / .5), rgb(var(--au-bone) / .5));
+  background-size: 5px 5px, calc(100% - 5px) 1px, 1px 100%, 100% 1px, 1px calc(100% - 5px);
+  background-position: right top, left top, left top, left bottom, right bottom;
+  background-repeat: no-repeat; }
+@media (max-width: 760px) {
+  #sf-automation .au-command { grid-template-columns: 1fr; }
+  #sf-automation .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #sf-automation .au-outpost-flow { grid-template-columns: 1fr; }
+  #sf-automation .au-flow-link { display: none; }
+  #sf-automation .au-flow-node, #sf-automation .au-flow-core { padding: 5px 0; text-align: left; border-left: 0; border-right: 0; }
+}
+@media (forced-colors: active) {
+  #sf-automation, #sf-automation .au-next, #sf-automation .au-summary, #sf-automation .au-metric, #sf-automation .au-card {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+}
+/* ---- ORRERY r1 (A2): ONE borderless glass surface. Every rule keys off .au-orrery so it beats
+   the LEGACY AU overrides in deckplate/screens.js. Palette law: bone rgb(236 230 216) rest light,
+   ice rgb(223 238 255) motion only, one amber Hand + one amber Lamp Key, red threat only. */
+html body #screens #sf-automation.au-orrery {
+  --au-bone: 236 230 216;
+  --au-ice: 223 238 255;
+  border: 0; border-radius: 0;
+  background: linear-gradient(180deg, rgb(10 13 18 / .94) 0%, rgb(6 8 12 / .94) 100%);
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  position: relative;
+  /* The glass fits the instrument: no void below the last rung. Long ledgers still scroll. */
+  height: auto; max-height: min(88vh, 860px);
+}
+html body #screens #sf-automation.au-orrery::before,
+html body #screens #sf-automation.au-orrery::after {
+  content: ""; position: absolute; left: 10px; right: 10px; height: 15px; z-index: 5;
+  pointer-events: none; background-repeat: no-repeat;
+  background-image:
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6)),
+    linear-gradient(rgb(var(--au-bone) / .6), rgb(var(--au-bone) / .6));
+  background-size: 2px 15px, 15px 2px, 2px 15px, 15px 2px;
+}
+html body #screens #sf-automation.au-orrery::before { top: 8px; background-position: left top, left top, right top, right top; }
+html body #screens #sf-automation.au-orrery::after { bottom: 8px; background-position: left bottom, left bottom, right bottom, right bottom; }
+/* O2 header: amber audit — title pip goes bone, purse is a bone Counter, CLOSE is a dotted word. */
+html body #screens #sf-automation.au-orrery .au-head { padding: 14px 26px 10px; gap: 8px; border-bottom: 0; background: none; }
+html body #screens #sf-automation.au-orrery .au-title::before {
+  width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--au-bone)); box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-credits {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 2px 0;
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600;
+  letter-spacing: .06em; color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-close {
+  border: 0; border-radius: 0; background: none; box-shadow: none; min-height: 0; padding: 4px 2px;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .75);
+  text-decoration: underline dotted rgb(var(--au-bone) / .55); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; cursor: pointer; }
+html body #screens #sf-automation.au-orrery .au-close:hover { color: rgb(var(--au-bone)); translate: none; filter: none; }
+html body #screens #sf-automation.au-orrery .au-close::after { display: none; }
+/* O3 (A4+A7): the income row is an instrument — Arc Gauge, rolling Counter, ghost headroom,
+   and the asset-flow strip running into the purse. No bar, no box. */
+html body #screens #sf-automation.au-orrery .au-income {
+  display: flex; align-items: center; gap: 14px; padding: 6px 2px;
+  border: 0; border-radius: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-gauge { width: 64px; height: 40px; flex: none; overflow: visible; }
+html body #screens #sf-automation.au-orrery .au-gauge__track {
+  fill: none; stroke: rgb(var(--au-bone) / .22); stroke-width: 1; }
+html body #screens #sf-automation.au-orrery .au-gauge__ghost {
+  fill: none; stroke: rgb(var(--au-bone) / .5); stroke-width: 2; stroke-linecap: butt; }
+html body #screens #sf-automation.au-orrery .au-gauge__fill {
+  fill: none; stroke: rgb(var(--au-bone) / .95); stroke-width: 3; stroke-linecap: butt; }
+html body #screens #sf-automation.au-orrery .au-gauge__bead {
+  fill: rgb(var(--au-bone)); stroke: rgb(var(--au-bone) / .28); stroke-width: 4; }
+html body #screens #sf-automation.au-orrery .au-gauge__tick {
+  stroke: rgb(var(--au-bone) / .45); stroke-width: 1; }
+html body #screens #sf-automation.au-orrery .au-gauge__tick--ghost {
+  stroke: rgb(var(--au-bone) / .55); stroke-width: 2; }
+html body #screens #sf-automation.au-orrery .au-meter { display: flex; flex-direction: column; gap: 1px; min-width: 128px; }
+html body #screens #sf-automation.au-orrery .au-income .lbl {
+  font-size: 12px; letter-spacing: .16em; color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-income .val {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 20px; line-height: 1.1; color: rgb(var(--au-bone)); text-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-digit { display: inline-block; }
+html body #screens #sf-automation.au-orrery .au-digit.is-new { animation: au-roll .32s ease-out; }
+@keyframes au-roll { from { transform: translateY(-55%); opacity: .2; } to { transform: none; opacity: 1; } }
+html body #screens #sf-automation.au-orrery .au-captxt {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase; color: rgb(var(--au-bone) / .6); white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-flow {
+  flex: 1; display: flex; align-items: stretch; gap: 0; min-width: 0; margin-left: 6px; }
+html body #screens #sf-automation.au-orrery .au-node {
+  flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 0; }
+html body #screens #sf-automation.au-orrery .au-node__ring {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  border: 2px solid rgb(var(--au-bone) / .75);
+  padding: 0; background: transparent; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="1"] .au-node__ring {
+  border-color: rgb(var(--au-bone)); box-shadow: 0 0 0 3px rgb(var(--au-bone) / .14); }
+html body #screens #sf-automation.au-orrery .au-node--purse .au-node__ring {
+  border-radius: 0; transform: rotate(45deg) scale(.72); border-color: rgb(var(--au-bone)); cursor: default; }
+/* r2 F3: rings are throttles — the Hand rides the hovered or conducted ring. */
+html body #screens #sf-automation.au-orrery button.au-node__ring { cursor: pointer; }
+html body #screens #sf-automation.au-orrery button.au-node__ring:hover,
+html body #screens #sf-automation.au-orrery .au-node.is-conducted .au-node__ring {
+  border-color: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+html body #screens #sf-automation.au-orrery button.au-node__ring:focus-visible {
+  outline: 2px solid rgb(var(--au-bone)); outline-offset: 2px; }
+/* One Hand, always: while a ring holds it (conducted or hovered) the rail bead rests in bone. */
+html body #screens #sf-automation.au-orrery.is-conducting .au-tab.active::after,
+html body #screens #sf-automation.au-orrery .au-head:has(.au-node__ring:hover) .au-tab.active::after {
+  background: rgb(var(--au-bone) / .7); box-shadow: none; }
+html body #screens #sf-automation.au-orrery.is-conducting .au-tab.active::before,
+html body #screens #sf-automation.au-orrery .au-head:has(.au-node__ring:hover) .au-tab.active::before {
+  background: rgb(var(--au-bone)); box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-flow__cap {
+  align-self: center; flex: none; white-space: nowrap; margin-right: 12px;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-node__t { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+html body #screens #sf-automation.au-orrery .au-node__t b {
+  font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 14px; color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-node__t i {
+  font-style: normal; font-family: var(--sf-body-face); font-weight: 600; font-size: 12px;
+  letter-spacing: .12em; text-transform: uppercase; color: rgb(var(--au-bone) / .6); }
+html body #screens #sf-automation.au-orrery .au-node__beam {
+  position: relative; flex: 1; height: 12px; margin-left: 8px; min-width: 14px;
+  background:
+    linear-gradient(rgb(var(--au-bone) / .7), rgb(var(--au-bone) / .7)) center / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .18), rgb(var(--au-bone) / .18)) center / 100% 5px no-repeat; }
+html body #screens #sf-automation.au-orrery .au-node__beam i {
+  position: absolute; top: 50%; left: 0; width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55); }
+/* the traveller is the node's live state in motion — it only runs while the node is live,
+   never as idle chrome (motion means state change) */
+html body #screens #sf-automation.au-orrery .au-node.is-live .au-node__beam i {
+  animation: au-pulse 2.8s linear infinite; }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam i { display: none; }
+/* r2 F2: the parked bead sits mid-beam at rest (stills show it), sized by cr/min; the dormant
+   0-state keeps a hollow ghost bead so the machine reads alive-but-idle, not dead. */
+html body #screens #sf-automation.au-orrery .au-node__beam b {
+  position: absolute; top: 50%; left: 46%; width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(var(--au-ice)); box-shadow: 0 0 6px 2px rgb(var(--au-ice) / .55); }
+html body #screens #sf-automation.au-orrery .au-node[data-live="0"] .au-node__beam b {
+  width: 6px; height: 6px; background: transparent; box-shadow: none;
+  border: 1px solid rgb(var(--au-ice) / .6); }
+@keyframes au-pulse { from { left: 4%; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: 92%; opacity: 0; } }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-digit.is-new { animation: none; }
+/* r2 F9: under reduced motion the traveller rests and the parked bead stays mid-beam — pulses
+   park, they never vanish, and every numeral beside them is untouched. */
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-node__beam i { display: none; }
+/* polish28w: desktop strip reads as a stepper — ring, count and beam share one axis, the class
+   word sits under it. The two-line text block used to straddle the axis, so each beam ran out of
+   the end of TRADERS/OUTPOSTS/FLEET and into the next ring. (.au-node__t is display:contents so
+   the count and word take their own cells; no markup change.) */
+@media (min-width: 761px) {
+  html body #screens #sf-automation.au-orrery .au-node {
+    display: grid; grid-template-columns: auto auto minmax(14px, 1fr); grid-template-rows: auto auto;
+    align-items: center; column-gap: 7px; row-gap: 3px; padding: 2px 0; }
+  html body #screens #sf-automation.au-orrery .au-node__ring { grid-area: 1 / 1; }
+  html body #screens #sf-automation.au-orrery .au-node__t { display: contents; }
+  html body #screens #sf-automation.au-orrery .au-node__t b { grid-area: 1 / 2; line-height: 1; }
+  html body #screens #sf-automation.au-orrery .au-node__t i {
+    grid-area: 2 / 1 / 3 / 4; line-height: 1.1; white-space: nowrap; }
+  html body #screens #sf-automation.au-orrery .au-node__beam { grid-area: 1 / 3; margin: 0 10px 0 3px; }
+  /* the caption rides the ring axis, not the middle of the two rows */
+  html body #screens #sf-automation.au-orrery .au-flow__cap { align-self: flex-start; margin-top: 6px; line-height: 15px; }
+}
+/* O4 (A3): tabs are stations on an arc rail — bone dotted words, ticks to the spine,
+   and the ONE amber Hand (arm + bead) riding the chosen station. */
+html body #screens #sf-automation.au-orrery .au-tabs {
+  position: relative; gap: 0 26px; padding: 0 4px 16px; border: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-tabs::before {
+  content: ""; position: absolute; left: -6px; right: -6px; bottom: 4px; height: 30px;
+  border-bottom: 2px solid rgb(var(--au-bone) / .5); border-radius: 0 0 50% 50%; pointer-events: none; }
+html body #screens #sf-automation.au-orrery .au-tab {
+  position: relative; min-height: 0; padding: 2px 2px 10px; border: 0; background: none; box-shadow: none;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .6);
+  text-decoration: underline dotted rgb(var(--au-bone) / .45); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; text-shadow: none; cursor: pointer; }
+html body #screens #sf-automation.au-orrery .au-tab:nth-child(2),
+html body #screens #sf-automation.au-orrery .au-tab:nth-child(3) { margin-top: 5px; }
+html body #screens #sf-automation.au-orrery .au-tab:hover { color: rgb(var(--au-bone)); background: none; }
+html body #screens #sf-automation.au-orrery .au-tab::after {
+  content: ""; position: absolute; left: 50%; bottom: -1px; width: 2px; height: 11px; margin-left: -1px;
+  background: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-tab.active {
+  color: rgb(var(--au-bone)); background: none; box-shadow: none; text-shadow: none;
+  text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .8); }
+html body #screens #sf-automation.au-orrery .au-tab.active::after {
+  height: 12px; bottom: -3px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+html body #screens #sf-automation.au-orrery .au-tab.active::before {
+  content: ""; position: absolute; left: 50%; bottom: -9px; width: 7px; height: 7px; margin-left: -3.5px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+/* O5 (A2+A1): the ops board is a dossier on the glass, not two cards — flat, tight, bone. */
+html body #screens #sf-automation.au-orrery .au-body { padding: 12px 26px 16px; gap: 10px; min-height: 0; }
+html body #screens #sf-automation.au-orrery .au-command {
+  gap: 20px; grid-template-columns: minmax(270px, 1.15fr) minmax(0, 1.85fr); }
+html body #screens #sf-automation.au-orrery .au-next,
+html body #screens #sf-automation.au-orrery .au-summary {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
+html body #screens #sf-automation.au-orrery .au-next { gap: 3px; border-left: 0; }
+html body #screens #sf-automation.au-orrery .au-kicker { color: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-next-title { font-size: 15px; }
+html body #screens #sf-automation.au-orrery .au-next-body {
+  font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; }
+html body #screens #sf-automation.au-orrery .au-next-row { margin-top: 2px; padding-top: 2px; }
+html body #screens #sf-automation.au-orrery .au-next-meta { font-size: 12px; }
+/* 761–1100 wide (960×540): five flow nodes beside the gauge left ~90px each, so DRONES/TRADERS/
+   OUTPOSTS ran under the next ring. The strip takes its own row under the gauge; the board card's
+   cost sits on its own line above the button instead of wrapping into it. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  html body #screens #sf-automation.au-orrery .au-income { flex-wrap: wrap; row-gap: 4px; }
+  html body #screens #sf-automation.au-orrery .au-flow { flex: 1 0 100%; margin-left: 0; }
+  html body #screens #sf-automation.au-orrery .au-node__t i { letter-spacing: .08em; }
+  html body #screens #sf-automation.au-orrery .au-next-row { flex-wrap: wrap; justify-content: flex-start; row-gap: 6px; }
+  html body #screens #sf-automation.au-orrery .au-next-meta { flex: 1 0 100%; }
+  html body #screens #sf-automation.au-orrery .au-next-body { -webkit-line-clamp: 3; }
+  /* drone rungs: five stat columns clipped "upkeep" under THROTTLE; range and upkeep take a second line
+     (doubled class: the base track rule sits later in this sheet) */
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta { grid-auto-flow: row; grid-template-columns: 10ch 20ch 10ch; row-gap: 2px; }
+}
+html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-content: start; padding-top: 2px; }
+/* polish134: 761–1100 wide and ≤580 tall (960×540): the stacked head (gauge, strip, rail) and a
+   three-row board card pushed DEPLOYED DRONES onto the bottom bracket, so the fold cut a header
+   in half. The head tightens, the board's cost rides beside its button again, and the body fades
+   out over its last 24px so the fold reads as a scroll edge, not a clipped line. */
+@media (min-width: 761px) and (max-width: 1100px) and (max-height: 580px) {
+  html body #screens #sf-automation.au-orrery .au-head { padding: 12px 26px 4px; gap: 4px; }
+  html body #screens #sf-automation.au-orrery .au-income { padding: 0 2px; row-gap: 2px; }
+  html body #screens #sf-automation.au-orrery .au-command { grid-template-columns: minmax(340px, 1.2fr) minmax(0, 1.8fr); }
+  html body #screens #sf-automation.au-orrery .au-next-row { flex-wrap: nowrap; justify-content: space-between; }
+  html body #screens #sf-automation.au-orrery .au-next-meta { flex: 0 1 auto; }
+  html body #screens #sf-automation.au-orrery .au-body { padding-bottom: 28px;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent); }
+  html body #screens #sf-automation.au-orrery .au-metric .v { white-space: nowrap; }
+}
+/* polish134: under ~860 wide the 340px board column left the stats too narrow, so NET FLOW broke
+   as "0 / cr/min"; the stat gutters tighten and columns size to their values, keeping the board. */
+@media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
+  html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
+}
+/* Match the other desktop plates' readable scale at 1080p. Touch keeps its own sizing. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
+  ${AU_NARROW} { zoom: 1.14; }
+}
+/* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
+   the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
+   ring, the board's cost sat on its sentence and the rung stats printed under THROTTLE. The strip
+   takes its own row as a wrapping set of steppers, the board stacks over the summary, and each
+   rung puts its stats on wrapping lines with the verbs under them. */
+@media (max-width: 760px) {
+  ${AU_NARROW} { width: min(96vw, 760px); }
+  ${AU_NARROW} .au-head { padding: 14px 20px 8px; }
+  ${AU_NARROW} .au-body { padding: 10px 20px 14px; }
+  ${AU_NARROW} .au-top { flex-wrap: wrap; row-gap: 6px; }
+  ${AU_NARROW} .au-income { flex-wrap: wrap; row-gap: 10px; }
+  ${AU_NARROW} .au-flow { flex: 1 0 100%; margin-left: 0; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px 14px; }
+  ${AU_NARROW} .au-flow__cap { grid-column: 1 / -1; margin: 0; }
+  ${AU_NARROW} .au-node { display: grid; grid-template-columns: auto auto minmax(14px, 1fr); grid-template-rows: auto auto;
+    align-items: center; column-gap: 7px; row-gap: 3px; }
+  ${AU_NARROW} .au-node__ring { grid-area: 1 / 1; }
+  ${AU_NARROW} .au-node__t { display: contents; }
+  ${AU_NARROW} .au-node__t b { grid-area: 1 / 2; line-height: 1; }
+  ${AU_NARROW} .au-node__t i { grid-area: 2 / 1 / 3 / 4; line-height: 1.1; white-space: nowrap; letter-spacing: .08em; }
+  ${AU_NARROW} .au-node__beam { grid-area: 1 / 3; margin: 0 4px 0 3px; }
+  ${AU_NARROW} .au-tabs { gap: 0 20px; }
+  ${AU_NARROW} .au-tab { letter-spacing: .1em; }
+  ${AU_NARROW} .au-command { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  ${AU_NARROW} .au-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  ${AU_NARROW} .au-next-body { -webkit-line-clamp: 3; }
+  ${AU_NARROW} .au-next-row { flex-wrap: wrap; justify-content: flex-start; row-gap: 8px; }
+  ${AU_NARROW} .au-next-meta { flex: 1 0 100%; }
+  ${AU_NARROW} .au-shop { flex-wrap: wrap; row-gap: 4px; column-gap: 20px; }
+  ${AU_NARROW} .au-shop .grow { flex: 1 0 100%; }
+  ${AU_NARROW} .au-shop .meta { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+  ${AU_NARROW} .au-shop .meta > span { overflow: visible; }
+}
+@media (max-width: 520px) {
+  ${AU_NARROW} .au-title { font-size: 17px; }
+  ${AU_NARROW} .au-top-right { flex: 1 0 100%; justify-content: space-between; }
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px 12px; }
+  /* polish178: at 375 the four rail stations wrapped, so FLEET dropped onto the arc under DRONES
+     and its tick hit the Hand. On phones the stations spread across the full rail on one row. */
+  ${AU_NARROW} .au-tabs { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between;
+    width: auto; gap: 0 8px; }
+  ${AU_NARROW} .au-tab { letter-spacing: .08em; }
+  ${AU_NARROW} .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  ${AU_NARROW} .au-shop .grow { grid-template-columns: minmax(0, 1fr); }
+  ${AU_NARROW} .au-shop .meta { grid-column: 1; }
+}
+html body #screens #sf-automation.au-orrery .au-metric {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
+html body #screens #sf-automation.au-orrery .au-metric:hover { border: 0; background: none; }
+html body #screens #sf-automation.au-orrery .au-metric .v { font-size: 17px; }
+/* polish179: on phones the five conduct nodes wrapped three-and-two, leaving FLEET and CR/MIN
+   stranded under the first row. The cr/min total rides the caption row and the four classes share
+   one row, so the strip reads as a single line of throttles. The summary sub-lines balance so
+   ASSETS no longer leaves "outposts" alone on a third line. */
+@media (max-width: 520px) {
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; }
+  ${AU_NARROW} .au-flow__cap { grid-area: 1 / 1 / 2 / 4; align-self: center; }
+  ${AU_NARROW} .au-node--purse { grid-area: 1 / 4 / 2 / 5; justify-self: end; }
+  ${AU_NARROW} .au-node__t i { letter-spacing: .02em; }
+  ${AU_NARROW} .au-metric .s { text-wrap: balance; }
+}
+/* O6 (A6): the route Beam — bone band with bloom geometry, ice pulse travelling to the berth. */
+html body #screens #sf-automation.au-orrery .au-route { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-route__from,
+html body #screens #sf-automation.au-orrery .au-route__to {
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .75); white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-route__to { color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-route__beam {
+  position: relative; flex: 1; height: 12px; min-width: 40px;
+  /* r2 F4: 4px under-stroke at bone .38 (holds >=2:1 on glass) with the 1px 11:1 core on
+     top — bloom geometry, no live filters. */
+  background:
+    linear-gradient(rgb(var(--au-bone) / .8), rgb(var(--au-bone) / .8)) center / 100% 1px no-repeat,
+    linear-gradient(rgb(var(--au-bone) / .38), rgb(var(--au-bone) / .38)) center / 100% 4px no-repeat; }
+html body #screens #sf-automation.au-orrery .au-route__beam i {
+  position: absolute; top: 50%; left: 0; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
+  background: rgb(var(--au-ice)); box-shadow: 0 0 7px 2px rgb(var(--au-ice) / .6); }
+/* the pulse travels only while a route is plotted — the strip's live state, not ambient motion */
+html body #screens #sf-automation.au-orrery .au-route.is-plotted .au-route__beam i {
+  animation: au-pulse 2.4s linear infinite; }
+html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-route__beam i { animation: none; left: 46%; }
+/* O7a (A1+A2): purchase tiers are one-line ladder rungs (name + stats + verb), the helper
+   unfolding on hover/focus; the grey notice strip is a leader-note line; no boxes anywhere. */
+html body #screens #sf-automation.au-orrery .au-section-h { padding-bottom: 4px; margin-bottom: 0; }
+html body #screens #sf-automation.au-orrery .au-card {
+  position: relative; border: 0; border-radius: 0; background: none; box-shadow: none;
+  padding: 10px 0 10px 16px; gap: 14px; }
+html body #screens #sf-automation.au-orrery .au-card:hover { border: 0; background: none; box-shadow: none; }
+html body #screens #sf-automation.au-orrery .au-card::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px;
+  background: rgb(var(--au-bone) / .4); }
+html body #screens #sf-automation.au-orrery .au-card:hover::before,
+html body #screens #sf-automation.au-orrery .au-card:focus-within::before { background: rgb(var(--au-bone) / .85); }
+html body #screens #sf-automation.au-orrery .au-shop { padding: 7px 0 7px 16px; align-items: center; }
+/* r2 F5: fixed columns for vertical scan — a name column plus a per-ladder stat grid, still one
+   line per rung so the 1280 fold does not move. */
+html body #screens #sf-automation.au-orrery .au-shop .grow {
+  display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 2px 16px; align-items: baseline; }
+html body #screens #sf-automation.au-orrery .au-shop--drones .grow { grid-template-columns: 92px minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery :is(.au-shop--traders, .au-shop--outposts) .grow { grid-template-columns: 150px minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop .nm {
+  grid-column: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html body #screens #sf-automation.au-orrery .au-shop .meta {
+  grid-column: 2; margin-top: 0; min-width: 0; font-size: 12px; display: grid; grid-auto-flow: column;
+  justify-content: stretch; gap: 10px; }
+html body #screens #sf-automation.au-orrery .au-shop .meta > span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Fixed tracks sized to measured content; the last column is fluid so the grid can never run
+   under the verbs — column starts still align across rungs. */
+html body #screens #sf-automation.au-orrery .au-shop--drones .meta {
+  grid-template-columns: 10ch 20ch 10ch 9ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--traders .meta {
+  grid-template-columns: 10ch 10ch 8ch 10ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--outposts .meta {
+  grid-auto-flow: row; grid-template-columns: 9ch 13ch 10ch minmax(0, 1fr); }
+html body #screens #sf-automation.au-orrery .au-shop--outposts .meta > span:first-child {
+  grid-column: 1 / -1; }
+html body #screens #sf-automation.au-orrery .au-shop--fleet .meta {
+  grid-template-columns: 24ch max-content; }
+/* polish133: the drone earnings line ("Up to ~113 cr/min capped · shared ceiling, before upkeep")
+   had a 20ch track, so it ended in an ellipsis jammed against "buffer" on every rung. On desktop
+   the four short stats keep aligned columns and the earnings sentence takes its own line under
+   them, whole; ≤760 keeps its wrapping flex row with the sentence last. */
+@media (min-width: 761px) {
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta {
+    grid-auto-flow: row; grid-template-columns: 11ch 11ch 10ch 14ch; row-gap: 2px; }
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta > span:nth-child(2) {
+    grid-column: 1 / -1; }
+}
+html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta > span:nth-child(2) {
+  order: 1; white-space: normal; overflow: visible; text-overflow: clip; }
+html body #screens #sf-automation.au-orrery .au-shop .au-note {
+  display: none; grid-column: 1 / -1; margin-top: 2px; font-size: 12px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover .au-note,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within .au-note { display: block; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 0; border-radius: 0; background: none; box-shadow: none; position: relative;
+  padding: 2px 0 2px 16px; font-size: 13px; }
+html body #screens #sf-automation.au-orrery .au-empty::before {
+  content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px;
+  background: rgb(var(--au-bone) / .55); }
+html body #screens #sf-automation.au-orrery .au-locked { color: rgb(var(--au-bone) / .8); }
+/* O7b (A5): every verb except the Lamp Key is a dotted word. Disabled verbs are a 1px bone
+   outline of the cut shape — a lamp unlit, never a dark chip. */
+html body #screens #sf-automation.au-orrery .au-card button {
+  box-sizing: border-box; min-height: 0; padding: 4px 2px; border: 0; border-radius: 0;
+  background: none; box-shadow: none; filter: none; opacity: 1; translate: none;
+  font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .14em;
+  text-transform: uppercase; color: rgb(var(--au-bone) / .85); text-shadow: none;
+  text-decoration: underline dotted rgb(var(--au-bone) / .5); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; cursor: pointer; white-space: nowrap; }
+html body #screens #sf-automation.au-orrery .au-card button::after { display: none; }
+html body #screens #sf-automation.au-orrery .au-card button:hover:not(:disabled) {
+  color: rgb(var(--au-bone)); background: none; box-shadow: none; filter: none;
+  text-decoration-style: solid; text-decoration-color: rgb(var(--au-bone) / .85); }
+html body #screens #sf-automation.au-orrery .au-card button:active:not(:disabled) { translate: none; }
+html body #screens #sf-automation.au-orrery .au-card button:disabled {
+  border: 0; box-shadow: none; background: none;
+  color: rgb(var(--au-bone) / .55); opacity: 1; filter: none; cursor: default;
+  padding: 4px 2px;
+  text-decoration: underline dotted rgb(var(--au-bone) / .4); text-decoration-thickness: 1px;
+  text-underline-offset: 5px; }
+/* O7c: amber audit — status ambers go bone (red keeps threat only); deployed instruments flat. */
+html body #screens #sf-automation.au-orrery :is(.au-pill, .au-program-badge) {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0;
+  color: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery .au-pill.warn {
+  color: rgb(var(--au-bone)); text-decoration: underline dotted rgb(var(--au-bone) / .6);
+  text-underline-offset: 3px; border: 0; }
+html body #screens #sf-automation.au-orrery .au-pill.ok { color: rgb(var(--au-bone)); border: 0; }
+html body #screens #sf-automation.au-orrery .au-pill.bad { color: var(--danger); border: 0; }
+html body #screens #sf-automation.au-orrery .au-operation-status.warn { color: rgb(var(--au-bone)); }
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="starved"] .au-flow-link,
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage_full"] .au-flow-link {
+  background: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="starved"] .au-flow-link::after,
+html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage_full"] .au-flow-link::after {
+  color: rgb(var(--au-bone) / .7); }
+html body #screens #sf-automation.au-orrery :is(.au-outpost-flow, .au-miner-ops) {
+  border: 0; border-radius: 0; background: none; box-shadow: none; padding: 8px 0; }
+html body #screens #sf-automation.au-orrery .au-flow-core { border-left: 0; border-right: 0; }
+html body #screens #sf-automation.au-orrery .au-outpost-detail summary {
+  color: rgb(var(--au-bone) / .85); text-decoration: underline dotted rgb(var(--au-bone) / .5);
+  text-underline-offset: 4px; }
+html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
+  background: none; border: 0; border-radius: 0; padding: 6px 0; }
+html body #screens #sf-automation.au-orrery .au-program {
+  border: 0; border-radius: 0; background: none; box-shadow: none; color: rgb(var(--au-bone)); }
+/* polish273: purchase rungs and the empty notice were loose rows hung on a 2px tick, so the
+   Drone Bay read as unframed text. Each rung is now its own hairline card (faint fill, radius 8)
+   with the tick dropped, and the empty notice is a dashed well — the same card language as the
+   Records Wall and Help keycaps. Spacing and the one-line rung layout are unchanged. */
+html body #screens #sf-automation.au-orrery .au-shop {
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px;
+  background: rgb(var(--au-bone) / .025); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within {
+  border: 1px solid rgb(var(--au-bone) / .34); background: rgb(var(--au-bone) / .05); }
+html body #screens #sf-automation.au-orrery .au-shop::before { display: none; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 1px dashed rgb(var(--au-bone) / .22); border-radius: 8px;
+  background: rgb(var(--au-bone) / .02); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-empty::before { display: none; }
+/* polish289: the four summary readings (ASSETS / NET FLOW / CAP LOAD / LIFETIME) floated as loose
+   text beside the board while every rung under them sat in a hairline card, so the board's numbers
+   read as unframed. They now share one hairline strip in the rungs' card language (radius 8, bone
+   .16 edge, faint fill), each reading in its own cell split by 1px rules. The rules are inset
+   shadows clipped by the strip, so 4-across and 2×2 both draw clean edges. Desktop and narrow
+   windows only; the touch sheet (data-sf-mobile) keeps its own stack. */
+${AU_NARROW} .au-summary {
+  align-self: start; gap: 0; column-gap: 0; padding: 0; overflow: hidden;
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px; background: rgb(var(--au-bone) / .025); }
+${AU_NARROW} .au-summary > .au-metric,
+${AU_NARROW} .au-summary > .au-metric:hover {
+  padding: 9px 14px 10px; background: none;
+  box-shadow: -1px 0 0 rgb(var(--au-bone) / .14), 0 -1px 0 rgb(var(--au-bone) / .14); }
+${AU_NARROW} .au-summary > .au-metric .v { margin-top: 3px; }
+/* 761–1100 wide (960×540) the cells are ~120px: a 10px inset keeps "gross 0 - upkeep 0" on one line */
+@media (min-width: 761px) and (max-width: 1100px) {
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 8px 10px 9px; }
+}
+/* polish289b: ≤760 wide (390×844, 560×800) the 2×2 strip stood ~30px taller than the loose
+   readings, so DEPLOYED DRONES was cut at the panel's bottom fold and the strip's corners ran into
+   the corner brackets. Cells tighten (padding, value gap, sub-line leading) and the strip insets
+   8px from the body edge, so it sits clear of the brackets and the heading stays whole. */
+@media (max-width: 760px) {
+  ${AU_NARROW} .au-summary { margin: 0 8px; }
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 5px 10px 6px; }
+  ${AU_NARROW} .au-summary > .au-metric .v { margin-top: 1px; line-height: 1.15; }
+  ${AU_NARROW} .au-summary > .au-metric .s { line-height: 1.25; }
+}
+/* polish297: 521–760 wide (560×800) the five conduct nodes wrapped four-and-one, leaving CR/MIN
+   alone on a second row, and the ~120px summary cells broke "gross 0 - upkeep 0" and stacked
+   ASSETS three lines deep. As on phones, the cr/min total rides the caption row and the four
+   classes share one row; the cells inset 8px and their sub-lines balance. */
+@media (min-width: 521px) and (max-width: 760px) {
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 14px; }
+  ${AU_NARROW} .au-flow__cap { grid-area: 1 / 1 / 2 / 4; align-self: center; }
+  ${AU_NARROW} .au-node--purse { grid-area: 1 / 4 / 2 / 5; justify-self: end; }
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 5px 8px 6px; }
+  ${AU_NARROW} .au-summary > .au-metric .s { text-wrap: balance; }
+}
+`;
+
+function injectStyle() {
+  if (document.getElementById(STYLE_ID)) return;
+  const el = document.createElement('style');
+  el.id = STYLE_ID;
+  el.textContent = CSS;
+  document.head.appendChild(el);
+}
+
+export const automationScreen = {
+  id: 'automation',
+  _ctx: null,
+  _root: null,
+  _tab: 'drones',
+  _els: null,
+  _bodySig: '',
+  _conduct: null,
+
+  mount(rootEl, ctx) {
+    injectStyle();
+    injectOrreryMobileScreens();
+    this._ctx = ctx;
+    this._root = rootEl;
+    rootEl.id = 'sf-automation';
+    // au-orrery: the ORRERY r1 skin below keys off this class so it strictly beats the
+    // LEGACY AU overrides in deckplate/screens.js regardless of sheet order.
+    rootEl.classList.add('au-orrery');
+    rootEl.innerHTML = `
+      <div class="au-head">
+        <div class="au-top">
+          <div class="au-title">Automation</div>
+          <div class="au-top-right">
+            <div class="au-credits">CR <span data-cr>0</span></div>
+            <button class="au-close" type="button" data-close aria-label="Close operations board">Close</button>
+          </div>
+        </div>
+        <div class="au-income">
+          <svg class="au-gauge" data-gauge viewBox="0 0 64 40" aria-hidden="true" focusable="false">
+            <path class="au-gauge__track" d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <path class="au-gauge__ghost" data-gaugeghost d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <path class="au-gauge__fill" data-gaugefill d="M 6 34 A 26 26 0 0 1 58 34" pathLength="100" />
+            <g class="au-gauge__ticks">
+              <line class="au-gauge__tick" x1="11" y1="18.7" x2="13.8" y2="20.8" />
+              <line class="au-gauge__tick" x1="24" y1="9.3" x2="25.1" y2="12.6" />
+              <line class="au-gauge__tick" x1="40" y1="9.3" x2="39" y2="12.6" />
+              <line class="au-gauge__tick" x1="53" y1="18.7" x2="50.2" y2="20.8" />
+              <line class="au-gauge__tick au-gauge__tick--ghost" x1="58" y1="34" x2="53" y2="34" />
+            </g>
+            <circle class="au-gauge__bead" data-gaugebead r="3" cx="6" cy="34" />
+          </svg>
+          <div class="au-meter">
+            <span class="lbl">PASSIVE</span>
+            <span class="val" data-rate>0 cr/min</span>
+            <span class="au-captxt" data-captxt>cap —</span>
+          </div>
+          <div class="au-flow" data-flow></div>
+        </div>
+        <div class="au-tabs" data-tabs>
+          ${TABS.map((t) => `<button class="au-tab" data-tab="${t.id}">${t.label}</button>`).join('')}
+        </div>
+      </div>
+      <div class="au-body" data-body></div>`;
+    const body = rootEl.querySelector('[data-body]');
+    this._els = {
+      cr: rootEl.querySelector('[data-cr]'),
+      rate: rootEl.querySelector('[data-rate]'),
+      gaugefill: rootEl.querySelector('[data-gaugefill]'),
+      gaugeghost: rootEl.querySelector('[data-gaugeghost]'),
+      gaugebead: rootEl.querySelector('[data-gaugebead]'),
+      captxt: rootEl.querySelector('[data-captxt]'),
+      flow: rootEl.querySelector('[data-flow]'),
+      body,
+      tabs: Array.from(rootEl.querySelectorAll('[data-tab]')),
+    };
+
+    rootEl.querySelector('[data-tabs]').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-tab]');
+      if (btn && btn.dataset.tab !== this._tab) { this._tab = btn.dataset.tab; this.refresh(this._ctx, { forceBody: true }); }
+    });
+
+    // r2 F3: the flow-strip rings are throttles — conducting moves the Hand there.
+    const flow = rootEl.querySelector('[data-flow]');
+    if (flow) flow.addEventListener('click', (e) => {
+      const ring = e.target.closest('button[data-conduct]');
+      if (ring) this._onAction('conduct', ring.dataset.conduct, null);
+    });
+
+    const closeBtn = rootEl.querySelector('[data-close]');
+    if (closeBtn) closeBtn.addEventListener('click', () => this._close());
+
+    // one delegated listener for all action buttons in the body
+    body.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (btn) this._onAction(btn.dataset.act, btn.dataset.ref, btn.dataset.kind);
+    });
+    // V2 §4 / cut-list #28: program dropdown change handler. Selector is tag-agnostic: since the
+    // native select was replaced by the sf-select widget the element is a div carrying the same
+    // data-act/data-ref/data-kind attributes and a .value property.
+    body.addEventListener('change', (e) => {
+      if (this._onLoopInput(e.target)) return;
+      const sel = e.target.closest('[data-act="assignProgram"]');
+      if (!sel) return;
+      this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
+    });
+    body.addEventListener('input', (e) => this._onLoopInput(e.target, false));
+    this._listenProgramRejections();
+
+    // Worker replies apply the fleet mirror before replaying this owner event.
+    // Refresh the open panel from that mirror, not from the click's optimistic state.
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = ctx?.bus?.on?.('automation:fleetChanged', (event) => {
+      if (this._root && this._tab === 'fleet') this.refresh(this._ctx);
+      const messages = {
+        assigned: 'Wingman assigned. The hull remains yours and will deploy on sector entry.',
+        released: 'Wingman returned to the hangar.',
+        releaseRejected: 'Cannot return this wingman: its owned hull link is missing or ambiguous.',
+        hullSaleRejected: 'Return the wingman to the hangar before selling its hull.',
+        hullSwitchRejected: 'Return the wingman to the hangar before flying its hull.',
+      };
+      const refusal = { active: 'Your active hull cannot be assigned.', assigned: 'That hull is already assigned to the wing.',
+        capacity: 'Fleet is at capacity.', missing: 'That owned hull is no longer available.', unavailable: 'Fleet assignment is unavailable.',
+        tracked_vessel: 'Bring this tracked hull to this berth and finish any yard or recovery work before assigning it.',
+        destroyed: 'This hull has no integrity. Switch to it at a berth and repair it before deploying.' };
+      const text = event?.reason === 'destroyed' && event.action === 'released'
+        ? 'Wingman lost; its owned hull remains with zero integrity.'
+        : event?.reason === 'tracked_not_berthed' && event.action === 'releaseRejected'
+          ? 'Bring this wingman to the receiving berth and stop before returning it.'
+        : event?.action === 'assignmentRejected' ? (refusal[event.reason] || 'Fleet assignment was not accepted.') : messages[event?.action];
+      if (text) ctx.bus.emit('toast', { text, kind: /Rejected$/.test(event.action) || event.reason === 'destroyed' ? 'warn' : 'good', ttl: 4000 });
+    });
+
+    // A finished trader cycle had no reader. The strip says what the receipt paid.
+    if (this._offCycle) this._offCycle();
+    this._cycleNote = '';
+    if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
+      const off = ctx.bus.on('automation:traderCycleCompleted', (payload) => {
+        this._cycleNote = traderCycleLine(payload);
+        const node = this._root && this._root.querySelector('[data-industry-cycle]');
+        if (!node) return;
+        node.hidden = !this._cycleNote;
+        node.textContent = this._cycleNote;
+      });
+      if (typeof off === 'function') this._offCycle = off;
+    }
+  },
+
+  onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
+  onHide() { /* cached DOM retained */ },
+  dispose() {
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = null;
+    if (this._offProgramRejected) this._offProgramRejected();
+    if (this._offProgramAssigned) this._offProgramAssigned();
+    this._offProgramRejected = this._offProgramAssigned = null;
+    this._loopDraft = null;
+    if (this._offCycle) this._offCycle();
+    this._offCycle = null;
+    this._root = null;
+    this._ctx = null;
+    this._els = null;
+    this._bodySig = '';
+    this._cycleNote = '';
+  },
+
+  // Pop back to whatever pushed us (pause menu in normal play). Mirrors codex.js's Close; ESC also
+  // pops (input.js), but a visible exit keeps the screen self-explanatory (taste bar §7).
+  _close() {
+    const ctx = this._ctx;
+    const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+    const mgr = (ctx && ctx.screenManager) || (ui && ui.screenManager) || null;
+    if (mgr && typeof mgr.popScreen === 'function') { mgr.popScreen(); return; }
+    if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+  },
+
+  refresh(ctx, opts = {}) {
+    if (ctx) this._ctx = ctx;
+    if (!this._root) return;
+    this._syncHeader();
+    this._syncTabs();
+    const sig = this._bodySignature();
+    if (opts.forceBody || sig !== this._bodySig) {
+      this._bodySig = sig;
+      this._renderBody();
+    }
+  },
+
+  // ---- internals ----------------------------------------------------------
+  _auto() {
+    const st = this._ctx.state;
+    return st.automation || { drones: [], traders: [], outposts: [], fleet: [], fleetCap: 0,
+      meta: {}, accumulators: {}, balance: AUTO_BALANCE };
+  },
+
+  _balance() {
+    const a = this._auto();
+    return a.balance || AUTO_BALANCE;
+  },
+
+  // Player progression tier — used to bound the passive cap and gate higher-tier assets.
+  // Derived from droneTierCap (set by tech) so the panel matches what the player has unlocked.
+  _playerTier() {
+    const st = this._ctx.state;
+    const cap = (st.player && st.player.droneTierCap) || 1;
+    return Math.max(1, Math.min(5, cap));
+  },
+
+  _passiveCapPerMin() {
+    return passiveCapPerMin(this._ctx.state);
+  },
+
+  // current passive rate: sum of net (income - upkeep) across deployed assets.
+  _currentRatePerMin() {
+    return summarizeAutomationOperations(this._ctx.state).netRatePerMin;
+  },
+
+  _syncHeader() {
+    const st = this._ctx.state;
+    const cr = this._els && this._els.cr;
+    if (cr) cr.textContent = ((st.player && st.player.credits) || 0).toLocaleString();
+
+    const rate = this._currentRatePerMin();
+    const cap = this._passiveCapPerMin();
+    const rateEl = this._els && this._els.rate;
+    if (rateEl) setRollingCounter(rateEl, `${Math.round(rate)} cr/min`);
+    // A4: Arc Gauge — bone fill to the drawn rate, ghost arc for the headroom beyond it.
+    const pct = cap > 0 ? Math.max(0, Math.min(100, (Math.max(0, rate) / cap) * 100)) : 0;
+    const headPct = cap > 0 ? Math.max(0, Math.min(100 - pct, ((cap - Math.max(0, rate)) / cap) * 100)) : 0;
+    const fill = this._els && this._els.gaugefill;
+    if (fill) {
+      fill.style.strokeDasharray = '100';
+      fill.style.strokeDashoffset = String(100 - pct);
+    }
+    const ghost = this._els && this._els.gaugeghost;
+    if (ghost) {
+      ghost.style.strokeDasharray = `${headPct.toFixed(1)} 100`;
+      ghost.style.strokeDashoffset = String(-pct);
+    }
+    const bead = this._els && this._els.gaugebead;
+    if (bead) {
+      const theta = (180 - pct * 1.8) * Math.PI / 180;
+      bead.setAttribute('cx', (32 + 26 * Math.cos(theta)).toFixed(1));
+      bead.setAttribute('cy', (34 - 26 * Math.sin(theta)).toFixed(1));
+    }
+    const captxt = this._els && this._els.captxt;
+    if (captxt) {
+      const over = Math.max(0, rate) - cap;
+      captxt.textContent = over > 0.5
+        ? `over +${fmtCr(over)} — dropped`
+        : `+${fmtCr(Math.max(0, cap - Math.max(0, rate)))} headroom`;
+      captxt.dataset.state = over > 0.5 ? 'over' : 'headroom';
+    }
+    this._syncFlow(rate, cap);
+  },
+
+  // A7: asset-flow strip — one node glyph per asset class, ice pulses sized by cr/min
+  // running into the purse. Built once, updated by value; text keeps every fact.
+  _syncFlow(rate, cap) {
+    const el = this._els && this._els.flow;
+    if (!el) return;
+    if (!el.dataset.built) {
+      el.dataset.built = '1';
+      el.setAttribute('role', 'group');
+      el.innerHTML = `<span class="au-flow__cap">Conduct the machine</span>`
+        + ['drones', 'traders', 'outposts', 'fleet'].map((kind) => `
+        <div class="au-node" data-node="${kind}">
+          <button type="button" class="au-node__ring" data-conduct="${kind}" aria-pressed="false" aria-label="Conduct ${kind} — take the throttle"></button>
+          <span class="au-node__t"><b data-n>0</b><i>${kind}</i></span>
+          <span class="au-node__beam" aria-hidden="true"><i data-p></i><b data-park></b></span>
+        </div>`).join('') + `
+        <div class="au-node au-node--purse" data-node="purse">
+          <span class="au-node__ring" aria-hidden="true"></span>
+          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>cr/min</i></span>
+        </div>`;
+    }
+    const st = this._ctx.state;
+    const a = (st && st.automation) || {};
+    const classRate = {
+      drones: (a.drones || []).reduce((s, d) => s + (d.ratePerMin != null ? d.ratePerMin : estDroneRate(d)), 0),
+      traders: (a.traders || []).reduce((s, t) => s + (t.ratePerMin != null ? t.ratePerMin : 0), 0),
+      outposts: (a.outposts || []).reduce((s, o) => s + (o.ratePerMin != null ? o.ratePerMin : 0), 0),
+      fleet: 0,
+    };
+    const counts = {
+      drones: (a.drones || []).length, traders: (a.traders || []).length,
+      outposts: (a.outposts || []).length, fleet: (a.fleet || []).length,
+    };
+    for (const kind of ['drones', 'traders', 'outposts', 'fleet']) {
+      const node = el.querySelector(`[data-node="${kind}"]`);
+      if (!node) continue;
+      const n = node.querySelector('[data-n]');
+      if (n) n.textContent = String(counts[kind]);
+      const share = cap > 0 ? Math.max(0, Math.min(1, classRate[kind] / cap)) : 0;
+      const live = counts[kind] > 0 && classRate[kind] > 0;
+      node.dataset.live = live ? '1' : '0';
+      node.classList.toggle('is-live', live);
+      const beadPx = `${(3 + share * 4).toFixed(1)}px`;
+      const pulse = node.querySelector('[data-p]');
+      if (pulse) {
+        pulse.style.width = beadPx;
+        pulse.style.height = beadPx;
+        pulse.style.animationDuration = `${(2.8 - share * 1.6).toFixed(2)}s`;
+      }
+      // The parked bead carries the same size law; dormant nodes clear it so the hollow
+      // ghost bead from the stylesheet shows instead.
+      const park = node.querySelector('[data-park]');
+      if (park) {
+        park.style.width = live ? beadPx : '';
+        park.style.height = live ? beadPx : '';
+      }
+      node.classList.toggle('is-conducted', this._conduct === kind);
+      const ring = node.querySelector('[data-conduct]');
+      if (ring) ring.setAttribute('aria-pressed', String(this._conduct === kind));
+    }
+    if (this._root) this._root.classList.toggle('is-conducting', !!this._conduct);
+    const total = el.querySelector('[data-n-total]');
+    if (total) total.textContent = fmtCr(Math.max(0, rate));
+    const sub = el.querySelector('[data-n-sub]');
+    if (sub) {
+      sub.textContent = this._conduct && classRate[this._conduct] != null
+        ? `${this._conduct} ${fmtCr(Math.max(0, classRate[this._conduct]))}/min`
+        : 'cr/min';
+    }
+    el.setAttribute('aria-label', `Conduct the machine — asset flow: ${counts.drones} drones, `
+      + `${counts.traders} traders, ${counts.outposts} outposts, ${counts.fleet} escorts; total `
+      + `${Math.round(Math.max(0, rate))} credits per minute`
+      + (this._conduct ? `; conducting ${this._conduct}.` : '.'));
+  },
+
+  _syncTabs() {
+    const tabs = (this._els && this._els.tabs) || [];
+    for (const b of tabs) {
+      b.classList.toggle('active', b.dataset.tab === this._tab);
+      // The .active class is the only pressed-state channel otherwise; expose it to assistive tech.
+      b.setAttribute('aria-pressed', String(b.dataset.tab === this._tab));
+    }
+  },
+
+  _bodySignature() {
+    const a = this._auto();
+    const st = this._ctx.state;
+    const player = st.player || {};
+    const summary = summarizeAutomationOperations(st);
+    const next = automationNextAction(st);
+    const droneBay = droneBayCapacityForState(st);
+    const parts = [
+      this._tab,
+      this._playerTier(),
+      player.activeShipIndex || 0,
+      Math.round(player.credits || 0),
+      Math.round(summary.grossRatePerMin || 0),
+      Math.round(summary.netRatePerMin || 0),
+      Math.round(summary.upkeepPerMin || 0),
+      Math.round(summary.capUsedPct || 0),
+      Math.round(summary.totalPassiveEarnedLifetime || 0),
+      next && next.tab,
+      next && next.title,
+      next && next.action,
+      next && next.targetRef,
+      droneBay.bayCount,
+      droneBay.compatibleSlotCount,
+      droneBay.droneControlResearched,
+      droneBay.capacity,
+      droneBay.used,
+    ];
+    if (this._tab === 'drones') {
+      for (const d of a.drones || []) {
+        const program = d.program?.kind === 'custom' ? JSON.stringify(d.program) : d.program?.templateId;
+        if (d.program?.kind === 'custom') parts.push(JSON.stringify(d.programState), JSON.stringify(d.shipment?.items), st.world?.currentSectorId);
+        parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '',
+          d.recovery?.reason, d.recovery?.sectorId, d.recovery?.stationId, d.recovery?.delivered,
+          d.recovery ? droneRecoveryCost(st, d).totalCr : '',
+          d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '',
+          d.operation?.grossUnits, d.operation?.storedUnits, d.operation?.storedCap,
+          d.operation?.lastSale?.credited, d.operation?.lastSale?.quantity,
+          d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin,
+          d.operation?.lastCycle && [
+            d.operation.lastCycle.credited, d.operation.lastCycle.netCr,
+            d.operation.lastCycle.minedUnits, d.operation.lastCycle.quantity,
+            d.operation.lastCycle.heldUnits, d.operation.lastCycle.withdrawnUnits,
+            d.operation.lastCycle.fuelUsed, d.operation.lastCycle.upkeepAccrued,
+          ].join('|'));
+      }
+    } else if (this._tab === 'traders') {
+      const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
+      parts.push(hireUnlocked ? 1 : 0);
+      parts.push(Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0));
+      for (const t of a.traders || []) {
+        const route = t.route ? `${t.route.from || ''}>${t.route.to || ''}` : '';
+        parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0),
+          t.lastReceipt ? `${t.lastReceipt.n}:${Math.round(t.lastReceipt.credited || 0)}` : '');
+      }
+    } else if (this._tab === 'outposts') {
+      const buildUnlocked = (player.researchedNodes || []).includes('tech_outpost_charter');
+      parts.push(buildUnlocked ? 1 : 0);
+      for (const o of a.outposts || []) {
+        const production = o.production || {};
+        parts.push(
+          o.id,
+          o.defId,
+          o.status,
+          o.sectorId || '',
+          Math.round(o.storage || 0),
+          Math.round(o.storageCap || 0),
+          Math.round((o.ratePerMin || 0) * 100) / 100,
+          production.status || '',
+          production.outputGoodId || '',
+          production.actualRate != null ? Math.round(production.actualRate * 1000) / 1000 : '',
+          production.requestedRate != null ? Math.round(production.requestedRate * 1000) / 1000 : '',
+          production.limitingGoodId || '',
+          production.localFeeders != null ? production.localFeeders : '',
+          Object.keys(production.missingByGood || {}).sort().join(','),
+          o.autoSell ? 1 : 0,
+        );
+      }
+    } else {
+      const owned = player.ownedShips || [];
+      parts.push(a.fleetCap || 0, owned.length);
+      for (const fs of a.fleet || []) {
+        parts.push(fs.id, fs.defId, fs.name || '', fs.status, fs.order || '', fs._liveId || '', fs.hullPct != null ? Math.round(fs.hullPct * 100) : '');
+      }
+      parts.push(player.activeShipIndex);
+      for (let i = 0; i < owned.length; i++) parts.push(i, owned[i]?.defId, owned[i]?.name, owned[i]?.customName, owned[i]?.vesselId, owned[i]?.fleetAssignmentId);
+    }
+    return parts.join('|');
+  },
+
+  _renderBody() {
+    const body = this._els && this._els.body;
+    if (!body) return;
+    const focusSnapshot = captureAutomationBodyFocus(body);
+    const openOutpostDetails = this._tab === 'outposts'
+      ? new Set(Array.from(body.querySelectorAll('details[data-outpost-detail][open]'), (details) => details.dataset.outpostDetail))
+      : new Set();
+    const frag = document.createDocumentFragment();
+    this._renderOperationsBoard(frag);
+    if (this._tab === 'drones') this._renderDrones(frag);
+    else if (this._tab === 'traders') this._renderTraders(frag);
+    else if (this._tab === 'outposts') this._renderOutposts(frag);
+    else this._renderFleet(frag);
+    body.replaceChildren(frag);
+    // Swap any native <select> (drone program dropdowns) for the styled sf-select widget before
+    // focus restore, so the restored focus lands on the live control.
+    enhanceSelects(body);
+    if (this._tab === 'outposts' && openOutpostDetails.size) {
+      for (const details of body.querySelectorAll('details[data-outpost-detail]')) {
+        if (openOutpostDetails.has(details.dataset.outpostDetail)) details.open = true;
+      }
+    }
+    restoreAutomationBodyFocus(body, focusSnapshot);
+  },
+
+  _section(title) {
+    const h = document.createElement('div');
+    h.className = 'au-section-h';
+    h.textContent = title;
+    return h;
+  },
+
+  _renderOperationsBoard(frag) {
+    const readout = industryReadoutFromState(this._ctx && this._ctx.state);
+    frag.appendChild(renderIndustryStrip(readout, { cycle: this._cycleNote || '' }));
+    const summary = summarizeAutomationOperations(this._ctx.state);
+    const next = automationNextAction(this._ctx.state);
+    const capLoad = describeAutomationCapLoad(summary);
+    const action = next.action || 'switchTab';
+    const actionTarget = next.targetRef != null ? next.targetRef : next.tab;
+    const actionTitle = next.actionTitle || next.cta;
+    const kindAttr = next.kind ? ` data-kind="${escapeHtml(next.kind)}"` : '';
+    // A6: the route Beam names where the commit lands — the visible consequence.
+    const berth = action === 'openShipworksRoute' ? 'Helios Shipworks berth'
+      : action === 'hireTrader' ? 'Trader berth'
+      : action === 'buildOutpost' ? 'Outpost charter'
+      : action === 'assignFleet' ? 'Fleet muster'
+      : action === 'refuel' || action === 'resumeTrader' ? 'Field rendezvous'
+      : `${next.tab[0].toUpperCase() + next.tab.slice(1)} bay`;
+    const wrap = document.createElement('div');
+    wrap.className = 'au-command';
+    wrap.innerHTML = `
+      <div class="au-next">
+        <div class="au-kicker">Operations Board</div>
+        <div class="au-next-title">${escapeHtml(next.title)}</div>
+        <div class="au-next-body">${escapeHtml(next.body)}</div>
+        <div class="au-next-row">
+          <span class="au-next-meta">${escapeHtml(next.meta)}</span>
+          <button class="au-cta" data-focus-key="operations-next:${escapeHtml(action)}:${escapeHtml(actionTarget)}" data-act="${escapeHtml(action)}" data-ref="${escapeHtml(actionTarget)}"${kindAttr} data-why="${escapeHtml(actionTitle)}" aria-label="${escapeHtml(actionTitle)}">${escapeHtml(next.cta)}</button>
+        </div>
+        <div class="au-route is-plotted" role="img" aria-label="Route plotted: you to ${escapeHtml(berth)}">
+          <span class="au-route__from">You</span>
+          <span class="au-route__beam" aria-hidden="true"><i></i></span>
+          <span class="au-route__to">${escapeHtml(berth)}</span>
+        </div>
+      </div>
+      <div class="au-summary" aria-label="Automation summary">
+        ${metricHtml('Assets', String(summary.activeAssets), [`${summary.drones} drones /`, `${summary.traders} traders /`, `${summary.outposts} outposts`])}
+        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, [`gross ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`])}
+        ${metricHtml('Cap Load', capLoad.label, capLoad.detail)}
+        ${metricHtml('Lifetime', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `${summary.distressedAssets} distressed` : 'stable')}
+      </div>`;
+    frag.appendChild(wrap);
+  },
+
+  _renderDrones(frag) {
+    const a = this._auto();
+    const owned = a.drones || [];
+    const tier = this._playerTier();
+    const droneBay = droneBayCapacityForState(this._ctx.state);
+
+    frag.appendChild(this._section(`Deployed Drones (${owned.length}/${droneBay.capacity})`));
+    if (!owned.length) {
+      frag.appendChild(emptyEl('No drones deployed. Buy a Mk1 near an asteroid field. If it runs dry it waits for fuel — the machine stays.'));
+    } else {
+      for (const d of owned) {
+        const def = DRONES.find((x) => x.id === d.defId) || d;
+        const buf = d.buffer != null ? d.buffer : 0;
+        const bufCap = def.bufferCap || 1;
+        const fuelPct = d.fuelMax ? (d.fuel || 0) / d.fuelMax : (def.fuelMax ? (d.fuel || 0) / def.fuelMax : 1);
+        // V2 §4 / cut-list #28: program dropdown. Shows the drone's current alphabet template (or
+        // Manual for the legacy mine-to-buffer loop). Switching emits assignProgram.
+        const curTpl = (d.program && d.program.templateId) || '';
+        const programOpts = PROGRAM_OPTIONS
+          .map((opt) => `<option value="${escapeHtml(opt.value)}" ${d.program?.kind !== 'custom' && curTpl === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`)
+          .join('');
+        const custom = d.program?.kind === 'custom';
+        const programBadge = custom ? ` <span class="au-program-badge">${escapeHtml(d.program.name)}</span>` : curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
+        const programMeta = custom ? 'Written loop · physical shipment handoffs and sales.' : curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
+        const earnings = describeDroneEarnings(this._ctx.state, d);
+        const recoveryText = droneRecoveryText(this._ctx.state, d);
+        const readout = curTpl === 'mine_to_depot' ? describeProgrammedMinerOperation(d, def) : null;
+        const opsHtml = readout ? `
+            <div class="au-miner-ops" data-state="${escapeHtml(readout.state)}" role="img" aria-label="${escapeHtml(readout.accessibleSummary)}">
+              <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} u</strong></div>
+              <div><span class="au-flow-k">Stored</span><strong>${escapeHtml(String(readout.stored))}/${escapeHtml(String(readout.cap))} u</strong></div>
+              <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
+              <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
+            </div>
+            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>
+            ${readout.cycleText ? `<div class="au-note">${escapeHtml(readout.cycleText)}</div>` : ''}`
+          : `<div class="au-note">${escapeHtml(programMeta)}</div>`;
+        const stranded = d.status === 'stranded';
+        const refuelBtn = stranded
+          ? `<button class="au-refuel" data-act="refuel" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Refuel</button>`
+          : '';
+        const card = document.createElement('div');
+        card.className = 'au-card';
+        card.innerHTML = `
+          <div class="grow">
+            <div class="nm">${prettyId(def.id)} ${statusPill(d.status)}${programBadge}</div>
+            <div class="meta">
+              <span>tier ${def.tier}</span>
+              <span>mine ${def.mineRate}/s</span>
+              <span>${escapeHtml(earnings.text)}</span>
+              <span>buffer ${Math.round(buf)}/${bufCap} ${miniBar(buf / bufCap)}</span>
+              <span>fuel ${miniBar(fuelPct)}</span>
+              <span>upkeep ${def.upkeepPerMin}/min</span>
+            </div>
+            <div class="au-program-row">
+              <span class="au-program-label">Program:</span>
+              <select class="au-program" aria-label="Drone program" data-act="assignProgram" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">${custom ? '<option value="custom" selected>Written loop</option>' : ''}${programOpts}</select>
+              <button class="au-order" data-act="writeLoop" data-ref="${automationRecordRefAttr(d.id)}">${custom ? 'Edit loop' : 'Write loop'}</button>
+            </div>
+            ${opsHtml}
+            ${custom ? `<div class="au-note" role="status">${escapeHtml(this._customProgramStatus(d))}</div>` : ''}
+            ${!curTpl && !custom ? '<div class="au-note">Bank stored ore on Recall</div>' : ''}
+            ${recoveryText ? `<div class="au-note">${escapeHtml(recoveryText)}</div>` : ''}
+          </div>
+          ${refuelBtn}
+          ${d.recovery ? `<button class="au-order" data-act="locateDrone" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Locate drone</button>` : ''}
+          <button class="au-order" data-act="recall" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Recall</button>`;
+        frag.appendChild(card);
+        if (this._loopDraft?.id === d.id) frag.appendChild(this._renderComposer(d));
+      }
+    }
+
+    frag.appendChild(this._section('Drone Bay — Purchase'));
+    for (const def of DRONES) {
+      const locked = def.tier > tier;
+      const purchase = describeAutomationPurchase('drone', def, this._ctx.state);
+      const card = document.createElement('div');
+      card.className = 'au-card au-shop au-shop--drones';
+      card.innerHTML = `
+        <div class="grow">
+          <div class="nm">${prettyId(def.id)}${locked ? `<span class="au-locked au-locked--mark" data-why="Locked — requires drone tier ${def.tier}" aria-hidden="true"></span>` : ''}</div>
+          <div class="meta">
+            <span>mine ${def.mineRate}/s</span>
+            <span>${escapeHtml(describeDroneEarnings(this._ctx.state, def).text)}</span>
+            <span>buffer ${def.bufferCap}</span>
+            <span>range ${def.deployRange}</span>
+            <span>upkeep ${def.upkeepPerMin}/min</span>
+          </div>
+          ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first asset: low upkeep, visible in the field, recallable.</div>`}
+        </div>
+        <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
+      frag.appendChild(card);
+    }
+  },
+
+  _renderTraders(frag) {
+    const a = this._auto();
+    const owned = a.traders || [];
+    const st = this._ctx.state;
+    const hireUnlocked = (st.player && st.player.researchedNodes || []).includes('tech_autonomous_fleets');
+
+    frag.appendChild(this._section(`Active Traders (${owned.length})`));
+    if (!owned.length) {
+      frag.appendChild(emptyEl(hireUnlocked
+        ? 'No NPC traders hired. Hire one to turn known price spreads into capped passive income.'
+        : 'No NPC traders hired. Research Autonomous Fleets, then hire haulers for managed trade routes.'));
+    } else {
+      for (const t of owned) {
+        const def = TRADERS.find((x) => x.id === t.defId) || t;
+        const card = document.createElement('div');
+        card.className = 'au-card';
+        const route = t.route ? escapeHtml(traderPortLine(t.route.from, t.route.to)) : 'idle (assign route)';
+        const hot = Math.round((t.hotness || 0) * 100);
+        const distressed = t.status === 'distressed';
+        const arrears = Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0);
+        const stallNote = distressed
+          ? `Frozen: upkeep underpaid${arrears >= 1 ? ` (${arrears} cr arrears)` : ''}. Resume settles it now; otherwise the trader recovers on its own once credits cover upkeep.`
+          : (t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.');
+        const resumeBtn = distressed
+          ? `<button class="au-refuel" data-act="resumeTrader" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Resume</button>`
+          : '';
+        const receiptLine = formatTraderReceipt(t);
+        card.innerHTML = `
+          <div class="grow">
+            <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
+            <div class="meta">
+              <span>cargo ${def.cargoVol}u</span>
+              <span>cycle ${def.cycleTime}s</span>
+              <span>route ${route}</span>
+              <span>route heat ${hot}%</span>
+              <span>upkeep ${def.upkeepPerMin}/min</span>
+            </div>
+            <div class="au-note">${stallNote}</div>
+            ${receiptLine ? `<div class="au-note">${receiptLine}</div>` : ''}
+          </div>
+          ${resumeBtn}
+          <button class="au-order" data-act="assignRoute" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Route</button>
+          <button class="au-recall" data-act="dismiss" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Dismiss</button>`;
+        frag.appendChild(card);
+      }
+    }
+
+    frag.appendChild(this._section('Hire Trader'));
+    if (!hireUnlocked) {
+      frag.appendChild(lockedEl('NPC trader hiring requires Autonomous Fleets in the logistics tech branch.'));
+    }
+    for (const def of TRADERS) {
+      const purchase = describeAutomationPurchase('trader', def, this._ctx.state);
+      const card = document.createElement('div');
+      card.className = 'au-card au-shop au-shop--traders';
+      card.innerHTML = `
+        <div class="grow">
+          <div class="nm">${prettyId(def.id)}</div>
+          <div class="meta">
+            <span>cargo ${def.cargoVol}u</span>
+            <span>cycle ${def.cycleTime}s</span>
+            <span>eff ${Math.round(def.tradeEff * 100)}%</span>
+            <span>loss/cycle ${Math.round(def.baseLossPerCycle * 100)}%</span>
+            <span>upkeep ${def.upkeepPerMin}/min</span>
+          </div>
+          <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm research.'}</div>
+        </div>
+        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" data-why="Focus the traders line on the flow strip" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
+      frag.appendChild(card);
+    }
+  },
+
+  _renderOutposts(frag) {
+    const a = this._auto();
+    const owned = a.outposts || [];
+    const st = this._ctx.state;
+    const buildUnlocked = (st.player && st.player.researchedNodes || []).includes('tech_outpost_charter');
+
+    frag.appendChild(this._section(`Outposts (${owned.length})`));
+    if (!owned.length) {
+      frag.appendChild(emptyEl(buildUnlocked
+        ? 'No outposts established. Build one in a sector you can defend to anchor long-term income.'
+        : 'No outposts established. Research Outpost Charter after Autonomous Fleets to start sector ownership.'));
+    } else {
+      for (const o of owned) {
+        const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
+        const operation = describeOutpostOperation(o, def);
+        const inputHtml = operation.inputs.length
+          ? operation.inputs.map((input) => `
+              <strong>${entitySpanHtml('commodity:' + input.goodId, escapeHtml(input.label))}</strong>
+              <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''}</span>`).join('')
+          : `<strong>No feedstock</strong><span class="au-flow-v">self-contained facility</span>`;
+        const outputRate = comparisonRateText(operation.output.actualPerMin, operation.output.targetPerMin, operation.output.unit);
+        const storageText = `${displayFlowNumber(operation.storage.stored)}/${displayFlowNumber(operation.storage.capacity)} ${operation.storage.unit} stored`;
+        const card = document.createElement('div');
+        card.className = 'au-card au-outpost';
+        card.innerHTML = `
+          <div class="grow">
+            <div class="au-outpost-head">
+              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? entitySpanHtml('sector:' + o.sectorId, escapeHtml(prettyId(o.sectorId))) : 'unsited'}</span></div>
+            </div>
+            <div class="au-outpost-flow" data-state="${escapeHtml(operation.state)}" role="img" aria-label="${escapeHtml(operation.accessibleSummary)}">
+              <div class="au-flow-node">
+                <span class="au-flow-k">Input draw</span>
+                ${inputHtml}
+              </div>
+              <span class="au-flow-link" aria-hidden="true"></span>
+              <div class="au-flow-core">
+                <span class="au-flow-k">Line state</span>
+                <strong class="au-operation-status ${escapeHtml(operation.tone)}">${escapeHtml(operation.statusLabel)}</strong>
+                <span class="au-flow-v">${escapeHtml(operation.feeders.label)} · ${escapeHtml(operation.feeders.availability)}</span>
+              </div>
+              <span class="au-flow-link" aria-hidden="true"></span>
+              <div class="au-flow-node">
+                <span class="au-flow-k">Output</span>
+                <strong>${operation.output.goodId && operation.output.goodId !== 'credits' ? entitySpanHtml('commodity:' + operation.output.goodId, escapeHtml(operation.output.label)) : escapeHtml(operation.output.label)}</strong>
+                <span class="au-flow-v">${escapeHtml(outputRate)}</span>
+                <span class="au-flow-v">${escapeHtml(storageText)} ${storageBar(operation.storage.fill)}</span>
+              </div>
+            </div>
+            <div class="au-operation-reason">${escapeHtml(operation.detail)}</div>
+            <details class="au-outpost-detail" data-outpost-detail="${automationRecordRefAttr(o.id, def.id)}">
+              <summary>Facility details</summary>
+              <div class="au-detail-row">
+                <span>${escapeHtml(recipeText(def.recipe))}</span>
+                <span>defense ${escapeHtml(def.defense)}</span>
+                <span>upkeep ${escapeHtml(def.upkeepPerMin)}/min</span>
+                <span>${o.autoSell ? 'autosell every minute' : 'manual logistics'}</span>
+              </div>
+            </details>
+          </div>
+          <button class="au-recall" data-act="decommission" data-ref="${automationRecordRefAttr(o.id, def.id)}" data-kind="outpost" aria-label="Decommission ${prettyId(def.id)}">Decommission</button>`;
+        frag.appendChild(card);
+      }
+    }
+
+    frag.appendChild(this._section('Construct Outpost'));
+    if (!buildUnlocked) {
+      frag.appendChild(lockedEl('Outpost construction requires Outpost Charter in the logistics tech branch.'));
+    }
+    for (const def of OUTPOSTS) {
+      const purchase = describeAutomationPurchase('outpost', def, this._ctx.state);
+      const card = document.createElement('div');
+      card.className = 'au-card au-shop au-shop--outposts';
+      card.innerHTML = `
+        <div class="grow">
+          <div class="nm">${prettyId(def.id)}</div>
+          <div class="meta">
+            <span>${escapeHtml(recipeText(def.recipe))}</span>
+            <span>out ${def.outRate}/s</span>
+            <span>storage ${def.storageCap}</span>
+            <span>defense ${def.defense}</span>
+            <span>upkeep ${def.upkeepPerMin}/min</span>
+          </div>
+          <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
+        </div>
+        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" data-why="Focus the outposts line on the flow strip" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
+      frag.appendChild(card);
+    }
+  },
+
+  _renderFleet(frag) {
+    const a = this._auto();
+    const fleet = a.fleet || [];
+    const st = this._ctx.state;
+    const owned = (st.player && st.player.ownedShips) || [];
+    const cap = a.fleetCap || (this._balance().fleetCapByTier || AUTO_BALANCE.fleetCapByTier || [2])[this._playerTier() - 1] || 0;
+
+    const h = this._section(`Escort / Wingmen Fleet (${fleet.length}/${cap})`);
+    frag.appendChild(h);
+
+    if (!fleet.length) {
+      frag.appendChild(emptyEl('No wingmen assigned. Spare owned ships can launch as escorts and reduce automation loss risk.'));
+    } else {
+      for (const fs of fleet) {
+        const card = document.createElement('div');
+        card.className = 'au-card';
+        const order = fs.order === 'idle' ? 'regroup' : (fs.order || 'escort');
+        const deployment = describeWingmanDeployment(fs);
+        const links = owned.filter((ship) => ship?.fleetAssignmentId === fs.id);
+        const hasMiningBeam = links.length === 1 && (links[0].fittings || []).some((id) => MODULES.some((mod) => mod.id === id && mod.slotType === 'mining'));
+        card.innerHTML = `
+          <div class="grow">
+            <div class="nm">${fs.defId ? entitySpanHtml('hull:' + fs.defId, escapeHtml(fs.name) || prettyId(fs.defId)) : (escapeHtml(fs.name) || prettyId('wingman'))} ${statusPill(fs.status)}</div>
+            <div class="meta">
+              <span>order ${escapeHtml(order)}</span>
+              <span>deploy ${deploymentPill(deployment)}</span>
+              ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
+            </div>
+            <div class="au-note">${escapeHtml(deployment.detail)} ${fs.order === 'mine' ? (links.length === 1 && !hasMiningBeam ? 'No mining beam fitted; return to hangar to refit.' : 'Mines nearby rock; scoop the ore it drops.') : 'Escort guards you; Regroup returns to formation.'} ${links.length === 1 ? (links[0].vesselId ? 'Registry vessel on fleet duty. Bring it to a receiving berth and stop before returning it to the hangar.' : 'Owned hull assigned to wing with its fitted equipment. Return it before flying, selling or refitting it; its stored cargo remains aboard.') : 'Legacy wingman: owned hull link unavailable; retained in fleet.'}</div>
+          </div>
+          <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
+          <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
+          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Regroup</button>
+          ${links.length === 1 ? `<button class="au-order" data-act="releaseFleet" data-ref="${automationRecordRefAttr(fs.id)}" data-kind="fleet">Return to hangar</button>` : ''}`;
+        frag.appendChild(card);
+      }
+    }
+
+    // assignable owned ships (anything beyond the active hull can be tasked)
+    const activeIdx = (st.player && st.player.activeShipIndex) || 0;
+    frag.appendChild(this._section('Assign Owned Ship'));
+    const spare = owned.map((s, i) => ({ s, i })).filter(({ s, i }) => s && i !== activeIdx);
+    const assignable = spare.filter(({ s }) => (!s.vesselId || trackedVesselAtBerth(st, s)) && !fleetAssignmentForShip(s, fleet));
+    const tracked = spare.some(({ s }) => s.vesselId && !fleetAssignmentForShip(s, fleet));
+    if (!assignable.length) {
+      frag.appendChild(emptyEl(tracked ? 'Bring a tracked vessel to this berth and finish its yard or recovery work before assigning it.' : spare.length ? 'Your spare ships are already assigned to the wing.' : 'No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
+    } else if (fleet.length >= cap) {
+      frag.appendChild(lockedEl(`Fleet at capacity (${cap}). Research higher Drone/Fleet tiers to expand.`));
+    } else {
+      for (const { s, i } of assignable) {
+        const card = document.createElement('div');
+        card.className = 'au-card au-shop au-shop--fleet';
+        card.innerHTML = `
+          <div class="grow">
+            <div class="nm">${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(s.customName) || prettyId(s.defId)) : (escapeHtml(s.customName) || '')}</div>
+            <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
+            <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
+          </div>
+          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" data-why="Focus the fleet line on the flow strip" aria-label="Take the wing throttle">Throttle</button>
+          <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
+        frag.appendChild(card);
+      }
+    }
+  },
+
+  // ---- intent dispatch ----------------------------------------------------
+  // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
+  _listenProgramRejections() {
+    if (this._offProgramRejected) this._offProgramRejected();
+    if (this._offProgramAssigned) this._offProgramAssigned();
+    this._offProgramRejected = this._ctx.bus.on('automation:programRejected', (p) => {
+      if (this._loopDraft?.id !== p.id) return;
+      this._loopDraft.error = p.message;
+      this.refresh(this._ctx, { forceBody: true });
+    });
+    this._offProgramAssigned = this._ctx.bus.on('automation:programAssigned', (p) => {
+      if (this._loopDraft?.id !== p.id) return;
+      this._loopDraft = null;
+      this.refresh(this._ctx, { forceBody: true });
+    });
+  },
+
+  _customProgramStatus(d) {
+    const ps = d.programState || {};
+    const freight = Object.entries(d.shipment?.items || {}).map(([id, qty]) => `${qty} ${commodityName(id)}`).join(', ') || 'empty';
+    const paused = d.sectorId !== this._ctx.state.world?.currentSectorId ? 'Paused outside active sector. ' : '';
+    return `${paused}Step ${(ps.pc || 0) + 1}/${d.program.steps.length} · ${ps.cycles || 0} completed cycles · Carried: ${freight}${ps.blockedReason ? ` · ${ps.blockedReason}` : ''}`;
+  },
+
+  _onLoopInput(target, structural = true) {
+    const field = target?.dataset?.loopField;
+    const draft = this._loopDraft;
+    if (!field || !draft) return false;
+    const i = Number(target.dataset.step);
+    if (field === 'name') draft.program.name = target.value;
+    else if (field === 'op') {
+      const op = target.value;
+      draft.program.steps[i] = op === 'mine' ? { op, target: 'field', until: 'cargoFull' }
+        : op === 'wait' ? { op, until: 'timer', seconds: 2 }
+          : op === 'interact' ? { op, verb: 'collect', target: this._loopTargets(draft.id, 'claim')[0]?.value || '', good: 'cmdty_refined_metals', qty: 2 }
+            : { op: 'move', target: 'field' };
+    } else {
+      const step = draft.program.steps[i];
+      step[field] = ['qty', 'seconds'].includes(field) ? Number(target.value) : target.value;
+      if (field === 'verb') {
+        step.target = step.verb === 'sell' ? 'depot' : this._loopTargets(draft.id, 'claim')[0]?.value || '';
+        if (step.verb === 'sell') delete step.qty;
+        else step.qty = step.qty || 2;
+      }
+    }
+    draft.error = '';
+    if (structural && ['op', 'verb'].includes(field)) this.refresh(this._ctx, { forceBody: true });
+    return true;
+  },
+
+  _loopTargets(groupId, type = 'all') {
+    const st = this._ctx.state;
+    const group = st.automation?.drones?.find((g) => g.id === groupId);
+    const options = type === 'all' ? [{ value: 'field', label: 'Field' }, { value: 'depot', label: 'Nearest depot' }, { value: 'player', label: 'Player' }] : [];
+    if (type !== 'station') for (const b of st.claims?.bodies || []) {
+      if (b.owned === true && b.spec?.status === 'active' && b.sectorId === group?.sectorId) options.push({ value: `claim:${b.id}`, label: b.name });
+    }
+    if (type !== 'claim' && group?.sectorId === st.world?.currentSectorId) for (const e of st.entities?.values() || []) {
+      if (e.alive !== false && e.type === 'station' && !e.data?.isGate && e.data?.stationId) options.push({ value: `station:${e.data.stationId}`, label: e.name || STATION_NAMES.get(e.data.stationId) || 'Station' });
+    }
+    if (type === 'station') options.unshift({ value: 'depot', label: 'Nearest depot' });
+    return options;
+  },
+
+  _renderComposer(group) {
+    const draft = this._loopDraft;
+    const root = document.createElement('div');
+    root.className = 'au-note';
+    root.setAttribute('aria-label', 'Write drone loop');
+    const control = (parent, label, field, value, index, choices = null, bounds = {}) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'au-program-row';
+      const text = document.createElement('span'); text.textContent = label; wrap.appendChild(text);
+      const input = document.createElement(choices ? 'select' : 'input');
+      input.className = 'au-program';
+      input.dataset.loopField = field;
+      input.dataset.step = String(index);
+      input.dataset.focusKey = `loop:${group.id}:${index}:${field}`;
+      input.setAttribute('aria-label', label);
+      if (choices && value && !choices.some((c) => c.value === value)) choices = [...choices, { value, label: 'Unavailable target' }];
+      if (choices) for (const choice of choices) {
+        const option = document.createElement('option'); option.value = choice.value; option.textContent = choice.label;
+        option.selected = choice.value === value; input.appendChild(option);
+      }
+      else { input.type = field === 'name' ? 'text' : 'number'; Object.assign(input, bounds); }
+      input.value = String(value ?? ''); wrap.appendChild(input); parent.appendChild(wrap);
+    };
+    const button = (parent, text, act, index, disabled = false) => {
+      const b = document.createElement('button'); b.className = 'au-order'; b.textContent = text;
+      b.dataset.act = act; b.dataset.ref = String(index); b.dataset.focusKey = `loop:${group.id}:${index}:${act}`;
+      b.disabled = disabled; b.setAttribute('aria-label', index >= 0 ? `${text} step ${index + 1}` : text); parent.appendChild(b);
+    };
+    control(root, 'Loop name', 'name', draft.program.name, -1, null, { maxLength: MAX_PROGRAM_NAME_LENGTH });
+    const ladder = document.createElement('ol'); root.appendChild(ladder);
+    draft.program.steps.forEach((s, i) => {
+      const row = document.createElement('li'); ladder.appendChild(row);
+      control(row, `Step ${i + 1} operation`, 'op', s.op, i, ['move', 'mine', 'interact', 'wait'].map((value) => ({ value, label: value.toUpperCase() })));
+      if (s.op === 'interact') control(row, 'Handoff', 'verb', s.verb, i, ['collect', 'unload', 'sell'].map((value) => ({ value, label: value })));
+      if (s.op === 'move' || s.op === 'interact') control(row, 'Target', 'target', s.target, i, this._loopTargets(group.id, s.op === 'move' ? 'all' : s.verb === 'sell' ? 'station' : 'claim'));
+      if (s.op === 'interact') {
+        control(row, 'Commodity', 'good', s.good, i, COMMODITIES.map((c) => ({ value: c.id, label: c.name })));
+        if (s.verb !== 'sell') control(row, 'Quantity', 'qty', s.qty, i, null, { min: 1, max: group.bufferCap, step: 1 });
+      }
+      if (s.op === 'mine') { const note = document.createElement('span'); note.textContent = 'Field · until shipment full'; row.appendChild(note); }
+      if (s.op === 'wait') control(row, 'Wait seconds', 'seconds', s.seconds, i, null, { min: 1, max: 600 });
+      button(row, 'Move up', 'loopUp', i, i === 0); button(row, 'Move down', 'loopDown', i, i === draft.program.steps.length - 1);
+      button(row, 'Remove', 'loopRemove', i);
+    });
+    button(root, 'Add step', 'loopAdd', -1, draft.program.steps.length >= MAX_PROGRAM_STEPS);
+    button(root, 'Apply', 'loopApply', -1); button(root, 'Cancel', 'loopCancel', -1);
+    const error = document.createElement('div'); error.className = 'au-note'; error.setAttribute('role', 'alert');
+    error.setAttribute('aria-live', 'polite'); error.textContent = draft.error || ''; root.appendChild(error);
+    return root;
+  },
+
+  _onAction(act, ref, kind, extra) {
+    if (act === 'writeLoop') {
+      const d = this._auto().drones.find((d) => String(d.id) === String(ref));
+      if (!d) return;
+      this._loopDraft = { id: d.id, error: '', program: d.program?.kind === 'custom' && !d.program.blocked
+        ? JSON.parse(JSON.stringify(d.program)) : { kind: 'custom', version: 1, name: 'My loop', steps: [{ op: 'move', target: 'field' }] } };
+      // Existing reactions stay with their separate protocol controls: the draft never
+      // carries the slot (assigned tokens fail authored validation) and assignProgram
+      // re-attaches the live program's reaction on Apply.
+      delete this._loopDraft.program.reaction;
+      this.refresh(this._ctx, { forceBody: true }); return;
+    }
+    if (act.startsWith('loop')) {
+      const draft = this._loopDraft;
+      if (!draft) return;
+      const steps = draft.program.steps, i = Number(ref);
+      if (act === 'loopCancel') this._loopDraft = null;
+      else if (act === 'loopAdd' && steps.length < MAX_PROGRAM_STEPS) steps.push({ op: 'move', target: 'field' });
+      else if (act === 'loopRemove' && i >= 0 && i < steps.length) steps.splice(i, 1);
+      else if (act === 'loopUp' && i > 0 && i < steps.length) [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]];
+      else if (act === 'loopDown' && i >= 0 && i < steps.length - 1) [steps[i + 1], steps[i]] = [steps[i], steps[i + 1]];
+      else if (act === 'loopApply') {
+        const group = this._auto().drones.find((g) => g.id === draft.id);
+        const result = validateProgram(draft.program, { state: this._ctx.state, group });
+        if (!result.ok) draft.error = result.message;
+        else this._onAction('assignProgram', draft.id, 'drone', result.program);
+      }
+      this.refresh(this._ctx, { forceBody: true }); return;
+    }
+    if (act === 'assignProgram' && extra === 'custom') return;
+    if (act === 'locateDrone') {
+      const ctx = this._ctx;
+      const drone = (ctx.state.automation?.drones || []).find((d) => String(d.id) === String(ref));
+      if (!drone?.recovery) return;
+      const local = drone.recovery.sectorId === ctx.state.world?.currentSectorId
+        ? (drone.entityIds || []).map((id) => ctx.state.entities?.get(id))
+          .find((e) => e && e.alive !== false && e.type === 'drone' && e.data?.groupId === drone.id)
+        : null;
+      if (local) { laneInputWrite(ctx.state, 'player.targetId', local.id); this._close(); }
+      else openGalaxyMap(ctx, { focus: MAP_FOCUS.GALAXY, sectorId: drone.recovery.sectorId,
+        label: 'Stranded Drone', source: 'automation:drone-recovery' });
+      return;
+    }
+    // r2 F3: conducting is pure presentation state (the Hand rides a ring); it never emits
+    // into the sim. Re-activating the conducted line releases the Hand back to the rail.
+    if (act === 'conduct') {
+      this._conduct = this._conduct === ref ? null : ref;
+      this.refresh(this._ctx);
+      return;
+    }
+    if (act === 'openShipworksRoute') {
+      const ctx = this._ctx;
+      const access = shipworksStationAccess(ctx && ctx.state);
+      if (access.hull) {
+        this._close();
+        if (ctx && ctx.bus) ctx.bus.emit('station:navigate', { destination: 'shipworks' });
+      } else {
+        openGalaxyMap(ctx, {
+          focus: MAP_FOCUS.GALAXY,
+          sectorId: 'sector_helios_prime',
+          stationId: 'station_helios',
+          label: 'Helios Station · Shipworks',
+          source: 'automation:drone-bay-hull',
+        });
+      }
+      return;
+    }
+    if (act === 'switchTab') {
+      if (TABS.some((t) => t.id === ref)) {
+        this._tab = ref;
+        this.refresh(this._ctx, { forceBody: true });
+      }
+      return;
+    }
+
+    const bus = this._ctx.bus;
+    // single intent channel into automation: ui:fleetOrder {shipId, order, targetRef} (§4.4).
+    // shipId carries the instance id for existing assets; targetRef carries the catalog defId or
+    // owned-ship index for purchase/assign orders. order is the verb the automation system switches on.
+    const toastFor = {
+      buyDrone: 'Deploying mining drone…',
+      recall: 'Recalling asset…',
+      refuel: 'Refueling drone…',
+      hireTrader: 'Hiring NPC trader…',
+      assignRoute: 'Assigning trade route…',
+      dismiss: 'Dismissing trader…',
+      resumeTrader: 'Resuming trader…',
+      buildOutpost: 'Constructing outpost…',
+      decommission: 'Decommissioning outpost…',
+      orderEscort: 'Sending escort order…',
+      orderMine: 'Sending mining order…',
+      orderRecall: 'Sending regroup order…',
+      assignProgram: 'Assigning drone program…',
+    };
+
+    // For purchases/assigns the instance does not exist yet → shipId null, targetRef = defId/index.
+    const purchaseLike = ['buyDrone', 'hireTrader', 'buildOutpost', 'assignFleet'];
+    const isPurchase = purchaseLike.includes(act);
+    // assignProgram targets an EXISTING drone (shipId = ref) with the templateId as targetRef.
+    const isProgram = act === 'assignProgram';
+
+    bus.emit('ui:fleetOrder', {
+      shipId: (isPurchase) ? null : numOr(ref),
+      order: act,
+      targetRef: isProgram ? (extra || null) : ref,
+      kind: kind || null,
+    });
+
+    if (toastFor[act]) bus.emit('toast', { text: toastFor[act], kind: 'info', ttl: 2500 });
+
+    // refresh in case automation handled synchronously; otherwise it re-emits change events the
+    // uiRoot will route back to refresh() anyway.
+    this.refresh(this._ctx, { forceBody: true });
+  },
+};
+
+const AUTOMATION_BODY_FOCUSABLES = 'button, input, select, textarea, summary, [tabindex]';
+
+function captureAutomationBodyFocus(body) {
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  if (!active || !body.contains(active)) return null;
+  const key = automationFocusKey(active);
+  if (!key) return null;
+
+  const tag = String(active.tagName || '').toUpperCase();
+  const inputType = String(active.type || '').toLowerCase();
+  const preservesTypedValue = tag === 'TEXTAREA'
+    || (tag === 'INPUT' && (!inputType || inputType === 'text' || inputType === 'search' || inputType === 'number'));
+  return {
+    key,
+    typedValue: preservesTypedValue ? String(active.value || '') : null,
+    selectionStart: preservesTypedValue && Number.isFinite(active.selectionStart) ? active.selectionStart : null,
+    selectionEnd: preservesTypedValue && Number.isFinite(active.selectionEnd) ? active.selectionEnd : null,
+    selectionDirection: preservesTypedValue ? active.selectionDirection : null,
+  };
+}
+
+function restoreAutomationBodyFocus(body, snapshot) {
+  if (!snapshot) return;
+  const target = Array.from(body.querySelectorAll(AUTOMATION_BODY_FOCUSABLES))
+    .find((candidate) => automationFocusKey(candidate) === snapshot.key);
+  if (!target || target.disabled || target.hidden || target.isConnected === false) return;
+
+  if (snapshot.typedValue != null) target.value = snapshot.typedValue;
+  target.focus({ preventScroll: true });
+  if (snapshot.selectionStart != null && typeof target.setSelectionRange === 'function') {
+    try {
+      target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd, snapshot.selectionDirection || 'none');
+    } catch (_) { /* unsupported input types retain focus without selection restoration */ }
+  }
+}
+
+function automationFocusKey(element) {
+  if (!element) return null;
+  const dataset = element.dataset || {};
+  if (dataset.focusKey) return `explicit:${dataset.focusKey}`;
+  // sf-select focuses its inner button; the draft identity lives on the enhanced root.
+  const loopControl = element.closest?.('[data-loop-field]');
+  if (loopControl?.dataset.focusKey) return `explicit:${loopControl.dataset.focusKey}`;
+  if (element.id) return `id:${element.id}`;
+
+  const tag = String(element.tagName || '').toLowerCase();
+  if (dataset.act) {
+    return `action:${tag}:${dataset.act}:${dataset.ref || ''}:${dataset.kind || ''}`;
+  }
+  if (element.name) return `name:${tag}:${element.name}`;
+  if (dataset.search != null) return `search:${tag}:${dataset.search}`;
+  if (dataset.filter != null) return `filter:${tag}:${dataset.filter}`;
+
+  const details = typeof element.closest === 'function'
+    ? element.closest('details[data-outpost-detail]')
+    : null;
+  if (details && tag === 'summary') return `outpost-details:${details.dataset.outpostDetail}:summary`;
+  return null;
+}
+
+// ---- helpers ----------------------------------------------------------------
+export function summarizeAutomationOperations(state) {
+  const a = automationState(state);
+  const drones = (a.drones || []).length;
+  const traders = (a.traders || []).length;
+  const outposts = (a.outposts || []).length;
+  const fleet = (a.fleet || []).length;
+  const grossRatePerMin = grossRatePerMinFromAutomation(a);
+  const upkeepPerMin = estimateUpkeepPerMin(a);
+  const netRatePerMin = grossRatePerMin - upkeepPerMin;
+  const capPerMin = passiveCapPerMin(state);
+  const distressedAssets = countDistressedAssets(a);
+  return {
+    drones,
+    traders,
+    outposts,
+    fleet,
+    activeAssets: drones + traders + outposts + fleet,
+    grossRatePerMin,
+    upkeepPerMin,
+    netRatePerMin,
+    capPerMin,
+    capHeadroomPerMin: capPerMin - Math.max(0, grossRatePerMin),
+    capOveragePerMin: Math.max(0, Math.max(0, grossRatePerMin) - capPerMin),
+    capUsedPct: capPerMin > 0 ? Math.min(999, Math.max(0, grossRatePerMin / capPerMin * 100)) : 0,
+    totalPassiveEarnedLifetime: (a.meta && a.meta.totalPassiveEarnedLifetime) || 0,
+    distressedAssets,
+  };
+}
+
+export function describeAutomationCapLoad(summary = {}) {
+  const cap = Math.max(0, Number(summary.capPerMin) || 0);
+  const gross = Math.max(0, Number(summary.grossRatePerMin) || 0);
+  const pctValue = cap > 0 ? Math.min(999, Math.max(0, gross / cap * 100)) : 0;
+  const label = Math.round(pctValue) + '%';
+  const overage = Math.max(0, Number(summary.capOveragePerMin) || (gross - cap));
+  if (overage > 0) {
+    return {
+      state: 'over-cap',
+      label,
+      detail: fmtCr(overage) + ' cr/min over cap; overflow dropped',
+      overagePerMin: overage,
+      headroomPerMin: 0,
+    };
+  }
+  const headroom = Math.max(0, cap - gross);
+  return {
+    state: pctValue >= 90 ? 'tight' : 'healthy',
+    label,
+    detail: fmtCr(headroom) + ' cr/min headroom',
+    overagePerMin: 0,
+    headroomPerMin: headroom,
+  };
+}
+
+export function describeWingmanDeployment(fs = {}) {
+  const status = String(fs.status || fs.order || '').toLowerCase();
+  if (fs._liveId != null) {
+    return {
+      state: 'live',
+      label: 'LIVE',
+      className: 'ok',
+      detail: 'Deployed in the current sector; hull updates from live combat.',
+    };
+  }
+  if (status === 'lost' || status === 'destroyed') {
+    return {
+      state: 'lost',
+      label: 'LOST',
+      className: 'bad',
+      detail: 'Removed from the active wing; replace it from an owned spare hull.',
+    };
+  }
+  if (status === 'idle') {
+    return {
+      state: 'standby',
+      label: 'STANDBY',
+      className: 'warn',
+      detail: 'Recalled to the ledger; order Escort to redeploy on the next sector entry.',
+    };
+  }
+  return {
+    state: 'ready',
+    label: 'READY',
+    className: '',
+    detail: 'Ready in the fleet ledger; deploys beside you on the next sector entry.',
+  };
+}
+
+export function automationNextAction(state) {
+  const a = automationState(state);
+  const player = (state && state.player) || {};
+  const credits = player.credits || 0;
+  const researched = player.researchedNodes || [];
+  const summary = summarizeAutomationOperations(state);
+  const hasTraderTech = researched.includes('tech_autonomous_fleets');
+  const hasOutpostTech = researched.includes('tech_outpost_charter');
+  const droneMk1 = DRONES[0] || {};
+  const ownedShips = player.ownedShips || [];
+  const activeShipIndex = player.activeShipIndex || 0;
+  const spareShipIndex = ownedShips.findIndex((ship, index) => ship && (!ship.vesselId || trackedVesselAtBerth(state, ship)) && index !== activeShipIndex && !fleetAssignmentForShip(ship, a.fleet));
+  const spareShips = spareShipIndex >= 0;
+  if (summary.distressedAssets > 0) {
+    return nextAction('drones', 'Stabilize distressed assets',
+      'Your automation is unpaid or under attack. Bank drone buffers, cut upkeep, or fly rescue before repossession.',
+      `${summary.distressedAssets} distressed`, 'Review Assets');
+  }
+  const stranded = (a.drones || []).find((d) => d && d.status === 'stranded');
+  if (stranded) {
+    return nextAction('drones', 'Refuel the waiting drone',
+      'It ran out of fuel and stopped. The machine is still there. Refuel to start it again.',
+      'waiting on fuel',
+      'Refuel',
+      {
+        action: 'refuel',
+        targetRef: stranded.id,
+        kind: 'drone',
+        actionTitle: 'Refuel waiting drone',
+      });
+  }
+  if (!(a.drones || []).length) {
+    const purchase = describeAutomationPurchase('drone', droneMk1, state);
+    const prerequisite = purchase.state === 'drone_hull'
+      || purchase.state === 'drone_tech'
+      || purchase.state === 'drone_bay';
+    const starterBody = prerequisite
+      ? purchase.title
+      : purchase.state === 'drone_capacity'
+        ? 'The active ship has no free drone slot. Recall a deployed drone or fit more Drone Bay capacity.'
+        : credits >= (droneMk1.cost || 0)
+          ? 'Start passive income with a Mk1 drone. It is cheap, visible in the field, and you can recall it any time.'
+          : 'Earn enough credits for a Mk1 mining drone. It is cheap to run and easy to recall.';
+    const shipworksReady = purchase.state === 'drone_hull' && shipworksStationAccess(state).hull;
+    const cta = purchase.state === 'available'
+      ? 'Deploy Mk1'
+      : purchase.state === 'drone_hull'
+        ? (shipworksReady ? 'Open Shipworks' : 'Plot Helios Shipworks')
+        : 'Open Drone Bay';
+    const options = purchase.state === 'available'
+      ? {
+        action: 'buyDrone',
+        targetRef: droneMk1.id,
+        kind: 'drone',
+        actionTitle: purchase.title,
+      }
+      : purchase.state === 'drone_hull'
+        ? { action: 'openShipworksRoute', targetRef: 'shipworks', actionTitle: purchase.title }
+        : { actionTitle: purchase.title };
+    return nextAction('drones', 'Deploy a mining drone',
+      starterBody,
+      `${fmtCr(droneMk1.cost || 0)} cr starter`,
+      cta,
+      options);
+  }
+  if (summary.capUsedPct >= 90) {
+    const capLoad = describeAutomationCapLoad(summary);
+    const overCap = capLoad.state === 'over-cap';
+    return nextAction('drones', 'Raise automation ceiling',
+      overCap
+        ? 'Production is over the cap, so the overflow is dropped. Research logistics tiers or rebalance before buying more.'
+        : 'Production is near the cap. Research logistics tiers or rebalance before buying more.',
+      overCap ? `${fmtCr(capLoad.overagePerMin)} cr/min over cap` : `${Math.round(summary.capUsedPct)}% cap load`,
+      'Review Drones');
+  }
+  if (!(a.traders || []).length) {
+    const trader = TRADERS[0] || {};
+    const purchase = describeAutomationPurchase('trader', trader, state);
+    if (hasTraderTech) {
+      return nextAction('traders', 'Hire a route trader',
+        'Turn market spreads into managed income. Reroute when heat climbs so the lane keeps paying.',
+        'Autonomous Fleets ready',
+        purchase.state === 'available' ? 'Hire Hauler' : 'Open Traders',
+        purchase.state === 'available' ? {
+          action: 'hireTrader',
+          targetRef: trader.id,
+          kind: 'trader',
+          actionTitle: purchase.title,
+        } : { actionTitle: purchase.title });
+    }
+    return nextAction('traders', 'Research Autonomous Fleets',
+      'Traders haul and sell on routes of their own. Research Autonomous Fleets to hire one.',
+      'Tech locked', 'View Traders');
+  }
+  if (!(a.outposts || []).length) {
+    if (hasOutpostTech) {
+      const outpost = cheapestOutpost();
+      const purchase = describeAutomationPurchase('outpost', outpost, state);
+      return nextAction('outposts', 'Found a sector outpost',
+        'Outposts convert money into territory. Build one where your fleet can absorb raids and upkeep.',
+        'Charter ready',
+        purchase.state === 'available' ? 'Build Outpost' : 'Open Outposts',
+        purchase.state === 'available' ? {
+          action: 'buildOutpost',
+          targetRef: outpost.id,
+          kind: 'outpost',
+          actionTitle: purchase.title,
+        } : { actionTitle: purchase.title });
+    }
+    return nextAction('outposts', 'Work toward Outpost Charter',
+      'Outposts pay off once traders carry your route income and you can cover the upkeep. Research the Outpost Charter to unlock them.',
+      'Tech locked', 'View Outposts');
+  }
+  if (!(a.fleet || []).length && spareShips) {
+    return nextAction('fleet', 'Assign a spare hull',
+      'Crew a spare ship as a wingman to guard your automation.',
+      `${ownedShips.length - 1} spare hulls`, 'Assign Wingman', {
+        action: 'assignFleet',
+        targetRef: spareShipIndex,
+        kind: 'ownedShip',
+        actionTitle: 'Assign spare hull as a wingman.',
+      });
+  }
+  return nextAction('fleet', 'Keep routes defended',
+    'Your automation stack is online. Keep the cap healthy, rotate hot trader routes, and add escorts before dangerous expansion.',
+    `${fmtCr(summary.netRatePerMin)} cr/min net`, 'Review Fleet');
+}
+
+function nextAction(tab, title, body, meta, cta, options = {}) {
+  return {
+    tab,
+    title,
+    body,
+    meta,
+    cta,
+    action: options.action || 'switchTab',
+    targetRef: options.targetRef != null ? options.targetRef : tab,
+    kind: options.kind || null,
+    actionTitle: options.actionTitle || cta,
+  };
+}
+
+function cheapestOutpost() {
+  return OUTPOSTS
+    .slice()
+    .sort((a, b) => automationPurchaseCost('outpost', a) - automationPurchaseCost('outpost', b))[0] || {};
+}
+
+function automationState(state) {
+  return (state && state.automation) || { drones: [], traders: [], outposts: [], fleet: [], fleetCap: 0,
+    meta: {}, accumulators: {}, balance: AUTO_BALANCE };
+}
+
+function passiveCapPerMin(state) {
+  const a = automationState(state);
+  return passiveCapPerMinForTier(a.balance || AUTO_BALANCE, playerTierFromState(state));
+}
+
+function playerTierFromState(state) {
+  const player = (state && state.player) || {};
+  const cap = player.droneTierCap || 1;
+  return Math.max(1, Math.min(5, Math.round(cap) || 1));
+}
+
+function automationPurchaseCost(kind, def) {
+  if (kind === 'trader') return Math.max(0, Number(def.hireCost) || 0);
+  if (kind === 'outpost') return Math.max(0, Number(def.buildCost) || 0);
+  return Math.max(0, Number(def.cost) || 0);
+}
+
+function droneTierTechId(tier) {
+  const want = Math.max(1, Math.round(tier || 1));
+  const match = TECH_NODES
+    .filter((node) => node.unlocks && node.unlocks.droneTierCap >= want)
+    .sort((a, b) => (a.unlocks.droneTierCap || 0) - (b.unlocks.droneTierCap || 0))[0];
+  return match ? match.id : 'tech_drone_control';
+}
+
+function techName(id) {
+  const node = TECH_BY_ID.get(id);
+  return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
+}
+
+function grossRatePerMinFromAutomation(a) {
+  let rate = 0;
+  for (const d of a.drones || []) rate += d.ratePerMin != null ? d.ratePerMin : estDroneRate(d);
+  for (const t of a.traders || []) rate += t.ratePerMin != null ? t.ratePerMin : 0;
+  for (const o of a.outposts || []) rate += o.ratePerMin != null ? o.ratePerMin : 0;
+  return rate;
+}
+
+function estimateUpkeepPerMin(a) {
+  let sum = 0;
+  for (const d of a.drones || []) sum += defUpkeep(DRONES, d);
+  for (const t of a.traders || []) sum += defUpkeep(TRADERS, t);
+  for (const o of a.outposts || []) {
+    const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
+    sum += (def.upkeepPerMin || 0) * Math.pow(1.5, (o.level || 1) - 1);
+  }
+  return sum;
+}
+
+function defUpkeep(defs, inst) {
+  if (defs === DRONES && inst?.status === 'stranded') return 0;
+  const def = defs.find((x) => x.id === inst.defId) || inst;
+  if (defs === DRONES && inst?.status !== 'distressed' && inst?.program?.templateId === 'mine_to_depot' && inst?.operation) {
+    return inst.operation.operatingCostPerMin || 0;
+  }
+  return def.upkeepPerMin || 0;
+}
+
+function countDistressedAssets(a) {
+  let n = 0;
+  for (const list of [a.drones || [], a.traders || [], a.outposts || [], a.fleet || []]) {
+    for (const asset of list) {
+      if (asset && (asset.status === 'distressed' || asset.status === 'raided' || asset.status === 'lowfuel')) n++;
+    }
+  }
+  return n;
+}
+
+function estDroneRate(d) {
+  // Display-only fallback when an asset has not reported ratePerMin yet; automation owns payouts.
+  const def = DRONES.find((x) => x.id === d.defId) || d;
+  return (def.mineRate || 0) * 60 * DRONE_DISPLAY_ORE_VALUE;
+}
+
+function programLabel(id) {
+  const opt = PROGRAM_OPTIONS.find((x) => x.value === id);
+  return opt ? opt.label : prettyId(id);
+}
+
+function programMetaText(id) {
+  const opt = PROGRAM_OPTIONS.find((x) => x.value === id);
+  return opt ? opt.meta : 'Custom program assigned.';
+}
+
+// A sub-line given as an array wraps only between its parts, so a count never strands its noun.
+function metricHtml(k, v, s) {
+  const sub = Array.isArray(s) ? s.map(part => `<span class="au-metric__part">${escapeHtml(part)}</span>`).join(' ') : escapeHtml(s);
+  return `<div class="au-metric"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div><div class="s">${sub}</div></div>`;
+}
+
+function recipeText(r) {
+  if (!r) return 'idle';
+  if (r.passive) return `passive ${r.creditGen || 0} cr/s`;
+  if (r.book) return 'shared refinery book (by feedstock)';
+  const ins = r.inputs ? Object.entries(r.inputs).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
+  const out = r.output ? Object.entries(r.output).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
+  return `${ins} → ${out}`;
+}
+
+// INF-088: one-line financial telling of the trader's last completed delivery, rendered
+// from the job record's own receipt (no second ledger). Pure for testability.
+export function formatTraderReceipt(t) {
+  const r = t && t.lastReceipt;
+  if (!r) return '';
+  const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(traderPortLine(r.from, r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
+  if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr${r.overflowDropped > 0 ? ` · ${fmtCr(r.overflowDropped)} cr withheld by the passive income cap` : ''}${r.walletWithheld > 0 ? ` · ${fmtCr(r.walletWithheld)} cr above the credit limit` : ''}`;
+  if (r.result === 'capped') return `Last delivery #${r.n}: ${legs} · no payout — passive income cap reached`;
+  if (r.result === 'wallet_full') return `Last delivery #${r.n}: ${legs} · no payout — credit limit reached`;
+  return `Last delivery #${r.n}: ${legs} · no payout — spread covered no costs`;
+}
+
+function statusPill(status) {
+  if (!status || status === 'active' || status === 'working' || status === 'deployed') return `<span class="au-pill ok">active</span>`;
+  if (status === 'distressed' || status === 'lowfuel' || status === 'idle' || status === 'waiting') return `<span class="au-pill warn">${escapeHtml(status)}</span>`;
+  if (status === 'lost' || status === 'raided' || status === 'destroyed' || status === 'stranded' || status === 'stalled') return `<span class="au-pill bad">${escapeHtml(status)}</span>`;
+  return `<span class="au-pill">${escapeHtml(status)}</span>`;
+}
+
+function deploymentPill(deployment) {
+  const cls = deployment.className ? ' ' + deployment.className : '';
+  return `<span class="au-pill${cls}">${escapeHtml(deployment.label)}</span>`;
+}
+
+function miniBar(frac) {
+  const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
+  // Bone carries every level; red is the threat channel (about to strand), never amber.
+  const col = pct < 25 ? 'var(--danger)' : 'rgb(236 230 216 / .85)';
+  return `<span class="au-minibar"><i style="width:${pct.toFixed(0)}%;background:${col}"></i></span>`;
+}
+
+function storageBar(frac) {
+  const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
+  const color = pct >= 90 ? 'rgb(236 230 216 / .95)' : 'rgb(236 230 216 / .55)';
+  return `<span class="au-storebar" aria-hidden="true"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></span>`;
+}
+
+function emptyEl(text) {
+  const d = document.createElement('div');
+  d.className = 'au-empty';
+  d.textContent = text;
+  return d;
+}
+function lockedEl(text) {
+  const d = document.createElement('div');
+  d.className = 'au-locked';
+  // \uFE0E keeps ⛔ monochrome (it defaults to color emoji on emoji-font platforms).
+  d.textContent = '\u26D4\uFE0E ' + text;
+  return d;
+}
+
+function prettyId(id) {
+  return escapeHtml(prettyLabel(id));
+}
+
+function prettyLabel(id) {
+  return String(id || '')
+    .replace(/^(drone_|trader_|outpost_|cmdty_|ship_|sector_|mod_)/, '')
+    .replace(/_/g, ' ');
+}
+
+// The hire toast already names ports. The card and the delivery line use the same names.
+// Stored route ids stay ids; this is display only.
+export function stationDisplayName(id) {
+  if (!id) return '?';
+  const named = STATION_NAMES.get(id);
+  if (named) return named;
+  return String(id).replace(/^station_/, '').replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function traderPortLine(fromId, toId) {
+  return `${stationDisplayName(fromId)} → ${stationDisplayName(toId)}`;
+}
+
+function commodityName(id) {
+  if (id === 'credits') return 'Credits';
+  const commodity = COMMODITY_BY_ID.get(id);
+  if (commodity && commodity.name) return commodity.name;
+  const label = prettyLabel(id);
+  return label.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function finiteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && value !== null && value !== '' ? number : null;
+}
+
+function firstPositiveKey(record) {
+  return Object.keys(record || {}).sort().find((key) => Number(record[key]) > 0) || null;
+}
+
+function roundFlow(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function displayFlowNumber(value) {
+  if (value == null) return '—';
+  const number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : number.toFixed(number < 10 ? 2 : 1).replace(/\.0$/, '');
+}
+
+function rateText(value, unit) {
+  return value == null ? 'awaiting telemetry' : `${displayFlowNumber(value)} ${unit}`;
+}
+
+function comparisonRateText(actual, target, unit) {
+  if (actual == null) return 'awaiting telemetry';
+  if (target == null) return `${displayFlowNumber(actual)} ${unit}`;
+  return `${displayFlowNumber(actual)} / ${displayFlowNumber(target)} ${unit}`;
+}
+
+function spokenRate(value, unit) {
+  return value == null ? 'awaiting telemetry' : `${displayFlowNumber(value)} ${unit}`;
+}
+
+function spokenComparisonRate(actual, target, unit) {
+  if (actual == null) return 'awaiting telemetry';
+  if (target == null) return `${displayFlowNumber(actual)} ${unit}`;
+  return `${displayFlowNumber(actual)} of ${displayFlowNumber(target)} ${unit}`;
+}
+
+function numOr(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && String(v).trim() !== '' && !/^[a-z]/i.test(String(v)) ? n : v;
+}
+
+// A4 Counter: per-character columns that roll on change (CSS animates .is-new;
+// reduced-motion resolves instantly with the same text). Rebuilds only on change.
+function setRollingCounter(el, text) {
+  const next = String(text);
+  if (el.textContent === next) return;
+  el.textContent = '';
+  const frag = document.createDocumentFragment();
+  for (const ch of next) {
+    const s = document.createElement('span');
+    s.className = ch === ' ' ? 'au-digit au-digit--sp' : 'au-digit is-new';
+    s.textContent = ch === ' ' ? '\u00A0' : ch;
+    frag.appendChild(s);
+  }
+  el.appendChild(frag);
+}
+
+function fmtCr(v) {
+  v = Math.round(v || 0);
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e4) return (v / 1e3).toFixed(0) + 'k';
+  return v.toLocaleString();
+}

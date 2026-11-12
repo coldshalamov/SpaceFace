@@ -1,0 +1,336 @@
+{
+  "assetId": "ops_narrowband_antenna_blade",
+  "category": "service",
+  "description": "narrowband antenna blade",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "rf",
+      "position": [
+        -0.4,
+        0.4,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          1,
+          0.24,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.38,
+          0.2525,
+          0.26249999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.38,
+          0.28500000000000003,
+          0.26249999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.38,
+          0.2525,
+          -0.26249999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.38,
+          0.28500000000000003,
+          -0.26249999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.38,
+          0.2525,
+          0.26249999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.38,
+          0.28500000000000003,
+          0.26249999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.38,
+          0.2525,
+          -0.26249999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.38,
+          0.28500000000000003,
+          -0.26249999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.175,
+          1.4,
+          -0.0
+        ],
+        "size": [
+          1.05,
+          2.3,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          2.65,
+          -0.0
+        ],
+        "size": [
+          0.95,
+          0.18,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.2,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.4,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.5,
+      0.0,
+      -0.375
+    ],
+    "max": [
+      0.699999988079071,
+      2.740000009536743,
+      0.375
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_narrowband_antenna_blade_lod0.glb",
+      "triangles": 4868,
+      "draws": 7,
+      "bytes": 484392,
+      "method": "source",
+      "sha256": "0b075a678479dfd6ca5e6eb8799ae270c6fcbaa8000f7188d5355b47556f0ac5"
+    },
+    {
+      "level": 1,
+      "file": "ops_narrowband_antenna_blade_lod1.glb",
+      "triangles": 526,
+      "draws": 5,
+      "bytes": 264580,
+      "method": "Forge-decimation",
+      "sha256": "a34dc9b5269a637111fe0def91cf2684d54ef862782765e0d1813f00aa0b2950"
+    },
+    {
+      "level": 2,
+      "file": "ops_narrowband_antenna_blade_lod2.glb",
+      "triangles": 236,
+      "draws": 5,
+      "bytes": 249484,
+      "method": "Forge-decimation",
+      "sha256": "e1bfc42d4faa34437893e04c16ddd536e7a50ed8c529c7fbc906f182d6b695e2"
+    }
+  ]
+}

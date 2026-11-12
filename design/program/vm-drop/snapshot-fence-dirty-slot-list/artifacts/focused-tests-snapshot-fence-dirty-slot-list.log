@@ -1,0 +1,175 @@
+TAP version 13
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.454526
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 2 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.237753
+  ...
+# Subtest: crossing the origin cell boundary does not leave stale grid links
+ok 3 - crossing the origin cell boundary does not leave stale grid links
+  ---
+  duration_ms: 3.680552
+  ...
+# Subtest: the same holds on the z axis
+ok 4 - the same holds on the z axis
+  ---
+  duration_ms: 0.601998
+  ...
+# Subtest: retiring an entity parked in a negative origin cell fully unlinks it
+ok 5 - retiring an entity parked in a negative origin cell fully unlinks it
+  ---
+  duration_ms: 0.74435
+  ...
+# Subtest: multi-entity chains around the origin survive churn without cycles or duplicates
+ok 6 - multi-entity chains around the origin survive churn without cycles or duplicates
+  ---
+  duration_ms: 1.276633
+  ...
+# Subtest: absurd finite coordinates cannot corrupt the grid (clamped cell indices)
+ok 7 - absurd finite coordinates cannot corrupt the grid (clamped cell indices)
+  ---
+  duration_ms: 0.566269
+  ...
+# Subtest: PresentationWorld reuses dense slots without accepting stale handles
+ok 8 - PresentationWorld reuses dense slots without accepting stale handles
+  ---
+  duration_ms: 2.814477
+  ...
+# Subtest: PresentationWorld retains previous/current pose and settles interpolation from live state
+ok 9 - PresentationWorld retains previous/current pose and settles interpolation from live state
+  ---
+  duration_ms: 0.502521
+  ...
+# Subtest: PresentationPublisher applies journal ranges idempotently and rebuilds generations
+ok 10 - PresentationPublisher applies journal ranges idempotently and rebuilds generations
+  ---
+  duration_ms: 3.249946
+  ...
+# Subtest: PresentationQueries return deterministic visible handles and exact transitions
+ok 11 - PresentationQueries return deterministic visible handles and exact transitions
+  ---
+  duration_ms: 1.985116
+  ...
+# Subtest: PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+ok 12 - PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+  ---
+  duration_ms: 0.664439
+  ...
+# Subtest: PresentationWorld drops stale maximum radius after large-root churn
+ok 13 - PresentationWorld drops stale maximum radius after large-root churn
+  ---
+  duration_ms: 0.580341
+  ...
+# Subtest: ship pitch uses the maintained ship-like domain and preserves exact craft cues
+ok 14 - ship pitch uses the maintained ship-like domain and preserves exact craft cues
+  ---
+  duration_ms: 3.017029
+  ...
+# Subtest: ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+ok 15 - ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+  ---
+  duration_ms: 0.354782
+  ...
+# Subtest: ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+ok 16 - ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+  ---
+  duration_ms: 1.612861
+  ...
+# Subtest: settled idle craft skip the thrust-lean integrator
+ok 17 - settled idle craft skip the thrust-lean integrator
+  ---
+  duration_ms: 0.434699
+  ...
+# Subtest: middle-band thrust lean shares entity closure cadence when view is supplied
+ok 18 - middle-band thrust lean shares entity closure cadence when view is supplied
+  ---
+  duration_ms: 0.702898
+  ...
+# Subtest: layout-stable dirty incremental matches forceFull pack poses
+ok 19 - layout-stable dirty incremental matches forceFull pack poses
+  ---
+  duration_ms: 5.984321
+  ...
+# Subtest: membership change falls back to full pack and stays indexed
+ok 20 - membership change falls back to full pack and stays indexed
+  ---
+  duration_ms: 3.120816
+  ...
+# Subtest: dirtySlots list tracks mark/clear cardinality
+ok 21 - dirtySlots list tracks mark/clear cardinality
+  ---
+  duration_ms: 4.87798
+  ...
+# Subtest: dirty-slot list pack matches forceFull and walk-all
+ok 22 - dirty-slot list pack matches forceFull and walk-all
+  ---
+  duration_ms: 6.995613
+  ...
+# Subtest: retire removes slot from dirty list
+ok 23 - retire removes slot from dirty list
+  ---
+  duration_ms: 0.830357
+  ...
+# Subtest: two packs in one pose epoch interpolate
+ok 24 - two packs in one pose epoch interpolate
+  ---
+  duration_ms: 2.408703
+  ...
+# Subtest: a pack across a pose-epoch boundary has no interpolation source
+ok 25 - a pack across a pose-epoch boundary has no interpolation source
+  ---
+  duration_ms: 0.396435
+  ...
+# Subtest: the epoch boundary lifts once two packs share the new epoch
+ok 26 - the epoch boundary lifts once two packs share the new epoch
+  ---
+  duration_ms: 0.502065
+  ...
+# Subtest: an unstamped pack keeps the default epoch and still interpolates
+ok 27 - an unstamped pack keeps the default epoch and still interpolates
+  ---
+  duration_ms: 0.357999
+  ...
+# Subtest: a one-tick span reduces to the legacy accumulator alpha
+ok 28 - a one-tick span reduces to the legacy accumulator alpha
+  ---
+  duration_ms: 2.257109
+  ...
+# Subtest: a multi-step catch-up present no longer draws the stale previous pose
+ok 29 - a multi-step catch-up present no longer draws the stale previous pose
+  ---
+  duration_ms: 0.653238
+  ...
+# Subtest: the blended pose always lands at latest.simTime + accumulator - fixedDt
+ok 30 - the blended pose always lands at latest.simTime + accumulator - fixedDt
+  ---
+  duration_ms: 2.164876
+  ...
+# Subtest: degenerate spans fall back to the raw alpha
+ok 31 - degenerate spans fall back to the raw alpha
+  ---
+  duration_ms: 0.357316
+  ...
+# Subtest: the blend parameter stays inside [0, 1] for hostile inputs
+ok 32 - the blend parameter stays inside [0, 1] for hostile inputs
+  ---
+  duration_ms: 0.421488
+  ...
+# Subtest: a spawned entity absent from the previous pack draws at its latest pose
+ok 33 - a spawned entity absent from the previous pack draws at its latest pose
+  ---
+  duration_ms: 0.27118
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 280.318725

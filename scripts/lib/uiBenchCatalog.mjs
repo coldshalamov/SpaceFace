@@ -1,0 +1,161 @@
+// Agent-facing ids for the UI bench. The page (`tools/ui-bench.js`) mounts `screen`.
+// A shot id can be the screen id or a surface id from scripts/ui-grammar-surfaces.mjs.
+// Backdrops are committed stills — the bench never boots the game to get a background.
+
+export const BACKDROPS = Object.freeze({
+  title: '../assets/ui/backdrops/backdrop-title.jpg',
+  shell: '../assets/ui/backdrops/backdrop-shell.jpg',
+  world: '../assets/ui/backdrops/backdrop-crucible-door.jpg',
+  space: '../assets/ui/backdrops/backdrop-space.jpg',
+});
+
+/** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
+ *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot). `defeat` picks the
+ *  Game Over fixture (seedGameOverShot): 'populated' mounts a real buildDefeatReceipt plate,
+ *  'empty' the clean state. `seed` overrides the run seed a shot writes into state.meta.seed.
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, mobile?: string, defeat?: string, seed?: number}[]} */
+export const UI_BENCH_SHOTS = Object.freeze([
+  { id: 'title', screen: 'mainMenu', backdrop: 'title' },
+  { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
+  { id: 'motionAsk', screen: 'motionAsk', backdrop: 'title' },
+  { id: 'new-game', screen: 'newGame', backdrop: 'title' },
+  { id: 'newGame', screen: 'newGame', backdrop: 'title' },
+  { id: 'pause', screen: 'pause', backdrop: 'title' },
+  { id: 'physicsVenues', screen: 'physicsVenues', backdrop: 'space' },
+  { id: 'raceBoard', screen: 'raceBoard', backdrop: 'space' },
+  { id: 'settings', screen: 'settings', backdrop: 'title' },
+  // `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js); -empty is a fresh machine.
+  { id: 'save-load', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
+  { id: 'saveLoad', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
+  { id: 'save-load-empty', screen: 'saveLoad', backdrop: 'title' },
+  // Mid-run (Esc -> Save/Load): the same two lives on file, and Save here is live.
+  { id: 'save-load-live', screen: 'saveLoad', backdrop: 'title', saves: 'filed', live: true },
+  { id: 'help', screen: 'help', backdrop: 'title' },
+  { id: 'codex', screen: 'codex', backdrop: 'title' },
+  // The Figures tab over a lived-in Record: fourteen deeds, two already told (tools/ui-bench-record.js).
+  { id: 'codex-record', screen: 'codex', backdrop: 'title', record: true },
+  { id: 'mission-log', screen: 'missionLog', backdrop: 'title' },
+  { id: 'missionLog', screen: 'missionLog', backdrop: 'title' },
+  // Settled receipts open: a voided failure's refund, a race DNF, a forfeit, an expiry (tools/ui-bench-receipts.js).
+  { id: 'mission-log-receipts', screen: 'missionLog', backdrop: 'title', receipts: true },
+  { id: 'credits', screen: 'credits', backdrop: 'title' },
+  { id: 'achievements', screen: 'achievements', backdrop: 'title' },
+  { id: 'statistics', screen: 'statistics', backdrop: 'title' },
+  { id: 'game-over', screen: 'gameOver', backdrop: 'title', defeat: 'populated', seed: 4242 },
+  { id: 'gameOver', screen: 'gameOver', backdrop: 'title', defeat: 'populated', seed: 4242 },
+  // The same screen with nothing recorded — the honest empty plate on a varied seed, not the
+  // populated receipt with its fields blanked (tools/ui-bench.js seedGameOverShot).
+  { id: 'gameOver-empty', screen: 'gameOver', backdrop: 'title', defeat: 'empty', seed: 7331 },
+  { id: 'tech-tree', screen: 'techTree', backdrop: 'title' },
+  { id: 'techTree', screen: 'techTree', backdrop: 'title' },
+  // A career some hours in: six nodes researched and research points banked (tools/ui-bench.js).
+  { id: 'tech-tree-progress', screen: 'techTree', backdrop: 'title', research: ['tech_combat_basics', 'tech_strike_craft', 'tech_fire_control', 'tech_deflector_theory', 'tech_industrial_mining', 'tech_drive_tuning'] },
+
+  { id: 'flight', screen: 'flight', backdrop: 'world' },
+  { id: 'power-rail', screen: 'flight', backdrop: 'world' },
+  // Packet 02 target truth: a hostile SELECTED while another hangs on the Massline and owns the guns
+  // — the lead pip and the LINE TARGET tag ride the line's hull, not the selection.
+  { id: 'flight-line-target', screen: 'flight', backdrop: 'world' },
+  // ...and the same line with its shot BLOCKED (a rock or a hostile shield panel on the line): the pip is
+  // struck through and the tag says so. Composition only; the query is tested in gun-line-denial.
+  { id: 'flight-line-blocked', screen: 'flight', backdrop: 'world' },
+  // Packet 02 contact marks: living hulls too small to read by silhouette wear one mark in the
+  // radar's IFF shapes (triangle hostile, diamond friendly, square neutral worker); debris none.
+  { id: 'flight-contacts', screen: 'flight', backdrop: 'world' },
+  // The phone deck over the flight HUD (ui-bench --phone). `mobile` is the pose a thumb holds.
+  { id: 'mobile-flight', screen: 'mobileFlight', backdrop: 'world', mobile: 'idle' },
+  { id: 'mobile-stick', screen: 'mobileFlight', backdrop: 'world', mobile: 'stick' },
+  { id: 'mobile-boost', screen: 'mobileFlight', backdrop: 'world', mobile: 'boost' },
+  { id: 'mobile-brake', screen: 'mobileFlight', backdrop: 'world', mobile: 'brake' },
+  { id: 'mobile-wheel', screen: 'mobileFlight', backdrop: 'world', mobile: 'wheel' },
+  { id: 'mobile-wheel-pinned', screen: 'mobileFlight', backdrop: 'world', mobile: 'wheel-pinned' },
+  { id: 'crucibleHud', screen: 'crucibleHud', backdrop: 'world' },
+  // ORRERY Phase 0a: the flight HUD composed from src/ui/orrery over a real frame of open flight.
+  { id: 'orrery-flight', screen: 'orreryFlight', backdrop: 'space' },
+  { id: 'comms-radial', screen: 'flight', overlay: 'comms', backdrop: 'world' },
+  { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
+  // Popups: the layers that rise over a screen — confirmation, find palette, tier-2 tooltip, dossier drawer.
+  { id: 'popup-confirm', screen: 'station', overlay: 'confirm', backdrop: 'shell' },
+  { id: 'popup-confirm-danger', screen: 'station', overlay: 'confirm-danger', backdrop: 'shell' },
+  { id: 'popup-find', screen: 'station', overlay: 'find', backdrop: 'shell' },
+  { id: 'popup-tooltip', screen: 'station', overlay: 'tooltip', backdrop: 'shell' },
+  { id: 'popup-dossier', screen: 'station', overlay: 'dossier', backdrop: 'shell' },
+
+  { id: 'ship', screen: 'ship', backdrop: 'world' },
+  // Footprint over a lived-in record (tools/ui-bench-footprint.js): wanted by default (heat T3 outside the
+  // search zone, a bounty, three open chains), marked (a bounty only) and clean (a settled record).
+  { id: 'footprint', screen: 'footprint', backdrop: 'world', footprint: 'wanted' },
+  { id: 'footprint-marked', screen: 'footprint', backdrop: 'world', footprint: 'marked' },
+  { id: 'footprint-clean', screen: 'footprint', backdrop: 'world', footprint: 'clean' },
+  { id: 'range', screen: 'range', backdrop: 'world' },
+  // The chart over the paused flight it was opened from: Helios Prime with its stations, the starter
+  // seam's rocks and local traffic (tools/ui-bench-chart.js). `route` plots a course with the game's
+  // own planner, the way ENGAGE ROUTE would find it.
+  { id: 'chart', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded' },
+  { id: 'galaxyMap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded' },
+  { id: 'chart-galaxy', screen: 'galaxyMap', focus: 'galaxy', backdrop: 'space', chart: 'seeded' },
+  { id: 'chart-local', screen: 'galaxyMap', focus: 'local', backdrop: 'space', chart: 'seeded' },
+  { id: 'chart-route', screen: 'galaxyMap', focus: 'galaxy', backdrop: 'space', chart: 'seeded', route: 'sector_io_reach' },
+
+  { id: 'station', screen: 'station', backdrop: 'shell' },
+  { id: 'station-dock', screen: 'station', backdrop: 'shell' },
+  { id: 'station-market', screen: 'station', tab: 'market', backdrop: 'shell' },
+  { id: 'station-shipworks', screen: 'station', tab: 'shipworks', backdrop: 'shell' },
+  { id: 'station-shipworks-impound', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'lot' },
+  { id: 'station-shipworks-ransom', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'ransom' },
+  { id: 'station-industry', screen: 'station', tab: 'industry', backdrop: 'shell' },
+  { id: 'station-contracts', screen: 'station', tab: 'contracts', backdrop: 'shell' },
+  { id: 'station-factions', screen: 'station', tab: 'factions', backdrop: 'shell' },
+  { id: 'station-bar', screen: 'station', tab: 'bar', backdrop: 'shell' },
+  // Story-reward readers (tools/ui-bench.js seedStoryRewardShot): the Concord docket officer for a
+  // held Lost Ledger at Helios; the Cassandra Treaty line on the Choir's own berth.
+  { id: 'station-bar-story-buyer', screen: 'station', tab: 'bar', backdrop: 'shell', story: 'ledger' },
+  { id: 'station-factions-treaty', screen: 'station', tab: 'factions', backdrop: 'shell', story: 'treaty', dock: 'station_depot3' },
+  { id: 'station-ledger', screen: 'station', tab: 'ledger', backdrop: 'shell' },
+
+  { id: 'crucible', screen: 'crucible', backdrop: 'world' },
+  { id: 'crucible-door', screen: 'crucible', backdrop: 'world' },
+  { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
+  { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
+  { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
+  { id: 'crucible-fortify', screen: 'crucibleFortify', backdrop: 'world' },
+  { id: 'crucible-refit', screen: 'crucibleRefit', backdrop: 'world' },
+  { id: 'crucibleRefit', screen: 'crucibleRefit', backdrop: 'world' },
+  { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },
+  { id: 'crucible-results', screen: 'crucibleResults', backdrop: 'world' },
+  { id: 'crucibleResults', screen: 'crucibleResults', backdrop: 'world' },
+
+  { id: 'asteroid-works', screen: 'drill', backdrop: 'world' },
+  { id: 'drill', screen: 'drill', backdrop: 'world' },
+  // A worked claim: staked site with a survey, Core + 2 machines on one lane, heat ~40%,
+  // charge ~65%, half-full hold, one ledger event (tools/ui-bench.js seedDrillShot). -build
+  // is the same claim with the build palette open.
+  { id: 'drill-claimed', screen: 'drill', backdrop: 'world', drill: 'claimed' },
+  { id: 'drill-build', screen: 'drill', backdrop: 'world', drill: 'build' },
+  { id: 'base', screen: 'base', backdrop: 'shell' },
+  // A managed body: one staked claim, 2/5 module slots built, a relay identity with stored
+  // goods and a convoy in flight (tools/ui-bench.js seedBaseShot).
+  { id: 'base-claimed', screen: 'base', backdrop: 'shell', base: 'claimed' },
+  // The boot overlay mid-load: ring at 62% with 4 stage ticks over the tableaux field.
+  // Not a screen — the bench stages #boot-overlay directly (mountLoadingShot).
+  { id: 'loading', screen: 'bootOverlay', backdrop: 'title' },
+  { id: 'automation', screen: 'automation', backdrop: 'shell' },
+
+  { id: 'replay', screen: 'replay', backdrop: 'title' },
+  { id: 'clips', screen: 'clips', backdrop: 'title' },
+  { id: 'sandbox', screen: 'sandbox', backdrop: 'title' },
+  { id: 'localmap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'localmap' },
+  { id: 'localmap-legacy', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'localmap' },
+  { id: 'starmap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'starmap' },
+  { id: 'starmap-legacy', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'starmap' },
+]);
+
+const BY_ID = new Map(UI_BENCH_SHOTS.map((shot) => [shot.id, shot]));
+
+export function resolveShot(id) {
+  return BY_ID.get(id) || null;
+}
+
+export function listShotIds() {
+  return UI_BENCH_SHOTS.map((shot) => shot.id);
+}

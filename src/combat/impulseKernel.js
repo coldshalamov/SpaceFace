@@ -1,0 +1,744 @@
+// PQ-009 / SF-09: pure weapon-impulse and collision-consequence contracts.
+//
+// This module computes identity and receipts only. It never mutates entity motion, health, combat
+// state, or presentation. Runtime consumers must route its outputs through the physics/combat
+// owners. Recent impulse attribution is held in WeakMaps so save/replay entity graphs stay clean.
+
+const RECENT_IMPULSES = new WeakMap();
+const RECENT_IMPULSE_HISTORY = new WeakMap();
+const EMPTY_IMPULSE_HISTORY = Object.freeze([]);
+const IMPULSE_PROVENANCE_HISTORY_LIMIT = 16;
+/** Bumped on every recordImpulseProvenance so quiet consumers can wake without WeakMap.size. */
+let IMPULSE_PROVENANCE_GENERATION = 0;
+
+export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
+
+/** Monotonic generation for quiet-latch wake (tumbleStates RCS discovery). */
+export function impulseProvenanceGeneration() {
+  return IMPULSE_PROVENANCE_GENERATION;
+}
+
+// Ordinary flight bumps (player/NPC vs rock, two ships clipping) must not steal the helm.
+// Craft contact takes the helm only with a fresh combat-attributed impulse record on the victim;
+// the tags below are the ordinary-flight provenances that never count. Terrain and structure are
+// provenance-blind in BOTH directions: a hard slam (deltaV at or above tumbleDeltaV) tumbles the
+// ship no matter who or what caused it — the rock does the work (design/VISION.md: "slam them into
+// asteroids", "discover an asteroid at several hundred meters per second") — and a scrape below
+// that threshold stays helm-neutral even when the victim carries a fresh weapon tag, so a post-shot
+// graze never reads as a concussion. Debris contact never takes the helm.
+const HELM_NEUTRAL_COLLISION_TAGS = Object.freeze(new Set(['environment', 'direct_contact']));
+
+export const HITSTUN_IMPULSE_EVENT = 'combat:hitstunImpulse';
+
+// PQ-137.04 — one helm-loss duration and entry-spin law for every delivered impulse.
+// u = (ΔV / cruise) * clamp(sqrt(attacker/victim), 0.5, 2.2). T is tick-quantized so a light
+// hull at k = 0.30 (u = 0.30 when massFactor is 1) is exactly 1.00 s. The heavy gun-scale case
+// (k=0.06, mF=2.2, u=0.132) stays exactly 0.
+export const HITSTUN_LAW = Object.freeze({
+  uFloor: 0.14,
+  // T(u=0.30)=1.00 s so a light hull at k>=0.30 loses the helm for a full second even when
+  // massFactor is 1 (world-body collision). The Kestrel/Wasp gun reference u~=0.3182 is slightly longer.
+  slope: 6.25,
+  durationMaxS: 3.5,
+  massFactorMin: 0.5,
+  massFactorMax: 2.2,
+  spinPerExcessU: 12,
+  spinMin: 0.4,
+  spinMax: 6,
+  // Static terrain/structure is not a combatant. Mapping the rock's collider mass (often huge
+  // or infinite) into attackerMass clamps every hull to mF=2.2 and stuns an Atlas that B6
+  // requires keep its helm at the same speed a Wasp loses it. The world strikes as a light
+  // combatant; heavies shrug through an unclamped mass factor.
+  worldRefMass: 16,
+});
+
+// The shove beat (owner direction 2026-09-21). A concussion-class hit already bleeds a light
+// hull's speed, but two seconds later it is back on its line and back on the trigger. A
+// shove-class hit must knock the victim about one visible screen — 126 WU, FEEL_CONTRACT B3,
+// the same frame the inertial shunt tunes in — off the line it was flying, and the helm stays
+// lost for the coast that does it: beat = screenWu / deltaV. A harder shove finishes the same
+// displacement sooner, so the beat narrows as the shove grows and the base law's own duration
+// (capped at durationMaxS) overtakes it in the upper band. The beat only ever EXTENDS a stun
+// the base law already delivered — minU keeps it off hulls whose mass-weighted shove is not
+// shove-class, so heavies keep the helm exactly where the base law gives it — and it never
+// touches damage, spin, or the player.
+export const SHOVE_BEAT_LAW = Object.freeze({
+  minU: 0.3,
+  screenWu: 126,
+  maxS: 4.5,
+});
+
+// The delivered-impulse weapon family: hits whose payload is momentum (concussion slugs, vector
+// mines, bomb blasts, impulse charges). Rope throws, well flings, terrain collisions and tether
+// shares have their own tuned helm economies and keep the base law alone.
+const SHOVE_CLASS_HITSTUN_SOURCES = Object.freeze(new Set(['gun', 'weapon', 'bomb', 'impulse_charge', 'hull_burst']));
+
+// SFQ-B036 — bound control denial without removing power. Repeated concussions/stuns in
+// a row have diminishing returns (each chained hit keeps 0.65 of the duration it would
+// otherwise add) and hit a 5.0 s continuous helm-loss ceiling; once a ship enters its
+// post-tumble stabilization window, sub-shove grazes (u < 0.30) cannot re-tumble it.
+export const HITSTUN_CHAIN_LAW = Object.freeze({
+  decayPerChain: 0.65,
+  maxChainDurationS: 5.0,
+  recoveryReentryMinU: 0.30,
+});
+
+export function isShoveClassHitstunSource(source) {
+  return SHOVE_CLASS_HITSTUN_SOURCES.has(source);
+}
+
+export function hitstunMassFactor(attackerMass, victimMass, opts = {}) {
+  const min = Number.isFinite(opts.min) ? opts.min : HITSTUN_LAW.massFactorMin;
+  const max = Number.isFinite(opts.max) ? opts.max : HITSTUN_LAW.massFactorMax;
+  const ratio = Math.max(0.1, positive(attackerMass, 1)) / Math.max(0.1, positive(victimMass, 1));
+  return clamp(Math.sqrt(ratio), min, max);
+}
+
+export function isWorldHitstunBody(entity) {
+  const surface = collisionSurface(entity);
+  return surface === 'terrain' || surface === 'structure';
+}
+
+export function hitstunAttackerMassForCollision(other) {
+  if (isWorldHitstunBody(other)) return HITSTUN_LAW.worldRefMass;
+  return positive(other && (other.physicsBody && other.physicsBody.mass || other.mass), 1);
+}
+
+export function resolveHitstunLaw(input = {}) {
+  const deltaV = nonNegative(input.deltaV);
+  const cruise = positive(input.victimCruise, 0);
+  const k = cruise > 0 ? deltaV / cruise : 0;
+  const worldBody = input.worldBody === true;
+  const attackerMass = worldBody ? HITSTUN_LAW.worldRefMass : input.attackerMass;
+  const mF = hitstunMassFactor(attackerMass, input.victimMass, worldBody ? { min: 0 } : {});
+  const u = k * mF;
+  const rawDuration = u <= HITSTUN_LAW.uFloor
+    ? 0
+    : HITSTUN_LAW.slope * (u - HITSTUN_LAW.uFloor);
+  const baseDurationS = rawDuration <= 0
+    ? 0
+    : Math.min(HITSTUN_LAW.durationMaxS, Math.ceil(rawDuration * 60 - 1e-12) / 60);
+  // The shove beat: extend a delivered stun to the coast that carries the victim about one
+  // screen off the line it was flying. It never starts a stun — no base stun, no beat — and
+  // never shortens one (consumers take max(existing, now + durationS)). `shoveBeatS` reports
+  // only a beat that actually set the duration; a base law already past the screen reads 0.
+  let durationS = baseDurationS;
+  let shoveBeatS = 0;
+  if (input.shove === true && baseDurationS > 0 && u >= SHOVE_BEAT_LAW.minU && deltaV > 0) {
+    const beatS = Math.min(
+      SHOVE_BEAT_LAW.maxS,
+      Math.ceil((SHOVE_BEAT_LAW.screenWu / deltaV) * 60 - 1e-12) / 60,
+    );
+    if (beatS > durationS) {
+      durationS = beatS;
+      shoveBeatS = beatS;
+    }
+  }
+  const entrySpin = durationS > 0
+    ? clamp(HITSTUN_LAW.spinPerExcessU * (u - HITSTUN_LAW.uFloor), HITSTUN_LAW.spinMin, HITSTUN_LAW.spinMax)
+    : 0;
+  // SFQ-B036 — a stabilizing ship shrugs sub-shove grazes instead of re-tumbling: the
+  // recovery window is its own beat, not an opening for a light follow-up.
+  const chainCount = nonNegativeInteger(input.chainCount);
+  const recovering = input.recovering === true;
+  if (recovering && durationS > 0 && u < HITSTUN_CHAIN_LAW.recoveryReentryMinU) {
+    return Object.freeze({ k, mF, u, durationS: 0, entrySpin: 0, shoveBeatS: 0, worldBody });
+  }
+  // SFQ-B036 — chained hits keep 0.65^n of the duration. Tick-quantized like the base law
+  // so stacked receipts land on the same clock. First hits are bit-identical to before
+  // (entry spin reads the undayed stun; only the clock decays).
+  if (chainCount > 0 && durationS > 0) {
+    durationS = Math.ceil(durationS * Math.pow(HITSTUN_CHAIN_LAW.decayPerChain, chainCount) * 60 - 1e-12) / 60;
+  }
+  if (chainCount > 0 || recovering) {
+    return Object.freeze({ k, mF, u, durationS, entrySpin, shoveBeatS, worldBody, chainCount });
+  }
+  return Object.freeze({ k, mF, u, durationS, entrySpin, shoveBeatS, worldBody });
+}
+
+export function signedHitSide(target, impulse, hit, fallbackId) {
+  const ix = finite(impulse && (impulse.x != null ? impulse.x : impulse.dirX));
+  const iz = finite(impulse && (impulse.z != null ? impulse.z : impulse.dirZ));
+  const mag = Math.hypot(ix, iz);
+  if (hit && hit.pos && target && target.pos && mag > 1e-9) {
+    const rx = finite(hit.pos.x) - finite(target.pos && target.pos.x);
+    const rz = finite(hit.pos.z) - finite(target.pos && target.pos.z);
+    const cross = rz * ix - rx * iz;
+    if (Math.abs(cross) > 1e-6) return Math.sign(cross);
+  }
+  if (target && mag > 1e-9) {
+    const rot = finite(target.rot);
+    const fx = Math.cos(rot);
+    const fz = Math.sin(rot);
+    const headingCross = fz * ix - fx * iz;
+    if (Math.abs(headingCross) > 1e-6) return Math.sign(headingCross);
+  }
+  return numericParity(fallbackId) ? 1 : -1;
+}
+
+export function publishHitstunImpulse(bus, payload = {}) {
+  if (!bus || typeof bus.emit !== 'function') return false;
+  if (payload.victimId == null) return false;
+  const dirX = finite(payload.dirX);
+  const dirZ = finite(payload.dirZ);
+  const length = Math.hypot(dirX, dirZ);
+  bus.emit(HITSTUN_IMPULSE_EVENT, Object.freeze({
+    schemaVersion: 1,
+    source: stableTag(payload.source) || 'unknown',
+    victimId: payload.victimId,
+    attackerId: payload.attackerId == null ? null : payload.attackerId,
+    attackerMass: positive(payload.attackerMass, 1),
+    victimMass: positive(payload.victimMass, 1),
+    deltaV: nonNegative(payload.deltaV),
+    dirX: length > 1e-9 ? dirX / length : 0,
+    dirZ: length > 1e-9 ? dirZ / length : 0,
+    hitSide: payload.hitSide === -1 ? -1 : 1,
+    worldBody: payload.worldBody === true,
+    provenance: payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null,
+    tick: nonNegativeInteger(payload.tick),
+  }));
+  return true;
+}
+
+// Hull-burst overhaul slice A, `combat.tumbleFling`: a hull that has lost its helm is a projectile.
+// Craft-on-craft consequences used to read only the FIRST solver tick's momentum exchange (a flung
+// Wasp meeting a second Wasp at 110 WU/s registered ~12 WU/s of knock and ~0.7 damage, so "flinging
+// enemies into each other" did nothing). When the STRIKER is loose the struck hull's knock comes from
+// the closing speed and both masses, as a bouncy (restitution) two-body collision:
+//   deltaV = (1 + e) * closing * mStriker / (mStriker + mTarget)
+// Placeholders; nothing has tuned them (design doc section 11.6).
+export const PROJECTILE_HULL_LAW = Object.freeze({
+  restitution: 0.6,
+  // Below this closing speed a loose hull only brushes its neighbour.
+  minClosingSpeed: 20,
+});
+
+export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
+  minMomentum: 1,
+  staggerDeltaV: 3,
+  tumbleDeltaV: 18,
+  // Damage begins once closing speed exceeds this; low enough that medium concussion stacks start
+  // accruing terrain payoff before a long multi-hit charge, high enough that gentle scrapes stay soft.
+  damageDeltaV: 8,
+  maxStaggerTicks: 90,
+  // Medium-mass universal ceiling. Lighter hulls scale up via damageMassRef / mass (boosted up to
+  // maxDamageMassBoost) so a committed terrain slam can finish them; heavier hulls compress toward
+  // maxDamage * maxDamageMassFloor. Craft contact still multiplies by SURFACE_DAMAGE_MULTIPLIER.craft.
+  maxDamage: 190,
+  damageMassRef: 60,
+  maxDamageMassBoost: 2.5,
+  maxDamageMassFloor: 0.5,
+  // True kinetic-energy scale: impactDamage ≈ energyProxy * energyDamageScale * surfaceMult.
+  // U11 WF-15: light (mass ~16) at a committed concussion-stack deltaV (~50) is near-lethal on terrain.
+  // Medium first slam at ~28 wu/s needs ~0.011 so post-softener remaining hull dies on the wall
+  // rather than on the next concussion tick. Impulse stays at the siege-lance budget (420).
+  energyDamageScale: 0.011,
+  maxDebris: 18,
+});
+
+// PQ-137.06 — terrain/structure damage from pre-solve closing speed. The solver bound stays a
+// rate limit; this law is the story. Finite 0 is real (a sub-threshold scrape). Missing values
+// keep the exchanged-dV energy path below so legacy/manual receipts stay bit-stable.
+export const TERRAIN_CRUMPLE_LAW = Object.freeze({
+  threshold: 30,
+  refMass: 16,
+  maxDamage: 400,
+  massFloor: 0.27,
+});
+
+// PQ-140.01 — "a heavy is moving terrain". A hull this massive IS the wall for anything that meets
+// it, so the same pre-solve closing-speed law decides what a light loses when it is thrown into
+// one. 150 is the roster's own heavy boundary: `src/data/ships.js` gives every mass-150+ hull a
+// `heavyMotion` turn-carry profile and nothing lighter has one.
+//
+// This is not a second damage rule and it is not hit-point scaling. Before it, craft contact used
+// the exchanged-momentum energy proxy, and the solver's per-contact bound
+// (`sg02DynamicBodyOwner.MAX_CONTACT_DV`) capped the input at 40 WU/s no matter how hard the throw
+// was — the identical erasure PQ-137.06 removed for rock. The bound stays exactly what it was, a
+// rate limit on the solver; only the DAMAGE reads the speed the hulls actually met at. The law is
+// inverse in the victim's mass, so the heavy on the other side of the same contact still takes
+// almost nothing: it is terrain, not a mutual grinder.
+export const HEAVY_AS_TERRAIN_MASS = 150;
+
+// CH-02 — ram damage for everyone. Below the heavy boundary craft contact still read its DAMAGE
+// off the solver's bounded Δv: every contact is clamped to min(mass) x MAX_CONTACT_DV and the
+// 12-tick pair cooldown drops the remainder, so a 130 WU/s ram dealt exactly what a 55 WU/s bump
+// did, and the striker's mass never entered — a 90-mass Ironback ploughing into a 16-mass Wasp
+// dented it like a peer. The ram law reads the speed the hulls actually met at and how big each
+// one is: the victim's share of the closing speed in a dead (restitution 0, the craft contact
+// material) two-body collision,
+//   ramDeltaV = closing * mStriker / (mStriker + mVictim)
+// fed to the SAME energy proxy, scale, craft multiplier and mass-relative cap the bounded read
+// uses. It only ever raises that read (the solver bound stays a rate limit, exactly as PQ-137.06
+// and PQ-140.01 left it), so every bump the solver resolves honestly is bit-stable — traffic
+// grinding is not chaos — and a whip contact the craft multiplier zeroes stays zero. A heavy
+// rams a light: the light's share is nearly the whole closing speed and it is wrecked. Equals
+// meet: each takes half, and both crumple (the bounded read already carried a peer ram; the law
+// lifts it only past the solver's ceiling). A light rams a heavy: it bounces off hurt while the
+// heavy's share stays under the crumple floor — a light is still not terrain.
+export const CRAFT_RAM_LAW = Object.freeze({
+  restitution: 0,
+  // The read fires only on a committed ram: the victim's share must itself clear the crumple
+  // family's threshold before the law speaks. This is what keeps PQ-140.01's word true — a
+  // light is not terrain, and its share in a heavy's frame is a bump, not a crumple.
+  minShare: TERRAIN_CRUMPLE_LAW.threshold,
+});
+
+/**
+ * The victim's honest Δv in a craft-on-craft contact at `closingSpeed`: its mass-ratio share of
+ * the speed the two hulls met at. 0 for anything unreadable, so a receipt without a measured
+ * closing speed or a massless partner keeps the bounded read.
+ */
+export function craftRamDeltaV(closingSpeed, victimMass, strikerMass) {
+  if (!Number.isFinite(closingSpeed) || !(closingSpeed > 0)) return 0;
+  if (!(victimMass > 0) || !(strikerMass > 0)) return 0;
+  return (1 + CRAFT_RAM_LAW.restitution) * closingSpeed * strikerMass / (strikerMass + victimMass);
+}
+
+// §22 B5 — spall energy axis. Shares the feel/audio 8→150 WU/s ramp: below the touch speed a
+// contact cannot throw chips at all, at the reference slam the chip count saturates.
+export const COLLISION_DEBRIS_SPEED_TOUCH = 8;
+export const COLLISION_DEBRIS_SPEED_SLAM = 150;
+export const COLLISION_DEBRIS_MIN_SEVERITY = 0.08;
+
+const SURFACE_DAMAGE_MULTIPLIER = Object.freeze({
+  terrain: 1.15,
+  structure: 1,
+  debris: 0.8,
+  craft: 0.6,
+  other: 0,
+});
+
+/**
+ * The crumple law's own reading for one authored terrain-class contact: what a body of `mass`
+ * meeting terrain at `speed` loses. The kernel's contact path is the only other writer of this
+ * formula — an authored room hazard that shoves a hull into a fixed surface (the crusher's
+ * anvil) routes the SAME reading instead of deriving a second damage rule. Terrain multiplier,
+ * no craft contact, no per-body impact scale.
+ */
+export function terrainCrumpleDamage(speed, mass) {
+  if (!Number.isFinite(speed) || !Number.isFinite(mass)) return 0;
+  const crumple = Math.max(0, speed - TERRAIN_CRUMPLE_LAW.threshold);
+  if (!(crumple > 0) || !(mass > 0)) return 0;
+  const massScale = TERRAIN_CRUMPLE_LAW.refMass / mass;
+  const uncapped = 0.5 * crumple * crumple * massScale * SURFACE_DAMAGE_MULTIPLIER.terrain;
+  const cap = TERRAIN_CRUMPLE_LAW.maxDamage * clamp(massScale, TERRAIN_CRUMPLE_LAW.massFloor, 1);
+  return Math.min(uncapped, cap);
+}
+
+export function resolveWeaponImpulseForHit(weapon, damage) {
+  if (!weapon || typeof weapon !== 'object') return null;
+  const authoredDamage = positive(weapon.dmg, 0);
+  const actualDamage = nonNegative(damage);
+  const fraction = authoredDamage > 0 ? clamp(actualDamage / authoredDamage, 0, 4) : 0;
+  const magnitude = nonNegative(weapon.impulsePerHit) * fraction;
+  const tumbleTorque = nonNegative(weapon.tumbleTorque) * fraction;
+  const provenance = stableTag(weapon.impulseProvenance);
+  if (!provenance || (!(magnitude > 0) && !(tumbleTorque > 0))) return null;
+  return Object.freeze({ magnitude, tumbleTorque, provenance });
+}
+
+export function recordImpulseProvenance(entity, input = {}) {
+  if (!entity || typeof entity !== 'object') return null;
+  const tag = stableTag(input.tag || input.provenance);
+  if (!tag) return null;
+  const actorId = input.actorId == null ? null : input.actorId;
+  const appliedTick = nonNegativeInteger(input.appliedTick);
+  // A follow-up hit from the same actor while a flight hold is still running keeps the hold: a weak
+  // plink that does not stun must not drop the credit for a hull the same player already sent flying.
+  // A different actor replaces the record outright (the latest cause wins) and inherits nothing.
+  const previous = RECENT_IMPULSES.get(entity) || null;
+  const inheritedHold = previous && previous.holdUntilTick != null
+    && previous.actorId === actorId && appliedTick <= previous.holdUntilTick
+    ? previous.holdUntilTick : null;
+  const record = Object.freeze({
+    actorId,
+    weaponId: input.weaponId == null ? null : String(input.weaponId),
+    tag,
+    appliedTick,
+    magnitude: nonNegative(input.magnitude),
+    ...(input.sourceOwnerId != null ? { sourceOwnerId: input.sourceOwnerId } : {}),
+    ...(inheritedHold != null ? { holdUntilTick: inheritedHold } : {}),
+  });
+  RECENT_IMPULSES.set(entity, record);
+  IMPULSE_PROVENANCE_GENERATION = (IMPULSE_PROVENANCE_GENERATION + 1) >>> 0 || 1;
+  const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
+  const next = history.slice(Math.max(0, history.length - IMPULSE_PROVENANCE_HISTORY_LIMIT + 1));
+  next.push(record);
+  RECENT_IMPULSE_HISTORY.set(entity, Object.freeze(next));
+  return record;
+}
+
+export function readRecentImpulseProvenance(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+  if (!entity || typeof entity !== 'object') return null;
+  const record = RECENT_IMPULSES.get(entity) || null;
+  if (!record) return null;
+  const now = nonNegativeInteger(tick);
+  const maxAge = nonNegativeInteger(maxAgeTicks);
+  const age = now - record.appliedTick;
+  // A held record (holdImpulseProvenance) outlives maxAge until its hold tick: a hull the player
+  // knocked loose is still the player's kill on the far side of a 4 s flight.
+  const held = record.holdUntilTick != null && now <= record.holdUntilTick;
+  if (age < 0 || (age > maxAge && !held)) {
+    clearImpulseProvenance(entity);
+    return null;
+  }
+  return record;
+}
+
+/**
+ * Hull-burst overhaul, slice A: keep an entity's impulse record alive through a whole flight.
+ *
+ * A hull thrown or blasted hard coasts 3-4 s before it meets anything; IMPULSE_PROVENANCE_MAX_AGE_TICKS
+ * is 3 s and every tumbleStates tick reads (and destructively clears) stale records, so the collision
+ * that finally kills it used to be blamed on the hull itself and the player's loot never dropped.
+ * The hold extends the record's life WITHOUT touching `appliedTick`: the RCS-disruptor latch reads
+ * appliedTick and must not be re-armed, and a newer hit still outranks it (contactImpulseProvenance
+ * picks the freshest appliedTick). It never shortens a hold, never creates a record, and is as
+ * transient as the record itself (WeakMap-backed, never saved).
+ */
+export function holdImpulseProvenance(entity, untilTick, nowTick, causeAppliedTick = null) {
+  if (!entity || typeof entity !== 'object') return null;
+  const record = RECENT_IMPULSES.get(entity) || null;
+  if (!record) return null;
+  const now = nonNegativeInteger(nowTick);
+  const until = nonNegativeInteger(untilTick);
+  const age = now - record.appliedTick;
+  const alreadyHeld = record.holdUntilTick != null && now <= record.holdUntilTick;
+  // Never revive a dead record: drones are not in the per-tick RCS scan, so their stale records
+  // are only ever cleared by a read, and extending one would credit a hit from many seconds ago.
+  if (!alreadyHeld && (age < 0 || age > IMPULSE_PROVENANCE_MAX_AGE_TICKS)) {
+    clearImpulseProvenance(entity);
+    return null;
+  }
+  // A fresh record is extended only if it is what caused THIS tumble. A hull already held is mid-flight
+  // and any further tumble on it (a rock bounce, a second hull) extends the same credit; a hull that
+  // merely carries an old weak hit does not inherit credit for an unrelated shove.
+  if (!alreadyHeld && causeAppliedTick != null && record.appliedTick !== nonNegativeInteger(causeAppliedTick)) return null;
+  if (record.holdUntilTick != null && until <= record.holdUntilTick) return record;
+  const held = Object.freeze({ ...record, holdUntilTick: until });
+  RECENT_IMPULSES.set(entity, held);
+  return held;
+}
+
+// Immutable insertion-order view for consumers that must not lose an earlier same-tick impulse when
+// another hit becomes the compatibility/latest record. Filtering is destructive just like the
+// latest reader's stale path, but it never changes which record the latest reader returns.
+export function readRecentImpulseProvenanceHistory(entity, tick, maxAgeTicks = IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+  if (!entity || typeof entity !== 'object') return EMPTY_IMPULSE_HISTORY;
+  const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
+  if (history.length === 0) return history;
+  const now = nonNegativeInteger(tick);
+  const maxAge = nonNegativeInteger(maxAgeTicks);
+  const recent = history.filter((record) => {
+    const age = now - record.appliedTick;
+    return age >= 0 && age <= maxAge;
+  });
+  if (recent.length === history.length) return history;
+  if (recent.length === 0) {
+    RECENT_IMPULSE_HISTORY.delete(entity);
+    return EMPTY_IMPULSE_HISTORY;
+  }
+  const frozen = Object.freeze(recent);
+  RECENT_IMPULSE_HISTORY.set(entity, frozen);
+  return frozen;
+}
+
+export function clearImpulseProvenance(entity) {
+  if (entity && typeof entity === 'object') {
+    RECENT_IMPULSES.delete(entity);
+    RECENT_IMPULSE_HISTORY.delete(entity);
+  }
+}
+
+export function resolveCollisionConsequence(input = {}) {
+  const target = input.target;
+  const other = input.other;
+  // The caller may request damage-only calculation for a physically admitted payload or wreck.
+  // This pure opt-in grants no damage authority; the owning consumer validates custody.
+  const payloadDamageOnly = input.payloadDamageOnly === true && target?.type === 'payload';
+  const wreckDamageOnly = input.wreckDamageOnly === true && target?.type === 'wreck';
+  if (!target || !other || (!isConsequenceTarget(target) && !payloadDamageOnly && !wreckDamageOnly)) return null;
+  const exchangedMomentum = nonNegative(input.exchangedMomentum);
+  if (exchangedMomentum < COLLISION_CONSEQUENCE_LIMITS.minMomentum) return null;
+
+  const mass = positive(target.physicsBody && target.physicsBody.mass, positive(target.mass, 1));
+  let deltaV = exchangedMomentum / mass;
+  // A loose striker's knock (see PROJECTILE_HULL_LAW). Only ever RAISES the knock the solver reported.
+  const strike = input.projectileStrike;
+  let projectileKnock = false;
+  if (strike && positive(strike.strikerMass, 0) > 0 && Number.isFinite(strike.closingSpeed)
+    && strike.closingSpeed >= PROJECTILE_HULL_LAW.minClosingSpeed) {
+    const knock = (1 + PROJECTILE_HULL_LAW.restitution) * strike.closingSpeed
+      * strike.strikerMass / (strike.strikerMass + mass);
+    if (knock > deltaV) {
+      deltaV = knock;
+      projectileKnock = true;
+    }
+  }
+  const surface = collisionSurface(other);
+  const provenance = collisionProvenance(input);
+  let control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
+    ? 'tumble'
+    : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
+  if (!collisionAllowsHelmLoss(surface, provenance, deltaV)) control = 'none';
+  const staggerRange = COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV;
+  const stagger01 = clamp((deltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV) / staggerRange, 0, 1);
+  const staggerTicks = control === 'none'
+    ? 0
+    : Math.max(1, Math.round(stagger01 * COLLISION_CONSEQUENCE_LIMITS.maxStaggerTicks));
+
+  // Craft contact has a real baseline; equipment such as the Ram Plate scales that baseline once
+  // rather than replacing it or adding a second collision-damage packet.
+  const impactDamageScale = Number.isFinite(other.physicsBody && other.physicsBody.impactDamageScale)
+    ? Math.min(8, Math.max(0, other.physicsBody.impactDamageScale))
+    : 1;
+  const surfaceDamageMultiplier = (surface === 'craft'
+    ? (input.suppressCraftDamage === true
+      ? 0
+      : SURFACE_DAMAGE_MULTIPLIER.craft * positive(input.craftDamageMultiplier, 1))
+    : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0)) * impactDamageScale;
+  // Mass-relative ceiling: thin light hulls can crumple under a committed slam; mass-anchored
+  // hulls keep the universal medium-class cap (or lower). The player never consumes this path —
+  // collisionConsequences skips state.playerId before routing impactDamage.
+  const massRelativeCap = COLLISION_CONSEQUENCE_LIMITS.maxDamage * clamp(
+    COLLISION_CONSEQUENCE_LIMITS.damageMassRef / mass,
+    COLLISION_CONSEQUENCE_LIMITS.maxDamageMassFloor,
+    COLLISION_CONSEQUENCE_LIMITS.maxDamageMassBoost,
+  );
+  const worldSurface = surface === 'terrain' || surface === 'structure';
+  // PQ-140.01: a mass-150+ craft is terrain for whatever hits it (see HEAVY_AS_TERRAIN_MASS).
+  const heavyAsTerrain = surface === 'craft'
+    && positive(other.physicsBody && other.physicsBody.mass, positive(other.mass, 0)) >= HEAVY_AS_TERRAIN_MASS;
+  const useCrumple = (worldSurface || heavyAsTerrain) && Number.isFinite(input.preSolveClosingSpeed);
+  let impactDamage;
+  let damageCap = massRelativeCap;
+  let ramDeltaV = 0;
+  if (useCrumple) {
+    const crumple = Math.max(0, input.preSolveClosingSpeed - TERRAIN_CRUMPLE_LAW.threshold);
+    const massScale = TERRAIN_CRUMPLE_LAW.refMass / mass;
+    const uncapped = 0.5 * crumple * crumple * massScale * surfaceDamageMultiplier;
+    damageCap = TERRAIN_CRUMPLE_LAW.maxDamage * clamp(massScale, TERRAIN_CRUMPLE_LAW.massFloor, 1);
+    impactDamage = Math.min(uncapped, damageCap);
+  } else {
+    const overDamageSpeed = Math.max(0, deltaV - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
+    const energyProxy = 0.5 * mass * overDamageSpeed * overDamageSpeed;
+    impactDamage = clamp(
+      energyProxy * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
+      0,
+      massRelativeCap,
+    );
+    // CH-02 (CRAFT_RAM_LAW): the damage reads the victim's mass-ratio share of the pre-solve
+    // closing speed whenever the solver bound truncated it. Control, the receipt's `deltaV`
+    // and every reader of them keep the solver's number.
+    if (surface === 'craft' && surfaceDamageMultiplier > 0) {
+      const share = craftRamDeltaV(
+        input.preSolveClosingSpeed,
+        mass,
+        positive(other.physicsBody && other.physicsBody.mass, positive(other.mass, 0)),
+      );
+      if (share > deltaV && share >= CRAFT_RAM_LAW.minShare) {
+        const overRamSpeed = Math.max(0, share - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
+        const ramDamage = clamp(
+          0.5 * mass * overRamSpeed * overRamSpeed
+            * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
+          0,
+          massRelativeCap,
+        );
+        if (ramDamage > impactDamage) {
+          impactDamage = ramDamage;
+          ramDeltaV = share;
+        }
+      }
+    }
+  }
+  const damage01 = damageCap > 0
+    ? impactDamage / damageCap : 0;
+  // §22 B5 — spall is moved mass: it reads the impact's energy, not only its damage packet. The
+  // receipt's deltaV is solver-capped near mass·40 WU/s, so a damage-only count would paint a
+  // 150 WU/s slam with a 40 WU/s nudge's chips — the same erasure the crumple law removed for
+  // terrain hull damage. The energy axis shares the feel/audio 8→150 ramp; material surfaces
+  // only ('other' has nothing to chip off, and a sub-threshold brush still throws nothing).
+  const energy01 = Number.isFinite(input.preSolveClosingSpeed)
+    ? clamp(
+      (input.preSolveClosingSpeed - COLLISION_DEBRIS_SPEED_TOUCH)
+        / (COLLISION_DEBRIS_SPEED_SLAM - COLLISION_DEBRIS_SPEED_TOUCH),
+      0, 1)
+    : 0;
+  const materialSurface = (SURFACE_DAMAGE_MULTIPLIER[surface] || 0) > 0;
+  const spall01 = Math.max(damage01, energy01);
+  const debrisCount = materialSurface && (impactDamage > 0 || energy01 > COLLISION_DEBRIS_MIN_SEVERITY)
+    ? clamp(Math.ceil(3 + spall01 * (COLLISION_CONSEQUENCE_LIMITS.maxDebris - 3)), 0, COLLISION_CONSEQUENCE_LIMITS.maxDebris)
+    : 0;
+
+  return Object.freeze({
+    schemaVersion: 1,
+    tick: nonNegativeInteger(input.tick),
+    targetId: target.id,
+    otherId: other.id,
+    surface,
+    exchangedMomentum,
+    deltaV,
+    ...(projectileKnock ? { projectileKnock: true } : {}),
+    // CH-02: present only when the ram law raised the damage — the Δv the damage read.
+    ...(ramDeltaV > 0 ? { ramDeltaV } : {}),
+    control,
+    staggerTicks,
+    impactDamage,
+    debrisCount,
+    pos: freezePoint(input.pos),
+    normal: freezeDirection(input.normal),
+    // C2 (Gap Report): presentation-only channel — the pre-solve closing speed, never the
+    // solver-clamped receipt deltaV. feel.js's hitstop/FOV/trauma curve reads this; damage and
+    // control semantics keep `deltaV` exactly as before.
+    feelDeltaV: Number.isFinite(input.preSolveClosingSpeed)
+      ? Math.max(0, input.preSolveClosingSpeed)
+      : null,
+    provenance,
+  });
+}
+
+function isConsequenceTarget(entity) {
+  return entity.type === 'ship' || entity.type === 'drone';
+}
+
+function collisionAllowsHelmLoss(surface, provenance, deltaV) {
+  if (surface === 'craft') {
+    const tag = provenance && provenance.tag;
+    return !!tag && !HELM_NEUTRAL_COLLISION_TAGS.has(tag);
+  }
+  if (surface === 'terrain' || surface === 'structure') {
+    return nonNegative(deltaV) >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV;
+  }
+  return false;
+}
+
+/**
+ * The surface classification every collision consequence is written against. Exported so the
+ * durable ship-history reader (src/combat/hullScars.js) records the same word the consequence
+ * receipt uses — a station scrape must not become a rock scrape in the ledger.
+ */
+export function collisionSurface(entity) {
+  switch (entity && entity.type) {
+    case 'asteroid':
+    case 'planet': return 'terrain';
+    case 'station': return 'structure';
+    case 'wreck':
+    case 'payload':
+    case 'debris':
+    case 'pod':
+    case 'prop':
+    case 'buoy':
+    case 'pickup': return 'debris';
+    case 'ship':
+    case 'drone': return 'craft';
+    default: return physicalBodySurface(entity);
+  }
+}
+
+function physicalBodySurface(entity) {
+  if (!entity || entity.type === 'fx' || entity.type === 'projectile') return 'other';
+  if (entity.collides === false) return 'other';
+  const body = entity.physicsBody;
+  if (!body || typeof body !== 'object') return 'other';
+  const material = body.material;
+  if (material === 'projectile' || material === 'massline_sensor' || material === 'sensor') {
+    return 'other';
+  }
+  if (body.collides === false || !(positive(body.mass, 0) > 0)) return 'other';
+  if (material === 'rock') return 'terrain';
+  if (material === 'station') return 'structure';
+  if (material === 'ship') return 'craft';
+  return body.dynamic === false ? 'structure' : 'debris';
+}
+
+// Environment is the absence of a responsible actor. A nearest-player id on
+// that tag is not a throw. A matching recent impulse from another actor is a
+// real cause and keeps the actor; the victim's own force must not self-credit
+// a later environmental contact. Damage does not read this id.
+function collisionProvenance(input) {
+  const raw = normalizeProvenance(input.provenance, input.tick);
+  if (raw.tag !== 'environment' || raw.actorId == null) return raw;
+  if (raw.actorId === input.target?.id) return Object.freeze({
+    actorId: null,
+    weaponId: null,
+    tag: 'environment',
+    appliedTick: raw.appliedTick,
+  });
+  if (recentImpulseMatches(input.target, input.other, raw.actorId, input.tick)) return raw;
+  return Object.freeze({
+    actorId: null,
+    weaponId: null,
+    tag: 'environment',
+    appliedTick: raw.appliedTick,
+  });
+}
+
+function recentImpulseMatches(target, other, actorId, tick) {
+  const onTarget = readRecentImpulseProvenance(target, tick);
+  if (onTarget && onTarget.actorId === actorId && onTarget.tag && onTarget.tag !== 'environment') return true;
+  const onOther = readRecentImpulseProvenance(other, tick);
+  return !!(onOther && onOther.actorId === actorId && onOther.tag && onOther.tag !== 'environment');
+}
+
+function normalizeProvenance(value, tick) {
+  if (!value || typeof value !== 'object') {
+    return Object.freeze({ actorId: null, weaponId: null, tag: 'environment', appliedTick: nonNegativeInteger(tick) });
+  }
+  // A flight hold outlives the impulse window without moving appliedTick. The law card reads
+  // this copy, so dropping the hold here classed a throw the sim still credits as stale.
+  const holdUntilTick = Number.isFinite(value.holdUntilTick) ? nonNegativeInteger(value.holdUntilTick) : null;
+  const normalized = {
+    actorId: value.actorId == null ? null : value.actorId,
+    weaponId: value.weaponId == null ? null : String(value.weaponId),
+    tag: stableTag(value.tag || value.provenance) || 'environment',
+    appliedTick: nonNegativeInteger(value.appliedTick),
+  };
+  if (holdUntilTick != null) normalized.holdUntilTick = holdUntilTick;
+  return Object.freeze(normalized);
+}
+
+function freezePoint(value) {
+  return Object.freeze({ x: finite(value && value.x), z: finite(value && value.z) });
+}
+
+function freezeDirection(value) {
+  const x = finite(value && value.x);
+  const z = finite(value && value.z);
+  const length = Math.hypot(x, z);
+  if (!(length > 1e-9)) return Object.freeze({ x: 0, z: 0 });
+  return Object.freeze({ x: x / length, z: z / length });
+}
+
+function stableTag(value) {
+  const text = String(value || '');
+  return /^[a-z0-9_]+$/.test(text) ? text : '';
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function positive(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function nonNegative(value) {
+  return Math.max(0, finite(value));
+}
+
+function nonNegativeInteger(value) {
+  return Math.max(0, Math.trunc(finite(value)));
+}
+
+function clamp(value, lo, hi) {
+  return Math.max(lo, Math.min(hi, value));
+}
+
+function numericParity(value) {
+  if (Number.isFinite(value)) return Math.abs(Math.trunc(value)) % 2;
+  const text = String(value == null ? '' : value);
+  let sum = 0;
+  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i);
+  return sum % 2;
+}

@@ -1,0 +1,312 @@
+// Continuous flight instrument. Mission receipts still belong to the shared toast floor.
+import { raceGateGlobals, startLineFor } from '../data/raceLevels.js';
+import { activeAuthoredRace, activeRaceMission, activeSteerLock, readRaceTape, resolveSteeringView } from '../systems/racingSteer.js';
+import { injectDeckplate } from './deckplate/index.js';
+import { BINDINGS, promptLabel } from './bindings.js';
+import { readRacingCoach } from './racingCoach.js';
+import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
+import { createRacingMap, formatRaceTime } from './racingMap.js';
+import { finishRacingCupHeat, releaseRacingCupHeat, recordRaceMeeting } from '../systems/racingCareer.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { applyWorldObjectSelection } from './worldObjectInteraction.js';
+import { createHudCombatLock } from './hudCombatLock.js';
+import { racingTakedownText } from './racingRecognition.js';
+
+// These leaf properties also reflect to attributes. Rewriting a settled reading still
+// wakes DOM observers and style work, so only publish an actual change.
+function setProperty(node, name, value) {
+  if (node[name] !== value) node[name] = value;
+}
+
+export function mountRacingHud({ root, bus, state, screens }) {
+  if (!root || typeof document === 'undefined') return null;
+  injectDeckplate();
+  const make = (tag, cls, text = '') => { const e = document.createElement(tag); e.className = cls; e.textContent = text; return e; };
+  const panel = make('section', 'race-tape dp-glass');
+  panel.id = 'race-tape'; panel.setAttribute('aria-label', 'Circuit telemetry'); panel.hidden = true;
+  const readings = make('div','race-tape-readings');
+  const line = make('div','race-tape-title');
+  const sub = make('div','race-tape-stats');
+  const hints = make('div','race-tape-hint');
+  const pack = make('div','race-tape-pack');
+  const courseCue = make('div','race-tape-hint');
+  const goal = make('div','race-tape-goal');
+  const mapHost = make('div','race-tape-map');
+  const row = make('div','race-tape-actions');
+  row.id = 'race-tape-options';
+  const options = make('button', 'race-tape-options-trigger k-word', 'View & circuits');
+  options.type = 'button'; options.style.display = 'none';
+  options.setAttribute('aria-controls', row.id);
+  options.setAttribute('aria-expanded', 'false');
+  let optionsOpen = false;
+  const setOptionsOpen = (open, returnFocus = false) => {
+    const changed = optionsOpen !== !!open;
+    optionsOpen = !!open;
+    panel.dataset.optionsOpen = String(optionsOpen);
+    options.setAttribute('aria-expanded', String(optionsOpen));
+    if (returnFocus) options.focus?.();
+    if (changed) bus?.emit?.('hud:layoutChanged', { key: 'flight-options' });
+  };
+  setOptionsOpen(false);
+  options.addEventListener('click', () => {
+    if (rowLocked) return;
+    setOptionsOpen(!optionsOpen);
+    if (optionsOpen) (view.disabled ? closeOptions : view).focus?.();
+  });
+  panel.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && optionsOpen) {
+      event.preventDefault(); event.stopPropagation(); setOptionsOpen(false, true);
+    }
+  });
+  const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
+  const button = (text, action) => {
+    const b = make('button','k-word',text); b.type='button';
+    // Blur after a pointer click so a later Space/Enter cannot re-fire a HUD button mid-combat.
+    // Keyboard activation (detail 0) keeps focus, so keyboard players do not lose their place.
+    b.addEventListener('click', (ev) => { action(ev); if (ev?.detail > 0) { try { b.blur(); } catch {} } });
+    row.appendChild(b); return b;
+  };
+  const view = button(`View ${BINDINGS.steeringView.label}`,()=>{ toggleSteeringView(state,bus); if (optionsOpen) setOptionsOpen(false, true); });
+  const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
+  // AL-HF-04: instant restart is a time-trial-only verb; the missions owner still decides
+  // eligibility (tether, mode refusal toasts) — the button just exposes the key's reach.
+  const restart = button('Restart',()=>bus?.emit?.('race:restart',{source:'hud'}));
+  const board = button('Circuits',()=>{ if (optionsOpen) setOptionsOpen(false); screens?.pushScreen?.('raceBoard'); });
+  board.title = 'Routes, local best times and last result';
+  const leave = button('Leave run',()=>bus?.emit?.('race:abort',{}));
+  let selection = null;
+  const select = button('Select pod',()=>{
+    if(selection?.alive !== false && state.entities?.get(selection?.id) === selection)
+      applyWorldObjectSelection(state, selection, 'race-instrument');
+  });
+  select.hidden = true;
+  const closeOptions = button('Close', () => setOptionsOpen(false, true));
+  closeOptions.className += ' race-tape-options-close'; closeOptions.style.display = 'none';
+  readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,options,row,live); root.appendChild(panel);
+  const syncParent = (authored) => {
+    // HUD reconstruction can replace the entire dock, so ownership is re-derived each frame —
+    // but a tape already inside a live .sf-rightdock under root is correctly placed, and only
+    // a missing/disconnected parent pays the subtree querySelector (not every frame).
+    let parent = root;
+    if (!authored) {
+      const cur = panel.parentNode;
+      const docked = cur && cur !== root
+        && cur.classList?.contains?.('sf-rightdock')
+        && cur.isConnected !== false
+        && (typeof root.contains !== 'function' || root.contains(cur));
+      parent = docked ? cur : (root.querySelector?.('.sf-rightdock') || root);
+    }
+    if (panel.parentNode === parent) return;
+    if (parent === root) root.appendChild(panel);
+    else parent.insertBefore(panel, parent.firstChild);
+  };
+  let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
+  // The simulation registers temporary corridor sessions in a realm-local WeakMap. In the
+  // worker lane that registry is not visible to this main-thread HUD, so retain the public
+  // launch option for the result-screen presentation decision.
+  let temporaryCircuitRun = false;
+  let pendingResult = null;
+  const offs = [];
+  const combatLock = createHudCombatLock({ bus, state });
+  let rowLocked = false;
+  const setRowLocked = (locked) => {
+    if (locked === rowLocked) return;
+    rowLocked = locked;
+    // Weapons hot: the action row leaves the pointer path (clicks fall through to the flight
+    // canvas and fire) and the tab order, so Circuits cannot open the race board mid-fight.
+    panel.dataset.combatLock = locked ? 'true' : 'false';
+    row.inert = locked;
+    options.disabled = locked;
+    options.title = locked ? 'Unavailable during combat.' : 'View and circuit options';
+    if (locked && optionsOpen) setOptionsOpen(false);
+    if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
+  };
+  const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
+  listen('game:new', (opts) => { pendingResult = null; temporaryCircuitRun = opts?.racingSession === true; });
+  for (const event of ['game:load', 'save:restoring', 'game:exitToMenu']) {
+    listen(event, () => { pendingResult = null; temporaryCircuitRun = false; });
+  }
+  listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
+  listen('settings:changed',()=>{lastTick=-Infinity;});
+  listen('mission:gateCleared',p=>{
+    if (p?.missionId !== missionId) return;
+    const split = Number.isFinite(p.ghostDeltaS) ? ` · ${p.ghostDeltaS>=0?'+':''}${p.ghostDeltaS.toFixed(2)}s personal best`
+      : Number.isFinite(p.splitDeltaS) ? ` · ${p.splitDeltaS>=0?'+':''}${p.splitDeltaS.toFixed(2)}s reference` : '';
+    pulse = `${p.lapCompleted ? 'LAP' : 'GATE'} ${p.gateIndex+1} CLEAR${split}`;
+    pulseUntil = (state.simTime||0)+1.6; live.textContent=pulse;
+  });
+  const tryShowResult = () => {
+    const pending = pendingResult;
+    if (!pending || pending.queued || state.mode !== 'flight') return;
+    const active = state.missions?.active;
+    if (Array.isArray(active) && active.some((mission) => mission?.status === 'active'
+      && (pending.missionId != null ? mission.id === pending.missionId
+        : mission.params?.racingContractId === pending.contractId))) return;
+    pending.queued = true;
+    queueMicrotask(() => {
+      if (pendingResult !== pending) return;
+      pending.queued = false;
+      const rows = state.missions?.active;
+      if (state.mode !== 'flight' || (Array.isArray(rows) && rows.some((mission) => mission?.status === 'active'
+        && (pending.missionId != null ? mission.id === pending.missionId
+          : mission.params?.racingContractId === pending.contractId)))) return;
+      pendingResult = null;
+      screens?.pushScreen?.('raceBoard');
+    });
+  };
+  const showResult = (payload) => {
+    if (!temporaryCircuitRun) return;
+    const active = activeAuthoredRace(state);
+    pendingResult = { missionId: payload?.missionId ?? (active?.params?.racingContractId === payload?.racingContractId ? active.id : null),
+      contractId: payload?.racingContractId, queued: false };
+    tryShowResult();
+  };
+  listen('mission:completed',p=>{ if(p?.racingContractId) {
+    rememberRacingResult(p);
+    let storage=null;try{storage=globalThis.localStorage;}catch{}
+    finishRacingCupHeat(p,storage);
+    if(['race','cup'].includes(p.raceMode)) {
+      const meeting=recordRaceMeeting(p,storage);
+      if(!meeting.saved&&meeting.reason!=='duplicate_or_stale')
+        bus?.emit?.('toast',{text:'Race finished. This browser could not store the rival result.',kind:'info',ttl:4});
+    }
+    live.textContent=`Circuit complete in ${formatRaceTime(p.raceElapsedS)}`;
+    showResult(p);
+  } });
+  listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult(p);});
+  listen('race:launchFailed',()=>releaseRacingCupHeat());
+  listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
+  listen('mission:updated',()=>{lastTick=-Infinity;tryShowResult();});
+  // A player-attributed takedown is a fact/result — the shared receipt floor voices it.
+  listen('race:takedown',p=>{
+    const raceId = missionId ?? activeAuthoredRace(state)?.id;
+    if(raceId==null||p?.missionId!==raceId)return;
+    const text=racingTakedownText(p);
+    if(!text)return;
+    bus?.emit?.('toast',{text,kind:'info',ttl:3});
+    live.textContent=text;
+  });
+
+  return {
+    frame(liveState) {
+      tryShowResult();
+      const st = liveState || state;
+      const authored = activeAuthoredRace(st);
+      syncParent(authored);
+      setProperty(panel.dataset, 'compact', authored ? 'false' : 'true');
+      const inFlight = st?.mode === 'flight' && !st.ui?.docked && !screens?.isOpen?.()
+        && !st.render?.photoMode?.active && st.entities?.get?.(st.playerId)?.alive !== false;
+      // Crucible (Swarm/Gauntlet/boss_circuit/block): sealed survival run. Racing does not
+      // exist there; the compact Circuits tape was stealing combat mouse-fire clicks
+      // (player-truth swarm frame ~0212 → raceBoard, sim frozen at 140.1 s).
+      const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
+      setProperty(panel, 'hidden', !inFlight || st.physicsVenuePublic?.active === true || crucibleLive);
+      if (!inFlight || crucibleLive || authored) { if (optionsOpen) setOptionsOpen(false); }
+      if (!inFlight || crucibleLive) return;
+      setRowLocked(combatLock.hot(st));
+      const now=st.simTime||0;
+      if(now>=lastTick&&now-lastTick<0.1)return;
+      lastTick=now;
+      const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
+      const viewMode=resolveSteeringView(st);
+      const mobileCompact = !authored && document.documentElement?.dataset?.sfMobile === '1' && document.documentElement?.dataset?.sfMobileFlight === '1';
+      setProperty(view, 'textContent', mobileCompact
+        ? `View: ${viewMode === 'racing' ? 'Chase' : 'Overhead'}${lock ? ' (mission locked)' : ''}`
+        : lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
+      setProperty(view, 'disabled', !!lock);
+      const pressed=String(viewMode==='racing');
+      if(view.getAttribute('aria-pressed')!==pressed)view.setAttribute('aria-pressed',pressed);
+      setProperty(view, 'title', lock?'This section temporarily requires the chase camera.':'Toggle chase / overhead camera');
+      setProperty(reset, 'hidden', !authored);setProperty(leave, 'hidden', !authored);
+      setProperty(restart, 'hidden', !authored || race?.params?.raceMode !== 'time-trial');
+      setProperty(select, 'hidden', true);selection=null;setProperty(courseCue, 'textContent', '');
+      setProperty(mapHost, 'hidden', !authored);setProperty(readings, 'hidden', !authored);
+      if(!authored){if(missionId!==null){missionId=null;map=null;mapHost.replaceChildren();}return;}
+      if(missionId!==race.id){
+        missionId=race.id;lastTick=-Infinity;pulse='';lastHolding=false;lastPhase=null;
+        map=createRacingMap(raceGateGlobals(race.params),'Circuit, next gate and ship');
+        mapHost.replaceChildren(...(map?[map.element]:[]));
+      }
+      // Readings are 10 Hz; camera and flight remain full-rate. No per-frame SVG rebuilding.
+      const player=st.entities?.get?.(st.playerId);
+      const pod=st.entities?.get?.(race.params.rescueTargetId);
+      const cueRows=race.params.raceSetPieces||[];
+      const nextGate=Number(race.params.nextGate)||0;
+      // AL-RACE-2: a sector hazard cue surfaces only around its own upcoming leg —
+      // warning/active on its gate window — and never permanently hides anchors.
+      const sectorCue=cueRows.find(c=>c.kind==='sectorHazard'
+        &&['warning','active','unavailable'].includes(c.phase)
+        &&Math.abs(c.gateIndex-nextGate)<=1);
+      const cue=sectorCue
+        ||cueRows.find(c=>['warning','active','closing','closed','opening'].includes(c.phase))
+        ||cueRows.find(c=>c.kind==='anchor'&&Math.abs(c.gateIndex-nextGate)<=1);
+      const cueName=cue?String(cue.name||cue.id||''):'';
+      if(cue)courseCue.textContent=cue.kind==='sectorHazard'
+        ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
+        :cue.kind==='anchor'?`${cueName} · optional Massline swing`
+        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} u`
+        :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
+      const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
+      selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
+      if(selection&&player?.pos&&Math.hypot(selection.pos.x-player.pos.x,selection.pos.z-player.pos.z)<900){
+        select.hidden=false;select.textContent=pod===selection?'Select pod':'Select anchor';
+        select.title='Select this body, then use your normal Massline control.';
+      }
+      const tape=readRaceTape(race.params,player,raceGateGlobals(race.params),now);
+      const phase=race.params.sectionMission?race.params.phase:'chase';
+      panel.dataset.phase=phase;
+      reset.disabled=phase==='approach'||phase==='handoff';
+      reset.title=reset.disabled?'Recovery is available during the timed course only.':'Return behind the last gate; clock continues and wake progress resets.';
+      goal.hidden=!(race.params.draftRequiredS>0)||phase==='handoff';
+      goal.textContent=goal.hidden?'':`WAKE ${Math.min(race.params.draftRequiredS,Number(race.params.draftTimeS)||0).toFixed(1)} / ${race.params.draftRequiredS.toFixed(1)}s`;
+      const grid=phase==='approach'?startLineFor(race.params):null;
+      map?.update(player,race.params.nextGate,grid);
+      const name=tape.courseName||race.title||'Circuit';
+      if(phase!==lastPhase){
+        live.textContent=phase==='approach'?'Approach the grid. Stop and face the first gate.':phase==='handoff'?'Course complete. Preferred view restored. Dock at the marked station for payment.':'';
+        lastPhase=phase;
+      }
+      if(phase==='approach'){
+        line.textContent=`${name} · APPROACH`;
+        const distance=grid&&player?.pos?Math.hypot(grid.x-player.pos.x,grid.z-player.pos.z):0;
+        sub.textContent=`GRID ${Math.round(distance)} u · ${Math.round(tape.speed)} u/s`;
+        hints.textContent='Stop within 70 u of the marker, below 8 u/s. Face gate 1; release the Massline.';
+        return;
+      }
+      if(phase==='handoff'){
+        mapHost.hidden=true;
+        line.textContent=`${race.title||name} · HANDOFF`;
+        sub.textContent=`${formatRaceTime(race.params.raceElapsedS)} · ${race.params.raceClean?'CLEAN':'UNRANKED'} · PAYMENT PENDING`;
+        hints.textContent=`Preferred view restored. Dock at ${st.nav?.waypoint?.missionId===race.id?st.nav.waypoint.label:'the marked station'} for payment. Leaving the run forfeits payment.`;
+        return;
+      }
+      line.textContent=race.params.adventureSpeedId?`${name} · SPEED CONTRACT`:`${name} · LAP ${tape.lap}/${tape.laps}`;
+      if(tape.holding){
+        const count=Math.ceil(tape.gridLeft);
+        sub.textContent=`${count} · HOLD THE GRID`;
+        pack.textContent=race.params.raceEntrants>1?`${race.params.raceEntrants} pilots on the grid`:'';
+        hints.textContent='Accelerate on green · Touch: up drives, sides steer, down brakes';
+        if(!lastHolding)live.textContent='Grid countdown';
+        lastHolding=true;return;
+      }
+      if(lastHolding){pulse='GO';pulseUntil=now+1;live.textContent='Go';lastHolding=false;}
+      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} u/s · GATE ${tape.nextGate}/${tape.gateCount}`;
+      pack.textContent=(race.params.raceStandings||[]).map(row=>`${row.position} ${row.name}${row.status==='finished'?' ✓':row.status==='dnf'?' DNF':''}`).join(' · ');
+      const coach=readRacingCoach(race.params,player,raceGateGlobals(race.params),st);
+      const draft=race.params.raceDraft;
+      const warnings=[tape.wrongWay?'WRONG WAY':'',tape.offRibbon?'OFF COURSE':'',coach?.hint||'',
+        draft?.strength>0?`DRAFT ${draft.leaderName} · ${Math.round(draft.strength*100)}%`:tape.pacing?'PACE LIGHT':'',
+        tape.resets?'RECOVERY RUN':''].filter(Boolean);
+      if(race.params.adventureSpeedId){
+        hints.textContent=[race.params.adventureSpeedHint,...warnings].filter(Boolean).join(' · ');
+        return;
+      }
+      const precision=race.params.precisionChain>1?` · PRECISION ×${race.params.precisionChain}`:'';
+      const personal=Number.isFinite(race.params.lastGhostDeltaS)?` · ${race.params.lastGhostDeltaS>=0?'+':''}${race.params.lastGhostDeltaS.toFixed(2)}s personal best`:'';
+      hints.textContent=(warnings.length?warnings.join(' · '):now<pulseUntil?pulse:
+        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} u`+
+        (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
+    },
+    dispose(){ pendingResult=null;for(const off of offs)off();combatLock.dispose();panel.remove(); },
+  };
+}

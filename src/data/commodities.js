@@ -1,0 +1,171 @@
+// src/data/commodities.js – canonical tradeable commodities.
+// 47 cmdty_* IDs: ARCHITECTURE §3.6.1 baseline plus classified-salvage addendum.
+// Balance data only; flavor merged from commodityFlavor.js.
+import { COMMODITY_FLAVOR } from './commodityFlavor.js';
+export { COMMODITY_FLAVOR } from './commodityFlavor.js';
+import { COMMODITY_MORAL_TAGS } from './commodityMoralTags.js'; // BP-12 CARGO_REPUTATION_GLYPH addendum
+export { COMMODITY_MORAL_TAGS, MORAL_TAGS } from './commodityMoralTags.js';
+// basePrice (cr/u): price at equilibrium stock. volatility: event amplitude.
+// elasticity: price curve steepness. legality: 'legal'|'restricted'|'contraband'.
+// volPerU / massPerU: hold footprint. producedBy/consumedBy: station-type roles.
+// marketTier: minimum sector tier where stations may SELL this naturally occurring resource.
+// Any station may still BUY it from the player, preserving exploration finds and liquidation.
+// Station types: trade_hub, refinery, mining, fab, military, blackmarket, research
+
+export const COMMODITIES = [
+  // --- RAW ORES ---
+  { id: 'cmdty_ore_iron',           name: 'Iron Ore',              category: 'raw ore',   basePrice: 14,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.8, fineMult: 0, marketTier: 0, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
+  { id: 'cmdty_ore_copper',         name: 'Copper Ore',            category: 'raw ore',   basePrice: 24,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0, marketTier: 1, producedBy: ['mining'],                         consumedBy: ['refinery','fab'] },
+  { id: 'cmdty_ore_titanium',       name: 'Titanium Ore',          category: 'raw ore',   basePrice: 51,  volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 1.0, massPerU: 0.7, fineMult: 0, marketTier: 2, producedBy: ['mining'],                         consumedBy: ['refinery'] },
+  { id: 'cmdty_silicate',           name: 'Silicate Rock',         category: 'raw ore',   basePrice: 7,   volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.6, fineMult: 0, marketTier: 0, producedBy: ['mining'],                         consumedBy: ['refinery','fab','trade_hub'] },
+  { id: 'cmdty_ice_water',          name: 'Water Ice',             category: 'raw ore',   basePrice: 14,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.4, massPerU: 0.5, fineMult: 0, marketTier: 0, producedBy: ['mining'],                         consumedBy: ['trade_hub','military','research'] },
+  { id: 'cmdty_volatiles',          name: 'Ice Volatiles',         category: 'raw ore',   basePrice: 29,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 1.4, massPerU: 0.5, fineMult: 0, marketTier: 1, producedBy: ['mining'],                         consumedBy: ['refinery','military','trade_hub'] },
+  { id: 'cmdty_ore_platinoid',      name: 'Platinoid Ore',         category: 'raw ore',   basePrice: 140, volatility: 0.255, elasticity: 0.489971, legality: 'legal',      volPerU: 1.0, massPerU: 1.4, fineMult: 0, marketTier: 3, producedBy: ['mining'],                         consumedBy: ['refinery'] },
+  { id: 'cmdty_ore_bronzium',       name: 'Nickel Ore',            category: 'raw ore',   basePrice: 28,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0, marketTier: 1, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub','fab'] },
+  { id: 'cmdty_ore_silverium',      name: 'Silver Ore',            category: 'raw ore',   basePrice: 74, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 1.0, massPerU: 0.7, fineMult: 0, marketTier: 2, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
+  { id: 'cmdty_ore_goldium',        name: 'Gold Ore',              category: 'raw ore',   basePrice: 170, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 1.0, massPerU: 1.1, fineMult: 0, marketTier: 2, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
+  { id: 'cmdty_ore_platinium',      name: 'Platinum Ore',          category: 'raw ore',   basePrice: 466, volatility: 0.255, elasticity: 0.489971, legality: 'legal',      volPerU: 1.0, massPerU: 1.4, fineMult: 0, marketTier: 3, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
+  { id: 'cmdty_ore_einsteinium',    name: 'Stellarite Ore',        category: 'raw ore',   basePrice: 839, volatility: 0.255, elasticity: 0.489971, legality: 'legal',     volPerU: 1.0, massPerU: 1.5, fineMult: 0, marketTier: 3, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
+  { id: 'cmdty_gem_emerald',        name: 'Raw Emerald',           category: 'raw ore',   basePrice: 1676, volatility: 0.255, elasticity: 0.489971, legality: 'legal',     volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 3, producedBy: ['mining'],                         consumedBy: ['trade_hub','refinery'] },
+  { id: 'cmdty_gem_ruby',           name: 'Raw Ruby',              category: 'raw ore',   basePrice: 3543, volatility: 0.28, elasticity: 0.536492, legality: 'legal',    volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['trade_hub','refinery'] },
+  { id: 'cmdty_gem_diamond',        name: 'Raw Diamond',           category: 'raw ore',   basePrice: 10630, volatility: 0.28, elasticity: 0.536492, legality: 'legal',   volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['trade_hub','refinery'] },
+  { id: 'cmdty_exotic_amazonite',   name: 'Prism Shard',           category: 'raw ore',   basePrice: 15944, volatility: 0.28, elasticity: 0.536492, legality: 'legal',   volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['trade_hub','research'] },
+
+  // --- GAS ---
+  { id: 'cmdty_gas_hydrogen',       name: 'Hydrogen Gas',          category: 'gas',       basePrice: 32,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 2.5, massPerU: 0.1, fineMult: 0, marketTier: 0, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
+  { id: 'cmdty_gas_helium3',        name: 'Helium-3',              category: 'gas',       basePrice: 102,  volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 2.5, massPerU: 0.1, fineMult: 0, marketTier: 2, producedBy: ['mining'],                         consumedBy: ['refinery','research'] },
+
+  // --- CRYSTAL ---
+  { id: 'cmdty_crystal_silica',     name: 'Silica Crystal',        category: 'crystal',   basePrice: 29,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 1.0, massPerU: 1.1, fineMult: 0, marketTier: 1, producedBy: ['mining'],                         consumedBy: ['fab','research'] },
+  { id: 'cmdty_crystal_lumin',      name: 'Phosphor Crystal',      category: 'crystal',   basePrice: 85, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 1.0, massPerU: 1.0, fineMult: 0, marketTier: 2, producedBy: ['mining'],                         consumedBy: ['fab','research'] },
+
+  // --- EXOTIC ---
+  { id: 'cmdty_exotic_xenium',      name: 'Xenium',                category: 'exotic',    basePrice: 739, volatility: 0.28, elasticity: 0.536492, legality: 'legal',      volPerU: 1.0, massPerU: 1.2, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['research','blackmarket'] },
+  // Alien Ecology program (doc 09 rewards): contaminated salvage. Nobody sells it — it only
+  // comes off colonized hulls — and stations that buy it are buying a live biology sample.
+  { id: 'cmdty_filament_sample',    name: 'Living Filament Sample', category: 'exotic',   basePrice: 620, volatility: 0.32, elasticity: 0.5,      legality: 'restricted', volPerU: 0.5, massPerU: 0.3, fineMult: 1.0, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true },
+  // AE-167 — a captured organism carried live in a cradle. The rarest biohazard lot: it
+  // only exists when a player releases a latched animal under a fitted Capture Cradle.
+  { id: 'cmdty_live_specimen',      name: 'Live Specimen (Cradled)', category: 'exotic',  basePrice: 1450, volatility: 0.4, elasticity: 0.55,     legality: 'restricted', volPerU: 1.2, massPerU: 0.8, fineMult: 1.6, marketTier: 4, producedBy: [],                              consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_dmc_black_box',      name: 'DMC Flight Recorder',    category: 'salvage',  basePrice: 900, volatility: 0.0,  elasticity: 0.0,      legality: 'legal',      volPerU: 0.4, massPerU: 0.5, fineMult: 0, marketTier: 4, producedBy: [],                              consumedBy: ['research','military'] },
+
+  // ── AE-226..AE-229 (H-table) — contaminated-salvage bioresources. All biohazard, all
+  // noMarketSeed: they exist only as field harvest / player-brought stock.
+  { id: 'cmdty_calcified_filament',   name: 'Calcified Filament',     category: 'bioresource', basePrice: 210, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.4, massPerU: 0.5, fineMult: 0.8, marketTier: 3, producedBy: [], consumedBy: ['research','fab'],        biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_conductive_fiber',     name: 'Conductive Fiber',       category: 'bioresource', basePrice: 340, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.3, massPerU: 0.2, fineMult: 0.8, marketTier: 3, producedBy: [], consumedBy: ['fab'],                  biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_relay_nodule',         name: 'Relay Nodule',           category: 'bioresource', basePrice: 980, volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.5, massPerU: 0.6, fineMult: 1.4, marketTier: 4, producedBy: [], consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_membrane_laminate',    name: 'Membrane Laminate',      category: 'bioresource', basePrice: 290, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.4, massPerU: 0.3, fineMult: 0.8, marketTier: 3, producedBy: [], consumedBy: ['fab'],                  biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_cyst_resin',           name: 'Cyst Resin',             category: 'bioresource', basePrice: 430, volatility: 0.35,elasticity: 0.45, legality: 'restricted', volPerU: 0.4, massPerU: 0.6, fineMult: 1.0, marketTier: 3, producedBy: [], consumedBy: ['research','fab'],        biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_nerve_glass',          name: 'Mineralized Nerve Glass',category: 'bioresource', basePrice: 870, volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.5, massPerU: 0.9, fineMult: 1.4, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_host_archive_sample',  name: 'Host Archive Sample',    category: 'bioresource', basePrice: 760, volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.3, massPerU: 0.3, fineMult: 1.2, marketTier: 4, producedBy: [], consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_sterile_shell',        name: 'Sterile Shell',          category: 'bioresource', basePrice: 1150,volatility: 0.4, elasticity: 0.5,  legality: 'restricted', volPerU: 0.8, massPerU: 1.4, fineMult: 1.6, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_spore_chimney_core',   name: 'Spore Chimney Core',     category: 'bioresource', basePrice: 540, volatility: 0.35,elasticity: 0.45, legality: 'restricted', volPerU: 0.6, massPerU: 0.8, fineMult: 1.1, marketTier: 3, producedBy: [], consumedBy: ['research','fab'],        biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_interface_tissue',     name: 'Preserved Interface Tissue', category: 'bioresource', basePrice: 1600, volatility: 0.5, elasticity: 0.55, legality: 'restricted', volPerU: 0.3, massPerU: 0.2, fineMult: 1.8, marketTier: 4, producedBy: [], consumedBy: ['research','blackmarket'], biohazard: true, noMarketSeed: true },
+  { id: 'cmdty_glass_back_scale',     name: 'Glassback Scale Plate',  category: 'bioresource', basePrice: 390, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.5, massPerU: 0.7, fineMult: 0.9, marketTier: 3, producedBy: [], consumedBy: ['fab','research'],       biohazard: true, noMarketSeed: true },
+  // AE-229 spore catalyst: a consumable — selling it at a station trades the lot for an
+  // instant hull-exposure purge (the fee IS the sale price).
+  { id: 'cmdty_spore_catalyst',       name: 'Spore Catalyst',         category: 'bioresource', basePrice: 480, volatility: 0.3, elasticity: 0.4,  legality: 'restricted', volPerU: 0.2, massPerU: 0.2, fineMult: 1.0, marketTier: 4, producedBy: [], consumedBy: ['research'],             biohazard: true, noMarketSeed: true },
+  // ── Phase 26 / AE-260..AE-269 — K-table machine credentials. Physical objects the
+  // lattice economy honors; none of them are ever stocked on a market. ──
+  { id: 'cmdty_gate_handshake',       name: 'Gate Handshake Token',   category: 'protocol', basePrice: 2200, volatility: 0.0, elasticity: 0.0,  legality: 'legal',      volPerU: 0.1, massPerU: 0.1, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_inertial_datum',       name: 'Inertial Datum',         category: 'protocol', basePrice: 3400, volatility: 0.0, elasticity: 0.0,  legality: 'legal',      volPerU: 0.1, massPerU: 0.1, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_revocation_beacon',    name: 'Revocation Beacon',      category: 'protocol', basePrice: 5200, volatility: 0.0, elasticity: 0.0,  legality: 'restricted', volPerU: 0.3, massPerU: 0.4, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+  { id: 'cmdty_unbroken_lens',        name: 'Unbroken Lens',          category: 'protocol', basePrice: 9800, volatility: 0.0, elasticity: 0.0,  legality: 'restricted', volPerU: 0.2, massPerU: 0.2, fineMult: 0, marketTier: 4, producedBy: [], consumedBy: [], noMarketSeed: true },
+
+  // --- REFINED ---
+  { id: 'cmdty_refined_metals',     name: 'Refined Metals',        category: 'refined',   basePrice: 91,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.5, massPerU: 0.7, fineMult: 0,   marketTier: 0, producedBy: ['refinery'],                       consumedBy: ['fab','military'] },
+  { id: 'cmdty_alloys',             name: 'Composite Alloys',      category: 'refined',   basePrice: 143, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 0.5, massPerU: 0.6, fineMult: 0,   marketTier: 2, producedBy: ['refinery','fab'],                 consumedBy: ['fab','military'] },
+  { id: 'cmdty_polymers',           name: 'Polymers',              category: 'refined',   basePrice: 87,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.2, massPerU: 0.7, fineMult: 0,   marketTier: 1, producedBy: ['refinery'],                       consumedBy: ['fab','trade_hub'] },
+  { id: 'cmdty_fuel_cells',         name: 'Fuel Cells',            category: 'refined',   basePrice: 97,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 0.8, massPerU: 0.6, fineMult: 0,   marketTier: 0, producedBy: ['refinery'],                       consumedBy: ['trade_hub','military','mining'] },
+
+  // --- SITE INDUSTRY (asteroid-site chain; design/ASTEROID_SITES_BRIEF.md) ---
+  { id: 'cmdty_purified_silica',    name: 'Purified Silica',       category: 'refined',   basePrice: 58,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 0.8, massPerU: 0.9, fineMult: 0,   marketTier: 1, producedBy: ['refinery','fab'],                 consumedBy: ['fab','research'] },
+  { id: 'cmdty_regocrete',          name: 'Regocrete',             category: 'component', basePrice: 91,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.5, massPerU: 1.8, fineMult: 0,   marketTier: 1, producedBy: ['fab','trade_hub'],                consumedBy: ['mining','fab'] },
+  { id: 'cmdty_control_unit',       name: 'Machine Control Unit',  category: 'tech',      basePrice: 215, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 1.2, massPerU: 0.8, fineMult: 0,   marketTier: 2, producedBy: ['fab','trade_hub'],                consumedBy: ['mining','fab'] },
+
+  // --- COMPONENT ---
+  { id: 'cmdty_comp_hullplate',     name: 'Hull Plate',            category: 'component', basePrice: 109, volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.7, massPerU: 1.0, fineMult: 0,   marketTier: 1, producedBy: ['fab','refinery'],                 consumedBy: ['military','fab'] },
+  { id: 'cmdty_comp_circuitry',     name: 'Circuitry',             category: 'component', basePrice: 172, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 0.6, massPerU: 0.3, fineMult: 0,   marketTier: 2, producedBy: ['fab'],                            consumedBy: ['research','military'] },
+
+  // --- TECH ---
+  { id: 'cmdty_microchips',         name: 'Microchips',            category: 'tech',      basePrice: 143, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 0.7, massPerU: 0.2, fineMult: 0,   marketTier: 2, producedBy: ['fab'],                            consumedBy: ['military','trade_hub','research'] },
+  { id: 'cmdty_electronics',        name: 'Electronics',           category: 'tech',      basePrice: 109, volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.9, massPerU: 0.5, fineMult: 0,   marketTier: 1, producedBy: ['fab'],                            consumedBy: ['trade_hub','military'] },
+  { id: 'cmdty_quantum_cores',      name: 'Quantum Cores',         category: 'tech',      basePrice: 400, volatility: 0.255, elasticity: 0.489971, legality: 'legal',      volPerU: 0.9, massPerU: 0.3, fineMult: 0,   marketTier: 3, producedBy: ['research'],                       consumedBy: ['military','fab'] },
+
+  // --- CONSUMER ---
+  { id: 'cmdty_consumer_goods',     name: 'Consumer Goods',        category: 'consumer',  basePrice: 85, volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.5, fineMult: 0,   marketTier: 0, producedBy: ['fab','trade_hub'],                consumedBy: ['trade_hub','mining'] },
+  { id: 'cmdty_textiles',           name: 'Textiles',              category: 'consumer',  basePrice: 73,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.6, fineMult: 0,   marketTier: 0, producedBy: ['fab'],                            consumedBy: ['trade_hub'] },
+
+  // --- LUXURY ---
+  { id: 'cmdty_luxury_goods',       name: 'Luxury Goods',          category: 'luxury',    basePrice: 269, volatility: 0.23, elasticity: 0.442497, legality: 'legal',      volPerU: 0.9, massPerU: 0.4, fineMult: 0,   marketTier: 2, producedBy: ['trade_hub','fab'],                consumedBy: ['trade_hub','blackmarket'] },
+  { id: 'cmdty_art',                name: 'Art & Antiques',        category: 'luxury',    basePrice: 720, volatility: 0.255, elasticity: 0.489971, legality: 'restricted', volPerU: 0.7, massPerU: 0.3, fineMult: 0.8, marketTier: 3, producedBy: ['trade_hub'],                      consumedBy: ['trade_hub','blackmarket'] },
+
+  // --- FOOD ---
+  { id: 'cmdty_food',               name: 'Provisions',            category: 'food',      basePrice: 73,  volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.7, fineMult: 0,   marketTier: 0, producedBy: ['trade_hub'],                      consumedBy: ['mining','military','blackmarket'] },
+
+  // --- MED ---
+  { id: 'cmdty_medical',            name: 'Medical Supplies',      category: 'med',       basePrice: 137, volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.8, massPerU: 0.4, fineMult: 0,   marketTier: 1, producedBy: ['research','fab'],                 consumedBy: ['trade_hub','mining','military'] },
+
+  // --- SALVAGE ---
+  { id: 'cmdty_scrap_metal',        name: 'Scrap Metal',           category: 'salvage',   basePrice: 10,   volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0,   marketTier: 0, producedBy: ['mining'],                         consumedBy: ['refinery','fab'] },
+  { id: 'cmdty_salvage_electronics',name: 'Salvage Electronics',   category: 'salvage',   basePrice: 36,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.6, massPerU: 0.4, fineMult: 0,   marketTier: 1, producedBy: ['mining'],                         consumedBy: ['fab','military'] },
+  { id: 'cmdty_classified_salvage', name: 'Classified Salvage',    category: 'salvage',   basePrice: 136,  volatility: 0.23, elasticity: 0.442497, legality: 'restricted', volPerU: 0.6, massPerU: 0.4, fineMult: 0.8, marketTier: 2, producedBy: ['blackmarket'],                    consumedBy: ['military','blackmarket','fab'] },
+
+  // --- CONTRABAND ---
+  { id: 'cmdty_narcotics',          name: 'Narcotics',             category: 'contraband',basePrice: 576, volatility: 0.255, elasticity: 0.489971, legality: 'contraband', volPerU: 0.6, massPerU: 0.2, fineMult: 1.2, marketTier: 2, producedBy: ['blackmarket'],                    consumedBy: ['blackmarket'] },
+  { id: 'cmdty_stolen_goods',       name: 'Stolen Goods',          category: 'contraband',basePrice: 322, volatility: 0.23, elasticity: 0.442497, legality: 'contraband', volPerU: 1.0, massPerU: 0.8, fineMult: 1.5, marketTier: 1, producedBy: ['blackmarket'],                    consumedBy: ['blackmarket'] },
+
+  // --- MILITARY (restricted) ---
+  { id: 'cmdty_weapons',            name: 'Weapon Systems',        category: 'military',  basePrice: 400, volatility: 0.255, elasticity: 0.489971, legality: 'restricted', volPerU: 0.9, massPerU: 1.5, fineMult: 1.2, marketTier: 3, producedBy: ['military'],                       consumedBy: ['military','blackmarket'] },
+  { id: 'cmdty_munitions',          name: 'Munitions',             category: 'military',  basePrice: 109, volatility: 0.205, elasticity: 0.394033, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, marketTier: 1, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
+  { id: 'cmdty_impulse_charge',     name: 'Impulse Charge',        category: 'military',  basePrice: 322, volatility: 0.23, elasticity: 0.442497, legality: 'restricted', volPerU: 2.0, massPerU: 2.0, fineMult: 1.0, marketTier: 2, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
+];
+
+// Merge trade-terminal flavor onto each commodity record at module load.
+for (const cmdty of COMMODITIES) {
+  const flavor = COMMODITY_FLAVOR[cmdty.id];
+  if (!flavor) continue;
+  Object.assign(cmdty, flavor);
+}
+
+// BP-12 CARGO_REPUTATION_GLYPH: merge the moralTag addendum onto each record (one source of truth,
+// same merge pattern as COMMODITY_FLAVOR above). moralTag is OPTIONAL — neutral cargo has none.
+for (const cmdty of COMMODITIES) {
+  const tag = COMMODITY_MORAL_TAGS[cmdty.id];
+  if (tag) cmdty.moralTag = tag;
+}
+
+export const COMMODITY_PRESENTATION_BY_CATEGORY = Object.freeze({
+  'raw ore': Object.freeze({ id: 'cargo-family-raw', color: '#c89a6a' }),
+  gas: Object.freeze({ id: 'cargo-family-gas', color: '#59d6c7' }),
+  crystal: Object.freeze({ id: 'cargo-family-crystal', color: '#a987ff' }),
+  exotic: Object.freeze({ id: 'cargo-family-exotic', color: '#ff70d0' }),
+  refined: Object.freeze({ id: 'cargo-family-refined', color: '#91b7c9' }),
+  component: Object.freeze({ id: 'cargo-family-component', color: '#d8a94e' }),
+  tech: Object.freeze({ id: 'cargo-family-tech', color: '#5fa8ff' }),
+  consumer: Object.freeze({ id: 'cargo-family-consumer', color: '#e3c06a' }),
+  luxury: Object.freeze({ id: 'cargo-family-luxury', color: '#f2a7d7' }),
+  food: Object.freeze({ id: 'cargo-family-food', color: '#82c96b' }),
+  med: Object.freeze({ id: 'cargo-family-med', color: '#7ad7b8' }),
+  salvage: Object.freeze({ id: 'cargo-family-salvage', color: '#9aa0a8' }),
+  contraband: Object.freeze({ id: 'cargo-family-contraband', color: '#ff7a45' }),
+  military: Object.freeze({ id: 'cargo-family-military', color: '#df6d78' }),
+  // Living samples and lattice credentials were falling through to ordinary freight green.
+  bioresource: Object.freeze({ id: 'cargo-family-bioresource', color: '#6ecf4a' }),
+  protocol: Object.freeze({ id: 'cargo-family-protocol', color: '#7f8cff' }),
+});
+const DEFAULT_COMMODITY_PRESENTATION = Object.freeze({ id: 'cargo-family-general', color: '#9fd8a0' });
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
+// AE-076/122 — biohazard lots breathe on the manifest; cargo audit needs the flag by id.
+export function commodityIsBiohazard(commodityId) {
+  const c = COMMODITY_BY_ID.get(commodityId);
+  return !!(c && c.biohazard === true);
+}
+
+export function commodityPresentationFor(commodityOrId) {
+  const commodity = typeof commodityOrId === 'string'
+    ? COMMODITY_BY_ID.get(commodityOrId)
+    : commodityOrId;
+  return COMMODITY_PRESENTATION_BY_CATEGORY[commodity && commodity.category]
+    || DEFAULT_COMMODITY_PRESENTATION;
+}

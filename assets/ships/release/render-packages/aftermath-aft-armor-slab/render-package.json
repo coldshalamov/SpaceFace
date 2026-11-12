@@ -1,0 +1,838 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-aft-armor-slab",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "95d5590f5f9352e77de9116bbd5e99b5076f1a017349ec6aa2e5ff3b3d113295",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          8.99506664276123,
+          1.9895731473542417,
+          -0.7594388412653257
+        ],
+        "min": [
+          -0.8461093902587891,
+          -1.067567599131881,
+          -3.2633569475090436
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1082d63d2d3b24b0e354fc54f5e43327f4ac2433f0816de0b0a84752db8bd9b",
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "8959c449bcedc4a05721728f93a1f5cf1417269e0823d6d0e62d76b677fa02cd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Belt1",
+      "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.belt1",
+      "primitiveIndex": 0,
+      "vertexCount": 531
+    },
+    {
+      "bounds": {
+        "max": [
+          4.533395126951761,
+          2.025013034188446,
+          -0.7354117993438312
+        ],
+        "min": [
+          3.61796482974283,
+          -1.091594641053375,
+          -3.2363265253473625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4fdc3ff26deb88ed52d3ebfce04565906d654a5b9f1601e1f91fb416688f3ae",
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1.primitive.1",
+      "indexCount": 1548,
+      "indexed": true,
+      "materialHash": "636e704c58087f65b4fa220c29eb106370ef5a8ec0c4b4293ad2a98da3b97be7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Belt1",
+      "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.belt1",
+      "primitiveIndex": 1,
+      "vertexCount": 494
+    },
+    {
+      "bounds": {
+        "max": [
+          0.06651340951366513,
+          -4.238947868347168,
+          5.4443001478531174
+        ],
+        "min": [
+          -0.8625815786902437,
+          -7.314996719360352,
+          2.6645252973220535
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a2e00aa5283f8cf8a55ced4051324593d1fe0cef6adf9ca338ad2d36858e7a6",
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "slabEdge_tear0",
+      "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.873309135437012,
+          0.49300732413733683,
+          0.22794657055892598
+        ],
+        "min": [
+          5.889106750488281,
+          -0.7104607442995378,
+          -1.4425814360813107
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d185d9b39aa80d08ba7ffff62f93e18180fa11884e965c5b6f93c65c2299486",
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "slabEdge_tear1",
+      "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2105482774457944,
+          7.3149501712888245,
+          -1.8302898406982422
+        ],
+        "min": [
+          -1.5533560472211851,
+          5.089031514349603,
+          -5.444236755371094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e28839aff26f8768776656ddbd568b988346832fc578e2701cb43291b61906c",
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "slabEdge_tear2",
+      "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.738148234792561,
+          0.9290141539297612,
+          1.1646862030029297
+        ],
+        "min": [
+          -8.995059944681316,
+          -1.3461574988089116,
+          -1.6575946807861328
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3f32eadf4c3296f6e89c9629bf6e6c707508b57a1032305ffd916942a4f2e07f",
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "slabEdge_tear3",
+      "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "id": "material:0eb149d5928a914ec68a878d",
+      "name": "Forge_bastion_wk_torn__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "636e704c58087f65b4fa220c29eb106370ef5a8ec0c4b4293ad2a98da3b97be7",
+      "id": "material:636e704c58087f65b4fa220c",
+      "name": "Forge_bastion_stripe__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8959c449bcedc4a05721728f93a1f5cf1417269e0823d6d0e62d76b677fa02cd",
+      "id": "material:8959c449bcedc4a05721728f",
+      "name": "Forge_bastion_paint__dead",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1",
+      "localTransform": [
+        4.92058801651001,
+        0,
+        0,
+        0,
+        0,
+        4.92058801651001,
+        0,
+        0,
+        0,
+        0,
+        4.92058801651001,
+        0,
+        4.074478626251221,
+        0.4667091965675354,
+        -1.9993843734264374,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Belt1",
+      "nodeName": "Belt1",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-aft-armor-slab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
+      "worldTransform": [
+        4.92058801651001,
+        0,
+        0,
+        0,
+        0,
+        4.92058801651001,
+        0,
+        0,
+        0,
+        0,
+        4.92058801651001,
+        0,
+        4.074478626251221,
+        0.4667091965675354,
+        -1.9993843734264374,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0",
+      "localTransform": [
+        1.5380244255065918,
+        0,
+        0,
+        0,
+        0,
+        1.5380244255065918,
+        0,
+        0,
+        0,
+        0,
+        1.5380244255065918,
+        0,
+        -0.39803408458828926,
+        -5.77697229385376,
+        4.0544127225875854,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "slabEdge_tear0",
+      "nodeName": "slabEdge_tear0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-aft-armor-slab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
+      "worldTransform": [
+        1.5380244255065918,
+        0,
+        0,
+        0,
+        0,
+        1.5380244255065918,
+        0,
+        0,
+        0,
+        0,
+        1.5380244255065918,
+        0,
+        -0.39803408458828926,
+        -5.77697229385376,
+        4.0544127225875854,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1",
+      "localTransform": [
+        0.9921011924743652,
+        0,
+        0,
+        0,
+        0,
+        0.9921011924743652,
+        0,
+        0,
+        0,
+        0,
+        0.9921011924743652,
+        0,
+        6.8812079429626465,
+        -0.10872671008110046,
+        -0.6073174327611923,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "slabEdge_tear1",
+      "nodeName": "slabEdge_tear1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-aft-armor-slab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
+      "worldTransform": [
+        0.9921011924743652,
+        0,
+        0,
+        0,
+        0,
+        0.9921011924743652,
+        0,
+        0,
+        0,
+        0,
+        0.9921011924743652,
+        0,
+        6.8812079429626465,
+        -0.10872671008110046,
+        -0.6073174327611923,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2",
+      "localTransform": [
+        1.8069734573364258,
+        0,
+        0,
+        0,
+        0,
+        1.8069734573364258,
+        0,
+        0,
+        0,
+        0,
+        1.8069734573364258,
+        0,
+        -0.6714038848876953,
+        6.201990842819214,
+        -3.637263298034668,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "slabEdge_tear2",
+      "nodeName": "slabEdge_tear2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-aft-armor-slab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
+      "worldTransform": [
+        1.8069734573364258,
+        0,
+        0,
+        0,
+        0,
+        1.8069734573364258,
+        0,
+        0,
+        0,
+        0,
+        1.8069734573364258,
+        0,
+        -0.6714038848876953,
+        6.201990842819214,
+        -3.637263298034668,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3",
+      "localTransform": [
+        1.4111404418945312,
+        0,
+        0,
+        0,
+        0,
+        1.4111404418945312,
+        0,
+        0,
+        0,
+        0,
+        1.4111404418945312,
+        0,
+        -7.8666040897369385,
+        -0.2085716724395752,
+        -0.24645423889160156,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "slabEdge_tear3",
+      "nodeName": "slabEdge_tear3",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-aft-armor-slab.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
+      "worldTransform": [
+        1.4111404418945312,
+        0,
+        0,
+        0,
+        0,
+        1.4111404418945312,
+        0,
+        0,
+        0,
+        0,
+        1.4111404418945312,
+        0,
+        -7.8666040897369385,
+        -0.2085716724395752,
+        -0.24645423889160156,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-armor-slab.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "aft_armor_slab",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d9c3f6b6718af955fd981d6ac52f02ecf7195fc8109f4c18d3d7d65b1bfbfd02"
+    },
+    "sourceGlb": {
+      "bytes": 104432,
+      "sha256": "9fb62aa06b645434247671d729299bb22d0b1a0f10caf494ba30291311026e2e",
+      "uri": "place_aftermath_aft_armor_slab.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 105608,
+    "sha256": "2764590a425a36114f83a0e70367b82978b0330e620ca3c05f06c683450ef130",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.000003349039957356581,
+        -0.00002327403576352083,
+        0.00003169624101184709
+      ],
+      "max": [
+        8.99506664276123,
+        7.3149501712888245,
+        5.4443001478531174
+      ],
+      "min": [
+        -8.995059944681316,
+        -7.314996719360352,
+        -5.444236755371094
+      ],
+      "size": [
+        17.990126587442546,
+        14.629946890649176,
+        10.88853690322421
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 9,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          4.92058801651001,
+          0,
+          0,
+          0,
+          0,
+          4.92058801651001,
+          0,
+          0,
+          0,
+          0,
+          4.92058801651001,
+          0,
+          4.074478626251221,
+          0.4667091965675354,
+          -1.9993843734264374,
+          1
+        ],
+        "name": "Belt1_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.92058801651001,
+          0,
+          0,
+          0,
+          0,
+          4.92058801651001,
+          0,
+          0,
+          0,
+          0,
+          4.92058801651001,
+          0,
+          4.074478626251221,
+          0.4667091965675354,
+          -1.9993843734264374,
+          1
+        ],
+        "name": "Belt1_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5380244255065918,
+          0,
+          0,
+          0,
+          0,
+          1.5380244255065918,
+          0,
+          0,
+          0,
+          0,
+          1.5380244255065918,
+          0,
+          -0.39803408458828926,
+          -5.77697229385376,
+          4.0544127225875854,
+          1
+        ],
+        "name": "slabEdge_tear0",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9921011924743652,
+          0,
+          0,
+          0,
+          0,
+          0.9921011924743652,
+          0,
+          0,
+          0,
+          0,
+          0.9921011924743652,
+          0,
+          6.8812079429626465,
+          -0.10872671008110046,
+          -0.6073174327611923,
+          1
+        ],
+        "name": "slabEdge_tear1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8069734573364258,
+          0,
+          0,
+          0,
+          0,
+          1.8069734573364258,
+          0,
+          0,
+          0,
+          0,
+          1.8069734573364258,
+          0,
+          -0.6714038848876953,
+          6.201990842819214,
+          -3.637263298034668,
+          1
+        ],
+        "name": "slabEdge_tear2",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.4111404418945312,
+          0,
+          0,
+          0,
+          0,
+          1.4111404418945312,
+          0,
+          0,
+          0,
+          0,
+          1.4111404418945312,
+          0,
+          -7.8666040897369385,
+          -0.2085716724395752,
+          -0.24645423889160156,
+          1
+        ],
+        "name": "slabEdge_tear3",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab.glb"
+  },
+  "runtimeHash": "370810bd044b578f798953e3c64716999bca0702ca157c57d656d9d284fc4551",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8.99506664276123,
+          7.3149501712888245,
+          5.4443001478531174
+        ],
+        "min": [
+          -8.995059944681316,
+          -7.314996719360352,
+          -5.444236755371094
+        ]
+      },
+      "id": "sf.render.aftermath-aft-armor-slab.body",
+      "nodeIds": [
+        "sf.render.aftermath-aft-armor-slab.mesh.belt1",
+        "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0",
+        "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1",
+        "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2",
+        "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3",
+        "sf.render.aftermath-aft-armor-slab.root"
+      ]
+    }
+  ]
+}

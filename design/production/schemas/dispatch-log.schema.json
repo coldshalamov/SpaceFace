@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/dispatch-log.schema.json",
+  "title": "SpaceFace Derived Dispatch Discipline Projection",
+  "description": "Controller-derived projection over the hash-chained dispatch event journal. This file is not an authority by itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "logId",
+    "sourceJournalHeadHash",
+    "sourceEventCount",
+    "projectionHash",
+    "lastUpdatedBySession",
+    "soloTurnBudget",
+    "turnsSinceLastDispatch",
+    "lastDispatchAt",
+    "totalDispatches",
+    "totalSoloTurns",
+    "totalSoloViolations",
+    "currentSprint",
+    "lanes",
+    "violations",
+    "recentDispatches",
+    "reconciliation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "logId": { "const": "dispatch-discipline" },
+    "sourceJournalHeadHash": { "$ref": "#/definitions/digest" },
+    "sourceEventCount": { "type": "integer", "minimum": 1 },
+    "projectionHash": { "$ref": "#/definitions/digest" },
+    "lastUpdatedBySession": { "type": "string", "minLength": 1 },
+    "soloTurnBudget": { "type": "integer", "minimum": 0 },
+    "turnsSinceLastDispatch": { "type": "integer", "minimum": 0 },
+    "lastDispatchAt": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "totalDispatches": { "type": "integer", "minimum": 0 },
+    "totalSoloTurns": { "type": "integer", "minimum": 0 },
+    "totalSoloViolations": { "type": "integer", "minimum": 0 },
+    "currentSprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["milestone", "activePackets", "readyPackets", "blockedPackets"],
+      "properties": {
+        "milestone": { "type": "string", "minLength": 1 },
+        "activePackets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "readyPackets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "blockedPackets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "packetId",
+              "blockerClaimHash",
+              "auditStatus",
+              "blockerAuditHash"
+            ],
+            "properties": {
+              "packetId": { "type": "string", "minLength": 1 },
+              "blockerClaimHash": { "$ref": "#/definitions/digest" },
+              "auditStatus": { "enum": ["pending", "confirmed", "rejected"] },
+              "blockerAuditHash": { "$ref": "#/definitions/digestOrNull" }
+            }
+          }
+        }
+      }
+    },
+    "lanes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "packetId", "leaseId", "holderPid", "heartbeatAt"],
+        "properties": {
+          "status": { "enum": ["free", "leased", "blocked"] },
+          "packetId": { "type": ["string", "null"] },
+          "leaseId": { "type": ["string", "null"] },
+          "holderPid": { "type": ["integer", "null"], "minimum": 1 },
+          "heartbeatAt": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "format": "date-time" }
+            ]
+          }
+        }
+      }
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "sessionId", "turnsOver", "actionTaken", "sourceEventHash"],
+        "properties": {
+          "at": { "type": "string", "format": "date-time" },
+          "sessionId": { "type": "string", "minLength": 1 },
+          "turnsOver": { "type": "integer", "minimum": 1 },
+          "actionTaken": {
+            "enum": ["pending", "dispatched", "recorded_blocker", "ignored"]
+          },
+          "sourceEventHash": { "$ref": "#/definitions/digest" }
+        }
+      }
+    },
+    "recentDispatches": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "packetId",
+          "agent",
+          "model",
+          "modelFamily",
+          "sessionId",
+          "briefHash",
+          "lane",
+          "at",
+          "status"
+        ],
+        "properties": {
+          "packetId": { "type": "string", "minLength": 1 },
+          "agent": { "type": "string", "minLength": 1 },
+          "model": { "type": "string", "minLength": 1 },
+          "modelFamily": { "type": "string", "minLength": 1 },
+          "sessionId": { "type": "string", "minLength": 1 },
+          "briefHash": { "$ref": "#/definitions/digest" },
+          "lane": { "type": "string", "minLength": 1 },
+          "at": { "type": "string", "format": "date-time" },
+          "status": { "enum": ["dispatched", "returned", "timed_out", "continuation_due"] }
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "campaignSnapshotHash",
+        "leaseSnapshotHash",
+        "stalePacketIds",
+        "staleLeaseIds",
+        "readyFreeSlaViolations"
+      ],
+      "properties": {
+        "at": { "type": "string", "format": "date-time" },
+        "campaignSnapshotHash": { "$ref": "#/definitions/digest" },
+        "leaseSnapshotHash": { "$ref": "#/definitions/digest" },
+        "stalePacketIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "staleLeaseIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "readyFreeSlaViolations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "digestOrNull": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/digest" }
+      ]
+    }
+  }
+}

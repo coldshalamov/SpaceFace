@@ -1,0 +1,52 @@
+{
+  "schema": "spaceface.schemaHashDiagnosis.v1",
+  "before": "66c77b7",
+  "after": "9c959be",
+  "cases": [
+    {
+      "variant": "standard",
+      "beforeHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+      "afterHash": "5083da41a13ab453d86ea78ad06b93961b6a2a1cfa49504079aa69372df6fe9b",
+      "differences": [
+        {
+          "path": "$.meta.version",
+          "before": 14,
+          "after": 15
+        }
+      ],
+      "afterWithOnlyMetaVersion14": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+      "metricsEqual": true,
+      "traceSummaryEqual": true
+    },
+    {
+      "variant": "v3",
+      "beforeHash": "89a84d7a332c5f7576edba4fc99c0b1ea8aee9985dbd99f0f385543a5ef426ee",
+      "afterHash": "84588eebb83ccf376fe3212712d11ffd8d287ea2dca7f4ca6545558b8eef4584",
+      "differences": [
+        {
+          "path": "$.meta.version",
+          "before": 14,
+          "after": 15
+        }
+      ],
+      "afterWithOnlyMetaVersion14": "89a84d7a332c5f7576edba4fc99c0b1ea8aee9985dbd99f0f385543a5ef426ee",
+      "metricsEqual": true,
+      "traceSummaryEqual": true
+    },
+    {
+      "variant": "v3-reload60",
+      "beforeHash": "914bca87e33eecb847ad470e611b4f49de407f147f2e80a326abd32a8f96580c",
+      "afterHash": "640e833e34702435db4e53f4439e8355ee9c81f181b93e563a962faa31ea8dc4",
+      "differences": [
+        {
+          "path": "$.meta.version",
+          "before": 14,
+          "after": 15
+        }
+      ],
+      "afterWithOnlyMetaVersion14": "914bca87e33eecb847ad470e611b4f49de407f147f2e80a326abd32a8f96580c",
+      "metricsEqual": true,
+      "traceSummaryEqual": true
+    }
+  ]
+}

@@ -1,0 +1,2171 @@
+import { sweepCollisionProxyInto } from './collisionProxySweep.js';
+import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
+// Physics system: integrate positions, rebuild the spatial hash, broad-phase + circle/circle
+// collision with response, swept projectile tests. Runs as steps 5-7 of the sim spine (§2.3).
+// Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
+import { Masks } from './entity.js';
+import {
+  createSg02DynamicBodyOwner,
+  directContactCausalActorId,
+  preSolveRadialClosingSpeed,
+  SG02_WORLD_SNAPSHOT_SCHEMA_VERSION,
+} from './sg02DynamicBodyOwner.js';
+import { hasActiveSpatialHash } from './spatialQuery.js';
+import {
+  clearPickupAcceptanceRetry,
+  finiteWholePickupAmount,
+  PICKUP_ACCEPTANCE_RETRY_S,
+  pickupAcceptanceRetryBlocks,
+  resolvePickupAcceptance,
+  setPickupAcceptanceRetry,
+} from './pickupAcceptance.js';
+import { pickupCustodyAllowsCollector } from './pickupCustody.js';
+import { combatFlag } from '../data/featureFlags.js';
+import {
+  ensureActivityClassified,
+  resetActivityRuntimeForRestore,
+} from '../world/activityRuntime.js';
+import {
+  proxyScaleFor,
+  resolveCollisionProxyManifest,
+  resolveDockAnchor,
+} from '../data/collisionProxyManifests.js';
+import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
+// FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
+// perfRuntime (perfNow) rather than touching wall time from a simulation owner.
+import { perfNow } from './perfRuntime.js';
+import { surfaceContactFromBodies } from './surfaceContact.js';
+import {
+  corridorPlayableBounds,
+  isCorridorSector,
+  sectorGlobalOrigin,
+} from '../data/sectorCoordinates.js';
+import { SpatialHash } from './spatialHash.js';
+import { opticGenerationOf } from '../combat/opticField.js';
+import { projectileTravelLimit } from '../combat/projectileFlight.js';
+import { traumaFromContact } from '../render/feel.js';
+import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { promoteFarActor, queryFarActors } from '../world/farActorTable.js';
+
+const DEFAULT_MATERIAL = Object.freeze({
+  push: 1,
+  restitution: 0.18,
+  tangentDamping: 0.04,
+  impactScale: 1,
+});
+
+const COLLISION_MATERIALS = Object.freeze({
+  ship: DEFAULT_MATERIAL,
+  drone: { push: 0.9, restitution: 0.16, tangentDamping: 0.06, impactScale: 0.7 },
+  payload: { push: 0.75, restitution: 0.08, tangentDamping: 0.18, impactScale: 0.5 },
+  asteroid: { push: 1, restitution: 0.24, tangentDamping: 0.08, impactScale: 1.1 },
+  station: { push: 0.48, restitution: 0.05, tangentDamping: 0.35, impactScale: 0.35 },
+});
+const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
+const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
+const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
+const EMPTY_SWEEP_LIST = Object.freeze([]);
+// Exact (or sub-ulp) XZ overlap: hypot is 0 so dx/dist is {0,0} and pushApart is a no-op.
+// 1e-12 world units is far below gameplay contact scale; 47-A goldens never co-locate.
+const DEGENERATE_SEP2 = 1e-24;
+const DEGENERATE_SEP_CLAMP = 0.0001;
+const _contactNormalScratch = { x: 1, z: 0 };
+// Scratch pos arg for emitPhysicsImpact: it copies x/z into the emitted payload, so the
+// per-emit `{x,z}` literal is wasted work in a contact storm.
+const _contactPosScratch = { x: 0, z: 0 };
+// D35: the Rapier module import + WASM init behind `createSg02DynamicBodyOwner` has no internal
+// bound, so `prepareBackend` used to await `_sg02Init` with no deadline. Both startup gates
+// (new-game waitForPhysics, load finalizeLoadedGame) hold the session at mode:'loading' with
+// time frozen while that await is outstanding — a host that starves the init (contended WASM
+// compile, an aborted module fetch that never settles) froze the run forever with no retry.
+// Bound only the wait, never the init itself: a late-settling bring-up still installs the owner
+// and is adopted by the next prepareBackend call, so a timed-out load retries into a ready
+// authority instead of forcing a fresh init.
+const SG02_INIT_PREPARE_TIMEOUT_MS = 60000;
+
+// The optic grammar's one friendly-fire opening (build_map §24 "Your own grenade"):
+// a prism splinter (opticGeneration >= 1) may strike the hull that lit the ring.
+// The parent bolt — generation 0 — stays owner-immune on every contact path.
+function opticSplinterHitsOwner(proj) {
+  return opticGenerationOf(proj) > 0;
+}
+
+// Compact physical hulls may extend beyond their nominal gameplay radius. Keep
+// the circle conservative for admission only; the shared exact query owns contact.
+function projectileProxyRadius(entity, manifest) {
+  let radius = Number.isFinite(entity.radius) ? Math.max(0, entity.radius) : 0;
+  if (!Array.isArray(manifest?.compactHull)) return radius;
+  const scale = proxyScaleFor(entity, manifest);
+  for (const p of manifest.compactHull) {
+    if (!Number.isFinite(p?.x) || !Number.isFinite(p?.z)) return radius;
+    const bound = Math.hypot(p.x, p.z) * scale;
+    if (Number.isFinite(bound)) radius = Math.max(radius, bound);
+  }
+  return radius;
+}
+
+export const physics = {
+  name: 'physics',
+  // The snapshot payload is a freshly allocated plain object (base64 string + handle map);
+  // nothing in it aliases live WASM state, so the defensive save clone is unnecessary.
+  saveSnapshotOwned: true,
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
+    this._scratch = [];
+    this._statics = [];
+    this._prevPosScratch = { x: 0, z: 0 };
+    this._projectileSweepLimitScratch = { x: 0, z: 0, expired: false };
+    this._segmentHitScratch = createSegmentHitRecord();
+    this._bestSegmentHitScratch = createSegmentHitRecord();
+    this._nearMissClosestScratch = { x: 0, z: 0, distance: 0 };
+    this._nearMissEmitted = new WeakSet();
+    this._pairMaterialScratch = createPairMaterialRecord();
+    this._impactOptionsScratch = { backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null, preSolveClosingSpeed: 0 };
+    // Dedicated scratch for the SG-02 receipt emit path. emitPhysicsImpact copies every field into
+    // a fresh payload synchronously, so a reused record is safe as long as every option field is
+    // rewritten per receipt — including writing undefined over a prior receipt's measured fields.
+    // Kept separate from _impactOptionsScratch so the custom-backend path never inherits stale
+    // player-receipt fields if the backend flips on load.
+    this._sg02ImpactOptionsScratch = {
+      backend: 'rapier-dynamic',
+      tick: 0,
+      normal: { x: 0, z: 0 },
+      causalActorId: null,
+      preSolveClosingSpeed: 0,
+      appliedPlayerDeltaV: undefined,
+      solverPlayerHeadingRad: undefined,
+      solverPlayerYawRateKick: undefined,
+      solverPlayerCourseRad: undefined,
+      appliedPlayerHeadingRad: undefined,
+      appliedPlayerCourseRad: undefined,
+    };
+    this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
+    this._pairStamp = 1;
+    this._dockStationId = null;
+    this._gateEntityId = null;
+    this._rapier = null;
+    this._rapierInit = null;
+    this._rapierToken = 0;
+    this._sg02 = null;
+    this._sg02Init = null;
+    this._sg02Token = 0;
+    this._pendingSg02Snapshot = null;
+    this._nativeRestorePending = false;
+    this._nativeRestoreDeferred = false;
+    this._nativeRestoreContext = null;
+    this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
+    this._spatialHashNeedsRebuild = false;
+    if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('save:loaded', () => this._resetSg02AfterLoad());
+    }
+    this._diag = {
+      backend: 'custom',
+      rapierReady: false,
+      bodies: 0,
+      colliders: 0,
+      ccdBodies: 0,
+      rapierContacts: 0,
+      rapierEvents: 0,
+      sg02Ready: false,
+      sg02Bodies: 0,
+      sg02DynamicBodies: 0,
+      sg02Attachments: 0,
+      sg02SyncMode: 'none',
+      sg02SyncFullEntities: 0,
+      sg02SyncStaticEntities: 0,
+      sg02SyncDynamicEntities: 0,
+      sweptShipContacts: 0,
+      sweptProjectileHits: 0,
+      nearMissReceipts: 0,
+      pickupCollections: 0,
+      pickupPairChecks: 0,
+      pickupSpatialQueries: 0,
+      spatialHashSyncs: 0,
+      spatialHashSkips: 0,
+      tickMs: 0,
+      activityS0: 0,
+      activityS1: 0,
+      activityS2: 0,
+      activityS3: 0,
+      activityPhysicsBodies: 0,
+    };
+  },
+
+  update(dt, state) {
+    reconcileMachineryBeforePhysics(state);
+    const t0 = perfNow();
+    this._diag.sweptShipContacts = 0;
+    this._diag.sweptProjectileHits = 0;
+    this._diag.nearMissReceipts = 0;
+    this._diag.pickupCollections = 0;
+    this._diag.pickupPairChecks = 0;
+    this._diag.pickupSpatialQueries = 0;
+    if (usesSg02DynamicAuthority(state)) {
+      this._updateSg02DynamicAuthority(dt, state);
+      this._syncDynamicSpatialHash(state);
+      this.collectPickups(state);
+      this.sweepProjectiles(dt, state);
+      this.updateDockRange(state);
+      this._countCollisionPairWork(state);
+      this._diag.tickMs = Math.max(0, perfNow() - t0);
+      this._publishRuntime(state);
+      return;
+    }
+    this._disableSg02DynamicAuthority();
+    this.integrate(dt, state);
+    if (shouldMaintainDynamicSpatialHash(state)) {
+      this._rebuildSpatialHash(state);
+      this._settleSpatialHashGate(state, state.spatialHash);
+      this._diag.spatialHashSyncs++;
+    } else {
+      this._noteSpatialHashGateSkip(state);
+    }
+    this._spatialHashNeedsRebuild = false;
+    this.sweepShipStatics(dt, state);
+    this.sweepProjectiles(dt, state);
+    this.collectPickups(state);
+    if (this._spatialHashNeedsRebuild) {
+      this._rebuildSpatialHash(state);
+      this._settleSpatialHashGate(state, state.spatialHash);
+    }
+    this.collide(dt, state);
+    this._syncOptionalBackend(dt, state);
+    this.updateDockRange(state);
+    this._countCollisionPairWork(state);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
+    this._publishRuntime(state);
+  },
+
+  /** Tier-1 causal mirror of the pair-evaluation work this tick's solve already measured. */
+  _countCollisionPairWork(state) {
+    const tier1 = state.perfRuntime && state.perfRuntime.tier1;
+    if (!tier1 || !tier1.isEnabled()) return;
+    if (this._diag.rapierContacts > 0) {
+      tier1.countCollisionPairs(this._diag.rapierContacts, 'sg02-contact-pairs');
+    }
+    if (this._diag.sweptShipContacts > 0) {
+      tier1.countCollisionPairs(this._diag.sweptShipContacts, 'swept-ship-contacts');
+    }
+    if (this._diag.sweptProjectileHits > 0) {
+      tier1.countCollisionPairs(this._diag.sweptProjectileHits, 'swept-projectile-hits');
+    }
+    if (this._diag.pickupPairChecks > 0) {
+      tier1.countCollisionPairs(this._diag.pickupPairChecks, 'pickup-pair-checks');
+    }
+  },
+
+  _rebuildSpatialHash(state) {
+    const hash = state.spatialHash;
+    if (!hash) return;
+    // Tier-1 causal count: the broad-phase membership walk visits each listed collider once.
+    const tier1 = state.perfRuntime && state.perfRuntime.tier1;
+    const countVisits = tier1 && tier1.isEnabled() ? tier1 : null;
+    const layers = spatialHashLayersFromState(state);
+    if (layers && typeof hash.rebuildLayers === 'function') {
+      if (countVisits) {
+        countVisits.countEntityVisits(
+          layers.statics.length + layers.dynamics.length,
+          'spatial-rebuild-layers',
+        );
+      }
+      hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion, layers.dynamicsVersion);
+      return;
+    }
+    if (countVisits) countVisits.countEntityVisits(state.entityList.length, 'spatial-rebuild');
+    hash.rebuild(state.entityList);
+  },
+
+  _syncDynamicSpatialHash(state) {
+    const hash = state.spatialHash;
+    if (!hash) return;
+    if (shouldMaintainDynamicSpatialHash(state)) {
+      this._rebuildSpatialHash(state);
+      this._settleSpatialHashGate(state, hash);
+      this._diag.spatialHashSyncs++;
+      return;
+    }
+    this._noteSpatialHashGateSkip(state);
+  },
+
+  _noteSpatialHashGateSkip(state) {
+    const hash = state && state.spatialHash;
+    this._diag.spatialHashSkips++;
+    if (hash && typeof hash.noteGateSkip === 'function') hash.noteGateSkip();
+  },
+
+  // Record the exact coverage the committed sync saw so the gate can prove a later tick's
+  // dynamics list is identical without walking buckets or member records.
+  _settleSpatialHashGate(state, hash) {
+    const gate = spatialHashGateFor(state);
+    const layers = spatialHashLayersFromState(state);
+    gate.lastSyncTick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    gate.staticVersion = layers && Number.isFinite(layers.staticVersion) ? layers.staticVersion : 0;
+    const indexVersion = entityIndexGateVersion(state);
+    if (indexVersion != null) gate.indexVersion = indexVersion;
+    gate.members = hash && hash._dynamicMembers ? hash._dynamicMembers.size : 0;
+    gate.mix = layers && Array.isArray(layers.dynamics)
+      ? dynamicMembershipMix(hash && hash.cell, layers.dynamics)
+      : 0;
+  },
+
+  _publishRuntime(state) {
+    state.physicsRuntime = state.physicsRuntime || {};
+    state.physicsRuntime.diagnostics = this._diag;
+    if (this._sg02 && this._diag.backend === 'rapier-dynamic' && shouldPublishSg02Snapshot(state)) {
+      state.physicsRuntime.sg02Snapshot = this._sg02.quantizedSnapshot({ liveOnly: true });
+    } else {
+      delete state.physicsRuntime.sg02Snapshot;
+    }
+  },
+
+  // True once a backend owner object exists. A pre-restore warm-up must only ever start the
+  // module init — calling prepareBackend while `_sg02` is live would sync and step the outgoing
+  // run's entities into the authority (and drain stale contact receipts) before the incoming
+  // save replaces them. With no owner the same call stops at init, which is the only overlap
+  // the early lane wants.
+  hasResolvedSg02Owner() {
+    return this._sg02 != null;
+  },
+
+  /**
+   * Save-envelope physics payload. Entity scalars round-trip position and velocity, but a
+   * rebuilt Rapier world loses contact-manifold warm starts, so its first post-load step can
+   * differ by an f32 ulp that then grows downstream. The owner's world snapshot preserves the
+   * solver's private state bit-for-bit; serialize() returns null whenever SG-02 is not the
+   * live authority so non-rapier saves stay untouched.
+   */
+  serialize() {
+    const owner = this._sg02;
+    if (!owner || typeof owner.exportWorldSnapshot !== 'function') return null;
+    try {
+      const payload = owner.exportWorldSnapshot();
+      // A restored Rapier world is canonical w.r.t. its snapshot bytes, but the organic
+      // world it replaces is not itself serializable (broad-phase workspace state,
+      // dimforge/rapier#910). Re-adopting our own export keeps the post-save continuation
+      // bit-identical to the post-load continuation instead of letting the two worlds'
+      // internal layouts drift.
+      if (payload && typeof owner.canonicalizeWorldSnapshot === 'function') {
+        // A rejected transaction cannot certify native save-and-continue parity.
+        // Preserve the live owner and fall back to the ordinary scalar save path.
+        if (!owner.canonicalizeWorldSnapshot(payload, {
+          attachments: this.state?.combat?.attachments?.byId || {},
+          resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
+        })) return null;
+      }
+      return payload;
+    } catch (err) {
+      console.error('[physics] SG-02 world snapshot export failed', err);
+      return null;
+    }
+  },
+
+  deserialize(payload, options = {}) {
+    this._pendingSg02Snapshot = payload && typeof payload === 'object' ? payload : null;
+    this._nativeRestorePending = true;
+    this._nativeRestoreDeferred = options.deferNative === true;
+    this._nativeRestoreContext = null;
+  },
+
+  // Called by the existing save owner after its event drain and semantic reference resume,
+  // before autosave capture or visual admission. No clock/polling or second restore loop.
+  completeRestore(options = {}) {
+    this._nativeRestoreDeferred = false;
+    this._nativeRestoreContext = options;
+    this._nativeRestorePending = true;
+    if (this._sg02) this._finishNativeRestore();
+  },
+
+  cancelRestore() {
+    this._pendingSg02Snapshot = null;
+    this._nativeRestoreContext = null;
+    this._nativeRestoreDeferred = false;
+    this._nativeRestorePending = true;
+  },
+
+  _finishNativeRestore() {
+    if (!this._sg02 || !this._nativeRestorePending || this._nativeRestoreDeferred) return false;
+    const state = this.state;
+    const payload = this._pendingSg02Snapshot;
+    const context = this._nativeRestoreContext || {};
+    resetActivityRuntimeForRestore(state);
+    reconcileMachineryBeforePhysics(state);
+    const activity = ensureActivityClassified(state);
+    const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    let adopted = false;
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
+    else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
+      || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
+    else if (payload) {
+      adopted = this._sg02.adoptWorldSnapshot(payload, entities, {
+        entityIdRemap: context.entityIdRemap || state.sessionEntityIdRemap,
+        attachments: state.combat?.attachments?.byId || {},
+        resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
+      });
+    }
+    if (!adopted) {
+      this._sg02.rebuildWorldFromEntities(entities, {
+        frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+      });
+    }
+    this._pendingSg02Snapshot = null;
+    this._nativeRestorePending = false;
+    this._nativeRestoreContext = null;
+    if (!state.physicsRuntime) state.physicsRuntime = {};
+    state.physicsRuntime.nativeRestore = { mode: adopted ? 'native' : 'scalar', exact: adopted, reason: adopted ? null : reason };
+    return adopted;
+  },
+
+  async prepareBackend(state, options = {}) {
+    const reset = options.reset === true;
+    if (!usesSg02DynamicAuthority(state)) {
+      if (reset) this._disableSg02DynamicAuthority();
+      return true;
+    }
+
+    if (options.sg02Snapshot && typeof options.sg02Snapshot === 'object') {
+      // An explicit payload wins over a deserialized stash — the deterministic reload lane
+      // passes the envelope it just wrote so the post-reset owner adopts its own saved world
+      // even though a live owner absorbed the load boundary first.
+      this._pendingSg02Snapshot = options.sg02Snapshot;
+      this._nativeRestorePending = true;
+    }
+    if (reset) {
+      this._nativeRestorePending = true;
+      this._disableSg02DynamicAuthority();
+    }
+    this._updateSg02DynamicAuthority(0, state);
+    if (this._sg02Init) {
+      const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
+        ? Math.max(0, options.initTimeoutMs)
+        : SG02_INIT_PREPARE_TIMEOUT_MS;
+      let timer = null;
+      const settled = await Promise.race([
+        Promise.resolve(this._sg02Init).then(() => true, () => true),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), initTimeoutMs); }),
+      ]);
+      if (timer !== null) clearTimeout(timer);
+      if (!settled) {
+        console.warn('[physics] SG-02 dynamic authority init did not settle within'
+          + ` ${Math.round(initTimeoutMs)} ms; startup fails closed to a retryable state instead of`
+          + ' holding the session frozen at loading. A late init still installs for the next attempt.');
+        this._diag.sg02InitTimedOut = true;
+        this._diag.tickMs = 0;
+        this._publishRuntime(state);
+        return false;
+      }
+    }
+    this._updateSg02DynamicAuthority(0, state);
+    this._diag.tickMs = 0;
+    this._publishRuntime(state);
+    return this._diag.sg02Ready === true;
+  },
+
+  collectPickups(state) {
+    const pickups = (state.entityIndex && state.entityIndex.pickups) || state.entityList;
+    const collectors = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
+    if (!pickups || !collectors || !pickups.length || !collectors.length) return;
+    if (shouldUsePickupSpatialQuery(state, pickups, collectors)) {
+      this._collectPickupsSpatial(state, pickups, collectors);
+      return;
+    }
+    for (const pk of pickups) {
+      if (!isLivePickup(pk)) continue;
+      for (const col of collectors) {
+        if (!pk.alive) break;
+        this._diag.pickupPairChecks++;
+        this._tryCollectPickup(pk, col);
+      }
+    }
+  },
+
+  _collectPickupsSpatial(state, pickups, collectors) {
+    const out = this._scratch;
+    const queryCollectors = collectors.length <= pickups.length;
+    if (queryCollectors) {
+      const maxPickupRadius = maxLivePickupRadius(pickups);
+      for (const col of collectors) {
+        if (!isPickupCollector(col)) continue;
+        out.length = 0;
+        state.spatialHash.queryRadius(col.pos.x, col.pos.z, (col.radius || 0) + maxPickupRadius, out);
+        this._diag.pickupSpatialQueries++;
+        for (const pk of out) {
+          if (!isLivePickup(pk)) continue;
+          this._diag.pickupPairChecks++;
+          this._tryCollectPickup(pk, col);
+        }
+      }
+      return;
+    }
+
+    const maxCollectorRadius = maxLiveCollectorRadius(collectors);
+    for (const pk of pickups) {
+      if (!isLivePickup(pk)) continue;
+      out.length = 0;
+      state.spatialHash.queryRadius(pk.pos.x, pk.pos.z, (pk.radius || 0) + maxCollectorRadius, out);
+      this._diag.pickupSpatialQueries++;
+      for (const col of out) {
+        if (!pk.alive) break;
+        if (!isPickupCollector(col)) continue;
+        this._diag.pickupPairChecks++;
+        this._tryCollectPickup(pk, col);
+      }
+    }
+  },
+
+  _tryCollectPickup(pk, col) {
+    if (!isPickupCollector(col)) return false;
+    if (!canCollide(pk, col) && !canCollide(col, pk)) return false;
+    const dx = col.pos.x - pk.pos.x;
+    const dz = col.pos.z - pk.pos.z;
+    const rsum = (col.radius || 0) + (pk.radius || 0);
+    if (dx * dx + dz * dz > rsum * rsum) return false;
+    return this._applyPickupCollection(pk, col, this.bus, this.state);
+  },
+
+  _applyPickupCollection(pk, col, bus, state) {
+    // Player-reserved pickups are authored world objects: a non-player collector (NPC hulls and
+    // drones can full-consume an ordinary pickup) leaves one in place instead of eating it.
+    if (pk && pk.data && pk.data.playerCollectOnly === true
+      && col && col.id !== (state && state.playerId)) return false;
+    // D92: a pod somebody has title to (freight custody annotation, salvor claim, named owner)
+    // is not free loot. Physics decides contact; the custody owners decide consumption on the
+    // receipt — but the legacy full-consume default let a passing lawful liner vacuum owned and
+    // claimed freight. Only the owner, the claim-holding salvor, an outlaw, or the player gets a
+    // receipt asked for at all; every other hull passes through and the pod stays in the world.
+    if (!pickupCustodyAllowsCollector(pk, col, state && state.playerId)) return false;
+    if (pickupAcceptanceRetryBlocks(
+      pk && pk.data,
+      col && col.id,
+      state && state.playerId,
+      state && state.simTime,
+    )) return false;
+    const requested = finiteWholePickupAmount(pk && pk.data && pk.data.amount);
+    if (requested <= 0) {
+      // Invalid physical quantities are quarantined without publishing a collectible event. Leaving
+      // Infinity/NaN/missing amounts alive would create an inexhaustible overlap source.
+      clearPickupAcceptanceRetry(pk && pk.data);
+      pk.alive = false;
+      return false;
+    }
+    const payload = emitPickupCollected(bus, pk, col);
+    const acceptance = resolvePickupAcceptance(payload, requested);
+    if (acceptance.rejected <= 0) {
+      pk.alive = false;
+    } else if (acceptance.accepted > 0) {
+      pk.data = pk.data || {};
+      pk.data.amount = acceptance.rejected;
+    }
+    if (acceptance.rejected > 0) {
+      pk.data = pk.data || {};
+      const ownerRetryAt = Number(payload.acceptanceRetryAt);
+      setPickupAcceptanceRetry(
+        pk.data,
+        col && col.id,
+        Number.isFinite(ownerRetryAt)
+          ? ownerRetryAt
+          : (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S,
+      );
+    } else if (pk.data) {
+      clearPickupAcceptanceRetry(pk.data);
+    }
+    if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupCollections++;
+    return acceptance.accepted > 0 || acceptance.legacyFullConsume;
+  },
+
+  _updateSg02DynamicAuthority(dt, state) {
+    this._disableRapierBackend();
+    this._diag.backend = 'rapier-dynamic';
+    if (!this._sg02Init && !this._sg02) {
+      const token = ++this._sg02Token;
+      const init = createSg02DynamicBodyOwner({
+        mode: 'rapier-dynamic',
+        captureContactImpacts: combatFlag('weaponImpulseConsequences'),
+        publishTelemetry: shouldPublishSg02Telemetry(state),
+        frameOrigin: worldFrameOrigin(state),
+        frameOriginSeq: worldFrameOriginSeq(state),
+      })
+        .then((owner) => {
+          const currentBackend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
+          if (token !== this._sg02Token || currentBackend !== 'rapier-dynamic') {
+            if (owner && typeof owner.dispose === 'function') owner.dispose();
+            // A discarded init must release the slot: while _sg02 is null and _sg02Init
+            // still holds this settled promise no update ever re-initializes the
+            // authority, and every live flight tick silently freezes (D26).
+            if (this._sg02Init === init) this._sg02Init = null;
+            return null;
+          }
+          this._sg02 = owner;
+          this._syncSg02FrameOrigin(state);
+          if (this._nativeRestorePending && !this._nativeRestoreDeferred) this._finishNativeRestore();
+          return owner;
+        })
+        .catch((err) => {
+          if (token === this._sg02Token) {
+            console.warn('[physics] SG-02 dynamic authority failed; craft motion is fail-closed', err);
+            this._sg02 = null;
+          }
+          // Whatever the token state, this promise can no longer deliver an owner;
+          // release the slot so a later update retries instead of freezing flight (D26).
+          if (this._sg02Init === init) this._sg02Init = null;
+          return null;
+        });
+      this._sg02Init = init;
+    }
+
+    if (!this._sg02) {
+      this._diag.rapierReady = false;
+      this._diag.sg02Ready = false;
+      this._diag.sg02Bodies = 0;
+      this._diag.sg02DynamicBodies = 0;
+      this._diag.sg02Attachments = 0;
+      this._diag.sg02SyncMode = 'none';
+      this._diag.sg02SyncFullEntities = 0;
+      this._diag.sg02SyncStaticEntities = 0;
+      this._diag.sg02SyncDynamicEntities = 0;
+      return;
+    }
+
+    if (this._nativeRestoreDeferred) return;
+    if (this._nativeRestorePending) this._finishNativeRestore();
+    this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
+    this._syncSg02FrameOrigin(state);
+    this._queueSectorFenceImpulses(dt, state);
+    this._syncSg02DynamicAuthorityEntities(state);
+    this._reconcileCombatPhysicsBeforeStep();
+    const sdiag = this._sg02.step(dt, state.tick);
+    const sg02ImpactCount = this._emitSg02ContactImpacts(state);
+    this._diag.rapierReady = true;
+    this._diag.sg02Ready = true;
+    this._diag.sg02InitTimedOut = false;
+    this._diag.bodies = sdiag.bodies;
+    this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
+    this._diag.ccdBodies = sdiag.ccdBodies || 0;
+    this._diag.rapierContacts = sg02ImpactCount;
+    this._diag.rapierEvents = sg02ImpactCount;
+    this._diag.sg02Bodies = sdiag.bodies;
+    this._diag.sg02DynamicBodies = sdiag.dynamicBodies || 0;
+    this._diag.sg02Attachments = sdiag.attachments || 0;
+    this._diag.sg02SyncMode = sdiag.syncMode || 'none';
+    this._diag.sg02SyncFullEntities = sdiag.syncFullEntities || 0;
+    this._diag.sg02SyncStaticEntities = sdiag.syncStaticEntities || 0;
+    this._diag.sg02SyncDynamicEntities = sdiag.syncDynamicEntities || 0;
+  },
+
+  _emitSg02ContactImpacts(state) {
+    if (!this._sg02 || typeof this._sg02.drainContactImpacts !== 'function') return 0;
+    const receipts = this._sg02.drainContactImpacts();
+    if (!Array.isArray(receipts) || !receipts.length) return 0;
+    let emitted = 0;
+    const options = this._sg02ImpactOptionsScratch;
+    for (const receipt of receipts) {
+      const a = state.entities && state.entities.get ? state.entities.get(receipt.aId) : null;
+      const b = state.entities && state.entities.get ? state.entities.get(receipt.bId) : null;
+      if (!a || !b || a.alive === false || b.alive === false) continue;
+      const material = pairMaterialInto(this._pairMaterialScratch, a, b);
+      // Every option field is rewritten per receipt; receipt fields absent on non-player
+      // receipts come through as undefined, matching the old literal's Number.isFinite checks.
+      options.backend = 'rapier-dynamic';
+      // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
+      // provenance/status expiry belongs to the canonical simulation tick.
+      options.tick = state.tick;
+      options.normal = receipt.normal;
+      options.causalActorId = receipt.causalActorId;
+      options.preSolveClosingSpeed = receipt.preSolveClosingSpeed;
+      options.appliedPlayerDeltaV = receipt.appliedPlayerDeltaV;
+      // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
+      // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
+      // whole tick's value, so a reader sums per unique tick, never across receipts.
+      options.solverPlayerHeadingRad = receipt.solverPlayerHeadingRad;
+      options.solverPlayerYawRateKick = receipt.solverPlayerYawRateKick;
+      options.solverPlayerCourseRad = receipt.solverPlayerCourseRad;
+      options.appliedPlayerHeadingRad = receipt.appliedPlayerHeadingRad;
+      options.appliedPlayerCourseRad = receipt.appliedPlayerCourseRad;
+      const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, options);
+      if (dp > 0) emitted++;
+    }
+    return emitted;
+  },
+
+  _syncSg02FrameOrigin(state) {
+    if (!this._sg02 || typeof this._sg02.setFrameOrigin !== 'function') return false;
+    return this._sg02.setFrameOrigin(worldFrameOrigin(state), worldFrameOriginSeq(state));
+  },
+
+  _resetSg02AfterLoad() {
+    const state = this.state;
+    if (!usesSg02DynamicAuthority(state)) {
+      this._disableSg02DynamicAuthority();
+    } else if (!this._nativeRestoreDeferred) {
+      this.completeRestore({ entityIdRemap: state.sessionEntityIdRemap });
+    }
+    // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the
+    // previous dock. Reset edge caches so the first post-load physics step re-emits range=true
+    // even when the rematerialized structural entity keeps the same stable station/gate id.
+    this._dockStationId = null;
+    this._gateEntityId = null;
+    // The respawn also swapped every persistent entity object for a fresh one at the same tick.
+    // Drop the cached activity classification so the next sync layers read live entities instead
+    // of scratch arrays holding retired (alive=false) references — same ids and counts would
+    // otherwise never bump physicsStaticVersion and the statics would never reconcile. The
+    // retained player body is handled above; other changed records reconcile normally.
+    resetActivityRuntimeForRestore(this.state);
+    if (this.state) this._publishRuntime(this.state);
+  },
+
+  _syncSg02DynamicAuthorityEntities(state) {
+    reconcileMachineryBeforePhysics(state);
+    const activity = ensureActivityClassified(state);
+    if (activity && this._diag) {
+      this._diag.activityS0 = activity.counts.s0;
+      this._diag.activityS1 = activity.counts.s1;
+      this._diag.activityS2 = activity.counts.s2;
+      this._diag.activityS3 = activity.counts.s3;
+      this._diag.activityPhysicsBodies = activity.counts.physics;
+    }
+    if (this._sg02 && typeof this._sg02.syncFromEntityLayers === 'function' && activity) {
+      this._sg02.syncFromEntityLayers(
+        activity.physicsStatics,
+        activity.physicsDynamics,
+        activity.physicsStaticVersion || 0,
+        null,
+      );
+      return;
+    }
+    this._sg02.syncFromEntities(state.entityList);
+  },
+
+  _disableSg02DynamicAuthority() {
+    if (this._sg02 || this._sg02Init) this._sg02Token++;
+    if (this._sg02 && typeof this._sg02.dispose === 'function') this._sg02.dispose();
+    this._sg02 = null;
+    this._sg02Init = null;
+    this._diag.sg02Ready = false;
+    this._diag.sg02Bodies = 0;
+    this._diag.sg02DynamicBodies = 0;
+    this._diag.sg02Attachments = 0;
+    this._diag.sg02SyncMode = 'none';
+    this._diag.sg02SyncFullEntities = 0;
+    this._diag.sg02SyncStaticEntities = 0;
+    this._diag.sg02SyncDynamicEntities = 0;
+  },
+
+  _reconcileCombatPhysicsBeforeStep() {
+    const reconcile = this.helpers && this.helpers.reconcileCombatPhysicsAttachments;
+    if (typeof reconcile === 'function') reconcile();
+  },
+
+  /**
+   * Sector soft boundary under SG-02 authority. The legacy `integrate()` path nudged `e.vel`
+   * directly; Rapier owns craft velocity here, so the same inward Δv is queued as an impulse
+   * (mass × Δv) through the command membrane before the body sync. It lands ahead of
+   * `_captureExpectedKinematics`, so structural-give treats the fence as expected motion.
+   */
+  _queueSectorFenceImpulses(dt, state) {
+    const b = fenceBoundsForState(state);
+    if (!b) return;
+    const ships = (state.entityIndex && state.entityIndex.ships) || physicsMovableEntities(state);
+    for (const e of ships) {
+      if (!e.alive || e.type !== 'ship') continue;
+      const dv = sectorFenceDeltaV(b, e, dt, _fenceScratch);
+      if (!dv) continue;
+      const spec = resolvePhysicsBodySpec(e);
+      const mass = spec ? spec.mass : 1;
+      queuePhysicsImpulse(e, { x: dv.x * mass, y: 0, z: dv.z * mass }, {
+        provenance: 'sector-fence', tick: state.tick, kind: 'fence',
+      });
+    }
+  },
+
+  integrate(dt, state) {
+    const b = fenceBoundsForState(state);
+    for (const e of physicsMovableEntities(state)) {
+      if (!e.alive) continue;
+      // sector soft boundary: gentle inward acceleration past the soft radius
+      if (e.type === 'ship' && b) {
+        const dv = sectorFenceDeltaV(b, e, dt, _fenceScratch);
+        if (dv) { e.vel.x += dv.x; e.vel.z += dv.z; }
+      }
+      e.pos.x += e.vel.x * dt;
+      e.pos.z += e.vel.z * dt;
+      // NOTE: e.rot is NOT integrated here for ships/drones because flight controls their yaw.
+      // Non-craft entities (wrecks, debris, asteroids) integrate angVel so physics wrecks tumble.
+      if (e.type !== 'ship' && e.type !== 'drone' && Number.isFinite(e.angVel) && e.angVel !== 0) {
+        e.rot = (e.rot || 0) + e.angVel * dt;
+      }
+    }
+  },
+
+  collide(dt, state) {
+    const bus = this.bus;
+    const out = this._scratch;
+    const stamp = this._nextPairStamp();
+    const source = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+    for (const a of source) {
+      if (!a.alive || !a.collides) continue;
+      if (!shouldStartBroadphasePairSearch(a)) continue;
+      out.length = 0;
+      state.spatialHash.queryRadius(a.pos.x, a.pos.z, a.radius + 4, out);
+      for (const bEnt of out) {
+        if (!a.alive) break;
+        if (bEnt === a || !bEnt.alive || !bEnt.collides) continue;
+        if (!(a.collisionMask & maskOf(bEnt)) && !(bEnt.collisionMask & maskOf(a))) continue;
+        if (this._pairSeen(a.id, bEnt.id, stamp)) continue;
+        if (!a.alive || !bEnt.alive) continue;
+        let dx = bEnt.pos.x - a.pos.x, dz = bEnt.pos.z - a.pos.z;
+        const rsum = a.radius + bEnt.radius;
+        const d2 = dx * dx + dz * dz;
+        if (d2 > rsum * rsum) continue;
+        let dist = Math.sqrt(d2);
+        if (d2 <= DEGENERATE_SEP2) {
+          dist = dist || DEGENERATE_SEP_CLAMP;
+          const n = fallbackContactNormalInto(a, bEnt, _contactNormalScratch);
+          dx = n.x * dist;
+          dz = n.z * dist;
+        }
+        this.resolvePair(a, bEnt, dist, dx, dz, bus, state);
+      }
+    }
+  },
+
+  sweepShipStatics(dt, state) {
+    const out = this._scratch;
+    const useHash = hasActiveSpatialHash(state.spatialHash);
+    const statics = this._statics;
+    if (!useHash) {
+      statics.length = 0;
+      const source = (state.entityIndex && state.entityIndex.statics) || state.entityList;
+      for (const e of source) {
+        if (e.alive && e.collides && (e.type === 'asteroid' || e.type === 'station')) statics.push(e);
+      }
+      if (!statics.length) return;
+    }
+    const ships = (state.entityIndex && state.entityIndex.shipLike) || state.entityList;
+    for (const ship of ships) {
+      if (!ship.alive || !ship.collides || (ship.type !== 'ship' && ship.type !== 'drone')) continue;
+      const start = previousPosInto(this._prevPosScratch, ship, dt);
+      const end = ship.pos;
+      let candidates = statics;
+      if (useHash) {
+        const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (ship.radius || 0);
+        out.length = 0;
+        const mx = (start.x + end.x) * 0.5;
+        const mz = (start.z + end.z) * 0.5;
+        if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
+          state.spatialHash.queryRadiusCoherent(ship.id, mx, mz, sweepRadius, out);
+        } else {
+          state.spatialHash.queryRadius(mx, mz, sweepRadius, out);
+        }
+        candidates = out;
+      }
+      let bestTarget = null;
+      const hit = this._segmentHitScratch;
+      const bestHit = this._bestSegmentHitScratch;
+      for (const target of candidates) {
+        if (!target.alive || !target.collides || (target.type !== 'asteroid' && target.type !== 'station')) continue;
+        if (target === ship || (!canCollide(ship, target) && !canCollide(target, ship))) continue;
+        if (!segmentCircleHitInto(hit, start, end, target.pos, (ship.radius || 0) + (target.radius || 0))) continue;
+        if (!bestTarget || hit.t < bestHit.t) {
+          bestTarget = target;
+          copySegmentHit(bestHit, hit);
+        }
+      }
+      if (!bestTarget) continue;
+      const nx = bestHit.nx, nz = bestHit.nz;
+      const skin = 0.01;
+      const nextX = bestHit.x + nx * skin;
+      const nextZ = bestHit.z + nz * skin;
+      if (useHash && spatialCellSpanChanged(state.spatialHash, ship, nextX, nextZ)) {
+        this._spatialHashNeedsRebuild = true;
+      }
+      ship.pos.x = nextX;
+      ship.pos.z = nextZ;
+      applySurfaceResponse(ship, nx, nz, materialFor(bestTarget));
+      this._diag.sweptShipContacts++;
+    }
+  },
+
+  sweepProjectiles(dt, state) {
+    const out = this._scratch;
+    const wake = this._projectileWake || (this._projectileWake = []);
+    wake.length = 0;
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    const extra = this._sweepExtraCandidates || (this._sweepExtraCandidates = []);
+    // Dormant-body admit pre-pass: every live projectile used to run a field query plus a
+    // far-actor query per sim step (the quadratic term inside catch-up frames). Compute the
+    // union disc of all sweep segments once and share it; both ledgers scan cells in the same
+    // row-major order for a union bbox as they would for each projectile's own bbox, so
+    // filtering the shared rows per segment reproduces the same rec set in the same order.
+    // A rec promoted by an earlier projectile already self-skips: promote marks rec.alive
+    // false, and the per-projectile filters below test exactly that.
+    let unionMinX = Infinity, unionMinZ = Infinity, unionMaxX = -Infinity, unionMaxZ = -Infinity;
+    let sweepCandidate = false;
+    for (const proj of projectiles) {
+      if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
+      const start = previousPosInto(this._prevPosScratch, proj, dt);
+      const limit = this._projectileSweepLimitScratch;
+      if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) continue;
+      sweepCandidate = true;
+      const reach = Math.hypot(proj.pos.x - start.x, proj.pos.z - start.z) * 0.5 + (proj.radius || 0) + 120;
+      if (!(reach > 0)) continue;
+      const cx = (start.x + proj.pos.x) * 0.5;
+      const cz = (start.z + proj.pos.z) * 0.5;
+      unionMinX = Math.min(unionMinX, cx - reach);
+      unionMinZ = Math.min(unionMinZ, cz - reach);
+      unionMaxX = Math.max(unionMaxX, cx + reach);
+      unionMaxZ = Math.max(unionMaxZ, cz + reach);
+    }
+    const unionCenter = this._sweepUnionCenter || (this._sweepUnionCenter = { x: 0, z: 0 });
+    const unionRocks = this._sweepUnionRocks || (this._sweepUnionRocks = []);
+    const unionActors = this._sweepUnionActors || (this._sweepUnionActors = []);
+    unionRocks.length = 0;
+    unionActors.length = 0;
+    if (unionMinX <= unionMaxX) {
+      unionCenter.x = (unionMinX + unionMaxX) * 0.5;
+      unionCenter.z = (unionMinZ + unionMaxZ) * 0.5;
+      const unionReach = Math.hypot(unionMaxX - unionMinX, unionMaxZ - unionMinZ) * 0.5;
+      queryAsteroidField(state, unionCenter, unionReach, unionRocks);
+      queryFarActors(state, unionCenter, unionReach, unionActors);
+    }
+    // Any projectile that appears mid-sweep (a promote spawning one) was not covered by the
+    // union disc; _admitProjectileSweepBodies falls back to its own queries in that case.
+    this._sweepUnionBoundsX0 = unionMinX;
+    this._sweepUnionBoundsZ0 = unionMinZ;
+    this._sweepUnionBoundsX1 = unionMaxX;
+    this._sweepUnionBoundsZ1 = unionMaxZ;
+    this._sweepUnionRocksLive = unionRocks;
+    this._sweepUnionActorsLive = unionActors;
+    // The broadphase is only consulted by a segment that survived the sweep limit — a
+    // projectile-free tick (plain cruise) needs no sector-wide dynamic-layer resync.
+    if (sweepCandidate) this._syncProjectileBroadphase(state);
+    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
+    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
+    for (const proj of projectiles) {
+      if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
+      const start = previousPosInto(this._prevPosScratch, proj, dt);
+      const limit = this._projectileSweepLimitScratch;
+      if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) {
+        proj.alive = false;
+        continue;
+      }
+      const end = limit;
+      let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+      const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
+      const mx = (start.x + end.x) * 0.5;
+      const mz = (start.z + end.z) * 0.5;
+      if (useBroadphase) {
+        // Every live collider, not only the glass-pinned physics set. A round that
+        // has left the frame still has to hit the hull it was aimed at.
+        out.length = 0;
+        this._projectileBroadphase.queryRadius(mx, mz, sweepRadius + this._projectileHullPadding, out);
+        candidates = out;
+      } else if (useHash) {
+        out.length = 0;
+        if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
+          state.spatialHash.queryRadiusCoherent(proj.id, mx, mz, sweepRadius + this._projectileHullPadding, out);
+        } else {
+          state.spatialHash.queryRadius(mx, mz, sweepRadius + this._projectileHullPadding, out);
+        }
+        candidates = out;
+      }
+      extra.length = 0;
+      this._admitProjectileSweepBodies(state, proj, start, end, extra);
+      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null);
+      bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget);
+      if (!bestTarget) {
+        this._considerProjectileNearMiss(proj, start, end, state);
+        if (limit.expired) {
+          proj.pos.x = end.x;
+          proj.pos.z = end.z;
+          proj.alive = false;
+        }
+        continue;
+      }
+      const bestHit = this._bestSegmentHitScratch;
+      proj.pos.x = bestHit.x;
+      proj.pos.z = bestHit.z;
+      const hitPos = { x: proj.pos.x, z: proj.pos.z };
+      // PQ-133.04: physics issues the trusted surface-contact receipt at the real seam. The
+      // receipt binds proj.id/target.id/tick and publishes exactly the payload's own values.
+      const receipt = surfaceContactFromBodies(proj, bestTarget, {
+        point: hitPos,
+        normal: projectileContactFrame(proj, bestTarget, hitPos).normal,
+        velocity: proj.vel,
+      }, state && Number.isInteger(state.tick) ? state.tick : 0);
+      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, hitPos, receipt));
+      proj.alive = false;
+      this._diag.sweptProjectileHits++;
+    }
+  },
+
+  _syncProjectileBroadphase(state) {
+    const index = state && state.entityIndex;
+    this._projectileHullPadding = 0;
+    for (const entity of index?.collidables || state.entityList || []) {
+      if (!entity?.alive || !entity.collides || entity.shield > 0 || entity.type === 'projectile') continue;
+      const manifest = resolveCollisionProxyManifest(entity);
+      this._projectileHullPadding = Math.max(this._projectileHullPadding,
+        projectileProxyRadius(entity, manifest) - (entity.radius || 0));
+    }
+    const ready = !!(index && index.__spacefaceEntityIndexV1
+      && Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics));
+    this._projectileBroadphaseReady = ready;
+    if (!ready) return;
+    if (!this._projectileBroadphase) this._projectileBroadphase = new SpatialHash(64);
+    this._projectileBroadphase.rebuildLayers(
+      index.spatialStatics,
+      index.spatialDynamics,
+      index.spatialStaticVersion || 0,
+      index.spatialDynamicsVersion || 0,
+    );
+  },
+
+  _bestProjectileTarget(proj, start, end, list, bestTarget) {
+    if (!list || list.length === 0) return bestTarget;
+    const hit = this._segmentHitScratch;
+    const bestHit = this._bestSegmentHitScratch;
+    for (let i = 0; i < list.length; i++) {
+      const tgt = list[i];
+      if (!tgt || !tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile' || !physicsBodyNativeReady(tgt)) continue;
+      if (proj.ownerId === tgt.id && !opticSplinterHitsOwner(proj)) continue;
+      // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
+      // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
+      if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
+      if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
+      const manifest = tgt.shield > 0 ? null : resolveCollisionProxyManifest(tgt);
+      if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + projectileProxyRadius(tgt, manifest))) continue;
+      // The broad circle is not a solid hull: authored/measured compounds can have
+      // open mouths and corridors. Active shields retain their spherical interception
+      // (including player shield protection); damage/attribution still uses the same owner.
+      if (manifest && !sweepCollisionProxyInto(hit, tgt, manifest, start, end, proj.radius || 0)) continue;
+      if (!bestTarget || hit.t < bestHit.t) {
+        bestTarget = tgt;
+        copySegmentHit(bestHit, hit);
+      }
+    }
+    return bestTarget;
+  },
+
+  /**
+   * Field rocks and shelved far actors are not combat bodies until something
+   * touches them. A projectile segment is that touch: promote the body this
+   * tick so the same sweep can hit it, on the glass or past it.
+   */
+  _admitProjectileSweepBodies(state, proj, start, end, into) {
+    const wake = this._projectileWake || (this._projectileWake = []);
+    const radius = proj.radius || 0;
+    for (let i = 0; i < wake.length; i++) {
+      const entity = wake[i];
+      if (!entity || entity.alive === false) continue;
+      into.push(entity);
+    }
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const reach = Math.hypot(dx, dz) * 0.5 + radius + 120;
+    if (!(reach > 0)) return;
+    const ids = this._sweepAdmitIds || (this._sweepAdmitIds = []);
+    const hit = this._segmentHitScratch;
+    // The step-level union rows from sweepProjectiles replace the per-projectile grid query
+    // when this segment sits inside the union bbox (a projectile spawned mid-sweep does not);
+    // rows outside this segment still get filtered by segmentCircleHitInto exactly as before.
+    const cx = (start.x + end.x) * 0.5;
+    const cz = (start.z + end.z) * 0.5;
+    const covered = this._sweepUnionBoundsX0 <= cx - reach && cx + reach <= this._sweepUnionBoundsX1
+      && this._sweepUnionBoundsZ0 <= cz - reach && cz + reach <= this._sweepUnionBoundsZ1;
+    let rocks;
+    if (covered) {
+      rocks = this._sweepUnionRocksLive || EMPTY_SWEEP_LIST;
+    } else {
+      const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
+      center.x = cx;
+      center.z = cz;
+      rocks = queryAsteroidField(
+        state,
+        center,
+        reach,
+        this._fieldQueryScratch || (this._fieldQueryScratch = []),
+      );
+    }
+    ids.length = 0;
+    for (let i = 0; i < rocks.length; i++) {
+      const rec = rocks[i];
+      if (!rec || rec.alive === false || !rec.pos) continue;
+      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+      ids.push(rec.id);
+    }
+    const helpers = this.helpers;
+    for (let i = 0; i < ids.length; i++) {
+      const entity = promoteAsteroidFieldRock(state, ids[i], helpers, 'projectile');
+      if (!entity || entity.alive === false) continue;
+      wake.push(entity);
+      into.push(entity);
+    }
+    const actors = covered
+      ? (this._sweepUnionActorsLive || EMPTY_SWEEP_LIST)
+      : queryFarActors(
+        state,
+        this._sweepQueryCenter,
+        reach,
+        this._farQueryScratch || (this._farQueryScratch = []),
+      );
+    ids.length = 0;
+    for (let i = 0; i < actors.length; i++) {
+      const rec = actors[i];
+      if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+      ids.push(rec.id);
+    }
+    for (let i = 0; i < ids.length; i++) {
+      const entity = promoteFarActor(state, ids[i], helpers);
+      if (!entity || entity.alive === false) continue;
+      wake.push(entity);
+      into.push(entity);
+    }
+  },
+
+  _considerProjectileNearMiss(proj, start, end, state) {
+    if (!this.bus || this._nearMissEmitted.has(proj)) return;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    if (!player || !player.alive || !player.pos || proj.ownerId === player.id) return;
+    if (proj.team != null && player.team != null && proj.team === player.team) return;
+    const hitRadius = (proj.radius || 0) + (player.radius || 0);
+    const closest = closestPointOnSegmentInto(this._nearMissClosestScratch, start, end, player.pos);
+    if (closest.distance <= hitRadius || closest.distance > hitRadius + PLAYER_PROJECTILE_NEAR_MISS_MARGIN) return;
+    this._nearMissEmitted.add(proj);
+    const pd = proj.data || {};
+    // INF-049 — relative speed at the crossing: a railgun and a lobbed shell at the same
+    // distance must not crack alike. Player-relative, so a chase-tail round reads slower.
+    const pvx = Number(proj.vel && proj.vel.x) || 0;
+    const pvz = Number(proj.vel && proj.vel.z) || 0;
+    const plvx = Number(player.vel && player.vel.x) || 0;
+    const plvz = Number(player.vel && player.vel.z) || 0;
+    this.bus.emit('projectile:nearMiss', {
+      projectileId: proj.id,
+      ownerId: proj.ownerId == null ? null : proj.ownerId,
+      targetId: player.id,
+      weaponId: pd.weaponId || null,
+      damageType: pd.damageType || 'kinetic',
+      distance: closest.distance,
+      speed: Math.hypot(pvx - plvx, pvz - plvz),
+      pos: { x: closest.x, z: closest.z },
+      // A freshly spawned or stationary round sweeps a zero-length segment; its velocity is the
+      // truthful cue direction, and a dead stop reports none rather than a zero vector the schema
+      // rejects.
+      direction: (() => {
+        const seg = segmentDirection(start, end);
+        if (seg.x !== 0 || seg.z !== 0) return seg;
+        const vx = Number(proj.vel && proj.vel.x) || 0;
+        const vz = Number(proj.vel && proj.vel.z) || 0;
+        const vl = Math.hypot(vx, vz);
+        return vl > 1e-9 ? { x: vx / vl, z: vz / vl } : null;
+      })(),
+      tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
+    });
+    this._diag.nearMissReceipts++;
+  },
+
+  resolvePair(a, b, dist, dx, dz, bus, state) {
+    const ta = a.type, tb = b.type;
+    // projectile hits
+    if (ta === 'projectile' || tb === 'projectile') {
+      const proj = ta === 'projectile' ? a : b;
+      const tgt = ta === 'projectile' ? b : a;
+      if (tgt.type === 'projectile') return;
+      if (proj.ownerId === tgt.id && !opticSplinterHitsOwner(proj)) return; // never hit owner (optic splinters exempt)
+      // PQ-133.04: physics issues the trusted surface-contact receipt at the real seam.
+      const hitPos = { x: proj.pos.x, z: proj.pos.z };
+      const receipt = surfaceContactFromBodies(proj, tgt, {
+        point: hitPos,
+        normal: projectileContactFrame(proj, tgt, hitPos).normal,
+        velocity: proj.vel,
+      }, state && Number.isInteger(state.tick) ? state.tick : 0);
+      bus.emit('projectile:hit', projectileHitPayload(proj, tgt, hitPos, receipt));
+      proj.alive = false;
+      return;
+    }
+    // pickups
+    if (ta === 'pickup' || tb === 'pickup') {
+      const pk = ta === 'pickup' ? a : b;
+      const col = ta === 'pickup' ? b : a;
+      if (col.type !== 'ship' && col.type !== 'drone') return;
+      this._applyPickupCollection(pk, col, bus, state);
+      return;
+    }
+    // station hull contact — soft, no physical push. Dock-range enter/exit is tracked once per
+    // frame in updateDockRange() so the UI receives both true and false transitions.
+    if (ta === 'station' || tb === 'station') {
+      // soft bounce off station hull
+      const material = pairMaterialInto(this._pairMaterialScratch, a, b);
+      const n = contactNormalInto(a, b, dist, dx, dz, _contactNormalScratch);
+      const nx = n.x, nz = n.z;
+      const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
+      pushApart(a, b, dist, dx, dz, material.push);
+      const impulseMag = impulse(a, b, nx, nz, material);
+      _contactPosScratch.x = a.pos.x; _contactPosScratch.z = a.pos.z;
+      emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
+      return;
+    }
+    // ship/ship and ship/asteroid: separate + restitution impulse
+    const material = pairMaterialInto(this._pairMaterialScratch, a, b);
+    const n = contactNormalInto(a, b, dist, dx, dz, _contactNormalScratch);
+    const nx = n.x, nz = n.z;
+    const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
+    pushApart(a, b, dist, dx, dz, material.push);
+    const impulseMag = impulse(a, b, nx, nz, material);
+    _contactPosScratch.x = a.pos.x; _contactPosScratch.z = a.pos.z;
+    emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
+  },
+
+  updateDockRange(state) {
+    const player = state.entities.get(state.playerId);
+    let nextStationId = null;
+    let nextDist = Infinity;
+    let nextGate = null;
+    let nextGateDist = Infinity;
+
+    if (player && player.alive) {
+      const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
+      const playerSpeed = Math.hypot(
+        player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0,
+        player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0,
+      );
+      for (const st of stations) {
+        if (!st.alive || st.type !== 'station') continue;
+        const data = st.data || {};
+        if (data.isGate) {
+          const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
+          const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
+          if (d <= range + 28 && d < nextGateDist) {
+            nextGateDist = d;
+            nextGate = st;
+          }
+          continue;
+        }
+        if (!data.stationId) continue;
+        // PQ-008 truthful exterior docking: stations declaring a collisionProxyManifest dock at
+        // their berth, not at a forgiving center radius. The berth gate requires proximity AND a
+        // slow approach; everything else about the dock:range seam is unchanged.
+        // SF-130: the anchor is the berth for hulls whose planar envelope clears the pocket,
+        // or the corridor-axis mooring standoff for hulls too deep for it — the same prompt
+        // and gates, resolved from the station's real collision geometry each tick.
+        const manifest = resolveCollisionProxyManifest(st);
+        if (manifest && manifest.docking) {
+          const anchor = resolveDockAnchor(st, manifest, player);
+          if (!anchor) continue;
+          const dAnchor = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
+          if (dAnchor <= anchor.dockRadius && playerSpeed <= anchor.speedGate && dAnchor < nextDist) {
+            nextDist = dAnchor;
+            nextStationId = data.stationId;
+          }
+          continue;
+        }
+        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
+        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
+        if (d <= range && d < nextDist) {
+          nextDist = d;
+          nextStationId = data.stationId;
+        }
+      }
+    }
+
+    if (nextStationId !== this._dockStationId) {
+      if (this._dockStationId) {
+        this.bus.emit('dock:range', { stationId: this._dockStationId, shipId: state.playerId, inRange: false });
+      }
+      this._dockStationId = nextStationId;
+      if (nextStationId) {
+        this.bus.emit('dock:range', { stationId: nextStationId, shipId: state.playerId, inRange: true });
+      }
+    }
+
+    const nextGateId = nextGate ? nextGate.id : null;
+    if (nextGateId !== this._gateEntityId) {
+      if (this._gateEntityId) this.bus.emit('gate:range', { gateId: this._gateEntityId, shipId: state.playerId, inRange: false });
+      this._gateEntityId = nextGateId;
+      if (nextGate) {
+        const data = nextGate.data || {};
+        this.bus.emit('gate:range', {
+          gateId: nextGate.id,
+          shipId: state.playerId,
+          inRange: true,
+          gateTo: data.gateTo || null,
+          name: data.name || 'Jump Gate',
+        });
+      }
+    }
+  },
+
+  _syncOptionalBackend(dt, state) {
+    const backend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
+    this._diag.backend = backend === 'rapier' ? 'rapier' : 'custom';
+    if (backend !== 'rapier') {
+      this._disableRapierBackend();
+      return;
+    }
+    if (!this._rapierInit) {
+      const token = ++this._rapierToken;
+      this._rapierInit = import('./rapierCollisionWorld.js')
+        .then((m) => m.createRapierCollisionWorld())
+        .then((backendWorld) => {
+          const currentBackend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
+          if (token !== this._rapierToken || currentBackend !== 'rapier') {
+            if (backendWorld && typeof backendWorld.dispose === 'function') backendWorld.dispose();
+            return null;
+          }
+          this._rapier = backendWorld;
+          return backendWorld;
+        })
+        .catch((err) => {
+          if (token === this._rapierToken) {
+            console.warn('[physics] Rapier backend failed; falling back to custom collision', err);
+            this._rapier = null;
+            this._rapierInit = null;
+            this._diag.backend = 'custom';
+          }
+          return null;
+        });
+    }
+    if (!this._rapier) return;
+    this._rapier.syncFromEntities(state.entityList);
+    this._rapier.step(dt);
+    const rdiag = this._rapier.diagnostics();
+    this._diag.rapierReady = true;
+    this._diag.bodies = rdiag.bodies;
+    this._diag.colliders = rdiag.colliders;
+    this._diag.ccdBodies = rdiag.ccdBodies || 0;
+    this._diag.rapierContacts = rdiag.contacts || 0;
+    this._diag.rapierEvents = rdiag.collisionEvents || 0;
+  },
+
+  _disableRapierBackend() {
+    if (this._rapier || this._rapierInit) this._rapierToken++;
+    if (this._rapier && typeof this._rapier.dispose === 'function') this._rapier.dispose();
+    this._rapier = null;
+    this._rapierInit = null;
+    this._diag.rapierReady = false;
+    this._diag.bodies = 0;
+    this._diag.colliders = 0;
+    this._diag.ccdBodies = 0;
+    this._diag.rapierContacts = 0;
+    this._diag.rapierEvents = 0;
+  },
+
+  _nextPairStamp() {
+    let stamp = this._pairStamp + 1;
+    if (stamp > 0x7fffffff) {
+      this._pairMarks.clear();
+      stamp = 1;
+    }
+    this._pairStamp = stamp;
+    return stamp;
+  },
+
+  _pairSeen(aId, bId, stamp) {
+    const lo = aId < bId ? aId : bId;
+    const hi = aId < bId ? bId : aId;
+    let row = this._pairMarks.get(lo);
+    if (!row) { row = new Map(); this._pairMarks.set(lo, row); }
+    if (row.get(hi) === stamp) return true;
+    row.set(hi, stamp);
+    return false;
+  },
+};
+
+function usesSg02DynamicAuthority(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  return gameplay && gameplay.physicsBackend === 'rapier-dynamic';
+}
+
+function worldFrameOrigin(state) {
+  const origin = state && state.world && state.world.frameOrigin;
+  return origin && typeof origin === 'object' ? origin : ZERO_FRAME_ORIGIN;
+}
+
+function worldFrameOriginSeq(state) {
+  const seq = state && state.world && state.world.frameOriginSeq;
+  return Number.isSafeInteger(seq) && seq >= 0 ? seq : 0;
+}
+
+/**
+ * Broad-phase membership is the same causal active set as Rapier. Far dormant
+ * colliders stay in entityList; they are not hashed, queried, or solved.
+ */
+export function spatialHashLayersFromState(state) {
+  const activity = ensureActivityClassified(state);
+  if (activity && Array.isArray(activity.physicsStatics) && Array.isArray(activity.physicsDynamics)) {
+    return {
+      statics: activity.physicsStatics,
+      dynamics: activity.physicsDynamics,
+      staticVersion: activity.physicsStaticVersion || 0,
+      dynamicsVersion: activity.physicsDynamicsVersion || 0,
+    };
+  }
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready &&
+    Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics)) {
+    return {
+      statics: index.spatialStatics,
+      dynamics: index.spatialDynamics,
+      staticVersion: index.spatialStaticVersion || 0,
+      dynamicsVersion: index.spatialDynamicsVersion || 0,
+    };
+  }
+  return null;
+}
+
+// FB-088 — the dynamic-hash rebuild gate. The layered hash already records every dynamic
+// member's cell span, so "did a body change cells" reduces to comparing an integer coverage
+// mix of the authoritative dynamics list against the mix the last committed sync saw. Any
+// cell crossing, spawn/despawn, death, or dynamic-set membership move perturbs the mix;
+// sliding inside the same cells does not. Statics ride `physicsStaticVersion` (the layered
+// rebuild still applies the static diff itself when the gate fires), and a forced rescan
+// every SPATIAL_HASH_FORCE_SYNC_TICKS bounds any silent writer that dodged every signal —
+// including foreign pose writes that skip the dirty journal entirely.
+const SPATIAL_HASH_GATE = new WeakMap();
+// state -> { mix, members, indexVersion, staticVersion, lastSyncTick }
+const SPATIAL_HASH_FORCE_SYNC_TICKS = 60;
+
+function spatialHashGateFor(state) {
+  let gate = SPATIAL_HASH_GATE.get(state);
+  if (!gate) {
+    gate = { mix: 0, members: -1, indexVersion: -1, staticVersion: -1, lastSyncTick: -1 };
+    SPATIAL_HASH_GATE.set(state, gate);
+  }
+  return gate;
+}
+
+function entityIndexGateVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+/**
+ * Rolling integer checksum over each live collider's cell span (id-mixed so a same-cells
+ * member swap still perturbs it). Pure integer math — identical inputs give an identical
+ * flag on every host and every backend.
+ */
+function dynamicMembershipMix(cell, dynamics) {
+  const c = Number.isFinite(cell) && cell > 0 ? cell : 64;
+  let mix = dynamics.length | 0;
+  for (let i = 0; i < dynamics.length; i++) {
+    const e = dynamics[i];
+    if (!e || e.alive === false || !e.collides || !e.pos || e.id == null) {
+      mix = Math.imul(mix ^ 0x5bd1e995, 16777619) | 0;
+      continue;
+    }
+    const r = e.radius || 0;
+    const x0 = Math.floor((e.pos.x - r) / c);
+    const x1 = Math.floor((e.pos.x + r) / c);
+    const z0 = Math.floor((e.pos.z - r) / c);
+    const z1 = Math.floor((e.pos.z + r) / c);
+    mix = Math.imul(mix ^ (
+      Math.imul(x0, 73856093) ^ Math.imul(x1, 19349663)
+      ^ Math.imul(z0, 83492791) ^ Math.imul(z1, -1640531527)
+      ^ Math.imul(e.id, -2128831035) ^ Math.imul((r * 1024) | 0, -1028477387)
+    ), 16777619) | 0;
+  }
+  return mix;
+}
+
+/**
+ * The per-tick dirty flag the packet asks for, evaluated against the coverage the last
+ * committed sync recorded. True while a queued change has not been rebuilt yet — so a query
+ * arriving after a dirty tick still sees the flag up until physics runs the rebuild.
+ * Fail-open everywhere (missing hash, missing index/layer authority) so callers that rely
+ * on the legacy full rebuild keep their eager path.
+ */
+export function shouldMaintainDynamicSpatialHash(state) {
+  const hash = state && state.spatialHash;
+  if (!hash || typeof hash._syncDynamicLayer !== 'function') return true;
+  const layers = spatialHashLayersFromState(state);
+  if (!layers || !Array.isArray(layers.dynamics)) return true;
+  const gate = spatialHashGateFor(state);
+  if (gate.lastSyncTick < 0) return true;
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (tick - gate.lastSyncTick >= SPATIAL_HASH_FORCE_SYNC_TICKS) return true;
+  const staticVersion = Number.isFinite(layers.staticVersion) ? layers.staticVersion : 0;
+  if (staticVersion !== gate.staticVersion) return true;
+  // Spawn/despawn/index rebuild: sanctioned membership moves bump the index version.
+  const indexVersion = entityIndexGateVersion(state);
+  if (indexVersion != null && indexVersion !== gate.indexVersion) return true;
+  const members = hash._dynamicMembers ? hash._dynamicMembers.size : 0;
+  if (members !== gate.members) return true;
+  return dynamicMembershipMix(hash.cell, layers.dynamics) !== gate.mix;
+}
+
+function shouldUsePickupSpatialQuery(state, pickups, collectors) {
+  return hasActiveSpatialHash(state && state.spatialHash) &&
+    pickups.length * collectors.length >= PICKUP_SPATIAL_PAIR_THRESHOLD;
+}
+
+function isLivePickup(e) {
+  return !!(e && e.alive && e.collides && e.type === 'pickup' && e.pos);
+}
+
+function isPickupCollector(e) {
+  return !!(e && e.alive && e.collides && (e.type === 'ship' || e.type === 'drone') && e.pos);
+}
+
+function maxLivePickupRadius(pickups) {
+  let radius = 0;
+  for (const pk of pickups) {
+    if (isLivePickup(pk) && (pk.radius || 0) > radius) radius = pk.radius || 0;
+  }
+  return radius;
+}
+
+function maxLiveCollectorRadius(collectors) {
+  let radius = 0;
+  for (const col of collectors) {
+    if (isPickupCollector(col) && (col.radius || 0) > radius) radius = col.radius || 0;
+  }
+  return radius;
+}
+
+function shouldPublishSg02Snapshot(state) {
+  if (typeof window === 'undefined') return true;
+  const runtime = state && state.physicsRuntime;
+  return !!(runtime && runtime.publishSg02Snapshot === true)
+    || window.__SF_PUBLISH_SG02_SNAPSHOT__ === true;
+}
+
+function shouldPublishSg02Telemetry(state) {
+  if (typeof window === 'undefined') return true;
+  const runtime = state && state.physicsRuntime;
+  return !!(runtime && runtime.publishSg02Telemetry === true)
+    || window.__SF_PUBLISH_SG02_TELEMETRY__ === true;
+}
+
+const _fenceScratch = { x: 0, z: 0 };
+const FENCE_SECTOR_FALLBACK_RADIUS = 4000;
+
+/**
+ * Boot `state.bounds` is a Helios-origin disk. Focused Rapier proofs (and any tick before
+ * world.js publishes corridor bounds) still set `currentSectorId` to Ceres. Herding those
+ * hulls toward {0,0} is not a sector fence — it is an origin attractor. Use the current
+ * sector's playable envelope until world ownership replaces `state.bounds`.
+ */
+function fenceBoundsForState(state) {
+  const b = state && state.bounds;
+  if (!b || !b.center) return b || null;
+  const sectorId = state.world && state.world.currentSectorId;
+  if (!sectorId) return b;
+  const origin = sectorGlobalOrigin(sectorId);
+  const dx = origin.x - (Number(b.center.x) || 0);
+  const dz = origin.z - (Number(b.center.z) || 0);
+  const radius = Number(b.radius) || 0;
+  if (Math.hypot(dx, dz) <= radius) return b;
+  if (isCorridorSector(sectorId)) return corridorPlayableBounds();
+  const r = Math.max(radius, FENCE_SECTOR_FALLBACK_RADIUS);
+  return { center: origin, radius: r, hardRadius: r + 500 };
+}
+
+/** Inward Δv for a ship past the soft radius; ramps to 60 WU/s² at the hard radius. */
+function sectorFenceDeltaV(b, e, dt, out) {
+  const dx = e.pos.x - b.center.x, dz = e.pos.z - b.center.z;
+  const d = Math.hypot(dx, dz);
+  if (!(d > b.radius)) return null;
+  const over = (d - b.radius) / Math.max(1, b.hardRadius - b.radius);
+  const k = 60 * Math.min(1, over) * dt;
+  out.x = -(dx / d) * k;
+  out.z = -(dz / d) * k;
+  return out;
+}
+
+function physicsMovableEntities(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.movables) return index.movables;
+  return (state && state.entityList) || [];
+}
+
+function spatialCellSpanChanged(hash, entity, nextX, nextZ) {
+  if (!hash || !entity || !entity.pos) return true;
+  const cell = Number.isFinite(hash.cell) && hash.cell > 0 ? hash.cell : 64;
+  const radius = entity.radius || 0;
+  const beforeX0 = Math.floor((entity.pos.x - radius) / cell);
+  const beforeX1 = Math.floor((entity.pos.x + radius) / cell);
+  const beforeZ0 = Math.floor((entity.pos.z - radius) / cell);
+  const beforeZ1 = Math.floor((entity.pos.z + radius) / cell);
+  const afterX0 = Math.floor((nextX - radius) / cell);
+  const afterX1 = Math.floor((nextX + radius) / cell);
+  const afterZ0 = Math.floor((nextZ - radius) / cell);
+  const afterZ1 = Math.floor((nextZ + radius) / cell);
+  return beforeX0 !== afterX0 || beforeX1 !== afterX1 || beforeZ0 !== afterZ0 || beforeZ1 !== afterZ1;
+}
+
+function createDeferredSg02CombatPhysicsPort(host) {
+  const owner = () => host && host._sg02;
+  return Object.freeze({
+    applyImpulse(input) {
+      const runtime = owner();
+      return runtime ? runtime.applyImpulse(input) : false;
+    },
+    applyTorqueImpulse(input) {
+      const runtime = owner();
+      return runtime ? runtime.applyTorqueImpulse(input) : false;
+    },
+    createAttachment(input) {
+      const runtime = owner();
+      return runtime ? runtime.createAttachment(input) : false;
+    },
+    setAttachmentReel(input) {
+      const runtime = owner();
+      return runtime ? runtime.setAttachmentReel(input) : false;
+    },
+    cutAttachment(input) {
+      const runtime = owner();
+      return runtime ? runtime.cutAttachment(input) : false;
+    },
+    sampleSolidContacts(entityId, options) {
+      const runtime = owner();
+      return runtime ? runtime.sampleSolidContacts(entityId, options) : [];
+    },
+    getAttachmentTelemetry(input) {
+      const runtime = owner();
+      return runtime ? runtime.getAttachmentTelemetry(input) : null;
+    },
+  });
+}
+
+const MINE_COLLISION_CATEGORY = 1 << 8;
+
+function maskOf(e) {
+  switch (e.type) {
+    case 'ship': return Masks.SHIP;
+    case 'asteroid': return Masks.ASTEROID;
+    case 'station': return Masks.STATION;
+    case 'projectile': return Masks.PROJECTILE;
+    case 'pickup': return Masks.PICKUP;
+    case 'drone': return Masks.DRONE;
+    case 'payload': return Masks.PAYLOAD;
+    case 'wreck': return Masks.WRECK;
+    case 'mine': return MINE_COLLISION_CATEGORY;
+    // PQ-011: anchor seeds share the deployed-device category — projectile sweeps/hits resolve
+    // (the seed spawns with collisionMask PROJECTILE), ships never broadphase against it.
+    case 'massSeed': return MINE_COLLISION_CATEGORY;
+    case 'masslineSnareAnchor': return MINE_COLLISION_CATEGORY;
+    default: return 0;
+  }
+}
+
+function canCollide(a, b) {
+  return !!(a.collisionMask & maskOf(b));
+}
+
+function shouldStartBroadphasePairSearch(e) {
+  return e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'pickup';
+}
+
+/**
+ * The approach unit vector and contact normal a projectile:hit payload publishes. Shared with
+ * the surface-contact receipt seams (sweepProjectiles / resolvePair) so the physics-issued
+ * receipt carries exactly the values the payload publishes (PQ-133.04).
+ */
+function projectileContactFrame(proj, target, pos) {
+  const velocityX = Number(proj.vel && proj.vel.x);
+  const velocityZ = Number(proj.vel && proj.vel.z);
+  const rotation = Number(proj.rot) || 0;
+  const vx = Number.isFinite(velocityX) ? velocityX : Math.cos(rotation);
+  const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
+  const speed = Math.hypot(vx, vz) || 1;
+  const approach = { x: vx / speed, z: vz / speed };
+  let nx = target && target.pos ? Number(pos.x) - Number(target.pos.x) : -approach.x;
+  let nz = target && target.pos ? Number(pos.z) - Number(target.pos.z) : -approach.z;
+  const normalLength = Math.hypot(nx, nz);
+  if (normalLength > 1e-8) {
+    nx /= normalLength;
+    nz /= normalLength;
+  } else {
+    nx = -approach.x;
+    nz = -approach.z;
+  }
+  return { approach, normal: { x: nx, z: nz } };
+}
+
+export function projectileHitPayload(proj, targetOrId, pos, receipt) {
+  const pd = proj.data || {};
+  const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
+  const targetId = target ? target.id : targetOrId;
+  const velocityX = Number(proj.vel && proj.vel.x);
+  const velocityZ = Number(proj.vel && proj.vel.z);
+  const rotation = Number(proj.rot) || 0;
+  const vx = Number.isFinite(velocityX) ? velocityX : Math.cos(rotation);
+  const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
+  const frame = projectileContactFrame(proj, target, pos);
+  const payload = {
+    targetId,
+    projectileId: proj.id,
+    projectileVelocity: { x:vx,z:vz },
+    targetVelocity: target?.vel ? { x:target.vel.x,z:target.vel.z } : null,
+    ownerId: proj.ownerId,
+    damage: pd.damage || 0,
+    damageType: pd.damageType || 'kinetic',
+    pos,
+    approach: frame.approach,
+    normal: frame.normal,
+  };
+  if (receipt) payload.receipt = receipt;
+  if (pd.weaponId != null) payload.weaponId = pd.weaponId;
+  if (pd.damagePacket) payload.damagePacket = cloneDamagePacketWithHit(pd.damagePacket, pos, frame.approach, frame.normal);
+  return payload;
+}
+
+function cloneDamagePacketWithHit(packet, pos, approach, normal) {
+  const out = {
+    ...packet,
+    channels: { ...(packet.channels || {}) },
+    statuses: (packet.statuses || []).map((status) => ({ ...status })),
+    flags: packet.flags ? { ...packet.flags } : undefined,
+    source: packet.source ? { ...packet.source } : undefined,
+    hit: {
+      ...(packet.hit || {}),
+      pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+      approach: { ...approach },
+      normal: { ...normal },
+    },
+  };
+  if (packet.impulse) out.impulse = { ...packet.impulse };
+  return out;
+}
+
+function emitPickupCollected(bus, pk, col) {
+  const d = pk.data || {};
+  const payload = {
+    pickupId: pk.id,
+    collectorId: col.id,
+    kind: d.kind,
+    amount: d.amount,
+    commodityId: d.commodityId,
+    pos: { x: pk.pos.x, z: pk.pos.z },
+    ...(d.worldSiteId ? { worldSiteId: d.worldSiteId, worldSitePayloadId: d.worldSitePayloadId } : {}),
+  };
+  bus.emit('pickup:collected', payload);
+  return payload;
+}
+
+function invMass(e) { return (e.type === 'station' || e.type === 'asteroid') ? 0 : 1 / Math.max(0.1, e.mass); }
+
+function materialFor(e) {
+  return COLLISION_MATERIALS[e.type] || DEFAULT_MATERIAL;
+}
+
+function createPairMaterialRecord() {
+  return {
+    push: DEFAULT_MATERIAL.push,
+    restitution: DEFAULT_MATERIAL.restitution,
+    tangentDamping: DEFAULT_MATERIAL.tangentDamping,
+    impactScale: DEFAULT_MATERIAL.impactScale,
+  };
+}
+
+function pairMaterialInto(out, a, b) {
+  const ma = materialFor(a);
+  const mb = materialFor(b);
+  out.push = Math.min(ma.push, mb.push);
+  out.restitution = Math.min(ma.restitution, mb.restitution);
+  out.tangentDamping = Math.max(ma.tangentDamping, mb.tangentDamping);
+  out.impactScale = Math.min(ma.impactScale, mb.impactScale);
+  return out;
+}
+
+function applySurfaceResponse(e, nx, nz, material) {
+  const rel = e.vel.x * nx + e.vel.z * nz;
+  if (rel < 0) {
+    e.vel.x -= nx * rel * (1 + material.restitution);
+    e.vel.z -= nz * rel * (1 + material.restitution);
+  }
+  if (material.tangentDamping > 0) {
+    const vt = e.vel.x * -nz + e.vel.z * nx;
+    e.vel.x += nz * vt * material.tangentDamping;
+    e.vel.z -= nx * vt * material.tangentDamping;
+  }
+}
+
+function fallbackContactNormalInto(a, b, out) {
+  const aIsLo = a.id < b.id;
+  const lo = aIsLo ? a : b;
+  const hi = aIsLo ? b : a;
+  const rvx = ((hi.vel && hi.vel.x) || 0) - ((lo.vel && lo.vel.x) || 0);
+  const rvz = ((hi.vel && hi.vel.z) || 0) - ((lo.vel && lo.vel.z) || 0);
+  const rv2 = rvx * rvx + rvz * rvz;
+  let nx = 1, nz = 0;
+  if (rv2 > DEGENERATE_SEP2) {
+    const inv = 1 / Math.sqrt(rv2);
+    nx = rvx * inv;
+    nz = rvz * inv;
+  }
+  if (!aIsLo) {
+    nx = -nx;
+    nz = -nz;
+  }
+  out.x = nx;
+  out.z = nz;
+  return out;
+}
+
+function contactNormalInto(a, b, dist, dx, dz, out) {
+  const n2 = dx * dx + dz * dz;
+  if (n2 <= DEGENERATE_SEP2) return fallbackContactNormalInto(a, b, out);
+  out.x = dx / dist;
+  out.z = dz / dist;
+  return out;
+}
+
+function pushApart(a, b, dist, dx, dz, scale) {
+  const pen = (a.radius + b.radius) - dist;
+  if (pen <= 0) return;
+  const ima = invMass(a), imb = invMass(b);
+  const tot = ima + imb;
+  if (tot === 0) return;
+  const n = contactNormalInto(a, b, dist, dx, dz, _contactNormalScratch);
+  const nx = n.x, nz = n.z;
+  const push = pen * scale;
+  a.pos.x -= nx * push * (ima / tot); a.pos.z -= nz * push * (ima / tot);
+  b.pos.x += nx * push * (imb / tot); b.pos.z += nz * push * (imb / tot);
+}
+
+function impulse(a, b, nx, nz, material) {
+  const ima = invMass(a), imb = invMass(b);
+  const tot = ima + imb;
+  if (tot === 0) return 0;
+  const rvx = b.vel.x - a.vel.x, rvz = b.vel.z - a.vel.z;
+  const relN = rvx * nx + rvz * nz;
+  if (relN > 0) return 0;
+  const j = -(1 + material.restitution) * relN / tot;
+  a.vel.x -= j * nx * ima; a.vel.z -= j * nz * ima;
+  b.vel.x += j * nx * imb; b.vel.z += j * nz * imb;
+  if (material.tangentDamping > 0) {
+    const tx = -nz, tz = nx;
+    const relT = rvx * tx + rvz * tz;
+    const jt = -relT * material.tangentDamping / tot;
+    a.vel.x -= jt * tx * ima; a.vel.z -= jt * tz * ima;
+    b.vel.x += jt * tx * imb; b.vel.z += jt * tz * imb;
+  }
+  return Math.abs(j);
+}
+
+// emitPhysicsImpact is synchronous and non-reentrant — the trauma-call context literal it used
+// to allocate per contact lives here and never escapes the emit.
+const _impactTraumaCtx = {
+  mode: 'flight',
+  playerDeltaV: 0,
+  feelDeltaV: undefined,
+  preSolveClosingSpeed: undefined,
+  playerContact: false,
+};
+
+// The payload obeys the same contract: every listener reads its fields synchronously inside
+// the dispatch, and the one deferred consumer (collisionConsequences._deferCraftContact)
+// snapshots field-by-field via snapshotContactPayload — nothing retains the object past the
+// emit, so one refilled record replaces the per-contact literal + pos/normal objects.
+// Deferred presentation tails queue this pooled record past the emit — they receive the
+// emit-time clone below (pos/normal are pooled sub-objects, everything else is scalar).
+function snapshotImpactPayload(p) {
+  return { ...p, pos: { ...p.pos }, normal: { ...p.normal } };
+}
+// Optional measurement channels are deliberately NOT owned by the retained literal: an
+// unmeasured receipt field must stay a hole on the wire. `emitPhysicsImpact` writes the
+// key only when a finite value lands and deletes it otherwise, so neither a ghost key
+// nor a prior contact's measured value can leak into the emit.
+const _impactPayload = {
+  consequenceKernelVersion: 1,
+  backend: 'custom',
+  tick: 0,
+  aId: null,
+  bId: null,
+  pairKey: '',
+  dp: 0,
+  trauma: 0,
+  impulse: 0,
+  playerInvolved: false,
+  playerDeltaV: 0,
+  causalActorId: null,
+  pos: { x: 0, z: 0 },
+  normal: { x: 0, z: 0 },
+};
+
+// Pair keys are interned per unordered id pair — the nested lookup allocates nothing, so a
+// contact storm pays the `${a}\0${b}` template once per pair instead of once per contact.
+const _impactPairKeys = new Map();
+const _IMPACT_PAIR_KEY_MAX_OUTER = 1024;
+
+function impactPairKeyFor(aKey, bKey) {
+  const lo = aKey < bKey ? aKey : bKey;
+  const hi = aKey < bKey ? bKey : aKey;
+  let inner = _impactPairKeys.get(lo);
+  if (inner) {
+    const hit = inner.get(hi);
+    if (hit !== undefined) return hit;
+  } else {
+    if (_impactPairKeys.size >= _IMPACT_PAIR_KEY_MAX_OUTER) _impactPairKeys.clear();
+    inner = new Map();
+    _impactPairKeys.set(lo, inner);
+  }
+  const key = `${lo}\u0000${hi}`;
+  inner.set(hi, key);
+  return key;
+}
+
+function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options = {}) {
+  if (!bus || typeof bus.emit !== 'function') return 0;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('physics:impact', snapshotImpactPayload);
+  const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
+  if (!(dp > 0)) return 0;
+  const playerId = state && state.playerId;
+  const playerInvolved = playerId != null && (a.id === playerId || b.id === playerId);
+  let playerDeltaV = 0;
+  if (playerInvolved) {
+    const player = a.id === playerId ? a : b;
+    playerDeltaV = dp / Math.max(0.1, finiteOrZero(player && player.mass) || 1);
+  }
+  const ctx = _impactTraumaCtx;
+  ctx.mode = state && state.mode || 'flight';
+  ctx.playerDeltaV = playerDeltaV;
+  ctx.feelDeltaV = options.preSolveClosingSpeed;
+  ctx.preSolveClosingSpeed = options.preSolveClosingSpeed;
+  ctx.playerContact = playerInvolved;
+  const trauma = traumaFromContact(dp, ctx);
+  // audio/vfx/hud each used to re-derive the same `min\0max` pair string per emit to dedupe;
+  // the interned key is allocated once per unordered pair and reused by every consumer.
+  const aKey = String(a.id);
+  const bKey = String(b.id);
+  const payload = _impactPayload;
+  payload.backend = String(options.backend || 'custom');
+  payload.tick = Number.isFinite(options.tick) ? Math.max(0, Math.trunc(options.tick)) : Math.max(0, Math.trunc(state && state.tick || 0));
+  payload.aId = a.id;
+  payload.bId = b.id;
+  payload.pairKey = impactPairKeyFor(aKey, bKey);
+  payload.dp = dp;
+  payload.trauma = trauma;
+  payload.impulse = finiteOrZero(impulseMag);
+  payload.playerInvolved = playerInvolved;
+  payload.playerDeltaV = playerDeltaV;
+  payload.causalActorId = options.causalActorId == null ? null : options.causalActorId;
+  const payloadPos = payload.pos;
+  payloadPos.x = finiteOrZero(pos && pos.x);
+  payloadPos.z = finiteOrZero(pos && pos.z);
+  const payloadNormal = payload.normal;
+  const normX = finiteOrZero(options.normal && options.normal.x);
+  const normZ = finiteOrZero(options.normal && options.normal.z);
+  const normLen = Math.hypot(normX, normZ);
+  if (normLen > 1e-9) {
+    payloadNormal.x = normX / normLen;
+    payloadNormal.z = normZ / normLen;
+  } else {
+    payloadNormal.x = 0;
+    payloadNormal.z = 0;
+  }
+  // Every receipt field is rewritten each emit — an unmeasured channel loses its key so a
+  // prior contact's measured value can leak neither as a stale number nor as a ghost field.
+  setOptionalImpactChannel(payload, 'preSolveClosingSpeed', options.preSolveClosingSpeed);
+  setOptionalImpactChannel(payload, 'appliedPlayerDeltaV', options.appliedPlayerDeltaV);
+  // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field
+  // stays a hole rather than becoming a confident zero.
+  setOptionalImpactChannel(payload, 'solverPlayerHeadingRad', options.solverPlayerHeadingRad);
+  setOptionalImpactChannel(payload, 'solverPlayerYawRateKick', options.solverPlayerYawRateKick);
+  setOptionalImpactChannel(payload, 'solverPlayerCourseRad', options.solverPlayerCourseRad);
+  setOptionalImpactChannel(payload, 'appliedPlayerHeadingRad', options.appliedPlayerHeadingRad);
+  setOptionalImpactChannel(payload, 'appliedPlayerCourseRad', options.appliedPlayerCourseRad);
+  bus.emit('physics:impact', payload);
+  return dp;
+}
+
+// An unmeasured channel is a hole, not an undefined value: key presence on the wire is the
+// contract (`'solverPlayerHeadingRad' in payload` must be false when nothing was measured),
+// and deleting the leftover key is also what stops a prior emit's number leaking forward.
+function setOptionalImpactChannel(payload, key, value) {
+  if (Number.isFinite(value)) payload[key] = value;
+  else delete payload[key];
+}
+
+function directContactImpactOptions(out, state, a, b, nx, nz) {
+  out.tick = Math.max(0, Math.trunc(state && state.tick || 0));
+  out.normal.x = nx;
+  out.normal.z = nz;
+  out.causalActorId = directContactCausalActorId(
+    a.id,
+    b.id,
+    a.vel && a.vel.x,
+    a.vel && a.vel.z,
+    b.vel && b.vel.x,
+    b.vel && b.vel.z,
+    nx,
+    nz,
+  );
+  // Always rewrite the scratch field so a prior pair cannot leak into this emit.
+  out.preSolveClosingSpeed = preSolveRadialClosingSpeed(
+    a.vel && a.vel.x,
+    a.vel && a.vel.z,
+    b.vel && b.vel.x,
+    b.vel && b.vel.z,
+    finiteOrZero(b.pos && b.pos.x) - finiteOrZero(a.pos && a.pos.x),
+    finiteOrZero(b.pos && b.pos.z) - finiteOrZero(a.pos && a.pos.z),
+  );
+  return out;
+}
+
+function finiteOrZero(value) {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function createSegmentHitRecord() {
+  return { hit: false, t: 0, x: 0, z: 0, nx: 0, nz: 0 };
+}
+
+function copySegmentHit(out, hit) {
+  out.hit = hit.hit;
+  out.t = hit.t;
+  out.x = hit.x;
+  out.z = hit.z;
+  out.nx = hit.nx;
+  out.nz = hit.nz;
+  return out;
+}
+
+function previousPosInto(out, e, dt) {
+  if (e.prevPos && Number.isFinite(e.prevPos.x) && Number.isFinite(e.prevPos.z)) return e.prevPos;
+  out.x = e.pos.x - ((e.vel && e.vel.x) || 0) * dt;
+  out.z = e.pos.z - ((e.vel && e.vel.z) || 0) * dt;
+  return out;
+}
+
+function closestPointOnSegmentInto(out, start, end, point) {
+  const dx = end.x - start.x;
+  const dz = end.z - start.z;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-9
+    ? clamp01(((point.x - start.x) * dx + (point.z - start.z) * dz) / len2)
+    : 0;
+  out.x = start.x + dx * t;
+  out.z = start.z + dz * t;
+  out.distance = Math.hypot(out.x - point.x, out.z - point.z);
+  return out;
+}
+
+function segmentDirection(start, end) {
+  const dx = end.x - start.x;
+  const dz = end.z - start.z;
+  const length = Math.hypot(dx, dz);
+  return length > 1e-9 ? { x: dx / length, z: dz / length } : { x: 0, z: 0 };
+}
+
+function projectileSweepLimitInto(out, projectile, start, end) {
+  const data = projectile && projectile.data || {};
+  const origin = data.spawnPos || data.origin || null;
+  const maxDistance = projectileTravelLimit(data);
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z) || !(maxDistance > 0)) {
+    out.x = end.x;
+    out.z = end.z;
+    out.expired = false;
+    return true;
+  }
+  const sx = start.x - origin.x;
+  const sz = start.z - origin.z;
+  const ex = end.x - origin.x;
+  const ez = end.z - origin.z;
+  const max2 = maxDistance * maxDistance;
+  if (sx * sx + sz * sz >= max2) return false;
+  if (ex * ex + ez * ez <= max2) {
+    out.x = end.x;
+    out.z = end.z;
+    out.expired = false;
+    return true;
+  }
+
+  const dx = ex - sx;
+  const dz = ez - sz;
+  const a = dx * dx + dz * dz;
+  if (a <= 1e-9) return false;
+  const b = 2 * (sx * dx + sz * dz);
+  const c = sx * sx + sz * sz - max2;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return false;
+  const root = Math.sqrt(disc);
+  const t0 = (-b - root) / (2 * a);
+  const t1 = (-b + root) / (2 * a);
+  const t = t0 >= 0 && t0 <= 1 ? t0 : (t1 >= 0 && t1 <= 1 ? t1 : 1);
+  out.x = start.x + (end.x - start.x) * t;
+  out.z = start.z + (end.z - start.z) * t;
+  out.expired = true;
+  return true;
+}
+
+function segmentCircleHitInto(out, start, end, center, radius) {
+  const sx = start.x, sz = start.z;
+  const ex = end.x, ez = end.z;
+  const dx = ex - sx, dz = ez - sz;
+  const len2 = dx * dx + dz * dz;
+  if (len2 <= 0.000001) {
+    const ox = sx - center.x, oz = sz - center.z;
+    const d = Math.hypot(ox, oz) || 0.0001;
+    if (d > radius) {
+      out.hit = false;
+      return false;
+    }
+    out.hit = true;
+    out.t = 0;
+    out.x = sx;
+    out.z = sz;
+    out.nx = ox / d;
+    out.nz = oz / d;
+    return true;
+  }
+  const relX = sx - center.x;
+  const relZ = sz - center.z;
+  const r2 = radius * radius;
+  const startDist2 = relX * relX + relZ * relZ;
+  if (startDist2 <= r2) {
+    const d = Math.sqrt(startDist2);
+    const len = Math.sqrt(len2);
+    const nx = d > 0.0001 ? relX / d : -dx / len;
+    const nz = d > 0.0001 ? relZ / d : -dz / len;
+    out.hit = true;
+    out.t = 0;
+    out.x = center.x + nx * radius;
+    out.z = center.z + nz * radius;
+    out.nx = nx;
+    out.nz = nz;
+    return true;
+  }
+
+  const b = 2 * (relX * dx + relZ * dz);
+  const c = startDist2 - r2;
+  const disc = b * b - 4 * len2 * c;
+  if (disc < 0) {
+    out.hit = false;
+    return false;
+  }
+
+  const sqrtDisc = Math.sqrt(disc);
+  const invDenom = 1 / (2 * len2);
+  let t = (-b - sqrtDisc) * invDenom;
+  if (t < 0 || t > 1) {
+    t = (-b + sqrtDisc) * invDenom;
+    if (t < 0 || t > 1) {
+      out.hit = false;
+      return false;
+    }
+  }
+
+  const x = sx + dx * t;
+  const z = sz + dz * t;
+  const ox = x - center.x, oz = z - center.z;
+  const d = Math.hypot(ox, oz) || 0.0001;
+  const nx = ox / d, nz = oz / d;
+  out.hit = true;
+  out.t = t;
+  out.x = center.x + nx * radius;
+  out.z = center.z + nz * radius;
+  out.nx = nx;
+  out.nz = nz;
+  return true;
+}
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}

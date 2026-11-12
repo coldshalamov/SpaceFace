@@ -1,0 +1,47 @@
+{
+  "schema": "spaceface.graphics3d.unit2.materialTruthPreflight.v1",
+  "campaign": "GRAPHICS_3D unit 2 — cargo pod",
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "camera": "tools/blender/spaceface_chase_camera.py 60deg/FOV50 D=144 and D=58",
+  "liveChaseFinding": {
+    "pod_cargo_container": "4% frame width at D=144, 7% at D=58; reads as a ribbed fence with a cyan lamp on the roof, not a closed shipping can",
+    "hitchPlay": "10% frame width; mixed materials, wells, manufactured hull"
+  },
+  "componentReferenceDecision": "not_needed",
+  "referenceReason": "Role is the live hauler cargo can. Chase stills of the live GLB are the defect crop. No generated redesign sheet.",
+  "frozenIdentity": {
+    "pod_cargo_container": {
+      "root": "pod_cargo_container",
+      "mount": "MOUNT_Child",
+      "materials": ["Material_Hull", "Material_Mechanical", "Material_Accent"],
+      "envelopeGlTF": { "min": [-0.5, -0.125, -1.5], "max": [4.7, 2.125, 1.5] },
+      "forward": "+X"
+    }
+  },
+  "billedZones": [
+    {
+      "id": "can_roof_lid",
+      "asset": "pod_cargo_container",
+      "fiction": "Closed ISO roof. Chase looks down the long side, so a lid has to sit above the side ribs or the can photographs as a fence.",
+      "material": "mapped hull coating, same Material_Hull as the live shell",
+      "chaseMustShow": "a closed grey rectangle, not a comb of posts"
+    },
+    {
+      "id": "twist_lock_pockets",
+      "asset": "pod_cargo_container",
+      "fiction": "Four roof twist-lock pockets. Dark mechanical wells, not lamps.",
+      "material": "unmapped dark mechanical metal, roughness ~0.55",
+      "chaseMustShow": "four dark holes in the roof at D=58"
+    },
+    {
+      "id": "iso_corners_and_door",
+      "asset": "pod_cargo_container",
+      "fiction": "Corner castings and a door-end locking bar. That is how a stranger reads cargo instead of a gantry.",
+      "material": "mechanical castings, painted accent plate with emission off",
+      "chaseMustShow": "blocky corners and a painted ID, not a cyan coin"
+    }
+  ],
+  "allSupportedViewZonesClassified": false,
+  "workingScene": "tools/blender/build_graphics3d_unit2_cargo.py",
+  "gateScope": "whole_asset chase stills vs Hitch; MOUNT_Child frozen; no partsLibrary.js edit"
+}

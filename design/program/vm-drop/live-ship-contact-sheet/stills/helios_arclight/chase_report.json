@@ -1,0 +1,145 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/helios_arclight.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_arclight",
+  "focus": [
+    0.3444,
+    0.0,
+    -0.34
+  ],
+  "boundsMin": [
+    -16.1112,
+    -5.87,
+    -4.1
+  ],
+  "boundsMax": [
+    16.8,
+    5.87,
+    3.42
+  ],
+  "size": [
+    32.9112,
+    11.74,
+    7.52
+  ],
+  "lightScale": 3.0473,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 964,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 8176,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Hull_RemasterSeaEnamel",
+      "triangles": 1080,
+      "materials": [
+        "Material_Hull_RemasterSeaEnamel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Glass_RemasterOptical",
+      "triangles": 440,
+      "materials": [
+        "Material_Glass_RemasterOptical"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Emissive_Warm_RemasterRecess",
+      "triangles": 1320,
+      "materials": [
+        "Material_Emissive_Warm_RemasterRecess"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 240,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
+      "triangles": 88,
+      "materials": [
+        "Material_EngineCeramic_RemasterGlazed"
+      ]
+    },
+    {
+      "name": "LOD0_Gun_Assembly",
+      "triangles": 52,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 152,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 168,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 512,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 108,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 7399,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 3780,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 156,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 24635,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_arclight/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_arclight/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_arclight/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

@@ -1,0 +1,1910 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ore-sorter.anchor.socket-feed",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        5.199999809265137,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Feed",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.ore-sorter.node.ore-sorter",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        5.199999809265137,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.anchor.socket-grade-out",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Grade_Out",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.ore-sorter.node.ore-sorter",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ore-sorter",
+  "collisions": [
+    {
+      "id": "sf.render.ore-sorter.collision",
+      "nodeId": "sf.render.ore-sorter.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4d14d6a054df5605c92c67f55e46d634fc7c44e473c92dc60da48fba662213cf",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.205648031888725,
+          4.91311929603337,
+          2.150100722727524
+        ],
+        "min": [
+          -3.1500375915658547,
+          1.5002469120054158,
+          -1.8902358408285955
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ce4cc05e82277e7ffe36f05324f14219a6da57e136f577c454de6773566b4ea5",
+      "id": "sf.render.ore-sorter.node.bar-p.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.ore-sorter.flight-static-lane.1",
+      "nodeId": "sf.render.ore-sorter.node.bar-p",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          3.3803254542404755,
+          -0.9998426750108131,
+          0.4001564012839992
+        ],
+        "min": [
+          -3.3803051065059075,
+          -2.0003816650556057,
+          -0.4001564012839992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f72f9dd1c115ea4d964f761c8a1c9082537bc9c8783d4a318781bf1c32565875",
+      "id": "sf.render.ore-sorter.node.bar-p.primitive.1",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.ore-sorter.flight-static-lane.1",
+      "nodeId": "sf.render.ore-sorter.node.bar-p",
+      "primitiveIndex": 1,
+      "vertexCount": 180
+    },
+    {
+      "bounds": {
+        "max": [
+          2.854676217050844,
+          4.537824682994827,
+          0.7499972787379098
+        ],
+        "min": [
+          1.2679613743855185,
+          3.8622647821584897,
+          -0.7499972787379098
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "abc0d687aed1b32be87eba9bdc01b7438d3a02d272cd16eef6f50cf1e95fea54",
+      "id": "sf.render.ore-sorter.node.bar-p.primitive.2",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.ore-sorter.flight-static-lane.1",
+      "nodeId": "sf.render.ore-sorter.node.bar-p",
+      "primitiveIndex": 2,
+      "vertexCount": 660
+    },
+    {
+      "bounds": {
+        "max": [
+          4.754975162645457,
+          5.397480206315372,
+          2.1749625109729798
+        ],
+        "min": [
+          -4.754954814910889,
+          -0.9998426750108131,
+          -2.1749625109729798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a7d51c1c743810868c2d21cf04c2662c7464bba75e2c7f1f365823e99395c53",
+      "id": "sf.render.ore-sorter.node.bar-p.primitive.3",
+      "indexCount": 540,
+      "indexed": true,
+      "materialHash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.ore-sorter.flight-static-lane.1",
+      "nodeId": "sf.render.ore-sorter.node.bar-p",
+      "primitiveIndex": 3,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          4.943214416503906,
+          4.617737573783791,
+          2.250139823048524
+        ],
+        "min": [
+          -3.743316812256518,
+          -0.6190725490848776,
+          -2.250139823048524
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72a27e711cedc2c693e038104ef02dc8594325d12de5423e3a04a733ab1d3c2b",
+      "id": "sf.render.ore-sorter.node.bar-p.primitive.4",
+      "indexCount": 2400,
+      "indexed": true,
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.ore-sorter.flight-static-lane.1",
+      "nodeId": "sf.render.ore-sorter.node.bar-p",
+      "primitiveIndex": 4,
+      "vertexCount": 1440
+    },
+    {
+      "bounds": {
+        "max": [
+          4.45426591434328,
+          4.969946240594412,
+          1.9997460985764355
+        ],
+        "min": [
+          -3.254220323261097,
+          1.8299615799272908,
+          -1.9997460985764355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e897d037a9f5b346349e512abdf038f58940795a36cf799051aa62c93ed8255e",
+      "id": "sf.render.ore-sorter.node.bar-p.primitive.5",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.ore-sorter.flight-static-lane.1",
+      "nodeId": "sf.render.ore-sorter.node.bar-p",
+      "primitiveIndex": 5,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "id": "material:01f412e3f0fdec2e47df3503",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "id": "material:11ee3508b0192ad7582dd7fa",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "695c76668ce8672d176ef9f02fee907860d57dfaa883528137c2258347e01671",
+      "id": "material:695c76668ce8672d176ef9f0",
+      "name": "esk_paint_industrial_ochre",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
+      "id": "material:8e5e2555bf57e74391b1e9c5",
+      "name": "esk_light_mining",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "id": "material:b3f07a16d4766efd3b9f9cbd",
+      "name": "esk_ore_raw",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ore-sorter.node.bar-p",
+      "localTransform": [
+        4.8490846157073975,
+        0,
+        0,
+        0,
+        0,
+        4.8490846157073975,
+        0,
+        0,
+        0,
+        0,
+        4.8490846157073975,
+        0,
+        0.09412980079650879,
+        1.6985492706298828,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "bar_p",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        4.8490846157073975,
+        0,
+        0,
+        0,
+        0,
+        4.8490846157073975,
+        0,
+        0,
+        0,
+        0,
+        4.8490846157073975,
+        0,
+        0.09412980079650879,
+        1.6985492706298828,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.bar-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "bar_s",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.chute0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "chute0",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.chute1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "chute1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.chute2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "chute2",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.collision-hull",
+      "localTransform": [
+        4.849085807800293,
+        0,
+        0,
+        0,
+        0,
+        3.6986305713653564,
+        0,
+        0,
+        0,
+        0,
+        2.25,
+        0,
+        0.09421539306640625,
+        1.6986305713653564,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        4.849085807800293,
+        0,
+        0,
+        0,
+        0,
+        3.6986305713653564,
+        0,
+        0,
+        0,
+        0,
+        2.25,
+        0,
+        0.09421539306640625,
+        1.6986305713653564,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.feed-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "feed_0",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.feed-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "feed_1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.feed-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "feed_2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.grade0-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "grade0_lamp",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.grade1-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "grade1_lamp",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.grade2-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "grade2_lamp",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.hopper0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "hopper0",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.hopper1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "hopper1",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.hopper2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "hopper2",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.leg-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "leg-3",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.leg-3b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "leg-3b",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.leg4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "leg4",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.leg4b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "leg4b",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.ore-sorter",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "ore_sorter",
+      "nodeName": "ore_sorter",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.screen",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "screen",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.screen-rail-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "screen_rail_p",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.screen-rail-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "screen_rail_s",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.socket-feed",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        5.199999809265137,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Feed",
+      "nodeName": "SOCKET_Feed",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.599999904632568,
+        5.199999809265137,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ore-sorter.node.socket-grade-out",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Grade_Out",
+      "nodeName": "SOCKET_Grade_Out",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.ore-sorter.node.ore-sorter",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ore-sorter.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "a11145fbd7186a1286ff06b034ccd2240b9c2f1288dd52c70e49343785fdcdad"
+    },
+    "sourceGlb": {
+      "bytes": 28352,
+      "sha256": "50c0fab060cc465d117fa3d47322631c10d3a704d3024242d616ec6c9f3369f2",
+      "uri": "place_ore_sorter.glb"
+    },
+    "sourceManifest": {
+      "bytes": 341376,
+      "sha256": "cb5f963e7c42f166cc3f85fd8236c2d88bad42271635d9165315f072cf52fde7",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 32652,
+    "sha256": "c710296b7e2454838ce987caba5c57728f185a8e4a8df9f21a080a140382a20a",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.09412980079650879,
+        1.698549270629883,
+        0
+      ],
+      "max": [
+        4.943214416503906,
+        5.397480206315372,
+        2.250139823048524
+      ],
+      "min": [
+        -4.754954814910889,
+        -2.0003816650556057,
+        -2.250139823048524
+      ],
+      "size": [
+        9.698169231414795,
+        7.397861871370978,
+        4.500279646097048
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.599999904632568,
+          5.199999809265137,
+          0,
+          1
+        ],
+        "name": "SOCKET_Feed",
+        "planIndex": 30,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Feed",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Feed",
+            "recordIds": [
+              "sf.render.ore-sorter.anchor.socket-feed",
+              "sf.render.ore-sorter.node.socket-feed"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Grade_Out",
+        "planIndex": 31,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Grade_Out",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Grade_Out",
+            "recordIds": [
+              "sf.render.ore-sorter.anchor.socket-grade-out",
+              "sf.render.ore-sorter.node.socket-grade-out"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 4,
+      "mechanical": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "geology"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 32,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0.09412980079650879,
+          1.6985492706298828,
+          0,
+          1
+        ],
+        "name": "rendersfrenderore-sorterflight-static-lane1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0.09412980079650879,
+          1.6985492706298828,
+          0,
+          1
+        ],
+        "name": "rendersfrenderore-sorterflight-static-lane1_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0.09412980079650879,
+          1.6985492706298828,
+          0,
+          1
+        ],
+        "name": "rendersfrenderore-sorterflight-static-lane1_2",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0.09412980079650879,
+          1.6985492706298828,
+          0,
+          1
+        ],
+        "name": "rendersfrenderore-sorterflight-static-lane1_3",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0.09412980079650879,
+          1.6985492706298828,
+          0,
+          1
+        ],
+        "name": "rendersfrenderore-sorterflight-static-lane1_4",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0,
+          0,
+          0,
+          4.8490846157073975,
+          0,
+          0.09412980079650879,
+          1.6985492706298828,
+          0,
+          1
+        ],
+        "name": "rendersfrenderore-sorterflight-static-lane1_5",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_ore_sorter.glb"
+  },
+  "runtimeHash": "429df3606bb1d7d247687344cc0cab7ec91bd47b976b9ce8bbdc402693cb0e2a",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.943214416503906,
+          5.397480206315372,
+          2.250139823048524
+        ],
+        "min": [
+          -4.754954814910889,
+          -2.0003816650556057,
+          -2.250139823048524
+        ]
+      },
+      "id": "sf.render.ore-sorter.body",
+      "nodeIds": [
+        "sf.render.ore-sorter.node.bar-p",
+        "sf.render.ore-sorter.node.bar-s",
+        "sf.render.ore-sorter.node.chute0",
+        "sf.render.ore-sorter.node.chute1",
+        "sf.render.ore-sorter.node.chute2",
+        "sf.render.ore-sorter.node.collision-hull",
+        "sf.render.ore-sorter.node.feed-0",
+        "sf.render.ore-sorter.node.feed-1",
+        "sf.render.ore-sorter.node.feed-2",
+        "sf.render.ore-sorter.node.grade0-lamp",
+        "sf.render.ore-sorter.node.grade1-lamp",
+        "sf.render.ore-sorter.node.grade2-lamp",
+        "sf.render.ore-sorter.node.hopper0",
+        "sf.render.ore-sorter.node.hopper1",
+        "sf.render.ore-sorter.node.hopper2",
+        "sf.render.ore-sorter.node.leg-3",
+        "sf.render.ore-sorter.node.leg-3b",
+        "sf.render.ore-sorter.node.leg4",
+        "sf.render.ore-sorter.node.leg4b",
+        "sf.render.ore-sorter.node.ore-sorter",
+        "sf.render.ore-sorter.node.screen",
+        "sf.render.ore-sorter.node.screen-rail-p",
+        "sf.render.ore-sorter.node.screen-rail-s",
+        "sf.render.ore-sorter.node.socket-feed",
+        "sf.render.ore-sorter.node.socket-grade-out"
+      ]
+    }
+  ]
+}

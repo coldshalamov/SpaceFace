@@ -1,0 +1,177 @@
+// Shipworks outfitting — the hold's way back into a slot. unfitModule strands an owned module in
+// player.moduleInventory; the chooser's "In your hold" rows emit ui:fitModule with the row's
+// instanceId and the VIEWED hull's index (fleet view outfits the ship on screen, not always the
+// active one). The intent has been subscribed since the backend shipped — this pins the wiring.
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { ships as shipsProto, buildSlotList } from '../src/systems/ships.js';
+import { SHIPS } from '../src/data/ships.js';
+
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const UTILITY_DEF = 'mod_cargo_scanner_s';
+const UTILITY_DEF_2 = 'mod_market_data_s';
+const KESTREL_UTILITY_SLOT = 5;
+
+function boot(defIds = ['ship_kestrel']) {
+  const state = createGameState(151);
+  state.playerId = 1;
+  state.player.credits = 1_000_000;
+  state.player.moduleInventory = [];
+  state.player.ownedShips = defIds.map((defId) => ({
+    defId,
+    fittings: Array(buildSlotList(SHIP_BY_ID.get(defId)).length).fill(null),
+  }));
+  state.player.activeShipIndex = 0;
+  // The outfit gate opens at a berth with shipyard/module_craft service.
+  state.ui.docked = true;
+  state.ui.dockedStationId = 'station_helios';
+  const bus = createBus();
+  const ships = Object.assign({}, shipsProto);
+  ships.init({ state, bus, helpers: {} });
+  return { state, bus, ships };
+}
+
+test('unfit strands the module in the hold; ui:fitModule with the row instanceId brings it back', () => {
+  const { state, bus } = boot();
+  state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT] = UTILITY_DEF;
+
+  bus.emit('ui:unfitModule', { shipIndex: 0, slotIndex: KESTREL_UTILITY_SLOT });
+  assert.equal(state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT], null);
+  assert.equal(state.player.moduleInventory.length, 1, 'the removed module lands in the hold');
+  const held = state.player.moduleInventory[0];
+  assert.equal(held.defId, UTILITY_DEF);
+  assert.ok(held.instanceId, 'the hold row carries the instanceId the fit intent needs');
+
+  bus.emit('ui:fitModule', {
+    shipIndex: 0,
+    slotIndex: KESTREL_UTILITY_SLOT,
+    instanceId: held.instanceId,
+  });
+  assert.equal(state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT], UTILITY_DEF);
+  assert.equal(state.player.moduleInventory.length, 0, 'the consumed instance leaves the hold');
+});
+
+test('the chooser outfits the viewed hull — fit/unfit/buy honor shipIndex, never the active ship by default', () => {
+  const { state, bus } = boot(['ship_kestrel', 'ship_kestrel']);
+  state.player.moduleInventory.push({ instanceId: 'mi_held_1', defId: UTILITY_DEF });
+
+  bus.emit('ui:fitModule', { shipIndex: 1, slotIndex: KESTREL_UTILITY_SLOT, instanceId: 'mi_held_1' });
+  assert.equal(state.player.ownedShips[1].fittings[KESTREL_UTILITY_SLOT], UTILITY_DEF,
+    'shipIndex lands the fit on the viewed hull');
+  assert.equal(state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT], null,
+    'the active hull is untouched');
+  assert.equal(state.player.moduleInventory.length, 0);
+
+  bus.emit('ui:unfitModule', { shipIndex: 1, slotIndex: KESTREL_UTILITY_SLOT });
+  assert.equal(state.player.ownedShips[1].fittings[KESTREL_UTILITY_SLOT], null);
+  assert.equal(state.player.moduleInventory.length, 1);
+
+  bus.emit('ui:buyModule', { defId: UTILITY_DEF_2, fitSlotIndex: KESTREL_UTILITY_SLOT, shipIndex: 1 });
+  assert.equal(state.player.ownedShips[1].fittings[KESTREL_UTILITY_SLOT], UTILITY_DEF_2,
+    'a buy-and-fit on the viewed hull does not leak onto the active hull');
+  assert.equal(state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT], null);
+});
+
+test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and instanceId all present', () => {
+  const src = readFileSync(join(HERE, '../src/ui/station/screens/shipworks.js'), 'utf8');
+  // The dead seam was exactly this: unfit emitted, fit never did. Pin all three payload fields
+  // and the wrong-ship discipline on the sibling intents in the same handler.
+  assert.ok(/data-fit-inv/.test(src), 'hold rows carry a fit verb');
+  assert.ok(/emit\w*\('ui:fitModule',\s*\{[^}]*shipIndex:\s*viewIdx[^}]*instanceId/s.test(src),
+    'ui:fitModule carries the viewed hull and the row instanceId');
+  assert.ok(/emit\w*\('ui:unfitModule',\s*\{[^}]*shipIndex:\s*viewIdx/s.test(src),
+    'ui:unfitModule outfits the viewed hull, not always the active one');
+  // Research G / P08 residual — the unfit intent settles through the shared refused-fit
+  // listener: a refusal (e.g. cargo capacity changed between render and intent) keeps the
+  // chooser open on the attempted slot with a deny cue and no success detent; only an
+  // accepted unfit closes, exactly once.
+  assert.ok(/const accepted = emitFitIntent\('ui:unfitModule'/.test(src),
+    'the unfit intent rides the same refused-fit outcome listener as fit');
+  assert.ok(
+    /emitFitIntent\('ui:unfitModule'[\s\S]*?ui_deny[\s\S]*?return;[\s\S]*?UI_SWITCH_DETENT_CUE[\s\S]*?closeChooser\(\)/.test(src),
+    'a refused unfit denies and returns before the chooser closes; acceptance cues the detent then closes once');
+  // The purchase settles on the hull the confirmation named: the handler captures
+  // viewIdx into statedShipIndex at quote time and emits that binding — pinning the
+  // capture plus the emission proves the same discipline without asserting raw viewIdx.
+  assert.ok(/statedShipIndex\s*=\s*viewIdx/.test(src),
+    'a buy confirmation captures the viewed hull index at quote time');
+  assert.ok(/emit\w*\('ui:buyModule',\s*\{[^}]*shipIndex:\s*statedShipIndex/s.test(src),
+    'ui:buyModule settles on the hull the confirmation named');
+  // Refusals are rendered in words, never silently omitted or left as dead buttons.
+  assert.ok(/stationShopOffer\(d,\s*shopStationId\)/.test(src),
+    'hold rows refuse research-locked modules the way the backend does');
+  assert.ok(/mountRefusal\(slot,\s*d\)/.test(src),
+    'hold rows refuse right-size/wrong-mount weapons in words like the buy list');
+  assert.ok(/typeof item\.instanceId !== 'string'/.test(src),
+    'rows without a usable instanceId never become a dead Fit button');
+});
+
+// F-MENUS-03 (audit): the hull-dial pick handlers used to gate openChooser on the spatial-slot
+// anchor existing — but renderSpatialSlots rebuilds those anchors on the next projection frame,
+// so a click in the gap lit the node and opened nothing: a control that did nothing. The pick
+// now reaches openChooser unconditionally (it re-resolves the anchor itself), and an index with
+// no slot denies aloud instead of returning silently.
+test('jig hardpoint picks are never swallowed by a missing slot anchor', () => {
+  const src = readFileSync(join(HERE, '../src/ui/station/screens/shipworks.js'), 'utf8');
+  assert.ok(!/if \(anchor\) openChooser/.test(src),
+    'no anchor guard may swallow a jig pick — openChooser re-resolves a missing anchor itself');
+  assert.ok(
+    /openChooser\(index, slotfieldEl\.querySelector\(`\[data-spatial-slot="\$\{index\}"]`\)\)/.test(src),
+    'the jig pick hands its (possibly absent) anchor to openChooser directly');
+  assert.ok(/if \(!slot\) \{[\s\S]{0,140}ui_deny[\s\S]{0,40}return; \}/.test(src),
+    'an out-of-range slot index emits the deny cue instead of a silent return');
+});
+
+test('a refused unfit (hold filled between render and intent) keeps the fit and names the reason', () => {
+  const { state, bus } = boot();
+  // Kestrel slot order: weapon, shield, engine, cargo, mining, utility, thruster.
+  const CARGO_SLOT = 3;
+  const outcomes = [];
+  bus.on('module:fitRefused', (payload) => outcomes.push({ name: 'module:fitRefused', payload }));
+  bus.on('module:unequipped', (payload) => outcomes.push({ name: 'module:unequipped', payload }));
+  bus.on('toast', (payload) => outcomes.push({ name: 'toast', payload }));
+  // At render the pod (+50 → 300 cap) covered the hold; by intent time the hold sits at 280,
+  // above the bare hull's 250 — the owner must refuse, not fake a success.
+  state.player.ownedShips[0].fittings[CARGO_SLOT] = 'mod_cargo_pod_m';
+  state.player.cargo.usedVolume = 280;
+
+  bus.emit('ui:unfitModule', { shipIndex: 0, slotIndex: CARGO_SLOT });
+
+  assert.equal(state.player.ownedShips[0].fittings[CARGO_SLOT], 'mod_cargo_pod_m',
+    'the refused unfit leaves the attempted module fitted');
+  assert.equal(state.player.moduleInventory.length, 0, 'nothing strands in the hold');
+  const refusal = outcomes.find((o) => o.name === 'module:fitRefused');
+  assert.ok(refusal, 'the refusal rides the shared module:fitRefused outcome, not a second channel');
+  assert.equal(refusal.payload.reason, 'cargo_overflow');
+  assert.equal(refusal.payload.slotIndex, CARGO_SLOT);
+  assert.equal(refusal.payload.defId, 'mod_cargo_pod_m');
+  assert.equal(outcomes.some((o) => o.name === 'module:unequipped'), false,
+    'no success outcome rides along with a refusal');
+  const toast = outcomes.find((o) => o.name === 'toast');
+  assert.ok(toast && /Cargo would overflow/.test(toast.payload.text),
+    'the refusal reason is named to the player');
+});
+
+test('an accepted unfit emits exactly one success outcome and never a refusal', () => {
+  const { state, bus } = boot();
+  const unequips = [];
+  const refusals = [];
+  bus.on('module:unequipped', () => unequips.push(1));
+  bus.on('module:fitRefused', () => refusals.push(1));
+  state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT] = UTILITY_DEF;
+
+  bus.emit('ui:unfitModule', { shipIndex: 0, slotIndex: KESTREL_UTILITY_SLOT });
+
+  assert.deepEqual(unequips, [1], 'exactly one unequip outcome — the chooser closes on it once');
+  assert.equal(refusals.length, 0, 'an accepted fit carries no refusal');
+  assert.equal(state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT], null);
+  assert.equal(state.player.moduleInventory.length, 1);
+});

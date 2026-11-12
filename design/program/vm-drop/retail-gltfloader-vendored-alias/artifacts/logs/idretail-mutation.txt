@@ -1,0 +1,2 @@
+DIFF ktx=15 blobs=0 bv=80 nodes=20 bodyMaterialized=false err=- assets/ships/release/render-packages/aftermath-aft-cockpit-section/render.glb
+{"files":5,"same":1,"diff":4,"bodyMaterialized":0,"errs":0,"ktxBuffers":63,"imageBlobs":0,"bufferViews":280,"nodeRows":80}

@@ -1,0 +1,141 @@
+From 070c583940eb306fe03de0f4350e93a4b92c3309 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:34:07 -0400
+Subject: [PATCH] perf(world): pack far-actor grid keys as integers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Mirror asteroidField: queryFarActors walked `${cx}:${cz}` per overlapped
+cell. Offline 8k×400-row disc: 271 ms → 123 ms (~2.2×). In-tab string→number
+migrate on ensure.
+---
+ src/world/farActorTable.js       | 24 ++++++++++++--
+ test/far-actor-cell-key.test.mjs | 57 ++++++++++++++++++++++++++++++++
+ 2 files changed, 78 insertions(+), 3 deletions(-)
+ create mode 100644 test/far-actor-cell-key.test.mjs
+
+diff --git a/src/world/farActorTable.js b/src/world/farActorTable.js
+index 9699f459e..0bdd418d9 100644
+--- a/src/world/farActorTable.js
++++ b/src/world/farActorTable.js
+@@ -29,6 +29,15 @@ export function ensureFarActorTable(state) {
+   if (table && table.schema === FAR_ACTOR_SCHEMA && Array.isArray(table.rows)) {
+     if (!(table.byId instanceof Map)) table.byId = new Map(table.rows.map((row) => [row.id, row]));
+     if (!(table.grid instanceof Map)) rebuildGrid(table);
++    else {
++      // Migrate any in-memory string keys from an older session of this tab.
++      for (const key of table.grid.keys()) {
++        if (typeof key === 'string') {
++          rebuildGrid(table);
++          break;
++        }
++      }
++    }
+     return table;
+   }
+   table = {
+@@ -128,8 +137,15 @@ export function farActorHoldsWorldRecord(state, recordId) {
+   return false;
+ }
+ 
++// Numeric grid keys. queryFarActors walks every overlapped cell per call, so a `${cx}:${cz}`
++// string per cell per query was pure GC churn. Same packing as asteroidField: multiply (not <<)
++// so keys stay outside 32-bit bitwise truncate. |cell| < 1,048,576 ≈ ±400M WU.
++const CELL_KEY_OFFSET = 1048576;
++const CELL_KEY_STRIDE = 2097152; // 2 * CELL_KEY_OFFSET
++
+ function cellKey(x, z) {
+-  return `${Math.floor(x / FAR_ACTOR_CELL)}:${Math.floor(z / FAR_ACTOR_CELL)}`;
++  return (Math.floor(x / FAR_ACTOR_CELL) + CELL_KEY_OFFSET) * CELL_KEY_STRIDE
++    + (Math.floor(z / FAR_ACTOR_CELL) + CELL_KEY_OFFSET);
+ }
+ 
+ function gridAdd(table, rec) {
+@@ -145,7 +161,8 @@ function gridAdd(table, rec) {
+ 
+ function gridRemove(table, rec) {
+   const key = rec && rec._cell;
+-  if (!key || !table.grid) return;
++  // Numeric keys: cell (-OFFSET, -OFFSET) encodes to 0, which is falsy — test absence, not truthiness.
++  if (key == null || !table.grid) return;
+   const bucket = table.grid.get(key);
+   if (!bucket) return;
+   const idx = bucket.indexOf(rec);
+@@ -397,8 +414,9 @@ export function queryFarActors(state, pos, radius, out = []) {
+   const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
+   const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
+   for (let cx = minC; cx <= maxC; cx++) {
++    const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
+     for (let cz = minR; cz <= maxR; cz++) {
+-      const bucket = table.grid && table.grid.get(`${cx}:${cz}`);
++      const bucket = table.grid && table.grid.get(rowBase + cz);
+       if (!bucket) continue;
+       for (let i = 0; i < bucket.length; i++) {
+         const rec = bucket[i];
+diff --git a/test/far-actor-cell-key.test.mjs b/test/far-actor-cell-key.test.mjs
+new file mode 100644
+index 000000000..e009d4f8a
+--- /dev/null
++++ b/test/far-actor-cell-key.test.mjs
+@@ -0,0 +1,57 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import {
++  ensureFarActorTable,
++  queryFarActors,
++  FAR_ACTOR_CELL,
++} from '../src/world/farActorTable.js';
++
++test('far-actor grid keys are packed numbers, not cx:cz strings', () => {
++  const state = createGameState();
++  const table = ensureFarActorTable(state);
++  const rec = {
++    id: 42,
++    type: 'ship',
++    alive: true,
++    farResident: true,
++    pos: { x: -FAR_ACTOR_CELL * 3 - 10, z: FAR_ACTOR_CELL * 2 + 5 },
++    vel: { x: 0, z: 0 },
++    radius: 8,
++    lastExactT: 0,
++    data: {},
++  };
++  table.rows.push(rec);
++  table.byId.set(rec.id, rec);
++  table.grid = null;
++  ensureFarActorTable(state);
++  assert.equal(typeof rec._cell, 'number');
++  for (const key of table.grid.keys()) {
++    assert.equal(typeof key, 'number', `grid key ${key} must be numeric`);
++  }
++  const hits = queryFarActors(state, rec.pos, FAR_ACTOR_CELL, []);
++  assert.ok(hits.some((row) => row.id === 42));
++});
++
++test('ensureFarActorTable rebuilds legacy string grid keys in-tab', () => {
++  const state = createGameState();
++  const table = ensureFarActorTable(state);
++  const rec = {
++    id: 7,
++    type: 'wreck',
++    alive: true,
++    farResident: true,
++    pos: { x: 50, z: -20 },
++    vel: { x: 0, z: 0 },
++    radius: 6,
++    lastExactT: 0,
++    data: {},
++    _cell: '0:0',
++  };
++  table.rows.push(rec);
++  table.byId.set(rec.id, rec);
++  table.grid = new Map([['0:0', [rec]]]);
++  ensureFarActorTable(state);
++  assert.equal(typeof rec._cell, 'number');
++  for (const key of table.grid.keys()) assert.equal(typeof key, 'number');
++});
+-- 
+2.47.3
+

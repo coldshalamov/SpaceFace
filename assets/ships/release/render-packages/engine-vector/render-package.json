@@ -1,0 +1,903 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.engine-vector",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "3f46654726e577984888b1eac29f2663f342e2fe76e3cc8346a1b457d585e653",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.184976628215457,
+          0.5199999809265137,
+          0.5199999809265137
+        ],
+        "min": [
+          1.1150233241008272,
+          -0.5199999809265137,
+          -0.5199999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4080e13f9de4d9e16f08d106cf14f2275ad4c7c1d221791ac47a73ff3829cb7",
+      "id": "sf.render.engine-vector.node.det-heat-scorch-band.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.engine-vector.node.det-heat-scorch-band",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          1.340000033378601,
+          0.10500319823789828,
+          -0.09000640554421752
+        ],
+        "min": [
+          1.0600000619888306,
+          0.05499679446053273,
+          -0.14999358164078386
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ff58d39a8a695b1de92e5378b03a00c0ee84e2ff287605516fd3f3c695589f5",
+      "id": "sf.render.engine-vector.node.det-heat-streak.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.engine-vector.node.det-heat-streak",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.1999871846738835,
+          0.2800000011920929,
+          0.2800000011920929
+        ],
+        "min": [
+          0.000012819370457550772,
+          -0.2800000011920929,
+          -0.2800000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08acdb6ea2a9d428aaf0e9ebb9d5130819a56acfdec2f71f31666f19417e8686",
+      "id": "sf.render.engine-vector.node.hook-drive-core.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "6dc5ad407f2898fa42a2a20ec6cb5ce5f29f338668bf06a805670b89cce0420b",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_CORE_Mesh",
+      "nodeId": "sf.render.engine-vector.node.hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          0.44998932292140736,
+          0.41999998688697815,
+          0.41999998688697815
+        ],
+        "min": [
+          0.3500106889995216,
+          -0.41999998688697815,
+          -0.41999998688697815
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25f41a1d6215ff0a9eaa3c17a3f4d03cb08f0b269f37bef84555d48bf9d02c8f",
+      "id": "sf.render.engine-vector.node.hook-drive-fan.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_FAN_Mesh",
+      "nodeId": "sf.render.engine-vector.node.hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 232
+    },
+    {
+      "bounds": {
+        "max": [
+          1.725000023841858,
+          0.2939275497746911,
+          0.2939275795770135
+        ],
+        "min": [
+          0.9750000238418579,
+          -0.2939276093793359,
+          -0.2939275795770135
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a3be34941efb90c50088110638409af130f13151afef6447a0b82abc0fa75cf",
+      "id": "sf.render.engine-vector.node.hook-drive-plume.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "HOOK_DRIVE_PLUME_Mesh",
+      "nodeId": "sf.render.engine-vector.node.hook-drive-plume",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          1.34755277633667,
+          0.5378706766305584,
+          0.5461615541123397
+        ],
+        "min": [
+          -0.6500000357627869,
+          -0.5378706766305584,
+          -0.5461615541123397
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0844e741440de0a27854d6e82dd6d8b8e4e4d8a30cb37f05479b72b526a0de4",
+      "id": "sf.render.engine-vector.node.lod0-engine-vector-main.primitive.0",
+      "indexCount": 14976,
+      "indexed": true,
+      "materialHash": "a755c615d9e1d505b2ae0e446244fafd877c6d3cda85a904b58bc4c4e118e47d",
+      "materialPipelineKey": "opaque",
+      "meshName": "engine_vector_mesh",
+      "nodeId": "sf.render.engine-vector.node.lod0-engine-vector-main",
+      "primitiveIndex": 0,
+      "vertexCount": 3591
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "id": "material:37e121594c0f26add7404499",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "SF_rough_flat_orm_role",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6dc5ad407f2898fa42a2a20ec6cb5ce5f29f338668bf06a805670b89cce0420b",
+      "id": "material:6dc5ad407f2898fa42a2a20e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a755c615d9e1d505b2ae0e446244fafd877c6d3cda85a904b58bc4c4e118e47d",
+      "id": "material:a755c615d9e1d505b2ae0e44",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "SF_rough_flat",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.engine-vector.node.det-heat-scorch-band",
+      "localTransform": [
+        0.5199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.5199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.5199999809265137,
+        0,
+        1.149999976158142,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_heat_scorch_band",
+      "nodeName": "DET_heat_scorch_band",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        0.5199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.5199999809265137,
+        0,
+        0,
+        0,
+        0,
+        0.5199999809265137,
+        0,
+        1.149999976158142,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-vector.node.det-heat-streak",
+      "localTransform": [
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        1.2000000476837158,
+        0.07999999634921551,
+        -0.11999999359250069,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "DET_heat_streak",
+      "nodeName": "DET_heat_streak",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        1.2000000476837158,
+        0.07999999634921551,
+        -0.11999999359250069,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-vector.node.engine-vector-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "ENGINE_VECTOR_ROOT",
+      "nodeName": "ENGINE_VECTOR_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-vector.node.hook-drive-core",
+      "localTransform": [
+        0.2800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.2800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.2800000011920929,
+        0,
+        0.10000000202217052,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_CORE",
+      "nodeName": "HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.engine-vector.node.engine-vector-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        0.2800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.2800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.2800000011920929,
+        0,
+        0.10000000202217052,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-vector.node.hook-drive-fan",
+      "localTransform": [
+        0.41999998688697815,
+        0,
+        0,
+        0,
+        0,
+        0.41999998688697815,
+        0,
+        0,
+        0,
+        0,
+        0.41999998688697815,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_FAN",
+      "nodeName": "HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.engine-vector.node.engine-vector-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        0.41999998688697815,
+        0,
+        0,
+        0,
+        0,
+        0.41999998688697815,
+        0,
+        0,
+        0,
+        0,
+        0.41999998688697815,
+        0,
+        0.4000000059604645,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-vector.node.hook-drive-plume",
+      "localTransform": [
+        0.375,
+        0,
+        0,
+        0,
+        0,
+        0.375,
+        0,
+        0,
+        0,
+        0,
+        0.375,
+        0,
+        1.350000023841858,
+        -2.9802322387695312e-8,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "HOOK_DRIVE_PLUME",
+      "nodeName": "HOOK_DRIVE_PLUME",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.engine-vector.node.engine-vector-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        0.375,
+        0,
+        0,
+        0,
+        0,
+        0.375,
+        0,
+        0,
+        0,
+        0,
+        0.375,
+        0,
+        1.350000023841858,
+        -2.9802322387695312e-8,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.engine-vector.node.lod0-engine-vector-main",
+      "localTransform": [
+        0.9987764060497284,
+        0,
+        0,
+        0,
+        0,
+        0.9987764060497284,
+        0,
+        0,
+        0,
+        0,
+        0.9987764060497284,
+        0,
+        0.34877637028694153,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_ENGINE_VECTOR_MAIN",
+      "nodeName": "LOD0_ENGINE_VECTOR_MAIN",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.engine-vector.body",
+      "worldTransform": [
+        0.9987764060497284,
+        0,
+        0,
+        0,
+        0,
+        0.9987764060497284,
+        0,
+        0,
+        0,
+        0,
+        0.9987764060497284,
+        0,
+        0.34877637028694153,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "c70fa1181200fe5849d0f7da95b87b0935419e3265dde2797f1d1a42f749edac"
+    },
+    "sourceGlb": {
+      "bytes": 152416,
+      "sha256": "6fc50f4aff4fc5b379b49099f6c366b76f4be9b8de1ef5e797801b68ced0a6ad",
+      "uri": "engine_vector.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 76856,
+    "sha256": "a4c85583bcd8f581fef1370c304dda7d8c3bba43c24b55f31894c7bb5963b60a",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.5374999940395355,
+        0,
+        0
+      ],
+      "max": [
+        1.725000023841858,
+        0.5378706766305584,
+        0.5461615541123397
+      ],
+      "min": [
+        -0.6500000357627869,
+        -0.5378706766305584,
+        -0.5461615541123397
+      ],
+      "size": [
+        2.3750000596046448,
+        1.0757413532611169,
+        1.0923231082246794
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 4,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 8,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.2800000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.2800000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.2800000011920929,
+          0,
+          0.10000000202217052,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_CORE",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            0.2800000011920929,
+            0,
+            0,
+            0,
+            0,
+            0.2800000011920929,
+            0,
+            0,
+            0,
+            0,
+            0.2800000011920929,
+            0,
+            0.10000000202217052,
+            0,
+            0,
+            1
+          ],
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.41999998688697815,
+          0,
+          0,
+          0,
+          0,
+          0.41999998688697815,
+          0,
+          0,
+          0,
+          0,
+          0.41999998688697815,
+          0,
+          0.4000000059604645,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_FAN",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            0.41999998688697815,
+            0,
+            0,
+            0,
+            0,
+            0.41999998688697815,
+            0,
+            0,
+            0,
+            0,
+            0.41999998688697815,
+            0,
+            0.4000000059604645,
+            0,
+            0,
+            1
+          ],
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.375,
+          0,
+          0,
+          0,
+          0,
+          0.375,
+          0,
+          0,
+          0,
+          0,
+          0.375,
+          0,
+          1.350000023841858,
+          -2.9802322387695312e-8,
+          0,
+          1
+        ],
+        "name": "HOOK_DRIVE_PLUME",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "drive": "plume",
+          "driveAnchorMatrix": [
+            0.375,
+            0,
+            0,
+            0,
+            0,
+            0.375,
+            0,
+            0,
+            0,
+            0,
+            0.375,
+            0,
+            1.350000023841858,
+            -2.9802322387695312e-8,
+            0,
+            1
+          ],
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9987764060497284,
+          0,
+          0,
+          0,
+          0,
+          0.9987764060497284,
+          0,
+          0,
+          0,
+          0,
+          0.9987764060497284,
+          0,
+          0.34877637028694153,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_ENGINE_VECTOR_MAIN",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.5199999809265137,
+          0,
+          0,
+          0,
+          0,
+          0.5199999809265137,
+          0,
+          1.149999976158142,
+          0,
+          0,
+          1
+        ],
+        "name": "DET_heat_scorch_band",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.13999998569488525,
+          0,
+          0,
+          0,
+          0,
+          0.13999998569488525,
+          0,
+          0,
+          0,
+          0,
+          0.13999998569488525,
+          0,
+          1.2000000476837158,
+          0.07999999634921551,
+          -0.11999999359250069,
+          1
+        ],
+        "name": "DET_heat_streak",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "engine",
+    "url": "assets/ships/release/parts/engines/engine_vector.glb"
+  },
+  "runtimeHash": "cb7b0e0481861562765efe78df6a2d79c2f3b3408c387d7ddd825acb4902c4b5",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.725000023841858,
+          0.5378706766305584,
+          0.5461615541123397
+        ],
+        "min": [
+          -0.6500000357627869,
+          -0.5378706766305584,
+          -0.5461615541123397
+        ]
+      },
+      "id": "sf.render.engine-vector.body",
+      "nodeIds": [
+        "sf.render.engine-vector.node.det-heat-scorch-band",
+        "sf.render.engine-vector.node.det-heat-streak",
+        "sf.render.engine-vector.node.engine-vector-root",
+        "sf.render.engine-vector.node.hook-drive-core",
+        "sf.render.engine-vector.node.hook-drive-fan",
+        "sf.render.engine-vector.node.hook-drive-plume",
+        "sf.render.engine-vector.node.lod0-engine-vector-main"
+      ]
+    }
+  ]
+}

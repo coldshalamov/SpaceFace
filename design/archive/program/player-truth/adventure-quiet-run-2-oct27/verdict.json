@@ -1,0 +1,906 @@
+{
+ "meta": {
+  "mode": "adventure",
+  "rounds": false,
+  "hasLoadout": false,
+  "gate": "active",
+  "requireRounds": null,
+  "performanceContext": {
+   "quietHost": false,
+   "contended": true,
+   "authority": "diagnostic-only",
+   "observer": {
+    "pixelSplitPasses": 3,
+    "pixelSplitEveryFrames": 24,
+    "screenshotEveryMs": 1000
+   }
+  },
+  "sourceOverlay": null,
+  "loadavg": {
+   "start": [
+    0,
+    0,
+    0
+   ],
+   "end": [
+    0,
+    0,
+    0
+   ]
+  },
+  "environmentRetry": null,
+  "firstStopReason": null,
+  "gradedRun": null,
+  "preparationSamplesOmitted": 888,
+  "runSeed": 4242,
+  "playStartSim": 0,
+  "openingEffectWarm": {
+   "present": true,
+   "reason": "parallel-compile-cook",
+   "khr": true,
+   "software": false,
+   "tier": "integrated",
+   "touched": [],
+   "timedOut": [],
+   "skipped": [],
+   "failed": 0,
+   "sweeps": null
+  },
+  "commit": "5a66f5e8873",
+  "dirty": false,
+  "startCommit": "5a66f5e8873",
+  "startDirtySourcePaths": [],
+  "endCommit": "5a4f3a51427",
+  "endDirty": false,
+  "endDirtySourcePaths": [],
+  "label": "adventure",
+  "browserExecutable": "playwright-bundled",
+  "hullPicked": null,
+  "hullsOffered": null,
+  "idleSeconds": 6,
+  "seedSet": true,
+  "arena": null,
+  "seed": 4242,
+  "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "softwareGl": false,
+  "headed": true,
+  "browserVersion": "149.0.7827.55",
+  "resolution": "1280x720",
+  "when": "2026-10-28T01:09:14.955Z",
+  "wallSeconds": 567,
+  "simSeconds": 300.7,
+  "frames": 6336,
+  "shots": 316,
+  "rowStorage": {
+   "rows": 1179771,
+   "packedRows": 1179771,
+   "nullableFrames": 0,
+   "unrecognizedFrames": 0,
+   "maxBatchSamples": 32,
+   "pendingPeak": 50
+  },
+  "script": "idle 6 s → thrust/yaw probes → cruise: thrust bursts and turns · gate active pass · public gameplay admission; no probe-owned invulnerability toggle",
+  "stopReason": "duration 300 sim s reached",
+  "pageErrors": [],
+  "consoleErrors": [],
+  "arenasOffered": null,
+  "sessionSignals": [],
+  "chromePid": 24220,
+  "chromePgid": null,
+  "chromeSid": null,
+  "chromeOwnSession": null,
+  "harnessFreezes": [],
+  "hostPressure": [],
+  "hostPressureError": "spawnSync dmesg ENOENT",
+  "overall": "INCOMPLETE"
+ },
+ "overall": "INCOMPLETE",
+ "results": [
+  {
+   "id": "route",
+   "title": "Public route plays end to end",
+   "status": "PASS",
+   "value": "main menu → first-run prompt → mode select → preparation → spawn → play",
+   "threshold": "every step through public controls",
+   "detail": "6 steps",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "round_resolution",
+   "title": "Round resolves by play",
+   "status": "N/A",
+   "value": null,
+   "threshold": null,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "kills_before_input",
+   "title": "Kills before the player acts",
+   "status": "N/A",
+   "value": null,
+   "threshold": 0,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "reward_before_input",
+   "title": "Score before the player acts",
+   "status": "N/A",
+   "value": null,
+   "threshold": 0,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "spawn_motion",
+   "title": "Unexplained motion at spawn",
+   "status": "PASS",
+   "value": "0 bodies",
+   "threshold": "0 passive bodies >8 u/s within 900 u",
+   "detail": "1 spawn moment(s) checked; force proof complete (0 explained, 0 proof failures, 0 residual failures)",
+   "offenders": [],
+   "moments": [],
+   "causal": {
+    "status": "complete",
+    "explained": 0,
+    "proofFailures": 0,
+    "residualFailures": 0
+   }
+  },
+  {
+   "id": "player_control",
+   "title": "Ship answers input",
+   "status": "PASS",
+   "value": "0/2 probes dead · 0 pinned spans",
+   "threshold": "thrust Δv≥3 u/s and moves ≥25% of its velocity · yaw Δ≥0.2 rad",
+   "detail": "spawn thrust 25.48 · spawn yaw 2.73",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "tumble",
+   "title": "Ship stays in the play plane",
+   "status": "PASS",
+   "value": "longest 0 s",
+   "threshold": "<0.5 s out of plane / uncommanded spin",
+   "detail": "0 s total; limits pitch 0.35, bank 0.75 rad, |y| 4, spin 2.5 rad/s",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_ship",
+   "title": "Player ship visible as hero model",
+   "status": "PASS",
+   "value": "0% frames bad (0/6216)",
+   "threshold": "≤0.5%",
+   "detail": "missing / hidden / off-frame / non-lod0 / placeholder (<300 tris) while alive in play",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "lod_churn",
+   "title": "LOD / model swap churn",
+   "status": "PASS",
+   "value": "max 1/10s per entity · 0.03/s total · 10 real LOD · 0 loading",
+   "threshold": "≤3/10s per entity · ≤max(1, 1.5× master same-window)/s total",
+   "detail": "10 real LOD/model swaps · 0 visible loading-state swaps (awaiting/loading/compiling, still counted) over 300.7 sim s across 10 entities (41 more off screen, not graded); 3 metadata-only transitions with unchanged drawn contents (diagnostic)",
+   "offenders": [
+    {
+     "line": "entity 603 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_603@lod1 → Asteroid_603@lod1 at sim 75.4 s",
+     "t": 177836.5,
+     "sim": 75.417,
+     "box": [
+      613.5,
+      118.5,
+      678.5,
+      183.5
+     ]
+    },
+    {
+     "line": "entity 604 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_604@lod1 → Asteroid_604@lod1 at sim 75.5 s",
+     "t": 177919.4,
+     "sim": 75.483,
+     "box": [
+      728.2,
+      150.2,
+      801.8,
+      223.8
+     ]
+    },
+    {
+     "line": "entity 605 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_605@lod1 → Asteroid_605@lod1 at sim 75.6 s",
+     "t": 178072.7,
+     "sim": 75.617,
+     "box": [
+      655.5,
+      136.5,
+      714.5,
+      195.5
+     ]
+    },
+    {
+     "line": "entity 614 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_614@lod1 → Asteroid_614@lod1 at sim 232.3 s",
+     "t": 392259.8,
+     "sim": 232.267,
+     "box": [
+      554.2,
+      88.2,
+      629.8,
+      163.8
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 603 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_603@lod1 → Asteroid_603@lod1 at sim 75.4 s",
+     "t": 177836.5,
+     "sim": 75.417,
+     "box": [
+      613.5,
+      118.5,
+      678.5,
+      183.5
+     ]
+    },
+    {
+     "line": "entity 604 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_604@lod1 → Asteroid_604@lod1 at sim 75.5 s",
+     "t": 177919.4,
+     "sim": 75.483,
+     "box": [
+      728.2,
+      150.2,
+      801.8,
+      223.8
+     ]
+    },
+    {
+     "line": "entity 605 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_605@lod1 → Asteroid_605@lod1 at sim 75.6 s",
+     "t": 178072.7,
+     "sim": 75.617,
+     "box": [
+      655.5,
+      136.5,
+      714.5,
+      195.5
+     ]
+    }
+   ],
+   "churn": {
+    "span": 300.72,
+    "times": [
+     75.42,
+     75.48,
+     75.62,
+     232.27,
+     232.4,
+     232.43,
+     232.47,
+     284.7,
+     284.77,
+     284.87
+    ],
+    "maxPer10": 1,
+    "lodN": 10,
+    "loadN": 0
+   }
+  },
+  {
+   "id": "popping",
+   "title": "Pop-in / pop-out on screen",
+   "status": "PASS",
+   "value": "0.4/min · worst entity 1 toggle · 2 visibility · 0 loading",
+   "threshold": "≤6/min · ≤2 toggles",
+   "detail": "2 visibility pops · 0 visible loading-state pops (awaiting/loading/compiling, still counted) inside the inner 80% of the view; 12 non-projectile bodies born on screen (info)",
+   "offenders": [
+    {
+     "line": "entity 505 (other) appeared on screen 1× (1 visibility, 0 loading-state) — first sim 0 s",
+     "t": 73590.4,
+     "sim": 0,
+     "box": [
+      101.8,
+      314.8,
+      192.2,
+      405.2
+     ]
+    },
+    {
+     "line": "entity 563 (neutral) vanished on screen 1× (1 visibility, 0 loading-state) — first sim 0.9 s",
+     "t": 80027.6,
+     "sim": 0.883,
+     "box": [
+      124.5,
+      36.5,
+      219.5,
+      131.5
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 505 (other) appeared on screen 1× (1 visibility, 0 loading-state) — first sim 0 s",
+     "t": 73590.4,
+     "sim": 0,
+     "box": [
+      101.8,
+      314.8,
+      192.2,
+      405.2
+     ]
+    },
+    {
+     "line": "entity 563 (neutral) vanished on screen 1× (1 visibility, 0 loading-state) — first sim 0.9 s",
+     "t": 80027.6,
+     "sim": 0.883,
+     "box": [
+      124.5,
+      36.5,
+      219.5,
+      131.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "readability",
+   "title": "Enemy / asteroid / projectile readable",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "separation ≥1",
+   "detail": "not enough on-screen samples per class (enemy 0, asteroid 3, projectile 0, pickup 0; need 5); capture coherence: 136 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 1 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic; hull contrast UNKNOWN: asteroid: missing asteroid silhouette pixel ownership; inner radius square mixes body and backdrop; radius-square contrast and affected class separation remain diagnostic",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "vfx_coverage",
+   "title": "Combat VFX coverage / occlusion",
+   "status": "PASS",
+   "value": "p95 1% screen · player hidden 0% · threats hidden p95 n/a · 0 s persist",
+   "threshold": "≤25% · ≤10% · ≤30% · ≤3 s",
+   "detail": "240 per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom reader target; backdrop layers graded separately) · skipped 0",
+   "offenders": [
+    {
+     "line": "player ship ≥50% under combat VFX pixels in 0% of splits (first sim 128.7 s)",
+     "t": 240133.5,
+     "sim": 128.7,
+     "box": [
+      549,
+      315,
+      690,
+      482
+     ]
+    },
+    {
+     "line": "peak combat-VFX pixels 5% of screen at sim 76.5 s (30 combat layers lit)",
+     "t": 179580.9,
+     "sim": 76.55,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "player ship ≥50% under combat VFX pixels in 0% of splits (first sim 128.7 s)",
+     "t": 240133.5,
+     "sim": 128.7,
+     "box": [
+      549,
+      315,
+      690,
+      482
+     ]
+    }
+   ]
+  },
+  {
+   "id": "backdrop_coverage",
+   "title": "Backdrop stays behind the play",
+   "status": "PASS",
+   "value": "backdrop lights median 0% / p95 2% of screen · threats on bright backdrop p95 n/a",
+   "threshold": "threats on bright backdrop p95 ≤30%",
+   "detail": "240 per-pixel splits with backdrop layers hidden vs shown · skipped 0",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "loadout",
+   "title": "Loadout readable and relevant",
+   "status": "N/A",
+   "value": null,
+   "threshold": "0 irrelevant · 0 undescribed · 0 silent swaps",
+   "detail": "mode has no preparation loadout",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "frame_time",
+   "title": "Frame time / long tasks",
+   "status": "UNKNOWN",
+   "value": "p50 64 ms · p99 183 ms · 22 long tasks ≥250 ms",
+   "threshold": "p99 ≤50 ms · 0 long tasks ≥250 ms",
+   "detail": "6216 play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Reader windows (pixel readbacks) are excluded when the trace records them; screenshots remain included.",
+   "offenders": [
+    {
+     "line": "long task 524 ms (531 ms less 7 ms harness reader) at sim 300.1 s (frame 7206)",
+     "t": 549837.3900000006,
+     "sim": 300.117,
+     "box": null
+    },
+    {
+     "line": "long task 499 ms (500 ms less 1 ms harness reader) at sim 0 s (frame 1158)",
+     "t": 77561.0150000006,
+     "sim": 0.017,
+     "box": null
+    },
+    {
+     "line": "long task 454 ms (456 ms less 2 ms harness reader) at sim 300.1 s (frame 7204)",
+     "t": 548802.6199999973,
+     "sim": 300.05,
+     "box": null
+    },
+    {
+     "line": "frame 7206: 631 ms at sim 300.1 s (147 entities, 0 draws)",
+     "t": 550356.6,
+     "sim": 300.117,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "long task 524 ms (531 ms less 7 ms harness reader) at sim 300.1 s (frame 7206)",
+     "t": 549837.3900000006,
+     "sim": 300.117,
+     "box": null
+    },
+    {
+     "line": "long task 499 ms (500 ms less 1 ms harness reader) at sim 0 s (frame 1158)",
+     "t": 77561.0150000006,
+     "sim": 0.017,
+     "box": null
+    }
+   ]
+  },
+  {
+   "id": "round_transitions",
+   "title": "Every round starts playable",
+   "status": "N/A",
+   "value": null,
+   "threshold": null,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "rounds_reached",
+   "title": "Run reaches the gate round",
+   "status": "N/A",
+   "value": null,
+   "threshold": null,
+   "detail": "not a gate active pass",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "crucible_realm",
+   "title": "Crucible plays in the Crucible",
+   "status": "N/A",
+   "value": null,
+   "threshold": "0 Adventure frames · armory > 0 offers",
+   "detail": "not a Crucible mode",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "sim_stalled",
+   "title": "Sim kept moving",
+   "status": "PASS",
+   "value": "no active span",
+   "threshold": "≥0.5 s sim per 60 s wall while phase is active and not loading",
+   "detail": "sim advanced through the watched active span",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "play_interrupted",
+   "title": "Play stays on the flight HUD",
+   "status": "PASS",
+   "value": "HUD held",
+   "threshold": "flight HUD only during active play; a screen the script did not open fails",
+   "detail": "no non-HUD screen during active play",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "offscreen_marker",
+   "title": "Off-screen shooter has an edge marker",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "one screen-edge marker while a hostile is off-screen; none while every hostile is in frame; the side matches that hostile",
+   "detail": "edge markers were not read",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "first_hour_budget",
+   "title": "First flight latch and raid budget",
+   "status": "N/A",
+   "value": null,
+   "threshold": "latch ≤60s · raid ≤180s",
+   "detail": "no attach milestone",
+   "offenders": [],
+   "moments": []
+  }
+ ],
+ "rounds": [],
+ "probes": [
+  {
+   "label": "spawn thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 6.21666666666665,
+   "endSim": 7.749999999999978,
+   "startT": 89606.2100000009,
+   "endT": 92923.77499999851,
+   "value": 25.480859756469727,
+   "moved": 74.1256103515625,
+   "expect": 72.37499620389934
+  },
+  {
+   "label": "spawn yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 7.849999999999977,
+   "endSim": 8.816666666666684,
+   "startT": 93195.46999999881,
+   "endT": 95396.0549999997,
+   "value": 2.725469813501647
+  }
+ ],
+ "route": {
+  "steps": [
+   {
+    "name": "main menu",
+    "ok": true,
+    "detail": "menu visible",
+    "t": null
+   },
+   {
+    "name": "first-run prompt",
+    "ok": true,
+    "detail": "answered \"First light\" with Play (shipped settings)",
+    "t": null
+   },
+   {
+    "name": "mode select",
+    "ok": true,
+    "detail": "New Game (Adventure) · tutorial hints true",
+    "t": null
+   },
+   {
+    "name": "preparation",
+    "ok": true,
+    "detail": "default pilot/ship (no changes), Launch",
+    "t": null
+   },
+   {
+    "name": "spawn",
+    "ok": true,
+    "detail": "flight at sim 0.0 s",
+    "t": null
+   },
+   {
+    "name": "play",
+    "ok": true,
+    "detail": "300.7 sim s flown",
+    "t": null
+   }
+  ]
+ },
+ "pacing": null,
+ "readability": {
+  "classes": {
+   "enemy": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "markerRate": 0,
+    "threatRate": 0,
+    "worst": [],
+    "meanLab": null
+   },
+   "asteroid": {
+    "n": 3,
+    "lowContrastFrac": 0,
+    "exampleT": 396951.3149999976,
+    "exampleBox": [
+     485.2,
+     217.2,
+     628.8,
+     360.8
+    ],
+    "markerRate": 0,
+    "threatRate": 0,
+    "worst": [
+     {
+      "t": 396951.3149999976,
+      "box": [
+       566.5,
+       155,
+       642.5,
+       231
+      ],
+      "deltaL": 18.1
+     },
+     {
+      "t": 396951.3149999976,
+      "box": [
+       485.2,
+       217.2,
+       628.8,
+       360.8
+      ],
+      "deltaL": 21.3
+     }
+    ],
+    "meanLab": [
+     30.4,
+     -6.4,
+     4.9
+    ],
+    "contrast": {
+     "status": "unmeasured",
+     "method": "radius-square",
+     "reason": "missing asteroid silhouette pixel ownership; inner radius square mixes body and backdrop"
+    }
+   },
+   "projectile": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "markerRate": 0,
+    "threatRate": 0,
+    "worst": [],
+    "meanLab": null
+   },
+   "pickup": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "markerRate": 0,
+    "threatRate": 0,
+    "worst": [],
+    "meanLab": null
+   }
+  },
+  "pairs": [
+   {
+    "a": "enemy",
+    "b": "asteroid",
+    "nA": 0,
+    "nB": 3,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "projectile",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "asteroid",
+    "b": "projectile",
+    "nA": 3,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "pickup",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   }
+  ],
+  "census": [
+   {
+    "cls": "other",
+    "ty": 14,
+    "n": 7,
+    "litLab": [
+     35.9,
+     -0.3,
+     1.7
+    ],
+    "look": "dark",
+    "meanRadiusPx": 49.3,
+    "overPlayerFrac": 0,
+    "exampleT": 78072.33999999613,
+    "exampleBox": [
+     33.2,
+     309.2,
+     131.8,
+     407.8
+    ],
+    "occlusion": {
+     "cls": "other",
+     "ty": 14,
+     "n": 0,
+     "covered": 0,
+     "unknown": 10,
+     "reasons": {
+      "unsupported-player-silhouette": 10
+     },
+     "radiusSum": 0,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "payload:"
+   },
+   {
+    "cls": "other",
+    "ty": 26,
+    "n": 6,
+    "litLab": [
+     62.2,
+     -0.5,
+     0
+    ],
+    "look": "grey",
+    "meanRadiusPx": 80.2,
+    "overPlayerFrac": 0,
+    "exampleT": 80051.41999999434,
+    "exampleBox": [
+     57.7,
+     478.7,
+     218.3,
+     639.3
+    ],
+    "occlusion": {
+     "cls": "other",
+     "ty": 26,
+     "n": 0,
+     "covered": 0,
+     "unknown": 8,
+     "reasons": {
+      "unsupported-player-silhouette": 8
+     },
+     "radiusSum": 0,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "wreck:derelict"
+   },
+   {
+    "cls": "asteroid",
+    "ty": 2,
+    "n": 3,
+    "litLab": [
+     41,
+     -14.9,
+     -0.6
+    ],
+    "look": "green",
+    "meanRadiusPx": 54.3,
+    "overPlayerFrac": 0.333,
+    "exampleT": 396951.3149999976,
+    "exampleBox": [
+     485.2,
+     217.2,
+     628.8,
+     360.8
+    ],
+    "name": "asteroid:"
+   },
+   {
+    "cls": "neutral",
+    "ty": 17,
+    "n": 0,
+    "look": "unmeasured",
+    "meanRadiusPx": 0,
+    "occlusion": {
+     "cls": "neutral",
+     "ty": 17,
+     "n": 0,
+     "covered": 0,
+     "unknown": 6,
+     "reasons": {
+      "unsupported-player-silhouette": 6
+     },
+     "radiusSum": 0,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "ship:"
+   },
+   {
+    "cls": "neutral",
+    "ty": 28,
+    "n": 0,
+    "look": "unmeasured",
+    "meanRadiusPx": 0,
+    "occlusion": {
+     "cls": "neutral",
+     "ty": 28,
+     "n": 0,
+     "covered": 0,
+     "unknown": 6,
+     "reasons": {
+      "unsupported-player-silhouette": 6
+     },
+     "radiusSum": 0,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "drone:"
+   },
+   {
+    "cls": "other",
+    "ty": 23,
+    "n": 0,
+    "look": "unmeasured",
+    "meanRadiusPx": 0,
+    "occlusion": {
+     "cls": "other",
+     "ty": 23,
+     "n": 0,
+     "covered": 0,
+     "unknown": 2,
+     "reasons": {
+      "unsupported-player-silhouette": 2
+     },
+     "radiusSum": 0,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "beacon:"
+   },
+   {
+    "cls": "neutral",
+    "ty": 83,
+    "n": 0,
+    "look": "unmeasured",
+    "meanRadiusPx": 0,
+    "occlusion": {
+     "cls": "neutral",
+     "ty": 83,
+     "n": 0,
+     "covered": 0,
+     "unknown": 6,
+     "reasons": {
+      "unsupported-player-silhouette": 6
+     },
+     "radiusSum": 0,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "freighter:"
+   }
+  ],
+  "captureCoherence": {
+   "rejected": {
+    "enemy": {},
+    "asteroid": {
+     "capture-identity-or-visibility": 27,
+     "capture-motion": 63
+    },
+    "projectile": {},
+    "pickup": {},
+    "station": {
+     "capture-identity-or-visibility": 1
+    },
+    "neutral": {
+     "capture-identity-or-visibility": 12,
+     "capture-motion": 16
+    },
+    "other": {
+     "capture-motion": 14,
+     "capture-identity-or-visibility": 3
+    }
+   },
+   "unboundedShots": 1
+  },
+  "measurementNote": "capture coherence: 136 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 1 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+ },
+ "loadout": null
+}

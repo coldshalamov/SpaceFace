@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface.validation-broker-consumed-claims.v1",
+  "byClaimId": {
+    "22656-ed0390da7a1a0cec93644940": {
+      "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-billboard-buoy-reauthor\\browser\\broker-claims\\22656-ed0390da7a1a0cec93644940.json",
+      "consumedAt": "2026-09-07T14:26:52.270Z",
+      "candidateDigest": "7da5886085a235cfcc02a1975186a8841ac84fc4da1ef0f4e5f4793b48a2d032",
+      "runtimeKind": "browser"
+    }
+  }
+}

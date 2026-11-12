@@ -1,0 +1,572 @@
+import { finite, id, text, ref, refKey, FACT_EVENTS } from './schema.js';
+
+const EVENTS = new Set(FACT_EVENTS);
+const CAUSES = new Set(['generic', 'kinetic', 'explosive', 'terrain_collision', 'ship_collision']);
+const SURFACES = new Set(['terrain', 'craft', 'structure']);
+const ACE_TRANSITIONS = new Set(['encountered', 'fled', 'defeated', 'flung', 'returned', 'downed']);
+const PROOF_STAGES = new Set(['recovered', 'sold', 'law']);
+const MAX_QTY = 1e12;
+
+function entity(state, entityId) {
+  return entityId != null && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entityId) : null;
+}
+function nameOf(state, entityId, supplied, fallback) {
+  const e = entity(state, entityId);
+  return text(supplied || (e && (e.name || e.data?.name || e.data?.callsign || e.data?.label)), fallback);
+}
+function identity(state, entityId, supplied, playerCaused = false, fallback = 'an unknown pilot') {
+  const key = id(entityId);
+  const player = playerCaused || (key !== null && key === id(state.playerId));
+  return { id: key, key: player ? 'player' : key, player,
+    name: nameOf(state, entityId, supplied, player ? 'you' : fallback) };
+}
+function firstRef(...refs) { return refs.find(Boolean) || null; }
+function point(p) {
+  return p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+}
+function positive(n) { return typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= MAX_QTY; }
+// An id a human reads aloud: `ship_kestrel` -> "Kestrel", `first_blood` -> "First Blood".
+// Same replace the authored-story cases inline; one helper now that deed ids need it too.
+function properName(value, fallback) {
+  return text(String(value).replace(/[_-]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()), fallback);
+}
+function killFacts(p, state) {
+  // Match compactKillCausality's precedence. Copy only semantic scalars from presentation;
+  // NEVER retain that receipt, its vectors, Three objects, or arbitrary source data.
+  const receipt = p.presentation;
+  const cause = [receipt?.cause, p.cause].find(c => CAUSES.has(c)) || 'generic';
+  const playerCaused = typeof receipt?.playerCaused === 'boolean'
+    ? receipt.playerCaused : p.killerId != null && p.killerId === state.playerId;
+  const surface = SURFACES.has(receipt?.surface) ? receipt.surface
+    : cause === 'terrain_collision' ? 'terrain' : cause === 'ship_collision' ? 'craft' : null;
+  return { cause, playerCaused, surface };
+}
+
+/**
+ * Whitelist a bus payload into a bounded JSON fact. `null` means normal filtered noise;
+ * `{ invalid: true }` means a recognized, malformed receipt. No arbitrary payload spreading.
+ * All observation times come from state.simTime, never from a source-supplied timestamp.
+ */
+export function normalizeFact(event, p, state) {
+  if (!EVENTS.has(event)) return null;
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return { invalid: true };
+  const t = Math.max(0, finite(state.simTime));
+  const tick = Number.isSafeInteger(state.tick) ? Math.max(0, state.tick) : Math.round(t * 60);
+  const currentSectorId = id(state.world?.currentSectorId);
+  const sectorId = id(p.sectorId) || (event.startsWith('aceMemory:') ? id(p.record?.lastSectorId) : null) || currentSectorId;
+  const common = {
+    event, stage: '', t, tick,
+    sectorId, sectorName: text(p.sectorName || (sectorId === currentSectorId ? state.world?.activeSector?.name : '')),
+    zoneId: id(p.zoneId), zoneName: text(p.zoneName),
+    stationId: id(p.stationId), stationName: text(p.stationName),
+    factionId: id(p.factionId || p.victimFactionId),
+    visibility: ['private', 'player'].includes(p.visibility) ? p.visibility : 'public',
+    actor: identity(state, p.actorId), subject: null,
+    externalId: id(p.receiptId || p.eventId),
+    provides: [], parent: null, group: null,
+    details: {}, dedupe: '',
+  };
+  const f = common;
+  switch (event) {
+    case 'entity:killed': {
+      const victim = p.id ?? p.victimId;
+      if (id(victim) === null) return { invalid: true };
+      const k = killFacts(p, state);
+      f.stage = 'kill';
+      f.actor = identity(state, p.killerId, p.killerName, k.playerCaused);
+      // Explicit false on a physics receipt must override killerId fallback for PLAYER credit.
+      f.actor.player = k.playerCaused;
+      f.actor.key = k.playerCaused ? 'player' : id(p.killerId);
+      if (!k.playerCaused && id(p.killerId) === id(state.playerId)) f.actor.name = text(p.killerName, 'an uncredited impact');
+      f.subject = identity(state, victim, p.victimName || p.victimLabel, false, 'an unnamed ship');
+      f.provides = [ref('death', victim)];
+      f.group = id(p.encounterId) ? `encounter:${id(p.encounterId)}` : null;
+      f.details = { ...k, victimClass: text(p.victimClass, 'ship', 48),
+        factionLawful: p.factionLawful === true, pos: point(p.pos) };
+      f.dedupe = `kill:${JSON.stringify([id(victim), id(p.killId) || f.externalId || tick])}`;
+      break;
+    }
+    case 'player:death': {
+      // Your own hull's loss: the victim seat is the player's, the actor is whoever the defeat
+      // receipt names (combat receipt, world.js hazard payload with no killer, or null). The
+      // narrative killLine already speaks this shape — "X destroyed your ship in Y" — and the
+      // death receipt's own cause sentence rides in details as the citation, never invented.
+      f.stage = 'kill';
+      f.actor = identity(state, p.killerId, p.attacker);
+      f.subject = identity(state, state.playerId, null, false, 'your ship');
+      f.provides = [ref('death', id(state.playerId) || 'player')];
+      // details stay inside the closed persistence vocabulary; the receipt's own cause sentence
+      // rides `reason` as the citation, never invented.
+      f.details = { cause: 'generic', playerCaused: false, surface: null, victimClass: 'ship',
+        factionLawful: false, pos: point(p.pos), reason: text(p.cause, '', 120) };
+      f.dedupe = `kill:${JSON.stringify([id(state.playerId) || 'player', tick, text(p.cause, '', 48)])}`;
+      break;
+    }
+    case 'aftermathWreck:recorded':
+    case 'loot:manifestPayload': {
+      const marker = event === 'aftermathWreck:recorded';
+      const object = marker ? p.markerId : p.payloadId;
+      if (id(object) === null) return { invalid: true };
+      f.stage = 'aftermath';
+      f.actor = identity(state, p.killerId, p.killerName);
+      f.subject = identity(state, p.victimId, p.victimLabel || p.victimName, false, 'an unnamed ship');
+      f.provides = [ref(marker ? 'marker' : 'wreck', object)];
+      f.parent = ref('death', p.victimId);
+      f.group = id(p.encounterId) ? `encounter:${id(p.encounterId)}` : null;
+      f.details = { markerId: marker ? id(object) : null, wreckId: marker ? null : id(object),
+        victimId: id(p.victimId), sourceKind: marker ? 'wreck' : 'manifest', pos: point(p.pos) };
+      f.dedupe = `${event}:${id(object)}`;
+      break;
+    }
+    case 'aftermathWreck:spawned': {
+      if (id(p.entityId) === null || id(p.markerId) === null) return { invalid: true };
+      f.stage = 'binding';
+      f.parent = ref('marker', p.markerId);
+      f.provides = [ref('wreck', p.entityId)];
+      f.details = { markerId: id(p.markerId), wreckId: id(p.entityId) };
+      f.dedupe = `binding:${JSON.stringify([p.markerId, id(p.entityId)])}`;
+      break;
+    }
+    case 'salvage:completed': {
+      if (id(p.wreckId) === null && id(p.markerId) === null) return { invalid: true };
+      f.stage = 'salvage';
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.parent = firstRef(ref('marker', p.markerId), ref('wreck', p.wreckId));
+      // These aliases deliberately allow a recovery receipt to choose a processed wreck rather
+      // than the earlier unprocessed marker. Stage restrictions in the ledger prevent cycles.
+      f.provides = [ref('marker', p.markerId), ref('wreck', p.wreckId)].filter(Boolean);
+      // `loot` in stock mining is the FINAL DRAIN BATCH, not total salvage or collected cargo.
+      // Do not count it as acquired cargo. This fact asserts processing completion only.
+      f.details = { markerId: id(p.markerId), wreckId: id(p.wreckId) };
+      f.dedupe = `salvage:${id(p.markerId) || id(p.wreckId)}`;
+      break;
+    }
+    case 'chronicler:provenance': {
+      if (!PROOF_STAGES.has(p.stage) || !id(p.receiptId) || !p.source
+        || !ref(p.source.kind, p.source.id) || id(p.actorId) === null) return { invalid: true };
+      if (p.stage !== 'law' && (!id(p.commodityId) || !positive(p.qty))) return { invalid: true };
+      if (p.stage === 'sold' && (!id(p.stationId) || !Number.isFinite(p.total) || p.total < 0 || p.total > MAX_QTY)) {
+        return { invalid: true };
+      }
+      // Recovery must identify an actual wreck/marker. A sale must identify a recovery RECEIPT.
+      // Legal causality must identify the receipt which the authoritative law owner validated.
+      const allowed = p.stage === 'recovered' ? ['marker', 'wreck'] : ['receipt'];
+      if (!allowed.includes(p.source.kind)) return { invalid: true };
+      f.stage = p.stage;
+      f.externalId = id(p.receiptId);
+      f.actor = identity(state, p.actorId, p.actorName);
+      f.parent = ref(p.source.kind, p.source.id);
+      f.details = { commodityId: id(p.commodityId), qty: finite(p.qty), total: finite(p.total),
+        kind: text(p.kind, p.stage === 'law' ? 'legal action' : p.stage, 64) };
+      if (p.stage === 'sold') f.group = `transaction:${f.externalId}`;
+      f.dedupe = `receipt:${f.externalId}`;
+      break;
+    }
+    case 'economy:tradeCompleted': {
+      if (p.side !== 'sell') return null;
+      if (!id(p.commodityId) || !id(p.stationId) || !positive(p.qty)
+        || !Number.isFinite(p.total) || p.total < 0) return { invalid: true };
+      f.stage = 'trade';
+      if (f.externalId) f.group = `transaction:${f.externalId}`;
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.details = { commodityId: id(p.commodityId), qty: p.qty, total: p.total,
+        provenanceMissing: true };
+      // Unproven native sales remain independent. No FIFO guess, commodity coincidence, or
+      // "last wreck" heuristic is allowed to transform this into a recovered-cargo sale.
+      f.dedupe = f.externalId ? `trade:${f.externalId}`
+        : `trade:${JSON.stringify([tick, f.stationId, f.details])}`;
+      break;
+    }
+    case 'aceMemory:transition':
+    case 'aceMemory:returnSpawned':
+    case 'aceMemory:pilotPromoted': {
+      const aceId = id(p.aceId);
+      // Promotion is the moment the world learns a fleeing pirate's name — recorded as the
+      // first-contact beat of that pilot's ledger arc (encountered → fled → returned).
+      const transition = event === 'aceMemory:returnSpawned' ? 'returned'
+        : event === 'aceMemory:pilotPromoted' ? 'encountered'
+        : p.transition;
+      if (!aceId || !ACE_TRANSITIONS.has(transition)) return null;
+      f.stage = 'ace';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: aceId, key: `ace:${aceId}`, player: false, name: text(p.aceName || p.name, aceId) };
+      f.group = `ace:${aceId}`;
+      f.details = { transition, aceId, crew: text(p.crew),
+        count: Math.max(0, finite(p.record?.encounterCount)),
+        returnTier: Math.max(0, finite(p.returnTier ?? p.tier ?? p.record?.returnTier)) };
+      f.dedupe = `ace:${JSON.stringify([aceId, transition, f.externalId || tick, f.details.count])}`;
+      break;
+    }
+    case 'distress:rescued': {
+      f.stage = 'rescue';
+      f.actor = identity(state, p.rescuerId ?? p.actorId ?? state.playerId);
+      const target = p.targetId ?? p.shipId ?? p.entityId ?? p.id ?? p.distressId;
+      f.subject = identity(state, target, p.name || p.shipName, false, 'a ship in distress');
+      f.details = { encounterId: id(p.encounterId) };
+      f.dedupe = `rescue:${f.externalId || id(p.distressId) || JSON.stringify([id(target), tick])}`;
+      break;
+    }
+    case 'heat:changed': {
+      if (!Number.isFinite(p.level) || !Number.isFinite(p.value)) return { invalid: true };
+      const level = Math.max(0, Math.min(5, Math.floor(p.level)));
+      const previous = Number.isFinite(p.previousLevel) ? Math.max(0, Math.min(5, Math.floor(p.previousLevel)))
+        : p.previousValue >= (p.threshold ?? 0.15) ? Math.max(1, Math.ceil(p.previousValue * 5)) : 0;
+      if (level === previous && !p.wantedCrossed) return null;
+      f.stage = 'wanted';
+      f.actor = identity(state, state.playerId);
+      f.details = { level, previousLevel: previous, reason: text(p.reason, 'status change', 120),
+        tier: text(p.tier, level ? 'wanted' : 'none', 32), cleared: level === 0 };
+      f.dedupe = `wanted:${JSON.stringify([tick, level, previous, f.details.reason])}`;
+      break;
+    }
+    case 'contraband:scanned': {
+      if (p.found !== true) return null;
+      f.stage = 'scan'; f.actor = identity(state, state.playerId);
+      f.details = { found: true };
+      f.dedupe = f.externalId ? `scan:${f.externalId}` : `scan:${JSON.stringify([tick, p.scannerId ?? null])}`;
+      break;
+    }
+    case 'salvage:reactorVented':
+    case 'salvage:reactorTowedClear':
+    case 'salvage:reactorBurst': {
+      const wreck = id(p.wreckId ?? p.targetId);
+      if (!wreck) return { invalid: true };
+      f.stage = 'reactor';
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.parent = ref('wreck', wreck);
+      f.details = { outcome: event.split(':')[1], wreckId: wreck };
+      f.dedupe = `${event}:${wreck}`;
+      break;
+    }
+    case 'aftermath:causeRecorded': {
+      const key = id(p.fingerprint || p.causeId);
+      if (!key) return { invalid: true };
+      f.stage = 'cause';
+      f.provides = [ref('cause', key)];
+      f.group = id(p.encounterId) ? `encounter:${id(p.encounterId)}` : null;
+      f.details = { kind: text(p.consequenceKind, 'aftermath', 64) };
+      f.dedupe = `cause:${key}`;
+      break;
+    }
+    case 'aftermath:remedied': {
+      const key = id(p.fingerprint || p.causeId);
+      if (!key) return { invalid: true };
+      f.stage = 'remedy';
+      f.parent = ref('cause', key);
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.details = { missionId: id(p.missionId), kind: text(p.consequenceKind, 'aftermath', 64) };
+      f.dedupe = `remedy:${JSON.stringify([key, f.details.missionId])}`;
+      break;
+    }
+    case 'aftermath:causeExhausted': {
+      const key = id(p.fingerprint || p.causeId);
+      if (!key) return { invalid: true };
+      f.stage = 'exhausted';
+      f.parent = ref('cause', key);
+      f.details = { kind: text(p.consequenceKind, 'aftermath', 64) };
+      f.dedupe = `exhausted:${key}`;
+      break;
+    }
+    case 'freight:cargoSpilled': {
+      // Emitted by traffic panic-jettison AND encounter freight-custody spills; the payload
+      // union is carrier/manifest identity + cause + quantity. A spill with no anchor at all
+      // is noise, not a fact.
+      const carrier = p.carrierId ?? p.ownerId;
+      const anchor = id(p.manifestId) || id(p.custodyId) || id(carrier);
+      if (anchor === null) return { invalid: true };
+      f.stage = 'spill';
+      f.actor = identity(state, p.attackerId ?? p.raiderId, null, false, 'an unseen attacker');
+      f.subject = identity(state, carrier, p.ownerName, false, 'a hauler');
+      if (id(p.encounterId)) f.group = `encounter:${id(p.encounterId)}`;
+      else if (id(p.manifestId)) f.group = `manifest:${id(p.manifestId)}`;
+      f.details = {
+        cause: text(p.cause, 'jettison', 64),
+        manifestId: id(p.manifestId) || id(p.custodyId),
+        commodityId: id(p.commodityId),
+        qty: Math.max(0, finite(p.qty)),
+        podCount: Math.max(0, finite(p.podCount, Array.isArray(p.podIds) ? p.podIds.length : 0)),
+        encounterId: id(p.encounterId),
+      };
+      f.dedupe = `spill:${JSON.stringify([anchor, f.details.cause, tick])}`;
+      break;
+    }
+    case 'encounter:ambientPredationTelegraph': {
+      if (id(p.raidId) === null) return { invalid: true };
+      f.stage = 'predation';
+      f.actor = identity(state, p.raiderId, null, false, 'a raider');
+      f.subject = identity(state, p.targetId, null, false, 'a hauler');
+      // The raidId is the encounterId the AI activity and any later kill carry, so the
+      // telegraph lands in the same story as the violence it announced.
+      f.group = `encounter:${id(p.raidId)}`;
+      f.details = { encounterId: id(p.raidId), manifestId: id(p.manifestId),
+        telegraphS: Math.max(0, finite(p.telegraphS)) };
+      f.dedupe = `predation:${id(p.raidId)}`;
+      break;
+    }
+    case 'formation:discovered': {
+      if (id(p.formationId) === null) return { invalid: true };
+      const fid = id(p.formationId);
+      f.stage = 'survey';
+      f.actor = identity(state, p.actorId ?? state.playerId, null, true);
+      f.subject = { id: fid, key: `formation:${fid}`, player: false,
+        name: text(p.designation || p.formationId, 'an asteroid formation') };
+      f.details = { formationId: fid,
+        kind: text(p.archetypeName || p.archetype, 'formation', 64),
+        count: Math.max(0, finite(p.count)) };
+      f.dedupe = `survey:${fid}`;
+      break;
+    }
+    case 'gate:verdict': {
+      if (id(p.gateKey) === null || id(p.type) === null) return { invalid: true };
+      f.stage = 'gate';
+      f.actor = { id: null, key: null, player: false, name: 'Gate Control' };
+      f.subject = identity(state, state.playerId, null, true);
+      f.group = `gate:${id(p.gateKey)}`;
+      f.details = { kind: text(p.type, 'verdict', 64), gateTo: id(p.gateTo),
+        tollAmount: Math.max(0, finite(p.tollAmount)), wingShips: Math.max(0, finite(p.wingShips)),
+        wanted: p.wanted === true };
+      f.dedupe = `gate:${JSON.stringify([id(p.gateKey), tick])}`;
+      break;
+    }
+    case 'claim:freightDelivered': {
+      if (id(p.bodyId) === null) return { invalid: true };
+      const bid = id(p.bodyId);
+      f.stage = 'delivery';
+      f.actor = { id: null, key: null, player: false, name: 'a depot hauler' };
+      f.subject = { id: bid, key: `claim:${bid}`, player: false,
+        name: text(p.bodyId, 'a claim body') };
+      f.group = `claim:${bid}`;
+      f.details = { qty: Math.max(0, finite(p.quantity)), inbound: p.inbound === true,
+        kind: text(p.inbound ? 'inbound resupply' : 'outbound haul', 'delivery', 64) };
+      f.dedupe = `delivery:${JSON.stringify([bid, p.inbound === true, tick])}`;
+      break;
+    }
+    case 'story:playerChoiceRecorded': {
+      // A dialogue choice is evidence in the speaker's own words. `externalId` mirrors the story
+      // owner's fact id (`choice:<encounter>:<choice>`) so the citation resolves to the same row.
+      const choiceId = id(p.choiceId);
+      if (choiceId === null) return { invalid: true };
+      const encounterId = id(p.encounterId) || 'choice';
+      // Cap the quoted line so the composed `note` stays inside the details-string bound.
+      const line = text(p.line, '', 120);
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = `choice:${encounterId}`;
+      f.externalId = `choice:${encounterId}:${choiceId}`;
+      f.details = {
+        kind: 'choice', choiceId, encounterId, shapeId: id(p.shapeId),
+        title: 'A spoken choice',
+        note: line ? `The record holds the pilot's own words — "${line}"` : `Chose ${choiceId}`,
+      };
+      f.dedupe = `story:${f.externalId}`;
+      break;
+    }
+    case 'story:vergeEvidenceRecorded': {
+      const key = id(p.key);
+      if (key === null) return { invalid: true };
+      const keyName = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = 'story:campaign';
+      f.externalId = `verge:${key}`;
+      f.details = {
+        kind: 'verge_evidence', key, source: text(p.source, 'the ship', 96),
+        title: 'Verge evidence filed',
+        note: `The ${keyName} reached the Verge lattice`,
+      };
+      f.dedupe = `story:verge:${key}`;
+      break;
+    }
+    case 'story:kurtzLedger': {
+      // Emitted on every ledger read — revisit or not, it is one fact: the ledger was read.
+      if (!Array.isArray(p.rows) || p.rows.length === 0) return { invalid: true };
+      // Details are strict scalars — the roster rides as one bounded string.
+      const names = p.rows.map((row) => text(row && row.name, '', 48)).filter(Boolean);
+      const namesText = text(names.slice(0, 4).join('; '), '', 192);
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = 'story:campaign';
+      f.externalId = 'kurtz:ledger';
+      f.details = {
+        kind: 'kurtz_ledger', rowCount: p.rows.length, names: namesText || null,
+        title: 'The Kurtz ledger',
+        note: namesText ? `The ledger was read — ${namesText}` : 'The ledger was read',
+      };
+      f.dedupe = 'story:kurtz:ledger';
+      break;
+    }
+    case 'story:vergeValeGatesRevoked': {
+      const gateId = id(p.id) || 'vale_gates';
+      const subjectId = id(p.subject);
+      f.stage = 'story';
+      f.actor = { id: null, key: 'verge', player: false, name: 'the Verge lattice' };
+      f.subject = {
+        id: subjectId, key: subjectId, player: false,
+        name: text(p.subject, 'director vale').replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()),
+      };
+      f.group = 'story:campaign';
+      f.externalId = `verge:revocation:${gateId}`;
+      f.details = {
+        kind: 'verge_revocation', gateId,
+        source: text(p.source, 'verge', 96),
+        revocationCount: Math.max(0, finite(p.revocationCount)),
+        title: 'Gate access revoked',
+        note: `The Verge lattice sealed ${f.subject.name} out of the gates`,
+      };
+      f.dedupe = `story:verge:revocation:${gateId}`;
+      break;
+    }
+    case 'ship:purchased': {
+      // One fact per hull id, ever — re-buying a hull already in the ledger dedupes, a different
+      // hull is a new beat. Emitted by ships.js with { defId, price } (grant purchases price 0).
+      const defId = id(p.defId);
+      if (defId === null) return { invalid: true };
+      const price = Math.max(0, finite(p.price));
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: defId, key: `hull:${defId}`, player: false,
+        name: text(p.name || p.defName, properName(defId.replace(/^ship_/, ''), 'a new hull')) };
+      f.group = `deed:ship:${defId}`;
+      f.details = { kind: 'ship_purchase', defId, price, title: 'A new hull',
+        note: price > 0
+          ? `Commissioned the ${f.subject.name} for ${price} credits`
+          : `Commissioned the ${f.subject.name} from the shipyard's fabricators` };
+      f.dedupe = `deed:ship:${defId}`;
+      break;
+    }
+    case 'achievement:unlocked': {
+      // Emitted by achievements.js with the achievement def: { id, name, category, at, via,
+      // retroactive }. Retroactive/merged unlocks are still true, so they record; the id dedupes.
+      const achievementId = id(p.id);
+      if (achievementId === null) return { invalid: true };
+      const name = text(p.name, properName(achievementId, achievementId));
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: achievementId, key: `achievement:${achievementId}`, player: false, name };
+      f.group = `deed:achievement:${achievementId}`;
+      f.details = { kind: 'achievement', achievementId,
+        category: text(p.category) || null, via: text(p.via) || null,
+        retroactive: p.retroactive === true,
+        title: name, note: `Unlocked the "${name}" achievement` };
+      f.dedupe = `deed:achievement:${achievementId}`;
+      break;
+    }
+    case 'career:ladder:completed': {
+      // Emitted by ladderShared.js with { careerId, receiptId, nonBinding, simTime }. One ladder
+      // completion per career, ever; the receipt rides as the fact's externalId (a receipt ref).
+      const careerId = id(p.careerId);
+      if (careerId === null) return { invalid: true };
+      f.stage = 'story';
+      f.externalId = id(p.receiptId);
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: careerId, key: `career:${careerId}`, player: false,
+        name: properName(careerId, careerId) };
+      f.group = `deed:ladder:${careerId}`;
+      f.details = { kind: 'ladder_complete', careerId,
+        title: `${f.subject.name} ladder`,
+        note: `Completed the ${f.subject.name} career ladder` };
+      f.dedupe = `deed:ladder:${careerId}`;
+      break;
+    }
+    case 'stunt:trickDetected': {
+      // Anti-spam law: only marquee tricks are facts — a legendary feat outright, a rare one only
+      // when it caught other hulls in it (the same gate the witnessed-news consumer applies).
+      // Uncommon/common tricks and unepisoded detections are filtered noise, not facts.
+      const episodeId = id(p.episodeId);
+      const trickId = id(p.trickId);
+      const rarity = p.rarity === 'legendary' || p.rarity === 'rare' ? p.rarity : null;
+      const collateral = Math.max(1, finite(p.modifiers && p.modifiers.collateralCount, 1));
+      if (!rarity || (rarity === 'rare' && collateral < 2) || episodeId === null || trickId === null) {
+        return null;
+      }
+      const name = text(p.name, properName(trickId, trickId));
+      f.stage = 'story';
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.subject = { id: trickId, key: `stunt:${trickId}`, player: false, name };
+      f.group = `deed:stunt:${episodeId}`;
+      f.details = { kind: 'stunt', trickId, episodeId, rarity,
+        baseScore: Math.max(0, finite(p.baseScore)), collateralCount: collateral,
+        title: name,
+        note: rarity === 'legendary'
+          ? `${name} — a legendary feat the whole pocket witnessed`
+          : `${name} — a rare feat that caught ${collateral} hulls in it` };
+      f.dedupe = `deed:stunt:${episodeId}`;
+      break;
+    }
+    case 'news:headline': {
+      // The record channel. marketNews re-broadcasts every committed ticker line on this same
+      // event — those echoes carry a `source` ('news:publish', 'freight_causality', …) and must
+      // not double-record. An emitter's own line has no source. A citation — receipt/event id or
+      // a domain id — pins the fact to the same key the emitter would cite; a bare line falls
+      // back to its own text so a repeated identical headline records once.
+      if (id(p.source) !== null) return null;
+      const headline = text(p.headline || p.text, '', 160);
+      if (!headline) return { invalid: true };
+      const newsKind = id(p.kind) || 'news';
+      const citation = f.externalId
+        || id(p.markerId) || id(p.aceId) || id(p.profileId) || id(p.sourceId)
+        || id(p.intentId) || id(p.freighterKey)
+        || (id(p.fieldId) ? `${id(p.fieldId)}:${id(p.activityObjectSlotId) || ''}` : null)
+        || (id(p.sectorId) && id(p.zoneId) ? `${id(p.sectorId)}:${id(p.zoneId)}:${id(p.reason) || ''}` : null)
+        || text(headline, '', 96);
+      f.stage = 'story';
+      f.actor = { id: null, key: 'news', player: false, name: 'the wires' };
+      f.group = `newsheadline:${newsKind}`;
+      f.details = { kind: 'news_headline', newsKind,
+        title: properName(newsKind, 'A headline'),
+        note: headline };
+      f.dedupe = `newsHeadline:${newsKind}:${citation}`;
+      break;
+    }
+    case 'conflict:warDeclared': {
+      // inf-war-digest — factions emits this once per front when tension crosses WAR_THRESHOLD.
+      // A declaration needs both houses and their pair key; display names ride the payload so
+      // the durable fact stays dependency-free (ids dedupe, names only speak). The contested
+      // sector rides the fact's own sectorId/sectorName columns, like every other fact.
+      const pairKey = id(p.pairKey);
+      const sides = Array.isArray(p.sides) ? p.sides.map(s => id(s)).filter(Boolean) : [];
+      if (pairKey === null || sides.length !== 2 || sides[0] === sides[1]) return null;
+      const names = Array.isArray(p.sideNames) ? p.sideNames : [];
+      const nameA = text(names[0], '', 48) || sides[0];
+      const nameB = text(names[1], '', 48) || sides[1];
+      const pairName = `${nameA} and ${nameB}`;
+      f.stage = 'war';
+      f.actor = { id: null, key: 'conflict', player: false, name: 'the fronts' };
+      f.subject = { id: pairKey, key: `front:${pairKey}`, player: false, name: pairName };
+      f.group = `front:${pairKey}`;
+      f.factionId = sides[0];
+      f.details = { kind: 'war_declared', pairKey, pairName };
+      f.dedupe = `warDeclared:${pairKey}:${t}`;
+      break;
+    }
+    case 'conflict:flip': {
+      // A front resolving: the contested sector changes hands. The flip id is factions' own
+      // unique receipt (`front:<pair>:<seq>`), so the dedupe never replays a resolved turn;
+      // the playerLeaned bit records whether the player's work pressed it, nothing more.
+      const pairKey = id(p.pairKey);
+      const flipId = id(p.flipId);
+      const winner = id(p.newOwner);
+      const loser = id(p.previousOwner);
+      if (pairKey === null || flipId === null || winner === null || loser === null
+        || winner === loser) return null;
+      f.stage = 'war';
+      f.actor = { id: null, key: 'conflict', player: false, name: 'the fronts' };
+      f.subject = { id: winner, key: `front:${pairKey}`, player: false,
+        name: text(p.winnerName, '', 48) || winner };
+      f.group = `front:${pairKey}`;
+      f.factionId = winner;
+      f.details = { kind: 'front_flip', pairKey, flipId, winner, loser,
+        winnerName: text(p.winnerName, '', 48) || winner,
+        loserName: text(p.loserName, '', 48) || loser,
+        playerLeaned: Number(p.playerLeanMag) > 0 };
+      f.dedupe = `flip:${flipId}`;
+      break;
+    }
+    default: return null;
+  }
+  f.provides = f.provides.filter(Boolean);
+  if (f.externalId) f.provides.push(ref('receipt', f.externalId));
+  f.provides = f.provides.filter((r, i, all) => all.findIndex(x => refKey(x) === refKey(r)) === i);
+  return f;
+}

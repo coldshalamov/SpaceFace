@@ -1,0 +1,435 @@
+// SpaceFace — Pickup 3D tumbling and magnetic scoop vortex presentation.
+//
+// Solves flat, sterile pickup behavior:
+//   1. 3D Tumbling Dynamics: Ore gems, credit chips, and freight canisters tumble across multiple
+//      axes with natural buoyant zero-G angular momentum.
+//   2. Magnetic Tractor Vortex: When pulled toward the ship's cargo bay, pickups accelerate their
+//      tumble and spiral inward in a magnetic funnel, compressing into the intake scoop.
+//   3. Transponder Warning Strobes: Rhythmic aviation-grade double-flash sequences on chits and
+//      canisters, carried as a scale ping on the body (materials are shared — a kick reads as the
+//      beacon discharge hitting the hull).
+//   4. Intake response: inside the last stretch the spin SETTLES, the body turns to face the
+//      scoop and is drawn in lengthwise. Collection is the object arriving — a thing the player
+//      chased, turning and going in — not a reward firework thrown around where it used to be.
+//   5. Eject Materialize: pickups calved out of rocks and wrecks pop in with a fast overshoot
+//      scale ramp — an ejection, not a pop-in.
+//
+// PURE RENDER-ONLY PRESENTATION: Never modifies physical collection radii or sim cargo quantities.
+// Nothing here writes to the entity, creates a pickup or adds a body; it only poses the mesh the
+// cargo system already owns. Cosmetic debris (src/render/vfx/fragmentFamilies.js) is a different
+// class of matter entirely and is never collectible.
+
+import { presentationTableDrawWu } from './presentationSimClock.js';
+import { worthReadFor } from './pickupWorthRead.js';
+
+function hashId(id) {
+  const s = String(id || '');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return h;
+}
+
+// --- Tractor-beam gravimetric vortex: pure math ---------------------------------------------
+// The vortex is a presentation-only spiral layered on the pickup mesh; the sim's magnet pull
+// (src/systems/mining.js) owns the real motion. These helpers are exported for the VFX funnel
+// stream and for focused tests.
+
+export const TRACTOR_MAGNET_RANGE_WU = 350;   // magnet attractor presentation range
+export const TRACTOR_VORTEX_RANGE_WU = 200;   // fallback spiral radius before a table stamp exists
+export const TRACTOR_VORTEX_MAX_RADIUS_WU = 6.0;
+
+/** Spiral visuals follow the live table draw radius. The sim magnet range stays put. */
+export function spiralVisualRangeWu(tableDrawWu) {
+  const table = Number(tableDrawWu);
+  if (!Number.isFinite(table) || table <= 0) return TRACTOR_VORTEX_RANGE_WU;
+  return table;
+}
+
+/** True when a spiral mote sits inside the live table draw disc. */
+export function spiralMoteWithinDraw(dx, dz, tableDrawWu) {
+  const limit = spiralVisualRangeWu(tableDrawWu);
+  const x = Number(dx) || 0;
+  const z = Number(dz) || 0;
+  return (x * x + z * z) <= limit * limit;
+}
+export const TRACTOR_MAGNETIZED_MIN_PULL = 0.1;
+
+/** Pull factor in [0, 1): 0 at/ beyond magnet range, →1 at the scoop. NaN-safe. */
+export function resolveTractorPullFactor(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= TRACTOR_MAGNET_RANGE_WU) return 0;
+  return Math.max(0, 1 - d / TRACTOR_MAGNET_RANGE_WU);
+}
+
+export function isTractorMagnetized(pullFactor) {
+  return pullFactor > TRACTOR_MAGNETIZED_MIN_PULL;
+}
+
+/** Angular rate (rad/s) of the vortex spiral: spins faster as the pull hardens. */
+export function resolveTractorVortexRate(pullFactor) {
+  const p = Number.isFinite(pullFactor) ? Math.min(1, Math.max(0, pullFactor)) : 0;
+  return 8.0 + p * 12.0;
+}
+
+/**
+ * Spiral offset for a pickup at `distanceWu` with accumulated `vortexAngle` (rad).
+ * Writes { radius, x, z } into `out` (allocated when omitted). Radius collapses both at the
+ * scoop (drop compresses into the intake) and at the vortex boundary (smooth onset).
+ */
+export function resolveTractorVortex(distanceWu, vortexAngle, out = null, rangeWu = TRACTOR_VORTEX_RANGE_WU) {
+  const rec = out || { radius: 0, x: 0, z: 0 };
+  const limit = spiralVisualRangeWu(rangeWu);
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= limit) {
+    rec.radius = 0;
+    rec.x = 0;
+    rec.z = 0;
+    return rec;
+  }
+  const pull = resolveTractorPullFactor(d);
+  const a = Number.isFinite(vortexAngle) ? vortexAngle : 0;
+  const radius = Math.min(d * 0.15, TRACTOR_VORTEX_MAX_RADIUS_WU * (1 - pull));
+  rec.radius = radius;
+  rec.x = Math.cos(a) * radius;
+  rec.z = Math.sin(a) * radius;
+  return rec;
+}
+
+/** Cargo-bay compression: 1 outside 25 wu, easing to 0.15 at the scoop mouth. */
+export function resolveTractorScaleTarget(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= 25) return 1.0;
+  return Math.max(0.15, d / 25.0);
+}
+
+// --- Intake: the last stretch ----------------------------------------------------------------
+// Collection is a thing arriving, not a reward going off. The magnet grabs the drop and spins it
+// up; then, inside the intake range, the spin SETTLES, the body turns to face the scoop, and it is
+// drawn in lengthwise. That sequence — grab, spiral, align, swallow — is the whole feedback, and
+// it is carried by the actual object the player was chasing, so nothing radial has to be invented.
+
+export const TRACTOR_INTAKE_RANGE_WU = 28;   // alignment begins here
+export const TRACTOR_INTAKE_MOUTH_WU = 6;    // fully aligned by here
+
+/** Smoothstep. */
+function ease(x) {
+  const t = x < 0 ? 0 : (x > 1 ? 1 : x);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * How much the intake owns the pose, 0..1. 0 outside the intake range (free tumble), 1 at the
+ * scoop mouth (fully aligned on the approach axis). NaN-safe.
+ */
+export function resolveIntakeAlignment(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= TRACTOR_INTAKE_RANGE_WU) return 0;
+  const span = TRACTOR_INTAKE_RANGE_WU - TRACTOR_INTAKE_MOUTH_WU;
+  return ease((TRACTOR_INTAKE_RANGE_WU - d) / span);
+}
+
+/**
+ * Anisotropic intake response: squeezed across the throat, drawn out along the approach.
+ * Writes { transverse, along } multipliers into `out`.
+ */
+export function resolveIntakeStretch(alignment, out = null) {
+  const rec = out || { transverse: 1, along: 1 };
+  const a = Number.isFinite(alignment) ? Math.min(1, Math.max(0, alignment)) : 0;
+  rec.transverse = 1 - 0.28 * a;
+  rec.along = 1 + 0.42 * a;
+  return rec;
+}
+
+/**
+ * Yaw that points the body's local +Z at the collector, for a mesh whose Euler is applied XYZ.
+ * `dx`/`dz` run from the drop toward the collector.
+ */
+export function resolveIntakeYaw(dx, dz) {
+  return Math.PI / 2 - Math.atan2(Number(dz) || 0, Number(dx) || 0);
+}
+
+/** Shortest-arc blend between two angles; keeps the turn from unwinding the long way round. */
+function blendAngle(from, to, weight) {
+  let delta = (to - from) % (Math.PI * 2);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return from + delta * weight;
+}
+
+/**
+ * Deterministic ambient funnel-mote stream phase for VFX: `cycle` runs 0 (drop rim) → 1 (scoop)
+ * on a ~0.7 s loop keyed to sim time, `angle` precesses so motes describe the funnel wall.
+ * Pure function of (seed, simTime) — safe for tests, no Math.random in the hot path.
+ */
+export function resolveFunnelMoteStream(seed, simTime, out = null) {
+  const rec = out || { cycle: 0, angle: 0 };
+  const h = hashId(seed);
+  const phase = ((h & 0xffff) / 0xffff);
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  rec.cycle = (t * 1.4 + phase) % 1;
+  rec.angle = phase * Math.PI * 2 + t * (3.0 + (((h >>> 16) & 0xff) / 255) * 4.0);
+  return rec;
+}
+
+// --- Collectible beacon ring ---------------------------------------------------------------------------------
+// The "this one is takeable" signal. Every commodity drop carries a thin luminous band that
+// precesses slowly and kicks on the transponder's double-flash beat — a rock, a wreck and a tow
+// crate answer no light that way, so the ring is the visible difference between cargo and
+// scenery at flight-camera range, where the 3.5% body ping and the tumble read as nothing.
+// Presentation-only: the ring owns no sim state and poses no body.
+
+/** Pose of a drop's beacon ring. Pure function of (simTime, phase, reducedMotion) — test-seam.
+ * `haloFloor`/`haloKick` are the worth read's contribution (pickupWorthRead.js): a rich lot
+ * rests brighter and kicks wider, a junk lot rests dimmer; the defaults are today's plain
+ * read, so callers that pass no tier are bit-identical to the old behavior. */
+export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null, haloFloor = 0.55, haloKick = 0.45) {
+  const rec = out || { spinX: 0, spinY: 0, kick: 0, glow: 0.55 };
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  const p = Number.isFinite(phase) ? phase : 0;
+  // Slow two-axis precession, phased per drop so a spill reads as a constellation, not a row.
+  // Reduced motion holds the plane still; the ring stays present, only calmer.
+  if (!reducedMotion) {
+    rec.spinX = t * 0.6 + p;
+    rec.spinY = t * 0.35 + p * 1.7;
+  } else {
+    rec.spinX = p;
+    rec.spinY = p * 1.7;
+  }
+  // The transponder's double-flash clock (same beat as the body ping) drives the ring's flash,
+  // so body and ring speak one rhythm instead of two competing ones.
+  const cyc = (t * 0.62 + p / (Math.PI * 2)) % 1;
+  let kick = 0;
+  if (cyc < 0.10) kick = Math.exp(-cyc * 60);
+  else if (cyc > 0.14 && cyc < 0.24) kick = Math.exp(-(cyc - 0.14) * 60) * 0.7;
+  if (reducedMotion) kick *= 0.5;
+  rec.kick = kick;
+  const floor = Number.isFinite(haloFloor) ? Math.min(1, Math.max(0, haloFloor)) : 0.55;
+  const gain = Number.isFinite(haloKick) ? Math.max(0, haloKick) : 0.45;
+  rec.glow = floor + 0.18 * Math.sin(t * 2.2 + p) + kick * gain;
+  return rec;
+}
+
+export function createPickupMotionTracker() {
+  const pickupStates = new Map();
+  const vortexScratch = { radius: 0, x: 0, z: 0 };
+  const stretchScratch = { transverse: 1, along: 1 };
+  const haloPoseScratch = { spinX: 0, spinY: 0, kick: 0, glow: 0.55 };
+  let busSubscribers = [];
+  let lastSimTime = 0;
+
+  function getState(pickupId) {
+    let rec = pickupStates.get(pickupId);
+    if (!rec) {
+      const h = hashId(pickupId);
+      const phase = ((h & 0xff) / 255) * Math.PI * 2;
+      const spinSpeed = 1.4 + (((h >> 8) & 0xff) / 255) * 1.8;
+      const pitchSpin = 0.8 + (((h >> 16) & 0xff) / 255) * 1.2;
+      const rollSpin = 0.5 + (((h >> 24) & 0x7f) / 127) * 0.9;
+
+      rec = {
+        phase,
+        spinSpeed,
+        pitchSpin,
+        rollSpin,
+        rotX: phase,
+        rotY: phase * 0.5,
+        rotZ: phase * 0.3,
+        vortexAngle: phase,
+        scaleRatio: 1.0,
+        materializeT0: -1,
+      };
+      pickupStates.set(pickupId, rec);
+    }
+    return rec;
+  }
+
+  // Fresh drop: pickups ejected from rocks/wrecks pop in with an overshoot ramp — reads as
+  // ejection, not pop-in.
+  function onSpawned(payload) {
+    const entity = payload && payload.entity;
+    const id = payload && payload.id != null ? payload.id : (entity && entity.id);
+    const type = (payload && payload.type) || (entity && entity.type);
+    if (id == null || type !== 'pickup') return;
+    getState(id).materializeT0 = lastSimTime;
+  }
+
+  function bindEvents(bus) {
+    if (!bus || typeof bus.on !== 'function') return;
+    busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
+  }
+
+  function unbindEvents() {
+    for (const unsub of busSubscribers) {
+      if (typeof unsub === 'function') unsub();
+    }
+    busSubscribers = [];
+    pickupStates.clear();
+  }
+
+  function updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
+    if (!entity || !mesh) return;
+    const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const rec = getState(entity.id);
+    const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
+
+    // Check distance to player for tractor beam suction vortex
+    let isMagnetized = false;
+    let distToPlayer = 9999;
+    let pullFactor = 0;
+    let approachYaw = 0;
+
+    if (playerEntity && playerEntity.pos && entity.pos) {
+      const dx = playerEntity.pos.x - entity.pos.x;
+      const dz = playerEntity.pos.z - entity.pos.z;
+      distToPlayer = Math.hypot(dx, dz);
+      approachYaw = resolveIntakeYaw(dx, dz);
+
+      pullFactor = resolveTractorPullFactor(distToPlayer);
+      isMagnetized = isTractorMagnetized(pullFactor);
+    }
+
+    // The intake takes over the pose in the last stretch: the tumble settles instead of spinning
+    // ever faster into the hull, so the player sees the object turn and go in rather than vanish.
+    const alignment = resolveIntakeAlignment(distToPlayer);
+
+    // Dynamic tumble acceleration under tractor pull, released again as the intake claims it.
+    const tumbleMultiplier = isMagnetized ? (1.0 + pullFactor * 3.5 * (1 - alignment)) : 1.0;
+    if (!reducedMotion) {
+      rec.rotX += rec.pitchSpin * tumbleMultiplier * dt;
+      rec.rotY += rec.spinSpeed * tumbleMultiplier * dt;
+      rec.rotZ += rec.rollSpin * tumbleMultiplier * dt;
+    }
+
+    // Magnetic spiral vortex offset
+    let vortexOffsetX = 0;
+    let vortexOffsetZ = 0;
+    const spiralLimit = spiralVisualRangeWu(presentationTableDrawWu());
+    if (!reducedMotion && isMagnetized && distToPlayer < spiralLimit) {
+      rec.vortexAngle += dt * resolveTractorVortexRate(pullFactor);
+      const vortex = resolveTractorVortex(distToPlayer, rec.vortexAngle, vortexScratch, spiralLimit);
+      vortexOffsetX = vortex.x;
+      vortexOffsetZ = vortex.z;
+    }
+
+    // Snapping scale compression into cargo bay
+    const targetScale = resolveTractorScaleTarget(distToPlayer);
+    rec.scaleRatio += (targetScale - rec.scaleRatio) * (1 - Math.exp(-12.0 * dt));
+
+    // Vertical zero-G levitation bobbing
+    const bob = reducedMotion ? 0 : Math.sin(simTime * 2.2 + rec.phase) * (isMagnetized ? 0.15 : 0.45);
+
+    // Apply to mesh root / child group
+    const targetObj = (mesh.userData && mesh.userData.gem)
+      || (mesh.children && mesh.children[0])
+      || mesh;
+
+    // Applied pose. The accumulators keep running underneath, so if the pull is broken the drop
+    // picks its own tumble back up instead of staying frozen in the intake attitude.
+    targetObj.rotation.x = rec.rotX * (1 - alignment);
+    targetObj.rotation.y = alignment > 0 ? blendAngle(rec.rotY, approachYaw, alignment) : rec.rotY;
+    targetObj.rotation.z = rec.rotZ * (1 - alignment);
+
+    targetObj.position.x = vortexOffsetX;
+    targetObj.position.y = bob;
+    targetObj.position.z = vortexOffsetZ;
+
+    // Transponder strobe: aviation-grade double-flash carried as a scale ping (two sharp kicks
+    // ~150ms apart per cycle, phased per drop). Deterministic, zero-allocation.
+    let strobe = 0;
+    const cyc = (simTime * 0.62 + rec.phase / (Math.PI * 2)) % 1;
+    if (cyc < 0.10) strobe = Math.exp(-cyc * 60);
+    else if (cyc > 0.14 && cyc < 0.24) strobe = Math.exp(-(cyc - 0.14) * 60) * 0.7;
+    if (reducedMotion) strobe *= 0.5;
+    // FB-075: a volatile lot's hazard ping kicks hotter — the warning survives the chase camera.
+    // A dead-dropped cache stays dark on purpose (ev_smuggler_dumps_cache): no strobe, no ring.
+    const unlitDrop = entity.data && entity.data.unlitDrop === true;
+    const strobeGain = unlitDrop ? 0
+      : (entity.data && (entity.data.volatileClass || entity.data.volatileLamp))
+        ? 0.058 : 0.035;
+
+    // Eject materialize: overshoot ramp on arrival.
+    let matMul = 1;
+    if (rec.materializeT0 >= 0) {
+      const k = (simTime - rec.materializeT0) / 0.35;
+      if (k >= 1) {
+        rec.materializeT0 = -1;
+      } else {
+        const e = 1 - Math.pow(1 - k, 3);
+        matMul = (0.25 + 0.75 * e) * (1 + Math.sin(k * Math.PI) * 0.15);
+      }
+    }
+
+    const scale = targetObj.scale;
+    const s = rec.scaleRatio * matMul * (1 + strobe * strobeGain);
+    if (scale && typeof scale.set === 'function') {
+      if (alignment > 0) {
+        // Squeezed across the throat and drawn out along the approach: the body is being taken
+        // in, not shrunk in place. Local +Z is the approach axis once the yaw blend has landed.
+        const stretch = resolveIntakeStretch(alignment, stretchScratch);
+        scale.set(s * stretch.transverse, s * stretch.transverse, s * stretch.along);
+      } else {
+        scale.set(s, s, s);
+      }
+    } else if (scale && typeof scale.setScalar === 'function') {
+      // Scalar-only mock/lite rigs lose the intake stretch but keep the compression + ping.
+      scale.setScalar(s);
+    }
+
+    // Beacon ring: precesses with the drop's phase, flashes on the transponder beat, and rides
+    // the same scaleRatio so it shrinks into the scoop with the body. Deterministic per drop.
+    // The worth read (pickupWorthRead.js) grades the ring's floor and kick off the lot's value,
+    // so a rich pod reads as worth the chase and a junk chunk stops competing for the eye.
+    const worthRead = worthReadFor(mesh.userData && mesh.userData.worthTier);
+    const halo = mesh.userData && mesh.userData.pickupHalo;
+    if (halo && unlitDrop) {
+      const mat = halo.material;
+      if (mat && 'opacity' in mat) mat.opacity = 0;
+    } else if (halo) {
+      const pose = resolvePickupHaloPose(simTime, rec.phase, reducedMotion, haloPoseScratch,
+        worthRead.haloFloor, worthRead.haloKick);
+      halo.rotation.x = pose.spinX;
+      halo.rotation.y = pose.spinY;
+      const base = halo.userData && halo.userData.baseScale ? halo.userData.baseScale : 1;
+      if (typeof halo.scale.setScalar === 'function') {
+        halo.scale.setScalar(base * rec.scaleRatio * (1 + pose.kick * 0.08));
+      }
+      const mat = halo.material;
+      if (mat && 'opacity' in mat) mat.opacity = Math.min(1, pose.glow);
+      // The rich tier's second inner band counter-precesses against the ring and shares its
+      // glow — one more read of "that one" at flight range, gone inside the scoop with the rest.
+      const band = mesh.userData && mesh.userData.worthBand;
+      if (band) {
+        band.rotation.x = -pose.spinX * 0.7;
+        band.rotation.y = pose.spinY * 1.3;
+        if (typeof band.scale.setScalar === 'function') {
+          band.scale.setScalar(base * rec.scaleRatio * (1 + pose.kick * 0.08));
+        }
+        const bandMat = band.material;
+        if (bandMat && 'opacity' in bandMat) {
+          bandMat.opacity = unlitDrop ? 0 : Math.min(1, pose.glow * 0.7);
+        }
+      }
+    }
+  }
+
+  function prune(activeEntityIds) {
+    if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
+    for (const id of pickupStates.keys()) {
+      if (!activeEntityIds.has(id)) {
+        pickupStates.delete(id);
+      }
+    }
+  }
+
+  return {
+    bindEvents,
+    unbindEvents,
+    updatePickupMotion,
+    prune,
+  };
+}
+
+export const globalPickupMotion = createPickupMotionTracker();

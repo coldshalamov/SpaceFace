@@ -1,0 +1,1132 @@
+// New Game screen (ARCHITECTURE §1.3 step 7, §5; design/specs/09).
+// POSTER register: the starter hull on the stage, stencil title, one nameplate, kit keys for
+// the verbs. Pilot / difficulty / seed / Launch stay the same controls — painted as produced
+// Field Hardware, not leftover underlined words. Pilot name + a picked starter (defaulting to
+// Hitch / ship_kestrel) + difficulty emit game:new. The save system owns newGame() and the
+// switch to flight.
+import { leftoverNewRunLine } from '../../core/newGamePlus.js';
+import { MODULES } from '../../data/modules.js';
+import {
+  DEFAULT_STARTER_ID,
+  NEW_GAME,
+  NEW_GAME_STARTERS,
+  starterById,
+} from '../../data/newGameDefaults.js';
+import { SHIPS } from '../../data/ships.js';
+import { WEAPONS } from '../../data/weapons.js';
+import { fittingsFromDefaultModules } from '../../systems/ships.js';
+import { starterAirCard } from '../starterAirCard.js';
+import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../ship/shipSheet.js';
+import { paintStarterWorkPreview } from '../starterWorkPreview.js';
+import { coreText } from '../localizedCoreCopy.js';
+import { el, words, settle, cue } from '../kit/index.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+import { createStageHull } from './stageHull.js';
+import { createStopScale } from '../orrery/stopDial.js';
+import { createYardCarousel } from '../orrery/yardCarousel.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectNewGameLayouts } from '../orrery/newGameLayouts.js';
+import { injectNewGameScreenSheet } from '../orrery/new-gameLayouts.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { armCallbackAfterPresent } from '../../render/compilePresentSlice.js';
+import { isMobileRenderContext } from '../../render/renderCapabilityProfile.js';
+import { dpMark, injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, channelPins }
+  from '../kit/computedMaterial.js';
+
+// PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
+// Launch with no interaction emits the exact legacy ship_kestrel payload.
+const DEFAULT_STARTER = starterById(DEFAULT_STARTER_ID) || NEW_GAME_STARTERS[0];
+const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
+const FITTABLE_BY_ID = new Map();
+for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
+const DIFFICULTIES = [
+  ['casual', 'Casual', 'Much softer combat. Learn the ropes.'],
+  ['standard', 'Standard', 'Softer hits on you; slightly easier kills.'],
+  ['veteran', 'Veteran', 'Full combat baseline. No damage padding.'],
+  ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
+];
+const DEFAULT_DIFFICULTY = 'standard';
+// The sheet's stage zoom for the new-game hull (Task B §1.1).
+const STAGE_ZOOM = 1.1;
+// the hull alone inside its ring stands closer: it fills about two thirds of the ring's width
+const STAGE_ZOOM_RING = 1.55;
+// The loading shell fades in over 0.8 s (#boot-overlay in styles/intro.css); after Launch the stage
+// hull's WebGL context is freed once the shell covers the stage.
+const STAGE_HULL_RELEASE_MS = 900;
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  hazard: { file: 'key.hazard', width: '18px', minW: '96px', minH: '32px', pad: '0 12px', font: '12px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '72px', minH: '28px', pad: '0 8px', font: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+// Deckplate (FRONTEND_PROGRAM Wave 2): the Field Hardware PNG plates, keys and tiles are drawn by
+// the deckplate bridge now (src/ui/deckplate/screens.js, FH_BRIDGE), so pins keep geometry, type
+// and colour only. Forced colours keeps every pin: there the system palette is the material.
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
+  return node;
+}
+// ORRERY (design/frontend/ORRERY.md §6 New game): the Field Hardware paint helpers below pinned raster
+// plates, key sprites and etched tiles inline with !important, which no sheet can answer. Under ORRERY
+// they only mark each node for the composition sheet (src/ui/orrery/screenLayouts.js, .orr-newgame)
+// and pin nothing, so every id, class hook, Tab stop and handler stays exactly as it was.
+const ORRERY = true;
+function installShell(root) {
+  if (ORRERY) { root.classList.add('fh-shell', 'orr-newgame'); return; }
+  root.classList.add('fh-shell');
+  pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
+}
+function hairline() {
+  if (ORRERY) { const gap = el('div', 'orr-ng-gap'); gap.setAttribute('aria-hidden', 'true'); return gap; }
+  const rule = el('hr', 'k-rule fh-hairline');
+  return pin(rule, {
+    border: '0',
+    height: '4px',
+    background: 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '") repeat-x left center',
+    'background-color': 'transparent',
+    margin: '12px 0',
+  });
+}
+function paintMarking(node) {
+  if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-title'); return node; }
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-label'); return node; }
+  node.classList.add('fh-legend');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-caption'); return node; }
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    ...platePins(variant, spec.width),
+    'box-sizing': 'border-box',
+    padding: '8px 12px',
+    ...extra,
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  if (ORRERY) { input.classList.add('orr-ng-input'); return input; }
+  input.classList.add('fh-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      ...channelPins(state, '12px'),
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+    });
+  };
+  apply('rest');
+  if (input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  if (ORRERY) {
+    button.classList.add('k-word', 'orr-ng-key', 'orr-ng-key--' + kind);
+    button._fhSync = () => {};
+    return button;
+  }
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    // A key's width, type and ink are the keycap's (the deckplate sheet); the pin keeps its footprint.
+    pin(button, {
+      display: 'inline-flex',
+      // a choice segment fills its slot in the selector track; every other key is its own width
+      ...(kind === 'legend' ? {} : { width: 'max-content' }),
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
+      ...(kind === 'legend' ? { padding: spec.pad } : {}),
+      'font-size': spec.font,
+      'text-transform': 'uppercase',
+      // a rail word sets flush left (data-key-align); every other key centres its legend
+      'justify-content': button.dataset.keyAlign || 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      ...capPins(kind, state, spec.width),
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    const lit = button.getAttribute('aria-pressed') === 'true' || button.getAttribute('aria-selected') === 'true';
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (button.dataset.fhBound !== '1') {
+    button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' && button.getAttribute('aria-pressed') === 'true' ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function syncKeys(root) {
+  if (!root || !root.querySelectorAll) return;
+  for (const button of root.querySelectorAll('.fh-key')) {
+    if (typeof button._fhSync === 'function') button._fhSync();
+  }
+}
+
+export function parseUniverseSeed(value) {
+  const text = String(value ?? '').trim();
+  if (!/^\d{1,10}$/.test(text)) return null;
+  const seed = Number(text);
+  return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
+}
+
+function randomSeedText() {
+  // A fresh seed for the "New seed" word. Cosmetic UI randomness (the run's seed is whatever the
+  // field says when Launch is pressed), so Math.random is fine here; state.rng belongs to the sim.
+  return String(1 + Math.floor(Math.random() * 0xfffffffe));
+}
+
+function readNewGamePlusCandidateAsync(ctx) {
+  try {
+    const save = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    if (save && typeof save.getNewGamePlusCandidateAsync === 'function') {
+      return save.getNewGamePlusCandidateAsync();
+    }
+    return Promise.resolve(save && typeof save.getNewGamePlusCandidate === 'function'
+      ? save.getNewGamePlusCandidate()
+      : null);
+  } catch (error) {
+    return Promise.resolve(null);
+  }
+}
+
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+function nav(ctx, method, arg) {
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
+  ctx.bus.emit('ui:' + method, { id: arg });
+}
+
+// First-run splash (spec2/03 §3): after START, a single full-screen line on black, 2.5s, then B0.
+// Fires only once per profile (localStorage flag), so returning players skip straight into flight.
+// It is a cinematic, not a screen: its rules live in styles/ui.css beside the Continue veil.
+const FIRST_RUN_LINE = 'Helios System · Third Shift Arrival';
+const FIRST_RUN_FLAG = 'sf.firstRunIntroSeen';
+function showFirstRunSplash(ctx) {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (localStorage.getItem(FIRST_RUN_FLAG)) {
+    if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:done', { skipped: true });
+    return; // already seen — no splash
+  }
+  localStorage.setItem(FIRST_RUN_FLAG, '1');
+  if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:active', { line: FIRST_RUN_LINE });
+  const splash = document.createElement('div');
+  splash.className = 'sf-firstrun-splash';
+  splash.setAttribute('role', 'status');
+  splash.setAttribute('aria-live', 'polite');
+  splash.setAttribute('aria-atomic', 'true');
+  const line = document.createElement('div');
+  line.className = 'sf-firstrun-splash__line';
+  line.textContent = FIRST_RUN_LINE;
+  splash.appendChild(line);
+  (document.getElementById('ui-root') || document.body).appendChild(splash);
+  // Fade in, hold ~2.5s, fade out, remove. Hold/fade clocks start now; rAF only adds the
+  // visible class so a stalled frame cannot gate the opening tutorial.
+  const finish = () => {
+    if (splash.parentNode) splash.remove();
+    if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:done', { skipped: false });
+  };
+  requestAnimationFrame(() => splash.classList.add('open'));
+  setTimeout(() => {
+    splash.classList.remove('open');
+    setTimeout(finish, 600);
+  }, 2500);
+}
+
+function shipDefFor(ctx, shipId) {
+  const ships = ctx && ctx.state && ctx.state.content && ctx.state.content.ships;
+  if (Array.isArray(ships)) return ships.find((s) => s.id === shipId) || SHIP_BY_ID.get(shipId) || null;
+  if (ships && typeof ships === 'object') return ships[shipId] || SHIP_BY_ID.get(shipId) || null;
+  return SHIP_BY_ID.get(shipId) || null;
+}
+
+// A rail word: the legend key's printed pins, set flush left like the field labels above it and the
+// one-word tag beneath it. paintKey pins its alignment inline on every state change, so the rail
+// asks for it through data-key-align rather than overriding once (the hull names sat centred over
+// left-set tags).
+function railWord(b) {
+  b.dataset.keyAlign = 'flex-start';
+  paintKey(b, 'legend');
+}
+
+// The stage shows the slot-parallel fittings array the render track consumes (a raw id list
+// would place modules in the wrong slot positions), resolved by the same fit rule the run uses.
+function starterStageFittings(starter) {
+  return starter ? fittingsFromDefaultModules(starter.shipId, starter.fittedModules || []) : null;
+}
+
+function starterLoadoutRows(starter) {
+  const labels = {
+    weapon: 'Primary',
+    mining: 'Mining',
+    engine: 'Drive',
+    shield: 'Shield',
+    cargo: 'Cargo',
+    utility: 'Utility',
+  };
+  return ((starter && starter.fittedModules) || [])
+    .map((id) => FITTABLE_BY_ID.get(id))
+    .filter(Boolean)
+    .map((def) => [labels[def.slotType] || def.slotType, def.name]);
+}
+
+// The first fifteen minutes (spec2/03 §1): the four beats a Steam-demo player should know before
+// Launch. Rendered as four static kit rows under the loadout (check-new-game-first-run-rail).
+const FIRST_MINUTES = [
+  ['Wake at the beacon', 'Thrust to the beacon. One verb at a time.'],
+  ['Tether the derelict', 'Latch, winch, cut. The vacuum shows itself.'],
+  ['Mine the first seam', 'Pulse, beam the bright seams, ride the heat.'],
+  ['Dock and pick work', 'Sell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.'],
+];
+
+/** A form field: a label at body size 62 % and its control beneath, separated from the next by a hairline. */
+function field(labelText, htmlFor) {
+  const wrap = el('div');
+  // A <label> only where it labels one control; a group of words gets a plain heading it points at.
+  const label = el(htmlFor ? 'label' : 'div', 'k-t-body k-62 fh-legend', labelText);
+  if (htmlFor) label.htmlFor = htmlFor;
+  paintLegend(label);
+  // The label sits on its own line above the control (a block wrapper; the kit's inputs are inline).
+  const line = el('div');
+  line.appendChild(label);
+  wrap.appendChild(line);
+  return { wrap, label };
+}
+
+let refs = null;
+
+export const newGameScreen = {
+  id: 'newGame',
+
+  mount(rootEl, ctx) {
+    this._embarkSpecActive = false;
+    this._embarkSpecQueued = null;
+    injectDeckplate();
+    if (refs && refs.unsubStartFailed) {
+      try { refs.unsubStartFailed(); } catch (e) {}
+    }
+    // a remount without a dispose (screen swap, error recovery) would leave the last mount's
+    // instruments observing detached DOM — release them first, the way dispose() does (REV-D136b.3)
+    for (const key of ['_diffDial', '_starterDial', 'hull']) {
+      if (this[key] && typeof this[key].dispose === 'function') { try { this[key].dispose(); } catch (e) {} }
+      this[key] = null;
+    }
+    rootEl.innerHTML = '';
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', coreText('newGame'));
+    injectOrreryScreens();
+    injectNewGameLayouts();
+    injectNewGameScreenSheet();
+    installShell(rootEl);
+
+    // Title. `.sf-ng-header` is an inert hook the layout probe measures.
+    const title = el('header', 'k-title sf-ng-header');
+    pin(title, { 'border-bottom': '0' });
+    const heading = el('h1', 'k-display k-t-title fh-title', 'New game');
+    paintMarking(heading);
+    title.appendChild(heading);
+    title.appendChild(el('p', 'k-t-emph k-62', 'Choose your starting ship and pilot credentials.'));
+    rootEl.appendChild(title);
+
+    // The form hangs on the left. `.sf-ng-body` is the scrolling region the layout probe measures.
+    const body = el('div', 'k-hang sf-ng-body');
+    pin(body, { 'border-right': '0', background: 'transparent' });
+    rootEl.appendChild(body);
+    // Launch guard (spec2/03 §3): one async start at a time. Set by setLaunching below.
+    let launching = false;
+
+    // Pilot name. spellcheck/autocapitalize off: a pilot callsign is not prose — the browser's red
+    // squiggle and capitalization suggestions are noise on a name field.
+    const pilot = field(coreText('pilotName'), 'sf-ng-pilot-name');
+    const name = el('input', 'k-input'); name.id = 'sf-ng-pilot-name'; name.type = 'text'; name.maxLength = 20; name.value = 'Wren';
+    name.spellcheck = false; name.autocapitalize = 'off'; name.autocomplete = 'off';
+    paintInput(name);
+    pilot.wrap.appendChild(name);
+    body.appendChild(pilot.wrap);
+    body.appendChild(hairline());
+
+    // Starter (PQ-156.00): three hulls, three first mornings. A roving arrow-key words row like
+    // difficulty — but it owns NO Tab stop, because the launch layout probe pins an exact six-stop
+    // traversal (pilot → difficulty → seed → New seed → Back → Launch). Up/Down arrows carry focus
+    // between the name field, this row, and the difficulty row; click works too. Picking a word
+    // updates the stage hull, the loadout, the caption and the launch payload together.
+    const starterField = field('Start as');
+    starterField.label.id = 'sf-ng-starter-label';
+    const starterWords = words(NEW_GAME_STARTERS.map((s) => ({
+      action: 'starter:' + s.id,
+      label: s.name,
+      // P1 — the word under a starter is the ship sheet's authored class and build word, so the
+      // choice and the ship screen never name the same hull two different things.
+      sub: (starterAirCard(s).railLabel || s.tag),
+    })), {
+      row: true, size: 'body', ariaLabel: 'Start as',
+      onPick: (action) => this._setStarter(action.slice('starter:'.length)),
+    });
+    starterWords.setAttribute('aria-labelledby', starterField.label.id);
+    starterWords.classList.add('of-pause');
+    for (const b of starterWords.querySelectorAll('.k-word')) railWord(b);
+    const starterDesc = el('p', 'k-sentence', '');
+    starterDesc.id = 'sf-ng-starter-desc';
+    starterWords.setAttribute('aria-describedby', starterDesc.id);
+    starterField.wrap.appendChild(starterWords);
+    starterField.wrap.appendChild(starterDesc);
+    body.appendChild(starterField.wrap);
+    // ORRERY: the hull choice is made at the hull -- it moves to the stage (below, once the stage
+    // exists) as stations on an arc under the ship with the Hand rising from a hub beneath it.
+    body.appendChild(hairline());
+
+    // Difficulty: four words in a row, the live one bright, its sentence beneath. A hidden <select>
+    // (#sf-ng-difficulty) mirrors the choice for the checks and probes that read it.
+    const diffField = field(coreText('difficulty'));
+    diffField.label.id = 'sf-ng-difficulty-label';
+    const diff = el('select');
+    diff.id = 'sf-ng-difficulty';
+    diff.hidden = true; diff.tabIndex = -1; diff.setAttribute('aria-hidden', 'true');
+    DIFFICULTIES.forEach(([val, txt]) => { const o = el('option', '', txt); o.value = val; if (val === DEFAULT_DIFFICULTY) o.selected = true; diff.appendChild(o); });
+    const diffWords = words(DIFFICULTIES.map(([val, txt]) => ({ action: 'difficulty:' + val, label: txt })), {
+      row: true, size: 'body', ariaLabel: coreText('difficulty'),
+      onPick: (action) => this._setDifficulty(action.slice('difficulty:'.length)),
+    });
+    diffWords.setAttribute('aria-labelledby', diffField.label.id);
+    diffWords.classList.add('of-pause');
+    for (const b of diffWords.querySelectorAll('.k-word')) railWord(b);
+    // The produced tier insignia (deckplate markPaths `insignia-difficulty-1..4`): one chevron
+    // stack seated beside each word at badge scale — the chevron count carries the tier, the
+    // word carries the name, so the mark stays aria-hidden and the button's name is unchanged.
+    // Beside, not above: the stop-arc is the row's spine and the arc's inner words already hang
+    // over its crest — a taller button would push them into it. The live word's mark lights
+    // (its accent chevron is the lamp) in _setDifficulty, alongside aria-pressed.
+    DIFFICULTIES.forEach(([val], i) => {
+      const b = diffWords.querySelector(`.k-word[data-action="difficulty:${val}"]`);
+      if (!b) return;
+      b.insertAdjacentHTML('afterbegin', dpMark(`insignia-difficulty-${i + 1}`, {
+        size: '18px',
+        lit: val === DEFAULT_DIFFICULTY,
+        className: 'sf-ng-diff-mark',
+      }));
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) { mark.style.verticalAlign = '-3px'; mark.style.marginRight = '6px'; }
+    });
+    const diffDesc = el('p', 'k-sentence', '');
+    diffDesc.id = 'sf-ng-difficulty-desc';
+    diffWords.setAttribute('aria-describedby', diffDesc.id);
+    diffWords.classList.add('sf-ng-difficulty-choices');
+    diffField.wrap.appendChild(diffWords);
+    diffField.wrap.appendChild(diff);
+    diffField.wrap.appendChild(diffDesc);
+    body.appendChild(diffField.wrap);
+    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
+    // column is narrower than four grown names on one line, so the ruler stacks a station per
+    // line and every word keeps the column's whole width (D136).
+    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
+    body.appendChild(hairline());
+
+    // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
+    // difficulty row lands on the live starter word, and the row's own Up/Down steps back out.
+    const liveWordIn = (list) => {
+      const all = list ? Array.from(list.querySelectorAll('.k-word')) : [];
+      return all.find((b) => b.getAttribute('aria-pressed') === 'true') || all[0] || null;
+    };
+    name.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = liveWordIn(starterWords);
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    });
+    starterWords.addEventListener('keydown', (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === 'ArrowUp') { e.preventDefault(); name.focus(); }
+      else if (e.key === 'ArrowDown') {
+        const target = liveWordIn(diffWords);
+        if (!target) return;
+        e.preventDefault();
+        target.focus();
+      }
+    });
+    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
+    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
+    // off the first station climbs back to the starter words, Down off the last falls to the seed.
+    diffWords.addEventListener('keydown', (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      const all = [...diffWords.querySelectorAll('.k-word')];
+      const i = all.indexOf(e.target);
+      if (i < 0) return;
+      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
+      e.preventDefault();
+      if (next) { next.focus(); cue('move'); return; }
+      if (e.key === 'ArrowUp') {
+        const target = liveWordIn(starterWords);
+        if (target) target.focus();
+      } else {
+        seed.focus();
+      }
+    });
+    // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
+    // focusin marks the entered word tabbable, and the six-stop launch traversal must stay
+    // exact even after someone has visited the picker.
+    starterWords.addEventListener('focusout', (e) => {
+      if (e.relatedTarget && starterWords.contains(e.relatedTarget)) return;
+      for (const b of starterWords.querySelectorAll('.k-word')) b.tabIndex = -1;
+    });
+
+    // Seed. A real player feature — a shareable, reproducible universe — and the ONLY way to make
+    // the run's procedural content repeatable. Board offers are drawn from
+    // `hash32(state.meta.seed, ...)` (missions.js `_generateOffers`), so the seed already decides
+    // which contracts, commodities and destinations a save will ever see. Blank means "surprise me"
+    // and keeps the random behaviour; `game:new` carries opts and `resetRunState` honours `opts.seed`.
+    const seedField = field('Universe seed', 'sf-ng-seed');
+    const seedRow = el('div', 'k-words k-words--row of-pause');
+    // A seed is a code (ORRERY §3.4): the field reads in the mono code face (the screen sheet).
+    const seed = el('input', 'k-input k-t-fine orr-ng-seed');
+    seed.id = 'sf-ng-seed';
+    seed.type = 'text';
+    seed.inputMode = 'numeric';
+    seed.maxLength = 10;
+    seed.placeholder = 'Random';
+    seed.spellcheck = false; seed.autocomplete = 'off';
+    seed.setAttribute('aria-describedby', 'sf-ng-seed-desc');
+    paintInput(seed);
+    const newSeed = el('button', 'k-word k-word--fine', 'New seed');
+    newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
+    paintKey(newSeed, 'small');
+    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); syncSeedHint(); cue('confirm'); this._emitEmbarkSpec(); });
+    seedRow.appendChild(seed); seedRow.appendChild(newSeed);
+    seedField.wrap.appendChild(seedRow);
+    const seedDesc = el('p', 'k-t-fine k-38', ORRERY
+      ? 'Blank is a random universe; a seed always deals the same contracts and markets.'
+      : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
+    seedDesc.id = 'sf-ng-seed-desc';
+    seedField.wrap.appendChild(seedDesc);
+    // A seed the game cannot use must say so at the field: anything that is not 1–10 digits
+    // parses to null and would silently launch as a random universe. The hint names it while
+    // the text is still in the field; blank and a valid seed hide it again.
+    const seedHint = el('p', 'orr-ng-seed-hint', '');
+    seedHint.id = 'sf-ng-seed-hint';
+    seedHint.setAttribute('role', 'status');
+    seedHint.hidden = true;
+    seedField.wrap.appendChild(seedHint);
+    const syncSeedHint = () => {
+      const text = String(seed.value ?? '').trim();
+      const unusable = text !== '' && parseUniverseSeed(text) === null;
+      seedHint.textContent = unusable ? 'Digits only — a seed is 1–10 digits, or leave it blank.' : '';
+      seedHint.hidden = !unusable;
+    };
+    // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
+    seed.addEventListener('input', () => { syncSeedHint(); this._emitEmbarkSpec(); });
+    syncSeedHint();
+    body.appendChild(seedField.wrap);
+    body.appendChild(hairline());
+
+    const firstFlightField = field('First flight');
+    firstFlightField.label.id = 'sf-ng-first-flight-label';
+    const firstFlightWords = words([
+      { action: 'firstFlight:teach', label: 'Teach me' },
+      { action: 'firstFlight:flown', label: "I've flown before" },
+    ], {
+      row: true, size: 'body', ariaLabel: 'First flight',
+      onPick: (a) => this._setFirstFlight(a === 'firstFlight:flown'),
+    });
+    firstFlightWords.setAttribute('aria-labelledby', firstFlightField.label.id);
+    firstFlightWords.classList.add('of-pause');
+    for (const b of firstFlightWords.querySelectorAll('.k-word')) railWord(b);
+    const firstFlightDesc = el('p', 'k-sentence', '');
+    firstFlightDesc.id = 'sf-ng-first-flight-desc';
+    firstFlightWords.setAttribute('aria-describedby', firstFlightDesc.id);
+    firstFlightField.wrap.appendChild(firstFlightWords);
+    firstFlightField.wrap.appendChild(firstFlightDesc);
+    body.appendChild(firstFlightField.wrap);
+    body.appendChild(hairline());
+    firstFlightWords.addEventListener('focusout', (e) => {
+      if (e.relatedTarget && firstFlightWords.contains(e.relatedTarget)) return;
+      for (const b of firstFlightWords.querySelectorAll('.k-word')) b.tabIndex = -1;
+    });
+    seed.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const target = liveWordIn(firstFlightWords);
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    });
+    firstFlightWords.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      e.preventDefault();
+      seed.focus();
+    });
+
+    // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
+    // selection at the transition boundary; the UI never copies a whole prior run into the event.
+    let legacyOn = false;
+    let legacyWords = null;
+    let legacySelect = null;
+    let newGamePlusCandidate = null;
+    // The candidate resolves through the save worker — the multi-MB envelope walk used to gate
+    // this screen's first paint for an opt-in field. Mount the field in place (before the
+    // loadout section) when the candidate lands instead.
+    const mountLegacyField = (newGamePlusCandidate, beforeEl) => {
+      const legacyField = field('New Run+');
+      legacyField.label.id = 'sf-ng-legacy-label';
+      legacyWords = words([
+        { action: 'legacy:off', label: 'Off' },
+        { action: 'legacy:on', label: 'On' },
+      ], {
+        row: true, size: 'body', ariaLabel: 'New Run+',
+        onPick: (action) => {
+          legacyOn = action === 'legacy:on';
+          for (const b of legacyWords.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String((b.dataset.action === 'legacy:on') === legacyOn));
+          legacySelect.disabled = !legacyOn || launching;
+          syncKeys(legacyWords);
+        },
+      });
+      legacyWords.setAttribute('aria-labelledby', legacyField.label.id);
+      legacyWords.classList.add('of-pause');
+      for (const b of legacyWords.querySelectorAll('.k-word')) {
+        b.setAttribute('aria-pressed', String(b.dataset.action === 'legacy:off'));
+        paintKey(b, 'legend');
+      }
+      legacyField.wrap.appendChild(legacyWords);
+      const meta = el('p', 'k-t-fine k-38', leftoverNewRunLine(newGamePlusCandidate));
+      meta.id = 'sf-ng-legacy-desc';
+      legacyField.wrap.appendChild(meta);
+      const keepsakeLabel = el('label', 'k-t-fine k-38', 'Carried keepsake');
+      keepsakeLabel.htmlFor = 'sf-ng-legacy-keepsake';
+      legacyField.wrap.appendChild(keepsakeLabel);
+      legacySelect = el('select', 'k-select');
+      legacySelect.id = 'sf-ng-legacy-keepsake';
+      legacySelect.disabled = true;
+      legacySelect.setAttribute('aria-describedby', 'sf-ng-legacy-desc');
+      paintInput(legacySelect);
+      for (const item of newGamePlusCandidate.keepsakes || []) {
+        const option = el('option', '', `${item.unique ? 'Relic · ' : ''}${item.name} · ${item.size || '?'} ${item.slotType}`);
+        option.value = item.defId;
+        legacySelect.appendChild(option);
+      }
+      legacyField.wrap.appendChild(legacySelect);
+      body.insertBefore(legacyField.wrap, beforeEl);
+      body.insertBefore(hairline(), beforeEl);
+    };
+
+    // Loadout: the picked starter's fitted modules as quiet words. Not buttons — nothing here
+    // is chosen; the starter row above is the picker and rewrites this list on every pick.
+    const loadoutField = field('Loadout');
+    const loadout = el('ul', 'k-words k-words--row');
+    loadout.setAttribute('aria-label', 'Loadout');
+    const renderLoadout = (starter) => {
+      loadout.innerHTML = '';
+      for (const [slot, moduleName] of starterLoadoutRows(starter)) {
+        const li = el('li');
+        const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
+        if (ORRERY) {
+          const m = /^(.*\S)\s+([SMLX]{1,2})$/.exec(String(moduleName));
+          if (m) { word.textContent = m[1]; const size = el('small', 'orr-ng-size', m[2]); size.title = 'Size ' + m[2]; word.appendChild(size); }
+        }
+        word.setAttribute('aria-disabled', 'true');
+        word.title = slot;
+        paintLegend(word);
+        li.appendChild(word);
+        loadout.appendChild(li);
+      }
+    };
+    loadoutField.wrap.appendChild(loadout);
+    body.appendChild(loadoutField.wrap);
+    body.appendChild(hairline());
+    readNewGamePlusCandidateAsync(ctx).then((candidate) => {
+      if (!candidate) return;
+      newGamePlusCandidate = candidate;
+      mountLegacyField(candidate, loadoutField.wrap);
+    });
+
+    // Keep the opening rail; its last row follows the selected hull's Helios ticket.
+    const route = el('div', 'sf-ng-route');
+    route.setAttribute('aria-label', coreText('firstMinutes'));
+    route.appendChild(el('div', 'k-caps', coreText('firstMinutes')));
+    const steps = el('ul', 'k-rows sf-ng-route__steps');
+    steps.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
+    let workHeading, workDetail;
+    for (const [index, [beat, verb]] of FIRST_MINUTES.entries()) {
+      const row = el('li', 'k-row k-row--static sf-ng-route__step');
+      pin(row, { 'box-shadow': 'none' });
+      const cell = el('div');
+      const heading = el('span', 'k-row__name', beat);
+      const detail = el('div', 'k-row__sub', verb);
+      cell.appendChild(heading);
+      cell.appendChild(detail);
+      if (index === FIRST_MINUTES.length - 1) {
+        workHeading = heading;
+        workDetail = detail;
+        cell.setAttribute('aria-live', 'polite');
+        cell.setAttribute('aria-atomic', 'true');
+      }
+      row.appendChild(cell);
+      steps.appendChild(row);
+    }
+    const renderWorkPreview = starter => paintStarterWorkPreview(workHeading, workDetail, starter);
+    route.appendChild(steps);
+    body.appendChild(route);
+
+    // The stage: the hull in its rig, its name and its one sentence bottom-left.
+    const stage = el('div', 'k-stage');
+    pin(stage, { background: 'transparent', 'border-width': '0' });
+    const caption = el('div', 'k-stage__foot');
+    paintPlate(caption, 'edge', { 'max-width': '100%' });
+    const ship = shipDefFor(ctx, DEFAULT_STARTER.shipId);
+    // The hull card's name is a content header (the header voice, set by the sheet), not a title.
+    const hullName = el('h2', 'k-display k-t-sub fh-title sf-slot-card-title', (ship && ship.name) || DEFAULT_STARTER.name);
+    const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.blurb);
+    caption.appendChild(hullName);
+    caption.appendChild(hullBlurb);
+    stage.appendChild(caption);
+    // ORRERY: the left column holds the pilot's choices; the hull's choice, what it carries, its
+    // numbers and the run it opens are about the hull, so they read at the hull.
+    if (ORRERY) {
+      caption.append(loadoutField.wrap, route);
+      // P1 — the six-stat sheet beside the hull, so the starter choice is a character decision:
+      // the same six 1–10 bars the dock and THE SHIP print, with the engineering numbers behind
+      // their own Details door. The old Mass/Thrust/Line arcs are gone: they were a second, raw
+      // answer beside the sheet.
+      ensureShipSheetStyles();
+      const sheetHost = el('div', 'sf-ng-sheet');
+      caption.appendChild(sheetHost);
+      this._paintStarterSheet = (starter) => {
+        const card = starterAirCard(starter);
+        sheetHost.innerHTML = shipSheetHtml(card.sheet, { compact: true });
+        bindShipSheet(sheetHost.querySelector('[data-sfs]'));
+      };
+      this._paintStats = (starter) => {
+        if (this._paintStarterSheet) this._paintStarterSheet(starter);
+        this._lastStarter = starter;
+      };
+      // the hull choice as a turntable round the ship's base: the three hulls stand on its front arc
+      // as their rendered hero art, the amber index riding the ring to the chosen one
+      const pick = el('div', 'orr-ng-pick');
+      pick.appendChild(starterField.wrap);
+      rootEl.appendChild(pick);
+      const art = {};
+      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'hero'); if (url) art['starter:' + s.id] = url; }
+      // a carousel: the chosen hull stands front-centre under its render, the others at the ring's rear ends
+      const heroBox = el('div', 'orr-ng-hero-box');
+      heroBox.setAttribute('aria-hidden', 'true');
+      stage.appendChild(heroBox);
+      // SPIN THE YARD: drag the ring; each hull's mass sets how it answers; release settles and picks
+      const mass = {};
+      for (const s of NEW_GAME_STARTERS) mass['starter:' + s.id] = starterAirCard(s).massT;
+      // Phones show the produced hull portrait and full-width measured dials. Do not mount a
+      // second hidden WebGL model carousel behind the phone's ordinary hull-choice row.
+      this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass, modelRing: !isPhoneLayout(),
+        onModelsReady: (ok) => { stage.classList.toggle('orr-ng--models', !!ok); },
+        onTurn: (i0, i1, f) => {
+          // the poster crossfade between two hulls; the six-stat sheet is repainted on settle
+          stage.style.setProperty('--ng-spin-mix', (Math.min(f, 1 - f) * 2).toFixed(3));
+        } });
+    }
+    rootEl.appendChild(stage);
+    // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock
+    // ORRERY: the produced poster is the hero (the live mount showed a different pose and light of the same ship)
+    this.hull = createStageHull(stage, { rootEl, zoom: ORRERY ? STAGE_ZOOM_RING : STAGE_ZOOM, dock: !ORRERY, live: !ORRERY });
+
+    // Foot: Back, then Launch (the one primary word) — Launch stays the LAST footer button because
+    // the capture matrix, the atlas, the review probe and the localization check all reach it as
+    // `.sf-ng-footer button:last`. Each is its own Tab stop. `.sf-ng-footer` / `.sf-ng-launch` are
+    // inert hooks.
+    // of-pause: kit.css only strips leftover k-word underlines on pause/title descendants,
+    // and this write set cannot edit kit.css.
+    const foot = el('footer', 'k-foot sf-ng-footer of-pause');
+    pin(foot, { 'border-top': '0' });
+    const footWord = (action, label, extra) => {
+      const b = el('button', 'k-word k-word--emph' + (extra ? ' ' + extra : ''), label);
+      b.type = 'button'; b.dataset.action = action;
+      foot.appendChild(b);
+      return b;
+    };
+    const back = footWord('back', coreText('back'), 'sf-back');
+    const launch = footWord('launch', coreText('launch'), 'k-word--primary sf-ng-launch');
+    paintKey(launch, 'primary');
+    if (launch.childNodes) dressLampKey(launch);
+    launch.addEventListener('click', () => {
+      if (launch.getAttribute('aria-disabled') === 'true') { cue('deny'); return; }
+      cue('confirm'); this._launch(ctx);
+    });
+    back.addEventListener('click', () => {
+      if (back.getAttribute('aria-disabled') === 'true') { cue('deny'); return; }
+      cue('confirm'); nav(ctx, 'popScreen');
+    });
+    rootEl.appendChild(foot);
+
+    const launchError = el('p', 'k-sentence sf-ng-launch-error');
+    launchError.setAttribute('role', 'alert');
+    launchError.setAttribute('aria-live', 'assertive');
+    launchError.hidden = true;
+    rootEl.insertBefore(launchError, foot);
+
+    rootEl.appendChild(el('div', 'k-fine', 'Casual, Standard and Veteran deaths use insurance respawn. Ironman ends the run.'));
+
+    if (isPhoneLayout()) {
+      // Keep Launch outside the content scroll instead of drawing a sticky footer over the
+      // last visible difficulty/hull choice. Every field and hull instrument remains reachable.
+      const scroll = el('div', 'sf-ng-scroll');
+      for (const node of [...rootEl.children]) {
+        if (node !== foot && node !== launchError) scroll.appendChild(node);
+      }
+      rootEl.insertBefore(scroll, launchError);
+    }
+
+    // The word reads "Launching..." while the run boots and restores on game:startFailed.
+    const setLaunching = (active) => {
+      launching = !!active;
+      // the launch beat: the run's beads light in sequence while the run boots
+      if (rootEl.classList) rootEl.classList.toggle('is-launching', launching);
+      const setWord = (b, disabled) => { if (disabled) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled'); };
+      setWord(launch, launching);
+      setWord(back, launching);
+      setWord(newSeed, launching);
+      name.disabled = launching;
+      seed.disabled = launching;
+      for (const b of starterWords.querySelectorAll('.k-word')) setWord(b, launching);
+      for (const b of diffWords.querySelectorAll('.k-word')) setWord(b, launching);
+      for (const b of firstFlightWords.querySelectorAll('.k-word')) setWord(b, launching);
+      if (legacyWords) for (const b of legacyWords.querySelectorAll('.k-word')) setWord(b, launching);
+      if (legacySelect) legacySelect.disabled = launching || !legacyOn;
+      const launchWord = launching ? coreText('launching') : coreText('launch');
+      const lampWord = launch.querySelector && launch.querySelector('.orr-lampkey__word');
+      if (lampWord) lampWord.textContent = launchWord;
+      else launch.textContent = launchWord;
+      launch.disabled = launching;
+      if (this._starterDial) this._starterDial.setActive(!launching);
+      syncKeys(rootEl);
+    };
+    // Launch stops the stage hull at once (_launch) and frees its WebGL context once the loading
+    // shell has faded in over the stage; freeing it earlier would pop the hull out through the
+    // fading shell. A failed start hands the screen back with the hull rebuilt.
+    let hullRelease = null;
+    const cancelHullRelease = () => {
+      if (hullRelease !== null) clearTimeout(hullRelease);
+      hullRelease = null;
+    };
+    const restoreLaunch = (failure) => {
+      const wasLaunching = launching;
+      cancelHullRelease();
+      setLaunching(false);
+      if (wasLaunching) {
+        launchError.textContent = `${failure?.text || 'The game could not finish loading.'} Try Launch again.`;
+        launchError.hidden = false;
+      }
+      const hull = this.hull;
+      if (!wasLaunching || !hull) return;
+      const rebuilt = hull.restore();
+      if (!hull.hasMount()) return;
+      hull.activate(ctx);
+      if (rebuilt && refs) hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
+    };
+    const unsubStartFailed = ctx.bus.on('game:startFailed', restoreLaunch);
+    const unsubLoading = ctx.bus.on('game:loadingProgress', () => {
+      if (!launching || hullRelease !== null) return;
+      hullRelease = setTimeout(() => {
+        if (launching && this.hull) this.hull.release();
+      }, STAGE_HULL_RELEASE_MS);
+    });
+
+    refs = {
+      root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back, launchError,
+      starterWords, starterDesc, hullName, hullBlurb, renderLoadout, renderWorkPreview,
+      firstFlightWords, firstFlightDesc, flownBefore: false,
+      starter: DEFAULT_STARTER,
+      setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
+      isLaunching: () => launching,
+      legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
+      // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
+      // a candidate here so the salted dressing rows it warms are the ones the launch rolls.
+      // Drawn through the same rng seam as randomSeedText — the run's seed contract is
+      // unchanged (resetRunState treats a forwarded opts.seed identically to its internal roll).
+      specSeedRoll: parseUniverseSeed(randomSeedText(ctx)),
+    };
+    this._setStarter(DEFAULT_STARTER.id, { silent: true });
+    this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+    this._setFirstFlight(false, { silent: true });
+  },
+
+  // The newGame screen used to be the only embark path with no speculation emit — every
+  // authored decode for the start sector paid inside the loading window. During form dwell
+  // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
+  // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
+  _emitEmbarkSpec() {
+    // A whole-sector speculative decode competes with the opening scene on phones.
+    // Let the live opening admission request its required assets after Launch instead.
+    if (isMobileRenderContext()) return;
+    if (!this._embarkSpecActive || !refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
+    // requests — running it inside the gesture task drops a menu frame per keystroke.
+    // Coalesce to one post-present emit that reads the fields at fire time. A plain
+    // timer leaves the gesture task but can still enumerate the cast before first paint.
+    if (this._embarkSpecQueued) return;
+    const request = {};
+    const ownerRefs = refs;
+    this._embarkSpecQueued = request;
+    armCallbackAfterPresent(() => {
+      if (this._embarkSpecQueued !== request) return;
+      this._embarkSpecQueued = null;
+      if (!this._embarkSpecActive || refs !== ownerRefs || typeof refs?.ctx?.bus?.emit !== 'function') return;
+      const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
+      refs.ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: typed == null ? refs.specSeedRoll : typed,
+        shipDefId: refs.starter && refs.starter.shipId,
+      });
+    }, { idleBoundMs: 48 });
+  },
+
+  _setStarter(id, { silent = false } = {}) {
+    if (!refs) return;
+    const starter = starterById(id) || DEFAULT_STARTER;
+    refs.starter = starter;
+    for (const b of refs.starterWords.querySelectorAll('.k-word')) {
+      b.setAttribute('aria-pressed', String(b.dataset.action === 'starter:' + starter.id));
+      // Never a Tab stop: the launch traversal contract is an exact six stops, and the row is
+      // reached by the Up/Down arrow bridges (or pointer) instead.
+      b.tabIndex = -1;
+    }
+    refs.starterDesc.textContent = starter.line;
+    if (this._paintStats) this._paintStats(starter);
+    const ship = shipDefFor(refs.ctx, starter.shipId);
+    refs.hullName.textContent = (ship && ship.name) || starter.name;
+    refs.hullBlurb.textContent = starter.blurb;
+    refs.renderLoadout(starter);
+    refs.renderWorkPreview(starter);
+    // a poster-only stage has no mount but still shows the picked hull
+    if (this.hull) {
+      this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
+    }
+    this._emitEmbarkSpec();
+    syncKeys(refs.starterWords);
+  },
+
+  _setDifficulty(value, { silent = false } = {}) {
+    if (!refs) return;
+    const d = DIFFICULTIES.find((x) => x[0] === value) || DIFFICULTIES.find((x) => x[0] === DEFAULT_DIFFICULTY);
+    refs.diff.value = d[0];
+    // Name the live tier in the sentence: the caption sits under the whole row, and unprefixed it
+    // reads as the last row's (Ironman's) description.
+    refs.diffDesc.textContent = `${d[1]} — ${d[2]}`;
+    for (const b of refs.diffWords.querySelectorAll('.k-word')) {
+      const live = b.dataset.action === 'difficulty:' + d[0];
+      b.setAttribute('aria-pressed', String(live));
+      // The row's single Tab stop is the live word; the kit's roving focus takes over inside the row.
+      b.tabIndex = live ? 0 : -1;
+      // The tier insignia lights with its word: the accent chevron is the mark's lamp.
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) mark.classList.toggle('dp-mark--lit', live);
+    }
+    if (!silent) refs.diff.dispatchEvent(new Event('change', { bubbles: true }));
+    syncKeys(refs.diffWords);
+  },
+
+  _setFirstFlight(flown) {
+    if (!refs) return;
+    refs.flownBefore = flown === true;
+    for (const b of refs.firstFlightWords.querySelectorAll('.k-word')) {
+      b.setAttribute('aria-pressed', String((b.dataset.action === 'firstFlight:flown') === refs.flownBefore));
+      b.tabIndex = -1;
+    }
+    refs.firstFlightDesc.textContent = refs.flownBefore
+      ? 'Skips the stick drills and the power setups. The rope, the raid and the Range stay.'
+      : 'The full first flight: stick drills, the rope, the raid, one setup per power.';
+    syncKeys(refs.firstFlightWords);
+  },
+
+  _launch(ctx) {
+    if (!refs) return;
+    const launching = refs.isLaunching();
+    if (launching) return;
+    refs.launchError.hidden = true;
+    refs.launchError.textContent = '';
+    refs.setLaunching(true);
+    // The loading shell is about to cover the stage: stop the hull drifting now. mount() frees its
+    // WebGL context once the shell is opaque.
+    if (this.hull) this.hull.deactivate();
+    const pilot = (refs.name.value || '').trim() || 'Pilot';
+    // Only forward a seed when the player actually supplied a usable one. `resetRunState`
+    // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
+    // would silently mean "random" while looking deliberate.
+    const rawSeed = parseUniverseSeed(refs.seed.value);
+    // Blank forwards the pre-rolled candidate the embark arm already enumerated for — the
+    // salted dressing rows it warmed are the exact rows this run materializes.
+    const seedOpt = { seed: rawSeed == null ? refs.specSeedRoll : rawSeed };
+    const legacy = refs.legacy();
+    const newGamePlusOpt = legacy.on && legacy.select && legacy.select.value && legacy.candidate
+      ? { newGamePlus: { slot: legacy.candidate.sourceSlot, keepsakeId: legacy.select.value } }
+      : {};
+    // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
+    try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
+    ctx.bus.emit('game:new', {
+      name: pilot,
+      shipId: refs.starter.shipId,
+      starter: refs.starter.id,
+      difficulty: refs.diff.value,
+      flownBefore: refs.flownBefore === true,
+      ...seedOpt,
+      ...newGamePlusOpt,
+    });
+  },
+
+  onShow(ctx) {
+    if (!refs) return;
+    this._embarkSpecActive = true;
+    cue('open');
+    this._emitEmbarkSpec();
+    refs.setLaunching(false);
+    refs.launchError.hidden = true;
+    refs.launchError.textContent = '';
+    refs.cancelHullRelease();
+    if (this.hull) this.hull.restore();
+    try {
+      settle(refs.title, { from: 'top', state: 'newGame:open' });
+      settle(refs.body, { from: 'left', state: 'newGame:open' });
+      settle(refs.stage, { from: 'right', state: 'newGame:open' });
+      settle(refs.foot, { from: 'bottom', state: 'newGame:open' });
+    } catch (e) { /* motion is cosmetic */ }
+    if (this.hull) {
+      this.hull.activate(ctx);
+      this.hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
+    }
+    if (this._starterDial) this._starterDial.setActive(true);
+    // Native iPhone focus opens the keyboard and scrolls before the form has settled. Let a
+    // touch choose the field; desktop retains the immediate name-entry shortcut.
+    if (!isPhoneLayout()) {
+      // focus() and select() make the browser lay the whole screen out: do it after the first frame has
+      // painted (the yard and the ring measure in that frame), not inside the show, and not at all if the
+      // screen is hidden or disposed first
+      const field = refs.name;
+      const token = {};
+      this._nameFocus = token;
+      let attempts = 0;
+      const focusName = () => {
+        if (this._nameFocus !== token) return;
+        // The screen manager can call onShow one frame before the newGame pane is laid out; a
+        // focus() while it is still display:none is silently dropped. Wait for a laid-out field,
+        // then focus, rather than losing the name-entry shortcut to a transition race.
+        if (!field.isConnected || field.getClientRects().length === 0) {
+          attempts += 1;
+          if (attempts < 120) setTimeout(focusName, 16);
+          return;
+        }
+        this._nameFocus = null;
+        try { field.focus(); field.select(); } catch (e) {}
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(focusName));
+      else focusName();
+    }
+  },
+  onHide() {
+    this._embarkSpecActive = false;
+    this._embarkSpecQueued = null;
+    this._nameFocus = null;
+    cue('close');
+    if (this._starterDial) this._starterDial.setActive(false);
+    if (this.hull) this.hull.deactivate();
+  },
+  refresh() {},
+  dispose() {
+    this._embarkSpecActive = false;
+    this._embarkSpecQueued = null;
+    this._nameFocus = null;
+    if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
+    if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
+    if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
+    if (this.hull) { this.hull.dispose(); this.hull = null; }
+    if (refs && refs.unsubStartFailed) { try { refs.unsubStartFailed(); } catch (e) {} }
+    if (refs && refs.unsubLoading) { try { refs.unsubLoading(); } catch (e) {} }
+    refs = null;
+  },
+};

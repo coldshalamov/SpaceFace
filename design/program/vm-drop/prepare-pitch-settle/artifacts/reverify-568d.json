@@ -1,0 +1,23 @@
+[
+  {
+    "mode": "before",
+    "ms": 126.34,
+    "calls": 96000,
+    "work": 202024.1984,
+    "speedup": 1
+  },
+  {
+    "mode": "settle",
+    "ms": 67.8,
+    "calls": 43440,
+    "work": 203517.3332,
+    "speedup": 1.86
+  },
+  {
+    "mode": "settle+band",
+    "ms": 53.84,
+    "calls": 31200,
+    "work": 203831.9992,
+    "speedup": 2.35
+  }
+]

@@ -1,0 +1,6 @@
+settled-45s-master-164 window 45.9s get memory=31.1ms (0.68ms/s)  updateShipCondition=38.0ms (0.83ms/s)  frame=8010.4ms (174.52ms/s)
+bench164-b1 window 12.9s get memory=0.0ms (0.00ms/s)  updateShipCondition=1.5ms (0.12ms/s)  frame=2174.7ms (169.05ms/s)
+bench164-b2 window 12.9s get memory=0.0ms (0.00ms/s)  updateShipCondition=2.4ms (0.18ms/s)  frame=2354.9ms (182.13ms/s)
+bench164-b3 window 13.1s get memory=0.0ms (0.00ms/s)  updateShipCondition=2.3ms (0.18ms/s)  frame=1857.4ms (141.80ms/s)
+bench164-b4 window 13.3s get memory=0.0ms (0.00ms/s)  updateShipCondition=1.8ms (0.14ms/s)  frame=2072.6ms (156.10ms/s)
+bench164-b5 window 12.9s get memory=0.0ms (0.00ms/s)  updateShipCondition=0.3ms (0.02ms/s)  frame=2341.3ms (181.58ms/s)

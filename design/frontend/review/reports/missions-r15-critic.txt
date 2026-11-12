@@ -1,0 +1,134 @@
+STATION MISSIONS TAB - ROUND 15 CRITIC, under the OWNER CRITERIA (critic-brief sections 7 and the measured weight bar)
+Stills (scratchpad/shots/):
+- before: wt-before-station-contracts-1920
+- after: wt-a6-station-contracts-1920 / -1280, r115-station-contracts-2560 (with the 1440p fix), r115-station-contracts-1920
+  (pixel-identical to a6-1920 at every point sampled)
+- states: wt-st-contracts-focus-1920, wt-st-contracts-hover-1920
+Note: the focus still is from a mixed build. Its outer ring is swept but its inner ring is lighter (core 106 on a
+25 band, against a6's 163 on 79). I use it only for the focus segment.
+Method: sharp crops (2-12x) plus raw Rec.709 luminance. Motion is frozen in every still, so for (b) I also read the
+live code: src/ui/station/screens/contracts.js layTether(), and routeOrrery.js for the beam pulse.
+
+1. VERDICT: NOT PASSED on the owner gates. Axis mean 8.03 (previous 8.07).
+   - (a) FAIL, narrowly. The hero instruments now have real body. Two dossier scales, RISK and STANDING, are still
+     1 px tracks in the stock-slider pattern.
+   - (b) FAIL. The named signature, "hold ACCEPT and the pulse runs key to THIS STATION to the berth", is not wired
+     that way.
+   The weight sweep is the right direction and mostly well executed. Its costs:
+   - The rest rings now outshine the Hand's glow.
+   - At 1920 the tether bead is back on the key's edge.
+
+2. AXES (previous = r13)
+   Composition      8.1 (prev 8.0) - The dial now has mass. The right third holds its weight against the dossier's
+                    numeral, and 2560 reads as a solid, premium instrument. The 1920 void above YOURS
+                    (548-705) is unchanged. At 720 the bands make the small dial (outer radius 95) chunky.
+   Hierarchy        7.7 (prev 7.9) - The rest rings now out-light the Hand. Ring bands read 72-79 on glass 8, with
+                    cores of 133 (outer) and 163-174 (inner). The amber beam's glow is only 47-48 and its core
+                    190. So the Hand leads by hue alone. The eye lands on two big grey rings before the route.
+   Legibility       8.0 (prev 7.9) - At 720 VESTA FORGE now sits under its own node (1060-1145 x 482-488, node
+                    1090-1115 x 465-472), and its dotted leader through TETHYS is gone. 1920 names are all clean.
+   ORRERY fidelity  8.4 (prev 8.5) - The berth marker is clean at 1920: the ring stops at (1683,737) and resumes at
+                    (1666,757), and (1679,740) now reads amber 225,171,73. The bands are ORRERY's own
+                    bloom-stroke recipe. But the ring cores sit at 55-70% of bone, against section 3.3's rest-light
+                    range of 14-40%, so rest light now reads as active light. STANDING is still a straight slider,
+                    and section 3.2 names standing as an arc.
+   Craft / detail   8.0 (prev 8.0) - Gains:
+                    - The tab no longer reads as a line drawing.
+                    - Ladder ticks are single crisp rows again (83 at x 36).
+                    - Spine, dossier spine and tab rail are clean bands.
+                    Losses:
+                    - At 1920 the tether bead sits on the key's edge (key face to 709, bead 710-713: 0 px).
+                    - At 720 the destination leader starts at the berth's centre, inside the amber marker
+                      (x 1150 from y 450 at 163-218).
+                    - The heavy spine sits next to hairline sliders in the same column.
+                    - The band edge is hard (14 to 72 in one px), which reads as a tube, not glow.
+   Interaction      8.0 (prev 8.1) - Hover is good: the row lifts from 199 to 250 and the whole rail wakes (spine
+                    67/155 to 91/176). Focus is unchanged (x 38-39 x 339-365, 250). With the bead back on the key
+                    edge at 1920, the hold ring (it ran at x 716-724 in r12) will cross the tether 3-6 px from the
+                    bead. The hold was not re-shot. This is the r11 fusion coming back.
+   Mean 48.2 / 6 = 8.03.
+
+3. THE R13 LIST
+   1. VESTA beside its own node (720)                     DONE, with residue.
+      - Name 10 px under the node, dotted leader removed.
+      - Residue: the berth leader was not elbowed, so it runs 5 px right of VESTA's final E (E ends 1145,
+        leader at x 1150, rows 482-488).
+   2. Berth mask on the ring layer                         DONE at 1920. HALF at 720.
+      - The ring is cut at both sizes.
+      - At 720 the destination leader now starts inside the marker instead of at its rim.
+   3. Section and row ticks on the glyph centre            HALF (unchanged).
+      - 1920 YOURS major: 730-731 on glyphs 722-730, at the baseline.
+      - 720 tracked tick: 563-564 on caps 554-564, at the baseline.
+      - Correct: 1920 tracked 771; 720 YOURS 531-532.
+   4. Whole-pixel tick phase                               DONE.
+      - Minors are single rows at 83 (x 36) and 259 + 8k at 1920. One 7 px joint at 571 to 578.
+   5. VESTA / CUSTOMS apart                                HALF.
+      - 16 px between VESTA's bottom (488) and TETHYS's top (504), offset 41 px left.
+      - No leader crosses the box any more.
+
+4. BLOCKERS, IN ORDER (each with its smallest fix)
+   1. (b) The signature is not wired. Code facts:
+      - The tether pulse is an ambient 3.6 s loop from the key to THIS STATION. It rests at the key for 30% of the
+        cycle.
+      - The beam pulse is a separate 3.4 s loop from THIS STATION to the berth.
+      - The two periods differ, so the pulses drift apart and never read as one run.
+      - The hold exists only when collateral is at risk. The default contract (collateral None) is a plain tap.
+      - Holding does not drive either pulse.
+      Fix:
+      a. Put ONE path in one mpath: the tether path, then the beam path, key to station to berth. Run one pulse
+         along it.
+      b. On press of ACCEPT, give every contract a hold: 450 ms with no collateral, 720 ms with collateral. The
+         hold's progress drives a lit fill along that combined path: stroke-dashoffset from key to berth equals
+         the hold fraction. About 45% of the run is the tether and 55% is the beam.
+      c. Release early and the light retracts.
+      d. On fire, the berth ring flashes to hot amber (#ffd98c, 180 ms), and the tether retracts into the YOURS
+         row's TRACKED bead.
+      e. Shoot a still at 50% hold with the fill head at THIS STATION.
+   2. (a) The RISK scale is a wire and a stock slider.
+      - Track: 1 px at 67 with a 20 shoulder (1920 row 547; 720 row 417, 68), a knob, and five hairline ticks.
+      - Fix: draw the track as a band, 6 px at bone .27 (about 65 on 8) under a 1.5 px core.
+      - Light the stretch from ROUTINE to the cursor at bone .6, and make the cursor a 3 x 14 px lit blade.
+      - Better, and ORRERY-native: a 3-zone Arc Gauge.
+   3. (a) The STANDING bar is a wire and a stock range slider.
+      - Track: 1 px at 69 (row 588), with a 3 px white fill (244) from -3 to +4.
+      - Fix: section 3.2 says standing is an arc. Use the library Arc Gauge with a ghost delta: failure -3 drawn
+        dim, success +4 lit, bipolar about a centre tick. At minimum, the same band as RISK.
+   4. Hierarchy: the Hand must be the heaviest line on the dial. Either change works:
+      - Raise the beam's glow from 47-48 to about 110-120 (bloom stroke 12 px at amber about .45).
+      - Drop the rest-ring cores from 133-174 to 95-105, keeping the 72-79 band (the weight the owner asked for).
+   5. 1920 tether origin regression.
+      - Code: kx = key right + 20*z, and z evaluates wrong at 1920. At 2560 the bead is 24 px off the key and at 720
+        it is 19 px, but at 1920 it is 0-1 px.
+      - Fix: clamp the 20 px offset to at least 16 css px at every scale. Then re-shoot the hold at 1920 to confirm
+        the ring clears the bead.
+
+   Also (not blocking):
+   - Elbow the 720 berth leader at 45 degrees to x 1166, which clears VESTA by more than 20 px.
+   - Start that leader at the berth ring's rim (r + 2), not its centre.
+   - Put the 1920 YOURS major at 726 and the 720 tracked tick at 559, off the series.
+   - Soften the band's outer 1 px edge (about 40, then 20) so it reads as light, not a tube.
+
+5. MEMORABLE (unattempted): the hold IS the route. The player charges light from the key through the station to the
+   berth, and letting go early drains it back.
+
+7. OWNER CRITERIA
+   (a) Thin wireframe and generic elements: FAIL, narrow. Measured body, all on glass 7-8, against the 2:1 bar:
+   - outer ring: band 72-73 plus core 133 (9:1)
+   - inner ring: 78-79 plus 163-174 (10:1)
+   - ladder spine: 67 band 6 px plus 155 core (9.6:1)
+   - dossier spine: 69 plus 157 (8.6:1)
+   - tether: 28 bloom 9 px plus 128 core (3.5:1)
+   - beam: 47-48 glow plus 190 amber core (6:1)
+   - tab rail: 91-93 band 7 px plus 178 core (11.6:1)
+   - sector dots: filled 7 px discs at 160-190 with a lit rim of 205-228
+   - lanes: dashed 1.4 px at 65, acceptable as secondary lines
+   The offenders are RISK and STANDING (blockers 2 and 3). Their only visible part is a 1 px core (67 and 69), and
+   they read as stock sliders. That is exactly the failing pattern in the bar. ACCEPT is ORRERY's Lamp Key, not a
+   stock button. It earns that only while it is visibly plugged into the tether and runs a hold, so do not
+   regress blocker 5.
+   (b) Signature interaction: FAIL.
+   - What the player does here that no other screen does: commit to a route.
+   - As built, that is two unsynchronised ambient pulses plus the shared library Hold Ring, and only on contracts
+     that carry collateral. Nothing couples the player's press to the route.
+   - Blocker 1 makes it the screen's signature: hold-to-charge the route from the key to the berth, retract on
+     early release, and ignite on commit.

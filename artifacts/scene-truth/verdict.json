@@ -1,0 +1,16 @@
+{
+  "schema": "spaceface.sceneTruthVerdict.v1",
+  "ok": true,
+  "status": "integration-ready",
+  "commit": "6ca1f1e22bcd5a0d9870bb27a29349c7c60ddb8e",
+  "scenarioCount": 26,
+  "highFailCount": 0,
+  "reviewCount": 4,
+  "faultCount": 16,
+  "faultDetected": 16,
+  "benignCount": 7,
+  "benignAllowed": 7,
+  "critiqueOk": true,
+  "runtimeFps": null,
+  "pixelDriftFailsBuild": false
+}

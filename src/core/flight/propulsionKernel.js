@@ -1,0 +1,1772 @@
+// SpaceFace Flight V3 — deterministic force/torque propulsion kernel.
+//
+// The kernel is deliberately pure: it does not mutate entities, does not know
+// Rapier, and never edits position or velocity. It converts pilot/AI intent into
+// physical force, torque and optional impulse commands. The physics owner remains
+// the only writer of body motion.
+//
+// Design invariants:
+//   1. Reaction / torch / sail drives have no hidden vacuum drag or arcade terminal speed.
+//      In ASSISTED mode the flight computer additionally governs the planar speed the ship's
+//      own translation may produce toward commandFraction × combatSpeed (a speed COMMAND, not
+//      drag). The axial forward servo and a finite result.maxSpeed — consumed by the physics
+//      owner's thrust-only clamp — share that cap. Yawing must not launder governed speed into
+//      ungoverned lateral speed. Physics-earned overspeed is never spent. Drift and newtonian
+//      modes keep the raw ungoverned model — slingshots, massline tricks and expert flying
+//      accumulate speed without interference.
+//   2. Assisted flight brakes by spending real counter-thruster authority.
+//   3. Turning the nose alone does not rotate velocity. Explicit draw-flight steering
+//      uses finite-rate vectoring forces; all NPC flight remains inertial. The opt-in
+//      velocity-vectoring assist (player packet only, assisted mode, below the cap, while the
+//      main drive is commanded) rotates velocity toward the commanded direction with a finite-rate
+//      lateral force that never changes speed — see VELOCITY_VECTORING_DEFAULTS.
+//   4. Gravimetric drives are explicitly non-Newtonian and trade cumulative speed for control.
+//   5. Pulse-plate boost is a charged discrete momentum impulse.
+//   6. Every result is deterministic for the same input stream.
+//   7. Coast helm: when main throttle and boost are idle, yaw rate/accel rise so pilots can
+//      let off the thrusters and flip more nimbly (strategic, not free while thrusting).
+//   8. Travel drive (atlas D5) is a THIRD orthogonal axis, not a fourth assist regime: it enters
+//      as `input.travelDrive` and only ever SHAPES the governor's cap. The kernel stays pure —
+//      the latch, its timers and its bindings live with the input owner.
+
+import { drawFlightAcceleration, validDrawFlight } from './drawFlightControl.js';
+import { channelAuthorityIsFull } from './driveAuthority.js';
+import { DRIVE_FAMILIES, normalizeProfile } from './propulsionCatalog.js';
+import { travelFlag } from '../../data/featureFlags.js';
+
+export const PROPULSION_RUNTIME_SCHEMA_VERSION = 1;
+export const FLIGHT_ASSIST_MODES = Object.freeze(['assisted', 'drift', 'newtonian']);
+/** Yaw authority multiplier while main thrusters are idle (let-off-and-flip primitive). */
+export const COAST_HELM_YAW_MULT = 1.2;
+
+/**
+ * Travel-drive axis (atlas D5). Orthogonal to the assist regime (assisted/drift/newtonian) and to
+ * the control owner (manual / local autopilot / route follower): *route-follower + assisted +
+ * engaged* is autopilot cruise, *manual + engaged* is hand-flown cruise, and a disruption is a
+ * forced state transition regardless of who is commanding.
+ */
+export const TRAVEL_DRIVE_STATES = Object.freeze(['off', 'spooling', 'engaged', 'cooldown']);
+
+/**
+ * Per-family travel-speed ceiling, expressed as a multiple of the drive's own governed combat
+ * speed so it reads as ship identity rather than a global constant. TORCH is the long-haul drive
+ * and gets the most headroom; REACTION is modest; GRAVIMETRIC is an envelope drive whose whole
+ * bargain is a hard maxSpeed, so it gains the least; SAIL is slow but patient.
+ */
+export const TRAVEL_CEILING_FAMILY_MULT = Object.freeze({
+  [DRIVE_FAMILIES.TORCH]: 3.5,
+  [DRIVE_FAMILIES.PULSE_PLATE]: 2.75,
+  [DRIVE_FAMILIES.REACTION]: 2.25,
+  [DRIVE_FAMILIES.SAIL]: 2.0,
+  [DRIVE_FAMILIES.GRAVIMETRIC]: 1.5,
+});
+
+/**
+ * Hard ceiling on any travel ceiling, in WU/s. This is an engineering bound, not a feel knob: at
+ * 1200 WU/s a 1/60 s tick displaces 20 WU, which stays well under collision-geometry scale (hull
+ * radii are single-digit-to-tens of WU) and keeps frame rebasing sane — `FRAME_REBASE_THRESHOLD_WU`
+ * is 8192 in src/core/coordinates.js, i.e. ~410 ticks of travel between rebases at the absolute
+ * ceiling. Raising this without re-checking both of those is how you get tunnelling.
+ */
+export const TRAVEL_CEILING_ABSOLUTE_WU_S = 1200;
+
+/** Seconds of ramp to cover the full ceiling span at nominal rate (before the asymptotic taper). */
+const TRAVEL_RAMP_FULL_S = 9;
+/**
+ * Floor on the tapered ramp rate as a fraction of nominal. The taper is what makes the ceiling
+ * read as asymptotic rather than as a wall (D5: "approached asymptotically ... so it never reads
+ * as a wall"); the floor is what keeps it reachable in finite time instead of asymptotic forever.
+ */
+const TRAVEL_RAMP_TAPER_FLOOR = 0.12;
+/** Exponential decay constant for the disengaged cap record, not the ship's velocity. */
+const TRAVEL_DISENGAGE_DECAY_TAU_S = 5;
+/**
+ * D8 disrupted-beacon spend: the share of reverse authority the governor may spend against
+ * travel overspeed while the lane disruption holds. Bounded well below full brake authority so
+ * the slowdown reads as a field dragging on the drive, never as a slam (D8: "confiscation-free").
+ */
+const DISRUPTION_SPEND_AUTHORITY_FRACTION = 0.35;
+
+/**
+ * Earned-speed rule (design/VISION.md: "thrusters have a cap, physics-earned speed does not get
+ * eaten by the brakes"). Above the governed cap the assisted regime's hands-off counter-thrust,
+ * lateral kill and commanded-axis damper blend to ZERO across this window, so speed the pilot
+ * earned by a sling, a shove, a well fling or a bounce is kept until the pilot spends it with the
+ * brake. A blend rather than a cliff, so crossing the cap never snaps the feel. Below the cap the
+ * nimble regime (crisp hands-off settle) is untouched.
+ */
+export const OVERCAP_ASSIST_BLEND_WU_S = 15;
+
+/**
+ * Velocity-vectoring assist (design/FEEL_CONTRACT.md §C "Velocity-vectoring assist";
+ * docs/TUNING_JOBS.md job 1). While the pilot commands the main drive, the assisted flight
+ * computer applies a lateral (perpendicular-to-velocity) force that ROTATES the velocity vector
+ * toward the commanded direction — the nose, offset by any strafe — so the path bends the moment
+ * the pilot twitches instead of the ship sliding on its old line. The path turn rate is authored
+ * as fractions of the hull's own max yaw (SF-2b #3, see the keys below) and follows speed from
+ * rest through the combat cap to the boost cap. The force is a pure rotation: speed is preserved
+ * to floating-point precision, which is what lets "turn NOW when I twitch" and "keep earned
+ * speed" coexist.
+ *
+ * Unlike the counter-thrust, lateral kill and commanded-axis damper, this assist CANNOT spend
+ * earned speed — a rotation has no along-track component — so it does not release across
+ * OVERCAP_ASSIST_BLEND_WU_S the way the speed-spending assists do. Releasing it above the cap
+ * was the boost hard-switch: a dash/boost crossing its own raised ceiling dropped path steering
+ * and the lead bound in the same tick, the nose ran free to maxYaw, and once the nose spun past
+ * the velocity vector the governor's backward-motion branch spent the whole impulse as a
+ * retro-burn. Hands-off earned coasts never reach this code — the throttle gate is upstream.
+ *
+ * Opt-in per input packet (`input.velocityVectoring`: `true` for the band defaults, or an object
+ * overriding these keys). The player's flight computer sets it (src/systems/flightV3.js); NPC
+ * intents and the frozen kernel fixture never do, so with the flag absent every result is
+ * byte-identical to the previous kernel. A nose ~180° from the velocity is a flip, not a turn:
+ * the assist is full within `fadeStartRad` of the command and fades smoothly to zero at
+ * `fadeEndRad`, which leaves the flip-and-burn reversal exactly as it was.
+ *
+ * TURN FEEL DIALS (SF-2b #3). W+turn path rate as a fraction of the hull's max yaw
+ * (profile.maxYawRate after the feel envelope), so every hull scales with its own yaw identity:
+ *   restYawFrac   at low speed (lerps to cruise by speed / combat cap)
+ *   cruiseYawFrac at the combat cap.  Kestrel: 0.57 x 2.646 = 1.51 rad/s, radius ~130 wu at 195 wu/s
+ *   boostYawFrac  at the boost cap, held for as long as boost is held.
+ *                 Kestrel: 0.375 x 2.646 = 0.99 rad/s, radius ~305 wu at 302 wu/s
+ * Between the anchors the rate follows speed, so pressing or releasing boost mid-turn never steps
+ * the arc. Above the boost cap (a sling, a travel burn) the lateral acceleration is held at its
+ * boost-cap value, so the radius widens with speed instead of pulling unbounded g. A drive below
+ * its nominal authority (a spooling torch, a scaled forward channel) vectors proportionally less.
+ * Coast (no main drive) is untouched: the throttle gate below is upstream of all of this.
+ * FLOOR (legacyFloor, default true): no hull turns slower than it did before #3. The rate is never
+ * below the pre-#3 schedule (1.6 -> 0.9 rad/s by speed / governed cap, bounded by the drive's forward
+ * authority). Only slow-yaw hulls hit it (the torch hulls Hawser / Colossus / Leviathan, max yaw
+ * 0.48-0.76, were already turning the path at ~their full max yaw); set legacyFloor false to apply
+ * the fractions strictly to every hull.
+ * A packet may still pass absolute `rateLowRadS` / `rateCapRadS`: that selects the pre-#3 schedule
+ * (rate lerped by speed / governed cap, bounded by the drive's forward authority) for A/B variants.
+ */
+export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
+  restYawFrac: 0.60,
+  cruiseYawFrac: 0.57,
+  boostYawFrac: 0.375,
+  legacyFloor: true,
+  rateLowRadS: null,
+  rateCapRadS: null,
+  fadeStartRad: Math.PI / 2,
+  fadeEndRad: Math.PI,
+});
+
+/**
+ * Coordinated-turn lead bound, rad (~7 deg). While the vectoring assist is live the nose may lead
+ * the velocity vector by at most this much; as the lead is approached, yaw eases onto the rate the
+ * drive is actually bending the path — see assistedTurnBound. Without Q/E the angle is the hull
+ * against the trail (a 16 deg park left the straight nozzle jet kinked against the arc). With Q/E
+ * held the bound measures the strafe-offset command against the trail instead (SF-2b #3): the
+ * pilot asked for that crab, and measuring the bare hull read the requested 45 deg crab as excess
+ * lead on the far side, so W+E+A had the excess-lead correction drive the nose the opposite way to
+ * the A key at ~1.3 rad/s. Telemetry still reports the hull-vs-trail slip. Twitch at zero slip
+ * stays full yaw, turning back toward the path is never clamped, a zero turn is left alone, and
+ * the bound releases inside the flip band.
+ */
+export const VECTORING_SLIP_LEAD_RAD = 0.12;
+
+const VECTORING_EXCESS_SLIP_GAIN = 4;
+const COMMAND_SLIP_BOUND = true;
+// Pre-#3 absolute vectoring schedule (rad/s at rest / at the governed cap); kept as the legacyFloor.
+const LEGACY_VECTORING_RATE_LOW_RAD_S = 1.6;
+const LEGACY_VECTORING_RATE_CAP_RAD_S = 0.9;
+
+const EPS = 1e-9;
+const TAU = Math.PI * 2;
+
+/**
+ * @typedef {Object} PropulsionStepInput
+ * @property {number} dt fixed simulation step, seconds
+ * @property {Object} body {pos,vel,rot,angVel,mass,inertia}
+ * @property {Object} input {throttle,strafe,turn,boost,brake,assistMode,boostPressed,boostReleased}
+ * @property {Object} profile propulsion profile
+ * @property {Object} runtime serialized propulsion runtime from the previous tick
+ * @property {Object} environment optional {particulateDensity,dragCoefficient,fieldDirection,fieldStrength}
+ */
+
+// Active channel scale for the step in progress. Null means full authority,
+// so every limit builder multiplies by 1 and stays byte-identical. A zero
+// channel stays zero: writing 0 into mainAccel would not, because positive()
+// treats 0 as "missing" and substitutes the catalog fallback.
+let stepAuthority = null;
+
+function channelScale(channel) {
+  const authority = stepAuthority;
+  if (!authority) return 1;
+  return clamp(finite(authority[channel], 1), 0, 1);
+}
+
+function scaleTranslationLimits(limits) {
+  if (!stepAuthority) return limits;
+  return {
+    forward: limits.forward * channelScale('forward'),
+    reverse: limits.reverse * channelScale('reverse'),
+    strafe: limits.strafe * channelScale('strafe'),
+  };
+}
+
+/** Advance one fixed propulsion tick. */
+export function stepPropulsion(args = {}) {
+  const dt = clamp(finite(args.dt, 0), 0, 0.25);
+  const body = normalizeBody(args.body, _packetBody);
+  const input = normalizeInput(args.input, _packetInput, _packetInputSubs);
+  const profile = normalizeProfile(args.profile || {});
+  const runtime = normalizeRuntime(args.runtime, profile, _packetRuntime);
+  const environment = normalizeEnvironment(args.environment, _packetEnv, _packetEnvSubs);
+
+  stepAuthority = channelAuthorityIsFull(args.authority) ? null : args.authority;
+  try {
+    if (!(dt > 0)) return idleResult(body, profile, runtime, input);
+
+    if (input.rendezvous) return stepRendezvous(body, input, profile, runtime, environment, dt);
+
+    if (validDrawFlight(input.drawFlight) && !input.brake) {
+      return stepDrawFlight(body, input, profile, runtime, environment, dt);
+    }
+
+    switch (profile.family) {
+      case DRIVE_FAMILIES.GRAVIMETRIC:
+        return stepGravimetric(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.PULSE_PLATE:
+        return stepPulsePlate(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.TORCH:
+        return stepTorch(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.SAIL:
+        return stepFieldSail(body, input, profile, runtime, environment, dt);
+      case DRIVE_FAMILIES.REACTION:
+      default:
+        return stepReaction(body, input, profile, runtime, environment, dt);
+    }
+  } finally {
+    stepAuthority = null;
+  }
+}
+
+/** Pure helper for tools, AI and HUD previews. */
+export function previewCounterThrust(bodyLike, profileLike, assistMode = 'assisted', scale = 1) {
+  const body = normalizeBody(bodyLike);
+  const profile = normalizeProfile(profileLike || {});
+  const mode = normalizeAssistMode(assistMode);
+  const axes = localAxes(body.rot);
+  const assist = reactionAssistAcceleration(body, axes, {
+    throttle: 0,
+    strafe: 0,
+    brake: true,
+    assistMode: mode,
+  }, profile, true);
+  return scale2(assist.accel, clamp(finite(scale, 1), 0, 1));
+}
+
+/**
+ * Where a held pilot brake leaves the ship, for HUD previews — previewCounterThrust carried to
+ * the brake's own floor. The brake law is proportional (−v_local / τ, τ = assist.pilotBrakeHorizonS)
+ * clamped to brake authority per local axis, so each axis decays in two phases: saturated
+ * constant decel while |v| > a·τ, then the exponential tail — which ends at assist.deadSpeed,
+ * because below that floor the kernel stops commanding and the ship creeps on at a crawl.
+ * Closed form per axis: the same law the tick integrates, not a second braking model. The brake
+ * is exempt from the newtonian early-out (reactionAssistAcceleration), so assistMode is carried
+ * for the accel preview but the stop answer is mode-insensitive. Advisory only: the HUD reports
+ * the read, it never brakes.
+ */
+export function previewBrakeStop(bodyLike, profileLike, assistMode = 'assisted') {
+  const body = normalizeBody(bodyLike);
+  const profile = normalizeProfile(profileLike || {});
+  const axes = localAxes(body.rot);
+  const vLocal = worldToLocal(body.vel, axes);
+  const settings = profile.assist || {};
+  const horizon = positive(settings.pilotBrakeHorizonS, 0.72);
+  const dead = positive(settings.deadSpeed, 0.18);
+  const limits = reactionBrakeLimits(profile);
+  const axisStop = (v, limit) => {
+    const speed = Math.abs(v);
+    if (!(speed > dead) || !(limit > EPS) || !(horizon > EPS)) return 0;
+    const saturateAt = limit * horizon;
+    const saturated = speed > saturateAt
+      ? (speed * speed - saturateAt * saturateAt) / (2 * limit)
+      : 0;
+    const tail = (Math.min(speed, saturateAt) - dead) * horizon;
+    return Math.sign(v) * (saturated + Math.max(0, tail));
+  };
+  // Forward motion spends reverse authority; a backward drift spends forward authority. The
+  // strafe limit is symmetric.
+  const stopLocal = {
+    forward: axisStop(vLocal.forward, vLocal.forward >= 0 ? limits.reverse : limits.forward),
+    lateral: axisStop(vLocal.lateral, limits.strafe),
+  };
+  const stopOffset = localToWorld(stopLocal, axes);
+  const stopDistance = Math.hypot(stopOffset.x, stopOffset.z);
+  return {
+    accel: previewCounterThrust(body, profile, assistMode),
+    speed: length2(body.vel),
+    horizonS: horizon,
+    deadSpeed: dead,
+    stopDistance,
+    projectedStop: { x: body.pos.x + stopOffset.x, z: body.pos.z + stopOffset.z },
+  };
+}
+
+/**
+ * Resolve a drive's travel-speed ceiling in WU/s. Pure, side-effect free and exported so the HUD
+ * can draw the V-MAX line on the velocity tape without re-deriving the rule (D5).
+ *
+ * Precedence: an authored `profile.travelCeiling` wins (drive-tier upgrades hang off this), else
+ * the family multiplier applied to the drive's own governed speed. The result is clamped by the
+ * drive's `solverSpeedLimit` — an envelope drive must not be handed a travel ceiling its own
+ * solver refuses to integrate — and by the absolute engineering bound.
+ */
+export function resolveTravelCeiling(profileLike) {
+  const profile = normalizeProfile(profileLike || {});
+  const base = positive(profile.combatSpeed, positive(profile.maxSpeed, 150));
+  const mult = positive(TRAVEL_CEILING_FAMILY_MULT[profile.family], TRAVEL_CEILING_FAMILY_MULT[DRIVE_FAMILIES.REACTION]);
+  const authored = positive(profile.travelCeiling, 0);
+  const raw = authored > 0 ? authored : base * mult;
+  return Math.min(raw, finiteOrInfinity(profile.solverSpeedLimit), TRAVEL_CEILING_ABSOLUTE_WU_S);
+}
+
+/**
+ * Normalize the drive block the input owner hands in. `cap` is the ramp's carried state: the
+ * kernel advances it and republishes it on the result, and the owner feeds it back next tick —
+ * exactly how `spool` works for the torch drive, except through the input packet rather than the
+ * serialized runtime, so the drive axis adds nothing to the saved propulsion runtime.
+ */
+function normalizeTravelDrive(raw, out = null) {
+  const d = raw && typeof raw === 'object' ? raw : {};
+  let state = TRAVEL_DRIVE_STATES.includes(d.state) ? d.state : 'off';
+  // A disruption is a forced drop off the burn. The latch usually publishes cooldown already;
+  // if a caller forwards the level flag on this block, do not keep ramping an engaged burn.
+  if (d.disrupted === true && (state === 'engaged' || state === 'spooling')) {
+    state = 'cooldown';
+  }
+  const o = out || {};
+  o.state = state;
+  // Carried ramp state. 0 means "no travel cap in flight"; the first engaged tick seeds it.
+  o.cap = Math.max(0, finite(d.cap, 0));
+  // Optional per-call overrides so a lane volume (D8) can multiply the drive's own numbers
+  // without the kernel knowing anything about lanes.
+  o.ceiling = positive(d.ceiling, 0);
+  o.rampRate = positive(d.rampRate, 0);
+  o.rampMult = positive(d.rampMult, 1);
+  // A dead beacon's disruption field is an authored environmental force (D8): the kernel
+  // needs to know the drive came down for a world reason — the live level flag, or a break
+  // reason that was not the pilot's own hand — so the falling ceiling can spend velocity for
+  // as long as the cap record stays elevated (see the governor). Pilot-caused breaks
+  // ('pilot'/'brake'/'cancelled') keep the settle-to-rest coast.
+  o.disrupted = d.disrupted === true
+    || (d.breakReason != null
+      && d.breakReason !== 'pilot'
+      && d.breakReason !== 'brake'
+      && d.breakReason !== 'cancelled');
+  return o;
+}
+
+/**
+ * Advance the travel-drive ramp for one tick and report what the governor should do with it.
+ * Pure: consumes the carried `drive.cap`, returns the next one.
+ *
+ * While Engaged the cap is a moving target climbing toward the ceiling, tapering as it closes so
+ * the ceiling is approached rather than hit. In every other state the cap does not snap back to
+ * the ordinary governed cap — it DECAYS exponentially and reports `physicsEarnedMomentum`.
+ * Only the remembered thrust ceiling decays; earned velocity coasts until the pilot brakes or
+ * an actual environmental force acts on it.
+ */
+function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt, out = null) {
+  const ceiling = drive.ceiling > 0
+    ? Math.min(drive.ceiling, TRAVEL_CEILING_ABSOLUTE_WU_S)
+    : resolveTravelCeiling(profile);
+  const engaged = drive.state === 'engaged';
+  const step = Math.max(0, finite(dt, 0));
+
+  if (engaged) {
+    // Seed from whatever the ship already has: engaging at speed must never yank the pilot down.
+    const seed = drive.cap > 0 ? drive.cap : Math.max(baseCap, finite(forwardSpeed, 0));
+    const from = Math.min(Math.max(seed, baseCap), ceiling);
+    const span = Math.max(EPS, ceiling - Math.min(baseCap, ceiling));
+    const remaining = clamp((ceiling - from) / span, 0, 1);
+    const nominal = drive.rampRate > 0 ? drive.rampRate : ceiling / TRAVEL_RAMP_FULL_S;
+    const rate = nominal * drive.rampMult * (TRAVEL_RAMP_TAPER_FLOOR + (1 - TRAVEL_RAMP_TAPER_FLOOR) * remaining);
+    const cap = Math.min(ceiling, from + rate * step);
+    const o = out || {};
+    o.state = drive.state; o.cap = cap; o.ceiling = ceiling;
+    o.ramping = cap < ceiling - EPS; o.physicsEarnedMomentum = false;
+    o.disrupted = drive.disrupted === true;
+    return o;
+  }
+
+  // Off / Spooling / Cooldown: no cap contribution is being added. The old cap record fades,
+  // while the ship retains its velocity. Spooling behaves like Off for the cap — it is the pre-engage
+  // window the latch owner times, not a partial burn.
+  const decayed = drive.cap > 0 ? drive.cap * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S) : 0;
+  const cap = decayed > baseCap ? decayed : 0;
+  const o = out || {};
+  o.state = drive.state; o.cap = cap; o.ceiling = ceiling;
+  o.ramping = false; o.physicsEarnedMomentum = cap > 0;
+  o.disrupted = drive.disrupted === true;
+  return o;
+}
+
+// Owner-selected arcade mode: finite-rate vectoring, constant combat-speed command. Normal
+// manual/AI thrust, brake, collisions, boost resource gating and environmental forces are unchanged.
+function stepDrawFlight(body, input, profile, runtime, environment, dt) {
+  const motion = drawFlightAcceleration(body, input.drawFlight, profile, dt, input.boost);
+  const drive = channelScale('forward');
+  if (drive !== 1) {
+    motion.x *= drive;
+    motion.z *= drive;
+  }
+  const environmental = environmentalDragAcceleration(body, environment);
+  const accel = add2(motion, environmental);
+  const yaw = computeHeadingControl(body, motion.targetHeading, profile, dt, input);
+  const demand = resourceDemand(profile, accel, input.boost, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+  return makeResult({
+    body, profile, input, runtime: nextRuntime, acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    // The authority clamps only control-made speed, never an impact/sling already above it.
+    maxSpeed: motion.cap, demand, events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry: { driveState: 'draw-flight', desiredHeading: motion.targetHeading,
+      targetYawRate: yaw.targetYawRate, boostFraction: input.boost ? 1 : 0,
+      environmentalAcceleration: environmental,
+      drawFlight: { speedCommand: motion.cap, turnRate: motion.turnRate,
+        exhausted: !!input.drawFlight.exhausted },
+    },
+  });
+}
+
+// An explicitly engaged flight computer may command a moving frame. This is a bounded
+// thruster servo, not a velocity write; collisions, missing drives and inertia still matter.
+function stepRendezvous(body, input, profile, runtime, environment, dt) {
+  const axes = localAxes(body.rot);
+  const error = sub2(input.rendezvous.velocity, body.vel);
+  const forwardError = error.x * axes.fx + error.z * axes.fz;
+  const lateralError = error.x * axes.rx + error.z * axes.rz;
+  let limits;
+  if (profile.family === DRIVE_FAMILIES.GRAVIMETRIC) {
+    const accel = positive(profile.maxAccel, 80), brake = positive(profile.maxBrakeAccel, accel);
+    limits = { forward: accel * channelScale('forward'), reverse: brake * channelScale('reverse'), strafe: accel * channelScale('strafe') };
+  } else {
+    const reaction = profile.family === DRIVE_FAMILIES.PULSE_PLATE
+      ? { ...profile, mainAccel: profile.rcsForwardAccel, reverseAccel: profile.rcsReverseAccel, strafeAccel: profile.rcsStrafeAccel }
+      : profile.family === DRIVE_FAMILIES.SAIL
+        ? { ...profile, mainAccel: profile.trimAccel, reverseAccel: profile.trimAccel, strafeAccel: profile.trimAccel } : profile;
+    limits = reactionLimits(reaction, 1);
+  }
+  const local = { forward: clamp(forwardError * 1.8, -limits.reverse, limits.forward), lateral: clamp(lateralError * 1.8, -limits.strafe, limits.strafe) };
+  const accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
+  const yaw = computeHeadingControl(body, input.rendezvous.heading, profile, dt, input);
+  const demand = resourceDemand(profile, accel, false, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+  return makeResult({ body, profile, input, runtime: nextRuntime, acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration, maxSpeed: Infinity, demand,
+    events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry: { driveState: 'rendezvous', targetYawRate: yaw.targetYawRate, environmentalAcceleration: environmentalDragAcceleration(body, environment) },
+  });
+}
+
+function stepReaction(body, input, profile, runtime, environment, dt) {
+  const axes = localAxes(body.rot);
+  const boostMult = input.boost ? positive(profile.boostAccelMult, 1) : 1;
+  const limits = reactionLimits(profile, boostMult);
+  const controlLimits = input.brake ? reactionBrakeLimits(profile) : limits;
+  const localVelocity = worldToLocal(body.vel, axes);
+
+  const manualLocal = manualThrustLocal(input, limits, localVelocity, profile);
+  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt);
+
+  const assist = reactionAssistAcceleration(body, axes, input, profile, false);
+  const combined = clampLocalAcceleration({
+    forward: manualLocal.forward + assist.local.forward,
+    lateral: manualLocal.lateral + assist.local.lateral,
+  }, controlLimits);
+
+  let accel = localToWorld(combined, axes);
+  const environmental = environmentalDragAcceleration(body, environment);
+  accel = add2(accel, environmental);
+
+  // Resource demand is taken from the thrust the pilot and the ordinary assist commanded; the
+  // vectoring assist below redirects that thrust rather than burning more, so it adds no cost.
+  const demand = resourceDemand(profile, accel, input.boost, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+  const vectoring = velocityVectoringAcceleration(body, input, profile, limits, governor, dt,
+    reactionLimitsUnscaled(profile, boostMult).forward);
+  if (vectoring && vectoring.active) {
+    accel.x += vectoring.ax;
+    accel.z += vectoring.az;
+  }
+  const turnBound = assistedTurnBound(body, input, profile, accel, dt);
+  const yaw = computeYawControl(body, input, profile, dt, turnBound);
+  if (vectoring) {
+    vectoring.slipRad = turnBound ? turnBound.slip : null;
+    vectoring.leadBounded = yaw.leadBounded === true;
+    vectoring.pathFollowRateRadS = turnBound ? turnBound.pathFollowRate : null;
+  }
+
+  const telemetry = {
+    driveState: 'thrust',
+    manualLocal,
+    assistLocal: assist.local,
+    assistReason: assist.reason,
+    environmentalAcceleration: environmental,
+    targetYawRate: yaw.targetYawRate,
+    coastHelm: !!yaw.coastHelm,
+    desiredHeading: null,
+    boostFraction: input.boost ? 1 : 0,
+    governor,
+  };
+  // Shape-gated like `governor.travel`: no key unless the packet opted in, so the frozen kernel
+  // fixture and every NPC result stay byte-identical.
+  if (vectoring) telemetry.vectoring = vectoring;
+
+  return makeResult({
+    body,
+    profile,
+    input,
+    runtime: nextRuntime,
+    acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    maxSpeed: controlMadeSpeedLimit(governor, profile),
+    demand,
+    events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry,
+  });
+}
+
+// Assisted-mode speed governor: any positive translation command is a speed command toward
+// commandFraction × combatSpeed (boost raises the cap by boostSpeedMult). commandFraction is
+// hypot(max(0, throttle), strafe) clamped to 1, so a diagonal W+A/D requests ONE full-cap
+// vector rather than two independent caps, and pure lateral still has a cap. The manual
+// reverse branch below uses physical retro authority and a smaller signed envelope. The quantity it governs is TOTAL planar speed, not the
+// nose-forward component: yawing must not launder governed speed into ungoverned lateral speed
+// (PQ-137.03b). Below the cap the existing axial forward servo saturates at full thruster
+// authority until the last ~governorResponseS of closing speed. The physics owner's thrust-only
+// maxSpeed bound (result.maxSpeed) is the final vector clamp on control-made speed; this
+// function does not rewrite lateral thrust and never spends physics-earned overspeed — above
+// the cap the forward command floors at coast (0), never reverse. Drift/newtonian: untouched.
+// Mutates manualLocal.forward in place and returns telemetry (null when the governor has no
+// opinion this tick).
+function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt) {
+  const reverseCap = manualReverseCap(input, profile);
+  if (reverseCap > 0) {
+    const speed = Math.hypot(localVelocity.forward, localVelocity.lateral);
+    // Overspeed carried FORWARD is not reverse speed: retro thrust must be able to
+    // spend it and cross zero. Already-earned backward overspeed coasts; no velocity write.
+    const err = localVelocity.forward > EPS
+      ? Math.max(reverseCap, localVelocity.forward)
+      : reverseCap - speed;
+    const requested = Math.max(0, -manualLocal.forward);
+    const governed = clamp(err / positive(profile.assist?.governorResponseS, 0.9), 0, requested);
+    manualLocal.forward = -governed;
+    return { cap: reverseCap, baseCap: reverseCap, engaged: governed < requested - EPS,
+      overspeed: err < 0, physicsEarned: !!input.physicsEarnedMomentum };
+  }
+  if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  const commandFraction = clamp(Math.hypot(Math.max(0, input.throttle), input.strafe), 0, 1);
+  if (!(commandFraction > deadInput)) return null;
+  const governedSpeed = positive(profile.combatSpeed, 0);
+  if (!(governedSpeed > 0)) return null;
+
+  const boostMult = input.boost ? positive(profile.boostSpeedMult, 1.55) : 1;
+  const baseCap = commandFraction * governedSpeed * boostMult;
+  const speed = Math.hypot(localVelocity.forward, localVelocity.lateral);
+  const step = Math.max(0, finite(dt, 0));
+  // Travel drive (D5). A third axis, orthogonal to the assist regime and to who is holding the
+  // stick: it raises the *cap* along a ramp and never touches thruster authority, so assisted /
+  // drift / newtonian keep their existing meanings and `route-follower + assisted + engaged` is
+  // simply autopilot cruise. The governor is shaped here, never bypassed.
+  //
+  // Note the ramp cap is only consulted while there is a positive translation command — this
+  // function has already returned null otherwise. That is correct rather than a gap: with no
+  // translation the governor expresses no opinion at all, so a cap that is not applied is
+  // indistinguishable from no cap, and the coasting ship is carried by the existing
+  // earned-momentum decay instead.
+  const burn = travelFlag('travelBurn')
+    ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive, _govTravelDrive), profile, baseCap, speed, dt, _travelBurn)
+    : null;
+  // `input.physicsEarnedMomentum` is the tether/self-sling tag. A disengaged travel burn reports
+  // the same contract on `burn` so leftover cruise is a falling ceiling, not a thrust target.
+  const travelEarned = !!(burn && burn.physicsEarnedMomentum);
+  const physicsEarned = (!!input.physicsEarnedMomentum || travelEarned) && speed > baseCap;
+  const decayTauS = travelEarned
+    ? TRAVEL_DISENGAGE_DECAY_TAU_S
+    : positive(input.earnedMomentumDecayTauS, 6);
+  const earnedCap = physicsEarned
+    ? speed * Math.exp(-step / decayTauS)
+    : baseCap;
+  // Engaged burns raise the cap. Once the burn is down, leftover boosted `burn.cap` is only a
+  // falling ceiling: throttle stops pushing at the old travel target. The ship keeps its
+  // earned velocity; RC-4 still floors commanded reverse at coast.
+  const cap = travelEarned
+    ? Math.max(baseCap, Math.min(earnedCap, burn.cap > 0 ? burn.cap : earnedCap))
+    : Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
+  // A positive-forward command must still be allowed to reverse motion carried opposite the
+  // nose. Comparing only scalar speed makes the exact cap a dead equilibrium for a ship travelling
+  // backward: `err` becomes zero, the governor removes all forward thrust, and the ship can never
+  // cross through zero. Reverse travel is not speed spent against the cap — forward thrust is
+  // counter-thrust against that motion — so give it enough error to cancel the backward component.
+  // Without vectoring, the main drive itself must bend a commanded turn. At cruise a scalar
+  // speed error used to remove that drive as soon as the hull left its momentum vector; it only
+  // came back after the nose crossed 90 degrees, as a full retro-burn. Use the forward deficit
+  // while still inside the cap, leaving total speed to the physics owner's thrust-only bound.
+  // Above the cap retain the scalar coast law: turning cannot replenish earned overspeed.
+  const forwardDeficit = input.unvectoredCruiseSteering && !input.velocityVectoring && speed <= cap + EPS
+    ? cap - localVelocity.forward
+    : cap - speed;
+  const err = localVelocity.forward < -EPS
+    ? Math.max(cap, -localVelocity.forward)
+    : forwardDeficit;
+  const responseS = positive(settings.governorResponseS, 0.9);
+  // The governor bounds what THRUST may produce. It never spends speed the pilot earned: above
+  // the cap the forward command floors at coast (0), never at reverse thrust, unless it is
+  // counter-thrust against local reverse motion. History: the shipped governor braked at
+  // overspeedBrakeFraction of reverse authority whenever the throttle was held above the cap, so
+  // pressing FORWARD after a slingshot slowed the ship down — the exact confiscation
+  // design/VISION.md forbids. RC-4 (`boostNeverBrakes`) had lifted the floor to coast while
+  // boosting only; the rule is now unconditional. Spending forward-travel speed above the cap is
+  // the pilot brake's job (reactionAssistAcceleration keeps full brake authority).
+  //
+  // D8 exception — the disrupted beacon. A dead lane segment is an authored environmental
+  // force, and the coast law itself reserves that case: earned velocity coasts "until the pilot
+  // brakes or an actual environmental force acts on it". While the drive block carries
+  // `disrupted`, the falling travel ceiling is that force: the servo floors below coast at a
+  // BOUNDED share of reverse authority and spends the excess toward the ceiling at the same
+  // ~6 s pace the disengaged ramp decays — confiscation-free (no single second erases most of
+  // the speed), and inert whenever the drive is off (burn is null, floor stays 0).
+  const disruptedBurn = !!(burn && burn.disrupted);
+  const brakeFloor = disruptedBurn
+    ? -positive(limits && limits.reverse, 0) * DISRUPTION_SPEND_AUTHORITY_FRACTION
+    : 0;
+  const spendResponseS = disruptedBurn ? TRAVEL_DISENGAGE_DECAY_TAU_S : responseS;
+  // The axial servo only ever reduces POSITIVE forward. Reverse/brake stays the reverse path even
+  // if strafe caused the governor to engage.
+  let engaged = false;
+  if (manualLocal.forward > EPS) {
+    const governed = clamp(err / spendResponseS, brakeFloor, manualLocal.forward);
+    engaged = governed < manualLocal.forward - EPS;
+    manualLocal.forward = governed;
+  }
+  const telemetry = {
+    cap,
+    baseCap,
+    engaged,
+    overspeed: err < 0,
+    // A decaying travel cap records why the ship is above its ordinary cap. The velocity itself
+    // is preserved until the pilot brakes or an actual environmental force acts on it.
+    physicsEarned: physicsEarned || !!(burn && burn.physicsEarnedMomentum),
+  };
+  // Shape gate, not just a behaviour gate. With the axis off this object must be byte-identical
+  // to HEAD — otherwise the frozen kernel baseline and the 47a hash both move with the drive
+  // parked at Off, which is the failure mode that makes "flags-off is a no-op" untrue.
+  if (burn) {
+    telemetry.travel = {
+      state: burn.state,
+      // Carried ramp state: the input owner feeds this straight back as `travelDrive.cap`.
+      cap: burn.cap,
+      ceiling: burn.ceiling,
+      ramping: burn.ramping,
+      // Disengage fades the thrust ceiling while earned velocity keeps coasting.
+      earned: burn.physicsEarnedMomentum,
+      // D8: a disrupted beacon spends overspeed toward the falling ceiling (environmental force).
+      disrupted: disruptedBurn,
+    };
+  }
+  return telemetry;
+}
+
+function manualReverseCap(input, profile) {
+  if (!input.manualReverse || input.brake || !(input.throttle < -positive(profile.assist?.deadInput, 0.025))) return 0;
+  const forward = positive(profile.combatSpeed, positive(profile.maxSpeed, positive(profile.precisionSpeed, 150)));
+  const reverse = positive(profile.reverseMaxSpeed, forward * 0.35);
+  return reverse * clamp(Math.hypot(input.throttle, input.strafe), 0, 1);
+}
+
+/**
+ * Finite bound on planar speed this tick's continuous translation may produce. Null governor
+ * (Drift, Newtonian, hands-off) preserves the drive's solver limit — Infinity for reaction —
+ * so the physics owner does not clamp. A live assisted cap is min'd with a finite solver
+ * envelope and forwarded as result.maxSpeed; `_clampSpeed` then bounds only thrust-added speed.
+ */
+function controlMadeSpeedLimit(governor, profile) {
+  const solver = finiteOrInfinity(profile.solverSpeedLimit);
+  if (!governor) return solver;
+  const cap = finite(governor.cap, 0);
+  if (!(cap > 0)) return solver;
+  return Number.isFinite(solver) ? Math.min(cap, solver) : cap;
+}
+
+function stepGravimetric(body, input, profile, runtime, environment, dt) {
+  const axes = localAxes(body.rot);
+  const reverseCap = manualReverseCap(input, profile);
+  const maxSpeed = reverseCap > 0 ? reverseCap : input.boost
+    ? positive(profile.boostMaxSpeed, positive(profile.maxSpeed, 150))
+    : positive(profile.maxSpeed, 150);
+  const desiredLocal = clampMagnitude({ x: input.throttle, z: input.strafe }, 1);
+  let targetVelocity;
+
+  // A gravimetric drive's defining bargain is coupled control. In newtonian mode,
+  // neutral input preserves momentum, but non-zero input still selects a velocity
+  // target; this gives advanced pilots a decoupled option without pretending the
+  // drive is a reaction engine.
+  if (Math.hypot(desiredLocal.x, desiredLocal.z) <= 0.001 && input.assistMode === 'newtonian' && !input.brake) {
+    targetVelocity = { x: body.vel.x, z: body.vel.z };
+  } else if (input.brake) {
+    targetVelocity = { x: 0, z: 0 };
+  } else {
+    targetVelocity = {
+      x: (axes.fx * desiredLocal.x + axes.rx * desiredLocal.z) * maxSpeed,
+      z: (axes.fz * desiredLocal.x + axes.rz * desiredLocal.z) * maxSpeed,
+    };
+  }
+
+  const error = sub2(targetVelocity, body.vel);
+  const response = positive(profile.responseHz, 4.5);
+  const raw = scale2(error, response);
+  const speed = length2(body.vel);
+  // A lowered boost cap must not turn a gravimetric velocity servo into an automatic brake.
+  // Keep lateral steering authority, but let existing overspeed coast unless the pilot commands
+  // a turn past 90 degrees or presses the brake.
+  if (!input.brake && speed > maxSpeed && speed > EPS
+    && dot2(targetVelocity, body.vel) >= -EPS) {
+    const along = dot2(raw, body.vel) / speed;
+    if (along < 0) {
+      raw.x -= (body.vel.x / speed) * along;
+      raw.z -= (body.vel.z / speed) * along;
+    }
+  }
+  const braking = dot2(raw, body.vel) < -EPS;
+  const accelLimit = braking
+    ? positive(profile.maxBrakeAccel, positive(profile.maxAccel, 80)) * channelScale('reverse')
+    : positive(profile.maxAccel, 80) * channelScale('forward');
+  let accel = clampMagnitude(raw, accelLimit);
+  accel = add2(accel, environmentalDragAcceleration(body, environment));
+
+  const yaw = computeYawControl(body, input, profile, dt);
+  const demand = resourceDemand(profile, accel, input.boost, dt, positive(profile.resources && profile.resources.idleEnergyPerS, 0));
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+
+  return makeResult({
+    body,
+    profile,
+    input,
+    runtime: nextRuntime,
+    acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    maxSpeed: Math.min(reverseCap > 0 ? reverseCap : maxSpeed * 1.04, finiteOrInfinity(profile.solverSpeedLimit)),
+    demand,
+    events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry: {
+      driveState: 'velocity-servo',
+      targetVelocity,
+      velocityError: error,
+      targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
+      desiredHeading: null,
+      boostFraction: input.boost ? 1 : 0,
+    },
+  });
+}
+
+function stepPulsePlate(body, input, profile, runtime, environment, dt) {
+  const axes = localAxes(body.rot);
+  const cooldown = Math.max(0, finite(runtime.pulseCooldownS, 0) - dt);
+  let chargeS = clamp(finite(runtime.chargeS, 0), 0, positive(profile.maxChargeS, 2));
+  let autoFlipBurn = !!runtime.autoFlipBurn;
+  const events = [];
+
+  const speed = length2(body.vel);
+  if (input.brake && speed > 0.5) autoFlipBurn = true;
+  if (!input.brake && input.turn !== 0) autoFlipBurn = false;
+
+  const desiredHeading = autoFlipBurn && speed > 0.5
+    ? wrapAngle(Math.atan2(body.vel.z, body.vel.x) + Math.PI)
+    : null;
+
+  const manualInput = autoFlipBurn
+    ? { ...input, throttle: 0, strafe: 0, turn: 0 }
+    : input;
+
+  const rcsProfile = {
+    ...profile,
+    mainAccel: positive(profile.rcsForwardAccel, 10),
+    reverseAccel: positive(profile.rcsReverseAccel, 8),
+    strafeAccel: positive(profile.rcsStrafeAccel, 6),
+    boostAccelMult: 1,
+    assist: {
+      settleTimeConstantS: 8,
+      settleFloorAccel: input.assistMode === 'assisted' ? 1.0 : 0,
+      lateralKillFraction: input.assistMode === 'assisted' ? 0.12 : 0,
+      commandedAxisDamping: 0,
+      stopHorizonS: 7,
+      driftStopHorizonS: 12,
+      deadSpeed: 0.2,
+      deadInput: 0.025,
+    },
+  };
+  const limits = reactionLimits(rcsProfile, 1);
+  const localVelocity = worldToLocal(body.vel, axes);
+  const manualLocal = manualThrustLocal(manualInput, limits, localVelocity, rcsProfile);
+  const governor = manualReverseCap(manualInput, rcsProfile) > 0
+    ? applySpeedGovernor(manualLocal, manualInput, limits, localVelocity, rcsProfile, dt) : null;
+  const assist = reactionAssistAcceleration(body, axes, manualInput, rcsProfile, false);
+  const local = clampLocalAcceleration({
+    forward: manualLocal.forward + assist.local.forward,
+    lateral: manualLocal.lateral + assist.local.lateral,
+  }, limits);
+  let accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
+
+  const charging = (input.boost || autoFlipBurn) && cooldown <= 0;
+  if (charging) chargeS = Math.min(positive(profile.maxChargeS, 2), chargeS + dt);
+
+  let impulse = null;
+  let firedDv = 0;
+  const manualRelease = input.boostReleased && chargeS >= positive(profile.minChargeS, 0.1);
+  const alignmentError = desiredHeading == null ? 0 : Math.abs(wrapAngle(desiredHeading - body.rot));
+  const autoRelease = autoFlipBurn && chargeS >= Math.max(positive(profile.minChargeS, 0.1), 0.28)
+    && alignmentError <= positive(profile.fireAlignmentRad, 0.1)
+    && cooldown <= 0;
+
+  if ((manualRelease || autoRelease) && cooldown <= 0) {
+    const fraction = clamp(chargeS / positive(profile.maxChargeS, 2), 0, 1);
+    const curve = positive(profile.chargeCurve, 1.7);
+    firedDv = lerp(
+      positive(profile.baseImpulseDv, 25),
+      positive(profile.maxImpulseDv, 200),
+      Math.pow(fraction, curve)
+    ) * channelScale('forward');
+    impulse = {
+      x: axes.fx * firedDv * body.mass,
+      y: 0,
+      z: axes.fz * firedDv * body.mass,
+    };
+    chargeS = 0;
+    autoFlipBurn = false;
+    events.push({ type: 'propulsion:pulse', driveId: profile.id, deltaV: firedDv, chargeFraction: fraction });
+  }
+
+  const yaw = desiredHeading == null
+    ? computeYawControl(body, input, profile, dt)
+    : computeHeadingControl(body, desiredHeading, profile, dt, input);
+
+  const chargeEnergy = charging ? positive(profile.resources && profile.resources.energyPerChargeS, 0) * dt : 0;
+  const chargeHeat = charging ? positive(profile.resources && profile.resources.heatPerChargeS, 0) * dt : 0;
+  const pulseHeat = firedDv > 0 ? positive(profile.resources && profile.resources.heatPerPulse, 0) : 0;
+  const baseDemand = resourceDemand(profile, accel, false, dt);
+  const demand = {
+    energy: baseDemand.energy + chargeEnergy,
+    heat: baseDemand.heat + chargeHeat + pulseHeat,
+    fuel: baseDemand.fuel,
+  };
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt, {
+    chargeS,
+    pulseCooldownS: firedDv > 0 ? positive(profile.pulseCooldownS, 0.3) : cooldown,
+    autoFlipBurn,
+  });
+
+  return makeResult({
+    body,
+    profile,
+    input,
+    runtime: nextRuntime,
+    acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    impulse,
+    maxSpeed: controlMadeSpeedLimit(governor, profile),
+    demand,
+    events: [...transitionEvents(runtime, nextRuntime, input, profile), ...events],
+    telemetry: {
+      driveState: firedDv > 0 ? 'pulse' : charging ? 'charging' : autoFlipBurn ? 'flip-burn' : 'rcs',
+      chargeS,
+      chargeFraction: clamp(chargeS / positive(profile.maxChargeS, 2), 0, 1),
+      pulseCooldownS: nextRuntime.pulseCooldownS,
+      firedDeltaV: firedDv,
+      desiredHeading,
+      headingError: desiredHeading == null ? 0 : wrapAngle(desiredHeading - body.rot),
+      targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
+    },
+  });
+}
+
+function stepTorch(body, input, profile, runtime, environment, dt) {
+  const desiredSpool = clamp(Math.max(Math.abs(input.throttle), input.boost ? 1 : 0), 0, 1);
+  const spool = approach(
+    clamp(finite(runtime.spool, 0), 0, 1),
+    desiredSpool,
+    dt / (desiredSpool > finite(runtime.spool, 0)
+      ? positive(profile.spoolUpS, 2.5)
+      : positive(profile.spoolDownS, 1.4))
+  );
+
+  const effective = {
+    ...profile,
+    mainAccel: positive(profile.mainAccel, 60) * Math.max(spool, desiredSpool > 0 ? positive(profile.ignitionFloor, 0.15) : 0),
+    reverseAccel: positive(profile.reverseAccel, 10),
+    strafeAccel: positive(profile.strafeAccel, 5),
+    boostAccelMult: input.boost ? positive(profile.boostAccelMult, 1.5) : 1,
+    assist: profile.assist || {
+      settleTimeConstantS: 15,
+      settleFloorAccel: 1.0,
+      lateralKillFraction: 0.12,
+      commandedAxisDamping: 0.02,
+      stopHorizonS: 6.5,
+      driftStopHorizonS: 12,
+      deadSpeed: 0.25,
+      deadInput: 0.025,
+    },
+  };
+
+  const axes = localAxes(body.rot);
+  const limits = reactionLimits(effective, effective.boostAccelMult);
+  const controlLimits = input.brake ? reactionBrakeLimits(effective) : limits;
+  const localVelocity = worldToLocal(body.vel, axes);
+  const assist = reactionAssistAcceleration(body, axes, input, effective, false);
+  const manualLocal = manualThrustLocal(input, limits, localVelocity, effective);
+  const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, effective, dt);
+  const local = clampLocalAcceleration({
+    forward: manualLocal.forward + assist.local.forward,
+    lateral: manualLocal.lateral + assist.local.lateral,
+  }, controlLimits);
+  let accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
+  const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt, { spool });
+  // Same opt-in vectoring as the reaction drive; `limits.forward` carries the spool, so a cold
+  // torch vectors as little as it pushes.
+  const vectoring = velocityVectoringAcceleration(body, input, effective, limits, governor, dt,
+    reactionLimitsUnscaled(profile, effective.boostAccelMult).forward);
+  if (vectoring && vectoring.active) {
+    accel.x += vectoring.ax;
+    accel.z += vectoring.az;
+  }
+  const turnBound = assistedTurnBound(body, input, effective, accel, dt);
+  const yaw = computeYawControl(body, input, profile, dt, turnBound);
+  if (vectoring) {
+    vectoring.slipRad = turnBound ? turnBound.slip : null;
+    vectoring.leadBounded = yaw.leadBounded === true;
+    vectoring.pathFollowRateRadS = turnBound ? turnBound.pathFollowRate : null;
+  }
+
+  const telemetry = {
+    driveState: spool > 0.01 ? 'spooling' : 'idle',
+    spool,
+    assistLocal: assist.local,
+    targetYawRate: yaw.targetYawRate,
+    coastHelm: !!yaw.coastHelm,
+    desiredHeading: null,
+    governor,
+  };
+  if (vectoring) telemetry.vectoring = vectoring;
+
+  return makeResult({
+    body,
+    profile,
+    input,
+    runtime: nextRuntime,
+    acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    maxSpeed: controlMadeSpeedLimit(governor, effective),
+    demand,
+    events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry,
+  });
+}
+
+function stepFieldSail(body, input, profile, runtime, environment, dt) {
+  const deployTarget = input.boost || input.throttle > 0.05 ? 1 : 0;
+  const deployed = approach(
+    clamp(finite(runtime.deployed, 0), 0, 1),
+    deployTarget,
+    dt / (deployTarget > finite(runtime.deployed, 0)
+      ? positive(profile.deploymentS, 2.5)
+      : positive(profile.collapseS, 0.9))
+  );
+  const axes = localAxes(body.rot);
+  const fieldDir = normalize2(environment.fieldDirection, FIELD_DIRECTION_DEFAULT);
+  const fieldStrength = Math.max(0, finite(environment.fieldStrength, 0));
+  const alignment = Math.max(0, dot2({ x: axes.fx, z: axes.fz }, fieldDir));
+  const sailAccel = input.brake ? 0
+    : positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle) * channelScale('forward');
+  const sailWorld = scale2(fieldDir, sailAccel);
+
+  const trimAccel = positive(profile.trimAccel, 2);
+  const limits = { forward: trimAccel * channelScale('forward'), reverse: trimAccel * channelScale('reverse'),
+    strafe: trimAccel * channelScale('strafe') };
+  const trimLocal = { forward: input.brake ? 0 : Math.min(0, input.throttle) * limits.reverse,
+    lateral: input.brake ? 0 : input.strafe * limits.strafe };
+  const localVelocity = worldToLocal(body.vel, axes);
+  const governor = manualReverseCap(input, profile) > 0
+    ? applySpeedGovernor(trimLocal, input, limits, localVelocity, profile, dt) : null;
+  if (input.brake) {
+    const horizon = positive(profile.assist?.pilotBrakeHorizonS, 0.72);
+    trimLocal.forward = clamp(-localVelocity.forward / horizon, -limits.reverse, limits.forward);
+    trimLocal.lateral = clamp(-localVelocity.lateral / horizon, -limits.strafe, limits.strafe);
+  }
+  const trim = localToWorld(trimLocal, axes);
+  let accel = add2(add2(sailWorld, trim), environmentalDragAcceleration(body, environment));
+
+  const yaw = computeYawControl(body, input, profile, dt);
+  const demand = resourceDemand(profile, accel, false, dt, deployed > 0 ? positive(profile.resources && profile.resources.idleEnergyPerS, 0) : 0);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt, { deployed });
+
+  return makeResult({
+    body,
+    profile,
+    input,
+    runtime: nextRuntime,
+    acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    maxSpeed: controlMadeSpeedLimit(governor, profile),
+    demand,
+    events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry: {
+      driveState: deployed > 0.01 ? 'deployed' : 'stowed',
+      deployed,
+      fieldStrength,
+      fieldDirection: fieldDir,
+      alignment,
+      targetYawRate: yaw.targetYawRate,
+      coastHelm: !!yaw.coastHelm,
+      desiredHeading: null,
+    },
+  });
+}
+
+function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
+  const mode = normalizeAssistMode(input.assistMode);
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  // Steering counts as flying: holding a turn with the throttle released takes the slip-assist
+  // branch, not neutral counterthrust, so carving a line never reads as braking (Gap Report F1).
+  const hasManual = Math.abs(input.throttle) > deadInput
+    || Math.abs(input.strafe) > deadInput
+    || Math.abs(finite(input.turn, 0)) > deadInput;
+  const localVelocity = worldToLocal(body.vel, axes);
+  const limits = (forceBrake || input.brake) ? reactionBrakeLimits(profile) : reactionLimits(profile, 1);
+  const earnedAssistScale = input.physicsEarnedMomentum && !input.brake && !forceBrake
+    ? clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1)
+    : 1;
+  // Above the governed cap the assist lets go (OVERCAP_ASSIST_BLEND_WU_S). The pilot brake is
+  // exempt: braking is always the pilot spending speed on purpose.
+  const capSpeed = positive(profile.combatSpeed, 0)
+    * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
+  const overCapScale = (forceBrake || input.brake || !(capSpeed > 0))
+    ? 1
+    : 1 - smoothstep(capSpeed, capSpeed + OVERCAP_ASSIST_BLEND_WU_S, length2(body.vel));
+  let forward = 0;
+  let lateral = 0;
+  let reason = 'none';
+
+  if (mode === 'newtonian' && !forceBrake && !input.brake) return { accel: zero2(), local: { forward: 0, lateral: 0 }, reason };
+
+  if (forceBrake || input.brake || !hasManual) {
+    const horizon = input.brake || forceBrake
+      ? positive(settings.pilotBrakeHorizonS, 0.72)
+      : mode === 'drift'
+        ? positive(settings.driftStopHorizonS, 8)
+        : positive(settings.stopHorizonS, 2.8);
+    if (input.brake || forceBrake) {
+      forward = -localVelocity.forward / horizon;
+      lateral = -localVelocity.lateral / horizon;
+    } else {
+      // A settle is a proportional coast with a floor: the assist eases the ship down at
+      // max(|v| / settleTimeConstantS, settleFloorAccel) WU/s^2. From cruise that is a long,
+      // readable coast (starter: 95 -> ~41 WU/s at 10 s), and the floor means a released ship
+      // eventually rests instead of drifting forever. Drift mode coasts 2.5x longer with half
+      // the floor. Stopping fast on purpose is the pilot brake's job above.
+      const baseTau = positive(settings.settleTimeConstantS, 12);
+      const tau = mode === 'drift' ? positive(settings.driftSettleTimeConstantS, baseTau * 2.5) : baseTau;
+      const floor = (mode === 'drift' ? 0.5 : 1) * positive(settings.settleFloorAccel, 1.5);
+      const scale = Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale) * overCapScale;
+      const settle = (v) => -Math.sign(v) * Math.max(Math.abs(v) / tau, floor) * scale;
+      forward = settle(localVelocity.forward);
+      lateral = settle(localVelocity.lateral);
+    }
+    reason = input.brake || forceBrake ? 'pilot-brake' : 'neutral-counterthrust';
+  } else if (mode !== 'newtonian') {
+    const lateralFraction = (mode === 'drift'
+      ? positive(settings.lateralKillFraction, 0.3) * 0.35
+      : positive(settings.lateralKillFraction, 0.3)) * earnedAssistScale * overCapScale;
+    lateral = -localVelocity.lateral / Math.max(0.25, positive(settings.stopHorizonS, 2.8)) * lateralFraction;
+
+    // A tiny commanded-axis damper suppresses numerical chatter while preserving
+    // the core maneuver: rotate the nose while momentum keeps carrying the ship.
+    const axisDamping = positive(settings.commandedAxisDamping, 0.06) * earnedAssistScale * overCapScale;
+    if (Math.abs(input.throttle) <= deadInput) forward = -localVelocity.forward * axisDamping;
+    reason = 'slip-assist';
+  }
+
+  const deadSpeed = positive(settings.deadSpeed, 0.18);
+  if (Math.abs(localVelocity.forward) < deadSpeed && Math.abs(input.throttle) <= deadInput) forward = 0;
+  if (Math.abs(localVelocity.lateral) < deadSpeed && Math.abs(input.strafe) <= deadInput) lateral = 0;
+
+  const local = clampLocalAcceleration({ forward, lateral }, limits);
+  return { accel: localToWorld(local, axes), local, reason };
+}
+
+/**
+ * Velocity-vectoring assist — see VELOCITY_VECTORING_DEFAULTS. Returns null when the packet did
+ * not opt in (no telemetry key, byte-identical results), otherwise a record that is `active` when
+ * the assist holds authority this tick. The force is the exact acceleration that rotates the
+ * current velocity by `deltaRad` over `dt`: a pure rotation, so speed is untouched and the physics
+ * owner's thrust-only cap never has to trim it. The rate is the hull's max yaw times the speed-
+ * scheduled fraction (VELOCITY_VECTORING_DEFAULTS), scaled by how much of its nominal forward
+ * authority the drive has this tick (`limits.forward / nominalForward`), so hull identity comes
+ * from the hull's yaw and a cold or degraded drive still vectors as little as it pushes. The
+ * legacy absolute-rate variant keeps the old bound, |R(δ)v − v| / dt <= limits.forward.
+ */
+function velocityVectoringAcceleration(body, input, profile, limits, governor, dt, nominalForward = 0) {
+  const tuning = input.velocityVectoring;
+  if (!tuning) return null;
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  if (normalizeAssistMode(input.assistMode) !== 'assisted') return vectoringIdle('mode');
+  if (input.brake) return vectoringIdle('brake');
+  // Vectored MAIN thrust: no main-drive command, no vectoring. Coast-and-yaw (the flip), pure
+  // strafe and the pilot brake keep their existing meaning.
+  if (!(input.throttle > deadInput)) return vectoringIdle('no-throttle');
+  const speed = length2(body.vel);
+  if (!(speed > positive(settings.deadSpeed, 0.18))) return vectoringIdle('dead-speed');
+  // The governed cap is only the rate schedule's reference: boost raises it, and an engaged
+  // travel burn raises it further (the burn cap IS the reference while it is on). Overspeed —
+  // from the ship's own boost/dash or an external sling — is NOT a release: a pure rotation can
+  // never spend the speed that made it. Earned momentum is likewise not muted here — muting a
+  // speed-preserving steer only reintroduces the switch-on/switch-off boundary the pilot feels.
+  let cap = positive(profile.combatSpeed, 0) * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
+  if (governor && governor.travel && governor.travel.state === 'engaged') {
+    cap = Math.max(cap, finite(governor.cap, 0));
+  }
+  if (!(cap > 0)) return vectoringIdle('no-cap');
+  // The command is the nose offset by the strafe, so W+D bends the path toward the strafe side
+  // instead of the assist fighting the slide the pilot asked for.
+  const commandHeading = body.rot + Math.atan2(input.strafe, input.throttle);
+  const error = wrapAngle(commandHeading - Math.atan2(body.vel.z, body.vel.x));
+  const absError = Math.abs(error);
+  const alignScale = 1 - smoothstep(tuning.fadeStartRad, tuning.fadeEndRad, absError);
+  const legacy = tuning.rateLowRadS != null || tuning.rateCapRadS != null;
+  const rate = (legacy
+    ? lerp(nonNegative(tuning.rateLowRadS, 0), nonNegative(tuning.rateCapRadS, 0), clamp(speed / cap, 0, 1))
+    : vectoringYawFracRate(speed, profile, tuning, limits, nominalForward, cap, dt)) * alignScale;
+  if (!(rate > 0)) return vectoringIdle('faded');
+  const requested = Math.min(absError, rate * dt);
+  const authority = positive(limits && limits.forward, 0);
+  const maxDelta = legacy ? 2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1)) : requested;
+  const delta = Math.min(requested, maxDelta);
+  const signed = error < 0 ? -delta : delta;
+  const c = Math.cos(signed);
+  const s = Math.sin(signed);
+  const vx = body.vel.x;
+  const vz = body.vel.z;
+  const ax = (c * vx - s * vz - vx) / dt;
+  const az = (s * vx + c * vz - vz) / dt;
+  return {
+    active: true,
+    reason: 'vectoring',
+    rateRadS: rate,
+    errorRad: error,
+    deltaRad: signed,
+    saturated: delta < requested - EPS,
+    accel: Math.hypot(ax, az),
+    ax,
+    az,
+  };
+}
+
+/**
+ * SF-2b (#3) path turn rate, rad/s: hull max yaw x the speed-scheduled fraction (rest -> cruise at
+ * the combat cap -> boost at the boost cap), constant lateral acceleration above the boost cap,
+ * scaled by the drive's share of its nominal forward authority.
+ */
+function vectoringYawFracRate(speed, profile, tuning, limits, nominalForward, cap, dt) {
+  const maxYaw = positive(profile.maxYawRate, 2.5);
+  const combat = positive(profile.combatSpeed, 0);
+  const boostCap = combat * Math.max(1, positive(profile.boostSpeedMult, 1.55));
+  const rest = nonNegative(tuning.restYawFrac, VELOCITY_VECTORING_DEFAULTS.restYawFrac);
+  const cruise = nonNegative(tuning.cruiseYawFrac, VELOCITY_VECTORING_DEFAULTS.cruiseYawFrac);
+  const boost = nonNegative(tuning.boostYawFrac, VELOCITY_VECTORING_DEFAULTS.boostYawFrac);
+  let frac;
+  if (speed <= combat) frac = lerp(rest, cruise, clamp(speed / combat, 0, 1));
+  else if (speed <= boostCap) frac = lerp(cruise, boost, clamp((speed - combat) / (boostCap - combat), 0, 1));
+  else frac = boost * boostCap / speed;
+  const drive = nominalForward > 0 ? clamp(positive(limits && limits.forward, 0) / nominalForward, 0, 1) : 1;
+  const rate = maxYaw * frac * drive;
+  if (tuning.legacyFloor === false) return rate;
+  // The pre-#3 rate this hull had, so the fractions only ever raise a turn (see legacyFloor).
+  const authority = positive(limits && limits.forward, 0);
+  const legacy = Math.min(
+    lerp(LEGACY_VECTORING_RATE_LOW_RAD_S, LEGACY_VECTORING_RATE_CAP_RAD_S, clamp(speed / cap, 0, 1)),
+    2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1)) / dt);
+  return Math.max(rate, legacy);
+}
+
+function vectoringIdle(reason) {
+  return { active: false, reason, rateRadS: 0, errorRad: 0, deltaRad: 0, saturated: false, accel: 0, ax: 0, az: 0 };
+}
+
+/**
+ * Coordinated-turn lead bound — how fast the nose may rotate once it already leads the path.
+ *
+ * The vectoring assist rotates the velocity vector at a bounded rate, but nothing stopped the yaw
+ * controller from spinning the nose far faster, so a held turn parked the hull dozens of degrees
+ * off its own trail. With the packet opted into vectoring (identical gates to
+ * velocityVectoringAcceleration), this returns the signed nose-vs-path slip — the hull against
+ * the trail the player sees, not the strafe-offset command — and pathFollowRate, the signed
+ * rate the full applied acceleration (thrust, assists, drag, vectoring) bends the velocity this
+ * tick. The assist still steers its force toward nose + atan2(strafe, throttle), so a deliberate
+ * Q/E or helm slide still bends the path. computeYawControl eases same-sign yaw onto
+ * pathFollowRate as the nose approaches VECTORING_SLIP_LEAD_RAD, then holds it there; excess
+ * lead is pulled back. Turning back toward the path is always free, and a zero turn is not
+ * given yaw the pilot did not ask for. The vectoring weld releases at |slip| >= 90 deg so a
+ * deliberate flip still swings the nose; the wider unvectored cruise governor holds its
+ * 90-degree lead allowance instead, so held thrust cannot point backwards and retro-burn the
+ * ship to a stop. Overspeed does not release it either: the bound only limits a yaw command and
+ * spends no speed, and pathFollowRate is measured from the real applied accel — so a boost or
+ * dash that crosses its own cap keeps the same welded arc instead of snapping the nose free.
+ * Without vectoring, the cruise governor uses the same physical path-follow rate with a wider
+ * 90-degree lead allowance: no extra force, just a held turn that cannot repeatedly retro-burn.
+ */
+function assistedTurnBound(body, input, profile, accel, dt) {
+  const tuning = input.velocityVectoring;
+  if (!tuning && !input.unvectoredCruiseSteering) return null;
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
+  if (input.brake) return null;
+  if (!(input.throttle > deadInput)) return null;
+  const speed = length2(body.vel);
+  if (!(speed > positive(settings.deadSpeed, 0.18))) return null;
+  // The unvectored assisted cruise governor applies at every speed above the dead band. It used
+  // to wait for the closing-speed window near combat cruise, but a held W+A from rest crossed
+  // 90 degrees of slip before that window and thrust pointed backwards — the ship could never
+  // reach the window it was waiting for. The bound adds no vectoring force; it only keeps the
+  // nose from leading past the physical path-follow rate.
+  if (!tuning) {
+    const cap = positive(profile.combatSpeed, 0);
+    if (!(cap > 0)) return null;
+  }
+  const pathHeading = Math.atan2(body.vel.z, body.vel.x);
+  const slip = wrapAngle(body.rot - pathHeading);
+  // SF-2b (#3): with the vectoring assist on, the bound measures the command the assist steers
+  // toward (nose + the Q/E strafe offset) against the trail. Without Q/E that is the hull itself.
+  const boundSlip = tuning && COMMAND_SLIP_BOUND && input.strafe
+    ? wrapAngle(body.rot + Math.atan2(input.strafe, input.throttle) - pathHeading)
+    : slip;
+  // A deliberate flip still has to swing the nose: the vectoring weld releases at 90 degrees.
+  // The unvectored cruise governor does NOT release there — that release let a held W+A cross 90
+  // degrees and turn full thrust backwards, producing the repeated retro-burn stop. It keeps the
+  // bound at the 90-degree lead allowance instead; same-sign yaw is pulled back, turning toward
+  // the path stays free, and raw/assist-off modes are unchanged.
+  if (tuning && Math.abs(boundSlip) >= Math.PI / 2) return null;
+  // pathFollowRate = this tick's achievable velocity rotation: the signed rate the combined
+  // applied acceleration (thrust, assists, drag, vectoring) already bends the velocity vector.
+  // Measuring the real applied accel — not an authority estimate — keeps the bound honest at
+  // the cap, where the servo holds thrust near zero and a fixed estimate would still let the
+  // nose outrun the path.
+  const pathFollowRate = dt > EPS
+    ? wrapAngle(Math.atan2(body.vel.z + finite(accel && accel.z, 0) * dt, body.vel.x + finite(accel && accel.x, 0) * dt)
+      - pathHeading) / dt
+    : 0;
+  return { slip, boundSlip, pathFollowRate, leadRad: tuning ? VECTORING_SLIP_LEAD_RAD : Math.PI / 2 };
+}
+
+/** `true` selects the band defaults without allocating; an object overrides individual keys. */
+function normalizeVelocityVectoring(raw, out = null) {
+  if (!raw) return null;
+  if (raw === true || typeof raw !== 'object') return VELOCITY_VECTORING_DEFAULTS;
+  const d = VELOCITY_VECTORING_DEFAULTS;
+  const o = out || {};
+  o.restYawFrac = nonNegative(raw.restYawFrac, d.restYawFrac);
+  o.cruiseYawFrac = nonNegative(raw.cruiseYawFrac, d.cruiseYawFrac);
+  o.boostYawFrac = nonNegative(raw.boostYawFrac, d.boostYawFrac);
+  o.legacyFloor = raw.legacyFloor === undefined ? d.legacyFloor : raw.legacyFloor !== false;
+  o.rateLowRadS = nonNegative(raw.rateLowRadS, d.rateLowRadS);
+  o.rateCapRadS = nonNegative(raw.rateCapRadS, d.rateCapRadS);
+  o.fadeStartRad = clamp(finite(raw.fadeStartRad, d.fadeStartRad), 0, Math.PI);
+  o.fadeEndRad = clamp(finite(raw.fadeEndRad, d.fadeEndRad), 0, Math.PI);
+  return o;
+}
+
+/**
+ * Coast helm: idle main drive frees RCS for a ~20% yaw authority bump.
+ * Gated on throttle only — strafe is RCS and must not cancel the flip bonus, and boost must not
+ * either: boost is a translational modifier, so the same coast-turn holds the same yaw authority
+ * whether the burn is lit or the tank is dry.
+ */
+function coastHelmYawMultiplier(input, profile) {
+  const dead = positive(profile.assist && profile.assist.deadInput, 0.025);
+  if (Math.abs(finite(input.throttle, 0)) > dead) return 1;
+  return COAST_HELM_YAW_MULT;
+}
+
+function computeYawControl(body, input, profile, dt, turnBound = null) {
+  const mode = normalizeAssistMode(input.assistMode);
+  const turn = clamp(finite(input.turn, 0), -1, 1);
+  if (mode === 'newtonian' && Math.abs(turn) < 0.001) {
+    return { targetYawRate: body.angVel, angularAcceleration: 0, coastHelm: false, leadBounded: false };
+  }
+  const helm = coastHelmYawMultiplier(input, profile);
+  const maxYaw = positive(profile.maxYawRate, 2.5) * helm;
+  let targetYawRate = turn * maxYaw;
+  let leadBounded = false;
+  // Nose-vs-path lead. Same-sign yaw eases from full rate at zero slip onto the rate the path
+  // is actually turning, and caps there. Excess lead is pulled back. Opposite-sign yaw (turning
+  // back onto the trail) is never clamped, and a zero turn adds nothing — helm aim stays put.
+  const boundSlip = turnBound ? (turnBound.boundSlip != null ? turnBound.boundSlip : turnBound.slip) : 0;
+  if (turnBound && targetYawRate !== 0 && Math.sign(targetYawRate) === Math.sign(boundSlip)) {
+    const absSlip = Math.abs(boundSlip);
+    const leadRad = turnBound.leadRad;
+    let bound = targetYawRate;
+    if (absSlip >= leadRad) {
+      const correction = VECTORING_EXCESS_SLIP_GAIN * (absSlip - leadRad);
+      bound = boundSlip > 0
+        ? Math.min(targetYawRate, turnBound.pathFollowRate - correction)
+        : Math.max(targetYawRate, turnBound.pathFollowRate + correction);
+    } else {
+      const blend = smoothstep(0, leadRad, absSlip);
+      const eased = targetYawRate + (turnBound.pathFollowRate - targetYawRate) * blend;
+      bound = boundSlip > 0 ? Math.min(targetYawRate, eased) : Math.max(targetYawRate, eased);
+    }
+    if (bound !== targetYawRate) {
+      targetYawRate = clamp(bound, -Math.abs(maxYaw), Math.abs(maxYaw));
+      leadBounded = true;
+    }
+  }
+  const error = targetYawRate - body.angVel;
+  const accelerating = Math.abs(targetYawRate) > Math.abs(body.angVel) && Math.sign(targetYawRate) === Math.sign(error);
+  const maxAlpha = (accelerating
+    ? positive(profile.yawAccel, 8) * helm
+    : positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * helm) * channelScale('yaw');
+  const angularAcceleration = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
+  return { targetYawRate, angularAcceleration, coastHelm: helm > 1, leadBounded };
+}
+
+function computeHeadingControl(body, desiredHeading, profile, dt, input = null) {
+  const helm = input ? coastHelmYawMultiplier(input, profile) : COAST_HELM_YAW_MULT;
+  const error = wrapAngle(desiredHeading - body.rot);
+  const maxRate = positive(profile.maxYawRate, 2) * helm;
+  const targetYawRate = clamp(error * 3.8, -maxRate, maxRate);
+  const rateError = targetYawRate - body.angVel;
+  const yawScale = channelScale('yaw');
+  const angularAcceleration = clamp(
+    rateError / Math.max(dt, 1 / 120),
+    -positive(profile.yawBrake, 9) * helm * yawScale,
+    positive(profile.yawAccel, 7) * helm * yawScale
+  );
+  return { targetYawRate, angularAcceleration, coastHelm: helm > 1 };
+}
+
+function reactionLimitsUnscaled(profile, boostMult) {
+  return {
+    forward: positive(profile.mainAccel, 40) * positive(boostMult, 1),
+    reverse: positive(profile.reverseAccel, positive(profile.mainAccel, 40) * 0.5),
+    strafe: positive(profile.strafeAccel, positive(profile.mainAccel, 40) * 0.45),
+  };
+}
+
+function reactionLimits(profile, boostMult) {
+  return scaleTranslationLimits(reactionLimitsUnscaled(profile, boostMult));
+}
+
+function manualThrustLocal(input, limits, localVelocity, profile) {
+  const assist = profile.assist || {};
+  const deadInput = positive(assist.deadInput, 0.025);
+  const releaseSpeed = positive(assist.brakeReleaseSpeed, 1.2);
+  let throttle = input.throttle;
+  let strafe = input.strafe;
+
+  if (input.brake) {
+    // A brake is a brake: while it is held, manual translation contributes NOTHING. The assist is
+    // already a full-authority velocity null on both axes (fraction = 1 in
+    // reactionAssistAcceleration), so any surviving manual term can only fight it.
+    //
+    // This used to suppress manual thrust only when it OPPOSED travel by more than releaseSpeed
+    // (`throttle * forwardVelocity < -releaseSpeed`), which left a hole around and below zero. The
+    // input owner couples the two — src/systems/input.js:351 sets `brake = reverse || brakeHeld`, so
+    // holding S asserts throttle -1 AND brake together — and the result was that the brake assist
+    // (gain 1/pilotBrakeHorizonS = 1/0.72) and the reverse thruster (reverseAccel 30) balanced each
+    // other at a steady -21.6 WU/s. Holding S from cruise therefore decelerated, overshot through
+    // zero, and settled flying BACKWARDS at 21.6 WU/s forever; holding S from rest accelerated
+    // backwards to the same figure. Both measured on the starter hull.
+    //
+    // Manual reverse now has its own signed governor. It must arrive without the brake flag;
+    // an explicit stop still suppresses translation rather than fighting a reverse controller.
+    if (Math.abs(throttle) > deadInput) throttle = 0;
+    if (Math.abs(strafe) > deadInput) strafe = 0;
+    void releaseSpeed;
+  }
+
+  return {
+    forward: throttle >= 0
+      ? throttle * limits.forward
+      : throttle * limits.reverse,
+    lateral: strafe * limits.strafe,
+  };
+}
+
+function reactionBrakeLimits(profile) {
+  const base = reactionLimitsUnscaled(profile, 1);
+  const assist = profile.assist || {};
+  const main = positive(profile.mainAccel, 40);
+  const brake = positive(profile.brakeAccel, Math.max(base.reverse, main * positive(assist.pilotBrakeAccelMult, 1.35)));
+  const lateral = positive(profile.brakeStrafeAccel, Math.max(base.strafe, brake * positive(assist.pilotBrakeLateralFraction, 0.85)));
+  return scaleTranslationLimits({
+    forward: Math.max(base.forward, brake),
+    reverse: brake,
+    strafe: lateral,
+  });
+}
+
+function clampLocalAcceleration(local, limits) {
+  return {
+    forward: clamp(finite(local.forward, 0), -limits.reverse, limits.forward),
+    lateral: clamp(finite(local.lateral, 0), -limits.strafe, limits.strafe),
+  };
+}
+
+function environmentalDragAcceleration(body, environment) {
+  const density = Math.max(0, finite(environment.particulateDensity, 0));
+  if (!(density > 0)) return zero2();
+  const speed = length2(body.vel);
+  if (!(speed > EPS)) return zero2();
+  const coeff = Math.max(0, finite(environment.dragCoefficient, 0.00002));
+  // This is an environmental hazard term, not universal "space resistance".
+  // It is intentionally capped so an authored nebula cannot create a one-tick NaN.
+  const magnitude = Math.min(120, coeff * density * speed * speed / Math.max(1, body.mass));
+  return scale2(body.vel, -magnitude / speed);
+}
+
+function resourceDemand(profile, acceleration, boosting, dt, idle = 0) {
+  const resources = profile.resources || {};
+  const a = length2(acceleration);
+  const boostHeat = boosting ? positive(resources.boostHeatMult, 1) : 1;
+  return {
+    energy: Math.max(0, idle * dt + a * positive(resources.energyPerAccel, 0) * dt),
+    heat: Math.max(0, a * positive(resources.heatPerAccel, 0) * boostHeat * dt),
+    fuel: Math.max(0, idle * dt + a * positive(resources.fuelPerAccel, 0) * dt),
+  };
+}
+
+// Retained next-runtime shell. Callers used to allocate twice per step
+// (`coolRuntime({ ...runtime, spool })` then another `{ ...runtime }` inside). assignPropulsionRuntime
+// Object.assigns immediately, so one module scratch is safe across craft in the same tick.
+const COOL_RUNTIME_SCRATCH = {
+  schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
+  family: null,
+  heat: 0,
+  energySpent: 0,
+  fuelSpent: 0,
+  boosting: false,
+  chargeS: 0,
+  pulseCooldownS: 0,
+  autoFlipBurn: false,
+  spool: 0,
+  deployed: 0,
+};
+
+function coolRuntime(runtime, profile, demand, dt, patch = null) {
+  const cooling = positive(profile.resources && profile.resources.coolingPerS, 0);
+  const out = COOL_RUNTIME_SCRATCH;
+  out.schemaVersion = PROPULSION_RUNTIME_SCHEMA_VERSION;
+  out.family = profile.family;
+  out.heat = Math.max(0, finite(runtime.heat, 0) + demand.heat - cooling * dt);
+  out.energySpent = Math.max(0, finite(runtime.energySpent, 0) + demand.energy);
+  out.fuelSpent = Math.max(0, finite(runtime.fuelSpent, 0) + demand.fuel);
+  out.boosting = !!runtime.boosting;
+  out.chargeS = patch && patch.chargeS != null
+    ? Math.max(0, finite(patch.chargeS, 0))
+    : Math.max(0, finite(runtime.chargeS, 0));
+  out.pulseCooldownS = patch && patch.pulseCooldownS != null
+    ? Math.max(0, finite(patch.pulseCooldownS, 0))
+    : Math.max(0, finite(runtime.pulseCooldownS, 0));
+  out.autoFlipBurn = patch && patch.autoFlipBurn != null
+    ? !!patch.autoFlipBurn
+    : !!runtime.autoFlipBurn;
+  out.spool = patch && patch.spool != null ? clamp(finite(patch.spool, 0), 0, 1) : clamp(finite(runtime.spool, 0), 0, 1);
+  out.deployed = patch && patch.deployed != null ? clamp(finite(patch.deployed, 0), 0, 1) : clamp(finite(runtime.deployed, 0), 0, 1);
+  return out;
+}
+
+function transitionEvents(previous, next, input, profile) {
+  const events = [];
+  if (!!input.boost !== !!previous.boosting) {
+    events.push({ type: input.boost ? 'propulsion:boostStart' : 'propulsion:boostStop', driveId: profile.id });
+  }
+  next.boosting = !!input.boost;
+  return events;
+}
+
+function makeResult({ body, profile, input, runtime, acceleration, angularAcceleration, impulse = null, maxSpeed, demand, events, telemetry }) {
+  const force = {
+    x: finite(acceleration.x, 0) * body.mass,
+    y: 0,
+    z: finite(acceleration.z, 0) * body.mass,
+  };
+  const torque = {
+    x: 0,
+    y: finite(angularAcceleration, 0) * body.inertia,
+    z: 0,
+  };
+  const cosRot = Math.cos(body.rot), sinRot = Math.sin(body.rot);
+  const result = {
+    schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
+    driveId: profile.id,
+    family: profile.family,
+    force,
+    torque,
+    impulse,
+    maxSpeed: finiteOrInfinity(maxSpeed),
+    runtime,
+    resourceDelta: {
+      energy: -Math.max(0, finite(demand && demand.energy, 0)),
+      heat: Math.max(0, finite(demand && demand.heat, 0)),
+      fuel: -Math.max(0, finite(demand && demand.fuel, 0)),
+    },
+    events: Array.isArray(events) ? events : [],
+    telemetry: {
+      family: profile.family,
+      driveId: profile.id,
+      assistMode: input.assistMode,
+      acceleration: { x: finite(acceleration.x, 0), z: finite(acceleration.z, 0) },
+      angularAcceleration: finite(angularAcceleration, 0),
+      force,
+      torque,
+      speed: length2(body.vel),
+      forwardSpeed: finite(body.vel && body.vel.x) * cosRot + finite(body.vel && body.vel.z) * sinRot,
+      lateralSpeed: finite(body.vel && body.vel.x) * -sinRot + finite(body.vel && body.vel.z) * cosRot,
+      ...telemetry,
+    },
+  };
+  // Travel-drive publication (D5), FLAT and at the top level of telemetry rather than nested
+  // under `governor`. The nesting was the obvious place, but `governor` is null for the
+  // ungoverned families and whenever throttle sits below `deadInput` — so a nested V-MAX would
+  // vanish from the HUD at exactly the moment the pilot lets off the stick, which is when a
+  // pilot most wants to read the ceiling. Flat keeps one stable address for the tape.
+  //
+  // Shape-gated, like the governor block: with the axis off, not one key is attached, so a drive
+  // parked at Off leaves this result byte-identical to HEAD.
+  if (travelFlag('travelBurn')) {
+    const t = result.telemetry;
+    const advanced = t.governor && t.governor.travel;
+    const drive = input.travelDrive || { state: 'off', cap: 0 };
+    // Prefer the governor's advanced values when it ran this tick; otherwise report the carried
+    // input state and the drive's static ceiling, so the readout stays truthful rather than absent.
+    t.travelDrive = advanced ? advanced.state : drive.state;
+    t.travelCap = advanced ? advanced.cap : Math.max(0, finite(drive.cap, 0));
+    t.travelCeiling = advanced ? advanced.ceiling : resolveTravelCeiling(profile);
+  }
+  return result;
+}
+
+function idleResult(body, profile, runtime, input) {
+  return makeResult({
+    body,
+    profile,
+    input,
+    // makeResult publishes `runtime` by reference onto the result; copy the normalized packet so
+    // the retained result never aliases the per-call scratch the step path now reuses.
+    runtime: { ...runtime },
+    acceleration: zero2(),
+    angularAcceleration: 0,
+    maxSpeed: finiteOrInfinity(profile.solverSpeedLimit),
+    demand: { energy: 0, heat: 0, fuel: 0 },
+    events: [],
+    telemetry: { driveState: 'idle' },
+  });
+}
+
+export function createPropulsionRuntime(profileLike = {}) {
+  const profile = normalizeProfile(profileLike);
+  return normalizeRuntime(null, profile);
+}
+
+// Retained scratch packet for stepPropulsion's per-call normalization. The kernel is synchronous
+// and non-reentrant, and no step retains the normalized body/input/runtime/environment — every
+// step builds a fresh `nextRuntime` via coolRuntime and fresh telemetry via makeResult — so the
+// packet is rewritten in place instead of allocating ~10 objects per craft tick.
+// `createPropulsionRuntime` deliberately keeps the allocating (out=null) path: callers retain
+// and mutate its return across ticks.
+const _packetBodyPos = { x: 0, z: 0 };
+const _packetBodyVel = { x: 0, z: 0 };
+const _packetBody = { pos: _packetBodyPos, vel: _packetBodyVel, rot: 0, angVel: 0, mass: 1, inertia: 1 };
+const _packetTravelDrive = { state: 'off', cap: 0, ceiling: 0, rampRate: 0, rampMult: 1, disrupted: false };
+const _packetVelocityVectoring = {
+  restYawFrac: 0, cruiseYawFrac: 0, boostYawFrac: 0, legacyFloor: true, rateLowRadS: null, rateCapRadS: null, fadeStartRad: 0, fadeEndRad: 0,
+};
+const _packetInputSubs = { travelDrive: _packetTravelDrive, velocityVectoring: _packetVelocityVectoring };
+const _packetInput = {
+  drawFlight: null, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false,
+  boostPressed: false, boostReleased: false, physicsEarnedMomentum: false,
+  earnedMomentumDecayTauS: 6, earnedMomentumAssistScale: 1, coastAssistScale: 1,
+  assistMode: 'assisted', travelDrive: _packetTravelDrive, velocityVectoring: null,
+};
+const _packetRuntime = {
+  schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION, family: DRIVE_FAMILIES.REACTION,
+  heat: 0, energySpent: 0, fuelSpent: 0, boosting: false, chargeS: 0,
+  pulseCooldownS: 0, autoFlipBurn: false, spool: 0, deployed: 0,
+};
+const _packetEnvDir = { x: 1, z: 0 };
+const _packetEnvSubs = { fieldDirection: _packetEnvDir };
+const _packetEnv = { particulateDensity: 0, dragCoefficient: 0.00002, fieldDirection: _packetEnvDir, fieldStrength: 0 };
+// Governor-local scratch: normalizeTravelDrive/advanceTravelDrive run once per governed tick and
+// both results are consumed (or field-copied into telemetry) inside the same call.
+const _govTravelDrive = { state: 'off', cap: 0, ceiling: 0, rampRate: 0, rampMult: 1, disrupted: false };
+const _travelBurn = { state: 'off', cap: 0, ceiling: 0, ramping: false, physicsEarnedMomentum: false, disrupted: false };
+// Shared fallback for the env field direction — normalize paths read it, never mutate it.
+const FIELD_DIRECTION_DEFAULT = Object.freeze({ x: 1, z: 0 });
+
+function normalizeRuntime(runtime, profile, out = null) {
+  const r = runtime && typeof runtime === 'object' ? runtime : {};
+  const o = out || {};
+  o.schemaVersion = PROPULSION_RUNTIME_SCHEMA_VERSION;
+  o.family = profile.family;
+  o.heat = Math.max(0, finite(r.heat, 0));
+  o.energySpent = Math.max(0, finite(r.energySpent, 0));
+  o.fuelSpent = Math.max(0, finite(r.fuelSpent, 0));
+  o.boosting = !!r.boosting;
+  o.chargeS = Math.max(0, finite(r.chargeS, 0));
+  o.pulseCooldownS = Math.max(0, finite(r.pulseCooldownS, 0));
+  o.autoFlipBurn = !!r.autoFlipBurn;
+  o.spool = clamp(finite(r.spool, 0), 0, 1);
+  o.deployed = clamp(finite(r.deployed, 0), 0, 1);
+  return o;
+}
+
+function normalizeBody(body = {}, out = null) {
+  const mass = positive(body.mass, 1);
+  const o = out || {};
+  const pos = o.pos || (o.pos = {});
+  const vel = o.vel || (o.vel = {});
+  pos.x = finite(body.pos && body.pos.x, 0);
+  pos.z = finite(body.pos && body.pos.z, 0);
+  vel.x = finite(body.vel && body.vel.x, 0);
+  vel.z = finite(body.vel && body.vel.z, 0);
+  o.rot = wrapAngle(finite(body.rot, 0));
+  o.angVel = finite(body.angVel, 0);
+  o.mass = mass;
+  o.inertia = positive(body.inertia, Math.max(1, mass));
+  return o;
+}
+
+function normalizeInput(input = {}, out = null, subs = null) {
+  const o = out || {};
+  o.drawFlight = validDrawFlight(input.drawFlight) ? input.drawFlight : null;
+  const rendezvous = input.rendezvous;
+  o.rendezvous = rendezvous && Number.isFinite(rendezvous.velocity?.x) && Number.isFinite(rendezvous.velocity?.z)
+    && Number.isFinite(rendezvous.heading) ? rendezvous : null;
+  o.throttle = clamp(finite(input.throttle ?? input.moveZ, 0), -1, 1);
+  o.strafe = clamp(finite(input.strafe ?? input.moveX, 0), -1, 1);
+  o.turn = clamp(finite(input.turn ?? input.turnIntent, 0), -1, 1);
+  o.boost = !!input.boost;
+  o.brake = !!input.brake;
+  o.manualReverse = input.manualReverse === true;
+  o.boostPressed = !!input.boostPressed;
+  o.boostReleased = !!input.boostReleased;
+  o.physicsEarnedMomentum = !!input.physicsEarnedMomentum;
+  o.earnedMomentumDecayTauS = positive(input.earnedMomentumDecayTauS, 6);
+  o.earnedMomentumAssistScale = clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1);
+  o.coastAssistScale = clamp(finite(input.coastAssistScale, 1), 0, 1);
+  o.assistMode = normalizeAssistMode(input.assistMode || input.flightMode);
+  // Travel-drive axis (D5). Normalized unconditionally because this object is rebuilt from
+  // scratch and an un-listed key would be dropped before the governor ever saw it. Purely
+  // internal: `makeResult` emits nothing from the normalized input except `assistMode`, and
+  // the drive rides the input packet rather than the serialized runtime, so it adds nothing to
+  // the saved propulsion state and cannot reach a save file.
+  o.travelDrive = normalizeTravelDrive(input.travelDrive, subs && subs.travelDrive);
+  // Velocity-vectoring opt-in (VELOCITY_VECTORING_DEFAULTS). Listed here for the same reason as
+  // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
+  o.velocityVectoring = normalizeVelocityVectoring(input.velocityVectoring, subs && subs.velocityVectoring);
+  o.unvectoredCruiseSteering = input.unvectoredCruiseSteering === true;
+  return o;
+}
+
+function nonNegative(value, fallback) { return Number.isFinite(value) && value >= 0 ? value : fallback; }
+
+function normalizeEnvironment(environment = {}, out = null, subs = null) {
+  const o = out || {};
+  o.particulateDensity = Math.max(0, finite(environment.particulateDensity, 0));
+  o.dragCoefficient = Math.max(0, finite(environment.dragCoefficient, 0.00002));
+  o.fieldDirection = normalize2Into(
+    environment.fieldDirection,
+    FIELD_DIRECTION_DEFAULT,
+    (subs && subs.fieldDirection) || {},
+  );
+  o.fieldStrength = Math.max(0, finite(environment.fieldStrength, 0));
+  return o;
+}
+
+function normalizeAssistMode(mode) {
+  return FLIGHT_ASSIST_MODES.includes(mode) ? mode : 'assisted';
+}
+
+function localAxes(rot) {
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  return { fx: c, fz: s, rx: -s, rz: c };
+}
+
+function worldToLocal(v, axes) {
+  return {
+    forward: v.x * axes.fx + v.z * axes.fz,
+    lateral: v.x * axes.rx + v.z * axes.rz,
+  };
+}
+
+function localToWorld(local, axes) {
+  return {
+    x: axes.fx * finite(local.forward, 0) + axes.rx * finite(local.lateral, 0),
+    z: axes.fz * finite(local.forward, 0) + axes.rz * finite(local.lateral, 0),
+  };
+}
+
+function zero2() { return { x: 0, z: 0 }; }
+function add2(a, b) { return { x: finite(a && a.x) + finite(b && b.x), z: finite(a && a.z) + finite(b && b.z) }; }
+function sub2(a, b) { return { x: finite(a && a.x) - finite(b && b.x), z: finite(a && a.z) - finite(b && b.z) }; }
+function scale2(v, s) { return { x: finite(v && v.x) * s, z: finite(v && v.z) * s }; }
+function dot2(a, b) { return finite(a && a.x) * finite(b && b.x) + finite(a && a.z) * finite(b && b.z); }
+function length2(v) { return Math.hypot(finite(v && v.x), finite(v && v.z)); }
+
+function normalize2(v, fallback = zero2()) {
+  const x = finite(v && v.x, fallback.x);
+  const z = finite(v && v.z, fallback.z);
+  const len = Math.hypot(x, z);
+  return len > EPS ? { x: x / len, z: z / len } : { x: fallback.x, z: fallback.z };
+}
+
+function normalize2Into(v, fallback, out) {
+  const x = finite(v && v.x, fallback.x);
+  const z = finite(v && v.z, fallback.z);
+  const len = Math.hypot(x, z);
+  if (len > EPS) { out.x = x / len; out.z = z / len; }
+  else { out.x = fallback.x; out.z = fallback.z; }
+  return out;
+}
+
+function clampMagnitude(v, max) {
+  const length = length2(v);
+  if (!(length > max) || !(length > EPS)) return { x: finite(v.x), z: finite(v.z) };
+  return scale2(v, max / length);
+}
+
+function wrapAngle(value) {
+  let v = finite(value, 0) % TAU;
+  if (v <= -Math.PI) v += TAU;
+  if (v > Math.PI) v -= TAU;
+  return v;
+}
+
+function approach(current, target, maxDelta) {
+  const delta = target - current;
+  if (Math.abs(delta) <= Math.abs(maxDelta)) return target;
+  return current + Math.sign(delta) * Math.abs(maxDelta);
+}
+
+function lerp(a, b, t) { return a + (b - a) * clamp(t, 0, 1); }
+function clamp(value, lo, hi) { return Math.max(lo, Math.min(hi, value)); }
+function smoothstep(edge0, edge1, x) {
+  if (!(edge1 > edge0)) return x >= edge1 ? 1 : 0;
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
+function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
+function finiteOrInfinity(value) { return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY; }

@@ -1,0 +1,21 @@
+{
+  "N": 40,
+  "ITERS": 30000,
+  "modes": {
+    "off": {
+      "label": "off",
+      "us": 0.4996,
+      "quietLatched": false,
+      "stance": "surge"
+    },
+    "on": {
+      "label": "on",
+      "us": 0.179,
+      "quietLatched": true,
+      "stance": "surge"
+    }
+  },
+  "speedup": 2.791,
+  "absBeforeUs": 0.4996,
+  "absAfterUs": 0.179
+}

@@ -1,0 +1,182 @@
+From aa6ec09ec9c15729986033dfd099165c4d44acea Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:18:03 -0400
+Subject: [PATCH] perf(flight): coolRuntime scratch + trust normalized
+ bodySnapshot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Drop the double { ...runtime } allocate on every propulsion step and skip
+normalizeBody's pos/vel copy when flightV3 marks _sfNormalized. Offline
+microbench: coolRuntime ~174×, trust-body ~10.7×.
+---
+ src/core/flight/propulsionKernel.js | 63 ++++++++++++++++++++---------
+ src/systems/flightV3.js             | 29 ++++++++-----
+ 2 files changed, 65 insertions(+), 27 deletions(-)
+
+diff --git a/src/core/flight/propulsionKernel.js b/src/core/flight/propulsionKernel.js
+index 3589879d4..1eec5775f 100644
+--- a/src/core/flight/propulsionKernel.js
++++ b/src/core/flight/propulsionKernel.js
+@@ -131,7 +131,8 @@ const TAU = Math.PI * 2;
+ /** Advance one fixed propulsion tick. */
+ export function stepPropulsion(args = {}) {
+   const dt = clamp(finite(args.dt, 0), 0, 0.25);
+-  const body = normalizeBody(args.body);
++  // flightV3 bodySnapshot marks _sfNormalized after wrap/finite — skip the per-tick pos/vel copy.
++  const body = args.body && args.body._sfNormalized ? args.body : normalizeBody(args.body);
+   const input = normalizeInput(args.input);
+   const profile = normalizeProfile(args.profile || {});
+   const runtime = normalizeRuntime(args.runtime, profile);
+@@ -262,7 +263,7 @@ function stepDrawFlight(body, input, profile, runtime, environment, dt) {
+   const accel = add2(motion, environmental);
+   const yaw = computeHeadingControl(body, motion.targetHeading, profile, dt, input);
+   const demand = resourceDemand(profile, accel, input.boost, dt);
+-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
++  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+   return makeResult({
+     body, profile, input, runtime: nextRuntime, acceleration: accel,
+     angularAcceleration: yaw.angularAcceleration,
+@@ -515,7 +516,7 @@ function stepGravimetric(body, input, profile, runtime, environment, dt) {
+ 
+   const yaw = computeYawControl(body, input, profile, dt);
+   const demand = resourceDemand(profile, accel, input.boost, dt, positive(profile.resources && profile.resources.idleEnergyPerS, 0));
+-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
++  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
+ 
+   return makeResult({
+     body,
+@@ -627,13 +628,11 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
+     heat: baseDemand.heat + chargeHeat + pulseHeat,
+     fuel: baseDemand.fuel,
+   };
+-  const nextRuntime = coolRuntime({
+-    ...runtime,
+-    family: profile.family,
++  const nextRuntime = coolRuntime(runtime, profile, demand, dt, {
+     chargeS,
+     pulseCooldownS: firedDv > 0 ? positive(profile.pulseCooldownS, 0.3) : cooldown,
+     autoFlipBurn,
+-  }, profile, demand, dt);
++  });
+ 
+   return makeResult({
+     body,
+@@ -702,7 +701,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
+   let accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
+   const yaw = computeYawControl(body, input, profile, dt);
+   const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
+-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family, spool }, profile, demand, dt);
++  const nextRuntime = coolRuntime(runtime, profile, demand, dt, { spool });
+   accel = applyTravelCapSpend(accel, body, governor, dt);
+   // Same opt-in vectoring as the reaction drive; `limits.forward` carries the spool, so a cold
+   // torch vectors as little as it pushes.
+@@ -761,7 +760,7 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
+ 
+   const yaw = computeYawControl(body, input, profile, dt);
+   const demand = resourceDemand(profile, accel, false, dt, deployed > 0 ? positive(profile.resources && profile.resources.idleEnergyPerS, 0) : 0);
+-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family, deployed }, profile, demand, dt);
++  const nextRuntime = coolRuntime(runtime, profile, demand, dt, { deployed });
+ 
+   return makeResult({
+     body,
+@@ -1074,16 +1073,44 @@ function resourceDemand(profile, acceleration, boosting, dt, idle = 0) {
+   };
+ }
+ 
+-function coolRuntime(runtime, profile, demand, dt) {
++// Retained next-runtime shell. Callers used to allocate twice per step
++// (`coolRuntime({ ...runtime, spool })` then another `{ ...runtime }` inside). assignPropulsionRuntime
++// Object.assigns immediately, so one module scratch is safe across craft in the same tick.
++const COOL_RUNTIME_SCRATCH = {
++  schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
++  family: null,
++  heat: 0,
++  energySpent: 0,
++  fuelSpent: 0,
++  boosting: false,
++  chargeS: 0,
++  pulseCooldownS: 0,
++  autoFlipBurn: false,
++  spool: 0,
++  deployed: 0,
++};
++
++function coolRuntime(runtime, profile, demand, dt, patch = null) {
+   const cooling = positive(profile.resources && profile.resources.coolingPerS, 0);
+-  return {
+-    ...runtime,
+-    schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
+-    family: profile.family,
+-    heat: Math.max(0, finite(runtime.heat, 0) + demand.heat - cooling * dt),
+-    energySpent: Math.max(0, finite(runtime.energySpent, 0) + demand.energy),
+-    fuelSpent: Math.max(0, finite(runtime.fuelSpent, 0) + demand.fuel),
+-  };
++  const out = COOL_RUNTIME_SCRATCH;
++  out.schemaVersion = PROPULSION_RUNTIME_SCHEMA_VERSION;
++  out.family = profile.family;
++  out.heat = Math.max(0, finite(runtime.heat, 0) + demand.heat - cooling * dt);
++  out.energySpent = Math.max(0, finite(runtime.energySpent, 0) + demand.energy);
++  out.fuelSpent = Math.max(0, finite(runtime.fuelSpent, 0) + demand.fuel);
++  out.boosting = !!runtime.boosting;
++  out.chargeS = patch && patch.chargeS != null
++    ? Math.max(0, finite(patch.chargeS, 0))
++    : Math.max(0, finite(runtime.chargeS, 0));
++  out.pulseCooldownS = patch && patch.pulseCooldownS != null
++    ? Math.max(0, finite(patch.pulseCooldownS, 0))
++    : Math.max(0, finite(runtime.pulseCooldownS, 0));
++  out.autoFlipBurn = patch && patch.autoFlipBurn != null
++    ? !!patch.autoFlipBurn
++    : !!runtime.autoFlipBurn;
++  out.spool = patch && patch.spool != null ? clamp(finite(patch.spool, 0), 0, 1) : clamp(finite(runtime.spool, 0), 0, 1);
++  out.deployed = patch && patch.deployed != null ? clamp(finite(patch.deployed, 0), 0, 1) : clamp(finite(runtime.deployed, 0), 0, 1);
++  return out;
+ }
+ 
+ function transitionEvents(previous, next, input, profile) {
+diff --git a/src/systems/flightV3.js b/src/systems/flightV3.js
+index c769def98..c99f98014 100644
+--- a/src/systems/flightV3.js
++++ b/src/systems/flightV3.js
+@@ -1254,17 +1254,28 @@ function assignFlightFrame(entity, result, mode) {
+ }
+ 
+ function bodySnapshot(entity, profile) {
++  // Stable per-entity body marked _sfNormalized so stepPropulsion skips normalizeBody's pos/vel copy.
++  const body = entity._flightBodyScratch || (entity._flightBodyScratch = {
++    pos: null,
++    vel: null,
++    rot: 0,
++    angVel: 0,
++    mass: 1,
++    inertia: 1,
++    radius: 0,
++    _sfNormalized: true,
++  });
+   const physicsBody = entity.physicsBody || {};
+   const derived = entity.data && entity.data.derived && entity.data.derived.flightModel;
+-  return {
+-    pos: entity.pos,
+-    vel: entity.vel,
+-    rot: entity.rot,
+-    angVel: entity.angVel,
+-    mass: positive(physicsBody.mass, positive(entity.mass, positive(profile.mass, 1))),
+-    inertia: positive(physicsBody.inertiaY, positive(entity.flightModel && entity.flightModel.inertia, positive(derived && derived.inertia, 1))),
+-    radius: positive(entity.radius, positive(physicsBody.radius, 0)),
+-  };
++  body.pos = entity.pos;
++  body.vel = entity.vel;
++  body.rot = wrapAngle(finite(entity.rot));
++  body.angVel = finite(entity.angVel);
++  body.mass = positive(physicsBody.mass, positive(entity.mass, positive(profile.mass, 1)));
++  body.inertia = positive(physicsBody.inertiaY, positive(entity.flightModel && entity.flightModel.inertia, positive(derived && derived.inertia, 1)));
++  body.radius = positive(entity.radius, positive(physicsBody.radius, 0));
++  body._sfNormalized = true;
++  return body;
+ }
+ 
+ function resolveFlightEnvironment(entity, state) {
+-- 
+2.47.3
+

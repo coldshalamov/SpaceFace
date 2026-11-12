@@ -1,0 +1,151 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 1 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.395938
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 2 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 8.299086
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 3 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 1.062166
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 4 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.490748
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 5 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.266568
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 6 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.151124
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 7 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.241147
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 8 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 0.909587
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 9 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.431599
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 10 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 14.337331
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 11 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.786171
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 12 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.743998
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 13 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.504299
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 14 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 8.980809
+  ...
+# Subtest: far-actor grid keys are packed numbers, not cx:cz strings
+ok 15 - far-actor grid keys are packed numbers, not cx:cz strings
+  ---
+  duration_ms: 8.854511
+  ...
+# Subtest: ensureFarActorTable rebuilds legacy string grid keys in-tab
+ok 16 - ensureFarActorTable rebuilds legacy string grid keys in-tab
+  ---
+  duration_ms: 0.39455
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 17 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 36.861152
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 18 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 15.787391
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 19 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.177425
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 20 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 13.701746
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 21 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.539248
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 22 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.144219
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 23 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 0.949341
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 24 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 17.298069
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 25 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 1.609313
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 26 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 22.982828
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 27 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 1.165513
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 28 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.317856
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1729.538807

@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/pelican_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/pelican_production_v1",
+  "focus": [
+    0.5017,
+    0.1,
+    0.4584
+  ],
+  "boundsMin": [
+    -6.812,
+    -2.69,
+    -1.42
+  ],
+  "boundsMax": [
+    7.8154,
+    2.89,
+    2.3368
+  ],
+  "size": [
+    14.6274,
+    5.58,
+    3.7568
+  ],
+  "lightScale": 1.3544,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Accent",
+      "triangles": 216,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Armor",
+      "triangles": 9468,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 304,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Ceramic",
+      "triangles": 376,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 2256,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 14044,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Radiator",
+      "triangles": 1944,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 1696,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 648,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 30952,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/pelican_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/pelican_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/pelican_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

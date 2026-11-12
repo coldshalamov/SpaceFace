@@ -1,0 +1,322 @@
+{
+  "ok": true,
+  "revision": "chase_form_v1",
+  "lods": [
+    {
+      "ok": true,
+      "asset": "ship_colossus",
+      "revision": "chase_form_v1",
+      "lod": 0,
+      "source": "/workspace/spaceface/assets/ships/parts/wholeships/colossus_production_v1.glb",
+      "output": "/workspace/spaceface/design/program/vm-drop/colossus-chase/colossus_c1_lod0.glb",
+      "cockpit": {
+        "kind": "tub+canopy",
+        "location": [
+          4.8,
+          0.0,
+          0.68
+        ]
+      },
+      "tower": {
+        "kind": "hole+stack",
+        "location": [
+          -2.4,
+          0.0,
+          1.0
+        ]
+      },
+      "casemates": {
+        "wells": [
+          {
+            "side": "Port",
+            "kind": "hole"
+          },
+          {
+            "side": "Starboard",
+            "kind": "hole"
+          }
+        ]
+      },
+      "radiators": {
+        "wells": [
+          {
+            "side": "Port",
+            "kind": "hole"
+          },
+          {
+            "side": "Starboard",
+            "kind": "hole"
+          }
+        ]
+      },
+      "drive": {
+        "houses": [
+          {
+            "side": "PortOut",
+            "y": -2.0
+          },
+          {
+            "side": "PortIn",
+            "y": -0.75
+          },
+          {
+            "side": "StbdIn",
+            "y": 0.75
+          },
+          {
+            "side": "StbdOut",
+            "y": 2.0
+          }
+        ]
+      },
+      "size": [
+        23.19,
+        6.414,
+        4.806
+      ],
+      "boundsMin": [
+        -11.39,
+        -3.144,
+        -1.166
+      ],
+      "boundsMax": [
+        11.8,
+        3.27,
+        3.64
+      ],
+      "triangles": 29398,
+      "hullTriangles": 16424,
+      "objects": [
+        "COLLISION_HULL",
+        "LOD0_AccentBand",
+        "LOD0_AftWalk",
+        "LOD0_BellThroat_PortIn",
+        "LOD0_Bell_PortIn",
+        "LOD0_Bell_PortOut",
+        "LOD0_Bell_StbdIn",
+        "LOD0_Bell_StbdOut",
+        "LOD0_CabinShoulder",
+        "LOD0_Canopy",
+        "LOD0_DeckCrate",
+        "LOD0_DriveCollar_PortIn"
+      ],
+      "bytes": 1191216,
+      "gates": {
+        "TUBE_PADDLE": "NO",
+        "CAGE_READ": "NO",
+        "wells": "HOLES"
+      }
+    },
+    {
+      "ok": true,
+      "asset": "ship_colossus",
+      "revision": "chase_form_v1",
+      "lod": 1,
+      "source": "/workspace/spaceface/assets/ships/parts/wholeships/colossus_production_v1_lod1.glb",
+      "output": "/workspace/spaceface/design/program/vm-drop/colossus-chase/colossus_c1_lod1.glb",
+      "cockpit": {
+        "kind": "tub+canopy",
+        "location": [
+          4.8,
+          0.0,
+          0.68
+        ]
+      },
+      "tower": {
+        "kind": "hole+stack",
+        "location": [
+          -2.4,
+          0.0,
+          1.0
+        ]
+      },
+      "casemates": {
+        "wells": [
+          {
+            "side": "Port",
+            "kind": "hole"
+          },
+          {
+            "side": "Starboard",
+            "kind": "hole"
+          }
+        ]
+      },
+      "radiators": {
+        "wells": [
+          {
+            "side": "Port",
+            "kind": "hole"
+          },
+          {
+            "side": "Starboard",
+            "kind": "hole"
+          }
+        ]
+      },
+      "drive": {
+        "houses": [
+          {
+            "side": "PortOut",
+            "y": -2.0
+          },
+          {
+            "side": "PortIn",
+            "y": -0.75
+          },
+          {
+            "side": "StbdIn",
+            "y": 0.75
+          },
+          {
+            "side": "StbdOut",
+            "y": 2.0
+          }
+        ]
+      },
+      "size": [
+        23.19,
+        6.414,
+        4.806
+      ],
+      "boundsMin": [
+        -11.39,
+        -3.144,
+        -1.166
+      ],
+      "boundsMax": [
+        11.8,
+        3.27,
+        3.64
+      ],
+      "triangles": 27422,
+      "hullTriangles": 16424,
+      "objects": [
+        "COLLISION_HULL.001",
+        "LOD0_AccentBand",
+        "LOD0_AftWalk",
+        "LOD0_BellThroat_PortIn",
+        "LOD0_Bell_PortIn",
+        "LOD0_Bell_PortOut",
+        "LOD0_Bell_StbdIn",
+        "LOD0_Bell_StbdOut",
+        "LOD0_CabinShoulder",
+        "LOD0_Canopy",
+        "LOD0_DriveCollar_PortIn",
+        "LOD0_Hull"
+      ],
+      "bytes": 1113872,
+      "gates": {
+        "TUBE_PADDLE": "NO",
+        "CAGE_READ": "NO",
+        "wells": "HOLES"
+      }
+    },
+    {
+      "ok": true,
+      "asset": "ship_colossus",
+      "revision": "chase_form_v1",
+      "lod": 2,
+      "source": "/workspace/spaceface/assets/ships/parts/wholeships/colossus_production_v1_lod2.glb",
+      "output": "/workspace/spaceface/design/program/vm-drop/colossus-chase/colossus_c1_lod2.glb",
+      "cockpit": {
+        "kind": "tub+canopy",
+        "location": [
+          4.8,
+          0.0,
+          0.68
+        ]
+      },
+      "tower": {
+        "kind": "hole+stack",
+        "location": [
+          -2.4,
+          0.0,
+          1.0
+        ]
+      },
+      "casemates": {
+        "wells": [
+          {
+            "side": "Port",
+            "kind": "hole"
+          },
+          {
+            "side": "Starboard",
+            "kind": "hole"
+          }
+        ]
+      },
+      "radiators": {
+        "wells": [
+          {
+            "side": "Port",
+            "kind": "hole"
+          },
+          {
+            "side": "Starboard",
+            "kind": "hole"
+          }
+        ]
+      },
+      "drive": {
+        "houses": [
+          {
+            "side": "PortOut",
+            "y": -2.0
+          },
+          {
+            "side": "PortIn",
+            "y": -0.75
+          },
+          {
+            "side": "StbdIn",
+            "y": 0.75
+          },
+          {
+            "side": "StbdOut",
+            "y": 2.0
+          }
+        ]
+      },
+      "size": [
+        23.19,
+        6.414,
+        4.806
+      ],
+      "boundsMin": [
+        -11.39,
+        -3.144,
+        -1.166
+      ],
+      "boundsMax": [
+        11.8,
+        3.27,
+        3.64
+      ],
+      "triangles": 27422,
+      "hullTriangles": 16424,
+      "objects": [
+        "COLLISION_HULL.002",
+        "LOD0_AccentBand",
+        "LOD0_AftWalk",
+        "LOD0_BellThroat_PortIn",
+        "LOD0_Bell_PortIn",
+        "LOD0_Bell_PortOut",
+        "LOD0_Bell_StbdIn",
+        "LOD0_Bell_StbdOut",
+        "LOD0_CabinShoulder",
+        "LOD0_Canopy",
+        "LOD0_DriveCollar_PortIn",
+        "LOD0_Hull"
+      ],
+      "bytes": 1113872,
+      "gates": {
+        "TUBE_PADDLE": "NO",
+        "CAGE_READ": "NO",
+        "wells": "HOLES"
+      }
+    }
+  ],
+  "promoted": []
+}

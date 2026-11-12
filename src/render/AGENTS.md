@@ -1,0 +1,48 @@
+# src/render/ — Agent Notes
+
+Presentation / GPU layer. Never writes sim state. Root `AGENTS.md` §6 first. Asset pipeline:
+`assets/AGENTS.md`. For player-visible VFX, compositor, lighting, or camera changes use
+`docs/visual-assets/README.md` as the visual-work front door and follow the relevant subsystem
+standard for the affected behavior.
+
+## Silent-fallback trap
+
+`assetLoader.js` returns `null` on authored-load failure and records a diagnostic;
+`partsLibrary.js` keeps procedural fallback geometry. The entity stays visible. Inspect
+`getAuthoredAssetDiagnostic` and run `npm run check:assets:live`. Runtime loads **RELEASE**
+(`assets/ships/release/parts/`), not source. A model must be in the source manifest, generated
+release manifest, and the appropriate `partsLibrary.js` map. Failure modes:
+`assets/ships/AGENTS.md` and `docs/COMMON_BUGS.md` §3.
+
+## Non-obvious owners
+
+- `renderer.js`, `precompile.js`, `adaptiveQuality.js` / `lod.js` — frame, hitch, quality.
+- `assetLoader.js` / `partsLibrary.js` — fetch/validate GLB; ship/role/archetype maps.
+- `vfx.js` — pooled cosmetic particles. Player-facing VFX obey
+  `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`. No `THREE.Points` / `THREE.Sprite` / glow card as
+  the object itself; distant background stars are the only exception. Inventory:
+  `docs/visual-assets/SOFT_CARD_INVENTORY.json`.
+- `camera.js` — position-follow only, never yaw. `feel.js` — shake/trauma.
+- `cameraGlide.js` — predictive obstacle clearance: the camera dollies up-and-back along its own view
+  ray ahead of solids (renderer `cameraRoofAt` answers any column). Never inside a solid is the
+  invariant; tune `GLIDE_TUNING`, witness with `scripts/probe-camera-clearance.mjs`.
+- `bloom.js` — selective; tune from representative captures, not a universal cap.
+- `vfx.update` runs between `prepareFrame` and `drawPreparedFrame` (`renderUpdatePhase.js`). A header
+  that says the pool runs after draw is wrong.
+- `snapshotEntity` hashes `entity.data`. A cosmetic latch on an entity is a sim write. Presentation
+  flags belong on `state.presentation` or `state.render`.
+- Weapon bolts, shield contacts, and force-language pools do not apply damage and do not call
+  `Math.random`. Cosmetic `Math.random` stays inside `vfx.js` / `feel.js` speed lines.
+- Thruster axis is −ax. Contrail is world-space and age-clocked. Do not retune it from the plume module.
+- `post/spaceRenderGraph.js` is opt-in. The default present is `bloom.js`.
+- Nested hazard notes: `combat/`, `ships/`, `vfx/`, `forceLanguage/`. Parent note is enough for
+  `characters/`, `energy/`, `post/`, `thruster/`, and `weapons/`.
+
+No per-frame allocations in render loops. Coordinate before editing a currently owned
+release/lock/output.
+
+Authored async admissions use cancellation/deadline scopes. Observe fire-and-forget pipeline
+promises with `observePipelineAdmission` without changing the original rejection for awaited owners.
+Focused lifetime proof: `node --test test/authored-async-liveness.test.mjs test/renderer-owner-lifetime.test.mjs`.
+
+Streaming admission uses visual envelopes and the upcoming camera zoom; first-flight holds must not park approaching authored wrecks/stations. Shadow-depth warm-up owns a private shadow map, and live refresh requests arm both renderer.shadowMap.needsUpdate and light.shadow.needsUpdate. Presentation rebinds restore mesh/view on promoted same-id entities. Focused proofs: test/frame-solid-glass-priority.test.mjs, test/shadow-depth-admission.test.mjs, test/asteroid-pool-rekey.test.mjs.

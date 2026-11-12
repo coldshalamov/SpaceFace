@@ -1,0 +1,202 @@
+{
+  "primary0": {
+    "name": "tactical-ai-quiet-latch@npc0",
+    "medianSpeedup": 6.963,
+    "minSpeedup": 5.084,
+    "maxSpeedup": 9.65,
+    "pairs": [
+      5.608,
+      5.084,
+      6.963,
+      6.381,
+      9.65,
+      8.073,
+      7.181,
+      6.978,
+      8.511,
+      5.658,
+      6.875
+    ],
+    "dirtyWakeOk": true,
+    "latched": true,
+    "wokeMembership": true,
+    "relatched": true,
+    "wokeThink": true,
+    "offRefuses": true
+  },
+  "primary12": {
+    "name": "tactical-ai-quiet-latch@npc12",
+    "medianSpeedup": 1.043,
+    "minSpeedup": 0.939,
+    "maxSpeedup": 1.226,
+    "pairs": [
+      1.226,
+      1.197,
+      0.989,
+      1.065,
+      1.028,
+      1.05,
+      1.043,
+      1.05,
+      0.939,
+      1.016,
+      0.987
+    ],
+    "dirtyWakeOk": true,
+    "latched": true,
+    "wokeMembership": true,
+    "relatched": true,
+    "wokeThink": true,
+    "offRefuses": true
+  },
+  "floorRuns": [
+    {
+      "name": "tactical-ai-quiet-latch@npc0",
+      "medianSpeedup": 6.126,
+      "minSpeedup": 5.072,
+      "maxSpeedup": 7.577,
+      "pairs": [
+        5.505,
+        5.072,
+        5.907,
+        6.126,
+        7.381,
+        7.439,
+        5.079,
+        6.261,
+        7.577,
+        6.455,
+        5.998
+      ],
+      "dirtyWakeOk": true,
+      "latched": true,
+      "wokeMembership": true,
+      "relatched": true,
+      "wokeThink": true,
+      "offRefuses": true
+    },
+    {
+      "name": "tactical-ai-quiet-latch@npc0",
+      "medianSpeedup": 6.906,
+      "minSpeedup": 4.643,
+      "maxSpeedup": 7.829,
+      "pairs": [
+        6.305,
+        4.643,
+        6.746,
+        6.353,
+        7.267,
+        7.829,
+        7.442,
+        7.242,
+        7.417,
+        6.906,
+        6.734
+      ],
+      "dirtyWakeOk": true,
+      "latched": true,
+      "wokeMembership": true,
+      "relatched": true,
+      "wokeThink": true,
+      "offRefuses": true
+    },
+    {
+      "name": "tactical-ai-quiet-latch@npc0",
+      "medianSpeedup": 6.584,
+      "minSpeedup": 4.729,
+      "maxSpeedup": 7.809,
+      "pairs": [
+        5.844,
+        4.729,
+        6.584,
+        5.959,
+        5.195,
+        7.292,
+        7.647,
+        6.916,
+        5.722,
+        6.864,
+        7.809
+      ],
+      "dirtyWakeOk": true,
+      "latched": true,
+      "wokeMembership": true,
+      "relatched": true,
+      "wokeThink": true,
+      "offRefuses": true
+    },
+    {
+      "name": "tactical-ai-quiet-latch@npc0",
+      "medianSpeedup": 6.574,
+      "minSpeedup": 4.951,
+      "maxSpeedup": 8.087,
+      "pairs": [
+        6.124,
+        4.951,
+        6.164,
+        6.374,
+        6.516,
+        7.421,
+        6.823,
+        6.574,
+        8.087,
+        6.647,
+        6.726
+      ],
+      "dirtyWakeOk": true,
+      "latched": true,
+      "wokeMembership": true,
+      "relatched": true,
+      "wokeThink": true,
+      "offRefuses": true
+    },
+    {
+      "name": "tactical-ai-quiet-latch@npc0",
+      "medianSpeedup": 6.541,
+      "minSpeedup": 5.292,
+      "maxSpeedup": 7.398,
+      "pairs": [
+        6.235,
+        5.292,
+        6.455,
+        6.828,
+        6.466,
+        7.398,
+        7.209,
+        6.541,
+        6.339,
+        6.682,
+        6.796
+      ],
+      "dirtyWakeOk": true,
+      "latched": true,
+      "wokeMembership": true,
+      "relatched": true,
+      "wokeThink": true,
+      "offRefuses": true
+    }
+  ],
+  "floorSummary": {
+    "medians": [
+      6.126,
+      6.906,
+      6.584,
+      6.574,
+      6.541
+    ],
+    "mins": [
+      5.072,
+      4.643,
+      4.729,
+      4.951,
+      5.292
+    ],
+    "packageFloorMin": 4.643,
+    "packageMedianRange": [
+      6.126,
+      6.906
+    ],
+    "dirtyWakeOk": true
+  },
+  "latchDefault": true
+}

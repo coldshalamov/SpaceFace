@@ -1,0 +1,101 @@
+{
+  "name": "speed-lines-quiet-idle-latch",
+  "iters": 200000,
+  "runs": 11,
+  "medianSpeedup": 2.400578817258976,
+  "minSpeedup": 2.124363892578128,
+  "maxSpeedup": 2.5977520700639762,
+  "medianBeforeMs": 20.746308,
+  "medianAfterMs": 8.504094999999992,
+  "dirtyWakeOk": true,
+  "pairs": [
+    {
+      "i": 0,
+      "beforeMs": 19.024148999999994,
+      "afterMs": 7.865718999999999,
+      "speedup": 2.4186153865908504,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 1,
+      "beforeMs": 21.334395999999998,
+      "afterMs": 10.042721999999998,
+      "speedup": 2.124363892578128,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 2,
+      "beforeMs": 22.740945999999994,
+      "afterMs": 9.085466999999994,
+      "speedup": 2.5030024323460762,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 3,
+      "beforeMs": 20.740316000000007,
+      "afterMs": 9.613465000000005,
+      "speedup": 2.157423572041922,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 4,
+      "beforeMs": 21.09858399999999,
+      "afterMs": 8.788956999999996,
+      "speedup": 2.400578817258976,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 5,
+      "beforeMs": 20.793296000000012,
+      "afterMs": 8.004341999999994,
+      "speedup": 2.5977520700639762,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 6,
+      "beforeMs": 20.261775,
+      "afterMs": 8.504094999999992,
+      "speedup": 2.382590387336926,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 7,
+      "beforeMs": 20.746308,
+      "afterMs": 8.018148999999994,
+      "speedup": 2.587418617439014,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 8,
+      "beforeMs": 19.896007999999995,
+      "afterMs": 7.939484999999998,
+      "speedup": 2.505956998470304,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 9,
+      "beforeMs": 18.860514999999992,
+      "afterMs": 8.341680999999994,
+      "speedup": 2.260996914171137,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 10,
+      "beforeMs": 20.750595000000004,
+      "afterMs": 9.122546999999997,
+      "speedup": 2.274649283801992,
+      "wakeOk": true,
+      "afterSkips": 200006
+    }
+  ]
+}

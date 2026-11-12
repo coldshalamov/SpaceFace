@@ -1,0 +1,211 @@
+From c2f41b0f7b7671717b66c88524bcff9bab6e6c90 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:38:53 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20unchanged=20shadow?=
+ =?UTF-8?q?=20caster=20pose=20notes=20(~3.6=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Parked cast-band roots re-entered noteRealtimeShadowCasterPose every
+closure tick for a sub-texel compare that returned false. Call-site skip
+when pose/visibility/policy are unchanged (distinct from held in-function
+bit-identical early-out ~0.87×). Soft-GPU fps not claimed.
+---
+ src/render/renderer.js             | 23 +++++++---
+ src/render/shadowCasterPolicy.js   | 31 +++++++++++++
+ test/shadow-caster-policy.test.mjs | 70 ++++++++++++++++++++++++++++++
+ 3 files changed, 119 insertions(+), 5 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 9fc58a51e..9216b0130 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -179,6 +179,7 @@ import {
+   allowRealtimeShadowCast,
+   invalidateShadowCasterPolicy,
+   noteRealtimeShadowCasterPose,
++  shouldNoteRealtimeShadowCasterPose,
+   SHADOW_MAP_SIZE,
+   SHADOW_ORTHO_EXTENT,
+   shadowCastAxisDistance,
+@@ -12827,9 +12828,11 @@ export const render = {
+       _protectedRootOptions.forceRender = forceRender;
+       _protectedRootOptions.neverCull = neverCull;
+       const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
++      let poseApplied = false;
+       if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
+         | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
+         posed = this._applyPresentationPose(slot, mesh, alpha);
++        poseApplied = !!posed;
+         if (!posed && !protectedRoot) {
+           if (applyEntityMeshVisibility(mesh, false)) {
+             this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+@@ -12877,10 +12880,12 @@ export const render = {
+       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
+       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
+       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
++      let shadowPolicyRefreshed = false;
+       if (runClosures && (typeName === 'ship' || typeName === 'station')) {
+         // entity may be null for a world-record row; the retained stand-in keeps the old
+         // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
+         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || _shadowFallbackEntity, mesh))) {
++          shadowPolicyRefreshed = true;
+           shadowPolicyRefreshes++;
+           noteShadowPolicyChanged(this._shadowReceiverTally, true);
+           this._markShadowReceiversDirty();
+@@ -12941,11 +12946,19 @@ export const render = {
+         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitEntityMeshOptions));
+       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+       if (runClosures && (typeName === 'ship' || typeName === 'station')) {
+-        _shadowCasterPoseOptions.visualRadius = lodRadius;
+-        _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
+-        _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
+-        if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
+-          this._shadowMapDirty = true;
++        // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
++        // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
++        if (shouldNoteRealtimeShadowCasterPose(mesh, {
++          poseApplied,
++          visibilityChanged,
++          policyRefreshed: shadowPolicyRefreshed,
++        })) {
++          _shadowCasterPoseOptions.visualRadius = lodRadius;
++          _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
++          _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
++          if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
++            this._shadowMapDirty = true;
++          }
+         }
+       }
+ 
+diff --git a/src/render/shadowCasterPolicy.js b/src/render/shadowCasterPolicy.js
+index e63e2579a..d75bbc14f 100644
+--- a/src/render/shadowCasterPolicy.js
++++ b/src/render/shadowCasterPolicy.js
+@@ -55,6 +55,37 @@ export function shadowCasterBand(root) {
+   return state ? state.castBand : null;
+ }
+ 
++/** True when noteRealtimeShadowCasterPose has recorded a cast-band pose on this root. */
++export function shadowCasterHasPose(root) {
++  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
++  return !!(state && state.pose);
++}
++
++// Quiet syncEntityViews: parked cast-band roots re-entered noteRealtimeShadowCasterPose
++// every closure tick for a sub-texel compare that returned false (held in-function
++// bit-identical early-out ~0.87×). Call-site skip when root TRS / visibility /
++// cast-band policy did not change this frame. Soft-GPU fps not claimed.
++let SHADOW_CASTER_POSE_QUIET_SKIP = true;
++export function setShadowCasterPoseQuietSkipForBench(enabled) {
++  SHADOW_CASTER_POSE_QUIET_SKIP = enabled !== false;
++  return SHADOW_CASTER_POSE_QUIET_SKIP;
++}
++export function getShadowCasterPoseQuietSkipForBench() {
++  return SHADOW_CASTER_POSE_QUIET_SKIP !== false;
++}
++
++export function shouldNoteRealtimeShadowCasterPose(root, {
++  poseApplied = false,
++  visibilityChanged = false,
++  policyRefreshed = false,
++} = {}) {
++  if (SHADOW_CASTER_POSE_QUIET_SKIP === false) return true;
++  if (poseApplied || visibilityChanged || policyRefreshed) return true;
++  const band = shadowCasterBand(root);
++  if (band !== 1) return true; // keep cheap band-0 clear / first-enter path
++  return !shadowCasterHasPose(root);
++}
++
+ /**
+  * Whether a root should contribute realtime directional shadow-map casters.
+  * Player always casts. LOD1/LOD2 are screen-small — contact shadow is enough.
+diff --git a/test/shadow-caster-policy.test.mjs b/test/shadow-caster-policy.test.mjs
+index 9b7534dce..3309e1e77 100644
+--- a/test/shadow-caster-policy.test.mjs
++++ b/test/shadow-caster-policy.test.mjs
+@@ -5,6 +5,10 @@ import * as THREE from 'three';
+ import {
+   invalidateShadowCasterPolicy,
+   noteRealtimeShadowCasterPose,
++  shouldNoteRealtimeShadowCasterPose,
++  shadowCasterHasPose,
++  setShadowCasterPoseQuietSkipForBench,
++  getShadowCasterPoseQuietSkipForBench,
+   SHADOW_TEXEL_WORLD_SIZE,
+   syncShadowCasterPolicy,
+ } from '../src/render/shadowCasterPolicy.js';
+@@ -145,3 +149,69 @@ test('realtime caster pose invalidation covers silhouette rotation, scale, visib
+   assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true,
+     're-entering the caster band initializes a fresh rendered pose');
+ });
++test('quiet-skip gate is on by default and restores always-note when bench-off', () => {
++  assert.equal(getShadowCasterPoseQuietSkipForBench(), true);
++  setShadowCasterPoseQuietSkipForBench(false);
++  assert.equal(getShadowCasterPoseQuietSkipForBench(), false);
++  assert.equal(
++    shouldNoteRealtimeShadowCasterPose(opaqueMesh(), {
++      poseApplied: false, visibilityChanged: false, policyRefreshed: false,
++    }),
++    true,
++    'bench-off always notes',
++  );
++  setShadowCasterPoseQuietSkipForBench(true);
++  assert.equal(getShadowCasterPoseQuietSkipForBench(), true);
++});
++
++test('quiet skip suppresses note on an unchanged cast-band root with a recorded pose', () => {
++  setShadowCasterPoseQuietSkipForBench(true);
++  const root = new THREE.Group();
++  root.add(opaqueMesh());
++  syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
++  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 10 }), true, 'seed pose');
++  assert.equal(shadowCasterHasPose(root), true);
++  assert.equal(
++    shouldNoteRealtimeShadowCasterPose(root, {
++      poseApplied: false, visibilityChanged: false, policyRefreshed: false,
++    }),
++    false,
++    'unchanged parked root skips',
++  );
++  assert.equal(
++    shouldNoteRealtimeShadowCasterPose(root, {
++      poseApplied: true, visibilityChanged: false, policyRefreshed: false,
++    }),
++    true,
++    'pose apply still notes',
++  );
++  assert.equal(
++    shouldNoteRealtimeShadowCasterPose(root, {
++      poseApplied: false, visibilityChanged: true, policyRefreshed: false,
++    }),
++    true,
++    'visibility change still notes',
++  );
++  assert.equal(
++    shouldNoteRealtimeShadowCasterPose(root, {
++      poseApplied: false, visibilityChanged: false, policyRefreshed: true,
++    }),
++    true,
++    'policy refresh still notes',
++  );
++});
++
++test('quiet skip still notes before the first pose is recorded', () => {
++  setShadowCasterPoseQuietSkipForBench(true);
++  const root = new THREE.Group();
++  root.add(opaqueMesh());
++  syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
++  assert.equal(shadowCasterHasPose(root), false);
++  assert.equal(
++    shouldNoteRealtimeShadowCasterPose(root, {
++      poseApplied: false, visibilityChanged: false, policyRefreshed: false,
++    }),
++    true,
++    'first enter must record a pose',
++  );
++});
+-- 
+2.47.3
+

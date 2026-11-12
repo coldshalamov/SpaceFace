@@ -1,0 +1,73 @@
+{
+  "assetId": "place_asteroid_seamed",
+  "scope": "whole_asset",
+  "source": "assets/ships/parts/places/place_asteroid_seamed.glb",
+  "sourceSha256": "5e0e87fdc2e98f485caaeb3fcdf5c6db59c649b7160e23be2c8be71e3eece119",
+  "sourceRevision": "6371ef8d493987eaba2e5a94b64e20e6e26cf3ca",
+  "candidate": ".devshots/helios-remaster/geology/place_asteroid_seamed.glb",
+  "candidateSha256": "799ca30e0e6a674b7fa7c27a78f8706fc09efd75ffc0d3e147bbe6aab2574209",
+  "sceneMetadataCorrection": "Active scene and asset canonical identity retained as SF_PLACE_ASTEROID_SEAMED_GEOLOGY_V3/place; builder clears imported scene properties and restores the original scene contract.",
+  "reviewHistory": [{
+    "candidateSha256": "b03d0968e0f846a950789fcd8c39f349d60d46779196b26d81630b73b2f6f9de",
+    "reviewer": "/root",
+    "view": ".devshots/tuneup/remaster-geology-candidate.png",
+    "decision": "revise",
+    "findings": "Pale circular top and straight uniform saw slot read as industrial foam/drum. Preserve cavity work but replace with irregular bedding faces, tapered oblique fissure, quieter matte grey-ochre fresh break."
+  }, {
+    "candidateSha256": "f597deb774dc499849cf427d48e5ccec0433da871da3ec7af2543d1868933c74",
+    "reviewer": "/root",
+    "view": "geology-r2 exact runtime gallery",
+    "decision": "revise",
+    "findings": "Two differently colored flat pentagonal caps, dotted/moire response and retained wrinkled metallic lower mantle read as patchwork. Replace the entire host coherently using the accepted common-rock shape/material family; fit the original seam and survey equipment onto it."
+  }, {
+    "candidateSha256": "deac3411323c83955f9f69ea515dbd13625f6fcd78c99fd4369dbf6af54e087c",
+    "reviewer": "/root",
+    "view": ".devshots/tuneup/remaster-geology-r3.png",
+    "decision": "host accepted; seam revise",
+    "findings": "Whole coherent rock host accepted. Retained seam reads as jagged violet/white wires and tall white protrusions; replace with a broad recessed dark fault and restrained fitted mineral faces, retaining the deliberate survey device."
+  }, {
+    "candidateSha256": "196f8b0ca02fe86a4b6648e35123bdccb2db21213a4d1d465ba5e2f0dacfbba1",
+    "reviewer": "/root",
+    "view": ".devshots/tuneup/remaster-geology-r4.png",
+    "decision": "seam improvement accepted; host UV regression revise",
+    "findings": "Improved recessed seam retained. Boolean material separation placed empty coordinates in the LOD0 host UV0 while original stone coordinates survived in UV1, producing flat ochre faces. Normalize the populated layer and retain geometry."
+  }, {
+    "candidateSha256": "799ca30e0e6a674b7fa7c27a78f8706fc09efd75ffc0d3e147bbe6aab2574209",
+    "reviewer": "/root",
+    "view": ".devshots/tuneup/remaster-geology-r4-uv.png",
+    "decision": "accepted whole_asset geometry and materials",
+    "findings": "Root viewed the exact candidate: coherent common-rock matrix restored, broad recessed seam integrated, and former spikes removed. Whole-asset visual acceptance granted; root owns source/release promotion."
+  }],
+  "workingScene": ".devshots/helios-remaster/geology/place_asteroid_seamed.blend",
+  "supportedViews": ["live Helios 60-degree chase", "close surface survey", "rotated asteroid silhouette"],
+  "allSupportedViewZonesClassified": true,
+  "fiction": "Existing canon ast_common_rock field landmark, surveyed mineral seam. ART EXTRAPOLATION: natural compressive bedding and split fault faces, with retained survey pins and registration plate.",
+  "frozen": ["part identity", "pivot and axes", "original bounding envelope", "all marker and socket transforms", "branching seam identity and survey hardware", "three native LODs", "no emission", "no increase in material batches"],
+  "componentReferenceDecision": "not_needed",
+  "referenceReason": "Live neighboring common rocks and the original surveyed seam provide an explicit visible shape and material target; no new fictional assembly is needed.",
+  "zones": [
+    {"zone": "host regolith mass", "classification": "billed", "dominant": true,
+      "failure": "Smooth high-frequency corrugations obscure the rock's mass and make it read as wrinkled gold.",
+      "construction": "Replace the entire host with the shipping common-rock shear-fault mesh, sized within the frozen original envelope. Keep its asymmetric broad faces, broken shoulders and dark structural clefts; no old corrugated mantle or separate cap remains.",
+      "materialBill": "One continuous mapped common-rock matrix across the whole host, with its actual object-space pigment colors, dry ORM and restrained common-rock normal map. No isolated top-patch material or gold metal response."},
+    {"zone": "branching mineral seam and alteration strata", "classification": "billed", "dominant": false,
+      "construction": "Keep the landmark's branching path as two broad simplified fault sections, actually recessed 0.48 m into the accepted host. Remove old projecting alteration ribbons. Seat five squat mineral faces inside the original surface; simplify to three faces at far LOD.",
+      "materialBill": "Dark matte fracture bed and walls, bounded copper/teal mapped mineral faces with restrained gloss and no emission. No pale rim ribbons or crystal spikes."},
+    {"zone": "survey anchors, cable, registration plate and M-17 lettering", "classification": "retained_reviewed", "dominant": false,
+      "construction": "Existing drilled pins, plate and text retain rigid forms and connections while fitting to the new host depth; cable conforms continuously. All semantic marker and socket transforms remain exact.",
+      "materialBill": "Existing mapped survey alloy and registration marking retained; geometry and substrate visibly differ from geology."},
+    {"zone": "underside and back mass", "classification": "billed", "dominant": false,
+      "construction": "Same whole-mass replacement as the upper host; use the common-rock geometric fracture family across every side, inside the unchanged envelope.",
+      "materialBill": "Same dry lithic substrate as upper host; no unreviewed donor zone."}
+  ],
+  "verification": {
+    "G0": "candidate report binds source/candidate hashes, LOD counts, bounds, complete material roles and marker transforms",
+    "G1_G2_G4": "pass: root independently viewed exact 799ca30e0e6a674b7fa7c27a78f8706fc09efd75ffc0d3e147bbe6aab2574209 in remaster-geology-r4-uv.png and accepted whole-asset geometry/materials",
+    "G3": "retained embedded mapped material channels plus intentional role factors",
+    "G5": "live gallery shader and asset-loader path",
+    "G6": "root promotion and source/release rebuild",
+    "G7": "root integrated first-sector acceptance",
+    "reviewer": "/root",
+    "decision": "accepted whole_asset by root at exact candidate hash; source/release promotion and integrated first-sector acceptance remain root-owned"
+  }
+}

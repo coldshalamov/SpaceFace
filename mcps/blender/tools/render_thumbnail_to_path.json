@@ -1,0 +1,17 @@
+{
+  "name": "render_thumbnail_to_path",
+  "description": "\nRender a small, low-quality thumbnail to *output_path* (temporarily overrides settings).\n",
+  "inputSchema": {
+    "properties": {
+      "output_path": {
+        "title": "Output Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "output_path"
+    ],
+    "title": "render_thumbnail_to_pathArguments",
+    "type": "object"
+  }
+}

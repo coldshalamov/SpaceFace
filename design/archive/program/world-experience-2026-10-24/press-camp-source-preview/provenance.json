@@ -1,0 +1,95 @@
+{
+  "schema": "press-camp-candidate-source-preview-v1",
+  "candidateSceneBlob": "fc236adf692478d1eeb6738720378898d5813e4f",
+  "baseCommit": "c435d10d6f78e441ae8b16132b9881e3fc829fbd",
+  "nativeArrivalProofBlob": "c54634572ace36698982630cddcacd220d62e05d",
+  "candidateBindingProofBlob": "a6c6d48b718acb192dd60bc03f61b5c45ec0f1e8",
+  "sourcePins": {
+    "partsLibrary": "69e3de815fba57fb8b8d625b5728642aab061d68",
+    "visualOverrides": "0ca35e9ef11c38a181e95a6ee57cc546c918236c",
+    "visualFactory": "e9a11cfaf1c16f483ea6bf01f1b9fb07f977f135",
+    "modelTruth": "706e7aa3768587e4cfcc1e6ad03dd3664dd5abdb",
+    "modelTruthMounts": "5a76018f09b307ef0fc3c77a73a579d6f9840b89",
+    "modelTruthCensus": "030a156d171f08667b7c900cba40f091982abbd5",
+    "collisionProxyManifests": "fa6d39e4a00de8f52c914ebeb9f67e1d18bb12ba",
+    "lootShards": "07802963aed6baa870d64ca9c9901b3a901df736"
+  },
+  "models": [
+    {
+      "model": "Tradehub",
+      "blob": "1384dbf052f779a4c3667bda469f6c5a793cdc48",
+      "sha256": "cf59eaab5914ce68c5089c0f09d5071204de11b1da0a271d53cfd65dbea614a5",
+      "triangles": 87621
+    },
+    {
+      "model": "Helios Span",
+      "blob": "d4ceaa3dc1d47015b5f6107e937bd5f84745551c",
+      "sha256": "4d7213c8faacbe826bee9f296849abcef563979677453453b38972e57b02c271",
+      "triangles": 34277
+    },
+    {
+      "model": "Corsair Blade",
+      "blob": "1cf2d36dd02b7e817100408f88437d261cd67051",
+      "sha256": "abfc0010067b94ad901029d9b0173f0acb9f397a831ecf1bb3e58d942a44d10f",
+      "triangles": 23912
+    },
+    {
+      "model": "Ashline Dart",
+      "blob": "29fc1e63e44c3a70565e0f528484d44f68aa74c9",
+      "sha256": "7cd7680caac82056c10644e433e40057e5f94ff2b2ac9290c7c6f03805a557c8",
+      "triangles": 24316
+    },
+    {
+      "model": "Rigged cargo pod",
+      "blob": "de44357fda259683416e8379be15980da353e2f6",
+      "sha256": "e2067c1de43533121f575a67147de67d70c11bcf515ecf81894e37c09995622a",
+      "triangles": 12604
+    }
+  ],
+  "transforms": {
+    "nodeMatrices": "All original GLB node world matrices baked; LOD0 renderable primitives only.",
+    "ships": "Source-origin hull placement; 1.72 × native radius / full authored X extent. Native +rot XZ transform equals Three rotation.y=-entity.rot. No extra ±90-degree correction.",
+    "station": "Measured pending-boundary scale1.442292 and approach yaw-77.5deg; reconstructed exact Three Y transform, separately from native rot0. Source-derived root XZ offset[1.875944,.00117], not measured final compositor.",
+    "pods": "Default source GLB pose, 2×radius / longest full authored extent, from public jettisoned_cargo factory/selector. No animation sampled.",
+    "coordinateFrame": "Measured global world WU translated by base origin[-27072,31568]; y0; upper overview common scale; right detail insets separately framed."
+  },
+  "limits": [
+    "Candidate binding applied to measured prior ordinary-arrival positions; binding proof establishes unchanged native physical spec in separate fixture.",
+    "Pending authored admission metadata is not final GLB/GPU residency proof.",
+    "Material base/emissive factors only. No embedded albedo, normal, metallic/roughness or AO texture maps.",
+    "No runtime material overrides, faction runtime palette overrides, illustrated shaders, lighting, shadows, postprocessing, effects, fitted attachments or sampled animation.",
+    "No escape endpoint recorded or depicted. No live-camera or visual-acceptance claim."
+  ],
+  "inspection": "Rendered pixels inspected: no text or detail-model clipping. Actual base naturally occludes parts of captive/pods at measured coordinates; no actor repositioned.",
+  "image": {
+    "path": "source-preview-20261024.webp",
+    "gitBlob": "74df239c8e5647dc9310a428b6b8d9f158cf8c1f",
+    "format": "webp",
+    "width": 1000,
+    "height": 720,
+    "bytes": 42056,
+    "sha256": "e2d78a9960b07907977cd2d93e43344afb1d0a5c5a252699be4d776a55f343ac"
+  },
+  "compression": {
+    "sourceRender": "Pillow WebP quality90 method6",
+    "delivered": "Reopened rendered WebP and saved WebP quality45 method6 in RAM",
+    "sameRender": true
+  },
+  "reproduction": {
+    "path": "reproduce.py",
+    "gitBlob": "af8214389f8950f4e23d3d83ffc225f0056109fd",
+    "sha256": "bf6b13fd4b53bc8c86ab81882560ace25a56f450c1999e4b9f228be9ae654afe",
+    "syntaxChecked": true,
+    "portableScriptRerendered": false,
+    "originalRenderRunSucceeded": true,
+    "dependencies": {
+      "numpy": "2.3.5",
+      "Pillow": "12.3.0",
+      "@gltf-transform/core": "4.5.0",
+      "@gltf-transform/extensions": "4.5.0",
+      "meshoptimizer": "1.2.0",
+      "fonts": "DejaVu Sans (installed, not bundled)"
+    },
+    "ownership": "Reusable rasterizer and decoder wrapper generated for this project; inspected to exclude third-party dependency implementations. Dependency license notices remain with installed packages."
+  }
+}

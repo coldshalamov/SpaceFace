@@ -1,0 +1,905 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-conduit-power-junction",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f233248e8c1a44fbb1f9017a2bf15edffb3f341fdc0668170d7c20fdfd87a649",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.32304057780705536,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          -0.00004057791223660567,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ba75c713380f28a444c099bfee8f0dc799163a7ec0d6d33bd943d8bfee4a63a",
+      "id": "sf.render.works-conduit-power-junction.mesh.lod0-merged-material-atlas.primitive.0",
+      "indexCount": 4788,
+      "indexed": true,
+      "materialHash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Atlas",
+      "nodeId": "sf.render.works-conduit-power-junction.mesh.lod0-merged-material-atlas",
+      "primitiveIndex": 0,
+      "vertexCount": 2880
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.49699997901916504,
+          0.15700052179234486,
+          0.01200152692073876
+        ],
+        "min": [
+          -0.5429999828338623,
+          0.1469994833336546,
+          -0.01200152692073876
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b1be2b26f064855ff7f68c213d6f2ab4be615a8e35d757a238accc6a3465f361",
+      "id": "sf.render.works-conduit-power-junction.mesh.lod0-powered.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_powered",
+      "nodeId": "sf.render.works-conduit-power-junction.mesh.lod0-powered",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.20999999344348907,
+          0.27099807168575774,
+          0.20999999344348907
+        ],
+        "min": [
+          -0.20999999344348907,
+          0.25300191757981827,
+          -0.20999999344348907
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "17d3a95be1c4717679071eda6d1af4dff42d70b33c0eacf7cefac8704fc93e3e",
+      "id": "sf.render.works-conduit-power-junction.mesh.lod0-service-lid.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_service_lid",
+      "nodeId": "sf.render.works-conduit-power-junction.mesh.lod0-service-lid",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.32304057780705536,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          -0.00004057791223660567,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0be151c8cb5e74120c76eee9a451dae7c69260e1191187919e7b89d70cbb773d",
+      "id": "sf.render.works-conduit-power-junction.mesh.lod1-merged-material-atlas.primitive.0",
+      "indexCount": 2100,
+      "indexed": true,
+      "materialHash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Atlas",
+      "nodeId": "sf.render.works-conduit-power-junction.mesh.lod1-merged-material-atlas",
+      "primitiveIndex": 0,
+      "vertexCount": 1272
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.49699997901916504,
+          0.15700052179234486,
+          0.01200152692073876
+        ],
+        "min": [
+          -0.5429999828338623,
+          0.1469994833336546,
+          -0.01200152692073876
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed03d57b3688bf52595e5844ae69343a1b9b6abda3a8e1462916e3998bb222a6",
+      "id": "sf.render.works-conduit-power-junction.mesh.lod1-powered.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_powered",
+      "nodeId": "sf.render.works-conduit-power-junction.mesh.lod1-powered",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.20999999344348907,
+          0.27099807168575774,
+          0.20999999344348907
+        ],
+        "min": [
+          -0.20999999344348907,
+          0.25300191757981827,
+          -0.20999999344348907
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c01b59e49488196c15dc47a5caa9eebe7cf9583927165d8d803f16da507d0af5",
+      "id": "sf.render.works-conduit-power-junction.mesh.lod1-service-lid.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_service_lid",
+      "nodeId": "sf.render.works-conduit-power-junction.mesh.lod1-service-lid",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "c35b38c3dc8c844e6fa74aaa22b9584c495f6d9f75ccae560cca95841e0b2356",
+      "id": "material:c35b38c3dc8c844e6fa74aaa",
+      "name": "ConduitAtlas_power",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "power_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "power_atlas_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "power_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "power_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-conduit-power-junction.mesh.lod0-merged-material-atlas",
+      "localTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0.16149999994740938,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Atlas",
+      "nodeName": "LOD0_Merged_Material_Atlas",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.works-conduit-power-junction.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0.16149999994740938,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-power-junction.mesh.lod0-powered",
+      "localTransform": [
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        -0.5199999809265137,
+        0.15200000256299973,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_powered",
+      "nodeName": "LOD0_powered",
+      "nodePath": [
+        0,
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-conduit-power-junction.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        -0.5199999809265137,
+        0.15200000256299973,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-power-junction.mesh.lod0-service-lid",
+      "localTransform": [
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0.011999994632788002,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_service_lid",
+      "nodeName": "LOD0_service_lid",
+      "nodePath": [
+        0,
+        0,
+        3,
+        0
+      ],
+      "parentId": "sf.render.works-conduit-power-junction.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0.261999994632788,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-power-junction.mesh.lod1-merged-material-atlas",
+      "localTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0.16149999994740938,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Atlas",
+      "nodeName": "LOD1_Merged_Material_Atlas",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.works-conduit-power-junction.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0.16149999994740938,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-power-junction.mesh.lod1-powered",
+      "localTransform": [
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        -0.5199999809265137,
+        0.15200000256299973,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_powered",
+      "nodeName": "LOD1_powered",
+      "nodePath": [
+        0,
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-conduit-power-junction.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        0,
+        0,
+        0,
+        0.023000001907348633,
+        0,
+        -0.5199999809265137,
+        0.15200000256299973,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-power-junction.mesh.lod1-service-lid",
+      "localTransform": [
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0.011999994632788002,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_service_lid",
+      "nodeName": "LOD1_service_lid",
+      "nodePath": [
+        0,
+        0,
+        3,
+        1
+      ],
+      "parentId": "sf.render.works-conduit-power-junction.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0,
+        0,
+        0.20999999344348907,
+        0,
+        0,
+        0.261999994632788,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-power-junction.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_works_conduit_power_junction",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-power-junction.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "e08b659208324867cb2145e9506d7b87ea0213ae553db825d4f46dc459c73eb7"
+    },
+    "sourceGlb": {
+      "bytes": 529832,
+      "sha256": "33c78d6a33fd93b92e504331c07bc526eb5564e027b4238d23b7d4c473f2d18d",
+      "uri": "place_works_conduit_power_junction.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 531196,
+    "sha256": "b647f251e36e43c8953fc479f229e26d369666d705f07a62f373c7c1c6189823",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.16149999994740938,
+        0
+      ],
+      "max": [
+        1.100000023841858,
+        0.32304057780705536,
+        1.100000023841858
+      ],
+      "min": [
+        -1.100000023841858,
+        -0.00004057791223660567,
+        -1.100000023841858
+      ],
+      "size": [
+        2.200000047683716,
+        0.32308115571929197,
+        2.200000047683716
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "powered",
+        "planIndex": 5,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "powered",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.25,
+          0,
+          1
+        ],
+        "name": "service_lid",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "service_lid",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "service": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "service"
+      }
+    ],
+    "nodeCount": 11,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0.16149999994740938,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Atlas",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0.16149999994740938,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Atlas",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.023000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.023000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.023000001907348633,
+          0,
+          -0.5199999809265137,
+          0.15200000256299973,
+          0,
+          1
+        ],
+        "name": "LOD0_powered",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.023000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.023000001907348633,
+          0,
+          0,
+          0,
+          0,
+          0.023000001907348633,
+          0,
+          -0.5199999809265137,
+          0.15200000256299973,
+          0,
+          1
+        ],
+        "name": "LOD1_powered",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.20999999344348907,
+          0,
+          0,
+          0,
+          0,
+          0.20999999344348907,
+          0,
+          0,
+          0,
+          0,
+          0.20999999344348907,
+          0,
+          0,
+          0.261999994632788,
+          0,
+          1
+        ],
+        "name": "LOD0_service_lid",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.20999999344348907,
+          0,
+          0,
+          0,
+          0,
+          0.20999999344348907,
+          0,
+          0,
+          0,
+          0,
+          0.20999999344348907,
+          0,
+          0,
+          0.261999994632788,
+          0,
+          1
+        ],
+        "name": "LOD1_service_lid",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_conduit_power_junction.glb"
+  },
+  "runtimeHash": "2b32a452ff366e1c3e97be5501c62e46515acf219a72309b8e249070cef22437",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.32304057780705536,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          -0.00004057791223660567,
+          -1.100000023841858
+        ]
+      },
+      "id": "sf.render.works-conduit-power-junction.body",
+      "nodeIds": [
+        "sf.render.works-conduit-power-junction.mesh.lod0-merged-material-atlas",
+        "sf.render.works-conduit-power-junction.mesh.lod0-powered",
+        "sf.render.works-conduit-power-junction.mesh.lod0-service-lid",
+        "sf.render.works-conduit-power-junction.mesh.lod1-merged-material-atlas",
+        "sf.render.works-conduit-power-junction.mesh.lod1-powered",
+        "sf.render.works-conduit-power-junction.mesh.lod1-service-lid",
+        "sf.render.works-conduit-power-junction.root"
+      ]
+    }
+  ]
+}

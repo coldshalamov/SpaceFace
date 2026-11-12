@@ -1,0 +1,267 @@
+{
+  "fixtures": [
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-mid-return.json.gz",
+      "compressedSha256": "3c5e6362083f2a48d8a32ecf3d8ade9b8620f9207e2ac5d1d23a00321a2128cc",
+      "decodedSha256": "b3026e922f4be208925a6da397ddfd6b4170911caa586d4400e9195fde80d3d6",
+      "decodedBytes": 1626869
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-after-second-impact.json.gz",
+      "compressedSha256": "b16c18830bb1ab37390b5074d05a13535dc0c68728b19c0db06fd62ab6c3651a",
+      "decodedSha256": "48b662a6a59eb8257dc0e9915d5f204ab4173b86f57296ba450ff96fc68c62c8",
+      "decodedBytes": 2245318
+    },
+    {
+      "path": "test/fixtures/ceres-reacquire/seed47-head-return-entry.json.gz",
+      "compressedSha256": "933bdaf25b3c7b11b879e26adb6fc5e4efc89bcd721c6f8879ed7f9a698f5a39",
+      "decodedSha256": "3fc84f7c2fbb21410834b4e6eb773badb80bfa3dea504d9c8410987f3a42d097",
+      "decodedBytes": 1525021
+    }
+  ],
+  "results": [
+    {
+      "file": "seed47-mid-return.json",
+      "phases": [
+        {
+          "tick": 12001,
+          "phase": "head_retract"
+        },
+        {
+          "tick": 18746,
+          "phase": "tow_attach"
+        },
+        {
+          "tick": 18747,
+          "phase": "reacquire"
+        },
+        {
+          "tick": 20160,
+          "phase": "extract"
+        }
+      ],
+      "job": {
+        "reacquire": null,
+        "reacquireRetryTick": 18747,
+        "id": "job:ceres:second_measure:long_plate",
+        "worker": "ceres:second_measure:breaker",
+        "section": "world_site_ceres_second_measure/payload/long_plate",
+        "head": "ceres:second_measure:cutter_head",
+        "cradle": "ceres:second_measure:section_cradle",
+        "phase": "extract",
+        "recovery": null,
+        "extractionMisalignedSince": null,
+        "phaseTick": 20160,
+        "updatedTick": 20760,
+        "index": 3,
+        "sequence": 0,
+        "mountId": "att_000005",
+        "towId": "att_000006",
+        "receiverId": null,
+        "reason": null,
+        "blockedReason": null,
+        "restorePending": true,
+        "reacquireBlocker": null
+      },
+      "tick": 20760,
+      "firstExtract": 20160,
+      "originalPlateRetained": true,
+      "plate": {
+        "id": 537,
+        "life": 191,
+        "pos": {
+          "x": -12868,
+          "y": 0,
+          "z": 9794.2958984375
+        },
+        "vel": {
+          "x": -7.797303350676101e-15,
+          "y": 0,
+          "z": -1.0757131576538086
+        },
+        "rot": 1.0635384484203335e-07,
+        "mass": 1800
+      },
+      "plateNative": true,
+      "continuation": null,
+      "evidenceSource": "full-mid.json",
+      "sourceRevisionWarning": "Historical isolated overlay result, not current-master or final WIP acceptance. See WIP status document."
+    },
+    {
+      "file": "seed47-mid-return.json",
+      "phases": [
+        {
+          "tick": 12001,
+          "phase": "head_retract"
+        },
+        {
+          "tick": 18746,
+          "phase": "tow_attach"
+        },
+        {
+          "tick": 18747,
+          "phase": "reacquire"
+        },
+        {
+          "tick": 20166,
+          "phase": "extract"
+        }
+      ],
+      "job": {
+        "reacquire": null,
+        "reacquireRetryTick": 18747,
+        "id": "job:ceres:second_measure:long_plate",
+        "worker": "ceres:second_measure:breaker",
+        "section": "world_site_ceres_second_measure/payload/long_plate",
+        "head": "ceres:second_measure:cutter_head",
+        "cradle": "ceres:second_measure:section_cradle",
+        "phase": "extract",
+        "recovery": null,
+        "extractionMisalignedSince": null,
+        "phaseTick": 20166,
+        "updatedTick": 20766,
+        "index": 3,
+        "sequence": 0,
+        "mountId": "att_000005",
+        "towId": "att_000007",
+        "receiverId": null,
+        "reason": null,
+        "blockedReason": null,
+        "restorePending": true
+      },
+      "tick": 20766,
+      "firstExtract": 20166,
+      "originalPlateRetained": true,
+      "plate": {
+        "id": 578,
+        "life": 318,
+        "pos": {
+          "x": -12868,
+          "y": 0,
+          "z": 9794.29736328125
+        },
+        "vel": {
+          "x": -7.817033289116496e-15,
+          "y": 0,
+          "z": -1.0757101774215698
+        },
+        "rot": 1.0635388036917014e-07,
+        "mass": 1800
+      },
+      "plateNative": true,
+      "continuation": {
+        "tick": 19146,
+        "before": {
+          "id": 537,
+          "life": 191,
+          "pos": {
+            "x": -12868,
+            "y": 0,
+            "z": 9800
+          },
+          "vel": {
+            "x": 1.401298464324817e-45,
+            "y": 0,
+            "z": -0.024324629455804825
+          },
+          "rot": 1.0637584324513249e-07,
+          "mass": 1800,
+          "jobId": "job:ceres:second_measure:long_plate"
+        },
+        "after": {
+          "id": 578,
+          "life": 318,
+          "pos": {
+            "x": -12868,
+            "y": 0,
+            "z": 9800
+          },
+          "vel": {
+            "x": 1.401298464324817e-45,
+            "y": 0,
+            "z": -0.024324629455804825
+          },
+          "rot": 1.0637584324513249e-07,
+          "mass": 1800,
+          "jobId": "job:ceres:second_measure:long_plate"
+        }
+      },
+      "evidenceSource": "full-mid-continue.json",
+      "sourceRevisionWarning": "Historical isolated overlay result, not current-master or final WIP acceptance. See WIP status document."
+    },
+    {
+      "file": "seed47-mid-return.json",
+      "phases": [
+        {
+          "tick": 17827,
+          "phase": "head_retract"
+        },
+        {
+          "tick": 20027,
+          "phase": "tow_attach"
+        },
+        {
+          "tick": 20028,
+          "phase": "reacquire"
+        },
+        {
+          "tick": 99679,
+          "phase": "extract"
+        }
+      ],
+      "job": {
+        "reacquire": null,
+        "reacquireRetryTick": 98278,
+        "id": "job:ceres:second_measure:long_plate",
+        "worker": "ceres:second_measure:breaker",
+        "section": "world_site_ceres_second_measure/payload/long_plate",
+        "head": "ceres:second_measure:cutter_head",
+        "cradle": "ceres:second_measure:section_cradle",
+        "phase": "extract",
+        "recovery": null,
+        "extractionMisalignedSince": null,
+        "phaseTick": 99679,
+        "updatedTick": 100279,
+        "index": 3,
+        "sequence": 0,
+        "mountId": "att_000007",
+        "towId": "att_000008",
+        "receiverId": null,
+        "reason": null,
+        "blockedReason": null,
+        "restorePending": true,
+        "reacquireBlocker": null
+      },
+      "tick": 100279,
+      "firstExtract": 99679,
+      "originalPlateRetained": true,
+      "plate": {
+        "id": 602,
+        "life": 192,
+        "pos": {
+          "x": -12868,
+          "y": 0,
+          "z": 9794.31201171875
+        },
+        "vel": {
+          "x": 1.0054638545364813e-11,
+          "y": 0,
+          "z": -1.0772231817245483
+        },
+        "rot": 2.649320549608123e-07,
+        "mass": 1800
+      },
+      "plateNative": true,
+      "continuation": null,
+      "evidenceSource": "post-second-impact-v2.json",
+      "sourceRevisionWarning": "Historical isolated overlay result, not current-master or final WIP acceptance. See WIP status document."
+    }
+  ],
+  "oldNormalProof": {
+    "sourceClosure": "d31c801413aa63954e561f27678529e22d288aafecef2edd7dca74e157b84dd1",
+    "securedTick": 63698,
+    "continueTick": 63938,
+    "receiptSha256": "3771a29adf61fff4e29cc53aec8c6351078257798e8d4aea378b85a3eeff1946",
+    "warning": "Frozen prior source, not proof of this WIP"
+  }
+}

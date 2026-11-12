@@ -1,0 +1,226 @@
+// Kit presentation builders. Keyboard navigation is scoped to each component root.
+// No global keyboard listener, network request, or gameplay-state mutation occurs here.
+import { cue } from './sound.js';
+
+export function el(tag, className = '', text = '') {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text !== '' && text != null) element.textContent = String(text);
+  return element;
+}
+
+function enabled(element) { return !element.disabled && element.getAttribute('aria-disabled') !== 'true'; }
+function roving(root, elements, { row = false, followLayout = false, onMove } = {}) {
+  // Responsive tab lists switch between a ladder and a row without rebuilding their buttons.
+  // Read their current CSS axis on interaction; no resize listener or observer outlives the list.
+  const horizontal = () => {
+    const view = root.ownerDocument?.defaultView || globalThis;
+    const direction = followLayout && typeof view.getComputedStyle === 'function'
+      ? view.getComputedStyle(root).flexDirection : '';
+    const isRow = direction ? direction.startsWith('row') : row;
+    if (followLayout && root.getAttribute('role') === 'tablist') {
+      root.setAttribute('aria-orientation', isRow ? 'horizontal' : 'vertical');
+    }
+    return isRow;
+  };
+  // Callers add the tablist role and mount the list synchronously after words() returns.
+  if (followLayout && typeof queueMicrotask === 'function') queueMicrotask(horizontal);
+  const items = () => elements().filter(enabled);
+  const focusEntry = preferred => {
+    const all = items();
+    const target = preferred && all.includes(preferred) ? preferred : all[0];
+    for (const item of elements()) item.tabIndex = item === target ? 0 : -1;
+    return target;
+  };
+  focusEntry(items().find(item => item.getAttribute('aria-current') === 'true' || item.getAttribute('aria-selected') === 'true'));
+  root.addEventListener('focusin', event => {
+    horizontal();
+    const item = items().find(candidate => candidate === event.target || candidate.contains(event.target));
+    if (item) focusEntry(item);
+  });
+  root.addEventListener('keydown', event => {
+    const all = items();
+    if (!all.length) return;
+    const index = all.findIndex(item => item === document.activeElement || item.contains(document.activeElement));
+    if (index < 0) return;
+    const keys = horizontal() ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+    let next = index;
+    if (event.key === keys[0]) next = Math.max(0, index - 1);
+    else if (event.key === keys[1]) next = Math.min(all.length - 1, index + 1);
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = all.length - 1;
+    else return;
+    event.preventDefault();
+    if (next !== index) {
+      const target = focusEntry(all[next]);
+      target.focus();
+      // Reveal only keyboard moves. A pointer's focus must not move its key before pointerup.
+      if (followLayout && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      }
+      cue('move'); onMove?.(target);
+    }
+  });
+}
+
+/** Buttons keep native Enter/Space activation. Roving focus has exactly one Tab stop. */
+export function words(items, { row = false, followLayout = false, onPick, onMove, size = 'menu', ariaLabel = 'Actions', system = 'kit' } = {}) {
+  if (!['menu', 'emph', 'body', 'fine'].includes(size)) throw new RangeError('Invalid word size');
+  if (items.filter(item => item.primary).length > 1) throw new Error('A words group has at most one primary action');
+  // `system:'dp'` emits Deckplate classes INSTEAD of the kit's, not alongside them. Alongside would
+  // put `#screens .of-title .k-word` (1,2,0) against `.dp-menu__item` (0,1,0) on every migrated
+  // screen and lose, and a migration that has to win a specificity fight on every rule is a
+  // migration that silently half-lands. A screen opts in once, in its mount, and from then on no
+  // retired sheet can reach it. Precedent for the dual vocabulary: test/map-hud-kit.test.mjs
+  // already accepts `dp-key--primary` where it used to demand `k-word--primary`.
+  // 'dp'    the BENCH variant: a machined target with a lamp rail. Correct on a station.
+  // 'light' the POSTER variant: a word of light, no plate, no rail. Correct where there is no
+  //         hardware in front of the player -- a title, a pause, a menu over the world.
+  // The choice is the screen's WEIGHT (design/frontend/ONE_PHOTOGRAPH.md section 3), not a taste.
+  const lit = system === 'light';
+  const dp = system === 'dp' || lit;
+  // A labelled list of real buttons, not an ARIA menu: the repo's checks, probes and captures reach the
+  // title by getByRole('button', { name }) (Task A choice over the spec's role=menu/menuitem markup).
+  const list = el('ul', lit
+    ? (row ? 'dp-lit dp-lit--fine' : 'dp-lit')
+    : dp ? (row ? 'dp-menu dp-menu--row' : 'dp-menu')
+      : (row ? 'k-words k-words--row' : 'k-words'));
+  list.setAttribute('aria-label', ariaLabel);
+  const buttons = [];
+  let group = null;
+  for (const item of items) {
+    // Deckplate (FRONTEND_PROGRAM Wave 2): optional `group` heads a run of verbs with an etched
+    // legend (a presentation row, never a focus stop), `icon` names a kit glyph drawn as a mask
+    // (no text node, so the verb's label and accessible name are unchanged), and `hint` is the
+    // verb's key, printed by CSS from a data attribute for the same reason.
+    if (item.group && item.group !== group) {
+      const head = el('li', lit ? 'dp-lit__group dp-etch' : dp ? 'dp-menu__group dp-etch' : 'k-words__group', item.group);
+      head.setAttribute('role', 'presentation');
+      list.append(head);
+    }
+    group = item.group || group;
+    const li = el('li');
+    // The run a verb belongs to, so a screen can set a group as a row of keys (layout only).
+    if (group) li.dataset.group = String(group);
+    // `bank`: this verb shares a wrapping row with its neighbours instead of owning one. A pause
+    // list with thirteen verbs does not fit a column at reading size; the four a player reaches for
+    // stay full rows and the reference/media/exit runs bank. Layout only — same button, same name.
+    if (item.bank) li.dataset.bank = '1';
+    // `keycap`: a label that ends in its key, "Mission Log (J)", draws the key as a keycap. The
+    // parentheses stay in the DOM (visually hidden), so textContent and the accessible name are
+    // exactly the label, and every probe that finds the verb by name still finds it.
+    const keyed = item.keycap ? /^(.*\S)\s*\(([^()]{1,12})\)$/.exec(String(item.label)) : null;
+    const cls = lit
+      ? 'dp-lit__item' + (item.primary ? ' dp-lit__item--primary' : '') + (item.danger ? ' dp-lit__item--danger' : '')
+      : dp
+        ? 'dp-menu__item' + (size === 'menu' ? '' : ` dp-menu__item--${size}`)
+          + (item.primary ? ' dp-menu__item--primary' : '') + (item.danger ? ' dp-menu__item--danger' : '')
+        : 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
+          + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : '');
+    const button = el('button', cls, keyed ? '' : item.label);
+    if (keyed) {
+      const cap = el('span', dp ? 'dp-kbd' : 'k-kbd');
+      cap.append(el('span', 'k-kbd__paren', '('), el('span', 'k-kbd__key', keyed[2]), el('span', 'k-kbd__paren', ')'));
+      button.append(el('span', dp ? 'dp-menu__label' : 'k-word__label', `${keyed[1]} `), cap);
+      button.setAttribute('aria-keyshortcuts', keyed[2]);
+    }
+    button.type = 'button'; button.dataset.action = String(item.action);
+    if (item.icon) {
+      button.dataset.icon = String(item.icon);
+      button.style?.setProperty?.('--k-icon', `url("/assets/ui/kit/icons/24/icon-${item.icon}.svg")`);
+    }
+    if (item.hint) button.dataset.hint = String(item.hint);
+    // aria-disabled only (spec §6.5): the word stays clickable so a refused pick can sound `deny`.
+    if (item.disabled) button.setAttribute('aria-disabled', 'true');
+    if (item.current) button.setAttribute('aria-current', 'true');
+    button.addEventListener('click', () => {
+      if (!enabled(button)) { cue('deny'); return; }
+      cue('confirm'); onPick?.(item.action, button);
+    });
+    buttons.push(button); li.append(button);
+    if (item.sub) li.append(el('div', lit ? 'dp-lit__note' : dp ? 'dp-menu__note' : 'k-word-sub', item.sub));
+    list.append(li);
+  }
+  roving(list, () => buttons, { row, followLayout, onMove: button => onMove?.(button.dataset.action, button) });
+  return list;
+}
+
+function choose(root, item) {
+  for (const row of root.querySelectorAll('[aria-selected]')) row.setAttribute('aria-selected', String(row === item));
+}
+function selectable(element, pick) {
+  element.addEventListener('click', pick);
+  element.addEventListener('keydown', event => {
+    if (event.target !== element || !['Enter', ' '].includes(event.key) || event.repeat) return;
+    event.preventDefault(); pick();
+  });
+}
+
+export function rows(items, { cols, onPick, ariaLabel = 'Items' } = {}) {
+  const list = el('ul', 'k-rows');
+  list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', ariaLabel);
+  if (cols) list.style.setProperty('--k-row-cols', cols);
+  const entries = [];
+  for (const [index, item] of items.entries()) {
+    const row = el('li', 'k-row'); row.dataset.id = String(item.id);
+    row.setAttribute('role', 'option');
+    row.setAttribute('aria-selected', String(item.selected === true));
+    row.setAttribute('aria-posinset', String(index + 1)); row.setAttribute('aria-setsize', String(items.length));
+    const name = el('div'); name.append(el('span', 'k-row__name', item.name));
+    if (item.sub) name.append(el('div', 'k-row__sub', item.sub));
+    row.append(name, el('span', 'k-row__num', item.num ?? ''));
+    selectable(row, () => { choose(list, row); cue('confirm'); onPick?.(item.id, row); });
+    entries.push(row); list.append(row);
+  }
+  roving(list, () => entries);
+  return list;
+}
+
+/** A row-selectable grid retains native table geometry and keyboard sorting buttons. */
+export function table({ head, body, onPick, onSort, ariaLabel = 'Register' }) {
+  const wrap = el('div', 'k-table-wrap');
+  const grid = el('table', 'k-table'); grid.setAttribute('role', 'grid'); grid.setAttribute('aria-label', ariaLabel);
+  const thead = el('thead'); const header = el('tr');
+  for (const [index, column] of head.entries()) {
+    const th = el('th', `k-caps${column.num ? ' k-num' : ''}`, column.label); th.scope = 'col';
+    if (onSort) {
+      // Sorting is a header click (§6.3): the header itself carries aria-sort; no button element.
+      th.tabIndex = 0;
+      const sort = () => {
+        const direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+        for (const other of header.children) other.removeAttribute('aria-sort');
+        th.setAttribute('aria-sort', direction); cue('confirm'); onSort(index, direction, tbody);
+      };
+      th.addEventListener('click', sort);
+      th.addEventListener('keydown', (event) => {
+        if (!['Enter', ' '].includes(event.key) || event.repeat) return;
+        event.preventDefault(); sort();
+      });
+    }
+    header.append(th);
+  }
+  thead.append(header); const tbody = el('tbody');
+  for (const item of body) {
+    if (item.cells.length !== head.length) throw new RangeError('Kit table row has the wrong cell count');
+    const row = el('tr'); row.dataset.id = String(item.id); row.setAttribute('aria-selected', String(item.selected === true));
+    item.cells.forEach((text, index) => row.append(el('td', head[index].num ? 'k-num' : index === 0 ? 'k-name' : '', text)));
+    selectable(row, () => { choose(tbody, row); cue('confirm'); onPick?.(item.id, row); });
+    tbody.append(row);
+  }
+  grid.append(thead, tbody); wrap.append(grid);
+  roving(tbody, () => [...tbody.rows]);
+  return wrap;
+}
+
+export function hero(number, word, { size = 'num', signal = false } = {}) {
+  if (!['num', 'title', 'hero'].includes(size)) throw new RangeError('Invalid hero size');
+  const block = el('div', 'k-hero' + (size === 'num' ? '' : ` k-hero--${size}`) + (signal ? ' k-hero--signal' : ''));
+  block.append(el('div', 'k-hero__n', number));
+  if (word) block.append(el('div', 'k-hero__w', word));
+  return block;
+}
+export function title(text, sub) {
+  const header = el('header', 'k-title'); header.append(el('h1', 'k-display k-t-title', text));
+  if (sub) header.append(el('p', 'k-t-emph k-62', sub));
+  return header;
+}

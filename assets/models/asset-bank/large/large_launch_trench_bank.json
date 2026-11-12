@@ -1,0 +1,716 @@
+{
+  "assetId": "large_launch_trench_bank",
+  "category": "large",
+  "description": "launch trench bank",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_large.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Join_A",
+      "position": [
+        -48.0,
+        -4.0,
+        13.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Join_B",
+      "position": [
+        48.0,
+        -4.0,
+        13.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Service",
+      "position": [
+        -16.0,
+        8.75,
+        -19.5
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -4.0,
+          13.0
+        ],
+        "size": [
+          96.0,
+          3,
+          3
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -48.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -36.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -24.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -12.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          12.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          24.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          48.0,
+          2.0,
+          16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          -0.36184144020080566,
+          -0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          2.0,
+          13.0
+        ],
+        "size": [
+          96.0,
+          1,
+          1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -4.0,
+          -13.0
+        ],
+        "size": [
+          96.0,
+          3,
+          3
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -48.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -36.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -24.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -12.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          12.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          24.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          36.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          48.0,
+          2.0,
+          -16.25
+        ],
+        "size": [
+          13.647344063956181,
+          2,
+          2
+        ],
+        "rotation": [
+          0.36184144020080566,
+          0.6075119972229004,
+          0.36184144020080566,
+          0.6075119972229004
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          2.0,
+          -13.0
+        ],
+        "size": [
+          96.0,
+          1,
+          1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -48.0,
+          -6.0,
+          -0.0
+        ],
+        "size": [
+          40.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -6.0,
+          -0.0
+        ],
+        "size": [
+          40.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          48.0,
+          -6.0,
+          -0.0
+        ],
+        "size": [
+          40.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          8.5,
+          -19.5
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -35.0,
+          10.5,
+          -19.5
+        ],
+        "size": [
+          12,
+          3,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -16.0,
+          8.5,
+          -19.5
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "large",
+    "reusable",
+    "Forge",
+    "metre-scale"
+  ],
+  "bounds": {
+    "min": [
+      -49.0,
+      -7.0,
+      -23.5
+    ],
+    "max": [
+      49.0,
+      12.239999771118164,
+      23.5
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "large_launch_trench_bank_lod0.glb",
+      "triangles": 29502,
+      "draws": 7,
+      "bytes": 1721220,
+      "method": "source",
+      "sha256": "451d88ad05ce72e99dcc15045f22c9b3e864c5778e8725affd8f278bf5352ee9"
+    },
+    {
+      "level": 1,
+      "file": "large_launch_trench_bank_lod1.glb",
+      "triangles": 18942,
+      "draws": 6,
+      "bytes": 1179144,
+      "method": "authored-topology",
+      "sha256": "6978e5e526ade8046db59dd394a3701339e7f90c91074a82a76c047a24c3dbef"
+    },
+    {
+      "level": 2,
+      "file": "large_launch_trench_bank_lod2.glb",
+      "triangles": 2380,
+      "draws": 6,
+      "bytes": 416496,
+      "method": "authored-topology",
+      "sha256": "17f20c7ab79f920c3f72a71948eeed3b74530ab32f4f5d584d0920a6cb5c1c80"
+    }
+  ],
+  "materialSlots": [
+    {
+      "name": "Material_Armor",
+      "finish": "paint2",
+      "role": "hull"
+    },
+    {
+      "name": "Material_BrushedMetal",
+      "finish": "bare",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_Hull",
+      "finish": "paint",
+      "role": "hull"
+    },
+    {
+      "name": "Material_Emissive_Warm",
+      "finish": "glow_warm",
+      "role": "signal"
+    },
+    {
+      "name": "Material_Accent",
+      "finish": "stripe",
+      "role": "accent"
+    },
+    {
+      "name": "Material_Mechanical",
+      "finish": "gunmetal",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_MechanicalDark",
+      "finish": "dark",
+      "role": "mechanical"
+    }
+  ],
+  "pivot": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "space": "glTF asset-local metres",
+    "normalization": "none"
+  },
+  "stateCapability": {
+    "type": "static",
+    "motion": "none; assembly visibility states belong to recipe",
+    "damage": "none; no invented destruction rig"
+  },
+  "provenance": {
+    "source": "tools/blender/forge/asset_bank_large.py",
+    "method": "original Forge procedural authored construction; no external model sources",
+    "sourceSHA256": "138252af96a36049fa91ac4f4c39dfcc96f493373757d8cbd5d687c29ba62fcf"
+  }
+}

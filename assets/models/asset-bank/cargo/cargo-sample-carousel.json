@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-sample-carousel",
+  "category": "cargo",
+  "description": "Radial sample-vial carousel with handling spindle",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.3849999904632568,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.949999988079071,
+        0.7424999810755253,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          1.9,
+          1,
+          1.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.949999988079071,
+      0.09999997168779373,
+      -0.949999988079071
+    ],
+    "max": [
+      0.949999988079071,
+      1.3849999904632568,
+      0.949999988079071
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-sample-carousel_lod0.glb",
+      "triangles": 13876,
+      "draws": 5,
+      "bytes": 929008,
+      "method": "source",
+      "sha256": "07effe6851155ae9afdc45a4daf8aa2f0e79c8cb642a52812376e4d22ca17d86"
+    },
+    {
+      "level": 1,
+      "file": "cargo-sample-carousel_lod1.glb",
+      "triangles": 3420,
+      "draws": 5,
+      "bytes": 431952,
+      "method": "authored-topology",
+      "sha256": "8e5a2ce0f236d7d57dd7d4823e0445909768c8d5b42656c6f79e57fda984d51d"
+    },
+    {
+      "level": 2,
+      "file": "cargo-sample-carousel_lod2.glb",
+      "triangles": 1580,
+      "draws": 5,
+      "bytes": 349480,
+      "method": "authored-topology",
+      "sha256": "50cb2de49f6b3a29eb6211d2522e9736d3e73c14701d003da1eeb240c4ad72a0"
+    }
+  ]
+}

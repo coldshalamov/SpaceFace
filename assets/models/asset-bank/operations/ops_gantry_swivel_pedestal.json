@@ -1,0 +1,513 @@
+{
+  "assetId": "ops_gantry_swivel_pedestal",
+  "category": "mechanisms",
+  "description": "gantry swivel pedestal",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "boom",
+      "position": [
+        0.0,
+        2.075,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "gantry_yaw"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          2,
+          0.24,
+          2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.76,
+          0.2525,
+          0.7
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.76,
+          0.28500000000000003,
+          0.7
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.76,
+          0.2525,
+          -0.7
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.76,
+          0.28500000000000003,
+          -0.7
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.76,
+          0.2525,
+          0.7
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.76,
+          0.28500000000000003,
+          0.7
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.76,
+          0.2525,
+          -0.7
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.76,
+          0.28500000000000003,
+          -0.7
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.82,
+          -0.0
+        ],
+        "size": [
+          1.3,
+          1.16,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.51,
+          -0.0
+        ],
+        "size": [
+          1.3,
+          0.2200000000000002,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.85,
+          -0.0
+        ],
+        "size": [
+          1.4,
+          0.45,
+          0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          2.0975,
+          0.26
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          2.13,
+          0.26
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          2.0975,
+          -0.26
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          2.13,
+          -0.26
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          2.0975,
+          0.26
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          2.13,
+          0.26
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          2.0975,
+          -0.26
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          2.13,
+          -0.26
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "gantry_yaw",
+      "pivot": [
+        0.0,
+        1.5,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "gantry_head",
+        "boom_mount_gasket",
+        "boom_mount_lid",
+        "bolt_washer.004",
+        "captive_fastener.004",
+        "bolt_washer.005",
+        "captive_fastener.005",
+        "bolt_washer.006",
+        "captive_fastener.006",
+        "bolt_washer.007",
+        "captive_fastener.007"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.0,
+      0.0,
+      -1.0
+    ],
+    "max": [
+      1.0,
+      2.1500000953674316,
+      1.0
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_gantry_swivel_pedestal_lod0.glb",
+      "triangles": 9192,
+      "draws": 7,
+      "bytes": 703264,
+      "method": "source",
+      "sha256": "d5d9385219a353bcae12fe4d555c8fc155bd177e19dfb22572a9d9b367db2b87"
+    },
+    {
+      "level": 1,
+      "file": "ops_gantry_swivel_pedestal_lod1.glb",
+      "triangles": 832,
+      "draws": 6,
+      "bytes": 281192,
+      "method": "Forge-decimation",
+      "sha256": "ea957120dd9bb38b528b9039de3bf310b9ac866dd7477b9b56654b741afdc68b"
+    },
+    {
+      "level": 2,
+      "file": "ops_gantry_swivel_pedestal_lod2.glb",
+      "triangles": 374,
+      "draws": 6,
+      "bytes": 261776,
+      "method": "Forge-decimation",
+      "sha256": "1b1c935a0f9b4080f42861f046b733be328343dfe12cbf03882ccadca6803c8f"
+    }
+  ]
+}

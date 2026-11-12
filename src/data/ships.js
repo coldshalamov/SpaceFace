@@ -1,0 +1,424 @@
+// src/data/ships.js – 15 canonical player hulls across T0..T5.
+// IDs use ship_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
+// Pure data, no imports.
+//
+// thrusterId + slots.thruster (PQ-176.01, "drive and thruster split"): the DRIVE (the hull's own
+// driveId, scaled by a fitted engine module) owns forward thrust and top speed; the MANOEUVRING
+// THRUSTERS own turn torque, strafe and brake. Every hull ships a stock set that is exactly
+// neutral, so an empty thruster bay flies the hull precisely as it always did; refitting the bay is
+// how "fast but clumsy" and "nimble but slow" become two real builds of the same ship. The thruster
+// bay is the LAST slot in buildSlotList order, so an older save's shorter fittings array still
+// lines up and simply pads to the stock set.
+//
+// designMass (PQ-176.00, "mass is the law"): the operational mass the hull's drive is RATED for —
+// the dry hull plus about seventy percent of its outfit space, which is what a hull carries when
+// it is sensibly fitted and its hold is empty. Acceleration is force over mass, so the derived
+// propulsion profile divides its accelerations by (operational mass / designMass) whenever the
+// ship is heavier than its rating (see MASS_LOAD_LAW in src/systems/ships.js). A hull at or under
+// its rating flies exactly as it always did; a loaded hauler is a pig because it IS one.
+//
+// WEAPON HARDPOINTS (Phase 2): each weapon-slot entry may be a bare size ('S') — defaults to
+// 'front' — OR {size, facing} where facing ∈ 'front'|'left'|'right'|'rear'|'turret'. A fixed
+// hardpoint fires along (nose + facing offset) and gimbal-assists toward the mouse within an arc;
+// 'turret' tracks a target freely within turretArcDeg. Spreading facings across a hull makes
+// loadout position a real strategic choice (front guns vs broadside vs rear coverage).
+//
+// VISUALS (overhaul): each hull now carries a `visuals` block consumed ONLY by the render track
+// (src/render/visualFactory.js). It is pure presentation metadata; gameplay never reads it.
+//   family       — silhouette family the procedural builder draws ('scout'|'fighter'|
+//                  'freighter'|'miner'|'frigate'|'capital'|'multirole'). Replaces the old
+//                  role→silhouette lookup so every hull can own its identity.
+//   proportions  — overall footprint in R-fractions: {length, halfWidth, height} along (X,Z,Y).
+//   tiers[]      — visual tier rows ascending by minTier (the SUM of fitted module tiers).
+//                  Builder picks the highest row whose minTier the loadout meets. `name` is a
+//                  cosmetic label; `hints` are family-specific geometry knobs.
+//   Weapon and engine mounts are the GLB empties (SOCKET_Weapon_*, SOCKET_Engine_*),
+//   read through modelTruth. They are not stored on the hull record.
+//   cockpit/bridge/drill — feature anchors [x,y,z] (null when the hull has none).
+//   cargoRows    — how many stacked cargo-pod rows the freighter/miner profile draws.
+//   sensor       — sensor-mast anchor [x,y,z] for utility antennas/dishes.
+// All literal strings here avoid registered namespace prefixes (ship_/wpn_/…), so the
+// cross-ref integrity check (scripts/check-data-refs.mjs) treats them as plain text.
+
+export const SHIPS = [
+  // ---------- T0 ----------
+  {
+    // Player-facing name is ALWAYS "Hitch". Internal id ship_kestrel is legacy (saves/assets/CI);
+    // never surface "Kestrel" in UI copy — grep player strings for Hitch only.
+    id: 'ship_kestrel', name: 'Hitch', role: 'starter', tier: 0,
+    hull: 140, shield: 55, baseShieldRegen: 7, cargo: 250, mass: 18, handling: 1.05,
+    outfitSpace: 20, weaponCapacity: 4, engineCapacity: 9, designMass: 35,
+    bankFactor: 0.55,   // how aggressively the hull rolls into a turn (0..1.2) — lower = less pin-spin
+    driveId: 'drive_reaction_m',  // baseline vector reaction drive — momentum-conserving, no hidden drag
+    energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,
+    // FB-062 — the home yard keeps the Hitch line on the slip; other yards do not stock the frame.
+    shopOffers: { station_helios: { price: 0, exclusive: true } },
+    // boost: {max, drainRate (while boosting), regenRate (idle), dashImpulse (units), dashCooldown (s)}
+    boost: { max: 200, drainRate: 38, regenRate: 22, dashImpulse: 150, dashCooldown: 2.0 },
+    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['S'], mining: ['S'], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'scout',
+      proportions: { length: 1.72, halfWidth: 0.42, height: 0.43 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.4, finCount: 0, spineRibs: 0 } },
+        { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.7, finCount: 2, spineRibs: 1 } },
+        { minTier: 14, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, finCount: 2, spineRibs: 2 } },
+      ],
+      cockpit: [0.16, 0.16, 0.0], bridge: null,
+      drill: [0.74, 0.0, 0.0], cargoRows: 1, sensor: [-0.18, 0.22, 0.0],
+    },
+  },
+  // ---------- T1 ----------
+  {
+    id: 'ship_pelican', name: 'Pelican', role: 'mining', tier: 1,
+    hull: 180, shield: 60, baseShieldRegen: 8, cargo: 600, mass: 32, handling: 0.8,
+    outfitSpace: 30, weaponCapacity: 4, engineCapacity: 9, designMass: 53,
+    bankFactor: 0.45,
+    driveId: 'drive_reaction_m',  // medium reaction drive — steady miner thrust + RCS
+    energyCap: 110, energyRegen: 16, collisionRadius: 16, price: 15000,
+    // FB-062 — Helios discounts the light starter-adjacent line; every other yard lists book price.
+    shopOffers: { station_helios: { price: 12000 } },
+    boost: { max: 140, drainRate: 44, regenRate: 16, dashImpulse: 80, dashCooldown: 3.0 },  // miners barely boost — sturdy, not nimble
+    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['M'], mining: ['M','M'], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'miner',
+      proportions: { length: 1.72, halfWidth: 0.37, height: 0.54 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, armCount: 2, scoopSize: 0.8 } },
+        { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, armCount: 2, scoopSize: 1.0 } },
+        { minTier: 15, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, armCount: 4, scoopSize: 1.2 } },
+      ],
+      cockpit: [0.30, 0.22, 0.0], bridge: null,
+      drill: [0.70, 0.0, 0.0], cargoRows: 2, sensor: [-0.10, 0.30, 0.0],
+    },
+  },
+  {
+    id: 'ship_wasp', name: 'Wasp', role: 'fighter', tier: 1, requiresTech: 'tech_combat_basics',
+    hull: 150, shield: 110, baseShieldRegen: 10, cargo: 120, mass: 16, handling: 1.4,
+    outfitSpace: 22, weaponCapacity: 7, engineCapacity: 9, designMass: 31,
+    bankFactor: 1.00,
+    driveId: 'drive_reaction_s',  // hot reaction drive — high thrust-to-mass for twitchy combat bursts
+    energyCap: 140, energyRegen: 22, collisionRadius: 14, price: 28000,
+    boost: { max: 220, drainRate: 36, regenRate: 28, dashImpulse: 170, dashCooldown: 1.8 },  // twitchy combat bursts
+    // twin fixed guns: one straight-front, one slightly off for a wider gimbal envelope
+    slots: { weapon: ['S', { size:'S', facing:'front' }], shield: ['M'], engine: ['M'], cargo: [], mining: [], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'fighter',
+      proportions: { length: 1.72, halfWidth: 0.64, height: 0.21 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.4, canard: false, wingSweep: 0.55 } },
+        { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.7, canard: true, wingSweep: 0.60 } },
+        { minTier: 14, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, canard: true, wingSweep: 0.68 } },
+      ],
+      cockpit: [0.22, 0.14, 0.0], bridge: null,
+      drill: null, cargoRows: 0, sensor: [-0.20, 0.20, 0.0],
+    },
+  },
+  {
+    id: 'ship_mule', name: 'Mule', role: 'freighter', tier: 1,
+    hull: 200, shield: 70, baseShieldRegen: 8, cargo: 1500, mass: 55, handling: 0.6,
+    outfitSpace: 30, weaponCapacity: 4, engineCapacity: 9, designMass: 76,
+    bankFactor: 0.35,
+    driveId: 'drive_reaction_l',  // large reaction drive — long burns for the loaded hauler
+    energyCap: 100, energyRegen: 14, collisionRadius: 18, price: 35000,
+    // FB-062 — the hauler lines are Tethys work; a Mule is only built where the freight slips are.
+    shopOffers: { station_tethys: { price: 32000, exclusive: true } },
+    boost: { max: 260, drainRate: 30, regenRate: 30, dashImpulse: 240, dashCooldown: 2.2 },  // strong escape-dash, quick recharge (the archetype)
+    // hauler: a rear-facing gun to discourage pursuit while it runs
+    slots: { weapon: [{ size:'S', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M','M'], mining: [], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'freighter',
+      proportions: { length: 1.72, halfWidth: 0.37, height: 0.35 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, podCols: 1, podRows: 2 } },
+        { minTier: 7, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, podCols: 2, podRows: 2 } },
+        { minTier: 15, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 2, podRows: 3 } },
+      ],
+      cockpit: null, bridge: [0.80, 0.20, 0.0],
+      drill: null, cargoRows: 2, sensor: [-0.30, 0.34, 0.0],
+    },
+  },
+  // ---------- T2 ----------
+  {
+    id: 'ship_drifter', name: 'Drifter', role: 'multirole', tier: 2,
+    hull: 320, shield: 180, baseShieldRegen: 12, cargo: 500, mass: 48, handling: 1.0,
+    outfitSpace: 50, weaponCapacity: 16, engineCapacity: 9, designMass: 83,
+    bankFactor: 0.70,
+    driveId: 'drive_reaction_m',  // medium reaction drive — the all-rounder
+    energyCap: 200, energyRegen: 28, collisionRadius: 18, price: 95000,
+    boost: { max: 220, drainRate: 34, regenRate: 26, dashImpulse: 160, dashCooldown: 2.0 },
+    // multirole: one front + one rear = defend itself coming and going
+    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M'], mining: ['M'], utility: ['M','M'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'multirole',
+      proportions: { length: 1.72, halfWidth: 0.33, height: 0.31 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.5, nacelles: 2, winglets: true } },
+        { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.8, nacelles: 2, winglets: true } },
+        { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, nacelles: 4, winglets: true } },
+      ],
+      cockpit: [0.26, 0.20, 0.0], bridge: null,
+      drill: [0.72, 0.0, 0.0], cargoRows: 2, sensor: [-0.14, 0.30, 0.0],
+    },
+  },
+  {
+    id: 'ship_hornet', name: 'Hornet', role: 'interceptor', tier: 2, requiresTech: 'tech_strike_craft',
+    hull: 260, shield: 240, baseShieldRegen: 16, cargo: 150, mass: 24, handling: 1.7,
+    outfitSpace: 46, weaponCapacity: 24, engineCapacity: 18, designMass: 56,
+    bankFactor: 1.15,
+    driveId: 'drive_gravimetric_s',  // gravimetric field drive — snaps into obedience, bounded envelope for dueling
+    energyCap: 260, energyRegen: 38, collisionRadius: 16, price: 110000,
+    boost: { max: 260, drainRate: 32, regenRate: 32, dashImpulse: 200, dashCooldown: 1.6 },  // best burst+dash in class
+    // interceptor: 2 front + 1 turret for all-aspect coverage on the attack run
+    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M'], engine: ['L'], cargo: [], mining: [], utility: ['S','S'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'fighter',
+      proportions: { length: 1.72, halfWidth: 0.77, height: 0.25 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6, canard: true, wingSweep: 0.70 } },
+        { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, canard: true, wingSweep: 0.78 } },
+        { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, canard: true, wingSweep: 0.85 } },
+      ],
+      cockpit: [0.24, 0.16, 0.0], bridge: null,
+      drill: null, cargoRows: 0, sensor: [-0.24, 0.26, 0.0],
+    },
+  },
+  {
+    id: 'ship_ironback', name: 'Ironback', role: 'mining_barge', tier: 2, requiresTech: 'tech_industrial_mining',
+    hull: 480, shield: 160, baseShieldRegen: 10, cargo: 1400, mass: 90, handling: 0.5,
+    outfitSpace: 96, weaponCapacity: 9, engineCapacity: 9, designMass: 157,
+    bankFactor: 0.30,
+    driveId: 'drive_pulse_plate_m',  // pulse-plate drive — discrete high-impulse burns move the armored barge
+    energyCap: 240, energyRegen: 26, collisionRadius: 24, price: 130000,
+    // FB-062 — Forge fabricates the barge in-house and sells the run at fabrication cost.
+    shopOffers: { station_forge: { price: 104000 } },
+    boost: { max: 120, drainRate: 50, regenRate: 12, dashImpulse: 60, dashCooldown: 4.0 },  // a brick — barely moves, doesn't run
+    // slow barge: a turret so it can swat pests while its drill works
+    slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M','M'], engine: ['M'], cargo: ['M','M','M'], mining: ['L','L','L','L'], utility: ['M','M'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'miner',
+      proportions: { length: 1.72, halfWidth: 0.29, height: 0.33 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, armCount: 2, scoopSize: 1.2 } },
+        { minTier: 9, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, armCount: 4, scoopSize: 1.4 } },
+        { minTier: 18, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, armCount: 6, scoopSize: 1.7 } },
+      ],
+      cockpit: [0.32, 0.34, 0.0], bridge: null,
+      drill: [0.78, 0.0, 0.0], cargoRows: 3, sensor: [-0.20, 0.46, 0.0],
+    },
+  },
+  {
+    id: 'ship_hawser', name: 'Hawser', role: 'tug', tier: 2, requiresTech: 'tech_tractor_systems',
+    hull: 380, shield: 130, baseShieldRegen: 9, cargo: 160, mass: 68, handling: 0.55,
+    outfitSpace: 46, weaponCapacity: 6, engineCapacity: 9, designMass: 100,
+    bankFactor: 0.30,
+    driveId: 'drive_torch_l',  // open-cycle torch — sustained axial force is the job; the yard hull is a drive with a frame
+    energyCap: 220, energyRegen: 24, collisionRadius: 22, price: 118000, // 22 keeps a travel-ceiling tick (18.67 WU) under the 85%-of-radius tunnelling bound shared with the Bastion; the yard hull is the widest small frame (halfWidth 0.68)
+    // FB-062 — the tug is Forge yard stock, priced as a shop build rather than a brokered hull.
+    shopOffers: { station_forge: { price: 94000 } },
+    boost: { max: 160, drainRate: 40, regenRate: 20, dashImpulse: 90, dashCooldown: 3.2 },  // a tug shoves; it does not sprint
+    // working hull: one dorsal ring covers the yard; the deep utility bay is the point
+    slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M'], engine: ['M'], cargo: ['S'], mining: [], utility: ['M','M','M'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'freighter',
+      proportions: { length: 1.72, halfWidth: 0.26, height: 0.38 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, podCols: 1, podRows: 1 } },
+        { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, podCols: 2, podRows: 1 } },
+        { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 2, podRows: 2 } },
+      ],
+      cockpit: null, bridge: [0.68, 0.22, 0.0],
+      drill: null, cargoRows: 1, sensor: [-0.24, 0.36, 0.0],
+    },
+  },
+  // ---------- T3 ----------
+  {
+    id: 'ship_bastion', name: 'Bastion', role: 'corvette', tier: 3, requiresTech: 'tech_warship_license',
+    hull: 640, shield: 460, baseShieldRegen: 18, cargo: 450, mass: 80, handling: 1.1,
+    outfitSpace: 132, weaponCapacity: 72, engineCapacity: 18, designMass: 172,
+    bankFactor: 0.55,
+    driveId: 'drive_gravimetric_m',  // gravimetric vector drive M — FB-059 warship field drive
+    energyCap: 420, energyRegen: 52, collisionRadius: 22, price: 320000,
+    boost: { max: 200, drainRate: 36, regenRate: 30, dashImpulse: 120, dashCooldown: 2.4 },  // warship: steady, not flashy
+    // corvette: 2 front + 1 broadside gun each side
+    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M','M','M'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'frigate',
+      proportions: { length: 1.72, halfWidth: 0.35, height: 0.41 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, broadsideGuns: 1, towerTiers: 1 } },
+        { minTier: 10, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, broadsideGuns: 1, towerTiers: 2 } },
+        { minTier: 20, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 2 } },
+      ],
+      cockpit: null, bridge: [0.30, 0.34, 0.0],
+      drill: null, cargoRows: 1, sensor: [-0.10, 0.52, 0.0],
+    },
+  },
+  {
+    id: 'ship_atlas', name: 'Atlas', role: 'heavy_hauler', tier: 3, requiresTech: 'tech_bulk_logistics',
+    hull: 720, shield: 300, baseShieldRegen: 12, cargo: 3500, mass: 200, handling: 0.45,
+    outfitSpace: 130, weaponCapacity: 18, engineCapacity: 18, designMass: 291,
+    bankFactor: 0.25,
+    driveId: 'drive_reaction_l',  // large reaction drive — the ponderous bulk hauler's long-burn motor
+    energyCap: 360, energyRegen: 40, collisionRadius: 30, price: 380000,
+    // FB-062 — an Atlas is poured on the Tethys freight slips; no other yard builds the class.
+    shopOffers: { station_tethys: { price: 355000, exclusive: true } },
+    boost: { max: 320, drainRate: 26, regenRate: 36, dashImpulse: 320, dashCooldown: 2.0 },  // the escape-king: huge dash, fast recharge, ponderous otherwise
+    // PQ-140.01: keep carrying speed while turning; mass and the real flight solver supply the radius.
+    heavyMotion: { minTurnSpeed: 16, turnStartAngle: 0.60, turnCarryForward: 0.15 },
+    // ponderous hauler: front + rear PD guns — survive, don't win fights
+    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['L','L'], engine: ['L'], cargo: ['L','L','L','L','L','L'], mining: [], utility: ['M','M','M'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'freighter',
+      proportions: { length: 1.72, halfWidth: 0.28, height: 0.33 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.6, podCols: 2, podRows: 3 } },
+        { minTier: 10, name: 'Mk.II', hints: { plating: 'armored', greeble: 0.9, podCols: 3, podRows: 3 } },
+        { minTier: 20, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 3, podRows: 4 } },
+      ],
+      cockpit: null, bridge: [0.84, 0.26, 0.0],
+      drill: null, cargoRows: 3, sensor: [-0.34, 0.44, 0.0],
+    },
+  },
+  {
+    id: 'ship_ranger', name: 'Ranger', role: 'explorer', tier: 3, requiresTech: 'tech_long_range_survey',
+    hull: 480, shield: 380, baseShieldRegen: 16, cargo: 600, mass: 60, handling: 1.3,
+    outfitSpace: 116, weaponCapacity: 24, engineCapacity: 18, designMass: 141,
+    bankFactor: 0.90,
+    driveId: 'drive_field_sail_m',  // magnetoplasma field sail — quiet, efficient long-range cruise for deep survey
+    energyCap: 500, energyRegen: 64, collisionRadius: 18, price: 290000,
+    boost: { max: 280, drainRate: 28, regenRate: 34, dashImpulse: 180, dashCooldown: 1.8 },  // long-endurance cruise boost
+    // explorer: twin front + a turret for self-defense deep in hostile space
+    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M','M'], engine: ['L'], cargo: ['M','M'], mining: [], utility: ['L','L','L','L'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'multirole',
+      proportions: { length: 1.72, halfWidth: 0.37, height: 0.33 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6, nacelles: 2, winglets: true } },
+        { minTier: 9, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, nacelles: 2, winglets: true } },
+        { minTier: 18, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, nacelles: 4, winglets: true } },
+      ],
+      cockpit: [0.28, 0.22, 0.0], bridge: null,
+      drill: null, cargoRows: 1, sensor: [-0.30, 0.40, 0.0],
+    },
+  },
+  // ---------- T4 ----------
+  {
+    id: 'ship_warden', name: 'Warden', role: 'gunship', tier: 4, requiresTech: 'tech_capital_weapons',
+    hull: 1100, shield: 820, baseShieldRegen: 22, cargo: 550, mass: 150, handling: 0.95,
+    outfitSpace: 188, weaponCapacity: 84, engineCapacity: 18, designMass: 282,
+    bankFactor: 0.40,
+    driveId: 'drive_gravimetric_m',  // gravimetric vector drive M — FB-059 gunship heavy field drive
+    energyCap: 720, energyRegen: 84, collisionRadius: 26, price: 384000,
+    boost: { max: 180, drainRate: 40, regenRate: 24, dashImpulse: 90, dashCooldown: 3.0 },  // a wall of guns that advances, doesn't chase
+    // PQ-140.01: a gunship banks through a line change instead of pinning in place.
+    heavyMotion: { minTurnSpeed: 18, turnStartAngle: 0.66, turnCarryForward: 0.13 },
+    // gunship: 2 front heavies + 1 broadside each side = a weapons platform
+    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['L','L','L','L'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'frigate',
+      proportions: { length: 1.72, halfWidth: 0.26, height: 0.45 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.8, broadsideGuns: 1, towerTiers: 2 } },
+        { minTier: 12, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 2 } },
+        { minTier: 24, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, broadsideGuns: 2, towerTiers: 3 } },
+      ],
+      cockpit: null, bridge: [0.34, 0.44, 0.0],
+      drill: null, cargoRows: 1, sensor: [-0.04, 0.64, 0.0],
+    },
+  },
+  {
+    id: 'ship_colossus', name: 'Colossus', role: 'battlecruiser', tier: 4, requiresTech: 'tech_capital_hulls',
+    hull: 1600, shield: 1100, baseShieldRegen: 26, cargo: 1200, mass: 300, handling: 0.7,
+    outfitSpace: 248, weaponCapacity: 108, engineCapacity: 18, designMass: 474,
+    bankFactor: 0.30,
+    driveId: 'drive_torch_xl',  // capital torch drive XL — FB-059 capital battlecruiser torch variant
+    energyCap: 900, energyRegen: 100, collisionRadius: 32, price: 456000,
+    boost: { max: 160, drainRate: 42, regenRate: 22, dashImpulse: 70, dashCooldown: 3.2 },
+    // PQ-140.01: broad turn commitment makes this hull a navigable obstacle, not a turret.
+    heavyMotion: { minTurnSpeed: 20, turnStartAngle: 0.72, turnCarryForward: 0.11 },
+    // battlecruiser: 3 front + broadside batteries both sides
+    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L','L'], engine: ['L'], cargo: ['L','L'], mining: [], utility: ['L','L','L','L','L'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'capital',
+      proportions: { length: 1.72, halfWidth: 0.42, height: 0.39 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.9, towerTiers: 2, finArrays: 1 } },
+        { minTier: 14, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 2 } },
+        { minTier: 28, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 3 } },
+      ],
+      cockpit: null, bridge: [0.40, 0.50, 0.0],
+      drill: null, cargoRows: 2, sensor: [-0.04, 0.74, 0.0],
+    },
+  },
+  // ---------- T5 ----------
+  {
+    id: 'ship_leviathan', name: 'Leviathan', role: 'flagship', tier: 5, requiresTech: 'tech_flagship_command',
+    hull: 3200, shield: 2600, baseShieldRegen: 32, cargo: 2500, mass: 600, handling: 0.6,
+    outfitSpace: 360, weaponCapacity: 150, engineCapacity: 18, designMass: 852,
+    bankFactor: 0.22,
+    driveId: 'drive_torch_xl',  // capital torch drive XL — FB-059 flagship colossal torch motor
+    energyCap: 1600, energyRegen: 160, collisionRadius: 45, price: 720000,
+    boost: { max: 140, drainRate: 46, regenRate: 18, dashImpulse: 50, dashCooldown: 3.6 },
+    // PQ-140.01: the flagship takes the longest line to change and keeps its wake through it.
+    heavyMotion: { minTurnSpeed: 22, turnStartAngle: 0.78, turnCarryForward: 0.09 },
+    // flagship: 3 front + 2 broadside each side — a broadside duel monster
+    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'left' }, { size:'L', facing:'right' }, { size:'L', facing:'right' }], shield: ['L','L','L','L','L'], engine: ['L'], cargo: ['L','L','L'], mining: [], utility: ['L','L','L','L','L','L','L','L'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'capital',
+      proportions: { length: 1.72, halfWidth: 0.47, height: 0.49 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'armored', greeble: 1.0, towerTiers: 3, finArrays: 2 } },
+        { minTier: 16, name: 'Mk.II', hints: { plating: 'armored', greeble: 1.0, towerTiers: 4, finArrays: 3 } },
+        { minTier: 32, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, towerTiers: 4, finArrays: 4 } },
+      ],
+      cockpit: null, bridge: [0.44, 0.58, 0.0],
+      drill: null, cargoRows: 3, sensor: [-0.04, 0.86, 0.0],
+    },
+  },
+  // ---------- EXOTIC ----------
+  {
+    // The saucer (design/FLYING_SAUCER_DESIGN.md): a 520-mass exotic hull on the inertialess
+    // field drive — right-angle turns, stops on a dime, and enough mass to drag what it bumps
+    // or tows like a ragdoll. No heavyMotion: the field never wallows, whatever the load.
+    // SWARM-06: the Adventure research route is retired — the disc is EARNED, at the Zone 3
+    // boss, and the crossover ledger is the only thing a shipyard checks. `swarmEarned` names
+    // the ledger row; the research tree never lists it again.
+    id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, swarmEarned: 'hull:ship_saucer',
+    hull: 2200, shield: 2600, baseShieldRegen: 30, cargo: 120, mass: 520, handling: 2.2,
+    outfitSpace: 240, weaponCapacity: 96, engineCapacity: 18, designMass: 760,
+    bankFactor: 0.10,
+    driveId: 'drive_inertialess_s',  // player uses the native velocity-command drive, never a yaw-rate trick
+    energyCap: 2200, energyRegen: 170, collisionRadius: 19, price: 4200000,
+    boost: { max: 360, drainRate: 22, regenRate: 48, dashImpulse: 400, dashCooldown: 1.4 },  // mega boost: fleet-largest pool, fleet-strongest kick
+    // Two L hardpoints plus a full-turret L mount: the disc fights in any direction it is already
+    // facing — the turret is the saucer's native arc.
+    slots: { weapon: ['L', 'L', { size: 'L', facing: 'turret' }], shield: ['L', 'L', 'L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M', 'M', 'M', 'M'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'capital',
+      proportions: { length: 1.0, halfWidth: 1.0, height: 0.35 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'smooth', greeble: 0.6 } },
+        { minTier: 16, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9 } },
+        { minTier: 32, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0 } },
+      ],
+      cockpit: null, bridge: [0.0, 0.55, 0.0],
+      drill: null, cargoRows: 1, sensor: [0.0, 0.72, 0.0],
+    },
+  },
+];

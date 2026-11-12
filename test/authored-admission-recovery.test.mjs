@@ -1,0 +1,326 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+
+import { admitAuthoredAssetTask } from '../src/render/assetLoader.js';
+import {
+  admissionOwnerInactive,
+  boundaryLiveEntity,
+  AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS,
+  AUTHORED_ADMISSION_RETRY_MAX,
+  markAuthoredBoundaryForReadmission,
+  retryFailedAuthoredAdmission,
+  residencyOptionsForBoundary,
+} from '../src/render/partsLibrary.js';
+import { createOpeningLoadingAdmission } from '../src/render/pipelineReadiness.js';
+import { assertCompleteAppearanceAdmission } from '../src/render/renderer.js';
+import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
+
+import { vfx } from '../src/render/vfx.js';
+
+function freshRuntime() {
+  return { assets: new Map(), failures: new Map(), retiring: false };
+}
+
+test('required loading admission tracks its timeout retry until the same owner is ready', async () => {
+  const previousWindow = globalThis.window;
+  const entity = { id: 1, type: 'ship', alive: true };
+  const boundary = new THREE.Group(), authored = new THREE.Group();
+  let releaseYield;
+  const yielding = new Promise((resolve) => { releaseYield = resolve; });
+  let calls = 0, tracks = 0;
+  const cohort = createOpeningLoadingAdmission({ entities: [entity], isRequired: () => true });
+  const state = { mode: 'loading', render: {
+    renderer: {}, admissionRunGeneration: 1,
+    isRequiredOpeningEntity: () => true,
+    trackOpeningLoadingWork: (_entity, promise) => { tracks++; return cohort.track(promise); },
+    yieldToNextPresent: () => yielding,
+    compileObjectPipelines: async (root, options) => {
+      assert.equal(root, authored);
+      assert.equal(options.openingRequired, true);
+      if (++calls === 1) assertCompleteAppearanceAdmission([{ readinessTimedOut: true }]);
+      return { skipped: false };
+    },
+  } };
+  globalThis.window = { SF: { state } };
+  try {
+    const options = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    const pending = options.prepareAuthoredPipelines(authored);
+    const drain = cohort.drain();
+    let settled = false;
+    drain.then(() => { settled = true; });
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(calls, 1);
+    assert.equal(settled, false);
+    assert.equal(tracks, 1, 'the outer attempt chain is tracked once');
+    releaseYield();
+    assert.deepEqual(await pending, { skipped: false });
+    await drain;
+    assert.equal(calls, 2);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('a loading timeout does not retry a replaced owner or an unrelated failure', async () => {
+  const previousWindow = globalThis.window;
+  const entity = { id: 1, type: 'ship', alive: true };
+  const boundary = new THREE.Group();
+  let releaseYield, calls = 0;
+  const yielding = new Promise((resolve) => { releaseYield = resolve; });
+  const state = { mode: 'loading', render: {
+    renderer: {}, admissionRunGeneration: 1,
+    isRequiredOpeningEntity: () => true,
+    yieldToNextPresent: () => yielding,
+    compileObjectPipelines: async () => {
+      calls++;
+      assertCompleteAppearanceAdmission({ readinessTimedOut: true });
+    },
+  } };
+  globalThis.window = { SF: { state } };
+  try {
+    const options = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    const pending = options.prepareAuthoredPipelines(new THREE.Group());
+    const rejected = assert.rejects(pending, { name: 'AbortError' });
+    await Promise.resolve(); await Promise.resolve();
+    state.render.admissionRunGeneration++;
+    releaseYield();
+    await rejected;
+    assert.equal(calls, 1);
+    state.render.compileObjectPipelines = async () => { calls++; throw new Error('compile broke'); };
+    const next = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    await assert.rejects(next.prepareAuthoredPipelines(new THREE.Group()), /compile broke/);
+    assert.equal(calls, 2);
+    calls = 0;
+    state.render.compileObjectPipelines = async () => {
+      calls++;
+      assertCompleteAppearanceAdmission({ readinessTimedOut: true });
+    };
+    const capped = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    await assert.rejects(capped.prepareAuthoredPipelines(new THREE.Group()), { code: 'SF_PIPELINE_READINESS_TIMEOUT' });
+    assert.equal(calls, AUTHORED_ADMISSION_RETRY_MAX);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('captured admission cannot resolve a recycled id into another native owner', () => {
+  const previousWindow = globalThis.window;
+  const old = { id: 343, type: 'ship', occupantGeneration: 1, alive: false };
+  const next = { id: 343, type: 'ship', occupantGeneration: 2, alive: true };
+  const boundary = new THREE.Group();
+  Object.assign(boundary.userData, { presentationEntityId: 343,
+    presentationEntityType: 'ship', presentationOccupantGeneration: 1 });
+  globalThis.window = { SF: { state: { entities: new Map([[343, next]]) } } };
+  try {
+    assert.strictEqual(boundaryLiveEntity(boundary, old), old);
+    assert.equal(admissionOwnerInactive({}, boundaryLiveEntity(boundary, old)), true);
+    assert.equal(next.presentationAdmission, undefined, 'the successor receives no stale verdict');
+    boundary.userData.presentationOccupantGeneration = 2; // Explicit renderer restore bind.
+    assert.strictEqual(boundaryLiveEntity(boundary, old), next);
+    next.type = 'asteroid';
+    assert.strictEqual(boundaryLiveEntity(boundary, old), old,
+      'a type-changing slot cannot borrow the captured ship callback');
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('a settled-null authored task evicts itself so the next request refetches', async () => {
+  const runtime = freshRuntime();
+  let calls = 0;
+  const first = admitAuthoredAssetTask(runtime, 'u::s', () => {
+    calls++;
+    runtime.failures.set('u::s', new Error('transient fetch'));
+    return Promise.resolve(null);
+  });
+  assert.equal(await first, null);
+  assert.equal(runtime.assets.has('u::s'), false,
+    'a failed task must not stay cached — it would resolve null for every later owner');
+
+  const second = admitAuthoredAssetTask(runtime, 'u::s', () => {
+    calls++;
+    return Promise.resolve({ ok: true });
+  });
+  assert.deepEqual(await second, { ok: true });
+  assert.equal(calls, 2, 'the re-request runs a fresh task instead of inheriting the miss');
+  assert.equal(runtime.assets.get('u::s'), second, 'a successful task stays cached');
+  assert.equal(runtime.failures.has('u::s'), false,
+    'a healed key clears its recorded failure diagnostic');
+});
+
+test('a late-settling stale task cannot evict a newer admission under the same key', async () => {
+  const runtime = freshRuntime();
+  let resolveA;
+  const a = admitAuthoredAssetTask(runtime, 'k::*', () => new Promise((resolve) => {
+    resolveA = resolve;
+  }));
+  await Promise.resolve(); // admit defers the factory one microtask so retirement owns it first
+  runtime.assets.delete('k::*'); // invalidation re-admits under the same key
+  const b = admitAuthoredAssetTask(runtime, 'k::*', () => Promise.resolve('fresh'));
+  resolveA(null);
+  await a;
+  await Promise.resolve();
+  assert.equal(runtime.assets.get('k::*'), b,
+    'only the exact cached task may evict itself — a stale miss must not erase a re-admission');
+});
+
+function failedBoundary(status) {
+  const boundary = new THREE.Group();
+  boundary.userData.authoredAssetState = status;
+  boundary.userData.authoredVisualRoot = 'none-build-failed';
+  boundary.userData.authoredUpgradePromise = Promise.resolve({ status });
+  return boundary;
+}
+
+test('an invisible terminal admission rearms once per backoff window', () => {
+  const boundary = failedBoundary('unavailable');
+  assert.equal(retryFailedAuthoredAdmission(boundary, 1000), true);
+  assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
+  assert.equal(boundary.userData.authoredUpgradePromise, undefined,
+    'the settled promise must clear or requestAuthoredUpgrade would replay it verbatim');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1);
+
+  boundary.userData.authoredAssetState = 'unavailable';
+  assert.equal(retryFailedAuthoredAdmission(boundary, 1500), false,
+    'inside the backoff window the boundary stays terminal');
+  assert.equal(
+    retryFailedAuthoredAdmission(boundary, 1000 + AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS + 1),
+    true,
+    'after the window the poll rearms it for another attempt',
+  );
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 2);
+});
+
+test('a "must be retained" instance throw classifies as the owner-lifecycle race, not unavailability', () => {
+  // D72: place admission lost the boundary-owner retain between load and instancing, and the
+  // "must be retained before creating a flight instance" guard landed the boundary at
+  // 'unavailable' — an invisible Helios trade hub for the whole bounded retry window. The throw
+  // is the owner-inactive race one step downstream; a live boundary must re-request, not strand.
+  const live = { alive: true };
+  assert.equal(admissionOwnerInactive({}, live,
+    new Error('Render package sf.render.helios-trade-hub must be retained before creating a flight instance.')), true);
+  assert.equal(admissionOwnerInactive({}, live,
+    new Error('Render package sf.render.kestrel must be retained before creating an instance.')), true);
+  assert.equal(admissionOwnerInactive({}, live,
+    new Error('Render package sf.render.kestrel could not retain flight instance residency.')), false,
+    'a retain-refusal is a different verdict — it stays a real failure');
+  assert.equal(admissionOwnerInactive({}, live, new Error('geometry exploded')), false);
+});
+
+test('admission retries are bounded and never churn a visible fallback', () => {
+  const boundary = failedBoundary('unavailable');
+  let t = 0;
+  for (let i = 0; i < AUTHORED_ADMISSION_RETRY_MAX; i++) {
+    assert.equal(retryFailedAuthoredAdmission(boundary, t), true, `attempt ${i + 1}`);
+    boundary.userData.authoredAssetState = 'unavailable';
+    t += AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS * (2 ** i) + 1;
+  }
+  assert.equal(retryFailedAuthoredAdmission(boundary, t + 1e9), false,
+    'after the cap the verdict stays terminal — a missing asset is not a spinner');
+
+  const readable = failedBoundary('fallback-after-error');
+  readable.userData.authoredReadableFallbackRetained = true;
+  assert.equal(retryFailedAuthoredAdmission(readable, 0), false,
+    'a procedural hull already on screen is never swapped in late by the retry path');
+
+  const authored = failedBoundary('authored');
+  assert.equal(retryFailedAuthoredAdmission(authored, 0), false);
+});
+
+test('a lifecycle readmission starts a new episode with a fresh retry budget', () => {
+  const boundary = failedBoundary('unavailable');
+  let t = 0;
+  for (let i = 0; i < AUTHORED_ADMISSION_RETRY_MAX; i++) {
+    assert.equal(retryFailedAuthoredAdmission(boundary, t), true, `attempt ${i + 1}`);
+    boundary.userData.authoredAssetState = 'unavailable';
+    t += AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS * (2 ** i) + 1;
+  }
+  assert.equal(retryFailedAuthoredAdmission(boundary, t + 1e9), false,
+    'the spent episode stays terminal — a missing asset is not a spinner');
+
+  // An owner-inactive recook re-arms the same boundary for a NEW episode: the next failure
+  // verdict must get the designed bounded budget again instead of inheriting the spent one.
+  markAuthoredBoundaryForReadmission(boundary, 'owner-inactive');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, undefined);
+  assert.equal(boundary.userData.authoredAdmissionNextRetryAt, undefined);
+
+  boundary.userData.authoredAssetState = 'unavailable';
+  assert.equal(retryFailedAuthoredAdmission(boundary, t + 2e9), true,
+    'the post-readmission failure retries instead of stranding the entity invisible');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1);
+});
+
+test('the retry re-arm keeps its own count so the per-episode cap still bounds churn', () => {
+  const boundary = failedBoundary('unavailable');
+  assert.equal(retryFailedAuthoredAdmission(boundary, 1000), true);
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1,
+    'a transient-admission-retry mark must not refund the attempt it just spent');
+  assert.equal(boundary.userData.authoredReadmissionReason, 'transient-admission-retry');
+});
+
+test('a pending authored boundary with a resolving marker still submits', () => {
+  assert.equal(shouldSubmitEntityMesh({ authoredPending: true }), false,
+    'a pending root with no placeholder stays out of bloomScene');
+  assert.equal(shouldSubmitEntityMesh({ authoredPending: true, resolvingMarker: true }), true,
+    'the shared-material marker carries no compile brick, so a pending contact stays visible');
+  assert.equal(shouldSubmitEntityMesh({ authoredPending: true, resolvingMarker: true, isPlayer: true }), true);
+});
+
+const DT = 1 / 60;
+
+function plumeFleetStub() {
+  return {
+    findShip: () => ({
+      alive: true, isPlayer: true, socketCount: 1, entityId: 1, profileId: 'p',
+      driveState: { plumeDrive: 1, boostBlend: 0 },
+      sockets: [{}],
+    }),
+    familyPlume: () => ({
+      eventLights: { updateMain: () => ({ lights: [{}] }) },
+      pool: { _presentation: { eventLightScale: 1 } },
+    }),
+  };
+}
+
+function plumePlayer(visualRoot) {
+  return {
+    id: 1, type: 'ship', alive: true,
+    view: { root: { userData: { authoredVisualRoot: visualRoot } } },
+  };
+}
+
+test('the player plume event light only runs while a hull is published', () => {
+  let released = 0;
+  const fake = {
+    _energy: { fleet: plumeFleetStub() },
+    _releasePlayerPlumeEventLight() { released++; },
+    _upsertPlayerPlumeEventLight: (light) => !!light,
+  };
+  // Pending and failed admissions publish no hull — the light must not burn at the entity pose.
+  for (const root of ['none-pending-admission', 'none-build-failed']) {
+    assert.equal(vfx._syncPlayerPlumeEventLight.call(fake, plumePlayer(root)), false, root);
+  }
+  assert.equal(released, 2, 'each unpublished frame releases the pooled light slot');
+  // A committed hull drives the light normally.
+  assert.equal(vfx._syncPlayerPlumeEventLight.call(fake, plumePlayer('authored-root')), true);
+  assert.equal(released, 2, 'a published hull is not gated off');
+});
+
+
+
+test('a clockless retry (swarm warm re-kick) shares the poll clock, so the backoff holds', (t) => {
+  // Mid-session clock: far past one backoff window from t=0.
+  t.mock.method(performance, 'now', () => 1e6);
+  const boundary = failedBoundary('unavailable');
+  // Re-kick path passes no clock.
+  assert.equal(retryFailedAuthoredAdmission(boundary), true);
+  boundary.userData.authoredAssetState = 'unavailable';
+  // The residency poll a frame later passes performance.now(); it must still be inside the window.
+  assert.equal(retryFailedAuthoredAdmission(boundary, 1e6 + 300), false,
+    'a clockless stamp near t=0 let every later poll bypass the backoff');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1);
+});

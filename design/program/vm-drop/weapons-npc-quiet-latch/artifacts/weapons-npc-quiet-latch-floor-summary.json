@@ -1,0 +1,38 @@
+{
+  "name": "weapons-npc-quiet-latch-floor",
+  "floors": [
+    {
+      "run": 1,
+      "medianSpeedup": 2.5489902482966813,
+      "minSpeedup": 2.201901692395029,
+      "dirtyWakeOk": true
+    },
+    {
+      "run": 2,
+      "medianSpeedup": 2.511007849577701,
+      "minSpeedup": 2.406237247075691,
+      "dirtyWakeOk": true
+    },
+    {
+      "run": 3,
+      "medianSpeedup": 2.56109969006651,
+      "minSpeedup": 2.1332199266452596,
+      "dirtyWakeOk": true
+    },
+    {
+      "run": 4,
+      "medianSpeedup": 2.55997072338546,
+      "minSpeedup": 2.081729390349374,
+      "dirtyWakeOk": true
+    },
+    {
+      "run": 5,
+      "medianSpeedup": 2.498764224137945,
+      "minSpeedup": 2.0977972817844948,
+      "dirtyWakeOk": true
+    }
+  ],
+  "medianOfMedians": 2.5489902482966813,
+  "floorMin": 2.081729390349374,
+  "allDirtyWakeOk": true
+}

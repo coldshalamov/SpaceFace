@@ -1,0 +1,40 @@
+{
+ "schema": "spaceface.uiGenerated.v1",
+ "screen": "help",
+ "purpose": "Produced art for the Help screen (src/ui/orrery/helpRig.js, helpInstruments.js): the steer ghost rims, hero renders for hulls the shared set lacks, and the six asteroid types for the ore mix.",
+ "classification": "project-original",
+ "sets": {
+  "rim": {
+   "files": [
+    "rim/ship_kestrel.rim.webp",
+    "rim/ship_pelican.rim.webp",
+    "rim/ship_wasp.rim.webp",
+    "rim/ship_hornet.rim.webp"
+   ],
+   "how": "tools/art/help_hull_rims.cjs: each hull top render's alpha (assets/ui/renders/hulls/*.top.webp), median-cleaned, minus its 3px erosion, as an ice core over a soft bloom; lossless webp, 1024x1024, the render's own frame.",
+   "date": "2026-09-27"
+  },
+  "hulls": {
+   "files": [
+    "hulls/ship_mule.hero.webp",
+    "hulls/ship_drifter.hero.webp",
+    "hulls/ship_hawser.hero.webp",
+    "hulls/ship_ranger.hero.webp"
+   ],
+   "how": "tools/art/render_hull.py (Blender 5.1 Cycles, hero view, 1600x900, 32 samples) on the game's own GLBs (src/render/partsLibrary.js WHOLE_SHIP map: mule/drifter/ranger _production_v1, hawser = yard_tug); resized to 1200x675. The atlas/bastion/ironback/warden/colossus/leviathan GLBs carry runtime-only textures and render blank in Blender, so Help keeps their class numeral.",
+   "date": "2026-09-27"
+  },
+  "rocks": {
+   "files": [
+    "rocks/rock_common.webp",
+    "rocks/rock_metallic.webp",
+    "rocks/rock_icy.webp",
+    "rocks/rock_crystalline.webp",
+    "rocks/rock_gas.webp",
+    "rocks/rock_exotic.webp"
+   ],
+   "how": "tools/art/render_rock_type.py on the authored place_asteroid_rock_a/b/c and _seamed GLBs, dressed after the belt palette in src/render/visualFactory.js AST_TYPE (the gas cloud is a Cycles volume); 768 -> 640 webp.",
+   "date": "2026-09-27"
+  }
+ }
+}

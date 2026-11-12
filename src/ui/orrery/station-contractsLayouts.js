@@ -1,0 +1,85 @@
+// ORRERY composition for the station's Missions (contracts) tab (design/frontend/ORRERY.md §6
+// Station — Contracts). The tab's shared grammar (the rail, the Hand, the commit verb, the
+// dossier's ledger) lives in stationTabsLayouts.js; this sheet owns only what is this screen's
+// own: the reading column's last line. The commit word rests IN FLOW under the terms it binds —
+// never a pinned band over them (the legacy `#screens .sx-dossier__foot { position: sticky;
+// bottom: 0; background: … }` in styles/orbital.css over-painted COLLATERAL / FOLLOW-UP whenever
+// the stage shortened, which the ui-bench measured as buried rows). A static foot cannot overlap
+// its own reading at any frame of the arrival, and an offer too tall for the stage scrolls
+// honestly instead of hiding under the key.
+import { injectOrrery } from './tokens.js';
+
+const STYLE_ID = 'sf-orrery-station-contracts';
+const T = 'html body #screens > .sx-berth.orr-station';
+// the same warm bone the station tabs' grammar is drawn with (stationTabsLayouts.js)
+const BONE = '236 230 216';
+// one class deeper than stationTabsLayouts.js selectors, so same-property overrides win ties
+const TAB = `${T} .k-panel.sx-ct`;
+// the same tab in a desktop window (a phone's mobile sheet owns its own one-scroll column)
+const DTAB = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .k-panel.sx-ct';
+
+const CSS = `
+/* ui-polish-402: the contract dossier wears the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded), the factions reading's grammar (ui-polish-401). The shade-pool ::before that
+   stationTabsLayouts.js paints under the dossier stands down. One class deeper than that sheet
+   (.k-panel.sx-ct .sx-dossier) so the override wins without editing it. Densify radius 8→6 and the
+   padding tightens on short stages, where the dossier is its own scroll column. */
+${TAB} .sx-dossier {
+  box-sizing:border-box !important; isolation:isolate;
+  background:rgb(${BONE} / .025) !important; border:1px solid rgb(${BONE} / .18) !important;
+  border-radius:10px; box-shadow:none !important; padding:16px 18px !important;
+  /* the card stands off the stage frame's right edge instead of doubling its hairline */
+  margin-right:14px !important; }
+${TAB} .sx-dossier::before { content:none !important; display:none !important; }
+@media (max-height:820px) { ${TAB} .sx-dossier { border-radius:8px; } }
+@media (max-width:820px) { ${TAB} .sx-dossier { border-radius:8px; } }
+@media (max-height:400px) { ${TAB} .sx-dossier { border-radius:6px; } }
+@media (max-height:600px) { ${TAB} .sx-dossier { padding:12px 14px !important; } }
+@media (max-height:540px) { ${TAB} .sx-dossier { padding:6px 8px !important; margin-right:6px !important; } }
+/* a phone's one-scroll sheet: the card keeps its width so the title holds one line and ACCEPT its first-paint seat */
+@media (max-width:650px) { ${TAB} .sx-dossier { padding:8px 8px 10px !important; margin-right:0 !important; } }
+/* the commit under its terms: in flow, unplated, nothing over-paints the reading */
+${TAB} .sx-dossier__foot { position: static !important; bottom: auto !important; background: none !important;
+  z-index: auto !important; padding-block: 0 !important; }
+/* A short, mid-width berth leaves too little width for the dossier's two columns.
+   Keep the reading and its final action in one independently scrolling column. */
+@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+  ${DTAB} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:none !important; grid-auto-rows:max-content !important; row-gap:0 !important;
+    overflow-x:hidden !important; overflow-y:auto !important; }
+  ${DTAB} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; order:0 !important; width:auto !important; }
+  ${DTAB} .sx-dossier > .sx-dossier__foot { margin:8px 0 0 !important; }
+  ${DTAB} .sx-dossier__terms > li { grid-template-columns:max-content minmax(0, 1fr) !important; }
+  ${DTAB} .sx-dossier__terms > li > .k-62 { overflow-wrap:normal !important; }
+}
+/* short desktop stages (1080/900 with the arrival notice band mounted): the reading, verb last,
+   keeps its air above the stage's foot — margins the shell's band media did not close */
+@media (min-width:1101px) and (min-height:801px) and (max-height:1140px) {
+  ${TAB} .orr-ct-scales { margin-top: 8px !important; }
+  ${TAB} .sx-dossier__terms > li { padding: 5px 0 !important; }
+  ${TAB} .sx-dossier__foot { margin-top: 12px !important; }
+}
+/* a narrow desktop window 601–660 tall (420×601) leaves the board 66px: the 22px ladder gap under POSTED HERE and the 16px
+   fade left the only job row in view half-faded. The gap closes to 4px and the fade to 6px, so that row reads whole */
+@media (max-width:480px) and (min-height:601px) and (max-height:660px) {
+  ${DTAB} .sx-ct__hang > .sx-ct__board { padding-top: 4px !important; }
+  ${DTAB} .sx-ct__hang { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent) !important;
+    mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent) !important; }
+}
+/* the consequence scales' unpainted parts (the svg carries classes only, no colour literals):
+   the risk band is the bone track under the lit stretch; the blade is bone, threat-red at the
+   high stops — red stays threat only (ORRERY.md §3.3) */
+${TAB} .orr-ct-scale__band { stroke: rgb(${BONE} / .27); }
+${TAB} .orr-ct-scale__blade rect { fill: rgb(248 244 234); }
+${TAB} .orr-ct-scale__blade.is-high rect { fill: var(--dp-danger, #ff5038); }
+`;
+
+export function injectOrreryStationContracts(doc = globalThis.document) {
+  if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
+  injectOrrery(doc);
+  if (doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}

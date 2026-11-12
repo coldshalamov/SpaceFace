@@ -1,0 +1,204 @@
+{
+  "schema": "spaceface.exactSourceEvidence.v1",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "shipId": "massline_express_liner_v1",
+  "cycle": 36,
+  "lod": 2,
+  "source": "assets/ships/massline_express_liner_v1/source/wholeships/massline_express_liner_v1_lod2.glb",
+  "sourceSha256": "B201060C52819F9F0B2A9416A8FE4915E41D19D2263BFE32EF76E221D141CA50",
+  "renderer": "assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py+tools/blender/spaceface_chase_camera.py",
+  "cameraContract": {
+    "module": "tools/blender/spaceface_chase_camera.py",
+    "fov_v_deg": 50,
+    "tilt_deg": 60,
+    "play_chase": {
+      "distance": 144,
+      "heading_deg": 0
+    },
+    "play_chase_abeam": {
+      "distance": 144,
+      "heading_deg": 90
+    },
+    "play_chase_close": {
+      "distance": 58,
+      "heading_deg": 0
+    },
+    "clay_play_chase": {
+      "distance": 144,
+      "heading_deg": 0,
+      "material": "neutral_clay"
+    },
+    "grazing_close": {
+      "kind": "diagnostic",
+      "lens_mm": 32
+    },
+    "drive_rear": {
+      "kind": "diagnostic",
+      "lens_mm": 55
+    },
+    "diagnostics": [
+      "id_or_material_id.png",
+      "orm_isolation.png",
+      "normal_isolation.png"
+    ],
+    "authoredBandAndTransitions": {
+      "lod_band_play_chase.png": {
+        "distance": 480,
+        "heading_deg": 0,
+        "purpose": "LOD2 authored-band default"
+      },
+      "lod_band_play_chase_abeam.png": {
+        "distance": 480,
+        "heading_deg": 90,
+        "purpose": "LOD2 authored-band abeam"
+      },
+      "transition_far_lod2.png": {
+        "distance": 439.5,
+        "heading_deg": 0,
+        "purpose": "LOD2 side of LOD1/LOD2 transition"
+      }
+    }
+  },
+  "boundsSizeM": [
+    40.27,
+    18.96,
+    11.105
+  ],
+  "lengthToBeam": 2.1239,
+  "occupancy": {
+    "play_chase": {
+      "minX": 0.41469,
+      "maxX": 0.58658,
+      "minY": 0.4339,
+      "maxY": 0.57356,
+      "widthFrac": 0.17189,
+      "heightFrac": 0.13966,
+      "widthPx1600": 275,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_abeam": {
+      "minX": 0.45833,
+      "maxX": 0.54167,
+      "minY": 0.35715,
+      "maxY": 0.62722,
+      "widthFrac": 0.08335,
+      "heightFrac": 0.27007,
+      "widthPx1600": 133.4,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_close": {
+      "minX": 0.28453,
+      "maxX": 0.72378,
+      "minY": 0.3287,
+      "maxY": 0.67961,
+      "widthFrac": 0.43926,
+      "heightFrac": 0.35092,
+      "widthPx1600": 702.8,
+      "cropped": false,
+      "band": [
+        0.19862068965517243,
+        0.5462068965517242
+      ],
+      "inBand": true
+    }
+  },
+  "occupancyFailures": [],
+  "authoredBandEvidence": {
+    "lod_band_play_chase.png": {
+      "minX": 0.47461,
+      "maxX": 0.5255,
+      "minY": 0.48056,
+      "maxY": 0.52224,
+      "widthFrac": 0.05089,
+      "heightFrac": 0.04169,
+      "widthPx1600": 81.4,
+      "cropped": false,
+      "distance": 480,
+      "headingDeg": 0,
+      "purpose": "LOD2 authored-band default",
+      "authoredBandPx1600": [
+        0,
+        90
+      ],
+      "inAuthoredBand": true
+    },
+    "lod_band_play_chase_abeam.png": {
+      "minX": 0.48792,
+      "maxX": 0.51208,
+      "minY": 0.45894,
+      "maxY": 0.53978,
+      "widthFrac": 0.02417,
+      "heightFrac": 0.08085,
+      "widthPx1600": 38.7,
+      "cropped": false,
+      "distance": 480,
+      "headingDeg": 90,
+      "purpose": "LOD2 authored-band abeam",
+      "authoredBandPx1600": [
+        0,
+        90
+      ],
+      "inAuthoredBand": true
+    },
+    "transition_far_lod2.png": {
+      "minX": 0.47226,
+      "maxX": 0.52787,
+      "minY": 0.47875,
+      "maxY": 0.52429,
+      "widthFrac": 0.0556,
+      "heightFrac": 0.04554,
+      "widthPx1600": 89,
+      "cropped": false,
+      "distance": 439.5,
+      "headingDeg": 0,
+      "purpose": "LOD2 side of LOD1/LOD2 transition",
+      "authoredBandPx1600": [
+        0,
+        90
+      ],
+      "inAuthoredBand": true
+    }
+  },
+  "views": [
+    "play_chase.png",
+    "play_chase_abeam.png",
+    "play_chase_close.png",
+    "clay_play_chase.png",
+    "grazing_close.png",
+    "drive_rear.png",
+    "orm_isolation.png",
+    "normal_isolation.png",
+    "id_or_material_id.png",
+    "lod_band_play_chase.png",
+    "lod_band_play_chase_abeam.png",
+    "transition_far_lod2.png"
+  ],
+  "stillSha256": {
+    "clay_play_chase.png": "7AE2F40D3A16BBC8B8AFD00E72C79C6CD6B2206C2FA6E29753827BC90CAB91CD",
+    "drive_rear.png": "65A2D0A3D37FB372C6E0958A397680556006796E714E755DA7628CE68B365A36",
+    "grazing_close.png": "C9BF38CDCE03AABFE665B6747E662C7E0A83D68E813225DA74C4892D2224C9F6",
+    "id_or_material_id.png": "2BCAAF8C672B93874E5708C666D6DC7772D50B716DB9D913C1746379D0ED8D56",
+    "lod_band_play_chase.png": "5C0351549D5B821B3530C963AF5A48C4F89FCA215ED1DCF53C85E940E7463E86",
+    "lod_band_play_chase_abeam.png": "A72ED421BB76FB5D1EA7936F23EDD1D0EB47E1754223A6B8FF77201E28B87F1A",
+    "normal_isolation.png": "8EA7FEF69E995560506EEA0BD107F45B063ED5905066AB30D813149EACAC48A3",
+    "orm_isolation.png": "78A2893D329B8883A4013CFCEED6BADE92D28AA6A9BFDB35DC356A35884D9A90",
+    "play_chase.png": "ED9886795ABF3D0B381B74A36FA909960DCD48DD57CC94B8B42D3237876D17A1",
+    "play_chase_abeam.png": "E8E57F7A034CF914F9540F2E94A0A0A13317E952F4E67ACFB26FCD8DBDEA8BF9",
+    "play_chase_close.png": "49322263C4A1DCFA0CE8E27A4D7054B4D71024B730791CA7295FB229561AD557",
+    "transition_far_lod2.png": "174B29918EB1EE6F15B026DE81E7EF4523234F95CA38EDB166FD01A1F9FE028B"
+  },
+  "producer": "build_massline_express_liner_v1.py",
+  "verdict": "keep",
+  "gateState": "evidence_ready",
+  "producerSha256": "AFBE1558FEAAD95ABD9DC421A23D636B3884C1E2A9B415F32B07E428BFF5CC94"
+}

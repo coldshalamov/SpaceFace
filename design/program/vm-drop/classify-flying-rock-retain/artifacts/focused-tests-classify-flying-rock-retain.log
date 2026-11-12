@@ -1,0 +1,120 @@
+TAP version 13
+# Subtest: early quiet latch arms after frame-retain on parked disc
+ok 1 - early quiet latch arms after frame-retain on parked disc
+  ---
+  duration_ms: 6.97304
+  ...
+# Subtest: early quiet latch skips visit work while keys hold
+ok 2 - early quiet latch skips visit work while keys hold
+  ---
+  duration_ms: 1.129721
+  ...
+# Subtest: player move wakes early quiet latch
+ok 3 - player move wakes early quiet latch
+  ---
+  duration_ms: 1.555052
+  ...
+# Subtest: membership bump wakes early quiet latch
+ok 4 - membership bump wakes early quiet latch
+  ---
+  duration_ms: 1.115394
+  ...
+# Subtest: mining pin intent wakes early quiet latch
+ok 5 - mining pin intent wakes early quiet latch
+  ---
+  duration_ms: 2.039423
+  ...
+# Subtest: bench toggle disables early quiet latch
+ok 6 - bench toggle disables early quiet latch
+  ---
+  duration_ms: 0.78944
+  ...
+# Subtest: flying player never early-latches
+ok 7 - flying player never early-latches
+  ---
+  duration_ms: 1.683652
+  ...
+# Subtest: rock pose jump wakes early quiet latch
+ok 8 - rock pose jump wakes early quiet latch
+  ---
+  duration_ms: 0.696651
+  ...
+# Subtest: flying retain arms after warm flying ticks
+ok 9 - flying retain arms after warm flying ticks
+  ---
+  duration_ms: 7.931005
+  ...
+# Subtest: bench toggle OFF forces every-tick classify visits while flying
+ok 10 - bench toggle OFF forces every-tick classify visits while flying
+  ---
+  duration_ms: 1.903459
+  ...
+# Subtest: flying retain wakes on rock pose jump
+ok 11 - flying retain wakes on rock pose jump
+  ---
+  duration_ms: 2.485468
+  ...
+# Subtest: flying retain wakes on mining pin fact
+ok 12 - flying retain wakes on mining pin fact
+  ---
+  duration_ms: 1.038724
+  ...
+# Subtest: flying retain does not keep stale glass when player leaves the ring
+ok 13 - flying retain does not keep stale glass when player leaves the ring
+  ---
+  duration_ms: 69.462779
+  ...
+# Subtest: frame quiet retain keeps glass/runway and reports frame-retain mode
+ok 14 - frame quiet retain keeps glass/runway and reports frame-retain mode
+  ---
+  duration_ms: 6.647852
+  ...
+# Subtest: frame quiet retain wakes on rock pose change
+ok 15 - frame quiet retain wakes on rock pose change
+  ---
+  duration_ms: 1.316386
+  ...
+# Subtest: frame quiet retain wakes on player speed
+ok 16 - frame quiet retain wakes on player speed
+  ---
+  duration_ms: 1.546684
+  ...
+# Subtest: frame quiet retain wakes on mining pinFacts
+ok 17 - frame quiet retain wakes on mining pinFacts
+  ---
+  duration_ms: 0.98906
+  ...
+# Subtest: bench toggle off restores per-entity \#127 path
+ok 18 - bench toggle off restores per-entity \#127 path
+  ---
+  duration_ms: 0.62729
+  ...
+# Subtest: rock-visit quiet retain republishes glass/runway on parked ticks
+ok 19 - rock-visit quiet retain republishes glass/runway on parked ticks
+  ---
+  duration_ms: 7.383774
+  ...
+# Subtest: rock-visit quiet retain wakes on rock pose change
+ok 20 - rock-visit quiet retain wakes on rock pose change
+  ---
+  duration_ms: 1.478434
+  ...
+# Subtest: rock-visit quiet retain wakes on player speed
+ok 21 - rock-visit quiet retain wakes on player speed
+  ---
+  duration_ms: 2.07746
+  ...
+# Subtest: rock-visit quiet retain wakes on mining pin fact
+ok 22 - rock-visit quiet retain wakes on mining pin fact
+  ---
+  duration_ms: 0.929087
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 260.461551

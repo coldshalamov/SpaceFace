@@ -1,0 +1,231 @@
+From f5823df5fcf2ad116597f360f3f89b553fffd776 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 13:09:39 -0400
+Subject: [PATCH] =?UTF-8?q?perf(law):=20quiet-latch=20empty=20customs=20sc?=
+ =?UTF-8?q?an-cones=20census=20(~3.5=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet flight still walked every job-interactable for customsScanConeOf
+when no scanners and no jettisoned pods existed. Latch skips the census
+until membership, a live scanner/pod, or 0.5 s rescan. Soft-GPU fps not
+claimed.
+---
+ src/systems/lawSecurity.js                    |  57 +++++++++-
+ test/customs-cones-empty-quiet-latch.test.mjs | 107 ++++++++++++++++++
+ 2 files changed, 163 insertions(+), 1 deletion(-)
+ create mode 100644 test/customs-cones-empty-quiet-latch.test.mjs
+
+diff --git a/src/systems/lawSecurity.js b/src/systems/lawSecurity.js
+index 338198243..3e0a47f68 100644
+--- a/src/systems/lawSecurity.js
++++ b/src/systems/lawSecurity.js
+@@ -59,6 +59,7 @@ import { scaleBySector } from '../data/sectorPhysical.js';
+ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+ import {
+   collectLivingWorldActors,
++  entityIndexVersion,
+   findLivingWorldActor,
+   forEachExplicitWitnessMarker,
+   forEachJobInteractable,
+@@ -68,6 +69,26 @@ import {
+ } from '../world/livingWorldViews.js';
+ 
+ export const LAW_SECURITY_VERSION = 2;
++
++/** Bench A/B: production default ON. Quiet latch skips job-interactable cone census
++ * when no customs scanners and no jettisoned cargo pods remain. Soft-GPU fps not claimed. */
++let CUSTOMS_CONES_EMPTY_QUIET_LATCH = true;
++export function setCustomsConesEmptyQuietLatchForBench(enabled) {
++  CUSTOMS_CONES_EMPTY_QUIET_LATCH = enabled !== false;
++}
++export function getCustomsConesEmptyQuietLatchForBench() {
++  return CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS = 30;
++
++function publishCustomsConesQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
++  rt.customsConesQuietLatched = !!latched;
++}
++
+ export const AMBIENT_TOLL_VALUE_FLOOR = 120;
+ 
+ /** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
+@@ -155,6 +176,7 @@ export const lawSecurity = {
+     this._coneScratchPods = [];
+     this._coneScratchOccluders = [];
+     this._coneScratchScanners = [];
++    this._customsConesQuiet = null;
+     this._nextInspectionTick = 0;
+     this._inspectionRebindPasses = 0;
+     ensureState(this.state);
+@@ -2258,6 +2280,25 @@ export const lawSecurity = {
+   _updateCustomsScanCones(dt, state) {
+     const step = Number(dt);
+     if (!(step > 0) || !state) return;
++    // Quiet Ceres / open flight: no customs scanners and no jettisoned pods still paid a
++    // full forEachJobInteractable census (shipLike+stations+wrecks+payloads+pickups) calling
++    // customsScanConeOf every tick. Latch when both bags stay empty; wake on membership,
++    // a live scanner/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Different angle from
++    // held env-machinery far / hazards far / sampleProjectileEvidence surface-cadence.
++    if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const tick = state.tick | 0;
++      const quiet = this._customsConesQuiet;
++      if (quiet
++        && membership != null
++        && quiet.membership === membership
++        && ((tick - (quiet.armedTick | 0)) < CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS)) {
++        publishCustomsConesQuiet(state, true);
++        return;
++      }
++    } else if (this._customsConesQuiet) {
++      this._customsConesQuiet = null;
++    }
+     const pods = this._coneScratchPods;
+     const occluders = this._coneScratchOccluders;
+     const scanners = this._coneScratchScanners;
+@@ -2270,7 +2311,21 @@ export const lawSecurity = {
+       if (customsScanConeOf(entity)) scanners.push(entity);
+       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
+     });
+-    if (scanners.length === 0 || pods.length === 0) return;
++    if (scanners.length === 0 || pods.length === 0) {
++      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
++        const membership = entityIndexVersion(state);
++        if (membership != null && scanners.length === 0 && pods.length === 0) {
++          this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
++          publishCustomsConesQuiet(state, true);
++        } else {
++          this._customsConesQuiet = null;
++          publishCustomsConesQuiet(state, false);
++        }
++      }
++      return;
++    }
++    this._customsConesQuiet = null;
++    publishCustomsConesQuiet(state, false);
+ 
+     const dwell = this._podConeDwell || (this._podConeDwell = new Map());
+     for (let s = 0; s < scanners.length; s++) {
+diff --git a/test/customs-cones-empty-quiet-latch.test.mjs b/test/customs-cones-empty-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..2d41d6a26
+--- /dev/null
++++ b/test/customs-cones-empty-quiet-latch.test.mjs
+@@ -0,0 +1,107 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  lawSecurity,
++  setCustomsConesEmptyQuietLatchForBench,
++  getCustomsConesEmptyQuietLatchForBench,
++  customsScanConeOf,
++} from '../src/systems/lawSecurity.js';
++
++function boot() {
++  const state = createGameState(1451);
++  state.mode = 'flight';
++  state.tick = 0;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  const ships = [player];
++  for (let i = 0; i < 12; i++) {
++    ships.push(helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 80 + i * 15, z: 40 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 1,
++      data: { ai: { passive: true } },
++    }));
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.stations = [];
++    state.entityIndex.wrecks = [];
++    state.entityIndex.payloads = [];
++    state.entityIndex.pickups = [];
++    state.entityIndex.version = 1;
++  }
++  lawSecurity.init({ state, bus, helpers, registry: null });
++  return { state, helpers };
++}
++
++test('customs cones empty quiet latch arms and skips census', () => {
++  assert.equal(getCustomsConesEmptyQuietLatchForBench(), true);
++  const { state } = boot();
++  setCustomsConesEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    lawSecurity.update(1 / 60, state);
++  }
++  assert.equal(state.lawSecurityRuntime?.customsConesQuietLatched, true);
++  assert.ok(lawSecurity._customsConesQuiet);
++  const membership = lawSecurity._customsConesQuiet.membership;
++  for (let i = 0; i < 10; i++) {
++    state.tick++;
++    lawSecurity.update(1 / 60, state);
++  }
++  assert.equal(state.lawSecurityRuntime?.customsConesQuietLatched, true);
++  assert.equal(lawSecurity._customsConesQuiet.membership, membership);
++});
++
++test('customs cones empty quiet latch wakes on customs scanner spawn', () => {
++  const { state, helpers } = boot();
++  setCustomsConesEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    lawSecurity.update(1 / 60, state);
++  }
++  assert.equal(state.lawSecurityRuntime?.customsConesQuietLatched, true);
++  const scanner = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 40, z: 40 },
++    vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 2,
++    data: { customsScanner: true, role: 'customs', defId: 'customs_cutter' },
++  });
++  state.entityIndex.ships.push(scanner);
++  state.entityIndex.shipLike.push(scanner);
++  state.entityIndex.version++;
++  state.tick++;
++  lawSecurity.update(1 / 60, state);
++  assert.equal(state.lawSecurityRuntime?.customsConesQuietLatched, false);
++  assert.ok(customsScanConeOf(scanner));
++});
++
++test('customs cones empty quiet latch bench toggle restores census', () => {
++  const { state } = boot();
++  setCustomsConesEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 3; i++) {
++    state.tick++;
++    lawSecurity.update(1 / 60, state);
++  }
++  assert.equal(state.lawSecurityRuntime?.customsConesQuietLatched, true);
++  setCustomsConesEmptyQuietLatchForBench(false);
++  state.tick++;
++  lawSecurity.update(1 / 60, state);
++  assert.equal(getCustomsConesEmptyQuietLatchForBench(), false);
++  // Re-enable for other tests
++  setCustomsConesEmptyQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

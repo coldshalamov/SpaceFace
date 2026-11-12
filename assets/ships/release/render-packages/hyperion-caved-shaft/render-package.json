@@ -1,0 +1,375 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.hyperion-caved-shaft",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "66fece1febf0f46d8ebc63423b2c67f9c13ab2a1d0974ca0ae70e541dbbacf20",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.3200390601158506,
+          1
+        ],
+        "min": [
+          -1,
+          -0.00003906726840796626,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39c63ee176383e24804666e5fa6028d51601fc1825c39931cde8c9c9afdb5b0e",
+      "id": "sf.render.hyperion-caved-shaft.mesh.cavedshaftrim.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "de224258b67f926022b7d5f3281001db6f03407383bbaad42bc09c483de92b69",
+      "materialPipelineKey": "opaque",
+      "meshName": "CavedShaftRim",
+      "nodeId": "sf.render.hyperion-caved-shaft.mesh.cavedshaftrim",
+      "primitiveIndex": 0,
+      "vertexCount": 437
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1299999952316284,
+          0.25003143304431247,
+          0.04500259433051841
+        ],
+        "min": [
+          -0.33000001311302185,
+          0.18996856457150174,
+          -0.04500259433051841
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6dd9afab9142afe179db2fcdf6275d208cba086223c24747e9bd208aaadf1b47",
+      "id": "sf.render.hyperion-caved-shaft.mesh.fallenboremast.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "0ada1c502a884549e343d96c45161b25a498134ddfb826b08800051855d43ce8",
+      "materialPipelineKey": "opaque",
+      "meshName": "FallenBoreMast",
+      "nodeId": "sf.render.hyperion-caved-shaft.mesh.fallenboremast",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0ada1c502a884549e343d96c45161b25a498134ddfb826b08800051855d43ce8",
+      "id": "material:0ada1c502a884549e343d96c",
+      "name": "FallenMast",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "de224258b67f926022b7d5f3281001db6f03407383bbaad42bc09c483de92b69",
+      "id": "material:de224258b67f926022b7d5f3",
+      "name": "ShaftRim",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hyperion-caved-shaft.mesh.cavedshaftrim",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.1599999964237213,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "CavedShaftRim",
+      "nodeName": "CavedShaftRim",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hyperion-caved-shaft.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hyperion-caved-shaft.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.1599999964237213,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hyperion-caved-shaft.mesh.fallenboremast",
+      "localTransform": [
+        0.7300000041723251,
+        0,
+        0,
+        0,
+        0,
+        0.7300000041723251,
+        0,
+        0,
+        0,
+        0,
+        0.7300000041723251,
+        0,
+        0.3999999910593033,
+        0.2199999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "FallenBoreMast",
+      "nodeName": "FallenBoreMast",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hyperion-caved-shaft.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hyperion-caved-shaft.body",
+      "worldTransform": [
+        0.7300000041723251,
+        0,
+        0,
+        0,
+        0,
+        0.7300000041723251,
+        0,
+        0,
+        0,
+        0,
+        0.7300000041723251,
+        0,
+        0.3999999910593033,
+        0.2199999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hyperion-caved-shaft.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_hyperion_caved_shaft",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hyperion-caved-shaft.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "1ee5bd8734e6702fe4721b44bf43eb4b6744173b501b2679d66232c946075b9d"
+    },
+    "sourceGlb": {
+      "bytes": 20440,
+      "sha256": "2f9a9fcacb2606e92cf0b5d6a8c726e95f77ab40aa93a5ab9c22bc149e9d82b7",
+      "uri": "place_hyperion_caved_shaft.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 7004,
+    "sha256": "d5aea06a9cb28366484a5ca8b6aea755eec8d8e057577ab0776578421f57fcaa",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.06499999761581421,
+        0.1599999964237213,
+        0
+      ],
+      "max": [
+        1.1299999952316284,
+        0.3200390601158506,
+        1
+      ],
+      "min": [
+        -1,
+        -0.00003906726840796626,
+        -1
+      ],
+      "size": [
+        2.1299999952316284,
+        0.32007812738425856,
+        2
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "accent"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 4,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.1599999964237213,
+          0,
+          1
+        ],
+        "name": "CavedShaftRim",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7300000041723251,
+          0,
+          0,
+          0,
+          0,
+          0.7300000041723251,
+          0,
+          0,
+          0,
+          0,
+          0.7300000041723251,
+          0,
+          0.3999999910593033,
+          0.2199999988079071,
+          0,
+          1
+        ],
+        "name": "FallenBoreMast",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_hyperion_caved_shaft.glb"
+  },
+  "runtimeHash": "98386c3e5300caf9b7a69f506e0feb4ed303c411b58fd3f47d9a8e140c9f2576",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.1299999952316284,
+          0.3200390601158506,
+          1
+        ],
+        "min": [
+          -1,
+          -0.00003906726840796626,
+          -1
+        ]
+      },
+      "id": "sf.render.hyperion-caved-shaft.body",
+      "nodeIds": [
+        "sf.render.hyperion-caved-shaft.mesh.cavedshaftrim",
+        "sf.render.hyperion-caved-shaft.mesh.fallenboremast",
+        "sf.render.hyperion-caved-shaft.root"
+      ]
+    }
+  ]
+}

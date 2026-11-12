@@ -1,0 +1,24 @@
+# Ripgrep/search defaults: source and active plans stay visible; bulky evidence and stale policy do not.
+.campaign/
+.devshots/
+build/
+dist/
+terminals/
+agent-tools/
+advisor-artifacts/
+scratch/
+.tmp*/
+.grok-scratch/
+.zcode/
+.serena/
+design/_ARCHIVE/
+design/revamp/_history/
+design/production/
+design/graphics-sprints/
+design/depth-program/research/
+design/program/roadmap/receipts/
+docs/handoffs/
+skills/
+assets/**/evidence/
+assets/**/revamp-evidence/
+assets/**/source/reference/

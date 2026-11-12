@@ -1,0 +1,1237 @@
+// Collision proxy manifests — data-driven compound planar collision proxies (PQ-008 / SF-08 → F18).
+//
+// Today every station/wreck body is a single ColliderDesc.ball unrelated to the visible mesh, so
+// ships fly through station arms and docking means entering a forgiving radius. A manifest maps a
+// station/wreck visual identity to a bounded set of 2D primitives (circle / capsule / oriented box /
+// chain-of-circles) that the physics authority registers ONCE as a compound static collider set at
+// entity creation — never per-frame mesh rebuilds. Chain-of-circles approximates long thin slabs
+// (station rings) while leaving REAL navigable gaps; that concession is explicitly sanctioned by the
+// corrected build plan (STEP 7).
+//
+// Sim-only: planar XZ, no Three.js, no GLB parsing, no ambient randomness. All geometry is authored
+// in normalized station-local units (1.0 = the entity's reference radius, `dockRadius` for stations)
+// and scaled at registration. The authored `footprint` constants are the silhouette anchors the
+// contract test measures against (a coarse Hausdorff-style bound), so proxy/visual alignment is
+// provable without touching renderer-lease paths.
+//
+// Flag contract (binding): proxy primitives are collision-only. They are never renderable, never
+// independently targetable, and never radar-visible. The station entity itself keeps its existing
+// render/target/radar behavior.
+//
+// Docking: manifests may carry a `docking` block — an exterior corridor volume with speed/heading
+// gates feeding a capture volume that applies a bounded PD capture assist toward the berth. The
+// dockingCorridor system consumes it through the physics-command membrane (queuePhysicsImpulse);
+// it never teleports, never writes velocity directly, and never seizes control (player input always
+// blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
+
+import { ceresWorkfleetSlide, ceresWorkfleetSlideRole, poseCeresWorkfleetPrimitive } from './ceresWorkfleetArticulation.js';
+import {
+  modelTruthPlanarRadius,
+  modelTruthProxyManifest,
+  modelTruthProxyRowForEntity,
+  modelTruthSkinHull,
+  modelTruthSkinPolygon,
+} from './modelTruth.js';
+import { isDynamicPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
+import { PHYSICS_MATERIALS } from './physicsMaterials.js';
+import { foundryFurnitureProxy } from './foundryFurniture.js';
+
+export const COLLISION_PROXY_SCHEMA_VERSION = 1;
+
+/** Binding flag contract for every proxy primitive (STEP 7). */
+export const COLLISION_PROXY_FLAGS = Object.freeze({
+  collides: true,
+  renderable: false,
+  targetable: false,
+  radarVisible: false,
+});
+
+/** Bounded compound size: a manifest may never exceed this many expanded primitives. */
+export const MAX_PROXY_PRIMITIVES = 32;
+
+/** Primitive kinds the physics authority knows how to register. */
+export const COLLISION_PROXY_KINDS = Object.freeze(['circle', 'capsule', 'obb', 'chain']);
+
+const DEG = Math.PI / 180;
+
+// -----------------------------------------------------------------------------------------------
+// Helios trade hub — the authored proof station.
+//
+// Visual anchors (src/render/visualFactory.js buildStation, R = dockRadius = 90 wu for size L):
+//   core cylinder       radius ~0.46R
+//   4 docking spars     boxes at cardinal bearings, radial span ~0.20R–0.90R, half-width ~0.08R
+//   flat ring (ring1)   torus at 0.80R, tube half-width ~0.06R
+//   tilted ring (ring2) torus at 0.62R tilted 0.6 rad (planar projection ellipse ~0.62R × 0.51R),
+//                       tube half-width ~0.05R
+// The tilted ring crosses the gameplay plane along one diameter; it is proxied as a projected
+// ellipse chain, same sanctioned slab concession as the flat ring.
+//
+// The docking corridor faces the sector-origin approach. Stations sit on the procedural ring around
+// the sector origin, so world.js stamps `data.corridorBearingDeg` (station-local degrees, snapped
+// to the nearest inter-spar lane) at spawn; the manifest default below is only a fallback for
+// fixtures that declare the proxy without a stamped bearing.
+// -----------------------------------------------------------------------------------------------
+
+const HELIOS_SPAR_ANGLES = Object.freeze([0, 90, 180, 270]);
+// Inter-spar lanes: the only bearings where a corridor can reach the core deck without crossing a
+// spar. The effective corridor bearing is always snapped to one of these.
+const HELIOS_CORRIDOR_SNAP_ANGLES = Object.freeze([45, 135, 225, 315]);
+
+function sparCapsules() {
+  return HELIOS_SPAR_ANGLES.map((deg) => {
+    const a = deg * DEG;
+    return {
+      kind: 'capsule',
+      id: `spar-${deg}`,
+      ax: Math.cos(a) * 0.20,
+      az: Math.sin(a) * 0.20,
+      bx: Math.cos(a) * 0.88,
+      bz: Math.sin(a) * 0.88,
+      r: 0.075,
+    };
+  });
+}
+
+// Every non-gate station renders through the same procedural silhouette (buildStation in
+// visualFactory): greebled core cylinder, two flat-ish rings, four cardinal docking spars.
+// The Helios normalized footprint IS that silhouette, so the same compound proxy serves every
+// station at any dockRadius. station_ring_hub is the shared rollout manifest; Helios keeps its
+// authored id for pinning continuity.
+function ringHubManifest(id, stationIds) {
+  return Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id,
+    // Station ids this manifest may be declared for (world wiring + fixtures).
+    stationIds: Object.freeze(stationIds),
+    flags: COLLISION_PROXY_FLAGS,
+    // Normalized coordinates scale by entity.data.dockRadius (fall back to entity.radius).
+    referenceRadius: 'dockRadius',
+    // Authored silhouette anchors for the Hausdorff-style contract test (normalized units).
+    footprint: Object.freeze({
+      coreRadius: 0.46,
+      spar: Object.freeze({ inner: 0.20, outer: 0.88, halfWidth: 0.08, angles: HELIOS_SPAR_ANGLES }),
+      ring1: Object.freeze({ radius: 0.80, tubeHalfWidth: 0.06 }),
+      ring2: Object.freeze({ radius: 0.62, minorRadius: 0.51, tubeHalfWidth: 0.05 }),
+    }),
+    // Declared coarse silhouette bound (normalized). The contract test MEASURES the real bound
+    // (footprint↔proxy, declared gaps excluded) and asserts it never exceeds this value.
+    silhouetteBound: 0.24,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'circle', id: 'core', x: 0, z: 0, r: 0.46 }),
+      ...sparCapsules().map((p) => Object.freeze(p)),
+      // Flat ring as chain-of-circles. The gap sector sits at the EFFECTIVE corridor bearing
+      // (resolved at expansion), leaving one deliberate navigable opening into the core deck.
+      Object.freeze({
+        kind: 'chain', id: 'ring1', radius: 0.80, circleR: 0.055, count: 16,
+        gap: Object.freeze({ at: 'corridor', halfWidthDeg: 25 }),
+      }),
+      // Tilted ring projected onto the plane (ellipse), same slab concession. Its corridor gap is
+      // wider: the tilted torus rises out of the gameplay plane away from its crossing diameter,
+      // so the visual mass near the corridor bearing is genuinely off-plane.
+      Object.freeze({
+        kind: 'chain', id: 'ring2', radius: 0.62, minorRadius: 0.51, circleR: 0.05, count: 8,
+        gap: Object.freeze({ at: 'corridor', halfWidthDeg: 60 }),
+      }),
+    ]),
+    docking: Object.freeze({
+      // Fallback only — world.js stamps data.corridorBearingDeg for live spawns.
+      corridorBearingDeg: 135,
+      corridorSnapAnglesDeg: HELIOS_CORRIDOR_SNAP_ANGLES,
+      corridor: Object.freeze({
+        halfWidthDeg: 22,          // corridor sector half-angle at the mouth
+        mouthRadius: 1.35,         // outer corridor gate (normalized)
+        speedGate: 55,             // wu/s max entry speed
+        headingGateDeg: 42,        // inbound heading tolerance vs corridor axis
+      }),
+      capture: Object.freeze({
+        // Lane from the berth outward along the corridor axis; a ship inside the lane, slow
+        // enough, and roughly inbound (or nearly stationary) gets the bounded assist.
+        outerRadius: 1.20,         // normalized; covers the autopilot arrival disc (≤ 1.0)
+        halfWidth: 0.42,           // normalized lateral half-width of the capture lane
+        speedGate: 26,             // wu/s
+      }),
+      berth: Object.freeze({
+        // Open deck between ring2 and ring1 on the corridor lane. A ship of radius ~0.16R (14 wu
+        // at R=90) berthed here clears the core surface (0.46R) and every proxy primitive.
+        radius: 0.72,              // normalized station-local berth distance (open deck)
+        // Live PQ-024 pair 2 reached a solver-resting 18.878 WU from this point before the nearby
+        // compound proxy expelled it. Keep two WU of contact tolerance so a physically settled
+        // radius-14 player can receive the public dock prompt before contact response wins.
+        dockRadius: 20,            // wu: dock:range requires berth proximity within this
+        speedGate: 12,             // wu/s at the berth
+      }),
+      assist: Object.freeze({
+        kp: 0.9,                   // PD proportional gain (1/s²)
+        kd: 2.2,                   // PD derivative gain (1/s) — overdamped, no ricochet
+        maxAccel: 26,              // wu/s² hard bound — a fraction of player thrust authority
+        inputBlend: 0.75,          // assist fades by inputMag*inputBlend; player always blends
+      }),
+      // SF-130 — the berth is a pocket bounded by the station's own proxy surfaces. A hull
+      // whose planar envelope cannot clear that pocket by `hullMarginWu` may not take the
+      // deck berth at all: it moors at a standoff on the corridor axis — outermost structure
+      // + hull envelope + `standoffWu` — where the same dock gate fires the dock:range
+      // prompt. Clearance and standoff are measured against the resolved primitives (the
+      // measured skin when adopted, the authored silhouette otherwise), so the route
+      // consequence comes from real collision truth on both sides: bigger hulls lose tight
+      // berths; they never lose docking.
+      mooring: Object.freeze({
+        hullMarginWu: 2,           // berth pocket fit margin (wu) — clearance minus this
+        standoffWu: 4,             // mooring anchor distance off the outermost structure (wu)
+      }),
+    }),
+  });
+}
+
+export const COLLISION_PROXY_MANIFESTS = Object.freeze({
+  helios_trade_hub: ringHubManifest('helios_trade_hub', ['station_helios']),
+  // Shared silhouette proxy for every procedural station — declared by world.js for any station
+  // id without a more specific manifest. Same primitives + corridor docking as the Helios proof.
+  station_ring_hub: ringHubManifest('station_ring_hub', []),
+
+  // ---------------------------------------------------------------------------
+  // Jump gate / wormhole throat (buildGate in visualFactory, R = dockRadius 70/80):
+  //   vertical hull torus — in the ship plane it reads as a BAR perpendicular to the approach
+  //   axis: two tube cross-sections at ±0.90R (tube half-width 0.14R), a power-core hub at
+  //   −0.28R behind the portal face, and a genuinely OPEN throat between the tubes (~1.5R wide).
+  //   The previous single ball sat dead-center in that opening — an invisible wall across the
+  //   one place a pilot is meant to fly through. Pylon caps live at |y|≈0.64R (off-plane) so
+  //   they take no proxy.
+  //
+  // `frame: 'approach'` rotates all primitives by the entity's stamped corridorBearingDeg —
+  // world.js stamps the bearing toward the sector origin (the direction the portal faces), so
+  // +X in manifest space is always the fly-through axis.
+  // ---------------------------------------------------------------------------
+  gate_jump_ring: Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id: 'gate_jump_ring',
+    stationIds: Object.freeze([]),
+    flags: COLLISION_PROXY_FLAGS,
+    referenceRadius: 'dockRadius',
+    frame: 'approach',
+    // Fallback when no bearing is stamped: bar perpendicular to +X (opening along ±X).
+    frameBearingDeg: 0,
+    footprint: Object.freeze({
+      tube: Object.freeze({ offset: 0.90, halfWidth: 0.15 }),
+      hub: Object.freeze({ x: -0.28, r: 0.20 }),
+      throatHalfWidth: 0.75,
+    }),
+    silhouetteBound: 0.10,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'circle', id: 'tube-port', x: 0, z: 0.90, r: 0.15 }),
+      Object.freeze({ kind: 'circle', id: 'tube-star', x: 0, z: -0.90, r: 0.15 }),
+      Object.freeze({ kind: 'circle', id: 'hub', x: -0.28, z: 0, r: 0.20 }),
+    ]),
+  }),
+});
+
+// -----------------------------------------------------------------------------------------------
+// Resolution helpers
+// -----------------------------------------------------------------------------------------------
+
+// Resolved measured-skin manifests, per entity object. The resolver runs every physics sync
+// (SG-02 compares proxy ids each tick) and every LOS/scan query; building the skin manifest
+// allocates, so a fixed body resolves it once. A replaced data object or proxy id re-resolves.
+const MEASURED_PROXY_CACHE = new WeakMap();
+const AUTHORED_PROXY_CACHE = new WeakMap();
+const DYNAMIC_SKIN_CACHE = new Map();
+
+const SKIN_DYNAMIC_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'debris', 'payload', 'pod', 'prop', 'buoy']);
+
+function hasAuthoredSkinOverride(entity) {
+  const body = entity && entity.physicsBody;
+  if (!body || typeof body !== 'object') return false;
+  if (body.useMeasuredSkin === false) return true;
+  if (body.collisionProxyManifest) return true;
+  const canonical = (entity.type === 'ship' || entity.type === 'drone') ? 'capsule' : 'ball';
+  return typeof body.shape === 'string' && body.shape !== canonical;
+}
+
+export function isCompoundSkinDynamicEligible(entity) {
+  if (!entity) return false;
+  const data = entity.data || {};
+  if (data.compoundSkin === true) return true;
+  if (SKIN_DYNAMIC_TYPES.has(entity.type)) return true;
+  if (data.defId === 'ship_atlas' || data.defId === 'ship_colossus' || data.defId === 'ship_leviathan') return true;
+  if (data.defId === 'dreadnought_boss' || data.typeId === 'dreadnought_boss' || data.silhouette === 'dreadnought_enemy' || data.defId === 'dreadnought_enemy') return true;
+  if (data.isMajorWreck === true || (entity.type === 'wreck' && typeof data.placeId === 'string' && data.placeId.startsWith('place_aftermath_wreck_'))) return true;
+  return false;
+}
+
+/** Presentation fx that explicitly declares a measured-skin proxy id opts into solidity —
+ * solid dressing rows and presentation-carried structures (activity objects, memorial hulls,
+ * landmark POIs) keep their fx presentation while taking the census collider. Undeclared fx
+ * stay ghosts (markers, effects). */
+function declaresMeasuredSkinProxy(entity) {
+  const proxy = entity && entity.data && entity.data.collisionProxy;
+  return typeof proxy === 'string' && proxy.startsWith('skin:');
+}
+
+/** True when the measured skin may stand in for this body's collider. Fixed bodies (stations,
+ * landmark rocks) always take their skin; solid dynamic bodies take it as one tolerance-checked
+ * convex hull when the census outline permits, else a bounded compound — proven deterministic
+ * across save/reload. Ghost/sensor bodies and authored geometry opt-outs never adopt a skin. */
+export function measuredSkinAllowedFor(entity) {
+  if (!entity || entity.physicsBody === false || entity.collides === false) return false;
+  const type = entity.type;
+  if (type === 'projectile' || type === 'pickup' || type === 'sensor') return false;
+  if (type === 'fx' && !declaresMeasuredSkinProxy(entity)) return false;
+  const substance = substanceFor(entity);
+  const material = PHYSICS_MATERIALS[substance.material];
+  if (substance.sensor === true || (material && material.ghost === true)) return false;
+  if (hasAuthoredSkinOverride(entity)) return false;
+  if (!substance.dynamic) return true;
+  return isCompoundSkinDynamicEligible(entity);
+}
+
+function authoredProxyManifest(entity) {
+  const body = entity && entity.physicsBody;
+  const authored = body && body.collisionProxyManifest;
+  if (!authored || typeof authored !== 'object') return null;
+  const revision = Math.max(0, Math.trunc(Number(body.revision) || 0));
+  const cached = AUTHORED_PROXY_CACHE.get(authored);
+  if (cached && cached.revision === revision) return cached.manifest;
+  let manifest = null;
+  if (authored.schemaVersion === COLLISION_PROXY_SCHEMA_VERSION
+    && typeof authored.id === 'string' && authored.id) {
+    const candidate = { ...authored, flags: COLLISION_PROXY_FLAGS };
+    if (validateCollisionProxyManifest(candidate).ok) manifest = candidate;
+  }
+  AUTHORED_PROXY_CACHE.set(authored, { revision, manifest });
+  return manifest;
+}
+
+/** Declared manifests and adopted measured skins resolve here. An authored
+ * physicsBody.collisionProxyManifest wins when valid; a declared non-skin proxy id beats a skin;
+ * an eligible entity that declares nothing still takes its measured skin on older saves. */
+export function resolveCollisionProxyManifest(entity) {
+  const authored = authoredProxyManifest(entity);
+  if (authored) return authored;
+  const data = entity && entity.data;
+  // Older scalar/typed room saves predate furniture proxies. Resolve only the
+  // existing room renderer's recognized kinds; generic stations keep their contract.
+  if (entity?.type === 'station' && data?.roomOwner === 'survival-arena'
+    && entity.physicsBody !== false && entity.collides !== false) {
+    const furniture = foundryFurnitureProxy(entity);
+    if (furniture) return furniture;
+  }
+  const id = data && typeof data.collisionProxy === 'string' ? data.collisionProxy : null;
+  const declared = id && COLLISION_PROXY_MANIFESTS[id] || null;
+  // Eligibility owns the opt-outs: sensors, ghosts, and authored geometry never take a skin —
+  // the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
+  if (!measuredSkinAllowedFor(entity)) return declared;
+  const dynamic = isDynamicPhysicsBodyEntity(entity);
+  // Canonical identity is mutable in place — a hull swap rewrites data.defId on the SAME data
+  // object — so the data shell, stamped id, and type are not enough: the resolved row is the
+  // identity, and any change to it must invalidate the cached manifest.
+  const row = modelTruthProxyRowForEntity(entity);
+  const cached = MEASURED_PROXY_CACHE.get(entity);
+  if (cached && cached.data === data && cached.id === id && cached.type === entity.type
+    && cached.dynamic === dynamic && cached.row === row) return cached.manifest;
+  const manifest = resolveMeasuredProxyManifest(entity, id, declared);
+  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, row, manifest });
+  return manifest;
+}
+
+function resolveMeasuredProxyManifest(entity, id, declared) {
+  let measured = modelTruthProxyManifest(entity);
+  // The measured skin replaces the retired hoop, the gate ball, and any hull capsule
+  // or rock ball that does not meet the flight-plane tolerance. Gas and other
+  // non-adopted rows keep their old collider. Dock-assist gains stay on the hoop's
+  // docking block; only the mouth bearing moves to the measured opening.
+  if (measured && entity && entity.type === 'station' && measured.opening !== 'gate-throat') {
+    const base = COLLISION_PROXY_MANIFESTS.station_ring_hub;
+    if (base && base.docking) {
+      const mouth = Number.isFinite(measured.mouthBearingDeg)
+        ? measured.mouthBearingDeg
+        : base.docking.corridorBearingDeg;
+      measured = {
+        ...measured,
+        docking: {
+          ...base.docking,
+          corridorBearingDeg: mouth,
+          corridorSnapAnglesDeg: [mouth],
+        },
+      };
+    }
+  }
+  // A skin replaces a declared legacy collider, an explicit skin id, or — once eligibility
+  // already admitted it — a dynamic body that declares nothing (older saves stamp no proxy id).
+  // Fixed bodies still adopt only through a declared id, so a station that declares nothing keeps
+  // the legacy center-radius dock contract.
+  if (measured && ((!id && isDynamicPhysicsBodyEntity(entity)) || id === 'station_ring_hub' || id === 'helios_trade_hub'
+    || id === 'gate_jump_ring' || (typeof id === 'string' && id.startsWith('skin:')))) {
+    return compactSkinManifest(entity, measured);
+  }
+  return declared;
+}
+
+function compactSkinManifest(entity, manifest) {
+  if (manifest.opening || !isDynamicPhysicsBodyEntity(entity)) return manifest;
+  const key = manifest.id;
+  let resolved = DYNAMIC_SKIN_CACHE.get(key);
+  if (resolved === undefined) {
+    const hull = modelTruthSkinHull(manifest.sourceRow);
+    if (hull) resolved = { ...manifest, id: `${manifest.id}:hull`, compactHull: hull };
+    else {
+      const polygon = modelTruthSkinPolygon(manifest.sourceRow);
+      resolved = polygon
+        ? { ...manifest, id: `${manifest.id}:polygon`, planarPolygon: polygon }
+        : manifest;
+    }
+    DYNAMIC_SKIN_CACHE.set(key, resolved);
+  }
+  return resolved;
+}
+
+/** Station id → manifest id, for world spawn wiring. */
+export function collisionProxyIdForStation(stationId) {
+  for (const manifest of Object.values(COLLISION_PROXY_MANIFESTS)) {
+    if (manifest.stationIds && manifest.stationIds.includes(stationId)) return manifest.id;
+  }
+  return null;
+}
+
+/** Normalized → wu scale for an entity. */
+export function proxyScaleFor(entity, manifest) {
+  const data = entity && entity.data || {};
+  const reference = manifest.referenceRadius === 'dockRadius' ? data.dockRadius : null;
+  return positive(reference, positive(entity && entity.radius, 1));
+}
+
+/** Effective corridor bearing in STATION-LOCAL degrees: entity stamp wins, snapped to the nearest
+ * declared inter-spar lane so the corridor can never dead-end into a spar. */
+export function effectiveCorridorBearingDeg(manifest, entity) {
+  const docking = manifest && manifest.docking;
+  if (!docking) return 0;
+  const stamped = entity && entity.data && Number.isFinite(entity.data.corridorBearingDeg)
+    ? entity.data.corridorBearingDeg
+    : docking.corridorBearingDeg;
+  const snaps = docking.corridorSnapAnglesDeg;
+  if (!Array.isArray(snaps) || !snaps.length) return wrapDeg(stamped);
+  let best = snaps[0];
+  let bestDist = Infinity;
+  for (const candidate of snaps) {
+    const d = Math.abs(wrapDeg180(stamped - candidate));
+    if (d < bestDist) { bestDist = d; best = candidate; }
+  }
+  return wrapDeg(best);
+}
+
+/** Expand a manifest to a flat, bounded primitive list in normalized station-local units. Chains
+ * become circles; the ring gap sector is cut around the effective corridor bearing. Manifests
+ * declaring `frame: 'approach'` rotate every primitive by the entity's stamped approach bearing
+ * (data.corridorBearingDeg), so +X in manifest space faces the corridor/portal axis. */
+export function expandProxyPrimitives(manifest, options = {}) {
+  if (!manifest) return [];
+  const corridorDeg = Number.isFinite(options.corridorBearingDeg)
+    ? options.corridorBearingDeg
+    : effectiveCorridorBearingDeg(manifest, options.entity || null);
+  const frameDeg = manifest.frame === 'approach'
+    ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg))
+    : 0;
+  const out = [];
+  const ceresRole = ceresWorkfleetSlideRole(options.entity, manifest);
+  for (const primitive of manifest.primitives || []) {
+    if (out.length >= MAX_PROXY_PRIMITIVES) break;
+    if (primitive.kind === 'chain') {
+      expandChain(primitive, corridorDeg, out);
+    } else if (primitive.kind === 'circle' || primitive.kind === 'capsule' || primitive.kind === 'obb') {
+      out.push(ceresRole ? poseCeresWorkfleetPrimitive(primitive, ceresRole, ceresWorkfleetSlide(options.entity))
+            : { ...primitive });
+    }
+  }
+  if (frameDeg !== 0) rotateProxyPrimitives(out, frameDeg * DEG);
+  return out;
+}
+
+/** Bearing the 'approach' frame rotates to: explicit option > stamped entity field > manifest
+ * fallback > the resolved corridor bearing (docking manifests share the stamped lane). */
+function approachBearingDeg(manifest, options, corridorDeg) {
+  if (Number.isFinite(options.approachBearingDeg)) return options.approachBearingDeg;
+  const stamped = options.entity && options.entity.data && options.entity.data.corridorBearingDeg;
+  if (Number.isFinite(stamped)) return stamped;
+  if (Number.isFinite(manifest.frameBearingDeg)) return manifest.frameBearingDeg;
+  return corridorDeg;
+}
+
+function rotateProxyPrimitives(primitives, rad) {
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  for (const primitive of primitives) {
+    if (primitive.kind === 'circle' || primitive.kind === 'obb') {
+      const x = finite(primitive.x);
+      const z = finite(primitive.z);
+      primitive.x = c * x - s * z;
+      primitive.z = s * x + c * z;
+      if (primitive.kind === 'obb') {
+        primitive.angleDeg = wrapDeg(finite(primitive.angleDeg) + rad / DEG);
+      }
+    } else if (primitive.kind === 'capsule') {
+      for (const key of ['a', 'b']) {
+        const x = finite(primitive[`${key}x`]);
+        const z = finite(primitive[`${key}z`]);
+        primitive[`${key}x`] = c * x - s * z;
+        primitive[`${key}z`] = s * x + c * z;
+      }
+    }
+  }
+}
+
+/** World-space primitives for an entity (registration + debug publication). Entity rotation is
+ * applied to local offsets; primitive-local orientations become world orientations. */
+export function proxyWorldPrimitives(entity, manifest) {
+  const scale = proxyScaleFor(entity, manifest);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  // Pass the entity through: 'approach'-framed manifests (gates) rotate by the stamped bearing,
+  // and a debug/test path that omits it would silently publish unrotated primitives.
+  const local = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
+  const rot = finite(entity && entity.rot);
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const px = finite(entity && entity.pos && entity.pos.x);
+  const pz = finite(entity && entity.pos && entity.pos.z);
+  return local.map((primitive) => {
+    if (primitive.kind === 'circle') {
+      const x = primitive.x * scale;
+      const z = primitive.z * scale;
+      return {
+        kind: 'circle',
+        id: primitive.id || null,
+        x: px + c * x - s * z,
+        z: pz + s * x + c * z,
+        r: primitive.r * scale,
+      };
+    }
+    if (primitive.kind === 'capsule') {
+      const ax = primitive.ax * scale;
+      const az = primitive.az * scale;
+      const bx = primitive.bx * scale;
+      const bz = primitive.bz * scale;
+      return {
+        kind: 'capsule',
+        id: primitive.id || null,
+        ax: px + c * ax - s * az,
+        az: pz + s * ax + c * az,
+        bx: px + c * bx - s * bz,
+        bz: pz + s * bx + c * bz,
+        r: primitive.r * scale,
+      };
+    }
+    // obb
+    const x = primitive.x * scale;
+    const z = primitive.z * scale;
+    return {
+      kind: 'obb',
+      id: primitive.id || null,
+      x: px + c * x - s * z,
+      z: pz + s * x + c * z,
+      hx: primitive.hx * scale,
+      hz: primitive.hz * scale,
+      rot: rot + finite(primitive.angleDeg) * DEG,
+    };
+  });
+}
+
+/** World-space berth point for a manifest station. */
+export function resolveBerthWorld(entity, manifest) {
+  const docking = manifest && manifest.docking;
+  if (!docking) return null;
+  const scale = proxyScaleFor(entity, manifest);
+  const bearingDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const rot = finite(entity && entity.rot);
+  const a = rot + bearingDeg * DEG;
+  const r = docking.berth.radius * scale;
+  return {
+    x: finite(entity && entity.pos && entity.pos.x) + Math.cos(a) * r,
+    z: finite(entity && entity.pos && entity.pos.z) + Math.sin(a) * r,
+  };
+}
+
+/** World-space corridor axis (outbound direction from the station). */
+export function resolveCorridorAxisWorld(entity, manifest) {
+  const bearingDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const a = finite(entity && entity.rot) + bearingDeg * DEG;
+  return { x: Math.cos(a), z: Math.sin(a), bearingRad: a };
+}
+
+// -----------------------------------------------------------------------------------------------
+// SF-130 — hull envelope vs berth pocket: which dock anchor a given hull can physically take.
+// The pocket's free room is the berth point's signed distance to the nearest proxy surface; the
+// hull's envelope is its measured planar radius (model truth) with the collider radius as the
+// unmeasured fallback. Fit is a pure geometric comparison against the same primitives the
+// physics authority collides against — authored silhouette or adopted measured skin alike.
+// -----------------------------------------------------------------------------------------------
+
+/** Planar hull envelope in world units: the measured skin bound when adopted (live hull
+ * colliders are those skins), else the authored collider radius — the bound the live body
+ * never exceeds. */
+export function hullEnvelopeWu(entity) {
+  return positive(modelTruthPlanarRadius(entity), positive(entity && entity.radius, 0));
+}
+
+/** Radial extent of a normalized proxy primitive from the manifest origin. */
+function proxyPrimitiveRadialExtent(primitive) {
+  if (primitive.kind === 'circle') {
+    return Math.hypot(finite(primitive.x), finite(primitive.z)) + finite(primitive.r);
+  }
+  if (primitive.kind === 'capsule') {
+    return Math.max(
+      Math.hypot(finite(primitive.ax), finite(primitive.az)),
+      Math.hypot(finite(primitive.bx), finite(primitive.bz)),
+    ) + finite(primitive.r);
+  }
+  if (primitive.kind === 'obb') {
+    return Math.hypot(finite(primitive.x), finite(primitive.z))
+      + Math.hypot(finite(primitive.hx), finite(primitive.hz));
+  }
+  return 0;
+}
+
+/** Outermost radial extent of the resolved proxy primitives, in world units. Any world point
+ * this far from the station center clears every primitive by definition. */
+export function proxyOuterRadiusWu(manifest, entity) {
+  const scale = positive(proxyScaleFor(entity, manifest), 1);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const primitives = expandedPrimitivesCached(manifest, entity, corridorDeg);
+  let outer = 0;
+  for (const primitive of primitives) {
+    const extent = proxyPrimitiveRadialExtent(primitive);
+    if (extent > outer) outer = extent;
+  }
+  return outer * scale;
+}
+
+/** Signed distance (wu) from the berth point to the nearest proxy surface, measured in the
+ * manifest's normalized local frame against the same cached expansion the berth LOS test
+ * uses. Negative would mean the berth itself sits inside structure. */
+export function berthClearanceWu(manifest, entity) {
+  const docking = manifest && manifest.docking;
+  if (!docking || !docking.berth) return Infinity;
+  const scale = positive(proxyScaleFor(entity, manifest), 1);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const a = corridorDeg * DEG;
+  const r = positive(docking.berth.radius, 0);
+  const berthLocal = { x: Math.cos(a) * r, z: Math.sin(a) * r };
+  const primitives = expandedPrimitivesCached(manifest, entity, corridorDeg);
+  return distanceToProxySet(berthLocal, primitives) * scale;
+}
+
+/** True when the hull's planar envelope clears the berth pocket by the manifest's authored
+ * margin. Manifests without a `mooring` block berth every hull (legacy contract unchanged);
+ * a null ship or zero envelope always fits. */
+export function berthFitsHull(manifest, entity, ship) {
+  const mooring = manifest && manifest.docking && manifest.docking.mooring;
+  if (!mooring || !ship) return true;
+  const envelope = hullEnvelopeWu(ship);
+  if (!(envelope > 0)) return true;
+  return envelope <= berthClearanceWu(manifest, entity) - positive(mooring.hullMarginWu, 2);
+}
+
+/** The dock anchor a hull can physically take: the berth point when its envelope clears the
+ * pocket, else the mooring standoff on the corridor axis. Returns
+ * { x, z, dockRadius, speedGate, kind } with kind 'berth' | 'mooring', or null when the
+ * manifest carries no berth at all. The gate values are the authored berth gate in both
+ * cases — the dock:range contract is identical, only the anchor moves. */
+export function resolveDockAnchor(entity, manifest, ship) {
+  const docking = manifest && manifest.docking;
+  if (!docking || !docking.berth) return null;
+  const gate = {
+    dockRadius: positive(docking.berth.dockRadius, 12),
+    speedGate: positive(docking.berth.speedGate, 12),
+  };
+  if (berthFitsHull(manifest, entity, ship)) {
+    const berth = resolveBerthWorld(entity, manifest);
+    return { x: berth.x, z: berth.z, ...gate, kind: 'berth' };
+  }
+  const axis = resolveCorridorAxisWorld(entity, manifest);
+  const mooring = docking.mooring || {};
+  const along = proxyOuterRadiusWu(manifest, entity)
+    + hullEnvelopeWu(ship)
+    + positive(mooring.standoffWu, 4);
+  return {
+    x: finite(entity && entity.pos && entity.pos.x) + axis.x * along,
+    z: finite(entity && entity.pos && entity.pos.z) + axis.z * along,
+    ...gate,
+    kind: 'mooring',
+  };
+}
+
+/**
+ * Corridor/capture classification for a ship near a manifest station. Pure math; no state.
+ * Returns { phase, distToBerth, speed, headingOk, inCorridor, inCapture }.
+ * Phases: 'approach' → 'corridor' (inside mouth sector, gates pass) → 'capture' (inside the
+ * capture lane, speed under gate) → 'berthed' (at the berth, slow enough to dock).
+ */
+export function corridorStateFor(manifest, entity, pos, vel) {
+  const docking = manifest && manifest.docking;
+  if (!docking || !pos) return null;
+  const scale = proxyScaleFor(entity, manifest);
+  const px = finite(entity && entity.pos && entity.pos.x);
+  const pz = finite(entity && entity.pos && entity.pos.z);
+  const dx = finite(pos.x) - px;
+  const dz = finite(pos.z) - pz;
+  const distCenter = Math.hypot(dx, dz);
+  const axis = resolveCorridorAxisWorld(entity, manifest);
+  const berth = resolveBerthWorld(entity, manifest);
+  const distToBerth = Math.hypot(finite(pos.x) - berth.x, finite(pos.z) - berth.z);
+  const vx = finite(vel && vel.x);
+  const vz = finite(vel && vel.z);
+  const speed = Math.hypot(vx, vz);
+
+  // Ship position in the corridor frame: along = outbound distance on the corridor axis,
+  // lateral = signed cross-track distance from the axis.
+  const along = dx * axis.x + dz * axis.z;
+  const lateral = Math.abs(dx * -axis.z + dz * axis.x);
+
+  const mouthRadius = docking.corridor.mouthRadius * scale;
+  const corridorHalfWidth = Math.max(
+    docking.capture.halfWidth * scale,
+    Math.tan(docking.corridor.halfWidthDeg * DEG) * Math.max(along, 1),
+  );
+  const captureOuter = docking.capture.outerRadius * scale;
+  const captureHalfWidth = docking.capture.halfWidth * scale;
+  const berthRadius = docking.berth.radius * scale;
+
+  const inMouth = distCenter <= mouthRadius;
+  const inCorridorLane = along > 0 && along <= mouthRadius && lateral <= corridorHalfWidth;
+  const inCorridor = inMouth && inCorridorLane;
+
+  // Capture lane: capsule along the corridor axis from the berth outward to the outer gate. Ships
+  // hugging the berth (any bearing) also count — the deck inside the ring gap is part of the lane.
+  const inLane = along >= berthRadius * 0.9 && along <= captureOuter && lateral <= captureHalfWidth;
+  // D77: berth proximity alone must not claim capture through station structure. A hull wedged in
+  // an inter-spar armpit sits inside the near-berth radius but on the far side of a spar from the
+  // berth; berth-proximity membership — and the autopilot berth stage that keys off it — then aims
+  // the capture assist and the flight computer straight into the narrowing wedge and the hull
+  // dead-sticks at v≈0. Require a clear line from the hull to the berth (or an actual lane seat,
+  // which stands on its own). The line test is manifest-agnostic, so a measured skin's real arm
+  // fan is respected exactly like the authored procedural silhouette.
+  const nearBerth = distToBerth <= Math.max(docking.berth.dockRadius * 2.5, captureHalfWidth)
+    && (inLane || !berthLineBlocked(manifest, entity, pos, berth));
+  const inCapture = inLane || nearBerth;
+
+  // Heading gate: velocity must point roughly INBOUND (opposite the outbound axis). Ships at or
+  // below the berth dock speed are always heading-ok — a stopped or contact-held ship has no
+  // transit heading; its residual velocity is settle noise, not pilot intent.
+  const inboundSpeed = -(vx * axis.x + vz * axis.z);
+  let headingOk = true;
+  if (speed > docking.berth.speedGate) {
+    const heading = Math.atan2(vz, vx);
+    const inbound = Math.atan2(-axis.z, -axis.x);
+    headingOk = Math.abs(wrapDeg180((heading - inbound) / DEG)) <= docking.corridor.headingGateDeg;
+    // Ships moving tangentially at the lane edge are not penalized for slight outward drift:
+    // headingOk requires the inbound component to dominate any outbound component.
+    headingOk = headingOk || inboundSpeed > Math.max(0, speed * 0.2);
+  }
+
+  const berthed = distToBerth <= docking.berth.dockRadius && speed <= docking.berth.speedGate;
+  const captureReady = inCapture && speed <= docking.capture.speedGate && headingOk;
+  const corridorReady = inCorridor && speed <= docking.corridor.speedGate && headingOk;
+
+  let phase = 'approach';
+  if (berthed) phase = 'berthed';
+  else if (captureReady) phase = 'capture';
+  else if (corridorReady) phase = 'corridor';
+
+  return {
+    phase,
+    distToBerth,
+    distCenter,
+    speed,
+    headingOk,
+    inboundSpeed,
+    inCorridor,
+    inCapture,
+    berthed,
+    berth,
+    axis,
+    scale,
+  };
+}
+
+/**
+ * Bounded PD capture assist. Returns a world-space acceleration (wu/s²) or null when no assist is
+ * owed. Contract (STEP 7): never exceeds maxAccel; acceleration → 0 at the berth; no assist outside
+ * the capture volume; player input always blends (assist fades by inputMag*inputBlend, and the
+ * impulse is ADDITIVE on the physics membrane — player thrust is never overwritten).
+ */
+export function computeCaptureAssist(manifest, entity, pos, vel, inputMag = 0) {
+  const docking = manifest && manifest.docking;
+  if (!docking) return null;
+  const state = corridorStateFor(manifest, entity, pos, vel);
+  if (!state) return null;
+  const capture = docking.capture;
+  if (!state.inCapture || state.speed > capture.speedGate || !state.headingOk) return null;
+  const tune = docking.assist;
+  const ex = state.berth.x - finite(pos.x);
+  const ez = state.berth.z - finite(pos.z);
+  // The position pull fades as speed nears the berth gate: capture.speedGate (26) only marks
+  // capturability, so a hull already at dock-legal speed (berth.speedGate 12) is fast enough —
+  // any further pull just pumps it over the gate and forces the envelope brake to fight the
+  // assist back down every tick. The kd damping term is untouched: it still bleeds speed and
+  // holds the lane at the gate. The 2 wu/s band turns the fight into a smooth handoff.
+  const berthGate = positive(docking.berth && docking.berth.speedGate, 12);
+  const pullFade = clamp((berthGate - 2 - state.speed) / 2, 0, 1);
+  let ax = tune.kp * ex * pullFade - tune.kd * finite(vel && vel.x);
+  let az = tune.kp * ez * pullFade - tune.kd * finite(vel && vel.z);
+  const mag = Math.hypot(ax, az);
+  if (mag > tune.maxAccel) {
+    const k = tune.maxAccel / mag;
+    ax *= k;
+    az *= k;
+  }
+  const blend = 1 - clamp(finite(inputMag), 0, 1) * tune.inputBlend;
+  ax *= blend;
+  az *= blend;
+  if (!Number.isFinite(ax) || !Number.isFinite(az)) return null;
+  return { x: ax, z: az, phase: state.phase, distToBerth: state.distToBerth };
+}
+
+/**
+ * Coarse Hausdorff-style silhouette bound: the maximum distance between the authored footprint and
+ * the expanded proxy set, both directions, EXCLUDING declared navigable gap sectors (the ring
+ * corridor gap) — those are bounded separately by the gap navigability assertion. Deterministic;
+ * no GLB parsing; pure authored-constants comparison.
+ */
+export function measureSilhouetteBound(manifest, options = {}) {
+  const corridorDeg = Number.isFinite(options.corridorBearingDeg)
+    ? options.corridorBearingDeg
+    : effectiveCorridorBearingDeg(manifest, options.entity || null);
+  const proxies = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity: options.entity || null });
+  const footprint = manifest.footprint;
+  if (!footprint) return { bound: 0, proxyToFootprint: 0, footprintToProxy: 0 };
+  const footprintSamples = sampleFootprint(manifest, corridorDeg, options);
+  let footprintToProxy = 0;
+  for (const p of footprintSamples) {
+    const d = distanceToProxySet(p, proxies);
+    if (d > footprintToProxy) footprintToProxy = d;
+  }
+  // distanceToFootprint math lives in the un-rotated manifest frame; approach-framed proxies
+  // are un-rotated for the comparison (a no-op for frameless manifests).
+  const frameRad = manifest.frame === 'approach'
+    ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg)) * DEG
+    : 0;
+  const fc = Math.cos(-frameRad);
+  const fs = Math.sin(-frameRad);
+  let proxyToFootprint = 0;
+  for (const p of sampleProxyBoundaries(proxies)) {
+    const local = frameRad !== 0 ? { x: fc * p.x - fs * p.z, z: fs * p.x + fc * p.z } : p;
+    const d = distanceToFootprint(local, footprint);
+    if (d > proxyToFootprint) proxyToFootprint = d;
+  }
+  return {
+    bound: Math.max(footprintToProxy, proxyToFootprint),
+    proxyToFootprint,
+    footprintToProxy,
+  };
+}
+
+/** Navigable clear width (normalized) of the corridor gap for the effective bearing: the tightest
+ * proxy-surface clearance along the whole corridor lane from the core edge out past ring1. */
+export function measureCorridorGapWidth(manifest, options = {}) {
+  const corridorDeg = Number.isFinite(options.corridorBearingDeg)
+    ? options.corridorBearingDeg
+    : effectiveCorridorBearingDeg(manifest, options.entity || null);
+  const proxies = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg });
+  const ring = (manifest.primitives || []).find((p) => p.kind === 'chain' && p.gap);
+  if (!ring) return { width: Infinity, bearing: corridorDeg };
+  const a = corridorDeg * DEG;
+  const ux = Math.cos(a);
+  const uz = Math.sin(a);
+  // The flown path runs from outside down to the berth; clearance is only meaningful over that
+  // span (a ship never flies the corridor lane between the berth and the core).
+  const berthRadius = manifest.docking && manifest.docking.berth ? manifest.docking.berth.radius : 0.7;
+  let minClear = Infinity;
+  for (let along = berthRadius; along <= ring.radius + ring.circleR * 2 + 0.001; along += 0.005) {
+    const cx = ux * along;
+    const cz = uz * along;
+    let clearance = Infinity;
+    for (const primitive of proxies) {
+      const d = distanceToProxy({ x: cx, z: cz }, primitive);
+      if (d < clearance) clearance = d;
+    }
+    if (clearance < minClear) minClear = clearance;
+  }
+  return { width: minClear === Infinity ? Infinity : minClear * 2, bearing: corridorDeg };
+}
+
+// -----------------------------------------------------------------------------------------------
+// Validation (contract test surface)
+// -----------------------------------------------------------------------------------------------
+
+export function validateCollisionProxyManifest(manifest) {
+  const issues = [];
+  if (!manifest || typeof manifest !== 'object') {
+      issues.push('manifest must be an object');
+      return { ok: false, issues };
+  }
+  if (manifest.schemaVersion !== COLLISION_PROXY_SCHEMA_VERSION) issues.push('schemaVersion mismatch');
+  if (!manifest.id || typeof manifest.id !== 'string') issues.push('id required');
+  const flags = manifest.flags || {};
+  if (flags.collides !== true) issues.push('flags.collides must be true');
+  if (flags.renderable !== false) issues.push('flags.renderable must be false');
+  if (flags.targetable !== false) issues.push('flags.targetable must be false');
+  if (flags.radarVisible !== false) issues.push('flags.radarVisible must be false');
+  const primitives = manifest.primitives || [];
+  if (!Array.isArray(primitives) || !primitives.length) issues.push('primitives required');
+  const expanded = expandProxyPrimitives(manifest);
+  if (expanded.length > MAX_PROXY_PRIMITIVES) {
+    issues.push(`expanded primitive count ${expanded.length} exceeds bound ${MAX_PROXY_PRIMITIVES}`);
+  }
+  for (const primitive of primitives) {
+    if (!COLLISION_PROXY_KINDS.includes(primitive.kind)) issues.push(`unknown kind ${primitive.kind}`);
+    if (primitive.kind === 'circle' && !(primitive.r > 0)) issues.push('circle r > 0 required');
+    if (primitive.kind === 'capsule' && !(primitive.r > 0)) issues.push('capsule r > 0 required');
+    if (primitive.kind === 'obb' && !(primitive.hx > 0 && primitive.hz > 0)) issues.push('obb hx/hz > 0 required');
+    if (primitive.kind === 'chain' && !(primitive.radius > 0 && primitive.circleR > 0 && primitive.count >= 3)) {
+      issues.push('chain radius/circleR/count invalid');
+    }
+  }
+  if (manifest.docking) {
+    const d = manifest.docking;
+    if (!(d.corridor && d.corridor.mouthRadius > 0)) issues.push('docking.corridor.mouthRadius required');
+    if (!(d.capture && d.capture.outerRadius > 0 && d.capture.halfWidth > 0)) issues.push('docking.capture geometry required');
+    if (!(d.berth && d.berth.radius > 0 && d.berth.dockRadius > 0)) issues.push('docking.berth geometry required');
+    if (!(d.assist && d.assist.kp > 0 && d.assist.kd > 0 && d.assist.maxAccel > 0)) issues.push('docking.assist tuning required');
+    if (d.berth && d.capture && d.berth.radius >= d.capture.outerRadius) {
+      issues.push('berth must sit inside the capture lane');
+    }
+  }
+  return { ok: issues.length === 0, issues };
+}
+
+// -----------------------------------------------------------------------------------------------
+// internals
+// -----------------------------------------------------------------------------------------------
+
+function expandChain(primitive, corridorDeg, out) {
+  const count = Math.max(3, Math.trunc(primitive.count));
+  const minor = Number.isFinite(primitive.minorRadius) ? primitive.minorRadius : null;
+  const gap = primitive.gap && primitive.gap.at === 'corridor'
+    ? { bearing: corridorDeg, halfWidthDeg: finite(primitive.gap.halfWidthDeg, 0) }
+    : (primitive.gap && Number.isFinite(primitive.gap.bearingDeg)
+      ? { bearing: primitive.gap.bearingDeg, halfWidthDeg: finite(primitive.gap.halfWidthDeg, 0) }
+      : null);
+  for (let i = 0; i < count && out.length < MAX_PROXY_PRIMITIVES; i++) {
+    const deg = (i / count) * 360;
+    if (gap && Math.abs(wrapDeg180(deg - gap.bearing)) < gap.halfWidthDeg) continue;
+    const a = deg * DEG;
+    // Ellipse support (tilted rings projected onto the plane): semi-major on the chain radius,
+    // semi-minor perpendicular. Circle positions follow the ellipse; radii stay circular (coarse).
+    const rx = minor ? Math.cos(a) * primitive.radius : Math.cos(a) * primitive.radius;
+    const rz = minor ? Math.sin(a) * minor : Math.sin(a) * primitive.radius;
+    out.push({
+      kind: 'circle',
+      id: `${primitive.id || 'chain'}-${i}`,
+      chain: primitive.id || null,
+      x: rx,
+      z: rz,
+      r: primitive.circleR,
+    });
+  }
+}
+
+function sampleFootprint(manifest, corridorDeg, options = {}) {
+  const f = manifest.footprint;
+  const samples = [];
+  const STEP = 2; // degrees — dense enough that the measured bound is stable to ~1e-3
+  if (f.tube) {
+    // Gate footprint: two throat-tube circles + hub circle (approach frame).
+    const frameDeg = manifest.frame === 'approach'
+      ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg))
+      : 0;
+    const c = Math.cos(frameDeg * DEG);
+    const s = Math.sin(frameDeg * DEG);
+    const pushCircle = (cx, cz, r) => {
+      const rx = c * cx - s * cz;
+      const rz = s * cx + c * cz;
+      for (let deg = 0; deg < 360; deg += STEP) {
+        const a = deg * DEG;
+        samples.push({ x: rx + Math.cos(a) * r, z: rz + Math.sin(a) * r });
+      }
+    };
+    pushCircle(0, f.tube.offset, f.tube.halfWidth);
+    pushCircle(0, -f.tube.offset, f.tube.halfWidth);
+    if (f.hub) pushCircle(f.hub.x, f.hub.z || 0, f.hub.r);
+    return samples;
+  }
+  // Core disc boundary.
+  for (let deg = 0; deg < 360; deg += STEP) {
+    const a = deg * DEG;
+    samples.push({ x: Math.cos(a) * f.coreRadius, z: Math.sin(a) * f.coreRadius });
+  }
+  // Spar rectangles (both long edges + outer cap), all cardinal angles.
+  for (const sparDeg of f.spar.angles) {
+    const a = sparDeg * DEG;
+    const ux = Math.cos(a);
+    const uz = Math.sin(a);
+    for (let t = f.spar.inner; t <= f.spar.outer + 1e-9; t += (f.spar.outer - f.spar.inner) / 34) {
+      for (const side of [-1, 1]) {
+        samples.push({ x: ux * t - uz * side * f.spar.halfWidth, z: uz * t + ux * side * f.spar.halfWidth });
+      }
+    }
+    samples.push({ x: ux * f.spar.outer, z: uz * f.spar.outer });
+  }
+  // Ring annuli boundaries — EXCLUDING declared corridor gap sectors (each ring chain may cut its
+  // own gap around the corridor bearing; the gap is bounded by the navigability assertion instead).
+  for (const [ringId, ring] of [['ring1', f.ring1], ['ring2', f.ring2]]) {
+    if (!ring) continue;
+    const minor = ring.minorRadius || null;
+    const chain = (manifest.primitives || []).find((p) => p.kind === 'chain' && p.id === ringId);
+    const gapHalfWidth = chain && chain.gap && chain.gap.at === 'corridor' ? finite(chain.gap.halfWidthDeg, 0) : 0;
+    for (let deg = 0; deg < 360; deg += STEP) {
+      if (gapHalfWidth > 0 && Math.abs(wrapDeg180(deg - corridorDeg)) < gapHalfWidth) continue;
+      const a = deg * DEG;
+      const base = { x: Math.cos(a) * ring.radius, z: Math.sin(a) * (minor || ring.radius) };
+      // Project the tube edge along the local ellipse normal (coarse: radial is fine at this bound).
+      const len = Math.hypot(base.x, base.z) || 1;
+      const nx = base.x / len;
+      const nz = base.z / len;
+      samples.push({ x: base.x + nx * ring.tubeHalfWidth, z: base.z + nz * ring.tubeHalfWidth });
+      samples.push({ x: base.x - nx * ring.tubeHalfWidth, z: base.z - nz * ring.tubeHalfWidth });
+    }
+  }
+  return samples;
+}
+
+function sampleProxyBoundaries(proxies) {
+  const samples = [];
+  for (const primitive of proxies) {
+    if (primitive.kind === 'circle') {
+      for (let deg = 0; deg < 360; deg += 15) {
+        const a = deg * DEG;
+        samples.push({ x: primitive.x + Math.cos(a) * primitive.r, z: primitive.z + Math.sin(a) * primitive.r });
+      }
+    } else if (primitive.kind === 'capsule') {
+      const steps = 16;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = primitive.ax + (primitive.bx - primitive.ax) * t;
+        const z = primitive.az + (primitive.bz - primitive.az) * t;
+        const dx = primitive.bx - primitive.ax;
+        const dz = primitive.bz - primitive.az;
+        const len = Math.hypot(dx, dz) || 1;
+        const nx = -dz / len;
+        const nz = dx / len;
+        samples.push({ x: x + nx * primitive.r, z: z + nz * primitive.r });
+        samples.push({ x: x - nx * primitive.r, z: z - nz * primitive.r });
+      }
+    } else if (primitive.kind === 'obb') {
+      const c = Math.cos(finite(primitive.angleDeg) * DEG);
+      const s = Math.sin(finite(primitive.angleDeg) * DEG);
+      for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const lx = sx * primitive.hx;
+        const lz = sz * primitive.hz;
+        samples.push({ x: primitive.x + c * lx - s * lz, z: primitive.z + s * lx + c * lz });
+      }
+    }
+  }
+  return samples;
+}
+
+function distanceToProxySet(point, proxies) {
+  let best = Infinity;
+  for (const primitive of proxies) {
+    const d = distanceToProxy(point, primitive);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** Signed distance from point to primitive SURFACE (negative inside). */
+export function distanceToProxy(point, primitive) {
+  if (primitive.kind === 'circle') {
+    return Math.hypot(point.x - primitive.x, point.z - primitive.z) - primitive.r;
+  }
+  if (primitive.kind === 'capsule') {
+    const d = distanceToSegment(point, { x: primitive.ax, z: primitive.az }, { x: primitive.bx, z: primitive.bz });
+    return d - primitive.r;
+  }
+  if (primitive.kind === 'obb') {
+    const c = Math.cos(-finite(primitive.angleDeg) * DEG);
+    const s = Math.sin(-finite(primitive.angleDeg) * DEG);
+    const lx = c * (point.x - primitive.x) - s * (point.z - primitive.z);
+    const lz = s * (point.x - primitive.x) + c * (point.z - primitive.z);
+    const qx = Math.abs(lx) - primitive.hx;
+    const qz = Math.abs(lz) - primitive.hz;
+    const outside = Math.hypot(Math.max(qx, 0), Math.max(qz, 0));
+    const inside = Math.min(Math.max(qx, qz), 0);
+    return outside + inside;
+  }
+  return Infinity;
+}
+
+function distanceToSegment(p, a, b) {
+  const abx = b.x - a.x;
+  const abz = b.z - a.z;
+  const len2 = abx * abx + abz * abz;
+  const t = len2 > 0 ? clamp(((p.x - a.x) * abx + (p.z - a.z) * abz) / len2, 0, 1) : 0;
+  const cx = a.x + abx * t;
+  const cz = a.z + abz * t;
+  return Math.hypot(p.x - cx, p.z - cz);
+}
+
+// -----------------------------------------------------------------------------------------------
+// Berth line-of-sight (D77)
+//
+// The berth-proximity capture claim is only honest when the hull can actually reach the berth: a
+// hull parked in an inter-spar pocket is inside the near-berth radius yet separated from the berth
+// by a spar. These helpers test that line against the station's own compound proxy, in cache-
+// friendly terms: geometry is expanded once per (manifest, entity, bearing) into normalized local
+// space, and only two points are transformed per query — no per-tick mesh rebuild.
+// -----------------------------------------------------------------------------------------------
+
+const EXPANDED_PRIMITIVE_CACHE = new WeakMap();
+
+function expandedPrimitivesCached(manifest, entity, corridorDeg) {
+  const cached = EXPANDED_PRIMITIVE_CACHE.get(manifest);
+  const poseAngle = ceresWorkfleetSlideRole(entity, manifest) ? ceresWorkfleetSlide(entity) : 0;
+  if (cached && cached.entity === entity && cached.corridorDeg === corridorDeg && cached.poseAngle === poseAngle) return cached.primitives;
+  const primitives = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
+  EXPANDED_PRIMITIVE_CACHE.set(manifest, { entity, corridorDeg, poseAngle, primitives });
+  return primitives;
+}
+
+/** True when a straight line from `pos` to `berth` passes through the station's own proxy geometry.
+ * Points are transformed into the manifest's normalized local frame; radii are already normalized. */
+function berthLineBlocked(manifest, entity, pos, berth) {
+  const scale = positive(proxyScaleFor(entity, manifest), 1);
+  const rot = finite(entity && entity.rot);
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const px = finite(entity && entity.pos && entity.pos.x);
+  const pz = finite(entity && entity.pos && entity.pos.z);
+  const toLocal = (x, z) => {
+    const dx = finite(x) - px;
+    const dz = finite(z) - pz;
+    return { x: (dx * c + dz * s) / scale, z: (-dx * s + dz * c) / scale };
+  };
+  const a = toLocal(pos && pos.x, pos && pos.z);
+  const b = toLocal(berth && berth.x, berth && berth.z);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const primitives = expandedPrimitivesCached(manifest, entity, corridorDeg);
+  for (const primitive of primitives) {
+    if (segmentBlockedByPrimitive(a, b, primitive)) return true;
+  }
+  return false;
+}
+
+function segmentBlockedByPrimitive(a, b, primitive) {
+  if (!primitive) return false;
+  if (primitive.kind === 'circle') {
+    return primitive.r > 0 && distanceToSegment(primitive, a, b) < primitive.r;
+  }
+  if (primitive.kind === 'capsule') {
+    const start = { x: finite(primitive.ax), z: finite(primitive.az) };
+    const end = { x: finite(primitive.bx), z: finite(primitive.bz) };
+    if (segmentsIntersect(a, b, start, end)) return true;
+    const r = finite(primitive.r);
+    return r > 0 && Math.min(
+      distanceToSegment(start, a, b),
+      distanceToSegment(end, a, b),
+      distanceToSegment(a, start, end),
+      distanceToSegment(b, start, end),
+    ) < r;
+  }
+  if (primitive.kind === 'obb') return segmentCrossesObb(a, b, primitive);
+  return false;
+}
+
+function segmentsIntersect(a, b, c, d) {
+  if (Math.max(a.x, b.x) < Math.min(c.x, d.x) || Math.max(c.x, d.x) < Math.min(a.x, b.x)
+    || Math.max(a.z, b.z) < Math.min(c.z, d.z) || Math.max(c.z, d.z) < Math.min(a.z, b.z)) return false;
+  const cross = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (r.x - p.x) * (q.z - p.z);
+  return cross(a, b, c) * cross(a, b, d) <= 0 && cross(c, d, a) * cross(c, d, b) <= 0;
+}
+
+/** Slab test in the OBB's local frame; the OBB is a normalized-local primitive (`angleDeg`). */
+function segmentCrossesObb(a, b, primitive) {
+  const rad = finite(primitive.angleDeg) * DEG;
+  const c = Math.cos(-rad);
+  const s = Math.sin(-rad);
+  const rotate = (v) => ({
+    x: (v.x - primitive.x) * c - (v.z - primitive.z) * s,
+    z: (v.x - primitive.x) * s + (v.z - primitive.z) * c,
+  });
+  const from = rotate(a);
+  const to = rotate(b);
+  let low = 0;
+  let high = 1;
+  for (const [axis, half] of [['x', primitive.hx], ['z', primitive.hz]]) {
+    const d = to[axis] - from[axis];
+    if (Math.abs(d) < 1e-9) {
+      if (Math.abs(from[axis]) > half) return false;
+      continue;
+    }
+    const t1 = (-half - from[axis]) / d;
+    const t2 = (half - from[axis]) / d;
+    low = Math.max(low, Math.min(t1, t2));
+    high = Math.min(high, Math.max(t1, t2));
+    if (low > high) return false;
+  }
+  return high > 0 && low < 1;
+}
+
+function distanceToFootprint(point, footprint) {
+  let best = Infinity;
+  if (footprint.tube) {
+    // Gate footprint (approach frame): distance to either throat-tube circle surface / hub surface.
+    const t = footprint.tube;
+    best = Math.abs(Math.hypot(point.x, point.z - t.offset) - t.halfWidth);
+    best = Math.min(best, Math.abs(Math.hypot(point.x, point.z + t.offset) - t.halfWidth));
+    if (footprint.hub) {
+      best = Math.min(best, Math.abs(Math.hypot(point.x - footprint.hub.x, point.z - (footprint.hub.z || 0)) - footprint.hub.r));
+    }
+    return best;
+  }
+  // Core disc.
+  best = Math.min(best, Math.abs(Math.hypot(point.x, point.z) - footprint.coreRadius));
+  // Spar rectangles.
+  for (const sparDeg of footprint.spar.angles) {
+    const a = sparDeg * DEG;
+    const ux = Math.cos(a);
+    const uz = Math.sin(a);
+    const along = point.x * ux + point.z * uz;
+    const lateral = Math.abs(point.x * -uz + point.z * ux);
+    const qA = Math.max(footprint.spar.inner - along, Math.max(along - footprint.spar.outer, 0));
+    const qL = Math.max(lateral - footprint.spar.halfWidth, 0);
+    const inside = along >= footprint.spar.inner && along <= footprint.spar.outer && lateral <= footprint.spar.halfWidth;
+    const d = inside ? 0 : Math.hypot(qA, qL);
+    if (d < best) best = d;
+  }
+  // Ring annuli.
+  for (const ring of [footprint.ring1, footprint.ring2]) {
+    if (!ring) continue;
+    const minor = ring.minorRadius || ring.radius;
+    // Ellipse distance (coarse: scale z into circular space).
+    const scaled = Math.hypot(point.x, point.z * (ring.radius / minor));
+    const d = Math.abs(scaled - ring.radius) - ring.tubeHalfWidth;
+    if (d < best) best = Math.max(0, d);
+  }
+  return best;
+}
+
+function wrapDeg(deg) {
+  let out = finite(deg) % 360;
+  if (out < 0) out += 360;
+  return out;
+}
+
+function wrapDeg180(deg) {
+  let out = finite(deg) % 360;
+  if (out > 180) out -= 360;
+  if (out <= -180) out += 360;
+  return out;
+}
+
+function clamp(value, lo, hi) {
+  return Math.max(lo, Math.min(hi, value));
+}
+
+function positive(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}

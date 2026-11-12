@@ -1,0 +1,109 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "swarm_jackal",
+ "sourceAssetId": "SF_SWARM_JACKAL",
+ "sourceGlbSha256": "8a8a18f9d02b99b71c15479e64453b376f724158662fb53381f0ab74084d377b",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "jackal_gate_port",
+   "node": "MOTION_JACKAL_GATE_PORT",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -4.099999904632568,
+     0.46000000834465027,
+     0
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  },
+  {
+   "id": "jackal_gate_starboard",
+   "node": "MOTION_JACKAL_GATE_STARBOARD",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -4.099999904632568,
+     0.46000000834465027,
+     0
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "specialist_rest_contract",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "rest",
+   "channels": [
+    {
+     "group": "jackal_gate_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "jackal_gate_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  }
+ ]
+}

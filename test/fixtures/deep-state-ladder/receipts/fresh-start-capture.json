@@ -1,0 +1,33 @@
+{
+  "schema": "spaceface.deepStateCapture.v1",
+  "fixtureId": "fresh-start",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
+  "career": "hauler",
+  "pilotStop": "launch",
+  "savedVia": "public-F5-after-stop",
+  "inputSource": "playwright-keyboard-pointer",
+  "injectedState": false,
+  "milestones": [
+    "title-visible",
+    "new-game-opened",
+    "run-started"
+  ],
+  "artifact": "test/fixtures/deep-state-ladder/artifacts/fresh-start.spaceface-save.json",
+  "artifactSha256": "d581ab36fd0be3aa4239fca86abb79dc2cac5486fa052137b0b380d8065fc874",
+  "captureSnapshot": {
+    "mode": "flight",
+    "hasPlayerEntity": true,
+    "playerShipDefId": "ship_kestrel",
+    "pilotName": "Wren",
+    "careers": {
+      "hasOrigins": true,
+      "hasLadders": true
+    },
+    "activeMissionCount": 1,
+    "currentSectorId": "sector_helios_prime",
+    "docked": false,
+    "dockedStationId": null,
+    "dockTabCount": 0,
+    "undockControlPresent": false
+  }
+}

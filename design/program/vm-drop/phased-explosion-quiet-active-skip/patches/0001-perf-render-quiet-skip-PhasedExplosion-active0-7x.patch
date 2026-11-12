@@ -1,0 +1,34 @@
+From 1fcec03bbb904b886dedf097122f23a3d860fc4e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:43:41 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20PhasedExplosionLif?=
+ =?UTF-8?q?ecycle=20when=20active=3D=3D=3D0=20(~7.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight walked all 40 explosion slots every frame while
+activeCount===0. Early-out trusts the active counter; emit never ran for
+inactive entries so picture is unchanged.
+---
+ src/render/combat/phasedExplosions.js | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/render/combat/phasedExplosions.js b/src/render/combat/phasedExplosions.js
+index ca229008b..7013ec245 100644
+--- a/src/render/combat/phasedExplosions.js
++++ b/src/render/combat/phasedExplosions.js
+@@ -317,6 +317,10 @@ export class PhasedExplosionLifecycle {
+   }
+ 
+   update(dt, emit) {
++    // Quiet open flight: capacity walk (prod 40) only continues on dead slots when
++    // activeCount===0. Trust the counter (start ++ / _release -- / clear); picture
++    // unchanged — emit never runs for inactive entries.
++    if (!(this.activeCount > 0)) return 0;
+     const step = Math.max(0, finite(dt, 0));
+     for (let entryIndex = 0; entryIndex < this.entries.length; entryIndex++) {
+       const entry = this.entries[entryIndex];
+-- 
+2.47.3
+

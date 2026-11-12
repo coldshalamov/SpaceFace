@@ -1,0 +1,3627 @@
+// Self-contained bloom post-processor with a multi-scale downsample pyramid (ARCHITECTURE §2.4
+// draw pipeline). Progressive downsample (full→½→¼) extracts brights; the composite samples the
+// pyramid multi-scale so each level contributes low-frequency glow without a separate upsample RT
+// or pass. Bright things *radiate* instead of producing a tight local glow.
+//
+// Pipeline (all custom ShaderMaterials on ONE shared fullscreen quad; NO three/addons, NO
+// EffectComposer/FullScreenQuad):
+//   pass 0  scene       rtScene            (renderer.render at full res, HalfFloat so emissive
+//                                           additive brights can exceed 1.0)
+//   pass 1  bright+down rtScene   -> down[0] (½)   bright-pass + 5-tap 2D downsample
+//   pass 2  downsample  down[0]   -> down[1] (¼)   5-tap 2D downsample  [if levels>=2]
+//   pass 3  composite   rtScene + multi-scale bloom (down[0]+w*down[1]) -> default framebuffer
+//   pass 4  [below-res only] composite -> active rtPost viewport, then FidelityFX CAS -> default
+//           framebuffer. CAS reconstructs active content into the drawing buffer; equal sizes
+//           use sharpen-only. The browser owns any remaining buffer-to-display upscale.
+//
+// Structural note: the old additive upsample chain allocated a separate half-res RT and an extra
+// fullscreen pass per frame. Multi-scale composite sampling (same idea as SpaceRenderGraph) keeps
+// the wide halo via hardware bilinear on coarser pyramid levels and removes that RT + pass.
+//
+// COLOR-MANAGEMENT INVARIANT (the thing that makes this provably correct):
+//   Bloom strength controls only selective spill. At bloomStrength == 0 (or when bloom is disabled)
+//   the HDR scene still passes through the same canonical presentation composite. We achieve that by:
+//     * leaving every RT texture in the default (linear) colorSpace — we never set sRGB on a RT,
+//     * sampling RTs raw in custom shaders (three does NOT auto-decode/auto-tonemap a ShaderMaterial
+//       texture in r160), and
+//     * doing the ONE sRGB encode manually in the composite shader (renderer would normally do this
+//       when drawing to screen, but a custom-shader full-screen pass bypasses it).
+//   Tone mapping, exposure, grade, toe, vignette, grain, and the one sRGB encode all live in the
+//   shared composite block below. A native straight render is therefore a degraded-capability or
+//   context-loss fallback, never the ordinary bloom-off route.
+//
+// Cost: scene render + a handful of cheap fullscreen quads; the deepest pyramid levels are tiny (⅛-res
+// blits are ~16px taps), so the wide halo costs little over the old single-blur. createBloom() is a
+// drop-in replacement for renderer.render — the render layer calls bloom.render(scene, camera) instead.
+import * as THREE from 'three';
+import { recordPostRenderTargetAllocation } from './postTelemetry.js';
+import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
+import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
+import { makeGpuQueuePacer } from './gpuQueuePace.js';
+import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, casSupportsScaling, createCasUniforms, resolveCasSharpenActive } from './cas.js';
+import { LOOK_POST_UNIFORMS } from './look.js';
+import {
+  createAtmosphereCompositeUniforms,
+  NOCTURNE_ATMOSPHERE_COMPOSITE_GLSL,
+} from './nocturne/atmosphere.js';
+import {
+  orientationDetachedHoldActive,
+  orientationHoldHidesDrawable,
+  detachedGeometryUploadPending,
+  packageDetachSerialNow,
+  preparePresentedDraw,
+  presentedDetachDrawsArmed,
+  queuePresentedDetachRehydrate,
+} from './packageCpuDetach.js';
+
+const BALANCED_BLOOM_MAX_LEVELS = 2;
+// The `bloomLevels` setting is a quality tier (1 = tight glow only, 2 = the full halo), not a
+// target count. Tier 2 builds this many pyramid levels (1/2, 1/4, 1/8, 1/16): the two deep levels
+// together cover 1/51 of the scene's pixels, and they are what turns a lit strip into neon — a
+// light that spills tens of pixels, not two.
+const BLOOM_WIDE_PYRAMID_LEVELS = 4;
+// A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
+// far past anything ordinary rendering explains, so it never fires in healthy play.
+const BRICK_WARN_MS = 200;
+const BALANCED_BLOOM_MSAA_SAMPLES = 0;
+export const POST_GRAIN_FPS = 12;
+// Owner 2026-10-27: bloom was blurring the edges of ordinary lit geometry ("blurry where it
+// shouldn't be"). The discipline moved into the pipeline itself: a lower strength, a much sharper
+// bright-pass knee, and quieter mid/wide halo weights, so only genuinely emissive HDR (>1.0)
+// sources — engine cores, lamps, shots — radiate while lit paint (ceiling 0.74) and sky bodies
+// stay crisp. Per-sector profiles keep their at-or-above-baseline contract.
+export const DEFAULT_BLOOM_STRENGTH = 0.40;
+export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0, toe: 0 });
+// A linear-space toe of 0.020 encoded to an RGB floor around byte 35-42, not the documented
+// perceptual target around byte 12. This calibrated value lands at roughly 11/12/14 after sRGB and
+// retains the deliberately cool space-black bias without laying a grey-blue veil over the frame.
+export const DEFAULT_CINEMATIC_TOE = 0.0039;
+export const POST_TOE_TINT = Object.freeze([0.82, 0.92, 1.15]);
+// Static one-LSB triangular dither in the final sRGB encode, gated off exact black so the void
+// stays exactly 0.
+export const POST_DITHER_LSB = 1.0;
+
+// Contrast is normally evaluated with the authored pow() path. The LUT is an opt-in experiment
+// for the measured composite hotspot: it stores the already-squared sigmoid in two normalized
+// 8-bit channels, giving a portable 16-bit scalar on WebGL2 without changing any look parameter.
+// Keep the table size fixed because the shader's texel-center mapping is part of the format.
+export const CONTRAST_LUT_SIZE = 1024;
+export const CONTRAST_LUT_FORMAT = 'rg8-linear-16bit';
+
+export function contrastShapedSquared(value, contrast) {
+  const v = Math.max(0, Math.min(1, Number(value) || 0));
+  const c = Number.isFinite(Number(contrast)) ? Number(contrast) : 1;
+  const rise = v ** c;
+  const fall = (1 - v) ** c;
+  const shaped = rise / Math.max(rise + fall, 0.00001);
+  return shaped * shaped;
+}
+
+function writeContrastLutData(contrast, data) {
+  if (!(data instanceof Uint8Array) || data.length !== CONTRAST_LUT_SIZE * 2) {
+    throw new TypeError('contrast LUT data must be a 1024-entry RG8 Uint8Array');
+  }
+  for (let i = 0; i < CONTRAST_LUT_SIZE; i++) {
+    const quantized = Math.max(0, Math.min(65535, Math.round(
+      contrastShapedSquared(i / (CONTRAST_LUT_SIZE - 1), contrast) * 65535,
+    )));
+    data[i * 2] = Math.floor(quantized / 256);
+    data[i * 2 + 1] = quantized % 256;
+  }
+  return data;
+}
+
+/** Build the opt-in contrast LUT's exact RG8 payload without touching Three or a renderer. */
+export function buildContrastLutData(contrast) {
+  return writeContrastLutData(contrast, new Uint8Array(CONTRAST_LUT_SIZE * 2));
+}
+
+/** CPU reference for the shader's texel-center/linear-filter lookup, used by focused tests. */
+export function sampleContrastLutData(data, value) {
+  if (!(data instanceof Uint8Array) || data.length !== CONTRAST_LUT_SIZE * 2) {
+    throw new TypeError('contrast LUT data must be a 1024-entry RG8 Uint8Array');
+  }
+  const x = Math.max(0, Math.min(1, Number(value) || 0)) * (CONTRAST_LUT_SIZE - 1);
+  const lo = Math.floor(x);
+  const hi = Math.min(CONTRAST_LUT_SIZE - 1, lo + 1);
+  const t = x - lo;
+  const decode = (index) => (data[index * 2] * 256 + data[index * 2 + 1]) / 65535;
+  return decode(lo) * (1 - t) + decode(hi) * t;
+}
+
+function createContrastLutTexture(contrast) {
+  const texture = new THREE.DataTexture(
+    buildContrastLutData(contrast),
+    CONTRAST_LUT_SIZE,
+    1,
+    THREE.RGFormat,
+    THREE.UnsignedByteType,
+  );
+  texture.name = 'Bloom:ContrastLut';
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.generateMipmaps = false;
+  texture.unpackAlignment = 1;
+  if ('colorSpace' in texture && THREE.NoColorSpace != null) texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// Packed HDR is deliberately an experiment rather than a quality setting. R11F_G11F_B10F has
+// no alpha and less mantissa precision than HalfFloat, so the normal route remains RGBA16F until
+// a native timer/picture comparison accepts the requested mode. The switch is local to this
+// compositor and never changes the persisted video settings.
+export const PACKED_HDR_MODE = Object.freeze({ OFF: 'off', PYRAMID: 'pyramid', ALL: 'all' });
+
+export function normalizePackedHdrMode(value) {
+  if (value === true) return PACKED_HDR_MODE.PYRAMID;
+  if (value === false || value == null) return PACKED_HDR_MODE.OFF;
+  const mode = String(value).trim().toLowerCase();
+  if (mode === PACKED_HDR_MODE.ALL || mode === 'all-color-targets') return PACKED_HDR_MODE.ALL;
+  if (mode === PACKED_HDR_MODE.PYRAMID || mode === 'pyramid-only') return PACKED_HDR_MODE.PYRAMID;
+  return PACKED_HDR_MODE.OFF;
+}
+
+export function packedHdrTargetOptions(mode, depthBuffer = false) {
+  const packed = normalizePackedHdrMode(mode) !== PACKED_HDR_MODE.OFF;
+  return {
+    format: packed ? THREE.RGBFormat : THREE.RGBAFormat,
+    type: packed ? THREE.UnsignedInt101111Type : THREE.HalfFloatType,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    depthBuffer: !!depthBuffer,
+    stencilBuffer: false,
+  };
+}
+
+function packedHdrProbeFailure(reason, framebufferStatus = null) {
+  return {
+    supported: false,
+    reason,
+    framebufferStatus,
+  };
+}
+
+/**
+ * Probe the exact target format through Three's target setup and a real FBO completeness check.
+ * This is called only when the opt-in experiment is requested or after context restoration.
+ */
+export function probePackedHdrCapability(renderer) {
+  const capabilities = renderer && renderer.capabilities;
+  if (!capabilities || capabilities.isWebGL2 !== true) {
+    return packedHdrProbeFailure('webgl2-required');
+  }
+  const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  if (!gl || typeof gl.getExtension !== 'function') {
+    return packedHdrProbeFailure('webgl-context-unavailable');
+  }
+  if (typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+    return packedHdrProbeFailure('context-lost');
+  }
+  let extension = null;
+  try { extension = gl.getExtension('EXT_color_buffer_float'); } catch (_) { extension = null; }
+  if (!extension) return packedHdrProbeFailure('ext-color-buffer-float-required');
+  if (typeof renderer.initRenderTarget !== 'function' || typeof renderer.setRenderTarget !== 'function') {
+    return packedHdrProbeFailure('render-target-probe-unavailable');
+  }
+  if (typeof gl.checkFramebufferStatus !== 'function'
+      || !Number.isFinite(Number(gl.FRAMEBUFFER))
+      || !Number.isFinite(Number(gl.FRAMEBUFFER_COMPLETE))) {
+    return packedHdrProbeFailure('framebuffer-status-unavailable');
+  }
+
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const target = new THREE.WebGLRenderTarget(1, 1, packedHdrTargetOptions(PACKED_HDR_MODE.PYRAMID));
+  try {
+    renderer.initRenderTarget(target);
+    renderer.setRenderTarget(target);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      return packedHdrProbeFailure(`framebuffer-incomplete:${status}`, status);
+    }
+    return { supported: true, reason: 'framebuffer-complete', framebufferStatus: status };
+  } catch (_) {
+    return packedHdrProbeFailure('target-probe-threw');
+  } finally {
+    try { renderer.setRenderTarget(previousTarget || null); } catch (_) {}
+    target.dispose();
+  }
+}
+
+function linearToSrgbChannel(value) {
+  const c = Math.max(0, Number(value) || 0);
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * (c ** (1 / 2.4)) - 0.055;
+}
+
+/** Pure calibration seam used by focused tests and capture tooling. */
+export function resolvePostToeFloorSrgb(toe = DEFAULT_CINEMATIC_TOE) {
+  const amount = Math.max(0, Math.min(0.06, Number(toe) || 0));
+  return POST_TOE_TINT.map((channel) => linearToSrgbChannel(channel * amount));
+}
+
+// Both post routes interpolate this exact block into their composite shader. Exposure, tone mapping,
+// grade, toe, vignette, grain, and encoding are deliberately one implementation so route parity can
+// be claimed when AO and bloom are neutralized. Grade and vignette are multiplicative, so black stays
+// black until the one explicit, calibrated toe operation.
+//
+// The uLook* uniforms are the Look (src/data/lookMoods.js, owned at runtime by look.js). The block
+// declares them itself so both routes stay one implementation; each composite material attaches
+// the shared objects with LOOK_POST_UNIFORMS.
+export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
+  uniform vec3 uLookShadowTint;     // split-tone multiplier for dark pixels
+  uniform vec3 uLookHighlightTint;  // split-tone multiplier for bright pixels
+  uniform vec3 uLookBloomTint;      // colour of bloom spill
+  uniform vec3 uLookVignetteTint;   // corner colour at full vignette
+  uniform float uLookContrast;      // sigmoid contrast around mid-grey (1 = none)
+  uniform float uLookSaturation;    // global saturation (1 = none)
+  uniform float uLookVibrance;      // extra saturation for muted colours only
+  uniform float uLookInk;           // painted-edge deposit and value steps (0 = clean)
+
+  // Edge resolve + wet-ink finish, fused into the existing composite. The scene target is
+  // single-sampled by design, so this is where post-AA lives: a Lottes-style tap resolve that
+  // blends only along detected contrast edges, leaving flat fields, authored texture interior,
+  // and pinprick stars single-sampled. The same diagonal taps then feed the pigment deposit —
+  // a dark seam pools into the painted side of an edge. The deposit reads the resolved luma and
+  // the fixed neighbourhood range, where the old fwidth(y) term re-derived gradient energy per
+  // pixel per frame and pooled/unpooled under any subpixel drift (the "congealing clumps" the
+  // owner reported 2026-09-21). Bright cores stay unfiltered.
+  vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+    vec2 texel = 1.0 / vec2(textureSize(sceneTexture, 0));
+    vec3 c = texture2D(sceneTexture, uv).rgb;
+    vec3 rgbNW = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
+    vec3 rgbNE = texture2D(sceneTexture, uv + texel).rgb;
+    vec3 rgbSW = texture2D(sceneTexture, uv - texel).rgb;
+    vec3 rgbSE = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
+    float lumaNW = dot(rgbNW, vec3(0.2126, 0.7152, 0.0722));
+    float lumaNE = dot(rgbNE, vec3(0.2126, 0.7152, 0.0722));
+    float lumaSW = dot(rgbSW, vec3(0.2126, 0.7152, 0.0722));
+    float lumaSE = dot(rgbSE, vec3(0.2126, 0.7152, 0.0722));
+    float lumaM = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+    float contrast = lumaMax - lumaMin;
+    vec3 resolved = c;
+    // Only a real local contrast earns the extra taps; the scale-relative gate keeps dim hull
+    // edges eligible while HDR brights skip (bloom already softens them). Owner complaint —
+    // edges read smeared, not drawn: the gate firmed up so faint gradients keep their authored
+    // pixel, and the resolve span tightened from ±8 to ±6 texels so a real edge still resolves
+    // but no longer reaches as far along itself.
+    if (contrast > max(0.016, lumaMax * 0.12)) {
+      vec2 dir = vec2(
+        -((lumaNW + lumaNE) - (lumaSW + lumaSE)),
+        ((lumaNW + lumaSW) - (lumaNE + lumaSE)));
+      float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
+      float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+      dir = clamp(dir * rcpDirMin, -6.0, 6.0) * texel;
+      vec3 rgbA = 0.5 * (
+        texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
+        texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+      vec3 rgbB = rgbA * 0.5 + 0.25 * (
+        texture2D(sceneTexture, uv + dir * -0.5).rgb +
+        texture2D(sceneTexture, uv + dir * 0.5).rgb);
+      float lumaB = dot(rgbB, vec3(0.2126, 0.7152, 0.0722));
+      resolved = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
+    }
+    float y = dot(resolved, vec3(0.2126, 0.7152, 0.0722));
+    float solid = smoothstep(0.008, 0.045, y) * (1.0 - smoothstep(0.8, 1.8, y));
+    if (solid < 0.002) return resolved;
+    float ink = smoothstep(0.28, 0.85, contrast / (0.08 + y));
+    vec4 neighbours = vec4(lumaNW, lumaSE, lumaNE, lumaSW);
+    vec4 shadows = smoothstep(vec4(0.16), vec4(0.58), (vec4(y) - neighbours) / (0.035 + y));
+    float pool = dot(shadows, vec4(0.25));
+    // Deposit eased back with the resolve trim: the ink still pools on the painted side of a
+    // hard edge, just no longer as deep a seam over already-soft bloom spill.
+    float deposit = uLookInk * solid * clamp(ink * 0.15 + pool * 0.40, 0.0, 0.46);
+    return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
+  }
+
+  vec3 spaceAcesFilmic(vec3 x) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+  }
+
+  vec3 spaceLinearToSrgb(vec3 c) {
+    vec3 safe = max(c, vec3(0.0));
+    return mix(1.055 * pow(safe, vec3(1.0 / 2.4)) - vec3(0.055),
+      safe * 12.92, step(safe, vec3(0.0031308)));
+  }
+
+  // Compress luminous colour as a ratio, rather than clipping R/G/B independently to white.
+  // Neutral hot cores stay neutral; blue plasma, amber sparks and violet fields retain pigment.
+  vec3 spaceRadianceShoulder(vec3 radiance) {
+    float peak = max(radiance.r, max(radiance.g, radiance.b));
+    return radiance * (spaceAcesFilmic(vec3(peak)).r / max(peak, 0.00001));
+  }
+
+  float spaceGrainNoise(vec2 p) {
+    return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
+  }
+
+#ifdef SF_CONTRAST_LUT
+  uniform sampler2D tLookContrastLut;
+
+  float spaceContrastShapedSquared(float value) {
+    // The CPU table stores a 16-bit scalar as RG8. Sampling at texel centers makes the
+    // endpoints exact and lets the hardware's linear filter interpolate only between adjacent
+    // authored samples. The decode is deliberately explicit: no sRGB conversion or gamma belongs
+    // on this data texture.
+    float x = clamp(value, 0.0, 1.0);
+    vec2 packed = texture2D(tLookContrastLut,
+      vec2((x * 1023.0 + 0.5) / 1024.0, 0.5)).rg;
+    return ((packed.r * 255.0) * 256.0 + packed.g * 255.0) / 65535.0;
+  }
+#else
+  float spaceContrastShapedSquared(float value) {
+    // Factor the two powers by the larger base. The ratio stays in [0,1], including exact
+    // black/white, so one power gives the same sigmoid without an overflowing endpoint.
+    // All authored moods/transitions are inside this range; their denominator is >=0.5,
+    // safely above the original floor. Unusual live tuning keeps that floor below.
+    if (uLookContrast >= 0.5 && uLookContrast <= 2.0) {
+      float complement = 1.0 - value;
+      float ratio = pow(min(value, complement) / max(value, complement), uLookContrast);
+      float shaped = (value < 0.5 ? ratio : 1.0) / (1.0 + ratio);
+      return shaped * shaped;
+    }
+    float rise = pow(value, uLookContrast);
+    float fall = pow(1.0 - value, uLookContrast);
+    float shaped = rise / max(rise + fall, 0.00001);
+    return shaped * shaped;
+  }
+#endif
+
+  vec3 applySpacePostPresentation(
+    vec3 color,
+    vec2 uv,
+    float gradeAmount,
+    float toeAmount,
+    float vignetteAmount
+  ) {
+    vec3 c = max(color, vec3(0.0));
+    if (gradeAmount > 0.001) {
+      // Split tone: the mood's shadow hue under its highlight hue. gradeAmount is how hard the
+      // sector wears it.
+      float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      vec3 graded = c * mix(uLookShadowTint, uLookHighlightTint, smoothstep(0.10, 0.60, luma));
+      c = mix(c, graded, gradeAmount);
+      // Contrast: a sigmoid in perceptual value that pins black and white, applied as a luma
+      // ratio so hue survives. The clamp is load-bearing: bloom can push luma past 1, and
+      // pow() of the negative (1 - value) is NaN.
+      float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      float value = sqrt(clamp(y, 0.0, 1.0));
+      float shapedSquared = spaceContrastShapedSquared(value);
+      c *= (y > 0.00001 ? min(shapedSquared / y, 4.0) : 1.0);
+      // Saturation, plus vibrance that lifts muted colours more than ones already at full chroma.
+      // Luma is recomputed after the contrast step and the result clamped: a dark saturated
+      // pixel pushed negative would poison the sRGB encode.
+      float peak = max(c.r, max(c.g, c.b));
+      float chroma = peak > 0.00001 ? (peak - min(c.r, min(c.g, c.b))) / peak : 0.0;
+      float satY = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = max(mix(vec3(satY), c, uLookSaturation * (1.0 + uLookVibrance * (1.0 - chroma))), vec3(0.0));
+    }
+    if (toeAmount > 0.0001) {
+      float toeLuma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      float shadowMask = 1.0 - smoothstep(0.0, 0.22, toeLuma);
+      c += vec3(${POST_TOE_TINT.join(', ')}) * toeAmount * shadowMask;
+    }
+    if (vignetteAmount > 0.001) {
+      vec2 d = uv - vec2(0.5);
+      float dist = dot(d, d) * 2.2;
+      // Falloff stays out of the mid-frame (playable space reads clean) and spends the mood
+      // only in the outer corners: darkening begins ~85% of the way to the edge.
+      float vig = 1.0 - smoothstep(0.40, 0.95, dist);
+      c *= mix(vec3(1.0), mix(uLookVignetteTint, vec3(1.0), vig), vignetteAmount);
+    }
+    return c;
+  }
+
+  vec3 composeSpacePostPresentation(
+    vec3 scene,
+    vec3 bloom,
+    vec2 uv,
+    vec2 fragCoord,
+    float exposure,
+    float acesAmount,
+    float gradeAmount,
+    float toeAmount,
+    float vignetteAmount,
+    float grainAmount,
+    float grainFrame
+  ) {
+    vec3 hdr = max(scene, vec3(0.0)) * exposure;
+    vec3 filmic = spaceAcesFilmic(hdr);
+    float peak = max(hdr.r, max(hdr.g, hdr.b));
+    if (peak > 0.65) {
+      filmic = mix(filmic, spaceRadianceShoulder(hdr),
+        0.55 * smoothstep(0.65, 2.5, peak));
+    }
+    vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
+    // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
+    // shoulders so movement does not turn into flickering hard posterization. Do this
+    // before additive bloom, keeping the luminous history continuous and the void black.
+    float inkY = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float inkValue = sqrt(max(inkY, 0.0));
+    float inkStep = inkValue * 7.0;
+    float inkBand = (floor(inkStep) + smoothstep(0.28, 0.72, fract(inkStep))) / 7.0;
+    // The surface shader owns strong bands. A softer screen finish preserves painted skies,
+    // thin markings and moving highlights rather than quantizing those a second time.
+    float inkMix = 0.24 * uLookInk * smoothstep(0.035, 0.12, inkValue);
+    float inkPaint = mix(inkValue, inkBand, inkMix);
+    color *= (inkY > 0.00001 ? inkPaint * inkPaint / inkY : 1.0);
+    vec3 spill = max(bloom, vec3(0.0)) * uLookBloomTint;
+    spill /= 1.0 + max(spill.r, max(spill.g, spill.b));
+    color = applySpacePostPresentation(max(color + spill * (1.0 - color * 0.65), vec3(0.0)),
+      uv, gradeAmount, toeAmount, vignetteAmount);
+    vec3 srgb = spaceLinearToSrgb(color);
+    if (grainAmount > 0.001) {
+      float luma = dot(srgb, vec3(0.2126, 0.7152, 0.0722));
+      vec2 grainCell = fragCoord * 0.5 + vec2(grainFrame * 17.0, grainFrame * 31.0);
+      float noise = spaceGrainNoise(grainCell) - 0.5;
+      srgb += noise * grainAmount * (0.25 + 0.75 * (1.0 - luma)) * 0.10;
+    }
+    ${POST_DITHER_LSB > 0.0001 ? /* glsl */`
+    // Static 1-LSB triangular dither ahead of the 8-bit encode; the step() gate keeps exact
+    // black exactly black. fract() of a positive value is already in [0, 1), so the clamp never
+    // bites on conformant fp32; it is a saturate on the subtract and only exists so an odd driver
+    // cannot turn sqrt of a hair under zero into a NaN across the whole frame.
+    float sfDitherN = spaceGrainNoise(fragCoord) * 2.0 - 1.0;
+    float sfDither = sign(sfDitherN) * (1.0 - sqrt(clamp(1.0 - abs(sfDitherN), 0.0, 1.0)));
+    srgb += vec3(sfDither * ${(POST_DITHER_LSB / 255).toFixed(8)}) * step(vec3(0.5 / 255.0), srgb);
+    ` : ''}
+    return clamp(srgb, 0.0, 1.0);
+  }
+`;
+
+/**
+ * Resolve the player's bloom controls and an authored sector post profile into the exact values
+ * consumed by both post-processors. Pure and allocation-only: callers may use it in tests and on
+ * settings/sector transitions without needing a renderer or mutating either input.
+ */
+export function resolveEffectiveSectorPost(video = {}, sectorPost = null, fallbacks = {}) {
+  const settings = video && typeof video === 'object' ? video : {};
+  const post = sectorPost && typeof sectorPost === 'object' ? sectorPost : {};
+  const defaults = fallbacks && typeof fallbacks === 'object' ? fallbacks : {};
+
+  const fallbackStrength = Number.isFinite(defaults.bloomStrength)
+    ? Math.max(0, Math.min(1, defaults.bloomStrength))
+    : DEFAULT_BLOOM_STRENGTH;
+  let bloomStrength = Number.isFinite(settings.bloomStrength)
+    ? settings.bloomStrength
+    : fallbackStrength;
+  // Legacy profiles used a 0..2 slider. Fold them onto the current 0..1 contract exactly once.
+  if (bloomStrength > 1) bloomStrength *= 0.5;
+  bloomStrength = Math.max(0, Math.min(1, bloomStrength));
+
+  const rawScale = Number(post.bloomStrengthScale);
+  const strengthScale = post.bloomStrengthScale != null && Number.isFinite(rawScale) && rawScale >= 0
+    ? rawScale
+    : 1;
+  const fallbackThreshold = Number.isFinite(defaults.bloomThreshold) ? defaults.bloomThreshold : 1;
+  const bloomThreshold = Number.isFinite(settings.bloomThreshold)
+    ? settings.bloomThreshold
+    : fallbackThreshold;
+  const rawBias = Number(post.bloomThresholdBias);
+  const thresholdBias = post.bloomThresholdBias != null && Number.isFinite(rawBias) ? rawBias : 0;
+
+  const playerExposure = Number.isFinite(settings.exposure) ? settings.exposure : undefined;
+  const sectorExposure = finiteNumber(post.exposure);
+  const fallbackExposure = finiteNumber(defaults.exposure);
+  const presentation = (key) => {
+    const authored = finiteNumber(post[key]);
+    if (authored !== undefined) return authored;
+    const player = finiteNumber(settings[key]);
+    if (player !== undefined) return player;
+    return finiteNumber(defaults[key]);
+  };
+
+  // postFx is an opt-in kill switch for grade/vignette/grain (integrated preset). Default
+  // remains on so the shipped picture is unchanged unless the player picks that preset.
+  const postFx = settings.postFx !== false;
+  const grade = postFx ? presentation('grade') : 0;
+  const vignette = postFx ? presentation('vignette') : 0;
+  const toe = postFx ? presentation('toe') : 0;
+  const grain = postFx ? presentation('grain') : 0;
+
+  return {
+    bloom: typeof settings.bloom === 'boolean' ? settings.bloom : defaults.bloom,
+    bloomStrength: Math.max(0, Math.min(1, bloomStrength * strengthScale)),
+    bloomThreshold: Math.max(0, bloomThreshold + thresholdBias),
+    bloomLevels: Number.isFinite(settings.bloomLevels)
+      ? Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, settings.bloomLevels | 0))
+      : BALANCED_BLOOM_MAX_LEVELS,
+    exposure: playerExposure !== undefined
+      ? playerExposure
+      : (sectorExposure !== undefined ? sectorExposure : fallbackExposure),
+    acesToneMapping: settings.acesToneMapping !== false,
+    postFx,
+    sharpen: settings.sharpen === true,
+    grade,
+    vignette,
+    toe,
+    grain,
+  };
+}
+
+export function resolvePostPresentation(options = {}) {
+  return Object.freeze({
+    grain: clamp01(options.grain, DEFAULT_POST_PRESENTATION.grain),
+    vignette: clamp01(options.vignette, DEFAULT_POST_PRESENTATION.vignette),
+    grade: clamp01(options.grade, DEFAULT_POST_PRESENTATION.grade),
+    toe: clampRange(options.toe, DEFAULT_POST_PRESENTATION.toe, 0, 0.06),
+  });
+}
+
+function clamp01(value, fallback) {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+}
+
+function clampRange(value, fallback, lo, hi) {
+  return Number.isFinite(value) ? Math.max(lo, Math.min(hi, value)) : fallback;
+}
+
+function finiteNumber(value) {
+  if (value == null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+// Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
+// this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
+const BLOOM_PYRAMID_NORM = 1.32;
+
+/**
+ * Compile one Object3D subtree against the exact output target used by the live renderer.
+ *
+ * Three.js includes the active render target's output color space in its shader-program key. A
+ * screen-target compile therefore does not prepare the linear-HDR variants used by the bloom scene
+ * pass. Keep target selection around compileAsync so authored assets cannot appear "ready" while
+ * their first real HDR frame still has to synchronously compile on the driver.
+ */
+export async function compileScenePipelinesForRenderTarget(
+  renderer, renderTarget, subject, camera, lightingScene = subject, options = {},
+) {
+  if (!renderer || typeof renderer.compileAsync !== 'function') {
+    return { skipped: true, reason: 'compileAsync unavailable' };
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  let targetRestored = false;
+  try {
+    renderer.setRenderTarget(renderTarget || null);
+    const pending = compilePipelinesContextSafe(
+      renderer, subject, camera, lightingScene || subject, options,
+    );
+    // Owned compile() performs its complete GL issue synchronously; keep unsupported
+    // compileAsync implementations on the original serialized lifetime.
+    if ((options?.restoreTargetAfterIssue === true || typeof options?.onIssueComplete === 'function') && typeof renderer.compile === 'function'
+        && renderer.properties?.get && renderer.extensions?.get
+        && renderer.domElement?.addEventListener && renderer.domElement?.removeEventListener
+        && renderer.getContext && renderer.extensions.get('KHR_parallel_shader_compile')) {
+      renderer.setRenderTarget(previousTarget || null);
+      targetRestored = true;
+      options.onIssueComplete?.();
+    }
+    const admission = await pending;
+    if (admission && admission.contextLost) {
+      return {
+        skipped: true,
+        reason: admission.reason,
+        contextLost: true,
+      };
+    }
+    if (admission?.readinessTimedOut === true || admission?.incomplete === true) {
+      return { skipped: false, incomplete: true, readinessTimedOut: admission.readinessTimedOut === true };
+    }
+    return {
+      skipped: false,
+      programCount: Array.isArray(renderer.info && renderer.info.programs)
+        ? renderer.info.programs.length
+        : null,
+    };
+  } finally {
+    if (!targetRestored) renderer.setRenderTarget(previousTarget || null);
+  }
+}
+
+/**
+ * Three's compileAsync() owns an internal readiness timer that cannot be cancelled. If a WebGL
+ * context is lost while that timer is alive, it can resume after restoration and call
+ * glGetProgramiv() with program handles from the dead context. Use the same compile/isReady contract
+ * for real WebGLRenderer instances, but own the timer so context loss can retire it immediately.
+ * Lightweight render/test adapters keep using compileAsync() directly.
+ */
+/**
+ * Shared shader-readiness batch.
+ *
+ * `renderer.compile()` under KHR_parallel_shader_compile only *starts* the driver link; the wait is
+ * the poll on `program.isReady()`. Admitting one unit at a time therefore serializes waits that the
+ * driver is perfectly willing to overlap. Measured on this project's Intel/ANGLE D3D11 baseline:
+ * 238 opening admissions spent 0.12 s inside `renderer.compile()` and 25.8 s waiting, one program
+ * at a time, with 31 units carrying 23.9 s of it.
+ *
+ * While a batch is open, `compilePipelinesContextSafe` hands its programs to the batch and suspends
+ * instead of running its own timer. `drain()` polls the whole cohort once and settles every waiter
+ * together, so the cohort costs roughly the slowest link rather than the sum of all of them. The
+ * programs compiled, their cache keys, and the resulting picture are identical either way — only
+ * the waiting is pooled.
+ *
+ * A caller that joins an open batch is still settled only after ITS programs are linked, because
+ * `drain()` waits for every registered program before settling anyone. Early resolution is not
+ * possible, so an unrelated compile that lands mid-batch is slowed, never made unsafe.
+ */
+let pipelineReadinessBatch = null;
+
+// gl.isProgram() is a synchronous round trip to the GPU process. Asked for every pending program on
+// every readiness poll, it was ~9 s of main thread during New Game loading (2026-09-13 launch profile,
+// warm caches); rate-limited per waiter it was still 2.5 s, because dozens of waits were live at once;
+// with one shared recheck per 2 s it still cost 10-28 ms per call on the owner's iGPU (37 ms/s in
+// flight whenever a compile was pending, 2026-09-22 profile). Each call waits for the GPU process to
+// drain EVERY queued link, so on the quiet VM a single in-flight recheck blocked 0.1-3.4 s behind the
+// streamed-admission link queue (#169 profiles) while the drawables it guarded were already hidden.
+// COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, and it already reports a
+// handle this context no longer owns: WebGL answers null (not false) for it, so a dead handle is
+// seen on the very next non-blocking poll. Handle validity therefore comes from the context-loss
+// event, three's destroy(), and that null — never from a native round trip. A handle the driver
+// silently forgets while WebGL still vouches for it (never observed) is bounded by the waits' own
+// 20 s readiness deadline.
+const programHandleContexts = new WeakMap();
+
+function programHandleContext(gl) {
+  let record = programHandleContexts.get(gl);
+  if (!record) {
+    record = { generation: 0 };
+    programHandleContexts.set(gl, record);
+    const canvas = gl.canvas;
+    if (canvas && typeof canvas.addEventListener === 'function') {
+      // Bumped by the canvas's own event, so a context lost and restored between polls is still seen.
+      canvas.addEventListener('webglcontextlost', () => { record.generation += 1; }, false);
+    }
+  }
+  return record;
+}
+
+function contextLossGeneration(gl) {
+  return gl && typeof gl === 'object' ? programHandleContext(gl).generation : 0;
+}
+
+// A WebGLProgram wrapper carries the GL handle it was created with. Context loss kills every
+// handle without touching the wrappers, and destroy() clears program.program — in both cases
+// isReady() reads a handle the live context does not own: it answers null and warns
+// GL_INVALID_VALUE forever. The wrapper can never become ready either; the material re-acquires
+// a fresh wrapper on its next use. Track the originating context and generation so normal polls
+// never need a synchronous native check. If an already-seen wrapper crosses GL contexts, cancel
+// it before calling isReady() on the wrong context.
+const programSeenGenerations = new WeakMap();
+const retiredProgramWrappers = new WeakSet();
+
+// A wrapper can reach its first readiness poll only after restoration. Retire the
+// exact old cache while it still exists, before Three replaces info.programs.
+export function retireScenePipelineReadinessPrograms(renderer) {
+  const programs = renderer?.info?.programs;
+  if (!Array.isArray(programs)) return;
+  for (const program of programs) {
+    if (program && typeof program === 'object') retiredProgramWrappers.add(program);
+  }
+}
+
+export function programWrapperDead(gl, program) {
+  if (!program || !program.program || retiredProgramWrappers.has(program)) return true;
+  if (!gl || typeof gl !== 'object') return false;
+  const generation = contextLossGeneration(gl);
+  const seen = programSeenGenerations.get(program);
+  if (seen === undefined) {
+    const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
+    programSeenGenerations.set(program, {
+      gl,
+      generation: lost ? generation - 1 : generation,
+      handle: program.program,
+    });
+    return lost;
+  }
+  return seen.gl !== gl || seen.generation !== generation || seen.handle !== program.program;
+}
+
+/**
+ * A pending program that can no longer be queried: its handle was released (three's
+ * WebGLProgram.destroy clears it) or the context was lost since `generation`. Both are known
+ * without a native call; a handle WebGL itself rejects surfaces as isReady() === null
+ * (programReadiness below).
+ */
+function programHandleInvalid(gl, program, generation) {
+  if (!program || !program.program || retiredProgramWrappers.has(program)) return true;
+  if (!gl || typeof gl !== 'object') return false;
+  if (programHandleContext(gl).generation !== generation) return true;
+
+  const handle = program.program;
+  const seen = programSeenGenerations.get(program);
+  if (seen && (seen.gl !== gl || seen.handle !== handle)) {
+    // WebGLProgram handles are context-affine. A wrapper observed under another GL cannot be
+    // queried here; isReady() remains bound to its original context.
+    return true;
+  }
+  if (!seen) {
+    const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
+    if (lost) return true;
+    programSeenGenerations.set(program, { gl, generation, handle });
+    return false;
+  }
+  return seen.generation !== generation;
+}
+
+// 'ready' | 'pending' | 'invalid'. three's WebGLProgram.isReady() returns getProgramParameter(
+// COMPLETION_STATUS_KHR): a boolean for a handle this context owns, null (with GL_INVALID_VALUE /
+// GL_INVALID_OPERATION) for one it does not — and it caches that null, so it stays null.
+function programReadiness(program) {
+  if (!program || typeof program.isReady !== 'function') return 'pending';
+  const ready = program.isReady();
+  if (ready === null) return 'invalid';
+  return ready ? 'ready' : 'pending';
+}
+
+export function beginScenePipelineReadinessBatch(renderer = null, options = {}) {
+  const independent = options.independent === true;
+  if (!independent && pipelineReadinessBatch) {
+    pipelineReadinessBatch.depth += 1;
+    return pipelineReadinessBatch.handle;
+  }
+  const batch = {
+    depth: 1,
+    accepting: true,
+    programs: new Set(),
+    waiters: [],
+    gl: null,
+    generation: 0,
+    renderer: renderer || null,
+    entryTarget: renderer && typeof renderer.getRenderTarget === 'function'
+      ? renderer.getRenderTarget()
+      : null,
+    handle: null,
+  };
+  const settleAll = (result) => {
+    const waiters = batch.waiters.splice(0);
+    for (const waiter of waiters) {
+      try { waiter(result); } catch (_) { /* a waiter's own cleanup must not strand the rest */ }
+    }
+  };
+  // Serial-route queue pacer (null when KHR_parallel_shader_compile is present — that route's
+  // links overlap on purpose and pacing would serialize them). Each call yields one task-queue
+  // slot then finishes the GL queue while it is still ~one unit deep, so a whole cohort never
+  // drains inside one compositor readback. Callers invoke it between issued units.
+  const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  batch.handle = {
+    paceQueue,
+    join(gl, programs, settle) {
+      if (!batch.accepting) return false;
+      // A shared drain can poll only one WebGL context. Another renderer keeps its own guarded
+      // standalone wait rather than mixing foreign handles into this cohort.
+      if (gl && batch.gl && gl !== batch.gl) return false;
+      if (gl && !batch.gl) {
+        batch.gl = gl;
+        batch.generation = contextLossGeneration(gl);
+      }
+      for (const program of programs) batch.programs.add(program);
+      batch.waiters.push(settle);
+      return true;
+    },
+    async drain(options = {}) {
+      batch.accepting = false;
+      const gl = batch.gl;
+      const timeoutMs = Number.isFinite(Number(options.timeoutMs)) ? Number(options.timeoutMs) : 20000;
+      const now = () => ((typeof performance !== 'undefined' && performance.now)
+        ? performance.now() : Date.now());
+      const started = now();
+      while (batch.programs.size > 0) {
+        if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+          settleAll({ contextLost: true, reason: 'WebGL context lost during shader compilation' });
+          return { contextLost: true, programs: 0 };
+        }
+        for (const program of batch.programs) {
+          // Same guard the single-unit path carries: after a restore an old-context WebGLProgram is
+          // not a valid query target even though its JS wrapper still exists.
+          if (programHandleInvalid(gl, program, batch.generation)) {
+            settleAll({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return { contextLost: true, programs: 0 };
+          }
+          const readiness = programReadiness(program);
+          if (readiness === 'invalid') {
+            settleAll({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return { contextLost: true, programs: 0 };
+          }
+          if (readiness === 'ready') batch.programs.delete(program);
+        }
+        if (batch.programs.size === 0) break;
+        if (now() - started > timeoutMs) break;
+        await new Promise((resolve) => { setTimeout(resolve, 4); });
+      }
+      const remaining = batch.programs.size;
+      batch.programs.clear();
+      settleAll({ contextLost: false, ...(remaining > 0 ? { readinessTimedOut: true } : {}) });
+      return { contextLost: false, programs: remaining };
+    },
+    /**
+     * Every joined call captured a render target on entry and restores it in a `finally` that runs
+     * in a microtask AFTER settle — and those captures nest, so call k captured what call k-1 had
+     * just set. Their unwinding therefore leaves the renderer on a compile target, and re-asserting
+     * inside settleAll would be ordered before them and lose. The caller must invoke this once its
+     * issued promises have all settled, which is the first moment every `finally` has run.
+     */
+    restoreEntryTarget() {
+      if (!batch.renderer || typeof batch.renderer.setRenderTarget !== 'function') return false;
+      batch.renderer.setRenderTarget(batch.entryTarget || null);
+      return true;
+    },
+    close() {
+      batch.depth -= 1;
+      if (batch.depth > 0) return;
+      batch.accepting = false;
+      batch.programs.clear();
+      // A throw between open and drain must never strand a suspended compile: the startup gate
+      // would simply time out twenty seconds later with no attribution.
+      settleAll({ contextLost: false });
+      if (pipelineReadinessBatch === batch) pipelineReadinessBatch = null;
+    },
+  };
+  if (!independent) pipelineReadinessBatch = batch;
+  return batch.handle;
+}
+
+/** Diagnostics: whether a pooled readiness batch is currently open to joiners. */
+export function scenePipelineReadinessBatchOpen() {
+  return !!(pipelineReadinessBatch && pipelineReadinessBatch.accepting);
+}
+
+// Three returns materials, not the individual program variants it compiled. Capture
+// assignments and cache hits during the synchronous compile, including the early-out
+// cache hit which does not assign currentProgram. Never retain or poll other cache entries.
+function compileWithProgramCapture(renderer, subject, camera, lightingScene, programs) {
+  const store = renderer.properties;
+  const original = store.get;
+  const descriptor = Object.getOwnPropertyDescriptor(store, 'get');
+  const propertiesProxies = new WeakMap();
+  const mapProxies = new WeakMap();
+  const record = (program) => {
+    if (store.get === captureGet && program && typeof program.isReady === 'function') programs.add(program);
+    return program;
+  };
+  const captureMap = (map) => {
+    if (!(map instanceof Map)) return map;
+    if (!mapProxies.has(map)) mapProxies.set(map, new Proxy(map, {
+      get(target, key) {
+        if (key === 'get') return (cacheKey) => record(target.get(cacheKey));
+        const value = Reflect.get(target, key, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }));
+    return mapProxies.get(map);
+  };
+  function captureGet(object) {
+    const properties = original.call(this, object);
+    if (!object?.isMaterial || !properties || typeof properties !== 'object') return properties;
+    if (!propertiesProxies.has(properties)) propertiesProxies.set(properties, new Proxy(properties, {
+      get(target, key, receiver) {
+        const value = Reflect.get(target, key, receiver);
+        return key === 'programs' ? captureMap(value) : value;
+      },
+      set(target, key, value, receiver) {
+        if (key === 'currentProgram') record(value);
+        return Reflect.set(target, key, value, receiver);
+      },
+    }));
+    return propertiesProxies.get(properties);
+  }
+  try {
+    store.get = captureGet;
+    return renderer.compile(subject, camera, lightingScene);
+  } finally {
+    if (descriptor) Object.defineProperty(store, 'get', descriptor);
+    else delete store.get;
+  }
+}
+
+export function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
+  // Callers forward a nullable compileOptions slot: an explicit null slips past the `= {}`
+  // default and would throw on the skipSharedBatch read below, rejecting every admission.
+  if (options == null) options = {};
+  const canvas = renderer && renderer.domElement;
+  const canOwnReadiness = typeof renderer.compile === 'function'
+    && renderer.properties && typeof renderer.properties.get === 'function'
+    && renderer.extensions && typeof renderer.extensions.get === 'function'
+    && canvas && typeof canvas.addEventListener === 'function'
+    && typeof canvas.removeEventListener === 'function'
+    && typeof renderer.getContext === 'function';
+  if (!canOwnReadiness) return renderer.compileAsync(subject, camera, lightingScene);
+
+  return new Promise((resolve, reject) => {
+    const gl = renderer.getContext();
+    let timer = null;
+    let settled = false;
+
+    const cleanup = () => {
+      if (timer != null) clearTimeout(timer);
+      timer = null;
+      canvas.removeEventListener('webglcontextlost', onContextLost, false);
+    };
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
+    };
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const onContextLost = () => finish({
+      contextLost: true,
+      reason: 'WebGL context lost during shader compilation',
+    });
+
+    canvas.addEventListener('webglcontextlost', onContextLost, false);
+
+    let materials;
+    const programs = new Set();
+    try {
+      materials = compileWithProgramCapture(renderer, subject, camera, lightingScene, programs);
+    } catch (error) {
+      fail(error);
+      return;
+    }
+    if (settled) return;
+
+    // Measured on this project's Intel/ANGLE D3D11 baseline: the extension IS present here, and
+    // renderer.compile() above returns in ~0.4 ms because it only STARTS the driver link. The
+    // seconds live in the readiness wait below, which is why pooling that wait across a cohort
+    // (beginScenePipelineReadinessBatch) is worth 15 s of loading.
+    const parallelCompile = renderer.extensions.get('KHR_parallel_shader_compile');
+    if (!parallelCompile || !materials || materials.size === 0) {
+      finish({ contextLost: false });
+      return;
+    }
+
+    for (const material of materials) {
+      const properties = renderer.properties.get(material);
+      const program = properties && properties.currentProgram;
+      if (program && typeof program.isReady === 'function') programs.add(program);
+    }
+    if (programs.size === 0) {
+      finish({ contextLost: false });
+      return;
+    }
+
+    // Deadline compiles (e.g. a mesh already on the live glass) cannot pool their wait into
+    // whoever's batch happens to be open — that owner's drain schedule is not this caller's.
+    // skipSharedBatch keeps this wait on its own poll so it settles on link completion alone.
+    const readinessBatch = options.readinessBatch
+      || (pipelineReadinessBatch && pipelineReadinessBatch.accepting ? pipelineReadinessBatch.handle : null);
+    if (options.skipSharedBatch !== true && readinessBatch
+      && readinessBatch.join(gl, programs, finish)) {
+      return;
+    }
+
+    const generation = contextLossGeneration(gl);
+    // The standalone poll must not wait forever: a link that never reports ready
+    // would hold the compile tail (and every admission serialized behind it)
+    // indefinitely. Past the bound the wait resolves — the driver still finishes
+    // the link on first use, so the worst case is one slow draw, not a dead lane.
+    const readinessDeadline = (typeof performance !== 'undefined' && performance
+        && typeof performance.now === 'function' ? performance.now() : Date.now())
+      + (Number.isFinite(options.readinessTimeoutMs) ? options.readinessTimeoutMs : 20000);
+    let programCursor = null;
+    const pollNow = () => globalThis.performance?.now?.() ?? Date.now();
+    const checkProgramsReady = () => {
+      if (settled) return;
+      try {
+        if ((typeof gl.isContextLost === 'function' && gl.isContextLost())) {
+          onContextLost();
+          return;
+        }
+        const pollStarted = pollNow();
+        let queried = 0;
+        programCursor ??= programs.values();
+        for (;;) {
+          const step = programCursor.next();
+          if (step.done) { programCursor = null; break; }
+          const program = step.value;
+          // The handle guard Three's unowned timer lacks: after a restore, an old-context
+          // WebGLProgram is not a valid query target even though its JS wrapper still exists.
+          if (programHandleInvalid(gl, program, generation)) {
+            finish({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return;
+          }
+          const readiness = programReadiness(program);
+          if (readiness === 'invalid') {
+            finish({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return;
+          }
+          if (readiness === 'ready') programs.delete(program);
+          if (++queried >= 8 || pollNow() - pollStarted >= 2) break;
+        }
+        if (programs.size === 0) {
+          finish({ contextLost: false });
+          return;
+        }
+        if ((typeof performance !== 'undefined' && performance
+            && typeof performance.now === 'function' ? performance.now() : Date.now())
+            >= readinessDeadline) {
+          finish({ contextLost: false, readinessTimedOut: true });
+          return;
+        }
+        timer = setTimeout(checkProgramsReady, 10);
+      } catch (error) {
+        fail(error);
+      }
+    };
+
+    checkProgramsReady();
+  });
+}
+
+/**
+ * Force one exact-target draw while the application is still on its loading route.
+ *
+ * Some WebGL drivers expose shader-program readiness through a query that is nominally asynchronous
+ * but still performs a blocking command-buffer wait for every material polled by compileAsync(). A
+ * single batched draw lets the driver link and admit the same programs in one submission instead of
+ * multiplying those waits per authored object. The authored roots are staged only for this offscreen
+ * draw; ownership, visibility, culling flags, and the renderer target are restored before returning.
+ */
+export async function warmScenePipelinesForRenderTarget(
+  renderer, renderTarget, subject, camera, lightingScene,
+) {
+  if (!renderer || typeof renderer.render !== 'function') {
+    return { skipped: true, reason: 'render unavailable' };
+  }
+  if (!subject || !lightingScene || typeof lightingScene.add !== 'function') {
+    return { skipped: true, reason: 'pipeline staging scene unavailable' };
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const previousParent = subject.parent || null;
+  const previousIndex = previousParent && Array.isArray(previousParent.children)
+    ? previousParent.children.indexOf(subject)
+    : -1;
+  const objectState = [];
+  if (typeof subject.traverse === 'function') {
+    subject.traverse((object) => {
+      objectState.push({ object, visible: object.visible, frustumCulled: object.frustumCulled });
+      object.visible = true;
+      if ('frustumCulled' in object) object.frustumCulled = false;
+    });
+  }
+  let alreadyInScene = subject === lightingScene;
+  for (let current = subject; current && !alreadyInScene; current = current.parent) {
+    if (current === lightingScene) alreadyInScene = true;
+  }
+  try {
+    if (!alreadyInScene && subject !== lightingScene && subject.parent !== lightingScene) {
+      lightingScene.add(subject);
+    }
+    if (typeof subject.updateMatrixWorld === 'function') subject.updateMatrixWorld(true);
+    renderer.setRenderTarget(renderTarget || null);
+    renderer.render(lightingScene, camera);
+    return {
+      skipped: false,
+      programCount: Array.isArray(renderer.info && renderer.info.programs)
+        ? renderer.info.programs.length
+        : null,
+      mode: 'forced-render',
+    };
+  } finally {
+    if (subject.parent && subject.parent !== previousParent) subject.parent.remove(subject);
+    if (previousParent && subject.parent !== previousParent && !isRetiredRigidOpaqueBatch(subject)) {
+      previousParent.add(subject);
+      if (previousIndex >= 0 && previousIndex < previousParent.children.length - 1) {
+        const currentIndex = previousParent.children.indexOf(subject);
+        previousParent.children.splice(currentIndex, 1);
+        previousParent.children.splice(previousIndex, 0, subject);
+      }
+    }
+    for (const entry of objectState) {
+      if (isRetiredRigidOpaqueBatch(entry.object)) continue;
+      entry.object.visible = entry.visible;
+      entry.object.frustumCulled = entry.frustumCulled;
+    }
+    renderer.setRenderTarget(previousTarget || null);
+  }
+}
+
+// Immutable fullscreen triangle-strip geometry shared across every createBloom() instance.
+// Geometry has no per-instance state; materials/scenes stay private so uniforms never cross.
+let sharedQuadGeo = null;
+let sharedQuadGeoRefs = 0;
+
+function retainSharedQuadGeometry() {
+  if (!sharedQuadGeo) {
+    sharedQuadGeo = new THREE.PlaneGeometry(2, 2);
+    sharedQuadGeo.name = 'SF_Bloom_SharedFullscreenQuad';
+  }
+  sharedQuadGeoRefs += 1;
+  return sharedQuadGeo;
+}
+
+function releaseSharedQuadGeometry() {
+  sharedQuadGeoRefs = Math.max(0, sharedQuadGeoRefs - 1);
+  if (sharedQuadGeoRefs === 0 && sharedQuadGeo) {
+    sharedQuadGeo.dispose();
+    sharedQuadGeo = null;
+  }
+}
+
+// W140 F-A: vendored renderQuadPass draws the fixed quad scene without the
+// scene-graph prelude; mock/alternate renderers without it take the identical
+// upstream pass through render().
+function renderQuadScene(renderer, scene, camera) {
+  if (typeof renderer.renderQuadPass === 'function') renderer.renderQuadPass(scene, camera);
+  else renderer.render(scene, camera);
+}
+
+// --- GLSL (inlined as strings; no external shader files) -------------------------------------
+
+// Shared vertex shader for every fullscreen pass: a [-1..1] quad straight to clip space, UV 0..1.
+const QUAD_VERT = /* glsl */`
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+  }
+`;
+
+// GR-1: 5-tap bilinear-gather downsample. On pyramid level 0 (full→½) the bright-pass threshold/knee
+// is applied per tap via uBright=1.0; deeper levels pass through (uBright=0.0). One parametric shader
+// serves every level. The center + 4 corners pattern (a cross-box hybrid) approximates a wider gaussian
+// than a plain 2×2 box while staying one cheap fragment pass per level.
+const DOWNSAMPLE_FRAG = /* glsl */`
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D tDiffuse;
+  uniform vec2 uTexel;     // 1.0 / allocated source size (content packed at origin)
+  uniform vec2 uUvScale;   // contentSize / allocatedSize — remaps vUv into the active sub-rect
+  uniform vec2 uUvOffset;  // usually (0,0); content origin in texture UV
+  uniform float uThreshold;
+  uniform float uKnee;
+  uniform float uBright;   // 1.0 = apply bright-pass (level 0 only), 0.0 = passthrough
+
+  vec3 brightPass(vec3 c) {
+    c = max(c, vec3(0.0)); // guard against negative/NaN leaking into the pyramid
+    float l = max(dot(c, vec3(0.2126, 0.7152, 0.0722)), max(c.r, max(c.g, c.b)) * 0.82);
+    // Karis quadratic soft knee: continuous C1 transition across the threshold with zero step discontinuity
+    float rq = clamp(l - uThreshold + uKnee, 0.0, 2.0 * uKnee);
+    rq = (rq * rq) / (4.0 * uKnee + 1e-5);
+    float contrib = max(rq, l - uThreshold);
+    float scale = contrib / max(l, 1e-4);
+    return c * scale;
+  }
+
+  // Sample and (optionally) bright-pass in one step so the deepest taps are already thresholded.
+  vec3 tap(vec2 uv) {
+    vec3 c = texture2D(tDiffuse, uv).rgb;
+    return uBright > 0.5 ? brightPass(c) : max(c, vec3(0.0));
+  }
+
+  void main() {
+    // Dyn-res content lives in a viewport sub-rect of a max-sized target. Remap the
+    // fullscreen-quad UV into that sub-rect before gathering; uTexel is one allocated
+    // texel in texture UV (equal to one content pixel when packed at the origin).
+    vec2 base = vUv * uUvScale + uUvOffset;
+    vec2 t = uTexel;
+    vec2 tl = vec2(-1.0, -1.0) * t;
+    vec2 tr = vec2( 1.0, -1.0) * t;
+    vec2 bl = vec2(-1.0,  1.0) * t;
+    vec2 br = vec2( 1.0,  1.0) * t;
+    vec3 sum  = tap(base)            * (4.0 / 8.0);
+    sum += tap(base + tl)            * (1.0 / 8.0);
+    sum += tap(base + tr)            * (1.0 / 8.0);
+    sum += tap(base + bl)            * (1.0 / 8.0);
+    sum += tap(base + br)            * (1.0 / 8.0);
+    gl_FragColor = vec4(sum, 1.0);
+  }
+`;
+
+// Multi-scale composite weights: tight core glow (1/2 res, weight 1), body halo (1/8), wide
+// atmosphere (1/16). Each level is sampled directly with hardware bilinear — no upsample RT or pass.
+// Owner 2026-10-27: the wide halo is what turned a lit strip into neon and blurred silhouettes;
+// the mid/wide weights now sit well under the tight core so emissive sources keep an honest local
+// glow while the tens-of-pixels spill recedes. Weights are composite uniforms — zero pass cost.
+// Owner: glow stays, smearing goes — the 1/16 level receded again (0.20 → 0.14) so the
+// halo tightens around the emitter instead of laying a low fog over neighbouring edges.
+const BLOOM_MID_WEIGHT = 0.40;
+const BLOOM_WIDE_WEIGHT = 0.14;
+
+// Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
+// before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
+// Pyramid energy runs hot, so uBloomNorm reins it in before uStrength scales the halo perceptually.
+// Coarser pyramid levels are sampled directly (hardware bilinear) — no intermediate upsample target.
+// Optional color grade, vignette, and film grain are independent presentation controls. They default
+// off: selective bloom must never imply a full-screen color or texture treatment. ACES lives here (not
+// on renderer.toneMapping) so the bloom-on/off paths stay in sync — see COLOR-MANAGEMENT INVARIANT.
+const COMPOSITE_FRAG = /* glsl */`
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D tScene;
+  uniform sampler2D tBloom0;  // half-res bright extract (always present when bloom is on)
+  uniform sampler2D tBloom1;  // mid halo level (or same as tBloom0 when levels==1)
+  uniform sampler2D tBloom2;  // widest halo level (or same as tBloom0 when levels==1)
+  uniform sampler2D tDistortion;
+  uniform float uDistortion;
+  uniform float uBloomW0;
+  uniform float uBloomW1;
+  uniform float uBloomW2;
+  uniform float uStrength;
+  uniform float uBloomNorm;   // pyramid energy runs hot; normalize before perceptual strength
+  uniform float uExposure;
+  uniform float uAces;
+  uniform float uGrain;     // film grain amount 0..1 (cinematic; animated via uGrainFrame)
+  uniform float uVignette;  // atmospheric corner darkening 0..1
+  uniform float uGrade;     // color-grade blend 0..1 (0 = off, 1 = full cyberpunk-noir LUT)
+  uniform float uToe;       // lifted black floor 0..0.06 (0 = true blacks, the default)
+  uniform float uGrainFrame;
+  uniform float uSharpen; // 0 = off (default picture); >0 = cheap unsharp after compose
+  uniform vec2 uSceneTexel; // 1/allocated scene size (WebGL1-safe; no textureSize)
+
+  ${SPACE_POST_PRESENTATION_GLSL}
+  ${NOCTURNE_ATMOSPHERE_COMPOSITE_GLSL}
+
+  uniform vec2 uUvScale;   // contentSize / allocatedSize for tScene / pyramid sub-rects
+  uniform vec2 uUvOffset;
+  uniform vec2 uPresentationScale; // presentation pixels per composite pixel (CAS input can be smaller)
+
+  void main() {
+    // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
+    // still use screen vUv so corner treatment follows the displayed frame, not the RT packing.
+    vec2 sceneUv = vUv * uUvScale + uUvOffset;
+    if (uDistortion > 0.5) {
+      // Native DistortionField encodes signed displacement in RG and coverage in B.
+      // The neutral clear is (0.5, 0.5, 0); empty texels never bend the scene.
+      // Displacement is authored in screen-UV fractions; uUvScale converts it into the
+      // content sub-rect so a dyn-res frame bends by the same fraction of the picture.
+      vec3 distortion = texture2D(tDistortion, vUv).rgb;
+      sceneUv = clamp(sceneUv + (distortion.xy * 2.0 - 1.0)
+        * step(1e-5, distortion.z) * uUvScale, vec2(0.0), vec2(1.0));
+    }
+    vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
+    // Participating media transports linear HDR radiance before the one exposure/tone-map/encode.
+    // Vacuum is an exact uniform-disabled path; bloom never stands in for surface illumination.
+    scene = composeNocturneAtmosphere(scene, (sceneUv - uUvOffset) / uUvScale, sceneUv);
+    // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
+    // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
+    vec3 bloom = vec3(0.0);
+    // These weights are uniform for the whole draw. A disabled pyramid level
+    // contributes exactly zero, so avoid its texture read on every output pixel.
+    if (uBloomW0 != 0.0) bloom += texture2D(tBloom0, sceneUv).rgb * uBloomW0;
+    if (uBloomW1 != 0.0) bloom += texture2D(tBloom1, sceneUv).rgb * uBloomW1;
+    if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
+    vec3 spill = bloom * uStrength * uBloomNorm;
+    vec3 color = composeSpacePostPresentation(
+      scene, spill, vUv, gl_FragCoord.xy * uPresentationScale, uExposure, uAces,
+      uGrade, uToe, uVignette, uGrain, uGrainFrame
+    );
+    // Opt-in sharpen for renderScale < 1 (integrated preset). Neighbour average unsharp —
+    // no extra RT. uSharpen defaults to 0 so the shipped picture is byte-identical. The taps
+    // read the scene inside the content sub-rect (sceneUv space); uSceneTexel is one allocated
+    // texel so the neighbourhood stays one content pixel even under dyn-res.
+    if (uSharpen > 0.001) {
+      vec2 texel = uSceneTexel;
+      vec3 blur = (
+        texture2D(tScene, clamp(sceneUv + vec2(texel.x, 0.0), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv - vec2(texel.x, 0.0), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv + vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb +
+        texture2D(tScene, clamp(sceneUv - vec2(0.0, texel.y), vec2(0.0), uUvScale)).rgb
+      ) * 0.25;
+      // Unsharp mask on scene luma: center against neighbours, both in the same linear space,
+      // so a flat field contributes exactly zero. Applying that edge term to the composed color
+      // sharpens without re-tonemapping the neighbourhood.
+      float sharpLuma = dot(scene, vec3(0.2126, 0.7152, 0.0722));
+      float blurLuma = dot(blur, vec3(0.2126, 0.7152, 0.0722));
+      color = clamp(color + (sharpLuma - blurLuma) * uSharpen, 0.0, 1.0);
+    }
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+// Programs already counted in renderer.info can still be linking. Three's draw path
+// never polls isReady() — gl.useProgram waits out the driver, which is the leftover
+// ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
+// drawables until the link finishes; admission still owns first-time compile.
+//
+// This guard is deliberately renderer-scoped rather than bloom-scoped: the native and
+// render-graph post routes face the same synchronous-link hazard on their scene passes,
+// so all three bracket their presented draws with the same hide→render→restore pair.
+const UNREADY_SCENE_CAP = 512;
+
+// Three's material properties describe the last-bound program, not every linked variant.
+// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. A render
+// target can also select a different output color space and tone-mapping variant (notably the
+// no-tone-mapping transmission pass). Memoize exact alternate keys per live program so a ready
+// last-bound sibling cannot make a pending pass variant look safe.
+const drawPassVariantKeys = new WeakMap();
+
+function instancingFlags(object) {
+  if (!object || object.isInstancedMesh !== true) return 0;
+  return 1 | (object.instanceColor !== null ? 2 : 0) | (object.morphTexture !== null ? 4 : 0);
+}
+
+function linkedDrawProgramVariant(renderer, rec, material, object) {
+  const current = rec && rec.currentProgram;
+  if (!current || typeof rec.instancing !== 'boolean' || material.isRawShaderMaterial === true) return current;
+  const wanted = instancingFlags(object);
+  const bound = (rec.instancing ? 1 : 0) | (rec.instancingColor ? 2 : 0) | (rec.instancingMorph ? 4 : 0);
+  const target = renderer && typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const toneMapping = Number(material.toneMapped === true
+    && (!target || target.isXRRenderTarget === true)
+    ? renderer.toneMapping
+    : THREE.NoToneMapping);
+  const outputColorSpace = !target
+    ? renderer.outputColorSpace
+    : target.isXRRenderTarget === true
+      ? target.texture && target.texture.colorSpace
+      : THREE.ColorManagement.workingColorSpace;
+  const boundToneMapping = Number(rec.toneMapping);
+  const hasPassMetadata = Number.isFinite(boundToneMapping)
+    && typeof rec.outputColorSpace === 'string';
+  if (wanted === bound && hasPassMetadata
+      && toneMapping === boundToneMapping
+      && outputColorSpace === rec.outputColorSpace) return current;
+  const variants = rec.programs;
+  if (!variants || typeof variants.get !== 'function') return null;
+  if (rec.__version !== undefined && rec.__version !== material.version) return null;
+  let keys = drawPassVariantKeys.get(current);
+  if (!keys) {
+    const key = current.cacheKey;
+    if (typeof key !== 'string' || typeof material.customProgramCacheKey !== 'function') return null;
+    let customKey;
+    try { customKey = material.customProgramCacheKey(); } catch (_) { return null; }
+    customKey = customKey == null ? '' : String(customKey);
+    // The custom suffix can contain commas (including a complete onBeforeCompile function).
+    // Remove its exact length before locating the two boolean masks and output color space.
+    const customDelimiter = key.length - customKey.length - 1;
+    if (customDelimiter < 0 || key[customDelimiter] !== ',' || !key.endsWith(customKey)) return null;
+    const colorDelimiter = key.lastIndexOf(',', customDelimiter - 1);
+    const secondMaskDelimiter = key.lastIndexOf(',', colorDelimiter - 1);
+    const firstMaskDelimiter = key.lastIndexOf(',', secondMaskDelimiter - 1);
+    if (firstMaskDelimiter < 0 || secondMaskDelimiter <= firstMaskDelimiter) return null;
+    const maskText = key.slice(firstMaskDelimiter + 1, secondMaskDelimiter);
+    if (!/^\d+$/.test(maskText)) return null;
+    const mask = Number(maskText);
+    if (!Number.isSafeInteger(mask) || (mask & 7) !== bound) return null;
+
+    const keyParts = key.slice(0, customDelimiter).split(',');
+    const maskIndex = keyParts.length - 3;
+    const toneMappingIndex = maskIndex - 4;
+    if (maskIndex < 0 || Number(keyParts[maskIndex]) !== mask) return null;
+    const precisionValues = new Set(['highp', 'mediump', 'lowp']);
+    let outputColorSpaceIndex = -1;
+    for (let i = 1; i < keyParts.length - 1; i++) {
+      if (precisionValues.has(keyParts[i - 1])
+          && (rec.outputColorSpace == null || keyParts[i] === rec.outputColorSpace)) {
+        outputColorSpaceIndex = i;
+        break;
+      }
+    }
+    const keyToneMapping = Number(keyParts[toneMappingIndex]);
+    if (toneMappingIndex < 0 || !Number.isFinite(keyToneMapping)
+        || (Number.isFinite(boundToneMapping) && keyToneMapping !== boundToneMapping)
+        || outputColorSpaceIndex < 0) return null;
+    keys = {
+      mask,
+      keyParts,
+      customSuffix: key.slice(customDelimiter),
+      maskIndex,
+      toneMappingIndex,
+      outputColorSpaceIndex,
+      boundToneMapping: keyToneMapping,
+      boundOutputColorSpace: keyParts[outputColorSpaceIndex],
+      variantsByColorSpace: new Map(),
+    };
+    drawPassVariantKeys.set(current, keys);
+  }
+  // Some Three compile adapters expose the current wrapper before mirroring its common
+  // metadata. The pinned vendor key is authoritative in that case, so a ready matching
+  // wrapper remains drawable instead of being re-queued forever.
+  if (wanted === bound && toneMapping === keys.boundToneMapping
+      && outputColorSpace === keys.boundOutputColorSpace) return current;
+  let toneVariants = keys.variantsByColorSpace.get(outputColorSpace);
+  if (!toneVariants) {
+    toneVariants = new Map();
+    keys.variantsByColorSpace.set(outputColorSpace, toneVariants);
+  }
+  let variantsByMask = toneVariants.get(toneMapping);
+  if (!variantsByMask) {
+    variantsByMask = new Array(8);
+    toneVariants.set(toneMapping, variantsByMask);
+  }
+  let alternateKey = variantsByMask[wanted];
+  if (alternateKey === undefined) {
+    const parts = keys.keyParts.slice();
+    parts[keys.maskIndex] = String((keys.mask & ~7) | wanted);
+    parts[keys.toneMappingIndex] = String(toneMapping);
+    parts[keys.outputColorSpaceIndex] = outputColorSpace;
+    alternateKey = parts.join(',') + keys.customSuffix;
+    variantsByMask[wanted] = alternateKey;
+  }
+  return variants.get(alternateKey) || null;
+}
+
+// Draw-time safety net for the hide→render→restore pair below. The scene walk exits
+// early once every known program reports ready, so a stamped authored/shared material
+// that has NEVER compiled (a shader-hook-dropping clone, a late variant) reaches the
+// draw with no currentProgram and would link synchronously inside the presented frame.
+// While a guarded pass is active, a stamped material with no currentProgram or any compiled
+// material missing its draw's instancing variant queues admission instead of linking on glass.
+// The wrapper is per-renderer — this guard exists twice per renderer (bloom's own and
+// the renderer's route-level instance) — and composes with the perf-counter drawObject
+// wrapper whichever installs first. Warm variants allocate nothing on the draw path.
+// Consecutive presented frames a drawable may be refused for an unlinked program before the
+// guard fails open. A wall deadline, not a count: 90 frames was ~6 s at 15 fps, so a slow
+// host hid a body far longer than the documented ~1.5 s. A stuck admission lane must not
+// hide a body forever.
+const COMPILE_REFUSAL_FAIL_OPEN_MS = 1500;
+
+function unreadyGuardNowMs() {
+  return (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
+}
+
+function installUnreadyDrawGuard(renderer) {
+  if (!renderer || renderer.__sfUnreadyDrawGuardWrapped === true) return;
+  if (typeof renderer.renderBufferDirect !== 'function') return;
+  renderer.__sfUnreadyDrawGuardDepth = 0;
+  const inner = renderer.renderBufferDirect;
+  const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  const guardNow = typeof renderer.__sfDrawGuardNow === 'function'
+    ? renderer.__sfDrawGuardNow : unreadyGuardNowMs;
+  // Exact-target admission uses the same context-generation ownership as presented draws.
+  renderer.__sfExactProgramInvalid = (program) => programWrapperDead(drawGuardGl, program);
+  renderer.__sfDeferSelectedProgram = (program, object, material) => {
+    let ready = !!program && !programWrapperDead(drawGuardGl, program);
+    if (ready && typeof program.isReady === 'function') {
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    }
+    if (ready) return false;
+    const data = material.userData || (material.userData = {});
+    const queue = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+    if (data.__sfPipelineAdmission !== true && typeof queue === 'function') {
+      data.__sfPipelineAdmission = true;
+      Promise.resolve(queue(object)).catch(() => null)
+        .finally(() => { data.__sfPipelineAdmission = false; });
+    }
+    return true;
+  };
+  // An object already on screen may keep drawing with the last material that proved a
+  // linked program. That is strictly better than refusing the draw and blanking a body the
+  // player is watching; the new material joins admission and takes over when it links.
+  function presentedFallbackMaterial(object, material, props) {
+    const previous = object && object.__sfPresentedMaterial;
+    if (!previous || previous === material || !props || typeof props.get !== 'function') return null;
+    let rec = null;
+    try { rec = props.get(previous); } catch (_) { return null; }
+    if (!rec || !rec.currentProgram) return null;
+    let variant = null;
+    try { variant = linkedDrawProgramVariant(renderer, rec, previous, object); } catch (_) { return null; }
+    if (!variant || programWrapperDead(drawGuardGl, variant)) return null;
+    if (typeof variant.isReady === 'function') {
+      try { if (variant.isReady() !== true) return null; } catch (_) { return null; }
+    }
+    return previous;
+  }
+  function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+    // Three already ran object/material before-hooks. Its instance renderer skips
+    // zero counts only after program/uniform/binding work; avoid that work here.
+    // Match Three's dispatch precedence: BatchedMesh owns its draw list, and an
+    // InstancedMesh uses object.count even with an InstancedBufferGeometry.
+    if (object && geometry && object.isBatchedMesh !== true) {
+      if (object.isInstancedMesh === true) {
+        if (object.count === 0) return undefined;
+      } else if (geometry.isInstancedBufferGeometry === true && geometry.instanceCount === 0) {
+        const maxInstances = geometry._maxInstanceCount;
+        if (maxInstances === undefined || (typeof maxInstances === 'number' && maxInstances >= 0)) {
+          return undefined;
+        }
+      }
+    }
+    // Only a presented pass is gated for readiness. Admission, residency-proxy and compile
+    // passes draw deliberately off-screen; gating them would stop the very work that makes a
+    // later presented draw safe (and the boot route depends on it). Upload *safety* below
+    // (detached payloads) still applies to every draw.
+    const presented = renderer.__sfPresentedPass === true;
+    const residency = renderer.__sfResidencyManager;
+    const gated = presented && !!residency && !renderer.__sfExactTargetTouch;
+    if (gated && residency.admitGeometry(object, geometry) === false) {
+      // Honest draw-point counter: unlike the hold path it also sees refusals that arrive
+      // through a route this manager did not hold (the reason is for probe context).
+      const reason = (object && object.__sfResidencyRefusalReason) || 'geometry-not-resident';
+      if (object) object.__sfResidencyRefusalReason = null;
+      residency.noteRefusedDraw?.(object, reason);
+      return undefined;
+    }
+    // Recover available mip donors and check live upload safety in one allocation-free
+    // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
+    // fresh upload or orientation hold waits for real bytes before three binds them.
+    if (preparePresentedDraw(renderer, geometry, material)) {
+      queuePresentedDetachRehydrate(renderer, { geometry, material });
+      if (presented) residency?.noteRefusedDraw?.(object, 'presented-detach');
+      return undefined;
+    }
+    // The compiled check is deliberately NOT scoped to the armed scene scan. The scan is
+    // skipped at settle (M2) to stop paying for the walk, but a new material mounted on
+    // an existing object after settle changes neither the program count nor the scene
+    // child count before its first draw — that draw would link the driver program inside
+    // the presented frame (measured: 5 in-frame links in one flight). A linked program's
+    // isReady() is a cached boolean in three, so the settled cost is one properties read.
+    if (presented && !renderer.__sfExactTargetTouch && material) {
+      const data = material.userData;
+      const props = renderer.properties;
+      // No properties state (a bare test renderer) draws as today; a real renderer always
+      // answers, so a cold material is queued rather than linked in-frame.
+      let compiled = true;
+      try {
+        if (props && typeof props.get === 'function') {
+          const rec = props.get(material);
+          const current = rec && rec.currentProgram;
+          if (current) {
+            const variant = linkedDrawProgramVariant(renderer, rec, material, object);
+            // The current wrapper can still be linking when the scoped scene scan
+            // misses a live bind, just as a cached sibling can. Validate either
+            // selected wrapper before first-use discovery can block this draw.
+            // Three caches ready=true; warm draws issue no new GL readiness query.
+            compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
+            if (compiled && typeof variant.isReady === 'function') {
+              try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+            }
+          } else {
+            // No program at all: this draw would link it inside the presented frame.
+            // Stamped or not — VFX, tether and prop materials are the unstamped class
+            // that produced the measured in-frame links. Queue the root through pipeline
+            // admission and let the next presented frame draw the compiled result.
+            compiled = false;
+          }
+        }
+      } catch (_) { /* draw as today */ }
+      if (!compiled) {
+        // Prefer keeping the already-drawn body on its last proven material over refusing
+        // the draw: blanking a body the player is watching is the worse failure.
+        const fallback = presentedFallbackMaterial(object, material, props);
+        if (fallback) {
+          renderer.__sfCompileFallbacks = (renderer.__sfCompileFallbacks | 0) + 1;
+          // The new material still needs its program: queue admission while the old
+          // material keeps the body on screen, or the swap would never converge.
+          const admissionData = data || (material.userData = {});
+          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+          if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+            admissionData.__sfPipelineAdmission = true;
+            Promise.resolve(queueAdmission(object))
+              .catch(() => null)
+              .finally(() => { admissionData.__sfPipelineAdmission = false; });
+          }
+          const result = inner.call(this, camera, scene, geometry, fallback, object, group);
+          if (gated) residency.noteDrawn(object, geometry, fallback);
+          return result;
+        }
+        // Bounded fail-open: if admission cannot produce a program for this drawable (a
+        // detached boundary, a throw in the compile lane), a permanently invisible part is
+        // worse than one brick. A wall deadline keeps the bound honest at any frame rate.
+        // Every refusal is counted; the eventual fail-open has its own counter.
+        const nowMs = guardNow();
+        let firstRefusedAt = Number(object.__sfCompileRefusedAt);
+        // A stale clock from an earlier swap must not make the first refusal of a later one
+        // fail open immediately. Reset per material and after a quiet gap; continuous refusals
+        // keep their original first-refusal deadline so a stuck lane still releases.
+        const lastRefusedAt = Number(object.__sfCompileRefusedLastAt);
+        if (!Number.isFinite(firstRefusedAt) || firstRefusedAt < 0
+            || object.__sfCompileRefusedMaterial !== material
+            || !Number.isFinite(lastRefusedAt)
+            || (nowMs - lastRefusedAt) > COMPILE_REFUSAL_FAIL_OPEN_MS * 4) {
+          firstRefusedAt = nowMs;
+          object.__sfCompileRefusedAt = firstRefusedAt;
+        }
+        object.__sfCompileRefusedMaterial = material;
+        object.__sfCompileRefusedLastAt = nowMs;
+        if (nowMs - firstRefusedAt < COMPILE_REFUSAL_FAIL_OPEN_MS) {
+          renderer.__sfCompileRefusalCount = (renderer.__sfCompileRefusalCount | 0) + 1;
+          if (gated) residency.noteRefusedDraw?.(object, 'program-not-linked');
+          const admissionData = data || (material.userData = {});
+          // Same material stamp dedupe as hideIfProgramUnready: one admission
+          // in flight per material while the draw keeps being skipped.
+          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+          if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+            admissionData.__sfPipelineAdmission = true;
+            Promise.resolve(queueAdmission(object))
+              .catch(() => null)
+              .finally(() => { admissionData.__sfPipelineAdmission = false; });
+          }
+          return undefined;
+        }
+        object.__sfCompileRefusedAt = -1;
+        object.__sfCompileRefusedLastAt = -1;
+        object.__sfCompileRefusedMaterial = null;
+        object.__sfCompileRefusals = 0;
+        renderer.__sfCompileFailOpen = (renderer.__sfCompileFailOpen | 0) + 1;
+      } else {
+        object.__sfCompileRefusedAt = -1;
+        object.__sfCompileRefusedLastAt = -1;
+        object.__sfCompileRefusedMaterial = null;
+        object.__sfCompileRefusals = 0;
+      }
+    }
+    const result = inner.call(this, camera, scene, geometry, material, object, group);
+    if (object && material) object.__sfPresentedMaterial = material;
+    // The draw just uploaded any missing buffers; record the residency proof so the next
+    // frame takes the cheap path and the held-drawable counters see the body as ready.
+    if (gated) residency.noteDrawn(object, geometry, material);
+    return result;
+  }
+  renderer.__sfUnreadyDrawGuardInner = inner;
+  renderer.__sfUnreadyDrawGuardFn = unreadyDrawGuard;
+  renderer.renderBufferDirect = unreadyDrawGuard;
+  renderer.__sfUnreadyDrawGuardWrapped = true;
+}
+
+// Steady-state unwrap (finish-program M2): once the program set and the detach latch both
+// report settled, the owning guard swaps the raw renderBufferDirect back in so hot draws stop
+// paying the safety pass; a mount, a new release, dead attribute records or an aspect hold
+// re-wraps it. Both swaps are identity-checked — a foreign wrapper stacked on top (perf
+// counters install whichever lands first) is never disturbed; in that case the guard simply
+// stays armed, which is the safe outcome anyway.
+export function rearmPresentedDrawGuard(renderer) {
+  if (!renderer || renderer.__sfUnreadyDrawGuardWrapped !== true) return false;
+  if (renderer.renderBufferDirect !== renderer.__sfUnreadyDrawGuardInner) return false;
+  renderer.renderBufferDirect = renderer.__sfUnreadyDrawGuardFn;
+  return true;
+}
+
+export function disarmPresentedDrawGuard(renderer) {
+  if (!renderer || renderer.renderBufferDirect !== renderer.__sfUnreadyDrawGuardFn) return false;
+  renderer.renderBufferDirect = renderer.__sfUnreadyDrawGuardInner;
+  return true;
+}
+
+// Mounts under a scene descendant (socket.add, mesh.add, parent.add) never touch the
+// scene.add hook — the known nested-mount helpers record the attached root here and the
+// guard drains it the same way the next presented pass.
+const pendingNestedMountedRoots = [];
+
+export function recordMountedRootForUnreadyScan(object) {
+  if (object && object.isObject3D === true) pendingNestedMountedRoots.push(object);
+}
+
+export function createUnreadyDrawableGuard(renderer, options = {}) {
+  installUnreadyDrawGuard(renderer);
+  // Production callers opt into the steady-state unwrap (M2): when every program reports ready
+  // and the detach latch is clean, hide() swaps the raw renderBufferDirect back in and a later
+  // mount/release/hold re-wraps it. Default off so the guard's wrapped contract stays absolute
+  // for call sites that never asked for the swap.
+  const disarmOnSettle = options.disarmOnSettle === true;
+  const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
+  const unreadySceneLayerMasks = new Array(UNREADY_SCENE_CAP);
+  let unreadySceneCount = 0;
+  function hideDrawableForPass(object) {
+    if (!object || object.visible !== true) return;
+    const layers = object.layers;
+    if (layers && typeof layers.mask === 'number') {
+      if (layers.mask === 0) return;
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneLayerMasks[unreadySceneCount++] = layers.mask;
+      layers.mask = 0;
+    } else {
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneLayerMasks[unreadySceneCount++] = null;
+      object.visible = false;
+    }
+  }
+  function hidePendingDrawable(object) {
+    if (object && (object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) hideDrawableForPass(object);
+  }
+  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
+  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
+  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
+  // once every program reports ready and the set stops growing, steady-state frames skip both
+  // the poll and the scene walk entirely.
+  let unreadyProgramsPending = true;
+  let unreadyProgramCount = -1;
+  let unreadyProgramTail = null;
+  // Same length+tail trick as the program set, but for direct scene mounts: a never-compiled
+  // drawable mounted mid-flight (SelectionSigil-class non-admission mounts) leaves the program
+  // set untouched, so without this watch the steady-state early-return submits it and its
+  // program links inside the presented frame. A mount costs one traverse next frame; true
+  // steady state still returns before any walk.
+  let unreadySceneChildCount = -1;
+  let unreadySceneChildTail = null;
+  // Mount drain list: scene.add is wrapped once so presented-frame mounts enqueue their root
+  // here; the guard then traverses only the new subtrees (O(new) per mount frame) instead of
+  // the whole scene (O(nodes) per churn frame). The length+tail watch stays as the failsafe:
+  // a changed set with an empty drain means an add path bypassed the hook → full traverse once.
+  const unreadyMountedRoots = [];
+  let mountWatchScene = null;
+  // Pending-only windows scope the unready scan to the pending subjects' subtrees and
+  // instrumented mounts; every Nth such frame still runs the full traverse as the
+  // failsafe for mounts that bypassed scene.add (bounded to N presented-frame draws
+  // for an interior never-compiled mount during a pending window).
+  const UNREADY_PENDING_SWEEP_FRAMES = 30;
+  let unreadyPendingSweep = 0;
+  function ensureSceneMountWatch(scene) {
+    if (!scene || typeof scene.add !== 'function' || mountWatchScene === scene) return;
+    mountWatchScene = scene;
+    unreadyMountedRoots.length = 0;
+    if (scene.__sfMountWatchWrapped === true) return;
+    const originalAdd = scene.add;
+    scene.add = function sfMountWatchAdd(...objects) {
+      for (let i = 0; i < objects.length; i++) {
+        const object = objects[i];
+        if (object && object.parent !== scene) unreadyMountedRoots.push(object);
+      }
+      return originalAdd.apply(scene, objects);
+    };
+    scene.__sfMountWatchWrapped = true;
+  }
+  let admissionScene = null;
+  let admissionPendingSubjects = null;
+  let admissionGl = null;
+  // Per-pass verdict memos: authored meshes share materials and programs, so the
+  // traverse was paying a props.get + program.isReady() GL query per drawable even
+  // though the verdict is identical for every sibling. A material's verdict cannot
+  // change mid-pass (isReady only goes false→true asynchronously), so memoizing the
+  // same-object verdict for the duration of one walk is exact — keyed by the draw's
+  // instancing flags, because one shared material now draws both pooled InstancedMesh
+  // buckets and direct leaves in the same pass, and those bind different program
+  // variants with independent readiness.
+  const unreadyCheckedMaterials = new Map();
+  const unreadyHiddenMaterials = new Map();
+
+  function scanPresentedDrawables(root) {
+    // Three skips an invisible object's whole subtree. The readiness walk
+    // should do the same instead of examining every resident off-camera hull.
+    // A mounted root can also sit beneath an invisible scene ancestor.
+    for (let node = root; node; node = node.parent) {
+      if (node.visible === false) return;
+    }
+    const traverse = typeof root.traverseVisible === 'function'
+      ? root.traverseVisible : root.traverse;
+    traverse.call(root, hideOneUnreadySceneDrawable);
+  }
+
+  function hideUnreadySceneDrawables(scene) {
+    if (renderer) {
+      renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
+      // Presented-pass marker for the draw wrapper. The scene walk may still be skipped at
+      // settle, but the per-draw readiness gate must run for every presented draw: a new
+      // material on an existing object changes neither the program count nor the scene child
+      // count before its first draw.
+      renderer.__sfPresentedPass = true;
+      renderer.__sfDrawGuardPassSettled = false;
+      // Arm for the pass. `restore` disarms again when the pass settled, so between frames
+      // the raw draw path is still the installed one (M2's measured win).
+      if (disarmOnSettle) rearmPresentedDrawGuard(renderer);
+    }
+    unreadySceneCount = 0;
+    // Aspect-flip hold: three uploads attributes inside projectObject, before the
+    // draw guard can refuse. Force this walk even when the program set is steady,
+    // and hide the released meshes so that upload never sees a zero-length array.
+    const orientationHold = orientationDetachedHoldActive(renderer);
+    // Detach latch (M2 unwrap safety): a new release, dead attribute records, a dropped
+    // residency ledger or an aspect hold can put a presented payload back on the upload path —
+    // exactly what the draw-time guard intercepts. While the latch is dirty the wrapper stays
+    // on; the armed scan re-verifies pending state on a bounded cadence so a release whose
+    // geometry never draws cannot tax every presented frame.
+    let detachGuardSettled = true;
+    if (disarmOnSettle && renderer) {
+      const detachSerial = packageDetachSerialNow();
+      if (orientationHold || detachSerial !== renderer.__sfDrawGuardDetachSerial
+          || renderer.__sfDrawGuardDetachPending === true) {
+        rearmPresentedDrawGuard(renderer);
+        if (orientationHold || detachSerial !== renderer.__sfDrawGuardDetachScanSerial
+            || (renderer.__sfDrawGuardDetachScanIn = Math.max(0, (renderer.__sfDrawGuardDetachScanIn || 0) - 1)) === 0) {
+          renderer.__sfDrawGuardDetachScanSerial = detachSerial;
+          renderer.__sfDrawGuardDetachPending = presentedDetachDrawsArmed(renderer);
+          renderer.__sfDrawGuardDetachScanIn = renderer.__sfDrawGuardDetachPending === true
+            ? UNREADY_PENDING_SWEEP_FRAMES : 0;
+          if (renderer.__sfDrawGuardDetachPending !== true) {
+            renderer.__sfDrawGuardDetachSerial = detachSerial;
+          }
+        }
+      }
+      detachGuardSettled = detachSerial === renderer.__sfDrawGuardDetachSerial
+        && renderer.__sfDrawGuardDetachPending !== true;
+    }
+    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
+    // drivers. Gate their drawables until admission resolves, but leave their descendant lights
+    // visible: hiding a root changes the scene light census and links different program keys.
+    // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
+    // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
+    // the whole ship for the admission window: the per-material scan below and the
+    // renderBufferDirect guard still cover its never-compiled children.
+    const pendingSubjects = renderer && renderer.userData
+      ? renderer.userData.spacefacePendingPipelineSubjects
+      : null;
+    if (pendingSubjects && pendingSubjects.size > 0) {
+      for (const subject of pendingSubjects) {
+        if (subject && subject.visible === true
+            && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
+          if (typeof subject.traverseVisible === 'function') subject.traverseVisible(hidePendingDrawable);
+          else hidePendingDrawable(subject);
+        }
+      }
+    }
+    const props = renderer && renderer.properties;
+    if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
+      return;
+    }
+    unreadyCheckedMaterials.clear();
+    unreadyHiddenMaterials.clear();
+    admissionGl = renderer && typeof renderer.getContext === 'function'
+      ? renderer.getContext() : null;
+    const programs = renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs)) {
+      admissionScene = scene;
+      admissionPendingSubjects = pendingSubjects;
+      scanPresentedDrawables(scene);
+      admissionScene = null;
+      admissionPendingSubjects = null;
+      admissionGl = null;
+      return;
+    }
+    ensureSceneMountWatch(scene);
+    // Fold nested-mount records into the drain only when their ancestor chain reaches this
+    // scene — a mount recorded for another graph or detached before the pass stays out.
+    if (pendingNestedMountedRoots.length) {
+      for (const root of pendingNestedMountedRoots.splice(0, pendingNestedMountedRoots.length)) {
+        let top = root;
+        while (top && top.parent) top = top.parent;
+        if (top === scene) unreadyMountedRoots.push(root);
+      }
+    }
+    const sceneChildren = scene.children || [];
+    const sceneSetChanged = sceneChildren.length !== unreadySceneChildCount
+      || sceneChildren[sceneChildren.length - 1] !== unreadySceneChildTail;
+    const sceneMountChanged = unreadyMountedRoots.length > 0
+      || (sceneSetChanged && sceneChildren.length > unreadySceneChildCount);
+    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
+    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
+    // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
+    if (!orientationHold && detachGuardSettled && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+      && programs[programs.length - 1] === unreadyProgramTail
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) {
+      if (renderer) renderer.__sfDrawGuardPassSettled = true;
+      return;
+    }
+    unreadyProgramsPending = false;
+    unreadyProgramCount = programs.length;
+    unreadyProgramTail = programs[programs.length - 1] || null;
+    unreadySceneChildCount = sceneChildren.length;
+    unreadySceneChildTail = sceneChildren[sceneChildren.length - 1] || null;
+    for (let i = 0; i < programs.length; i++) {
+      const program = programs[i];
+      if (!program || typeof program.isReady !== 'function') continue;
+      if (programWrapperDead(admissionGl, program)) continue;
+      let ready = true;
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+      if (!ready) { unreadyProgramsPending = true; break; }
+    }
+    if (!orientationHold && detachGuardSettled && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) {
+      if (renderer) renderer.__sfDrawGuardPassSettled = true;
+      return;
+    }
+    // Not settled this pass — the draw-time wrapper must be on before this frame's draws.
+    if (disarmOnSettle) rearmPresentedDrawGuard(renderer);
+    unreadyCheckedMaterials.clear();
+    unreadyHiddenMaterials.clear();
+    admissionScene = scene;
+    admissionPendingSubjects = pendingSubjects;
+    const drainRoots = unreadyMountedRoots.length > 0
+      ? unreadyMountedRoots.splice(0, unreadyMountedRoots.length) : null;
+    // Anything still queued was detached before this pass or covered by the full traverse —
+    // drop it so stale roots never accumulate.
+    unreadyMountedRoots.length = 0;
+    const pendingOnlyWindow = unreadyProgramsPending !== true
+      && pendingSubjects && pendingSubjects.size > 0;
+    // The pending-PROGRAM latch shares the pending-subject window's scoped
+    // contract: per-frame work stays O(pendingSubjects ∪ instrumented mounts)
+    // and the 30-frame full sweep remains the failsafe for binds no mount path
+    // instrumented (a material swap on a live mounted mesh waits at most one
+    // sweep window — the draw-time renderBufferDirect guard already refuses
+    // on-glass links for stamped materials in the meantime).
+    const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
+    if (orientationHold || !detachGuardSettled
+        || (sceneSetChanged && drainRoots === null)
+        || (!scopedPendingWindow && !drainRoots)) {
+      // Uninstrumented growth with nothing queued, or no pending latch at all:
+      // any existing drawable could hold the unready program — full traverse.
+      unreadyPendingSweep = 0;
+      scanPresentedDrawables(scene);
+    } else if (scopedPendingWindow) {
+      // The pending latch already gates those roots' drawables; the scoped scan still catches
+      // interior mounts inside them and inside the instrumented drain, and the
+      // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
+      unreadyPendingSweep = (unreadyPendingSweep + 1) % UNREADY_PENDING_SWEEP_FRAMES;
+      if (unreadyPendingSweep === 0) {
+        scanPresentedDrawables(scene);
+      } else {
+        if (pendingSubjects) {
+          for (const subject of pendingSubjects) {
+            if (subject && typeof subject.traverse === 'function') {
+              scanPresentedDrawables(subject);
+            }
+          }
+        }
+        if (drainRoots) {
+          for (const root of drainRoots) {
+            if (root && typeof root.traverse === 'function') scanPresentedDrawables(root);
+          }
+        }
+      }
+    } else {
+      for (let i = 0; i < drainRoots.length; i++) {
+        if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
+          scanPresentedDrawables(drainRoots[i]);
+        }
+      }
+    }
+    admissionScene = null;
+    admissionPendingSubjects = null;
+    admissionGl = null;
+  }
+
+  function hideOneUnreadySceneDrawable(object) {
+    if (!object || object.visible !== true) return;
+    if (object.layers && object.layers.mask === 0) return;
+    if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) {
+      return;
+    }
+    if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+    const pendingGeometry = detachedGeometryUploadPending(object.geometry, renderer);
+    if (orientationHoldHidesDrawable(renderer, object) || pendingGeometry) {
+      if (pendingGeometry) queuePresentedDetachRehydrate(renderer, { geometry: object.geometry, material: object.material });
+      hideDrawableForPass(object);
+      return;
+    }
+    // Keep the ordinary readiness walk bounded. Orientation holds must journal every released
+    // drawable first, though, so a large detached package cannot leave the tail visible long
+    // enough for Three to upload its empty attributes before the draw guard runs.
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
+    const props = renderer.properties;
+    const list = object.material;
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        if (hideIfProgramUnready(object, list[i], props)) return;
+      }
+      return;
+    }
+    hideIfProgramUnready(object, list, props);
+  }
+
+  function hideIfProgramUnready(object, material, props) {
+    if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
+    const wanted = instancingFlags(object);
+    if (unreadyCheckedMaterials.get(material) === wanted) return false;
+    if (unreadyHiddenMaterials.get(material) === wanted) {
+      hideDrawableForPass(object);
+      return true;
+    }
+    let rec = null;
+    try {
+      rec = props.get(material);
+    } catch (_) {
+      return false;
+    }
+    // The draw guard binds the object's instancing variant, not necessarily the
+    // last-bound currentProgram — evaluate the exact wrapper the draw will, or
+    // the walk passes a bucket whose non-instanced variant is current while the
+    // guard then refuses the instanced draw (the family flaps hidden-ready
+    // while its missing variant links, 2026-10-18 asteroid-appear probe).
+    const variant = (rec && rec.currentProgram)
+      ? linkedDrawProgramVariant(renderer, rec, material, object)
+      : null;
+    // Never compiled, or the variant this draw needs is not linked yet: drawing
+    // would link the driver program inside this presented pass. Hide the
+    // drawable and route its scene root through the pipeline admission lane;
+    // the pending latch keeps it hidden until compile + residency settle. The
+    // material stamp dedupes re-queues across sibling meshes and successive
+    // scans while one admission is in flight.
+    if (!rec || !rec.currentProgram || !variant) {
+      const materialData = material.userData || (material.userData = {});
+      const queueAdmission = renderer && renderer.userData
+        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
+      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+        materialData.__sfPipelineAdmission = true;
+        let root = object;
+        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
+        // A root already latched pending has an admission in flight that will
+        // compile this subtree — queueing another would only duplicate it.
+        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
+          materialData.__sfPipelineAdmission = false;
+        } else {
+          Promise.resolve(queueAdmission(root))
+            .catch(() => null)
+            .finally(() => { materialData.__sfPipelineAdmission = false; });
+        }
+      }
+      unreadyHiddenMaterials.set(material, wanted);
+      hideDrawableForPass(object);
+      return true;
+    }
+    if (typeof variant.isReady !== 'function' || programWrapperDead(admissionGl, variant)) {
+      unreadyCheckedMaterials.set(material, wanted);
+      return false;
+    }
+    let ready = true;
+    try { ready = variant.isReady() === true; } catch (_) { ready = false; }
+    if (ready) {
+      unreadyCheckedMaterials.set(material, wanted);
+      return false;
+    }
+    unreadyHiddenMaterials.set(material, wanted);
+    hideDrawableForPass(object);
+    return true;
+  }
+
+  function restoreUnreadySceneDrawables() {
+    if (renderer) {
+      renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+      if (renderer.__sfUnreadyDrawGuardDepth === 0) renderer.__sfPresentedPass = false;
+      // A settled pass hands the hot draw path back to three (M2); a pass with pending work
+      // or a live detach release keeps the wrapper installed for the next pass.
+      if (renderer.__sfUnreadyDrawGuardDepth === 0 && disarmOnSettle
+          && renderer.__sfDrawGuardPassSettled === true) {
+        disarmPresentedDrawGuard(renderer);
+      }
+      renderer.__sfDrawGuardPassSettled = false;
+    }
+    // Keep the temporary visibility record only while the opt-in draw histogram will consume it.
+    // Unarmed readiness passes must not retain drawable roots across frames.
+    const recordHiddenDrawables = renderer?.__sfDrawHistogramArmed === true;
+    let hiddenLog = recordHiddenDrawables ? renderer.__sfLastHiddenDrawables : null;
+    for (let i = 0; i < unreadySceneCount; i++) {
+      const object = unreadySceneScratch[i];
+      if (object && unreadySceneLayerMasks[i] !== null && object.layers) {
+        object.layers.mask = unreadySceneLayerMasks[i];
+      } else if (object) object.visible = true;
+      if (object && recordHiddenDrawables) {
+        hiddenLog ||= (renderer.__sfLastHiddenDrawables = new Set());
+        if (hiddenLog.size < 4096) hiddenLog.add(object);
+      }
+      unreadySceneScratch[i] = null;
+      unreadySceneLayerMasks[i] = null;
+    }
+    if (!recordHiddenDrawables && renderer) {
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
+    }
+    unreadySceneCount = 0;
+  }
+
+  return {
+    renderer,
+    hide: hideUnreadySceneDrawables,
+    restore: restoreUnreadySceneDrawables,
+  };
+}
+
+/**
+ * Create a bloom post-processor.
+ * @param {THREE.WebGLRenderer} renderer - the live renderer (we drive its render targets).
+ * @param {number} width  - drawing-buffer width  in px.
+ * @param {number} height - drawing-buffer height in px.
+ * @param {{ getPerf?: () => object|null, getGpuTimers?: () => object|null,
+ *        getGpuOrigin?: () => object|null, sceneSamples?: number }} [instrumentation]
+ *        Optional measurement hooks plus the requested scene-target MSAA sample count. CPU
+ *        pass-group times use existing perfRuntime.recordRenderWork; GPU timers are
+ *        capability-gated and only emit when the timer set is enabled. `sceneSamples` is the
+ *        caller's ELIGIBILITY decision (hardware context, quality preset); the request is still
+ *        clamped to the context's capabilities and completeness-proved here (0 = single-sample).
+ * @returns {{ render(scene,camera):void, compileScenePipelines(subject,camera,lightingScene):Promise,
+ *            warmScenePipelines(subject,camera,lightingScene):Promise,
+ *            setSize(w,h):void, setContentScale(s):void, setOptions(o):void, dispose():void,
+ *            get enabled():boolean, set enabled(v):void }}
+ */
+export function createBloom(renderer, width, height, instrumentation = null) {
+  let W = Math.max(1, width | 0);
+  let H = Math.max(1, height | 0);
+  let instrument = instrumentation && typeof instrumentation === 'object' ? instrumentation : null;
+  let atmosphere = null;
+  let atmosphereCamera = null;
+  const atmosphereUvScale = new THREE.Vector2(1, 1);
+
+  // tunables (overridable via setOptions; defaults match settings.video.*)
+  let enabled = true;
+  let strength = DEFAULT_BLOOM_STRENGTH;
+  let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
+  let sharpenAmount = 0;
+  let threshold = 1.0;
+  // Owner 2026-10-27 bloom discipline: the knee is the emissive gate. A wide knee (the old 0.25)
+  // let ordinary lit surfaces — paint at its 0.74 ceiling, bright sky bodies — feed the pyramid
+  // from 0.75 up, which is what blurred hard edges that should stay crisp. At 0.10 the bright-pass
+  // edge is sharp: spill begins just under the threshold, so only HDR emissives (>1.0) cross it.
+  const knee = 0.10;
+  let exposure = 1.0;
+  let aces = 1.0; // 1 = ACES filmic by default
+  const defaultPresentation = resolvePostPresentation();
+  let grain = defaultPresentation.grain;
+  let vignette = defaultPresentation.vignette;
+  let grade = defaultPresentation.grade;
+  let toe = defaultPresentation.toe;
+  // Requested mode survives context loss; packedHdrMode is the capability-gated mode actually
+  // allocated for the current GL context. The default deliberately stays HalfFloat/off.
+  let packedHdrRequestedMode = PACKED_HDR_MODE.OFF;
+  let packedHdrMode = PACKED_HDR_MODE.OFF;
+  let packedHdrCapability = packedHdrProbeFailure('disabled');
+  // The contrast LUT is a separate opt-in shader variant. Keeping the default material free of
+  // the sampler preserves the shipped pow() path exactly; enabling the experiment recompiles once
+  // and then only refreshes the 2 KiB table when the shared look contrast changes.
+  let contrastLutRequested = false;
+  let contrastLutEnabled = false;
+  let contrastLutTexture = null;
+  let contrastLutContrast = NaN;
+  let contrastLutReason = 'disabled';
+
+  // ---- render targets ----
+  // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
+  // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
+  // Targets allocate at init/resize/context-restore or producer attachment, never inside render().
+  // Dyn-res scale changes use setContentScale (viewport sub-rects); setSize retains the max pool.
+  // Default is HalfFloat + linear colorSpace so brights exceed 1.0; the opt-in packed experiment
+  // swaps only the HDR color attachment format after a capability probe.
+  // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
+  const pyramidRtOpts = packedHdrTargetOptions(PACKED_HDR_MODE.OFF);
+  const sceneRtOpts = { ...packedHdrTargetOptions(PACKED_HDR_MODE.OFF, true), samples: 0 };
+  // rtPost carries the presented sRGB bytes for the CAS pass — exactly what would reach the
+  // canvas, so byte storage is honest (no depth, no filtering; CasFilter texelFetches).
+  const postRtOpts = {
+    type: THREE.UnsignedByteType,
+    magFilter: THREE.NearestFilter,
+    minFilter: THREE.NearestFilter,
+    depthBuffer: false,
+    stencilBuffer: false,
+  };
+  let rtPost = null;
+  // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
+  let casActive = false;
+  let casScaling = false;
+  // The display footprint the CAS gate compares against is owned by the caller (renderer
+  // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
+  // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
+  let casDisplayW = 0;
+  let casDisplayH = 0;
+
+  // Geometry AA on the scene target: the caller resolves ELIGIBILITY (hardware context, quality
+  // preset) and passes `sceneSamples` on the options object; this compositor owns CAPABILITY —
+  // the request is clamped to the context's maxSamples, refused outside WebGL2, and the
+  // HalfFloat+depth multisample framebuffer must prove complete before it is used (probe
+  // precedent: probePackedHdrCapability). Any failure collapses back to the shipped single-sample
+  // target, so every non-qualifying route allocates exactly what it did before. Pyramid targets
+  // stay single-sampled — they're downsampled, AA there is wasted.
+  let sceneSamplesRequest = instrumentation && Number.isFinite(instrumentation.sceneSamples)
+    ? Math.max(0, instrumentation.sceneSamples | 0)
+    : BALANCED_BLOOM_MSAA_SAMPLES;
+  let sceneSamples = resolveSceneSampleCount(sceneSamplesRequest);
+  sceneRtOpts.samples = sceneSamples;
+
+  function applyPackedHdrTargetOptions() {
+    // Pyramid-only is the first A/B arm. `all` additionally packs rtScene; rtPost and the optional
+    // distortion target remain their existing formats because they are presented/coverage buffers,
+    // not HDR bloom intermediates.
+    Object.assign(
+      pyramidRtOpts,
+      packedHdrTargetOptions(packedHdrMode === PACKED_HDR_MODE.OFF
+        ? PACKED_HDR_MODE.OFF : PACKED_HDR_MODE.PYRAMID),
+    );
+    Object.assign(
+      sceneRtOpts,
+      packedHdrTargetOptions(packedHdrMode === PACKED_HDR_MODE.ALL
+        ? PACKED_HDR_MODE.ALL : PACKED_HDR_MODE.OFF, true),
+      { samples: sceneSamples },
+    );
+  }
+
+  // Sanitize an MSAA request against this context and prove the multisample framebuffer actually
+  // allocates complete. Returns 0 whenever anything is unsupported, so callers never fall back to
+  // a silently broken target. Init-only / preset-switch cost (one tiny probe target), never
+  // per-frame.
+  function resolveSceneSampleCount(request) {
+    const caps = renderer.capabilities;
+    const requested = Number.isFinite(request)
+      ? Math.max(0, request | 0)
+      : BALANCED_BLOOM_MSAA_SAMPLES;
+    if (requested <= 0) return 0;
+    if (!caps || caps.isWebGL2 !== true) return 0;
+    const maxSamples = Number.isFinite(caps.maxSamples) ? caps.maxSamples : 0;
+    const samples = Math.min(requested, maxSamples);
+    if (samples <= 0) return 0;
+    return probeMultisampleSceneTarget(samples) ? samples : 0;
+  }
+
+  function probeMultisampleSceneTarget(samples) {
+    const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    if (!gl || typeof gl.checkFramebufferStatus !== 'function'
+      || !Number.isFinite(Number(gl.FRAMEBUFFER))
+      || !Number.isFinite(Number(gl.FRAMEBUFFER_COMPLETE))) return false;
+    if (typeof renderer.initRenderTarget !== 'function'
+      || typeof renderer.setRenderTarget !== 'function'
+      || typeof renderer.getRenderTarget !== 'function') return false;
+    let target = null;
+    const previousTarget = renderer.getRenderTarget();
+    try {
+      // Same descriptor family as the real scene target (HalfFloat + depth), sample count aside.
+      target = new THREE.WebGLRenderTarget(4, 4, { ...sceneRtOpts, samples });
+      renderer.initRenderTarget(target);
+      renderer.setRenderTarget(target);
+      return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    } catch (_) {
+      return false;
+    } finally {
+      try { renderer.setRenderTarget(previousTarget || null); } catch (_) {}
+      if (target) target.dispose();
+    }
+  }
+
+  function selectPackedHdrMode() {
+    if (packedHdrRequestedMode === PACKED_HDR_MODE.OFF) {
+      packedHdrCapability = packedHdrProbeFailure('disabled');
+      packedHdrMode = PACKED_HDR_MODE.OFF;
+      return packedHdrMode;
+    }
+    packedHdrCapability = probePackedHdrCapability(renderer);
+    packedHdrMode = packedHdrCapability.supported
+      ? packedHdrRequestedMode
+      : PACKED_HDR_MODE.OFF;
+    return packedHdrMode;
+  }
+
+  applyPackedHdrTargetOptions();
+
+  function levelCountForSize(w, h) {
+    const halfW = Math.max(1, w >> 1);
+    const halfH = Math.max(1, h >> 1);
+    const cap = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, maxLevelsCap | 0));
+    if (halfW < 320 || halfH < 180) return 1;
+    return cap >= 2 ? BLOOM_WIDE_PYRAMID_LEVELS : cap;
+  }
+
+  function allocRenderTarget(w, h, opts, reason) {
+    recordPostRenderTargetAllocation(reason);
+    return new THREE.WebGLRenderTarget(w, h, opts);
+  }
+
+  function resizeRenderTarget(rt, w, h, reason) {
+    if (!rt) return;
+    if (rt.width === w && rt.height === h) return;
+    recordPostRenderTargetAllocation(reason);
+    rt.setSize(w, h);
+  }
+
+  function createRenderTargets(reason = 'init') {
+    const rtScene = allocRenderTarget(W, H, sceneRtOpts, reason);
+    if (atmosphere?.supported) attachSceneDepth(rtScene);
+    const halfW = Math.max(1, W >> 1);
+    const halfH = Math.max(1, H >> 1);
+    const newLevels = enabled === false ? 0 : levelCountForSize(W, H);
+    const down = [];
+    for (let i = 0; i < newLevels; i++) {
+      const dw = Math.max(1, W >> (i + 1));
+      const dh = Math.max(1, H >> (i + 1));
+      down.push(allocRenderTarget(dw, dh, pyramidRtOpts, reason));
+    }
+    return { rtScene, halfW, halfH, levels: newLevels, down };
+  }
+
+  // While bloom is hard-disabled the composite binds neutral textures with zero bloom
+  // weights, so the pyramid is dead memory. Free it on disable and regrow on re-enable
+  // (strength 0 keeps it — that slider is live mid-flight). Mirrors the AO-target
+  // toggle in post/spaceRenderGraph.js.
+  function syncPyramidAllocation() {
+    if (!enabled && down.length > 0) {
+      for (const rt of down) rt.dispose();
+      down.length = 0;
+      levels = 0;
+    } else if (enabled && down.length === 0) {
+      const newLevels = levelCountForSize(W, H);
+      for (let i = 0; i < newLevels; i++) {
+        down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'bloom-enable'));
+      }
+      levels = newLevels;
+    }
+  }
+
+  let { rtScene, halfW, halfH, levels, down } = createRenderTargets();
+  // Dyn-res content scale: targets stay allocated at max (W×H). Scaled frames render into an
+  // origin-aligned viewport sub-rect; setContentScale never calls setSize/realloc.
+  let contentScale = 1;
+  let contentW = W;
+  let contentH = H;
+
+  function attachSceneDepth(target) {
+    target.depthTexture = new THREE.DepthTexture(W, H, THREE.UnsignedIntType);
+    target.depthTexture.name = 'Bloom:NOCTURNE:SceneDepth';
+    target.depthTexture.minFilter = THREE.NearestFilter;
+    target.depthTexture.magFilter = THREE.NearestFilter;
+    target.depthTexture.generateMipmaps = false;
+    target.resolveDepthBuffer = true;
+  }
+
+  // The runtime owns the pass's lifetime. Attachment happens before opening warm-up, so its depth
+  // attachment, MRT history targets and shader are admitted while the loading screen still owns time.
+  function attachAtmosphere(pass, { disposeGpu = true } = {}) {
+    if (pass === atmosphere) return;
+    atmosphere = pass || null;
+    atmosphereCamera = null;
+    if (atmosphere?.supported && !rtScene.depthTexture) {
+      if (disposeGpu) rtScene.dispose();
+      attachSceneDepth(rtScene);
+    } else if (!atmosphere?.supported && rtScene.depthTexture) {
+      if (disposeGpu) rtScene.dispose();
+      rtScene.depthTexture = null;
+    }
+    compositeMat.uniforms.uNocturneAtmosphere.value = 0;
+    compositeMat.uniforms.tNocturneScatter.value = null;
+    compositeMat.uniforms.tNocturneDepth.value = null;
+    compositeMat.uniforms.tNocturneSceneDepth.value = null;
+    if (atmosphere) {
+      atmosphere.setSize(W, H);
+      atmosphere.invalidateHistory('compositor-attached');
+    }
+  }
+
+  // Producers own bounded effect geometry; this compositor owns only their shared vector target.
+  // Allocate on attachment so prepareResources admits it before combat, never on the first shot.
+  // No producer means no extra target; attached idle producers pay no draw or texture sample.
+  let distortionProducers = null;
+  let rtDistortion = null;
+  let distortionLiveCount = 0;
+  const singleDistortionProducer = [null];
+  const distortionClear = new THREE.Color(0.5, 0.5, 0);
+  const priorDistortionClear = new THREE.Color();
+  const distortionRtOpts = {
+    type: THREE.UnsignedByteType,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    depthBuffer: false,
+    stencilBuffer: false,
+  };
+
+  function attachDistortionProducers(producers) {
+    const next = Array.isArray(producers) && producers.length ? producers : null;
+    if (next === distortionProducers) return;
+    distortionProducers = next;
+    distortionLiveCount = 0;
+    if (next && !rtDistortion) {
+      rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'distortion-attach');
+      rtDistortion.texture.name = 'Bloom:Distortion';
+    } else if (!next && rtDistortion) {
+      rtDistortion.dispose();
+      rtDistortion = null;
+    }
+  }
+
+  function attachDistortionField(field) {
+    singleDistortionProducer[0] = field || null;
+    attachDistortionProducers(field ? singleDistortionProducer : null);
+  }
+
+  function countLiveDistortion() {
+    distortionLiveCount = 0;
+    if (!distortionProducers || !rtDistortion) return 0;
+    for (let i = 0; i < distortionProducers.length; i++) {
+      const producer = distortionProducers[i];
+      if (producer && producer.hasLive && producer.scene) distortionLiveCount++;
+    }
+    return distortionLiveCount;
+  }
+
+  function renderDistortionPass(camera, tier1) {
+    const priorAlpha = renderer.getClearAlpha();
+    renderer.getClearColor(priorDistortionClear);
+    const priorAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    try {
+      renderer.setClearColor(distortionClear, 0);
+      renderer.setRenderTarget(rtDistortion);
+      renderer.clear(true, false, false);
+      for (let i = 0; i < distortionProducers.length; i++) {
+        const producer = distortionProducers[i];
+        if (producer && producer.hasLive && producer.scene) renderer.render(producer.scene, camera);
+      }
+      if (tier1) tier1.countRenderPassPixels(halfW * halfH, 'weapon-distortion');
+    } finally {
+      renderer.autoClear = priorAutoClear;
+      renderer.setClearColor(priorDistortionClear, priorAlpha);
+    }
+  }
+
+  // ---- fullscreen quad (shared immutable geometry; private scene/mesh; material swapped per pass) ----
+  const quadGeo = retainSharedQuadGeometry();
+  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const quadScene = new THREE.Scene();
+  const quadMesh = new THREE.Mesh(quadGeo, null);
+  quadMesh.frustumCulled = false;
+  quadMesh.matrixAutoUpdate = false;
+  quadMesh.updateMatrix();
+  // QUAD_VERT writes clip space directly (gl_Position = vec4(position.xy, 0, 1)) and ignores
+  // every transform matrix, so the per-blit scene/camera matrix refresh can never change a
+  // pixel — freeze both. The ortho camera never moves: matrixWorldInverse stays the identity
+  // it was constructed with, which is the correct value.
+  quadScene.matrixWorldAutoUpdate = false;
+  quadCam.matrixWorldAutoUpdate = false;
+  quadScene.add(quadMesh);
+
+  const mkMat = (frag, uniforms) => new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: QUAD_VERT,
+    fragmentShader: frag,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false, // never let three's tone-mapping touch a post pass
+  });
+
+  const downsampleMat = mkMat(DOWNSAMPLE_FRAG, {
+    tDiffuse: { value: null },
+    uTexel: { value: new THREE.Vector2(1 / W, 1 / H) },     // set per level in render()
+    uUvScale: { value: new THREE.Vector2(1, 1) },
+    uUvOffset: { value: new THREE.Vector2(0, 0) },
+    uThreshold: { value: threshold },
+    uKnee: { value: knee },
+    uBright: { value: 1.0 },                                // 1.0 only on level 0
+  });
+  const compositeMat = mkMat(COMPOSITE_FRAG, {
+    tScene:     { value: null },
+    tBloom0:    { value: null },
+    tBloom1:    { value: null },
+    tBloom2:    { value: null },
+    tDistortion: { value: null },
+    uDistortion: { value: 0 },
+    uBloomW0:   { value: 1.0 },
+    uBloomW1:   { value: 0.0 },
+    uBloomW2:   { value: 0.0 },
+    uStrength:  { value: strength },
+    uBloomNorm: { value: BLOOM_PYRAMID_NORM },
+    uExposure:  { value: exposure },
+    uAces:      { value: aces },
+    uGrain:     { value: grain },     // film grain (cyberpunk-noir mood)
+    uVignette:  { value: vignette },  // atmospheric corner fall-off
+    uGrade:     { value: grade },     // teal-shadow/amber-highlight color grade
+    uToe:       { value: toe },       // lifted black floor (0 = true blacks)
+    uGrainFrame: { value: 0 },
+    uUvScale: { value: new THREE.Vector2(1, 1) },
+    uUvOffset: { value: new THREE.Vector2(0, 0) },
+    uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uPresentationScale: { value: new THREE.Vector2(1, 1) },
+    uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
+    tLookContrastLut: { value: null },
+    ...createAtmosphereCompositeUniforms(),
+    // Shared objects: look.js writes the mood once and every composite reads it.
+    ...LOOK_POST_UNIFORMS,
+  });
+  // CAS needs GLSL3 (texelFetch, uvec4 bit-cast uniforms) — the only GLSL3 material in the chain.
+  const casMat = new THREE.ShaderMaterial({
+    uniforms: createCasUniforms(),
+    vertexShader: QUAD_VERT,
+    fragmentShader: CAS_FRAG,
+    glslVersion: THREE.GLSL3,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+
+  function postStyleScale() {
+    return Math.max(grain, vignette, grade, toe);
+  }
+
+  function applyPostStyleUniforms() {
+    compositeMat.uniforms.uGrain.value = grain;
+    compositeMat.uniforms.uVignette.value = vignette;
+    compositeMat.uniforms.uToe.value = toe;
+    compositeMat.uniforms.uGrade.value = grade;
+  }
+  applyPostStyleUniforms();
+
+  function contrastLutSupported() {
+    return renderer && renderer.capabilities && renderer.capabilities.isWebGL2 === true;
+  }
+
+  function setContrastLutShaderVariant(enabledVariant) {
+    const defines = compositeMat.defines || (compositeMat.defines = {});
+    if (enabledVariant) defines.SF_CONTRAST_LUT = 1;
+    else delete defines.SF_CONTRAST_LUT;
+    // The variant is selected only by the explicit experiment switch, never per frame.
+    compositeMat.needsUpdate = true;
+  }
+
+  function syncContrastLut(force = false) {
+    if (!contrastLutEnabled) return;
+    const rawContrast = Number(LOOK_POST_UNIFORMS.uLookContrast.value);
+    const contrast = Number.isFinite(rawContrast) ? rawContrast : 1;
+    if (!contrastLutTexture) {
+      contrastLutTexture = createContrastLutTexture(contrast);
+      compositeMat.uniforms.tLookContrastLut.value = contrastLutTexture;
+      contrastLutContrast = contrast;
+      return;
+    }
+    if (force || contrastLutContrast !== contrast) {
+      writeContrastLutData(contrast, contrastLutTexture.image.data);
+      contrastLutTexture.needsUpdate = true;
+      contrastLutContrast = contrast;
+    }
+    if (compositeMat.uniforms.tLookContrastLut.value !== contrastLutTexture) {
+      compositeMat.uniforms.tLookContrastLut.value = contrastLutTexture;
+    }
+  }
+
+  function releaseContrastLutTexture() {
+    if (contrastLutTexture) contrastLutTexture.dispose();
+    contrastLutTexture = null;
+    contrastLutContrast = NaN;
+    compositeMat.uniforms.tLookContrastLut.value = null;
+  }
+
+  function setContrastLutEnabled(value) {
+    contrastLutRequested = !!value;
+    if (contrastLutRequested && !contrastLutSupported()) {
+      contrastLutEnabled = false;
+      contrastLutReason = 'webgl2-required';
+      setContrastLutShaderVariant(false);
+      releaseContrastLutTexture();
+      return diagnostics();
+    }
+    const next = contrastLutRequested;
+    if (next === contrastLutEnabled) {
+      if (next) syncContrastLut();
+      return diagnostics();
+    }
+    contrastLutEnabled = next;
+    if (contrastLutEnabled) {
+      contrastLutReason = 'enabled';
+      setContrastLutShaderVariant(true);
+      syncContrastLut(true);
+    } else {
+      contrastLutReason = 'disabled';
+      setContrastLutShaderVariant(false);
+      releaseContrastLutTexture();
+    }
+    return diagnostics();
+  }
+
+  // draw the shared quad with a given material into a given target (null = screen).
+  // Optional viewW/viewH restrict the write to an origin-aligned content sub-rect of a
+  // max-sized target (dyn-res). Omit both for a full-target / full-framebuffer blit.
+  function blit(material, target, viewW = null, viewH = null) {
+    quadMesh.material = material;
+    const useSubRect = !!target && viewW != null && viewH != null
+      && Number.isFinite(viewW) && Number.isFinite(viewH);
+    if (target) {
+      // Sub-rects live on the render target's own viewport/scissor (device px, applied on
+      // bind). renderer.setViewport is logical px and writes the canvas's persistent viewport:
+      // it double-scaled these device-pixel rects under dpr>1 and was the state that leaked
+      // the scene pass's content rect into the final framebuffer composite.
+      const w = useSubRect ? Math.max(1, viewW) : target.width;
+      const h = useSubRect ? Math.max(1, viewH) : target.height;
+      if (target.viewport && typeof target.viewport.set === 'function') {
+        target.viewport.set(0, 0, w, h);
+      }
+      if (target.scissor && typeof target.scissor.set === 'function') {
+        target.scissor.set(0, 0, w, h);
+      }
+      target.scissorTest = useSubRect;
+    } else if (typeof renderer.setScissorTest === 'function') {
+      renderer.setScissorTest(false);
+    }
+    renderer.setRenderTarget(target);
+    renderQuadScene(renderer, quadScene, quadCam);
+  }
+
+  function releaseBloomSceneSamplers() {
+    downsampleMat.uniforms.tDiffuse.value = null;
+    compositeMat.uniforms.tScene.value = null;
+    compositeMat.uniforms.tBloom0.value = null;
+    compositeMat.uniforms.tBloom1.value = null;
+    compositeMat.uniforms.tBloom2.value = null;
+    compositeMat.uniforms.tDistortion.value = null;
+    compositeMat.uniforms.tNocturneScatter.value = null;
+    compositeMat.uniforms.tNocturneDepth.value = null;
+    compositeMat.uniforms.tNocturneSceneDepth.value = null;
+    casMat.uniforms.tSrc.value = null;
+    const glState = renderer && renderer.state;
+    if (!glState || typeof glState.unbindTexture !== 'function') return;
+    const gl = renderer.getContext && renderer.getContext();
+    // One unbindTexture() only clears the current unit. Composite leftovers sit on
+    // other units and ANGLE reports a framebuffer/texture feedback loop on the next
+    // rtScene pass — that GL error is what later TDR'd Intel mid-flight.
+    if (typeof glState.activeTexture === 'function' && gl && gl.TEXTURE0 != null) {
+      // Hard cap — do not gl.getParameter() every frame; that sync flush TDR'd Intel.
+      // 16 covers the usual D3D11/ANGLE unit set. The old 8-unit walk left
+      // composite leftovers on 8–15 and still TDR'd after ~10s of bloom.
+      for (let unit = 0; unit < 16; unit++) {
+        glState.activeTexture(gl.TEXTURE0 + unit);
+        glState.unbindTexture();
+      }
+      glState.activeTexture(gl.TEXTURE0);
+      return;
+    }
+    glState.unbindTexture();
+  }
+
+  const unreadyDrawables = createUnreadyDrawableGuard(renderer, { disarmOnSettle: true });
+  const hideUnreadySceneDrawables = unreadyDrawables.hide;
+  const restoreUnreadySceneDrawables = unreadyDrawables.restore;
+
+  // Measurement-only: CPU pass times require perfRuntime.renderWorkEnabled (default OFF).
+  // GPU begin/end only runs when the timer set is enabled (default OFF).
+  function timePassGroup(label, fn, arg0 = null, arg1 = null, arg2 = null) {
+    const perf = instrument && typeof instrument.getPerf === 'function' ? instrument.getPerf() : null;
+    const gpu = instrument && typeof instrument.getGpuTimers === 'function' ? instrument.getGpuTimers() : null;
+    const useCpu = !!(perf && perf.renderWorkEnabled && typeof perf.recordRenderWork === 'function');
+    const useGpu = gpu && gpu.enabled && typeof gpu.begin === 'function';
+    const gpuOrigin = useGpu && instrument && typeof instrument.getGpuOrigin === 'function'
+      ? instrument.getGpuOrigin()
+      : null;
+    const t0 = useCpu ? performance.now() : 0;
+    const gpuQueryBegan = !!(useGpu && gpu.begin(label, gpuOrigin));
+    try {
+      return fn(arg0, arg1, arg2);
+    } finally {
+      if (gpuQueryBegan) gpu.end();
+      if (useCpu) perf.recordRenderWork(label, performance.now() - t0);
+    }
+  }
+
+  // These pass bodies live for the bloom instance rather than being recreated as three arrow
+  // closures every display frame. Explicit arguments preserve timePassGroup's local/finally
+  // semantics without retaining mutable per-frame scene or camera state between renders.
+  // Program identities seen as of the last brick. Carried BETWEEN slow frames instead of rebuilt
+  // every frame, so the diff costs nothing until something is already wrong. Seeded once on the
+  // first scene pass so the FIRST brick still reports a real delta.
+
+  // The programs this render call acquired, and only those.
+  function exactNewProgramKeys(before) {
+    const programs = renderer && renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs) || !Number.isFinite(before) || before < 0) return [];
+    return programs.slice(before)
+      .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''))
+      .filter(Boolean);
+  }
+
+  // Map each newly-linked program key back to the live object using it.
+  // A cache key names a program, not a producer, and "+3 programs" is not actionable until you know
+  // WHICH object dragged them in — this is what turned an unattributed 498 ms freeze into
+  // "common rock spawned and nothing warmed it". Runs ONLY on a frame that already blew the
+  // threshold, so the traversal cost cannot matter; keep it armed for the same reason the brick
+  // warning itself is always armed.
+  const seenBloomGeometryUuids = new Set();
+  // A sustained slow stretch bricks EVERY frame — and each brick used to pay
+  // three scene traverses plus a report serialization inside the presented
+  // pass, worsening the frame it was diagnosing. Dedup: the first brick and
+  // every 120th carry the full describe payload; bricks ≥1 s apart emit a
+  // cheap summary; everything between is counted and suppressed.
+  let brickSeq = 0;
+  let brickLastWarnAt = -Infinity;
+  let brickSuppressed = 0;
+
+  function describeUnstampedVisibleGeometries(scene) {
+    if (!scene || typeof scene.traverse !== 'function') return [];
+    const rows = [];
+    const rootOf = (object) => {
+      let root = object;
+      while (root && root.parent && root.parent !== scene) root = root.parent;
+      return root;
+    };
+    try {
+      scene.traverse((object) => {
+        if (rows.length >= 24) return;
+        const geometry = object && object.geometry;
+        if (!geometry) return;
+        if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite || object.isInstancedMesh)) {
+          return;
+        }
+        if (object.visible !== true) return;
+        if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+        const drawRange = geometry.drawRange;
+        if (drawRange && Number.isFinite(Number(drawRange.count)) && Number(drawRange.count) <= 0) {
+          return;
+        }
+        if (geometry.userData && geometry.userData.spacefaceGpuResident === true) return;
+        rows.push({
+          object: String(object.name || object.type || 'unnamed'),
+          root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+          geometry: String(geometry.name || geometry.type || 'BufferGeometry'),
+          uuid: String(geometry.uuid || '').slice(0, 8),
+          count: object.isInstancedMesh ? Number(object.count) || 0 : undefined,
+          drawRange: drawRange ? Number(drawRange.count) : null,
+        });
+      });
+    } catch {
+      return rows;
+    }
+    return rows;
+  }
+
+  function describeNewGeometryOwners(scene, seen) {
+    if (!scene || typeof scene.traverse !== 'function') return [];
+    const rows = [];
+    const rootOf = (object) => {
+      let root = object;
+      while (root && root.parent && root.parent !== scene) root = root.parent;
+      return root;
+    };
+    try {
+      scene.traverse((object) => {
+        if (rows.length >= 24) return;
+        const geometry = object && object.geometry;
+        if (!geometry || seen.has(geometry.uuid)) return;
+        if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite || object.isInstancedMesh)) {
+          return;
+        }
+        rows.push({
+          object: String(object.name || object.type || 'unnamed'),
+          root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+          geometry: String(geometry.name || geometry.type || 'BufferGeometry'),
+          uuid: String(geometry.uuid || '').slice(0, 8),
+          visible: object.visible === true,
+          count: object.isInstancedMesh ? Number(object.count) || 0 : undefined,
+        });
+      });
+    } catch {
+      return rows;
+    }
+    return rows;
+  }
+
+  // Bounded dedup stamp: at the cap the whole set is dropped and the live scene re-registers.
+  // "New geometry" reporting is diagnostic-only, so a false-positive row after a cap reset is
+  // harmless; an unbounded uuid set across sectors and generations is not.
+  const SEEN_BLOOM_GEOMETRY_CAP = 2000;
+
+  // The refill used to pay a full scene traverse inside the frames that had
+  // already bricked. The walk is parked as a stepped iterator instead: each
+  // request advances a bounded slice and registers uuids as visited, so the
+  // seen set stays honest while the refill amortizes across the storm's own
+  // frames. A geometry added inside an already-visited branch reports "new"
+  // once — diagnostic noise, not a contract breach (same as the cap reset).
+  let bloomGeometryWalkIter = null;
+  let bloomGeometryWalkScene = null;
+
+  function* bloomGeometryWalkSteps(root) {
+    const stack = [root];
+    while (stack.length) {
+      const object = stack.pop();
+      if (object) {
+        const geometry = object.geometry;
+        if (geometry && geometry.uuid && seenBloomGeometryUuids.size < SEEN_BLOOM_GEOMETRY_CAP) {
+          seenBloomGeometryUuids.add(geometry.uuid);
+        }
+        const children = object.children;
+        if (children) {
+          for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+        }
+      }
+      yield;
+    }
+  }
+
+  function driveBloomGeometryWalk(scene, drainAll) {
+    if (!scene || typeof scene.traverse !== 'function') return;
+    if (bloomGeometryWalkScene !== scene) {
+      bloomGeometryWalkIter = null;
+      bloomGeometryWalkScene = scene;
+    }
+    if (!bloomGeometryWalkIter) {
+      if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
+      bloomGeometryWalkIter = bloomGeometryWalkSteps(scene);
+    }
+    let visited = 0;
+    while (bloomGeometryWalkIter && (drainAll || visited < 256)) {
+      let step = null;
+      try { step = bloomGeometryWalkIter.next(); }
+      catch (_) { bloomGeometryWalkIter = null; return; }
+      if (step && step.done) { bloomGeometryWalkIter = null; return; }
+      visited += 1;
+    }
+  }
+
+  function rememberBloomGeometries(scene) {
+    driveBloomGeometryWalk(scene, false);
+  }
+
+  function drainBloomGeometryWalk(scene) {
+    driveBloomGeometryWalk(scene, true);
+  }
+
+  function describeNewProgramOwners(scene, seenKeys) {
+    if (!scene || typeof scene.traverse !== 'function') return null;
+    const rows = [];
+    const props = renderer && renderer.properties;
+    if (!props || typeof props.get !== 'function') return null;
+    const rootOf = (object) => {
+      let root = object;
+      while (root && root.parent && root.parent !== scene) root = root.parent;
+      return root;
+    };
+    try {
+      scene.traverse((object) => {
+        if (rows.length >= 24) return;
+        const materials = Array.isArray(object?.material)
+          ? object.material
+          : (object?.material ? [object.material] : []);
+        for (const material of materials) {
+          let rec = null;
+          try { rec = props.get(material) || null; } catch (_) { continue; }
+          // currentProgram only names the LAST-BOUND variant. A material that drew a different
+          // variant this pass (post-compile state change, per-object program parameters) links it
+          // and re-binds — the just-linked program then sits in materialProperties.programs while
+          // currentProgram points elsewhere, which is how an in-frame link reported owners:[].
+          const candidates = [];
+          if (rec && rec.currentProgram) candidates.push(rec.currentProgram);
+          const variants = rec && rec.programs;
+          if (variants && typeof variants.values === 'function') {
+            for (const variant of variants.values()) candidates.push(variant);
+          }
+          for (const program of candidates) {
+            const key = String(program && (program.cacheKey || program.name) || '');
+            // seenKeys is the set this render just linked. Keep those owners; skip already-warm ones.
+            if (!key || !seenKeys.has(key)) continue;
+            // Sibling variants of the same material expose which cacheKey field drifted between
+            // the admission compile and this presented pass (numDirLightShadows, geometry flags).
+            const siblings = [];
+            if (variants && typeof variants.values === 'function') {
+              for (const variant of variants.values()) {
+                const skey = String(variant && (variant.cacheKey || variant.name) || '');
+                if (skey && skey !== key) siblings.push(skey.slice(0, 512));
+                if (siblings.length >= 6) break;
+              }
+            }
+            rows.push({
+              object: String(object.name || object.type || 'unnamed').slice(0, 48),
+              material: String(material.name || material.type || 'unnamed').slice(0, 32),
+              mu: String(material.uuid || '').slice(0, 8),
+              ou: String(object.uuid || '').slice(0, 8),
+              cloneOf: material && material.userData
+                ? String(material.userData.sfHeatSkinClone || material.userData.sfGhostClone || material.userData.sfClonedFrom || '')
+                : '',
+              parent: String(object.parent && (object.parent.name || object.parent.type) || '').slice(0, 48),
+              pos: object.position
+                ? [object.position.x, object.position.y, object.position.z].map((v) => Math.round(Number(v) || 0)).join(',')
+                : '',
+              root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
+              key: key.slice(0, 512),
+              siblingKeys: siblings,
+              visible: object.visible === true,
+            });
+            break;
+          }
+        }
+      });
+    } catch (_) { return null; }
+    return rows;
+  }
+
+  function renderScenePass(scene, camera, tier1) {
+    const prevAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    // ALWAYS ARMED, and cheap. This was gated on `perf.renderWorkEnabled`, and the costly event —
+    // a 3,167 ms bloomScene — landed OUTSIDE the window where that gate was true, so the warning
+    // never fired for the one frame anyone cared about. Three attempts at the entering-flight brick
+    // were aimed by evidence this blind spot had already filtered. Do not re-gate it.
+    //
+    // The per-frame cost is one performance.now() pair and one array-length read. Naming the
+    // programs happens ONLY on a frame that already blew the threshold, and reads the tail of
+    // info.programs past the pre-render length — no per-frame Set is carried or rebuilt.
+    const info = renderer.info;
+    const programsBefore = Array.isArray(info?.programs) ? info.programs.length : null;
+    const geometriesBefore = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+    const texturesBefore = Number.isFinite(info?.memory?.textures) ? info.memory.textures : null;
+    const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : 0;
+    try {
+      // Bloom's own fullscreen materials keep rtScene.texture bound after the
+      // previous composite. ANGLE treats any unit still holding the current
+      // color attachment as a framebuffer feedback loop — the bind is on
+      // compositeMat, not a game-scene mesh, so a scene walk cannot see it.
+      releaseBloomSceneSamplers();
+      // Content sub-rect lives on the render target itself (device px, copied into GL state by
+      // setRenderTarget). renderer.setViewport would write the canvas's persistent logical-pixel
+      // viewport: it double-scaled this device-pixel rect under dpr>1 and leaked into the final
+      // framebuffer blit, squeezing the composite into the bottom-left corner under dyn-res.
+      rtScene.viewport.set(0, 0, contentW, contentH);
+      rtScene.scissor.set(0, 0, contentW, contentH);
+      rtScene.scissorTest = true;
+      renderer.setRenderTarget(rtScene);
+      // Readiness selects tone mapping and output encoding from the bound target.
+      // Check the scene's HDR variants, not the previous screen/composite pass.
+      hideUnreadySceneDrawables(scene);
+      // rtScene has stencilBuffer:false and the context is stencil-free — clearing the stencil
+      // bit is a spec no-op that still pays a stencil.setMask GL state write.
+      renderer.clear(true, true, false);
+      renderer.render(scene, camera);
+      if (tier1) tier1.countRenderPassPixels(contentW * contentH, 'bloom-scene');
+    } finally {
+      restoreUnreadySceneDrawables();
+      renderer.autoClear = prevAutoClear;
+      {
+        const elapsedMs = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : 0) - startedAt;
+        const geometriesAfter = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+        const warnMs = Number(renderer.userData && renderer.userData.spacefaceBrickWarnMs);
+        const brick = elapsedMs > (Number.isFinite(warnMs) && warnMs > 0 ? warnMs : BRICK_WARN_MS);
+        const grewGeometries = geometriesAfter != null && geometriesBefore != null
+          && geometriesAfter > geometriesBefore;
+        if (brick) {
+          brickSeq += 1;
+          const brickNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+            ? performance.now() : Date.now();
+          const sampled = brickSeq === 1 || (brickSeq % 120) === 0;
+          const heartbeat = brickNow - brickLastWarnAt >= 1000;
+          if (sampled || heartbeat) {
+            brickLastWarnAt = brickNow;
+            const suppressed = brickSuppressed;
+            brickSuppressed = 0;
+            console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify(sampled ? {
+              // Owners first: probe collectors truncate long warning payloads, so the fields that
+              // NAME the producer must precede the bulky key lists.
+              owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+              newGeometries: grewGeometries
+                ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+                : [],
+              unstampedVisible: describeUnstampedVisibleGeometries(scene),
+              programsBefore,
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesBefore,
+              geometriesAfter,
+              texturesBefore,
+              texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
+              // Three appends to info.programs as it acquires them, so the tail beyond
+              // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
+              // previous-brick set reported every program acquired since the last brick — dozens of
+              // legitimately warm ones — which made the payload unusable for naming a producer.
+              newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
+              suppressedBricks: suppressed,
+            } : {
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesAfter,
+              suppressedBricks: suppressed,
+            })}`);
+          } else {
+            brickSuppressed += 1;
+          }
+        }
+        if (brick || grewGeometries) rememberBloomGeometries(scene);
+        else if (bloomGeometryWalkIter) driveBloomGeometryWalk(scene, false);
+      }
+    }
+  }
+
+  // One real scene pass into rtScene with no brick telemetry: the opening first-draw gate runs
+  // this while it is already holding the frame, so depth variants for late-armed casters (and any
+  // straggler color program or buffer upload) link here instead of inside the presented frame.
+  // Mirrors renderScenePass exactly — same samplers release, same unready-drawable hiding, same
+  // target — so the produced program keys are identical to the pass the frame is about to run.
+  function rehearseScenePass(scene, camera) {
+    const prevAutoClear = renderer.autoClear;
+    const prevTarget = renderer.getRenderTarget ? renderer.getRenderTarget() : null;
+    renderer.autoClear = false;
+    try {
+      releaseBloomSceneSamplers();
+      rtScene.viewport.set(0, 0, contentW, contentH);
+      rtScene.scissor.set(0, 0, contentW, contentH);
+      rtScene.scissorTest = true;
+      renderer.setRenderTarget(rtScene);
+      hideUnreadySceneDrawables(scene);
+      renderer.clear(true, true, false);
+      renderer.render(scene, camera);
+      drainBloomGeometryWalk(scene);
+      // The rehearsal's GL work sits in the driver's queue until something forces the flush —
+      // without a drain here the deferred cost lands inside the presented frame it exists to
+      // protect. gl.finish() moves that drain into the held gate.
+      const gl = renderer.getContext ? renderer.getContext() : null;
+      if (gl && typeof gl.finish === 'function') gl.finish();
+    } finally {
+      restoreUnreadySceneDrawables();
+      renderer.autoClear = prevAutoClear;
+      renderer.setRenderTarget(prevTarget || null);
+    }
+  }
+
+  function renderDownsamplePass(tier1) {
+    let src = rtScene.texture;
+    for (let i = 0; i < levels; i++) {
+      // Allocated source size (max pool) vs active content size (dyn-res sub-rect).
+      const allocW = i === 0 ? W : Math.max(1, W >> i);
+      const allocH = i === 0 ? H : Math.max(1, H >> i);
+      const srcContentW = i === 0 ? contentW : Math.max(1, contentW >> i);
+      const srcContentH = i === 0 ? contentH : Math.max(1, contentH >> i);
+      const dstContentW = Math.max(1, contentW >> (i + 1));
+      const dstContentH = Math.max(1, contentH >> (i + 1));
+      downsampleMat.uniforms.tDiffuse.value = src;
+      // One allocated texel in texture UV == one content pixel when packed at the origin.
+      downsampleMat.uniforms.uTexel.value.set(1 / allocW, 1 / allocH);
+      downsampleMat.uniforms.uUvScale.value.set(srcContentW / allocW, srcContentH / allocH);
+      downsampleMat.uniforms.uUvOffset.value.set(0, 0);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = (i === 0) ? 1.0 : 0.0;
+      blit(downsampleMat, down[i], dstContentW, dstContentH);
+      if (tier1) tier1.countRenderPassPixels(dstContentW * dstContentH, 'bloom-downsample');
+      src = down[i].texture;
+    }
+  }
+
+  function renderCompositePass(tier1, bloomActive) {
+    // Mood transitions update the shared contrast uniform outside this module. The experiment
+    // table follows that value lazily and reuses its DataTexture between changes.
+    if (contrastLutEnabled) syncContrastLut();
+    // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
+    // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
+    // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
+    const fine = bloomActive ? down[0].texture : rtScene.texture;
+    const mid = bloomActive && levels > 1 ? down[Math.min(2, levels - 1)].texture : fine;
+    const wide = bloomActive && levels > 2 ? down[levels - 1].texture : fine;
+    compositeMat.uniforms.tScene.value = rtScene.texture;
+    compositeMat.uniforms.tBloom0.value = fine;
+    compositeMat.uniforms.tBloom1.value = mid;
+    compositeMat.uniforms.tBloom2.value = wide;
+    compositeMat.uniforms.tDistortion.value = distortionLiveCount > 0 ? rtDistortion.texture : rtScene.texture;
+    compositeMat.uniforms.uDistortion.value = distortionLiveCount > 0 ? 1 : 0;
+    if (atmosphere) atmosphere.bindComposite(compositeMat.uniforms, rtScene.depthTexture, atmosphereCamera, rtScene.texture);
+    else {
+      compositeMat.uniforms.uNocturneAtmosphere.value = 0;
+      compositeMat.uniforms.tNocturneScatter.value = rtScene.texture;
+      compositeMat.uniforms.tNocturneDepth.value = rtScene.texture;
+      compositeMat.uniforms.tNocturneSceneDepth.value = rtScene.texture;
+    }
+    compositeMat.uniforms.uBloomW0.value = bloomActive ? 1.0 : 0.0;
+    compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_MID_WEIGHT : 0.0;
+    compositeMat.uniforms.uBloomW2.value = bloomActive && levels > 2 ? BLOOM_WIDE_WEIGHT : 0.0;
+    compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
+    compositeMat.uniforms.uExposure.value = exposure;
+    compositeMat.uniforms.uAces.value = aces;
+    // uGrainFrame only feeds the grain term, which the shader short-circuits below 0.001 —
+    // skip the clock read entirely in the default grain-off presentation.
+    if (grain > 0.001) {
+      const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+      compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
+    }
+    compositeMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
+    compositeMat.uniforms.uUvOffset.value.set(0, 0);
+    // Compose at the active resolution, preserving sRGB/tone-map ownership, then let CAS
+    // reconstruct those bytes instead of sharpening an already bilinearly enlarged image.
+    // Ratios beyond the vendor's 4x-area limit keep the legacy linear + sharpen handoff.
+    // Native/supersampled content presents directly, with no CAS draw.
+    const sharpen = casActive && rtPost;
+    const compositeW = sharpen && casScaling ? contentW : W;
+    const compositeH = sharpen && casScaling ? contentH : H;
+    compositeMat.uniforms.uPresentationScale.value.set(W / compositeW, H / compositeH);
+    blit(compositeMat, sharpen ? rtPost : null, compositeW, compositeH);
+    if (tier1) tier1.countRenderPassPixels(compositeW * compositeH, 'bloom-composite');
+    if (sharpen) {
+      casMat.uniforms.tSrc.value = rtPost.texture;
+      blit(casMat, null);
+      casMat.uniforms.tSrc.value = null;
+      if (tier1) tier1.countRenderPassPixels(W * H, 'cas-sharpen');
+    }
+  }
+
+  function setInstrumentation(next) {
+    instrument = next && typeof next === 'object' ? next : null;
+  }
+
+  function renderAtmospherePass(camera, tier1) {
+    atmosphereCamera = camera;
+    // The runtime shares one transport pass with the optional graph, whose internal scale may
+    // differ. Reconcile only at a route/size change; setSize is allocation-free when unchanged.
+    atmosphere.setSize(W, H);
+    atmosphereUvScale.set(contentW / W, contentH / H);
+    const drawn = atmosphere?.render(rtScene.depthTexture, camera, atmosphereUvScale);
+    if (drawn && tier1) tier1.countRenderPassPixels(atmosphere.lowWidth * atmosphere.lowHeight, 'nocturne-atmosphere');
+  }
+
+  function render(scene, camera) {
+    // Sampler unbind already clears Three's per-unit texture cache. resetState() also
+    // drops VAO/program/framebuffer caches every frame; do not re-admit that hitch.
+    const bloomActive = enabled && strength > 0.0001;
+
+    const prevAutoClear = renderer.autoClear;
+
+    // Tier-1 causal pixel accounting: one hoisted enabled-check per frame, then pass-target area
+    // per pass. Counts the rasterized pixel load; allocation stays with the GL wrappers.
+    const tier1Perf = instrument && typeof instrument.getPerf === 'function' ? instrument.getPerf() : null;
+    const tier1 = tier1Perf && tier1Perf.tier1 && tier1Perf.tier1.isEnabled() ? tier1Perf.tier1 : null;
+
+    // pass 0 — scene into HDR buffer (renderer applies its own tone-mapping here)
+    timePassGroup('bloomScene', renderScenePass, scene, camera, tier1);
+
+    // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
+    renderer.autoClear = false;
+
+    if (atmosphere) {
+      // The current-frame preflight avoids timing a disabled, unsupported, or empty-media no-op.
+      // Still call the owner when it will not draw so vacuum/history state advances.
+      if (atmosphere.hasRenderWork(rtScene.depthTexture, camera)) {
+        timePassGroup('nocturneAtmosphere', renderAtmospherePass, camera, tier1);
+      } else {
+        renderAtmospherePass(camera, tier1);
+      }
+    }
+
+    // ---- downsample chain: full -> ½ (bright-pass) -> ¼ ----
+    // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
+    if (bloomActive) timePassGroup('bloomDownsample', renderDownsamplePass, tier1);
+
+    if (countLiveDistortion() > 0 && camera) {
+      timePassGroup('weaponDistortion', renderDistortionPass, camera, tier1);
+    } else {
+      distortionLiveCount = 0;
+    }
+
+    // Multi-scale composite — no upsample RT or pass. Fine + coarse pyramid levels are sampled
+    // directly; coarser levels contribute the wide halo via hardware bilinear (weight matches the
+    // retired upsample chain so perceptual strength stays in family).
+    timePassGroup('bloomComposite', renderCompositePass, tier1, bloomActive);
+
+    renderer.autoClear = prevAutoClear;
+    renderer.setRenderTarget(null);
+    releaseBloomSceneSamplers();
+  }
+
+  function compileScenePipelines(subject, camera, lightingScene = subject, options = {}) {
+    return compileScenePipelinesForRenderTarget(
+      renderer, rtScene, subject, camera, lightingScene, options,
+    );
+  }
+
+  function warmScenePipelines(subject, camera, lightingScene = subject) {
+    return warmScenePipelinesForRenderTarget(
+      renderer, rtScene, subject, camera, lightingScene,
+    );
+  }
+
+  function touchScenePipelines(subject, camera, lightingScene = subject, options) {
+    return touchSubjectOnExactTarget(renderer, rtScene, subject, camera, lightingScene, options);
+  }
+
+  async function prepareResources(yieldToMain = () => Promise.resolve()) {
+    if (typeof renderer.initRenderTarget !== 'function') {
+      return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
+    }
+    if (atmosphere) {
+      atmosphere.setSize(W, H);
+      await atmosphere.prepareResources(yieldToMain);
+    }
+    const targets = [rtScene, rtPost, rtDistortion, ...down].filter(Boolean);
+    const allocations = [];
+    for (const target of targets) {
+      await yieldToMain();
+      const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      renderer.initRenderTarget(target);
+      allocations.push({
+        width: target.width,
+        height: target.height,
+        durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now()) - started,
+      });
+    }
+    await yieldToMain();
+    const previousTarget = typeof renderer.getRenderTarget === 'function'
+      ? renderer.getRenderTarget()
+      : null;
+    const previousMat = quadMesh.material;
+    try {
+      if (down[0]) {
+        quadMesh.material = downsampleMat;
+        renderer.setRenderTarget(down[0]);
+        if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+        // compile() links the shader but does not make Three register the private fullscreen
+        // geometry with WebGLGeometries. Submit one disposable offscreen pass while loading so
+        // the opening receipt includes this renderer-owned buffer; the first visible bloom pass
+        // must never be the quad's first GPU admission.
+        if (typeof renderer.render === 'function') renderQuadScene(renderer, quadScene, quadCam);
+      }
+      quadMesh.material = compositeMat;
+      renderer.setRenderTarget(null);
+      if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+      if (rtPost) {
+        // CAS presents the composite through this target. Its output-color-space key differs
+        // from the canvas variant, so link it here before the first sharpened frame.
+        renderer.setRenderTarget(rtPost);
+        if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+        renderer.setRenderTarget(null);
+      }
+      // Every openingProgramMaterials() entry must be linked here: the opening submission gate
+      // refuses the first picture until each one holds a program. casMat was listed but never
+      // compiled, so every New Game sat on the gate's 15 s failsafe
+      // ('post:2:unprepared-material'). Linked regardless of casActive, so dynamic resolution
+      // dropping below display res mid-flight never links the GLSL3 program inside a frame.
+      quadMesh.material = casMat;
+      if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+    } finally {
+      quadMesh.material = previousMat;
+      if (typeof renderer.setRenderTarget === 'function') {
+        renderer.setRenderTarget(previousTarget || null);
+      }
+    }
+    await yieldToMain();
+    return { skipped: false, targets: targets.length, allocations };
+  }
+
+  function rebuild() {
+    // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
+    // recreate the whole pyramid at the current size so the next frame can render cleanly.
+    // Re-probe the opt-in packed target against the restored context before allocating replacement
+    // targets; unsupported restore paths fall back to the ordinary HalfFloat descriptors.
+    if (atmosphere) atmosphere.rebuild();
+    selectPackedHdrMode();
+    // Apply the (possibly flipped) packed-HDR descriptor FIRST: the MSAA probe below allocates
+    // its proof target from `{ ...sceneRtOpts, samples }`, so it must prove the exact color
+    // format the real scene target will use — multisample renderability is per-format, and
+    // EXT_color_buffer_float does not promise it for every packed format.
+    applyPackedHdrTargetOptions();
+    // A restored context may expose different MSAA capabilities; re-clamp and re-prove against
+    // it, then re-stamp the resolved count into the descriptor before the targets allocate it.
+    sceneSamples = resolveSceneSampleCount(sceneSamplesRequest);
+    sceneRtOpts.samples = sceneSamples;
+    rtScene.dispose();
+    for (const rt of down) rt.dispose();
+    if (rtPost) { rtPost.dispose(); rtPost = null; }
+    const next = createRenderTargets('contextRestore');
+    rtScene = next.rtScene;
+    halfW = next.halfW;
+    halfH = next.halfH;
+    levels = next.levels;
+    down = next.down;
+    contentW = Math.max(1, Math.round(W * contentScale));
+    contentH = Math.max(1, Math.round(H * contentScale));
+    // Preserve the reserved pool even when context loss lands during native-resolution bypass.
+    syncCasSetup();
+    if (casActive || (casDisplayW > 0 && casDisplayH > 0)) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
+    if (rtDistortion) {
+      rtDistortion.dispose();
+      rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'contextRestore');
+      rtDistortion.texture.name = 'Bloom:Distortion';
+    }
+    if (contrastLutRequested && !contrastLutSupported()) {
+      // A restored context may lose WebGL2/RG support. Keep the explicit request for a later
+      // retry, but fail closed for this context and release the old GPU texture/variant.
+      contrastLutEnabled = false;
+      contrastLutReason = 'webgl2-required';
+      setContrastLutShaderVariant(false);
+      releaseContrastLutTexture();
+    } else if (contrastLutRequested && !contrastLutEnabled) {
+      // Conversely, a restored context can regain the capability after an earlier failed probe.
+      contrastLutEnabled = true;
+      contrastLutReason = 'enabled';
+      setContrastLutShaderVariant(true);
+      syncContrastLut(true);
+    }
+    // DataTexture retains its CPU payload across a WebGL context loss. Mark it for upload when
+    // the renderer restores the context; rebuilding the table itself is unnecessary unless the
+    // authored contrast changed.
+    if (contrastLutTexture) contrastLutTexture.needsUpdate = true;
+    distortionLiveCount = 0;
+  }
+
+  function setPackedHdrMode(value) {
+    const requested = normalizePackedHdrMode(value);
+    packedHdrRequestedMode = requested;
+    rebuild();
+    return diagnostics();
+  }
+
+  function contextLossResources() {
+    // The fullscreen quad is intentionally off-scene, and its material is swapped on every pass.
+    // Publish those exact owners alongside the targets so a restored renderer can detach the old
+    // geometry/material listeners before a later teardown. The optional LUT is similarly outside
+    // the scene graph and only exists when its explicit variant is enabled.
+    return [...new Set([
+      rtScene,
+      rtPost,
+      rtDistortion,
+      ...down,
+      quadGeo,
+      downsampleMat,
+      compositeMat,
+      casMat,
+      contrastLutTexture,
+      ...(atmosphere ? atmosphere.contextLossResources() : []),
+    ].filter(Boolean))];
+  }
+
+  function openingProgramMaterials() {
+    return [downsampleMat, compositeMat, casMat, ...(atmosphere ? atmosphere.openingProgramMaterials() : [])];
+  }
+
+  function setSize(w, h, displayW, displayH) {
+    const nextW = Math.max(1, w | 0);
+    const nextH = Math.max(1, h | 0);
+    if (Number.isFinite(displayW) && displayW > 0) casDisplayW = displayW;
+    if (Number.isFinite(displayH) && displayH > 0) casDisplayH = displayH;
+    // A settings/profile change can alter pyramid depth without changing the buffer size.
+    const newLevels = enabled === false ? 0 : levelCountForSize(nextW, nextH);
+    if (nextW !== W || nextH !== H || down.length !== newLevels) {
+      W = nextW;
+      H = nextH;
+      halfW = Math.max(1, W >> 1);
+      halfH = Math.max(1, H >> 1);
+      if (compositeMat.uniforms.uSceneTexel) {
+        compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
+      }
+      resizeRenderTarget(rtScene, W, H, 'resize');
+      if (atmosphere) atmosphere.setSize(W, H);
+      // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
+      while (down.length < newLevels) {
+        const i = down.length;
+        down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'resize'));
+      }
+      while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
+      levels = newLevels;
+      for (let i = 0; i < levels; i++) {
+        resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+      }
+      if (rtPost) resizeRenderTarget(rtPost, W, H, 'resize');
+      resizeRenderTarget(rtDistortion, halfW, halfH, 'resize');
+      // Keep the active content sub-rect proportional to the new max pool size.
+      contentW = Math.max(1, Math.round(W * contentScale));
+      contentH = Math.max(1, Math.round(H * contentScale));
+    }
+    // Reserve at the first known display size, including native-resolution opening frames.
+    // Auto's first reduction then changes only uniforms/viewports; prepareResources also admits
+    // the exact offscreen composite variant before flight. Keep this pool through recovery.
+    syncCasSetup();
+    if (casActive || (casDisplayW > 0 && casDisplayH > 0)) {
+      if (!rtPost) rtPost = allocRenderTarget(W, H, postRtOpts, 'cas-sharpen');
+    }
+  }
+
+  function syncCasSetup() {
+    casActive = resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
+    casScaling = casActive && (contentW !== W || contentH !== H)
+      && casSupportsScaling(contentW, contentH, W, H);
+    applyCasSetup(casMat.uniforms, CAS_SHARPNESS,
+      casScaling ? contentW : W, casScaling ? contentH : H, W, H);
+  }
+
+  // Dyn-res only: change the active content sub-rect without reallocating any render target.
+  // scale is clamped to [0.2, 1] to match applyRendererSize / adaptiveQuality floors.
+  function setContentScale(scale) {
+    const s = Math.max(0.2, Math.min(1, Number(scale)));
+    const nextScale = Number.isFinite(s) ? s : 1;
+    const nextW = Math.max(1, Math.round(W * nextScale));
+    const nextH = Math.max(1, Math.round(H * nextScale));
+    if (nextScale === contentScale && nextW === contentW && nextH === contentH) return;
+    contentScale = nextScale;
+    contentW = nextW;
+    contentH = nextH;
+    syncCasSetup();
+    if (atmosphere) atmosphere.invalidateHistory('content-scale');
+  }
+
+  // Accept partial option updates (wired from settings:changed by the render layer).
+  function setOptions(o) {
+    if (!o) return;
+    if (Object.prototype.hasOwnProperty.call(o, 'packedHdr')) {
+      setPackedHdrMode(o.packedHdr);
+    } else if (Object.prototype.hasOwnProperty.call(o, 'packedHdrMode')) {
+      setPackedHdrMode(o.packedHdrMode);
+    }
+    if (Object.prototype.hasOwnProperty.call(o, 'contrastLut')) {
+      setContrastLutEnabled(o.contrastLut);
+    } else if (Object.prototype.hasOwnProperty.call(o, 'lookContrastLut')) {
+      setContrastLutEnabled(o.lookContrastLut);
+    }
+    if (typeof o.enabled === 'boolean') enabled = o.enabled;
+    if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
+    if (typeof o.strength === 'number') {
+      strength = Math.max(0, o.strength);
+      compositeMat.uniforms.uStrength.value = strength;
+    }
+    if (typeof o.bloomStrength === 'number') {
+      strength = Math.max(0, o.bloomStrength);
+      compositeMat.uniforms.uStrength.value = strength;
+    }
+    if (typeof o.threshold === 'number') {
+      threshold = o.threshold;
+      downsampleMat.uniforms.uThreshold.value = threshold;
+    }
+    if (typeof o.bloomThreshold === 'number') {
+      threshold = o.bloomThreshold;
+      downsampleMat.uniforms.uThreshold.value = threshold;
+    }
+    if (typeof o.exposure === 'number') {
+      exposure = Math.max(0.1, o.exposure);
+      compositeMat.uniforms.uExposure.value = exposure;
+    }
+    if (typeof o.acesToneMapping === 'boolean') {
+      aces = o.acesToneMapping ? 1.0 : 0.0;
+      compositeMat.uniforms.uAces.value = aces;
+    }
+    if (typeof o.aces === 'number') {
+      aces = Math.max(0, Math.min(1, o.aces));
+      compositeMat.uniforms.uAces.value = aces;
+    }
+    // Optional full-screen presentation controls. These are independent of selective bloom.
+    if (typeof o.grain === 'number') grain = Math.max(0, Math.min(1, o.grain));
+    if (typeof o.vignette === 'number') vignette = Math.max(0, Math.min(1, o.vignette));
+    if (typeof o.grade === 'number') grade = Math.max(0, Math.min(1, o.grade));
+    if (typeof o.toe === 'number') toe = Math.max(0, Math.min(0.06, o.toe));
+    if (typeof o.maxLevels === 'number' || typeof o.bloomLevels === 'number') {
+      const next = Number(o.maxLevels != null ? o.maxLevels : o.bloomLevels);
+      if (Number.isFinite(next)) {
+        const capped = Math.max(1, Math.min(BALANCED_BLOOM_MAX_LEVELS, next | 0));
+        if (capped !== maxLevelsCap) {
+          maxLevelsCap = capped;
+          setSize(W, H);
+        }
+      }
+    }
+    if (typeof o.sceneSamples === 'number') {
+      // Keep the request (not just the resolved count) current — rebuild() re-resolves from it
+      // after a context restore, so a stale request would silently revert MSAA there.
+      sceneSamplesRequest = Math.max(0, o.sceneSamples | 0);
+      const next = resolveSceneSampleCount(sceneSamplesRequest);
+      if (next !== sceneSamples) {
+        sceneSamples = next;
+        sceneRtOpts.samples = next;
+        // setSize alone cannot do this: its same-size path early-outs, and only the scene
+        // target's sample count changed — rebuild rtScene alone (pyramid/rtPost are unaffected).
+        // Preset switches land here rarely (settings/quality events), never per frame: the
+        // sector-post transition options object carries no sceneSamples key.
+        rtScene.dispose();
+        rtScene = allocRenderTarget(W, H, sceneRtOpts, 'scene-samples');
+        if (atmosphere?.supported) {
+          attachSceneDepth(rtScene);
+          atmosphere.invalidateHistory('scene-samples');
+        }
+      }
+    }
+    if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;
+    if (typeof o.sharpen === 'number') sharpenAmount = Math.max(0, Math.min(1, o.sharpen));
+    if (compositeMat.uniforms.uSharpen) compositeMat.uniforms.uSharpen.value = sharpenAmount;
+    syncPyramidAllocation();
+    applyPostStyleUniforms();
+  }
+
+  function diagnostics() {
+    const atmosphereStats = atmosphere ? atmosphere.getDiagnostics() : null;
+    return {
+      enabled,
+      width: W,
+      height: H,
+      levels,
+      sceneSamples,
+      maxLevels: BALANCED_BLOOM_MAX_LEVELS,
+      halfWidth: halfW,
+      halfHeight: halfH,
+      strength,
+      threshold,
+      exposure,
+      postStyleScale: postStyleScale(),
+      grain: compositeMat.uniforms.uGrain.value,
+      vignette: compositeMat.uniforms.uVignette.value,
+      grade: compositeMat.uniforms.uGrade.value,
+      toe: compositeMat.uniforms.uToe.value,
+      grainSource: 'quantized-interleaved-gradient',
+      grainFps: POST_GRAIN_FPS,
+      multiScaleComposite: true,
+      presentationComposite: true,
+      presentationParity: 'canonical-base-ao-off-bloom-neutral',
+      upsampleTargets: 0,
+      sharedQuadGeometry: true,
+      targets: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0) + (atmosphereStats?.targets || 0),
+      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0) + (atmosphereStats?.targets || 0),
+      distortionAttached: !!distortionProducers,
+      atmosphere: atmosphereStats,
+      distortionTarget: rtDistortion ? { width: rtDistortion.width, height: rtDistortion.height } : null,
+      drawingBufferWidth: W,
+      drawingBufferHeight: H,
+      sceneTargetWidth: rtScene.width,
+      sceneTargetHeight: rtScene.height,
+      contentWidth: contentW,
+      contentHeight: contentH,
+      contentScale,
+      effectiveSceneScale: W > 0 ? contentW / W : 1,
+      targetPoolMaxWidth: W,
+      targetPoolMaxHeight: H,
+      casSharpenActive: casActive,
+      casReconstruction: !casActive ? 'bypass' : casScaling ? 'active-cas-upscale'
+        : (contentW !== W || contentH !== H) ? 'bilinear-sharpen-area-limit' : 'sharpen-only',
+      casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
+      packedHdrRequested: packedHdrRequestedMode,
+      packedHdrMode,
+      packedHdrFormat: packedHdrMode === PACKED_HDR_MODE.OFF ? 'rgba16f' : 'r11g11b10f',
+      packedHdrCapability: { ...packedHdrCapability },
+      contrastLutRequested,
+      contrastLutEnabled,
+      contrastLutReason,
+      contrastLutSize: contrastLutTexture ? CONTRAST_LUT_SIZE : 0,
+      contrastLutFormat: contrastLutTexture ? CONTRAST_LUT_FORMAT : null,
+      contrastLutContrast: Number.isFinite(contrastLutContrast) ? contrastLutContrast : null,
+      fullFramePasses: casActive && rtPost ? 3 : 2,
+      // Downsample pyramid only — multi-scale composite replaced the upsample chain.
+      bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
+      passFamilies: {
+        scene: 1,
+        normal: 0,
+        ao: 0,
+        bloom: enabled && strength > 0.0001 ? down.length : 0,
+        distortion: distortionLiveCount > 0 ? 1 : 0,
+        distortionProducers: distortionLiveCount,
+        atmosphere: atmosphere?.active ? 1 : 0,
+        composite: 1,
+        cas: casActive && rtPost ? 1 : 0,
+      },
+    };
+  }
+
+  function dispose() {
+    atmosphere = null;
+    atmosphereCamera = null;
+    attachDistortionProducers(null);
+    singleDistortionProducer[0] = null;
+    rtScene.dispose();
+    if (rtPost) { rtPost.dispose(); rtPost = null; }
+    for (const rt of down) rt.dispose();
+    if (contrastLutTexture) {
+      releaseContrastLutTexture();
+    }
+    downsampleMat.dispose();
+    compositeMat.dispose();
+    casMat.dispose();
+    releaseSharedQuadGeometry();
+  }
+
+  return {
+    render,
+    attachAtmosphere,
+    attachDistortionProducers,
+    attachDistortionField,
+    compileScenePipelines,
+    warmScenePipelines,
+    touchScenePipelines,
+    rehearseScenePass,
+    prepareResources,
+    openingProgramMaterials,
+    contextLossResources,
+    setSize,
+    setContentScale,
+    setOptions,
+    setPackedHdrMode,
+    setContrastLutEnabled,
+    setInstrumentation,
+    diagnostics,
+    dispose,
+    rebuild,
+    get enabled() { return enabled; },
+    set enabled(v) { enabled = !!v; syncPyramidAllocation(); applyPostStyleUniforms(); },
+    get strength() { return strength; },
+    set strength(v) {
+      strength = Math.max(0, +v || 0);
+      compositeMat.uniforms.uStrength.value = strength;
+      applyPostStyleUniforms();
+    },
+    get threshold() { return threshold; },
+    set threshold(v) { threshold = +v; },
+  };
+}
+
+// ARCHITECTURE §9 module table names the export `Bloom`; keep that alias available too.
+export { createBloom as Bloom };

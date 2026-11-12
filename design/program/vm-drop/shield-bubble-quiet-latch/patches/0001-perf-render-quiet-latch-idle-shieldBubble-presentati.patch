@@ -1,0 +1,354 @@
+From 9c3a979ea5052a0aa7a8432ffa253b8405d0a49e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 15:57:21 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20shieldBubb?=
+ =?UTF-8?q?le=20presentation=20(~4.8=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet syncEntityViews still paid setShieldShellClock + flash decay for every
+ship with a shieldBubble while the bubble was not presentable. Latch when
+flash/contact/collapse are cold; wake on shield change or contact.
+Soft-GPU fps not claimed. Picture contract ON.
+---
+ src/render/renderer.js                        |  68 +++--------
+ .../weapons/shieldBubblePresentation.js       | 110 +++++++++++++++++
+ test/shield-bubble-quiet-latch.test.mjs       | 112 ++++++++++++++++++
+ 3 files changed, 236 insertions(+), 54 deletions(-)
+ create mode 100644 src/render/weapons/shieldBubblePresentation.js
+ create mode 100644 test/shield-bubble-quiet-latch.test.mjs
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c940d28b6..22381c2c1 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -200,6 +200,10 @@ import { createCrucibleGhostPresentation } from './crucibleGhost.js';
+ import { createRenderFrameMembrane } from './frameCoordinates.js';
+ import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
+ import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
++import {
++  shouldPresentShieldBubble,
++  updateEntityShieldBubblePresentation,
++} from './weapons/shieldBubblePresentation.js';
+ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+ import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
+ import { SHIPS } from '../data/ships.js';
+@@ -2152,12 +2156,8 @@ const SHIELD_POOL_FRAG = /* glsl */`
+   }
+ `;
+ 
+-const SHIELD_PRESENTATION_EPSILON = 0.015;
+-
+ /** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
+-export function shouldPresentShieldBubble(shield, flash, hasContact = false, collapseTime = 0) {
+-  return (Number(shield) > 0 || collapseTime > 0) && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact) || collapseTime > 0);
+-}
++export { shouldPresentShieldBubble } from './weapons/shieldBubblePresentation.js';
+ 
+ export function createShipAuxPool(scene, options = {}) {
+   const pool = {
+@@ -12876,57 +12876,17 @@ export const render = {
+       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
+       // frame and is punched up whenever the entity's shield value drops.
+       const shieldBubble = userData.shieldBubble;
+-      if (entity && shieldBubble && shieldBubble.material && shieldBubble.material.uniforms) {
+-        const uniforms = shieldBubble.material.uniforms;
+-        const previousShield = shieldBubble.userData._prevShield != null
+-          ? shieldBubble.userData._prevShield
+-          : entity.shield;
+-        const previousFlashTime = shieldBubble.userData._prevFlashT != null
+-          ? shieldBubble.userData._prevFlashT
+-          : now;
+-        const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
+-        shieldBubble.userData._prevFlashT = now;
++      if (entity && shieldBubble) {
+         // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
+-        // Resolved locally: the simTime binding a few blocks up is scoped to the micro-motion branch,
+-        // and reaching it from here threw a ReferenceError every single frame, which killed the whole
+-        // render loop (drawCalls 0, verdict draw-throwing) while every node gate stayed green.
++        // Quiet-latches while flash/contact/collapse are cold (see shieldBubblePresentation.js).
+         const shellSimTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
+-        setShieldShellClock(shieldBubble.material, shellSimTime, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
+-
+-        const up = entity.shield > 0;
+-        let flash = 0;
+-
+-        if (shieldBubble.userData._collapseTimer == null) {
+-          shieldBubble.userData._collapseTimer = 0;
+-        }
+-
+-        if (up) {
+-          if (entity.shield < previousShield - 0.5) {
+-            uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
+-          } else if (entity.shield > previousShield + 1.0) {
+-            // Shield capacitor recovery wave
+-            uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
+-          }
+-          uniforms.uFlash.value *= Math.pow(0.05, dt);
+-          flash = uniforms.uFlash.value;
+-          shieldBubble.userData._collapseTimer = 0;
+-        } else {
+-          // Shield broke this frame or is in collapse sequence
+-          if (previousShield > 0) {
+-            // Initiate dielectric rupture overload sequence
+-            shieldBubble.userData._collapseTimer = 0.32;
+-            uniforms.uFlash.value = 2.4; // blinding break flare
+-          }
+-          if (shieldBubble.userData._collapseTimer > 0) {
+-            shieldBubble.userData._collapseTimer -= dt;
+-            uniforms.uFlash.value *= Math.pow(0.1, dt);
+-            flash = uniforms.uFlash.value;
+-          }
+-        }
+-        shieldBubble.userData._prevShield = entity.shield;
+-
+-        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id), shieldBubble.userData._collapseTimer);
+-        if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
++        updateEntityShieldBubblePresentation(
++          entity,
++          shieldBubble,
++          now,
++          shellSimTime,
++          _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
++        );
+       }
+ 
+       const hlod = userData.hlod;
+diff --git a/src/render/weapons/shieldBubblePresentation.js b/src/render/weapons/shieldBubblePresentation.js
+new file mode 100644
+index 000000000..9b7e48da9
+--- /dev/null
++++ b/src/render/weapons/shieldBubblePresentation.js
+@@ -0,0 +1,110 @@
++/**
++ * Per-entity shield bubble presentation (flash decay + shell clock + visibility).
++ *
++ * Quiet flight still paid setShieldShellClock + Math.pow flash decay every syncEntityViews
++ * pass for every ship with a shieldBubble, even while the bubble was not presentable
++ * (flash cold, no contact, no collapse). Production quiet-latches that path; wakes on
++ * shield value change, shield contact, or collapse. Soft-GPU fps not claimed.
++ *
++ * Picture contract ON: latched bubbles are already hidden; shell clock only matters while
++ * presentable. Bench toggle restores always-update for A/B.
++ */
++
++import { setShieldShellClock } from './shieldShell.js';
++import { hasShieldContact } from './shieldContacts.js';
++
++/** Match renderer.js shouldPresentShieldBubble epsilon. */
++export const SHIELD_BUBBLE_PRESENTATION_EPSILON = 0.015;
++
++/** Bench A/B: production default ON. */
++let SHIELD_BUBBLE_QUIET_LATCH = true;
++
++export function setShieldBubbleQuietLatchForBench(enabled) {
++  SHIELD_BUBBLE_QUIET_LATCH = enabled !== false;
++}
++
++export function getShieldBubbleQuietLatchForBench() {
++  return SHIELD_BUBBLE_QUIET_LATCH !== false;
++}
++
++export function shouldPresentShieldBubble(shield, flash, hasContact = false, collapseTime = 0) {
++  return (Number(shield) > 0 || collapseTime > 0)
++    && (Number(flash) > SHIELD_BUBBLE_PRESENTATION_EPSILON || Boolean(hasContact) || collapseTime > 0);
++}
++
++/**
++ * Update one entity's fallback shieldBubble mesh presentation.
++ * Returns true when the quiet latch skipped the heavy path this call.
++ */
++export function updateEntityShieldBubblePresentation(entity, shieldBubble, now, simTime, motionReduce = false) {
++  if (!entity || !shieldBubble || !shieldBubble.material || !shieldBubble.material.uniforms) {
++    return false;
++  }
++  const userData = shieldBubble.userData || (shieldBubble.userData = {});
++
++  if (SHIELD_BUBBLE_QUIET_LATCH && userData._sfShieldQuietLatched) {
++    if (
++      entity.shield === userData._prevShield
++      && (userData._collapseTimer || 0) <= 0
++      && !hasShieldContact(entity.id)
++    ) {
++      return true;
++    }
++    userData._sfShieldQuietLatched = false;
++  }
++
++  const uniforms = shieldBubble.material.uniforms;
++  const previousShield = userData._prevShield != null ? userData._prevShield : entity.shield;
++  const previousFlashTime = userData._prevFlashT != null ? userData._prevFlashT : now;
++  const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
++  userData._prevFlashT = now;
++
++  setShieldShellClock(shieldBubble.material, simTime, motionReduce === true);
++
++  const up = entity.shield > 0;
++  let flash = 0;
++
++  if (userData._collapseTimer == null) userData._collapseTimer = 0;
++
++  if (up) {
++    if (entity.shield < previousShield - 0.5) {
++      uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
++    } else if (entity.shield > previousShield + 1.0) {
++      uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
++    }
++    uniforms.uFlash.value *= Math.pow(0.05, dt);
++    flash = uniforms.uFlash.value;
++    userData._collapseTimer = 0;
++  } else {
++    if (previousShield > 0) {
++      userData._collapseTimer = 0.32;
++      uniforms.uFlash.value = 2.4;
++    }
++    if (userData._collapseTimer > 0) {
++      userData._collapseTimer -= dt;
++      uniforms.uFlash.value *= Math.pow(0.1, dt);
++      flash = uniforms.uFlash.value;
++    }
++  }
++  userData._prevShield = entity.shield;
++
++  const visible = shouldPresentShieldBubble(
++    entity.shield,
++    flash,
++    hasShieldContact(entity.id),
++    userData._collapseTimer,
++  );
++  if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
++
++  if (
++    SHIELD_BUBBLE_QUIET_LATCH
++    && !visible
++    && flash <= SHIELD_BUBBLE_PRESENTATION_EPSILON
++    && (userData._collapseTimer || 0) <= 0
++    && !hasShieldContact(entity.id)
++  ) {
++    userData._sfShieldQuietLatched = true;
++  }
++
++  return false;
++}
+diff --git a/test/shield-bubble-quiet-latch.test.mjs b/test/shield-bubble-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..f4c16359c
+--- /dev/null
++++ b/test/shield-bubble-quiet-latch.test.mjs
+@@ -0,0 +1,112 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  updateEntityShieldBubblePresentation,
++  setShieldBubbleQuietLatchForBench,
++  getShieldBubbleQuietLatchForBench,
++  shouldPresentShieldBubble,
++  SHIELD_BUBBLE_PRESENTATION_EPSILON,
++} from '../src/render/weapons/shieldBubblePresentation.js';
++import { addShieldContact, clearShieldContacts } from '../src/render/weapons/shieldContacts.js';
++
++function makeBubble(shield = 100) {
++  return {
++    visible: false,
++    material: {
++      uniforms: {
++        uFlash: { value: 0 },
++        uShellTime: { value: 0 },
++      },
++    },
++    userData: {
++      _prevShield: shield,
++      _prevFlashT: 0,
++      _collapseTimer: 0,
++      _sfShieldQuietLatched: false,
++    },
++  };
++}
++
++function armQuiet(entity, bubble) {
++  // Punch flash then decay until latch.
++  bubble.material.uniforms.uFlash.value = 1;
++  let now = 1000;
++  let sim = 100;
++  for (let i = 0; i < 400; i++) {
++    now += 0.016;
++    sim += 0.016;
++    updateEntityShieldBubblePresentation(entity, bubble, now, sim, false);
++  }
++  return { now, sim };
++}
++
++test('shouldPresentShieldBubble idle charged shield stays hidden', () => {
++  assert.equal(shouldPresentShieldBubble(100, 0), false);
++  assert.equal(shouldPresentShieldBubble(100, SHIELD_BUBBLE_PRESENTATION_EPSILON + 0.01), true);
++});
++
++test('quiet latch skips while shield/contact/collapse cold', () => {
++  setShieldBubbleQuietLatchForBench(true);
++  const entity = { id: 42, shield: 80 };
++  const bubble = makeBubble(80);
++  const clock = armQuiet(entity, bubble);
++  assert.equal(bubble.userData._sfShieldQuietLatched, true, 'expected quiet latch armed');
++  const shellBefore = bubble.material.uniforms.uShellTime.value;
++  const skipped = updateEntityShieldBubblePresentation(
++    entity, bubble, clock.now + 0.016, clock.sim + 0.016, false,
++  );
++  assert.equal(skipped, true);
++  assert.equal(bubble.material.uniforms.uShellTime.value, shellBefore, 'shell clock frozen while latched');
++});
++
++test('shield value change wakes quiet latch', () => {
++  setShieldBubbleQuietLatchForBench(true);
++  const entity = { id: 43, shield: 80 };
++  const bubble = makeBubble(80);
++  const clock = armQuiet(entity, bubble);
++  assert.equal(bubble.userData._sfShieldQuietLatched, true);
++  entity.shield = 40; // impact
++  const skipped = updateEntityShieldBubblePresentation(
++    entity, bubble, clock.now + 0.016, clock.sim + 0.016, false,
++  );
++  assert.equal(skipped, false);
++  assert.equal(bubble.userData._sfShieldQuietLatched, false);
++  assert.ok(bubble.material.uniforms.uFlash.value > SHIELD_BUBBLE_PRESENTATION_EPSILON);
++});
++
++test('shield contact wakes quiet latch', () => {
++  setShieldBubbleQuietLatchForBench(true);
++  clearShieldContacts();
++  const entity = { id: 44, shield: 80 };
++  const bubble = makeBubble(80);
++  const clock = armQuiet(entity, bubble);
++  assert.equal(bubble.userData._sfShieldQuietLatched, true);
++  addShieldContact(entity.id, 1, 0, 0, 1);
++  const skipped = updateEntityShieldBubblePresentation(
++    entity, bubble, clock.now + 0.016, clock.sim + 0.016, false,
++  );
++  assert.equal(skipped, false);
++  clearShieldContacts();
++});
++
++test('bench toggle off restores always-update', () => {
++  setShieldBubbleQuietLatchForBench(false);
++  assert.equal(getShieldBubbleQuietLatchForBench(), false);
++  const entity = { id: 45, shield: 80 };
++  const bubble = makeBubble(80);
++  bubble.userData._sfShieldQuietLatched = true;
++  const skipped = updateEntityShieldBubblePresentation(entity, bubble, 2000, 200, false);
++  assert.equal(skipped, false, 'bench off must not skip');
++  setShieldBubbleQuietLatchForBench(true);
++});
++
++test('shield break starts collapse and presents', () => {
++  setShieldBubbleQuietLatchForBench(true);
++  const entity = { id: 46, shield: 80 };
++  const bubble = makeBubble(80);
++  const clock = armQuiet(entity, bubble);
++  entity.shield = 0;
++  updateEntityShieldBubblePresentation(entity, bubble, clock.now + 0.016, clock.sim + 0.016, false);
++  assert.ok(bubble.userData._collapseTimer > 0);
++  assert.equal(bubble.visible, true);
++});
+-- 
+2.47.3
+

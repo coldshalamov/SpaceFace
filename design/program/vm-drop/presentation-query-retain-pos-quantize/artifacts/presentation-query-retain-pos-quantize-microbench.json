@@ -1,0 +1,78 @@
+{
+  "label": "presentation-query-retain-pos-quantize",
+  "n": 180,
+  "iters": 20000,
+  "driftPerStep": 0.011,
+  "quantWu": 0.25,
+  "pairRuns": 9,
+  "medianSpeedup": 3.0497485333214143,
+  "floorMinSpeedup": 2.825314751247281,
+  "pairs": [
+    {
+      "beforeMs": 959.2627530000001,
+      "afterMs": 314.522577,
+      "speedup": 3.0499010981968397,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 949.061996,
+      "afterMs": 308.16185500000006,
+      "speedup": 3.079751697366956,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 936.984577,
+      "afterMs": 319.082374,
+      "speedup": 2.9364974481479815,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 934.0621860000001,
+      "afterMs": 330.604647,
+      "speedup": 2.825314751247281,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 967.482092,
+      "afterMs": 336.299985,
+      "speedup": 2.876842507144328,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 1003.645716,
+      "afterMs": 315.410396,
+      "speedup": 3.1820311845396496,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 988.3267419999999,
+      "afterMs": 309.78258500000004,
+      "speedup": 3.1903883234753163,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 973.7652260000001,
+      "afterMs": 343.892564,
+      "speedup": 2.831597213599536,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    },
+    {
+      "beforeMs": 984.5807860000001,
+      "afterMs": 322.83999,
+      "speedup": 3.0497485333214143,
+      "beforeSink": 4820000,
+      "afterSink": 4820000
+    }
+  ],
+  "primary": "~3.05×",
+  "ship_bar": 1.5,
+  "clears_bar": true
+}

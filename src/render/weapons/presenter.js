@@ -1,0 +1,1264 @@
+import * as THREE from 'three';
+import {
+  IMPACT_KIND,
+  SURFACE_ROLE,
+  WeaponDischargePool,
+} from '../forceLanguage/weaponDischargePool.js';
+import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
+import { EnergyBoltPool } from './energyBoltPool.js';
+import { HeavyImpactVfx } from './heavyImpactVfx.js';
+import { WeaponRibbonPool } from './ribbonPool.js';
+import { DistortionField } from './distortionField.js';
+import { WeaponLightPool } from './weaponLights.js';
+import { HullScorchPool, heatForWeaponVariant, CONTACT_MARK_KINDS } from './contactMarks.js';
+import { createScarHistory, noteHullScorchStrike, resetScarHistory } from './scarHistory.js';
+import { resolveScarSkid, scarSkidSize } from './scarDirection.js';
+import { findScarSeat, reinforceScarSeat } from './scarSeats.js';
+import { weaponEffectSeed } from './energyBoltPool.js';
+import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
+import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
+import { addShieldContact, ageShieldContacts, clearShieldContacts, shieldContactsActiveCount } from './shieldContacts.js';
+import {
+  shouldDrawTableVfx,
+  tableLookAtDelta,
+  tableVfxDrawWuFromState,
+  projectileOnReadableFrame,
+} from '../tabletopPolicy.js';
+import {
+  FLIGHT_MODE,
+  WEAPON_SOCKET_NAME,
+  flightColorsForEntity,
+  recipeUsesSweptMuzzle,
+  recipeUsesRibbonWake,
+  resolveWeaponRecipe,
+} from './recipes.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE } from '../../data/fields.js';
+import { worldSizeForPixels } from './pixelFloor.js';
+import { readOwnedExceptionalSpeed } from '../velocityLanguage.js';
+
+const _color = new THREE.Color();
+const _local = { x: 0, z: 0 };
+const _seen = new Set();
+const _ribbonWorld = { x: 0, z: 0 };
+const _ribbonLookAt = { x: 0, z: 0 };
+const _offset = new THREE.Vector3();
+const _axis = new THREE.Vector3();
+const _invQuat = new THREE.Quaternion();
+const _worldQuat = new THREE.Quaternion();
+const _receiverCentre = new THREE.Vector3();
+
+// Bank and pitch live on the hull child; the root only carries yaw. A mark stored on the
+// root slides off the plate as soon as the ship leans. LOD and refit replace that child.
+function markAnchor(mesh) {
+  const hull = mesh && mesh.userData && mesh.userData.hull;
+  if (!hull || hull.isObject3D !== true) return mesh;
+  let node = hull;
+  while (node) {
+    if (node === mesh) return hull;
+    node = node.parent;
+  }
+  return mesh;
+}
+const NEAR_MISS_RADIUS = 10;
+const FULL_LOD_DISTANCE = 240;
+
+// Impact point-light voice by weapon dialect: [peak, distance]. Heavy ordnance seats
+// itself with a harder, wider beat across the target hull and nearby crags; light
+// skirmish weapons stay small so dense exchanges do not wash the scene out.
+const HIT_LIGHT_BY_VARIANT = Object.freeze({
+  'thermal-bolt': Object.freeze([3.0, 16]),
+  'concussion-slug': Object.freeze([3.6, 18]),
+  'siege-lance': Object.freeze([4.2, 20]),
+  torpedo: Object.freeze([3.4, 16]),
+  missile: Object.freeze([3.0, 16]),
+  railgun: Object.freeze([2.6, 14]),
+  autocannon: Object.freeze([2.0, 12]),
+  flak: Object.freeze([1.6, 10]),
+  'pulse-bolt': Object.freeze([1.8, 12]),
+  disruptor: Object.freeze([2.0, 12]),
+  'continuous-beam': Object.freeze([1.6, 12]),
+  'vector-mine': Object.freeze([2.6, 14]),
+  filament: Object.freeze([1.7, 12]),
+  'field-ring': Object.freeze([2.8, 16]),
+  'filament-latch': Object.freeze([2.2, 13]),
+  'well-collar': Object.freeze([2.0, 14]),
+  wedge: Object.freeze([2.9, 17]),
+  'sticky-charge': Object.freeze([2.6, 15]),
+  'primer-arc': Object.freeze([2.3, 14]),
+  'cooker-seam': Object.freeze([2.8, 16]),
+  'driver-slug': Object.freeze([2.5, 15]),
+});
+
+// Heavy dialects outrank skirmish fire for the 2-slot weapon light pool.
+const HEAVY_LIGHT_VARIANTS = Object.freeze(new Set([
+  'thermal-bolt',
+  'concussion-slug',
+  'siege-lance',
+  'torpedo',
+  'missile',
+  'railgun',
+]));
+
+function hitLightForVariant(variant) {
+  return HIT_LIGHT_BY_VARIANT[variant] || HIT_LIGHT_BY_VARIANT.autocannon;
+}
+
+// PQ-139.05 well refraction. DistortionField encodes UV offset as envelope * 0.035; at a later
+// 1280px capture that maps the standard 190 WU / strength-240 well to ~11 px peak, localized to
+// the projected field radius. The pass only composites when settings.video.renderGraph is true.
+export const WELL_DISTORTION_CAPACITY = FIELD_MAX_ACTIVE;
+export const WELL_DISTORTION_REF_RADIUS = FIELD_DEFS.well.radius;
+export const WELL_DISTORTION_REF_STRENGTH = FIELD_DEFS.well.strength;
+export const WELL_DISTORTION_REF_GPU_STRENGTH = 0.25;
+export const WELL_DISTORTION_GPU_STRENGTH_MAX = 0.4;
+export const DISTORTION_ENCODED_OFFSET_SCALE = 0.035;
+export const WELL_DISTORTION_CAPTURE_WIDTH_PX = 1280;
+const WELL_DISTORTION_Y = 0;
+
+export function wellDistortionGpuStrength(radius, strength) {
+  const r = Math.max(0, Number(radius) || 0);
+  const s = Math.max(0, Number(strength) || 0);
+  if (!(r > 0) || !(s > 0)) return 0;
+  const mapped = WELL_DISTORTION_REF_GPU_STRENGTH
+    * (s / WELL_DISTORTION_REF_STRENGTH)
+    * (r / WELL_DISTORTION_REF_RADIUS);
+  return mapped < WELL_DISTORTION_GPU_STRENGTH_MAX ? mapped : WELL_DISTORTION_GPU_STRENGTH_MAX;
+}
+
+export function wellDistortionPeakPx1280(radius, strength) {
+  return wellDistortionGpuStrength(radius, strength)
+    * DISTORTION_ENCODED_OFFSET_SCALE
+    * WELL_DISTORTION_CAPTURE_WIDTH_PX;
+}
+
+function reducedMotionProfile(profile) {
+  const id = profile && profile.id;
+  return id === 'reduced-motion' || id === 'reduced-motion-and-flash';
+}
+
+function hexColor(hex, target) {
+  target.set(hex || '#ffffff');
+  return target;
+}
+
+function interpolate(prev, curr, alpha, key) {
+  const a = Number.isFinite(alpha) ? alpha : 1;
+  const c = curr && Number.isFinite(curr[key]) ? curr[key] : 0;
+  const p = prev && Number.isFinite(prev[key]) ? prev[key] : c;
+  return p + (c - p) * a;
+}
+
+function finiteOr(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+export class WeaponVfxPresenter {
+  constructor(options = {}) {
+    this.scene = options.scene || null;
+    this.state = options.state || null;
+    this.helpers = options.helpers || {};
+    this.toLocalXZ = typeof options.toLocalXZ === 'function'
+      ? options.toLocalXZ
+      : (x, z, out) => {
+        const target = out || _local;
+        target.x = x;
+        target.z = z;
+        return target;
+      };
+    this.bolts = new EnergyBoltPool(this.scene);
+    this.discharges = new WeaponDischargePool(this.scene);
+    this.heavyImpacts = new HeavyImpactVfx(this.scene);
+    this._motorMeshes = new WeakSet();
+    // One resolver for the whole weapon-surface pool: source slots follow the firing socket,
+    // impact slots re-lift their retained target-local contact each frame.
+    this._dischargePoseResolver = (slot) => this._resolveSurfacePose(slot);
+    this._dischargeLocal = { x: 0, z: 0 };
+    this._dischargePose = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    this._impactPoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, targetId: null, attached: false, slant: 0 };
+    this.ribbons = new WeaponRibbonPool(this.scene);
+    this.distortion = new DistortionField();
+    this.wellDistortion = new DistortionField({ capacity: WELL_DISTORTION_CAPACITY });
+    this.wellDistortion.mesh.name = 'SF_WellDistortion';
+    this.wellDistortion.scene.name = 'SF_WellDistortionScene';
+    this.distortionProducers = [this.distortion, this.wellDistortion];
+    this.lights = new WeaponLightPool(this.scene);
+    this.scorches = new HullScorchPool(this.scene);
+    // Sustained-fire accounting: hulls under sustained fire keep their last marks (scarHistory.js).
+    this._scarHistory = createScarHistory();
+    this.quarks = new QuarksVfxSystem({ scene: this.scene });
+    this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
+    this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false, boundKey: null };
+    this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
+    this._surfacePoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, surfaceX: 0, surfaceY: 0, surfaceZ: 0, surfaceRadius: 0, skidX: 0, skidY: 0, skidZ: 0 };
+    this._scarSkid = { skidX: 0, skidY: 0, skidZ: 0, stretch: 1, grazing: 0 };
+    this._lastPlayerSurfaceSplashAt = -Infinity;
+    this._nearMissPlayerLocal = { x: 0, z: 0 };
+    this._nearMissLocal = { x: 0, z: 0 };
+    this._lightCullWorld = { x: 0, z: 0 };
+    this._lightCullLook = { x: 0, z: 0 };
+    this._wellLocal = { x: 0, z: 0 };
+    this._prevLocal = { x: 0, z: 0 };
+    this._flightColors = { core: '#ffffff', sheath: '#ffffff' };
+    this._boltSpec = {
+      entityId: -1, occupantGeneration: null, x: 0, y: 0, z: 0, prevX: 0, prevY: 0, prevZ: 0,
+      ax: 1, ay: 0, az: 0, length: 0, width: 0, intensity: 0, variant: 0,
+      coreR: 1, coreG: 1, coreB: 1, sheathR: 1, sheathG: 1, sheathB: 1, minPixels: 0,
+    };
+    this._ribbonSpec = {
+      entityId: -1, x: 0, y: 0, z: 0, width: 0, colorHead: '#ffffff', colorTail: '#ffffff', linger: 0,
+      profile: 0,
+    };
+    this._nearMissSpec = { x: 0, y: 0.4, z: 0, radius: 5.5, strength: 0, life: 0.08 };
+    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1, pxw: 0 };
+    // Camera the surfaces are judged from: a hairline strip that is 1 px at the chase camera is
+    // not an effect. Events stamp `pxw` (world units per screen pixel at the event) so the shared
+    // discharge pool can keep every muzzle and contact strip at a readable on-screen thickness.
+    this._pxCamera = null;
+    this._pxViewportHeight = 1000;
+    this._scorchPoseCallback = (slot) => this._resolveScorchPose(slot);
+    this._graph = null;
+    this._disposed = false;
+    this._nearMissAcc = 0;
+    // Quiet settled flight: empty well bag still paid a11y resolve + CAP slot zero +
+    // DistortionField.update (uTime write before live early-out) every tick. Latch after
+    // first empty sync when fields.active is empty; wake on active ref/len. Soft-GPU fps
+    // not claimed. Picture unchanged (already empty/hidden).
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
+    // Quiet settled flight: even with per-pool early-outs, update() still paid
+    // ageShieldContacts + a11y + setCamera/depth + empty syncBolts + nearMiss
+    // cadence + N pool.update calls every tick. Composite latch after first
+    // all-quiet observe; wake on pool live / quarks._quietEmpty / bolts /
+    // shields / fields.active / entityIndexVersion / projectiles. Soft-GPU
+    // fps not claimed. Picture unchanged.
+    this._presenterQuietEmpty = false;
+    this._presenterQuietIndexVersion = -1;
+    this._presenterQuietFieldsRef = null;
+    this._presenterQuietFieldsLen = -1;
+  }
+
+  attachGraph(graph) {
+    if (this._graph === (graph || null)) return;
+    if (this._graph && this._graph !== graph) this._detachGraph(this._graph);
+    this._graph = graph || null;
+    if (!graph) return;
+    // Well refraction and weapon haze share the active compositor's one distortion target.
+    // Both the default bloom wrapper and optional render graph expose this producer contract.
+    if (typeof graph.attachDistortionProducers === 'function') {
+      graph.attachDistortionProducers(this.distortionProducers);
+    } else if (typeof graph.attachDistortionField === 'function') {
+      graph.attachDistortionField(this.distortion);
+    }
+  }
+
+  _detachGraph(graph) {
+    if (!graph) return;
+    if (typeof graph.attachDistortionProducers === 'function') {
+      graph.attachDistortionProducers(null);
+    }
+    if (typeof graph.attachDistortionField === 'function') {
+      graph.attachDistortionField(null);
+    }
+  }
+
+  handleFire(payload, origin, angle, profile) {
+    const recipe = resolveWeaponRecipe(payload && payload.weaponId, payload);
+    if (!recipeUsesSweptMuzzle(recipe)) return false;
+    const ownerId = payload && payload.ownerId;
+    const pose = this._socketPose(ownerId, origin, angle);
+    const muzzle = recipe.muzzle;
+    const flash = this._flashSpec(muzzle.life, muzzle.width, muzzle.height, 1.35);
+    flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
+    hexColor(muzzle.coreColor, _color);
+    // Muzzle and bore are one ignition beat in the source geometry; there is no second
+    // stacked card. A missing/dead socket still yields a pose, so the source cannot vanish.
+    this.discharges.spawn(recipe, pose, ownerId, flash,
+      ownerId === this.state?.playerId ? 1 : 0.45);
+    const a11y = this._a11y();
+    if (muzzle.haze > 0 && a11y.id === 'full') {
+      this.distortion.spawn({
+        x: pose.x, y: pose.y, z: pose.z,
+        radius: 3.2 + muzzle.haze * 2,
+        strength: muzzle.haze,
+        life: 0.1,
+      });
+    }
+    const playerId = this.state && this.state.playerId;
+    // A muzzle is the source, not the hero event. Keep the two-slot weapon pool able to
+    // seat the contact that follows; a player contact outranks their own muzzle.
+    let priority = ownerId === playerId ? 0.72 : 0.35;
+    if (HEAVY_LIGHT_VARIANTS.has(recipe.variant)) priority = Math.min(0.84, priority + 0.12);
+    if (muzzle.lightPeak > 0 && a11y.eventLightPeakScale > 0
+      && !this._lightCulled(origin && origin.x, origin && origin.z, priority)) {
+      this.lights.spawn({
+        x: pose.x, y: pose.y, z: pose.z,
+        color: muzzle.lightColor,
+        intensity: muzzle.lightPeak * a11y.eventLightPeakScale,
+        distance: muzzle.lightDistance,
+        life: Math.max(0.08, muzzle.life),
+        priority,
+      });
+    }
+    if (this.quarks && pose) {
+      this.quarks.spawnMuzzle(
+        pose.x, pose.y, pose.z,
+        pose.ax, pose.ay, pose.az,
+        recipe.flight.boltVariant,
+        !!recipe.muzzle.casings,
+      );
+    }
+    return true;
+  }
+
+  handleHit(payload, hitShield) {
+    const recipe = resolveWeaponRecipe(payload && payload.weaponId, payload);
+    const pos = payload && payload.pos;
+    if (!pos) return { sparks: false };
+    const world = this.toLocalXZ(pos.x, pos.z, _local);
+    const nx = finiteOr(payload.normal && Number(payload.normal.x), 1);
+    const nz = finiteOr(payload.normal && Number(payload.normal.z), 0);
+    const ax = finiteOr(payload.approach && Number(payload.approach.x), -nx);
+    const az = finiteOr(payload.approach && Number(payload.approach.z), -nz);
+    const y = 0.35;
+    const a11y = this._a11y();
+    hexColor(hitShield ? '#5fd0ff' : recipe.muzzle.coreColor, _color);
+    if (hitShield && recipe.shield.contact) {
+      addShieldContact(payload.targetId, nx, 0.12, nz, 1);
+      if (recipe.shield.surface) {
+        const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.1, nz);
+        const impact = this._flashSpec(recipe.shield.life, 2.2, 2.2, 1.2);
+        this._spawnImpactSurface(captured, IMPACT_KIND.SHIELD, recipe, impact, nx, nz, ax, az, payload.targetId);
+      }
+      if (recipe.shield.haze > 0 && a11y.id === 'full') {
+        this.distortion.spawn({
+          x: world.x, y, z: world.z,
+          radius: 4.5,
+          strength: recipe.shield.haze,
+          life: 0.14,
+        });
+      }
+    } else if (!hitShield && recipe.hull.surface) {
+      const captured = this._captureTargetLocal(
+        payload.targetId,
+        world.x + nx * 0.4,
+        y,
+        world.z + nz * 0.4,
+        nx, 0.06, nz,
+      );
+      const body = this.state?.entities?.get?.(payload.targetId);
+      const handled = this.heavyImpacts.spawn(recipe.variant, captured, payload,
+        Math.max(1, Number(body?.radius) || Number(payload.targetRadius) || 8),
+        Number.isFinite(this.state?.simTime) ? this.state.simTime : this.heavyImpacts.time);
+      if (!handled) {
+        const impact = this._flashSpec(0.16, 1.9, 3.3, 1.15);
+        this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
+      }
+    }
+    // Player-priority world answer, not another full-screen particle overlay. Actual hit
+    // receipts name the receiver; the existing 32-mark instanced mesh owns all new splashes.
+    const targetEntity = this.state?.entities?.get?.(payload.targetId);
+    const heroRock = payload.ownerId != null && payload.ownerId === this.state?.playerId
+      && targetEntity?.type === 'asteroid';
+    let activeSurfaceSplashes = 0;
+    if (heroRock) {
+      for (const s of this.scorches.slots) if (s.alive && s.surfaceSplash) activeSurfaceSplashes++;
+    }
+    const now = Number.isFinite(this.state?.simTime) ? this.state.simTime : 0;
+    const splashPlan = heroRock ? planPlayerSurfaceSplash({
+      ownerId: payload.ownerId, playerId: this.state?.playerId,
+      targetType: targetEntity?.type, targetAlive: targetEntity?.alive !== false,
+      attached: !!this._mesh(payload.targetId), hitShield: !!hitShield,
+      visible: !this._lightCulled(pos.x, pos.z, 0.4),
+      variant: recipe.variant, quality: this.state?.settings?.video?.particleQuality,
+      now, lastAt: this._lastPlayerSurfaceSplashAt, active: activeSurfaceSplashes,
+      targetRadius: targetEntity?.radius,
+    }) : null;
+    if (splashPlan) {
+      const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
+      const slot = this.scorches.spawn({
+        targetId: payload.targetId, localX: captured.x, localY: captured.y, localZ: captured.z,
+        nx: captured.nx, ny: captured.ny, nz: captured.nz,
+        attached: captured.attached, boundKey: captured.boundKey,
+        surfaceSplash: true, markKind: splashPlan.markKind,
+        width: splashPlan.width, height: splashPlan.width * 0.82,
+        life: splashPlan.life, heat: 1, opacity: Math.min(1, a11y.flashOpacityScale ?? 1),
+        seed: weaponEffectSeed(String(payload.projectileId ?? (String(payload.ownerId)+':'+String(payload.targetId)+':'+Math.floor(now*1000)))),
+        r: _color.r, g: _color.g, b: _color.b,
+      });
+      if (slot >= 0) this._lastPlayerSurfaceSplashAt = now;
+    }
+    if (!hitShield && recipe.hull.scorch && !splashPlan) {
+      // SCAR SKID — the lasting mark carries the incoming shot's bearing: a grazing hit smears
+      // downrange, a head-on strike stays round. Resolved from the same normal + approach truth
+      // the discharge fan slants with, stored hull-local, zeroed to the legacy mark on failure.
+      const scorch = this._flashSpec(recipe.hull.scorchLife, 1.8, 1.15, 1);
+      const skid = resolveScarSkid(nx, 0.08, nz, ax, 0, az, this._scarSkid ||= {});
+      const skidSize = scarSkidSize(scorch.size0, scorch.size1, skid.stretch, this._scarSkidSize ||= {});
+      const captured = this._captureTargetLocal(
+        payload.targetId, world.x, y, world.z, nx, 0.08, nz,
+        skid.skidX, skid.skidY, skid.skidZ,
+      );
+      // SCAR SEATS — a strike landing inside an existing kept seat is absorbed by that wound
+      // instead of spawning another sibling mark: the seat widens a step, reheats under the
+      // fresh hit, and creeps along the fire path. An absorbed strike never spawns and never
+      // touches the history book, so the kept-slot accounting stays exact.
+      const seatIndex = findScarSeat(
+        this.scorches.slots,
+        payload.targetId,
+        captured.boundKey,
+        captured.x, captured.y, captured.z,
+      );
+      if (seatIndex >= 0) {
+        reinforceScarSeat(this.scorches.slots[seatIndex], captured.x, captured.y, captured.z);
+      } else {
+        // SCAR HISTORY — a hull under sustained fire keeps its last marks: once the book counts
+        // SCAR_HISTORY_AFTER_HITS bare-hull strikes, this and later hits cool to charcoal and
+        // stay target-bound for the fight (the pool's persistent path: evict-transient-first,
+        // fade floor, retained across dispose), instead of every hull reading brand-new after
+        // ~5 s. Skipped for absorbed strikes so the kept-slot accounting stays exact.
+        const history = noteHullScorchStrike(
+          this._scarHistory,
+          payload.targetId,
+          now,
+          (grant) => {
+            const s = this.scorches.slots[grant.slot];
+            return !!s && s.alive === 1 && s.targetId === payload.targetId
+              && s.boundKey === captured.boundKey;
+          },
+          captured.boundKey,
+        );
+        const spawned = this.scorches.spawn({
+          targetId: payload.targetId,
+          localX: captured.x,
+          localY: captured.y,
+          localZ: captured.z,
+          nx: captured.nx,
+          ny: captured.ny,
+          nz: captured.nz,
+          attached: captured.attached === true,
+          boundKey: captured.boundKey,
+          width: skidSize.width,
+          height: skidSize.height,
+          skidX: captured.skidX,
+          skidY: captured.skidY,
+          skidZ: captured.skidZ,
+          stretch: skid.stretch,
+          life: history.persistent ? history.life : scorch.life,
+          opacity: scorch.opacity0,
+          heat: heatForWeaponVariant(recipe.variant),
+          persistent: history.persistent === true,
+          r: _color.r,
+          g: _color.g,
+          b: _color.b,
+        });
+        if (spawned >= 0 && history.grantRef) history.grantRef.slot = spawned;
+      }
+    }
+    if (a11y.eventLightPeakScale > 0) {
+      const hitLight = hitLightForVariant(recipe.variant);
+      const playerId = this.state && this.state.playerId;
+      const playerCaused = payload.ownerId != null && payload.ownerId === playerId;
+      let hitPriority = payload.targetId === playerId ? 0.95 : (playerCaused ? 0.88 : 0.40);
+      if (!playerCaused && HEAVY_LIGHT_VARIANTS.has(recipe.variant)) {
+        hitPriority = Math.min(0.82, hitPriority + 0.20);
+      }
+      if (!this._lightCulled(pos.x, pos.z, hitPriority)) {
+        this.lights.spawn({
+          x: world.x, y, z: world.z,
+          color: hitShield ? '#5fd0ff' : recipe.muzzle.lightColor,
+          intensity: hitLight[0] * (hitShield ? 1.2 : 1.28) * a11y.eventLightPeakScale,
+          distance: hitLight[1] * 1.12,
+          life: 0.14,
+          priority: hitPriority,
+        });
+      }
+    }
+    if (this.quarks) {
+      this.quarks.spawnImpact(
+        world.x, y, world.z,
+        nx, 0.1, nz,
+        !!hitShield,
+        (recipe && recipe.flight && recipe.flight.boltVariant) || 0,
+      );
+    }
+    return { sparks: !hitShield && recipe.hull.sparks };
+  }
+
+  /** World units covered by one screen pixel at (x, y, z); 0 until a camera has been seen. */
+  _pixelWorldAt(x, y, z) {
+    const camera = this._pxCamera;
+    const position = camera && camera.position;
+    if (!position) return 0;
+    const dx = position.x - x, dy = position.y - y, dz = position.z - z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (!(distance > 0)) return 0;
+    return worldSizeForPixels(distance, 1, camera.fov, this._pxViewportHeight);
+  }
+
+  resetTransientMatter() {
+    // Spatial transients belong to the departed world; durable hull scars remain target-bound.
+    // Rebuild active field distortion from simulation on the next update instead of retaining
+    // an old lens over reused scene coordinates. No simulation fields or damage history change.
+    this.bolts.beginFrame();
+    this.bolts.commit();
+    this.discharges.clear();
+    this.heavyImpacts.clear();
+    this.ribbons.clear();
+    this.scorches.releaseTransient();
+    this.scorches.update(0, this._scorchPoseCallback);
+    this.distortion.clear();
+    this.wellDistortion.clear();
+    this.lights.clear();
+    clearShieldContacts();
+    this.quarks?.reset();
+    // Pair particle reset with its clock so the first new-world emission is not erased by a
+    // second rewind reset or aged by an old scene's elapsed time.
+    this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
+    this._lastPlayerSurfaceSplashAt = -Infinity;
+    this._nearMissAcc = 0;
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
+    this._presenterQuietEmpty = false;
+  }
+
+  update(dt, context = {}) {
+    this.state = context.state || this.state;
+    this.helpers = context.helpers || this.helpers;
+    if (typeof context.toLocalXZ === 'function') this.toLocalXZ = context.toLocalXZ;
+    // The owner reads the shared exceptional scalar once per update and hands it down;
+    // standalone presenters fall back to reading it themselves in _syncBolts.
+    this._contextExceptionalSpeed = context.exceptionalSpeed;
+    // Composite quiet latch: skip residual when every weapon surface is idle.
+    // Soft-GPU fps not claimed.
+    if (this._presenterQuietEmpty && !this._presenterQuietMaybeAwake()) return;
+    this._presenterQuietEmpty = false;
+    const camera = context.camera;
+    const alpha = Number.isFinite(context.interpolationAlpha) ? context.interpolationAlpha : 1;
+    const viewportHeight = context.viewportHeight || 1000;
+    this._pxCamera = camera || this._pxCamera;
+    this._pxViewportHeight = viewportHeight;
+    const index = this.state && this.state.entityIndex;
+    const entities = Array.isArray(this.state && this.state.weaponVfxProjectiles)
+      ? this.state.weaponVfxProjectiles
+      : (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles))
+      ? index.projectiles
+      : ((this.state && this.state.entityList) || []);
+    ageShieldContacts(dt);
+    const accessibilityProfile = this._a11y();
+    this.discharges.update(dt, this._dischargePoseResolver, accessibilityProfile);
+    this.heavyImpacts.update(Number.isFinite(this.state?.simTime) ? this.state.simTime
+      : this.heavyImpacts.time + Math.max(0, dt), this._dischargePoseResolver, accessibilityProfile);
+    this.bolts.setCamera(camera, viewportHeight);
+    this.bolts.setDepthTexture(
+      context.depthTexture || null,
+      context.depthWidth,
+      context.depthHeight,
+    );
+    this._syncBolts(entities, alpha, camera, dt, accessibilityProfile);
+    this._updateNearMiss(dt, entities, alpha, camera);
+    this.scorches.update(dt, this._scorchPoseCallback);
+    this._syncWellDistortion();
+    this.distortion.update(dt);
+    this.lights.update(dt);
+    this.ribbons.setCamera(camera, viewportHeight);
+    this.ribbons.update(dt, camera && camera.position, accessibilityProfile);
+    if (this.quarks) {
+      const now=this.state?.simTime;
+      let particleDt=dt;
+      if(Number.isFinite(now)){
+        if(this._quarksSimTime!==null&&now<this._quarksSimTime)this.quarks.reset();
+        particleDt=this._quarksSimTime===null?0:Math.max(0,now-this._quarksSimTime);
+        this._quarksSimTime=now;
+      }
+      this.quarks.update(particleDt, accessibilityProfile);
+    }
+    if (this._presenterAllQuiet(entities)) this._presenterQuietLatch();
+  }
+
+  _presenterProjectileEntities() {
+    if (Array.isArray(this.state && this.state.weaponVfxProjectiles)) {
+      return this.state.weaponVfxProjectiles;
+    }
+    const index = this.state && this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
+      return index.projectiles;
+    }
+    return (this.state && this.state.entityList) || [];
+  }
+
+  _presenterEntityIndexVersion() {
+    const index = this.state && this.state.entityIndex;
+    return index && Number.isFinite(index.version) ? index.version : null;
+  }
+
+  _presenterAllQuiet(entities = this._presenterProjectileEntities()) {
+    if (this.discharges.activeCount > 0) return false;
+    if (this.scorches.live > 0 || (this.scorches.mesh && this.scorches.mesh.count > 0)) return false;
+    if (this.distortion.live > 0 || (this.distortion.mesh && this.distortion.mesh.count > 0)) return false;
+    if (this.lights.live > 0) return false;
+    if (this.ribbons.live > 0) return false;
+    // Post-export member: heavy impacts run on the same per-tick update; a live
+    // effect or an unpublished retire (dirty) is not quiet.
+    if (this.heavyImpacts && (this.heavyImpacts.live > 0 || this.heavyImpacts.dirty)) return false;
+    if (!this.bolts._quietEmpty || this.bolts.live > 0) return false;
+    if (this.quarks && !this.quarks._quietEmpty) return false;
+    if (this.wellDistortion.live > 0
+      || (this.wellDistortion.mesh && this.wellDistortion.mesh.count > 0)) return false;
+    if (shieldContactsActiveCount() > 0) return false;
+    if (!this._wellDistortionQuietEmpty) return false;
+    if (entities && entities.length > 0) {
+      // Typed projectiles lane may be empty while entityList fallback still holds ships.
+      const index = this.state && this.state.entityIndex;
+      if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
+        if (index.projectiles.length > 0) return false;
+      } else {
+        for (let i = 0; i < entities.length; i++) {
+          const e = entities[i];
+          if (e && e.alive && e.type === 'projectile') return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  _presenterQuietLatch() {
+    const active = this.state && this.state.fields && this.state.fields.active;
+    this._presenterQuietEmpty = true;
+    this._presenterQuietIndexVersion = this._presenterEntityIndexVersion();
+    this._presenterQuietFieldsRef = active || null;
+    this._presenterQuietFieldsLen = active ? active.length : 0;
+  }
+
+  // Cheap dirty wake while composite-latched. Pool live counters catch external
+  // quarks.spawn* / addShieldContact / well pushes; entityIndexVersion catches
+  // projectile spawns. Soft-GPU fps not claimed.
+  _presenterQuietMaybeAwake() {
+    if (this.discharges.activeCount > 0) return true;
+    if (this.scorches.live > 0) return true;
+    if (this.distortion.live > 0) return true;
+    if (this.lights.live > 0) return true;
+    if (this.ribbons.live > 0) return true;
+    if (this.heavyImpacts && (this.heavyImpacts.live > 0 || this.heavyImpacts.dirty)) return true;
+    if (!this.bolts._quietEmpty || this.bolts.live > 0) return true;
+    if (this.quarks && !this.quarks._quietEmpty) return true;
+    if (this.wellDistortion.live > 0) return true;
+    if (shieldContactsActiveCount() > 0) return true;
+    const version = this._presenterEntityIndexVersion();
+    if (version !== this._presenterQuietIndexVersion) return true;
+    const active = this.state && this.state.fields && this.state.fields.active;
+    const activeLen = active ? active.length : 0;
+    if (active !== this._presenterQuietFieldsRef || activeLen !== this._presenterQuietFieldsLen) {
+      return true;
+    }
+    const index = this.state && this.state.entityIndex;
+    if (Array.isArray(this.state && this.state.weaponVfxProjectiles)
+      && this.state.weaponVfxProjectiles.length > 0) {
+      return true;
+    }
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
+      && index.projectiles.length > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  _syncBolts(entities, alpha, camera, dt = 0, accessibilityProfile = this._a11y()) {
+    this.bolts.beginFrame(dt, accessibilityProfile);
+    _seen.clear();
+    const camPos = camera && camera.position;
+    const state = this.state;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const ribbonDrawWu = tableVfxDrawWuFromState(state);
+    // Owned exceptional-speed scalar, shared per update: the player's own fire earns a
+    // longer, wider connected wake (the same contract the trail-plan path applies).
+    const exceptionalSpeed = this._contextExceptionalSpeed
+      ?? ((state && state.settings && state.settings.video && state.settings.video.motionReduce)
+        ? 0 : readOwnedExceptionalSpeed(state));
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (!entity || !entity.alive || entity.type !== 'projectile') continue;
+      const recipe = resolveWeaponRecipe(entity.data && entity.data.weaponId, entity.data);
+      const prev = entity.prevPos || entity.pos;
+      const currX = interpolate(prev, entity.pos, alpha, 'x');
+      const currZ = interpolate(prev, entity.pos, alpha, 'z');
+      const currLocal = this.toLocalXZ(currX, currZ, _local);
+      const prevLocal = this.toLocalXZ(
+        Number.isFinite(prev.x) ? prev.x : currX,
+        Number.isFinite(prev.z) ? prev.z : currZ,
+        this._prevLocal,
+      );
+      const y = 0.32;
+      // The frame is the only place a round is drawn. Player fire, the current
+      // target, and a stray all use the same test: on the glass (plus a short
+      // dash pad) it is drawn, off the glass the body keeps simulating and the
+      // picture does not. A round that bounces back is drawn again when it
+      // re-enters; the ribbon is spawned fresh at that moment.
+      _ribbonWorld.x = currX;
+      _ribbonWorld.z = currZ;
+      const onFrame = projectileOnReadableFrame(
+        state,
+        _ribbonWorld,
+        player && player.pos,
+        ribbonDrawWu,
+        _ribbonLookAt,
+      );
+      if (recipeUsesRibbonWake(recipe)) {
+        _seen.add(entity.id);
+        if (onFrame) {
+          if (!this.ribbons.byEntity.has(entity.id)) {
+            flightColorsForEntity(recipe, entity, this._flightColors);
+            const ribbon = this._ribbonSpec;
+            ribbon.entityId = entity.id;
+            ribbon.x = currLocal.x; ribbon.y = y; ribbon.z = currLocal.z;
+            // Exceptional wake: same bounded amplification the trail plan applied —
+            // length on the linger, brightness on the cross-section.
+            const amplify = entity.ownerId === (state && state.playerId)
+              ? exceptionalSpeed : 0;
+            ribbon.width = recipe.flight.ribbonWidth * Math.min(1.15, 1 + amplify * 0.15);
+            ribbon.linger = recipe.flight.ribbonLinger * Math.min(1.4, 1 + amplify * 0.4);
+            // Authored wake cross-section. Without this the pool falls back to a width-derived
+            // guess, which is right for ten of the twelve families but cannot tell a motor's
+            // vapour sheet from a plasma braid, so missile and torpedo wakes read as plasma.
+            ribbon.profile = recipe.flight.ribbonProfile;
+            ribbon.colorHead = this._flightColors.core;
+            ribbon.colorTail = this._flightColors.sheath;
+            this.ribbons.spawn(ribbon);
+          }
+          this.ribbons.pushHead(entity.id, currLocal.x, y, currLocal.z);
+        } else {
+          this.ribbons.release(entity.id);
+        }
+      }
+      const motor = recipe.flight.motor === true;
+      if (recipe.flight.mode !== FLIGHT_MODE.ENERGY_CARD && !motor) continue;
+      if (!onFrame) continue;
+      if (motor) {
+        const root = this._mesh(entity.id);
+        if (root && !this._motorMeshes.has(root)) {
+          // The pooled motor replaces the legacy emissive capsules; body and warhead stay.
+          const core = root.getObjectByName('ProjectileMissileExhaust');
+          const sheath = root.getObjectByName('ProjectileMissileExhaustSheath');
+          if (core) core.visible = false;
+          if (sheath) sheath.visible = false;
+          this._motorMeshes.add(root);
+        }
+      }
+      const rawVx = entity.vel && Number(entity.vel.x);
+      const rawVz = entity.vel && Number(entity.vel.z);
+      let vx = Number.isFinite(rawVx) ? rawVx : 0;
+      let vz = Number.isFinite(rawVz) ? rawVz : 0;
+      let speed = Math.hypot(vx, vz);
+      if (speed < 1e-5) { vx = 1; vz = 0; speed = 1; }
+      flightColorsForEntity(recipe, entity, this._flightColors);
+      hexColor(this._flightColors.core, _color);
+      const cr = _color.r; const cg = _color.g; const cb = _color.b;
+      hexColor(this._flightColors.sheath, _color);
+      const dist = camPos
+        ? Math.hypot(camPos.x - currLocal.x, camPos.y - y, camPos.z - currLocal.z)
+        : 80;
+      const lodScale = dist > FULL_LOD_DISTANCE ? 0.92 : 1;
+      const bolt = this._boltSpec;
+      bolt.entityId = entity.id;
+      bolt.occupantGeneration = entity.occupantGeneration;
+      bolt.x = currLocal.x; bolt.y = y; bolt.z = currLocal.z;
+      bolt.prevX = prevLocal.x; bolt.prevY = y; bolt.prevZ = prevLocal.z;
+      bolt.ax = vx / speed; bolt.ay = 0; bolt.az = vz / speed;
+      bolt.length = recipe.flight.dashLength * lodScale;
+      bolt.width = recipe.flight.width; bolt.intensity = recipe.flight.intensity;
+      bolt.variant = recipe.flight.boltVariant;
+      bolt.coreR = cr; bolt.coreG = cg; bolt.coreB = cb;
+      bolt.sheathR = _color.r; bolt.sheathG = _color.g; bolt.sheathB = _color.b;
+      bolt.minPixels = recipe.flight.pixelFloor;
+      if (motor) {
+        // No smear for a powered nozzle: put the fixed hot end at the actual missile rear.
+        const rear = Math.max(.35, finiteOr(entity.radius, .7));
+        const offset = rear + bolt.length * .5;
+        bolt.x -= vx / speed * offset; bolt.z -= vz / speed * offset;
+        bolt.prevX = bolt.x; bolt.prevZ = bolt.z;
+      }
+      this.bolts.writeBolt(bolt);
+    }
+    for (const [entityId] of this.ribbons.byEntity) {
+      if (!_seen.has(entityId)) this.ribbons.release(entityId);
+    }
+    this.bolts.commit();
+  }
+
+  _updateNearMiss(dt, entities, alpha, camera) {
+    this._nearMissAcc += dt;
+    if (this._nearMissAcc < 0.05) return;
+    this._nearMissAcc = 0;
+    if (this._a11y().id !== 'full') return;
+    const player = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    const pLocal = this.toLocalXZ(player.pos.x, player.pos.z, this._nearMissPlayerLocal);
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (!entity || !entity.alive || entity.type !== 'projectile') continue;
+      if (entity.ownerId === this.state.playerId) continue;
+      const recipe = resolveWeaponRecipe(entity.data && entity.data.weaponId, entity.data);
+      if (recipe.flight.mode === FLIGHT_MODE.NONE) continue;
+      const currX = interpolate(entity.prevPos, entity.pos, alpha, 'x');
+      const currZ = interpolate(entity.prevPos, entity.pos, alpha, 'z');
+      const local = this.toLocalXZ(currX, currZ, this._nearMissLocal);
+      const dist = Math.hypot(local.x - pLocal.x, local.z - pLocal.z);
+      if (dist < NEAR_MISS_RADIUS && dist > 1.5) {
+        this._nearMissSpec.x = local.x;
+        this._nearMissSpec.z = local.z;
+        this._nearMissSpec.strength = 0.55 * (1 - dist / NEAR_MISS_RADIUS);
+        this.distortion.spawn(this._nearMissSpec);
+        break;
+      }
+    }
+  }
+
+  _syncWellDistortion() {
+    const field = this.wellDistortion;
+    const active = this.state && this.state.fields && this.state.fields.active;
+    const activeLen = active ? active.length : 0;
+    // Quiet empty-active residual: a11y resolve + CAP zero + DistortionField.update
+    // (uTime write before live early-out) every idle tick. Latch only when the active
+    // bag is empty so reduced-motion + live wells keep syncing. Soft-GPU fps not claimed.
+    if (this._wellDistortionQuietEmpty
+      && active === this._wellDistortionQuietActiveRef
+      && activeLen === this._wellDistortionQuietActiveLen
+      && field.live === 0
+      && !(field.mesh && field.mesh.count > 0)) {
+      return;
+    }
+    const slots = field.slots;
+    let live = 0;
+    if (!reducedMotionProfile(this._a11y())) {
+      if (active) {
+        const cap = field.capacity;
+        for (let i = 0; i < active.length && live < cap; i++) {
+          const rec = active[i];
+          if (!rec || rec.kind !== FIELD_KINDS.WELL) continue;
+          const radius = rec.distortionRadius;
+          const strength = rec.distortionStrength;
+          if (!(radius > 0) || !(strength > 0)) continue;
+          const local = this.toLocalXZ(rec.center.x, rec.center.z, this._wellLocal);
+          const s = slots[live];
+          s.alive = 1;
+          s.x = local.x;
+          s.y = WELL_DISTORTION_Y;
+          s.z = local.z;
+          s.radius = radius;
+          s.strength = wellDistortionGpuStrength(radius, strength);
+          s.life = Infinity;
+          s.age = 0;
+          live++;
+        }
+      }
+    }
+    for (let i = live; i < field.capacity; i++) slots[i].alive = 0;
+    // Keep DistortionField.live in sync — well slots are written here, not via spawn().
+    field.live = live;
+    // The well lens is re-synced from scratch each frame, so dt is 0; hand it the simulation clock
+    // directly or its shader has no time at all. Reduced motion already zeroes every well above.
+    field.update(0, this.state && this.state.simTime);
+    if (live === 0 && activeLen === 0) {
+      this._wellDistortionQuietEmpty = true;
+      this._wellDistortionQuietActiveLen = activeLen;
+      this._wellDistortionQuietActiveRef = active;
+    } else {
+      this._wellDistortionQuietEmpty = false;
+    }
+  }
+
+  _socketPose(ownerId, origin, angle) {
+    const pose = this.helpers && this.helpers.socketWorldPose
+      ? this.helpers.socketWorldPose(ownerId, WEAPON_SOCKET_NAME)
+      : null;
+    if (pose) {
+      const local = this.toLocalXZ(pose.x, pose.z, _local);
+      this._socketScratch.x = local.x;
+      this._socketScratch.y = Number.isFinite(pose.y) ? pose.y : 0.4;
+      this._socketScratch.z = local.z;
+      this._socketScratch.ax = finiteOr(pose.forwardX, Math.cos(angle || 0));
+      this._socketScratch.ay = finiteOr(pose.forwardY, 0);
+      this._socketScratch.az = finiteOr(pose.forwardZ, Math.sin(angle || 0));
+      return this._socketScratch;
+    }
+    const local = origin ? this.toLocalXZ(origin.x, origin.z, _local) : _local;
+    this._socketScratch.x = local.x;
+    this._socketScratch.y = 0.4;
+    this._socketScratch.z = local.z;
+    this._socketScratch.ax = Math.cos(angle || 0);
+    this._socketScratch.ay = 0;
+    this._socketScratch.az = Math.sin(angle || 0);
+    return this._socketScratch;
+  }
+
+  _captureTargetLocal(targetId, worldX, worldY, worldZ, nx, ny, nz, skidX = 0, skidY = 0, skidZ = 0) {
+    const mesh = targetId != null ? this._mesh(targetId) : null;
+    const out = this._targetScratch;
+    out.boundKey = null;
+    out.skidX = 0; out.skidY = 0; out.skidZ = 0;
+    if (!mesh) {
+      out.x = worldX; out.y = worldY; out.z = worldZ;
+      out.nx = nx; out.ny = ny; out.nz = nz; out.attached = false;
+      out.skidX = skidX; out.skidY = skidY; out.skidZ = skidZ;
+      return out;
+    }
+    const anchor = markAnchor(mesh);
+    _offset.set(worldX, worldY, worldZ);
+    anchor.worldToLocal(_offset);
+    anchor.getWorldQuaternion(_worldQuat);
+    _invQuat.copy(_worldQuat).invert();
+    _axis.set(nx, ny, nz).applyQuaternion(_invQuat);
+    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
+    if (skidX !== 0 || skidY !== 0 || skidZ !== 0) {
+      // The skid is stored hull-local so it turns with the hull, exactly like the seat normal.
+      _axis.set(skidX, skidY, skidZ).applyQuaternion(_invQuat);
+      out.skidX = _axis.x; out.skidY = _axis.y; out.skidZ = _axis.z;
+    }
+    out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
+    out.attached = true;
+    const key = mesh.userData && mesh.userData.sfStableEntityKey;
+    out.boundKey = key != null ? key : null;
+    return out;
+  }
+
+  /** Hull-local mark. A missing anchor returns null so the local offset is never drawn as a world card. */
+  _worldFromTargetLocal(slot) {
+    const mesh = slot.targetId != null ? this._mesh(slot.targetId) : null;
+    const out = this._scorchPoseScratch;
+    if (!mesh) return null;
+    const anchor = markAnchor(mesh);
+    _offset.set(slot.localX, slot.localY, slot.localZ);
+    anchor.localToWorld(_offset);
+    anchor.getWorldQuaternion(_worldQuat);
+    _axis.set(slot.nx, slot.ny, slot.nz).applyQuaternion(_worldQuat);
+    out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
+    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
+    if (slot.skidX !== 0 || slot.skidY !== 0 || slot.skidZ !== 0) {
+      // The skid rides the hull: rotate it with the same quaternion as the seat normal
+      // (inf-scar-skid) so a scarred hull turning away still shows the hit's true bearing.
+      _axis.set(slot.skidX, slot.skidY, slot.skidZ).applyQuaternion(_worldQuat);
+      out.skidX = _axis.x; out.skidY = _axis.y; out.skidZ = _axis.z;
+    } else {
+      out.skidX = 0; out.skidY = 0; out.skidZ = 0;
+    }
+    return out;
+  }
+
+  _spawnImpactSurface(captured, kind, recipe, flash, nx, nz, apx, apz, targetId) {
+    const pose = this._impactPoseScratch;
+    pose.x = captured.x; pose.y = captured.y; pose.z = captured.z;
+    pose.ax = captured.nx; pose.ay = captured.ny; pose.az = captured.nz;
+    pose.targetId = targetId != null ? targetId : null;
+    pose.attached = captured.attached === true;
+    pose.approachX = apx;
+    pose.approachZ = apz;
+    // Signed lean of the incoming path around the outward normal: head-on hits keep a symmetric
+    // fan, grazing hits smear it downrange. This is presentation, never a fabricated force axis.
+    const into = apx * nx + apz * nz;
+    const side = apx * nz - apz * nx;
+    pose.slant = Math.atan2(side, Math.max(0.25, -into));
+    flash.r = _color.r; flash.g = _color.g; flash.b = _color.b;
+    // Retain the hull-local contact, but measure its pixel floor in the camera's scene space.
+    const mesh = pose.attached ? this._mesh(targetId) : null;
+    if (mesh) {
+      _offset.set(pose.x, pose.y, pose.z);
+      markAnchor(mesh).localToWorld(_offset);
+      flash.pxw = this._pixelWorldAt(_offset.x, _offset.y, _offset.z);
+    } else {
+      flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
+    }
+    const priority = targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
+    this.discharges.spawnImpact(pose, kind, recipe.variant, flash, priority);
+  }
+
+  /** Source slots follow their firing socket; impact slots re-lift retained target-local hits. */
+  _resolveSurfacePose(slot) {
+    const cp = Math.cos(slot.pitch);
+    const nx = cp * Math.cos(slot.angle);
+    const ny = Math.sin(slot.pitch);
+    const nz = cp * Math.sin(slot.angle);
+    if (slot.role === SURFACE_ROLE.IMPACT) {
+      const out = this._surfacePoseScratch;
+      const mesh = slot.targetId != null ? this._mesh(slot.targetId) : null;
+      if (slot.attached && !mesh) return null;
+      if (!mesh) {
+        out.x = slot.x; out.y = slot.y; out.z = slot.z;
+        out.ax = nx; out.ay = ny; out.az = nz;
+        return out;
+      }
+      const anchor = markAnchor(mesh);
+      _offset.set(slot.x, slot.y, slot.z);
+      anchor.localToWorld(_offset);
+      anchor.getWorldQuaternion(_worldQuat);
+      _axis.set(nx, ny, nz).applyQuaternion(_worldQuat);
+      out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
+      out.ax = _axis.x; out.ay = _axis.y; out.az = _axis.z;
+      return out;
+    }
+    if (slot.ownerId == null) return null;
+    const socket = this.helpers && this.helpers.socketWorldPose
+      ? this.helpers.socketWorldPose(slot.ownerId, WEAPON_SOCKET_NAME)
+      : null;
+    if (socket) {
+      const local = this.toLocalXZ(socket.x, socket.z, this._dischargeLocal);
+      const pose = this._dischargePose;
+      pose.x = local.x; pose.y = finiteOr(socket.y, 0.4); pose.z = local.z;
+      pose.ax = finiteOr(socket.forwardX, 1); pose.ay = finiteOr(socket.forwardY, 0);
+      pose.az = finiteOr(socket.forwardZ, 0);
+      return pose;
+    }
+    // Only the player's retained source may keep firing without a resolvable socket; a
+    // dead/decorative owner is killed by the pool instead of sticking in mid-air.
+    if (slot.ownerId !== this.state?.playerId) return null;
+    const out = this._surfacePoseScratch;
+    out.x = slot.x; out.y = slot.y; out.z = slot.z;
+    out.ax = nx; out.ay = ny; out.az = nz;
+    return out;
+  }
+
+  _resolveScorchPose(slot) {
+    if (!slot.attached || slot.targetId == null) {
+      const out = this._scorchPoseScratch;
+      out.x = slot.localX; out.y = slot.localY; out.z = slot.localZ;
+      out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
+      out.skidX = slot.skidX; out.skidY = slot.skidY; out.skidZ = slot.skidZ;
+      return out;
+    }
+    const mesh = this._mesh(slot.targetId);
+    const foreign = mesh ? this._foreignMarkBinding(mesh, slot) : false;
+    if (!mesh || foreign) {
+      // Transient flashes die with the ship or with a pooled identity change.
+      // A persistent scar stays on the record and is not drawn on the foreign hull.
+      const drop = !slot.persistent && (foreign || this._markEntityGone(slot.targetId));
+      return drop ? false : null;
+    }
+    const pose = this._worldFromTargetLocal(slot);
+    pose.surfaceRadius = 0;
+    if (slot.surfaceSplash) {
+      const target = this.state?.entities?.get?.(slot.targetId);
+      if (target?.type === 'asteroid' && Number.isFinite(target.radius) && target.radius > 0) {
+        mesh.getWorldPosition(_receiverCentre);
+        pose.surfaceX = _receiverCentre.x;
+        pose.surfaceY = _receiverCentre.y;
+        pose.surfaceZ = _receiverCentre.z;
+        pose.surfaceRadius = target.radius;
+      }
+    }
+    return pose;
+  }
+
+  _foreignMarkBinding(mesh, slot) {
+    const data = mesh.userData;
+    if (!data) return false;
+    if (data.sfBoundEntityId != null && data.sfBoundEntityId !== slot.targetId) return true;
+    if (slot.boundKey != null && data.sfStableEntityKey != null && data.sfStableEntityKey !== slot.boundKey) return true;
+    return false;
+  }
+
+  _markEntityGone(targetId) {
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function') return false;
+    const body = entities.get(targetId);
+    return !body || body.alive === false;
+  }
+
+  _mesh(entityId) {
+    const meshes = this.state && this.state.render && this.state.render.meshes;
+    if (meshes && typeof meshes.get === 'function') return meshes.get(entityId);
+    return null;
+  }
+
+  _a11y() {
+    return resolveVfxAccessibilityProfile(this.state && this.state.settings);
+  }
+
+  // Early light cull: the 2-slot weapon pool is precious, so a light nobody can see is
+  // never admitted. Player-involved beats always survive; everything else must sit inside
+  // the live look-at envelope. Uncertain coordinates never cull.
+  _lightCulled(worldX, worldZ, priority) {
+    if (priority >= 0.9) return false;
+    if (!Number.isFinite(worldX) || !Number.isFinite(worldZ)) return false;
+    const state = this.state;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) return false;
+    this._lightCullWorld.x = worldX;
+    this._lightCullWorld.z = worldZ;
+    const look = tableLookAtDelta(state, player.pos, this._lightCullWorld, this._lightCullLook);
+    return !shouldDrawTableVfx(look.x, look.z, tableVfxDrawWuFromState(state));
+  }
+
+  // Mining carves a molten work-face into the rock. Coordinates are frame-local, matching
+  // the presenter's internal contact space; the caller converts from galactic-global.
+  stampMiningScar(targetId, localX, localY, localZ, nx, ny, nz, size = 1.7, heat = 1.0, markKind = 0, fracture = 0) {
+    const captured = this._captureTargetLocal(
+      targetId,
+      Number.isFinite(localX) ? localX : 0,
+      Number.isFinite(localY) ? localY : 0.3,
+      Number.isFinite(localZ) ? localZ : 0,
+      Number.isFinite(nx) ? nx : 0,
+      Number.isFinite(ny) ? ny : 1,
+      Number.isFinite(nz) ? nz : 0,
+    );
+    const scorch = this._flashSpec(6.0, size, size * 0.72, 1);
+    // A gouge is a chip in the stone. Heat still rides the slot; the face itself is pale rock.
+    hexColor(markKind === CONTACT_MARK_KINDS.gouge ? '#c8c0a8' : '#ff7a2a', _color);
+    this.scorches.spawn({
+      targetId: targetId != null ? targetId : null,
+      localX: captured.x,
+      localY: captured.y,
+      localZ: captured.z,
+      nx: captured.nx,
+      ny: captured.ny,
+      nz: captured.nz,
+      attached: captured.attached === true,
+      boundKey: captured.boundKey,
+      width: scorch.size0,
+      height: scorch.size1,
+      life: scorch.life,
+      opacity: scorch.opacity0,
+      heat,
+      markKind,
+      fracture,
+      r: _color.r,
+      g: _color.g,
+      b: _color.b,
+    });
+    return true;
+  }
+
+  // Durable presentation of one gameplay scar. The short hit flash stays a separate slot.
+  retainHullMark(targetId, worldX, worldY, worldZ, nx, ny, nz, scarId = null) {
+    const captured = this._captureTargetLocal(
+      targetId,
+      Number.isFinite(worldX) ? worldX : 0,
+      Number.isFinite(worldY) ? worldY : 0,
+      Number.isFinite(worldZ) ? worldZ : 0,
+      Number.isFinite(nx) ? nx : 0,
+      Number.isFinite(ny) ? ny : 1,
+      Number.isFinite(nz) ? nz : 0,
+    );
+    return this.scorches.spawn({
+      targetId: targetId != null ? targetId : null,
+      localX: captured.x,
+      localY: captured.y,
+      localZ: captured.z,
+      nx: captured.nx,
+      ny: captured.ny,
+      nz: captured.nz,
+      attached: captured.attached === true,
+      boundKey: captured.boundKey,
+      persistent: true,
+      scarId,
+      life: 4,
+      width: 1.6,
+      height: 1.1,
+      opacity: 1,
+      heat: 0.8,
+    });
+  }
+
+  releasePooledTransientMarks(entityId) {
+    return this.scorches.releaseTransient(entityId);
+  }
+
+  _flashSpec(life, size0, size1, opacity) {
+    const profile = this._a11y();
+    const out = this._flashScratch;
+    out.life = Math.max(Number(life) || 0, profile.flashMinLife);
+    out.size0 = (Number(size0) || 0) * profile.flashSizeScale;
+    out.size1 = (Number(size1) || 0) * profile.flashSizeScale;
+    out.opacity0 = (Number(opacity) || 0) * profile.flashOpacityScale;
+    out.opacity1 = out.opacity0;
+    return out;
+  }
+
+  reproject(dx, dz) {
+    const ox = Number(dx) || 0;
+    const oz = Number(dz) || 0;
+    if (!ox && !oz) return;
+    this.quarks?.reproject(ox, oz);
+    this.discharges.reproject(ox, oz);
+    this.heavyImpacts.reproject(ox, oz);
+    for (const slot of this.scorches.slots) {
+      if (!slot.alive) continue;
+      if (slot.attached) continue;
+      slot.localX += ox;
+      slot.localZ += oz;
+    }
+    for (const slot of this.distortion.slots) {
+      if (!slot.alive) continue;
+      slot.x += ox;
+      slot.z += oz;
+    }
+    for (const slot of this.wellDistortion.slots) {
+      if (!slot.alive) continue;
+      slot.x += ox;
+      slot.z += oz;
+    }
+    for (const slot of this.lights.slots) {
+      slot.light.position.x += ox;
+      slot.light.position.z += oz;
+    }
+    const hist = this.ribbons.hist;
+    for (let i = 0; i < hist.length; i += 3) {
+      hist[i] += ox;
+      hist[i + 2] += oz;
+    }
+  }
+
+  getMeshes() {
+    return [this.bolts.mesh, this.discharges.mesh, this.heavyImpacts.mesh, this.ribbons.mesh, this.scorches.mesh];
+  }
+
+  /** Stable presenter-owned roots for scene residency/isolation checks. */
+  getOwnerRoots() {
+    return [
+      this.bolts.mesh,
+      this.discharges.mesh,
+      this.heavyImpacts.mesh,
+      this.ribbons.mesh,
+      this.scorches.mesh,
+      this.distortion.scene,
+      this.wellDistortion.scene,
+      this.lights.group,
+      this.quarks?.root,
+      this.quarks?.renderer,
+    ];
+  }
+
+  dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    this._wellDistortionQuietEmpty = false;
+    this._wellDistortionQuietActiveLen = -1;
+    this._wellDistortionQuietActiveRef = null;
+    this._presenterQuietEmpty = false;
+    this._presenterQuietIndexVersion = -1;
+    this._presenterQuietFieldsRef = null;
+    this._presenterQuietFieldsLen = -1;
+    this._detachGraph(this._graph);
+    this._graph = null;
+    resetScarHistory(this._scarHistory);
+    clearShieldContacts();
+    this.bolts.dispose();
+    this.discharges.dispose();
+    this.heavyImpacts.dispose();
+    this.ribbons.dispose();
+    this.distortion.dispose();
+    this.wellDistortion.dispose();
+    this.lights.dispose();
+    this.scorches.dispose();
+    if (this.quarks) this.quarks.dispose();
+  }
+}
+
+export function createWeaponVfxPresenter(options) {
+  return new WeaponVfxPresenter(options);
+}

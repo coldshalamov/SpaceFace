@@ -1,0 +1,70 @@
+From 5acfe2f3851c1774e9a8ebb7437a685a4b76ae45 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:37:57 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20reject=20undersized=20asteroid?=
+ =?UTF-8?q?=20camera=20clearance=20(~3.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Field rocks re-invalidate the clearance box cache every WU of drift and
+re-entered setFromObject → updateWorldMatrix under camera.follow. When
+asteroidBody scale × 2.5 cannot clear the 120 WU span bar, cache a null
+box without the scene-graph walk. Soft-GPU fps not claimed.
+---
+ src/render/renderer.js | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 461a35706..6316ae097 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1593,6 +1593,26 @@ const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
+ const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
+ const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
+ 
++// Field rocks are uniformly scaled by entity radius on `asteroidBody`. Unit-ish displaced
++// geo spans ~2R; veins/gas hulls add <~25%. When that upper bound cannot clear the 120 WU
++// span bar, skip setFromObject — drifting rocks re-invalidate the numeric cache every WU
++// and otherwise re-enter updateWorldMatrix under camera.follow (quiet profile).
++let CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = true;
++export function setCameraClearanceAsteroidSpanRejectForBench(enabled) {
++  CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = enabled !== false;
++  return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT;
++}
++export function getCameraClearanceAsteroidSpanRejectForBench() {
++  return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT !== false;
++}
++
++function asteroidClearanceSpanHint(data) {
++  const body = data && data.asteroidBody;
++  if (!body || !body.scale) return 0;
++  const scale = Math.abs(Number(body.scale.x) || 0);
++  return scale > 0 ? scale * 2.5 : 0;
++}
++
+ function cameraClearanceBoxForMesh(mesh) {
+   const data = mesh && mesh.userData;
+   if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
+@@ -1607,6 +1627,18 @@ function cameraClearanceBoxForMesh(mesh) {
+       && cached.posX === posX && cached.posZ === posZ) {
+     return cached.box;
+   }
++  if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
++    const hint = asteroidClearanceSpanHint(data);
++    if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
++      const rec = cached || (data.cameraClearanceBox = {});
++      rec.assetState = assetState;
++      rec.compositionId = compositionId;
++      rec.posX = posX;
++      rec.posZ = posZ;
++      rec.box = null;
++      return null;
++    }
++  }
+   _clearanceBoxScratch.setFromObject(mesh);
+   let box = null;
+   if (!_clearanceBoxScratch.isEmpty()) {
+-- 
+2.47.3
+

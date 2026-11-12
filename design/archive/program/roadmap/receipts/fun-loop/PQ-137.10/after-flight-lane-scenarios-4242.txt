@@ -1,0 +1,24 @@
+[verb-bench] running feel.earned_speed_kept (seed 4242)...
+[verb-bench] running feel.reversal_course (seed 4242)...
+[verb-bench] running feel.screen_crossing (seed 4242)...
+
+B1 Earned speed is kept — met=true
+   OK   speed kept 10 s after a 2x cruise exit, hands off: 1 fraction
+   OK   speed kept 10 s after a 2x cruise exit, forward held: 1 fraction
+
+B2 Nimble regime — met=false
+   FAIL rest to cruise, Hitch (starter): 3.049999999999993 s
+   FAIL full 180 deg velocity reversal, Hitch (starter): 4.483333333333333 s
+   FAIL turn radius at cruise, Hitch (starter): 8.861397051394754 screen depths
+   FAIL rest to cruise, Wasp: 2.116666666666663 s
+   FAIL full 180 deg velocity reversal, Wasp: 3.966666666666667 s
+   FAIL turn radius at cruise, Wasp: 5.357836911349804 screen depths
+
+B3 The fight stays on screen — met=false
+   FAIL seconds to cross the visible depth at cruise, Hitch (starter): 0.5851228185979251 s
+   FAIL visible depth at 2x cruise, as a multiple of the at-cruise depth, Hitch (starter): 1.2179626091149336 x at-cruise depth
+   FAIL visible depth at 3x cruise, as a multiple of the at-cruise depth, Hitch (starter): 1.3135593220338986 x at-cruise depth
+   OK   visible depth grows monotonically from cruise to 3x cruise, Hitch (starter): 1 bool
+   OK   smallest share of frame width the starter hull ever falls to, Hitch (starter): 10.508756470910974 % of frame width
+
+run hashes: feel.earned_speed_kept=1f40a7e5 feel.reversal_course=91bf1b5d feel.screen_crossing=5da8848c

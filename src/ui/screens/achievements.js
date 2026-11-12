@@ -1,0 +1,449 @@
+// Achievements — ORRERY (design/frontend/ORRERY.md §6 Meta: "medal Arc Gauges on a ring grid"). Every
+// deed is a medal on the Medal Orrery (src/ui/orrery/constellationMedals.js): the four categories are
+// orbits round a hero gauge of the medals you hold, each medal its produced art inside an Arc Gauge of
+// its progress. The one amber Hand is an arm from the gauge to the chosen medal, and choosing TURNS the
+// orbit until the medal stands under it; choosing a category turns that orbit to its first medal and
+// brings it to the front. The chosen medal's line is read beside the orrery (its gauge large, its name,
+// what it asks, how far along it is). The categories are words on a scale. The composition is
+// src/ui/orrery/constellationLayouts.js.
+// Rows come from the achievement ledger (src/systems/achievements.js): the live ledger the game
+// booted, or the stored bag when it has not booted one, so the title and Pause read the same truth.
+// Hidden achievements stay masked until earned; counted goals show their progress.
+import { ACHIEVEMENT_CATEGORIES } from '../../data/achievements.js';
+import { ACHIEVEMENT_UNLOCKED_EVENT, readAchievementRows } from '../../systems/achievements.js';
+import { el, words, settle, cue } from '../kit/index.js';
+import { injectDeckplate, dpIcon } from '../deckplate/index.js';
+import { createMedalOrrery, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
+import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
+import { injectMetaLedgerLayouts } from '../orrery/achievementsLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
+import { decrypt, rollTo } from '../orrery/text.js';
+import ACHIEVEMENT_MEDALS_MANIFEST from '../../../assets/ui/generated/achievements/manifest.json' with { type: 'json' };
+
+export const ACHIEVEMENT_SECTIONS = Object.freeze([
+  Object.freeze({ id: 'all', label: 'All' }),
+  ...ACHIEVEMENT_CATEGORIES.map((category) => Object.freeze({ id: category.id, label: category.label })),
+]);
+
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  return null;
+}
+
+export function achievementSummaryText(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const unlocked = list.filter((row) => row.unlocked).length;
+  if (!list.length) return 'No achievements yet.';
+  if (unlocked === list.length) return `All ${list.length} unlocked.`;
+  return `${unlocked} of ${list.length} unlocked.`;
+}
+
+/**
+ * The next deed to chase: the unearned, unhidden medal furthest along (a counted goal's share of its
+ * target), else the first unearned one; its figure when it is counted.
+ */
+export function nextGoalText(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return 'No achievements yet.';
+  const unlocked = list.filter((row) => row.unlocked).length;
+  if (unlocked === list.length) return `All ${list.length} unlocked.`;
+  const open = list.filter((r) => !r.unlocked && !r.masked);
+  if (!open.length) return achievementSummaryText(list);
+  const share = (r) => (Number(r.target) > 1 ? Math.max(0, Math.min(1, (Number(r.current) || 0) / Number(r.target))) : 0);
+  let best = open[0];
+  for (const r of open) if (share(r) > share(best)) best = r;
+  const n = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');
+  const next = Number(best.target) > 1 ? `next: ${best.name}, ${n(best.current)} of ${n(best.target)}` : `next: ${best.name}`;
+  return `${unlocked} of ${list.length} held — ${next}`;
+}
+
+export function rowsForSection(rows, sectionId) {
+  const list = Array.isArray(rows) ? rows : [];
+  return sectionId === 'all' ? list : list.filter((row) => row.category === sectionId);
+}
+
+/** Each achievement's emblem: a glyph from the one kit family, chosen by what the deed is. */
+const ACHIEVEMENT_EMBLEM = Object.freeze({
+  berth_assigned: 'dock', rock_has_a_price: 'ore', paper_trail: 'market', signed_and_delivered: 'check',
+  out_of_the_pocket: 'gate', made_contact: 'line', light_ships_are_ammunition: 'tow', razor_release: 'target',
+  keep_the_speed: 'boost', into_the_crucible: 'fire', tenth_wave: 'shield', better_than_last_time: 'record',
+  same_seed_same_day: 'seed', walked_out: 'undock', paperwork_filed: 'ledger', six_figures: 'credits',
+});
+
+// Every medal is produced art (assets/ui/generated/achievements/, see its manifest): the sheet's medal
+// for each deed; a hidden deed shows its sealed medal until it is earned, then the plain medallion with
+// its glyph.
+const MEDAL_ROOT = (() => {
+  try { return new URL('../../../assets/ui/generated/achievements/', import.meta.url).href; }
+  catch (_) { return '/assets/ui/generated/achievements/'; }
+})();
+// Emblems drawn for the deeds whose sheet faces were stock pictograms (a 48 grid, lines of light).
+// Together with the produced medal sheet (assets/ui/generated/achievements/) this covers every
+// shipped deed: no achievement ever falls back to the kit's generic check glyph, which read as
+// "done" on medals that were not.
+const DRAWN_EMBLEM = Object.freeze({
+  // a sealed manifest, a berth stamp pressed on its corner
+  signed_and_delivered: 'M14 9 H30 L35 14 V39 H14 Z M30 9 V14 H35 M18 17 H28 M18 21 H30 M18 25 H25 M27.6 30 V35 H34.4 V30',
+  // a torn strip of ledger tape, its price ticked out to the side
+  paper_trail: 'M16 7 H31 V34 L28.5 37.5 L26 34 L23.5 37.5 L21 34 L18.5 37.5 L16 34 Z M19.5 13 H27.5 M19.5 17.5 H27.5 M19.5 22 H25 M19.5 26.5 H27.5 M31 17.5 H37.5',
+  // two stepped crests side by side, the second one taller
+  better_than_last_time: 'M6 39 H42 M8 39 V33 H12 V29 H16 V26 H20 V39 M25 39 V31 H29 V25 H33 V19 H37 V13 H41 V39',
+  // a counter drum: its wheels in their windows
+  six_figures: 'M8 16 H40 Q43 24 40 32 H8 Q5 24 8 16 Z M12 19 H17 V29 H12 Z M19.5 19 H24.5 V29 H19.5 Z M27 19 H32 V29 H27 Z M34.5 19 H38 M34.5 29 H38 M13.5 22.5 H15.5 M13.5 25.5 H15.5 M21 22.5 H23 M21 25.5 H23 M28.5 22.5 H30.5 M28.5 25.5 H30.5',
+  // two hulls joined by one sagging rope
+  two_hulls_one_rope: 'M8 24 L16 19 L16 29 Z M40 24 L32 19 L32 29 Z M16 24 Q24 31 32 24',
+  // the heavy mass at the line's end, speed chevrons behind it
+  keep_the_heavy_end: 'M9 14 L27 28 M14 10 L30 25 M8 38 L14 34 M13 41 L19 37',
+  // a taut cable with its warning ticks, a hull crossing above it
+  watch_the_cable: 'M6 33 H42 M14 30 V36 M24 30 V36 M34 30 V36 M24 8 L31 15 L24 22 L17 15 Z',
+  // one impact point; three wrecks fanned out from it
+  one_mistake_three_wrecks: 'M10 24 L16 24 M13 21 L13 27 M26 12 L32 18 M32 12 L26 18 M33 22 L39 28 M39 22 L33 28 M25 33 L31 39 M31 33 L25 39',
+  // the graze that missed: a hull, and the shot's curve just past it
+  still_flying: 'M20 10 L28 24 L20 38 L12 24 Z M35 6 C41 16 41 32 35 42',
+  // a hostile on the long line, arriving at the berth ring
+  dragged_all_the_way: 'M7 24 L15 19 L15 29 Z M15 24 Q25 29 32 24',
+  // the rock held; the hull that struck it did not
+  the_rock_won: 'M22 9 L35 13 L40 25 L33 38 L18 36 L13 23 Z M22 9 L27 20 L23 31 M6 19 L12 23 M5 28 L12 27',
+  // a well drawn as two open arcs, the hull already out the far side
+  out_the_other_side: 'M13 31 A12 12 0 1 1 35 31 M20 31 A5.5 5.5 0 1 1 28 31 M31 15 L36 10 M38 5 L44 11 L38 17 L32 11 Z',
+  // a wreck back on a fresh line, moving again
+  one_job_left: 'M9 17 H21 V29 H9 Z M9 17 L21 29 M21 17 L9 29 M21 23 L31 23 M33 19 Q37 23 33 27',
+  // the shot bends round the cover and flies on: cover is not a guarantee
+  cover_not_guaranteed: 'M5 30 Q12 30 14 26 Q24 8 34 26 Q36 30 43 30',
+  // the long way home: a hull on the return arc, its berth waiting
+  back_with_your_name: 'M6 8 L12 12 L6 16 Z M12 12 Q22 15 30 25 M28 41 H40',
+  // riding the shockwave out, streaks behind
+  rode_the_blast: 'M37 5 L43 11 L37 17 L31 11 Z M28 18 L32 14 M24 22 L28 18',
+  // the gap between two bodies that fit you exactly
+  you_fit: 'M9 6 V42 M39 6 V42 M24 14 L29 24 L24 34 L19 24 Z',
+  // a body's dotted line, corrected twice: two burns, one held course
+  second_impulse: 'M8 12 Q22 18 24 24 Q26 30 40 36 M13 14 L17 10 M31 34 L35 30',
+  // two hulls and the rock, all strung on the one rope
+  two_hulls_one_rock: 'M4 24 H44 M9 19 L16 24 L9 29 Z M39 19 L32 24 L39 29 Z',
+  // the wreck you threw met its own wing
+  his_own_wingman: 'M6 24 L13 20 L13 28 Z M24 18 L29 24 L24 30 L19 24 Z M42 19 L35 24 L42 29 Z M13 14 L17 18 M15 11 L19 15',
+  // the rope, cut clean once: two ends and the spark
+  perfect_cut: 'M5 21 Q13 19 20 21 M28 27 Q35 29 43 27 M24 15 V11 M24 33 V37 M17 24 H13 M31 24 H35',
+});
+/** Circle and well accents a drawn emblem needs beyond its one path (stroked, dashed, or filled). */
+const DRAWN_EMBLEM_EXTRA = Object.freeze({
+  keep_the_heavy_end: '<circle cx="33" cy="31" r="7.5" class="con-emblem__core"></circle>',
+  dragged_all_the_way: '<circle cx="38" cy="24" r="6" class="con-emblem__core"></circle>',
+  cover_not_guaranteed: '<circle cx="24" cy="31" r="6" class="con-emblem__core"></circle>',
+  back_with_your_name: '<circle cx="34" cy="31" r="6.5" class="con-emblem__core"></circle>',
+  rode_the_blast: '<circle cx="20" cy="26" r="9" class="con-emblem__core"></circle><circle cx="20" cy="26" r="15" class="con-emblem__ring"></circle>',
+  second_impulse: '<circle cx="24" cy="24" r="3.4" class="con-emblem__dot"></circle>',
+  rope_well_wreck: '<circle cx="28" cy="24" r="9" class="con-emblem__core"></circle><circle cx="28" cy="24" r="4" class="con-emblem__core"></circle>',
+  two_hulls_one_rock: '<circle cx="24" cy="24" r="5" class="con-emblem__core"></circle>',
+  perfect_cut: '<circle cx="24" cy="24" r="2" class="con-emblem__dot"></circle>',
+});
+const STAMP = '<circle cx="31" cy="32.5" r="8.4" class="con-emblem__seal"></circle><circle cx="31" cy="32.5" r="5.6" class="con-emblem__ring"></circle>';
+function emblemSvg(id) {
+  const d = DRAWN_EMBLEM[id];
+  if (!d) return '';
+  const extra = id === 'signed_and_delivered' ? STAMP
+    : id === 'paper_trail' ? '<circle cx="38.6" cy="17.5" r="1.8" class="con-emblem__dot"></circle>'
+    : DRAWN_EMBLEM_EXTRA[id] || '';
+  return `<svg class="con-medal__emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path class="con-emblem__bloom" d="${d}"></path><path class="con-emblem__core" d="${d}"></path>${extra}</svg>`;
+}
+
+function medalArt(row) {
+  if (!row || !row.id) return null;
+  if (DRAWN_EMBLEM[row.id]) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
+  // a hidden deed is a plain medallion: scrambled telemetry until it is earned, then its glyph
+  if (row.hidden) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
+  // A deed the sheet never produced a medal for takes the plain medallion with its glyph — asking
+  // for medal-<id>.webp that was never cut is a 404 and an empty face (has-art hides the glyph).
+  const file = ACHIEVEMENT_MEDALS_MANIFEST.medals && ACHIEVEMENT_MEDALS_MANIFEST.medals[row.id];
+  return { url: MEDAL_ROOT + (file || 'medal-base.webp'), glyph: !file };
+}
+
+function glyphFor(row, size = 30) {
+  if (row && DRAWN_EMBLEM[row.id]) return emblemSvg(row.id);
+  if (row && row.masked) return '<span class="con-medal__scramble" aria-hidden="true">▚▞▖<br>▗%▝<br>▙#▟</span>';
+  return dpIcon(ACHIEVEMENT_EMBLEM[row && row.id] || 'check', size);
+}
+
+/** A word set round the reading medal's rim, reading upright along its foot. */
+function rimHtml(text) {
+  if (!text) return '';
+  const esc = String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return '<svg class="con-medal-read__rim" viewBox="-66 -66 132 132" aria-hidden="true" focusable="false">'
+    + '<path id="con-read-rim" d="M -60 0 A 60 60 0 0 0 60 0" fill="none" stroke="none"></path>'
+    + `<text text-anchor="middle"><textPath href="#con-read-rim" startOffset="50%">${esc}</textPath></text></svg>`;
+}
+
+/** The box the words of an element take (a block's rect is as wide as its column). */
+function inkRect(node) {
+  if (!node || typeof node.getBoundingClientRect !== 'function') return null;
+  try {
+    const doc = node.ownerDocument;
+    if (doc && typeof doc.createRange === 'function' && node.textContent) {
+      const range = doc.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (r && r.width > 0 && r.height > 0) return r;
+    }
+  } catch (_) { /* the element's own box */ }
+  return node.getBoundingClientRect();
+}
+
+function categoryLabel(id) {
+  const s = ACHIEVEMENT_SECTIONS.find((x) => x.id === id);
+  return s ? s.label : String(id || '');
+}
+
+/** The medal to open on: the newest earned, else the one nearest done, else the first. */
+function defaultMedal(rows) {
+  const earned = rows.filter((r) => r.unlocked).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  if (earned.length) return earned[0].id;
+  let best = null;
+  for (const r of rows) if (medalProgress(r) > 0 && (!best || medalProgress(r) > medalProgress(best))) best = r;
+  return (best || rows[0] || {}).id || null;
+}
+
+let refs = null;
+
+export const achievementsScreen = {
+  id: 'achievements',
+  _section: 'all',
+  _chosen: null,
+
+  mount(rootEl, ctx) {
+
+    injectDeckplate();
+    // Meta-ledger polish (achievementsLayouts) must land AFTER the constellation sidecar so its
+    // densify !important rules win equal-specificity ties against constellation.generated.css.
+    this._markCssReady = deferScreenCssReady(rootEl, Promise.resolve(injectConstellationScreens()).then(() => {
+      injectMetaLedgerLayouts();
+    }));
+    this._unsubscribe();
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'of-achievements');
+    rootEl.classList.add('k-screen', 'con-achievements');
+    rootEl.removeAttribute('data-fh-register');
+    rootEl.setAttribute('aria-label', 'Achievements');
+
+    const title = el('header', 'k-title con-head');
+    title.appendChild(el('h1', 'k-display k-t-title con-title', 'Achievements'));
+    const summary = el('p', 'k-t-emph k-62 con-sub', '');
+    title.appendChild(summary);
+    rootEl.appendChild(title);
+
+    // the categories: words on a scale
+    const hang = el('nav', 'k-hang con-filters');
+    hang.setAttribute('aria-label', 'Achievement categories');
+    const sectionWords = words(ACHIEVEMENT_SECTIONS.map((s) => ({ label: s.label, action: s.id, current: s.id === this._section })), {
+      row: true,
+      size: 'emph',
+      ariaLabel: 'Achievement categories',
+      onPick: (action) => this._select(action),
+    });
+    const scaleWrap = el('div', 'con-filters__scale');
+    scaleWrap.appendChild(sectionWords);
+    hang.appendChild(scaleWrap);
+    // up from a category into the medals
+    sectionWords.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowUp' || !refs || !refs.grid) return;
+      event.preventDefault();
+      refs.grid.focusChosen();
+    });
+
+    const stage = el('section', 'k-stage con-medal-stage');
+    stage.setAttribute('aria-live', 'polite');
+    stage.setAttribute('aria-label', 'Medals');
+    rootEl.appendChild(stage);
+
+    // the chosen medal, read beside the grid
+    const read = el('aside', 'con-medal-read');
+    read.setAttribute('aria-label', 'Chosen achievement');
+    rootEl.appendChild(read);
+
+    const foot = el('footer', 'k-foot con-foot');
+    const back = words([{ label: 'Back', action: 'back' }], {
+      size: 'emph',
+      ariaLabel: 'Achievements actions',
+      onPick: () => {
+        const mgr = getManager(ctx);
+        if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+        else if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:popScreen', {});
+      },
+    });
+    back.querySelector('.k-word')?.classList.add('sf-back', 'con-back');
+    foot.appendChild(back);
+    foot.appendChild(hang);
+    rootEl.appendChild(foot);
+
+    const grid = createMedalOrrery(stage, {
+      glyph: (row) => glyphFor(row),
+      art: medalArt,
+      label: (id) => categoryLabel(id),
+      // the orrery stands clear of the title and the categories tucked into its corner
+      avoid: () => [title.querySelector('h1'), summary].map((n) => inkRect(n)),
+      onPick: (id, how) => this._choose(id, { how }),
+      onEdge: () => {
+        if (!refs) return;
+        const current = refs.sectionWords.querySelector('.k-word[aria-current="true"]') || refs.sectionWords.querySelector('.k-word');
+        if (current) try { current.focus(); } catch (e) {}
+      },
+    });
+    const scale = createWordScale(scaleWrap, sectionWords, {
+      counts: (id) => {
+        const rows = (refs && refs.rows) || [];
+        const inSection = rowsForSection(rows, id);
+        return inSection.length ? `${inSection.filter((r) => r.unlocked).length}/${inSection.length}` : '';
+      },
+    });
+
+    refs = { root: rootEl, title, summary, hang, stage, read, foot, sectionWords, grid, scale, rows: [] };
+    // A live unlock while the screen is open (Pause holds the sim, but a Crucible settlement or a
+    // shared-store merge can still land) repaints the grid instead of waiting for the next open.
+    if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
+      const off = ctx.bus.on(ACHIEVEMENT_UNLOCKED_EVENT, () => { if (refs) this._render({ quiet: true }); });
+      this._off = typeof off === 'function' ? off : null;
+    }
+    this._render();
+  },
+
+  _unsubscribe() {
+    if (typeof this._off === 'function') {
+      try { this._off(); } catch (e) {}
+    }
+    this._off = null;
+  },
+
+  _select(id, { quiet = false, chosen = null } = {}) {
+    if (!ACHIEVEMENT_SECTIONS.some((s) => s.id === id)) return;
+    this._section = id;
+    if (refs) {
+      for (const b of refs.sectionWords.querySelectorAll('.k-word')) {
+        const on = b.dataset.action === id;
+        if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+      }
+    }
+    if (!quiet) cue('move');
+    if (!refs) return;
+    const inSection = rowsForSection(refs.rows, id);
+    if (chosen) this._chosen = chosen;
+    else if (id !== 'all' && inSection.length) this._chosen = inSection[0].id;
+    refs.grid.list.setAttribute('aria-label', id === 'all' ? 'All achievements' : `${categoryLabel(id)} achievements`);
+    refs.grid.choose(this._chosen, { section: id });
+    refs.scale.update();
+    const row = refs.rows.find((r) => r.id === this._chosen);
+    if (row) this._paintReading(row, { fresh: !quiet });
+  },
+
+  _choose(id, { quiet = false } = {}) {
+    if (!refs) return;
+    const row = refs.rows.find((r) => r.id === id);
+    if (!row) return;
+    // stepping to another orbit while a category is in front brings that orbit's category to the front
+    if (this._section !== 'all' && row.category !== this._section) { this._select(row.category, { quiet, chosen: id }); return; }
+    const changed = this._chosen !== id;
+    this._chosen = id;
+    refs.grid.choose(id, { instant: quiet });
+    this._paintReading(row, { fresh: changed && !quiet });
+    if (changed && !quiet) cue('move');
+  },
+
+  /** The chosen medal's line: its dial large, its name, what it asks, how far along it is. */
+  _paintReading(row, { fresh = false } = {}) {
+    const read = refs && refs.read;
+    if (!read) return;
+    const k = medalProgress(row);
+    const state = medalState(row);
+    const art = medalArt(row);
+    const counted = !row.masked && Number(row.target) > 1;
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const day = row.unlocked ? String(row.status || '').replace(/^Unlocked\s*/, '') : '';
+    // the rim already reads "EARNED · <date>" when there is a date: the kicker keeps only the
+    // category there, and the status line shows only when there is no rim to say it
+    const stateWord = state === 'earned' ? (day ? '' : 'earned') : state === 'going' ? 'under way' : 'not yet earned';
+    read.dataset.state = state;
+    read.innerHTML = `
+      <div class="con-medal-read__dial${art ? ' has-art' : ''}${art && art.glyph ? ' has-glyph' : ''}" data-state="${state}"><span class="con-medal__body"></span>${medalDialSvg(k, { focusRing: false })}${art ? `<img class="con-medal__art" src="${art.url}" alt="" draggable="false" decoding="async">` : ''}<span class="con-medal__glyph">${glyphFor(row, 44)}</span>${rimHtml(day ? 'earned · ' + day : '')}</div>
+      <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))}${stateWord ? ` <span aria-hidden="true">·</span> <span class="con-medal-read__state">${esc(stateWord)}</span>` : ''}</p>
+      <h2 class="con-medal-read__name">${esc(row.name)}</h2>
+      <p class="con-medal-read__line">${esc(row.description)}</p>
+      ${counted && !row.unlocked ? `<div class="con-medal-read__figure"><span class="con-medal-read__n" data-n>0</span><span class="con-medal-read__of">of ${esc(Number(row.target).toLocaleString('en-US'))}</span></div>` : ''}
+      ${row.unlocked && !day ? '<p class="con-medal-read__status">earned</p>' : ''}
+    `;
+    const dial = read.querySelector('.con-medal-read__dial');
+    const rim = dial && dial.querySelector('.con-medal-read__rim');
+    if (rim) {
+      const w = dial.offsetWidth || 230;
+      const R = w * 0.46 + 18;
+      const m = 30;
+      rim.setAttribute('viewBox', `${-w / 2 - m} ${-w / 2 - m} ${w + 2 * m} ${w + 2 * m}`);
+      const path = rim.querySelector('path');
+      if (path) path.setAttribute('d', `M ${-R} 0 A ${R} ${R} 0 0 0 ${R} 0`);
+    }
+    const n = read.querySelector('[data-n]');
+    if (n && counted && !row.unlocked) rollTo(n, Math.min(Number(row.current) || 0, Number(row.target)));
+    const name = read.querySelector('.con-medal-read__name');
+    if (fresh && name) decrypt(name, name.textContent, { duration: 240 });
+  },
+
+  _render({ quiet = false } = {}) {
+    if (!refs) return;
+    let rows = [];
+    try { rows = readAchievementRows(); } catch (e) { rows = []; }
+    const before = new Set((refs.rows || []).filter((r) => r.unlocked).map((r) => r.id));
+    refs.rows = rows;
+    refs.summary.textContent = nextGoalText(rows);
+    const section = ACHIEVEMENT_SECTIONS.find((s) => s.id === this._section) || ACHIEVEMENT_SECTIONS[0];
+    // nothing the orrery shows changed (a store sync, the push's own refresh): leave it, and the
+    // player's focus in it, alone
+    const sig = section.id + '|' + rows.map((r) => `${r.id}:${r.unlocked ? 1 : 0}:${r.current}:${r.status}:${r.name}`).join(',');
+    if (quiet && sig === refs.sig) { refs.scale.update({ instant: true }); return; }
+    refs.sig = sig;
+    const struck = quiet ? rows.filter((r) => r.unlocked && !before.has(r.id)).map((r) => r.id) : [];
+    if (struck.length) this._chosen = struck[struck.length - 1];
+    const inSection = rowsForSection(rows, section.id);
+    if (!rows.some((r) => r.id === this._chosen)) this._chosen = defaultMedal(section.id === 'all' ? rows : inSection);
+    const chosenRow = rows.find((r) => r.id === this._chosen);
+    if (section.id !== 'all' && chosenRow && chosenRow.category !== section.id) this._chosen = (inSection[0] || chosenRow).id;
+    refs.grid.list.setAttribute('aria-label', section.id === 'all' ? 'All achievements' : `${section.label} achievements`);
+    refs.stage.dataset.count = String(rows.length);
+    refs.grid.set(rows, { chosen: this._chosen, section: section.id });
+    for (const id of struck) refs.grid.strike(id);
+    const row = rows.find((r) => r.id === this._chosen);
+    if (row) this._paintReading(row, { fresh: !quiet || struck.length > 0 });
+    else refs.read.innerHTML = '<p class="con-medal-read__line">No achievements yet.</p>';
+    refs.scale.update({ instant: quiet });
+    if (!quiet) refs.grid.arrive();
+  },
+
+  onShow() {
+    if (!refs) return;
+    this._render();
+    settle(refs.title, { from: 'left', state: 'achievements-title' });
+    settle(refs.hang, { from: 'left', delay: 60, state: 'achievements-hang' });
+    settle(refs.read, { from: 'right', delay: 90, state: 'achievements-read' });
+    settle(refs.foot, { from: 'bottom', delay: 120, state: 'achievements-foot' });
+    if (this._markCssReady) this._markCssReady();
+    const current = refs.sectionWords.querySelector('.k-word[aria-current="true"]') || refs.sectionWords.querySelector('.k-word');
+    if (current) try { current.focus(); } catch (e) {}
+    cue('open');
+  },
+
+  onHide() { cue('close'); },
+  refresh(ctx, options) {
+    // Live unlocks land through the ACHIEVEMENT_UNLOCKED_EVENT subscription; the shell's ~3 Hz
+    // periodic pass only rebuilt the grid and reset the player's place mid-read.
+    if (options && options.periodic) return;
+    this._render({ quiet: true });
+  },
+
+  dispose() {
+    this._unsubscribe();
+    if (refs) {
+      try { refs.grid.dispose(); } catch (e) {}
+      try { refs.scale.dispose(); } catch (e) {}
+    }
+    refs = null;
+  },
+};

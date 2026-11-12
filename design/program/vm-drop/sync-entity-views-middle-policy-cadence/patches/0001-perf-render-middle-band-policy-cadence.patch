@@ -1,0 +1,66 @@
+From: Code Work <code-work@local>
+Subject: perf(render): middle-band policy cadence
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index d39d3a183..50e4af181 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -11198,21 +11198,29 @@ export const render = {
+       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
+         ? hlodVisualRadius
+         : (entity && Number(entity.radius)) || world.radii[slot] || 0;
+-      const projectedPx = projectedWidthPx(
+-        mesh.position,
+-        lodRadius,
+-        this.cam && this.cam.obj,
+-        this.viewport,
+-      );
+-      if (userData.lod && userData.updateLod) {
+-        lodChecked++;
+-        lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
+-        userData.updateLod(lodLevel);
++      // Off-glass runway (middle band): poses + submit stay every frame; projected LOD,
++      // local shadow-caster policy, and the render-entity classify share the same closure
++      // cadence as micro-motion — they cannot change a readable on-glass pixel until the
++      // root re-enters the inner band (or its middle-band cadence slot).
++      let projectedPx = userData._projectedPx;
++      if (runClosures || !Number.isFinite(projectedPx)) {
++        projectedPx = projectedWidthPx(
++          mesh.position,
++          lodRadius,
++          this.cam && this.cam.obj,
++          this.viewport,
++        );
++        userData._projectedPx = projectedPx;
++        if (userData.lod && userData.updateLod) {
++          lodChecked++;
++          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
++          userData.updateLod(lodLevel);
++        }
+       }
+       const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
+       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
+       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
+-      if (typeName === 'ship' || typeName === 'station') {
++      if (runClosures && (typeName === 'ship' || typeName === 'station')) {
+         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || { type: typeName }, mesh))) {
+           shadowPolicyRefreshes++;
+           noteShadowPolicyChanged(this._shadowReceiverTally, true);
+@@ -11271,7 +11279,7 @@ export const render = {
+           onLiveGlass,
+         }));
+       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+-      if ((typeName === 'ship' || typeName === 'station')
++      if (runClosures && (typeName === 'ship' || typeName === 'station')
+           && noteRealtimeShadowCasterPose(mesh, {
+             visualRadius: lodRadius,
+             extent: this._shadowOrthoExtent,
+@@ -11280,7 +11288,7 @@ export const render = {
+         this._shadowMapDirty = true;
+       }
+ 
+-      if (entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
++      if (runClosures && entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
+       fullSynced++;
+ 
+       // Visible interactive and hero roots retain their authored per-frame presentation closures.
