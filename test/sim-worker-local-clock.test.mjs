@@ -789,6 +789,7 @@ test('a two-second presentation stall resumes without teleporting the world ahea
   const replies = [];
   let receive;
   let workerError;
+  let heartbeat;
   const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
   const state = createGameState(4242);
   const effects = createTimeEffects(state);
@@ -830,9 +831,10 @@ test('a two-second presentation stall resumes without teleporting the world ahea
     await new Promise((resolve) => setTimeout(resolve, 2000));
     const heldTick = latest()?.stateTick || 0;
     const heldSimTime = latest()?.simTime || 0;
-    // A beat ends the stall; the world must resume from the held pose — a
+    // Foreground presentation resumes its recurring beats; the world must resume from the held pose — a
     // teleport would replay ~120 owed ticks and land simTime ~2 s ahead.
     lane.runner.heartbeat();
+    heartbeat = setInterval(() => lane.runner.heartbeat(), 16);
     await waitFor(() => (latest()?.stateTick || 0) > heldTick + 2, 30000);
     await new Promise((resolve) => setTimeout(resolve, 600));
     const resumed = latest() || {};
@@ -847,8 +849,72 @@ test('a two-second presentation stall resumes without teleporting the world ahea
       'the worker recorded the presentation-stall hold');
     assert.equal(workerError, undefined);
   } finally {
+    clearInterval(heartbeat);
     lane?.close();
     await worker.terminate();
+  }
+});
+
+test('a foreground heartbeat arriving before a throttled timer discards the hidden wall interval', async (t) => {
+  const previousSelf = globalThis.self;
+  const replies = [];
+  globalThis.self = { postMessage: (reply) => replies.push(reply) };
+  const send = (data) => globalThis.self.onmessage({ data });
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?heartbeat-before-timer-${Date.now()}`);
+    send({
+      kind: 'init', seq: 'heartbeat-before-timer', profile: 'production', clockMode: 'worker-local',
+      timeScale: 1, seed: 4242, settings: {},
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'heartbeat-before-timer',
+    });
+    await waitFor(() => replies.some((reply) => reply.kind === 'ready'));
+
+    // Keep the real browser adapter and host. Control only dispatch order and wall time so
+    // the returning message always arrives ahead of the timer that was delayed with it.
+    let now = performance.now();
+    let timerId = 0;
+    const timers = new Map();
+    t.mock.method(performance, 'now', () => now);
+    t.mock.method(globalThis, 'setTimeout', (callback) => {
+      timers.set(++timerId, callback);
+      return timerId;
+    });
+    t.mock.method(globalThis, 'clearTimeout', (id) => timers.delete(id));
+    const fireClock = async () => {
+      const scheduled = timers.entries().next().value;
+      assert.ok(scheduled, 'the authoritative clock is armed');
+      const [id, fire] = scheduled;
+      timers.delete(id);
+      fire();
+      await settle();
+    };
+
+    send({ kind: 'clockControl', active: true, generation: 1, timeScale: 1 });
+    await settle();
+    send({ kind: 'laneHeartbeat' });
+    now += 1000;
+    send({ kind: 'laneHeartbeat' });
+    await fireClock();
+    assert.equal(replies.filter((reply) => reply.kind === 'clockTick').length, 0,
+      'a timer overdue across the gap may not publish a catch-up step');
+
+    now += 1000 / 60 + 1;
+    await fireClock();
+    const first = replies.find((reply) => reply.kind === 'clockTick');
+    assert.ok(first, 'one fresh interval resumes simulation');
+    assert.equal(first.clockDiagnostics.steps, 1);
+    assert.equal(first.clockDiagnostics.shedSteps, 0);
+    assert.equal(first.clockDiagnostics.heartbeatHolds, 1);
+  } finally {
+    if (typeof globalThis.self.onmessage === 'function') {
+      send({ kind: 'shutdown', seq: 'heartbeat-before-timer-shutdown' });
+      await settle();
+    }
+    t.mock.restoreAll();
+    if (previousSelf === undefined) delete globalThis.self;
+    else globalThis.self = previousSelf;
   }
 });
 

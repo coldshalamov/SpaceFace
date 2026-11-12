@@ -1372,8 +1372,18 @@ self.onmessage = (event) => {
   // resumes a held clock from the held pose without charging the stalled wall interval.
   if (msg.kind === 'laneHeartbeat') {
     const now = localNowMs();
+    const lastBeat = localClock.lastHeartbeatAtMs;
+    const holdDeadline = lastBeat + LOCAL_HEARTBEAT_HOLD_MS;
+    // A throttled worker timer may still be queued when the foreground message arrives.
+    // Check the previous beat before refreshing it so that timer cannot charge the gap.
+    const missedHold = localClock.active && localClock.scale > 0 && lastBeat > 0
+      && now > holdDeadline && localClock.anchorMs <= holdDeadline;
     localClock.lastHeartbeatAtMs = now;
-    if (localClock.heartbeatHeld) {
+    if (localClock.heartbeatHeld || missedHold) {
+      if (!localClock.heartbeatHeld) {
+        localClock.heartbeatHolds += 1;
+        localClock.heartbeatHoldStartMs = holdDeadline;
+      }
       localClock.heartbeatHeld = false;
       localClock.heartbeatHeldMs += Math.max(0, now - localClock.heartbeatHoldStartMs);
       localClock.heartbeatHoldStartMs = 0;
