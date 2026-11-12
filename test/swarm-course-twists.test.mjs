@@ -460,3 +460,47 @@ test('The Yardmaster: the lane reverses twice behind a fresh amber, and strings 
     assert.ok(westExit, 'the reversed string left through the west end');
   } finally { h.destroy(); }
 });
+
+// ── Round 22 — Chain Gang ──────────────────────────────────────────────────────────────
+
+test('Chain Gang: the cast flies in shackled pairs through the attachments service', () => {
+  const h = boot(22);
+  try {
+    // Physics authority stub: the real create() path (def lookup, socket select,
+    // endpoint validation) runs for real — only the Rapier handle is faked.
+    h.helpers.combatPhysics = {
+      createAttachment: (input) => `ph_${input.attachmentId}`,
+      cutAttachment: () => true,
+      setAttachmentReel: () => true,
+      getAttachmentTelemetry: () => null,
+    };
+    // The cast lands across the opening ticks; let the gang finish pairing plus the
+    // odd man's grace window.
+    h.tickUntil(4);
+    const cohort = h.entities().filter((e) => e.data && e.data.runCohort === 'survival' && e.type === 'ship');
+    assert.ok(cohort.length >= 15, `round 22 fields its cast (got ${cohort.length})`);
+    const links = h.attachments().filter((a) => a.defId === 'attachment_snarl');
+    assert.ok(links.length >= 7, `the gang is chained (${links.length} links)`);
+    // Every member names a partner — at most one may still wait out the odd-man
+    // grace while a reinforcement lands.
+    const unbound = cohort.filter((e) => e.data.swarmGangPartner == null);
+    assert.ok(unbound.length <= 1, `at most one hull runs unchained (got ${unbound.length})`);
+    // Each link binds two DISTINCT living cohort members at tether sockets.
+    for (const link of links) {
+      const a = h.state.entities.get(link.ownerId);
+      const b = h.state.entities.get(link.targetId);
+      assert.ok(a && b && a !== b, 'a link binds two different gang members');
+      assert.equal(link.defId, 'attachment_snarl');
+    }
+    // Killing one member breaks its shackle through the service's own sweep — the
+    // partner is freed, the record retires.
+    const victim = cohort.find((e) => e.data.swarmGangPartner != null);
+    const partnerId = victim.data.swarmGangPartner;
+    h.helpers.removeEntity(victim.id);
+    h.tickN(2);
+    const freed = h.state.entities.get(partnerId);
+    assert.ok(freed, 'the partner survives');
+    const stillBound = h.attachments().filter((a) => a.ownerId === victim.id || a.targetId === victim.id);
+    assert.equal(stillBound.length, 0, 'a dead member\'s shackles retire with it');
+  } finally { h.destroy(); }
+});

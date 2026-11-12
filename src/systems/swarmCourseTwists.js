@@ -29,6 +29,7 @@ import {
   SWARM_YARDMASTER_REVERSALS,
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { getCombatKernel } from '../combat/kernel.js';
 
 function finite(v, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
@@ -359,12 +360,121 @@ function createYardmasterModule(host) {
   };
 }
 
+/**
+ * Round 22 — Chain Gang. Every cohort hull flies shackled to a partner through the
+ * real attachments service (`attachment_snarl`, tether socket to tether socket),
+ * so a Line latch on one member drags the other by the snarl spring — the physics
+ * authority owns the pull; the module only owns who is chained to whom. New
+ * arrivals queue in spawn order and pair off as partners become available; the
+ * last odd man of a spawn-quiet window chains onto the previous link's tail so
+ * the gang never runs a free member.
+ */
+const SWARM_GANG_ODD_GRACE_TICKS = 30;
+
+function createChainGangModule(host) {
+  const queue = [];        // member ids awaiting a partner, in arrival order
+  const queuedAt = new Map();
+  let lastTailId = null;   // target of the most recent link — the odd man's anchor
+
+  function service() {
+    try {
+      const kernel = host.ctx && getCombatKernel(host.ctx);
+      return kernel && kernel.attachments;
+    } catch (_) { return null; }
+  }
+
+  function living(id) {
+    const st = host.state;
+    const e = st && st.entities && typeof st.entities.get === 'function' ? st.entities.get(id) : null;
+    return e && e.alive !== false ? e : null;
+  }
+
+  function gangEligible(e) {
+    return !!(e && e.data && e.data.runCohort === 'survival'
+      && e.data.swarmGangMember !== true
+      && e.type === 'ship');
+  }
+
+  function stamp(e) {
+    if (!gangEligible(e)) return;
+    e.data.swarmGangMember = true;
+    queue.push(e.id);
+    queuedAt.set(e.id, host.state && Number.isInteger(host.state.tick) ? host.state.tick : 0);
+  }
+
+  function bind(owner, target) {
+    const svc = service();
+    if (!svc || !owner || !target || owner === target) return false;
+    const res = svc.create({ defId: 'attachment_snarl', ownerId: owner.id, targetId: target.id });
+    if (!res || res.ok !== true || !res.attachment) return false;
+    owner.data.swarmGangPartner = target.id;
+    target.data.swarmGangPartner = owner.id;
+    owner.data.swarmGangAttachment = res.attachment.id;
+    lastTailId = target.id;
+    return true;
+  }
+
+  function dequeue(id) {
+    const at = queue.indexOf(id);
+    if (at >= 0) queue.splice(at, 1);
+    queuedAt.delete(id);
+  }
+
+  function drain() {
+    while (queue.length >= 2) {
+      const a = living(queue[0]);
+      const b = living(queue[1]);
+      if (!a) { dequeue(queue[0]); continue; }
+      if (!b) { dequeue(queue[1]); continue; }
+      // A refused bind keeps the pair queued — the service declines while its
+      // physics port is down, and the next tick's drain asks again.
+      if (!bind(a, b)) break;
+      dequeue(a.id); dequeue(b.id);
+    }
+    // Odd man out: if no partner has arrived within the grace window, the gang
+    // grows a chain link — the odd member shackles to the previous link's tail.
+    if (queue.length === 1) {
+      const odd = living(queue[0]);
+      const tail = living(lastTailId);
+      const waited = odd && tail
+        && Number.isInteger(host.state && host.state.tick)
+        && host.state.tick - (queuedAt.get(odd.id) || 0) >= SWARM_GANG_ODD_GRACE_TICKS;
+      if (waited) {
+        const oddId = odd.id;
+        bind(odd, tail);
+        dequeue(oddId);
+      }
+    }
+  }
+
+  function sweep() {
+    const st = host.state;
+    for (const e of (st && st.entityList) || []) {
+      if (gangEligible(e)) stamp(e);
+    }
+  }
+
+  return {
+    activate() { sweep(); drain(); },
+    onEntitySpawned(p) {
+      const e = p && (p.entity || living(p.id));
+      if (e) stamp(e);
+      drain();
+    },
+    onEntityDestroyed(p) { if (p && p.id != null) dequeue(p.id); },
+    onEntityRetired(p) { if (p && p.id != null) dequeue(p.id); },
+    update() { sweep(); drain(); },
+    teardown() { queue.length = 0; queuedAt.clear(); lastTailId = null; },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
   highway_robbery: createHighwayRobberyModule,
   the_law: createTheLawModule,
   the_yardmaster: createYardmasterModule,
+  chain_gang: createChainGangModule,
 };
 
 export const swarmCourseTwists = {

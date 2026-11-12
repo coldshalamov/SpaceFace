@@ -51,7 +51,7 @@ export const SWARM_COURSE = Object.freeze([
   courseRound(20, 'The Yardmaster', 'Boss. It controls the freight. The lanes change direction mid-fight. The room changes again. Bench', 'the_yardmaster'),
   // reef_surge's own telegraph is the round's lesson: the room moves. Let it throw for you.
   courseRound(21, 'The Wall', 'heavies, shoulder to shoulder. Guns do nothing. Use the room', 'reef_surge'),
-  courseRound(22, 'Chain Gang', 'every enemy is tethered to another. Swing one, swing them all', null),
+  courseRound(22, 'Chain Gang', 'every enemy is tethered to another. Swing one, swing them all', 'chain_gang'),
   // shepherd_pulse's tell — "they fly as one. Break the one." — is the Choir's find-the-singer.
   courseRound(23, 'The Choir', 'Zealots in rings. Find the singer', 'shepherd_pulse'),
   courseRound(24, 'Everything Must Go', 'prices halved, enemies doubled, ninety seconds', null),
