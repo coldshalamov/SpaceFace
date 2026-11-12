@@ -266,7 +266,10 @@ export function createFloatingText(ctx) {
         }
         const nextTransform = `translate3d(${cx}px,${py}px,0) translate(-50%,-50%)`;
         if (node.el.style.transform !== nextTransform) node.el.style.transform = nextTransform;
-        const nextOp = fade < 1 ? String(fade) : '';
+        // On a phone a faded tag over the vitals or keys is still clutter (lead look, MOB-07): a blocked tag hides.
+        const phoneDeck = typeof document !== 'undefined'
+          && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+        const nextOp = fade < 1 ? (phoneDeck ? '0' : String(fade)) : '';
         if (node.op !== nextOp) { node.op = nextOp; node.el.style.opacity = nextOp; }
       }
     }
