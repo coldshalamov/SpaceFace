@@ -198,6 +198,7 @@ import { presentationEntityIdForCourseTarget, resolveContract47aRecoveryTarget }
 import { captureEntitySelection, liveEntityById, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import {
   dropAsteroidFieldSector,
+  getAsteroidFieldRock,
   insertAsteroidFieldRock,
   promoteAsteroidFieldRock,
   queryAsteroidField,
@@ -212,7 +213,7 @@ import {
   getDressingRow,
   markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
-import { markAuxRowDirty } from '../world/auxRowJournal.js';
+import { markAuxRowDirty, markAuxRowRemoved } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
 import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
 import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
@@ -263,7 +264,7 @@ import {
 import { gateTollFor } from '../data/travelChoices.js';
 import { auditEdgeKey, gateTransitClosed } from '../data/worldPressure.js';
 import { removeCargo } from './cargo.js';
-import { Masks } from '../core/entity.js';
+import { Masks, clearEntityRuntime } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
   releaseActivityPhysicsInterest,
@@ -1228,15 +1229,18 @@ export const world = {
     const placePlayer = !noTeleport && opts.placePlayer !== false;
 
     const prevSectorId = state.world.currentSectorId || null;
+    // Mint this producer's enter epoch before any yield or emit. Sector-changing enters
+    // used to mint at the departure boundary and same-sector enters at the emit tail,
+    // so a deferred residency queue minted mid-plan read the PREVIOUS enter's serial as
+    // live — a drain resuming under a same-sector refresh then saw a serial it could
+    // never match. One mint up front gives every drain this producer spawns the same
+    // (world, epoch, queue) identity for the whole run. The run-scoped monotonic still
+    // mints before cleanup/exit, so deferred-enter FIFO payloads and replay-suppression
+    // keep their exact mismatch semantics; a nested enter or restore mints over it.
+    state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+    state.world.enterSerial = state.enterSerialSeq;
     if (prevSectorId && prevSectorId !== sectorId) {
       this._clearAdoptedSalvorApproachState(state);
-      // Bump before cleanup and exit: the deferred-enter FIFO holds entries minted under the
-      // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
-      // hold beat inside that gap would still see the old epoch as live and mint into
-      // the departing sector. A run-scoped monotonic minted at exit keeps every
-      // pre-gap payload dead for the rest of the enter.
-      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
-      state.world.enterSerial = state.enterSerialSeq;
       const departingWorld = state.world;
       const enterEpoch = state.world.enterSerial;
       // Retire only the captured departing cohort before exit listeners or destination
@@ -1252,9 +1256,8 @@ export const world = {
         || state.world.currentSectorId !== prevSectorId) return null;
     }
 
-    // The serial is final for this producer: sector-changing enters minted it at the
-    // departure boundary, same-sector refresh/Continue mints at the emit below. Any
-    // later reset, replacement world or nested enter changes it.
+    // The serial is final for this producer — it was minted above before the first
+    // possible yield. Any later reset, replacement world or nested enter changes it.
     const producerEpoch = state.world.enterSerial;
     const superseded = () => state.world !== producerWorld
       || state.world.enterSerial !== producerEpoch;
@@ -1294,6 +1297,9 @@ export const world = {
       noTeleport,
       focusGlobal,
       restoreDurableRecords: opts.restoreDurableRecords === true,
+      // Producer identity for every brick/queue the plan mints: a nested enter or
+      // restore inside one of the plan's own yields supersedes it mid-flight.
+      stale: superseded,
     };
     if (this._applyResidencyPlan !== world._applyResidencyPlan) {
       this._applyResidencyPlan(sectorId, planOpts);
@@ -1358,12 +1364,8 @@ export const world = {
     // The sequence lives on the state root, not the world record: New Game replaces
     // state.world wholesale, so a per-world counter restarts at 1 and a pending emit tail
     // carrying epoch 1 would alias into the fresh world. A run-scoped monotonic keeps every
-    // pre-reset payload mismatched forever. Same-sector enters (no exit emit) still mint
-    // here; sector-changing enters already minted at the exit emit above.
-    if (!(prevSectorId && prevSectorId !== sectorId)) {
-      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
-      state.world.enterSerial = state.enterSerialSeq;
-    }
+    // pre-reset payload mismatched forever. Every enter now mints once at producer start
+    // (before the exit/plan yields), so enterEpoch is already this producer's own.
     const enterPayload = {
       sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
       enterEpoch: state.world.enterSerial,
@@ -1468,6 +1470,12 @@ export const world = {
    */
   *_applyResidencyPlanChunks(membershipSectorId, opts = {}) {
     const state = this.state;
+    // opts.stale — producer identity predicate (world + enter epoch) threaded from
+    // enterSectorChunked. Checked after every yield and before every write phase so a
+    // superseded plan never finishes materializing, demoting, queue-minting or
+    // publishing under a replacement run.
+    const stale = typeof opts.stale === 'function' ? opts.stale : null;
+    const abort = () => !!(stale && stale());
     this._ensureResidencyState();
     this._pendingResidency = [];
     const focus = opts.focusGlobal
@@ -1490,6 +1498,8 @@ export const world = {
     // while the shared ship cap remains true even inside this synchronous handoff.
     const retiredBags = new Map();
     for (const [id, previousTier] of previousTiers) {
+      // Stripping FULL extras despawns combat/dressing — same nested-enter exposure.
+      if (abort()) return;
       const nextTier = plan.tiers.get(id) || RESIDENCY_TIER.RECORD_ONLY;
       if (previousTier === RESIDENCY_TIER.FULL && nextTier !== RESIDENCY_TIER.FULL) {
         const bag = state.world.sectorContents[id];
@@ -1512,12 +1522,17 @@ export const world = {
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
         && tier === RESIDENCY_TIER.FULL;
-      yield* this._ensureSectorMaterializedChunks(id, tier, { restoreDurableRecords });
+      yield* this._ensureSectorMaterializedChunks(id, tier, { restoreDurableRecords, stale });
+      if (abort()) return;
       this._setResidentMeta(id, tier, opts.reason || 'residency');
       yield 'residency:materialized';
+      if (abort()) return;
     }
+    if (abort()) return;
     // Demote everyone marked RECORD_ONLY (scoped despawn only).
     for (const id of plan.demote) {
+      // Demotion emits entity:destroyed — a listener may nested-enter mid-loop.
+      if (abort()) return;
       const prev = state.world.residentSectors[id];
       if (prev && prev.tier !== RESIDENCY_TIER.RECORD_ONLY) {
         this._demoteSectorToRecordOnly(id);
@@ -1527,6 +1542,7 @@ export const world = {
     }
     // Sync FULL/REDUCED transitions for already-materialized bags (enemies/dressing LOD).
     for (const id of immediate) {
+      if (abort()) return;
       const tier = plan.tiers.get(id);
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
@@ -1534,16 +1550,24 @@ export const world = {
       this._syncSectorTierContent(id, tier, { restoreDurableRecords, retiredBag: retiredBags.get(id) });
     }
 
+    if (abort()) return;
     if (deferred.length) {
+      // Bind every deferred job to this producer's identity — world object, the enter
+      // epoch minted at producer start, and the queue array itself (a later plan always
+      // re-points _pendingResidency). Any drain resuming one of these jobs re-checks all
+      // three before it may spawn, write a tier/meta, or emit a receipt.
       this._pendingResidency = deferred.map((id) => ({
         sectorId: id,
         tier: plan.tiers.get(id),
         reason: opts.reason || 'residency',
         membershipSectorId,
         noTeleport: !!opts.noTeleport,
+        world: state.world,
+        enterEpoch: state.world.enterSerial,
       }));
     }
 
+    if (abort()) return;
     this.bus.emit('world:residency', {
       sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
         sectorId,
@@ -1567,19 +1591,43 @@ export const world = {
     return !!(this.state && this.state.world && this.state.world.sliceArrival === true);
   },
 
+  /**
+   * Producer identity for a deferred residency job: the world object, the enter epoch
+   * minted at producer start, and the live queue array. A queue is superseded when a
+   * later plan re-points _pendingResidency (identity check covers it), the world is
+   * replaced, or enterSerial advances without a replan (e.g. a restore's opening mint).
+   */
+  _residencyQueueStale(queue, job) {
+    const state = this.state;
+    return !job || typeof job !== 'object'
+      || job.world !== state.world
+      || !Number.isFinite(job.enterEpoch)
+      || job.enterEpoch !== state.world.enterSerial
+      || this._pendingResidency !== queue;
+  },
+
   _drainResidencyQueue(budget = ARRIVAL_RESIDENCY_BUDGET) {
     const jobs = this._pendingResidency;
     if (!jobs || !jobs.length) return 0;
     const limit = Math.max(1, Math.floor(Number(budget) || ARRIVAL_RESIDENCY_BUDGET));
     let ran = 0;
+    let abandoned = false;
     while (ran < limit && jobs.length) {
-      const job = jobs.shift();
+      const job = jobs[0];
+      // A superseded job never spawns, writes a tier/meta, or lets the tail emit its
+      // stale receipt. The whole queue shares one producer, so one stale job ends it.
+      if (this._residencyQueueStale(jobs, job)) {
+        jobs.length = 0;
+        abandoned = true;
+        break;
+      }
+      jobs.shift();
       this._ensureSectorMaterialized(job.sectorId, job.tier, { restoreDurableRecords: false });
       this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
       this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
       ran++;
     }
-    if (!jobs.length) {
+    if (!jobs.length && !abandoned) {
       this._emitResidencyArrivalSlice();
     }
     return ran;
@@ -1611,12 +1659,29 @@ export const world = {
     const jobs = this._pendingResidency;
     if (!jobs || !jobs.length) return;
     while (jobs.length) {
-      const job = jobs.shift();
-      yield* this._ensureSectorMaterializedChunks(job.sectorId, job.tier, { restoreDurableRecords: false });
+      const job = jobs[0];
+      // Identity check before any spawn/write: a resumed stale drain stops here and
+      // never touches the replacement plan's world, tiers, metadata or receipt.
+      if (this._residencyQueueStale(jobs, job)) { jobs.length = 0; return; }
+      jobs.shift();
+      const stale = () => this._residencyQueueStale(jobs, job);
+      for (const step of this._ensureSectorMaterializedChunks(
+        job.sectorId, job.tier, { restoreDurableRecords: false, stale })) {
+        yield step;
+      }
+      // The materialize generator aborts itself on stale; re-check before the tier
+      // write, the resident-metadata write and the per-job emit boundary.
+      if (stale()) return;
       this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
+      if (stale()) return;
       this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      if (stale()) return;
       yield 'residency-job';
+      // A supersession can land during the paint boundary: re-validate before the
+      // next job and before the tail receipt — the queue emits only for its producer.
+      if (stale()) return;
     }
+    if (this._pendingResidency !== jobs) return;
     this._emitResidencyArrivalSlice();
   },
 
@@ -1650,6 +1715,12 @@ export const world = {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) return;
+    // opts.stale — producer identity predicate (world + enter epoch + queue) threaded
+    // from a deferred drain. Checked after every yield and before every spawn, bag
+    // publish or metadata write: a superseded materialize abandons its unpublished bag
+    // and releases what it already minted instead of overwriting the replacement.
+    const stale = typeof opts.stale === 'function' ? opts.stale : null;
+    if (stale && stale()) return;
     let rec = state.world.residentSectors[sectorId];
     if (!rec) {
       rec = { tier: RESIDENCY_TIER.RECORD_ONLY, epoch: 0, reason: 'init', lastTouchTick: state.tick | 0 };
@@ -1668,54 +1739,177 @@ export const world = {
     const disc = this._discoveryFor(sectorId);
     const active = this._emptySectorBag();
 
-    this._spawnStations(sector, active, rng);
-    yield 'materialize:stations';
-    yield* this._spawnFieldsChunks(sector, active, disc, rng);
-    yield 'materialize:fields';
-    this._spawnGates(sector, active, rng);
-    yield 'materialize:gates';
-    this._spawnPOIs(sector, active, disc, rng, tier);
-    yield 'materialize:pois';
-    this._spawnHazards(sector, active);
-    // A used-up field's onward seam is a durable promise: the nextFields record outlives the
-    // sector bag, so re-materialize re-derives the same plan and re-places its rocks before
-    // ambient re-roll. Rocks the player already mined stay mined via resourceBodies.
-    this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
-    yield 'materialize:field-opportunity';
-    // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
-    const rematerialized = yield* this._rematerializeSectorRecordsChunks(sectorId, active, tier, opts);
-    yield 'materialize:records';
-    if (tier === RESIDENCY_TIER.FULL) {
-      // The bag is populated (anchors + records) but not yet published — arm the FULL-extras
-      // decode runway while dressing/enemies/optics still mount. Covers fresh-boot embark and
-      // first-visit jumps, which no prewarm arm reaches (no bag existed to enumerate).
-      if (this.helpers && typeof this.helpers.warmSectorFullExtras === 'function') {
-        this.helpers.warmSectorFullExtras(sectorId, active);
-      }
-      yield* this._spawnDressingChunks(sector, active, rng);
-      yield 'materialize:dressing';
-      // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
-      if (!rematerialized.hadCombatHistory) {
-        yield* this._spawnEnemiesChunks(sector, active, rng);
-        this._spawnBossIfDue(sector, active, rng);
-      } else {
-        // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
-        if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
-      }
-      yield 'materialize:enemies';
-      this._ensureOpticStructures(sector, active);
-      // Built-at-FULL stamp: _promoteSectorToFull skips its whole rescan when set — the bag
-      // already carries dressing/enemies/records from this build. Keys on the tier the bag
-      // was BUILT at, not rec.tier (the materialize call itself overwrites rec.tier below).
-      active.fullExtrasBuilt = true;
+    // Track exactly the entities this pass mints so an abort can undo only its own
+    // spawns (a bag also adopts pre-existing record holders — never despawned here).
+    const spawnedIds = new Set();
+    let restoreSpawn = null;
+    if (this.helpers && typeof this.helpers.spawnEntity === 'function') {
+      const owner = this.helpers;
+      const baseSpawn = owner.spawnEntity;
+      // Attribute a spawn to this pass only while this pass could actually be running:
+      // a suspended pass either has a deeper producer's wrapper on top (nested enter)
+      // or reads superseded under its own identity check (foreign spawn in the gap).
+      const trackSpawn = function (spec) {
+        // A stale wrapper left topmost by interleaved generator teardown self-pops on the
+        // first spawn after death instead of lingering as a permanent pass-through.
+        // Mid-chain under a deeper producer it must not touch the top of the stack.
+        if (stale && stale() && owner.spawnEntity === trackSpawn) owner.spawnEntity = baseSpawn;
+        const e = baseSpawn.call(owner, spec);
+        if (e && e.id != null && owner.spawnEntity === trackSpawn) {
+          spawnedIds.add(e.id);
+        }
+        return e;
+      };
+      owner.spawnEntity = trackSpawn;
+      // Pop only while this pass's wrapper is on top: a deeper producer that installed
+      // its own wrapper above ours must restore through its own finally (it lands back
+      // on trackSpawn, which then passes through harmlessly — its stale() stays true).
+      restoreSpawn = () => { if (owner.spawnEntity === trackSpawn) owner.spawnEntity = baseSpawn; };
     }
+    let tornDown = false;
+    const teardown = () => {
+      if (tornDown) return;
+      tornDown = true;
+      this._abandonSectorMaterialize(sectorId, active, spawnedIds);
+    };
+    const abortIfStale = () => {
+      if (!stale || !stale()) return false;
+      teardown();
+      return true;
+    };
 
-    state.world.sectorContents[sectorId] = active;
-    rec.tier = tier;
-    rec.epoch = epoch;
-    rec.materializedAtTick = state.tick | 0;
-    this._ensureTethysEntranceRun(sectorId);
-    this.helpers.requestPresentationRebuild?.('sector-materialize');
+    let published = false;
+    try {
+      this._spawnStations(sector, active, rng);
+      yield 'materialize:stations';
+      if (abortIfStale()) return;
+      yield* this._spawnFieldsChunks(sector, active, disc, rng, stale);
+      if (abortIfStale()) return;
+      yield 'materialize:fields';
+      if (abortIfStale()) return;
+      this._spawnGates(sector, active, rng);
+      yield 'materialize:gates';
+      if (abortIfStale()) return;
+      this._spawnPOIs(sector, active, disc, rng, tier);
+      yield 'materialize:pois';
+      if (abortIfStale()) return;
+      this._spawnHazards(sector, active);
+      // A used-up field's onward seam is a durable promise: the nextFields record outlives the
+      // sector bag, so re-materialize re-derives the same plan and re-places its rocks before
+      // ambient re-roll. Rocks the player already mined stay mined via resourceBodies.
+      this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
+      yield 'materialize:field-opportunity';
+      if (abortIfStale()) return;
+      // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
+      const rematerialized = (yield* this._rematerializeSectorRecordsChunks(
+        sectorId, active, tier, { ...opts, stale })) || {};
+      if (abortIfStale()) return;
+      yield 'materialize:records';
+      if (abortIfStale()) return;
+      if (tier === RESIDENCY_TIER.FULL) {
+        // The bag is populated (anchors + records) but not yet published — arm the FULL-extras
+        // decode runway while dressing/enemies/optics still mount. Covers fresh-boot embark and
+        // first-visit jumps, which no prewarm arm reaches (no bag existed to enumerate).
+        if (this.helpers && typeof this.helpers.warmSectorFullExtras === 'function') {
+          this.helpers.warmSectorFullExtras(sectorId, active);
+        }
+        yield* this._spawnDressingChunks(sector, active, rng, stale);
+        if (abortIfStale()) return;
+        yield 'materialize:dressing';
+        if (abortIfStale()) return;
+        // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
+        if (!rematerialized.hadCombatHistory) {
+          yield* this._spawnEnemiesChunks(sector, active, rng, stale);
+          if (abortIfStale()) return;
+          this._spawnBossIfDue(sector, active, rng);
+        } else {
+          // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
+          if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
+        }
+        yield 'materialize:enemies';
+        if (abortIfStale()) return;
+        this._ensureOpticStructures(sector, active);
+        // Built-at-FULL stamp: _promoteSectorToFull skips its whole rescan when set — the bag
+        // already carries dressing/enemies/records from this build. Keys on the tier the bag
+        // was BUILT at, not rec.tier (the materialize call itself overwrites rec.tier below).
+        active.fullExtrasBuilt = true;
+      }
+
+      // One identity check before the only two writes that publish this producer.
+      if (abortIfStale()) return;
+      state.world.sectorContents[sectorId] = active;
+      rec.tier = tier;
+      rec.epoch = epoch;
+      rec.materializedAtTick = state.tick | 0;
+      published = true;
+      this._ensureTethysEntranceRun(sectorId);
+      this.helpers.requestPresentationRebuild?.('sector-materialize');
+    } finally {
+      if (restoreSpawn) restoreSpawn();
+      // A suspended generator whose driver abandoned it (outer superseded-return,
+      // dropped drain) lands here through .return(): anything the pass spawned,
+      // reserved or rowed and never published is reclaimed — not leaked live.
+      if (!published) teardown();
+    }
+  },
+
+  /**
+   * Undo an aborted materialize: despawn exactly the entities this pass spawned (including
+   * bodies an ordinary residency sweep would shield — mission/persistent tags earned here
+   * belong to the dead producer) and remove the compact-table rows it inserted, by id only.
+   * Never a sector-wide drop: a live replacement bag may already own rows for this sector.
+   * Also returns ambient/bounty spawnBudget reservations the aborted pass requested.
+   */
+  _abandonSectorMaterialize(sectorId, active, spawnedIds) {
+    const state = this.state;
+    const ids = new Set(spawnedIds || []);
+    const collect = (v) => { if (Number.isSafeInteger(v)) ids.add(v); };
+    for (const f of (active && active.fields) || []) {
+      for (const id of (f && f.asteroidIds) || []) collect(id);
+    }
+    // Optic-lattice cells are asteroid-field rows too (insertAsteroidFieldRock in
+    // _ensureOpticStructures) — same by-id teardown, never a sector-wide drop.
+    for (const id of (active && active.opticStructureIds) || []) collect(id);
+    for (const row of (active && active.dressing) || []) collect(row && row.id);
+    for (const row of (active && active.worldOneOffSpins) || []) collect(row && row.id);
+    collect(active && active.boss && active.boss.entityId);
+    // Compact field rows live outside entityList: drop each by id, mirroring the field
+    // table's own removeFieldRecord teardown (rocks/byId/grid/version/alive/aux journal).
+    const field = state.world && state.world.asteroidField;
+    for (const id of ids) {
+      const rock = getAsteroidFieldRock(state, id);
+      if (rock && (rock.homeSectorId === sectorId || (rock.data && rock.data.homeSectorId) === sectorId)) {
+        const idx = field.rocks.indexOf(rock);
+        if (idx >= 0) field.rocks.splice(idx, 1);
+        field.byId.delete(id);
+        const bucket = field.grid && rock._cell != null ? field.grid.get(rock._cell) : null;
+        if (bucket) {
+          const bi = bucket.indexOf(rock);
+          if (bi >= 0) bucket.splice(bi, 1);
+          if (!bucket.length) field.grid.delete(rock._cell);
+        }
+        field.version = (field.version | 0) + 1;
+        rock.alive = false;
+        markAuxRowRemoved(field, id);
+        clearEntityRuntime(rock);
+      }
+      dropDressingRow(state, id);
+    }
+    if (ids.size) {
+      const indices = this._despawnScratch || (this._despawnScratch = []);
+      indices.length = 0;
+      const list = state.entityList || [];
+      for (let i = list.length - 1; i >= 0; i--) {
+        const e = list[i];
+        if (e && ids.has(e.id)) indices.push(i);
+      }
+      this._destroyEntitiesAtIndices(indices, { reason: 'sector_residency' });
+    }
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (budget && typeof budget.release === 'function') {
+      budget.release(`world:ambient:${sectorId}`);
+      budget.release(`world:bounty:${sectorId}`);
+    }
   },
 
   /** Promote/demote live content between FULL and REDUCED without rematerializing anchors. */
@@ -2137,10 +2331,13 @@ export const world = {
    */
   *_rematerializeSectorRecordsChunks(sectorId, active, tier, opts = {}) {
     const state = this.state;
+    const stale = typeof opts.stale === 'function' ? opts.stale : null;
+    const aborted = () => !!(stale && stale());
     const bag = ensureWorldRecords(state.world);
     // sectorSim remains recipe-only; world adopts current recipes only at FULL promotion.
-    if (tier === RESIDENCY_TIER.FULL && opts.restoreDurableRecords !== true) {
-      yield* this._reconcileEmbodimentRecordsChunks(sectorId, bag);
+    if (tier === RESIDENCY_TIER.FULL && opts.restoreDurableRecords !== true && !aborted()) {
+      yield* this._reconcileEmbodimentRecordsChunks(sectorId, bag, stale);
+      if (aborted()) return { spawned: 0, hadCombatHistory: false, spawnedBoss: false };
     }
     const list = recordsForSector(bag, sectorId);
     const liveByRecordId = liveRecordEntityIndex(state);
@@ -2151,7 +2348,10 @@ export const world = {
     let spawnedBoss = false;
     let processed = 0;
     for (const rec of list) {
-      if ((++processed & 7) === 0) yield 'materialize:records-batch';
+      if ((++processed & 7) === 0) {
+        yield 'materialize:records-batch';
+        if (aborted()) return { spawned, hadCombatHistory, spawnedBoss };
+      }
       if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
         hadCombatHistory = true;
       }
@@ -2206,14 +2406,18 @@ export const world = {
    * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
    * generator that exists to be chunked; the sync wrapper drains inline with identical output.
    */
-  *_reconcileEmbodimentRecordsChunks(sectorId, bag = ensureWorldRecords(this.state.world)) {
+  *_reconcileEmbodimentRecordsChunks(sectorId, bag = ensureWorldRecords(this.state.world), stale = null) {
+    const aborted = () => !!(stale && stale());
     const intents = embodimentRecordIntents(this.state.world.embodiment, sectorId);
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const sector = this.state.world.sectors && this.state.world.sectors[sectorId];
     const current = [];
     let processed = 0;
     for (const intent of intents) {
-      if ((++processed & 7) === 0) yield 'reconcile:intents-batch';
+      if ((++processed & 7) === 0) {
+        yield 'reconcile:intents-batch';
+        if (aborted()) return { inserted: 0, retained: 0, current: 0 };
+      }
       const rec = recordFromEmbodimentIntent(intent, {
         seed,
         tick: this.state.tick | 0,
@@ -2227,7 +2431,10 @@ export const world = {
     // outcomes (destroyed/defeated) are history and remain as bounded tombstones.
     const liveByRecordId = liveRecordEntityIndex(this.state);
     for (const rec of recordsForSector(bag, sectorId)) {
-      if ((++processed & 7) === 0) yield 'reconcile:stale-batch';
+      if ((++processed & 7) === 0) {
+        yield 'reconcile:stale-batch';
+        if (aborted()) return { inserted: 0, retained: 0, current: current.length };
+      }
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
       const holder = liveByRecordId.get(rec.recordId) || null;
@@ -2237,7 +2444,10 @@ export const world = {
 
     let inserted = 0;
     for (const rec of current) {
-      if ((++processed & 7) === 0) yield 'reconcile:insert-batch';
+      if ((++processed & 7) === 0) {
+        yield 'reconcile:insert-batch';
+        if (aborted()) return { inserted, retained: 0, current: current.length };
+      }
       // Never overwrite an existing active/damaged/destroyed record for this identity.
       if (bag.byId[rec.recordId]) continue;
       if (upsertRecord(bag, rec)) inserted++;
@@ -2868,7 +3078,8 @@ export const world = {
    * Generator twin of _spawnFields: yields every 8 rock inserts so the restore lane paints
    * inside a big field. The sync wrapper drains inline — identical rng draws and spawn order.
    */
-  *_spawnFieldsChunks(sector, active, disc, rng) {
+  *_spawnFieldsChunks(sector, active, disc, rng, stale = null) {
+    const aborted = () => !!(stale && stale());
     if (sector && sector.interiorHost) {
       for (const fdef of sector.fields || []) {
         const centerLocal = fdef.center || { x: 0, z: 0 };
@@ -2926,7 +3137,10 @@ export const world = {
       const arrangement = arranger && arranger.createField(fdef, center, clusterR);
       const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
       for (let i = 0; i < count; i++) {
-        if (i > 0 && (i & 7) === 0) yield 'materialize:field-rocks';
+        if (i > 0 && (i & 7) === 0) {
+          yield 'materialize:field-rocks';
+          if (aborted()) return;
+        }
         const activityBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
           && fdef.id === 'f_ceres_1'
           && i === 1
@@ -3609,7 +3823,8 @@ export const world = {
    * lane paints inside a dressing-heavy sector. The sync wrapper drains inline — identical
    * spawn order.
    */
-  *_spawnDressingChunks(sector, active, rng) {
+  *_spawnDressingChunks(sector, active, rng, stale = null) {
+    const aborted = () => !!(stale && stale());
     if (sector && sector.interiorHost) {
       materializeBolus(this, sector, active);
       yield 'materialize:bolus';
@@ -3627,20 +3842,25 @@ export const world = {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass, arranger);
     }
     yield 'materialize:dressing-palette';
+    if (aborted()) return;
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     yield 'materialize:dressing-kit';
+    if (aborted()) return;
     materializeLanternWardDressing(this, sector, active);
     yield 'materialize:lantern-ward';
+    if (aborted()) return;
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
     this._spawnFreeDriveRing(sector, active);
     yield 'materialize:dressing-oneoffs';
+    if (aborted()) return;
     // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
     // untouched by ecology content.
     materializeAlienEcology(this, sector, active);
     yield 'materialize:dressing-ecology';
+    if (aborted()) return;
     // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
     // entities, same deterministic seam, same dressing substrate.
     materializeMachineLayer(this, sector, active);
@@ -4643,7 +4863,8 @@ export const world = {
    * Generator twin of _spawnEnemies: yields every 8 spawned combatants so the restore lane
    * paints inside a dense ambient roll. The sync wrapper drains inline — identical rng draws.
    */
-  *_spawnEnemiesChunks(sector, active, rng) {
+  *_spawnEnemiesChunks(sector, active, rng, stale = null) {
+    const aborted = () => !!(stale && stale());
     // If sectorSim has drifted this sector while the player was away, use the drifted density/
     // security so re-entering a sector reflects its current state (V2 §33/§35.3). Falls back to the
     // passed-in sector (no drift → first visit or pre-sectorSim) so behavior is unchanged otherwise.
@@ -4707,7 +4928,10 @@ export const world = {
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
         active.enemies.push(ent.id);
-        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
+        if ((++spawned & 7) === 0) {
+          yield 'materialize:enemies-batch';
+          if (aborted()) return;
+        }
       }
     } else if (grant > 0) {
       const pool = this._enemyPool(sector);
@@ -4724,9 +4948,13 @@ export const world = {
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
         active.enemies.push(ent.id);
-        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
+        if ((++spawned & 7) === 0) {
+          yield 'materialize:enemies-batch';
+          if (aborted()) return;
+        }
       }
     }
+    if (aborted()) return;
     // Return any reserved-but-unspent ambient slots (safe-zone skips / no valid pos) so the
     // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
     if (budget && typeof budget.releaseSome === 'function') {
@@ -4770,7 +4998,10 @@ export const world = {
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, 'patrol_lawman:hunter', active);
         active.enemies.push(ent.id);
         huntersSpawned++;
-        if ((++spawned & 7) === 0) yield 'materialize:enemies-batch';
+        if ((++spawned & 7) === 0) {
+          yield 'materialize:enemies-batch';
+          if (aborted()) return;
+        }
       }
       if (budget && typeof budget.releaseSome === 'function' && huntersSpawned < hunterGrant) {
         budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);
@@ -8368,6 +8599,10 @@ export const world = {
     state.world.residentSectors = {};
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
+    // The deferred residency queue belongs to the producer that minted it — a suspended
+    // drain resuming under the restored run must find nothing left to consume (its jobs
+    // would already fail the world/epoch/queue identity check; clearing is authoritative).
+    this._pendingResidency = [];
     resetWorldPresentationTables(state);
     restoreFarActorTable(state, data.farActors);
     if (data.discovery) state.world.discovery = data.discovery;
