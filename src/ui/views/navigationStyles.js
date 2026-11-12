@@ -368,8 +368,14 @@ export const CSS = `
 #sf-galaxymap .gm-nav-row[data-tone="tracked"] { box-shadow: inset 2px 0 0 var(--k-signal); padding-left: var(--k-pad); }
 #sf-galaxymap .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color: var(--k-bone-38); font-style: italic; }
 #sf-galaxymap .gm-ins-row { display: flex; justify-content: space-between; gap: var(--k-pad); color: var(--k-bone-62); }
-#sf-galaxymap .gm-ins-row > span:first-child { flex: 1 1 auto; min-width: 0; }
-#sf-galaxymap .gm-ins-row-val { color: var(--k-text-live); text-align: right; }
+/* The label is a short name that holds one line; the reading takes the rest and balances its wrap,
+   so "Local zone" never stacks into two words and a wrapped value never leaves "1)" or "SE" alone.
+   A row whose only span is the reading (claim Operations line) is not a label and keeps wrapping. */
+#sf-galaxymap .gm-ins-row > span:first-child:not(.gm-ins-row-val) { flex: 0 0 auto; white-space: nowrap; }
+#sf-galaxymap .gm-ins-row-val { flex: 1 1 0; min-width: 0; color: var(--k-text-live); text-align: right; text-wrap: balance; }
+/* Presence rows flip it: the faction name is the long, open-ended part and wraps; the phase word keeps its width. */
+#sf-galaxymap .gm-ins-presence-row > span:first-child:not(.gm-ins-row-val) { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+#sf-galaxymap .gm-ins-presence-row > .gm-ins-row-val { flex: 0 0 auto; white-space: nowrap; }
 #sf-galaxymap .gm-fig { font-variant-numeric: tabular-nums; }
 #sf-galaxymap .gm-ins-note { font-size: var(--k-fs-data); color: var(--k-bone-38); max-width: var(--k-measure); }
 #sf-galaxymap .gm-ins-btn:not(.k-word), #sf-galaxymap .gm-place-btn, #sf-galaxymap .gm-tl-row, #sf-galaxymap .gm-site-row {
