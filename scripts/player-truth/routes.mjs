@@ -1079,11 +1079,13 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
 export async function racingToFlight(page, step) {
   await clickText(page, 'Circuits', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'raceBoard', null, { timeout: 60000 });
-  const course = await page.evaluate(() => {
+  const { course, contractId } = await page.evaluate(() => {
     const board = document.querySelector('#screens [data-screen="raceBoard"]');
     const c = board?.querySelector('.race-board-start h2') || board?.querySelector('.race-board-course h2');
-    return c ? c.textContent.trim() : null;
+    const selected = board?.querySelector('[data-contract-id] button[aria-pressed="true"]')?.closest('[data-contract-id]');
+    return { course: c?.textContent.trim() ?? null, contractId: selected?.dataset.contractId ?? null };
   });
+  if (!contractId) throw new Error('Circuits board has no selected contract');
   step('mode select', true, `Circuits · selected event ${course}`);
   // Prepared hidden screens can share the board classes (for example physics venues).
   // Use the actual Circuits screen and the control a player can see.
@@ -1097,7 +1099,19 @@ export async function racingToFlight(page, step) {
   try { await ok.waitFor({ state: 'visible', timeout: 15000 }); confirmed = (await ok.textContent()).trim(); await ok.click(); } catch { /* no confirm on this build */ }
   await waitUntilFlight(page, { timeout: 600000 });
   await waitBootOverlayGone(page);
-  step('preparation', true, `"${word}" on ${course}${confirmed ? ` → confirm "${confirmed}"` : ''}`);
+  const race = await page.waitForFunction((selectedId) => {
+    const state = window.SF?.state;
+    if (state?.mode !== 'flight') return false;
+    const mission = state.missions?.active?.find(m => m?.status === 'active' && m.type === 'race'
+      && m.params?.racingContractId === selectedId);
+    const sectorId = mission?.params.courseSectorId;
+    return sectorId && state.world?.currentSectorId === sectorId ? { sectorId } : false;
+  }, contractId, { timeout: 30000 }).catch(error => {
+    if (error?.name !== 'TimeoutError') throw error;
+    throw new Error(`Circuits did not start selected contract ${contractId} in its course sector`, { cause: error });
+  });
+  const { sectorId } = await consumePageConditionValue(race);
+  step('preparation', true, `"${word}" on ${course}${confirmed ? ` → confirm "${confirmed}"` : ''} · ${contractId} active in ${sectorId}`);
   const runSeed = await readLaunchedRunSeed(page);
   return { course, runSeed };
 }
