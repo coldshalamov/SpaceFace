@@ -9,7 +9,6 @@ import {
   DirectorPhase,
   NORMALIZED_SENSOR_FRAME_FLAG,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
-  makeTrustedSensorFrame,
   normalizeSensorFrame,
   stableId,
   wrapAngle,
@@ -456,9 +455,7 @@ export const aiPorts = {
       contacts,
       events: this._recentEventsFor(entity, tick, freeze),
     };
-    return options.freezeResults === false
-      ? makeTrustedSensorFrame(frame, entityId, tick, options)
-      : normalizeSensorFrame(frame, entityId, tick);
+    return normalizeSensorFrame(frame, entityId, tick);
   },
 
   _sensorFramesFor(entityIds, tick, options = null) {
@@ -769,7 +766,7 @@ export const aiPorts = {
     return fractions;
   },
 
-  _contactBaseFor(entity, runtime, attachmentIndex, kind) {
+  _contactBaseFor(entity, attachmentIndex, kind) {
     const state = this.state;
     const tick = Number.isInteger(state && state.tick) ? state.tick : -1;
     if (this._contactBaseCacheTick !== tick) {
@@ -779,7 +776,8 @@ export const aiPorts = {
     const key = stableId(entity && entity.id);
     let base = this._contactBaseCache.get(key);
     if (!base) {
-      base = buildContactBase(state, entity, runtime, attachmentIndex, kind, identity, this);
+      base = buildContactBase(state, entity, combatRuntimeFor(state, entity.id),
+        attachmentIndex, kind, identity, this);
       this._contactBaseCache.set(key, base);
     }
     return base;
@@ -1322,11 +1320,10 @@ function emitCloakFadeContact(state, self, other, kind, now, attachmentIndex, fr
     return;
   }
   const confidence = Math.max(0, track.conf * fraction);
-  const runtime = combatRuntimeFor(state, targetId);
   const hostile = isHostileForAI(state, self, other);
   const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
-    ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
-    : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
+    ? cacheOwner._contactBaseFor(other, attachmentIndex, kind)
+    : buildContactBase(state, other, combatRuntimeFor(state, targetId), attachmentIndex, kind, freeze, cacheOwner);
   const threat = threatFor(state, self, other, hostile);
   const ghostPos = freeze({ x: track.x + track.vx * age, z: track.z + track.vz * age });
   const ghostVel = freeze({ x: track.vx, z: track.vz });
@@ -1484,11 +1481,10 @@ function entityContacts(state, self, range, confidenceScale, helpers = null, att
     }
     if (outOfRange) continue;
     const distance = Math.sqrt(distanceSq);
-    const runtime = combatRuntimeFor(state, other.id);
     const hostile = isHostileForAI(state, self, other);
     const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
-      ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
-      : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
+      ? cacheOwner._contactBaseFor(other, attachmentIndex, kind)
+      : buildContactBase(state, other, combatRuntimeFor(state, other.id), attachmentIndex, kind, freeze, cacheOwner);
     const confidence = confidenceFor(distance, range, confidenceScale);
     const threat = threatFor(state, self, other, hostile);
     if (records) {
