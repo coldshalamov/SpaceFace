@@ -8,6 +8,7 @@ import {
   bootstrapProfileSettingsBeforeRegistry,
 } from '../src/core/graphicsProfileBootstrap.js';
 import { input, DEFAULTS, domMouseDownEvent, domMouseUpEvent } from '../src/systems/input.js';
+import { createLaneTouchReducer } from '../src/systems/mobile/laneTouchReducer.js';
 
 const DT = 1 / 60;
 
@@ -122,6 +123,34 @@ test('G18-02 RMB press publishes an immediate normalized latch packet', () => {
   assert.equal(state.input.actions.massline.phase, 'preview');
   assert.equal(state.input.actions.tetherFire, true, 'legacy latch consumer stays bridged');
   assert.equal(state.input.brake, false, 'the Line does not also brake');
+});
+
+test('worker touch tap survives when press and neutral arrive before the same sim step', () => {
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  host.touch = createLaneTouchReducer();
+  const frame = (actions, cancelledRoles = []) => host.ingestLaneDomEvent({
+    type: 'touchFrame', frame: { active: true, actions, cancelledRoles },
+  });
+
+  frame({ tether: true });
+  frame({});
+  step(host, state);
+  assert.equal(state.input.actions.tetherFire, true, 'the real press reaches the latch owner');
+  assert.equal(state.input.actions.massline.source, 'touch');
+  Object.assign(state.player.tether, { active: true, targetId: 'rock' });
+  step(host, state);
+  assert.equal(state.input.actions.tetherCut, false, 'the same tap cannot cut a fresh latch');
+
+  frame({ tether: true });
+  frame({});
+  step(host, state, 2);
+  assert.equal(state.input.actions.tetherCut, true, 'a separate tap on the live Line cuts');
+  frame({ tether: true });
+  frame({}, ['tether']);
+  step(host, state, 2);
+  assert.equal(state.input.actions.tetherCut, false, 'a cancelled contact cannot cut the Line');
 });
 
 test('one RMB press can grab a throwable body without immediately throwing it', (t) => {

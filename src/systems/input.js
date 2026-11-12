@@ -756,10 +756,11 @@ export function applyFlightKeyEvent(host, event = {}) {
 
 // Touch pylon presses share the bounded sampled queue with keys. A worker can drain
 // both the tap and its neutral frame before stepping; the final hold alone loses that tap.
-function discardSampledTouchPresses(host) {
+function discardSampledTouchPresses(host, action = null) {
   const queue = host._keyEdgeQueue;
   if (queue) for (let i = queue.length - 1; i >= 0; i--) {
-    if (queue[i].source === 'touch') queue.splice(i, 1);
+    const edge = queue[i];
+    if (edge.source === 'touch' && (action == null || edge.action === action)) queue.splice(i, 1);
   }
 }
 
@@ -787,9 +788,15 @@ function queuedPowerPress(host, power) {
   return false;
 }
 
-function takeOldestTetherEdge(host) {
+function takeOldestTetherEdge(host, state) {
   const queue = host._keyEdgeQueue;
   if (!queue || queue.length === 0) return null;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const edge = queue[i];
+    if (edge.action === 'tether' && edge.source === 'touch' && edge.sector !== state.world?.currentSectorId) {
+      queue.splice(i, 1);
+    }
+  }
   const index = queue.findIndex((edge) => edge.action === 'tether');
   if (index < 0) return null;
   return queue.splice(index, 1)[0];
@@ -1223,8 +1230,10 @@ export const input = {
         // actions and cancelled-role resets into the sim-owned touch surface.
         if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
           const wasHeld = !!this.touch.actions?.deployShieldPylon?.held;
+          const tetherWasHeld = !!this.touch.actions?.tether?.held;
           this.touch.applyLaneFrame(d.frame, this);
           const held = !!this.touch.actions?.deployShieldPylon?.held;
+          const tetherHeld = !!this.touch.actions?.tether?.held;
           if (d.frame?.active === false) {
             discardSampledTouchPresses(this);
             this._touchPylonQuarantined = false;
@@ -1233,6 +1242,16 @@ export const input = {
           } else if (!wasHeld && !this._touchPylonQuarantined) {
             const queue = flightEdgeQueue(this);
             queue.push({ action: 'deployShieldPylon', pressed: true, source: 'touch',
+              sector: this.state.world?.currentSectorId });
+            if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+          }
+          if (d.frame?.active === false || d.frame?.cancelledRoles?.includes?.('tether')) {
+            discardSampledTouchPresses(this, 'tether');
+          } else if (tetherWasHeld !== tetherHeld) {
+            // The worker may apply several complete touch snapshots before one
+            // fixed step. Keep both edges of a quick tap for the Line grammar.
+            const queue = flightEdgeQueue(this);
+            queue.push({ action: 'tether', pressed: tetherHeld, source: 'touch',
               sector: this.state.world?.currentSectorId });
             if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
           }
@@ -2161,15 +2180,16 @@ export const input = {
       // One press per update. A second press sampled in the same gap stays queued.
       return sampled || (held && !was);
     };
-    const tetherEdge = takeOldestTetherEdge(this);
+    const tetherEdge = takeOldestTetherEdge(this, state);
     // One alias releasing (F or 3) must not drop a second held seat while it is still down.
     // The edge's own code is excluded, so a same-key re-press still counts as a release.
     // G18-02: the Line is RMB in every door — the mouse button holds/releases it through the
     // same grammar a rebound key or the pad trigger uses.
-    const tetherHeld = (!tetherEdge
-      ? this._held(state, 'tether')
-      : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code)))
-      || this._m2 === true;
+    const tetherHeld = this._m2 === true || (tetherEdge
+      ? (tetherEdge.pressed || (tetherEdge.source === 'touch'
+        ? input._held.call(this, state, 'tether')
+        : this._heldExcept(state, 'tether', tetherEdge.code)))
+      : this._held(state, 'tether'));
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
@@ -2197,7 +2217,8 @@ export const input = {
         lineLength: rawLineLength,
         orbitDirection: rawOrbitDirection,
         pump: inp.boost,
-        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
+        source: tetherHeld ? (tetherEdge?.source || 'keyboard')
+          : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
         silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
       });
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
