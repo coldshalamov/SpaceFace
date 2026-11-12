@@ -687,12 +687,18 @@ export const MOBILE_SCREEN_CSS = `
   ${H} .orr-help-factions__orbit { width:100% !important; height:320px !important; }
   ${H} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
 
-  /* Save portraits retain a horizontal rail, with enough room for each save's own label. */
-  ${V} .orr-film { height:auto !important; min-height:280px !important; overflow-x:auto !important; overflow-y:hidden !important; }
-  ${V} .orr-film__list { width:max-content !important; min-width:100%; gap:18px !important; align-items:flex-start !important; }
-  ${V} .orr-film__list > .sf-slot { flex:0 0 150px !important; width:150px !important; min-width:150px !important; }
-  ${V} .orr-film__list .sf-slot-badges { display:block !important; margin:4px 0 !important; }
-  ${V} .orr-film__list .sf-slot-badge { display:block !important; margin:0 !important; }
+  /* ui-polish-453: saveFilmstrip.js lays the stations out on an arc, setting each row's left and width from
+     the strip's pitch (~59px for five on a 390 phone). The old flex-rail rule forced every station to 150px,
+     so five 150px stations sat 59px apart and their names, run lines and credits printed over each other.
+     Stations keep the strip's own width; the strip runs out to 12px gutters (~70px pitch, 60px stations); a
+     filed station reads name + credits, its run line and badges already being in the ledger card above (as on
+     the narrow desktop page). The name sets on Archivo's 75 width and the credits on its 88, so RECOVERY,
+     SLOT 1 and "42,150 CR" each stay whole instead of breaking mid-word. */
+  ${V} .orr-film { height:auto !important; min-height:280px !important; overflow:hidden !important;
+    width:calc(100% + 56px) !important; max-width:none !important; margin-inline:-28px !important; }
+  ${V} .orr-film__list .k-row:not(.empty) :is(.sf-slot-badges, .k-row__sub.sf-slot-sub) { display:none !important; }
+  ${V} .orr-film__list .k-row__name.sf-slot-name { font-size:12px !important; letter-spacing:0 !important; font-stretch:75%; font-variation-settings:"wdth" 75, "wght" 650; }
+  ${V} .orr-film__list .k-row__num { font-size:12px !important; font-variation-settings:"wght" 520, "wdth" 88; }
 
   /* Operations keeps all four tabs, purchasing prerequisites and flow instruments readable. */
   ${A} { width:100% !important; height:100% !important; min-width:0 !important; max-width:100% !important;
