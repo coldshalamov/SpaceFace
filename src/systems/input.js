@@ -56,13 +56,14 @@ import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
-import { isHostileToPlayer } from './scannerReadModel.js';
+import { isThrowArmPayload } from './masslineThrow.js';
 import { isBeamTargetEligible } from './miningBeamTargetingRead.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
 import { isSwarmControls } from '../data/swarmControls.js';
+export { isThrowArmPayload } from './masslineThrow.js';
 import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
@@ -1255,6 +1256,18 @@ export const input = {
               sector: this.state.world?.currentSectorId });
             if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
           }
+          if (d.frame?.active === false || d.frame?.cancelledRoles?.includes?.('stick')) {
+            this._touchThrow = null;
+          }
+        }
+        break;
+      }
+      case 'touchThrow': {
+        if (!Number.isFinite(d.x) || !Number.isFinite(d.z) || d.targetId == null) break;
+        const length = Math.hypot(d.x, d.z);
+        if (length > 0.001 && length < 2) {
+          this._touchThrow = { targetId: d.targetId, attachmentId: d.attachmentId,
+            sector: this.state.world?.currentSectorId, x: d.x / length, z: d.z / length };
         }
         break;
       }
@@ -1379,6 +1392,7 @@ export const input = {
       try { this.bus.emit('input:worldGestureCancelled', { reason }); } catch (_) {}
     }
     this._m2 = false;
+    this._throwLineAtPress = null;
     if (hadField) delete inp.worldObjectTargetId;
   },
 
@@ -1459,6 +1473,7 @@ export const input = {
     const keys = this._keys;
     dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
     discardSampledTouchPresses(this);
+    this._touchThrow = null;
     // Only a real neutral touch descriptor re-arms the worker deck after interruption.
     this._touchPylonQuarantined ||= !!this.touch?.actions?.deployShieldPylon?.held;
     // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
@@ -1755,6 +1770,9 @@ export const input = {
       pull: null, shove: null, pin: null, bomb: null, rig: null,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
+    const touchThrow = this._touchThrow;
+    this._touchThrow = null;
+    if (acts.touchThrow) delete acts.touchThrow;
     const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
     if (flightInputNeutralized) {
       // Keep ordinary pad holds fenced for the whole non-flight interval. This covers direct
@@ -2293,6 +2311,12 @@ export const input = {
       || wheelOn('bulletTime');
     acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
+    if (touchThrow && tether?.active && touchThrow.targetId === tether.targetId
+      && touchThrow.attachmentId === tether.attachmentId
+      && touchThrow.sector === state.world?.currentSectorId
+      && massline2Flag('throw') && isThrowArmPayload(state)) {
+      acts.touchThrow = touchThrow;
+    }
     // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
     // clump; the falling edge is the bowl. Opt-in press-to-toggle latch rides the same FB-113 path.
     acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
@@ -2422,44 +2446,6 @@ export function selectedWorldSiteTarget(state) {
   return entity && entity.alive !== false && entity.data && entity.data.worldSiteTargetable === true
     ? entity
     : null;
-}
-
-// Combat hull archetypes that stay throwable while their AI posture is standing down.
-// `ai.passive` is a fire-authority read (the hull will not open fire first), not a physical
-// property of the mass on the rope — an ambush pirate lying in wait is still a hull a pilot
-// can swing. Noncombat archetypes (trader/miner/civilian) are absent so unlisted hulls keep
-// the weld-beam default.
-const THROW_ARM_COMBAT_ARCHETYPES = new Set([
-  'pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer',
-  'hunter', 'mercenary', 'miniboss_capital',
-]);
-
-/**
- * True when the active tether payload should steal RMB for throwArm.
- * HOSTILE ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
- * A non-hostile casualty keeps RMB as the mining beam: the WF-05 rope-and-weld latches a limping
- * hull precisely so the beam can hold the weld (mining.weldableHullForBeam), and this function's
- * own call-site contract at the RMB arbitration always said "hostile ship/drone" — the code below
- * is what made it true. A latched hostile still throws exactly as before.
- * Parent asteroids and wrecks keep RMB as the mining/salvage beam so latched extraction works.
- */
-export function isThrowArmPayload(state) {
-  const tether = state && state.player && state.player.tether;
-  if (!tether || !tether.active || tether.targetId == null) return false;
-  const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
-  if (!target || target.alive === false) return false;
-  if (target.type === 'ship' || target.type === 'drone') {
-    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
-    if (player && isHostileToPlayer(target, player.team, state)) return true;
-    const data = target.data || {};
-    const ai = data.ai || null;
-    const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role))
-      || data.role || data.scenarioRole || '').toLowerCase();
-    return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
-  }
-  if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
-  if (target.type === 'payload') return true;
-  return false;
 }
 
 function pointerBeamLane(state, entity) {

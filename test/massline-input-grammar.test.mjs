@@ -182,6 +182,33 @@ test('one RMB press can grab a throwable body without immediately throwing it', 
   assert.equal(state.input.actions.throwArm, false, 'a replacement attachment cannot inherit the press');
 });
 
+test('a touch throw reaches the fixed step once and cannot target a replacement attachment', (t) => {
+  const saved = { ...MASSLINE2_FLAGS };
+  t.after(() => Object.assign(MASSLINE2_FLAGS, saved));
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  state.entities.get('rock').data = { isChunk: true };
+  const line = state.player.tether;
+  Object.assign(line, { active: true, targetId: 'rock', attachmentId: 8 });
+  const flick = () => host.ingestLaneDomEvent({ type: 'touchThrow',
+    x: 0.5, z: 0, targetId: line.targetId, attachmentId: line.attachmentId });
+  flick();
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow.x, 1);
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow, undefined);
+  flick();
+  line.attachmentId = 9;
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow, undefined);
+  flick();
+  host.releaseHeldControls('blur');
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow, undefined);
+});
+
 test('G18-02 quick attached tap cuts on release while a hold enters line control without cutting', () => {
   const host = makeInput();
   const state = makeState();
