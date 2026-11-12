@@ -25,6 +25,8 @@ export const AVOID_SELECTORS = Object.freeze([
   // The flight cluster (speed dial, hull/shield, power ring): 'CONCUSSION CANNON S · 500' printed over the speed
   // numeral in a Swarm fight (lead look, round 12).
   '#hud .orr-speeddial',
+  // Dial labels can extend outside the instrument box.
+  '#hud .orr-speeddial__lab',
   '#hud .orr-cluster',
   // The phone deck (MOB-02/03): world labels printed over the vitals strip, the keys and the first-run hint
   // in a phone Swarm round (lead look 2026-11-12). Absent on desktop, so these cost nothing there.
