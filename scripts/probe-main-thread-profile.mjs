@@ -1691,7 +1691,17 @@ function analyzeExperimentTrace(traceFile) {
 async function runPerfExperiments(page, cdp, seed) {
   const rows = [];
   const holdThrust = !HOLD_STILL;
-  const metrics = ['fps', 'idlePct', 'simWallRatio', 'longTasks'];
+  const columns = [
+    ['fps', 'rAF fps'],
+    ['worldSubmitFps', 'World submits/s'],
+    ['frameP95Ms', 'rAF gap p95 ms'],
+    ['frameP99Ms', 'rAF gap p99 ms'],
+    ['hitchesOver100Per10s', 'Gaps >100 ms / 10 s'],
+    ['idlePct', 'Idle %'],
+    ['simWallRatio', 'Sim / wall'],
+    ['longTasks', 'Long tasks'],
+  ];
+  const metrics = columns.map(([key]) => key);
   const powerStateStart = await captureHostPowerState(page);
   const gpu = await page.evaluate(() => {
     const gl = window.SF.state.render.renderer.getContext();
@@ -1728,7 +1738,7 @@ async function runPerfExperiments(page, cdp, seed) {
       if (holdThrust) await page.keyboard.up('KeyW').catch(() => {});
       await page.evaluate(() => window.__SF_PROFILE_ARM__?.cleanup()).catch(() => {});
     }
-    const { browserFps: fps, simWallRatio } = summarizeGameCadence(cadence);
+    const { browserFps: fps, worldSubmitFps, callbackGaps, activeMs, simWallRatio } = summarizeGameCadence(cadence);
     const summary = summarizeProfile(profile, profileIndex(profile));
     const percent = micros => summary.totalMicros > 0 ? 100 * micros / summary.totalMicros : null;
     const applied = arm.name === 'hide-hud' ? end.hudHidden
@@ -1741,7 +1751,9 @@ async function runPerfExperiments(page, cdp, seed) {
       && start.timeScale > 0 && end.timeScale > 0
       && (start.round === null || (start.phase === 'active' && end.phase === 'active'))
       && (SWARM_ROUND === null || end.round === SWARM_ROUND);
-    const row = { name: arm.name, traced, applied, sameFlight, start, end, fps,
+    const row = { name: arm.name, traced, applied, sameFlight, start, end, fps, worldSubmitFps,
+      frameP95Ms: callbackGaps.p95, frameP99Ms: callbackGaps.p99, callbackGaps,
+      hitchesOver100Per10s: activeMs > 0 ? callbackGaps.over100 * 10_000 / activeMs : null,
       idlePct: percent(summary.buckets.idle), simWallRatio, longTasks,
       topSelf: summary.self.slice(0, 3).map(({ node, micros }) => ({
         owner: nodeLabel(node), pct: percent(micros),
@@ -1749,7 +1761,8 @@ async function runPerfExperiments(page, cdp, seed) {
     };
     rows.push(row);
     fs.writeFileSync(path.join(OUT_DIR, `arm-${String(index + 1).padStart(2, '0')}.cpuprofile`), JSON.stringify(profile));
-    log(`experiment result: ${JSON.stringify({ name: arm.name, fps, idlePct: row.idlePct, simWallRatio, longTasks, applied, sameFlight })}`);
+    const results = Object.fromEntries(metrics.map(key => [key, row[key]]));
+    log(`experiment result: ${JSON.stringify({ name: arm.name, ...results, applied, sameFlight })}`);
     if (!sameFlight) break;
   }
   const sourceDigestAfter = await digestServedSourcePaths();
@@ -1781,11 +1794,12 @@ async function runPerfExperiments(page, cdp, seed) {
     'Windows share one flight, so world state can evolve. See start/end snapshots in experiments.json.',
     ...(rows.some(row => row.name === 'no-shadows' && row.start.shadowsWereOff)
       ? ['Both shadow settings were already off when the no-shadows arm began.'] : []),
-    '', '| Arm | rAF fps | Idle % | Sim / wall | Long tasks | Top self time |',
-    '|---|---:|---:|---:|---:|---|',
+    '', `| Arm | ${columns.map(([, label]) => label).join(' | ')} | Top self time |`,
+    `|---|${'---:|'.repeat(columns.length)}---|`,
     ...rows.map(row => `| ${row.name} | ${metrics.map(key => fmt(row[key])).join(' | ')} | ${row.topSelf.map(item => `${item.owner} (${fmt(item.pct)}%)`).join(', ')} |`),
     '', '## Differences from neighboring baselines', '',
-    '| Arm | Δ rAF fps | Δ idle points | Δ sim / wall | Δ long tasks |', '|---|---:|---:|---:|---:|',
+    `| Arm | ${columns.map(([, label]) => `Δ ${label}`).join(' | ')} |`,
+    `|---|${'---:|'.repeat(columns.length)}`,
     ...rows.filter(row => row.deltaFromNeighborMean).map(row => (
       `| ${row.name} | ${metrics.map(key => fmt(row.deltaFromNeighborMean[key])).join(' | ')} |`
     )), '',
