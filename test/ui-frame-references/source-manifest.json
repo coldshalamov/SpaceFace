@@ -386,7 +386,7 @@
   "src/ui/station/screens/industry.js": "53cd532f72a9c0702bb1cd94974d3d938abeb70b741e8ef820d9ee830fbdc106",
   "src/ui/station/screens/ledger.js": "02e95ba0edea8ee188bb59cbc96befeb505447e08a5836b6a8c217ec28a6b62d",
   "src/ui/station/screens/market.js": "ad5112df47e8f12010001f5b5f17cafecf8aee4e155361fd9499eed2862dfc6a",
-  "src/ui/station/screens/shipworks.js": "cbab09c0740e4712e16954148eb46b98edc240ff21d992b95b2d5c10bb672fe4",
+  "src/ui/station/screens/shipworks.js": "b55bda4de7f107ee63602c1d9d9e1425f50503138343a7751961ef2905628392",
   "src/ui/station/serviceQuotes.js": "970b0effafaf6d33ef23f5ae229f3fabe37f178deff56f76a4005f295feb2312",
   "src/ui/station/starterWorkdayConversation.js": "47d395d5aba8ceeffeb98ae7c50776207f74c360107ae595332f24929449b50e",
   "src/ui/station/stationApp.js": "d85d5554d1cdf43827028a43d3642a48e41d3aaec2a543745be23a7787ce63a4",
