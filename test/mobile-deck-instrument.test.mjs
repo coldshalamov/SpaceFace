@@ -298,7 +298,7 @@ test('the authored mobile flight stylesheet parses and is composed into HUD CSS'
   for (const [name, rule] of Object.entries({ dock, compactFace, objective, expandedFace, landscapeDock, landscapeRail, portraitReceipt, powers, powersWord, sectorLaw })) {
     assert.ok(rule, `${name} has a rule active for its mobile flight condition`);
   }
-  assert.equal(px(value(compactFace, 'width')), 88, 'the compact phone radar uses the current 88px instrument face');
+  assert.equal(px(value(compactFace, 'width')), 96, 'the compact phone radar uses the current 96px instrument face');
   assert.equal(px(value(expandedFace, 'width')), 290, 'expanded radar retains its full tactical face');
   assert.equal(px(value(powers, 'min-height')), 44, 'Powers keeps a thumb-sized target');
   assert.equal(value(powersWord, 'writing-mode'), 'horizontal-tb', 'Powers label stays readable horizontally');
