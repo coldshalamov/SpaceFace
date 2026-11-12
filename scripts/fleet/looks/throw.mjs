@@ -1,8 +1,8 @@
 // Lead look: THE THROW. Start a Swarm round, latch the nearest light enemy with the Line (tap RMB on
-// it), swing by flying an arc, release (tap RMB again = cut) toward the pack, and photograph a strip of
+// it), swing by flying an arc, press RMB again to release toward the pack, and photograph a strip of
 // frames from latch to two seconds after release. Also records what the game itself reports: latches,
-// throws, kills and their causes. This is the acceptance look for anything about the throw, the camera
-// beats, chain/kill callouts, drops and crush/applause credit.
+// throws, kills and their causes. A throw during the latch press is reported separately.
+// This looks at the throw, camera beats, chain/kill callouts, drops and crush/applause credit.
 //
 //   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/throw.mjs [outPrefix] [round]
 //
@@ -108,12 +108,15 @@ try {
     }
   }
   console.log(latched ? 'LATCHED' : 'never latched — the swing below is only flight');
+  const throwsBeforeSwing = await page.evaluate(() =>
+    (window.__throwLog || []).filter((e) => e.ev === 'massline:throw').length);
+  if (throwsBeforeSwing) console.log(`premature throws before swing: ${throwsBeforeSwing}`);
   await shot('latch');
   // Swing: an arc — thrust and turn, aim sweeping around.
   await page.keyboard.down('KeyW'); await page.keyboard.down('KeyD');
   for (let i = 0; i < 6; i++) { await page.mouse.move(640 + 260 * Math.cos(i * 0.6), 360 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(200); if (i % 2 === 0) await shot('swing'); }
   await page.keyboard.up('KeyD');
-  // Release toward the densest hostile cluster: tap RMB (a tap while attached cuts = throw).
+  // Release toward the densest hostile cluster with a fresh RMB press.
   const aim = await page.evaluate(() => {
     const s = window.SF.state; const h = window.SF.helpers;
     const hs = (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0);
@@ -121,8 +124,9 @@ try {
     const c = hs.reduce((a, e) => ({ x: a.x + e.pos.x / hs.length, z: a.z + e.pos.z / hs.length }), { x: 0, z: 0 });
     return h.worldToScreen({ x: c.x, y: 0, z: c.z }, {});
   });
-  if (aim && Number.isFinite(aim.x)) await page.mouse.move(aim.x, aim.y, { steps: 2 });
-  await page.mouse.click(aim && Number.isFinite(aim.x) ? aim.x : 640, aim && Number.isFinite(aim.y) ? aim.y : 200, { button: 'right' });
+  const releaseAt = await page.evaluate(() => window.SF.state.simTime);
+  await page.mouse.move(aim && Number.isFinite(aim.x) ? aim.x : 640, aim && Number.isFinite(aim.y) ? aim.y : 200, { steps: 2 });
+  await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
   await page.keyboard.up('KeyW');
   for (let i = 0; i < 6; i++) await shot('release');      // back to back: the release beat
   for (let i = 0; i < 6; i++) { await sleep(300); await shot('after'); }
@@ -132,6 +136,7 @@ try {
   const count = (ev) => log.filter((e) => e.ev === ev).length;
   const kills = log.filter((e) => e.ev === 'entity:killed');
   console.log(`events: latched ${count('tether:latched')} · throws ${count('massline:throw')} · self-slings ${count('massline:selfSling')} · cuts ${count('tether:cut')} · kills ${kills.length} (${kills.map((k) => k.cause || '?').join(', ')}) · drops ${count('swarm:drop:spawned')}`);
+  console.log(`throws after the release input: ${log.filter((e) => e.ev === 'massline:throw' && e.t + .005 >= releaseAt).length}`);
   console.log(`frames: ${frames.length} → ${out}-NN-*.png`);
   await browser.close();
 } finally {
