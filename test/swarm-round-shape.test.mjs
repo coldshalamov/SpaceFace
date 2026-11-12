@@ -14,6 +14,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
 import { createSimulation } from '../src/core/sim.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { shouldSyncPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
@@ -172,14 +173,21 @@ test('gate flare: a one-second lit beacon stands where each group entered', () =
   // spawn port's ledger — a still-alive one is at most the most recent group's.
   const flares = spawned.filter((e) => e.data && e.data.swarmGateFlare === true);
   assert.equal(flares.length, materialized.length, 'one flare per admitted group');
-  for (const flare of flares) {
+  for (const [index, flare] of flares.entries()) {
     assert.equal(flare.type, 'beacon');
+    assert.equal(flare.data.storyPropKind, 'claim_beacon', 'the beacon lamp still recognizes the cue');
+    assert.equal(flare.collides, false);
+    assert.equal(shouldSyncPhysicsBodyEntity({ ...flare, alive: true }), false,
+      'the gate marker has no physics body even during its lit lifetime');
+    assert.equal(flare.data.masslineTetherable, false);
     const ttl = flare.data.despawnAt - (flare.data.expireAt - SWARM_GATE_FLARE_S);
     assert.ok(ttl > 0.9 && ttl <= SWARM_GATE_FLARE_S + 1e-6,
       `flare lives ~${SWARM_GATE_FLARE_S}s (got ${ttl})`);
-    // The flare stands at its group's own arrival point.
-    const receipt = materialized.find((m) => m.payload.wave === flare.data.wave);
-    assert.ok(receipt);
+    // Flares and materialized receipts are produced in the same batch order.
+    const { wave, gateGroup, arrival } = materialized[index].payload;
+    assert.equal(flare.data.wave, wave);
+    assert.equal(flare.data.gateGroup, gateGroup);
+    assert.deepEqual(flare.pos, { x: arrival.x, z: arrival.z });
   }
   // Every flare still in the entity store is inside its promised second — the sweep
   // retires the rest rather than leaving spent lights on the field.
