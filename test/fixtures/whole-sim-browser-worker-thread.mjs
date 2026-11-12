@@ -16,12 +16,14 @@ workerSelf.postMessage = function postMessage(message, transfer) {
 globalThis.self = workerSelf;
 
 // An intentionally expensive authoritative step exercises the real host budget.
+// The injected wait must exceed the worker's local work budget so the host
+// still yields after one step (the budget allows several ordinary steps).
 if (workerData?.slowPhysicsStep === true) {
   const { Sg02DynamicBodyOwner } = await import('../../src/core/sg02DynamicBodyOwner.js');
   const stepFixed = Sg02DynamicBodyOwner.prototype._stepFixed;
   const delay = new Int32Array(new SharedArrayBuffer(4));
   Sg02DynamicBodyOwner.prototype._stepFixed = function (...args) {
-    Atomics.wait(delay, 0, 0, 28);
+    Atomics.wait(delay, 0, 0, 80);
     return stepFixed.apply(this, args);
   };
 }

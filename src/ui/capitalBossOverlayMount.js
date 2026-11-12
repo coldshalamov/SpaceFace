@@ -10,6 +10,7 @@ import { createCapitalBossOverlay, capitalBossReadouts } from '../presentation/c
 import { svg } from './orrery/svg.js';
 import { scale } from './orrery/instruments.js';
 import { resolveObjectiveHudLayout } from './hud.js';
+import { AVOID_SELECTORS, createAvoidRects, visibleRects } from './hudAvoidRects.js';
 
 const reducedMotionOf = (state) => !!(state && state.settings && state.settings.video
   && state.settings.video.motionReduce);
@@ -26,16 +27,23 @@ const makeLine = (host, color, weight = 600) => {
   return el;
 };
 const setLine = (el, value) => { if (el.textContent !== value) el.textContent = value; };
+// The readout sits on the shared flight-glass plate the Stage uses, never bare over the world, and
+// its counter wraps to at most three lines (the full text stays in the node and the live region).
+export const READOUT_PLATE = 'box-sizing:border-box;padding:6px 10px;'
+  + 'background:var(--dp-glass-flight, rgb(8 10 14 / .82));border:1px solid var(--dp-rule, rgb(232 226 212 / .16));'
+  + 'border-radius:var(--dp-r-plate, 3px);';
+export const COUNTER_CLAMP = 'white-space:normal;overflow-wrap:break-word;overflow:hidden;'
+  + 'display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;';
 
 function makeReadoutGroup(host, index) {
   const el = document.createElement('div');
   el.className = 'sf-cboss-readout';
-  el.style.cssText = `position:absolute;left:-10000px;top:0;display:none;max-width:340px;pointer-events:none;`;
+  el.style.cssText = `position:absolute;left:-10000px;top:0;display:none;max-width:340px;pointer-events:none;${READOUT_PLATE}`;
   const name = makeLine(el, 'var(--dp-ink, #e8e2d4)');
   const act = makeLine(el, 'var(--dp-ink-dim, #b7b4a6)');
   const moveTitle = makeLine(el, 'var(--dp-hand, #f2b950)');
   const counter = makeLine(el, 'var(--dp-ink-dim, #b7b4a6)', 400);
-  counter.style.cssText += 'white-space:normal;overflow-wrap:break-word;max-width:340px;';
+  counter.style.cssText += `${COUNTER_CLAMP}max-width:320px;`;
   // The health instrument is an ORRERY scale — borderless ruler of light, never a boxed bar.
   const scaleHost = svg('svg', {
     width: 132, height: 16, viewBox: '0 0 132 16', 'aria-hidden': 'true',
@@ -214,14 +222,32 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   // rectangles and the two readout footprints.
   let cachedLayout = null;
   const baseReserved = [];
-  const full = { w: 180, h: 96, dense: false };
+  const staticReserved = [];
+  // The live Swarm/Gauntlet text the readout must never land on: the round panel, the centre
+  // column, the Stage banner and the receipts, read from the DOM (cached ~400 ms by the helper).
+  // The pad price labels and the cursor's object read-out ride the world too, so they count.
+  const avoid = createAvoidRects(typeof document !== 'undefined' ? document : null,
+    { selectors: [...AVOID_SELECTORS, '#sf-floorpads .sf-fp', '.sf-woi'] });
+  let avoidSource = null;
+  let avoidBoxes = [];
+  const reserveLiveText = () => {
+    const found = avoid.get();
+    if (found !== avoidSource) {
+      avoidSource = found;
+      avoidBoxes = visibleRects(found).map((r) => ({ x: r.x, y: r.y, width: r.w, height: r.h }));
+    }
+    baseReserved.length = 0;
+    for (let i = 0; i < staticReserved.length; i += 1) baseReserved.push(staticReserved[i]);
+    for (let i = 0; i < avoidBoxes.length; i += 1) baseReserved.push(avoidBoxes[i]);
+  };
+  const full = { w: 180, h: 128, dense: false };
   const dense = { w: 120, h: 140, dense: true };
   const layoutFor = (width, height) => {
     if (!cachedLayout || cachedLayout.viewport.width !== width || cachedLayout.viewport.height !== height) {
       cachedLayout = resolveObjectiveHudLayout(width, height);
-      baseReserved.length = 0;
+      staticReserved.length = 0;
       for (const r of [cachedLayout.objective, cachedLayout.vitals, cachedLayout.action,
-        cachedLayout.rightDock, cachedLayout.commandDeck]) if (r) baseReserved.push(r);
+        cachedLayout.rightDock, cachedLayout.commandDeck]) if (r) staticReserved.push(r);
       full.w = Math.min(340, Math.max(180, cachedLayout.safe.width / 4));
       dense.w = Math.max(120, Math.min(180, Math.round(full.w * 0.72)));
     }
@@ -528,6 +554,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     }
     const showHealth = !(st && st.run && st.run.kind === 'survival');
     const layout = layoutFor(canvas.width / dpr || 1280, canvas.height / dpr || 720);
+    reserveLiveText();
     live.length = 0;
     for (const group of groups) {
       const readout = readouts[group.index];
