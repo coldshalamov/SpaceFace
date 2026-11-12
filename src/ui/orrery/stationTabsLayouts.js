@@ -1708,6 +1708,13 @@ ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]
 /* a sub-verb (Dispatch this job) is quieter than the job it hangs off until its row is chosen */
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__name { color:rgb(${BONE} / .62) !important; font-weight:500 !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__sub { color:rgb(${BONE} / .5) !important; }
+/* large windows (1281+ x 801+): the type chip (glyph + PASSENGER TRANSPORT) ran inline ahead of the title, so in the
+   board column the title broke after its first words and the price dangled on a ragged second line. The chip stands as
+   the row's eyebrow, and the title and price read on their own line under it. Smaller desktops keep the inline chip:
+   there the board has room for fewer rows, and the taller rows would push FEATURED below the fold. */
+@media (min-width:1281px) and (min-height:801px) {
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title > .sx-ct-row__type { display:flex !important; width:max-content; max-width:100%; margin:0 0 3px !important; }
+}
 /* one spine through the terms: the scales' rule continues down the ladder; the dashes are its ticks; the key is the last rung */
 ${T} .sx-dossier__terms { position:relative !important; padding-bottom:0 !important; margin-bottom:0 !important; min-height:0 !important; }
 ${T} .sx-dossier__terms::before { content:""; position:absolute; left:0; top:-2px; bottom:6px; width:8px; background:${SPINE(3, .55)}, ${BAND(3)}; pointer-events:none; }
