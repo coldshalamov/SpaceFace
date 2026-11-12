@@ -21,6 +21,7 @@ import { swarmDrops } from '../systems/swarmDrops.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
 import { swarmElites } from '../systems/swarmElites.js';
+import { swarmCourseTwists } from '../systems/swarmCourseTwists.js';
 import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
@@ -321,6 +322,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     // swarmElites is nodeSafe (sim-phase Threat/affix/perk runtime, SWARM-06) — without a row
     // every Node production-fidelity boot throws "missing system swarmElites for init order".
     ['swarmElites', swarmElites],
+    ['swarmCourseTwists', swarmCourseTwists],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],

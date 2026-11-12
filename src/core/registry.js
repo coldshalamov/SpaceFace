@@ -20,6 +20,7 @@ import { swarmDrops } from '../systems/swarmDrops.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
 import { swarmElites } from '../systems/swarmElites.js';
+import { swarmCourseTwists } from '../systems/swarmCourseTwists.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
 import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';             // Swarm arcade juice layer (DOM-guarded)
@@ -368,6 +369,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['swarmChain', swarmChain],
     ['swarmJuice', swarmJuice],
     ['swarmElites', swarmElites],
+    ['swarmCourseTwists', swarmCourseTwists],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],

@@ -62,6 +62,7 @@ import {
   swarmWaveOf,
 } from '../data/swarmMode.js';
 import { swarmCastFor, swarmCastIssues } from '../data/swarmCourseCast.js';
+import { swarmTwistFor, SWARM_QUIET_HOLD_TICKS } from '../data/swarmTwists.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizeThreatIds, swarmThreatPressureMult } from '../data/swarmThreats.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
@@ -210,6 +211,7 @@ function expandSchedule(packages) {
       if (pkg.debut === true) entry.debut = true;
       if (pkg.wall === true) entry.wall = true;
       if (pkg.staged === true) entry.staged = true;
+      if (pkg.rideFreight === true) entry.rideFreight = true;
       if (typeof pkg.characterScoreId === 'string') entry.characterScoreId = pkg.characterScoreId;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
@@ -591,9 +593,35 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       characterLanded = true;
     }
   }
+  // C01-05 — the course twist rewires the authored packages for its round. These are plan-
+  // level edits: the schedule still expands, spaces and dispatches through the same wave
+  // owner, so a twist never spawns behind the budget's back.
+  const twist = swarmTwistFor(w);
+  if (twist && twist.id === 'delivery') {
+    // Delivery: the round's Reaver package does not gate in — it rides the first freight
+    // string in, latched to the containers, and steps off at the lane midpoint.
+    for (const pkg of packages) {
+      if (pkg.enemyId === 'reaver_pirate') { pkg.rideFreight = true; break; }
+    }
+  } else if (twist && twist.id === 'everything_must_go') {
+    // Everything Must Go: twice the bodies in the same opening shape. Doubling count and
+    // batch keeps the authored arrival order; the concurrency clamp still owns pacing.
+    packages = packages.map((pkg) => (pkg && pkg.champion === true
+      ? pkg
+      : { ...pkg, count: pkg.count * 2, batchSize: (pkg.batchSize || pkg.count) * 2 }));
+  } else if (twist && twist.id === 'quiet') {
+    // Quiet: the whole authored schedule lands on the far side of the 40 s hold, so the
+    // gates all open together instead of trickling. The opening-spacing pass only pushes
+    // distinct ticks further apart, so the uniform shift survives verbatim.
+    packages = packages.map((pkg) => ({ ...pkg, atTick: pkg.atTick + SWARM_QUIET_HOLD_TICKS }));
+  }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w, bossOverride, cast);
+  if (twist && twist.id === 'everything_must_go' && Number.isInteger(swarm.killTarget) && swarm.killTarget > 0) {
+    // The quota doubles with the spawn count — the round owes twice the bodies it sells.
+    swarm.killTarget *= 2;
+  }
   if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
     name: character.name, variant: character.variant };
   if (biasedRoster) {

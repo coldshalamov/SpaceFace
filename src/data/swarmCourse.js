@@ -36,7 +36,7 @@ export const SWARM_COURSE = Object.freeze([
   courseRound(9, 'Tug of War', 'Tether Raiders. Half the round you are attached to something', null),
   courseRound(10, 'Corsair Wing', 'Boss: five ships that fly as one. The room changes — the crusher wakes. Bench', null),
   courseRound(11, 'The Umbrella', 'a Warden shielding gunners. Take the handle away', null),
-  courseRound(12, 'Delivery', 'enemies arrive on the freight. Cut the container loose before it stops', null),
+  courseRound(12, 'Delivery', 'enemies arrive on the freight. Cut the container loose before it stops', 'delivery'),
   courseRound(13, 'Lights Out', 'the arena dims. Ghosts. Your own lamps and the lane lights are all you have', null),
   courseRound(14, 'Hands Off', 'Anchor Controllers pin whatever you pick up. Nothing stays thrown', null),
   courseRound(15, 'Mirrorjaw Foreman', 'Boss. Copies the last gun that hit it. Hit it with a rock', null),

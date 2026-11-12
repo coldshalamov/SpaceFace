@@ -315,6 +315,10 @@ export function materializeWaveBatch(ctx, request) {
   // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
   // the clump centre first, then each body's offset inside it.
   const clumped = req.swarm === true && granted > 1;
+  // C01-05 — a caller may pin exact arrival seats (the freight riders land ON the moving
+  // containers). Pinned seats skip the clump fan and the open-arrival search: the seat is
+  // the receipt, not a safety suggestion, and it may carry its own entry velocity.
+  const reqPositions = Array.isArray(req.positions) ? req.positions : null;
   let clumpX = 0;
   let clumpZ = 0;
   if (clumped) {
@@ -329,7 +333,12 @@ export function materializeWaveBatch(ctx, request) {
   try {
     for (let i = 0; i < granted; i++) {
       let pos;
-      if (clumped) {
+      const pinned = reqPositions && reqPositions[i]
+        && Number.isFinite(reqPositions[i].x) && Number.isFinite(reqPositions[i].z)
+        ? reqPositions[i] : null;
+      if (pinned) {
+        pos = { x: pinned.x, z: pinned.z };
+      } else if (clumped) {
         const a = rng() * Math.PI * 2;
         const r = Math.sqrt(rng()) * SWARM_CLUMP_RADIUS_WU;
         pos = { x: clumpX + Math.cos(a) * r, z: clumpZ + Math.sin(a) * r };
@@ -350,8 +359,11 @@ export function materializeWaveBatch(ctx, request) {
       if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
+      if (pinned && (Number.isFinite(pinned.vx) || Number.isFinite(pinned.vz))) {
+        spec.vel = { x: Number.isFinite(pinned.vx) ? pinned.vx : 0, z: Number.isFinite(pinned.vz) ? pinned.vz : 0 };
+      }
       if (feel) applySwarmFeelSpec(spec, req.enemyId, feel);
-      if (req.swarm === true) {
+      if (req.swarm === true && !pinned) {
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
           { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
             clusterRadius: SWARM_CLUMP_RADIUS_WU });

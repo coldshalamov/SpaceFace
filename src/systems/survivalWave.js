@@ -97,6 +97,8 @@ export { SWARM_THREAT_MARK_SCALE };
 // room landing on a new pilot inside one second.
 const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
 const OPENING_ARRIVAL_GAP_TICKS = 80;
+/** C01-05 — a queued freight ride waits at most 30 s for a string before gating in. */
+const SWARM_FREIGHT_RIDE_STALE_TICKS = 30 * 60;
 // Swarm fire shaping. A new pilot reads one or two guns, not ten: only the nearest few cohort
 // hulls are cleared to shoot at once (more each wave), a fresh arrival holds its guns for a beat,
 // and a hull the pilot just hit is prioritised within that cap. Independent of encounter holds.
@@ -223,6 +225,9 @@ export const survivalWave = {
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
     // combat:damage is synchronous and runs before the lethal check.
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._holdLessonHull(p)));
+    // C01-05 — a `rideFreight` schedule entry owes its bodies to the next freight string:
+    // when one departs, its members are the arrival seats.
+    this._unsubs.push(this.bus.on('freight:departed', (p) => this._onFreightDeparted(p)));
     // FB-024 — a capital score's wing members spawn through the score's own port, mid-wave and
     // outside the schedule. Joining them here keeps the cohort honest: they still have to be
     // defeated before the round clears, and their deaths resolve like any other member's.
@@ -260,6 +265,7 @@ export const survivalWave = {
 
     this._cursor += 1;
     this._maybeReleaseOpeningLesson();
+    this._flushStaleFreightQueue();
     this._dispatchDue();
     this._shapeSwarmFire();
     this._reinforceSwarm(run);
@@ -1020,6 +1026,12 @@ export const survivalWave = {
         this._pending[write++] = item;
         continue;
       }
+      // C01-05 round 12 — a delivery batch does not gate in. It waits on the freight
+      // queue; the next string's members are its seats (see _onFreightDeparted).
+      if (entry.rideFreight === true) {
+        (this._freightQueue ||= []).push({ ...item, queuedAt: this._cursor });
+        continue;
+      }
       const holding = this._swarm && swarmPressureSuppressing();
       // A wipe is an earned breath, including when no hull survives. Keep scheduled
       // bodies owed instead of silently dropping them or refilling through the hold.
@@ -1075,6 +1087,7 @@ export const survivalWave = {
         level,
         count,
         gateGroup: entry.gateGroup,
+        positions: Array.isArray(entry.positions) ? entry.positions : undefined,
         seed,
         wave: this._wave,
         packageIndex: Number.isInteger(entry.packageIndex) ? entry.packageIndex : 0,
@@ -1184,6 +1197,96 @@ export const survivalWave = {
       });
     }
     this._pending.length = write;
+  },
+
+  /**
+   * C01-05 round 12 — the string is the seat map. Every queued rideFreight batch claims
+   * containers off this departure in queue order and materializes ON them (pinned seats
+   * carry the container's own velocity). Bodies the budget or the seats could not take
+   * stay queued for the next string; if the lane never runs, the stale flush hands them
+   * an ordinary gate arrival after 30 s so the round cannot starve.
+   */
+  _onFreightDeparted(payload) {
+    const queue = this._freightQueue;
+    if (!this._swarm || !this._active || !queue || queue.length === 0) return;
+    const seats = Array.isArray(payload && payload.members) ? payload.members : null;
+    if (!seats || seats.length === 0) return;
+    const run = liveSurvivalRun(this.state);
+    const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    const level = swarmLevel(this._wave);
+    const ownerId = waveOwnerId(this._wave);
+    let seat = 0;
+    const riders = [];
+    const kept = [];
+    for (const item of queue) {
+      const entry = item && item.entry;
+      const want = entry && Number.isInteger(entry.count) ? entry.count : 0;
+      const roomLeft = Math.max(0, this._concurrent - this._cohort.size);
+      const count = Math.min(want, seats.length - seat, roomLeft);
+      let admitted = 0;
+      if (count > 0) {
+        const positions = seats.slice(seat, seat + count);
+        const receipt = materializeWaveBatch(this.ctx, {
+          ownerId,
+          enemyId: entry.enemyId,
+          level,
+          count,
+          gateGroup: entry.gateGroup,
+          positions,
+          seed,
+          wave: this._wave,
+          packageIndex: Number.isInteger(entry.packageIndex) ? entry.packageIndex : 0,
+          batchIndex: item.index,
+          role: entry.role,
+          swarm: true,
+          distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
+          arenaId: run && run.arenaId,
+        });
+        this._requestedTotal += receipt.requested;
+        this._admittedTotal += receipt.admitted;
+        admitted = receipt.admitted;
+        for (let i = 0; i < receipt.spawnedIds.length; i++) {
+          const id = receipt.spawnedIds[i];
+          const body = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+            ? this.state.entities.get(id) || null
+            : null;
+          this._cohort.set(id, { role: entry.role, entity: body });
+          const member = positions[i];
+          if (member && member.id != null) riders.push({ id, memberId: member.id });
+        }
+        seat += receipt.admitted;
+      }
+      const owed = want - admitted;
+      if (owed > 0) kept.push({ ...item, entry: { ...entry, count: owed } });
+    }
+    this._freightQueue = kept;
+    if (riders.length) {
+      this._emit('swarm:freightRiders', {
+        wave: this._wave,
+        stringId: payload.stringId,
+        lane: { x0: payload.x0, z0: payload.z0, x1: payload.x1, z1: payload.z1,
+          dir: payload.dir === -1 ? -1 : 1 },
+        riders,
+        tick: this._cursor,
+      });
+    }
+    if (riders.length || kept.length !== queue.length) this._publishThreat();
+  },
+
+  /** Queued riders starve on a lane that never runs — after 30 s they gate in ordinarily. */
+  _flushStaleFreightQueue() {
+    const queue = this._freightQueue;
+    if (!queue || queue.length === 0) return;
+    const kept = [];
+    for (const item of queue) {
+      if (this._cursor - (Number.isInteger(item.queuedAt) ? item.queuedAt : 0) >= SWARM_FREIGHT_RIDE_STALE_TICKS) {
+        const { rideFreight, ...entry } = item.entry;
+        this._pending.push({ ...item, entry: { ...entry, atTick: this._cursor } });
+      } else {
+        kept.push(item);
+      }
+    }
+    this._freightQueue = kept;
   },
 
   /**
@@ -1603,11 +1706,20 @@ export const survivalWave = {
 
   /** Bodies the schedule still owes but has not dispatched yet. */
   _pendingBodies() {
-    if (!this._pending || this._pending.length === 0) return 0;
     let total = 0;
-    for (const item of this._pending) {
-      const count = item && item.entry && Number.isInteger(item.entry.count) ? item.entry.count : 0;
-      if (count > 0) total += count;
+    if (this._pending && this._pending.length !== 0) {
+      for (const item of this._pending) {
+        const count = item && item.entry && Number.isInteger(item.entry.count) ? item.entry.count : 0;
+        if (count > 0) total += count;
+      }
+    }
+    // Freight-queued riders are owed exactly like pending bodies — the string just
+    // hasn't picked them up yet.
+    if (this._freightQueue && this._freightQueue.length) {
+      for (const item of this._freightQueue) {
+        const count = item && item.entry && Number.isInteger(item.entry.count) ? item.entry.count : 0;
+        if (count > 0) total += count;
+      }
     }
     return total;
   },
@@ -1984,7 +2096,7 @@ export const survivalWave = {
       }
       const durationSeconds = this._durationSeconds();
       if (this._swarm.killTarget) {
-        if (this._admittedTotal < this._plannedBodies || this._pending.length || this._actionableCohortCount() > 0) return;
+        if (this._admittedTotal < this._plannedBodies || this._pendingBodies() > 0 || this._actionableCohortCount() > 0) return;
         this._retireDisabledLeftovers();
       } else if (this._swarm.circuit?.kind === 'survive'
         ? this._elapsedTicks() < this._durationTicks
@@ -2012,7 +2124,7 @@ export const survivalWave = {
       });
       return;
     }
-    if (this._pending && this._pending.length > 0) return;
+    if (this._pendingBodies() > 0) return;
     for (const [id, member] of this._cohort.entries()) {
       if (this._isCohortMemberActionable(id, member)) {
         if (this._blockingRoles.size === 0 || this._blockingRoles.has(member && member.role)) return;
@@ -2079,6 +2191,7 @@ export const survivalWave = {
     this._sourcePlan = null;
     this._wave = 0;
     this._pending = [];
+    this._freightQueue = [];
     this._cohort = new Map();
     this._blockingRoles = new Set();
     this._cursor = -1;

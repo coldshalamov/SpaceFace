@@ -188,11 +188,18 @@ export function createFreightLaneDirector(ctx) {
       if (e) members.push(e);
     }
     if (!members.length) return null;
-    const rec = { id, departAt, members };
+    const rec = { id, departAt, members, dir: 1 };
     strings.push(rec);
     emit('freight:departed', {
       stringId: id, wave: armed.wave, t: simTimeOf(state), count: members.length,
-      x0: lane.x0, z0: lane.z0, x1: lane.x1, z1: lane.z1,
+      x0: lane.x0, z0: lane.z0, x1: lane.x1, z1: lane.z1, dir: rec.dir,
+      // Rider seats: which bodies the string is carrying, with their entry kinematics —
+      // the wave owner reads this to drop Delivery bodies onto the moving boxes.
+      members: members.map((m) => ({
+        id: m.id,
+        x: finite(m.pos && m.pos.x), z: finite(m.pos && m.pos.z),
+        vx: finite(m.vel && m.vel.x), vz: finite(m.vel && m.vel.z),
+      })),
     });
     return rec;
   }

@@ -333,6 +333,9 @@ export function swarmEventFor({ arenaId, wave, seed } = {}) {
   if (course && course.twistId && !isSwarmMinorEventWave(w)) {
     const card = SWARM_EVENT_BY_ID[course.twistId];
     if (card) return card;
+    // C01-05 — a twistId that names a room mechanic, not a card, still owns the round's
+    // feature: the room does the twist, and no seeded card double-books it.
+    return null;
   }
   if (!isSwarmEventWave(w)) return null;
   const own = (arenaId && SWARM_EVENT_TABLES[arenaId]) || [];
@@ -382,6 +385,9 @@ export function swarmMinorEventFor({ arenaId, wave, seed } = {}) {
   const course = swarmCourseFor(w);
   const courseCard = course && course.twistId ? SWARM_EVENT_BY_ID[course.twistId] : null;
   if (courseCard && courseCard.minor === true) return stampMinorCard(courseCard);
+  // C01-05 — a named room mechanic owns its band round too: Highway Robbery deals no
+  // seeded minor card on top of the theft, and neither do its sibling twists.
+  if (course && course.twistId && !courseCard) return null;
   const pool = swarmMinorEventPool(arenaId);
   if (pool.length === 0) return null;
   const draw = seededEventDraw(`swarm-event-minor-v1|${arenaId || 'arena'}|w${w}`, seed, w);

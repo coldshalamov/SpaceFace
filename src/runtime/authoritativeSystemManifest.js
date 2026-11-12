@@ -29,7 +29,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
   'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'chainKills', 'killcamRecorder',
-  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmFortify', 'swarmSupply', 'swarmDrops', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmFortify', 'swarmSupply', 'swarmDrops', 'swarmChain', 'swarmJuice', 'swarmElites', 'swarmCourseTwists', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'spectrum', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'heroManeuvers', 'flightSlot',
@@ -194,7 +194,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
   // survivalRun: Survival phase machine. After combat/world/spawn/scenario receipts this tick
   // (wave-cleared arrives as an explicit event, never an entity count); before heat/HUD/presentation.
-  'swarmArena', 'survivalWave', 'survivalRun',
+  'swarmArena', 'survivalWave', 'swarmCourseTwists', 'survivalRun',
   // swarmChain: the kill chain. It ticks only to notice a lapse, and it reads the phase
   // survivalRun has already settled this tick.
   // killcamRecorder: the instant kill-cam tape (DEMO_READINESS §4). A read-only pose
@@ -589,6 +589,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'swarmJuice',
   // swarmElites: affix stamps and live perk effects read the wave the same tick it materializes.
   'swarmElites',
+  // swarmCourseTwists: rider releases, theft touches and yardmaster reversals all read the
+  // same settled tick the wave and the freight owner already ran.
+  'swarmCourseTwists',
   // swarmDrops: effect timers and the turret fire on the 60 Hz step.
   'swarmDrops',
   // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.

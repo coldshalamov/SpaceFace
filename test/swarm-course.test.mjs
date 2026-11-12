@@ -26,6 +26,7 @@ import {
   swarmEventFor,
   swarmMinorEventFor,
 } from '../src/data/swarmEvents.js';
+import { SWARM_TWIST_BY_ID } from '../src/data/swarmTwists.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
 import { swarmRoundPreview } from '../src/data/swarmLadder.js';
 import { createSwarmEventDirector, swarmEventFrame } from '../src/systems/swarmEvents.js';
@@ -174,13 +175,15 @@ test('swarmCourseFor answers inside the thirty and is quiet past the win', () =>
 
 // ── Every non-null twistId resolves to a real mechanic — and the band's law holds ──────
 
-test('every non-null twistId is a real event card the seam can deal', () => {
+test('every non-null twistId is a real event card or a registered room mechanic', () => {
   const twisted = SWARM_COURSE.filter((row) => row.twistId !== null);
   assert.ok(twisted.length > 0, 'the course actually twists some rounds');
   for (const row of twisted) {
     const card = SWARM_EVENT_BY_ID[row.twistId];
-    assert.ok(card, `round ${row.round} (${row.name}) names a real card: ${row.twistId}`);
-    if (isSwarmMinorEventWave(row.round)) {
+    const mechanic = SWARM_TWIST_BY_ID[row.twistId];
+    assert.ok(card || mechanic,
+      `round ${row.round} (${row.name}) names a real mechanic: ${row.twistId}`);
+    if (card && isSwarmMinorEventWave(row.round)) {
       assert.equal(card.minor, true,
         `round ${row.round} rides the minor band — only minor-tagged cards deal there`);
     }
@@ -192,12 +195,13 @@ test('every non-null twistId is a real event card the seam can deal', () => {
 test('open rounds deal the authored twist card ahead of the seeded draw', () => {
   for (const row of SWARM_COURSE) {
     const draw = swarmEventFor({ arenaId: ARENA, wave: row.round, seed: SEED });
-    if (row.twistId && !isSwarmMinorEventWave(row.round)) {
+    if (row.twistId && SWARM_EVENT_BY_ID[row.twistId] && !isSwarmMinorEventWave(row.round)) {
       assert.equal(draw && draw.id, row.twistId,
         `round ${row.round} (${row.name}) deals ${row.twistId}`);
       assert.equal(draw, swarmEventFor({ arenaId: ARENA, wave: row.round, seed: SEED }),
         `round ${row.round}'s card is the same frozen def every call`);
     } else {
+      // Room-mechanic twists own their round outright — no card double-books it.
       assert.equal(draw, null, `round ${row.round} books no major-band card`);
     }
   }
@@ -206,7 +210,10 @@ test('open rounds deal the authored twist card ahead of the seeded draw', () => 
 test('band rounds serve the authored twist at the minor voice and price', () => {
   for (const row of SWARM_COURSE.filter((r) => isSwarmMinorEventWave(r.round))) {
     const draw = swarmMinorEventFor({ arenaId: ARENA, wave: row.round, seed: SEED });
-    if (row.twistId && SWARM_EVENT_BY_ID[row.twistId].minor === true) {
+    if (row.twistId && SWARM_TWIST_BY_ID[row.twistId]) {
+      assert.equal(draw, null,
+        `round ${row.round} (${row.name}) is a room twist — the band deals nothing on top`);
+    } else if (row.twistId && SWARM_EVENT_BY_ID[row.twistId].minor === true) {
       assert.equal(draw.id, row.twistId, `round ${row.round} deals its authored twist`);
       const authored = SWARM_EVENT_BY_ID[row.twistId];
       assert.equal(draw.band, 'minor');
@@ -219,8 +226,8 @@ test('band rounds serve the authored twist at the minor voice and price', () => 
   }
 });
 
-test('the live director telegraphs each twisted round through the shipped seam', () => {
-  for (const row of SWARM_COURSE.filter((r) => r.twistId !== null)) {
+test('the live director telegraphs each card-twisted round through the shipped seam', () => {
+  for (const row of SWARM_COURSE.filter((r) => r.twistId !== null && SWARM_EVENT_BY_ID[r.twistId])) {
     const h = armedDirector({ arenaId: ARENA, wave: row.round });
     h.bus.emit('run:waveStarted', { wave: row.round });
     const offers = h.telegraphed();
