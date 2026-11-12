@@ -22,7 +22,8 @@ export function planSwarmOpeningCrossfire(state, run, wave, plan, miteRadius, sp
       || rock.collides === false
       || !(rock.radius > 0 && rock.radius <= 9) || !Number.isFinite(rock.pos?.x)
       || !Number.isFinite(rock.pos?.z) || Math.hypot(rock.vel?.x || 0, rock.vel?.z || 0) > 2
-      || !resolvePhysicsBodySpec(rock)?.dynamic) continue;
+      || !resolvePhysicsBodySpec(rock)?.dynamic
+      || !(resolvePhysicsBodySpec(rock).mass > 0 && resolvePhysicsBodySpec(rock).mass <= 220)) continue;
     const distance = Math.hypot(rock.pos.x - player.pos.x, rock.pos.z - player.pos.z);
     if (distance >= 45 && distance <= 120) candidates.push({ rock, distance });
   }

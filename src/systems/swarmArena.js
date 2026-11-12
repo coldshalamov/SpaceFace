@@ -1090,11 +1090,18 @@ export const swarmArena = {
     let total = 0, nearby = 0;
     for (const entity of state.entities.values()) {
       if (entity?.alive === false || !entity?.data?.[SWARM_DEBRIS_TAG]) continue;
-      total++;
-      if (Math.hypot(entity.pos?.x - player.pos.x, entity.pos?.z - player.pos.z) <= fightRadius) nearby++;
+      const inFight = Math.hypot(entity.pos?.x - player.pos.x, entity.pos?.z - player.pos.z) <= fightRadius;
+      if (inFight) nearby++;
+      // The fourth-round payload must not be starved by the previous fight's
+      // distant fracture offspring already on their normal release clock. They
+      // remain physical and keep that deadline; every nearby body still counts.
+      const retiringFragment = run.wave === 4 && !inFight && entity.type === 'asteroid'
+        && entity.data.isChunk === true && entity.data.materialFragment === true
+        && Number.isFinite(entity.data.despawnAt) && entity.data.despawnAt <= now + SWARM_DEBRIS_RELEASE_S;
+      if (!retiringFragment) total++;
     }
-    // Match the field owner's local cap and released-body ceiling; distant debris
-    // is neither teleported nor erased to manufacture the new lesson.
+    // Keep the local density cap. The released-field allowance above may omit
+    // fourth-round fracture offspring, but never moves or retires them early.
     if (nearby >= SWARM_DEBRIS_MAX || total >= SWARM_DEBRIS_MAX * 2) return null;
     const ownedIds = this._ids;
     const radius = 6, nativeRadius = asteroidColliderRadius(TYPE_ID, radius), distance = 88;
