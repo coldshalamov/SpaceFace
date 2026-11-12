@@ -590,15 +590,8 @@ export const scramblePlantOps = {
         row.scatterAngle = Math.atan2(awayZ, awayX);
 
         if (this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('pickup:collected', {
-            collectorId: e.id,
-            pickupId: targetPod.id,
-            commodityId: podData.commodityId,
-            amount: podData.amount,
-            acceptedAmount: podData.amount,
-            rejectedAmount: 0,
-            t: now,
-          });
+          // Not pickup:collected: missions, mining, economy, onboarding and the save owner read that as the
+          // PLAYER collecting. The civilian's grab is this plant's own event below.
           this.bus.emit(SCRAMBLE_POD_GRABBED_EVENT, {
             thiefId: e.id,
             podId: targetPod.id,

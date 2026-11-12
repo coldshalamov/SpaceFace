@@ -215,6 +215,8 @@ test('PL-04 Scramble: Positive trigger — owner hails, civilians seek and grab 
   assert.equal(civ1.data.civilianReaction, 'scramble_scattering');
 
   const grabEvent = ctx.events.find((e) => e.name === SCRAMBLE_POD_GRABBED_EVENT);
+  assert.equal(ctx.events.find((e) => e.name === 'pickup:collected'), undefined,
+    'a civilian grab never fires the player pickup event (missions/mining/onboarding read it as the player)');
   assert.ok(grabEvent, 'scramble pod grabbed event emitted');
   assert.equal(grabEvent.payload.thiefId, 'civ_1');
   assert.equal(grabEvent.payload.podId, targetPod1.id);
