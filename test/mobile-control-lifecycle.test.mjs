@@ -149,6 +149,7 @@ function mount(options) {
   const cfg = {};
   const view = mountMobileView({
     state, model, win, doc, config: () => cfg,
+    onFlick: options?.onFlick,
     activate: power => calls.activate.push(power.id), reset: role => calls.reset.push(role ?? null),
     saveConfig: (k, v) => { cfg[k] = v; },
   });
@@ -184,6 +185,23 @@ function pinWheel(w, bank = 0) {
   w.finger.up(9, 366, 470, edge);
 }
 const wheelOpen = w => w.q('.mf-wheel').hidden === false;
+
+test('a deliberate throw flick spends the gesture once and does not boost', () => {
+  const flicks = [];
+  const w = mount({ onFlick: (flick) => { flicks.push(flick); return true; } });
+  try {
+    w.finger.down(1, 120, 420);
+    w.finger.move(1, 175, 420);
+    w.finger.up(1, 205, 420);
+    assert.equal(flicks.length, 1);
+    assert.ok(flicks[0].x > 0 && flicks[0].y === 0);
+    assert.equal(w.model.sample(1 / 60).flight.boost, false);
+    w.finger.down(2, 120, 420);
+    w.finger.move(2, 205, 420);
+    w.finger.cancel(2, 205, 420);
+    assert.equal(flicks.length, 1);
+  } finally { w.dispose(); }
+});
 
 test('the phone Energy and Boost meters read full, spent and replenished worker resources', () => {
   const w = mount();
