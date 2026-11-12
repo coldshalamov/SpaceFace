@@ -4,6 +4,11 @@ import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { createRunState } from '../src/core/runState.js';
+import { createSimulation } from '../src/core/sim.js';
+import { physics } from '../src/core/physics.js';
+import { economy } from '../src/systems/economy.js';
+import { mining } from '../src/systems/mining.js';
 import { runSession } from '../src/systems/runSession.js';
 import {
   SWARM_REPAIR_HEALTHY_AT,
@@ -171,6 +176,50 @@ test('a cell is claimed by ID, so both publishers of pickup:collected work', () 
   const before = h.player.hull;
   h.bus.emit('pickup:collected', { pickupId: cell.id, collectorId: h.state.playerId });
   assert.equal(h.player.hull, before + swarmRepairAmount(HULL_MAX), 'a bare payload still pays');
+});
+
+test('full hull and foreign contact leave a cell for a later wounded-player pickup', () => {
+  const sim = createSimulation({ seed: SEED, systems: [economy, swarmSupply], updateOrder: [] });
+  try {
+    const { state, bus } = sim;
+    state.mode = 'flight';
+    state.run = Object.assign(createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED }),
+      { wave: 1, phase: 'active' });
+    const player = sim.spawn({ type: 'ship', hull: HULL_MAX / 2, hullMax: HULL_MAX, radius: 8 });
+    state.playerId = player.id;
+    for (let i = 0; i < swarmRepairInterval(0.5); i++) killCohortBody({ state, bus });
+    const cell = cells({ state })[0];
+    assert.ok(cell?.alive, 'the supply owner dropped a real repair cell');
+    player.pos.copy(cell.pos);
+    const other = sim.spawn({ type: 'ship', pos: cell.pos, hull: HULL_MAX / 2, hullMax: HULL_MAX, radius: 8 });
+    const contact = Object.assign(Object.create(physics), { state, bus, _diag: { pickupCollections: 0 } });
+    const miner = Object.assign(Object.create(mining), { state, bus });
+    const receipts = [];
+    const heals = [];
+    bus.on('pickup:collected', p => receipts.push([p.acceptedAmount, p.rejectedAmount]));
+    bus.on('swarm:supplyCollected', p => heals.push(p));
+
+    player.hull = HULL_MAX;
+    assert.equal(contact._tryCollectPickup(cell, player), false);
+    assert.equal(cell.alive, true);
+    state.simTime = cell.data.pickupAcceptanceRetryAt;
+    assert.equal(miner._collectPickupViaEvent(cell, player).accepted, 0);
+    assert.equal(cell.alive, true);
+    assert.equal(contact._tryCollectPickup(cell, other), false);
+    assert.equal(cell.alive, true);
+    assert.equal(cell.data.amount, 1);
+    assert.equal(other.hull, HULL_MAX / 2);
+    assert.equal(heals.length, 0);
+
+    state.simTime = cell.data.pickupAcceptanceRetryAt;
+    player.hull = HULL_MAX / 2;
+    assert.equal(contact._tryCollectPickup(cell, player), true);
+    assert.equal(cell.alive, false);
+    assert.equal(player.hull, HULL_MAX / 2 + swarmRepairAmount(HULL_MAX));
+    assert.deepEqual(receipts, [[0, 1], [0, 1], [0, 1], [1, 0]]);
+    assert.equal(heals.length, 1);
+    assert.equal(heals[0].id, cell.id);
+  } finally { sim.dispose(); }
 });
 
 test('a collected cell stays spent through a refit respawn', () => {

@@ -12,6 +12,8 @@ import { swarmArena, quietWellCenter, SWARM_DEBRIS_TAG, SWARM_DEBRIS_TARGET,
   SWARM_OPTIC_TAG } from '../src/systems/swarmArena.js';
 import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 import { findSwarmArrival, swarmPlacementIsClear, sweptDiscsOverlap } from '../src/systems/swarmSafety.js';
+import { HIVE_ARENA_ID, HIVE_WALL_GROW_S, HIVE_WALL_TAG, hiveStreamSeed, hiveWallRing } from '../src/systems/theHiveArena.js';
+import { mulberry32 } from '../src/core/rng.js';
 import { resetSwarmPressureState, createSwarmPressureState, noteSwarmPressureKills,
   swarmReinforceDecision, SWARM_BREATH_TICKS } from '../src/data/swarmMode.js';
 
@@ -258,6 +260,36 @@ test('a sleeping teaching well rechecks occupancy before waking', () => {
   assert.equal(registered.length, 1); const c = registered[0].center;
   obstacle(h, 'wreck', c.x, c.z, 30); sys._wakeLessonWell();
   assert.equal(updates.length, 0, 'no autonomous pull through newly occupied furniture');
+});
+test('the Hive opens and grows around live hulls and the pilot’s immediate flight path', () => {
+  const seed = 4242;
+  const h = room(seed);
+  h.state.run.arenaId = HIVE_ARENA_ID;
+  const roomSeed = hiveStreamSeed(seed, h.state.run.wave);
+  const start = hiveWallRing({ anchor: h.player.pos, rng: mulberry32(roomSeed) })[0];
+  const hull = obstacle(h, 'ship', start.x, start.z, 8);
+  const sys = Object.create(swarmArena);
+  sys.init(h);
+  try {
+    const walls = ring => [...h.state.entities.values()]
+      .filter(e => e.data[HIVE_WALL_TAG] && e.data.hiveRing === ring);
+    h.bus.emit('run:waveStarted', { wave: h.state.run.wave });
+    assert.ok(walls(0).length > 0, 'the open parts of the authored wall still stand');
+    assert.ok(walls(0).every(wall => !sweptDiscsOverlap(wall.pos, wall.radius, hull)),
+      'the opening room cannot materialize a wall inside a live hull');
+
+    const growth = hiveWallRing({ anchor: h.player.pos, ring: 1,
+      rng: mulberry32((roomSeed ^ 0x9e3779b9) >>> 0) })[0];
+    h.player.vel.x = growth.x * 1.5;
+    h.player.vel.z = growth.z * 1.5;
+    h.state.simTime = HIVE_WALL_GROW_S;
+    sys.update();
+    assert.ok(walls(1).length > 0, 'the clear growth sites still close in on schedule');
+    assert.ok(walls(1).every(wall => !sweptDiscsOverlap(wall.pos, wall.radius, h.player)),
+      'growth cannot materialize a wall across the pilot’s immediate flight path');
+  } finally {
+    sys.destroy();
+  }
 });
 test('debris top-up cannot materialize cover into a hull covering the combat area', () => {
   const h = room(); obstacle(h, 'ship', 0, 0, 2000);
