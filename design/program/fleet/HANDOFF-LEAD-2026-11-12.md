@@ -163,3 +163,31 @@ Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
 - No new Devin workers launched after the lead resumed dispatch. Codex's three workers above also inspected worker scheduling, native contact/proxy cost, and activity classification. The latter two proposed savings were small in the stored profile and stayed out. The ignored worker wake A/B passed Node marker and task-delivery checks. The live run was deferred while the three-viewport First Hour walk held the shared lock. Run it with `node scripts/fleet/game-lock.mjs run -- node .devshots/fleet/coordination/run-worker-wake-ab.mjs`. No scheduling change landed.
 - `f70afee6f6bf` — accepted. A live game-lock owner keeps its lease beyond 30 minutes. Focused regression proved the old timeout would call a live capture stale. An exited owner is still recoverable. Six fleet gate checks passed.
 - The active First Hour walk kept its original process and label. Its ignored lock timestamp was extended once to protect it from the seven pre-fix waiters until their own 60-minute caps. Those wrappers still use their loaded code. New invocations use f70afee6f6bf.
+
+### Full-game quality pass after Opus paused
+
+- `7276bf03b3b6` — accepted. NPC contact leaves Swarm perks for the eligible player.
+- `0d5cef7d5fe7` — accepted. A held-enemy throw survives both mouse edges arriving in one worker step.
+- `31abed5f77d1` — accepted. Current saves store onboarding beat keys. Old numeric saves use the original ordering.
+- `5eefa7b4f1e4` — accepted. Both Asteroid Mill grinders render at the active cone fields.
+- `458437e01bcc` — accepted. Legacy 47-A guidance returns in Helios and stays out of Ceres.
+- `4c7ddc8e8995` — accepted. The stunt fixture exercises the callback wired by `9dec955de450`.
+- `67da11dea453` — accepted. Docking at the deadline fails expired delivery before cargo or rewards settle.
+- `e59f0a736dd9` — accepted. First berth defers flight drills while paused and retains completed-beat progression.
+- `6eb815abf04e` — accepted. The production worker bridge delivers the complete Cryo and Storm room.
+- `223a1e915e42` — accepted. Gauntlet off-frame samples fell from 88 of 629 to 0 of 631 on the matched route.
+- `036f4e7bd8a9` — accepted. Arena machines and Storm cues track floating-origin changes.
+- `a721496a9d1f` — accepted. One real round-three enemy throw produced one QUICK THROW receipt and zero self-slings. Opened the PNG.
+- `6531c294c20e` — accepted. Fast initial latch and rock cut clicks retain both edges and the intended attachment.
+- `237f27f6d70e` — accepted. The Adventure Star Map hint stays out of survival and remains available in Adventure.
+- `43a250ad1db8` — accepted. The five-seed Cliff fixture follows the current first berth without changing the retention assertions.
+- `16f714003237` — accepted in 25 focused lifecycle, pool and residency checks. Delayed death removes only the predecessor root and preserves the successor's admission and pool claims.
+
+- Reused Codex workers `backend_recon`, `boot_deadline`, and `economy_perf` for independent owner investigations and focused repairs. No new Devin launch. Claude stayed open and paused renderer and content changes stayed intact.
+- The locked fleet gate before the recycled-root repair passed import lint, Adventure boot, Swarm boot and the v27 deterministic replay. The public Gauntlet camera comparison passed camera and controls but failed on seven first presentations. The existing trace cannot distinguish late admission from projection or sampling for those seven. SwiftShader frame time and readability were ungraded.
+- `3b5000fd86b4` — accepted. Swarm 20 default HUD obstacle scans fell from 94 to 46 per 20 s and measured selector work fell from 1,165 to 513 ms. Submissions stayed at about 12.3/s and callback p95 grew from 117 to 133 ms in this pair. Opened both screenshots. Yardmaster text clipping and overlap with the grab cue remain.
+- `7bba7e4a80dd` — accepted. Already-owed worker ticks use bounded task wakes while the heartbeat is fresh. Future deadlines, timer fairness, and generation cancellation are preserved. The Node worker uses the raw token to avoid its DOM accessor failure. The unchanged real slow-physics test and four other focused clock checks passed.
+- Swarm round 20, one locked Intel D3D11 Electron flight, timer/message/message/timer. Mean world submissions rose from 13.39 to 13.93/s, fresh poses from 11.18 to 12.82/s, and sim/wall from 0.786 to 0.887. Callback p95 fell from 116.7 to 100.0 ms and gaps over 100 ms fell from 19.1 to 7.0 per ten seconds. Moving-mesh gap p95 fell from 110.9 to 93.8 ms. The fight evolved between windows. The separate pinned before/after pair also improved motion and hitches. Both diagnostics still show substantial cadence loss. See `.devshots/fleet/coordination/quality-round20-performance.md`.
+- Opened live screenshots for Asteroid Mill, Cryo Drift, and Storm Lattice. The worker mounted the correct room parts and applied the inverse floating origin, and the Adventure hint was absent. The shortened public Gauntlet follow-up kept the ship in all 198 graded frames and recorded a Wasp death with raw-ID reuse. That reuse went to a projectile between samples, so the exact recycled-credit-chip case is covered by the focused lifetime test. The shortened run leaves completion and software frame time ungraded.
+- Open work includes whole-game hardware cadence and physical phone play, the seven first-presentation pops from the full Gauntlet run, the Yardmaster instruction collision, and B1 retiring the post-berth drills. B1 still gets immediate acceptance and the sole objective and voice lane. The design calls for contextual practice later in the first hour. The two pre-existing Racing fixture failures and full Circuits validation remain open. No publication.
+- Final locked gate at `7bba7e4a80dd` passed import lint (9 s), Adventure boot (192 s), Swarm boot (247 s) and the v27 replay (19 s). Adventure passed all 18 playable checks. The Swarm gate covers boot-critical checks. No game-lock holder remained.
