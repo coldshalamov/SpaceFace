@@ -28,3 +28,22 @@ export function yardWorkGuidance(job, layout, { couplingReason = () => null, bod
   }
   return null;
 }
+
+/** A natural stopping point, not whole-job completion or a new payout.
+ * Read the same receipts that survive Continue; never store a second progress flag. */
+export function yardSortingShiftCloseout(job, layout) {
+  if (!job || layout?.id !== 'lark' || layout.variant < 6 || layout.variant > 11
+      || !['working', 'parked'].includes(job.status)) return null;
+  const loads = ['engine', 'cargo'].map(id => job.modules[id]);
+  if (!loads.every((part, index) => part?.status === 'delivered' && part.receipt?.jobId === job.id
+      && part.receipt.moduleId === ['engine', 'cargo'][index]
+      && Number.isFinite(part.receipt.credits))) return null;
+  const remaining = layout.modules.filter(part => !['delivered', 'lost'].includes(job.modules[part.id]?.status));
+  if (!remaining.length) return null;
+  const earned = loads.reduce((sum, part) => sum + part.receipt.credits, 0);
+  return {
+    detail: `Sorting shift settled: Ceres has the motor and relay cassette. Those two originals paid ${earned} cr against your ${job.paidCr} cr claim. `
+      + `The remaining ${remaining.map(part => `${part.label} (${part.mass} mass)`).join(' and ')} are heavier work, not a requirement to keep that pay. `
+      + 'Park the claim and leave with your earnings, or inspect a remaining original to keep working. Parking preserves ownership and receipts through Save/Continue; it does not stop loose parts drifting. Re-secure a released transport clamp before leaving if needed.',
+  };
+}

@@ -1,4 +1,4 @@
-import { yardWorkGuidance } from './guidance.js';
+import { yardWorkGuidance, yardSortingShiftCloseout } from './guidance.js';
 import { createYardPhysics } from './physics.js';
 import { createYardLayout, YARD_LAYOUT_IDS, SHIPBREAKING_YARD_SITE as SITE } from './layouts.js';
 import { createYardJob, freshYardState, normalizeYardState, snapshotYardState, yardPartValue,
@@ -533,7 +533,8 @@ export const shipbreakingYard = {
       if (job && this._near(job)) this.workTicket(job.id);
     }
     if (result.ok && ['disconnect', 'resecure', 'vent', 'deliver'].includes(actionId)) {
-      if (moduleId) this.inspectPart(moduleId, job.id); else this.workTicket(job.id);
+      if (actionId === 'deliver') this.workTicket(job.id);
+      else if (moduleId) this.inspectPart(moduleId, job.id); else this.workTicket(job.id);
     }
     return result;
   },
@@ -543,14 +544,17 @@ export const shipbreakingYard = {
     this._selectedModuleId = null; this._selectedJobId = job.id;
     const layout = this._layout(job), claimed = ['working', 'parked'].includes(job.status);
     if (!claimed) return this.inspect(job.layoutId);
-    const advice = yardWorkGuidance(job, layout, { couplingReason: c => this._couplingReason(job, c), body: id => this.physics.body(job, id) });
+    const closeout = yardSortingShiftCloseout(job, layout);
+    const advice = !closeout && yardWorkGuidance(job, layout, { couplingReason: c => this._couplingReason(job, c), body: id => this.physics.body(job, id) });
     const actions = layout.modules.filter(m => !TERMINAL_PARTS.has(job.modules[m.id].status))
       .map(m => ({ id: 'inspect-part', moduleId: m.id,
         label: `${m.label} · ${job.modules[m.id].status === 'free' ? 'FREE' : `${Math.round(job.modules[m.id].condition * 100)}%`}` }));
     if (advice) actions.unshift({ id: 'inspect-part', moduleId: advice.moduleId, label: `FOREMAN · ${advice.label}` });
-    actions.push({ id: 'park', label: 'PARK THIS WORK' }, { id: 'abandon', label: 'CLOSE CLAIM…' }, { id: 'leave', label: 'BACK TO FLYING', cancel: true });
+    if (closeout) actions.unshift({ id: 'park', label: 'PARK CLAIM · KEEP EARNINGS' });
+    else actions.push({ id: 'park', label: 'PARK THIS WORK' });
+    actions.push({ id: 'abandon', label: 'CLOSE CLAIM…' }, { id: 'leave', label: 'BACK TO FLYING', cancel: true });
     this.bus.emit('shipbreakingYard:offer', { kind: 'work', revision: this._row.revision, jobId: job.id,
-      title: `${layout.title} · WORK TICKET`, detail: `${advice?.detail || layout.strategy} Recovered ${job.recoveredCr} cr; ${this._remainingValue(job)} cr still intact. Scan any original to inspect its remaining connections.`, actions });
+      title: `${layout.title} · WORK TICKET`, detail: `${closeout?.detail || advice?.detail || layout.strategy} Recovered ${job.recoveredCr} cr; ${this._remainingValue(job)} cr still intact. Scan any original to inspect its remaining connections.`, actions });
     return this._result(true);
   },
 
