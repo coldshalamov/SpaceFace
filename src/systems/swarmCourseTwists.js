@@ -23,6 +23,8 @@ import {
   swarmTwistFor,
   SWARM_RIDER_STILL_TICKS,
   SWARM_RIDER_CARRY_EXIT_SCALE,
+  SWARM_LIGHTS_OUT_INTENSITY,
+  SWARM_LIGHTS_OUT_RAMP_S,
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
@@ -149,8 +151,27 @@ function createDeliveryModule(host) {
   };
 }
 
+/**
+ * Round 13 — Lights Out. The room falls to a quarter light over two seconds and
+ * holds there until the round resolves. The request rides `swarm:arenaLights` and
+ * the render phase's sectorDimmer answers by scaling only the four-light sector
+ * rig — lamps, engine glows and lane lights live outside that rig and stay lit,
+ * which is the whole tell ("your own lamps and the lane lights are all you have").
+ */
+function createLightsOutModule(host) {
+  return {
+    activate() {
+      host._arenaLights(SWARM_LIGHTS_OUT_INTENSITY, SWARM_LIGHTS_OUT_RAMP_S, 'swarm_lights_out');
+    },
+    teardown() {
+      host._arenaLights(1, SWARM_LIGHTS_OUT_RAMP_S, 'swarm_lights_restore');
+    },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
+  lights_out: createLightsOutModule,
 };
 
 export const swarmCourseTwists = {
@@ -218,6 +239,12 @@ export const swarmCourseTwists = {
   _dispatch(method, payload) {
     const mod = this._mod;
     if (mod && typeof mod[method] === 'function') mod[method](payload);
+  },
+  /** Presentation request on the frame bus — render/sectorDimmer owns the answer. */
+  _arenaLights(level, fadeS, reason) {
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('swarm:arenaLights', { level, fadeS, reason, wave: this.wave });
+    }
   },
   update(dt) {
     if (this._mod && typeof this._mod.update === 'function') this._mod.update(dt);

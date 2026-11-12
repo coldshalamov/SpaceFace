@@ -10,6 +10,7 @@ import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js'
 import { shouldFreezeFlightSubmit, shouldPresentPausedPhotoFrame, shouldSkipFlightDraw } from './presentationFreeze.js';
 import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 import { presentProExperiencesFrame, releaseProExperiencesPresentation } from '../features/proExperiencesBrowser.js';
+import { attachSectorDimmer, applySectorDimmer } from '../render/sectorDimmer.js';
 
 installNpcJobLiveSignatureDraw(liveVfx);
 import {
@@ -43,6 +44,9 @@ export function runRenderUpdatePhase({
 } = {}) {
   const record = typeof recordPhase === 'function' ? recordPhase : noopPhase;
   const clock = typeof now === 'function' ? now : defaultNow;
+  // Lights Out (C01-05): the sim's `swarm:arenaLights` request lands on the frame bus once;
+  // the apply below scales the four sector-rig lights after the palette write, before the draw.
+  attachSectorDimmer(bus);
   const splitRender = !!(render
     && typeof render.prepareFrame === 'function'
     && typeof render.drawPreparedFrame === 'function');
@@ -126,6 +130,7 @@ export function runRenderUpdatePhase({
       if (worldDrawFollows) warmUiStagePrewarm({ render, state });
       render.renderFrame(alpha, presentDt, presentationFrame);
     }
+    applySectorDimmer(render, presentDt);
   } catch (err) {
     renderError = err;
   } finally {

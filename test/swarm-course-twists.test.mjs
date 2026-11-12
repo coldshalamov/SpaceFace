@@ -17,6 +17,12 @@ import { swarmCourseTwists } from '../src/systems/swarmCourseTwists.js';
 import { FOUNDRY_ARENA_ID } from '../src/systems/swarmArena.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
 import { FREIGHT_STRING_COUNT, FREIGHT_LANE_HALF_LENGTH } from '../src/systems/freightLane.js';
+import {
+  attachSectorDimmer,
+  applySectorDimmer,
+  resetSectorDimmerForTest,
+  sectorDimmerStatus,
+} from '../src/render/sectorDimmer.js';
 
 const DT = 1 / 60;
 const ARENA = FOUNDRY_ARENA_ID;
@@ -244,4 +250,59 @@ test('Delivery: a container cut loose before the midpoint carries its rider out 
     assert.ok(rider.data.forceFlee != null || rider.data.ai.activity.kind === 'flee',
       'a carried-away rider is routed out of the fight');
   } finally { h.destroy(); }
+});
+
+// ── Round 13 — Lights Out ──────────────────────────────────────────────────────────────
+
+function fakeRig() {
+  const mk = (intensity) => ({ intensity });
+  return { _sectorPaletteRig: { lights: { ambient: mk(0.85), key: mk(1.7), rim: mk(0.7), fill: mk(0.35) } } };
+}
+
+test('Lights Out: the round asks the room for a quarter light, restored at the boundary', () => {
+  const h = boot(13);
+  try {
+    const asks = h.emitted.filter((e) => e.event === 'swarm:arenaLights');
+    assert.equal(asks.length, 1, 'wave start issues one light request');
+    assert.equal(asks[0].payload.level, 0.25);
+    assert.equal(asks[0].payload.fadeS, 2);
+    assert.equal(asks[0].payload.wave, 13);
+    // Round end restores authored light — same teardown path run:ended/save:loaded ride.
+    h.bus.emit('run:waveCleared', { wave: 13 });
+    const restore = h.emitted.filter((e) => e.event === 'swarm:arenaLights');
+    assert.equal(restore.length, 2);
+    assert.equal(restore[1].payload.level, 1);
+    assert.equal(restore[1].payload.reason, 'swarm_lights_restore');
+  } finally { h.destroy(); }
+});
+
+test('Lights Out: the dimmer scales only the sector rig — and survives a palette rewrite', () => {
+  resetSectorDimmerForTest();
+  const raw = createBus();
+  attachSectorDimmer(raw);
+  const render = fakeRig();
+  raw.emit('swarm:arenaLights', { level: 0.25, fadeS: 2, reason: 'swarm_lights_out', wave: 13 });
+  // Two-second wall-paced fade: halfway through the room is dimming, not yet dark.
+  applySectorDimmer(render, 1);
+  assert.ok(sectorDimmerStatus().level > 0.25, 'mid-fade the room is still falling');
+  applySectorDimmer(render, 1.2);
+  assert.equal(sectorDimmerStatus().level, 0.25, 'the fade lands on the authored quarter');
+  const lights = render._sectorPaletteRig.lights;
+  assert.ok(Math.abs(lights.ambient.intensity - 0.85 * 0.25) < 1e-9);
+  assert.ok(Math.abs(lights.key.intensity - 1.7 * 0.25) < 1e-9);
+  // A palette transition rewriting the rig mid-dim re-bases the gain — never compounds.
+  lights.key.intensity = 2.2; // e.g. a sector palette lerp landed a new authored value
+  applySectorDimmer(render, 0.016);
+  assert.ok(Math.abs(lights.key.intensity - 2.2 * 0.25) < 1e-9, 'the rig rewrite becomes the new base');
+  applySectorDimmer(render, 0.016);
+  assert.ok(Math.abs(lights.key.intensity - 2.2 * 0.25) < 1e-9, 'and the scale never stacks on itself');
+  // Restore returns every light to its authored number.
+  raw.emit('swarm:arenaLights', { level: 1, fadeS: 0.5, reason: 'swarm_lights_restore' });
+  applySectorDimmer(render, 0.5);
+  assert.equal(sectorDimmerStatus().level, 1);
+  assert.equal(lights.ambient.intensity, 0.85);
+  assert.equal(lights.key.intensity, 2.2);
+  assert.equal(lights.rim.intensity, 0.7);
+  assert.equal(lights.fill.intensity, 0.35);
+  resetSectorDimmerForTest();
 });
