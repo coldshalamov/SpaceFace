@@ -38,7 +38,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 
 | ID | Job | State |
 |---|---|---|
-| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | READY (repeat after each batch) |
+| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | TAKEN codex (batch since b14da677: stand-in fixes, C01-05, plants, PERF-02/03, MOB-06/07/08) |
 | G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
 | LOOK-00-concept-frames | Three frames in `design/game/look/concepts/`; lead chose A (B = brightest a place may go, C = darkest) | DONE |
 
@@ -48,7 +48,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | L1-REVIEW | Look at every visible `BUILT` row on screen (ui-bench shots; `npm run player-truth -- --mode=swarm --start-round=N --out=<dir>`; fly it) and mark `DONE` or `REDO <sentence>`. Today: G19-01, G08-01, C01-01, G18-03, G18-04, PERF-02a, the plants. Repeat every session. | READY (repeat) |
 | LOOK-01 one grade | Concept A applied and tuned on screen in 4 passes (771c32c1, 37c9ddcd, 5b11ca4c, ca53d481, 4f828c87): warm key, blue shadows, ambient/fill restored, darkest moods floored, bloom only on true lights, exposure ~+3%, empty space deep indigo. Capture: `design/game/look/captures/2026-11-11-after-look-pass.png` | BUILT (owner to judge) |
-| LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | TAKEN codex (relaunched with an edit allowlist) |
+| LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | HOLD (not reproduced in rounds 2/3/5; diagnostics 53d5d274 + scanner ready — rerun on the next sighting) |
 | PERF-03 | Swarm 20 draws too much: measure draw calls per owner, cut the biggest with an identical picture (11.9 fps / 0.15 % idle today) | BUILT b9daa415 (debris merged: 7.2 → 9.0 fps, draws 222 → 137); hostile hulls are the rest → PERF-08 |
 | PERF-08 | One draw per enemy kind (instanced hostile hulls; 174 fighter draws/frame at round 20) | HOLD on PERF-04 (renderer.js) |
 | PERF-02b local prediction | Draw the player's ship from their own input on the main thread (client-side prediction), reconciled to the worker — the cure for input lag and flicker | HOLD on PERF-02a review |
