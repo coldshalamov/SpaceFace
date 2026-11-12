@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { planWave } from '../src/systems/survivalWavePlanner.js';
+import { SWARM_COURSE_CAST } from '../src/data/swarmCourseCast.js';
 import {
   SWARM_DEBUT_TICKS,
   SWARM_DEBUT_DISTANCE,
@@ -14,7 +15,7 @@ import {
   bindSwarmPressureContext,
   pickSwarmArchetype,
   resetSwarmPressureState,
-  swarmNewcomerFor,
+  swarmCastNewcomerFor,
   swarmOpeningCount,
 } from '../src/data/swarmMode.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -30,12 +31,17 @@ function swarmPlan(wave, seed = 9) {
   return planWave({ seed, arenaId: ARENA_ID, wave, mode: SWARM_RULESET });
 }
 
-// The first unlock wave per roster entry (2, 4, 5, 6, 8, 10, 12, 14, 16, 18, 22).
-const DEBUT_WAVES = [...new Set(SWARM_ROSTER.map((e) => e.fromWave))].filter((w) => w > 1);
+// C01-04: the course's authored first sightings — every cast row that stages a solo
+// readable arrival for the silhouette it introduces (3, 6, 8, 9, 13, 14, 17, 19). The
+// roster clock's unlock waves all sit inside the course, so the open ladder past round
+// 30 carries no debut waves at all.
+const DEBUT_WAVES = SWARM_COURSE_CAST
+  .filter((cast) => cast.packages.some((pkg) => pkg.debut === true))
+  .map((cast) => cast.round);
 
-test('every unlock wave stages exactly one debut package for its newcomer', () => {
+test('every first-sighting wave stages exactly one debut package for its newcomer', () => {
   for (const w of DEBUT_WAVES) {
-    const newcomer = swarmNewcomerFor(w);
+    const newcomer = swarmCastNewcomerFor(w);
     assert.ok(newcomer, `wave ${w} has a newcomer`);
     const plan = swarmPlan(w);
     assert.ok(!plan.error, `wave ${w} plan valid`);
@@ -51,20 +57,19 @@ test('every unlock wave stages exactly one debut package for its newcomer', () =
 
 test('the opening burst never pre-empts the debut: no group fields the newcomer early', () => {
   for (const w of DEBUT_WAVES) {
-    const newcomer = swarmNewcomerFor(w);
+    const newcomer = swarmCastNewcomerFor(w);
     const plan = swarmPlan(w);
-    // C01-01: wave 10 is a champion round — the Corsair Wing's champion packages field the
-    // wave's own newcomer as owed champion bodies, the same carve-out a capital debut gets.
     const early = plan.packages.filter(
       (pkg) => pkg.enemyId === newcomer.enemyId && pkg.debut !== true && pkg.champion !== true
-        && pkg.atTick < SWARM_DEBUT_TICKS,
+        && pkg.atTick <= SWARM_DEBUT_TICKS,
     );
-    assert.equal(early.length, 0, `wave ${w}: ${newcomer.enemyId} arrives only as the staged debut`);
+    assert.equal(early.length, 0,
+      `wave ${w}: ${newcomer.enemyId} packs land behind the staged sighting, never ahead of it`);
   }
 });
 
 test('the debut gate is its own bearing, distinct from the opening groups', () => {
-  const w = 8; // lancer debut, three opening groups
+  const w = 8; // Mine-Layer Jackal debut behind two Wasp groups
   const plan = swarmPlan(w);
   const debut = plan.packages.find((pkg) => pkg.debut === true);
   const openingGates = new Set(
@@ -96,17 +101,17 @@ test('the debut seat comes out of the opening burst — the pressure math does n
 });
 
 test('the debut flag rides the schedule so materialization can protect it', () => {
-  const plan = swarmPlan(4); // choir_zealot debut
+  const plan = swarmPlan(3); // detonator_dart debut
   const entries = plan.schedule.filter((e) => e.debut === true);
   assert.equal(entries.length, 1);
   assert.equal(entries[0].atTick, SWARM_DEBUT_TICKS);
-  assert.equal(entries[0].enemyId, 'choir_zealot');
+  assert.equal(entries[0].enemyId, 'detonator_dart');
 });
 
 test('non-debut waves never carry a debut package', () => {
-  // The lawful roster (FB-023) turned 9/13/15 into debut waves — warden_escort, customs_cutter
-  // and patrol_lawman now unlock there — so the non-debut list keeps only waves no fromWave claims.
-  for (const w of [3, 7, 11, 20, 30]) {
+  // Course rounds whose cast introduces nothing new (1/2/4/5/7) and the open ladder
+  // past the course (31) alike run without a staged first sighting.
+  for (const w of [1, 2, 4, 5, 7, 31]) {
     const plan = swarmPlan(w);
     assert.ok(!plan.error);
     assert.equal(plan.packages.filter((pkg) => pkg.debut === true).length, 0, `wave ${w}`);
@@ -114,9 +119,9 @@ test('non-debut waves never carry a debut package', () => {
 });
 
 test('the stream still fields the newcomer normally on debut wave and after', () => {
-  // The roster keeps its seat — the debut is staged arrival ordering, not a suppression list.
+  // The cast stream keeps its seat — the debut is staged arrival ordering, not a suppression list.
   for (const w of DEBUT_WAVES) {
-    const newcomer = swarmNewcomerFor(w);
+    const newcomer = swarmCastNewcomerFor(w);
     const plan = swarmPlan(w);
     assert.ok(
       plan.swarm.roster.some((e) => e.enemyId === newcomer.enemyId),
@@ -132,17 +137,18 @@ test('the stream still fields the newcomer normally on debut wave and after', ()
 });
 
 test('debut composes with build pressure without either eating the other', () => {
-  // Wave 16 debuts tether_control_raider; 'collision' pressure boosts anchor+control share.
+  // Wave 17 debuts pd_screen_escort; 'collision' pressure bends the cast stream's
+  // anchor share (field_anchor_controller rides this round's stream).
   const pressured = planWave({
-    seed: 9, arenaId: ARENA_ID, wave: 16, mode: SWARM_RULESET,
+    seed: 9, arenaId: ARENA_ID, wave: 17, mode: SWARM_RULESET,
     buildSummary: { dominant: 'collision' },
   });
   assert.ok(!pressured.error);
   const debut = pressured.packages.find((pkg) => pkg.debut === true);
   assert.ok(debut, 'debut survives pressure bias');
-  assert.equal(debut.enemyId, 'tether_control_raider');
+  assert.equal(debut.enemyId, 'pd_screen_escort');
   // The biased plan roster still includes the debuting specialist for reinforcements.
-  assert.ok(pressured.swarm.roster.some((e) => e.enemyId === 'tether_control_raider'));
+  assert.ok(pressured.swarm.roster.some((e) => e.enemyId === 'pd_screen_escort'));
 });
 
 test('debut is deterministic: same seed, same plan', () => {
@@ -220,9 +226,11 @@ function killBodies(h, n) {
 test('the stream cannot field the newcomer while its debut is owed, and a hold cannot drop it', () => {
   const h = bootWave(9);
   beginActiveSwarm(h, 9);
-  const wave = 4; // choir_zealot's unlock wave
-  const newcomer = swarmNewcomerFor(wave);
-  assert.equal(newcomer.enemyId, 'choir_zealot');
+  const wave = 13; // quiet_ghost's first-sighting round — a nine-Wasp opening keeps the
+  // board alive through the scripted cull so the hold is still open when the debut's
+  // tick arrives, exactly the starvation shape this regression guards.
+  const newcomer = swarmCastNewcomerFor(wave);
+  assert.equal(newcomer.enemyId, 'quiet_ghost');
   const plan = planWave({ seed: 9, arenaId: ARENA_ID, wave, mode: SWARM_RULESET });
   assert.ok(plan.swarm && !plan.error);
 
@@ -264,11 +272,12 @@ test('the stream cannot field the newcomer while its debut is owed, and a hold c
     let debutMat = null;
     for (let t = 0; t < 120 && !debutMat; t++) {
       survivalWave.update(DT);
-      // Only the schedule path counts: an emergency refill may now legally roll the
-      // newcomer (the debt is settled), and it must not mask a dropped debut.
+      // Only the solo arrival counts: an emergency refill may now legally roll the
+      // newcomer (the debt is settled), and this round's authored ghost packs land on
+      // the schedule too — requested 1 names the single-body sighting over either mask.
       debutMat = h.emitted.find(
         (e) => e.event === 'run:waveMaterialized' && e.payload.enemyId === newcomer.enemyId
-          && e.payload.reinforcement !== true,
+          && e.payload.reinforcement !== true && e.payload.requested === 1,
       ) || null;
     }
     assert.ok(debutMat, 'the pressure hold swallowed the staged debut — it never landed');

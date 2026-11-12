@@ -26,9 +26,9 @@
 
 import {
   SWARM_BOSS_FIRST,
+  SWARM_ROSTER,
   SWARM_WAVE_MAX,
   swarmPlanBlock,
-  swarmRosterFor,
 } from './swarmMode.js';
 import { swarmEventFor } from './swarmEvents.js';
 import { swarmCourseFor } from './swarmCourse.js';
@@ -346,7 +346,9 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
   const w = Number.isInteger(wave) && wave > 0 ? wave : 1;
   const block = swarmPlanBlock(w);
   const zone = swarmZoneFor(w);
-  const names = new Map(swarmRosterFor(w).map((entry) => [entry.enemyId, entry.name]));
+  // Names map the whole roster, not just the unlocked slice — a cast round may field a
+  // silhouette ahead of its roster clock, and the card should still name it properly.
+  const names = new Map(SWARM_ROSTER.map((entry) => [entry.enemyId, entry.name]));
   const roster = (block.roster || [])
     .map((entry) => names.get(entry.enemyId) || entry.enemyId)
     .filter(Boolean);
