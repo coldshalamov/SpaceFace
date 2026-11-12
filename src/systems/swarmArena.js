@@ -1005,6 +1005,11 @@ export const swarmArena = {
     if (wave <= 1) this._installOpeningPocket(run);
     const massGap = payload && payload.plan && payload.plan.swarm && payload.plan.swarm.massGap;
     if (massGap) this._installMassGapWall(massGap, wave);
+    // The lesson well plants last: it is the piece built to walk to a quiet bearing, and it
+    // can only walk around furniture that already exists. Planted before the pocket it could
+    // not see a pebble arriving inside its disc — and the wake revalidation would then keep
+    // the lesson's own tool asleep for the whole hold.
+    if (lesson && wave <= 1) this._plantOpeningLessonWell(lesson);
   },
 
   _onWaveStarted() {
@@ -1970,6 +1975,11 @@ export const swarmArena = {
         this._ids = this._ids.concat(id);
       }
     }
+  },
+
+  _plantOpeningLessonWell(lesson) {
+    if (!lesson) return;
+    const anchor = playerAnchor(this.state);
     const well = lesson.well || {};
     const system = this._fieldsSystem();
     if (system && typeof system.registerEnvironmental === 'function'
