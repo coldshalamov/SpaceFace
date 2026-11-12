@@ -232,7 +232,7 @@ export function createAlerts(ctx) {
     if (stage) {
       const el = ensureEl(rec);
       if (rec._txt.textContent !== rec.text) rec._txt.textContent = rec.text;
-      rec.stageHandle = stage.show('banner', el, { id: `alert:${rec.key}`, severity: rec.sev, bare: true });
+      rec.stageHandle = stage.show('banner', el, { id: `alert:${rec.key}`, severity: rec.sev, bare: true, persistent: rec.ttl === Infinity });
     } else {
       render();
     }
@@ -457,7 +457,7 @@ export function createAlerts(ctx) {
       if (!floorHandle || floorHandleSev !== sev
         || (!floorHandle.visible && !floorHandle.queued)) {
         floorHandleSev = sev;
-        floorHandle = stage.show('banner', floorEl, { id: `floor:${floorId}`, severity: sev, bare: true });
+        floorHandle = stage.show('banner', floorEl, { id: `floor:${floorId}`, severity: sev, bare: true, takeSeat: true });
       }
     } else if (floorEl.parentNode !== root) {
       root.appendChild(floorEl);
