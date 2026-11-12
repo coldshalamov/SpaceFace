@@ -7,7 +7,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
-import { destructionReceiptMatchesPresentationOwner } from '../src/render/renderer.js';
+import { destructionReceiptMatchesPresentationOwner, render } from '../src/render/renderer.js';
 import { createPlayerTruthLifeTracker, createPlayerTruthDrawIdentity, installPlayerTruthReader } from '../src/testing/playerTruth/reader.js';
 import { checkPopping, checkLodChurn, CLS, VIS } from '../scripts/player-truth/checks.mjs';
 
@@ -91,6 +91,61 @@ test('a delayed death does not own a successor mesh or admission', () => {
   assert.equal(destructionReceiptMatchesPresentationOwner({ id: 391, occupantGeneration: 42 }, null, mesh), false);
   mesh.userData.presentationOccupantGeneration = 42;
   assert.equal(destructionReceiptMatchesPresentationOwner({ id: 391, occupantGeneration: 42 }, null, mesh), true);
+});
+
+test('worker death replay retires only the previous occupant root after id reuse', () => {
+  const id = 391;
+  const receipt = { id, occupantGeneration: 42 };
+  const next = { id, type: 'pickup', alive: true, occupantGeneration: 43 };
+  const scene = new THREE.Scene();
+  const oldRoot = new THREE.Group();
+  const nextRoot = new THREE.Group();
+  oldRoot.userData.presentationOccupantGeneration = 42;
+  nextRoot.userData.presentationOccupantGeneration = 43;
+  scene.add(oldRoot);
+  const oldDetail = { ownerRoot: oldRoot, leaf: new THREE.Group(), detail: true };
+  const nextDetail = { ownerRoot: nextRoot, leaf: new THREE.Group(), detail: true };
+  const bucket = { records: [oldDetail, nextDetail] };
+  const pool = {
+    byEntity: new Map(),
+    byDetailOwner: new Map([[id, new Set(['old', 'next'])]]),
+    byDetail: new Map([['old', { bucket, record: oldDetail }], ['next', { bucket, record: nextDetail }]]),
+  };
+  const owner = {
+    state: { mode: 'flight', entities: new Map([[id, next]]) },
+    _meshes: new Map([[id, oldRoot]]),
+    _asteroidInstancePool: pool,
+    _meshesVersion: 0,
+    _despawnDisposeQueue: [],
+    _detachDestroyedEntityMesh: render._detachDestroyedEntityMesh,
+    _unbindPresentationMesh(boundId, root, dispose) {
+      assert.deepEqual([boundId, root, dispose], [id, oldRoot, true]);
+    },
+    _appearanceReplacements: new Map([[id, { cancel() { assert.fail('successor appearance'); } }]]),
+    _sectorBoundaryPreparations: { abortEntity() { assert.fail('successor preparation'); } },
+    _queueAssetResidencyDiagnosticsPublish() {},
+  };
+
+  owner.state.mode = 'loading';
+  render._onPresentationEntityDestroyed.call(owner, receipt);
+  assert.equal(oldRoot.parent, scene, 'the restore keeps ownership of retained GPU roots');
+
+  owner.state.mode = 'flight';
+  render._onPresentationEntityDestroyed.call(owner, receipt);
+  assert.equal(oldRoot.parent, null, 'the predecessor is removed from the scene in this event');
+  assert.equal(owner._meshes.has(id), false);
+  assert.deepEqual(owner._despawnDisposeQueue, [oldRoot]);
+  assert.equal(owner._meshesVersion, 1);
+  assert.equal(owner._meshReconcileDirty, true);
+  assert.deepEqual(bucket.records, [nextDetail]);
+  assert.deepEqual([...pool.byDetailOwner.get(id)], ['next']);
+
+  scene.add(nextRoot);
+  owner._meshes.set(id, nextRoot);
+  render._onPresentationEntityDestroyed.call(owner, receipt);
+  assert.equal(nextRoot.parent, scene);
+  assert.equal(owner._meshes.get(id), nextRoot);
+  assert.deepEqual(owner._despawnDisposeQueue, [oldRoot]);
 });
 
 function readerFixture() {

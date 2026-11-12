@@ -273,25 +273,26 @@ function releasePoolRecord(pool, bucket, record) {
   pool.dirty = true;
 }
 
-export function releaseAsteroidInstancesForEntity(pool, entityId) {
+export function releaseAsteroidInstancesForEntity(pool, entityId, ownerRoot = null) {
   if (!pool || pool.disposed) return false;
   let released = false;
   const owned = pool.byEntity.get(entityId);
-  if (owned) {
+  if (owned && (!ownerRoot || owned.record.ownerRoot === ownerRoot)) {
     releasePoolRecord(pool, owned.bucket, owned.record);
     pool.byEntity.delete(entityId);
     released = true;
   }
   const ownedKeys = pool.byDetailOwner.get(entityId);
   if (ownedKeys) {
-    pool.byDetailOwner.delete(entityId);
     for (const key of ownedKeys) {
       const ownedDetail = pool.byDetail.get(key);
-      if (!ownedDetail) continue;
+      if (!ownedDetail || (ownerRoot && ownedDetail.record.ownerRoot !== ownerRoot)) continue;
+      ownedKeys.delete(key);
       releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
       pool.byDetail.delete(key);
       released = true;
     }
+    if (!ownerRoot || ownedKeys.size === 0) pool.byDetailOwner.delete(entityId);
   }
   return released;
 }

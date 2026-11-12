@@ -19533,57 +19533,7 @@ export const render = {
         }
       }
     });
-    onBus('entity:destroyed', (receipt = {}) => {
-      const { id } = receipt;
-      const still = resolveWorldPresentationEntity(this.state, id);
-      if (!destructionReceiptMatchesPresentationOwner(receipt, still, this._meshes.get(id))) {
-        // The journal already admitted a different occupant. Its normal reconcile sweep owns
-        // any predecessor graph; this old receipt cannot cancel the fresh admission or pool.
-        this._meshReconcileDirty = true;
-        return;
-      }
-      this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
-      if (still && still.alive !== false && isPresentationLedgerRow(still)) {
-        const kept = this._meshes.get(id);
-        if (kept) this._bindPresentationMesh(still, kept);
-        this._meshReconcileDirty = true;
-        return;
-      }
-      if (this._sessionRecookKeepGpu === true) {
-        // Same-sector F9: `_clearEntities` used to dispose the GPU object before
-        // authored-visuals, so restored hulls showed status missing.
-        const kept = this._meshes.get(id);
-        if (kept) {
-          this._unbindPresentationMesh(id, kept);
-          clearEntityMeshReference(still, kept);
-          // The kept boundary still owns its adopted pool leaf: its record must survive
-          // (rekeyed onto the restored id by reattachResidentGpuMeshes, or released with
-          // the mesh by the dead-id reconcile sweep when nothing claims it). Releasing it
-          // here would un-adopt the leaf with no re-registration path in this flow —
-          // the rock un-pools for the session and the classified dirty check misses
-          // every frame.
-        } else {
-          // The heavier prewarm abort stays skipped — an in-flight publish may still
-          // target a kept sibling boundary. But with no retained mesh under this id,
-          // a pool record keyed by it can never reattach; it would pin its
-          // ownerRoot+leaf under a dead key for the rest of the session.
-          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        }
-        return;
-      }
-      this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
-      releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-      const m = this._meshes.get(id);
-      if (m) {
-        this._unbindPresentationMesh(id, m, true);
-        scene.remove(m); this._meshes.delete(id); this._meshesVersion += 1;
-        // Kill bursts land the per-corpse traverse+dispose flush inside one sim step. The GL
-        // tail is presentation-only — the corpse is already off-scene — so it queues for the
-        // bounded per-frame drain instead of hitching the whole despawn into one task.
-        this._despawnDisposeQueue.push(m);
-        this._queueAssetResidencyDiagnosticsPublish();
-      }
-    }, { presentation: true });
+    onBus('entity:destroyed', (receipt) => this._onPresentationEntityDestroyed(receipt), { presentation: true });
     // Ship hull swap or loadout change (fit/upgrade) — rebuild the mesh so visible hardpoints,
     // engines and tier reflect the current ship. Without this the mesh is frozen at spawn and a
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
@@ -25768,6 +25718,70 @@ export const render = {
       if (data && data.sfResidencyManager === manager) data.sfResidencyManager = null;
     }
     return !!manager;
+  },
+
+  _onPresentationEntityDestroyed(receipt = {}) {
+    const { id } = receipt;
+    const still = resolveWorldPresentationEntity(this.state, id);
+    const previousMesh = this._meshes.get(id);
+    if (!destructionReceiptMatchesPresentationOwner(receipt, still, previousMesh)) {
+      const life = receipt.occupantGeneration ?? receipt.entity?.occupantGeneration;
+      // The worker journal can install a replacement before replaying the predecessor's
+      // death. Retire only the root stamped with that death, leaving the new admission
+      // and its preparation alone. Save restore owns any kept roots during loading.
+      if (this.state.mode !== 'loading' && this._sessionRecookKeepGpu !== true
+          && Number.isSafeInteger(life) && previousMesh?.userData?.presentationOccupantGeneration === life) {
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id, previousMesh);
+        this._detachDestroyedEntityMesh(id, previousMesh);
+        clearEntityMeshReference(still, previousMesh);
+      }
+      this._meshReconcileDirty = true;
+      return;
+    }
+    this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
+    if (still && still.alive !== false && isPresentationLedgerRow(still)) {
+      const mesh = this._meshes.get(id);
+      if (mesh) this._bindPresentationMesh(still, mesh);
+      this._meshReconcileDirty = true;
+      return;
+    }
+    if (this._sessionRecookKeepGpu === true) {
+      // Same-sector F9: `_clearEntities` used to dispose the GPU object before
+      // authored-visuals, so restored hulls showed status missing.
+      const mesh = this._meshes.get(id);
+      if (mesh) {
+        this._unbindPresentationMesh(id, mesh);
+        clearEntityMeshReference(still, mesh);
+        // The kept boundary still owns its adopted pool leaf: its record must survive
+        // (rekeyed onto the restored id by reattachResidentGpuMeshes, or released with
+        // the mesh by the dead-id reconcile sweep when nothing claims it). Releasing it
+        // here would un-adopt the leaf with no re-registration path in this flow —
+        // the rock un-pools for the session and the classified dirty check misses
+        // every frame.
+      } else {
+        // The heavier prewarm abort stays skipped — an in-flight publish may still
+        // target a kept sibling boundary. But with no retained mesh under this id,
+        // a pool record keyed by it can never reattach; it would pin its
+        // ownerRoot+leaf under a dead key for the rest of the session.
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+      }
+      return;
+    }
+    this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
+    releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+    const mesh = this._meshes.get(id);
+    if (mesh) this._detachDestroyedEntityMesh(id, mesh);
+  },
+
+  _detachDestroyedEntityMesh(id, mesh) {
+    this._unbindPresentationMesh(id, mesh, true);
+    mesh.removeFromParent();
+    this._meshes.delete(id);
+    this._meshesVersion += 1;
+    // Detach in this event. The bounded residency drain handles GPU disposal so
+    // a burst of deaths does not synchronously dispose every model in one step.
+    this._despawnDisposeQueue.push(mesh);
+    this._queueAssetResidencyDiagnosticsPublish();
   },
 
   _bindPresentationMesh(entity, mesh) {
