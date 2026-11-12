@@ -271,8 +271,11 @@ test('seed 4242: after the pilot acts a foundry collision does not kill the less
   // snapshotVitals.before.armor is the armorHp the listener writes back.
   assert.equal(note.parts.armorHp, note.parts.armorBefore, `armorHp was not restored: ${JSON.stringify(note.parts)}`);
   assert.equal(note.parts.armorHp, note.parts.beforeArmor, `armorHp does not match payload.before.armor: ${JSON.stringify(note.parts)}`);
-  assert.equal(note.parts.shieldBroke, true, `expected the test collision to break shields: ${JSON.stringify(note.parts)}`);
-  assert.equal(note.parts.shieldAfter, 0, `shieldDown was emitted before a restored shield: ${JSON.stringify(note.parts)}`);
+  // bd531a7e1c5d (S1 feel profile, audit C1/C2) — the lesson wasp is a fodder hull and
+  // spawns shieldless/armorless, so there is no shield leg for a collision to break:
+  // shieldBroke stays false and no shieldDown can fire before the restored shield.
+  assert.equal(note.parts.shieldBroke, false, `a shieldless fodder hull reported a break: ${JSON.stringify(note.parts)}`);
+  assert.equal(note.parts.shieldAfter, 0, `the fodder lesson hull carries no shield: ${JSON.stringify(note.parts)}`);
   assert.ok(note.parts.hitBefore > 0, `collision did not record a subsystem hit: ${JSON.stringify(note.parts)}`);
   assert.ok(note.parts.hitBefore < note.parts.hitMax, `subsystem was already at max, so the restore is ambiguous: ${JSON.stringify(note.parts)}`);
   assert.equal(note.parts.hitHealth, note.parts.hitBefore, `subsystem health was not the pre-hit value: ${JSON.stringify(note.parts)}`);
