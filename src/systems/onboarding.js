@@ -398,6 +398,12 @@ export const BEATS = [
 // Beat index for the choice beat (B5) — accepting its offer ends tutorial mode permanently.
 const CHOICE_BEAT_INDEX = BEATS.length - 1;
 
+// Version 1 wrote an index into the original route. Keep this order independent of BEATS.
+const V1_BEAT_KEYS = Object.freeze([
+  'tether', 'raid', 'claimed', 'thrust', 'brake', 'marker',
+  'focus', 'burst', 'disengage', 'seam', 'dock', 'choice',
+]);
+
 // SEED-ST-04 — the taught verbs print their key. Each rail line that teaches a control names
 // that control's LIVE bound key once, resolved when the line is spoken or bound to the
 // objective, never at table-authoring time (a rebind is honored on the next beat; touch
@@ -1588,11 +1594,11 @@ export const onboarding = {
     // risk a mature save re-firing the tutorial on load.
     if (railDone && rescueDone && !mainRailActive) return null;
     return {
-      version: 1,
+      version: 2,
       mainRailActive,
       active: ob.active === true,
       finished: ob.finished === true,
-      currentBeat: typeof ob.currentBeat === 'number' ? ob.currentBeat : -1,
+      currentBeatKey: BEATS[ob.currentBeat]?.key ?? null,
       beatDoneAt: plainClone(ob.beatDoneAt),
       firedFollowups: plainClone(ob.firedFollowups),
       oreCollected: ob.oreCollected | 0,
@@ -1628,7 +1634,8 @@ export const onboarding = {
     }
     ob.active = d.active === true;
     ob.finished = d.finished === true;
-    ob.currentBeat = typeof d.currentBeat === 'number' ? d.currentBeat : -1;
+    const savedBeatKey = d.version >= 2 ? d.currentBeatKey : V1_BEAT_KEYS[d.currentBeat];
+    ob.currentBeat = BEATS.findIndex((beat) => beat.key === savedBeatKey);
     ob.beatDoneAt = plainClone(d.beatDoneAt) || {};
     ob.firedFollowups = plainClone(d.firedFollowups) || {};
     ob.oreCollected = d.oreCollected | 0;
@@ -1898,7 +1905,7 @@ export const onboarding = {
   _tryAdvanceBeat(opts = {}) {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
-    const nextIndex = ob.currentBeat + 1;
+    let nextIndex = ob.currentBeat + 1;
     if (nextIndex >= BEATS.length) return;
     // First-run opening line owns the screen until its fade has completed.
     if (nextIndex === 0 && this._firstRunSplashPending) {
@@ -1925,6 +1932,9 @@ export const onboarding = {
       const gateFromS = ob.pace && ob.pace.folded && ob.pace.folded[prev.key] ? this._lastTextAtS : Math.max(prevDoneAt, this._lastTextAtS);
       if (!opts.atBerth && now - gateFromS < SILENCE_S) return;
     }
+    // A reordered route can put lessons this pilot already completed ahead of the current beat.
+    while (nextIndex < BEATS.length && ob.beatDoneAt[BEATS[nextIndex].key] != null) nextIndex += 1;
+    if (nextIndex >= BEATS.length) return;
     // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
     // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
     // silence gate enforces below already covers the rescue line — no second timer needed.

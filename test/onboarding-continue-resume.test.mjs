@@ -177,6 +177,60 @@ function rescueWithSwingDone() {
   return rescue;
 }
 
+test('Continue restores the original version-1 first tether and restages its derelict', () => {
+  const h = boot();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.sys.deserialize({
+    version: 1, mainRailActive: true, active: true, currentBeat: 0,
+    beatAction: 'Target the marked derelict.',
+  });
+  h.bus.emit('save:loaded', {});
+  const ob = h.state.onboarding;
+  assert.equal(BEATS[ob.currentBeat].key, 'tether');
+  assert.ok(alive(h, h.sys._derelictId));
+  assert.equal(ob.beatAction, 'Target the marked derelict.');
+});
+
+test('Continue restores the original version-1 seam, then docks without replaying finished drills', () => {
+  const done = {
+    tether: 10, raid: 20, claimed: 30, thrust: 40, brake: 50,
+    marker: 60, focus: 70, burst: 80, disengage: 90,
+  };
+  const h = continueFrom({
+    version: 1, mainRailActive: true, active: true, currentBeat: 9,
+    beatAction: 'Beam the bright seams.', beatDoneAt: done,
+    firedFollowups: { 'seam:scan:hit': true },
+  });
+  const ob = h.state.onboarding;
+  assert.equal(BEATS[ob.currentBeat].key, 'seam');
+  assert.deepEqual(ob.beatDoneAt, done);
+  assert.equal(ob.firedFollowups['seam:scan:hit'], true);
+  const rock = entityOf(h, h.sys._miningRockId);
+  assert.ok(rock?.alive);
+
+  h.bus.emit('mining:yield', { minerId: h.state.playerId, qty: 3, pos: rock.pos });
+  advanceTime(h, 5);
+  tick(h);
+  assert.equal(BEATS[ob.currentBeat].key, 'dock');
+  h.bus.emit('dock:docked', { stationId: 'helios_prime' });
+  assert.equal(BEATS[ob.currentBeat].key, 'choice');
+  assert.deepEqual(ob.beatDoneAt, { ...done, seam: 100, dock: 105 });
+  assert.equal(h.sys._trainerId, null);
+});
+
+test('Continue resolves keyed beats and keeps the before-first-lesson sentinel', () => {
+  const thrust = saveMidRail((ob) => { ob.currentBeat = BEATS.findIndex((beat) => beat.key === 'thrust'); });
+  assert.equal(thrust.version, 2);
+  assert.equal(thrust.currentBeatKey, 'thrust');
+  const h = continueFrom(thrust);
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'thrust');
+  const beforeFirst = saveMidRail((ob) => { ob.currentBeat = -1; });
+  assert.equal(beforeFirst.currentBeatKey, null);
+  for (const record of [beforeFirst, { version: 1, mainRailActive: true, active: true, currentBeat: -1 }]) {
+    assert.equal(continueFrom(record).state.onboarding.currentBeat, -1);
+  }
+});
+
 test('Continue away from first-pull home preserves the lesson until the player returns', () => {
   const record = saveMidRail((ob) => {
     ob.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
