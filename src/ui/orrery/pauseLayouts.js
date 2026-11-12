@@ -199,7 +199,11 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
    banks run out to ~x 720–840 at y 240–300, right where the brief's Next / Saved lines sat, so the
    words printed over each other. The brief becomes a top-right reading level with PAUSED and ends
    above the first long bank. */
-@media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:720px) {
+/* …and on 1101–1439 × ≤800 (e.g. 1280×720, 1366×768) the 460px brief came down to y≈360 and its left edge
+   met SHIP's LOCAL MAP (x≈815) at y 275, so the card crowded the bank; it takes the same top-right reading
+   and ends above the banks (ui-polish-431) */
+@media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:720px),
+  (min-width:1101px) and (max-width:1439px) and (max-height:800px) {
   ${P} > .sf-pause-brief.orr-brief { top:clamp(28px, 5vh, 52px) !important; margin-top:0 !important;
     width:min(400px, 42vw) !important; }
   ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { gap:3px !important; }
