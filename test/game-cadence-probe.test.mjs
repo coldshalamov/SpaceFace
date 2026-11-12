@@ -324,20 +324,45 @@ for (const boundary of ['generation', 'render-slot generation', 'epoch']) {
 test('actual mesh observation exposes a frozen drawn pose despite healthy callbacks and changing ticks', () => {
   const harness = createMeshProbeHarness();
   try {
+    const motion = attachMotionFence(harness);
     harness.sample(0);
-    for (const t of [16, 32, 48, 64, 80, 96, 112, 128]) {
-      harness.setNow(t);
+    for (let i = 0; i < 8; i++) {
       harness.state.tick++;
       harness.state.simTime += 1 / 60;
-      harness.draw();
-      harness.sample(t);
+      motion.draw(0.6);
+      harness.sample();
     }
     const result = summarizeGameCadence(harness.stop());
+    assert.equal(result.worldSubmitFps, 62.5);
     assert.equal(result.healthyCallbacksFrozenWorld, 0);
+    assert.equal(result.healthyCallbacksFrozenSimulation, 0);
+    assert.equal(result.authoritativeSnapshotSubmissions, 1);
+    assert.equal(result.authoritativeSnapshotStaleMs.max, 112);
+    assert.equal(result.healthyCallbacksStaleSnapshot, 1);
+    assert.equal(result.healthyCallbacksStaleDrawnPose, 1);
     assert.equal(result.actualMeshPoseChanges, 0);
     assert.equal(result.actualMeshIdenticalPoses, 7);
     assert.ok(result.actualMeshStaleMs.max > 100);
     assert.ok(result.actualMeshStaleMs.over100 > 0);
+  } finally {
+    harness.restore();
+  }
+});
+
+test('a stale authoritative snapshot can still draw fresh interpolated poses', () => {
+  const harness = createMeshProbeHarness();
+  try {
+    const motion = attachMotionFence(harness);
+    harness.sample(0);
+    for (let i = 0; i < 8; i++) {
+      motion.draw((i + 1) / 10);
+      harness.sample();
+    }
+    const result = summarizeGameCadence(harness.stop());
+    assert.equal(result.authoritativeSnapshotSubmissions, 1);
+    assert.equal(result.healthyCallbacksStaleSnapshot, 1);
+    assert.equal(result.healthyCallbacksStaleDrawnPose, 0);
+    assert.equal(result.actualMeshPoseChanges, 7);
   } finally {
     harness.restore();
   }

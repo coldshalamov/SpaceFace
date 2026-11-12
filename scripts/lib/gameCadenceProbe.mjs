@@ -12,6 +12,8 @@ export function installGameCadenceProbe() {
   let lastMotionSim = null;
   let lastMotionSubmit = null;
   const motionSubmissionGaps = [];
+  const authority = { fence: null, epoch: null, simTime: null, submittedAt: null, submissions: 0 };
+  let sampledMeshDraws = 0;
   let lastSubmit = null;
   let previous = null;
   let lastSimAdvance = performance.now();
@@ -282,6 +284,21 @@ export function installGameCadenceProbe() {
           lastMotionSim = sf.state.simTime;
           motionSubmissions++;
         }
+        // The newest committed pack is the source for the playout clock.
+        // An older bracket can still interpolate, and a same-time repack
+        // does not mean a new simulation pose arrived.
+        if (sf.state.timeScale > 0) {
+          const fence = owner._snapshotFence;
+          const snapshot = fence?.newestSnapshot?.();
+          if (Number.isFinite(snapshot?.simTime) && (fence !== authority.fence
+            || snapshot.poseEpoch !== authority.epoch || snapshot.simTime > authority.simTime)) {
+            authority.fence = fence;
+            authority.epoch = snapshot.poseEpoch;
+            authority.simTime = snapshot.simTime;
+            authority.submittedAt = now;
+            authority.submissions++;
+          }
+        }
       }
       observeActualMesh(now, sf.state);
     }
@@ -290,13 +307,26 @@ export function installGameCadenceProbe() {
   if (owner) owner.drawPreparedFrame = wrapped;
   const sample = (now) => {
     const st = sf.state;
-    if (!previous || st.tick !== previous.tick || st.simTime !== previous.sim
-        || st.mode !== 'flight' || !(st.timeScale > 0)) lastSimAdvance = performance.now();
+    const sampledAt = performance.now();
+    const advancing = st.mode === 'flight' && st.timeScale > 0;
+    if (!previous || st.tick !== previous.tick || st.simTime !== previous.sim || !advancing) {
+      lastSimAdvance = sampledAt;
+    }
+    if (!advancing) {
+      authority.fence = null;
+      authority.submittedAt = null;
+    }
+    const drewMovingMesh = actualMesh.eligibleSamples > sampledMeshDraws;
+    sampledMeshDraws = actualMesh.eligibleSamples;
     const row = {
       t: now, mode: st.mode, timeScale: st.timeScale,
       sim: st.simTime, tick: st.tick, submissions, motionSubmissions,
-      simStaleMs: Math.max(0, performance.now() - lastSimAdvance),
-      worldStaleMs: Math.max(0, lastSubmit === null ? performance.now() - started : performance.now() - lastSubmit),
+      simStaleMs: Math.max(0, sampledAt - lastSimAdvance),
+      worldStaleMs: Math.max(0, sampledAt - (lastSubmit ?? started)),
+      authoritativeSnapshotSubmissions: authority.submissions,
+      authoritativeSnapshotStaleMs: authority.submittedAt === null ? null : Math.max(0, sampledAt - authority.submittedAt),
+      drawnPoseStaleMs: advancing && drewMovingMesh && actualMesh.lastPoseChangedAt !== null
+        ? Math.max(0, sampledAt - actualMesh.lastPoseChangedAt) : null,
       calls: st.render?.diagnostics?.info?.calls ?? null,
     };
     if (previous) row.gapMs = now - previous.t;
@@ -344,8 +374,11 @@ export function summarizeGameCadence(record) {
   const wallMs = first && last ? last.t - first.t : 0;
   const frames = rows.slice(1).filter(r => r.mode === 'flight' && r.timeScale > 0);
   const activeMs = frames.reduce((sum, r) => sum + (r.gapMs || 0), 0);
-  const healthyCallbacksFrozenWorld = frames.filter(r => r.gapMs <= 34 && r.worldStaleMs > 100);
-  const healthyCallbacksFrozenSimulation = frames.filter(r => r.gapMs <= 34 && r.simStaleMs > 100);
+  const healthyFrames = frames.filter(r => r.gapMs <= 34);
+  const healthyCallbacksFrozenWorld = healthyFrames.filter(r => r.worldStaleMs > 100);
+  const healthyCallbacksFrozenSimulation = healthyFrames.filter(r => r.simStaleMs > 100);
+  const snapshotAge = distribution(frames.map(r => r.authoritativeSnapshotStaleMs));
+  const drawnPoseObserved = frames.some(r => Number.isFinite(r.drawnPoseStaleMs));
   const simDelta = first && last ? last.sim - first.sim : 0;
   const submits = first && last ? last.submissions - first.submissions : 0;
   const motionObserved = record.submissionObserved
@@ -369,6 +402,13 @@ export function summarizeGameCadence(record) {
     submissionGaps: record.submissionObserved ? distribution(record.submissionGaps || []) : null,
     healthyCallbacksFrozenWorld: healthyCallbacksFrozenWorld.length,
     healthyCallbacksFrozenSimulation: healthyCallbacksFrozenSimulation.length,
+    authoritativeSnapshotSubmissions: snapshotAge.count
+      ? last.authoritativeSnapshotSubmissions - first.authoritativeSnapshotSubmissions : null,
+    authoritativeSnapshotStaleMs: snapshotAge.count ? snapshotAge : null,
+    healthyCallbacksStaleSnapshot: snapshotAge.count
+      ? healthyFrames.filter(r => r.authoritativeSnapshotStaleMs > 100).length : null,
+    healthyCallbacksStaleDrawnPose: drawnPoseObserved
+      ? healthyFrames.filter(r => r.drawnPoseStaleMs > 100).length : null,
     maxSimStaleMs: frames.reduce((max, r) => Math.max(max, r.simStaleMs || 0), 0),
     maxWorldStaleMs: frames.length ? Math.max(...frames.map(r => r.worldStaleMs)) : null,
     minDrawCalls: frames.some(r => Number.isFinite(r.calls)) ? Math.min(...frames.map(r => r.calls).filter(Number.isFinite)) : null,
