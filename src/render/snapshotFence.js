@@ -842,11 +842,11 @@ export function createSnapshotFence(options = {}) {
           lastGapResetSimTimeS = current.simTime;
           lastGapResetRawElapsedS = rawFrameElapsed;
         }
-        // Teleport / rebuild / clock rewind / forward gap: snap to the delayed target (the
-        // sim flagged the discontinuity via the pose epoch, or the gap detector did). The
-        // tuned playback rate survives a sector jump (the worker cadence did not change);
-        // only the phase, the rate window and the delay-measurement window restart.
-        presentedTime = current.simTime - playoutDelayS;
+        // A new epoch or an authoritative clock restart can re-seat anywhere. A delayed
+        // frame inside the same stream may only re-seat forward: if no newer pack arrived,
+        // the delayed target is behind the pose we already drew.
+        const target = current.simTime - playoutDelayS;
+        presentedTime = reset ? target : Math.max(presentedTime, target);
         clearPresentedPair();
         rateWallS = 0;
         rateSimS = 0;
@@ -984,13 +984,14 @@ export function createSnapshotFence(options = {}) {
       const newestIdx = bracketOrder[0];
       const newest = buffers[newestIdx];
       const epoch = newest.poseEpoch;
-      // The newest pack's same-epoch predecessor, if any (freshest known velocity pair).
-      // Packs stamped AHEAD of the newest are a rewound/restarted stream, not history.
+      // A zero-step publication can replace data at the same moment. Keep the latest pack
+      // for that stamp, and find an earlier time for the velocity pair. Packs stamped ahead
+      // of the newest are a rewound/restarted stream, not history.
       let priorOfNewest = -1;
       for (let i = 1; i < count; i++) {
         const idx = bracketOrder[i];
         if (buffers[idx].poseEpoch !== epoch) break;
-        if (buffers[idx].simTime <= newest.simTime) { priorOfNewest = idx; break; }
+        if (buffers[idx].simTime < newest.simTime) { priorOfNewest = idx; break; }
       }
       if (priorOfNewest < 0) {
         // No blend source in this epoch (boot, or the first pack after a teleport):
@@ -1013,11 +1014,11 @@ export function createSnapshotFence(options = {}) {
       for (let i = 1; i < count; i++) {
         const idx = bracketOrder[i];
         if (buffers[idx].poseEpoch !== epoch) break;
-        if (!(buffers[idx].simTime <= newest.simTime)) continue;
-        oldestSameEpoch = idx;
         const newerIdx = previousIdx;
         const newer = buffers[newerIdx];
         const older = buffers[idx];
+        if (!(older.simTime < newer.simTime)) continue;
+        oldestSameEpoch = idx;
         if (timeS >= older.simTime && timeS <= newer.simTime) {
           const span = newer.simTime - older.simTime;
           const alpha = span > 0 ? (timeS - older.simTime) / span : 1;

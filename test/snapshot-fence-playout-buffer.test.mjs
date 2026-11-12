@@ -9,6 +9,7 @@ import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
 } from '../src/render/snapshotFence.js';
+import { createPoseContinuity } from '../src/render/poseContinuity.js';
 import { presentedAnchorRot, presentedAnchorXZ } from '../src/render/presentedAnchor.js';
 
 const PLAYER_ID = 1;
@@ -27,6 +28,57 @@ function meshStub() {
 function applyPose(fence, mesh, alpha) {
   applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
     fence.previousSnapshot(), alpha);
+}
+
+for (const duplicate of [true, false]) {
+  test(`a ${duplicate ? 'same-tick pack' : 'long frame without a new pack'} preserves forward ship playout`, () => {
+    const fence = createSnapshotFence({ capacity: 4 });
+    const mesh = meshStub();
+    const continuity = createPoseContinuity();
+    const drawn = {};
+    const present = (rawFrameElapsed = DT) => {
+      const alpha = fence.samplePresentationAlpha(DT, 0, DT, 1, rawFrameElapsed);
+      applyPose(fence, mesh, alpha);
+      continuity.sample(PLAYER_ID, mesh.position.x, mesh.position.z, mesh.rotation.y, DT, drawn);
+      return { raw: mesh.position.x, drawn: drawn.x, time: fence.getPlayoutDiagnostics().presentedTimeS };
+    };
+
+    // A steady ship advances one WU per completed tick, then briefly exhausts its reserve.
+    for (let tick = 0; tick <= 90; tick++) {
+      packOne(fence, { x: tick, simTime: tick * DT });
+      present();
+    }
+    let before;
+    for (let i = 0; i < 14; i++) before = present();
+    assert.ok(before.raw > 90 && before.drawn > 90, 'both readers are drawing past the last completed pose');
+
+    if (duplicate) packOne(fence, { x: 90, simTime: 90 * DT });
+    const lastSequenceAtGap = fence.newestSnapshot().sequence;
+    const after = present(duplicate ? DT : 0.52);
+    assert.deepEqual({
+      rawForward: after.raw >= before.raw,
+      drawnForward: after.drawn >= before.drawn,
+      timeForward: after.time >= before.time,
+    }, { rawForward: true, drawnForward: true, timeForward: true });
+    assert.equal(fence.latestSnapshot().sequence, lastSequenceAtGap);
+    assert.ok(fence.previousSnapshot().simTime < fence.latestSnapshot().simTime);
+    if (!duplicate) assert.equal(fence.getPlayoutDiagnostics().gapResets, 1);
+
+    // After real ticks resume, both the delayed pair and its mesh keep moving forward.
+    let prior = after;
+    for (let tick = 91; tick <= 103; tick++) {
+      packOne(fence, { x: tick, simTime: tick * DT });
+      const next = present();
+      assert.ok(next.raw >= prior.raw && next.drawn >= prior.drawn, `no reverse draw at tick ${tick}`);
+      prior = next;
+    }
+    assert.ok(prior.drawn > after.drawn, 'the ship resumes advancing');
+    if (duplicate) {
+      fence.resolvePresentedBracket(89.5 * DT);
+      assert.equal(fence.latestSnapshot().sequence, lastSequenceAtGap,
+        'the latest same-tick revision is also retained when it becomes historical');
+    }
+  });
 }
 
 test('a late pack lands inside history: the drawn pose never holds or jumps', () => {
