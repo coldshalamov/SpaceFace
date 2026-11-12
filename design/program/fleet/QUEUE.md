@@ -60,7 +60,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | WRITE G16 one glass | Written: G16-01 (Lane 2), G16-02 (Lane 3) from Devin's recon | DONE |
 | WRITE G20 the Rig [FE] | Write the packet(s): one loadout screen for both doors (EC-G20, PR #1032; `design/game/11`) | READY |
 | WRITE G21 the Chart [FE] | Write the packet(s): full-screen live map, layers, timetable, routes (EC-G21, PR #1033) | READY |
-| WRITE G10 first ten minutes [FE] | Write the packet(s): keep the throw, cut the drills, stage the Skim on screen (EC-G10; `design/game/16` "Cold Start") | READY |
+| WRITE G10 first ten minutes [FE] | Write the packet(s): keep the throw, cut the drills, stage the Skim on screen (EC-G10; `design/game/16` "Cold Start") | TAKEN lead — recon RECON-G10 with devin2 first (demo priority) |
 | WRITE A01 Foundry floor | Written: A01-03 drops (Lane 3), A01-04 wall guns + Crate (Lane 2). A01-05 Forge + Taps (Lane 2). Still to write: A01-06 doors + traps; the five other Forged forms; Volatile Wake + Second Reel | READY |
 | WRITE A01 freight lanes | Written: `packets/A01-02-freight-lane.md` (Lane 2) | DONE |
 | WRITE G09 one next | Write the packet: one guidance voice (EC-G09) | READY |
