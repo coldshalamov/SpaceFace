@@ -1,3 +1,5 @@
+import { casingReceiptCandidate, commitCasingReceipt, issueFurnaceCasing } from '../missions/furnaceCasingReturn.js';
+import { syncFurnaceReceivingLane, furnaceLotCallout } from '../missions/furnaceReceivingLane.js';
 // W-BOOKS-0-2 (row 533, 06 §34.7 Book 1): the CR-FEED furnace intake at Ceres — a marked
 // mouth ring beside the closed refinery. Fling the infested ore hauler's pods (or any loose
 // rock) across the lip and the yard burns them; each feed emits `furnace:fed`, which the
@@ -96,7 +98,7 @@ export function createFurnaceIntake() {
     },
     _removeOwned() {
       for (const e of this.state?.entityList || []) {
-        if (e?.alive && e.data?.furnaceIntake === true) this.helpers?.removeEntity?.(e.id);
+        if (e?.alive && (e.data?.furnaceIntake === true || e.data?.furnaceReceivingShoulder === true)) this.helpers?.removeEntity?.(e.id);
       }
     },
     _sync() {
@@ -118,6 +120,7 @@ export function createFurnaceIntake() {
      *  the speed — flinging is the intended delivery. Once per body per tick. */
     update() {
       if (this._restoring || !this._adventure()) return;
+      syncFurnaceReceivingLane(this);
       const list = [...(this.state?.entityList || [])];
       const mouth = furnaceMouthGlobal();
       const r2 = FURNACE_INTAKE.mouthRadius * FURNACE_INTAKE.mouthRadius;
@@ -128,6 +131,8 @@ export function createFurnaceIntake() {
         const dx = pos.x - mouth.x, dz = pos.z - mouth.z;
         if (dx * dx + dz * dz > r2) continue;
         e._furnaceTaken = true;
+        const lotCallout = furnaceLotCallout(this.state, e);
+        const casingCandidate = casingReceiptCandidate(this.state, e);
         const flags = this._flags();
         if (flags) {
           flags[FURNACE_INTAKE.fedFlag] = true;
@@ -142,12 +147,14 @@ export function createFurnaceIntake() {
           sectorId: FURNACE_INTAKE.sectorId,
           count: flags ? flags[FURNACE_INTAKE.countFlag] : undefined,
         });
+        commitCasingReceipt(this.state, casingCandidate);
         this.bus?.emit('comms:popup', {
           id: `furnace_fed_${e.id}`, sender: FURNACE_INTAKE.sender, category: 'info',
-          text: FURNACE_INTAKE.fed, ttl: 6, persist: false,
+          text: lotCallout || FURNACE_INTAKE.fed, ttl: 6, persist: false,
         });
         this.helpers?.removeEntity?.(e.id);
       }
+      issueFurnaceCasing(this);
     },
   };
 }
