@@ -114,10 +114,14 @@ const CSS = `
   animation: sf-popups-draw 560ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 80ms backwards; }
 
 /* The field loses its own slab: the pane carries the glass, the field keeps only its resting
-   rule — which warms to the lamp under focus (the palette's one amber leader). */
+   rule — which warms to the lamp under focus (the palette's one amber leader).
+   Width: kit.css sizes the field and the results at the pane's own min(660px*s, 92vw), but the
+   pane is border-box with a 1px hairline, so inside it they ran 2px past the 658px inner edge and
+   the seated focus ring landed on the right hairline. Inside the pane they fill its inner width. */
 .sf-find .sf-find__pane input.sf-find__input,
 .sf-find .sf-find__pane input.sf-find__input:hover,
 .sf-find .sf-find__pane input.sf-find__input:focus {
+  width: 100%;
   background:
     linear-gradient(90deg, transparent, var(--dp-rule-hi, rgb(232 226 212 / .22)) 10%, var(--dp-rule-hi, rgb(232 226 212 / .22)) 90%, transparent) bottom / 100% 1px no-repeat;
   -webkit-backdrop-filter: none; backdrop-filter: none;
@@ -128,6 +132,7 @@ const CSS = `
     linear-gradient(90deg, transparent, var(--dp-lamp, #f2b950) 8%, var(--dp-lamp-hot, #ffd98c) 50%, var(--dp-lamp, #f2b950) 92%, transparent) bottom / 100% 1.5px no-repeat; }
 /* The results lose their second slab: one continuous surface under the field. */
 .sf-find .sf-find__pane .sf-find__results {
+  width: 100%;
   background: none;
   -webkit-backdrop-filter: none; backdrop-filter: none;
   padding-top: 2px;
