@@ -154,7 +154,7 @@ test('a player thrusting into Coalition HQ keeps native wall braking and backs o
   } finally { sim.shutdown(); }
 });
 
-test('a fixed-wall stop survives a simultaneous dynamic shove without spending extra give budget', async () => {
+test('a fixed-wall stop keeps paired solver momentum and still caps a fixed-only graze', async () => {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: 1 / 60 });
   try {
     const player = makeContactFixtureEntity(1, { isPlayer: true, vx: 100, vz: -1 });
@@ -167,29 +167,34 @@ test('a fixed-wall stop survives a simultaneous dynamic shove without spending e
     // Exact mixed-contact method fixture: the fixed wall removes 1 WU/s of incoming Z motion,
     // while a dynamic partner adds 30 WU/s in X. The receipts are the production orientation:
     // the helper flips aId→bId into the fixed body's outward normal for player A.
-    rec.body.setLinvel({ x: 130, y: 0, z: 0 }, true);
-    rec.postStep.vDirty = true;
-    owner._stepContactReceipts = [
-      {
-        aId: player.id, bId: wall.id, normal: { x: 0, z: -1 },
-        preSolveClosingNormal: { x: 0, z: -1 }, preSolveClosingSpeed: 1,
-      },
-      {
-        aId: player.id, bId: traffic.id, normal: { x: 1, z: 0 },
-        preSolveClosingNormal: { x: 1, z: 0 }, preSolveClosingSpeed: 0,
-      },
-    ];
-    rec._playerContactCumulativeDeltaV = 0;
-    owner._applyPlayerStructuralGive(rec);
-    const velocity = rec.body.linvel();
-    assert.ok(Math.abs(velocity.z) < 1e-5,
-      `native wall stopping survives the mixed response (z=${velocity.z})`);
-    assert.ok(velocity.x <= 105 + 1e-5,
-      `dynamic shove stays inside the 5 WU/s give budget (x=${velocity.x})`);
-    assert.ok(Math.abs(velocity.x - 105) < 1e-5,
-      `the fixed stop is preserved while the dynamic shove admits exactly its budget (x=${velocity.x})`);
-    assert.ok((rec._playerContactCumulativeDeltaV || 0) <= 5 + 1e-5,
-      `only unrelated solver motion draws on the episode budget (got ${rec._playerContactCumulativeDeltaV})`);
+    const wallReceipt = {
+      aId: player.id, bId: wall.id, normal: { x: 0, z: -1 },
+      preSolveClosingNormal: { x: 0, z: -1 }, preSolveClosingSpeed: 1,
+    };
+    const trafficReceipt = {
+      aId: player.id, bId: traffic.id, normal: { x: 1, z: 0 },
+      preSolveClosingNormal: { x: 1, z: 0 }, preSolveClosingSpeed: 0,
+    };
+    const applySolvedMotion = receipts => {
+      rec.body.setLinvel({ x: 130, y: 0, z: 0 }, true);
+      rec.postStep.vDirty = true;
+      owner._stepContactReceipts = receipts;
+      rec._playerContactCumulativeDeltaV = 0;
+      const applied = owner._applyPlayerStructuralGive(rec);
+      return { velocity: rec.body.linvel(), applied, spent: rec._playerContactCumulativeDeltaV };
+    };
+
+    // The dynamic partner already carries the opposite impulse (51ead0a695b1).
+    const mixed = applySolvedMotion([wallReceipt, trafficReceipt]);
+    assert.equal(mixed.velocity.z, 0, 'the wall still cancels inward velocity');
+    assert.equal(mixed.velocity.x, 130, 'the paired dynamic impulse keeps its full tangential response');
+    assert.equal(mixed.applied, Math.hypot(30, 1), 'the owner reports the actual mixed response');
+    assert.equal(mixed.spent, 0, 'paired momentum and wall braking spend no graze budget');
+
+    const fixedOnly = applySolvedMotion([wallReceipt]);
+    assert.equal(fixedOnly.velocity.z, 0, 'fixed-only braking still cancels inward velocity');
+    assert.equal(fixedOnly.velocity.x, 105, 'the unpaired tangential response is limited to 5 WU/s');
+    assert.equal(fixedOnly.spent, 5, 'only the fixed-only tangential response spends the graze budget');
     assert.equal(rec.expected.vx, 100, 'the trusted expected velocity remains untouched');
     assert.equal(rec.expected.vz, -1, 'the trusted expected normal motion remains untouched');
   } finally {
