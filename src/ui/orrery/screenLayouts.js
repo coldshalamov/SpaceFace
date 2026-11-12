@@ -258,7 +258,9 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word.k-word--primary { color:var(--dp-metal-0, #0b0d10) !important; font-family:var(--dp-face-read, "Instrument Sans");
   font-variation-settings:normal; font-weight:700; font-size:15px !important; letter-spacing:.02em; text-shadow:none !important; min-height:42px !important; padding:0 20px !important;
   background:var(--dp-lamp, #f2b950) !important; background-image:none !important; border-color:rgb(242 185 80 / .9) !important;
-  border-radius:8px !important; clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35); }
+  border-radius:8px !important; clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35) !important; }
+/* !important on that shadow: the shared foot rule above sets box-shadow:none !important on every foot key, so without
+   it the primary's top-light + 1px lift never painted. Same weight, higher specificity, so it wins only on the primary. */
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important; text-shadow:none !important; box-shadow:0 0 14px rgb(242 185 80 / .24); }
 /* the lamp word's own label and key chip print in dark ink on the amber fill — an amber label on
    the amber key is invisible (bench crucible-refit, TAKE THE WIN) */
