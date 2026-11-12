@@ -3,6 +3,7 @@ function installInPage({ maxSamples }) {
   const KEY = '__SF_DRAW_MOTION__';
   if (globalThis[KEY]?.active) return { installed: false, alreadyInstalled: true };
   const raf = [], draw = [], seen = new Map();
+  const fencePoseScratch = {};
   const stats = { rafFrames: 0, drawSamples: 0, maxRafGapMs: 0, samplingErrors: 0, batchedDraws: 0 };
   let active = true, request = 0, renderer = null, original = null, wrapped = null, lastRaf = null;
   const vec = p => p ? [p.x, p.y ?? 0, p.z] : null;
@@ -40,13 +41,16 @@ function installInPage({ maxSamples }) {
           if (seen.get(key) === stats.rafFrames) continue;
           seen.set(key, stats.rafFrames);
           const e = s.entities.get(id), fence = o._snapshotFence;
+          const slot = o._presentationWorld?.getSlotForEntityId?.(id) ?? -1;
+          const fencePose = fence?.presentedRowPose?.(id, fencePoseScratch, slot);
+          const origin = o._frameMembrane?.origin ?? s.world?.frameOrigin ?? s.frameOrigin;
           bounded(draw, { kind, id: String(id), t: performance.now(), raf: stats.rafFrames,
             f: renderer.info?.render?.frame, tick: s.tick, sim: s.simTime, ts: s.timeScale,
             mode: s.mode, mesh: object.name, pos: vec(e?.pos), rpos: vec(r.position),
             vel: vec(e?.vel), spd: speed(e), rw: world(r), mw: world(object), cw: world(camera),
             sample: { time: fence?.latestSnapshot()?.simTime, prior: fence?.previousSnapshot()?.simTime,
               sequence: fence?.sequence, alpha: o._snapshotPresentationAlpha,
-              origin: { x: s.frameOrigin?.x, z: s.frameOrigin?.z } } });
+              fencePose: vec(fencePose), origin: { x: origin?.x, z: origin?.z } } });
           stats.drawSamples++;
         }
       } catch (_) { stats.samplingErrors++; }

@@ -9,6 +9,7 @@ import playerStore from './lib/playerSaveStore.cjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { createIsolatedElectronLaunch, assertIsolatedElectronRootUrl } from './lib/electronTestIsolation.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 import {
   createElectronCanonicalUrlTracker, createElectronProcessMonitor, closeOwnedElectronRuntime,
 } from './lib/alphaLiveBaselineElectronContracts.mjs';
@@ -23,16 +24,18 @@ if (!/^[a-zA-Z0-9_-]{1,80}$/.test(tag)) throw new Error('Invalid output tag');
 const seconds = Math.max(20, Math.min(600, Number(option('seconds') || 90)));
 const overlay = option('overlay');
 const lane = option('lane');
+if (lane && lane !== 'main' && lane !== 'worker') throw new Error('Expected --lane=main or --lane=worker');
 const profilePath = option('profile');
 const continueDir = option('continue');
 const holdTether = process.argv.includes('--hold-tether');
+const captureFlight = process.argv.includes('--capture');
 // Keep diagnostics off the desktop unless visibility is explicitly requested.
 const hidden = !process.argv.includes('--visible');
 const out = path.join(ROOT, '.devshots', 'world-motion', tag);
 await fs.mkdir(out, { recursive: true });
 const log = (message) => console.log(`[${new Date().toISOString()}] ${message}`);
 let app, page, launch, childProcess, canonicalUrlTracker, processMonitor, rootUrl;
-let raw, failure, cleanup;
+let raw, failure, cleanup, authority;
 const errors = [], phases = [];
 try {
   const { _electron } = await loadPlaywright();
@@ -82,9 +85,11 @@ try {
   await page.waitForFunction(() => window.SF?.state, null, { timeout: 90000 });
   const skip = page.getByRole('button', { name: /^(Skip|Skip cinematic)$/i }).first();
   if (await skip.isVisible().catch(() => false)) await skip.click();
+  await installFirstLightPromptHandler(page, (name, ok, detail) => { if (ok) log(`${name}: ${detail}`); });
   if (continueDir) await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 60000 });
   else {
     await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60000 });
+    await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'newGame', null, { timeout: 60000 });
     await page.locator('#sf-ng-seed').fill('47', { timeout: 30000 });
     await page.getByRole('button', { name: /^Launch$/ }).click({ timeout: 30000 });
   }
@@ -95,11 +100,12 @@ try {
     const phase = await page.evaluate(() => {
       const sf = window.SF, s = sf?.state;
       return { mode: s?.mode, scale: s?.timeScale, mesh: !!s?.entities?.get(s.playerId)?.mesh,
+        held: s?.render?.flightVeilHoldsSim === true,
         failed: /SAVE\/LOAD FAILED/.test(document.body.innerText),
         failures: sf?.eventTrace?.events?.slice(-30).map(e => ({ type: e.type || e.name || e.event,
           error: String(e.payload?.error?.message || e.payload?.error || e.payload?.message || '') })).filter(e => e.error) };
     });
-    if (phase.mode === 'flight' && phase.scale > 0 && phase.mesh) { flightReady = true; break; }
+    if (phase.mode === 'flight' && phase.scale > 0 && phase.mesh && !phase.held) { flightReady = true; break; }
     if (phase.failed) throw new Error('Public launch failed: ' + JSON.stringify(phase));
     await page.waitForTimeout(250);
   }
@@ -109,9 +115,9 @@ try {
     const win = BrowserWindow.getAllWindows()[0];
     win.focus(); win.webContents.focus();
   });
-  const authority = await page.evaluate(() => typeof window.SF?.simLaneDiag === 'function' ? 'worker' : 'main');
+  authority = await page.evaluate(() => typeof window.SF?.simLaneDiag === 'function' ? 'worker' : 'main');
   log('actual simulation authority: ' + authority);
-  if (!lane && authority !== 'main') throw new Error('The default route did not select the single-authority runtime');
+  if (lane && authority !== lane) throw new Error(`Requested ${lane} authority, observed ${authority}`);
   await installWorldMotionObserver(page, { maxSamples: 20000 });
   if (process.argv.includes('--worker-profile')) {
     const profileTarget = await app.evaluate(async ({ BrowserWindow }) => {
@@ -159,6 +165,7 @@ try {
   }
   raw = await readWorldMotionObserver(page);
   await fs.writeFile(path.join(out, 'draw-motion.json'), JSON.stringify(raw));
+  if (captureFlight) await page.screenshot({ path: path.join(out, 'flight.png') });
   if (process.argv.includes('--worker-profile')) {
     const profile = await app.evaluate(async () => {
       const { contents, sessionId } = globalThis.__SF_MOTION_PROFILE__;
@@ -171,7 +178,6 @@ try {
     await fs.writeFile(path.join(out, 'simulation-worker.cpuprofile'), JSON.stringify(profile));
   }
   await disposeWorldMotionObserver(page);
-  await fs.writeFile(path.join(out, 'draw-motion.json'), JSON.stringify(raw));
   if (!Array.isArray(raw?.draw) || raw.draw.length < 60) {
     await page.screenshot({ path: path.join(out, 'missing-draw.png') });
     const scene = await page.evaluate(() => {
@@ -207,6 +213,7 @@ try {
   if (launch && cleanup?.processCloseConfirmed) launch.cleanup({ runtimeClosed: true });
 }
 const result = { tag, seconds, overlay: overlay || null, continueDir: continueDir || null, lane: lane || 'default',
+  authority: authority || null,
   phases, stats: raw?.stats || null, error: failure || null, pageErrors: errors.slice(0, 40), cleanup };
 await fs.writeFile(path.join(out, 'result.json'), JSON.stringify(result, null, 2));
 console.log(JSON.stringify({ tag, phases, stats: result.stats, error: result.error,
