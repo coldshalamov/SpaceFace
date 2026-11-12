@@ -441,6 +441,8 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  /* A narrow tape cannot hold both top-edge labels: LIMIT printed through TOP SPEED (lead look 2026-11-11). The cap
     keeps its tick; the headline (DRIVE COOLDOWN · DISRUPTED) already says why the ceiling is low. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape .sf-vtape__caplabel { display:none!important; }
+ /* MOB-07: the drive tape's two-row head leaves the quarter-screen rule 0.2% over; 2px less plate above and below keeps every line. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { padding-block:6px!important; }
  /* The tape hangs from the foot of the objective plate (its height changes with the line and the DETAILS key), so the
     two never print through each other. Where anchoring is unavailable the fixed 128px start above still holds. */
  @supports (top:anchor(bottom)) {
