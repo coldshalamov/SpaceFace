@@ -81,6 +81,21 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze([...rows.map(([id, title, prepa
     broodPacketSize: 18, broodPacketGapS: 0.75, bankReadS: 0,
     protectForeground: true, bankScene: false,
   }),
+
+  // Preserve the Mooring Line's authored rooms and finite packages, but let its
+  // specialist make the question visible before the eighteen-hull screen arrives.
+  ...[
+    ['moor_the_mass', 'Meet the committed hull', 'The Bruiser opens alone among loose mass. Bait its committed pass, then use a clear throw or attack its flank. The crowd and forecast event follow.', 'loose_plate', 840],
+    ['keep_the_line', 'Contest the line', 'The Raider opens alone while the furnace is active. Keep your loaded line clear of its committed cut; release or swing away. The crowd and forecast event follow.', 'furnace_active', 960],
+    ['break_the_mooring', 'Break the mooring', 'The Anchor and Raider arrive together as the shutters lean. Leave the marked snare, then work their recovery without backing your line into the Raider. The crowd and forecast event follow.', 'shutter_slow', 1080],
+  ].map(([id, title, preparation, arenaPhase, readTicks], index) => Object.freeze({
+    id, wave: 26 + index, title, preparation, arenaPhase,
+    shipReadTicks: readTicks, debutReadTicks: 1, broodReadTicks: readTicks, sporeReadTicks: readTicks,
+    stagedAtTick: 0, stagedReadTicks: 1,
+    massGap: false, events: 'seeded', eventReadTicks: readTicks,
+    broodPacketSize: 18, broodPacketGapS: 0.75, bankReadS: 0,
+    protectForeground: true, bankScene: false,
+  })),
 ]);
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {

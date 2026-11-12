@@ -33,7 +33,7 @@ test('Regent gets a truthful finite boss read without stealing adjacent rooms',(
  const p=planFor(25);assert.equal(p.swarm.foundry.id,'cross_the_crown');assert.equal(p.swarm.bossId,'forge_regent');assert.equal(p.swarm.bossScoreId,'capital_boss_regent');assert.equal(p.arenaPhase,'boss');assert.equal(p.swarm.killTarget,swarmQuota(25));assert.equal(p.swarm.concurrent,swarmConcurrent(25));assert.equal(p.swarm.requireBoss,true);
  const champions=p.schedule.filter(x=>x.champion);assert.equal(champions.length,1);assert.equal(champions[0].readAfterTicks,0);assert.ok(p.schedule.filter(x=>!x.champion).every(x=>x.readAfterTicks===1200));
  assert.equal(swarmRoundPreview({arenaId:'helios_core',wave:25,seed,plan:p}).foreground.title,'Cross the crown');
- assert.equal(planFor(24).swarm.foundry,undefined);assert.ok(planFor(24).swarm.massGap);for(const w of [26,27,28]){assert.equal(planFor(w).swarm.foundry,undefined);assert.ok(planFor(w).swarm.act);}
+ assert.equal(planFor(24).swarm.foundry,undefined);assert.ok(planFor(24).swarm.massGap);for(const w of [26,27,28]){assert.equal(planFor(w).swarm.act.id,'mooring_line');assert.equal(planFor(w).swarm.foundry.wave,w);}
  for(const extra of [{arenaId:'the_hive'},{mutators:['dense']},{circuitRound:{kind:'survive'}},{ruleset:'scored'}])assert.equal(planFor(25,extra).swarm?.foundry,undefined);
 });
 test('Regent foreground waits for action, protects first read and repays the entire Brood debt',t=>{

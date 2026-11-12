@@ -85,9 +85,11 @@ for (const wave of [21,22,23]) test(`live owner stages round ${wave} and release
  assert.equal(h.events.filter(e=>e.type==='run:waveCleared').length,0);
  }finally{h.ships.destroy();h.engine.destroy?.();}
 });
-test('canonical Anchor debut remains round22; later boss and Mooring Line stay outside bridge',()=>{
+test('canonical Anchor debut remains round22; following authored acts retain their identities',()=>{
  assert.equal(planFor(21).packages.some(p=>p.enemyId==='field_anchor_controller'),false);
  assert.equal(planFor(22).packages.filter(p=>p.debut).length,1);
  assert.equal(planFor(22).packages.find(p=>p.debut).enemyId,'field_anchor_controller');
- for(const wave of [24,25,26,27,28])assert.equal(planFor(wave).swarm.foundry,undefined);
+ assert.equal(planFor(24).swarm.foundry,undefined);
+ assert.equal(planFor(25).swarm.foundry.id,'cross_the_crown');
+ for(const wave of [26,27,28])assert.equal(planFor(wave).swarm.act.id,'mooring_line');
 });

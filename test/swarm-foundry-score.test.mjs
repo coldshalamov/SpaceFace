@@ -221,6 +221,9 @@ test('actual event owner obeys the plan and later minor preview matches its real
   h.state.run.wave = 28;
   director.setPlan(planFor(28), 28);
   h.bus.emit('run:waveStarted', { wave: 28 });
+  assert.equal(h.events.some(e => e.type === 'swarm:eventTelegraphed'), false);
+  noteSwarmPilotAction(h.state);
+  for (let i = 0; i < planFor(28).swarm.foundry.eventReadTicks; i++) { h.tick(); director.update(DT, h.state); }
   const receipt = h.events.find(e => e.type === 'swarm:eventTelegraphed');
   assert.ok(receipt);
   const next = swarmRoundPreview({ arenaId: 'helios_core', wave: 28, seed: 4242 });
@@ -268,6 +271,9 @@ test('the actual room host installs quiet-event policy after rearm and releases 
   state.run.wave = 28;
   bus.emit('run:wavePlanned', { wave: 28, plan: planFor(28) });
   bus.emit('run:waveStarted', { wave: 28 });
+  assert.equal(events.length, 0);
+  noteSwarmPilotAction(state);
+  for (let i = 0; i < planFor(28).swarm.foundry.eventReadTicks; i++) sim.step(DT);
   assert.equal(events.length, 1);
 });
 

@@ -606,7 +606,8 @@ function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarm
   if (foundry) {
     packages = packages.map(pkg => ({ ...pkg,
       ...(pkg.debut && Number.isInteger(foundry.debutAtTick) ? { atTick: foundry.debutAtTick } : {}),
-      readAfterTicks: Number.isInteger(pkg.foundryReadTicks) ? pkg.foundryReadTicks : pkg.champion ? 0 : pkg.debut || (['break_the_guard', 'peel_the_screen'].includes(foundry.id) && pkg.staged)
+      ...(act && pkg.staged && Number.isInteger(foundry.stagedAtTick) ? { atTick: foundry.stagedAtTick } : {}),
+      readAfterTicks: Number.isInteger(pkg.foundryReadTicks) ? pkg.foundryReadTicks : pkg.champion ? 0 : act && pkg.staged && Number.isInteger(foundry.stagedReadTicks) ? foundry.stagedReadTicks : pkg.debut || (['break_the_guard', 'peel_the_screen'].includes(foundry.id) && pkg.staged)
         ? foundry.debutReadTicks : foundry.shipReadTicks,
     }));
   }
