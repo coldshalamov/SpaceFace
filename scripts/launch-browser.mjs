@@ -237,13 +237,19 @@ async function migrateElectronSavesIfNeeded(playerStoreDir) {
   }
   closeSync(logFd);
 
+  // Windows can report a failed spawn through 'error' after spawn() returns. This migration is
+  // optional, so end the wait and let the browser server start even when Electron cannot run.
+  let childDone = false;
+  const markChildDone = () => { childDone = true; };
+  child.once('error', markChildDone);
+  child.once('exit', markChildDone);
   const deadline = Date.now() + MIGRATE_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    if (child.exitCode != null) break;
+    if (childDone) break;
     if (receiptHasMigrateResult(receiptPath)) break;
     await sleep(150);
   }
-  if (child.exitCode == null) {
+  if (!childDone) {
     try { child.kill(); } catch {}
   }
   // A completed migration (even one that found no keys) never needs to run again: post-migration

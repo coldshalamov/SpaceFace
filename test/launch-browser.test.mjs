@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -117,6 +117,35 @@ function killTree(pid) {
   assert.equal(result.code, 1, result.out);
   assert.match(result.out, /already serving something else/);
   assert.doesNotMatch(result.out, /\bat\s+\S+\s+\(/, 'a plain message, not a stack trace');
+}
+
+// Windows reports an asynchronous spawn error when the inspected runtime path exists as a
+// directory. The optional legacy save migration must leave the normal browser launch usable.
+if (process.platform === 'win32') {
+  const port = await freePort();
+  const temp = mkdtempSync(join(tmpdir(), 'sf-launch-migration-'));
+  const store = join(temp, 'store');
+  const runtime = join(temp, 'electron.exe');
+  const version = join(temp, 'version');
+  mkdirSync(store);
+  mkdirSync(runtime);
+  const installed = JSON.parse(readFileSync(join(ROOT, 'node_modules', 'electron', 'package.json'), 'utf8'));
+  writeFileSync(version, installed.version);
+  let result;
+  try {
+    result = await runLauncher(port, {
+      env: { SPACEFACE_PLAYER_STORE_DIR: store, ELECTRON_OVERRIDE_DIST_PATH: temp },
+      readyPattern: /Server is running/,
+    });
+    assert.match(result.out, /Server is running/);
+    assert.doesNotMatch(result.out, /Unhandled 'error' event|Error: spawn/);
+  } finally {
+    if (result?.code === null) killTree(result.pid);
+    unlinkSync(version);
+    rmdirSync(runtime);
+    rmdirSync(store);
+    rmdirSync(temp);
+  }
 }
 
 // Two launches racing one free port: the loser must reuse the winner's server — not die on
