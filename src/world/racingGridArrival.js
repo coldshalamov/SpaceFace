@@ -27,21 +27,35 @@ export function armRacingGrid({ state, bus, missions, world }, { offer, sectorId
   };
   if (!ownsMission() || !sameDeparture()) return fail('superseded');
 
-  try {
-    if (currentSectorId !== sectorId) {
-      if (!allowEnterSector) return fail('superseded');
-      if (world.enterSector(sectorId) === null) return fail(sameDeparture() ? 'grid_failed' : 'superseded');
+  if (currentSectorId !== sectorId) {
+    if (!allowEnterSector) return fail('superseded');
+    // enterSector mints one serial up front. An error after that mint can
+    // still belong to us, but a nested entry or restore mints past it.
+    const entrySerial = (Number(state.enterSerialSeq) || 0) + 1;
+    let entered;
+    try {
+      entered = world.enterSector(sectorId);
+    } catch {
+      const ownsEntry = sameDeparture() || (state.world === worldAtStart && worldAtStart.enterSerial === entrySerial
+        && (worldAtStart.currentSectorId === currentSectorId || worldAtStart.currentSectorId === sectorId));
+      return fail(ownsMission() && ownsEntry ? 'grid_failed' : 'superseded');
     }
-    if (!ownsMission() || state.world !== worldAtStart || worldAtStart.currentSectorId !== sectorId) {
-      return fail('superseded');
+    if (entered === null) {
+      return fail(ownsMission() && sameDeparture() ? 'grid_failed' : 'superseded');
     }
-    const arrivalSerial = worldAtStart.enterSerial;
-    const arrivalBag = worldAtStart.activeSector;
-    const moved = !relocate || (start && world.relocatePlayerInSector(start, { reason: 'race_grid' }) !== false);
-    if (!ownsMission() || !sameEntry(sectorId, arrivalSerial, arrivalBag)) return fail('superseded');
-    if (!moved) return fail('grid_failed');
-  } catch {
-    return fail('grid_failed');
   }
+  if (!ownsMission() || state.world !== worldAtStart || worldAtStart.currentSectorId !== sectorId) {
+    return fail('superseded');
+  }
+  const arrivalSerial = worldAtStart.enterSerial;
+  const arrivalBag = worldAtStart.activeSector;
+  let moved;
+  try {
+    moved = !relocate || (start && world.relocatePlayerInSector(start, { reason: 'race_grid' }) !== false);
+  } catch {
+    moved = false;
+  }
+  if (!ownsMission() || !sameEntry(sectorId, arrivalSerial, arrivalBag)) return fail('superseded');
+  if (!moved) return fail('grid_failed');
   return { ok: true, missionId, result };
 }

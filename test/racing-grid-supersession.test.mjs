@@ -10,7 +10,7 @@ const CONTRACT = 'contract_junction_jam';
 const OTHER_SECTOR = 'sector_ceres_belt';
 const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url)));
 
-async function runGrid(lane, supersede) {
+async function runGrid(lane, scenario) {
   const sim = createSimHost();
   try {
     const init = await sim.init({ profile: 'production', seed: 4242, scenarioContract });
@@ -33,18 +33,40 @@ async function runGrid(lane, supersede) {
     let replacement;
     const offer = racingOfferFor(CONTRACT);
     const sectorId = offer.params.courseSectorId;
-    if (supersede) {
+    const rememberAttempt = () => {
+      const attempt = state.missions.active.find(row => row.params?.racingContractId === CONTRACT);
+      attemptedId = attempt?.id;
+      return attempt;
+    };
+    const replaceAttempt = (attempt) => {
+      // Continue can replace the active array with a restored row using the same mission id.
+      replacement = { ...attempt, params: { ...attempt.params } };
+      state.missions.active = [replacement];
+    };
+    if (scenario === 'enter' || scenario === 'replace') {
       const off = bus.on('sector:exit', () => {
         off();
-        const attempt = state.missions.active.find(row => row.params?.racingContractId === CONTRACT);
-        attemptedId = attempt?.id;
+        const attempt = rememberAttempt();
         world.enterSector(OTHER_SECTOR);
-        if (supersede === 'replace') {
-          // Continue can replace the active array with a restored row using the same mission id.
-          replacement = { ...attempt, params: { ...attempt.params } };
-          state.missions.active = [replacement];
-        }
+        if (scenario === 'replace') replaceAttempt(attempt);
       });
+    }
+    if (scenario === 'entry-throws' || scenario === 'stale-entry-throws') {
+      const flush = world._flushPendingSpawns;
+      world._flushPendingSpawns = function (id, sector) {
+        if (id !== sectorId) return flush.call(this, id, sector);
+        rememberAttempt();
+        if (scenario === 'stale-entry-throws') this.enterSector(OTHER_SECTOR);
+        throw new Error('entry spawn flush failed');
+      };
+    }
+    if (scenario === 'stale-relocation-throws') {
+      world.relocatePlayerInSector = function () {
+        const attempt = rememberAttempt();
+        this.enterSector(sectorId);
+        replaceAttempt(attempt);
+        throw new Error('stale relocation failed');
+      };
     }
 
     let result;
@@ -104,3 +126,34 @@ for (const lane of ['local', 'worker']) {
     assert.deepEqual(receipts, { grids: [], armed: [], abandoned: [], exited: [] });
   });
 }
+
+test('local: an entry error after re-entry rolls back the old race without exiting the newer flight', async () => {
+  const { result, active, receipts, currentSectorId, attemptedId } = await runGrid('local', 'stale-entry-throws');
+  assert.ok(attemptedId);
+  assert.equal(result.reason, 'superseded');
+  assert.equal(currentSectorId, OTHER_SECTOR);
+  assert.deepEqual(active, []);
+  assert.deepEqual(receipts, { grids: [], armed: [], abandoned: [attemptedId], exited: [] });
+});
+
+test('local: an owned entry error still rolls back and exits the failed temporary launch', async () => {
+  const { result, active, receipts, currentSectorId, sectorId, attemptedId } = await runGrid('local', 'entry-throws');
+  assert.ok(attemptedId);
+  assert.equal(result.reason, 'grid_failed');
+  assert.equal(currentSectorId, sectorId);
+  assert.deepEqual(active, []);
+  assert.deepEqual(receipts, {
+    grids: [], armed: [], abandoned: [attemptedId], exited: [{ source: 'racing-launch-failed' }],
+  });
+});
+
+test('worker: a stale relocation error preserves a newer entry and its same-id race', async () => {
+  const { result, active, receipts, currentSectorId, sectorId, attemptedId, replacement } =
+    await runGrid('worker', 'stale-relocation-throws');
+  assert.ok(attemptedId);
+  assert.equal(result.reason, 'superseded');
+  assert.equal(currentSectorId, sectorId);
+  assert.equal(replacement.id, attemptedId);
+  assert.equal(active[0], replacement);
+  assert.deepEqual(receipts, { grids: [], armed: [], abandoned: [], exited: [] });
+});
