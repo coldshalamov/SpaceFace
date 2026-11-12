@@ -46,9 +46,10 @@ test('mass-gap cadence: every sixth wave, never a boss wave', () => {
 });
 
 test('a mass-gap wave opens with light pursuers only — the ammunition arrives first', () => {
-  // Wave 24: a mass-gap wave where elite/anchor/control/reach/support are all legal, so a
+  // Wave 36: a mass-gap wave on the open ladder (the course cast owns every mass-gap slot
+  // inside rounds 1-30) where elite/anchor/control/reach/support are all legal, so a
   // fodder-only opening can only come from the mass-gap filter — not an early-wave roster.
-  const plan = swarmPlan(24);
+  const plan = swarmPlan(36);
   assert.ok(!plan.error);
   assert.ok(plan.swarm.massGap, 'mass-gap block missing');
   const opening = plan.packages.filter((pkg) => !pkg.champion && !pkg.debut && !pkg.wall);
@@ -61,7 +62,7 @@ test('a mass-gap wave opens with light pursuers only — the ammunition arrives 
 });
 
 test('the wall heavies arrive late, on the wall bearing, protected like a debut', () => {
-  const plan = swarmPlan(12);
+  const plan = swarmPlan(36);
   const wall = plan.packages.filter((pkg) => pkg.wall === true);
   assert.equal(wall.length, 1, 'exactly one wall package');
   assert.equal(wall[0].atTick, SWARM_MASS_GAP_CLOSE_TICKS);
@@ -82,17 +83,20 @@ test('the wall heavies arrive late, on the wall bearing, protected like a debut'
   assert.ok(entries.length > 0, 'wall flag did not reach the schedule');
 });
 
-test('wave 6 is the one mass-gap round with no wall muscle — its only legal bruiser is debuting', () => {
-  // Mine-Layer Jackal is the only wall-role body legal at wave 6, and it is the wave's staged
-  // newcomer — it cannot double as wall muscle, so the first wall is geometry alone.
+test('the course owns every mass-gap slot inside rounds 1-30 — wave 6 fields its cast', () => {
+  // C01-04: the authored round is "Bruisers" — a first sighting alone on the debut beat,
+  // then the charge. The mass-gap cadence's early slots (6/12/18/24) all sit inside the
+  // course, so the wall machinery never runs there; it resumes on the open ladder at 36.
   const plan = swarmPlan(6);
   assert.ok(!plan.error);
-  assert.ok(plan.swarm.massGap, 'wave 6 still gets the wall geometry');
-  assert.equal(plan.swarm.massGap.heavyEnemyId, null,
-    'no heavy may stand in for the debuting specialist');
-  assert.ok(!plan.packages.some((pkg) => pkg.wall === true),
-    'no wall package when no heavy is legally pickable');
-  assert.ok(plan.packages.some((pkg) => pkg.debut === true), 'the debut still lands');
+  assert.equal(plan.swarm.massGap, undefined, 'a course round plans no mass-gap block');
+  assert.ok(!plan.packages.some((pkg) => pkg.wall === true));
+  const debut = plan.packages.find((pkg) => pkg.debut === true);
+  assert.ok(debut, 'the cast still stages its first sighting');
+  assert.equal(debut.enemyId, 'bruiser_brawler');
+  // And the open ladder's first mass-gap slot plans normally again.
+  const open = swarmPlan(36);
+  assert.ok(open.swarm.massGap, 'wave 36 resumes the cadence past the course');
 });
 
 test('quota, concurrency and hull are untouched — the shape changes, not the numbers', () => {
@@ -107,7 +111,7 @@ test('quota, concurrency and hull are untouched — the shape changes, not the n
 
 test('the wall always leaves exactly two navigable gap slots', () => {
   for (let seed = 1; seed <= 12; seed++) {
-    const plan = planWave({ seed, arenaId: ARENA, wave: 12, mode: SWARM_RULESET });
+    const plan = planWave({ seed, arenaId: ARENA, wave: 36, mode: SWARM_RULESET });
     const gaps = plan.swarm.massGap.gapSlots;
     assert.equal(gaps.length, 2);
     const [a, b] = gaps;
@@ -126,16 +130,16 @@ test('a non-mass-gap wave carries no wall, and a boss wave never does', () => {
 });
 
 test('heavies_only owns the room outright — no wall, no fodder bias', () => {
-  const plan = swarmPlan(12, { mutators: ['heavies_only'], buildSummary: { dominant: 'collision' } });
+  const plan = swarmPlan(36, { mutators: ['heavies_only'], buildSummary: { dominant: 'collision' } });
   assert.ok(!plan.error);
   assert.equal(plan.swarm.massGap, undefined);
   assert.ok(!plan.packages.some((pkg) => pkg.wall === true));
 });
 
 test('the mass-gap stream stays ammunition-rich without dropping a role', () => {
-  const plan = swarmPlan(12);
+  const plan = swarmPlan(36);
   const stream = plan.swarm.roster;
-  const legal = swarmRosterFor(12);
+  const legal = swarmRosterFor(36);
   assert.equal(stream.length, legal.length, 'every unlocked role keeps its seat');
   for (const entry of stream) {
     const base = legal.find((e) => e.enemyId === entry.enemyId);
@@ -148,20 +152,20 @@ test('the mass-gap stream stays ammunition-rich without dropping a role', () => 
   // And the biased stream actually picks fodder more often than the unbent roster would.
   let fodder = 0;
   for (let i = 0; i < 400; i++) {
-    const pick = pickSwarmArchetype(12, i / 400, stream);
+    const pick = pickSwarmArchetype(36, i / 400, stream);
     if (SWARM_FODDER_ROLES.includes(pick.role)) fodder++;
   }
   let plainFodder = 0;
   for (let i = 0; i < 400; i++) {
-    const pick = pickSwarmArchetype(12, i / 400, legal);
+    const pick = pickSwarmArchetype(36, i / 400, legal);
     if (SWARM_FODDER_ROLES.includes(pick.role)) plainFodder++;
   }
   assert.ok(fodder > plainFodder, `fodder share ${fodder} <= ${plainFodder}`);
 });
 
 test('the wall plan is deterministic and survives a same-seed replan', () => {
-  const a = swarmPlan(18);
-  const b = swarmPlan(18);
+  const a = swarmPlan(36);
+  const b = swarmPlan(36);
   assert.deepEqual(a.swarm.massGap, b.swarm.massGap);
   assert.deepEqual(a.packages, b.packages);
 });
@@ -197,9 +201,9 @@ function boot(wave = 12) {
 
 test('the arena installs the wall as a gapped chord of breakable monoliths', () => {
   const h = boot();
-  const plan = swarmPlan(12);
-  h.state.run.wave = 12;
-  h.bus.emit('run:wavePlanned', { wave: 12, plan });
+  const plan = swarmPlan(36);
+  h.state.run.wave = 36;
+  h.bus.emit('run:wavePlanned', { wave: 36, plan });
 
   const wallEvent = h.events.find((e) => e.name === 'swarmArena:massGapWall');
   assert.ok(wallEvent, 'wall install event missing');
@@ -221,7 +225,7 @@ test('the arena installs the wall as a gapped chord of breakable monoliths', () 
   }
 
   // Re-planning the same wave must not double the wall.
-  h.bus.emit('run:wavePlanned', { wave: 12, plan });
+  h.bus.emit('run:wavePlanned', { wave: 36, plan });
   const second = h.events.filter((e) => e.name === 'swarmArena:massGapWall');
   assert.equal(second.length, 1, 'wall re-installs must be idempotent per wave');
 

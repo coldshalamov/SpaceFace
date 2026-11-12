@@ -203,7 +203,9 @@ test('the plate upload waits for a frame with room, and is never skipped forever
 
   // A 48 ms present is a frame in trouble. Uploading 10.7 MB into it is the exact hitch this gate
   // exists to prevent, and until the upload happens the plate must not be reported as live.
-  for (let frame = 0; frame < 5; frame++) {
+  // c828480b65d1 cut HEAVY_ADMISSION_EVENTUAL_SKIP to 3, so only two late frames skip before the
+  // bound force-admits; the starvation guarantee itself is proven by the next test but one.
+  for (let frame = 0; frame < 2; frame++) {
     assert.equal(residency.pump(), false, `uploaded during a late frame (${frame})`);
     assert.equal(uploaded.length, 0);
     assert.equal(residency.readyId, null, 'a plate must not go live before its upload');
