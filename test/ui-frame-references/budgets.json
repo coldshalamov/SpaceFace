@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "caa26869a41b47c3dcc6dcef028d6b3d283359fae0079d4845888128038aec60",
+  "uiSourceDigest": "f50ace87296bad6742df98207c75542a1d7f987197d7eacdcbdb1fc64d05ede3",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -445,7 +445,7 @@
     "src/ui/views/marketPresentation.js": "e3bbf6a50a93d98e86ccac444e3f6c879e4b2654022a39ec5c4b4917199e3dab",
     "src/ui/views/menuFrames.js": "25f7b832427694bc80ac599a1ec76963d90d367a4050cff33016f35299ed94da",
     "src/ui/views/navigationFrame.js": "2b2ebbc73c93d9194624901ac24811b1d74a77739104294709bc9f90b4fb071d",
-    "src/ui/views/navigationStyles.js": "3fc28c9056971c4cdc54ee2a265d8642274d159367bf9f22b2710e7425b227ee",
+    "src/ui/views/navigationStyles.js": "1f8885b1a4bcd87f733b32d50b8329f1ce627f19cdca3a53e363cf650eb51c79",
     "src/ui/views/saveFrame.js": "a2446f24033a103a844149aebcb31536af95d6318bfc1e31ea1ed1f65c7b13ab",
     "src/ui/views/settingsControls.js": "ab37a4bcde6e8a5b5c93953d5d802df0b932e0825a0eb6d7c0373d0f9bcfbcd0",
     "src/ui/views/stationFrames.js": "6c90a9aad4f0d71921d8f50819664e8b341c2d55c6e0d4b41609eebfc3dd9bac",
