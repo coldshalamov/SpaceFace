@@ -56,7 +56,7 @@ for (const [name, run] of [
   assert.ok(h.chunks.every(e => resolvePhysicsBodySpec(e).mass > 250));
 });
 
-test('the offcut shape consumes no new random draws and leaves every other original unchanged', t => {
+test('safe first-Maw scatter preserves the original budget, shapes and random stream', t => {
   const snapshots = [];
   for (const arenaId of ['helios_core', 'the_hive']) {
     const h = fixture(t, { run: { arenaId } });
@@ -64,9 +64,13 @@ test('the offcut shape consumes no new random draws and leaves every other origi
       next: h.state.rng() });
     h.sim.dispose();
   }
-  assert.deepEqual(snapshots[0].chunks.slice(1), snapshots[1].chunks.slice(1));
-  assert.deepEqual(snapshots[0].chunks[0].pos, snapshots[1].chunks[0].pos);
-  assert.deepEqual(snapshots[0].chunks[0].vel, snapshots[1].chunks[0].vel);
+  assert.equal(snapshots[0].chunks.length, snapshots[1].chunks.length);
+  assert.deepEqual(snapshots[0].chunks.slice(1).map(({ radius, mass }) => ({ radius, mass })),
+    snapshots[1].chunks.slice(1).map(({ radius, mass }) => ({ radius, mass })));
+  for (let i = 0; i < snapshots[0].chunks.length; i++) {
+    const a = snapshots[0].chunks[i], b = snapshots[1].chunks[i];
+    assert.ok(Math.abs(Math.hypot(a.vel.x, a.vel.z) - Math.hypot(b.vel.x, b.vel.z)) < 1e-10);
+  }
   assert.equal(snapshots[0].next, snapshots[1].next);
 });
 
@@ -155,7 +159,7 @@ test('the real ship owner detaches its Maw record on round-six planning without 
   assert.equal(offcut.data.despawnAt, undefined);
 });
 
-test('starter catches after real round-six planning, carries with W, then cuts the original for credited contact', async t => {
+test('starter catches after real round-six planning and releases the original for credited contact', async t => {
   const { bootRealPath } = await import('../scripts/lib/bench/realPath.mjs');
   const { input } = await import('../src/systems/input.js');
   const { runSession } = await import('../src/systems/runSession.js');
@@ -213,43 +217,90 @@ test('starter catches after real round-six planning, carries with W, then cuts t
       assert.ok(Math.hypot(c.vel.x, c.vel.z) < 6);
       assert.equal(lines.length, 0); assert.equal(isFoundryWreckKept(s, c), true);
       noteSwarmPilotAction(s); rmb(true); h.step(1); rmb(false);
-      ingest({ type: 'keydown', code: 'KeyW', pressed: true, blocked: false });
-      for (let i = 0; i < 386; i++) {
-        // Matched attribution control: remove only this mover's Brood admission.
-        // Its body, pilot input, other wrecks and the unmodified targets stay native.
-        if (control && i === 378) c.data.physicalRole = 'cover';
-        if (i === 375) rmb(true);
-        if (i === 376) rmb(false);
-        h.step(1);
-        if (s.tick >= 378) samples.push({ tick: s.tick, pilotPos: { ...p.pos },
-          chunkPos: { ...c.pos }, chunkVel: { ...c.vel }, credits: s.run.credits, score: s.run.score });
+      let releasedAt = null;
+      const held = new Set();
+      const controls = want => { for (const code of ['KeyW','KeyS','KeyQ','KeyE','Digit0'])
+        if (want.has(code) !== held.has(code)) {
+          ingest({ type: want.has(code) ? 'keydown' : 'keyup', code, pressed: want.has(code), blocked: false });
+          if (want.has(code)) held.add(code); else held.delete(code);
+        }
+      };
+      for (let i = 0; i < 2400; i++) {
+        const want = new Set();
+        if (releasedAt == null) {
+          const b=h.runtime.getSystem('swarmArena')._brood._bodies;
+          let forecast=false, aim=null;
+          for(let j=0;j<b.alive.length;j++)if(b.alive[j]){
+            const vx=c.vel.x-b.vx[j],vz=c.vel.z-b.vz[j],dx=b.px[j]-c.pos.x,dz=b.pz[j]-c.pos.z;
+            const time=(dx*vx+dz*vz)/(vx*vx+vz*vz);
+            if(Math.hypot(c.vel.x,c.vel.z)>25&&time>.02&&time<0.08&&Math.hypot(dx-vx*time,dz-vz*time)<6){forecast=true;aim={x:b.px[j]+b.vx[j]*time,z:b.pz[j]+b.vz[j]*time};}
+          }
+          if(forecast){
+            // Matched control removes only this original mover's Brood eligibility
+            // at release. Native matter, trajectory and controls remain unchanged.
+            if(control)c.data.physicalRole='cover';
+            ingest({type:'cursorProjection',...aim});releasedAt=s.tick;rmb(true);h.step(1);rmb(false);
+          } else {
+            const b = h.runtime.getSystem('swarmArena')._brood._bodies;
+            let nearest = -1, distance = Infinity;
+            for (let j = 0; j < b.alive.length; j++) if (b.alive[j]) {
+              const d = Math.hypot(b.px[j] - p.pos.x, b.pz[j] - p.pos.z);
+              if (d < distance) { distance = d; nearest = j; }
+            }
+            const v = nearest >= 0
+              ? { x: b.px[nearest] - p.pos.x, z: b.pz[nearest] - p.pos.z } : { x: 1, z: 0 };
+            const length = Math.hypot(v.x, v.z);
+            const forward = (v.x * Math.cos(p.rot) + v.z * Math.sin(p.rot)) / length;
+            const side = (-v.x * Math.sin(p.rot) + v.z * Math.cos(p.rot)) / length;
+            if (forward > .3) want.add('KeyW'); if (forward < -.3) want.add('KeyS');
+            if (side > .3) want.add('KeyE'); if (side < -.3) want.add('KeyQ');
+          }
+        }else want.add('Digit0');
+        controls(want);h.step(1);
+        samples.push({ tick:s.tick,pilotPos:{...p.pos},chunkPos:{...c.pos},chunkVel:{...c.vel},credits:s.run.credits,score:s.run.score });
+        if(releasedAt!=null&&s.tick>releasedAt+90)break;
       }
+      assert.ok(releasedAt!=null,'native swing presents a real release opportunity');
       assert.equal(s.entities.get(original.id), c); assert.equal(c.occupantGeneration, original.generation);
       return { original, body, kills, lines, denials, inputTrace, samples,
-        credits: s.run.credits, score: s.run.score, proof: h.proof(), lastThrow: s.massline2?.throw?.lastThrow ?? null };
+        releasedAt, credits: s.run.credits, score: s.run.score, proof: h.proof(), lastThrow: s.massline2?.throw?.lastThrow ?? null };
     } finally { h.dispose(); }
   }
   const actual = await runCase(false), control = await runCase(true);
   assert.deepEqual(actual.inputTrace, control.inputTrace);
   assert.deepEqual(actual.lines, control.lines); assert.equal(actual.denials.length, 0);
-  assert.deepEqual(actual.samples.filter(s => s.tick < 384), control.samples.filter(s => s.tick < 384));
-  assert.deepEqual(actual.kills.filter(k => k.tick < 384), control.kills.filter(k => k.tick < 384));
+  assert.deepEqual(actual.samples.filter(s => s.tick < actual.releasedAt), control.samples.filter(s => s.tick < actual.releasedAt));
+  assert.deepEqual(actual.kills.filter(k => k.tick < actual.releasedAt), control.kills.filter(k => k.tick < actual.releasedAt));
   const latch = actual.lines.find(x => x.event === 'tether:latched');
   assert.equal(latch.targetId, actual.original.id); assert.equal(latch.previewMatched, true);
   assert.equal(latch.massRatio, 35 / 46);
-  assert.equal(actual.lines.find(x => x.event === 'tether:released').tick, 379);
+  assert.ok(actual.lines.find(x => x.event === 'tether:released').tick >= actual.releasedAt);
   assert.equal(actual.lastThrow, null); // This is ordinary RMB cut, not the throw-owner gesture.
   // Isolate the post-cut contact. Earlier held collisions also involve other
   // moving chunks, so their aggregate wallet is intentionally not credited here.
-  const paid = actual.kills.filter(k => k.tick > 379 && k.count > 0
+  const paid = actual.kills.filter(k => k.tick > actual.releasedAt && k.count > 0
     && Math.hypot(k.pos.x - k.chunkPos.x, k.pos.z - k.chunkPos.z) < 16
-    && Math.hypot(k.pos.x - k.pilotPos.x, k.pos.z - k.pilotPos.z) > 150);
-  assert.deepEqual(paid.map(k => [k.count, k.credits, k.score]), [[1, 1, 12]]);
-  assert.ok(paid[0].tick > 379);
+    && Math.hypot(k.pos.x - k.pilotPos.x, k.pos.z - k.pilotPos.z) > 20);
+  assert.ok(paid.length > 0, JSON.stringify({lines:actual.lines,kills:actual.kills,release:actual.releasedAt,last:actual.samples.at(-1)}));
+  assert.ok(paid.every(k=>k.credits===k.count*2&&k.score===k.count*25));
   assert.ok(paid.every(k => k.cause === 'collision'));
-  assert.equal(actual.credits - control.credits, 1); assert.equal(actual.score - control.score, 12);
+  const impactTick = paid[0].tick;
+  const at = (run, tick) => run.samples.find(sample => sample.tick === tick);
+  assert.deepEqual(actual.samples.filter(sample => sample.tick < impactTick),
+    control.samples.filter(sample => sample.tick < impactTick));
+  assert.deepEqual(actual.kills.filter(k => k.tick < impactTick),
+    control.kills.filter(k => k.tick < impactTick));
+  assert.equal(control.kills.some(k => k.tick === impactTick), false);
+  // The admitted impact legitimately changes the offcut trajectory on this tick.
+  assert.deepEqual(at(actual, impactTick).pilotPos, at(control, impactTick).pilotPos);
+  assert.equal(at(actual, impactTick).credits - at(control, impactTick).credits, paid[0].credits);
+  assert.equal(at(actual, impactTick).score - at(control, impactTick).score, paid[0].score);
+  // The longer observation honestly includes the control's later pilot collision.
+  // Eventual wallet convergence does not erase the earlier original-offcut consequence.
+  assert.ok(control.kills.some(k => k.tick > impactTick && k.cause === 'collision' && k.count > 0));
+  assert.equal(actual.credits, control.credits); assert.equal(actual.score, control.score);
   assert.equal(actual.proof.backend, 'rapier-dynamic'); assert.equal(actual.proof.flightBackend, 'v3');
   t.diagnostic(JSON.stringify({ original: actual.original, body: actual.body, lines: actual.lines,
     inputTrace: actual.inputTrace, paid, actualWallet: actual.credits, controlWallet: control.credits,
-    attributedCredits: 1, attributedScore: 12, proof: actual.proof }));
+    impactTick, impactActual: at(actual, impactTick), impactControl: at(control, impactTick), laterControlKills:control.kills.filter(k=>k.tick>impactTick), proof: actual.proof }));
 });

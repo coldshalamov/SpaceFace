@@ -31,6 +31,7 @@ import { swarmLevel } from '../data/swarmMode.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { SURVIVAL_WAVE_OWNER_PREFIX } from './survivalWave.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
+import { seatSwarmMawFragment } from './swarmMawWreckScatter.js';
 import { FOUNDRY_MAW_OFFCUT, foundryWreckRound } from '../data/swarmFoundryWreck.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
@@ -138,6 +139,11 @@ function spawnSwarmBossChunks(context, record, boss) {
       spec.mass = FOUNDRY_MAW_OFFCUT.mass;
       spec.physicsBody = { mass: spec.mass, radius: spec.radius, dynamic: true };
       spec.data.scanLabel = 'IRON MAW OFFCUT';
+    }
+    if (offcut) {
+      const seat = seatSwarmMawFragment(state, boss, spec);
+      if (!seat) continue; // This original slot is spent, never dispensed on a later death replay.
+      spec.pos = seat.pos; spec.vel = seat.vel;
     }
     const entity = spawn(spec);
     if (entity && entity.id != null) {
