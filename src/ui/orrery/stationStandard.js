@@ -417,7 +417,7 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;
     min-width:0 !important; width:max-content !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
-    align-items:center !important; gap:0 8px !important; margin:0 70px 0 0 !important; padding:3px 9px !important; }
+    align-items:center !important; gap:0 8px !important; margin:0 92px 0 0 !important; /* review261: the "Ctrl K" key is ~83px; 70 let CREDITS 5,000 run 13px under it at 651×461 */ padding:3px 9px !important; }
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;

@@ -1191,6 +1191,58 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   }
 }
 
+/* ≤700 phone-band × short desktop (651×461): the block above pins STARTER · SKIRMISHER at
+   left:460px / top:6px beside an absolute nameplate. At phone widths the nameplate is a
+   full-width in-flow top band, so that pin lands ON the band (and on any hardpoint card the
+   solver parks under its right edge). Park identity as a one-line kicker above the stage and
+   drop the stage under it — same pattern as the ≤460 rule, gated to the phone-band width. */
+@media (max-width:700px) and (max-height:640px) and (hover:hover) {
+  ${W}.orr-sw--jig > .sx-sw__side {
+    left: calc(190px + 8px) !important;
+    right: 8px !important;
+    top: 2px !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+  ${W}.orr-sw--jig .sx-sw-circuit__identity {
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    gap: 0 8px !important;
+    line-height: 1.15 !important;
+    max-height: 16px !important;
+    overflow: hidden !important;
+  }
+  /* One-line kicker only — the fitted-count sub wraps under STARTER and re-enters the band. */
+  ${W}.orr-sw--jig .sx-sw-circuit__sub {
+    display: none !important;
+  }
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage {
+    margin-top: 18px !important;
+    /* review261: the dock column is only ~182px tall at 651×461; a fixed 260px stage ran past the
+       column's clip (callouts cut off) and starved the dial. Fit the stage to the column instead. */
+    flex: 0 0 calc(100% - 18px) !important;
+    height: calc(100% - 18px) !important;
+    min-height: 150px !important;
+  }
+  /* Tighter band so the short stage keeps air for callouts under the crest. */
+  ${W} .sx-sw__stage > .sx-sw__nameplate {
+    padding: 2px 10px 3px !important;
+  }
+  /* review261: one-row crest (name · condition · rename) so the short stage keeps its height for the dial */
+  ${W}.orr-sw--jig .sx-sw__stage > .sx-sw__nameplate { display:flex !important; flex-wrap:nowrap !important; align-items:center !important; gap:0 10px !important; }
+  ${W}.orr-sw--jig .sx-sw__nameplate .sx-sw__crestLine { flex:0 1 auto !important; min-width:0 !important; }
+  ${W}.orr-sw--jig .sx-sw__nameplate .sx-sw__name { font-size:20px !important; line-height:1.1 !important; }
+  ${W}.orr-sw--jig .sx-sw__nameplate .sx-sw__nameEdit { flex:0 1 130px !important; min-width:80px !important; width:auto !important; margin:0 !important; }
+  /* review261: a 190px fleet rail left the stage 369px, and two ~150px label gutters left the hull a
+     74px postage stamp. A 184px rail still sets FLEET · FOR SALE on one row and STARTER SCOUT whole,
+     and hands the stage 6px; the label gutter (shipworks.js) narrows to the cards' own width. */
+  ${W}.orr-sw--jig { grid-template-columns: 184px minmax(0, 1fr) !important; }
+  ${W}.orr-sw--jig > .sx-sw__side { left: calc(184px + 8px) !important; }
+  /* two-line callouts at 13px leading (~26px, was ~29px): four in a column fit under the crest */
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { line-height:13px !important; }
+}
+
 /* a very short desktop (844×390): the berth scrolls and gives this tab a 230px cell; LEFT · CENTER ·
    RIGHT get their own line at the stage's foot instead of sharing the verb row with PAINT */
 @media (min-width:651px) and (max-width:1100px) and (max-height:460px) and (hover:hover) {
@@ -1327,8 +1379,11 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
   ${W} .sx-sw__stage.is-live > .sx-sw__camera { column-gap:10px !important; }
 }
 /* Keep the narrow hull identity beside DOCKED, but wrap its fit reading before
-   the drive callout. It must remain inside the stage rather than above its clip. */
-@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
+   the drive callout. It must remain inside the stage rather than above its clip.
+   min-width:701 — at ≤700 the nameplate is the phone top band, and this wrap-beside
+   pin lands ON that band (651×461); the ≤700×≤640 kicker block above parks STARTER
+   clear of it instead. */
+@media (min-width:701px) and (max-width:800px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
   ${W}.orr-sw--jig > .sx-sw__side { max-width:130px !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:wrap !important; white-space:normal !important; }
 }
