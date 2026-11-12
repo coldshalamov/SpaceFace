@@ -284,12 +284,7 @@ function applyDifficulty(packages, difficulty) {
   const steps = Number.isFinite(difficulty) ? Math.max(0, Math.floor(difficulty - 1)) : 0;
   if (steps === 0) return packages;
   return packages.map((pkg) => ({
-    atTick: pkg.atTick,
-    gateGroup: pkg.gateGroup,
-    role: pkg.role,
-    enemyId: pkg.enemyId,
-    count: pkg.count,
-    batchSize: pkg.batchSize,
+    ...pkg,
     batchGapTicks: Math.max(0, pkg.batchGapTicks - steps * 15),
   }));
 }

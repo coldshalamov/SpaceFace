@@ -1050,7 +1050,9 @@ export const survivalWave = {
         && typeof this._swarm.bossScoreId === 'string'
         && this._swarm.bossScoreId
         && entry.enemyId === this._swarm.bossEnemyId;
-      const characterScore = this._swarm && typeof entry.characterScoreId === 'string'
+      // The stamp is ruleset-agnostic: a Swarm character heavy and the authored arc's
+      // crowned wave-30 finale (scored ruleset) ride the same hull-to-score handoff.
+      const characterScore = typeof entry.characterScoreId === 'string'
         && entry.characterScoreId;
       const receipt = materializeWaveBatch(this.ctx, {
         ownerId,
@@ -1126,7 +1128,14 @@ export const survivalWave = {
         });
       }
       if (characterScore && receipt.spawnedIds.length > 0 && !this._characterFightId) {
-        this._characterFightId = `swarm:w${this._wave}:kraken`;
+        // The `swarm:` prefix is the survival-run-owned fight contract the capital system
+        // routes on (mission-less, run-active, wing/ballast/plate ledgers) — the scored
+        // arc's finale is the same owner shape, so it keeps the prefix. Iron Kraken keeps
+        // its pinned 'kraken' suffix; any other score names itself.
+        const fightSuffix = characterScore.startsWith('capital_boss_iron_kraken')
+          ? 'kraken'
+          : characterScore.replace(/^capital_boss_/, '');
+        this._characterFightId = `swarm:w${this._wave}:${fightSuffix}`;
         const bossId = receipt.spawnedIds[0];
         this._emit('capitalBoss:start', { encounterId: characterScore, fightId: this._characterFightId,
           bossId, targetId: this.state?.playerId ?? null });

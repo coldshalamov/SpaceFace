@@ -40,6 +40,9 @@ export const WAVE_30_SYSTEM_EVENT = Object.freeze({
 /** The composed finale hull for the thirty-wave Foundry arc. */
 export const WAVE_30_FINALE_ENEMY_ID = 'forge_regent';
 
+/** The authored capital score the crowned finale's hull is handed to. */
+export const WAVE_30_FINALE_SCORE_ID = 'capital_boss_regent';
+
 /** Wave-ten elite ids the finale regent grows from — the Mirrorjaw core, never the dreadnought. */
 const WAVE_30_CORE_ENEMY_IDS = Object.freeze(['mirrorjaw_foreman']);
 
@@ -61,7 +64,7 @@ export function difficultyForWave(wave) {
 }
 
 function clonePackage(pkg) {
-  return {
+  const next = {
     atTick: pkg.atTick,
     gateGroup: pkg.gateGroup,
     role: pkg.role,
@@ -70,6 +73,10 @@ function clonePackage(pkg) {
     batchSize: pkg.batchSize,
     batchGapTicks: pkg.batchGapTicks,
   };
+  // The wave-30 crown stamps this AFTER the act clones run — the later applyActPressure
+  // re-clone must not strip it back off.
+  if (typeof pkg.characterScoreId === 'string') next.characterScoreId = pkg.characterScoreId;
+  return next;
 }
 
 function rebuildBlockingRoles(previous, packages) {
@@ -182,6 +189,10 @@ function crownFinaleBoss(packages) {
   for (const pkg of next) {
     if (pkg.role === 'elite' && WAVE_30_CORE_ENEMY_IDS.includes(pkg.enemyId)) {
       pkg.enemyId = WAVE_30_FINALE_ENEMY_ID;
+      // The crown is a real finale, not a dressed elite: the hull fields through the
+      // ordinary wave package path, then the wave owner hands it to the authored Regent
+      // score — the same enemyId+scoreId contract the Swarm champion rows already run.
+      pkg.characterScoreId = WAVE_30_FINALE_SCORE_ID;
     }
   }
   return next;
