@@ -117,7 +117,7 @@ import * as kit from './ships/shipKit.js';
 import { attachRetroMounts, sharedRetroHardwareMaterial } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, installStaticLodLeafMatrixUpdate } from './staticChildMatrices.js';
-import { hostileTintMaterial, optimizeStaticBatchesForRoot } from './visualFactory.js';
+import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
   canInstallWholeShipLodFamily,
@@ -12031,7 +12031,7 @@ function poolSwarmRetroHardware(ship, entity, scene, owner) {
     const material = sharedRetroHardwareMaterial(object);
     if (!material) return;
     localMaterials.add(object.material);
-    object.material = hostileTintMaterial(material);
+    object.material = material;
     try {
       admitRenderPackageShipPoolCandidate(scene, owner, object, object.geometry, object.material,
         object.name, admissions, ship.packagePoolReleases);

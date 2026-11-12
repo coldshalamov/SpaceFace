@@ -34,7 +34,10 @@ function createOpaqueMaterials(shared = false) {
     new THREE.MeshStandardMaterial({ color: '#2c3338', metalness: 0.3, roughness: 0.5 }),
     new THREE.MeshStandardMaterial({ color: '#4a545c', metalness: 0.5, roughness: 0.34 }),
   ].map((material) => {
-    if (shared) material.userData.spacefaceSharedAsset = true;
+    if (shared) {
+      material.userData.spacefaceSharedAsset = true;
+      material.userData.spacefaceSharedRetroHardware = true;
+    }
     return material;
   });
 }

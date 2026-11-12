@@ -2729,7 +2729,7 @@ const SWARM_HOSTILE_COLOR_MIX = 0.15;
  * leaves it when one wasp despawns or a LOD child is torn down. The WeakMap
  * drops the clone when the source material itself is collected.
  */
-export function hostileTintMaterial(mat) {
+function hostileTintMaterial(mat) {
   if (!mat) return mat;
   if (mat.userData && mat.userData.swarmHostileTint) return mat;
   const cached = _hostileTintOf.get(mat);
@@ -2763,6 +2763,9 @@ function tintSwarmHostileHull(mesh) {
   mesh.userData.swarmHostileTintBody = body;
   mesh.traverse((obj) => {
     if (!obj.isMesh || !obj.material) return;
+    // Authored retro housings keep their neutral metal, including when a pool
+    // temporarily restores their direct draw.
+    if (obj.material.userData?.spacefaceSharedRetroHardware) return;
     if (typeof obj.name === 'string' && obj.name.startsWith('sf-swarm-threat')) return;
     const list = Array.isArray(obj.material) ? obj.material : [obj.material];
     let changed = false;
