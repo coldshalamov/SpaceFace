@@ -125,6 +125,35 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
     pointer-events:none!important;
   }
   ${FLIGHT} #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
+  /* MOB-07: a live Swarm round on a phone. The round panel is ONE line under the vitals strip,
+     "R01 · 15/15 · 0" (round, hostiles left, score); tapping it opens the full panel (arena, phase,
+     credits, level, XP). A boss bar and the cause-of-death line stay up beside it; the chain figure
+     already lives in the centre column below. */
+  ${FLIGHT} #hud > .sf-leftcontext > .sf-crun { gap:4px; }
+  ${FLIGHT} .sf-crun__brief {
+    display:block; box-sizing:border-box; width:100%; margin:0; padding:5px 8px; text-align:left;
+    font:600 14px/1.3 var(--dp-face-body,system-ui,sans-serif); font-variant-numeric:tabular-nums; letter-spacing:.03em;
+    color:var(--dp-ink,#e8e2d4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border:1px solid var(--dp-line-faint,rgb(232 226 212 / .14));
+    border-radius:4px; pointer-events:auto; touch-action:manipulation; cursor:pointer;
+  }
+  ${FLIGHT} .sf-crun:not(.is-open) > :is(.sf-crun__label,.sf-crun__row,.sf-crun__hero,.sf-crun__intro,.sf-crun__chain,.sf-crun__threat:not(.sf-crun__boss),.sf-crun__track--xp,.sf-crun__earn,.sf-crun__mods) { display:none!important; }
+  ${FLIGHT} .sf-crun.is-open > :not(.sf-crun__brief) { padding-inline:8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); }
+  ${FLIGHT} .sf-crun.is-open > .sf-crun__row--figs { padding-block:4px; }
+  ${FLIGHT} .sf-crun__boss, ${FLIGHT} .sf-crun__death { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
+  /* The centre column (round slam, callouts, hero chain, boss card, PILE-UP) keeps to the left lane
+     under the round line: one size smaller, never under the vitals strip or the radar. */
+  ${FLIGHT} .sf-sj__col {
+    top:calc(92px + var(--sf-safe-top,0px)); left:calc(8px + var(--sf-safe-left,0px)); transform:none;
+    max-width:calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)); align-items:flex-start;
+  }
+  ${FLIGHT} .sf-sj__herofig { font-size:34px; }
+  ${FLIGHT} .sf-sj__herotier { font-size:11px; letter-spacing:.14em; max-width:100%; }
+  ${FLIGHT} .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:left; }
+  ${FLIGHT} .sf-sj__slamtitle { font-size:clamp(24px,8vw,40px); letter-spacing:.1em; text-align:left; }
+  ${FLIGHT} .sf-sj__slamsub { text-align:left; }
+  ${FLIGHT} .sf-sj__bossdown { font-size:clamp(20px,6.4vw,32px); }
+  ${FLIGHT} .sf-sj__shatter { font-size:17px; letter-spacing:.18em; }
   /* G19-02 hold line on a phone: one compact line under the objective, only while carrying something. */
   ${FLIGHT} #hud .sf-cargo-bar { margin-top:4px; padding:3px 8px!important; font-size:12px!important; line-height:1.3; }
   ${FLIGHT} #hud .sf-mission-tracker::before { display:none!important; }
