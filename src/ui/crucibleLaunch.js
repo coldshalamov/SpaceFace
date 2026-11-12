@@ -23,7 +23,11 @@ import { isModeAvailable } from '../systems/survivalUnlocks.js';
 import { BLOCK_RULESET } from '../systems/survivalRun.js';
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 
-/** v1 ships one authored arena. The other two Combat Lab arenas are wave-authored but unpolished. */
+/**
+ * The door's default room — where a run lands when nothing else was picked. Every Combat Lab
+ * arena now ships authored on the door's row; the two real-sector side rooms (ceres_belt,
+ * tethys_hub) carry no star gate or ladder seed and stay open as plain rooms in every mode.
+ */
 export const CRUCIBLE_ARENA_ID = 'helios_core';
 
 /**

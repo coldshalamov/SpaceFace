@@ -412,7 +412,7 @@ const HULL_ICON = Object.freeze({
   hornet_fast_clumsy: 'drive',
   hornet_nimble_slow: 'brake',
 });
-const ARENA_TILE = Object.freeze({
+export const ARENA_TILE = Object.freeze({
   helios_core: 'assets/tiles/tile.arena.ricochet-foundry.png',
   lagrange_crucible: 'assets/tiles/tile.arena.lagrange-crucible.png',
   cinder_sluice: 'assets/tiles/tile.arena.cinder-sluice.png',
@@ -422,10 +422,45 @@ const ARENA_TILE = Object.freeze({
 // S9 — untiled arenas never wear another room's picture. An arena with no authored tile
 // art yet presents its own glyph; the hero panel shows the active mode's art instead of
 // a mislabeled Foundry still.
-const ARENA_GLYPH = Object.freeze({
+export const ARENA_GLYPH = Object.freeze({
+  ceres_belt: 'mining',
+  tethys_hub: 'station',
   asteroid_mill: 'asteroid',
   the_hive: 'seed',
 });
+
+// Each arena card names the room's law AND its signature events — the signature names come
+// off the swarm event table itself so the card never advertises a trick that cannot fire.
+const signatureLine = (arenaId) =>
+  ((SWARM_EVENT_TABLES[arenaId] || []).map((id) => SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].name)
+    .filter(Boolean).join(' · '));
+/**
+ * THE PUBLIC DOORS. Every COMBAT_LAB_ARENAS room gets a card here or is provably unreachable.
+ * The two real-sector side rooms (Ceres belt, Tethys junction) live on working lanes: they
+ * carry no star gate, no ladder seed and no authored law, so the door offers them as plain
+ * rooms in every mode instead of dressing them as a climb they are not.
+ */
+export const ARENA_DESCRIPTIONS = Object.freeze({
+  helios_core: Object.freeze(['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.', signatureLine('helios_core')]),
+  ceres_belt: Object.freeze(['Ceres Mining Belt', 'Working claims, ore seams and freight clutter. Split the swarm on the rocks.', signatureLine('ceres_belt')]),
+  tethys_hub: Object.freeze(['Tethys Exchange', 'Toll lanes and sealed freight on the junction braid. Cross the traffic — let the freight take the hit.', signatureLine('tethys_hub')]),
+  lagrange_crucible: Object.freeze(['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')]),
+  cinder_sluice: Object.freeze(['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')]),
+  cryo_drift: Object.freeze(['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.', signatureLine('cryo_drift')]),
+  storm_lattice: Object.freeze(['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.', signatureLine('storm_lattice')]),
+  asteroid_mill: Object.freeze(['Asteroid Mill', 'A dense ore seam on a slow grind. Break the rocks — the room pays ore.', signatureLine('asteroid_mill')]),
+  the_hive: Object.freeze(['The Hive', 'Living walls grow shut while sacs birth the tide. Burn the sacs or be buried.', signatureLine('the_hive')]),
+});
+
+/**
+ * The ladder's star gate, minus the door's ruleset bookkeeping. A room with no authored
+ * gate is a side room — never locked by a climb it does not belong to — so the lock copy
+ * can never promise an unlock that cannot be earned.
+ */
+export function crucibleArenaLadderLocked(ladder, arenaId) {
+  return Number.isInteger(SWARM_ARENA_STAR_GATES[arenaId])
+    && !swarmArenaIsUnlocked(ladder, arenaId);
+}
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -1613,20 +1648,9 @@ export const crucibleScreen = {
     const arenas = el('ul', 'k-words k-words--row sf-crd-arenas fh-cluster');
     arenas.setAttribute('aria-label', 'Arena');
     pin(arenas, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
-    // Each arena card names the room's law AND its signature events — the signature names come
-    // off the swarm event table itself so the card never advertises a trick that cannot fire.
-    const signatureLine = (arenaId) =>
-      ((SWARM_EVENT_TABLES[arenaId] || []).map((id) => SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].name)
-        .filter(Boolean).join(' · '));
-    const arenaDescriptions = {
-      helios_core: ['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.', signatureLine('helios_core')],
-      lagrange_crucible: ['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')],
-      cinder_sluice: ['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')],
-      cryo_drift: ['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.', signatureLine('cryo_drift')],
-      storm_lattice: ['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.', signatureLine('storm_lattice')],
-      asteroid_mill: ['Asteroid Mill', 'A dense ore seam on a slow grind. Break the rocks — the room pays ore.', signatureLine('asteroid_mill')],
-      the_hive: ['The Hive', 'Living walls grow shut while sacs birth the tide. Burn the sacs or be buried.', signatureLine('the_hive')],
-    };
+    // The catalog is module-owned now (ARENA_DESCRIPTIONS) — the door paints the same
+    // public list the catalog test audits, so a room can never silently drop off the row.
+    const arenaDescriptions = ARENA_DESCRIPTIONS;
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
       if (preparation) preparation.update();
@@ -1828,7 +1852,7 @@ export const crucibleScreen = {
     }
     function arenaLockedFor(id) {
       return ladderGateOn()
-        && !swarmArenaIsUnlocked(doorProfile && doorProfile.ladder, id);
+        && crucibleArenaLadderLocked(doorProfile && doorProfile.ladder, id);
     }
     function ladderPlayOn() {
       return ruleset === SWARM_RULESET && !daily && !weekly && !practiceQueued && !pendingShare
