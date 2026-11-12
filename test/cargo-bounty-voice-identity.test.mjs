@@ -100,3 +100,14 @@ test('a wreck fallback on a freight spill keeps the real restitution debit and r
     assert.ok(h.state.player.sessionSinks.some((receipt) => receipt.kind === 'restitution' && receipt.amount === 180));
   } finally { h.director.destroy(); }
 });
+
+test('a Swarm run never posts cargo recovery notices for arena wrecks', () => {
+  const wreck = body(42, 'wreck', 'Hull Debris');
+  const h = setup(wreck);
+  h.state.run = { kind: 'survival', ruleset: 'swarm', wave: 3, phase: 'fight' };
+  try {
+    kill(h, wreck);
+    assert.equal(h.spoken.length, 0, 'no spoken notice');
+    assert.equal(h.logs.length, 0, 'no comms line');
+  } finally { h.director.destroy(); }
+});
