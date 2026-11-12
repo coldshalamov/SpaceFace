@@ -65,7 +65,7 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build[aria-disabl
 html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
   font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:rgb(236 230 216 / .92) !important; min-height:42px; padding:0 16px;
-  background:rgb(236 230 216 / .05); border:1px solid rgb(236 230 216 / .38); border-radius:2px;
+  background:rgb(236 230 216 / .05); border:1px solid rgb(236 230 216 / .38); border-radius:6px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear; }
 html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close:is(:hover, :focus-visible) {
   color:#fff; background:rgb(236 230 216 / .12); border-color:rgb(236 230 216 / .75); }
@@ -261,6 +261,17 @@ html.sf-reduce-motion .k-screen.sf-crucible-fortify .sf-fortify-device { transit
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build,
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
     min-height:34px !important; font-size:13px !important;
+  }
+}
+/* polish486: on desktop frames taller than 560 the device shelf is its own scrollport, but it
+   ended on a hard cut (1280x720 sliced the Reflector Fin copy mid-line and hid In the field with
+   no hint). Fade its last 24px like the short-frame layout, and pad the scroll end so the final
+   row clears the fade once scrolled to. */
+@media (min-width:761px) and (min-height:561px) {
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf {
+    padding-bottom:24px;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 24px), transparent 100%);
   }
 }
 `;
