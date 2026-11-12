@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "2907642c9303f625020c50678416db701f10cf9edd50f03598c1d56fa8922c8d",
+  "uiSourceDigest": "e06dd93f2352e5bf54d64f345b536e01dc4d9288eaea484c124e2e235a3fb519",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -188,7 +188,7 @@
     "src/ui/orrery/contextWheelLayouts.js": "b73890707e50523e042dce4ec2644e0996150f3a45c04a1983e86597f2c86d1e",
     "src/ui/orrery/creditsLayouts.js": "f1e4c197f0be7bcac888dca0df126331361b2462a2e569ef2139cd1111fc02a0",
     "src/ui/orrery/crestOrbit.js": "13334f3f8ae1e94a6ee4116dbebb098cf937a607890fac33f983774ba58abade",
-    "src/ui/orrery/crucible-doorLayouts.js": "1619a0140b6fc7c7a8f812e9c2120d8034ba1642bedee91d83c32a779e5b74eb",
+    "src/ui/orrery/crucible-doorLayouts.js": "2eb3a15a279712a608aa05ca02c3f517296485c0f2fa9b9f102a724281277a53",
     "src/ui/orrery/crucible-labLayouts.js": "17cc93477b8d6a6039ae9724b5d35571136b961b9f37d72657e329bdafc10807",
     "src/ui/orrery/crucible-refitLayouts.js": "a40214a6f68b610a8321dddc75f6dafa675b73f34bb49c04673970b7f0d2c81d",
     "src/ui/orrery/crucible-resultsLayouts.js": "f8e4843f91d8fe29c34a95b7284f4f93d45744ca7ffc4ca28124630a9438622e",
