@@ -358,7 +358,7 @@ test('Act I announces once on a fresh save while journeyActs stays the durable r
   const h = freshMissionHarness();
   const actOne = h.popups.find((p) => p && p.id === 'act:I');
   assert.ok(actOne, 'the first act has a feed receipt on a fresh save');
-  assert.match(actOne.text, /ACT I - THE PIT/);
+  assert.match(actOne.text, /ACT I - COLD START/);
   assert.notEqual(actOne.persist, true, 'the act line is transient; journeyActs is the durable surface');
   assert.equal(h.state.story.journeyActs.current, 'I', 'the act state is the durable destination');
   assert.deepEqual(h.state.story.journeyActs.seen, ['I']);
