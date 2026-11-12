@@ -236,23 +236,25 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   };
 
   const base = expectedAt(2);
-  assert.equal(base.killTarget, 24);
+  // 97fd0ecebfc8 retuned the round quota to 26 + 4w (bounded), so the wave-2 base is 34
+  // and every stake rides its own pressure leg off that figure.
+  assert.equal(base.killTarget, 34);
   assert.equal(base.concurrent, 11);
   let line = swarmNextLine(base);
   assert.match(line, /room cap 11/);
   assert.doesNotMatch(line, /11 in the room|admissions/i);
 
   run.telemetry.swarmStake = 'exhibition';
-  assert.equal(expectedAt(2).killTarget, 16);
+  assert.equal(expectedAt(2).killTarget, 22);
   run.telemetry.swarmStake = 'veteran';
-  assert.equal(expectedAt(2).killTarget, 28);
+  assert.equal(expectedAt(2).killTarget, 39);
   run.telemetry.swarmStake = 'ironbound';
-  assert.equal(expectedAt(2).killTarget, 31);
+  assert.equal(expectedAt(2).killTarget, 44);
 
   run.telemetry.swarmStake = 'contender';
   run.telemetry.threats = ['thick_pack'];
   const threatened = expectedAt(2);
-  assert.equal(threatened.killTarget, 32);
+  assert.equal(threatened.killTarget, 46);
   assert.equal(threatened.concurrent, 15);
 
   run.modifiers = [{ kind: 'weapon', offerId: 'throw', verb: 'Throw', defId: 'wpn_concussion_cannon_m', wave: 1 }];
@@ -263,9 +265,14 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   run.arenaMutators = [];
   run.modifiers = [];
   const boss = expectedAt(20);
-  assert.equal(boss.boss?.label, 'Mirrorjaw Foreman');
-  assert.match(swarmNextLine(boss), /boss: Mirrorjaw Foreman/);
-  const newcomer = expectedAt(22);
+  // ca74e15f3328 (C01-01) authored the course's own boss map — the Yardmaster holds
+  // round 20; the Foreman now keeps round 15.
+  assert.equal(boss.boss?.label, 'The Yardmaster');
+  assert.match(swarmNextLine(boss), /boss: The Yardmaster/);
+  const newcomer = expectedAt(14);
+  // 4757ab2081e1 (C01-04) authored cast debuts on the course rounds — the Anchor
+  // Controller's first sighting is round 14's cast row; the generated roster clock
+  // (fromWave 22) is no longer where a debut is announced.
   assert.equal(newcomer.newcomer, 'Anchor Controller');
   assert.match(swarmNextLine(newcomer), /new: Anchor Controller/);
 });
@@ -316,7 +323,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     assert.deepEqual(run, beforeRefresh);
     assert.equal(armoryPreview.hidden, false);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
-    assert.match(armoryPreview.textContent, /clear 24 · room cap 11/);
+    assert.match(armoryPreview.textContent, /clear 34 · room cap 11/);
 
     // The planner runs only on a real shop refresh; periodic animation passes keep their early
     // return and therefore do not rebuild/consume a planner stream every frame.
@@ -330,7 +337,7 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
     armory.screen.refresh(armory.ctx);
     refit.screen.refresh(refit.ctx);
     assert.deepEqual(run, beforeRefresh);
-    assert.match(armoryPreview.textContent, /clear 16 · room cap 7/);
+    assert.match(armoryPreview.textContent, /clear 22 · room cap 7/);
     assert.equal(armoryPreview.textContent, refitPreview.textContent);
     assert.equal(armory.ctx.state.rng.calls, 0);
     assert.equal(refit.ctx.state.rng.calls, 0);
@@ -724,7 +731,7 @@ test('production domain wire, lane facade and result bridge repaint the merged s
     assert.equal(armory.screen._wallet.textContent, '214 cr to spend');
     assert.equal(armory.screen._note.textContent, mirroredDraft.notice);
     assert.equal(armory.screen._preview.textContent, swarmNextLine(swarmForecastForRun(mirroredRun, 2)));
-    assert.match(armory.screen._preview.textContent, /clear 16/);
+    assert.match(armory.screen._preview.textContent, /clear 22/);
   } finally {
     if (oldDocument === undefined) delete globalThis.document;
     else globalThis.document = oldDocument;
@@ -736,5 +743,5 @@ test('unavailable forecast inputs return no line rather than throwing or inventi
   assert.equal(swarmForecastForRun(null, 2), null);
   assert.equal(swarmForecastForRun(run, 0), null);
   assert.equal(swarmForecastForRun({ ...run, arenaId: 'not_a_real_arena' }, 2), null);
-  assert.equal(swarmForecastForRun({ ...run, modifiers: null, arenaMutators: null, telemetry: null }, 2)?.killTarget, 24);
+  assert.equal(swarmForecastForRun({ ...run, modifiers: null, arenaMutators: null, telemetry: null }, 2)?.killTarget, 34);
 });
