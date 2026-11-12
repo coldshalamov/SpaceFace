@@ -181,8 +181,13 @@ const CSS = `
 .sf-drawer--entity > .sf-drawer__apron {
   position: relative; bottom: auto; flex: 0 0 auto; min-height: 0; max-height: 50vh;
   box-sizing: border-box; overflow-y: auto; scroll-padding-block: 8px;
-  margin: 24px 36px 0 88px;
+  margin: 24px 36px 0 82px;
+  /* The rail scrolls, so it clips: a key's focus ring (::after, inset -4px + 1.5px) on the first
+     key was cut flat along the rail's left edge. A few px of side room keeps the whole ring. */
+  padding-left: 6px; padding-right: 6px;
 }
+/* Every rail left margin below is the deck's text inset minus that 6px, so the first key's face
+   still lines up with the record text above it (88/76/40/20 -> 82/70/34/14). */
 .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb {
   box-sizing: border-box; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
 }
@@ -194,7 +199,7 @@ const CSS = `
 @media (max-width: 640px) {
   .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; }
-  .sf-drawer--entity > .sf-drawer__apron { margin: 20px 20px 0; }
+  .sf-drawer--entity > .sf-drawer__apron { margin: 20px 20px 0 14px; }
 }
 
 /* 641–1100 wide: at 48vw the 960x540 sheet left a 336px column, so CLOSE wrapped to a second apron
@@ -203,8 +208,8 @@ const CSS = `
 @media (min-width: 641px) and (max-width: 1100px) {
   .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
   .sf-drawer--entity .sf-drawer__deck { padding-left: 76px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 76px; column-gap: 10px; }
-  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 70px; column-gap: 10px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 14px; letter-spacing: .11em; }
 }
 
 /* Short desktop: keep the compact record, but reserve the footer through normal flex layout.
@@ -231,18 +236,18 @@ const CSS = `
   .sf-drawer--entity .sf-entity-link--row { padding: 5px 2px 5px 0; font-size: 14px; }
   .sf-drawer--entity > .sf-drawer__apron {
     position: relative; left: auto; right: auto; bottom: auto;
-    z-index: 2; margin: 8px 28px 0 76px; height: auto; box-sizing: border-box;
+    z-index: 2; margin: 8px 28px 0 70px; height: auto; box-sizing: border-box;
     padding-top: 10px; padding-bottom: 10px;
     background: rgb(9 11 15);
     box-shadow: 0 -16px 14px -6px rgb(9 11 15);
   }
-  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 14px 0 12px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 13px; }
   .sf-drawer--entity .sf-drawer__x { top: 8px; right: 12px; width: 28px; height: 28px; }
 }
 /* Wider short frames retain the same content and action inset. */
 @media (min-width: 1101px) and (max-height: 560px) {
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 88px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 88px; margin-right: 28px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 82px; margin-right: 28px; }
 }
 
 /* ── 2b. The desktop sheet has an edge ───────────────────────────────────────────────────── */
@@ -262,7 +267,7 @@ const CSS = `
     box-shadow: -24px 0 56px -16px rgb(0 0 0 / .65);
   }
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 40px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 40px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 34px; }
   /* Opening moves focus onto the sheet itself (entityLinks). The dissolve used to mask the
      container's ring from consoleStandard's #screens [tabindex] rule (!important, with a 2px radius);
      unmasked it drew a lamp frame around the card and squared its corner. The deck, rungs and
@@ -292,6 +297,16 @@ const CSS = `
 }
 .sf-drawer__verb[disabled]:hover, .sf-drawer__verb:disabled:hover,
 .sf-drawer__verb[disabled]:active, .sf-drawer__verb:disabled:active { transform: none; box-shadow: none; }
+/* One focus ring per key. The key draws its own rounded ring (ui.css button.sf-drawer__verb::after);
+   consoleStandard's #screens focus rule (!important 2px outline, 2px radius) stacked a second,
+   square-cornered ring on top and squared the key itself. Scoped here; the global rule is untouched. */
+#screens .sf-drawer__verb:focus-visible { outline: none !important; border-radius: 8px; }
+/* Forced colors (Windows High Contrast) strips the ::after box-shadow ring, so the outline is the only
+   focus mark there. ui.css's Highlight outline (.sf-drawer__verb:focus-visible, 0,2,0) cannot outrank
+   the rule above, so restate it here at the same weight, later in source order. */
+@media (forced-colors: active) {
+  #screens .sf-drawer__verb:focus-visible { outline: 2px solid Highlight !important; outline-offset: 2px !important; }
+}
 
 /* ── Reduced motion: every state arrives instantly, both guards ──────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
