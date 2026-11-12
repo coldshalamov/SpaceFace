@@ -733,7 +733,6 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     // retained copy and let the normal admission path rebuild the keyed group.
     && check('color-drift', entry.vertexColors === true || !colorChanged(entry.color, currentColor))
     && check('compile-hook-swap', !material || material.onBeforeCompile === entry.onBeforeCompile)
-    && check('cache-key-swap', !material || material.customProgramCacheKey === entry.customProgramCacheKey)
     && check('before-render-swap', !material || material.onBeforeRender === entry.materialOnBeforeRender)
     && check('after-render-swap', !material || material.onAfterRender === entry.materialOnAfterRender)
     && check('render-order', source.renderOrder === entry.renderOrder)
@@ -745,7 +744,9 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     && check('morph-influences', source.morphTargetInfluences == null)
     && check('morph-dictionary', source.morphTargetDictionary == null)
     && check('render-hook', hookSafe(source))
-    && check('tags', currentTagsStable(entry.tags, source));
+    && check('tags', currentTagsStable(entry.tags, source))
+    // Only a cache-key swap that passes every other guard can be isolated before commit.
+    && check('cache-key-swap', !material || material.customProgramCacheKey === entry.customProgramCacheKey);
 }
 
 function restoreSources(entries) {
@@ -1573,9 +1574,27 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         if (!topologyStable) stats.lastDetail = 'entry-topology-before-commit';
         refreshEntryMotionPivots(candidate.entries, motionPivots);
         const materialUniformStability = new Map();
-        if (!topologyStable
-            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
-              noteMutableMaterial, materialUniformStability, noteUnstableCheck(entry), shadowDepthDisabled))) {
+        const cacheKeySwaps = new Set();
+        const cacheKeySwapsByBatch = new Map();
+        const sourcesStable = topologyStable && candidate.entries.every((entry) => {
+          let failedCheck = null;
+          const stable = sourceStaticStateStable(entry, false, isRenderHookSafe, noteMutableMaterial,
+            materialUniformStability, (name) => { failedCheck = name; }, shadowDepthDisabled);
+          if (stable) return true;
+          noteUnstableCheck(entry)(failedCheck);
+          if (failedCheck !== 'cache-key-swap') return false;
+          cacheKeySwaps.add(entry);
+          cacheKeySwapsByBatch.set(entry.batch, (cacheKeySwapsByBatch.get(entry.batch) || 0) + 1);
+          return true;
+        });
+        const keptPreparedSources = sourcesStable && (cacheKeySwaps.size === 0
+          || (detachEntries(candidate, (entry) => {
+            if (cacheKeySwaps.has(entry)) return true;
+            const swapped = cacheKeySwapsByBatch.get(entry.batch);
+            // A group with one survivor saves no draw. Its authored leaf can stay direct too.
+            return swapped != null && entry.batch.entries.length - swapped < 2;
+          }, 'source-cache-key-direct-fallback', false) && candidate.entries.length > 0));
+        if (!keptPreparedSources) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;
@@ -1588,6 +1607,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             : 'source-topology-changed-before-commit';
           return refreshDiagnostics();
         }
+        if (cacheKeySwaps.size > 0) record.entryTopology = captureEntryTopology(candidate.entries);
         // Preparation is asynchronous while authored rigid pivots may keep moving. Publish the
         // current pose at the same atomic handover that suppresses the direct source draws.
         _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
@@ -1624,7 +1644,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         stats.preparationCompletedGroups = candidate.batches.length;
         stats.activations += 1;
         stats.lastReason = record.shadowOwnerFallback
-          ? 'shadow-owner-direct-fallback' : 'activated-after-residency';
+          ? 'shadow-owner-direct-fallback'
+          : cacheKeySwaps.size > 0 ? 'source-cache-key-direct-fallback' : 'activated-after-residency';
         if (record.shadowFallbackDetail) stats.lastDetail = record.shadowFallbackDetail;
         return refreshDiagnostics();
       })

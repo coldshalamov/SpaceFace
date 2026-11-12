@@ -958,6 +958,69 @@ test('uniform mutation while residency awaits cannot commit a stale retained mat
   controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
 });
 
+test('a cache-key swap during preparation leaves that leaf direct and publishes stable peers', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  const c = new THREE.Mesh(b.geometry, b.material);
+  const second = makeRoot();
+  second.a.material.color.setHex(0x345699);
+  second.b.material.color.setHex(0x345699);
+  root.add(c);
+  scene.add(root, second.root);
+  scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  try {
+    const roots = [root, second.root];
+    const pending = controller.sync(roots);
+    await Promise.resolve();
+    a.material.customProgramCacheKey = () => 'fixture-different-cache-key';
+    second.a.material.customProgramCacheKey = () => 'fixture-another-cache-key';
+    finish({ ready: true });
+    const ready = await pending;
+    assert.equal(ready.status, 'active');
+    assert.equal(ready.lastReason, 'source-cache-key-direct-fallback');
+    assert.equal(ready.activations, 1);
+    assert.equal(ready.hiddenSources, 2);
+    assert.equal(ready.batches, 1);
+    assert.deepEqual([a.layers.mask, b.layers.mask, c.layers.mask], [1, 0, 0]);
+    assert.deepEqual([second.a.layers.mask, second.b.layers.mask], [1, 1], 'a one-leaf remainder saves no draw');
+    assert.equal((await controller.sync(roots)).activations, 1);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+    second.a.geometry.dispose(); second.b.geometry.dispose();
+    second.a.material.dispose(); second.b.material.dispose();
+  }
+});
+
+test('a cache-key swap cannot hide simultaneous motion-owner drift during preparation', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  const c = new THREE.Mesh(b.geometry, b.material);
+  root.add(c);
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene, isTransformOnlySource: () => true,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  try {
+    const pending = controller.sync(root);
+    await Promise.resolve();
+    a.material.customProgramCacheKey = () => 'fixture-different-cache-key';
+    a.userData.animated = true;
+    finish({ ready: true });
+    const result = await pending;
+    assert.equal(result.lastReason, 'source-state-changed-before-commit');
+    assert.equal(result.activations, 0);
+    assert.deepEqual([a.layers.mask, b.layers.mask, c.layers.mask], [1, 1, 1]);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
 test('an exact source selector narrows the cohort and remains binding during residency and activation', async () => {
   for (const retireDuringPrepare of [false, true]) {
     const scene = new THREE.Scene(), { root, a, b } = makeRoot(); scene.add(root);
