@@ -8,11 +8,8 @@
 // view flicked with it. This module keeps, per entity, the last DRAWN position and a
 // smoothed velocity. Each frame, given the fence's raw presented position r:
 //
-//   expected = lastDrawn + velocity·dt
-//   jump = r − expected
-//   if |jump| > POSE_CONTINUITY_JUMP_WU and it is a correction: absorb it
-//   else: heal — the carried offset decays and the drawn pose glides back onto r
-//   if |o| > POSE_CONTINUITY_TELEPORT_WU: a real teleport — reset o and draw r
+// The fence sets the flight path and playout rate. Only a backward correction can create
+// a new offset. Other frames follow the fence with bounded decay of any existing offset.
 //
 // Heading gets the same treatment on the yaw channel, wrap-aware. Presentation only —
 // nothing here writes back to sim fields; the fence's raw stream stays authoritative.
@@ -42,18 +39,10 @@ export const POSE_CONTINUITY_YAW_JUMP_RAD = (2 * Math.PI) / 180;
  */
 export const POSE_CONTINUITY_HEAL_REGRESS_WU = 0.25;
 /**
- * The same bound on the way back: a lagging residual rejoins the raw stream as a mild
- * catch-up glide, never a forward leap. Cap = this share of the frame's own flight step…
+ * A lagging residual can heal forward by a fraction of the current raw step plus a
+ * small allowance. The raw step itself always passes through at its original length.
  */
-export const POSE_CONTINUITY_HEAL_FORWARD = 1.2;
-/**
- * …or this share of the TYPICAL DRAWN step (the running mean of significant forward
- * progress), whichever is smaller. A starved frame that presents a quarter-second of
- * flight must spread that catch-up over a few frames as a surge — drawn whole, the leap
- * is the other half of the flicker this module exists to hide. The mean reads the run's
- * overall step scale — speed changes inside a run do not silently widen the bound.
- */
-export const POSE_CONTINUITY_HEAL_FORWARD_TYPICAL = 1.4;
+const POSE_CONTINUITY_HEAL_FORWARD_SHARE = 0.2;
 /** …plus this much, so a slow or parked hull can still drift back onto the stream. */
 export const POSE_CONTINUITY_HEAL_FORWARD_WU = 0.3;
 /**
@@ -86,7 +75,7 @@ export function createPoseContinuity() {
     if (!rec) {
       rec = {
         x: 0, z: 0, vx: 0, vz: 0, ox: 0, oz: 0,
-        yaw: 0, vyaw: 0, oyaw: 0, stepSum: 0, stepCount: 0,
+        yaw: 0, vyaw: 0, oyaw: 0,
         rawX: 0, rawZ: 0, rawYaw: 0,
         seeded: false, velSeeded: false, yawVelSeeded: false,
       };
@@ -109,8 +98,6 @@ export function createPoseContinuity() {
     // The hop says nothing about the new stream's speed: re-seed from its first delta.
     rec.velSeeded = false;
     rec.yawVelSeeded = false;
-    rec.stepSum = 0;
-    rec.stepCount = 0;
     return emit(rec, out);
   }
 
@@ -148,13 +135,6 @@ export function createPoseContinuity() {
       if (!wasVelSeeded) {
         rec.vx = ivx; rec.vz = ivz; rec.velSeeded = true;
       }
-      // expected = lastDrawn + velocity·dt — the continuation the PREVIOUS frame committed
-      // to. This frame's own raw delta joins the estimate only after the judgment, so a
-      // snap cannot dilute its own correction.
-      const ex = rec.x + rec.vx * dt;
-      const ez = rec.z + rec.vz * dt;
-      const jx = x - ex;
-      const jz = z - ez;
       const spd = Math.hypot(rec.vx, rec.vz);
       const teleport = Math.max(POSE_CONTINUITY_TELEPORT_WU, spd * POSE_CONTINUITY_TELEPORT_S);
       const teleport2 = teleport * teleport;
@@ -162,110 +142,54 @@ export function createPoseContinuity() {
       // continuation (respawn, dock, sector hop). Measuring jump against the drawn pose
       // would fold the carried residual into the judgment — a lagging offset plus an
       // ordinary catch-up then reads as a hop and lands the lag as one leap.
-      const sx = x - rec.rawX - rec.vx * dt;
-      const sz = z - rec.rawZ - rec.vz * dt;
-      if (sx * sx + sz * sz > teleport2) {
-        return snap(rec, x, z, rYaw, out);
-      }
-      // The stream's own motion axis for this frame: the raw delta when it has one —
-      // during a reversal (a bounce) that direction is already the new heading — else the
-      // presented heading (world.forward = (cos(rot), sin(rot)); the packed quaternion
-      // negates it: rYaw = −rot, so forward = (cos(rYaw), −sin(rYaw))), else smoothed
-      // velocity. The metric and the camera both read motion in the stream's direction.
       const rdx = x - rec.rawX;
       const rdz = z - rec.rawZ;
-      const rd = Math.hypot(rdx, rdz);
-      const advancesWithEstimate = rd > 1e-6 && rdx * rec.vx + rdz * rec.vz > 0;
-      let fx = 0;
-      let fz = 0;
-      if (rd > 1e-6) {
-        fx = rdx / rd;
-        fz = rdz / rd;
-      } else if (Number.isFinite(rYaw)) {
-        fx = Math.cos(rYaw);
-        fz = -Math.sin(rYaw);
-      } else if (spd > 1e-3) {
-        fx = rec.vx / spd;
-        fz = rec.vz / spd;
+      const sx = rdx - rec.vx * dt;
+      const sz = rdz - rec.vz * dt;
+      const shock2 = sx * sx + sz * sz;
+      if (shock2 > teleport2) {
+        return snap(rec, x, z, rYaw, out);
       }
       const decay = Math.exp(-dt / POSE_CONTINUITY_DECAY_S);
-      let absorb = false;
-      if (rd > 1e-6 && jx * jx + jz * jz > POSE_CONTINUITY_JUMP_WU * POSE_CONTINUITY_JUMP_WU) {
-        // Correction or veer? A fence correction lands the stream back along its own line
-        // of flight — the jump is mostly anti-parallel to motion. A real turn arcs the
-        // stream sideways — the jump is mostly lateral, and absorbing it would hide the
-        // turn itself (the drawn hull then slides against the new heading — the same
-        // flicker, rotated).
-        const jPar = jx * fx + jz * fz;
-        const jLat = Math.abs(jz * fx - jx * fz);
-        // A forward sample falling short of the velocity estimate is a slower sample. Adding
-        // the missing travel again here makes the picture surge ahead of the fence and then
-        // retreat. An unchanged raw position can only heal an offset it already carries.
-        absorb = jLat <= Math.abs(jPar) && !(advancesWithEstimate && jPar < 0);
-      }
-      if (absorb) {
-        rec.ox = (ex - x) * decay;
-        rec.oz = (ez - z) * decay;
-      } else {
-        rec.ox *= decay;
-        rec.oz *= decay;
-        // The heal is asymptotic — retire the residual once it is sub-perceptual so the
-        // quiet drawn pose rejoins the raw stream exactly instead of creeping forever.
-        if (rec.ox * rec.ox + rec.oz * rec.oz
-            < POSE_CONTINUITY_SETTLE_WU * POSE_CONTINUITY_SETTLE_WU) {
-          rec.ox = 0;
-          rec.oz = 0;
+      const against = -(rdx * rec.vx + rdz * rec.vz);
+      const lateralMotion = Math.abs(rdz * rec.vx - rdx * rec.vz);
+      // Use the raw stream for the correction decision. A carried offset or the ship
+      // accelerating into a turn must never create another offset by itself.
+      if (against > lateralMotion && shock2 > POSE_CONTINUITY_JUMP_WU ** 2) {
+        rec.ox = (rec.x + rec.vx * dt - x) * decay;
+        rec.oz = (rec.z + rec.vz * dt - z) * decay;
+        // A long frame decays more of the offset. Keep that decay from exposing
+        // the correction as a reverse step in the direction we were moving.
+        const advance = (x + rec.ox - rec.x) * rec.vx + (z + rec.oz - rec.z) * rec.vz;
+        if (advance < 0) {
+          const restore = -advance / (spd * spd);
+          rec.ox += restore * rec.vx;
+          rec.oz += restore * rec.vz;
         }
-      }
-      // A residual that grew past the bound is accumulated divergence, not a teleport —
-      // snapping it would land the whole offset as one leap, the very flicker this module
-      // hides. Clamp at the bound and keep healing; the drawn pose may ride at the bounded
-      // offset until the stream closes it.
-      {
         const oMag = Math.hypot(rec.ox, rec.oz);
         if (oMag > teleport) {
           const s = teleport / oMag;
           rec.ox *= s;
           rec.oz *= s;
         }
-      }
-      let drawnX = x + rec.ox;
-      let drawnZ = z + rec.oz;
-      // Monotone-progress clamp: while an absorbed residual heals, the drawn pose must not
-      // slide back along a still-advancing raw trajectory. Once stopped it can heal back
-      // to the physical pose at a crawl.
-      // The forward side is capped the same way: a lagging offset heals as a catch-up
-      // glide, never a leap. Lateral slide is bounded too — a stale offset shedding during
-      // a turn must not swing the hull sideways faster than a drift.
-      let stepFwd = 0;
-      if (fx !== 0 || fz !== 0) {
-        const dx = drawnX - rec.x;
-        const dz = drawnZ - rec.z;
-        const progress = dx * fx + dz * fz;
-        const lateral = dx * -fz + dz * fx;
-        let pull = 0;
-        let latPull = 0;
-        const minimumProgress = advancesWithEstimate ? 0 : -POSE_CONTINUITY_HEAL_REGRESS_WU;
-        if (progress < minimumProgress) {
-          pull = minimumProgress - progress;
-        } else {
-          const stepTyp = rec.stepCount > 0 ? rec.stepSum / rec.stepCount : spd * dt;
-          const forwardCap = Math.min(
-            spd * dt * POSE_CONTINUITY_HEAL_FORWARD,
-            stepTyp * POSE_CONTINUITY_HEAL_FORWARD_TYPICAL,
-          ) + POSE_CONTINUITY_HEAL_FORWARD_WU;
-          if (progress > forwardCap) pull = forwardCap - progress;
-        }
-        if (Math.abs(lateral) > POSE_CONTINUITY_HEAL_LATERAL_WU) {
-          latPull = Math.sign(lateral) * POSE_CONTINUITY_HEAL_LATERAL_WU - lateral;
-        }
-        if (pull !== 0 || latPull !== 0) {
-          drawnX += fx * pull - fz * latPull;
-          drawnZ += fz * pull + fx * latPull;
-          rec.ox = drawnX - x;
-          rec.oz = drawnZ - z;
-        }
-        stepFwd = Math.max(0, (drawnX - rec.x) * fx + (drawnZ - rec.z) * fz);
+      } else if (rec.ox !== 0 || rec.oz !== 0) {
+        // Bound only the change in offset. Applying these limits to total movement
+        // lets a low-speed opening permanently cap a later powered turn or straight.
+        const rd = Math.hypot(rdx, rdz);
+        const moving = rd > 1e-6;
+        const fx = moving ? rdx / rd : Math.cos(rYaw);
+        const fz = moving ? rdz / rd : -Math.sin(rYaw);
+        const settle = Math.hypot(rec.ox, rec.oz) * decay < POSE_CONTINUITY_SETTLE_WU;
+        const scale = settle ? -1 : decay - 1;
+        const dx = rec.ox * scale;
+        const dz = rec.oz * scale;
+        const along = Math.max(moving ? -rd : -POSE_CONTINUITY_HEAL_REGRESS_WU,
+          Math.min(rd * POSE_CONTINUITY_HEAL_FORWARD_SHARE + POSE_CONTINUITY_HEAL_FORWARD_WU, dx * fx + dz * fz));
+        const across = Math.max(-POSE_CONTINUITY_HEAL_LATERAL_WU,
+          Math.min(POSE_CONTINUITY_HEAL_LATERAL_WU, dz * fx - dx * fz));
+        rec.ox += fx * along - fz * across;
+        rec.oz += fz * along + fx * across;
+        if (settle && Math.abs(rec.ox) + Math.abs(rec.oz) < 1e-9) rec.ox = rec.oz = 0;
       }
       // Heading: same absorb-and-heal on the yaw channel, wrap-aware.
       const ivYaw = wrapPi(rYaw - rec.rawYaw) / dt;
@@ -287,17 +211,8 @@ export function createPoseContinuity() {
         rec.vz += (ivz - rec.vz) * k;
       }
       if (wasYawVelSeeded) rec.vyaw += (ivYaw - rec.vyaw) * k;
-      // Typical drawn forward-step estimate for the forward cap — folded in AFTER the
-      // clamp so an outlier step cannot inflate the bound it is measured against, and only
-      // over significant steps (the same population the metric medians): quiet frames must
-      // not drag the cap down into a persistent lag. The folded value is bounded by the
-      // teleport floor so a real hop cannot pollute the run's step scale.
-      if (stepFwd > POSE_CONTINUITY_JUMP_WU) {
-        rec.stepSum += Math.min(stepFwd, POSE_CONTINUITY_TELEPORT_WU);
-        rec.stepCount += 1;
-      }
-      rec.x = drawnX;
-      rec.z = drawnZ;
+      rec.x = x + rec.ox;
+      rec.z = z + rec.oz;
       rec.yaw = wrapPi(rYaw + rec.oyaw);
       rec.rawX = x; rec.rawZ = z; rec.rawYaw = rYaw;
       return emit(rec, out);

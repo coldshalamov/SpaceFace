@@ -63,6 +63,27 @@ test('a sustained raw reversal and a perpendicular turn still change drawn direc
   assert.ok(Math.abs(o.x) < 0.05 && Math.abs(o.z - 60) < 0.05, 'a real turn follows the new path');
 });
 
+test('accelerating into a sustained turn at low render cadence does not build a second flight path', () => {
+  const cont = createPoseContinuity();
+  const o = out();
+  let x = 0, z = 0, angle = 0;
+  const dt = 0.075;
+  for (let n = 0; n < 60; n++) {
+    x += 0.7;
+    cont.sample(7, x, z, 0, dt, o);
+  }
+  let largestOffset = 0;
+  for (let n = 0; n < 280; n++) {
+    const step = Math.min(13, 0.7 + n * 0.35);
+    if (n < 180) angle += 0.10;
+    x += step * Math.cos(angle);
+    z += step * Math.sin(angle);
+    cont.sample(7, x, z, -angle, dt, o);
+    largestOffset = Math.max(largestOffset, Math.hypot(o.x - x, o.z - z));
+  }
+  assert.ok(largestOffset < 0.05, `drawn hull strayed ${largestOffset.toFixed(2)} WU from the smooth pose stream`);
+});
+
 test('a backward snap is absorbed — the hull never steps back', () => {
   const cont = createPoseContinuity();
   const o = out();
@@ -85,6 +106,15 @@ test('a backward snap is absorbed — the hull never steps back', () => {
     'the snap frame keeps the hull moving forward, never back');
   assert.ok(drawn[61] - drawn[60] <= SPEED * DT + 1e-9,
     'the snap frame does not leap forward past its own continuation');
+});
+
+test('a backward correction after a slow render frame does not move the drawn hull back', () => {
+  const cont = createPoseContinuity();
+  const o = out();
+  for (let n = 0; n <= 60; n++) cont.sample(7, n * 12, 0, 0, 0.075, o);
+  const before = o.x;
+  cont.sample(7, 60 * 12 - 22, 0, 0, 0.075, o);
+  assert.ok(o.x >= before, `a late correction moved the hull back ${before - o.x} WU`);
 });
 
 test('the absorbed offset decays back onto the raw stream', () => {
