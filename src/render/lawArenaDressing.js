@@ -95,6 +95,15 @@ const RELEASE_FLING_WU = 26;
 let _shared = null;
 let _millGrindTeeth = null;
 
+// The authored nodes stay in simulation-world coordinates. Move their shared root into
+// the same frame as entity meshes, including when the presentation origin rebases.
+function placeInRenderFrame(root, origin) {
+  if (!root || !origin) return;
+  const x = Number.isFinite(origin.x) ? -origin.x : 0;
+  const z = Number.isFinite(origin.z) ? -origin.z : 0;
+  if (root.position.x !== x || root.position.z !== z) root.position.set(x, 0, z);
+}
+
 function sharedAssets() {
   if (_shared) return _shared;
   // X1 style bible §3: arena machinery wears the same three-value, chamfered, manufactured
@@ -1512,7 +1521,7 @@ export function createLawArenaDressing() {
   }
 
   // Geometry comes from the simulation's committed walk, never the decorative orbit wires.
-  function handleStormWarning(payload, scene, onPresented) {
+  function handleStormWarning(payload, scene, onPresented, frameOrigin) {
     if (!payload || !scene || !Number.isSafeInteger(payload.wave)
       || !Number.isSafeInteger(payload.roomGeneration) || payload.roomGeneration < 1
       || !Number.isSafeInteger(payload.serial) || payload.serial < 1
@@ -1550,6 +1559,7 @@ export function createLawArenaDressing() {
       root.add(ring);
       rings.push(ring);
     }
+    placeInRenderFrame(root, frameOrigin);
     scene.add(root);
     stormCue = { root, materials, wave: payload.wave, roomGeneration: payload.roomGeneration,
       serial: payload.serial, expiresAtSim: payload.expiresAtSim, onPresented, presented: false, wires, rings };
@@ -1615,7 +1625,7 @@ export function createLawArenaDressing() {
     room.pylonPositions = [];
   }
 
-  function handleInstall(payload, scene) {
+  function handleInstall(payload, scene, frameOrigin) {
     clearStormCue();
     releaseRoom();
     if (!payload || !scene) return;
@@ -1728,6 +1738,7 @@ export function createLawArenaDressing() {
     room.clones = clones;
     room.installedAtSim = Number.isFinite(payload.installedAtSim) ? payload.installedAtSim : 0;
     room.arenaId = arenaId;
+    placeInRenderFrame(root, frameOrigin);
     scene.add(root);
     return parts.length;
   }
@@ -1737,8 +1748,9 @@ export function createLawArenaDressing() {
     releaseRoom();
   }
 
-  function updateRoom(simTime, frameDt, options) {
+  function updateRoom(simTime, frameDt, options, frameOrigin) {
     if (stormCue) {
+      placeInRenderFrame(stormCue.root, frameOrigin);
       if (Number.isFinite(simTime) && simTime >= stormCue.expiresAtSim) clearStormCue();
       else if (!stormCue.presented) {
         stormCue.presented = true;
@@ -1747,6 +1759,7 @@ export function createLawArenaDressing() {
       }
     }
     if (!room.root) return;
+    placeInRenderFrame(room.root, frameOrigin);
     const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
     const dt = Math.max(0, frameDt || 0) * ratio;
     const reduced = !!(options && options.reducedMotion);

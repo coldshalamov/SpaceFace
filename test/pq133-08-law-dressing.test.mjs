@@ -185,7 +185,8 @@ test('scored Asteroid Mill dresses both registered grind cones and releases thei
   const h = boot();
   const dressing = createLawArenaDressing();
   const scene = new THREE.Scene();
-  h.bus.on('survivalArena:installed', (p) => dressing.handleInstall(p, scene));
+  const origin = { x: -10888, z: 9092 };
+  h.bus.on('survivalArena:installed', (p) => dressing.handleInstall(p, scene, origin));
   h.bus.on('survivalArena:released', () => dressing.handleReleased());
 
   installRun(h, { arenaId: MILL_ARENA_ID, wave: 1 });
@@ -203,6 +204,9 @@ test('scored Asteroid Mill dresses both registered grind cones and releases thei
     assert.equal(mouth.name, 'mill_grind_mouth');
     assert.equal(mouth.position.x, cone.center.x);
     assert.equal(mouth.position.z, cone.center.z);
+    const drawn = mouth.getWorldPosition(new THREE.Vector3());
+    assert.ok(Math.abs(drawn.x - (cone.center.x - origin.x)) < 1e-8);
+    assert.ok(Math.abs(drawn.z - (cone.center.z - origin.z)) < 1e-8);
     assert.equal(mouth.rotation.y, -Math.atan2(cone.dir.z, cone.dir.x));
     const wheels = mouth.children.filter((child) => child.name === 'mill_grind_wheel');
     assert.equal(wheels.length, 2);
@@ -210,6 +214,11 @@ test('scored Asteroid Mill dresses both registered grind cones and releases thei
   }
 
   const mouth = room.parts[0].root;
+  const rebased = { x: origin.x + 128, z: origin.z - 64 };
+  dressing.updateRoom(1, 0, {}, rebased);
+  const drawn = mouth.getWorldPosition(new THREE.Vector3());
+  assert.ok(Math.abs(drawn.x - (cones[0].center.x - rebased.x)) < 1e-8);
+  assert.ok(Math.abs(drawn.z - (cones[0].center.z - rebased.z)) < 1e-8);
   const [leftWheel, rightWheel] = mouth.children.filter((child) => child.name === 'mill_grind_wheel');
   dressing.updateRoom(1, 1, {});
   assert.ok(leftWheel.rotation.y > 0 && rightWheel.rotation.y < 0);

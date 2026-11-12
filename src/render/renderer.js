@@ -20612,10 +20612,10 @@ export const render = {
     // PQ-133.08: law-arena machinery is render-owned dressing installed/released on the arena's
     // own events (field anchors, shutter bars, crusher presses, current mouths). The tracker
     // self-gates on arenaId, so non-law rooms pass through untouched.
-    onBus('survivalArena:installed', (p) => globalLawArenaDressing.handleInstall(p, this.scene));
+    onBus('survivalArena:installed', (p) => globalLawArenaDressing.handleInstall(p, this.scene, this._frameMembrane?.origin));
     onBus('survivalArena:released', () => globalLawArenaDressing.handleReleased());
     onBus('survivalArena:stormWarning', (p) => globalLawArenaDressing.handleStormWarning(p, this.scene,
-      receipt => this.bus.emit('survivalArena:stormPresented', receipt)));
+      receipt => this.bus.emit('survivalArena:stormPresented', receipt), this._frameMembrane?.origin));
     onBus('survivalArena:stormResolve', (p) => globalLawArenaDressing.handleStormResolve(p));
     onBus('survivalArena:stormCancel', (p) => globalLawArenaDressing.handleStormEnd(p));
     onBus('save:loaded', () => globalLawArenaDressing.resetStormPresentation());
@@ -28695,7 +28695,7 @@ export const render = {
     tickLampBus(authoredNow, _worldSiteA11y.reducedFlash || !!(settings.video && settings.video.flashReduce));
     // PQ-133.08: law-arena room machinery animates once per frame on the sim clock — never per
     // entity, and never on wall time (a hard freeze holds the room's pose with the world).
-    globalLawArenaDressing.updateRoom(simNow, presFrameDt, _worldSiteA11y);
+    globalLawArenaDressing.updateRoom(simNow, presFrameDt, _worldSiteA11y, this._frameMembrane?.origin);
 
     const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
