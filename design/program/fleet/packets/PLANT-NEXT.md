@@ -46,3 +46,10 @@ A plant emits **only events it defines** (`<plantName>:…` / its exported `*_EV
 those events are NOT fired. Anything the player should see needs a renderer/HUD listener for your own event (the sim runs in
 a worker; `ent.data` set in the sim does not reach the drawn entity) — PL-01's `traffic:nearMissFlash` listener in
 `src/render/renderer.js` is the pattern.
+
+## Hard rule — no minted ships (added 2026-11-12 after PL-09 was reverted, a756f3c3)
+A plant that needs a ship to act (a tug, a salvor, a hauler) **leases an existing job-owned hull through the NPC job seam**
+(`this.helpers.npcJobs` — read FIX-R2 824b9b9b and PL-03's salvor dispatch 7c744edb for the pattern). Never build an entity
+spec by hand, never give an entity an id (ids are numeric and assigned by the owner), and when the reaction ends the hull
+returns to its job (release the lease) — nothing a plant touches may linger. If no suitable hull exists in range, the plant
+does nothing (`SKIP` in the receipt).
