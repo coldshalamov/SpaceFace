@@ -127,6 +127,9 @@ export function createSwarmFloorDirector(ctx) {
   let pending = null;           // the purchase a spend receipt is expected to resolve
   let crate = { spotIndex: 0, pulls: 0 };   // run-scoped Crate memory
   let tapRng = null;            // the round's own seeded pour stream (never shares state.rng)
+  // C01-05 — Everything Must Go's multiplier. The floor stays the single writer of
+  // its own prices: the twist asks, this director re-prices every pad it owns.
+  let priceFactor = 1;
   let unsubs = [];
 
   function emit(name, payload) {
@@ -203,12 +206,52 @@ export function createSwarmFloorDirector(ctx) {
     return catalogue[pick].id;
   }
 
+  /** The room's price line under the active sale factor — integer credits, never zero. */
+  function priceOf(base) {
+    if (!Number.isFinite(base) || base <= 0) return base;
+    return Math.max(1, Math.floor(base * priceFactor));
+  }
+
   /** The price a tap charges for its NEXT sale — the step for the count already bought. */
   function tapPriceNow() {
     const run = liveSwarmRun(state);
-    if (!run) return SWARM_TAP_PRICES[0];
+    if (!run) return priceOf(SWARM_TAP_PRICES[0]);
     const count = swarmTapCount(run);
-    return count < SWARM_TAP_MAX_PURCHASES ? SWARM_TAP_PRICES[count] : null;
+    return count < SWARM_TAP_MAX_PURCHASES ? priceOf(SWARM_TAP_PRICES[count]) : null;
+  }
+
+  /**
+   * C01-05 — the sale request. `swarm:floorSaleRequested` is the only door the twist
+   * uses; the floor re-writes every live pad's own price and label so the tags the
+   * player reads and the tills that charge them move together. factor 1 restores.
+   */
+  function _applyPriceFactor(factor) {
+    const next = Number.isFinite(factor) && factor > 0 ? Math.min(1, factor) : 1;
+    if (next === priceFactor) return;
+    priceFactor = next;
+    for (const pad of pads) {
+      const rec = pad && pad.rec;
+      if (!rec) continue;
+      if (rec.kind === 'wall_gun') {
+        rec.price = priceOf(SWARM_FLOOR_WALL_GUN_PRICE);
+        rec.label = wallGunLabel(weaponName(rec.defId), rec.price);
+      } else if (rec.kind === 'crate') {
+        rec.price = priceOf(SWARM_FLOOR_CRATE_PRICE);
+        rec.label = `THE CRATE · ${rec.price}`;
+      } else if (rec.kind === 'forge') {
+        rec.price = priceOf(SWARM_FORGE_PRICE);
+        rec.label = `THE FORGE · ${rec.price}`;
+      } else if (rec.kind === 'tap') {
+        const mod = rec.modId ? swarmTapModById(rec.modId) : null;
+        rec.price = rec.modId ? tapPriceNow() : null;
+        rec.label = rec.modId ? swarmTapLabel(mod, rec.price) : swarmTapLabel(null);
+      }
+    }
+    emit('swarm:floorRepriced', {
+      factor: priceFactor,
+      pads: pads.map((pad) => ({ padId: pad.rec.padId, kind: pad.rec.kind,
+        label: pad.rec.label, price: pad.rec.price })),
+    });
   }
 
   /**
@@ -305,8 +348,8 @@ export function createSwarmFloorDirector(ctx) {
           padId: spec.id,
           kind: 'wall_gun',
           defId: spec.defId,
-          price: SWARM_FLOOR_WALL_GUN_PRICE,
-          label: wallGunLabel(def && def.name, SWARM_FLOOR_WALL_GUN_PRICE),
+          price: priceOf(SWARM_FLOOR_WALL_GUN_PRICE),
+          label: wallGunLabel(def && def.name, priceOf(SWARM_FLOOR_WALL_GUN_PRICE)),
         },
         spot: { x: anchor.x + spec.dx, z: anchor.z + spec.dz },
         radius: SWARM_FLOOR_PAD_RADIUS,
@@ -319,8 +362,8 @@ export function createSwarmFloorDirector(ctx) {
         padId: CRATE_PAD_ID,
         kind: 'crate',
         defId: null,
-        price: SWARM_FLOOR_CRATE_PRICE,
-        label: SWARM_FLOOR_CRATE_LABEL,
+        price: priceOf(SWARM_FLOOR_CRATE_PRICE),
+        label: `THE CRATE · ${priceOf(SWARM_FLOOR_CRATE_PRICE)}`,
       },
       spot,
       radius: SWARM_FLOOR_CRATE_RADIUS,
@@ -336,8 +379,8 @@ export function createSwarmFloorDirector(ctx) {
           padId: plan.forge.id,
           kind: 'forge',
           defId: null,
-          price: SWARM_FORGE_PRICE,
-          label: SWARM_FORGE_LABEL,
+          price: priceOf(SWARM_FORGE_PRICE),
+          label: `THE FORGE · ${priceOf(SWARM_FORGE_PRICE)}`,
         },
         spot: { x: anchor.x + plan.forge.dx, z: anchor.z + plan.forge.dz },
         radius: SWARM_FLOOR_FORGE_RADIUS,
@@ -456,16 +499,17 @@ export function createSwarmFloorDirector(ctx) {
       return;
     }
     const free = !!(run.telemetry && run.telemetry.freeForge === true);
-    if (!free && run.credits < SWARM_FORGE_PRICE) {
-      _refuse(pad, run, 'insufficient_funds', SWARM_FORGE_PRICE - run.credits);
+    const forgePrice = priceOf(SWARM_FORGE_PRICE);
+    if (!free && run.credits < forgePrice) {
+      _refuse(pad, run, 'insufficient_funds', forgePrice - run.credits);
       return;
     }
     if (free) {
       _commitForge(pad, run, heldId, true);
       return;
     }
-    pending = { padId: rec.padId, kind: 'forge', defId: heldId, price: SWARM_FORGE_PRICE };
-    emit('run:spendRequested', { credits: SWARM_FORGE_PRICE, reason: SPEND_REASON });
+    pending = { padId: rec.padId, kind: 'forge', defId: heldId, price: forgePrice };
+    emit('run:spendRequested', { credits: forgePrice, reason: SPEND_REASON });
     pending = null;
   }
 
@@ -525,7 +569,7 @@ export function createSwarmFloorDirector(ctx) {
       _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
       return;
     }
-    const price = SWARM_TAP_PRICES[swarmTapCount(run)];
+    const price = tapPriceNow();
     if (run.credits < price) {
       _refuse(pad, run, 'insufficient_funds', price - run.credits);
       return;
@@ -688,6 +732,9 @@ export function createSwarmFloorDirector(ctx) {
     padsById.clear();
     armed = null;
     pending = null;
+    // A plain 'rearm' keeps the sale factor — the same round's pads come back at
+    // sale prices; any real boundary restores the room's price book with them.
+    if (reason !== 'rearm') priceFactor = 1;
     if (reason === 'run_ended' || reason === 'destroy' || reason === 'new_game') {
       crate = { spotIndex: 0, pulls: 0 };
     }
@@ -699,6 +746,10 @@ export function createSwarmFloorDirector(ctx) {
       unsubs.push(bus.on('pickup:collected', (p) => _onCollected(p)));
       unsubs.push(bus.on('run:spent', (p) => _onSpent(p)));
       unsubs.push(bus.on('run:spendRejected', (p) => _onSpendRejected(p)));
+      // C01-05 — Everything Must Go's sale ask: the floor re-writes its own tills.
+      unsubs.push(bus.on('swarm:floorSaleRequested', (p) => {
+        _applyPriceFactor(p && p.factor);
+      }));
     },
     arm,
     update,

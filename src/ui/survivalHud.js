@@ -213,6 +213,21 @@ export function waveCountdownClock(remainingTicks) {
   return `0:${String(seconds).padStart(2, '0')}`;
 }
 
+/**
+ * C01-05 — a room twist's countdown chip. The owning module writes
+ * `state.render.swarmTwistChip` ({ label, endsAtSimTime }); the HUD words the
+ * remainder from the same simTime the owner runs on and never counts for it.
+ * Returns null once the chip's own deadline passes so a stale flag hides itself.
+ */
+export function twistChipText(chip, simNow) {
+  if (!chip || typeof chip.label !== 'string' || !chip.label) return null;
+  const ends = Number.isFinite(chip.endsAtSimTime) ? chip.endsAtSimTime : null;
+  if (ends == null || !Number.isFinite(simNow)) return chip.label;
+  const remaining = Math.max(0, ends - simNow);
+  if (remaining <= 0) return null;
+  return `${chip.label} · ${waveCountdownClock(remaining * 60)}`;
+}
+
 /** Elapsed fraction 0..1 from the same payload. The fill is time, never kill count. */
 export function waveElapsedFill(remainingTicks, durationTicks) {
   const duration = Number.isInteger(durationTicks) && durationTicks > 0 ? durationTicks : 0;
@@ -430,6 +445,12 @@ export const survivalHud = {
       : null;
     this._setHidden(dom.intro, !intro);
     if (intro) this._setText(dom.intro, intro);
+
+    // C01-05 — the room twist's own countdown: the owning module posts a deadline on
+    // state.render, the chip words the remaining seconds and hides itself when it ends.
+    const twistText = twistChipText(st.render && st.render.swarmTwistChip, st.simTime);
+    this._setHidden(dom.twist, !twistText);
+    if (twistText) this._setText(dom.twist, twistText);
 
     // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
     // colour-blind reader lose nothing.
@@ -906,6 +927,12 @@ export const survivalHud = {
     const intro = make('div', 'sf-crun__intro', root);
     intro.hidden = true;
 
+    // C01-05: a room twist's timed chip — sale countdown, Quiet hold — same sentence
+    // grammar as the intro line; the owner writes the deadline, the HUD words it.
+    const twist = make('div', 'sf-crun__intro sf-crun__twist', root);
+    twist.hidden = true;
+    twist.setAttribute('aria-live', 'off');
+
     const threat = make('div', 'sf-crun__threat', root);
     threat.setAttribute('role', 'meter');
     threat.setAttribute('aria-valuemin', '0');
@@ -999,7 +1026,7 @@ export const survivalHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, brief, label, waveN, phase, hero, intro, threat, threatWord, threatFill, threatFig,
+      root, brief, label, waveN, phase, hero, intro, twist, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,

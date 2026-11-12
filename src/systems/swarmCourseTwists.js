@@ -27,12 +27,20 @@ import {
   SWARM_LIGHTS_OUT_RAMP_S,
   SWARM_THEFT_FRACTION,
   SWARM_YARDMASTER_REVERSALS,
+  SWARM_EMG_SECONDS,
+  SWARM_EMG_PRICE_FACTOR,
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { getCombatKernel } from '../combat/kernel.js';
 
 function finite(v, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
+}
+
+function simTimeOf(state) {
+  return Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : Math.max(0, Number(state && state.tick) || 0) / 60;
 }
 
 function liveSwarmRun(state) {
@@ -468,6 +476,58 @@ function createChainGangModule(host) {
   };
 }
 
+/**
+ * Round 24 — Everything Must Go. For the round's authored ninety seconds every
+ * floor price halves — the module asks the floor owner through
+ * `swarm:floorSaleRequested` and the director re-writes its own tills (wall guns,
+ * Crate, Forge, Taps, labels included). The countdown chip is a presentation
+ * flag on `state.render` — the HUD reads it, never counts for it. The doubled
+ * spawn is the planner's own authored-plan edit, not this module's doing.
+ */
+function createEverythingMustGoModule(host) {
+  let endsAt = null;
+
+  function chip(write) {
+    const st = host.state;
+    if (!st) return;
+    const render = st.render || (st.render = {});
+    render.swarmTwistChip = write;
+  }
+
+  function saleRequest(factor) {
+    if (host.bus && typeof host.bus.emit === 'function') {
+      host.bus.emit('swarm:floorSaleRequested', {
+        factor, wave: host.wave, requestedBy: 'swarm:everything_must_go',
+      });
+    }
+  }
+
+  return {
+    activate() {
+      const t = simTimeOf(host.state);
+      endsAt = t + SWARM_EMG_SECONDS;
+      saleRequest(SWARM_EMG_PRICE_FACTOR);
+      chip({
+        kind: 'sale', label: 'EVERYTHING MUST GO',
+        endsAtSimTime: endsAt, totalS: SWARM_EMG_SECONDS, wave: host.wave,
+      });
+    },
+    update() {
+      if (endsAt == null) return;
+      if (simTimeOf(host.state) < endsAt) return;
+      endsAt = null;
+      saleRequest(1);
+      chip(null);
+    },
+    suspend() { chip(null); },
+    teardown() {
+      if (endsAt != null) saleRequest(1);
+      endsAt = null;
+      chip(null);
+    },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
@@ -475,6 +535,7 @@ const MODULES = {
   the_law: createTheLawModule,
   the_yardmaster: createYardmasterModule,
   chain_gang: createChainGangModule,
+  everything_must_go: createEverythingMustGoModule,
 };
 
 export const swarmCourseTwists = {

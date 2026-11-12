@@ -604,11 +604,9 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       if (pkg.enemyId === 'reaver_pirate') { pkg.rideFreight = true; break; }
     }
   } else if (twist && twist.id === 'everything_must_go') {
-    // Everything Must Go: twice the bodies in the same opening shape. Doubling count and
-    // batch keeps the authored arrival order; the concurrency clamp still owns pacing.
-    packages = packages.map((pkg) => (pkg && pkg.champion === true
-      ? pkg
-      : { ...pkg, count: pkg.count * 2, batchSize: (pkg.batchSize || pkg.count) * 2 }));
+    // Everything Must Go: the authored opening stands (the 24-body burst cap is the
+    // room's own law) — the doubling rides the reinforcement stream instead; the
+    // quota and pressure edits land on the swarm block below.
   } else if (twist && twist.id === 'quiet') {
     // Quiet: the whole authored schedule lands on the far side of the 40 s hold, so the
     // gates all open together instead of trickling. The opening-spacing pass only pushes
@@ -619,7 +617,7 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w, bossOverride, cast);
   if (twist && twist.id === 'everything_must_go' && Number.isInteger(swarm.killTarget) && swarm.killTarget > 0) {
-    // The quota doubles with the spawn count — the round owes twice the bodies it sells.
+    // The quota doubles — the round owes twice the bodies it sells.
     swarm.killTarget *= 2;
   }
   if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
@@ -702,6 +700,12 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // The wave owner paces reinforcement arrivals off the same pressure the packages were
   // scaled by — stamped raw so the pressure curve the stream chases is the contracted one.
   swarm.pressureScale = pressure;
+  if (twist && twist.id === 'everything_must_go') {
+    // Everything Must Go's second leg, after the stamp above: the stream fields twice
+    // the crowd at once so the doubled quota lands inside the round. The owner's own
+    // concurrency clamp still owns the absolute in-flight ceiling.
+    swarm.pressureScale = Math.max(swarm.pressureScale, 1) * 2;
+  }
   swarm.stake = stake.id;
   if (threats.length) swarm.threats = threats.slice();
   // SWARM-08 B5 — a Circuit round rewrites only what the journey owns: the completion rule and

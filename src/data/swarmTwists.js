@@ -17,8 +17,9 @@ import { FOUNDRY_ARENA_ID } from '../systems/swarmArena.js';
 
 /** Round 29 — the hold before every gate opens at once. 40 s at the 60 Hz sim clock. */
 export const SWARM_QUIET_HOLD_TICKS = 40 * 60;
-/** Round 24 — the sale runs the round's authored 90 seconds. */
+/** Round 24 — the sale runs the round's authored 90 seconds at half price. */
 export const SWARM_EMG_SECONDS = 90;
+export const SWARM_EMG_PRICE_FACTOR = 0.5;
 /** Round 13 — the room falls to a quarter light over two seconds. */
 export const SWARM_LIGHTS_OUT_INTENSITY = 0.25;
 export const SWARM_LIGHTS_OUT_RAMP_S = 2;

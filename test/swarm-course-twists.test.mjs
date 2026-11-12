@@ -504,3 +504,50 @@ test('Chain Gang: the cast flies in shackled pairs through the attachments servi
     assert.equal(stillBound.length, 0, 'a dead member\'s shackles retire with it');
   } finally { h.destroy(); }
 });
+
+// ── Round 24 — Everything Must Go ──────────────────────────────────────────────────────
+
+test('Everything Must Go: ninety seconds at half price on every till, chip on the glass', () => {
+  const h = boot(24);
+  try {
+    // The doubling rides the stream: the authored 19-body opening stands, but the
+    // round's kill quota and reinforcement pressure double so twice the crowd owes and fields.
+    const spawned = h.plan.schedule.reduce((sum, e) => sum + (e.count || 0), 0);
+    assert.equal(spawned, 19, 'the authored opening stands inside the room\'s burst law');
+    assert.equal(h.plan.swarm.killTarget, 96, 'the round owes twice its authored kills');
+    assert.equal(h.plan.swarm.pressureScale, 2, 'twice the crowd fields at once');
+    h.tickN(2);
+    // The twist asked, the floor owner answered: every pad re-priced at half.
+    const repriced = h.emitted.filter((e) => e.event === 'swarm:floorRepriced');
+    assert.ok(repriced.length >= 1, 'the floor receipted the sale');
+    assert.equal(repriced[0].payload.factor, 0.5);
+    const pads = h.entities().filter((e) => e.data && e.data.swarmFloorPad);
+    assert.ok(pads.length >= 5, `the floor is armed (${pads.length} pads)`);
+    for (const pad of pads) {
+      const rec = pad.data.swarmFloorPad;
+      if (rec.kind === 'wall_gun') {
+        assert.equal(rec.price, 250, `wall gun at half (${rec.price})`);
+      } else if (rec.kind === 'crate') {
+        assert.equal(rec.price, 475, `crate at half (${rec.price})`);
+      } else if (rec.kind === 'forge') {
+        assert.equal(rec.price, 2500, `forge at half (${rec.price})`);
+      } else if (rec.kind === 'tap') {
+        assert.equal(rec.price, 750, `first tap step at half (${rec.price})`);
+      }
+      if (rec.price != null) assert.ok(rec.label.endsWith(` · ${rec.price}`) || rec.label.includes(String(rec.price)),
+        `the tag the player reads moved with the till (${rec.label})`);
+    }
+    // The countdown chip is posted on the presentation flag the HUD reads.
+    const chip = h.state.render && h.state.render.swarmTwistChip;
+    assert.ok(chip, 'the sale chip is on the glass');
+    assert.ok(chip.endsAtSimTime > h.state.simTime, 'the chip counts down');
+    assert.equal(chip.totalS, 90);
+    // Ninety seconds out, the room restores its own price book and the chip leaves.
+    h.tickUntil(91);
+    const restores = h.emitted.filter((e) => e.event === 'swarm:floorRepriced' && e.payload.factor === 1);
+    assert.ok(restores.length >= 1, 'the sale ends on its own clock');
+    assert.equal(h.state.render.swarmTwistChip, null, 'the chip left the glass');
+    const cratePad = pads.find((e) => e.data.swarmFloorPad.kind === 'crate');
+    assert.equal(cratePad.data.swarmFloorPad.price, 950, 'the till restored');
+  } finally { h.destroy(); }
+});
