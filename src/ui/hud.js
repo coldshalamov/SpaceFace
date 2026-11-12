@@ -6679,6 +6679,16 @@ export function createHud(ctx, alerts) {
           captionSlot: { x: 12, width: Math.min(captionWidth, w - 24), wide: false } };
       }
     }
+    // A live Swarm / Gauntlet round: the voice line takes the lane to the right of the round panel
+    // (top-left), up to the right dock; the vertical bands then step it clear of the centre column
+    // and the receipts. A boss line wraps inside this lane instead of running under the panel.
+    if (w > 760 && h > 500 && layout?.safe && document.body?.classList?.contains('sf-run-flight')
+      && document.documentElement?.getAttribute?.('data-sf-mobile-flight') !== '1') {
+      const panel = plateBox(root.querySelector('.sf-crun'));
+      const left = Math.max(layout.safe.left + 12, panel ? panel.right + 12 : 0);
+      const right = Math.min(layout.safe.right - 12, dockVisible ? dock.left - 12 : Infinity);
+      if (right - left >= 240) return { x: left, width: Math.min(right - left, 640), wide: false };
+    }
     if (w > 1180 && safe && safe.width >= 180) {
       const left = Math.max(safe.x, railVisible ? rail.right + 12 : safe.x);
       const right = Math.min(safe.x + safe.width, dockVisible ? dock.left - 12 : safe.x + safe.width);
@@ -6776,7 +6786,7 @@ export function createHud(ctx, alerts) {
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
-    const swarmCallouts = document.body?.classList?.contains('sf-swarm-flight')
+    const swarmCallouts = (document.body?.classList?.contains('sf-run-flight') || document.body?.classList?.contains('sf-swarm-flight'))
       ? qsa(document, '.sf-crun, .sf-sj__col') : [];
     const candidates = [
       ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
@@ -6889,7 +6899,8 @@ export function createHud(ctx, alerts) {
     if (!lane) { alertLanePlacementStale = true; return; }
     const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     const shortSwarm = h <= 540 && document.body?.classList?.contains('sf-swarm-flight');
-    if (!mobileFlight && !shortSwarm) { restoreAlertLanePlacement(lane); return; }
+    const runFlight = document.body?.classList?.contains('sf-run-flight');
+    if (!mobileFlight && !shortSwarm && !runFlight) { restoreAlertLanePlacement(lane); return; }
     const alertCards = [...(lane.querySelectorAll?.('.sf-alert:not([hidden])') || [])];
     const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
     const visibleCards = alertCards.filter((el) => {
