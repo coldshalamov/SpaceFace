@@ -60,6 +60,21 @@ ${ROW}:is(.is-active, [aria-selected="true"]):is(:hover, :focus-visible) .sx-fac
   /* the standing figure keeps hero scale (rubric band 56-144) while yielding two ticks of height */
   ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(52px, 6vh, 68px) !important; }
 }
+/* ui-polish-437: a short wide desktop (1101+ wide, 601-800 tall: 1280x720, 1366x768). The stage is
+   277-365px tall but the crest ring was sized 403-420px and the standing figure stood on its own
+   90px band, so at scroll 0 the ring's lower crests and the standing scale's thresholds were cut by
+   the stage edge (ui-bench still, 2026-11-09). The ring now takes the stage's height, and the
+   standing figure stands top-right beside the name with its authority crest behind it, so the
+   whole scale and the contract line read above the fold. */
+@media (min-width:1101px) and (min-height:601px) and (max-height:800px) {
+  ${D} .orr-fac-orbit { height:clamp(260px, calc(100vh - 446px), 420px) !important; }
+  ${D} .sx-fac .sx-fac-overview { position:relative !important; padding-right:0 !important; }
+  ${D} .sx-fac .sx-fac-overview > .k-caps, ${D} .sx-fac .sx-fac-ident__name { padding-right:150px !important; }
+  ${D} .sx-fac .sx-fac-overview > .sx-fac-heroes { position:absolute !important; top:0; right:0; margin:0 !important; text-align:right; z-index:1; }
+  ${D} .sx-fac .sx-fac-heroes .k-hero { align-items:flex-end !important; }
+  ${D} .sx-fac .sx-fac-overview > .sx-fac-crest { left:auto !important; right:-8px !important; top:-14px !important; width:112px !important; height:112px !important; }
+  ${D} .sx-fac .sx-fac-overview > .sx-fac__detail { margin-top:14px !important; }
+}
 /* the relations row reads as one line: the fold's summary words, then the word that unfolds them
    (the box the toggle opens is its nextElementSibling, so the legend keeps its place before it;
    the unfolded rows wrap to their own full-width lines) */

@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "2907642c9303f625020c50678416db701f10cf9edd50f03598c1d56fa8922c8d",
+  "uiSourceDigest": "e7b790e779b4656d1410c2c66f144e88682c6cd6c8b26acc33bdc860647d06af",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -255,7 +255,7 @@
     "src/ui/orrery/speedDial.js": "b2b3cbcea7fefaddc9ac75ecdb027c04447e2e3cc269187bc2da3621acd0cb5b",
     "src/ui/orrery/station-barLayouts.js": "9c37d5f58bc53d2ba1c15e17428230d5231b59ee35533abace75d8a158798332",
     "src/ui/orrery/station-contractsLayouts.js": "f99adfd1effbf9db5f7b5ae86bb51355803b51d58b76658f4feec1cae06c7655",
-    "src/ui/orrery/station-factionsLayouts.js": "1deb4e1be93d7f8c5acf924fe76a42bc416b94284aeec9a0fb02d40fb72ed13b",
+    "src/ui/orrery/station-factionsLayouts.js": "abd25b2594c862a23f73bbd13af38ba22a2c17c625dd3ba7710f88d1f746270a",
     "src/ui/orrery/station-industryLayouts.js": "fe48617b5643d32f89c8cfc12ef7f9a6fc70c77e667200f079561508bf96ce10",
     "src/ui/orrery/station-ledgerLayouts.js": "8300706497642ef6af5fc52139f6f399a4f37fc10e2be1d794fab8e464d2146f",
     "src/ui/orrery/station-marketLayouts.js": "1927b2e1b76b9f3ca5d6866df4e8a65b7e4d024bc530c626e181f738e61f9689",
