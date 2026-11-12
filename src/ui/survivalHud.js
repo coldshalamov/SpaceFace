@@ -340,8 +340,9 @@ export const survivalHud = {
   },
 
   destroy() {
-    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight');
+    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight', 'sf-run-flight');
     this._swarmFlightClass = null;
+    this._runFlightClass = null;
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
@@ -368,6 +369,13 @@ export const survivalHud = {
     if (this._swarmFlightClass !== swarmFlight) {
       this._swarmFlightClass = swarmFlight;
       document.body?.classList?.toggle('sf-swarm-flight', swarmFlight);
+    }
+    // Any live survival run in flight (Swarm, the Gauntlet): the voice line gets the measured lane
+    // and the glass plate, so a long boss line never crosses the round panel.
+    const runFlight = live && st.mode === 'flight';
+    if (this._runFlightClass !== runFlight) {
+      this._runFlightClass = runFlight;
+      document.body?.classList?.toggle('sf-run-flight', runFlight);
     }
     if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
       this._hide();
