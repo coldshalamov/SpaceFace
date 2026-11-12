@@ -332,9 +332,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     art.updateProgress({ ...stage, progress: Number.isFinite(shown) ? shown : (Number.isFinite(staged) ? staged : 0) });
   }
   /** completed=false on error/timeout/menu cancellation: never celebrate a failed load as 100%. */
-  // The sim stays held through the veil fade and until a real frame has been presented after it,
-  // so the first frame the player can see and steer is the spawn state (the fade itself covers
-  // the playfield). A bounded fallback releases it even if no frame ever lands.
+  // The hidden class reveals the canvas immediately. Keep the spawn state for
+  // the first uncovered world submit, independently of the DOM cleanup timer.
   let pendingRelease = null;
   function releaseHoldNow() {
     if (pendingRelease) {
@@ -344,23 +343,27 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     }
     setFlightVeilHold(state?.render, false);
   }
-  function releaseHoldAfterPresentedFrame() {
-    if (!pendingRelease) return;
-    const base = frameNow();
+  function releaseHoldAfterWorldSubmit() {
+    if (pendingRelease) return;
+    const readFrame = Number.isFinite(state?.render?.worldSubmittedFrames)
+      ? () => state.render?.worldSubmittedFrames : frameNow;
+    const base = readFrame();
     if (base === null || !raf) { releaseHoldNow(); return; }
+    const release = { raf: null, fallback: null };
+    pendingRelease = release;
+    release.fallback = setTimeout(() => {
+      if (pendingRelease === release) releaseHoldNow();
+    }, hideDelayMs + 1000);
     const check = () => {
-      if (!pendingRelease) return;
-      pendingRelease.raf = null;
-      if (frameNow() > base) { releaseHoldNow(); return; }
-      pendingRelease.raf = raf(check);
+      if (pendingRelease !== release) return;
+      release.raf = null;
+      if (readFrame() > base) { releaseHoldNow(); return; }
+      release.raf = raf(check);
     };
-    pendingRelease.raf = raf(check);
+    release.raf = raf(check);
   }
-  function hide({ completed = true, releaseAfterFade = false } = {}) {
-    if (!releaseAfterFade || disposed) releaseHoldNow();
-    else if (!pendingRelease) {
-      pendingRelease = { raf: null, fallback: setTimeout(releaseHoldNow, hideDelayMs + 1000) };
-    }
+  function hide({ completed = true, releaseAfterReveal = false } = {}) {
+    if (!releaseAfterReveal || disposed) releaseHoldNow();
     if (disposed) return;
     if (startupFailure) return;
     cancelRevealWait(); clearWork(); accumulator = null; session++;
@@ -372,16 +375,16 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       retiring.destroy(); terminalArt = null; retainedCanvas = null;
     } else if (retiring === terminalArt) needsPointerBridge = true;
     if (hideTimer !== null) clearTimeout(hideTimer);
+    if (releaseAfterReveal) releaseHoldAfterWorldSubmit();
     hideTimer = setTimeout(() => {
       hideTimer = null;
-      // The `hidden` class is added at fade start and persists across repeat hide() calls, so the
+      // The `hidden` class is added at reveal and persists across repeat hide() calls, so the
       // completion receipt must be gated on the flip actually happening this time.
       let flipped = false;
       if (overlay.classList.contains('hidden')) {
         flipped = overlay.style.display !== 'none';
         overlay.style.display = 'none';
       }
-      releaseHoldAfterPresentedFrame();
       // Row 473: the authoritative "the shell is gone now" signal the title's first-light offer
       // waits for. Fires inside this timer, so `show`, `showStartupFailure` and `destroy` — which
       // all clear hideTimer — suppress a stale notification for free.
@@ -393,7 +396,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     return Number.isFinite(count) ? count : null;
   };
   function hideAfterFirstFlightFrame() {
-    if (startupFailure) return;
+    if (startupFailure || pendingRelease) return;
     cancelRevealWait(); clearWork(); accumulator = null;
     const baseline = frameNow();
     if (baseline === null || !raf || !visible()) { hide({ completed: false }); return; }
@@ -455,11 +458,10 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       if (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled()))) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
         if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
-        // The sim stays held through the fade (hide releases it after a presented frame).
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
-        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide({ releaseAfterFade: true }), REVEAL_FINISH_MS);
-        else hide({ releaseAfterFade: true }); // no decorative instrument to finish on minimal shells
+        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide({ releaseAfterReveal: true }), REVEAL_FINISH_MS);
+        else hide({ releaseAfterReveal: true }); // no decorative instrument to finish on minimal shells
         return;
       }
       if (raf && revealRaf === null) revealRaf = raf(() => poll('raf'));
@@ -512,6 +514,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   function showStartupFailure(payload = {}) {
     if (disposed || startupFailure || !eventMatchesCurrentGeneration(payload)) return false;
+    releaseHoldNow();
     cancelRevealWait(); clearWork(); accumulator = null; pendingWork = null; session++;
     if (hideTimer !== null) clearTimeout(hideTimer);
     hideTimer = null;

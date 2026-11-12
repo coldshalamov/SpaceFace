@@ -258,29 +258,38 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
   // HUD over a black world: a presented frame is not the world when the opening submission's
   // first draw is still pending. The veil waits for that stamp; the cap lifts it anyway and says so.
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  let rafQueue = [];
+  const rafQueue = new Map();
+  let nextRaf = 0;
   const prevRaf = globalThis.requestAnimationFrame;
   const prevCancel = globalThis.cancelAnimationFrame;
   const prevInfo = console.info;
   const infos = [];
-  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
-  globalThis.cancelAnimationFrame = () => { rafQueue = []; };
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.set(++nextRaf, fn); return nextRaf; };
+  globalThis.cancelAnimationFrame = (id) => { rafQueue.delete(id); };
   console.info = (...a) => infos.push(a);
   try {
-    const pump = (frames) => { for (let i = 0; i < frames; i++) { const q = rafQueue; rafQueue = []; for (const fn of q) fn(i * 16.7); } };
+    const pump = (frames) => {
+      for (let i = 0; i < frames; i++) {
+        const current = [...rafQueue.values()];
+        rafQueue.clear();
+        for (const fn of current) fn(i * 16.7);
+      }
+    };
     const run = () => {
       const bus = createBus();
       const overlay = fakeElement();
       const document = { getElementById: () => overlay, querySelector: () => null };
       const info = { render: { frame: 10 } };
-      const state = { mode: 'loading', render: { renderer: { info }, firstPlayableFrameAt: null } };
+      const state = { mode: 'loading', render: { renderer: { info }, firstPlayableFrameAt: null, worldSubmittedFrames: 0 } };
       const presenter = createLoadingPresenter({ document, bus, state });
+      const hiddenReceipts = [];
+      bus.on('ui:loadingHidden', receipt => hiddenReceipts.push(receipt));
       bus.emit('game:loadingProgress', { id: 'entering-flight', progress: 0.96 });
       state.mode = 'flight';
       bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
       info.render.frame = 11;
       pump(3);
-      return { overlay, state, presenter, bus };
+      return { overlay, state, presenter, bus, hiddenReceipts };
     };
 
     const a = run();
@@ -295,11 +304,16 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     assert.equal(a.state.render.veilLiftReason, 'first-draw');
     assert.equal(a.state.render.veilStage, undefined, 'a quick first draw never shows the stage label');
     assert.equal(a.state.render.flightVeilHoldsSim, true,
-      'the sim stays held through the fade so the first steerable frame is the spawn state');
-    t.mock.timers.tick(600); pump(1);
-    assert.equal(a.state.render.flightVeilHoldsSim, true, 'held until a frame is presented after the fade');
+      'the sim stays held until a world picture has been submitted after visual reveal');
     a.state.render.renderer.info.render.frame += 1; pump(1);
-    assert.equal(a.state.render.flightVeilHoldsSim, false, 'a presented frame after the fade releases the sim');
+    assert.equal(a.state.render.flightVeilHoldsSim, true, 'an unrelated renderer draw cannot release the sim');
+    a.state.render.worldSubmittedFrames += 1; pump(1);
+    assert.equal(a.state.render.flightVeilHoldsSim, false, 'the first uncovered world submit releases the sim');
+    assert.equal(a.overlay.style.display, 'flex');
+    assert.deepEqual(a.hiddenReceipts, [], 'clock release does not advance the loading-hidden receipt');
+    t.mock.timers.tick(600);
+    assert.equal(a.overlay.style.display, 'none');
+    assert.deepEqual(a.hiddenReceipts, [{ mode: 'flight' }]);
     a.presenter.destroy();
 
     const b = run();
@@ -316,6 +330,34 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     assert.equal(b.state.render.flightVeilHoldsSim, false, 'a capped lift releases the sim too (bounded fallback)');
     assert.ok(infos.some((x) => /first-draw cap/.test(String(x[0]))), 'a capped lift is logged');
     b.presenter.destroy();
+
+    const c = run();
+    c.state.render.firstPlayableFrameAt = 1;
+    pump(2);
+    const oldRelease = [...rafQueue.values()].at(-1);
+    assert.equal(typeof oldRelease, 'function');
+    assert.equal(c.overlay.classList.contains('hidden'), true);
+    assert.equal(c.state.render.flightVeilHoldsSim, true);
+
+    c.state.mode = 'loading';
+    c.bus.emit('mode:changed', { mode: 'loading', previousMode: 'flight' });
+    assert.equal(c.overlay.classList.contains('hidden'), false);
+    assert.equal(c.state.render.flightVeilHoldsSim, false);
+    c.state.render.firstPlayableFrameAt = null;
+    c.state.mode = 'flight';
+    c.bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+    c.state.render.renderer.info.render.frame += 1;
+    c.state.render.firstPlayableFrameAt = 2;
+    pump(2);
+    assert.equal(c.state.render.flightVeilHoldsSim, true);
+    c.state.render.worldSubmittedFrames += 1;
+    oldRelease(0); // An already dispatched callback can outlive its cancellation.
+    assert.equal(c.state.render.flightVeilHoldsSim, true, 'the old reveal cannot release the replacement');
+    pump(1);
+    assert.equal(c.state.render.flightVeilHoldsSim, false);
+    t.mock.timers.tick(600);
+    assert.deepEqual(c.hiddenReceipts, [{ mode: 'flight' }], 'only the replacement shell reports cleanup');
+    c.presenter.destroy();
   } finally {
     globalThis.requestAnimationFrame = prevRaf;
     globalThis.cancelAnimationFrame = prevCancel;
@@ -466,6 +508,47 @@ async function makePresenter(f) {
   const { createLoadingPresenter } = await import('../src/ui/loadingPresenter.js');
   return createLoadingPresenter({ document: f.doc, bus: f.bus, state: f.state, hideDelayMs: 5 });
 }
+
+test('a startup failure cancels an uncovered reveal before its world submit', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = fixture();
+  const queue = new Map();
+  let nextRaf = 0;
+  f.doc.defaultView.requestAnimationFrame = fn => { queue.set(++nextRaf, fn); return nextRaf; };
+  f.doc.defaultView.cancelAnimationFrame = id => { queue.delete(id); };
+  const pump = () => {
+    const current = [...queue.values()];
+    queue.clear();
+    current.forEach(fn => fn(0));
+  };
+  Object.assign(f.state.render, {
+    renderer: { info: { render: { frame: 10 } } }, firstPlayableFrameAt: null, worldSubmittedFrames: 0,
+  });
+  const presenter = createLoadingPresenter({ document: f.doc, bus: f.bus, state: f.state });
+  try {
+    f.state.mode = 'flight';
+    f.bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+    f.state.render.renderer.info.render.frame += 1;
+    f.state.render.firstPlayableFrameAt = 1;
+    pump();
+    t.mock.timers.tick(200);
+    assert.equal(f.overlay.classList.contains('hidden'), true);
+    assert.equal(f.state.render.flightVeilHoldsSim, true);
+
+    f.bus.emit('game:startFailed', { generation: 3, code: 'OPENING_PAINT_DEADLINE' });
+    assert.ok(f.overlay.querySelector('[data-startup-failure]'));
+    assert.equal(f.state.render.flightVeilHoldsSim, false);
+    assert.equal(f.overlay.classList.contains('hidden'), false);
+    f.state.render.worldSubmittedFrames += 1;
+    t.mock.timers.tick(1600);
+    pump();
+    assert.equal(f.overlay.style.display, 'flex');
+    assert.equal(f.bus.events.some(event => event.name === 'ui:loadingHidden'), false);
+  } finally {
+    presenter.destroy();
+    globalThis.document = f.priorDocument;
+  }
+});
 
 test('startup failure stays visible through late progress, menu and save-error events with explicit recovery actions', async () => {
   const f = fixture();
