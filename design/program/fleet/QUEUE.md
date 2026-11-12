@@ -103,6 +103,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | BUILT b0268fe6 (devin2 layout, lead finished from looks; 25.0%/23.8% worst case) — real-route pinch look pending |
 | MOB-05 flick to throw | On a phone, drag-and-release with a throwable body on the Line aims and releases through the canonical throw owner (`drafts/MOB.md` §7 q1) | BUILT 9b6018fb3250 + bc18ca94075d (focused checks pass; live phone throw pending) |
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | BUILT 965fc1a9..704ee553 + lead 54e6b7de, 66a4a691, 6db15505ffb9 (comms-log-surface and special500-comms-backlog pass, log seen) |
+| KNOWN-REDS-SWARM | ~29 failing Swarm/survival tests: fix the cause, follow deliberate changes, or retire — the suite goes green | TAKEN agent2 (devin1) |
 | SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | BUILT 45c4040c59e2 + 424bab64bb32 (Rapier and v27 pass; rounds 1–5 had zero beacon kill credits, placed Fortify look pending) |
 | PRX-HIVE | Keep newly formed Hive walls clear of live hulls and the pilot's immediate flight path | BUILT e995bf59787f (27 focused cases, live Hive route pending) |
 | PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
@@ -132,7 +133,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
 | PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | TAKEN agent3 (devin3, third run: measure the working tree first — the last run waited out its timeout on the lock) |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | HOLD (flash plants needed lead fixes 3 of 4; PL-09 reverted — rules added to the packet) |
-| PL-04-REDO | Rebuild the cargo-scramble plant by the rules (own events, canonical spawn, no stale ids) | TAKEN agent2 (devin2) |
+| PL-04-REDO | Rebuild the cargo-scramble plant by the rules (own events, canonical spawn, no stale ids) | BUILT 1332907a (own events, canonical spawn, generation checks — lead reviewed) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
