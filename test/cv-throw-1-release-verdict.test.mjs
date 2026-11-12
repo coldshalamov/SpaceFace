@@ -156,6 +156,27 @@ test('CV-THROW-1 the verdict pill renders the grade, anchors on the body, and ex
     assert.equal(mark.classList.contains('ml2-shape-range'), true,
       'a sub-razor grade shows the broken ring, not the earned diamond');
 
+    // The worker's presentation snapshot carries the throw tick and payload, without wall time.
+    state.massline2.throw = { lastThrow: { tick: 600, releaseId: 'throw:600', payloadId: rock.id } };
+    bus.emit('tether:releaseRated', {
+      targetId: rock.id, classification: 'messy', technique: 'tow', deliberate: true,
+      observedTick: 601, ...receiptFacts(rock),
+    });
+    hud.update(1 / 60, state);
+    assert.equal(preview.textContent, 'QUICK');
+    assert.equal(preview.classList.contains('ml2-verdict-good'), true);
+    assert.equal(mark.classList.contains('ml2-verdict-good'), true);
+    assert.equal(mark.classList.contains('ml2-verdict-messy'), false);
+
+    bus.emit('tether:releaseRated', {
+      targetId: rock.id, classification: 'messy', technique: 'tow', deliberate: true,
+      observedTick: 617, ...receiptFacts(rock),
+    });
+    hud.update(1 / 60, state);
+    assert.equal(preview.textContent, 'MESSY', 'a later ordinary cut does not inherit the old throw');
+    assert.equal(preview.classList.contains('ml2-verdict-good'), false);
+    assert.equal(mark.classList.contains('ml2-verdict-good'), false);
+
     // Expiry: past untilSimTime the slot returns to ordinary acquisition state.
     state.simTime = 12.5;
     hud.update(1 / 60, state);

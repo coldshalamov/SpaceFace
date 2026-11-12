@@ -85,11 +85,14 @@ export function releaseVerdictCopy(rating, { plain = false } = {}) {
   if (plain) {
     if (rating.broke === true) return 'BROKE';
     if (rating.severed === true) return 'CUT';
+    if (rating.quickThrow === true) return 'QUICK';
     return VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
   }
   // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
   if (rating.broke === true) return 'LINE BROKE';
   if (rating.severed === true) return 'LINE CUT';
+  // THROW-01: a throw on a short swing is a throw, not a messy release.
+  if (rating.quickThrow === true) return 'QUICK THROW';
   const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
   // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
   // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
@@ -101,6 +104,16 @@ export function releaseVerdictCopy(rating, { plain = false } = {}) {
     ? 'CREST RELEASE'
     : VERDICT_CAUSE_COPY[rating.technique] || 'OFF THE SWING';
   return `${grade} · ${cause}`;
+}
+
+function isQuickThrowVerdict(state, verdict) {
+  if (verdict?.classification !== 'messy' || verdict.broke || verdict.severed) return false;
+  const lastThrow = state.massline2?.throw?.lastThrow;
+  // The rating is emitted with the cut or on the next reconciliation tick. Both clocks
+  // are authoritative and cross the worker boundary even when multiple ticks share a frame.
+  return verdict.targetId != null && lastThrow?.payloadId === verdict.targetId
+    && Number.isSafeInteger(lastThrow.tick) && Number.isSafeInteger(verdict.observedTick)
+    && (verdict.observedTick === lastThrow.tick || verdict.observedTick === lastThrow.tick + 1);
 }
 // The verdict reuses the shared preview pill/mark — every renderer that takes the slot next
 // must clear these classes so a stale grade never leaks onto a denial or acquisition frame.
@@ -1002,6 +1015,7 @@ function writeMasslineHudFields(fields, state, player) {
   // cut lands on the same target in the same time bucket and the glass keeps BROKE.
   fields[index++] = verdict ? (verdict.broke === true) : false;
   fields[index++] = verdict ? (verdict.severed === true) : false;
+  fields[index++] = isQuickThrowVerdict(state, verdict);
   fields[index++] = verdict ? Math.max(0, Math.ceil((finite(verdict.untilSimTime) - finite(state.simTime)) * 4)) : 0;
   fields[index++] = selected.status;
   fields[index++] = selected.reason;
@@ -1250,6 +1264,7 @@ export const masslineHud = {
             : null,
           targetId: p.targetId != null ? p.targetId : null,
           targetGeneration: Number.isSafeInteger(p.targetGeneration) && p.targetGeneration > 0 ? p.targetGeneration : null,
+          observedTick: Number.isSafeInteger(p.observedTick) ? p.observedTick : null,
           atX: Number.isFinite(p.targetX) ? p.targetX : null,
           atZ: Number.isFinite(p.targetZ) ? p.targetZ : null,
           untilSimTime: now + MASSLINE_VERDICT_PILL_S,
@@ -1667,7 +1682,10 @@ export const masslineHud = {
       ? 'break'
       : (VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy');
     const earned = !failed && (grade === 'razor' || grade === 'clean');
-    const text = releaseVerdictCopy(verdict, { plain: isAdventureFlight(state) });
+    const thrown = isQuickThrowVerdict(state, verdict);
+    const displayGrade = thrown ? 'good' : grade;
+    const text = releaseVerdictCopy(thrown ? { ...verdict, quickThrow: true } : verdict,
+      { plain: isAdventureFlight(state) });
     const placed = placeHudBracketWords(this, dom.previewEl, text,
       { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     setStyle(dom.previewMark, 'display', 'block');
@@ -1676,7 +1694,6 @@ export const masslineHud = {
     setClass(dom.previewMark, 'ml2-offscreen', offscreen);
     setClass(dom.previewMark, 'ml2-mark-protected', false);
     setClass(dom.previewMark, 'ml2-mark-unavailable', false);
-    setClass(dom.previewMark, `ml2-verdict-${grade}`, true);
     setBracketShape(dom.previewMark, earned ? 'can' : 'range');
     setAttr(dom.previewMark, 'aria-hidden', 'false');
     setAttr(dom.previewMark, 'role', 'img');
@@ -1693,12 +1710,12 @@ export const masslineHud = {
     setAttr(dom.previewEl, 'data-target-id', String(verdict.targetId ?? ''));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
     setClass(dom.previewEl, 'ml2-preview-verdict', true);
-    setClass(dom.previewEl, `ml2-verdict-${grade}`, true);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, false);
     }
     for (const g of VERDICT_GRADE_CLASSES) {
-      if (g !== grade) setClass(dom.previewEl, `ml2-verdict-${g}`, false);
+      setClass(dom.previewEl, `ml2-verdict-${g}`, g === displayGrade);
+      setClass(dom.previewMark, `ml2-verdict-${g}`, g === displayGrade);
     }
   },
 
