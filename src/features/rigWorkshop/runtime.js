@@ -1,3 +1,4 @@
+import { workshopAftermath } from './aftermath.js';
 // RATCHET: one simulation owner for the bench, its machines and work orders.
 // All decisions arrive through promptDeck; movement and contacts stay with native physics.
 import { installRelayCargoImpacts } from './cargoImpact.js';
@@ -437,14 +438,41 @@ export function createRigWorkshopSystem() {
       const w = this.workshop;
       this._show('jobs', 'RATCHET · useful trouble outside the yard',
         w.activeJobId ? 'An order is already open. Deliver what you can; partial payment is kept if you close the remainder.' : 'The first two work orders are local flights beyond the bench. Deliver a survivor from each and settle them to earn the receiving crew’s fragile relay run. Damage reduces pay. Delivering original bodies pays once.',
-        [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.title}${w.jobs[d.id]?.settled ? ' · done' : !rigJobAvailability(w, d.id).ok ? ' · earn crew trust' : ''}`, disabled: !!w.jobs[d.id]?.settled,
-          run: () => this._show('offer', d.title, `${d.description} ${d.lesson} ${rigJobAvailability(w, d.id).reason || ''} Up to ${d.pay * d.count} cr, with payment for each surviving original.`,
+        [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.title}${w.jobs[d.id]?.settled ? ' · done' : !rigJobAvailability(w, d.id).ok ? ' · earn crew trust' : ''}`, disabled: false,
+          run: () => w.jobs[d.id]?.settled ? this._showAftermath(d.id) : this._show('offer', d.title, `${d.description} ${d.lesson} ${rigJobAvailability(w, d.id).reason || ''} Up to ${d.pay * d.count} cr, with payment for each surviving original.`,
             [this._option('accept', 'Accept this work order', 'acceptJob', { id: d.id }, { disabled: !!w.activeJobId || !rigJobAvailability(w, d.id).ok }),
               this._option('refuse', 'Leave it on the board', 'cancel', {}, { cancel: true })]) })),
           ...(w.activeJobId ? [this._option('guide', 'Mark a destination', 'guide'),
             { id: 'partial', label: 'Settle partial work', run: () => this._show('close-order', 'Settle the work done?', 'You keep every recorded payment. Undelivered cargo stays in the world and cannot pay this contract later.',
               [this._option('finish', 'Close remaining work', 'finishPartial'), this._option('cancel', 'Keep recovering cargo', 'cancel', {}, { cancel: true })]) }] : []),
           this._option('back', 'Back to rig', 'cancel', {}, { cancel: true }),
+        ]);
+    },
+    _showAftermath(id) {
+      const w = this.workshop, view = workshopAftermath(this.state, w, id);
+      if (!view) { this._showJobs(); return; }
+      const receiverGeneration = view.receiver?.occupantGeneration;
+      const mark = (original = null) => {
+        const current = workshopAftermath(this.state, this.workshop, id);
+        const line = original && current?.originals.find(o => o.id === original.id && o.generation === original.generation && o.token === original.token);
+        const target = original ? line && this.state.entities.get(line.id) : current?.receiver;
+        if (!isWorkshopAdventure(this.state) || this.workshop !== w || current?.job !== view.job || !target || (original && !current.nearby) || (!original && (target !== view.receiver || target.occupantGeneration !== receiverGeneration))) {
+          this.feedback('reject', 'That original receiving site changed. Read the settled ticket again.');
+          this._showAftermath(id); return;
+        }
+        this.bus.emit('ui:setCourse', { pos: { x: target.pos.x, z: target.pos.z }, targetEntityId: target.id,
+          sectorId: current.job.sectorId, autopilot: false, waypointKind: 'local', arrivalRadius: 65,
+          label: original ? line.name : `${current.title} · RECEIVING CREW`,
+          reason: 'Return to the original receiving site. Its paid cargo belongs to the crew; no new work order or payment is created.' });
+        this._close();
+      };
+      this._show('aftermath', `${view.title} · ${view.nearby ? 'receiving crew' : 'settled ticket'}`,
+        view.nearby ? view.detail : `${view.job.delivered.length}/${view.job.cargo.length} originals recorded; ${view.job.paid} cr already paid. Return to the original gantry to hear the receiving crew’s account. Closing work never reissues its cargo.`, [
+          { id: 'return', label: 'Mark original receiving gantry', disabled: !view.receiver, run: () => mark() },
+          ...(view.nearby ? view.originals.map(o => ({ id: `received:${o.id}`, label: `${o.name} · ${o.integrity}% · crew custody`, run: () => mark(o) })) : []),
+          { id: 'read', label: 'Read current receiving account', disabled: !view.nearby, run: () => this._showAftermath(id) },
+          { id: 'back', label: 'Back to work board', run: () => this._showJobs() },
+          this._option('leave', 'Leave the crew to work', 'close', {}, { cancel: true }),
         ]);
     },
     _showGuide() {
