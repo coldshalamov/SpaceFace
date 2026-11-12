@@ -3,6 +3,8 @@ import { mountMobileView } from './view.js';
 import { ALL_POWERS } from './catalog.js';
 import { resolveSteeringView } from '../racingSteer.js';
 import { racingTouchDrive } from '../racingGeometry.js';
+import { isThrowArmPayload } from '../masslineThrow.js';
+import { massline2Flag } from '../../data/featureFlags.js';
 
 const NEUTRAL = () => ({ flight: { active:false, magnitude:0, boost:false, brake:false }, actions:{}, aim:null });
 const VIRTUAL_ACTIONS = new Set(['tether','reelIn','reelOut','brake', ...ALL_POWERS.filter(p => p.kind !== 'ui').map(p => p.id)]);
@@ -81,6 +83,18 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       model.pulse(power.id); model.activity = true;
     }
   }
+  function onFlick(flick) {
+    if (!canFly(state, doc) || !massline2Flag('throw') || !isThrowArmPayload(state)) return false;
+    const player = state.entities?.get(state.playerId);
+    const direction = screenDirection(flick.x, flick.y, ctx.helpers, player, win.innerWidth, win.innerHeight);
+    if (!direction) return false;
+    const { targetId, attachmentId } = state.player.tether;
+    const command = { type: 'touchThrow', targetId, attachmentId, ...direction };
+    if (ctx.sendTouchThrow) ctx.sendTouchThrow(command);
+    else if (host?.ingestLaneDomEvent) host.ingestLaneDomEvent(command);
+    else return false;
+    return true;
+  }
   touch.mobile.activate = activate;
   touch._clearTouchState = () => { model.reset(); neutralize(); };
   touch.setEnabled = function(on) {
@@ -88,7 +102,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
     const enable = on === true && !!doc?.body;
     if (enable && !view) {
       if (doc.documentElement?.dataset) doc.documentElement.dataset.sfMobile = '1';
-      view = mountView({ state, model, activate, reset:neutralize, config:cfg,
+      view = mountView({ state, model, activate, onFlick, reset:neutralize, config:cfg,
         saveConfig:setConfig, win, doc });
       const mountedView = view;
       mountedView.cssReady?.catch((error) => {
