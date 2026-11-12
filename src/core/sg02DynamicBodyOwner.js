@@ -3135,11 +3135,20 @@ export class Sg02DynamicBodyOwner {
         if (!other || other === exclude) continue;
         if (!candidateDynamic && !(other.spec && other.spec.dynamic)) continue;
         if (!other.entity || other.entity.alive === false) continue;
-        if (contactMaterialFor(other.entity, other.spec).ghost) continue;
-        if (!collisionPairsForm(candidateEntity, candidateSpec, other.entity, other.spec)) continue;
         const partnerX = finite(other._bodyPoseX, NaN);
         const partnerZ = finite(other._bodyPoseZ, NaN);
         if (!Number.isFinite(partnerX) || !Number.isFinite(partnerZ)) continue;
+        const spines = other.coincidentSpines;
+        if (spines?.length === 1) {
+          // The rotated window cannot reach past the offset plus the spine and its margins
+          // along either axis. Read the current spine so an authored offset can still move.
+          const spine = spines[0];
+          const reach = Math.abs(spine.ox) + Math.abs(spine.oz) + spine.halfLen
+            + COINCIDENT_SPAWN_AXIAL_EPS + COINCIDENT_SPAWN_BAND;
+          if (Math.abs(posX - partnerX) > reach || Math.abs(posZ - partnerZ) > reach) continue;
+        }
+        if (contactMaterialFor(other.entity, other.spec).ghost) continue;
+        if (!collisionPairsForm(candidateEntity, candidateSpec, other.entity, other.spec)) continue;
         if (pointHitsCoincidentWindow(other, partnerX, partnerZ, posX, posZ)) {
           coincident = true;
           break;

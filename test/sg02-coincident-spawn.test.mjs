@@ -226,6 +226,37 @@ test('a scripted teleport onto an occupied point cannot land coincident', async 
   }
 });
 
+test('a layered pose resync rotates nearby spines only and keeps the same nudge', async () => {
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: DT });
+  try {
+    const partner = dynamicBody(100);
+    const moved = dynamicBody(101);
+    moved.pos.x += 100;
+    const far = Array.from({ length: 96 }, (_, i) => {
+      const entity = dynamicBody(102 + i);
+      entity.pos.x += 400 + i * 15;
+      return entity;
+    });
+    const entities = [...far, partner, moved];
+    owner.syncFromEntityLayers([], entities, 1);
+
+    let farSpineReads = 0;
+    for (const entity of far) {
+      const [spine] = owner.records.get(entity.id).coincidentSpines;
+      const axisX = spine.ux;
+      Object.defineProperty(spine, 'ux', { get() { farSpineReads++; return axisX; } });
+    }
+
+    moved.pos.x = SPAWN.x;
+    moved.flags.noInterp = true;
+    owner.syncFromEntityLayers([], entities, 1);
+    assert.equal(moved.pos.x, SPAWN.x + 2.5, 'the nearby collision still gets the first free slot');
+    assert.equal(farSpineReads, 0, 'far single-spine records skip the rotated window calculation');
+  } finally {
+    owner.dispose();
+  }
+});
+
 test('a static record coincident with a live dynamic is nudged off it', async () => {
   const owner = await createSg02DynamicBodyOwner({ fixedDt: DT });
   try {
