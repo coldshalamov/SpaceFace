@@ -39,8 +39,9 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   ...(index === 8 ? { debutAtTick: 0, cystAtTick: 480 } : {}),
   ...(index === 9 ? { debutAtTick: 0, eventReadTicks: 480 } : {}),
   ...(index === 10 ? { leecherAtTick: 1 } : {}),
-  ...(index === 11 ? { debutAtTick: 0, leecherAtTick: 600 } : {}),
-  ...(index === 12 ? { debutAtTick: 0, glassbackAtTick: 480 } : {}),
+  // Optional surviving terrain must not determine the primary ship's read time.
+  ...(index === 11 ? { debutAtTick: 0, leecherAtTick: 600, characterForeground: true } : {}),
+  ...(index === 12 ? { debutAtTick: 0, glassbackAtTick: 480, characterForeground: true } : {}),
   ...(index === 13 ? { debutAtTick: 0 } : {}),
   // Post-Foreman is one five-round act ending at the existing second exit.
   // The schedule borrows ordinary owed seats; each package keeps its real AI.

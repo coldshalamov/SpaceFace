@@ -80,8 +80,14 @@ test('the lone shell rejects direct gun damage, retaining the exact finite life'
  const h=fixture(t,13);noteSwarmPilotAction(h.state);h.tick(481);const b=h.engine._bodies,i=b.alive.findIndex(Boolean);assert.equal(b.liveFamilyId[b.family[i]],'glassback');const hp=b.hp[i];
  h.engine.damageSegment({from:{x:b.px[i]-20,z:b.pz[i]},to:{x:b.px[i]+20,z:b.pz[i]},damage:999,ownerId:h.player.id});assert.equal(b.hp[i],hp);assert.equal(b.alive[i],1);assert.equal(h.events.filter(e=>e.type==='swarm:broodKills').length,0);assert.equal(h.engine.view.pendingCount,swarmBroodPopulation(13)-1);
 });
-test('unavailable mass falls back in bounded ordinary packets, without an empty eighteen-second wait',t=>{
- const h=fixture(t,13);for(const e of h.state.entityList)if(['asteroid','wreck'].includes(e.type))e.collides=false;noteSwarmPilotAction(h.state);h.tick(481);assert.ok(h.engine.view.aliveCount>0&&h.engine.view.aliveCount<=18);assert.equal(h.engine.view.aliveCount+h.engine.view.pendingCount,swarmBroodPopulation(13));h.tick(100);assert.ok(h.engine.view.aliveCount>18);assert.equal(h.ships().length,1);
+test('unavailable mass leaves the Cutter foreground, then resumes bounded ordinary debt',t=>{
+ const h=fixture(t,13);for(const e of h.state.entityList)if(['asteroid','wreck'].includes(e.type))e.collides=false;
+ noteSwarmPilotAction(h.state);h.tick(481);assert.equal(h.engine.view.aliveCount,0);assert.equal(h.ships().length,1);
+ assert.equal(h.ships()[0].data.lootTableId,'customs_cutter');assert.equal(h.engine.view.pendingCount,swarmBroodPopulation(13));
+ h.tick(598);assert.equal(h.engine.view.aliveCount,0);h.tick(32);
+ assert.ok(h.engine.view.aliveCount>0&&h.engine.view.aliveCount<=18);
+ assert.equal(h.engine.view.aliveCount+h.engine.view.pendingCount,swarmBroodPopulation(13));
+ h.tick(100);assert.ok(h.engine.view.aliveCount>18);
 });
 test('Armory prepares the actual next fight and never claims a checkpoint clear',()=>{
  const run={...createRunState({kind:'survival',ruleset:'swarm',seed}),arenaId:'helios_core',wave:12,phase:'draft',credits:137};

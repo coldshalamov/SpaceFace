@@ -1035,7 +1035,7 @@ export function createBroodEngine(deps = {}) {
         pendingPlan.find(part => part.id === 'glassback').count -= 1;
         assignMotherShares(); publish(); return 1;
       }
-      if (foundryScore?.glassbackAtTick != null) recoveryFallback = true;
+      if (foundryScore?.glassbackAtTick != null) recoveryFallback = !foundryScore.characterForeground;
       const leecher = familyIndex.get('leecher');
       const scrape = foundryScore?.leecherAtTick != null && leecher != null
         ? planSwarmOpeningLeecher(state, state.run, liveWave, pendingPlan, liveFamilyRadius[leecher]) : null;
@@ -1049,9 +1049,9 @@ export function createBroodEngine(deps = {}) {
         // scrape own the outcome; the scored reserve clock owns the next pressure.
         assignMotherShares(); publish(); return 1;
       }
-      // A missing usable surface must not leave an empty twelve-second room.
-      // Resume finite paced Brood admission; the ship read still stays intact.
-      if (foundryScore?.leecherAtTick != null) recoveryFallback = true;
+      // With no ship foreground, a missing surface must not leave an empty room.
+      // Ghost/Cutter still need their read even when their optional terrain is gone.
+      if (foundryScore?.leecherAtTick != null) recoveryFallback = !foundryScore.characterForeground;
       const cyst = familyIndex.get('lantern_cyst'), cystMite = familyIndex.get('mite');
       const cystScene = foundryScore?.id === 'break_the_guard' && cyst != null && cystMite != null
         ? planSwarmOpeningCyst(state, state.run, liveWave, pendingPlan,

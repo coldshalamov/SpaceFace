@@ -65,9 +65,22 @@ for(const kind of ['missing','blocked_route','moving','sensor','native_failure',
  const before=JSON.stringify(h.state.entityList.map(e=>({id:e.id,pos:e.pos,vel:e.vel})));
  assert.equal(planSwarmOpeningLeecher(h.state,h.state.run,11,p,3),null);assert.equal(JSON.stringify(h.state.entityList.map(e=>({id:e.id,pos:e.pos,vel:e.vel}))),before);
 });
-for(const wave of [11,12])test(`round ${wave}: missing surface falls back without losing debt, retry retires read`,t=>{
+for(const wave of [11,12,13])test(`round ${wave}: absent optional terrain preserves its real foreground and finite debt`,t=>{
  const h=fixture(t,wave);for(const e of h.state.entityList)if(e.type==='asteroid')e.collides=false;
- noteSwarmPilotAction(h.state);h.tick(wave===11?1:601);assert.ok(h.engine.view.aliveCount>0);assert.ok(h.engine.view.aliveCount<=18);
+ h.tick(1200);assert.equal(h.engine.view.aliveCount,0);assert.equal(h.owner._foundryTicks,0);
+ noteSwarmPilotAction(h.state);h.tick(wave===11?1:wave===12?601:481);
+ if(wave===11){assert.ok(h.engine.view.aliveCount>0);assert.ok(h.engine.view.aliveCount<=18);}
+ else {
+  assert.equal(h.engine.view.aliveCount,0,'missing secondary terrain does not bring the crowd over the primary');
+  assert.equal(h.ships().length,1,'Ghost or Cutter remains the playable foreground');
+  assert.equal(h.ships()[0].data.lootTableId,wave===12?'quiet_ghost':'customs_cutter');
+  assert.equal(h.engine.view.pendingCount,swarmBroodPopulation(wave));
+  const clock=h.owner._foundryTicks;h.state.mode='pause';h.tick(200);
+  assert.equal(h.owner._foundryTicks,clock);assert.equal(h.engine.view.aliveCount,0);
+  h.state.mode='flight';h.tick(1079-clock);
+  assert.equal(h.engine.view.aliveCount,0,'full eighteen active seconds belong to the primary');
+  h.tick(32);assert.ok(h.engine.view.aliveCount>0,'ordinary paced debt resumes after the authored window');
+ }
  h.tick(60);assert.ok(h.engine.view.aliveCount>0);assert.equal(h.engine.view.aliveCount+h.engine.view.pendingCount,swarmBroodPopulation(wave));
  h.bus.emit('run:endRequested',{outcome:'aborted',reason:'retry'});h.start();h.tick(1200);assert.equal(h.engine.view.aliveCount,0);assert.equal(h.owner._foundryTicks,0);assert.equal(h.engine.view.pendingCount,swarmBroodPopulation(wave));
 });
@@ -162,7 +175,9 @@ test('native Ghost keeps its real charge and opposite-flank relocation; timed or
     const live=ghost&&h.runtime.getSystem('tacticalAI').stack.combatDoctrine.inspect(ghost.id);
     if(live&&prior&&live.phase==='relocate'&&prior.phase==='fire_window')switches.push({tick:s.tick,before:prior.side,after:live.side});
     if(live)prior=live;
-    if(i<598)assert.equal(h.runtime.getSystem('swarmArena')._brood.view.aliveCount,0,'Ghost owns the first ten seconds');
+    const crowd=h.runtime.getSystem('swarmArena')._brood.view.aliveCount;
+    if(i<598)assert.equal(crowd,0,'Ghost owns the first ten seconds');
+    assert.ok(crowd<=1,'only the optional Leecher may join before the full foreground read ends');
     assert.equal(s.run.spawnedThreat,1,'no competing ship crowd before tick 1080');
    }
    assert.equal(ghost.data.ai.combatDoctrineId,'ranged_stalker');assert.ok(tells.length>=3);assert.ok(tells.every(x=>x.durationTicks>=36));assert.ok(switches.length>0);assert.ok(switches.every(x=>x.after===-x.before));assert.ok(hits.some(x=>x.attacker===ghost.id),'real rail/EMP attack remains dangerous');
