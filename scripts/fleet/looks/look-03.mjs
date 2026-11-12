@@ -86,6 +86,9 @@ try {
         if (Number.isFinite(e.mass) && e.mass > 32) continue;
         const scr = h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
         if (!scr || !scr.onScreen || scr.x < 300 || scr.x > 980 || scr.y < 140 || scr.y > 600) continue;
+        // The Line uses the frontmost drawn body. A ship behind the arena ring is not a
+        // latchable hostile just because its centre projects inside the viewport.
+        if (window.__look03Picker.pick(scr.x, scr.y)?.entity.id !== e.id) continue;
         cands.push({ id: e.id, mass: e.mass, dist: Math.round(Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z)), scr });
       }
       cands.sort((a, b) => a.dist - b.dist);
@@ -168,7 +171,7 @@ try {
         candidates: r.candidates.map(e => ({ id: e.id, type: e.type, defId: e.defId,
           materials: e.leaves.flatMap(l => l.material) })) })) }));
     frames.push(p); };
-  const latchedCount = () => page.evaluate(() => (window.__throwLog || []).filter((e) => e.ev === 'tether:latched').length);
+  const latchedTarget = () => page.evaluate(() => window.SF.state.player?.tether?.targetId ?? null);
 
   // Latch: a real press (down, ~120 ms, up) on the target; confirm the game reports the latch, else re-pick.
   let latched = false;
@@ -176,7 +179,7 @@ try {
     console.log('target', JSON.stringify(pick));
     await page.mouse.move(pick.scr.x, pick.scr.y, { steps: 3 });
     await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
-    for (let i = 0; i < 10 && !latched; i++) { await sleep(150); latched = (await latchedCount()) > 0; }
+    for (let i = 0; i < 10 && !latched; i++) { await sleep(150); latched = (await latchedTarget()) === pick.id; }
     if (!latched) {
       console.log('no latch on attempt', attempt + 1);
       pick = await page.evaluate(() => {
@@ -187,6 +190,7 @@ try {
           if (Number.isFinite(e.mass) && e.mass > 32) continue;
           const scr = h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
           if (!scr || !scr.onScreen || scr.x < 300 || scr.x > 980 || scr.y < 140 || scr.y > 600) continue;
+          if (window.__look03Picker.pick(scr.x, scr.y)?.entity.id !== e.id) continue;
           c.push({ id: e.id, mass: e.mass, dist: Math.round(Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z)), scr });
         }
         c.sort((a, b) => a.dist - b.dist); return c[0] || null;
