@@ -20,17 +20,20 @@ function swarmRun(wave) {
 }
 
 test('the authored first-appearance previews teach each specialist counter', () => {
-  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 6, seed: 73311 })
+  // C01-04: the course's own debut waves carry the previews now — the Jackal sows its
+  // first mine on round 8, the Warden shields its gunners on 11, the Anchor on 14.
+  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 8, seed: 73311 })
     .specialistBrief.name, 'Mine-Layer Jackal');
-  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 9, seed: 73311 })
+  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 11, seed: 73311 })
     .specialistBrief.name, 'Warden Escort');
-  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 22, seed: 73311 })
+  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 14, seed: 73311 })
     .specialistBrief.name, 'Anchor Controller');
-  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 7, seed: 73311 })
+  // A round that introduces nothing new previews nothing — round 2 fields only Wasps.
+  assert.equal(swarmRoundPreview({ arenaId: 'helios_core', wave: 2, seed: 73311 })
     .specialistBrief, null);
-  assert.match(hintTextFor('mine_layer_jackal', { run: swarmRun(6) }), /open flank, shoot the mines, or throw/i);
-  assert.match(hintTextFor('warden_escort', { run: swarmRun(9) }), /shove it out of range/i);
-  assert.match(hintTextFor('field_anchor_controller', { run: swarmRun(22) }), /displace the hull during its spool/i);
+  assert.match(hintTextFor('mine_layer_jackal', { run: swarmRun(8) }), /open flank, shoot the mines, or throw/i);
+  assert.match(hintTextFor('warden_escort', { run: swarmRun(11) }), /shove it out of range/i);
+  assert.match(hintTextFor('field_anchor_controller', { run: swarmRun(14) }), /displace the hull during its spool/i);
 });
 
 test('Warden screens a same-wave ally with finite damage share and breaks under direct fire', () => {

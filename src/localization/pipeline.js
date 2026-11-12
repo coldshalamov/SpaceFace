@@ -395,6 +395,12 @@ const PHRASES = Object.freeze({
   'SCAN RISK:': L('RIESGO DE ESCANEO:', 'RISQUE DE SCAN :', 'SCAN-RISIKO:', 'RISCO DE SCAN:'),
   cargo: L('carga', 'cargaison', 'Fracht', 'carga'),
   'MANIFEST ACQUIRED': L('MANIFIESTO ADQUIRIDO', 'MANIFESTE ACQUIS', 'MANIFEST ERHALTEN', 'MANIFESTO ADQUIRIDO'),
+  'Cargo loaded': L('Carga cargada', 'Cargaison chargée', 'Fracht geladen', 'Carga carregada'),
+  'In the hold:': L('En la bodega:', 'Dans la soute :', 'Im Laderaum:', 'No porão:'),
+  'You paid:': L('Pagaste:', 'Vous avez payé :', 'Bezahlt:', 'Você pagou:'),
+  'Short hauls': L('Trayectos cortos', 'Trajets courts', 'Kurzstrecken', 'Trajetos curtos'),
+  'Cargo handling': L('Manejo de carga', 'Manutention de fret', 'Frachthandhabung', 'Manuseio de carga'),
+  'Attack angles': L('Ángulos de ataque', 'Angles d\'attaque', 'Angriffswinkel', 'Ângulos de ataque'),
   MATERIALS: L('MATERIALES', 'MATÉRIAUX', 'MATERIALIEN', 'MATERIAIS'),
   'English': L('Inglés', 'Anglais', 'Englisch', 'Inglês'),
   'Pseudo-locale (layout check)': L(

@@ -399,8 +399,10 @@ test('packed-ORM family keys drop compile-source concatenation', () => {
     canonicalizeSurfaceProgramFamilyKey(noisy, 'spaceface-packed-orm-single-sample-v1'),
     'spaceface-packed-orm-single-sample-v1',
   );
-  const partsLibrary = fs.readFileSync(path.join(ROOT, 'src/render/partsLibrary.js'), 'utf8');
-  assert.match(partsLibrary, /canonicalizeSurfaceProgramFamilyKey/);
+  // bad06a4b250a moved the packed-ORM install (and its canonicalized family key) out of
+  // partsLibrary into packedOrmShader.js; pin the key where it actually lives now.
+  const packedOrmShader = fs.readFileSync(path.join(ROOT, 'src/render/packedOrmShader.js'), 'utf8');
+  assert.match(packedOrmShader, /canonicalizeSurfaceProgramFamilyKey/);
   const renderer = fs.readFileSync(path.join(ROOT, 'src/render/renderer.js'), 'utf8');
   assert.match(renderer, /this\._opaqueBatchEnabled = false/);
   assert.match(renderer, /drainAfterPresentCompile/);
@@ -506,7 +508,9 @@ test('hitch compile waits for leftover sim and sleeping islands skip extra WASM'
   const runner = fs.readFileSync(path.join(ROOT, 'src/core/presentationRunner.js'), 'utf8');
   // One loop order: the sim always runs before the picture, and compile only after both. Every
   // callback offers the drain what truly remains of it (sim included), never the nominal budget.
-  assert.match(runner, /advanceSimulation\(frameDt, false, stepCap, perf\);[\s\S]*presentLastCompletedSnapshot\(frameDt, restoring, perf, fixedDt\)/);
+  // 3f786c3cc860 added the rawFrameDt tail arg to the present call; the pinned order is
+  // still sim-before-picture.
+  assert.match(runner, /advanceSimulation\(frameDt, false, stepCap, perf\);[\s\S]*presentLastCompletedSnapshot\(frameDt, restoring, perf, fixedDt, rawFrameDt\)/);
   assert.match(runner, /const remainMs = Math\.max\(0, frameBudgetMs - \(measureNow\(\) - callbackStart\)\);\s*diagnostics\.lastLeftoverMs = remainMs;/);
   // The drain reads a scratch arg now (alloc-free): the contract is leftoverMs carries remainMs,
   // and a cap-skipped or sub-slice frame never feeds the compile drain.
