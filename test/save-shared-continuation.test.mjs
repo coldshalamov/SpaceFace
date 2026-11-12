@@ -295,6 +295,37 @@ test('a stale local copy loses to the shared drawer so a failed earlier mirror c
   }
 });
 
+test('Continue restores the latest valid primary when both decodes race a replacement', async () => {
+  resetSharedPlayerStoreMemoForTests();
+  const storage = memoryStorage();
+  const restoreEnv = installEnv({
+    storage,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ keys: {} }) }),
+  });
+  try {
+    const shell = makeShell({ seed: 99, marker: 'local-world' });
+    const [initial, recheck, latest] = ['initial-primary', 'recheck-primary', 'latest-primary'].map((marker, i) => {
+      const writer = makeShell({ seed: 70 + i, marker });
+      writer.state.meta.playtimeS = 120 * (i + 1);
+      return JSON.stringify(writer.save.serialize('quick'));
+    });
+    storage.setItem('sf.save.quick', initial);
+
+    const prepare = shell.save._prepareEnvelopeStringAsync.bind(shell.save);
+    shell.save._prepareEnvelopeStringAsync = async (raw) => {
+      if (raw === initial) storage.setItem('sf.save.quick', recheck);
+      if (raw === recheck) storage.setItem('sf.save.quick', latest);
+      return prepare(raw);
+    };
+
+    assert.equal(await shell.save.loadAsync('quick'), true);
+    assert.equal(storage.getItem('sf.save.quick'), latest, 'the last valid primary is durable');
+    assert.equal(shell.state.economy.marker, 'latest-primary', 'the resumed world matches the durable primary');
+  } finally {
+    restoreEnv();
+  }
+});
+
 test('Continue does not promote a stale recovery copy over a primary written during recovery decode', async () => {
   resetSharedPlayerStoreMemoForTests();
   const storage = memoryStorage();

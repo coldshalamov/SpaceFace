@@ -48,6 +48,9 @@ import { hash32, mulberry32 } from '../core/rng.js';
 //   brief         the short form appended to the offer's one-line brief.
 //   breachText    the one line the player sees THE MOMENT the term trips. A hidden condition is a bug.
 //   warnText      tick terms only: shown the instant the watched state goes bad, holdS before it trips.
+//   warnOnly      tick terms only: the sample is a warning light and never tallies — warnText fires
+//                 while it holds, and the latch belongs to the owner's own event/dock handler.
+//                 For a forbid the player can still fix in flight (dump, or go declare).
 //   pendingText   require terms only: shown when a turn-in is refused because the term is unmet.
 //   appliesTo     mission types this term is allowed on.
 //   minRisk       lowest risk tier that may carry it (this is how risk becomes a verb modifier).
@@ -85,6 +88,88 @@ export const HONEST_SLING_SLING_WINDOW_S = 240;  // the swing counts this long a
 export const HONEST_SLING_EARLY_FRACTION = 0.6;  // settle inside the first 60% of the window
 
 const isPlayerOf = (id, ctx) => id != null && ctx && ctx.playerId != null && id === ctx.playerId;
+
+// ── W-TENDER shared reads ────────────────────────────────────────────────────────────────────────
+// The Tender's three terms read the dock and the hold through ctx.state (the escort_turns
+// precedent: the event-clause ctx carries no cargo, so the tender terms are TICK-shaped). The
+// registry freezes full-tick systems while `ui.docked` (src/core/presentationFreeze.js), so the
+// LIVE latch path for the dock moments is missions' own dock:docked handler, which stamps the
+// SAME `_clauseState` tally shapes these samples produce. The samples stay the canonical catalog
+// truth and drive any context where ticks run with a docked UI state (headless harnesses, probes).
+// manifest_undisclosed is the exception: its sample is a warnOnly light over the desk's sector, and
+// the dock handler is its only latch.
+//
+// The rival-queue ledger lives on the mission's own subrecord (`mission.tender.rivals`), owned and
+// re-bound by src/missions/tenderHaul.js. One rival HOLDS the scan face while its hull is alive and
+// its authored dwell has not elapsed; the face frees as each completes and departs.
+const TENDER_GATE_STATION_ID = 'station_customs';
+const TENDER_DESK_SECTOR_ID = 'sector_vesta_forge';
+
+function tenderDockedAt(state, stationId) {
+  const ui = state && state.ui;
+  return !!(ui && ui.docked === true && ui.dockedStationId === stationId);
+}
+
+/** Total hold units aboard, across every stack. Tier-0 ore is 1.0 vol/u, so units read as mass. */
+function tenderUnitsAboard(state) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  if (!items || typeof items !== 'object') return 0;
+  let total = 0;
+  for (const id of Object.keys(items)) total += Math.max(0, Math.floor(Number(items[id]) || 0));
+  return total;
+}
+
+/**
+ * Unmanifested mass at the weigh face: everything aboard that is not the contract ore, plus
+ * contract ore beyond the lot. The same reading src/missions/tenderHaul.js weighs at both weighs.
+ */
+function tenderUnmanifestedUnits(mission, state) {
+  const params = (mission && mission.params) || {};
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  const contract = params.cmdtyId && items
+    ? Math.max(0, Math.floor(Number(items[params.cmdtyId]) || 0)) : 0;
+  const lot = Math.max(0, Math.trunc(Number(params.qty) || 0));
+  return Math.max(0, tenderUnitsAboard(state) - contract) + Math.max(0, contract - lot);
+}
+
+/** Unmanifested units a Tally declaration already covered (0 without one). */
+function tenderDeclaredOverUnits(mission) {
+  const params = mission && mission.params;
+  if (!params || params.weighDeclared !== true || params.weighAtDesk !== false) return 0;
+  return Math.max(0, Math.trunc(Number(params.weighOverU) || 0));
+}
+
+/** True once the Forge intake itself has weighed the run — nothing is left for it to flag. */
+function tenderIntakeWeighed(mission) {
+  const params = mission && mission.params;
+  if (!params) return false;
+  if (params.weighDeclared === true && params.weighAtDesk === true) return true;
+  return params.intakeWeighAt_s != null && Number.isFinite(Number(params.intakeWeighAt_s));
+}
+
+/** True while any queued rival still holds the scan face on its own authored dwell. */
+function tenderScanFaceHeld(mission, state, now) {
+  const tender = mission && mission.tender;
+  const rivals = tender && Array.isArray(tender.rivals) ? tender.rivals : [];
+  const entities = state && state.entities;
+  for (const rival of rivals) {
+    if (!rival || rival.departed) continue;
+    if (Number.isFinite(rival.dwellUntil) && now < rival.dwellUntil) {
+      const entity = rival.id != null && entities && entities.get ? entities.get(rival.id) : null;
+      if (entity && entity.alive !== false) return true;
+    }
+  }
+  return false;
+}
+
+/** The desk's intake-window close, in sim seconds; a legacy instance falls back to its deadline. */
+function tenderCloseAtOf(mission) {
+  const close = Number(mission && mission.params && mission.params.tenderCloseAt_s);
+  if (Number.isFinite(close)) return close;
+  const deadline = Number(mission && mission.deadline_s);
+  return Number.isFinite(deadline) ? deadline : null;
+}
+
 
 /** Straight-line world distance from the player to the mission's destination berth, or Infinity. */
 function berthDistance(ctx) {
@@ -417,6 +502,140 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
+  // ── 10b. THE INTAKE WINDOW (W-TENDER) ───────────────────────────────────────────────────────
+  // The tender's 1.5× premium: the lot sold into the desk BEFORE the intake window closes. A late
+  // sale still settles the contract at base — the window re-prices, it never voids — so the term
+  // is a non-blocking require like honest_sling, and the SAME dual-half shape: the event half
+  // (economy:tradeCompleted, verified emitter src/systems/economy.js:3480) stamps the desk sale;
+  // the tick half stamps "sold before close" and completes the shared count-2 tally. Because the
+  // lot's completing sale is ALSO the mission's completing event (missions._onTrade settles the
+  // quota synchronously, ahead of this catalog's observer), missions' tender _onTrade branch
+  // stamps the same tally itself at that moment — the stamp below is the run's bookkeeping for
+  // multi-sale lots, and the two paths converge on one runtime shape.
+  tender_window: Object.freeze({
+    id: 'tender_window',
+    kind: 'require',
+    blocking: false,        // premium-only: a late sale settles at base, never refused
+    event: 'economy:tradeCompleted',
+    count: 2,               // TWO stamps through the one shared tally: the desk sale, then "before close"
+    rewardMult: 1.5,
+    label: 'Intake window',
+    prose: 'Sell the lot into the desk before the intake window closes and the desk honors a 1.5× tender premium. A late sale still settles at base terms — the window re-prices the run, it never voids it — but the settle keeps the run only when at least half the lot sold: under that the run fails forward and the stake goes with it, and the desk posts a spot row so what remains aboard still has a market.',
+    brief: 'Sell before the window closes — half must sell.',
+    pendingText: 'The tender premium wants the lot sold into the desk before the window closes.',
+    satisfiedText: 'Window sale logged — the desk honors the tender premium.',
+    appliesTo: ['tender_haul'],
+    minRisk: 0,
+    match(payload, ctx) {
+      // The desk-sale half: a SELL of the contract ore AT the desk berth. First qualifying sale
+      // stamps and counts 1 of 2; later sales refresh the stamp without counting, so one
+      // completing sale can never satisfy the term alone.
+      const mission = ctx && ctx.mission;
+      if (!mission || !payload || payload.side !== 'sell') return false;
+      const deskId = mission.destStationId;
+      if (deskId && payload.stationId !== deskId) return false;
+      const cmdtyId = mission.params && mission.params.cmdtyId;
+      if (cmdtyId && payload.commodityId !== cmdtyId) return false;
+      if (!mission._clauseState) mission._clauseState = {};
+      const runtime = mission._clauseState.tender_window
+        || (mission._clauseState.tender_window = { count: 0 });
+      if (runtime.satisfied || runtime.breached) return false;
+      const stamped = Number.isFinite(ctx.simTime) && ctx.simTime > 0 ? ctx.simTime : 0.001;
+      if ((runtime.count || 0) >= 1 || Number.isFinite(runtime.soldAt)) {
+        runtime.soldAt = stamped;
+        return false;
+      }
+      runtime.soldAt = stamped;
+      return true;
+    },
+    // The "sold before close" half: the desk's count is full (the quota the owner scores) and the
+    // stamp predates the window close. Runs per tick; the shared tally latches it exactly once.
+    holdS: 0,
+    tickSample(ctx) {
+      const mission = ctx && ctx.mission;
+      if (!mission) return false;
+      const runtime = mission._clauseState && mission._clauseState.tender_window;
+      if (!runtime || !Number.isFinite(runtime.soldAt)) return false;
+      if (runtime.satisfied || runtime.breached) return false;
+      const need = Math.max(1, Math.round(Number(mission.objectiveTarget) || 0));
+      if ((mission.objectiveProgress || 0) < need) return false;
+      const closeAt = tenderCloseAtOf(mission);
+      if (closeAt == null) return false;
+      return (Number(ctx.simTime) || 0) <= closeAt;
+    },
+  }),
+
+  // ── 10c. DECLARED AT THE TALLY (W-TENDER) ───────────────────────────────────────────────────
+  // The honest weigh: dock Concord's Customs Gate and wait your slot. Two rival haulers hold the
+  // scan face on their own authored dwells (~50 s each, staggered) — the face frees as each
+  // completes and departs, and the declaration latches only when the player's slot opens. Waiting
+  // is real: queue seconds are window seconds. Latching stamps the unmanifested duty at the weigh
+  // moment (never re-read at settle) and moves Concord +1 through the secondary rep channel.
+  grader_declared: Object.freeze({
+    id: 'grader_declared',
+    kind: 'require',
+    blocking: false,        // premium-only: running the chord is the priced alternative arm
+    event: null,
+    holdS: 1.0,
+    count: 1,
+    rewardMult: 1.10,
+    label: 'Declared at the Tally',
+    prose: 'Dock the Customs Gate on the chord and hold until your slot opens — the rivals on the scan face work their own clocks, and the desk weighs your unmanifested mass at 4 cr/u the moment you declare. The receipt stays clean: +10% paperwork and +1 Concord standing. Or run the direct chord and keep the clock — the Forge intake weighs what lands.',
+    brief: 'Declare at the Customs Gate or run the chord.',
+    pendingText: 'The desk pays the paperwork premium for a declaration at the Tally.',
+    satisfiedText: 'Declared at the Tally — the receipt stays clean.',
+    appliesTo: ['tender_haul'],
+    minRisk: 0,
+    tickSample(ctx) {
+      const mission = ctx && ctx.mission;
+      if (!mission) return false;
+      const runtime = mission._clauseState && mission._clauseState.grader_declared;
+      if (runtime && (runtime.satisfied || runtime.breached)) return false;
+      const state = ctx.state;
+      if (!tenderDockedAt(state, TENDER_GATE_STATION_ID)) return false;
+      return !tenderScanFaceHeld(mission, state, Number(ctx.simTime) || 0);
+    },
+  }),
+
+  // ── 10d. UNDISCLOSED MASS (W-TENDER) ────────────────────────────────────────────────────────
+  // The smuggler's weigh: dock the Forge with unmanifested mass no Tally declaration covers and
+  // the intake flags it. A forfeit-grade forbid — the contract still settles and the window
+  // premium still stands; the flag costs the same 4 cr/u duty, stamped at the intake weigh, and
+  // −2 Concord through the secondary channel, while the +10% paperwork premium is only ever
+  // earned by a Tally declaration. The contract iron itself is manifest-covered up to the lot.
+  // The sample is a WARNING light (warnOnly): undeclared side mass anywhere in the desk's sector
+  // warns while a dump is still possible, and missions' dock handler is the only latch.
+  manifest_undisclosed: Object.freeze({
+    id: 'manifest_undisclosed',
+    kind: 'forbid',
+    event: null,
+    holdS: 1.0,
+    count: 1,
+    onBreach: 'forfeit',
+    warnOnly: true,
+    // The clean forbid rides at ×1.0: its weight is the duty, the −2 Concord mark, and the
+    // paperwork premium a flag forecloses — never a premium of its own, never a penalty multiplier.
+    rewardMult: 1.0,
+    label: 'Undisclosed mass',
+    prose: 'The Forge intake weighs what lands. Dock with unmanifested mass no Tally declaration covers and the intake flags it: the same 4 cr/u duty stamps on the receipt and Concord marks you −2 — and the +10% paperwork premium is only ever earned by declaring at the Tally. The contract iron itself is manifest-covered up to the lot — dump the side stack, declare it at the Tally, or pay the weigh.',
+    brief: 'No undeclared mass at the Forge dock.',
+    warnText: 'UNMANIFESTED MASS ABOARD — DECLARE AT THE TALLY OR DUMP BEFORE THE INTAKE',
+    breachText: 'Flagged at intake: the Forge weighed undeclared mass — 4 cr/u duty stamps and Concord marks the receipt −2.',
+    appliesTo: ['tender_haul'],
+    minRisk: 0,
+    tickSample(ctx) {
+      const mission = ctx && ctx.mission;
+      if (!mission) return false;
+      const runtime = mission._clauseState && mission._clauseState.manifest_undisclosed;
+      if (runtime && (runtime.satisfied || runtime.breached)) return false;
+      const state = ctx.state;
+      const sectorId = state && state.world && state.world.currentSectorId;
+      if (!sectorId || sectorId !== (mission.destSectorId || TENDER_DESK_SECTOR_ID)) return false;
+      if (tenderIntakeWeighed(mission)) return false;
+      return tenderUnmanifestedUnits(mission, state) - tenderDeclaredOverUnits(mission) > 0;
+    },
+  }),
+
   // ── 11. LAND MASS ON THEM ───────────────────────────────────────────────────────────────────
   // tether:whipImpact carries a solid-or-crushing rating when real weight lands on something.
   // This is the game's thesis expressed as a contract term.
@@ -718,12 +937,14 @@ export const MISSION_CONDITION_EVENTS = Object.freeze([...new Set(
     .filter((event) => typeof event === 'string' && event.length > 0),
 )]);
 
-/** Conditions with no `event` — plus honest_sling, whose tick half stamps the arrival — are
- * evaluated by the per-tick predicate slot in missions.update(). honest_sling carries an event
- * (the sling half) AND a tickSample (the arrival half): the observer routes the sling, the slot
- * routes the arrival, and the shared count-2 tally joins them. */
+/** Conditions with no `event` — plus the dual-half terms (honest_sling's tick half stamps the
+ * arrival; tender_window's tick half stamps "sold before close") — are evaluated by the per-tick
+ * predicate slot in missions.update(). A dual-half term carries an event AND a tickSample: the
+ * observer routes the event half, the slot routes the tick half, and the shared count-2 tally
+ * joins them. */
 export const TICK_CONDITION_IDS = Object.freeze(
-  MISSION_CONDITION_IDS.filter((id) => !MISSION_CONDITIONS[id].event || id === 'honest_sling'),
+  MISSION_CONDITION_IDS.filter((id) => !MISSION_CONDITIONS[id].event
+    || id === 'honest_sling' || id === 'tender_window'),
 );
 
 /** The serializable row a condition contributes to `offer.clauses` (same shape a clause uses). */
