@@ -256,7 +256,10 @@ test('a sleeping teaching well rechecks occupancy before waking', () => {
   sys._fieldsSystem = () => ({ registerEnvironmental: s => { registered.push(s); return s; },
     updateExternal: (id, patch) => updates.push({ id, patch }) });
   sys.helpers = null; // the lesson rock is not part of this well activation test
-  sys._installOpeningLesson({ well: { x: -24, z: 108, radius: 96, strength: 90 } });
+  const lesson = { well: { x: -24, z: 108, radius: 96, strength: 90 } };
+  sys._installOpeningLesson(lesson);
+  // 6d6b0658e1bc — the well plants in its own phase after the wave furniture.
+  sys._plantOpeningLessonWell(lesson);
   assert.equal(registered.length, 1); const c = registered[0].center;
   obstacle(h, 'wreck', c.x, c.z, 30); sys._wakeLessonWell();
   assert.equal(updates.length, 0, 'no autonomous pull through newly occupied furniture');
