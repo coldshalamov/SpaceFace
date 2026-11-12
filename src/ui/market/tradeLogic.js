@@ -888,6 +888,39 @@ export function computeBestTrades(state, hereStationId, options = {}) {
 }
 
 /**
+ * The nearest live station that pays for `commodityId`, measured from the player's
+ * entity over the sector plane. "Buys" is priced through `unitPrice` — the same
+ * market read the trade screen quotes — so a station without a paying quote is not
+ * a buyer. Gates, wormholes and dockless bodies are not buyers either.
+ */
+function nearestCargoBuyerStationId(state, ctx, commodityId) {
+  if (!state || !commodityId) return null;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId) : null;
+  const pos = player && player.pos;
+  const ents = state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values()
+    : (Array.isArray(state.entityList) ? state.entityList : []);
+  let bestId = null;
+  let bestD2 = Infinity;
+  for (const e of ents) {
+    if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+    const data = e.data || {};
+    if (data.isGate === true || data.isWormhole === true || data.dockless === true) continue;
+    const stationId = data.stationId;
+    if (!stationId) continue;
+    const price = unitPrice(ctx, stationId, commodityId, 'sell');
+    if (!(price != null && price > 0)) continue;
+    const d2 = pos && Number.isFinite(e.pos.x) && Number.isFinite(e.pos.z)
+      && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      ? (e.pos.x - pos.x) ** 2 + (e.pos.z - pos.z) ** 2
+      : 0;
+    if (d2 < bestD2) { bestD2 = d2; bestId = stationId; }
+  }
+  return bestId;
+}
+
+/**
  * Resolves the sell price of a single commodity unit in the current context.
  * Destination station takes priority; fallback checks best-known buyer, then local sector stations.
  * Returns { unitSell, unsellable }.
@@ -905,26 +938,15 @@ export function resolveCargoSellPrice(state, ctx, commodityId, destinationStatio
     }
     return { unitSell: 0, unsellable: true };
   }
-  const best = bestKnownSellFor(state, commodityId);
-  if (best && best.sell > 0) {
-    return { unitSell: Math.round(best.sell), unsellable: false };
-  }
-  let fallbackBest = 0;
-  if (state && state.entities) {
-    const ents = typeof state.entities.values === 'function'
-      ? [...state.entities.values()]
-      : Array.isArray(state.entityList)
-        ? state.entityList
-        : [];
-    for (const e of ents) {
-      if (e && e.type === 'station' && e.alive !== false) {
-        const p = unitPrice(context, e.id, commodityId, 'sell');
-        if (p != null && p > fallbackBest) fallbackBest = Math.round(p);
-      }
+  // No destination set: the fallback is the NEAREST station that buys the cargo,
+  // quoted through the same market price helper — never the highest remembered
+  // sell, which lets stale remote intel outbid the buyer actually in reach.
+  const buyerStationId = nearestCargoBuyerStationId(state, context, commodityId);
+  if (buyerStationId) {
+    const price = unitPrice(context, buyerStationId, commodityId, 'sell');
+    if (price != null && price > 0) {
+      return { unitSell: Math.round(price), unsellable: false };
     }
-  }
-  if (fallbackBest > 0) {
-    return { unitSell: fallbackBest, unsellable: false };
   }
   return { unitSell: 0, unsellable: true };
 }

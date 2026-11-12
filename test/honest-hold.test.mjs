@@ -108,7 +108,15 @@ test('Hold value sums destination prices when nav waypoint is set', () => {
 });
 
 test('Hold value falls back to nearest buyer when no destination is set', () => {
+  // Real producers: station entities carry data.stationId + pos; the market
+  // record carries lastSell — the same fields unitPrice reads on the trade
+  // screen. The FAR station bids more (300) than the NEAR station (150); the
+  // honest fallback must quote the nearest buyer, not the maximum.
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const near = { id: 2, type: 'station', alive: true, pos: { x: 120, z: 0 }, data: { stationId: 'station_near' } };
+  const far = { id: 3, type: 'station', alive: true, pos: { x: 900, z: 0 }, data: { stationId: 'station_far' } };
   const state = {
+    playerId: 1,
     player: {
       credits: 500,
       cargo: {
@@ -119,28 +127,36 @@ test('Hold value falls back to nearest buyer when no destination is set', () => 
         },
       },
       marketMemory: {
-        station_alpha: {
+        station_far: {
           cmdty_ore_iron: {
-            sell: 150,
-            buy: 180,
-            seenAt: 100,
+            sell: 300,
+            seenAt: 10,
           },
         },
       },
     },
-    entities: new Map(),
-    entityList: [],
+    entities: new Map([[1, player], [2, near], [3, far]]),
+    entityList: [player, near, far],
+    economy: {
+      markets: {
+        station_near: { cmdty_ore_iron: { lastSell: 150 } },
+        station_far: { cmdty_ore_iron: { lastSell: 300 } },
+      },
+    },
   };
 
   const hold = calculateHoldWorth(state, { state });
-  // 10 * 150 = 1500
+  // 10 * 150 = 1500 — the near buyer's quote, not the remembered 300 far bid.
   assert.equal(hold.totalWorth, 1500);
   assert.equal(hold.hasUnsellable, false);
   assert.equal(hold.text, 'HOLD 10/40 · ≈ 1,500 cr');
 });
 
 test('Cargo nobody nearby buys counts as 0 and flags unsellable', () => {
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const near = { id: 2, type: 'station', alive: true, pos: { x: 120, z: 0 }, data: { stationId: 'station_near' } };
   const state = {
+    playerId: 1,
     player: {
       credits: 500,
       cargo: {
@@ -151,17 +167,14 @@ test('Cargo nobody nearby buys counts as 0 and flags unsellable', () => {
           cmdty_obscure_waste: 5, // nobody buys this
         },
       },
-      marketMemory: {
-        station_alpha: {
-          cmdty_ore_iron: {
-            sell: 100,
-            seenAt: 10,
-          },
-        },
+    },
+    entities: new Map([[1, player], [2, near]]),
+    entityList: [player, near],
+    economy: {
+      markets: {
+        station_near: { cmdty_ore_iron: { lastSell: 100 } },
       },
     },
-    entities: new Map(),
-    entityList: [],
   };
 
   const hold = calculateHoldWorth(state, { state });
@@ -183,8 +196,11 @@ test('Loose towed cargo on the Line counts and displays as + 1 towed', () => {
       amount: 4,
     },
   };
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const near = { id: 2, type: 'station', alive: true, pos: { x: 120, z: 0 }, data: { stationId: 'station_near' } };
 
   const state = {
+    playerId: 1,
     player: {
       credits: 0,
       cargo: {
@@ -194,21 +210,18 @@ test('Loose towed cargo on the Line counts and displays as + 1 towed', () => {
           cmdty_ore_iron: 8,
         },
       },
-      marketMemory: {
-        station_alpha: {
-          cmdty_ore_iron: {
-            sell: 120,
-            seenAt: 10,
-          },
-        },
-      },
       tether: {
         active: true,
         targetId: 99,
       },
     },
-    entities: new Map([[99, podEntity]]),
-    entityList: [podEntity],
+    entities: new Map([[1, player], [2, near], [99, podEntity]]),
+    entityList: [player, near, podEntity],
+    economy: {
+      markets: {
+        station_near: { cmdty_ore_iron: { lastSell: 120 } },
+      },
+    },
   };
 
   const hold = calculateHoldWorth(state, { state });
@@ -224,24 +237,24 @@ test('Loose towed cargo on the Line counts and displays as + 1 towed', () => {
 });
 
 test('Hold panel row worth helper gives row format', () => {
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const near = { id: 2, type: 'station', alive: true, pos: { x: 120, z: 0 }, data: { stationId: 'station_near' } };
   const state = {
+    playerId: 1,
     player: {
       cargo: {
         items: {
           cmdty_ore_iron: 8,
         },
       },
-      marketMemory: {
-        station_forge: {
-          cmdty_ore_iron: {
-            sell: 120,
-            seenAt: 10,
-          },
-        },
+    },
+    entities: new Map([[1, player], [2, near]]),
+    entityList: [player, near],
+    economy: {
+      markets: {
+        station_near: { cmdty_ore_iron: { lastSell: 120 } },
       },
     },
-    entities: new Map(),
-    entityList: [],
   };
 
   const price = resolveCargoSellPrice(state, { state }, 'cmdty_ore_iron');
