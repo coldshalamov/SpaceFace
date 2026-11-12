@@ -105,7 +105,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | BUILT 965fc1a9..704ee553 + lead 54e6b7de, 66a4a691, 6db15505ffb9 (comms-log-surface and special500-comms-backlog pass, log seen) |
 | SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | BUILT 45c4040c59e2 + 424bab64bb32 (Rapier and v27 pass; rounds 1–5 had zero beacon kill credits, placed Fortify look pending) |
 | PRX-HIVE | Keep newly formed Hive walls clear of live hulls and the pilot's immediate flight path | BUILT e995bf59787f (27 focused cases, live Hive route pending) |
-| PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | TAKEN agent2 (devin2) — next live-bug row (#988, #978, #955) |
+| PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
 | DOC-02 archive the old plans | Move superseded plan banks (list from DOC-01) into `design/archive/program-2026/` with `git mv`; first `grep -rn` every moved path across `scripts/ src/ test/ tools/` and leave any file a script reads in place; update links in live docs | READY |
 | LOOK-02 sectors on the grade [FE] | Each sector's lights and palette onto LOOK-01's grade | HOLD on LOOK-01 |
 
@@ -132,6 +132,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
 | PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | TAKEN agent3 (devin3, third run: measure the working tree first — the last run waited out its timeout on the lock) |
 | PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | HOLD (flash plants needed lead fixes 3 of 4; PL-09 reverted — rules added to the packet) |
+| PL-04-REDO | Rebuild the cargo-scramble plant by the rules (own events, canonical spawn, no stale ids) | TAKEN agent2 (devin2) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
