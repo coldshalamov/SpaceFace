@@ -91,6 +91,21 @@ const CSS = `
     linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) right bottom / 1px 16px;
   background-repeat: no-repeat;
   animation: sf-popups-brackets 520ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 40ms backwards; }
+/* The pane is a card: a hairline on all four sides, a 12px radius and a soft drop. The four
+   brackets floated 8px outside the glass, so the pane itself had no edge at all and the results
+   foot just stopped against the scrim. */
+.sf-find .sf-find__pane {
+  border: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 16%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px -20px rgb(0 0 0 / .7);
+}
+.sf-find .sf-find__pane::before { content: none; }
+/* The shared #screens focus ring (2px lamp, 2px offset, 2px radius) poked its square corners
+   past the card's rounded top; seat it inside the card's edge and follow its radius. */
+.sf-find .sf-find__pane input.sf-find__input:focus-visible,
+#screens .sf-find .sf-find__pane input.sf-find__input:focus-visible {
+  outline-offset: -2px !important; border-radius: 11px 11px 0 0;
+}
 /* One drawn rule along the head: 1 px core + bloom as geometry, the tier's lit head. */
 .sf-find .sf-find__pane::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; pointer-events: none;
   background: linear-gradient(90deg, transparent, var(--sf-pop-edge, rgb(232 226 212 / .5)) 16%, var(--sf-pop-edge, rgb(232 226 212 / .5)) 84%, transparent);
