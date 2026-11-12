@@ -35,13 +35,15 @@ export const SWARM_RIDER_STILL_TICKS = 30;
 export const SWARM_RIDER_CARRY_EXIT_SCALE = 1.3;
 
 export const SWARM_TWIST_BY_ID = Object.freeze({
-  delivery: Object.freeze({ id: 'delivery', name: 'Delivery', arenas: [FOUNDRY_ARENA_ID] }),
+  // `arenas` stays a lazy getter: swarmArena.js sits upstream of this module in the
+  // import cycle, so an eager read hits FOUNDRY_ARENA_ID before its initialization.
+  delivery: Object.freeze({ id: 'delivery', name: 'Delivery', get arenas() { return [FOUNDRY_ARENA_ID]; } }),
   lights_out: Object.freeze({ id: 'lights_out', name: 'Lights Out' }),
   highway_robbery: Object.freeze({ id: 'highway_robbery', name: 'Highway Robbery' }),
-  the_law: Object.freeze({ id: 'the_law', name: 'The Law', arenas: [FOUNDRY_ARENA_ID] }),
-  the_yardmaster: Object.freeze({ id: 'the_yardmaster', name: 'The Yardmaster', arenas: [FOUNDRY_ARENA_ID] }),
+  the_law: Object.freeze({ id: 'the_law', name: 'The Law', get arenas() { return [FOUNDRY_ARENA_ID]; } }),
+  the_yardmaster: Object.freeze({ id: 'the_yardmaster', name: 'The Yardmaster', get arenas() { return [FOUNDRY_ARENA_ID]; } }),
   chain_gang: Object.freeze({ id: 'chain_gang', name: 'Chain Gang' }),
-  everything_must_go: Object.freeze({ id: 'everything_must_go', name: 'Everything Must Go', arenas: [FOUNDRY_ARENA_ID] }),
+  everything_must_go: Object.freeze({ id: 'everything_must_go', name: 'Everything Must Go', get arenas() { return [FOUNDRY_ARENA_ID]; } }),
   black_friday: Object.freeze({ id: 'black_friday', name: 'Black Friday' }),
   quiet: Object.freeze({ id: 'quiet', name: 'Quiet' }),
 });

@@ -314,11 +314,15 @@ test('the named formations resolve through the gate seam', () => {
     const lancerGates = new Set(gatesFor(26, 'lancer_sniper'));
     assert.ok(lancerGates.has(wardens[0].gateGroup), 'round 26 wardens cover the gunner line');
   }
-  // Round 29 — the gates all open together: every door on one tick.
+  // Round 29 — the gates all open together: every door on one tick. C01-05: the
+  // Quiet hold slides the authored tick-0 slam to the hold's far side, so
+  // "together" is the whole sheet sharing the shifted tick, not tick 0 itself.
   {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 29, ruleset: 'swarm' });
     assert.equal(new Set(plan.packages.map((pkg) => pkg.gateGroup)).size, 8, 'round 29 opens every gate');
-    assert.ok(plan.packages.every((pkg) => pkg.atTick === 0), 'round 29 opens them together');
+    const ticks = new Set(plan.packages.map((pkg) => pkg.atTick));
+    assert.equal(ticks.size, 1, 'round 29 opens them together — one tick for every door');
+    assert.ok([...ticks][0] > 0, 'the slam waits out the forty-second hold');
   }
 });
 

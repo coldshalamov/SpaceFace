@@ -25,6 +25,7 @@ import {
   SWARM_EVENT_TABLES,
 } from '../src/data/swarmEvents.js';
 import { swarmCourseFor } from '../src/data/swarmCourse.js';
+import { isSwarmCourseTwistId } from '../src/data/swarmTwists.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { createFlightCluster } from '../src/ui/orrery/flightCluster.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
@@ -165,6 +166,14 @@ test('the seeded cadence deals a card to every special round and to no ordinary 
       // it through the minor consult instead, so they still hold major === null.
       const courseDealt = Boolean(
         swarmCourseFor(w)?.twistId && !isSwarmMinorEventWave(w));
+      // C01-05 — a course twist that names a room mechanic (delivery, quiet, …) IS
+      // the deal on its own round; the events consults serve no card beside it.
+      const mechanicDealt = isSwarmCourseTwistId(swarmCourseFor(w)?.twistId);
+      if (mechanicDealt) {
+        assert.equal(major, null, `wave ${w} is a room mechanic, not a major card`);
+        assert.equal(minor, null, `wave ${w} is a room mechanic, not a minor card`);
+        continue;
+      }
       if (isSwarmEventWave(w) || courseDealt) assert.ok(major, `wave ${w} in ${arenaId} must carry a major card`);
       else assert.equal(major, null, `wave ${w} is not a major round`);
       if (isSwarmMinorEventWave(w)) assert.ok(minor, `wave ${w} in ${arenaId} must carry a minor card`);
