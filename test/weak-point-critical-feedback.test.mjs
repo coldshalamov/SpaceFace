@@ -63,6 +63,9 @@ function mountText(t, ctx) {
     projections++;
     return { x: 100 + pos.x, y: 100 + pos.z, onScreen: true };
   } } });
+  // G16-04 shares the visible-word ledger between HUD layers. End each mount's
+  // lifetime here, just as the runtime does when replacing the HUD.
+  t.after(() => text.destroy());
   const pool = doc.getElementById('sf-floattext').children;
   return { text, pool, doc, visible: () => pool.filter(el => el.style.display === 'block'),
     allocations: () => elements.length, projections: () => projections };

@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = (p) => fileURLToPath(new URL('../' + p, import.meta.url));
 const hudStylesSrc = readFileSync(root('src/ui/views/hudStyles.js'), 'utf8');
-const mobileStylesSrc = readFileSync(root('src/systems/mobile/styles.js'), 'utf8');
+// The authored mobile deck sheet is mobileCssSource.js; styles.js only exports the sidecar path.
+const mobileStylesSrc = readFileSync(root('src/systems/mobile/mobileCssSource.js'), 'utf8');
+const mobileFlightSrc = readFileSync(root('src/ui/orrery/mobileFlightLayouts.js'), 'utf8');
 
 // The phone rules live inside one media block; slice it so each assertion reads that block only.
 function smallScreenBlock() {
@@ -134,8 +136,9 @@ test('D261: at phone widths the alert lane (dock cue) sits below the top-left wa
   assert.ok(phone, 'a <=760px rule must re-seat #alerts below the waypoint card');
   assert.ok(phone.index > header, 'the phone re-seat must come after the unscoped 22px rule, or it is cancelled again');
   assert.ok(Number(phone[1]) >= 72, `phone alert lane top (${phone[1]}px) must clear the waypoint card band`);
-  // Phone flight keeps its own lane offset (translateY from the 22px line) in the mobile sheet.
-  assert.match(mobileStylesSrc, /\[data-sf-mobile-flight="1"\] #alerts \{ transform:translateY\(calc\(124px/,
+  // Phone flight's alert lane is a measured seat now, not a translated offset: the mobile
+  // flight layout strips the desktop transform and hud.js places the lane in measured bands.
+  assert.match(mobileFlightSrc, /#alerts \{ transform:none/,
     'mobile flight still owns its alert-lane offset');
   // Live game: placeFlightReadouts pins the dock cue to flightInstrumentRects().dockPrompt.
   const { flightInstrumentRects } = await import('../src/ui/hudAttention.js');

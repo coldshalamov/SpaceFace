@@ -409,7 +409,12 @@ export const swarmJuice = {
     if (!run || !payload || !Number.isInteger(payload.wave)) return;
     const wave = payload.wave;
     const boss = swarmBossFor(wave);
-    const newcomer = swarmNewcomerFor(wave);
+    // C01-04 — the plan's own newcomer is the honest card: the cast's first appearance on a
+    // course round, the roster clock's on the open ladder, the heavies rewrite under the
+    // mutator. Falling back to the clock only covers a plan-less emit.
+    const planned = payload.plan && payload.plan.swarm && typeof payload.plan.swarm === 'object'
+      ? payload.plan.swarm : null;
+    const newcomer = planned ? planned.newcomer : swarmNewcomerFor(wave);
     // SWARM-07 B1 — a Brood family debut rides the same slam card when the ship roster is quiet.
     const broodNewcomer = swarmBroodNewcomerFor(wave);
     // B6 — a brood STRAIN debut rides that same card when no silhouette arrives at all:
