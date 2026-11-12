@@ -20,7 +20,8 @@ function harness() {
   let nextId = 10;
   const entities = [
     { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } },
-    { id: 2, type: 'asteroid', alive: true, pos: { x: 160, z: -40 }, data: { typeId: 'ast_common_rock' } },
+    { id: 2, type: 'asteroid', alive: true, pos: { x: 160, z: -40 },
+      data: { typeId: 'ast_common_rock', fieldId: 'f_helios_starter', asteroidSlotId: 'fixture-47a-slot' } },
     { id: 3, type: 'station', alive: true, pos: { x: -400, z: 80 }, data: { stationId: 'station_helios', name: 'Helios Station' } },
   ];
   for (const entity of entities) {

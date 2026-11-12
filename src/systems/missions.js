@@ -3099,8 +3099,12 @@ export const missions = {
       // Only choose a new (or legacy-unbound) fix from a body the mining beam can work.
       // A previously bound slot above keeps its identity until depletion is proved.
       const data = entity.data || {};
-      if (wrongLegacyFix && ((entity.homeSectorId || data.homeSectorId || data.sectorId) !== sectorId
-        || data.fieldId == null || data.asteroidSlotId == null)) continue;
+      // Only a field-bound exposure can carry the contract's durable identity — a tutorial
+      // tableau rock, an ore chunk, or any unfielded body near spawn must never become the
+      // marked site (an unfielded pick pinned samplePos while sampleSource stayed unbound,
+      // so the mark silently fell back to the nearest beacon).
+      if (data.fieldId == null || data.asteroidSlotId == null) continue;
+      if (wrongLegacyFix && (entity.homeSectorId || data.homeSectorId || data.sectorId) !== sectorId) continue;
       if (data.siteAnchored === true || data.respawnAt != null || data.depleted === true
         || data.destroyed === true || (Number.isFinite(data.oreHP) && data.oreHP <= 0)
         || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) continue;

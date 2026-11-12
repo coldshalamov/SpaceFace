@@ -48,7 +48,8 @@ function fixtureWithSampleRock() {
   state.world.currentSectorId = 'sector_helios_prime';
   const player = { id: state.playerId, pos: { x: 0, z: 0 }, hull: 100, hullMax: 100 };
   state.entities.set(state.playerId, player);
-  const rock = { id: 901, type: 'asteroid', alive: true, pos: { x: 120, z: 80 } };
+  const rock = { id: 901, type: 'asteroid', alive: true, pos: { x: 120, z: 80 },
+    data: { fieldId: 'f_helios_starter', asteroidSlotId: 'fixture-47a-slot' } };
   state.entities.set(rock.id, rock);
   state.entityList.push(rock);
   const bus = createBus();
@@ -200,12 +201,12 @@ test('B0 brief follows the actual sample site, then the real recovery owner hand
   assert.equal(beforeMap.sectorId, mission.destSectorId);
   assert.equal(beforeMap.stationId, null, 'unrecovered B0 must not select its eventual berth');
   const beforeButton = mapButton(beforeMap, mission.id);
-  assert.match(beforeButton.attrs, /data-map-selection-target="active-waypoint"/);
-  assert.equal(beforeButton.intent.selectionTarget, 'active-waypoint');
+  assert.match(beforeButton.attrs, /data-map-selection-target="47a-recovery-fix"/);
+  assert.equal(beforeButton.intent.selectionTarget, '47a-recovery-fix');
   assert.equal(beforeButton.intent.source, 'missionLog', 'selection marker keeps caller provenance');
   setMapOpenIntent(state, beforeButton.intent);
   const normalizedBeforeMap = takeMapOpenIntent(state);
-  assert.equal(normalizedBeforeMap.selectionTarget, 'active-waypoint',
+  assert.equal(normalizedBeforeMap.selectionTarget, '47a-recovery-fix',
     'the one-shot Map normalizer preserves the explicit selection discriminator');
   const beforeView = applyMapOpenIntentToView({
     zoom: 1, targetZoom: 1,
@@ -287,14 +288,17 @@ test('B0 can select the saved owner fix when its active waypoint is absent or in
 
 test('a marked positional selection requires the matching owner and exact current waypoint fix', () => {
   const cases = [
-    ['moved owner fix', (waypoint) => { waypoint.pos = { x: waypoint.pos.x + 1, z: waypoint.pos.z }; }],
-    ['foreign waypoint mission', (waypoint) => { waypoint.missionId = 'foreign-mission'; }],
+    ['stale recorded fix', (state, mission) => {
+      delete mission.params.sampleSource;
+      mission.params.samplePos = { x: mission.params.samplePos.x + 1, z: mission.params.samplePos.z };
+    }],
+    ['stale mission id', (state, mission, intent) => { intent.missionId = 'foreign-mission'; }],
   ];
-  for (const [label, replaceWaypoint] of cases) {
+  for (const [label, replace] of cases) {
     const { state, mission } = fixtureWithSampleRock();
     const action = missionMapAction(state, mission, true);
     const savedIntent = normalizeMapOpenIntent(mapButton(action, mission.id).intent);
-    replaceWaypoint(state.nav.waypoint);
+    replace(state, mission, savedIntent);
     const target = resolveMapOpenTarget(state, savedIntent);
     assert.equal(target.kind, 'sector', `${label} must not select the stale positional objective or false berth`);
   }

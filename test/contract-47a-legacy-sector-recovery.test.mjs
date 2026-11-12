@@ -8,7 +8,7 @@ import { sectorMembershipAtGlobal } from '../src/data/sectorCoordinates.js';
 test('the earned legacy Ceres fix is corrected only when a real Helios source exists', () => {
   const state = createGameState(4242);
   state.world.currentSectorId = 'sector_helios_prime';
-  state.onboarding = { active: true, finished: false, currentBeat: 0 };
+  state.onboarding = { active: false, finished: true };
   state.playerId = 1;
   state.entities.set(1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } });
   const bus = createBus(), updates = [], toasts = [];
