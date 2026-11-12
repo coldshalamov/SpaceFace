@@ -111,6 +111,10 @@ test('a Recommended-only shelf does not also claim that nothing is available', (
   const recommended = offer('recommended');
   const m = mountShop({ offers: [recommended], recommendations: [recommended] });
   try {
+    // 8278f78fd7fa sits the whole rail behind Browse all: the Recommended lead is part
+    // of the shelf the player opens with Tab, not the dealt pick-one cards.
+    m.screen._browse = true;
+    m.screen.refresh(m.ctx);
     assert.equal(emptyStates(m.screen).length, 0,
       'the visible Recommended card means the shelf is not empty');
     assert.ok(m.screen._cards.children.some(node => node.textContent === 'Recommended for your build'));
