@@ -39,8 +39,11 @@ test('survival wave clearing still advances the run immediately after combat and
   assertBefore(PRODUCTION_UPDATE_ORDER, 'combat', 'survivalWave');
   assertBefore(PRODUCTION_UPDATE_ORDER, 'scenarioRuntime', 'survivalWave');
   assertBefore(PRODUCTION_UPDATE_ORDER, 'survivalWave', 'survivalRun');
-  assert.equal(PRODUCTION_UPDATE_ORDER.indexOf('survivalRun'),
+  // e43158f9386a seats swarmCourseTwists between them — the wave receipt still settles the run this tick.
+  assert.equal(PRODUCTION_UPDATE_ORDER.indexOf('swarmCourseTwists'),
     PRODUCTION_UPDATE_ORDER.indexOf('survivalWave') + 1);
+  assert.equal(PRODUCTION_UPDATE_ORDER.indexOf('survivalRun'),
+    PRODUCTION_UPDATE_ORDER.indexOf('swarmCourseTwists') + 1);
   assertBefore(PRODUCTION_UPDATE_ORDER, 'survivalRun', 'heat');
   assertBefore(PRODUCTION_UPDATE_ORDER, 'survivalRun', 'survivalHud');
 });
