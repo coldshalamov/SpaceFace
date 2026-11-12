@@ -84,6 +84,13 @@ ${W} .sf-wradial__hub-pips { min-height:4px; gap:3.5px; }
 ${W} .sf-wradial__hub-pips i { width:3.5px; height:3.5px; background:rgb(${BONE} / .3); box-shadow:none; }
 ${W} .sf-wradial__hub-pips i.is-on { background:rgb(248 244 234); box-shadow:0 0 5px rgb(255 240 214 / .45); }
 
+/* phone / short tier (scale .72, 16.7px legends): at the wide 112 stretch SCREEN ran from under the hub
+   ring out past the right bezel bead (390×844, 960×540), with HOLD close behind on the left. The legends
+   take the standard 100 stretch and a tighter track here, so every key reads whole inside its arc. */
+@media (max-width:760px), (max-height:560px) {
+  ${W} .sf-wradial__wedge .sf-wradial__label { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650; letter-spacing:.06em; }
+}
+
 @media (forced-colors:active) { ${W}::before, ${W}::after, ${W} .sf-wradial__hub::before { display:none; } }
 `;
 
