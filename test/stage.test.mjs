@@ -587,3 +587,17 @@ test('G16 fix: refreshing a queued alert keeps its arrival order', () => {
     assert.deepEqual(f.stage.visible('banner'), ['alert:gate']);
   } finally { f.restore(); }
 });
+
+test('a confirm owned by the open screen mounts over the screen hold; a background dialog still waits', () => {
+  const { doc, restore } = installDom();
+  try {
+    const stage = createStage({ document: doc });
+    const screenHold = stage.hold('dialog');          // Pause (a station/menu screen) is open
+    const background = stage.show('dialog', 'comms choice');
+    assert.ok(background.queued, 'a background dialog waits for the screen to close');
+    const confirm = stage.show('dialog', 'Load this save?', { id: 'sf-confirm', overHold: true, severity: 'warn' });
+    assert.ok(confirm.visible, 'the screen-owned confirm is on screen and answerable');
+    screenHold.release();
+    assert.ok(confirm.visible, 'releasing the screen leaves the confirm up');
+  } finally { restore(); }
+});

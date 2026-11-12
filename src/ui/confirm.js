@@ -217,6 +217,9 @@ export function confirm(opts) {
       id: 'sf-confirm',
       severity: opts.danger ? 'danger' : 'warn',
       bare: true,
+      // A confirm is the player's own action on the screen in front of them: it shows above the screen that
+      // holds the dialog seat (background dialogs — comms choices, the recap — still wait for screens to close).
+      overHold: true,
       onMount: () => { if (!settled && root._sfConfirmToken === token) focusInitial(); },
     });
   }

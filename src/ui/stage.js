@@ -264,7 +264,11 @@ export function createStage(ctx = {}) {
     // (FIFO), and a held seat (the screens host) is never a demotion candidate. While the
     // slot itself is held (a station/menu screen is open) nothing new mounts at all.
     const rank = stagePriority(rec.severity);
-    if (!s.holds.size) {
+    // overHold: the item belongs to the screen that holds the seat (a confirm that screen awaits) — it mounts
+    // above that screen. Without it a Pause → Load confirm queued behind the very screen awaiting it, off the
+    // DOM, and could never be answered (review 2026-11-12-9615eb79 [HIGH]).
+    const held = s.holds.size > 0 && opts.overHold !== true;
+    if (!held) {
       while (s.visible.length >= s.def.maxVisible) {
         let lowest = null;
         for (const v of s.visible) {
@@ -280,7 +284,7 @@ export function createStage(ctx = {}) {
         insertQueue(s, lowest);
       }
     }
-    if (!s.holds.size && s.visible.length < s.def.maxVisible) mount(s, rec);
+    if (!held && s.visible.length < s.def.maxVisible) mount(s, rec);
     else {
       insertQueue(s, rec);
       // A queued item owns no DOM seat — pull it off any parent a host pre-attached so
