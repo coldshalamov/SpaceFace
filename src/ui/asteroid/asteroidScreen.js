@@ -180,7 +180,7 @@ export function anchoredClaimAnnouncement(claim) {
 // this repo, so DOM-level facts (a closed drawer renders no text) are asserted by
 // scripts/check-asteroid-theater.mjs instead.
 export const DRAWER_TABS = Object.freeze(['ledger', 'site', 'help']);
-const DRAWER_LABELS = Object.freeze({ ledger: 'Ledger', site: 'Site', help: 'Help' });
+const DRAWER_LABELS = Object.freeze({ ledger: 'Record', site: 'Site', help: 'Help' });
 const LEDGER_TONE = Object.freeze({ good: 'mint', warn: 'gold', bad: 'coral', info: 'ink' });
 const NO_SITE_REASON = 'No claim on this rock yet.';
 // What the site reads as "dark" — the same set the renderer raises a want-chip for.
@@ -575,7 +575,7 @@ export const asteroidScreen = {
     // The one icon on this screen sits on the kit's small key too, so the glyph reads as a
     // labelled cap rather than a bare SVG floating on the crest.
     drawerBtn.className = 'aw-drawer-key fh-key fh-key--small';
-    drawerBtn.setAttribute('aria-label', 'Ledger, site and help drawers');
+    drawerBtn.setAttribute('aria-label', 'Record, site and help drawers');
     drawerBtn.setAttribute('aria-expanded', 'false');
     drawerBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
       + '<path d="M5 6.5h14"/><path d="M7 10.5h10"/>'

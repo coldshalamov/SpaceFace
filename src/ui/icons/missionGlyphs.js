@@ -12,10 +12,12 @@
 
 const STROKE = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter"';
 
-/** One glyph per mission type in src/data/missions.js MISSION_TYPES (22). */
+/** One glyph per mission type in src/data/missions.js MISSION_TYPES (23). */
 export const MISSION_TYPE_GLYPHS = Object.freeze({
   // a crate handed right
   cargo_delivery: `<rect x="4.5" y="7.5" width="9.5" height="9.5" ${STROKE}/><path ${STROKE} d="M16 12h4.3M18.4 9.8 20.6 12l-2.2 2.2"/>`,
+  // a lot on the scales under a window lintel — the tender's weighed offer
+  tender_haul: `<rect x="4.5" y="8" width="8" height="6.5" ${STROKE}/><path ${STROKE} d="M15.5 8.5 12.4 8.5M15.5 8.5 13 13.5M15.5 8.5 18 13.5"/><path ${STROKE} d="M3.5 19.5h17M12 4.5v2.8" opacity="0.85"/>`,
   // two crates, tall and short — the quota is plural
   bulk_trade: `<rect x="4.5" y="5" width="8" height="6" ${STROKE}/><rect x="4.5" y="13" width="8" height="6" ${STROKE}/><path ${STROKE} d="M16.8 6.5v11M14.9 8.4l1.9-1.9 1.9 1.9M14.9 15.6l1.9 1.9 1.9-1.9" opacity="0.85"/>`,
   // a target: ring, pip, four register ticks

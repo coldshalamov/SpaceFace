@@ -269,14 +269,33 @@ test('a clamp-refused batch is owed on a short retry — the quota is met withou
   const h = boot(4242);
   const releases = [];
   h.bus.on('swarm:stallReleased', (p) => releases.push(p));
+  let cleared = null;
+  h.bus.on('run:waveCleared', (p) => { if (cleared == null) cleared = p; });
 
   beginSwarm(h, 4242);
   assert.equal(h.state.run.phase, 'active');
 
-  // Wave 1 opens on two groups of five (ticks 0 and 12) under a concurrency of ten. The first
-  // group landed at wave start; fill the rest of the room with stand-ins so the second group
-  // arrives to a full house and the concurrency clamp refuses it.
+  // C01-04: round 1 is one ten-Wasp charge, so the two-beat opening this regression needs
+  // lives on round 2 — the course's own "Wasps from two gates" fields groups of five at
+  // ticks 0 and 12, the same shape the lesson wave once offered. Drive there for real.
+  for (let i = 0; i < 12000 && !cleared; i++) {
+    if (i % 5 === 0 && h.state.run.phase === 'active') killOne(h);
+    tick(h, 1);
+  }
+  assert.ok(cleared && cleared.wave === 1, 'wave 1 cleared on its quota');
+  cleared = null;
+  driveToWave(h, 2);
+  assert.equal(h.state.run.wave, 2);
+  assert.equal(h.state.run.phase, 'active');
+
+  // The first group landed at wave start; fill the rest of the room with stand-ins so the
+  // second group arrives to a full house and the concurrency clamp refuses it. The course
+  // paces this round's second beat on its own release tick — read the owed schedule entry's
+  // dispatch time instead of pinning a wall number.
   assert.equal(liveHostiles(h).length, 5, 'the opening group landed');
+  const owed = survivalWave._pending.find((x) => x.entry && x.entry.count === 5);
+  assert.ok(owed, 'the second group is still owed on the schedule');
+  const dispatchTick = owed.entry.atTick;
   const fillers = [];
   while (survivalWave._cohort.size < survivalWave._concurrent) {
     const body = h.helpers.spawnEntity({
@@ -287,13 +306,17 @@ test('a clamp-refused batch is owed on a short retry — the quota is met withou
     survivalWave._cohort.set(body.id, { role: 'mass', entity: body });
     fillers.push(body.id);
   }
-  assert.equal(survivalWave._cohort.size, 10, 'the room is exactly full when the batch comes due');
+  assert.equal(survivalWave._cohort.size, survivalWave._concurrent,
+    'the room is exactly full when the batch comes due');
 
-  tick(h, 12);
-  assert.equal(survivalWave._pending.length, 1,
-    'the refused batch stayed owed on the schedule instead of dropping to the stream');
-  assert.equal(survivalWave._pending[0].entry.count, 5, 'it is owed whole, not clamped-shaved');
-  assert.equal(survivalWave._pending[0].entry.atTick, 12 + SWARM_SPAWN_RETRY_TICKS,
+  for (let i = 0; i < dispatchTick + 30; i++) {
+    tick(h, 1);
+    const entry = survivalWave._pending.find((x) => x.entry && x.entry.count === 5);
+    if (entry && entry.entry.atTick > dispatchTick) break;
+  }
+  const refused = survivalWave._pending.find((x) => x.entry && x.entry.count === 5);
+  assert.ok(refused, 'the refused batch stayed owed on the schedule instead of dropping to the stream');
+  assert.equal(refused.entry.atTick, dispatchTick + SWARM_SPAWN_RETRY_TICKS,
     'it retries on the same short delay a held batch already rides');
 
   // Room frees: the owed batch lands on its retry tick, not whenever the stream got to it.
@@ -302,15 +325,13 @@ test('a clamp-refused batch is owed on a short retry — the quota is met withou
   assert.equal(survivalWave._pending.length, 0, 'the owed batch delivered on its retry');
   assert.equal(survivalWave._admittedTotal, 10, 'both opening groups are in the room now');
 
-  let cleared = null;
-  h.bus.on('run:waveCleared', (p) => { if (cleared == null && p && p.wave === 1) cleared = p; });
   for (let i = 0; i < 12000 && !cleared; i++) {
     if (i % 5 === 0 && h.state.run.phase === 'active') killOne(h);
     tick(h, 1);
   }
-  assert.ok(cleared, 'the wave still cleared');
-  assert.equal(cleared.admitted, 15, 'every planned body was delivered — none lost to the clamp');
-  assert.equal(cleared.killed, 20, 'the five stand-ins resolved too');
+  assert.ok(cleared && cleared.wave === 2, 'the wave still cleared');
+  assert.equal(cleared.killed, swarmQuota(2) + fillers.length,
+    'every cohort body resolved — none lost to the clamp');
   assert.equal(releases.length, 0, 'no starvation ever reached the watchdog');
   teardown(h);
 });
