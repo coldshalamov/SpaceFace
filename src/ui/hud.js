@@ -85,7 +85,7 @@ import {
 } from '../combat/targetTruth.js';
 import { classifyContact, contactMark, gunLineDenial, isSurrenderedContact } from '../combat/contactClassifier.js';
 import { confirm } from './confirm.js';
-import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
+import { bestKnownSellFor, applyTradeNavigation, calculateHoldWorth, resolveCargoSellPrice } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 import { planGaugeSettle } from './effects/gaugeSettle.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
@@ -2456,6 +2456,24 @@ export function createHud(ctx, alerts) {
     if (elDecision.textContent !== next) elDecision.textContent = next;
   }
 
+  // ---- G19-02: in-flight cargo bar (HOLD 12/40 · ≈ 3,480 cr) ----
+  const elCargoBar = document.createElement('div');
+  elCargoBar.className = 'sf-cargo-bar mono';
+  elCargoBar.id = 'sf-cargo-bar';
+  elCargoBar.setAttribute('role', 'status');
+  elCargoBar.setAttribute('aria-label', 'Cargo hold worth');
+  leftContext.appendChild(elCargoBar);
+
+  let lastCargoBarText = '';
+  function updateFlightCargoBar() {
+    const holdInfo = calculateHoldWorth(state, ctx);
+    if (holdInfo.text !== lastCargoBarText) {
+      lastCargoBarText = holdInfo.text;
+      elCargoBar.textContent = holdInfo.text;
+    }
+  }
+  updateFlightCargoBar();
+
 
   const arrow = document.createElement('div');
   arrow.className = 'sf-objarrow';
@@ -3784,6 +3802,19 @@ export function createHud(ctx, alerts) {
     pointer-events: none;
     z-index: 900;
   }
+  .sf-cargo-bar {
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-ink, var(--hud-paper, #e0f0ff));
+    background: color-mix(in srgb, var(--panel-2, #0d1b2a) 75%, transparent);
+    border: 1px solid var(--visor-cyan-dim, rgba(79, 143, 221, 0.3));
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    margin-top: 4px;
+    font-family: var(--dp-face-read, var(--k-mono, monospace));
+  }
   `;
 
   if (!document.getElementById('sf-cargohold-style')) {
@@ -3802,17 +3833,14 @@ export function createHud(ctx, alerts) {
     <div class="sf-cargo-panel__head">
       <div class="sf-cargo-title-group">
         <span class="sf-cargo-panel__title">CARGO HOLD MANIFEST</span>
-        <span class="sf-cargo-status-tag">MANIFEST ACQUIRED</span>
+        <span class="sf-cargo-status-tag">Cargo loaded</span>
       </div>
       <div class="sf-cargo-gauges">
         <div class="sf-cargo-gauge-item" id="sf-gauge-used">
           <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40 u</span></span>
         </div>
-        <div class="sf-cargo-gauge-item" id="sf-gauge-risk">
-          <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
-        </div>
         <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
-          <span class="sf-gauge-label">HOLD READS: <span class="sf-cargo-summary-lean"></span></span>
+          <span class="sf-gauge-label">In the hold: <span class="sf-cargo-summary-lean"></span></span>
         </div>
       </div>
       <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
@@ -3838,7 +3866,7 @@ export function createHud(ctx, alerts) {
           <div class="sf-ins-meta">
             <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
             <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
-            <div class="sf-ins-meta-row"><span>Avg Basis:</span><span class="sf-ins-basis">N/A</span></div>
+            <div class="sf-ins-meta-row"><span>You paid:</span><span class="sf-ins-basis">N/A</span></div>
           </div>
           <div class="sf-ins-market">
             <h4>Market Intelligence</h4>
@@ -3880,11 +3908,8 @@ export function createHud(ctx, alerts) {
   const gaugeUsedEl = cargoPanel.querySelector('#sf-gauge-used');
   const gaugeUsedFx = createCircularGauge(gaugeUsedEl, { size: 36, stroke: 4, kind: 'route' });
 
-  const gaugeRiskEl = cargoPanel.querySelector('#sf-gauge-risk');
-  const gaugeRiskFx = createCircularGauge(gaugeRiskEl, { size: 36, stroke: 4, kind: 'danger' });
   const cargoGaugeSettle = {
     used: { value: 0, peakTimer: 0 },
-    risk: { value: 0, peakTimer: 0 },
   };
   function clearCargoGaugeSettle(slot) {
     if (!slot) return;
@@ -4173,17 +4198,7 @@ export function createHud(ctx, alerts) {
     applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap} u` });
     cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
 
-    let hasContraband = false;
-    for (const id in items) {
-      if (items[id] > 0) {
-        const def = CMDTY_MAP.get(id);
-        if (def && def.legality === 'contraband') hasContraband = true;
-      }
-    }
-    applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
-    cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
-
-    // HOLD READS — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
+    // In the hold — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
     // never a rep delta; a neutral hold renders '—' rather than a fake label.
     const leanHost = cargoPanel.querySelector('.sf-cargo-summary-lean');
     if (leanHost) {
@@ -4206,7 +4221,7 @@ export function createHud(ctx, alerts) {
       const gaugeItem = leanHost.closest('.sf-cargo-gauge-item') || leanHost;
       gaugeItem.setAttribute('role', 'status');
       gaugeItem.setAttribute('aria-label',
-        labels.length ? `Hold reads: ${labels.join(', ')}` : 'Hold reads: neutral');
+        labels.length ? `In the hold: ${labels.join(', ')}` : 'In the hold: neutral');
     }
 
     const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
@@ -4336,14 +4351,17 @@ export function createHud(ctx, alerts) {
         }
       }
 
+      const rowPriceInfo = resolveCargoSellPrice(state, ctx, id);
+      const rowWorth = Math.round(qty * (rowPriceInfo.unitSell || 0));
+
       block.innerHTML = `
         <div class="sf-cargo-block-top">
           <span class="sf-cargo-block-name">${name}</span>
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
         </div>
         <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty">${qty} units</span>
-          <span class="sf-cargo-block-vol">${vol.toFixed(1)} u vol</span>
+          <span class="sf-cargo-block-qty">${name} · ${qty} · ≈ ${formatCount(rowWorth, state)} cr</span>
+          <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
           ${badgeHtml}
         </div>
       `;
@@ -4443,7 +4461,6 @@ export function createHud(ctx, alerts) {
     hexFx.setActive(cargoPanelOpen);
     beamFx.setActive(cargoPanelOpen);
     gaugeUsedFx.setActive(cargoPanelOpen);
-    gaugeRiskFx.setActive(cargoPanelOpen);
 
     if (cargoPanelOpen) {
       refreshCargoPanel();
@@ -4456,7 +4473,6 @@ export function createHud(ctx, alerts) {
       });
     } else {
       clearCargoGaugeSettle(cargoGaugeSettle.used);
-      clearCargoGaugeSettle(cargoGaugeSettle.risk);
       beamFx.setPath([], { active: false });
     }
     ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
@@ -4473,9 +4489,7 @@ export function createHud(ctx, alerts) {
     hexFx.setActive(false);
     beamFx.setActive(false);
     gaugeUsedFx.setActive(false);
-    gaugeRiskFx.setActive(false);
     clearCargoGaugeSettle(cargoGaugeSettle.used);
-    clearCargoGaugeSettle(cargoGaugeSettle.risk);
     beamFx.setPath([], { active: false });
 
     ctx.bus.emit('audio:cue', { id: 'ui_back' });
@@ -4493,6 +4507,7 @@ export function createHud(ctx, alerts) {
   let holdWasEmpty = !cargoOccupied(state.player && state.player.cargo);
   on('cargo:changed', (payload) => {
     if (cargoPanelOpen) refreshCargoPanel();
+    updateFlightCargoBar();
     const cargo = (payload && payload.cargo) || (state.player && state.player.cargo);
     const line = noteFirstCargoLanding(state, {
       wasEmpty: holdWasEmpty,
@@ -4502,6 +4517,11 @@ export function createHud(ctx, alerts) {
     holdWasEmpty = !cargoOccupied(cargo);
     if (line) ctx.bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
   });
+
+  on('tether:latched', updateFlightCargoBar);
+  on('tether:released', updateFlightCargoBar);
+  on('navigation:waypoint', updateFlightCargoBar);
+  on('navigation:cleared', updateFlightCargoBar);
 
   // Expose toggle/close for the input system
   on('ui:toggleCargo', toggleCargoPanel);
@@ -5799,6 +5819,7 @@ export function createHud(ctx, alerts) {
       : null;
     resolveReticle();
     updateDoctrineTells(frameDt);
+    if (slow) updateFlightCargoBar();
 
     // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -7346,6 +7367,7 @@ export function createHud(ctx, alerts) {
     lastNavEta = '';
     if (radar.invalidate) radar.invalidate();
     if (targetPanel.forceRefresh) targetPanel.forceRefresh();
+    updateFlightCargoBar();
   }
 
   // Moment 3 (Task B §2.3): the HUD arrives on undock. Four anchors settle 200 ms apart, each with
@@ -7409,7 +7431,6 @@ export function createHud(ctx, alerts) {
       restoreYieldedFlightVisuals();
       externalFlightCaptions.clear();
       clearCargoGaugeSettle(cargoGaugeSettle.used);
-      clearCargoGaugeSettle(cargoGaugeSettle.risk);
       if (radar && typeof radar.destroy === 'function') radar.destroy();
       if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();
       if (hudMeta && typeof hudMeta.destroy === 'function') hudMeta.destroy();

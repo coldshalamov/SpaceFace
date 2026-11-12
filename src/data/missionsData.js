@@ -153,7 +153,7 @@ export const MISSION_STANDING_LADDER = [
     maxRisk: 1,
     name: 'Recovery Work',
     short: 'Disliked+',
-    unlocks: 'R0-R1 local hauling, mining, courier, and recovery contracts',
+    unlocks: 'Short hauls, mining, courier, and recovery contracts',
   },
   {
     minRep: -29,
