@@ -668,6 +668,79 @@ function vestaCycleNewsText(seeds) {
     : 'Vesta haulers swapped the junction and the slag ran out under escort; the yard took its break on schedule.';
 }
 
+// ── Orcus Shadow: "the shelf round" ──────────────────────────────────────────────────────────────
+// Orcus is the deliberate hollow rim (trafficPerMin: 0) — the four authored hulls are the only
+// life: a supply hauler on its Plinth run, the anomaly listener, and the two quiet workers off
+// the vault. The outpost exists to watch the anomaly, and the supply hull is the one beat that
+// says somebody still feeds it. Until this chain that beat was invisible: the hauler flew its
+// 24 s loop forever and no observer ever learned the schedule existed. The catalog's
+// ev_courier_overtakes is the cheapest event in the library and the Shadow's own shape: one fast
+// hull threading past the only other traffic the rim has.
+//
+//   logistics  ev_courier_overtakes  the supply hull closes on the listener's post, threads it
+//                                    one hull-width abeam, and pulls away up-lane toward the dock
+//                                    (supply hauler, anomaly listener)
+//
+// The catalog casts a courier plus a hauler; the Shadow flies the schedule itself — the supply
+// hull's authored Plinth leg IS the courier beat. It closes on the listener for the overtake
+// window (the redirect seam, released at pull_away back to its run); the listener reaffirms its
+// anomaly chord throughout — it is the observer, the slow post being threaded. The seed plants
+// at the pass: a hull that never got there left the shelf empty, and the cycle news says so in
+// the outpost's own words rather than minting a delivery nobody saw.
+// Catalog boundaries recorded here: no cargo pickups mint (the shelf line is the story, not a
+// take), nobody's route is rewritten outside the two-phase redirect, and the hollow rim stays
+// hollow — the chain stages nothing ambient, only stamps the cast that already exists.
+const ORCUS_SUPPLY_HAULER = 'orcus_supply_hauler';
+const ORCUS_ANOMALY_LISTENER = 'orcus_anomaly_listener';
+export const ORCUS_SHADOW_SECTOR_ID = 'sector_orcus_shadow';
+
+export const ORCUS_CAUSAL_CHAIN = Object.freeze([
+  Object.freeze({
+    // logistics, first15: "a fast dim-bar hull closing on a slow amber-heartbeat one - empty
+    // overtakes heavy, always". The rim's version: the one supply hull on its schedule,
+    // threading the listener's post on the way to the dock.
+    id: 'ev_courier_overtakes',
+    actorSlots: Object.freeze([ORCUS_SUPPLY_HAULER, ORCUS_ANOMALY_LISTENER]),
+    requires: Object.freeze([]),
+    seedAtPhase: 'pass',
+    seeds: Object.freeze(['courier_through']),
+    // Supply hull or listener lost before the pass: the shelf stays empty — the honest miss,
+    // not a stocked claim nobody saw.
+    interruptSeeds: Object.freeze(['shelf_empty']),
+    jobHints: Object.freeze([
+      // The supply hull leaves its authored run only for the overtake itself: closing on the
+      // listener through close and pass, then released back to its Plinth leg for the pull-away.
+      Object.freeze({
+        actorSlotId: ORCUS_SUPPLY_HAULER,
+        subjectSlotId: ORCUS_ANOMALY_LISTENER,
+        phases: Object.freeze(['close', 'pass']),
+      }),
+      Object.freeze({
+        actorSlotId: ORCUS_SUPPLY_HAULER,
+        reaffirm: true,
+        phases: Object.freeze(['pull_away']),
+      }),
+      // The listener is the observer: it holds its anomaly chord while the schedule passes it.
+      Object.freeze({
+        actorSlotId: ORCUS_ANOMALY_LISTENER,
+        reaffirm: true,
+        phases: Object.freeze(['close', 'pass', 'pull_away']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'close', durationS: 10, cue: 'clean_burn' }),
+      Object.freeze({ name: 'pass', durationS: 6, cue: 'clean_burn' }),
+      Object.freeze({ name: 'pull_away', durationS: 8, cue: 'clean_burn' }),
+    ]),
+  }),
+]);
+
+function orcusCycleNewsText(seeds) {
+  return seeds && seeds.courier_through === true
+    ? 'The supply hull threaded its pass on the Plinth round; the Shadow\'s one shelf is stocked.'
+    : 'No supply hull made the pass on the Plinth round; the Shadow\'s one shelf stays empty.';
+}
+
 /**
  * Every non-Ceres sector that runs a staged ambient chain, keyed by sector id. `traffic.js` turns
  * each row into a `SECTOR_CAUSAL_CHAINS` entry (shared cap, shared cycle gap).
@@ -700,6 +773,13 @@ export const SECTOR_CAUSAL_CHAIN_DEFS = Object.freeze({
     stationId: 'station_dione',
     newsKind: 'dione_convoy_day',
     cycleNewsText: dioneCycleNewsText,
+  }),
+  [ORCUS_SHADOW_SECTOR_ID]: Object.freeze({
+    sectorId: ORCUS_SHADOW_SECTOR_ID,
+    chain: ORCUS_CAUSAL_CHAIN,
+    stationId: 'station_orcus_shadow',
+    newsKind: 'orcus_plinth_round',
+    cycleNewsText: orcusCycleNewsText,
   }),
 });
 
