@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "2907642c9303f625020c50678416db701f10cf9edd50f03598c1d56fa8922c8d",
+  "uiSourceDigest": "b60f8d35ca0fa9718ddebe5c81221e83c1fd5a9a520aa48a1fe28a76ec55d21c",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -175,7 +175,7 @@
     "src/ui/orrery/chartHub.js": "74c3242eaab2aa57a2c7cdd6fb5656460e8f511ff48e67b03d6dd839999e4750",
     "src/ui/orrery/chartInstruments.js": "98f1ce48cef0d0a53cc6b9b495ea84bc470472066a6fc253ef4072b939b50e92",
     "src/ui/orrery/chartLabels.js": "037bc9f0b6150cf85c161bb14a9e5b97c12628ea3477134ee21d55585c2d7bba",
-    "src/ui/orrery/chartLayouts.js": "aa33962fa15a0dbbbb061f96a83689f8214d2c54288babfb42917647b106a8b1",
+    "src/ui/orrery/chartLayouts.js": "0f86239df4bed87303d93a0e1b639664cd06f7ec1568b74748fae5fad4bed7e9",
     "src/ui/orrery/chartWorld.js": "5a47947cb755185002d714cdb915866118249e9db445b133ae5f55445d1ad502",
     "src/ui/orrery/clipsLayouts.js": "649983e187bab8bf81f32dd3270fb25e517ab2e4dad2df1acef0c4cd3758050f",
     "src/ui/orrery/codexLayouts.js": "bd8ec8986b34f3224701ec229c7e62cda40f4b7050f22c38c177e6d98ee605b1",

@@ -512,6 +512,20 @@ ${C}[data-layout="narrow"] .gm-layer-bank {
   gap:2px 10px !important;
 }
 
+/* The compact lens dock floats over the chart viewport, so rings, routes and names drew straight
+   through its words (DISCOVERY crossed by an orbit at 960×540). It reads as a card: a dark glass
+   field under the spine, a hairline edge and a 10px radius. */
+${C}[data-layout="compact"] .gm-left-rail {
+  background:${SPINE}, rgb(8 11 18 / .82) !important;
+  border:1px solid rgb(${BONE} / .16); border-radius:10px;
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  /* When the dock scrolls, the row under its foot fades out rather than being sliced by the edge;
+     the bottom pad lets the last lens clear the fade at the end of the scroll. */
+  padding-bottom:14px;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 18px), transparent) !important;
+  mask-image:linear-gradient(180deg, #000 calc(100% - 18px), transparent) !important;
+}
+
 /* Wrapping must preserve usable controls as well as fit the viewport. Expanded lens names
    and tab labels stay inside their chip, and keyboard focus remains distinct from selection.
    Phone controls keep the mobile sheet's larger touch targets. */
@@ -574,7 +588,6 @@ ${COMPACT_DESKTOP} :is(.gm-layer-btn, .gm-tab).k-word:focus-visible {
   }
   ${C}[data-layout="compact"] .gm-left-rail {
     max-height:max(72px, 24vh) !important; overflow-x:hidden !important; overflow-y:auto !important;
-    -webkit-mask-image:none !important; mask-image:none !important;
   }
   ${C}[data-layout="compact"] .gm-apron { position:relative; z-index:3; }
   ${C}[data-layout="compact"] .gm-navfoot { position:relative; z-index:3; }
