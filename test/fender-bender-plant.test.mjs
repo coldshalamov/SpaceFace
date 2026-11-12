@@ -149,9 +149,10 @@ test('PL-02 Fender bender: Stay branch — alarm strobes, owner undocks, inspect
   // 2. Owner undocks
   assert.equal(civ.flags.docked, false, 'owner undocked from berth');
   assert.equal(civ.data.docked, false);
-  const undockEvent = ctx.events.find((e) => e.name === 'dock:undocked');
-  assert.ok(undockEvent, 'emits dock:undocked event');
-  assert.equal(undockEvent.payload.reason, 'fender_bender');
+  // The NPC's undock is its own event: dock:undocked means the PLAYER left a berth to ~20 owners.
+  assert.equal(ctx.events.find((e) => e.name === 'dock:undocked'), undefined, 'never fires the player undock event');
+  const undockEvent = ctx.events.find((e) => e.name === 'traffic:fenderBenderUndocked');
+  assert.ok(undockEvent, 'emits its own undocked event');
 
   // 3. Inspecting the dent
   ctx.state.simTime = 100.5;

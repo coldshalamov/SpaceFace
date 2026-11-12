@@ -19648,6 +19648,18 @@ export const render = {
     onBus('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     onBus('massline:throw', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
+    // PL-02 fender bender: the bumped hull's alarm strobe uses the same lamp channel (sim data does not
+    // reach the drawn entity, so the event carries it).
+    onBus('traffic:fenderBenderAlarm', (payload) => {
+      if (!payload || !payload.entityId) return;
+      const ent = state && state.entities && state.entities.get(payload.entityId);
+      if (!ent) return;
+      if (!ent.data) ent.data = {};
+      ent.data.lampsFlashing = true;
+      ent.data.lampFlashUntil = Number.isFinite(payload.until)
+        ? payload.until
+        : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0));
+    });
     onBus('traffic:nearMissFlash', (payload) => {
       if (!payload || !payload.entityId) return;
       const ent = state && state.entities && state.entities.get(payload.entityId);

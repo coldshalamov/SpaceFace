@@ -229,12 +229,7 @@ export const fenderBenderPlantOps = {
       });
 
       if (wasDocked) {
-        this.bus.emit('dock:undocked', {
-          entityId: civ.id,
-          stationId: civ.data?.dockedStationId || null,
-          reason: 'fender_bender',
-          t: now,
-        });
+        // Not dock:undocked: ~20 owners (save, economy, cargo, audio) read that as the PLAYER undocking.
         this.bus.emit(FENDER_BENDER_UNDOCKED_EVENT, {
           entityId: civ.id,
           stationId: civ.data?.dockedStationId || null,
