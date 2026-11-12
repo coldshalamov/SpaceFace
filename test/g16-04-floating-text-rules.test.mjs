@@ -93,3 +93,12 @@ test('ledger: merges across layers, caps at four, drops an outranked newcomer', 
   t = 5;
   assert.equal(L.admit({ text: '+3 SHUNTED', x: 100, y: 100, priority: 2 }).action, 'new', 'window elapsed: no merge');
 });
+
+import { seatBelowColumn, visibleRects } from '../src/ui/hudAvoidRects.js';
+
+test('class-up plate seats just below the Swarm centre column, or stays put with no column', () => {
+  const col = visibleRects([{ left: 330, top: 10, width: 180, height: 40 }, { left: 300, top: 50, width: 240, height: 70 }]);
+  assert.equal(seatBelowColumn(col), 130);
+  assert.equal(seatBelowColumn([]), null);
+  assert.equal(visibleRects([{ left: 0, top: 0, width: 0, height: 20 }]).length, 0);
+});
