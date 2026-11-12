@@ -30,6 +30,39 @@ test('steady motion passes through unchanged', () => {
   assert.equal(cont.offset(7), 0);
 });
 
+test('a strictly forward slowdown neither creates a lead nor draws the hull backward', () => {
+  const cont = createPoseContinuity();
+  const o = out();
+  let raw = 0;
+  for (let n = 0; n < 60; n++) {
+    raw += 2;
+    cont.sample(7, raw, 0, 0, DT, o);
+  }
+  let previous = o.x;
+  let maxLead = 0;
+  let maxRetreat = 0;
+  for (let n = 0; n < 35; n++) {
+    raw += 0.01;
+    cont.sample(7, raw, 0, 0, DT, o);
+    maxLead = Math.max(maxLead, o.x - raw);
+    maxRetreat = Math.max(maxRetreat, previous - o.x);
+    previous = o.x;
+  }
+  assert.deepEqual({ ledRaw: maxLead > 1e-9, drewBackward: maxRetreat > 1e-9 },
+    { ledRaw: false, drewBackward: false }, `lead ${maxLead} WU, retreat ${maxRetreat} WU`);
+  assert.equal(o.x, raw, 'a genuinely slower trajectory remains the drawn trajectory');
+});
+
+test('a sustained raw reversal and a perpendicular turn still change drawn direction', () => {
+  const cont = createPoseContinuity();
+  const o = out();
+  for (let n = 0; n <= 60; n++) cont.sample(7, n, 0, 0, DT, o);
+  for (let n = 1; n <= 60; n++) cont.sample(7, 60 - n, 0, Math.PI, DT, o);
+  assert.ok(Math.abs(o.x) < 0.2, 'a sustained reversal catches the reversing ship');
+  for (let n = 1; n <= 60; n++) cont.sample(7, 0, n, -Math.PI / 2, DT, o);
+  assert.ok(Math.abs(o.x) < 0.05 && Math.abs(o.z - 60) < 0.05, 'a real turn follows the new path');
+});
+
 test('a backward snap is absorbed — the hull never steps back', () => {
   const cont = createPoseContinuity();
   const o = out();
@@ -157,4 +190,15 @@ test('a stopped raw stream converges to the physical pose (review 2026-11-11 HIG
     for (let i = 0; i < 600; i++) pc.sample(1, x, 0, 0, dt, out);
     assert.ok(Math.abs(out.x - x) < 0.05, `v=${v}: drawn ${out.x} must rejoin raw ${x}`);
   }
+});
+
+test('a stop after a correction retires the existing lead', () => {
+  const cont = createPoseContinuity();
+  const o = out();
+  for (let n = 0; n <= 60; n++) cont.sample(7, n, 0, 0, DT, o);
+  cont.sample(7, 56, 0, 0, DT, o);
+  assert.ok(cont.offset(7) > 0.5, 'the prior backward correction left an offset to heal');
+  for (let n = 0; n < 120; n++) cont.sample(7, 56, 0, 0, DT, o);
+  assert.equal(cont.offset(7), 0);
+  assert.equal(o.x, 56);
 });

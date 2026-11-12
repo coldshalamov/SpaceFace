@@ -10,7 +10,7 @@
 //
 //   expected = lastDrawn + velocity·dt
 //   jump = r − expected
-//   if |jump| > POSE_CONTINUITY_JUMP_WU: absorb it — draw the expected continuation
+//   if |jump| > POSE_CONTINUITY_JUMP_WU and it is a correction: absorb it
 //   else: heal — the carried offset decays and the drawn pose glides back onto r
 //   if |o| > POSE_CONTINUITY_TELEPORT_WU: a real teleport — reset o and draw r
 //
@@ -175,6 +175,7 @@ export function createPoseContinuity() {
       const rdx = x - rec.rawX;
       const rdz = z - rec.rawZ;
       const rd = Math.hypot(rdx, rdz);
+      const advancesWithEstimate = rd > 1e-6 && rdx * rec.vx + rdz * rec.vz > 0;
       let fx = 0;
       let fz = 0;
       if (rd > 1e-6) {
@@ -188,7 +189,8 @@ export function createPoseContinuity() {
         fz = rec.vz / spd;
       }
       const decay = Math.exp(-dt / POSE_CONTINUITY_DECAY_S);
-      if (jx * jx + jz * jz > POSE_CONTINUITY_JUMP_WU * POSE_CONTINUITY_JUMP_WU) {
+      let absorb = false;
+      if (rd > 1e-6 && jx * jx + jz * jz > POSE_CONTINUITY_JUMP_WU * POSE_CONTINUITY_JUMP_WU) {
         // Correction or veer? A fence correction lands the stream back along its own line
         // of flight — the jump is mostly anti-parallel to motion. A real turn arcs the
         // stream sideways — the jump is mostly lateral, and absorbing it would hide the
@@ -196,19 +198,14 @@ export function createPoseContinuity() {
         // flicker, rotated).
         const jPar = jx * fx + jz * fz;
         const jLat = Math.abs(jz * fx - jx * fz);
-        if (jLat > Math.abs(jPar)) {
-          rec.ox *= decay;
-          rec.oz *= decay;
-        } else {
-          // Absorb the backward correction, but heal it in the same frame: a raw stream that
-          // stops (or keeps landing behind the drawn pose) re-enters this branch every frame,
-          // and an un-decayed absorb would carry the offset forever — the drawn ship parked
-          // ahead of its physical body (review 2026-11-11, HIGH). With the decay applied here
-          // a one-off snap still eases out over ~POSE_CONTINUITY_DECAY_S, and a persistent
-          // residual converges to the raw pose instead of sticking.
-          rec.ox = (ex - x) * decay;
-          rec.oz = (ez - z) * decay;
-        }
+        // A forward sample falling short of the velocity estimate is a slower sample. Adding
+        // the missing travel again here makes the picture surge ahead of the fence and then
+        // retreat. An unchanged raw position can only heal an offset it already carries.
+        absorb = jLat <= Math.abs(jPar) && !(advancesWithEstimate && jPar < 0);
+      }
+      if (absorb) {
+        rec.ox = (ex - x) * decay;
+        rec.oz = (ez - z) * decay;
       } else {
         rec.ox *= decay;
         rec.oz *= decay;
@@ -235,8 +232,8 @@ export function createPoseContinuity() {
       let drawnX = x + rec.ox;
       let drawnZ = z + rec.oz;
       // Monotone-progress clamp: while an absorbed residual heals, the drawn pose must not
-      // slide back along its flight direction faster than a crawl — that slide is the same
-      // flicker, stretched. Rare (needs |o| ≫ the raw step); stalls instead of stepping.
+      // slide back along a still-advancing raw trajectory. Once stopped it can heal back
+      // to the physical pose at a crawl.
       // The forward side is capped the same way: a lagging offset heals as a catch-up
       // glide, never a leap. Lateral slide is bounded too — a stale offset shedding during
       // a turn must not swing the hull sideways faster than a drift.
@@ -248,8 +245,9 @@ export function createPoseContinuity() {
         const lateral = dx * -fz + dz * fx;
         let pull = 0;
         let latPull = 0;
-        if (progress < -POSE_CONTINUITY_HEAL_REGRESS_WU) {
-          pull = -POSE_CONTINUITY_HEAL_REGRESS_WU - progress;
+        const minimumProgress = advancesWithEstimate ? 0 : -POSE_CONTINUITY_HEAL_REGRESS_WU;
+        if (progress < minimumProgress) {
+          pull = minimumProgress - progress;
         } else {
           const stepTyp = rec.stepCount > 0 ? rec.stepSum / rec.stepCount : spd * dt;
           const forwardCap = Math.min(
