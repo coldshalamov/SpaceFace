@@ -98,6 +98,12 @@ function physicalStructureSpec({ run, device, position, socket, player, requestI
       dynamic: false,
       ccd: false,
       material: 'debris',
+      // SWARM-GRIND-01 — a Fortify hull is never a contact weapon: no device description
+      // promises contact damage, so the body's own surface scale zeroes what a hostile
+      // loses for touching it (bounce, not grind). Authored device effects — the Tesla arc
+      // and the turret's rounds — are untouched, and a thrown body still kills by the
+      // same collision law everywhere else.
+      impactDamageScale: 0,
       revision: 0,
     },
     team: player.team,

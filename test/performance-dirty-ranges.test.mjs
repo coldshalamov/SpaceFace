@@ -34,6 +34,154 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const probeSource = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
 const routeSource = await readFile(new URL('../scripts/lib/alphaLiveBaselineRoute.mjs', import.meta.url), 'utf8');
 
+// The static source scans below must read CODE, not prose: comment bodies are masked to
+// spaces (length-preserving, so match offsets still mean something) so a `from './x'` inside
+// a doc block cannot fake an import — the livingHull.js `come from".` bleed. With
+// maskStrings the literal bodies go too, so brackets/commas inside strings cannot fake
+// declarator structure for the export scan. A `//` or `/*` inside a string literal is not a
+// comment, a `${}` inside a template is treated as string body, and a `/` in expression
+// position opens a regex (entityResolver.js's `/"/g` once swallowed every export after it as
+// a fake string) — division-after-`}`/`x++ / y` edges stay the usual lexer approximations.
+function maskJsSource(text, { maskStrings = false } = {}) {
+  const chars = text.split('');
+  const blank = (i) => { if (chars[i] !== '\n' && chars[i] !== '\r') chars[i] = ' '; };
+  const lastCodeIndex = (i) => {
+    for (let j = i - 1; j >= 0; j--) {
+      const c = chars[j];
+      if (c !== ' ' && c !== '\t' && c !== '\r' && c !== '\n') return j;
+    }
+    return -1;
+  };
+  // A `/` opens a regex in expression position (after an operator or an expression keyword)
+  // and divides after an operand (identifier/number/`)]}`/literal end/`x++`).
+  const REGEX_WORDS = new Set([
+    'return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void',
+    'throw', 'do', 'else', 'yield', 'await', 'case',
+  ]);
+  const isRegexStart = (i) => {
+    const j = lastCodeIndex(i);
+    if (j < 0) return true;
+    const c = chars[j];
+    if (/[\w$]/.test(c)) {
+      let word = '';
+      for (let k = j; k >= 0 && /[\w$]/.test(chars[k]); k--) word = chars[k] + word;
+      return REGEX_WORDS.has(word);
+    }
+    if (c === ')' || c === ']' || c === '}') return false;
+    if (c === "'" || c === '"' || c === '`') return false;
+    const jj = lastCodeIndex(j);
+    if ((c === '+' || c === '-') && jj >= 0 && chars[jj] === c) return false;
+    return true;
+  };
+  let i = 0;
+  // One frame per open template literal. A `{code:false}` frame is literal text — everything
+  // masks, `` ` `` closes it, `${` pushes a `{code:true}` frame whose contents scan as code
+  // until its `}` (braces inside count, so object literals cannot fake the close). Nested
+  // templates inside ${} just push another frame — marketPresentation.js's `${` chains once
+  // desynced a flat scan badly enough to hide every export that followed.
+  const tplStack = [];
+  while (i < chars.length) {
+    const frame = tplStack.length ? tplStack[tplStack.length - 1] : null;
+    const ch = chars[i];
+    if (frame && !frame.code) {
+      if (ch === '\\') { blank(i); blank(i + 1); i += 2; continue; }
+      if (ch === '`') { blank(i++); tplStack.pop(); continue; }
+      if (ch === '$' && chars[i + 1] === '{') {
+        blank(i++); blank(i++);
+        tplStack.push({ code: true, braces: 0 });
+        continue;
+      }
+      blank(i++);
+      continue;
+    }
+    if (frame && frame.code) {
+      if (ch === '{') { frame.braces++; i++; continue; }
+      if (ch === '}') {
+        if (frame.braces === 0) { blank(i++); tplStack.pop(); continue; }
+        frame.braces--; i++; continue;
+      }
+    }
+    if (ch === '/' && chars[i + 1] === '/') {
+      while (i < chars.length && chars[i] !== '\n') blank(i++);
+    } else if (ch === '/' && chars[i + 1] === '*') {
+      blank(i++); blank(i++);
+      while (i < chars.length && !(chars[i] === '*' && chars[i + 1] === '/')) blank(i++);
+      if (i < chars.length) { blank(i++); blank(i++); }
+    } else if (ch === "'" || ch === '"') {
+      const quote = ch;
+      if (maskStrings) blank(i);
+      i++;
+      while (i < chars.length && chars[i] !== quote) {
+        if (chars[i] === '\\') { if (maskStrings) blank(i); i++; }
+        if (i < chars.length) { if (maskStrings) blank(i); i++; }
+      }
+      if (i < chars.length) { if (maskStrings) blank(i); i++; }
+    } else if (ch === '`') {
+      blank(i++);
+      tplStack.push({ code: false, braces: 0 });
+    } else if (ch === '/' && isRegexStart(i)) {
+      // Regex literal: body and flags are not code — a `'` or `{` inside must not start a
+      // fake string or fake a declarator. An unescaped newline stops the run rather than
+      // eating the file.
+      blank(i); i++;
+      let inClass = false;
+      while (i < chars.length) {
+        const c = chars[i];
+        if (c === '\n') break;
+        if (c === '\\') { blank(i); i++; if (i < chars.length) { blank(i); i++; } continue; }
+        if (c === '[') inClass = true;
+        else if (c === ']') inClass = false;
+        else if (c === '/' && !inClass) { blank(i); i++; break; }
+        blank(i); i++;
+      }
+      while (i < chars.length && /[\w$]/.test(chars[i])) { blank(i); i++; }
+    } else {
+      i++;
+    }
+  }
+  return chars.join('');
+}
+
+// `export const A = 1, B = 2` binds every comma-declarator (anvilSpillRecovery.js exports
+// ANVIL_CANCEL_RENDEZVOUS exactly that way), and `export const {a, b} = c` binds the whole
+// pattern — the export scan must collect all of them, not stop at the first name. Runs on
+// comment/string-masked text; destructuring collects every identifier inside the balanced
+// pattern, which may over-collect keys but can never miss a bound name.
+function exportedDeclarationNames(masked, start) {
+  const names = [];
+  let i = start, depth = 0, expectName = true;
+  while (i < masked.length) {
+    const ch = masked[i];
+    if (ch === ';' && depth === 0) break;
+    if (expectName) {
+      if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') { i++; continue; }
+      expectName = false;
+      if (ch === '{' || ch === '[') {
+        const open = ch, close = ch === '{' ? '}' : ']';
+        let d = 1, j = i + 1, pattern = '';
+        for (; j < masked.length && d > 0; j++) {
+          const c = masked[j];
+          if (c === open || c === '{' || c === '[') d++;
+          else if (c === close || c === '}' || c === ']') d--;
+          if (d > 0) pattern += c;
+        }
+        for (const m of pattern.matchAll(/[A-Za-z_$][\w$]*/g)) names.push(m[0]);
+        i = j;
+        continue;
+      }
+      const m = /^[A-Za-z_$][\w$]*/.exec(masked.slice(i));
+      if (m) { names.push(m[0]); i += m[0].length; continue; }
+      i++;
+      continue;
+    }
+    if (ch === '(' || ch === '[' || ch === '{') depth++;
+    else if (ch === ')' || ch === ']' || ch === '}') depth--;
+    else if (ch === ',' && depth === 0) expectName = true;
+    i++;
+  }
+  return names;
+}
+
 function windowFixture(variantId, {
   logicalBytes = 12_000,
   requestedBytes,
@@ -342,7 +490,9 @@ test('Electron launch publishes one canonical tracker and exact root before Tier
   );
   const rootPublication = launch.indexOf('canonicalUrlTracker,\n    rootUrl,');
   const initialLoad = launch.indexOf('await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);');
-  const reload = launch.indexOf('await reloadElectronWithTier1Counters(page, pageIssueTracker);');
+  // 0a046adf1e09 added the glStatusDiagnostics options argument; the contract pinned here is
+  // the ordering, not the call's arity.
+  const reload = launch.indexOf('await reloadElectronWithTier1Counters(page, pageIssueTracker');
   assert.ok(rootPublication >= 0 && initialLoad > rootPublication && reload > initialLoad,
     'page, tracker, and exact root cleanup ownership must precede settled-load proof and reload');
 });
@@ -782,10 +932,12 @@ test('the acceptance route keeps whole-ship LOD demotion on a scoped library pla
   // canonical libraryScope, which bootstrapPlanForOptions refuses by contract. Pin
   // the call-site pairing so the demotion path cannot regress to that throw.
   const partsSource = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  const planIndex = partsSource.indexOf('authoredPreloadPlanForEntityAtLod(entity, requested, options)');
+  // 45b522f9b07f renamed the level argument to requestedLevel; the pinned contract is the
+  // per-level plan call paired with the non-canonical scope below.
+  const planIndex = partsSource.indexOf('authoredPreloadPlanForEntityAtLod(entity, requestedLevel, options)');
   assert.notEqual(planIndex, -1, 'demotion preload must request a per-level authored plan');
   const callSite = partsSource.slice(Math.max(0, planIndex - 600), planIndex + 600);
-  assert.match(callSite, /bootstrapPlan:\s*authoredPreloadPlanForEntityAtLod\(entity, requested, options\)/);
+  assert.match(callSite, /bootstrapPlan:\s*authoredPreloadPlanForEntityAtLod\(entity, requestedLevel, options\)/);
   assert.match(callSite, /libraryScope:\s*['"]whole-ship-lod-family['"]/,
     'a custom demotion bootstrapPlan requires a non-canonical libraryScope');
 });
@@ -806,7 +958,10 @@ test('every committed src import resolves to a committed file', async () => {
   const missing = [];
   for (const file of sources) {
     const text = await readFile(path.join(ROOT, file), 'utf8');
-    for (const m of text.matchAll(/(?:from|import)\s*['"](\.[^'"]+)['"]/g)) {
+    // Comment-masked: prose is not an import site. Specifiers cannot contain raw newlines,
+    // so neither can the match.
+    const masked = maskJsSource(text);
+    for (const m of masked.matchAll(/\b(?:from|import)\s*['"](\.[^'"\r\n]+)['"]/g)) {
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1]));
       if (!tracked.has(resolved)) missing.push(`${file} -> ${m[1]}`);
     }
@@ -827,24 +982,33 @@ test('every committed src named import resolves to a committed export', async ()
       .split('\n').filter(Boolean),
   );
   // `function\s*\*?` so a generator export (`export function* name`, the stepped census twins) counts as an export too.
-  const exportRe = /export\s+(?:async\s+)?(?:function\s*\*?|class|const|let|var)\s*([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
+  // const/let/var delegate to exportedDeclarationNames so multi-declarator and destructured
+  // exports (anvilSpillRecovery.js's ANVIL_CANCEL_RENDEZVOUS) are not silently dropped.
+  const exportRe = /export\s+(?:async\s+)?(?:function\s*\*?|class)\s*([A-Za-z_$][\w$]*)|export\s+(const|let|var)(?![\w$])\s*|export\s*\{([^}]*)\}/g;
   const starRe = /export\s*\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*['"](\.[^'"]+)['"]/g;
   const ownExports = new Map();
   const starTargets = new Map();
   for (const file of tracked) {
     if (!/\.(js|mjs)$/.test(file)) continue;
     const text = await readFile(path.join(ROOT, file), 'utf8');
+    const masked = maskJsSource(text, { maskStrings: true });
+    // Star targets keep their strings: the module specifier IS the string literal.
+    const commentMasked = maskJsSource(text);
     const names = new Set();
-    for (const m of text.matchAll(exportRe)) {
+    for (const m of masked.matchAll(exportRe)) {
       if (m[1]) names.add(m[1]);
-      if (m[2]) for (const part of m[2].split(',')) {
-        const name = part.trim().split(/\s+as\s+/).pop().trim();
-        if (name) names.add(name);
+      else if (m[2]) {
+        for (const n of exportedDeclarationNames(masked, m.index + m[0].length)) names.add(n);
+      } else if (m[3]) {
+        for (const part of m[3].split(',')) {
+          const name = part.trim().split(/\s+as\s+/).pop().trim();
+          if (name) names.add(name);
+        }
       }
     }
     ownExports.set(file, names);
     const stars = [];
-    for (const m of text.matchAll(starRe)) {
+    for (const m of commentMasked.matchAll(starRe)) {
       stars.push(path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1])));
     }
     starTargets.set(file, stars);
@@ -867,12 +1031,17 @@ test('every committed src named import resolves to a committed export', async ()
   for (const file of tracked) {
     if (!/^src\/.*\.(js|mjs)$/.test(file)) continue;
     const text = await readFile(path.join(ROOT, file), 'utf8');
-    for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g)) {
-      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2]));
+    const masked = maskJsSource(text);
+    // The second alternative catches `import DEF, { named } from` — a default import riding
+    // ahead of the brace list (faction_vael.js) hides the named names otherwise.
+    const importRe = /\bimport\s*\{([^}]*)\}\s*from\s*['"](\.[^'"\r\n]+)['"]|\bimport\s+[A-Za-z_$][\w$]*\s*,\s*\{([^}]*)\}\s*from\s*['"](\.[^'"\r\n]+)['"]/g;
+    for (const m of masked.matchAll(importRe)) {
+      const spec = m[1] || m[3];
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2] || m[4]));
       if (!tracked.has(resolved)) continue;
       const names = resolveExports(resolved);
       // Comments inside the braces (an import list with a // note on its first line) are not names.
-      const specifiers = m[1].replace(/\/\/[^\r\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      const specifiers = spec.replace(/\/\/[^\r\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
       for (const part of specifiers.split(',')) {
         const name = part.trim().split(/\s+as\s+/)[0].trim();
         if (name && !names.has(name)) missing.push(`${file} imports ${name} from ${resolved}`);
