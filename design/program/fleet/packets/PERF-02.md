@@ -30,3 +30,12 @@ Determinism (`state.rng`, `state.simTime`); v27 replay identical; the anti-freez
 `LOCAL_HEARTBEAT_HOLD_MS` must still hold (a 2 s main-thread stall must not jump the world seconds ahead — add a test).
 Only through the lock; no other measurement while yours runs. Tests: `test/*whole-sim*`, `test/*snapshot-fence*`,
 `test/presented-clock.test.mjs`, `npm run gate -- --quick`. Commits: `perf(PERF-02): <what> (<sim/wall before → after>)`.
+
+## Follow-up (lead review of dc5f5c03, 2026-11-12)
+dc5f5c03 raised `LOCAL_WORK_BUDGET_MS` 24 → 72: sim/wall 0.41–0.59 → 0.89–0.99 (v27 identical, gate pass — accepted).
+Not measured: the **main thread**. Main-thread long tasks across the three windows rose 129/52/90 → 118/101/116 (271 → 335),
+consistent with larger merged replies costing `applyTickReply` more per frame. Measure, same route/seed, back to back,
+`scripts/probe-main-thread-profile.mjs --swarm-round=20` before (`LOCAL_WORK_BUDGET_MS = 24`, a local edit you revert) and
+after: **rAF fps, idle %, long tasks, `applyTickReply` ms p95**. If fps or idle got worse, keep the sim pace but bound the
+main-thread cost: e.g. cap steps merged into one reply and carry the rest to the next reply, or apply a large reply's
+records across two frames. Report the table; commit only a measured improvement.
