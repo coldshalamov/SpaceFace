@@ -49,10 +49,29 @@ test('public draft preparation places its complete optic lattice clear of prior-
     const cells = arena._opticIds.map(id => state.entities.get(id));
     assert.equal(cells.length, layout.bodies.length, 'the full authored grammar is present');
     assert.deepEqual(cells.map(entity => entity.data.opticCell), layout.bodies.map(body => `${body.ix},${body.iz}`));
-    const offsets = cells.map((entity, i) => ({ x: entity.pos.x - player.pos.x - layout.origin.x - layout.bodies[i].x,
-      z: entity.pos.z - player.pos.z - layout.origin.z - layout.bodies[i].z }));
-    assert.ok(offsets.every(offset => offset.x === offsets[0].x && offset.z === offsets[0].z), 'translation preserves every cell relationship');
-    assert.ok(offsets[0].x !== 0 || offsets[0].z !== 0, 'the occupied authored origin must move');
+    // 321e6d287a99 also expands the translated lattice so its own native circles stop
+    // interpenetrating: placement is ONE similarity transform — a single uniform scale
+    // about the origin plus a single translation. Measure the scale off the widest
+    // authored pair, then hold every cell to the same transform.
+    const span = layout.bodies.reduce((best, body, i) => {
+      for (let j = i + 1; j < layout.bodies.length; j++) {
+        const d = Math.hypot(body.x - layout.bodies[j].x, body.z - layout.bodies[j].z);
+        if (d > best.d) best = { d, i, j };
+      }
+      return best;
+    }, { d: 0, i: 0, j: 1 });
+    const latticeScale = Math.hypot(
+      cells[span.i].pos.x - cells[span.j].pos.x,
+      cells[span.i].pos.z - cells[span.j].pos.z,
+    ) / span.d;
+    const offsets = cells.map((entity, i) => ({
+      x: entity.pos.x - player.pos.x - layout.origin.x - layout.bodies[i].x * latticeScale,
+      z: entity.pos.z - player.pos.z - layout.origin.z - layout.bodies[i].z * latticeScale,
+    }));
+    assert.ok(offsets.every(offset => Math.abs(offset.x - offsets[0].x) < 1e-9
+      && Math.abs(offset.z - offsets[0].z) < 1e-9), 'one scale-plus-translate preserves every cell relationship');
+    assert.ok(offsets[0].x !== 0 || offsets[0].z !== 0 || latticeScale !== 1,
+      'the occupied authored pose cannot stand');
     for (let i = 0; i < wrecks.length; i++) assert.deepEqual({ ...wrecks[i].pos }, poses[i], 'placement preserves earned debris positions');
     for (let step = 0; step < 4; step++) {
       await send(1);
