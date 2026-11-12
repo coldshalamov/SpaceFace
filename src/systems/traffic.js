@@ -167,7 +167,6 @@ import { nearMissPlantOps } from './nearMissPlant.js';
 import { applausePlantOps } from './applausePlant.js';
 import { fenderBenderPlantOps } from './fenderBenderPlant.js';
 import { scramblePlantOps } from './scramblePlant.js';
-import { recoveryTugPlantOps } from './recoveryTugPlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1640,7 +1639,6 @@ export const traffic = {
   ...applausePlantOps,
   ...fenderBenderPlantOps,
   ...scramblePlantOps,
-  ...recoveryTugPlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1754,7 +1752,6 @@ export const traffic = {
     this._initNearMissPlant(ctx);
     this._initFenderBenderPlant(ctx);
     this._initScramblePlant(ctx);
-    this._initRecoveryTugPlant(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
@@ -3937,7 +3934,6 @@ export const traffic = {
     stepSpillVultures(this);
     stepGratitudeParcel(this);
     this._stepRubberneckers(state);
-    this._updateRecoveryTugPlant(dt, state);
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
