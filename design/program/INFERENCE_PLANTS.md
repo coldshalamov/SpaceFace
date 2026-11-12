@@ -169,7 +169,7 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-57 | The Fridge changes sector | *"Fridge update."* and the sector's name | OPEN |
 | PL-58 | You win the Pit | *"Lights came up at the Pit last night."* | SHIPPED 86ea9fb8b546 |
 | PL-59 | You lose a search while wanted | *"Concord would like a word with a certain rope."* | SHIPPED 99136ecd8ae0 |
-| PL-60 | You finish a town's first job | the town's name, and *"says thanks, whoever you are."* | CLAIMED flash 2026-11-11 |
+| PL-60 | You finish a town's first job | the town's name, and *"says thanks, whoever you are."* | SHIPPED a96f601d0e9f |
 | PL-111 | You beat the recovery tug to a wreck | *"Today, the tug came second."* | DRAFT 2026-11-11 |
 | PL-112 | You ride the Plume | *"Heard the Plume had a passenger."* | DRAFT 2026-11-11 |
 | PL-113 | You settle Tolliver's whole list at a dock | *"Kind Regards reports all square. Suspicious."* | DRAFT 2026-11-11 |
