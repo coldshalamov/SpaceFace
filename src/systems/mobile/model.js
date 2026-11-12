@@ -74,6 +74,7 @@ export class MobileGestures {
       && d / Math.max(d, p.path) >= TUNING.flickStraightness && !p.boost) {
       this.flickS = TUNING.flickPulseS;
       this.flick = shapeStick(p.x - p.ox, p.y - p.oy, p.radius);
+      p.flick = this.flick;
     }
     // Sub-frame taps survive one fixed tick; cancellation is NEVER a tap.
     if (!cancel && !p.suppressed && (p.role === 'fire' || p.role === 'tether') && !p.sampled) this.pulse(p.role);
