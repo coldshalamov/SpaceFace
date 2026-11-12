@@ -355,11 +355,17 @@ function createTheLawModule(host) {
  */
 function createYardmasterModule(host) {
   let index = 0;
+  let startTick = null; // the round's own opening tick — the authored throws count from HERE
   return {
+    activate() {
+      startTick = host.state && Number.isInteger(host.state.tick) ? host.state.tick : null;
+    },
     update() {
       if (index >= SWARM_YARDMASTER_REVERSALS.length) return;
-      const tick = host.state && Number.isInteger(host.state.tick) ? host.state.tick : 0;
-      if (tick < SWARM_YARDMASTER_REVERSALS[index]) return;
+      const tick = host.state && Number.isInteger(host.state.tick) ? host.state.tick : null;
+      if (tick == null) return;
+      if (startTick == null) startTick = tick;
+      if (tick - startTick < SWARM_YARDMASTER_REVERSALS[index]) return;
       index += 1;
       if (host.bus && typeof host.bus.emit === 'function') {
         host.bus.emit('freight:reverseRequested', {
@@ -367,7 +373,7 @@ function createYardmasterModule(host) {
         });
       }
     },
-    teardown() { index = 0; },
+    teardown() { index = 0; startTick = null; },
   };
 }
 
