@@ -18,6 +18,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { ACHIEVEMENT_UNLOCKED_EVENT, installAchievements } from '../src/systems/achievements.js';
 import { chronicler } from '../src/systems/chronicler.js';
 
 const SEED = 4242;
@@ -107,6 +111,49 @@ test('an achievement unlock lands as a fact that names the achievement, and re-e
   });
   step(t);
   assert.equal(factsFor(t.state, 'achievement:unlocked').length, 1, 'one fact per achievement id');
+});
+
+test('a main achievement unlock crosses the committed worker surface and records once', async () => {
+  const worker = boot();
+  const mainBus = createBus();
+  const mainState = createGameState(SEED);
+  const outgoing = [];
+  let receive, init, lane, ledger;
+  try {
+    lane = createSimLaneRuntime({ state: mainState, bus: mainBus, registry: {}, helpers: {},
+      flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+      channelFactory: () => ({ onMessage(fn) { receive = fn; }, terminate() {},
+        post(message) { if (message.kind === 'init') init = message;
+          else if (message.kind === 'clockCommand') outgoing.push(message); } }) });
+    receive({ kind: 'ready', seq: init.seq });
+    await lane.readyPromise;
+    const unlocks = [];
+    mainBus.on(ACHIEVEMENT_UNLOCKED_EVENT, payload => unlocks.push(payload));
+    ledger = installAchievements({ bus: mainBus, state: mainState, voice: false, shell: null,
+      storage: { getItem: () => null, setItem() {} } });
+    mainBus.emit('dock:docked', { stationId: 'station_helios' });
+    for (let i = 0; i < outgoing.length; i++) {
+      receive({ kind: 'clockTick', commandSequence: outgoing[i].commandSequence });
+    }
+    const unlockCommands = outgoing.flatMap(message => message.commands || [])
+      .filter(command => command.t === 'bus' && command.p.emit === ACHIEVEMENT_UNLOCKED_EVENT);
+    assert.deepEqual(unlocks.map(p => p.id), ['berth_assigned']);
+    assert.deepEqual(unlockCommands.map(command => command.p.payload), unlocks,
+      'the worker receives the same primitive payload, once');
+    const [command] = unlockCommands;
+    worker.bus.emit(command.p.emit, command.p.payload);
+    step(worker);
+    worker.bus.emit(command.p.emit, { ...command.p.payload, retroactive: true });
+    step(worker);
+    const facts = factsFor(worker.state, ACHIEVEMENT_UNLOCKED_EVENT);
+    assert.equal(facts.length, 1);
+    assert.equal(facts[0].details.achievementId, 'berth_assigned');
+    assert.equal(facts[0].details.retroactive, false);
+  } finally {
+    ledger?.dispose();
+    lane?.close();
+    worker.sim.dispose();
+  }
 });
 
 test('a career ladder completion lands as a fact that names the ladder, and re-emitting dedupes', () => {
