@@ -10,14 +10,16 @@ import { test } from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
-import { validateRunState } from '../src/core/runState.js';
+import { createRunState, validateRunState } from '../src/core/runState.js';
+import { createSimulation } from '../src/core/sim.js';
+import { physics } from '../src/core/physics.js';
 import { runSession } from '../src/systems/runSession.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
 import { normalizeDamagePacket } from '../src/combat/damage.js';
-import { swarmDropMagnetRange } from '../src/systems/mining.js';
+import { mining, swarmDropMagnetRange } from '../src/systems/mining.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import {
   PRODUCTION_INIT_ORDER,
@@ -233,6 +235,44 @@ test('a scooped drop cannot be claimed twice', () => {
   scoop(h, d);
   assert.equal(h.state.swarmDropMagnetUntil, null);
   assert.ok(first > 100);
+});
+
+test('an NPC collision leaves the perk available for the player to scoop once', () => {
+  const sim = createSimulation({ seed: SEED, systems: [swarmDrops], updateOrder: [] });
+  try {
+    const { state, bus } = sim;
+    state.mode = 'flight';
+    state.run = Object.assign(createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED }),
+      { wave: 1, phase: 'active' });
+    const pos = { x: 25, z: -10 };
+    const player = sim.spawn({ type: 'ship', team: 1, pos, radius: 8 });
+    const other = sim.spawn({ type: 'ship', team: 3, pos, radius: 8 });
+    state.playerId = player.id;
+    bus.emit('swarm:dropRequested', { dropId: 'magnet', pos });
+    const [drop] = liveDrops({ state });
+    assert.ok(drop?.alive, 'the Swarm owner spawned the perk');
+
+    const contact = Object.assign(Object.create(physics), { state, bus, _diag: { pickupCollections: 0 } });
+    const miner = Object.assign(Object.create(mining), { state, bus });
+    const receipts = [];
+    const perks = [];
+    bus.on('pickup:collected', p => receipts.push([p.acceptedAmount, p.rejectedAmount]));
+    bus.on('swarm:dropCollected', p => perks.push(p));
+
+    assert.equal(contact._tryCollectPickup(drop, other), false, 'an NPC cannot claim a player perk');
+    assert.equal(state.entities.get(drop.id), drop);
+    assert.equal(drop.alive, true);
+    assert.equal(drop.data.amount, 1);
+    assert.equal(state.swarmDropMagnetUntil, null);
+    assert.equal(perks.length, 0);
+
+    assert.equal(miner._collectPickupViaEvent(drop, player).accepted, 1);
+    assert.equal(drop.alive, false);
+    assert.ok(state.swarmDropMagnetUntil > state.simTime);
+    assert.deepEqual(receipts, [[0, 1], [1, 0]]);
+    bus.emit('pickup:collected', { pickupId: drop.id, collectorId: player.id, amount: 1 });
+    assert.deepEqual(perks.map(p => p.id), [drop.id]);
+  } finally { sim.dispose(); }
 });
 
 // ---- Heavy Hands ------------------------------------------------------------------------------

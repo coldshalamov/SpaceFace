@@ -359,26 +359,31 @@ export const swarmDrops = {
   _onCollected(payload) {
     const id = payload && payload.pickupId;
     if (id == null || !this._live.has(id)) return;
-    const entity = this.state.entities && typeof this.state.entities.get === 'function'
-      ? this.state.entities.get(id) : null;
-    const dropIndex = entity?.data?.swarmDropIndex;
-    const dropDef = (entity?.data?.dropId && SWARM_DROP_BY_ID.get(entity.data.dropId))
-      || this._liveDrops.get(id) || null;
-    this._live.delete(id);
-    this._liveDrops.delete(id);
-    if (dropIndex != null) this._spent.add(dropIndex);
-    // Mining retires a collected pickup itself; do it here too so a path that does not (the
-    // physics contact collect) can never leave a second copy to claim.
-    if (entity && entity.alive !== false && typeof this.helpers?.removeEntity === 'function') {
-      this.helpers.removeEntity(id);
-    }
+    const entity = this.state.entities?.get?.(id);
+    if (entity?.type !== 'pickup' || entity.data?.kind !== SWARM_DROP_KIND) return;
+
+    // An absent acceptance receipt makes both collectors consume the pickup by default.
+    payload.acceptedAmount = 0;
+    payload.rejectedAmount = 1;
+    if (entity.alive === false) return;
     const run = liveSwarmRun(this.state);
     if (!run) return;
     if (payload.collectorId != null && payload.collectorId !== this.state.playerId) return;
     const player = this._player();
     if (!player || player.alive === false) return;
+    const dropDef = (entity.data.dropId && SWARM_DROP_BY_ID.get(entity.data.dropId))
+      || this._liveDrops.get(id) || null;
     if (!dropDef) return;
 
+    this._live.delete(id);
+    this._liveDrops.delete(id);
+    const dropIndex = entity.data.swarmDropIndex;
+    if (dropIndex != null) this._spent.add(dropIndex);
+    payload.acceptedAmount = 1;
+    payload.rejectedAmount = 0;
+    // Mining retires a collected pickup itself; do it here too so a path that does not (the
+    // physics contact collect) can never leave a second copy to claim.
+    if (typeof this.helpers?.removeEntity === 'function') this.helpers.removeEntity(id);
     this._applyDrop(dropDef, player, entity, run);
   },
 
