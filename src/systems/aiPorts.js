@@ -406,12 +406,17 @@ export const aiPorts = {
     const freeze = live ? identity : Object.freeze;
     const entity = getEntity(state, entityId);
     if (!entity || !entity.alive) return normalizeSensorFrame(null, entityId, tick);
-    const range = sensorRangeFor(state, entity);
+    const runtime = combatRuntimeFor(state, entity.id);
+    const sensorFraction = subsystemFraction(runtime, 'subsystem_sensor');
+    const range = sensorRangeFor(entity, runtime, sensorFraction);
+    // Range and confidence come from the same observer damage sample for this frame.
+    const confidenceScale = 0.55 + sensorFraction * 0.45;
     const attachmentIndex = this._attachmentIndex();
     const contacts = entityContacts(
       state,
       entity,
       range,
+      confidenceScale,
       this.helpers,
       attachmentIndex,
       freeze,
@@ -425,6 +430,7 @@ export const aiPorts = {
       state,
       entity,
       range,
+      confidenceScale,
       attachmentIndex.all,
       freeze,
       options.tetherContactsScratch || (live ? this._sensorTetherContactsScratch : null),
@@ -488,7 +494,7 @@ export const aiPorts = {
       for (const id of ids) {
         const entity = getEntity(state, id);
         if (!entity || !entity.alive) continue;
-        requests.push({ id, x: entity.pos.x, z: entity.pos.z, r: sensorRangeFor(state, entity), out: [] });
+        requests.push({ id, x: entity.pos.x, z: entity.pos.z, r: sensorRangeFor(entity, combatRuntimeFor(state, entity.id)), out: [] });
       }
       hash.queryRadiusBatch(requests, { shareResults: true, shareSupersetResults: true });
       this._diag.sensorBatches++;
@@ -544,7 +550,7 @@ export const aiPorts = {
       request.id = id;
       request.x = entity.pos.x;
       request.z = entity.pos.z;
-      request.r = sensorRangeFor(state, entity);
+      request.r = sensorRangeFor(entity, combatRuntimeFor(state, entity.id));
       request.out = entry.candidates;
       entry.requestActive = true;
       requests.push(request);
@@ -1445,7 +1451,7 @@ function hasActiveCloakRuntime(state, other) {
   return !!runtime && runtime.active === true;
 }
 
-function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null, contactRecords = null) {
+function entityContacts(state, self, range, confidenceScale, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null, contactRecords = null) {
   const out = outScratch || [];
   out.length = 0;
   const records = Array.isArray(contactRecords) ? contactRecords : null;
@@ -1483,7 +1489,7 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
     const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
       ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
       : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
-    const confidence = confidenceFor(distance, range, state, self);
+    const confidence = confidenceFor(distance, range, confidenceScale);
     const threat = threatFor(state, self, other, hostile);
     if (records) {
       out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile));
@@ -1604,7 +1610,7 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
         attachmentIndex, ContactKind.OBJECTIVE, freeze, cacheOwner);
       const hostile = isHostileForAI(state, self, towedLure);
       const threat = threatFor(state, self, towedLure, hostile);
-      const confidence = confidenceFor(Math.sqrt(lureDistanceSq), range, state, self);
+      const confidence = confidenceFor(Math.sqrt(lureDistanceSq), range, confidenceScale);
       if (records) {
         out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile));
       } else {
@@ -1688,7 +1694,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
   };
 }
 
-function attachmentContacts(state, self, range, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
+function attachmentContacts(state, self, range, confidenceScale, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
   const out = outScratch || [];
   out.length = 0;
   const attachments = activeAttachments || Object.values(state.combat && state.combat.attachments && state.combat.attachments.byId || {})
@@ -1715,7 +1721,7 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
       alive: true,
       valid: true,
       visible: true,
-      confidence: endpointVisible ? 1 : confidenceFor(distance, range, state, self),
+      confidence: endpointVisible ? 1 : confidenceFor(distance, range, confidenceScale),
       hostile,
       threat: hostile ? 0.85 : 0.25,
       targetId: attachment.targetId,
@@ -2102,10 +2108,8 @@ function combatRuntimeFor(state, entityId) {
   return state.combat && state.combat.entities && state.combat.entities[String(entityId)] || null;
 }
 
-function sensorRangeFor(state, entity) {
+function sensorRangeFor(entity, runtime, sensorFraction = subsystemFraction(runtime, 'subsystem_sensor')) {
   const ai = entity.data && entity.data.ai || {};
-  const runtime = combatRuntimeFor(state, entity.id);
-  const sensorFraction = subsystemFraction(runtime, 'subsystem_sensor');
   const base = positive(ai.sensorRange, positive(entity.sensorRange, DEFAULT_SENSOR_RANGE));
   const sensorOnline = !runtime || !runtime.capabilities || runtime.capabilities.sensor !== false;
   return base * (sensorOnline ? 1 : 0.25) * clamp(0.35 + sensorFraction * 0.65, 0.2, 1);
@@ -2213,9 +2217,8 @@ function distance2(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
 }
 
-function confidenceFor(distance, range, state, entity) {
-  const sensorFraction = subsystemFraction(combatRuntimeFor(state, entity.id), 'subsystem_sensor');
-  return clamp((1 - distance / Math.max(1, range)) * (0.55 + sensorFraction * 0.45), 0.1, 1);
+function confidenceFor(distance, range, confidenceScale) {
+  return clamp((1 - distance / Math.max(1, range)) * confidenceScale, 0.1, 1);
 }
 
 function contactSort(a, b) {
