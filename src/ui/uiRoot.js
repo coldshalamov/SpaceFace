@@ -1184,6 +1184,9 @@ export const ui = {
       syncFlightCursor(visible);
     };
     const refreshFlightUI = () => {
+      // An auto-launch can enter flight before the boot overlay lifts. Retire
+      // the title's watcher, input fence and media as soon as it loses the menu.
+      if (this.state?.mode !== 'menu') this._cinematicTeardown?.();
       const modalOpen = this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen();
       const docked = this.state && this.state.ui && this.state.ui.docked === true;
       setFlightUI(this.state && this.state.mode === 'flight' && !modalOpen && !docked);
@@ -1326,6 +1329,7 @@ export const ui = {
       // player BACK to the loading screen, which is what read as the keypress doing nothing.
       const mountCinematic = () => {
         if (dismissed || cinematic.isConnected) return;
+        if (this.state?.mode !== 'menu') { teardownCinematic(); return; }
         const host = document.getElementById('ui-root');
         // No mount point means there is no surface to gate — release the menu instead of
         // sitting between it and the player forever.
