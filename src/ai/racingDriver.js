@@ -101,9 +101,21 @@ export function racingAnchorIntent(driver, { params, gates, aperture = 80, laneW
     // decelerating into a braking point parked in front of the gate.
     const outLength = Math.hypot(outGate.x - gate.x, outGate.z - gate.z) || 1;
     const ahead = Math.max(40, Number(anchor.line && anchor.line.releaseAheadWU) || 60);
+    const outX = (outGate.x - gate.x) / outLength * ahead;
+    const outZ = (outGate.z - gate.z) / outLength * ahead;
+    const approachLead = anchor.line?.approachLeadWU;
+    if (Number.isFinite(approachLead) && approachLead > 0) {
+      // A sharp turn can put the outgoing target sideways of the legal gate even
+      // with the anchor bias clamped. Bound the combined aim until it crosses.
+      const forward = Math.max(approachLead, outX * from.nx + outZ * from.nz);
+      const lateral = clamp(outZ * from.nx - outX * from.nz + lat, -aperture * 0.55, aperture * 0.55);
+      return { phase: 'approach',
+        x: gate.x + from.nx * forward - from.nz * lateral,
+        z: gate.z + from.nz * forward + from.nx * lateral };
+    }
     return { phase: 'approach',
-      x: gate.x + ((outGate.x - gate.x) / outLength) * ahead - from.nz * lat,
-      z: gate.z + ((outGate.z - gate.z) / outLength) * ahead + from.nx * lat };
+      x: gate.x + outX - from.nz * lat,
+      z: gate.z + outZ + from.nx * lat };
   }
   const gate = gates[next], from = gateApproach(gates, next);
   if (!gate || !from) return null;

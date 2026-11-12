@@ -268,6 +268,60 @@ test('a steady 400/500/600 ms reply cadence is learned, not re-seated, at 60 and
   }
 });
 
+test('a live 2 Hz worker stream slows playout to its delivered simulation rate', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  const mesh = meshStub();
+  let tick = 0;
+  const publish = (ticks) => {
+    tick += ticks;
+    packOne(fence, { x: SPEED * tick * DT, simTime: tick * DT });
+  };
+  for (let frame = 0; frame < 180; frame++) {
+    publish(1);
+    draw(fence, mesh, DT);
+  }
+  const expectedRate = 3 / 30;
+  let previousX = mesh.position.x;
+  let held = 0;
+  let worstStep = 0;
+  for (let frame = 1; frame <= 720; frame++) {
+    if (frame % 30 === 0) publish(3);
+    draw(fence, mesh, DT);
+    if (frame > 360) {
+      const step = mesh.position.x - previousX;
+      assert.ok(step >= -1e-9, 'the presented hull never rewinds');
+      if (step <= 1e-4) held++;
+      worstStep = Math.max(worstStep, step);
+    }
+    previousX = mesh.position.x;
+  }
+  const diag = fence.getPlayoutDiagnostics();
+  assert.equal(diag.gapResets, 0, 'steady replies must not reseat the world');
+  assert.ok(Math.abs(diag.playbackRate - expectedRate) < 0.01,
+    `three ticks per 500 ms should play at 0.1x, got ${diag.playbackRate}x`);
+  assert.equal(held, 0, 'the moving hull never holds after the rate settles');
+  assert.ok(worstStep < SPEED * DT * expectedRate * 1.5,
+    `worst frame advances ${worstStep} WU at the slow rate`);
+
+  for (let frame = 0; frame < 120; frame++) draw(fence, mesh, 0, DT);
+  const paused = fence.getPlayoutDiagnostics();
+  assert.equal(paused.presentedTimeS, diag.presentedTimeS, 'a paused simulation holds its presented time');
+  assert.equal(paused.playbackRate, diag.playbackRate, 'paused wall time is excluded from cadence');
+  assert.equal(paused.gapResets, 0, 'an explicit pause is not a worker gap');
+
+  let resumedFastAt = 0;
+  for (let frame = 1; frame <= 120; frame++) {
+    publish(1);
+    draw(fence, mesh, DT);
+    const step = mesh.position.x - previousX;
+    assert.ok(step > 0 && step < SPEED * DT * 1.5, 'resumed flight moves without a snap');
+    previousX = mesh.position.x;
+    if (!resumedFastAt && fence.getPlayoutDiagnostics().playbackRate >= 0.95) resumedFastAt = frame;
+  }
+  assert.ok(resumedFastAt > 0 && resumedFastAt <= 15, '60 Hz replies restore playback within 250 ms');
+  assert.ok(fence.getPlayoutDiagnostics().packLagMs <= 100, 'the normal reserve returns within two seconds');
+});
+
 test('349/351 ms replies sit on the cadence side of the old fixed 350 ms knife edge', () => {
   // 351 ms is the exact first interval the old `simDelta > PLAYOUT_MAX_GAP_S` clause re-seated;
   // 349 ms was just under it. Both must be learned as cadence at both frame rates.
