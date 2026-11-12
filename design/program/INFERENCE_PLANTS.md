@@ -36,7 +36,7 @@ or does not.
 | PL-06 | **Tailgater.** Cut off a loaded hauler and it follows you for twenty seconds with its horn down | Outrun it, or lead it somewhere it will regret | SHIPPED 4fb8e0a3fb72 |
 | PL-07 | **Witness.** A crime seen by the bus is mentioned by Benny on open radio and the fine is waiting at your next dock | Stop the bus leaving, or do not be seen | OPEN |
 | PL-08 | **Applause.** A slingshot kill within sight of a station makes its dock lamps flash twice | Do it on purpose | CLAIMED flash 2026-11-11 |
-| PL-09 | **The recovery tug.** A wreck left in a lane is collected by a real tug that comes from the nearest dock | Race it for the wreck; or cut its line | OPEN |
+| PL-09 | **The recovery tug.** A wreck left in a lane is collected by a real tug that comes from the nearest dock | Race it for the wreck; or cut its line | CLAIMED flash 2026-11-12 |
 | PL-10 | **Getaway.** While wanted, riding a freight string or the Noon Train out of a sector loses the search | Learn the timetable | OPEN |
 | PL-101 | **The far berth.** Cut the dock queue under boost and every horn behind you holds down; the dock berths you at the far pier. Cut in twice more and the pier is chalked with your tag — the walk is yours now | Queue like the rest; or own the joke and the exercise | DRAFT 2026-11-11 |
 | PL-102 | **Mistaken.** Park dead-still in a lane for a minute, lamps off. A patrol sweeps you with its lamp and taps your hull twice. Play dead through it and the recovery tug clamps on and tows you in as a wreck | Wave a lamp and be on your way; or ride the tow in and explain yourself at the dock | DRAFT 2026-11-11 |
