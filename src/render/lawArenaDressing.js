@@ -8,7 +8,7 @@
 // camera-facing card:
 //
 //   ROOM — driven by the `survivalArena:installed`/`released` pair (survivalArena.js). Field
-//   anchors (well/repulsor/cone) get pylon machines at their centres; toy specs get shutter bars
+//   anchors get pylon machines or the Mill's toothed grind mouths at their centres; toy specs get shutter bars
 //   across a→b, a crusher press working pos→anvil on the authored warning/surge/calm clock, and
 //   a current mouth aimed down the cone. All clocks run off elapsed sim time through the same
 //   pure helpers the sim uses (shutterPhase / crusherPhase / stepCinderMachinery), so the metal
@@ -37,12 +37,14 @@
 // flashReduce caps emissive pulses to a steady glow.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { recordMountedRootForUnreadyScan } from './bloom.js';
 import { CRUSHER_CYCLE, crusherPhase, SHUTTER_CYCLE, shutterPhase } from '../data/arenaModuleLibrary.js';
 import { CINDER_ARENA_ID, stepCinderMachinery } from '../systems/cinderSluiceArena.js';
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
 import { LAGRANGE_ARENA_ID } from '../systems/lagrangeCrucible.js';
 import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
+import { MILL_ARENA_ID, MILL_GRIND_STRENGTH } from '../systems/asteroidMillArena.js';
 import { presentedAdvanceRatio } from './presentedClock.js';
 import {
   STORM_ARENA_ID,
@@ -55,7 +57,7 @@ import {
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 import { addHazardBand, addWorkLamp, arenaMaterials, machinedBoxGeometry } from './arenaFinish.js';
 
-const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID]);
+const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID]);
 const BOSS_DRESSING_KINDS = new Set([
   'tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant', 'seam_crusher', 'queen_warden',
 ]);
@@ -81,7 +83,7 @@ const WINCH_RATE_REDUCED = 0.12;
 const GIMBAL_RATE = 0.5;          // manifold_warden arm tumble
 const ORBIT_RATE = 0.4;           // grid_tyrant drone ring
 const RELAY_SPARK_RATE = 5.0;     // storm relay beam flicker cadence
-const GRIND_RATE = 0.55;          // seam_crusher mill wheels — a heavy turn, not a fan
+const GRIND_RATE = 0.55;          // normal turn for room grinders and seam_crusher wheels
 const GRIND_RATE_REDUCED = 0.14;
 const BROOD_ORBIT_RATE = 0.4;     // queen_warden attendant ring
 const BROOD_ORBIT_RATE_REDUCED = 0.1;
@@ -91,6 +93,7 @@ const RELEASE_S = 0.55;
 const RELEASE_FLING_WU = 26;
 
 let _shared = null;
+let _millGrindTeeth = null;
 
 function sharedAssets() {
   if (_shared) return _shared;
@@ -381,6 +384,74 @@ function buildCurrentMouth(toy, isCinder, sink) {
       seam.emissiveIntensity = calmFlash
         ? 0.8
         : clock.phase === 'surge' ? 1.3 : clock.phase === 'warning' ? 0.7 : 0.35;
+    },
+  };
+}
+
+function millGrindTeethGeometry(boxGeo) {
+  if (_millGrindTeeth) return _millGrindTeeth;
+  const teeth = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = i * Math.PI / 4;
+    teeth.push(boxGeo.clone()
+      .scale(2.6, 3.6, 1.8)
+      .rotateY(-angle)
+      .translate(Math.cos(angle) * 7.5, 0, Math.sin(angle) * 7.5));
+  }
+  // A wheel submits its rim as one mesh and reuses it across installs.
+  _millGrindTeeth = mergeGeometries(teeth);
+  _millGrindTeeth.userData.spacefaceSharedAsset = true;
+  return _millGrindTeeth;
+}
+
+/** The Mill's toothed wheels feed the throat in the direction of the installed cone. */
+function buildGrindMouth(field, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.emberMat, sink);
+  const root = new THREE.Group();
+  root.name = 'mill_grind_mouth';
+  const dir = field.dir ?? { x: 1, z: 0 };
+  root.position.set(field.center.x, 0, field.center.z);
+  root.rotation.y = -Math.atan2(dir.z, dir.x); // local +X points downstream
+
+  const sill = mesh(shared.boxGeo, shared.metalMat, 'mill_grind_sill');
+  sill.scale.set(34, 3.5, 40);
+  sill.position.set(-8, 1.75, 0);
+  root.add(sill);
+
+  const wheels = [];
+  const teethGeo = millGrindTeethGeometry(shared.boxGeo);
+  for (const side of [-1, 1]) {
+    const cheek = mesh(shared.boxGeo, shared.darkMat, 'mill_grind_cheek');
+    cheek.scale.set(40, 10, 6);
+    cheek.position.set(-4, 6, side * 22);
+    cheek.rotation.y = side * 0.26;
+    root.add(cheek);
+    addHazardBand(root, { width: 30, height: 0.9, depth: 1.1, x: -4, y: 11.4, z: side * 22.4 });
+    addWorkLamp(root, { width: 3.6, height: 1, depth: 1, x: -20, y: 7.5, z: side * 24.4 });
+
+    const wheel = new THREE.Group();
+    wheel.name = 'mill_grind_wheel';
+    wheel.position.set(-6, 10.5, side * 9.5);
+    const disc = mesh(shared.cylGeo, shared.metalMat, 'mill_grind_disc');
+    disc.scale.set(7.5, 3.2, 7.5);
+    wheel.add(disc, mesh(teethGeo, shared.plateMat, 'mill_grind_teeth'));
+    root.add(wheel);
+    wheels.push(wheel);
+  }
+
+  const throat = mesh(shared.boxGeo, seam, 'mill_grind_throat');
+  throat.scale.set(2.4, 5, 30);
+  throat.position.set(-16, 6, 0);
+  root.add(throat);
+  const grindStrength = Math.abs(field.strength) / MILL_GRIND_STRENGTH;
+  return {
+    root,
+    mover(_elapsed, dt, reduced, calmFlash, pulse) {
+      const step = (reduced ? GRIND_RATE_REDUCED : GRIND_RATE) * grindStrength * dt;
+      wheels[0].rotation.y += step;
+      wheels[1].rotation.y -= step;
+      seam.emissiveIntensity = calmFlash ? 0.8 : 0.55 + pulse * 0.45;
     },
   };
 }
@@ -1571,7 +1642,9 @@ export function createLawArenaDressing() {
           && Math.hypot(t.center.x - field.center.x, t.center.z - field.center.z) <= 12);
         if (backed) continue; // the mouth owns this anchor
       }
-      const part = buildFieldAnchor(field, clones);
+      const part = arenaId === MILL_ARENA_ID && field.kind === 'cone'
+        ? buildGrindMouth(field, clones)
+        : buildFieldAnchor(field, clones);
       parts.push(part);
       root.add(part.root);
     }

@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
+import { MILL_ARENA_ID } from '../src/systems/asteroidMillArena.js';
 import {
   CINDER_ARENA_ID,
   CINDER_BOSS_ROLE,
@@ -179,6 +180,60 @@ test('survivalArena:released carries the arenaId for scoped teardown', () => {
 });
 
 // ---- room dressing tracker ----
+
+test('scored Asteroid Mill dresses both registered grind cones and releases their room', () => {
+  const h = boot();
+  const dressing = createLawArenaDressing();
+  const scene = new THREE.Scene();
+  h.bus.on('survivalArena:installed', (p) => dressing.handleInstall(p, scene));
+  h.bus.on('survivalArena:released', () => dressing.handleReleased());
+
+  installRun(h, { arenaId: MILL_ARENA_ID, wave: 1 });
+  emitPlanned(h, { arenaId: MILL_ARENA_ID, wave: 1 });
+  const { payload } = named(h.emitted, 'survivalArena:installed')[0];
+  const cones = payload.fieldSpecs.filter((field) => field.kind === 'cone');
+  assert.equal(cones.length, 2);
+  assert.ok(cones.every((field) => h.fakeFields.hasExternal(field.id)));
+
+  const room = dressing.peekRoom();
+  assert.ok(room?.root.parent === scene, 'the active Mill has room machinery');
+  assert.equal(room.parts.length, cones.length);
+  for (const [i, cone] of cones.entries()) {
+    const mouth = room.parts[i].root;
+    assert.equal(mouth.name, 'mill_grind_mouth');
+    assert.equal(mouth.position.x, cone.center.x);
+    assert.equal(mouth.position.z, cone.center.z);
+    assert.equal(mouth.rotation.y, -Math.atan2(cone.dir.z, cone.dir.x));
+    const wheels = mouth.children.filter((child) => child.name === 'mill_grind_wheel');
+    assert.equal(wheels.length, 2);
+    assert.ok(wheels.every((wheel) => wheel.getObjectByName('mill_grind_teeth')?.isMesh));
+  }
+
+  const mouth = room.parts[0].root;
+  const [leftWheel, rightWheel] = mouth.children.filter((child) => child.name === 'mill_grind_wheel');
+  dressing.updateRoom(1, 1, {});
+  assert.ok(leftWheel.rotation.y > 0 && rightWheel.rotation.y < 0);
+  const fullTurn = leftWheel.rotation.y;
+  dressing.updateRoom(2, 1, { reducedMotion: true, reducedFlash: true });
+  assert.ok(leftWheel.rotation.y > fullTurn && leftWheel.rotation.y < fullTurn * 1.5);
+  assert.equal(mouth.getObjectByName('mill_grind_throat').material.emissiveIntensity, 0.8);
+
+  h.bus.emit('run:waveCleared', { wave: 1 });
+  assert.equal(dressing.peekRoom(), null);
+  assert.equal(room.root.parent, null);
+});
+
+test('Asteroid Mill furnace dresses its grind flank and the repulsor separately', () => {
+  const h = boot();
+  installRun(h, { arenaId: MILL_ARENA_ID, wave: 5 });
+  emitPlanned(h, { arenaId: MILL_ARENA_ID, wave: 5 });
+  const { payload } = named(h.emitted, 'survivalArena:installed')[0];
+  const dressing = createLawArenaDressing();
+  dressing.handleInstall(payload, new THREE.Scene());
+  assert.deepEqual(dressing.peekRoom()?.parts.map((part) => part.root.name),
+    ['mill_grind_mouth', 'law_pylon']);
+  dressing.handleReleased();
+});
 
 function lagrangePayload() {
   return {
