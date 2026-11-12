@@ -25,7 +25,11 @@ export function createLogbookRecap(ctx, options = {}) {
   const doc = options.document || globalThis.document, clock = createRecapClock(options.now);
   let pending = false, entries = [], shown = -1, root = null, lastScan = -Infinity;
   const now = options.now || (() => performance.now());
-  const hide = () => { pending = false; if (root) root.hidden = true; };
+  // G16-03: the card takes the Stage's dialog seat while it shows, so it queues behind a confirm
+  // or station screen instead of drawing over it, and gives the seat back when it hides.
+  let seat = null;
+  const release = () => { if (seat) { seat.clear({ keepEl: true }); seat = null; } };
+  const hide = () => { pending = false; if (root) root.hidden = true; release(); };
   const on = (type, fn) => { const off = bus?.on?.(type, fn); if (typeof off === 'function') offs.push(off); };
   on('save:loaded', () => { entries = logbookRecap(state); pending = true; shown = -1; clock.reset(); media.reload(); });
   for (const event of ['game:new', 'game:load', 'save:restoring', 'game:exitToMenu', 'player:death']) on(event, hide);
@@ -40,6 +44,12 @@ export function createLogbookRecap(ctx, options = {}) {
       const stage = doc === globalThis.document && getStage();
       const slot = stage && typeof stage.slotEl === 'function' ? stage.slotEl('dialog') : null;
       (slot || doc.getElementById('ui-root')).appendChild(root);
+    }
+    if (doc === globalThis.document && !(seat && (seat.visible || seat.queued))) {
+      const stage = getStage();
+      if (stage && typeof stage.show === 'function') {
+        seat = stage.show('dialog', root, { id: 'logbook-recap', severity: 'info', bare: true });
+      }
     }
     root.replaceChildren(el('div', 'k-eyebrow', 'Previously, on your run…'));
     const still = logbookStill(state, entry);
@@ -56,10 +66,10 @@ export function createLogbookRecap(ctx, options = {}) {
       // Never spend the recap behind loading/menu chrome. It is presentation time, not sim time.
       const available = state.mode === 'flight' && !state.paused && !state.ui?.screenStack?.length && !doc?.hidden;
       const next = clock.step(entries.length, available);
-      if (!available) { if (root) root.hidden = true; return; }
+      if (!available) { if (root) root.hidden = true; release(); return; }
       if (!next.visible) { hide(); return; }
       if (shown !== next.page || root?.hidden) { shown = next.page; paint(entries[shown]); }
     },
-    dispose() { for (const off of offs) off(); media.dispose(); root?.remove(); root = null; },
+    dispose() { for (const off of offs) off(); media.dispose(); release(); root?.remove(); root = null; },
   };
 }
