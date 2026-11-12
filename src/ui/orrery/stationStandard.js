@@ -931,6 +931,14 @@ ${P} .sx-bar .sx-choice:disabled { opacity:.45; cursor:not-allowed; }
     min-width:0 !important; min-height:28px !important; height:auto !important; padding:3px 2px !important; font-size:12px !important; }
   ${P}:has(.sx-mkt.orr-market) .sx-mkt .so-trade-total, ${P}:has(.sx-mkt.orr-market) .sx-mkt .so-trade-breakdown { min-width:0 !important; max-width:100% !important; }
 }
+/* Bar on short desktop windows (≥901 wide, ≤800 tall): the stage is ~280px at 1280×720 and ~200px at
+   960×540, and three 44px replies under the speaker plate ran past it, so the third (or second) reply
+   stood cut under the tab rail. The replies close up to 36px rows 6px apart and sit 8px under the
+   plate, so the whole set reads inside the stage (ui-polish-430) */
+@media (min-width:901px) and (max-height:800px) {
+  ${P} .sx-bar .sx-talk__choices { gap:6px !important; margin:8px 0 0 !important; }
+  ${P} .sx-bar .sx-choice { min-height:36px !important; padding-top:7px !important; padding-bottom:7px !important; }
+}
 `;
 
 export function injectStationStandard(doc = globalThis.document) {
