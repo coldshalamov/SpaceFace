@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { removeCargo } from '../src/systems/cargo.js';
+import { insertAsteroidFieldRock } from '../src/world/asteroidField.js';
 import {
   CONTRACT_47A_B0_TAG,
   CONTRACT_47A_SAMPLE_ID,
@@ -85,6 +86,42 @@ test('Contract 47-A is received, located, recovered, delivered and settled once'
   assert.ok(h.toasts.some((row) => /Contract 47-A.*\+400 cr/.test(row.text)));
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.credits.filter((row) => row.amount === 400).length, 1, 'repeat dock cannot duplicate settlement');
+});
+
+test('recovery site fix survives the bound body shelving to its field record', () => {
+  const h = harness();
+  const mission = contract(h);
+  assert.ok(mission, 'new game receives one active 47-A recovery order');
+  const site = h.missions.contract47aSampleSite();
+  assert.ok(site && site.live === true && site.pos, 'bound body is the live site while materialized');
+  assert.deepEqual(site.pos, h.asteroid.pos);
+
+  // The far-actor regime shelves the body: entity removed, durable record takes the identity.
+  const shelf = insertAsteroidFieldRock(h.state, {
+    id: h.asteroid.id,
+    pos: { x: h.asteroid.pos.x, z: h.asteroid.pos.z },
+    radius: 8, mass: 400, hull: 100, hullMax: 100,
+    data: { ...h.asteroid.data },
+  });
+  h.state.entities.delete(h.asteroid.id);
+  h.state.entityList.length = 0;
+  assert.equal(h.missions.contract47aSampleEntity(), null, 'live read must not fake a shelved body');
+
+  const shelved = h.missions.contract47aSampleSite();
+  assert.ok(shelved && shelved.live === false, 'the recorded fix keeps the site while shelved');
+  assert.deepEqual(shelved.pos, mission.params.samplePos,
+    'the display fix is the recorded site, never a substitute body');
+
+  // The seam lesson promotes the durable record back rather than staging a substitute rock.
+  h.missions.helpers.spawnEntity = (spec) => {
+    const ent = { alive: true, vel: { x: 0, z: 0 }, ...spec };
+    h.state.entities.set(ent.id, ent);
+    h.state.entityList.push(ent);
+    return ent;
+  };
+  const promoted = h.missions.promoteContract47aSample();
+  assert.ok(promoted && promoted.id === shelf.id, 'promote re-mints the bound body by durable id');
+  assert.equal(h.missions.contract47aSampleEntity(), promoted, 'the promoted body is the live source again');
 });
 
 test('missing sample re-marks recovery instead of dead-ending delivery', () => {

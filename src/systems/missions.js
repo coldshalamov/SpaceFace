@@ -272,6 +272,7 @@ import {
 // so a void contract's receipt says what actually took the objective down.
 import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
+import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
@@ -3174,6 +3175,52 @@ export const missions = {
       }
     }
     return null;
+  },
+
+  // OPENING-1: the recovery site's display fix, durable across the far-actor regime. The bound
+  // body shelves to its field record when the player flies off; the mark must keep the site's
+  // recorded fix (the same `sample_site` fallback _missionWaypoint paints) rather than vanish.
+  // Pure read — { pos, live } or null while B0 is unbound, recovered, or off-sector.
+  contract47aSampleSite() {
+    const m = (this.state.missions && this.state.missions.active || [])
+      .find((x) => x && x.status === 'active' && x.storyTag === CONTRACT_47A_B0_TAG
+        && !(x.params && x.params.sampleRecovered));
+    if (!m) return null;
+    const live = this.contract47aSampleEntity();
+    if (live && live.pos) return { pos: { x: live.pos.x, z: live.pos.z }, live: true };
+    const binding = m.params && m.params.sampleSource;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (binding && binding.sectorId && binding.sectorId !== sectorId) return null;
+    const pos = m.params && m.params.samplePos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    return { pos: { x: pos.x, z: pos.z }, live: false };
+  },
+
+  // OPENING-1: the seam lesson works the bound body. When the far-actor regime has shelved it,
+  // materialize the durable field record back by field/slot identity so the lesson never has to
+  // substitute a staged rock. Write path — promotes via the field's own owner seam.
+  promoteContract47aSample() {
+    const live = this.contract47aSampleEntity();
+    if (live) return live;
+    const m = (this.state.missions && this.state.missions.active || [])
+      .find((x) => x && x.status === 'active' && x.storyTag === CONTRACT_47A_B0_TAG
+        && !(x.params && x.params.sampleRecovered));
+    const binding = m && m.params && m.params.sampleSource;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!binding || binding.sectorId !== sectorId) return null;
+    const field = this.state.world && this.state.world.asteroidField;
+    let rec = null;
+    if (field && field.byId) {
+      for (const row of field.byId.values()) {
+        const data = row && row.data;
+        if (data && data.fieldId === binding.fieldId && data.asteroidSlotId === binding.slotId) {
+          rec = row;
+          break;
+        }
+      }
+    }
+    if (!rec || rec.id == null) return null;
+    return promoteAsteroidFieldRock(this.state, rec.id, this.helpers, '47a-recovery');
   },
 
   _nearestBulkChunk() {

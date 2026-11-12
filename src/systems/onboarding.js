@@ -2181,8 +2181,13 @@ export const onboarding = {
   // recovered) the synthetic training rock stages as before so the lesson still lands.
   _bindSeamMiningTarget() {
     const missions = this.registry && this.registry.get && this.registry.get('missions');
-    const sample = missions && typeof missions.contract47aSampleEntity === 'function'
+    let sample = missions && typeof missions.contract47aSampleEntity === 'function'
       ? missions.contract47aSampleEntity() : null;
+    // A shelved bound body re-materializes through the field's own promote seam rather than
+    // being substituted by a staged rock.
+    if (!sample && missions && typeof missions.promoteContract47aSample === 'function') {
+      sample = missions.promoteContract47aSample();
+    }
     if (sample && sample.id != null) {
       this._miningRockId = sample.id;
       if (this.state.onboarding) this.state.onboarding._miningRockId = sample.id;
@@ -2193,6 +2198,12 @@ export const onboarding = {
 
   _contract47aSampleTarget() {
     const missions = this.registry && this.registry.get && this.registry.get('missions');
+    // OPENING-1: the mark survives the far-actor regime — a shelved bound body still owns its
+    // recorded site fix, so the one visible mark never falls to a generic beacon mid-rail.
+    if (missions && typeof missions.contract47aSampleSite === 'function') {
+      const site = missions.contract47aSampleSite();
+      return site && site.pos ? { pos: site.pos, label: '47-A Recovery Site' } : null;
+    }
     const sample = missions && typeof missions.contract47aSampleEntity === 'function'
       ? missions.contract47aSampleEntity() : null;
     return sample && sample.pos ? { pos: sample.pos, label: '47-A Recovery Site' } : null;
@@ -2520,8 +2531,11 @@ export const onboarding = {
       // the id went stale (id recycle, sector re-materialize). The synthetic training rock only
       // restages when no bound source exists (legacy save, wrong sector, already recovered).
       const missions = this.registry && this.registry.get && this.registry.get('missions');
-      const sample = missions && typeof missions.contract47aSampleEntity === 'function'
+      let sample = missions && typeof missions.contract47aSampleEntity === 'function'
         ? missions.contract47aSampleEntity() : null;
+      if (!sample && missions && typeof missions.promoteContract47aSample === 'function') {
+        sample = missions.promoteContract47aSample();
+      }
       if (sample && sample.id != null) {
         if (this._miningRockId !== sample.id) {
           this._miningRockId = sample.id;
@@ -2529,8 +2543,15 @@ export const onboarding = {
           this._setObjectiveWaypoint(true);
         }
       } else if (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining) {
-        this._spawnMiningRock();
-        this._setObjectiveWaypoint(true);
+        // A shelved bound body keeps its durable id and re-materializes on approach; the
+        // synthetic rock restages only when no bound site remains (legacy save, wrong sector,
+        // already recovered).
+        const boundSite = missions && typeof missions.contract47aSampleSite === 'function'
+          ? missions.contract47aSampleSite() : null;
+        if (!boundSite) {
+          this._spawnMiningRock();
+          this._setObjectiveWaypoint(true);
+        }
       }
     }
     if (beat.key === 'tether' && !this._liveTrainingDerelict()) {
