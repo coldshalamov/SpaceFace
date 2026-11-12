@@ -43,6 +43,9 @@ const CSS = `
 .orr-lampkey > .orr-lampkey__word { position:relative; z-index:1; }
 .orr-lampkey:not(:disabled):is(:hover, :focus-visible)::before { background:var(--dp-hand-hot, #ffd98c) !important; }
 .orr-lampkey:focus-visible { outline:2px solid rgb(255 217 140 / .85) !important; outline-offset:3px !important; }
+/* consoleStandard's #screens focus rule (1,1,1) outranks the line above and sets border-radius:2px, so the ring
+   was square and cut across the hold track's rounded corners; it follows the rounded field instead. */
+#screens .orr-lampkey:focus-visible { border-radius:8px !important; }
 .orr-lampkey:not(:disabled):active, .orr-lampkey.is-holding { transform:translateY(1px); }
 /* the key being charged stays the brightest filled shape; the travelling light is bigger than the field's edge */
 .orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
@@ -63,12 +66,15 @@ const CSS = `
   background:none !important; -webkit-mask:none !important; mask:none !important; pointer-events:none; overflow:visible; z-index:2; }
 .orr-lampkey .dp-holdring::before, .orr-lampkey .dp-holdring::after { display:none !important; content:none !important; }
 .orr-lampkey .dp-holdring > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
-/* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is red */
+/* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is amber */
 .orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; }
 .orr-lampkey .orr-lampkey__commit { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2; }
 .orr-lampkey .orr-lampkey__commit-bloom { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:8; opacity:.28; }
 .orr-lampkey .orr-lampkey__fillbloom, .orr-lampkey .orr-lampkey__fill { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-linecap:round;
-  stroke-dasharray:100; stroke-dashoffset:calc(100 - var(--sf-hold-p, 0) * 100); }
+  stroke-dasharray:100 101; stroke-dashoffset:calc(100 - var(--sf-hold-p, 0) * 100); }
+/* dasharray 100 101, not 100: with a bare 100 the gap is also 100, so at rest (offset 100) the next dash
+   begins exactly at the path's end as a zero-length dash, and the round cap paints it as an amber dot
+   on the track. A 101 gap pushes that dash past the end of the 100-unit path. */
 .orr-lampkey .orr-lampkey__fill { stroke-width:3; }
 .orr-lampkey .orr-lampkey__fillbloom { stroke-width:11; opacity:.36; }
 /* the bead rides the same silhouette, ahead of the fill */
