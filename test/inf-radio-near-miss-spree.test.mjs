@@ -173,6 +173,24 @@ test('traffic:nearMissPlant events count toward the 10 near misses', () => {
     'nearMissPlant events also count toward the 10 near misses');
 });
 
+test('one close pass heard by both the horn ladder and the plant counts once', () => {
+  const h = makeHarness();
+  tuneStatic(h);
+  // Five passes, each raising traffic:nearMiss AND traffic:nearMissPlant for the same hull in the same tick.
+  for (let i = 1; i <= 5; i++) {
+    const simTime = 10 + i * 3;
+    h.state.simTime = simTime;
+    const horn = makeRealNearMissPayload(i, simTime);
+    h.bus.emit('traffic:nearMiss', horn);
+    h.bus.emit('traffic:nearMissPlant', {
+      entityId: horn.entityId, count: 1, barkText: "Lane's not yours, pal!", reported: false,
+      pos: { x: 50, z: 50 }, missWu: 12.0, clearanceWu: 5.0, relSpeed: 130, t: simTime,
+    });
+  }
+  assert.equal(h.state.bandRadio.eventKeys['player.ten_near_misses'], undefined,
+    'five passes are five near misses, not ten');
+});
+
 test('eligibleBandLines only shows the authored line when key is open', () => {
   const channel = BAND_CHANNEL_BY_ID.the_static;
   const lines = (keys) => eligibleBandLines(channel, { eventKeys: keys, reachRep: 0 })

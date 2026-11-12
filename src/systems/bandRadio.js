@@ -310,8 +310,12 @@ export const bandRadio = {
       if (!payload) return;
       const state = this.state;
       const now = Number(payload.t != null ? payload.t : (state && state.simTime)) || 0;
-      this._recentNearMissTimes = this._recentNearMissTimes.filter((t) => now >= t && now - t <= 60.0);
-      this._recentNearMissTimes.push(now);
+      // One close pass can raise both the horn ladder and the PL-01 plant for the same hull: count a
+      // hull once per 2 s so ten near misses means ten passes, not five passes heard twice.
+      const id = payload.entityId;
+      this._recentNearMissTimes = this._recentNearMissTimes.filter((m) => now >= m.t && now - m.t <= 60.0);
+      if (id != null && this._recentNearMissTimes.some((m) => m.id === id && now - m.t < 2.0)) return;
+      this._recentNearMissTimes.push({ t: now, id });
       if (this._recentNearMissTimes.length >= 10) {
         this._recentNearMissTimes.length = 0;
         const own = this._ensureState();
