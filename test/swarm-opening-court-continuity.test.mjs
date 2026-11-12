@@ -63,3 +63,63 @@ test('actual arena census carries authored slot identity when the player throws 
     assert.equal(h.bodies().length, 14, 'repeated census never mints a thrown bank twice');
   } finally { h.close(); }
 });
+
+for (const distance of [401, 901]) {
+  test(`a bank returning from ${distance}wu keeps its slot through the next court expansion`, () => {
+    const h = fixture();
+    try {
+      h.owner._topUp(h.state.run, 1);
+      const original = h.bodies().find(e => e.data.openingTerrainSlot === 0);
+      original.pos = { x: distance, z: 0 };
+      h.owner._topUp(h.state.run, 2);
+      assert.equal(h.bodies().filter(e => e.data.openingTerrainSlot === 0).length, 1,
+        'departure is not destruction: do not clone a body while its release clock is running');
+      assert.equal(original.data.despawnAt, 20);
+      h.state.simTime = 10;
+      original.pos = { x: 325, z: 0 };
+      h.owner._topUp(h.state.run, 3);
+      assert.deepEqual(h.bodies().map(e => e.data.openingTerrainSlot).sort((a, b) => a - b),
+        Array.from({ length: 14 }, (_, i) => i));
+      assert.equal(h.bodies().find(e => e.data.openingTerrainSlot === 0), original);
+      assert.ok(original.data.despawnAt > 20, 'ordinary returned-body lifetime renewal is retained');
+    } finally { h.close(); }
+  });
+}
+
+test('actual removal frees the reserved opening slot for ordinary round replenishment', () => {
+  const h = fixture();
+  try {
+    h.owner._topUp(h.state.run, 1);
+    const original = h.bodies().find(e => e.data.openingTerrainSlot === 0);
+    original.pos = { x: 901, z: 0 };
+    h.owner._topUp(h.state.run, 2);
+    h.state.entities.delete(original.id);
+    h.state.entityList = h.state.entityList.filter(e => e !== original);
+    h.state.simTime = 21;
+    h.owner._topUp(h.state.run, 3);
+    assert.deepEqual(h.bodies().map(e => e.data.openingTerrainSlot).sort((a, b) => a - b),
+      Array.from({ length: 14 }, (_, i) => i));
+    assert.notEqual(h.bodies().find(e => e.data.openingTerrainSlot === 0), original);
+  } finally { h.close(); }
+});
+
+test('indexed census reserves live outliers but not dead or foreign bodies', () => {
+  for (const kind of ['live', 'dead', 'foreign']) {
+    const h = fixture();
+    try {
+      h.owner._topUp(h.state.run, 1);
+      const original = h.bodies().find(e => e.data.openingTerrainSlot === 0);
+      original.pos = { x: 901, z: 0 };
+      if (kind === 'dead') original.alive = false;
+      if (kind === 'foreign') delete original.data.swarmArenaDebris;
+      h.state.entityIndex = { __spacefaceEntityIndexV1: true, ready: true,
+        asteroids: h.state.entityList.filter(e => e.type === 'asteroid'),
+        wrecks: h.state.entityList.filter(e => e.type === 'wreck'), stations: [] };
+      h.owner._topUp(h.state.run, 2);
+      const slot = h.bodies().filter(e => e.data.swarmArenaDebris && e.data.openingTerrainSlot === 0);
+      assert.equal(slot.length, 1, kind);
+      if (kind === 'live') assert.equal(slot[0], original);
+      else assert.notEqual(slot[0], original);
+    } finally { h.close(); }
+  }
+});

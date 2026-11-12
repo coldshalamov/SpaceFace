@@ -1395,6 +1395,7 @@ export const swarmArena = {
     // reach. Rocks the fight has left behind are released rather than counted — otherwise a run
     // that drifts across the sector would stop topping up while flying through empty space.
     const nearbySolids = [];
+    const occupiedOpeningSlots = [];
     let mine = 0;
     let openingPocketCount = 0;
     const surviving = [];
@@ -1415,9 +1416,7 @@ export const swarmArena = {
       const inFight = distSq <= fightSq;
       const ours = !!(entity.data && entity.data[SWARM_DEBRIS_TAG]);
       if (inReach) {
-        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0,
-          ...(ours && inFight && Number.isInteger(entity.data.openingTerrainSlot)
-            ? { openingTerrainSlot: entity.data.openingTerrainSlot } : {}) });
+        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0 });
         // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
         if (ours && inFight) {
           mine++;
@@ -1425,6 +1424,11 @@ export const swarmArena = {
         }
       }
       if (ours) {
+        // Departing bodies can return before lifetime removal. Reserve their authored
+        // identities independently of local fight counts and placement clearance.
+        if (Number.isInteger(entity.data.openingTerrainSlot)) {
+          occupiedOpeningSlots.push(entity.data.openingTerrainSlot);
+        }
         surviving.push(entity.id);
         if (!entity.data) continue;
         // The Hive's living geometry keeps its own clock: install stamps it, growth
@@ -1469,7 +1473,8 @@ export const swarmArena = {
     // variant arenas retain the existing seeded planner. No random fallback may
     // close the court's flight lane when a native body blocks an authored slot.
     const spots = openingStage
-      ? planSwarmOpeningTerrain({ stage: openingStage, anchor, existing: nearbySolids, want, layout })
+      ? planSwarmOpeningTerrain({ stage: openingStage, anchor, existing: nearbySolids,
+        occupiedSlots: occupiedOpeningSlots, want, layout })
       : reef
       ? planReefLayout({ anchor, existing: nearbySolids, want, rng })
       : planSwarmDebris({
