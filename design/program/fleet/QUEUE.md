@@ -38,7 +38,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 
 | ID | Job | State |
 |---|---|---|
-| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | TAKEN codex (batch since b14da677: stand-in fixes, C01-05, plants, PERF-02/03, MOB-06/07/08) |
+| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | READY (repeat; fifth review 2026-11-12-9615eb79 routed: lead fixed 2 HIGH + 1 MED, FIX-R5a/R5b) |
 | G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
 | LOOK-00-concept-frames | Three frames in `design/game/look/concepts/`; lead chose A (B = brightest a place may go, C = darkest) | DONE |
 
@@ -84,7 +84,9 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | STAB-10-autosave-generation | Reuse the prior autosave's verified bytes when rotating recovery | BUILT 277b592a3f77 (periodic owner skips repeat validation and still validates a foreign generation) |
 | STAB-11-achievement-chronicle-bridge | Send main-thread achievement receipts to the worker-owned Chronicle exactly once | DONE 118151dd395f. Six focused checks passed and the corrected full gate passed `LANE-FWD~LOAD` |
 | G11-03-continue-neighbor-scheduling | Split a measured blocking neighbor chunk without letting a superseded restore publish | HOLD on a matched Continue trace (d27e25933d8d records the stale-resume repro) |
-| G11-04-stale-neighbor-drain | A superseded neighbor drain stops before it can overwrite the new sector (FULL→REDUCED, 19 extra bodies, stale receipt) | TAKEN agent2 (devin2) |
+| G11-04-stale-neighbor-drain | A superseded neighbor drain stops before it can overwrite the new sector (FULL→REDUCED, 19 extra bodies, stale receipt) | DONE bbd93d79 (lead reviewed; test fails on old world.js) |
+| FIX-R5a | Fifth review: hold value uses the nearest buyer and the mission destination; the dock sentence shows while berthed | TAKEN agent2 (devin2) |
+| FIX-R5b | Fifth review, C01-05: no theft on Reaver-Reaver contact; Yardmaster reversals on round time; law holds newcomers; odd chain bind retried | HOLD until devin1 finishes C01-05 |
 | G11-sector-retirement | Retire the outgoing FULL sector once without changing resident actors or durable state | BUILT 35d89e15725c (59 focused and v27 pass; live hitch remains open) |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | BUILT c6fc0a8ac7fc + b044fc412852 (v27 and 26 tender checks pass; tender preflight, log, receipt and tracked objective seen on the bench) |
