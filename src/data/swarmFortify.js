@@ -51,7 +51,14 @@ export const SWARM_FORTIFY_DEVICES = Object.freeze({
     colliderRadius: 12,
     bodyMass: 500,
     hull: 140,
-    field: Object.freeze({ defKey: 'well', radius: 190, strength: 110, damping: 0, falloff: 1.6, maxAffected: 8 }),
+    // SWARM-GRIND-01 — the ring is real now: the pull gates to zero across innerRadius,
+    // ramps over innerSoft, and the inner hold's stronger snare brakes whatever carries speed
+    // inside it (~14 WU worst case for a full-speed fodder transit), so gathered attackers
+    // and ordnance settle on the ~55-120 WU ring instead of falling the last bodylengths onto
+    // the device collider. The 5.3333 damping is the Well def's own convergence term (the old
+    // authored 0 silently inherited it — now the device spec shows the number that runs).
+    field: Object.freeze({ defKey: 'well', radius: 190, strength: 110, damping: 5.3333, falloff: 1.6,
+      innerRadius: 72, innerSoft: 48, innerDamping: 12, maxAffected: 8 }),
   }),
   repulsor_pylon: Object.freeze({
     id: 'repulsor_pylon',

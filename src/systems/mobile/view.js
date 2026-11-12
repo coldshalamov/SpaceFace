@@ -16,8 +16,8 @@ const NO_FLY_SELECTOR = '.screen,[aria-modal="true"],.sf-radar-wrap,#sf-sector-l
 const EDGE_ZONE_PX = 34;
 const STATUS_MS = 100;
 
-const row = (key, label) => `<div class="mf-row" data-k="${key}" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100">
-        <span class="mf-lab">${label}</span><span class="mf-scale"><i class="mf-fill" data-read="${key}"></i></span></div>`;
+const row = (key, label, short) => `<div class="mf-row" data-k="${key}" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100">
+        <span class="mf-lab">${short || label}</span><span class="mf-scale"><i class="mf-fill" data-read="${key}"></i></span></div>`;
 
 /** Pointer ownership and presentation. Physics is deliberately absent from this module. */
 export function mountMobileView({ state, model, activate, reset, config, saveConfig, doc = document, win = window }) {
@@ -33,9 +33,9 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     <div class="mf-top">
       <div class="mf-status" role="group" aria-label="Ship status">
         <div class="mf-speed"><b data-read="speed">0</b><i>speed</i></div>
-        ${row('hull', 'Hull')}${row('shield', 'Shield')}${row('energy', 'Energy')}${row('boost', 'Boost')}
+        ${row('hull', 'Hull')}${row('shield', 'Shield', 'Shld')}${row('energy', 'Energy', 'Nrg')}${row('boost', 'Boost', 'Bst')}
       </div>
-      <button class="mf-pause" data-ui="pause" aria-label="Pause game"><svg viewBox="0 0 56 56" aria-hidden="true" focusable="false"><circle class="mf-r-band" cx="28" cy="28" r="24"/><circle class="mf-r-edge" cx="28" cy="28" r="24"/><path class="mf-r-glyph" d="M22 19v18 M34 19v18"/></svg></button>
+      <button class="mf-pause" data-ui="pause" aria-label="Pause game"><svg viewBox="0 0 56 56" aria-hidden="true" focusable="false"><circle class="mf-r-band" cx="28" cy="28" r="24"/><circle class="mf-r-edge" cx="28" cy="28" r="24"/><path class="mf-r-glyph" d="M23 14v11 M33 14v11"/></svg><span class="mf-pause-word">MENU</span></button>
     </div>
     <button class="mf-edge" aria-label="Powers: swipe inward to select, or tap to open" aria-expanded="false">
       <svg class="mf-edge-art" viewBox="0 0 48 132" aria-hidden="true" focusable="false"><path class="mf-e-plate" d="M48 0 C22 20 16 46 16 66 C16 86 22 112 48 132 Z"/><path class="mf-e-edge" d="M48 0 C22 20 16 46 16 66 C16 86 22 112 48 132"/><path class="mf-e-tick" d="M31 36l6 0 M26 66l7 0 M31 96l6 0"/></svg>
@@ -57,10 +57,11 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     <button class="mf-dock" hidden aria-label="Dock at the station"><span>Dock</span></button>
     <div class="mf-ghost"><svg viewBox="-170 -170 340 340" aria-hidden="true" focusable="false"><circle class="mf-band" r="100"/><circle class="mf-edge-ring" r="100"/><circle class="mf-boost-dash" r="138" stroke-dasharray="10 9.7" transform="rotate(-90)"/><path class="mf-ghost-hand" d="M0 0 L58 -58"/><circle class="mf-pivot" r="8"/></svg><div class="mf-ghost-label">Touch anywhere and drag to fly</div></div>
     <div class="mf-toast" role="status" aria-live="polite" hidden></div>
+    <div class="mf-caption" role="status" aria-live="polite" hidden></div>
   </div><button class="mf-guide-open" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 8a4 4 0 1 1 7 3l-3 2v3 M12 20v1"/></svg>Touch controls</button>`;
   doc.body.append(root);
   const q = s => root.querySelector(s);
-  const flight = q('.mf-flight'), edge = q('.mf-edge'), toast = q('.mf-toast'), guideButton = q('.mf-guide-open');
+  const flight = q('.mf-flight'), edge = q('.mf-edge'), toast = q('.mf-toast'), caption = q('.mf-caption'), guideButton = q('.mf-guide-open');
   const gunKey = q('.mf-gun'), tetherKey = q('.mf-tether'), dockKey = q('.mf-dock'), pauseKey = q('.mf-pause');
   const aimArc = q('.mf-a-arc'), reel = q('.mf-reel'), reelBead = q('.mf-reel-bead'), ghost = q('.mf-ghost');
   const beam = q('.mf-beam'), beamBloom = q('.mf-beam-bloom'), beamCore = q('.mf-beam-core'), beamTip = q('.mf-beam-tip');
@@ -85,8 +86,32 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     <button class="mg-ready" data-close>Ready</button>`;
   doc.body.append(guide);
 
-  const cleanup = [], captures = new Map(); let raf = 0, visible = false, destroyed = false, taught = false;
-  let pinned = false, messageUntil = 0, dockReady = false, lastFrame = null;
+  const CAPTIONS = {
+    gun: 'Hold: fire · drag: aim',
+    tether: 'Tap: grab / cut · hold + slide: reel',
+    powers: 'Swipe in: pick a power',
+    stick: 'Push to the ring: boost · hold still: brake',
+    dock: 'Tap: dock',
+  };
+  const taughtControls = new Set();
+  const rawTaught = config?.()?.taught;
+  if (rawTaught && typeof rawTaught[Symbol.iterator] === 'function') {
+    for (const item of rawTaught) taughtControls.add(item);
+  } else if (rawTaught && typeof rawTaught === 'object') {
+    for (const item of Object.keys(rawTaught)) taughtControls.add(item);
+  }
+  function syncTaught(s) {
+    s.includes = item => s.has(item);
+    s.toJSON = () => Array.from(s);
+  }
+  syncTaught(taughtControls);
+  function persistTaught() {
+    syncTaught(taughtControls);
+    saveConfig?.('taught', taughtControls);
+  }
+
+  const cleanup = [], captures = new Map(); let raf = 0, visible = false, destroyed = false, taught = taughtControls.has('stick');
+  let pinned = false, messageUntil = 0, captionUntil = 0, dockReady = false, lastFrame = null;
   let lastNumbers = -Infinity, lastMode = '', lastTick = -1, lastBoost = false, aimDeg = NaN;
   let pinchZoom = null, sessionDefaultZoom = NaN, zoomTouched = false;
   const listen = (el, event, fn, opts) => { el.addEventListener(event, fn, opts); cleanup.push(() => el.removeEventListener(event, fn, opts)); };
@@ -117,7 +142,40 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     stickUI.release({ immediate: true }); schedule();
   }
   function closeWheel() { pinned = false; selected = -1; model.wheel = null; wheel.close(); markWheel(false); edge.setAttribute('aria-expanded', 'false'); schedule(); }
-  function showMessage(text) { toast.textContent = text; toast.hidden = false; messageUntil = clock() + 1800; schedule(); }
+  let captionTimer = 0;
+  const setTimer = (fn, ms) => (win.setTimeout || globalThis.setTimeout)?.(fn, ms);
+  const clearTimer = id => (win.clearTimeout || globalThis.clearTimeout)?.(id);
+  function showCaption(id) {
+    const text = CAPTIONS[id];
+    if (!text) return;
+    caption.textContent = text;
+    caption.dataset.control = id;
+    caption.hidden = false;
+    captionUntil = clock() + 2500;
+    if (captionTimer) clearTimer(captionTimer);
+    captionTimer = setTimer(() => {
+      if (clock() >= captionUntil) {
+        caption.hidden = true;
+        schedule();
+      }
+    }, 2550);
+    schedule();
+  }
+  function teach(id) {
+    const key = (id === 'fire') ? 'gun' : (id === 'wheel') ? 'powers' : id;
+    if (taughtControls.has(key)) return false;
+    taughtControls.add(key);
+    taughtControls.add(id);
+    persistTaught();
+    showCaption(key);
+    return true;
+  }
+  function showMessage(text) {
+    toast.textContent = text;
+    toast.hidden = false;
+    messageUntil = clock() + 1800;
+    schedule();
+  }
   function use(power) {
     if (!power || !canFly(state, doc)) { closeWheel(); return; }
     if (power.id === 'jettisonLot' && !win.confirm('Jettison one cargo lot?')) { closeWheel(); return; }
@@ -150,7 +208,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       ? clamp((h + safeTop - safeBottom) * .5, safeTop + radius + 12, h - safeBottom - radius - 12)
       : clamp(h * 0.56, topClear + radius, Math.max(topClear + radius, h - bottomClear - radius));
     const side = hand();
-    const clusterWidth = 170 * Number(root.style.getPropertyValue?.('--mf-scale') || 1);
+    const clusterWidth = 150 * Number(root.style.getPropertyValue?.('--mf-scale') || 1);
     const cx = portrait ? w / 2 + (w <= 360 ? (side === 'left' ? 12 : -12) : 0) : side === 'left'
       ? Math.max(bounds.left + 4, keys.width ? keys.right + 12 : clusterWidth + 28)
       : Math.min(bounds.right - 4, keys.width ? keys.left - 12 : w - clusterWidth - 28);
@@ -174,7 +232,8 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     saveConfig(key, value); applyConfig();
   });
   listen(pauseKey, 'click', () => { cancelAll(); activate({ id: 'pause', kind: 'ui' }); });
-  listen(dockKey, 'click', () => { haptic(); activate({ id: 'dock', kind: 'ui' }); });
+  listen(dockKey, 'pointerdown', () => teach('dock'));
+  listen(dockKey, 'click', () => { teach('dock'); haptic(); activate({ id: 'dock', kind: 'ui' }); });
   function applyConfig() {
     const cfg = config();
     const layout = cfg.layout === 'lefty' || cfg.layout === 'compact' ? cfg.layout : 'standard';
@@ -187,7 +246,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // the page's own receipts line keeps clear of the key cluster: it needs the cluster's side and width
     const html = doc.documentElement;
     html.dataset.sfMobileLefty = layout === 'lefty' ? '1' : '0';
-    html.style.setProperty('--mf-cluster-w', `${Math.round(196 * scale)}px`);
+    html.style.setProperty('--mf-cluster-w', `${Math.round(160 * scale)}px`);
   }
 
   // ---- pointer ownership -------------------------------------------------------------------------------
@@ -219,9 +278,13 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // through (the travel tape, the contextual stack, alerts, receipts, the cadence card), and
     // against the frame itself. Ties fall to 'below', the reading's resting place.
     const drop = p.radius * 1.62, readH = 60;
+    // Beside the ring (MOB-02): a landscape phone has no room under the ring and the top band is HUD, so
+    // the reading may sit to either side of the dashed rim instead of printing through the objective line.
     const sides = {
       below: { l: centre - half, r: centre + half, t: p.oy + drop + 6, b: p.oy + drop + 6 + readH },
       above: { l: centre - half, r: centre + half, b: p.oy - drop - 24, t: p.oy - drop - 24 - readH },
+      right: { l: p.ox + drop + 8, r: p.ox + drop + 8 + 2 * half, t: p.oy - readH / 2, b: p.oy + readH / 2 },
+      left: { l: p.ox - drop - 8 - 2 * half, r: p.ox - drop - 8, t: p.oy - readH / 2, b: p.oy + readH / 2 },
     };
     const obstacles = [q('.mf-buttons'), q('.mf-dock')];
     for (const sel of ['#hud .sf-leftcontext', '#hud .sf-vtape', '#hud .sf-tells', '#alerts', '#toasts', '.ml2-cadence-slot']) {
@@ -235,9 +298,15 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       const h2 = Math.min(rect.b, b.bottom) - Math.max(rect.t, b.top);
       return w2 > 0 && h2 > 0 ? w2 * h2 : 0;
     };
-    const cost = rect => (rect.t < 0 || rect.b > h ? 1e9
+    const cost = rect => (rect.t < 0 || rect.b > h || rect.l < 0 || rect.r > w ? 1e9
       : obstacles.reduce((sum, el) => sum + blocked(rect, el), 0));
-    stickUI.root.dataset.side = cost(sides.above) < cost(sides.below) ? 'above' : 'below';
+    // Strictly cheaper wins, in preference order: under, over, then beside (thumb side last).
+    let side = 'below', best = cost(sides.below);
+    for (const name of ['above', hand() === 'left' ? 'left' : 'right', hand() === 'left' ? 'right' : 'left']) {
+      const c = cost(sides[name]);
+      if (c < best) { best = c; side = name; }
+    }
+    stickUI.root.dataset.side = side;
   }
   function pointerDown(e) {
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
@@ -271,6 +340,9 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     try { capture.setPointerCapture(e.pointerId); captures.set(e.pointerId, capture); } catch {}
     if (role === 'stick') placeStick(model.stick);
     if (role === 'wheel') { model.wheel = model.pointers.get(e.pointerId); pinned = false; openWheel(model.wheel); }
+    if (role === 'fire') teach('gun');
+    if (role === 'tether') teach('tether');
+    if (role === 'wheel') teach('powers');
     schedule();
   }
   function pointerMove(e) {
@@ -278,6 +350,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     eat(e);
     for (const sample of (e.getCoalescedEvents?.() || [])) model.move(e.pointerId, sample.clientX, sample.clientY, sample.timeStamp);
     model.move(e.pointerId, e.clientX, e.clientY, e.timeStamp);
+    if (p.role === 'stick') teach('stick');
     // A live pinch owns the camera distance: it writes the same requested-zoom field the wheel's
     // camera:zoom consumer resolves against (cam.setZoom's own 45–330 band can't carry a phone's
     // ~554 default), and the chase rig eases it every frame — no jumps. Bus reach never crosses
@@ -354,7 +427,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   if (win.visualViewport) listen(win.visualViewport, 'resize', resize);
   listen(win, 'keydown', e => { if (e.code === 'Escape' && !wheel.root.hidden) { closeWheel(); e.preventDefault(); } });
   // Mouse/keyboard activation and accessible click path; touch quick-tap is handled above.
-  listen(edge, 'click', e => { if (e.detail === 0 || e.pointerType === 'mouse') { pinned = !pinned; if (pinned) openWheel(); else closeWheel(); } });
+  listen(edge, 'click', e => { if (e.detail === 0 || e.pointerType === 'mouse') { pinned = !pinned; if (pinned) openWheel(); else closeWheel(); teach('powers'); } });
   const observer = new win.MutationObserver(schedule);
   observer.observe(doc.body, { attributes:true, attributeFilter:['class'], childList:true });
   cleanup.push(() => observer.disconnect());
@@ -462,13 +535,15 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     paintAim(f);
     if (dockKey.hidden === dockReady) dockKey.hidden = !dockReady;
     if (clock() >= messageUntil && !toast.hidden) toast.hidden = true;
+    if (clock() >= captionUntil && !caption.hidden) caption.hidden = true;
     if (clock() - lastNumbers > STATUS_MS) { lastNumbers = clock(); paintStatus(player); }
   }
   applyConfig(); render();
-  return { root, cssReady: cssVisibilityReady, render, applyConfig, cancelAll, showMessage, openGuide,
+  return { root, cssReady: cssVisibilityReady, render, applyConfig, cancelAll, showMessage, showCaption, teach, taught: taughtControls, openGuide,
     setDockReady(ready) { dockReady = !!ready; schedule(); },
     destroy() {
       destroyed = true; cancelAll(); delete doc.documentElement.dataset.sfMobileWheel; delete doc.documentElement.dataset.sfMobileLefty;
+      if (captionTimer) clearTimer(captionTimer);
       doc.documentElement.style.removeProperty('--mf-cluster-w'); cleanup.forEach(fn => fn());
       if (raf) win.cancelAnimationFrame(raf); wheel.destroy(); root.remove(); guide.remove();
     } };

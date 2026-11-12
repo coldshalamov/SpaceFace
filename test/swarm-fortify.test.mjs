@@ -479,8 +479,10 @@ test('purchased Fortify Gravity Beacon and live Pylon pulse move real Rapier bod
   };
 
   try {
+    // SWARM-GRIND-01: the beacon's pull is annular now — the authored inner hold dead-zones
+    // r<=72, so the probe sits at 150 WU where the well's full-strength band actually runs.
     await runDevice({ seed: 81201, deviceId: 'gravity_beacon', socketId: 'front-near',
-      offsetX: 65, expectedSign: -1, steps: 45 });
+      offsetX: 150, expectedSign: -1, steps: 45 });
     await runDevice({ seed: 81202, deviceId: 'repulsor_pylon', socketId: 'port-near',
       offsetX: 65, expectedSign: 1, steps: 110 });
   } finally {

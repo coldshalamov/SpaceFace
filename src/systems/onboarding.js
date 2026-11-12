@@ -24,6 +24,7 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { attentionAdmits } from '../ui/attentionGlass.js';
 import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/sim/missionRecap.js';
@@ -2313,6 +2314,10 @@ export const onboarding = {
       const intervalS = this._accum;
       this._accum = 0;
       this._noteMissingThreeUses();
+      // W5/X3: the store sentence is glass-gated at the emit site; a refusal in flight defers
+      // (not drops) delivery, so the once-only line lands on the first admitted surface — the
+      // dock that owns the store page it hooks.
+      this._showStoreSentenceOnce();
       this._teachFieldEscapes();
       this._teachCadencePump();
       this._teachReleaseWindow();
@@ -2990,13 +2995,32 @@ export const onboarding = {
     this.bus.emit('rescue:started', buildRescueStartedEvent(st.simTime || 0));
   },
 
-  // PQ-163.03: the store-page sentence is shown once at rescue start, then silence.
-  // Distinct voice id so leftover B0 / verb lines do not replace it. Never hudAttention.
+  // PQ-163.03 dock delivery tick (HIDDEN_KEEPALIVE_SERVICES row, presentationFreeze.js). The
+  // dock freeze skips every non-keepalive system, so update()'s flight-side caller cannot run
+  // while berthed — this is the dock-side caller the deferral waits for: registry.step's frozen
+  // branch hands it the once-only gate, and attentionAdmits admits exactly here (a docked
+  // Adventure is not the flight glass). ui.docked keeps it silent under every other freeze.
+  dockSentenceKeepalive(_dt, state) {
+    const st = state || this.state;
+    if (!st || !st.ui || st.ui.docked !== true) return;
+    this._showStoreSentenceOnce();
+  },
+
+  // PQ-163.03: the store-page sentence is shown once, then silence. X3/W5: the line is a
+  // store-page hook, not a flight receipt — the Adventure glass refuses a tutorial-channel
+  // sentence over the action, so delivery defers to the first surface the policy admits
+  // (the dock, where the store it hooks lives). Distinct voice id so leftover B0 / verb
+  // lines do not replace it. Never hudAttention.
   _showStoreSentenceOnce() {
     const ob = this.state && this.state.onboarding;
     if (!ob) return;
     if (!ob.storeSentence) ob.storeSentence = freshStoreSentenceState();
     if (ob.storeSentence.shown) return;
+    if (!attentionAdmits(this.state, {
+      source: 'tutorial',
+      kind: 'info',
+      text: STORE_FLIGHT_SENTENCE,
+    })) return;
     const atS = this.state.simTime || 0;
     ob.storeSentence.shown = true;
     ob.storeSentence.shownAt = atS;
@@ -3010,7 +3034,16 @@ export const onboarding = {
         ttl: 8,
         id: 'firsthour:sentence',
       });
-    if (!said) this.bus.emit('toast', { text: STORE_FLIGHT_SENTENCE, kind: 'info', ttl: 8, id: 'firsthour:sentence' });
+    // The fallback carries the tutorial channel so the receipt lane's own glass policy
+    // refuses it mid-flight too — the emit site above is the gate; this keeps the two
+    // lanes in agreement instead of adding a second filter.
+    if (!said) this.bus.emit('toast', {
+      text: STORE_FLIGHT_SENTENCE,
+      kind: 'info',
+      channel: 'tutorial',
+      ttl: 8,
+      id: 'firsthour:sentence',
+    });
     this.bus.emit('firsthour:sentence', buildFirstHourSentenceEvent(atS));
   },
 
