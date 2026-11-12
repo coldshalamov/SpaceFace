@@ -2266,6 +2266,7 @@ export const swarmArena = {
       if (id != null) {
         this._ids.push(id);
         sacs.set(id, {
+          body: state.entities.get(id),
           x: berth.x,
           z: berth.z,
           nextBirthAt: now + HIVE_SAC_PERIOD_S,
@@ -2310,16 +2311,26 @@ export const swarmArena = {
     for (const [id, sac] of hive.sacs) {
       const entity = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(id) : null;
-      if (!entity || entity.alive === false) {
+      // Keep the original reference through queued removal and ID recycling. The
+      // final physics pose belongs to this body, never to its next ID occupant.
+      const original = sac.body;
+      if (Number.isFinite(original?.pos?.x) && Number.isFinite(original?.pos?.z)) {
+        sac.x = original.pos.x;
+        sac.z = original.pos.z;
+      }
+      if (!original || entity !== original || entity.alive === false) {
         // The burst: a sac does not die quietly — its pool stays where it fell, and the
         // brood it was feeding answer the Hive node's death through the authored grief
         // loop (BROOD_CASCADE_EVENTS names this receipt a cascade seam).
+        // Consume before calling out: synchronous listeners cannot burst it twice.
+        hive.sacs.delete(id);
+        this._ids = this._ids.filter(ownedId => ownedId !== id);
         if (brood) {
           brood.hivePool(sac.x, sac.z, 6);
           brood.hiveSacFell(sac.x, sac.z);
         }
         this._emit('swarm:hiveSacKilled', { wave: hive.wave, sacId: id });
-        hive.sacs.delete(id);
+        if (this._hive !== hive) return;
         continue;
       }
       // The sac rides its live body — it may have been slung since the berth stamped it.
@@ -2332,6 +2343,7 @@ export const swarmArena = {
         if (born > 0) {
           sac.nextBirthAt = now + HIVE_SAC_PERIOD_S;
           this._emit('swarm:hiveBirth', { wave: hive.wave, sacId: id, count: born });
+          if (this._hive !== hive) return;
         } else {
           // The reserve is dry — the sac quiets into ordinary wall meat.
           sac.spent = true;
@@ -2350,7 +2362,9 @@ export const swarmArena = {
     this._hive = null;
     if (!hive) return;
     const state = this.state;
-    const ids = (hive.walls || []).concat(hive.sacs ? [...hive.sacs.keys()] : []);
+    const stale = new Set([...(hive.sacs || [])].filter(([id, sac]) => state?.entities?.get(id) !== sac.body).map(([id]) => id));
+    this._ids = this._ids.filter(id => !stale.has(id));
+    const ids = (hive.walls || []).concat(hive.sacs ? [...hive.sacs.keys()].filter(id => !stale.has(id)) : []);
     if (state && state.entities && typeof state.entities.get === 'function') {
       const now = Number.isFinite(state.simTime) ? state.simTime : 0;
       for (const id of ids) {
