@@ -1,3 +1,11 @@
+> **2026-11-12 09:25 UTC — split of work while both leads run.** Stand-in (Codex): keep the performance/backend
+> lane you are in (measured direct fixes, as in your log). Lead (Claude Opus): fleet dispatch and review — workers now:
+> devin1 FIX-R5b, devin2 PRX-NEXT, devin3 PERF-04 (its uncommitted render/* files are its own — do not commit them).
+> Do not launch workers; do not edit QUEUE.md rows the lead owns. Append your log below as before.
+> **LOOK-04 claim (lead, owner's request 2026-11-12):** `src/data/lookMoods.js`, `src/render/look.js`,
+> `src/render/illustratedSurface.js`, `src/render/bloom.js`, `src/data/sectorVisualProfiles.js`, `src/render/spaceBackground.js`
+> and resolution/AA policy are the lead's for the look pass — please do not edit them.
+
 # Lead handoff — 2026-11-12 ~01:30 UTC (Claude Opus lead out of usage ~3 h)
 
 You are the stand-in lead for SpaceFace (C:\Users\93rob\Documents\GitHub\SpaceFace). The owner is not a coder; you
@@ -114,3 +122,43 @@ Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
 - Merged `9420bc6354b6` after it advanced master. The only incoming changes were the two UI-budget reference files. The separate UI-budget check remains `baseline:stale` on seven newer UI owners. A quiet re-shoot is still due. The latest unpinned PERF-04 attribution listed three late keys, including the rigid opaque specimen and keyed asteroid instances. PERF-04 remains in REDO.
 - Remaining targets include ≥30% idle and ≥0.98 sim/wall in Adventure and Swarm 20, steady 30 fps on a phone, physical iPhone play, satisfying live Massline kills, and the owner's full five-item card. C01-05 stays held. Pinned Adventure settled at 0.96 sim/wall with <1% main-thread idle. The first 390×844 live route passed 33 input/UI checks and submitted about 19.5 world frames/s.
 - The separate Touch Guide capture remained queued behind the active PERF workers at handback. The run was stopped while it waited for the game lock. The changed flick instruction still needs its PNG look.
+
+### Follow-up after the owner asked Codex to continue
+
+- Codex used its three existing workers for launch and renderer reliability, authoritative control and physics, and gate and world integrity. Claude stayed open. The paused renderer, plants, and fleet work stayed with their owners. Shared coordination is in `.devshots/fleet/coordination/CODEX-SWARM20.md`.
+- `2a3a200a227e` — accepted. Reproduced Windows optional Electron migration spawn failure. Browser launcher continues to the server.
+- `d2246916c4ce` — accepted. One pre-commit desktop navigation retry on the original window and save origin. Opened the public desktop route in an isolated profile. All 18 checks passed, including Save and Continue.
+- `e8731ad46467` — accepted. A drill losing its Line on transfer, recovery, or Anchor Kick sends terminal cancellation and releases the input block.
+- `9ebd205fdf1c` — accepted. Recovery clears the defeated hull’s queued taps and Travel Burn. Ordinary focus-loss taps still work.
+- `c0a339da2876` — accepted. A returning heartbeat discards the hidden interval even when it arrives before the throttled timer.
+- `398cffbec9f2` — accepted. A superseded jump stops without a false arrival or autosave. Tested re-entry on exit and on enter.
+- `c959e151f352` — accepted. Circuits player-truth requires the chosen active race in its own sector.
+- `754a74c0d275` — accepted. Both authority lanes share the racing grid operation and check world and mission ownership before relocation.
+- `7eca31f33910` — accepted. A stale grid exception preserves the newer flight and its mission. A still-owned failure retains the ordinary rollback and exit.
+- `945a87218199` — accepted. The quarantine check now goes through actual restore and New Game completion. A receipt alone still leaves it armed.
+- `9bbf1639535e` — accepted. The Swarm gate reads a fresh verdict from its own invocation. Missing or invalid boot evidence fails closed.
+- `886cc544d2d9` — accepted. Fixed a reproduced Windows standalone gate spawn failure. Normal failure receipts survive synchronous spawn errors.
+- `9328b3f2a727` — accepted. Manifest declarations and runtime parity run in static CI. All reachability failures in the dirty tree were untracked plants. The tracked inventory passed.
+- `cf8c6a428ac8` — accepted. Time-scale audit recognizes diagnostic scratch writes while rejecting direct and aliased live writes. Launch policy passes.
+- `d16117f5a7c6` and `bee71fa361dd` — fighter retro housings instance through existing pools on fresh and cached ships. Stock neutral metal and independent heat parts stay intact.
+- `6e5b34502629` — accepted. One stale material key leaves that leaf direct while safe peers can publish. Focused guard and lifetime tests passed. Separate live gain remains unmeasured.
+- `8861ea0e89ce` — opened both round-20 captures. Pad labels cleared the speed dial’s overflow labels in the captured frame.
+- `ca5b22cc2cea` and `5339959fff62` — paired probe reports successful world submissions and hitch tails. The steady worker route honors stationary input.
+- `9a72a8f926d9` — accepted. Conservative rejection skips distant spine checks. All 720 native queries matched, and focused median time fell from 81.09 to 25.12 ms.
+- `597688dd0250` — target combat runtime reads fell from 17,280 to 2,592 across 12 dense sensor batches. Contact hashes matched and 28 focused checks passed.
+- `1751dcdc1dd6` — accepted. Inactive Lantern Ward stops scanning for its obstruction during Swarm. Ordinary Ward contact credit is unchanged.
+- `7433695cfdf8` — accepted. Swarm run validation stays off receipts without owned debris. Valid endpoint order and fracture rules passed.
+- `b3efc6569a71` — accepted. Field admission skips force coupling reads until needed. Matched Node CPU fell 14.8–15.6% for the force fixture. Commands, order, and native physics frames matched.
+- The locked same-flight A/B/B/A at round 20 measured 9.39 → 11.71 successful world submissions/s, 150.2 → 116.7 ms rAF p95, and 48.9 → 25.2 gaps over 100 ms per 10 s. One 249.6 ms gap remained. Source was stable. Opened both captures in `.devshots/main-thread-profile/codex-swarm20-retro-neutral-ab/`.
+- The worker’s median simulation step was 25.14 ms. Its 15-second window showed no heartbeat hold or backpressure. Physics was about 42% of the sampled simulation work and tactical AI about 24%. The paired worker follow-up isolates the later changes.
+- The paired worker follow-up used two launches under one lock with stable sources and matching starting populations. Sim/wall rose from 0.743 to 0.783 and median step time fell from 17.61 to 16.45 ms. Shed ticks fell from 304 to 257. World submissions stayed near 13/s, p95 callback gap stayed at 100 ms, and p99 rose from 117 to 133 ms. See `.devshots/main-thread-profile/codex-swarm20-worker-after/backend-comparison.md`.
+- Locked full gate passed Adventure, Swarm, and v27 at the integration checkpoint. The Circuits public route confirmed Practice — Textile Belt in its authored sector, steering, and 12.5 sim seconds of play. Overall player-truth was INCOMPLETE on SwiftShader frame time, readability, backdrop coverage, and edge markers. Opened the race capture.
+- After the later backend changes, import lint and all 20 v27 replay repeats passed with the original hash.
+- A later bracketed diagnostic put the remaining HUD cost at roughly 4.13 world submissions/s. Lowering the internal render scale gained 0.95 submissions/s and worsened the p95 gap by 16.56 ms. Both diagnostic arms restored shipped display settings. See `.devshots/main-thread-profile/codex-swarm20-remaining/report.md`.
+
+- `03f6df649fb1` — accepted. Successful redraws, authoritative snapshot age, and moving mesh staleness now have separate counters.
+- `9e4b263427ba` — accepted. Same-time worker snapshots keep an earlier distinct pose for interpolation. Recovery within one scene can no longer rewind the playout clock after a long frame.
+- `47dea7b2bb15` — accepted. The mesh no longer invents a 5.79 WU lead and retreats during a measured forward slowdown. The focused checks preserve real reversals, turns, teleports, and stopped convergence.
+- `6bd5472f4ad0` — accepted. The next uncovered world submission releases the launch clock. Real pipeline readiness and the existing shell cleanup receipt still govern their original steps.
+- Matched locked Adventure New Game launches with held thrust put the first new tick after visible reveal at 800 → 117 ms and the intervening HUD updates at 15 → 2. Successful world submissions were 14.53 → 13.78/s, callback p95 remained 117 ms, and post-reveal fresh tick p95 was 150 → 133 ms. Both straight flights showed zero signed backtracks. Opened both captured PNGs. See `.devshots/main-thread-profile/codex-adventure-motion-after/paired-report.md`.
+- Remaining sustained motion limit: the healthy Adventure worker delivered 280 of 325 pose advances in four-tick groups. Median batch work was 63.75 ms, main apply 1.59 ms, with no heartbeat hold or ACK backpressure. An additional wake diagnostic is in progress. The earlier pad-layout diagnostic stopped at round 19 rearm and produced no measurement or source changes.
