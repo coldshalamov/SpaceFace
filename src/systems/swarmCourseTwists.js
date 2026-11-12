@@ -296,28 +296,31 @@ const THE_LAW_LANE_MARGIN = 70; // z clearance out of the freight corridor
 
 function createTheLawModule(host) {
   const held = new Set(); // law ids currently holding for a string
+  let activeLane = null;  // the lane amber owes the room — held until the string clears
 
   function cohortLaw(e) {
     return e && e.data && e.data.runCohort === 'survival' && THE_LAW_IDS.has(e.data.lootTableId);
+  }
+
+  function holdOne(e, zLane) {
+    if (!cohortLaw(e) || held.has(e.id)) return;
+    held.add(e.id);
+    // Step out of the corridor before holding — the stop happens OUTSIDE the lane.
+    const ex = finite(e.pos && e.pos.x);
+    const ez = finite(e.pos && e.pos.z);
+    const side = ez === zLane ? (e.id % 2 === 0 ? -1 : 1) : Math.sign(ez - zLane);
+    const holdZ = Math.abs(ez - zLane) < THE_LAW_LANE_MARGIN ? zLane + side * THE_LAW_LANE_MARGIN : ez;
+    setEntityDoctrine(e, {
+      activity: { kind: 'hail_hold', reason: 'swarm_the_law', anchor: { x: ex, z: holdZ } },
+      roe: 'weapons_free',
+    });
   }
 
   function holdAll(lane) {
     const list = host.state && host.state.entityList;
     if (!Array.isArray(list)) return;
     const zLane = finite(lane && lane.z0, 0);
-    for (const e of list) {
-      if (!cohortLaw(e) || held.has(e.id)) continue;
-      held.add(e.id);
-      // Step out of the corridor before holding — the stop happens OUTSIDE the lane.
-      const ex = finite(e.pos && e.pos.x);
-      const ez = finite(e.pos && e.pos.z);
-      const side = ez === zLane ? (e.id % 2 === 0 ? -1 : 1) : Math.sign(ez - zLane);
-      const holdZ = Math.abs(ez - zLane) < THE_LAW_LANE_MARGIN ? zLane + side * THE_LAW_LANE_MARGIN : ez;
-      setEntityDoctrine(e, {
-        activity: { kind: 'hail_hold', reason: 'swarm_the_law', anchor: { x: ex, z: holdZ } },
-        roe: 'weapons_free',
-      });
-    }
+    for (const e of list) holdOne(e, zLane);
   }
 
   function releaseAll() {
@@ -335,14 +338,23 @@ function createTheLawModule(host) {
 
   return {
     onFreightWarning(payload) {
-      if (payload && payload.wave === host.wave) holdAll(payload);
+      if (payload && payload.wave === host.wave) {
+        activeLane = payload;
+        holdAll(payload);
+      }
+    },
+    onEntitySpawned(payload) {
+      // A reinforcement that materializes under amber observes the same lights.
+      if (!activeLane) return;
+      const e = (payload && payload.entity) || entityAt(host.state, payload && payload.id);
+      if (e) holdOne(e, finite(activeLane.z0, 0));
     },
     onFreightClear(payload) {
-      if (payload) releaseAll();
+      if (payload) { activeLane = null; releaseAll(); }
     },
     onEntityKilled(payload) { held.delete(payload && payload.id); },
     onEntityRetired(payload) { held.delete(payload && payload.id); },
-    teardown() { releaseAll(); },
+    teardown() { activeLane = null; releaseAll(); },
   };
 }
 
