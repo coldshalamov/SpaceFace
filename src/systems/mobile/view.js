@@ -20,7 +20,7 @@ const row = (key, label, short) => `<div class="mf-row" data-k="${key}" role="me
         <span class="mf-lab">${short || label}</span><span class="mf-scale"><i class="mf-fill" data-read="${key}"></i></span></div>`;
 
 /** Pointer ownership and presentation. Physics is deliberately absent from this module. */
-export function mountMobileView({ state, model, activate, reset, config, saveConfig, doc = document, win = window }) {
+export function mountMobileView({ state, model, activate, onFlick, reset, config, saveConfig, doc = document, win = window }) {
   const cssReady = loadCssSidecar(doc, { id: 'sf-mobile-style', path: MOBILE_CSS_PATH,
     fallback: async () => (await import('./mobileCssSource.js')).MOBILE_CSS });
   injectOrrery(doc); // the --dp-void/-ice/-hand roots the deck's light is drawn in, even before the HUD mounts
@@ -74,7 +74,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   guide.innerHTML = `<h2>Your thumbs. Your ship.</h2>
     <ul class="mg-list">
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg><div><b>Fly</b>Touch empty space and drag. The stick appears where you land. A light push is gentle thrust, the ring is full thrust, and past the dashed ring you boost.</div></li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l7 4-7 4 M10 8l7 4-7 4 M17 8l5 4-5 4"/></svg><div><b>Flick</b>A fast flick and lift is a boost tap. Let go to coast; hold a still thumb at the center to brake.</div></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l7 4-7 4 M10 8l7 4-7 4 M17 8l5 4-5 4"/></svg><div><b>Flick</b>Flick to boost. With a throwable body on the Line, swing it first and flick toward your target to release it. Hold a still thumb at the center to brake.</div></li>
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h13l3 3-3 3h-5l-2 6H7l1-7H5z"/></svg><div><b>Gun</b>Hold to fire along your heading. Drag that thumb to aim on its own; a beam shows where shots go.</div></li>
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19l7-7 M8 8a5 5 0 1 1 8 8 M16 4l4 4"/></svg><div><b>Tether</b>Tap to latch or cut. Hold and slide up to reel in, down to pay out, while your other thumb keeps flying.</div></li>
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3a14 14 0 0 0 0 18 M16 8a6 6 0 0 0 0 8"/></svg><div><b>Powers</b>Swipe in from the edge handle, sweep to a power, lift to use it. Slide back to the middle to cancel. Tap the handle to pin it open.</div></li>
@@ -389,8 +389,10 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     if (p.role === 'stick') {
       // a flick can begin and end between two animation frames, before the instrument was ever drawn: draw it
       // once so the streak still shows
-      if (!cancelled && model.flickS > 0 && stickUI.root.hidden) { placeStick(p); stickUI.show(p, { heading: null }); }
-      stickUI.release({ flick: !cancelled && model.flickS > 0, immediate: cancelled });
+      const flick = ended?.flick;
+      if (flick && onFlick?.(flick)) model.flickS = 0;
+      if (flick && stickUI.root.hidden) { placeStick(p); stickUI.show(p, { heading: null }); }
+      stickUI.release({ flick: !!flick, immediate: cancelled });
     }
     if (p.role === 'wheel') {
       model.wheel = null;
