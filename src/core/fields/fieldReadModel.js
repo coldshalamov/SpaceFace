@@ -185,6 +185,23 @@ function readMaterialCategory(entity) {
   return null;
 }
 
+/** The membership pass only needs the fields read by the admission and material filters. */
+export function fieldBodyMembershipProfile(entity, profile) {
+  profile.type = entity && entity.type;
+  profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
+  profile.team = entity && entity.team;
+  profile.id = entity && entity.id;
+  profile.occupantGeneration = entity && entity.occupantGeneration;
+  const data = entity?.data;
+  profile.ownerId = data?.cargoIdentity?.ownerId ?? data?.playerJettisonOrigin?.ownerId
+    ?? data?.ownerId ?? entity?.ownerId ?? null;
+  // Kinematic proxies drop out in the kernel; heavy dynamic hulls still couple by mass.
+  profile.dynamic = entity ? isDynamicPhysicsBodyEntity(entity) : true;
+  profile.kinematic = profile.dynamic === false;
+  profile.materialCategory = readMaterialCategory(entity);
+  return profile;
+}
+
 /**
  * Build the pure body profile consumed by the field kernel. The optional output record lets the
  * production force loop reuse one scratch object; tests/predictors may omit it for a fresh value.
@@ -203,16 +220,8 @@ export function fieldBodyProfile(entity, state, out = null) {
     ? entity.data.hitchMass
     : 0;
   profile.mass = hullMass + hitchMass;
-  profile.type = entity && entity.type;
   profile.radius = entity?.radius;
-  profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
-  profile.team = entity && entity.team;
-  profile.id = entity && entity.id;
-  profile.occupantGeneration = entity && entity.occupantGeneration;
-  const cargoIdentity = entity?.data?.cargoIdentity;
-  const jettisonOrigin = entity?.data?.playerJettisonOrigin;
-  profile.ownerId = cargoIdentity?.ownerId ?? jettisonOrigin?.ownerId
-    ?? entity?.data?.ownerId ?? entity?.ownerId ?? null;
+  fieldBodyMembershipProfile(entity, profile);
   profile.coated = gooStatus(state, entity) != null;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
@@ -221,11 +230,6 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.fieldResponseMult = isPlayerSaucer(entity) ? 0
     : (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
   profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
-  // Same dynamic-body predicate the impulse loop already uses. Kinematic proxies drop
-  // out in the kernel; a heavy dynamic hull stays coupled and only shrugs by mass.
-  const dynamic = entity ? isDynamicPhysicsBodyEntity(entity) : true;
-  profile.dynamic = dynamic;
-  profile.kinematic = dynamic === false;
   profile.hitchedTo = null;
   if (entity && entity.id != null && state && state.fields && state.fields.hitches) {
     const hitch = state.fields.hitches[entity.id] || state.fields.hitches[String(entity.id)];
@@ -235,7 +239,6 @@ export function fieldBodyProfile(entity, state, out = null) {
   // Unmoored = 0.3x). Coupling never reads it — it is not a mass CLASS, it is the effective solver
   // mass the queued impulse has to be authored against. See _applyForces.
   profile.physicsMassScale = positive(massScale, 1);
-  profile.materialCategory = readMaterialCategory(entity);
   return profile;
 }
 

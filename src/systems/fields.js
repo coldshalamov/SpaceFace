@@ -2,7 +2,7 @@ import {
   FIELD_EMITTER_TYPE as EMITTER_TYPE, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
   fieldLifecyclePhase,
   collectorFitted, playerFieldSpec, isForceableFieldBody, pullMarkTargetEligible,
-  fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
+  fieldBodyMembershipProfile, fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
   EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
 import { oneFeelPhaseTable, oneFeelCooldownS, oneFeelPhaseAt } from '../data/swarmFeelProfile.js';
@@ -443,6 +443,7 @@ export const fields = {
       chainStarted: false,
       entityOf: null,
     };
+    this._membershipProfile = {};
     this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false, materialCategory: null };
     this._inertOccupancy = new Set();
     this._inertTouched = new Set();
@@ -2024,7 +2025,7 @@ export const fields = {
         const e = this._queryOut[j];
         this._noteFamilyPin(field, e);
         if (this._forceableBody(e)) {
-          const profile = this._profileFor(e, state);
+          const profile = fieldBodyMembershipProfile(e, this._membershipProfile);
           // Excluded matter slips the face. It is not a member of this field's
           // force set, so the impulse below cannot include it.
           if (fieldExcludesMaterial(field, profile.materialCategory)) {
