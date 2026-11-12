@@ -340,8 +340,9 @@ export const survivalHud = {
   },
 
   destroy() {
-    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight');
+    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight', 'sf-run-flight');
     this._swarmFlightClass = null;
+    this._runFlightClass = null;
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
@@ -368,6 +369,13 @@ export const survivalHud = {
     if (this._swarmFlightClass !== swarmFlight) {
       this._swarmFlightClass = swarmFlight;
       document.body?.classList?.toggle('sf-swarm-flight', swarmFlight);
+    }
+    // Any live survival run in flight (Swarm, the Gauntlet): the voice line gets the measured lane
+    // and the glass plate, so a long boss line never crosses the round panel.
+    const runFlight = live && st.mode === 'flight';
+    if (this._runFlightClass !== runFlight) {
+      this._runFlightClass = runFlight;
+      document.body?.classList?.toggle('sf-run-flight', runFlight);
     }
     if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
       this._hide();
@@ -568,6 +576,15 @@ export const survivalHud = {
     this._setText(dom.score, num(run.score));
     this._setText(dom.credits, num(run.credits));
     this._setText(dom.level, `LV ${Math.max(1, run.level || 1)}`);
+    // MOB-07: the phone's one-line round readout. Same figures the full panel prints.
+    const roundWord = circuitRound
+      ? `S${circuitRound.stage}·R${circuitRound.localRound}`
+      : `R${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`;
+    const threatShown = showThreat && dom.threat && !dom.threat.hidden;
+    const briefParts = [overtime ? `OT ${roundWord}` : roundWord];
+    if (threatShown) briefParts.push(String(dom.threatFig.textContent || '').replace(/\s*\/\s*/g, '/'));
+    briefParts.push(num(run.score));
+    this._setText(dom.brief, briefParts.join(' · '));
     this._setStyle(dom.xpFill, 'width', `${Math.round(levelProgress(run) * 100)}%`);
 
     const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
@@ -862,6 +879,17 @@ export const survivalHud = {
     root.setAttribute('aria-atomic', 'true');
     root.setAttribute('aria-label', 'Crucible run status');
 
+    // MOB-07: on a phone the round panel is this one line (round · hostiles left · score); tapping it
+    // opens the full panel. Desktop never shows it (display:none in the base sheet).
+    const brief = make('button', 'sf-crun__brief', root);
+    brief.type = 'button';
+    brief.setAttribute('aria-expanded', 'false');
+    brief.setAttribute('aria-label', 'Round status. Tap for details');
+    if (typeof brief.addEventListener === 'function') brief.addEventListener('click', () => {
+      const open = root.classList.toggle('is-open');
+      brief.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
     const label = make('div', 'sf-crun__label', root);
 
     const waveRow = make('div', 'sf-crun__row', root);
@@ -971,7 +999,7 @@ export const survivalHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, label, waveN, phase, hero, intro, threat, threatWord, threatFill, threatFig,
+      root, brief, label, waveN, phase, hero, intro, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
@@ -998,6 +1026,7 @@ export const survivalHud = {
     font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
   .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
+  .sf-crun__brief { display:none; }
   .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
     color:var(--dp-phos, var(--sf-paper)); line-height:1.35; }
   .sf-crun__hero[data-state="blocked"], .sf-crun__hero[data-state="hidden"] { color:var(--dp-ink-mute, var(--sf-calm)); }

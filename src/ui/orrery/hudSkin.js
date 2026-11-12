@@ -53,11 +53,14 @@ ${S} .sf-alert.sf-alert--floor, ${S} .sf-alert.sf-alert--dock { position:relativ
   border:0 !important; ${HALO} }
 ${S} .sf-alert.sf-alert--floor::before, ${S} .sf-alert.sf-alert--dock::before { ${pool('-12px -36px')} }
 ${S} .sf-alert.sf-alert--floor { color:var(--dp-ink, #e8e2d4); }
-@media (max-height:540px) {
-  ${S}.sf-swarm-flight .sf-alert.sf-alert--floor { box-sizing:border-box; max-width:100%; white-space:normal; text-align:left;
-    background:var(--dp-glass-flight, rgb(8 10 14 / .82)) !important; }
-  ${S}.sf-swarm-flight .sf-alert.sf-alert--floor::before { display:none; }
-}
+/* A live round (Swarm, the Gauntlet): the voice line is a plate, never bare type over the world. It
+   wraps inside its lane, at most three lines. */
+${S}.sf-run-flight .sf-alert.sf-alert--floor { box-sizing:border-box; max-width:100%; white-space:normal; text-align:left;
+  background:var(--dp-glass-flight, rgb(8 10 14 / .82)) !important;
+  border:1px solid var(--dp-rule, rgb(232 226 212 / .16)) !important; border-radius:var(--dp-r-plate, 3px); padding:5px 10px; }
+${S}.sf-run-flight .sf-alert.sf-alert--floor::before { display:none; }
+${S}.sf-run-flight .sf-alert.sf-alert--floor .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; }
 
 /* ---- the band key: a compact instrument pill, lit while a channel is tuned ---------------------- */
 ${S} #hud .sf-band-hud__button { position:relative; background:linear-gradient(180deg, rgb(18 22 30 / .90), rgb(11 14 20 / .90)) !important;

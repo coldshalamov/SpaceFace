@@ -785,6 +785,73 @@ test('a stopped presentation heartbeat holds the worker clock instead of running
   }
 });
 
+test('a two-second presentation stall resumes without teleporting the world ahead', { timeout: 120000 }, async () => {
+  const replies = [];
+  let receive;
+  let workerError;
+  const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
+  const state = createGameState(4242);
+  const effects = createTimeEffects(state);
+  effects.set('runtime:loading', { scale: 0 });
+  let lane;
+  try {
+    worker.on('message', (message) => {
+      replies.push(message);
+      if (message.kind === 'error') workerError = message;
+      receive?.(message);
+    });
+    worker.on('error', (error) => { workerError = error; });
+    lane = createSimLaneRuntime({
+      state, bus: createBus(), registry: {},
+      flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
+      helpers: {
+        scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+        scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'heartbeat-stall-2s-wire',
+      },
+      channelFactory: () => ({
+        post(message) { worker.postMessage(message); },
+        onMessage(handler) { receive = handler; },
+        onError(handler) { worker.on('error', handler); }, terminate() {},
+      }),
+    });
+    await lane.readyPromise;
+    const boot = await laneRpc('newGameBoot', { opts: { seed: 4242 }, newGamePlus: null });
+    assert.equal(boot.ok, true, workerError?.message);
+    assert.equal(boot.result.ok, true);
+    laneSetMode(state, null, 'flight');
+    laneDomEvent({ type: 'keyup', code: 'CapsLock', pressed: false, repeat: false });
+    effects.clear('runtime:loading');
+    lane.runner.setClockActive(true);
+    const latest = () => replies.filter((reply) => reply.kind === 'clockTick').at(-1);
+    await waitFor(() => latest()?.clockDiagnostics?.scale === 1 && (latest()?.stateTick || 0) >= 4, 60000);
+    // Simulate a 2 s main-thread stall: no presentation beats at all. The world
+    // may only step inside the initial hold window, never through the stall.
+    lane.runner.heartbeat();
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const heldTick = latest()?.stateTick || 0;
+    const heldSimTime = latest()?.simTime || 0;
+    // A beat ends the stall; the world must resume from the held pose — a
+    // teleport would replay ~120 owed ticks and land simTime ~2 s ahead.
+    lane.runner.heartbeat();
+    await waitFor(() => (latest()?.stateTick || 0) > heldTick + 2, 30000);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const resumed = latest() || {};
+    const resumedAdvance = (resumed.stateTick || 0) - heldTick;
+    assert.ok(heldTick <= 45,
+      `during a 2 s stall the clock held (tick reached ${heldTick}, a runaway would be ~120+)`);
+    assert.ok(resumedAdvance <= 60,
+      `after the stall the world resumed at run rate (+${resumedAdvance} ticks in ~0.6 s, a teleport would burst ~105)`);
+    assert.ok((resumed.simTime || 0) - heldSimTime <= 1.2,
+      `simTime did not jump seconds ahead on resume (+${((resumed.simTime || 0) - heldSimTime).toFixed(2)} s)`);
+    assert.ok((resumed.clockDiagnostics?.heartbeatHolds || 0) > 0,
+      'the worker recorded the presentation-stall hold');
+    assert.equal(workerError, undefined);
+  } finally {
+    lane?.close();
+    await worker.terminate();
+  }
+});
+
 test('a budget-limited batch retains unexecuted ticks for later clock turns', { timeout: 60000 }, async () => {
   let receive;
   let limited;
