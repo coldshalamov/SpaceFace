@@ -214,7 +214,10 @@ export const story = {
     });
     // While the tutorial owns the one-voice channel, suppress its tutorial-line windows so ambient
     // comms can't stomp a beat's verb. The tutorial system announces each line via tutorial:say.
-    bus.on('tutorial:say', () => { this._lastTutorialSayS = (this.state.simTime || 0); });
+    bus.on('tutorial:say', (p) => {
+      this._lastTutorialSayS = (this.state.simTime || 0);
+      if (p && p.captionId === 'premise') this._scheduleColdStartKesslerLine();
+    });
 
     // ── Graffiti at airlock/shipyard fires when the player docks (the station hub is open). ──
     bus.on('dock:docked', (p) => this._onDocked(p || {}));
@@ -2145,6 +2148,28 @@ export const story = {
     return true;
   },
 
+  // OPENING-1 (item 2): the tutorial's premise caption is the first voiced frame of a fresh run;
+  // Kessler's B0 line is queued ~4 s after it through the ordinary scheduled-comms path — the
+  // calm/fight hold and the voice arbiter still apply, and the serialized queue survives a save.
+  // Once-only: seenComms marks the id wherever the line fires (this schedule or a beat change).
+  _scheduleColdStartKesslerLine() {
+    const primary = primaryCommsForBeat(0);
+    if (!primary || !primary.id) return;
+    this._ensureState();
+    const s = this.state.story;
+    s.seenComms = s.seenComms || {};
+    if (s.seenComms[primary.id]) return;
+    if (Array.isArray(s.scheduled) && s.scheduled.some((event) => event && event.id === primary.id)) return;
+    this._scheduleNarrative(4, {
+      kind: 'comms',
+      id: primary.id,
+      sender: primary.sender,
+      text: primary.text,
+      category: 'story',
+      ttl: 9,
+    });
+  },
+
   _scheduleNarrative(delayS, event) {
     this._ensureState();
     const s = this.state.story;
@@ -2172,6 +2197,8 @@ export const story = {
     if (event.kind === 'comms' && event.id && this.state && this.state.story) {
       const s = this.state.story;
       s.seenComms = s.seenComms || {};
+      // The queue holds while a fight does; another path may have spoken the line first.
+      if (s.seenComms[event.id]) return;
       s.seenComms[event.id] = true;
     }
     if (event.kind === 'graffiti') {
