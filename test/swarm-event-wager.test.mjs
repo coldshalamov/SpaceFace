@@ -28,9 +28,11 @@ import { setPromptDeck } from '../src/ui/promptDeck.js';
 
 const SEED = 4242;
 
-/** Find the in-course wave in 1..30 whose seeded minor draw is `eventId` for `arenaId`. */
+/** Find the first wave whose minor draw is `eventId` for `arenaId`.
+ * e43158f9386a: the course's mechanic-owned band rounds (12/18/22/28) answer null, so the
+ * scan runs past the course's end — the band keeps dealing on the deep clock. */
 function waveFor(arenaId, eventId, seed = SEED) {
-  for (let wave = 1; wave <= 30; wave++) {
+  for (let wave = 1; wave <= 100; wave++) {
     const draw = swarmMinorEventFor({ arenaId, wave, seed });
     if (draw && draw.id === eventId) return wave;
   }
@@ -116,7 +118,8 @@ test('the telegraph offers the wager — terms, deadline, and no ambient spend',
 
 test('engage: the event fires as authored and pays the stated bounty — exact receipts', () => {
   // C01-01: sling_gust is the minor band's install-free surge — the same machinery rocks.
-  // Seed 1 deals it on the wave-12 minor round; the suite seed never draws it in-course.
+  // e43158f9386a: wave 12 belongs to the freight mechanic now, so seed 1's first draw is
+  // wave 58 on the deep clock; the suite seed never draws it under 30.
   const wave = waveFor('lagrange_crucible', 'sling_gust', 1);
   const card = SWARM_EVENT_BY_ID.sling_gust;
   const draw = swarmMinorEventFor({ arenaId: 'lagrange_crucible', wave, seed: 1 });
