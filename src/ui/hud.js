@@ -3193,7 +3193,7 @@ export function createHud(ctx, alerts) {
     return el;
   })();
   const tellSlots = [];
-  const tellPhoneAvoid = createAvoidRects(document, { exclude: (el) => !!el.closest?.('.sf-tells') });
+  const tellPhoneAvoid = createAvoidRects(document, { ttlMs: 90, exclude: (el) => !!el.closest?.('.sf-tells') });
   for (let i = 0; i < TELL_POOL_SIZE; i++) {
     const linkEl = document.createElement('div');
     linkEl.className = 'sf-tell-link';

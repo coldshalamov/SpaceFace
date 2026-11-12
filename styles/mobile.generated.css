@@ -320,6 +320,7 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  #sf-touch-overlay .mf-buttons { bottom:calc(10px + var(--sf-safe-bottom,0px)); width:calc(146px * var(--mf-scale)); height:calc(86px * var(--mf-scale)); }
  #sf-touch-overlay .mf-gun { width:calc(74px * var(--mf-scale)); height:calc(74px * var(--mf-scale)); }
  #sf-touch-overlay .mf-tether { width:calc(58px * var(--mf-scale)); height:calc(58px * var(--mf-scale)); }
+ #sf-touch-overlay .mf-tether .mf-key-word { font-size:9.5px; }
  #sf-touch-overlay .mf-dock { bottom:calc(10px + 86px * var(--mf-scale) + 12px + var(--sf-safe-bottom,0px)); }
  #sf-touch-overlay .mf-reel { right:calc(12px + 146px * var(--mf-scale) + 12px + var(--sf-safe-right,0px)); bottom:calc(10px + 29px * var(--mf-scale) - 38px + var(--sf-safe-bottom,0px)); }
  #sf-touch-overlay .mf-speed b { font-size:20px; }

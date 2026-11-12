@@ -30,6 +30,7 @@ export const AVOID_SELECTORS = Object.freeze([
   '#sf-touch-overlay .mf-buttons > *',
   '#sf-touch-overlay .mf-dock:not([hidden])',
   '#sf-touch-overlay .mf-toast:not([hidden])',
+  '#sf-touch-overlay .mf-caption:not([hidden])',
   '#sf-touch-overlay .mf-ghost:not([hidden]) > svg',
   '#sf-touch-overlay .mf-ghost-label',
   '#hud .sf-radar-wrap',
