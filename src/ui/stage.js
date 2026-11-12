@@ -210,14 +210,21 @@ export function createStage(ctx = {}) {
     const seq = ++s.seq;
     const id = String(opts.id || `sf-stage-${name}-${seq}`);
     // A refresh keeps its seat: freeing it must not promote a queued rival ahead of the
-    // replacement, so the swap releases the seat without promoting.
-    for (const old of [...s.visible, ...s.queue]) if (old.id === id) removeRec(s, old, { promoteQueue: false });
+    // replacement, so the swap releases the seat without promoting. A same-priority refresh
+    // (below) keeps its arrival sequence and place instead — only a severity change re-ranks.
+    const prior = [...s.visible, ...s.queue].find((old) => old.id === id);
+    const inPlace = !!prior && stagePriority(prior.severity) === stagePriority(opts.severity || 'info');
+    if (prior && !inPlace) removeRec(s, prior, { promoteQueue: false });
 
     const rec = {
       id, seq, severity: opts.severity || 'info', el: null, visible: false,
       // hold marks a seat that priority never demotes (a live decision deck); onMount runs
       // once per mount — including a deferred promotion — so hosts re-arm visible effects.
       hold: opts.hold === true,
+      // persistent marks a standing status pill (ttl Infinity) — a timed announcement that
+      // asks for `takeSeat` may borrow its seat at equal rank; the pill queues and resumes.
+      persistent: opts.persistent === true,
+      takeSeat: opts.takeSeat === true,
       onMount: typeof opts.onMount === 'function' ? opts.onMount : null,
     };
     const body = normalizeContent(content);
@@ -232,6 +239,27 @@ export function createStage(ctx = {}) {
       rec.el = frame;
     }
 
+    if (inPlace) {
+      // G16-03 FIFO: a same-id, same-priority refresh swaps content under the old record's
+      // arrival sequence and place — repeated refreshes never postpone it behind a rival.
+      rec.seq = prior.seq;
+      const vi = s.visible.indexOf(prior);
+      if (vi >= 0) {
+        s.visible[vi] = rec;
+        rec.visible = true;
+        prior.visible = false;
+        if (prior.el !== rec.el) {
+          const parent = prior.el && prior.el.parentNode;
+          if (parent) { parent.insertBefore(rec.el, prior.el); parent.removeChild(prior.el); }
+          else flowFor(s).appendChild(rec.el);
+        }
+      } else {
+        s.queue[s.queue.indexOf(prior)] = rec;
+        if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      }
+      return handleFor(s, rec);
+    }
+
     // Preempt: only a strictly higher rank takes a seat — equal rank still waits its turn
     // (FIFO), and a held seat (the screens host) is never a demotion candidate. While the
     // slot itself is held (a station/menu screen is open) nothing new mounts at all.
@@ -244,7 +272,10 @@ export function createStage(ctx = {}) {
           if (!lowest || stagePriority(v.severity) < stagePriority(lowest.severity)
             || (stagePriority(v.severity) === stagePriority(lowest.severity) && v.seq < lowest.seq)) lowest = v;
         }
-        if (!lowest || stagePriority(lowest.severity) >= rank) break;
+        // takeSeat: a timed announcement also displaces an EQUAL-rank standing pill.
+        const outranked = lowest && (stagePriority(lowest.severity) < rank
+          || (rec.takeSeat && lowest.persistent && stagePriority(lowest.severity) === rank));
+        if (!outranked) break;
         removeRec(s, lowest, { promoteQueue: false });
         insertQueue(s, lowest);
       }

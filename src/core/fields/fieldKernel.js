@@ -81,6 +81,13 @@ export function normalizeField(spec = {}) {
     // math bit-identical, and the pure predictor seam picks the shape up with no further wiring.
     innerRadius: Math.max(0, finite(spec.innerRadius, 0)),
     innerSoft: Math.max(0, finite(spec.innerSoft, 0)),
+    // SWARM-GRIND-01: OPTIONAL interior snare. Inside an annular field's dead zone (r <=
+    // innerRadius, where the positional pull is gated to zero) an authored innerDamping still
+    // brakes relative motion on the medium's own density envelope — the "inner hold" that lets
+    // a gather well settle bodies on the ring instead of letting them coast through the hole
+    // onto the source collider. Zero keeps every existing field bit-identical; it has no
+    // meaning outside an annular field since the same branch is what reads it.
+    innerDamping: Math.max(0, finite(spec.innerDamping, 0)),
     // PQ-147.00: scoop-sheet half-width (WU). Unused by well/repulsor/cone.
     halfWidth: positive(spec.halfWidth, 48),
     // PQ-013: presentation tag passthrough ('external' = authored world profile, not a player
@@ -113,6 +120,16 @@ export function normalizeField(spec = {}) {
   };
 }
 
+// The medium's density envelope alone: the (1 - r/R)^falloff ramp with no annular gate. The
+// positional pull reads this through the ring gate below; the inner hold's snare reads the
+// medium itself — a body inside the dead zone is still inside the well's medium.
+function outerFalloff(field, r) {
+  const R = field.radius;
+  if (!(R > 0) || r >= R) return 0;
+  const t = 1 - r / R; // 1 at center → 0 at edge
+  return Math.pow(clamp(t, 0, 1), field.falloff);
+}
+
 // Radial falloff scalar in [0,1]: 1 at the center, 0 at (and beyond) the radius. The exponent
 // eases toward the edge so the outer band reads as the "commitment margin" (bible §4.4). This is
 // the single source of truth the VFX density curve must mirror (gauges must not lie).
@@ -120,10 +137,8 @@ export function normalizeField(spec = {}) {
 // 0->1 across innerSoft — the planet's bounded ring of attraction. Fields authored without an
 // innerRadius are untouched (gate degenerates to 1).
 export function fieldFalloff(field, r) {
-  const R = field.radius;
-  if (!(R > 0) || r >= R) return 0;
-  const t = 1 - r / R; // 1 at center → 0 at edge
-  const outer = Math.pow(clamp(t, 0, 1), field.falloff);
+  const outer = outerFalloff(field, r);
+  if (!(outer > 0)) return 0;
   const rIn = field.innerRadius;
   if (!(rIn > 0)) return outer;
   if (r <= rIn) return 0;
@@ -253,11 +268,13 @@ function hitchLockAcceleration(field, x, z, out) {
 // Viscosity opposes velocity in the field's own frame (frame 0 is the world).
 // Power against that relative velocity is -c|u|^2, so a stationary medium cannot
 // add kinetic energy through drag alone. Pull and push stay the positional term.
-function viscosityAccel(field, vel, fall) {
+// `coefficient` overrides field.damping for the annular hold's interior snare.
+function viscosityAccel(field, vel, fall, coefficient = null) {
   const frame = field && field.frame;
   const ux = finite(vel && vel.x) - finite(frame && frame.x);
   const uz = finite(vel && vel.z) - finite(frame && frame.z);
-  return { x: -ux * field.damping * fall, z: -uz * field.damping * fall };
+  const c = coefficient != null ? coefficient : field.damping;
+  return { x: -ux * c * fall, z: -uz * c * fall };
 }
 
 // Raw (pre-coupling) acceleration vector a single field applies at a world point. Writes into
@@ -339,7 +356,18 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
   const r = Math.hypot(dx, dz);
   if (r >= field.radius) return o;
   const fall = fieldFalloff(field, r);
-  if (fall <= 0) return o;
+  if (fall <= 0) {
+    // SWARM-GRIND-01 — the annular hold: inside innerRadius the pull is gated to zero, but an
+    // authored innerDamping still brakes relative motion on the medium envelope, so bodies
+    // settle on the ring instead of coasting through the hole onto the source collider.
+    if (field.innerDamping > 0 && vel
+        && (field.kind === FIELD_KINDS.WELL || field.kind === FIELD_KINDS.REPULSOR)) {
+      const drag = viscosityAccel(field, vel, outerFalloff(field, r), field.innerDamping);
+      o.ax = drag.x;
+      o.az = drag.z;
+    }
+    return o;
+  }
 
   if (field.kind === FIELD_KINDS.CONE) {
     // Directed current along dir, gated by the wedge angle. Bodies in the wedge are driven

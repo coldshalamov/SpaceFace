@@ -1743,7 +1743,7 @@ export const swarmArena = {
    * One debris monolith: same spec everywhere the system makes cover — the ambient field top-up,
    * the mass-gap wall, and (by tag, not by shape) SF-067 wear and fracture. Returns the id.
    */
-  _spawnDebrisRock(x, z, size, rng, now, extraData) {
+  _spawnDebrisRock(x, z, size, rng, now, extraData, { requireClear = false } = {}) {
     const helpers = this.helpers;
     if (!helpers || typeof helpers.spawnEntity !== 'function') return null;
     const oreHP = Math.round(360 + size * 14);
@@ -1754,6 +1754,12 @@ export const swarmArena = {
     // stay dead hulls) and the stamped substance answers density, restitution and break
     // behaviour while the place skin makes the body itself authored, not displaced noise.
     const substance = material === 'debris' ? null : pickDebrisSubstance(material, rng);
+    const angVel = (rng() - 0.5) * 0.12;
+    const pos = { x, z };
+    const colliderRadius = asteroidColliderRadius(typeId, size);
+    // An occupied growth site stays open for this ring. Roll its appearance first so that
+    // rejecting one site does not reroll later nubs or shift the seeded sac berths.
+    if (requireClear && !swarmPlacementIsClear(this.state, pos, Math.max(size, colliderRadius))) return null;
     const placeId = substance
       ? `place_rock_${substance}_${rockSizeClassForRadius(size)}`
       : null;
@@ -1779,13 +1785,13 @@ export const swarmArena = {
     const densityMult = substance ? applyRockSubstance(data, substance) : 1;
     const spawned = helpers.spawnEntity({
       type: material === 'debris' ? 'wreck' : 'asteroid',
-      pos: { x, z },
+      pos,
       vel: { x: 0, z: 0 },
       radius: size,
-      physicsBody: { radius: asteroidColliderRadius(typeId, size) },
+      physicsBody: { radius: colliderRadius },
       // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
       mass: Math.round(size * size * 40 * densityMult),
-      angVel: (rng() - 0.5) * 0.12,
+      angVel,
       hull: oreHP,
       hullMax: oreHP,
       collides: true,
@@ -2125,7 +2131,9 @@ export const swarmArena = {
     const rockData = { isChunk: true, ...(extraData || {}) };
     const hull = Number.isFinite(rockData.hiveHull) ? rockData.hiveHull : HIVE_WALL_HULL;
     delete rockData.hiveHull; // a build parameter, not a data stamp
-    const id = this._spawnDebrisRock(x, z, size, rng, now, rockData);
+    const id = this._spawnDebrisRock(x, z, size, rng, now, rockData, {
+      requireClear: rockData[HIVE_WALL_TAG] === true,
+    });
     if (id == null) return null;
     const state = this.state;
     const entity = state && state.entities && typeof state.entities.get === 'function'
