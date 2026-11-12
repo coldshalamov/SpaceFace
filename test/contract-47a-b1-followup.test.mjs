@@ -16,6 +16,7 @@ function harness() {
   state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
   state.settings.gameplay.tutorialHints = false;
   state.onboarding = { active: false, finished: true };
+  state.world.currentSectorId = 'sector_helios_prime';
   let nextId = 10;
   const entities = [
     { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } },

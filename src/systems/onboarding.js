@@ -31,6 +31,7 @@ import { continueRecap } from '../ui/sim/missionRecap.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
+import { CONTRACT_47A_B0_TAG } from './missionShared.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
@@ -2004,7 +2005,7 @@ export const onboarding = {
     else if (beat.key === 'raid') this._enterRaidBeat();
     else if (beat.key === 'claimed') this._enterClaimedBeat();
     else if (beat.key === 'seam') {
-      this._spawnMiningRock();
+      this._bindSeamMiningTarget();
       this._setObjectiveWaypoint(true);
     }
     else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
@@ -2169,8 +2170,25 @@ export const onboarding = {
     const qty = Math.max(1, Number(payload.qty) || 1);
     ob.trainingOre = (ob.trainingOre || 0) + qty;
     ob.oreCollected = Math.max(ob.oreCollected || 0, ob.trainingOre);
-    if (ob.trainingOre >= SEAM_ORE_TARGET) this._beatDone(beat);
+    // OPENING-1: the lesson's rock IS the bound 47-A source, so the same yield also stamps
+    // B0's manifest — resolve the beat on either ledger reaching its authored line.
+    if (ob.trainingOre >= SEAM_ORE_TARGET || this._contract47aSampleRecovered()) this._beatDone(beat);
     this._refreshBeatPanel();
+  },
+
+  // OPENING-1 (item 5): the seam lesson works the contract's own bound sample rock. Read-only —
+  // missions owns the binding; when no bound source exists (legacy save, wrong sector, already
+  // recovered) the synthetic training rock stages as before so the lesson still lands.
+  _bindSeamMiningTarget() {
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    const sample = missions && typeof missions.contract47aSampleEntity === 'function'
+      ? missions.contract47aSampleEntity() : null;
+    if (sample && sample.id != null) {
+      this._miningRockId = sample.id;
+      if (this.state.onboarding) this.state.onboarding._miningRockId = sample.id;
+      return sample;
+    }
+    return this._spawnMiningRock();
   },
 
   _contract47aSampleTarget() {
@@ -2178,6 +2196,12 @@ export const onboarding = {
     const sample = missions && typeof missions.contract47aSampleEntity === 'function'
       ? missions.contract47aSampleEntity() : null;
     return sample && sample.pos ? { pos: sample.pos, label: '47-A Recovery Site' } : null;
+  },
+
+  _contract47aSampleRecovered() {
+    const list = this.state && this.state.missions && this.state.missions.active;
+    return !!(Array.isArray(list) && list.some((m) => m && m.storyTag === CONTRACT_47A_B0_TAG
+      && m.params && m.params.sampleRecovered === true));
   },
 
   // Route a gameplay event to the current beat's followups + DONE resolution.
@@ -2491,10 +2515,23 @@ export const onboarding = {
     // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
     // never a wall: the seam beat respawns its marked rock the moment it is gone.
     const miningRock = this._miningRockId != null && this.state.entities.get(this._miningRockId);
-    if (beat.key === 'seam'
-      && (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining)) {
-      this._spawnMiningRock();
-      this._setObjectiveWaypoint(true);
+    if (beat.key === 'seam') {
+      // OPENING-1: while the bound 47-A source lives, the lesson's rock IS that body — rebind if
+      // the id went stale (id recycle, sector re-materialize). The synthetic training rock only
+      // restages when no bound source exists (legacy save, wrong sector, already recovered).
+      const missions = this.registry && this.registry.get && this.registry.get('missions');
+      const sample = missions && typeof missions.contract47aSampleEntity === 'function'
+        ? missions.contract47aSampleEntity() : null;
+      if (sample && sample.id != null) {
+        if (this._miningRockId !== sample.id) {
+          this._miningRockId = sample.id;
+          ob._miningRockId = sample.id;
+          this._setObjectiveWaypoint(true);
+        }
+      } else if (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining) {
+        this._spawnMiningRock();
+        this._setObjectiveWaypoint(true);
+      }
     }
     if (beat.key === 'tether' && !this._liveTrainingDerelict()) {
       const oldId = this._derelictId;
@@ -2742,7 +2779,13 @@ export const onboarding = {
     const player = this.state && this.state.player;
     if (player && player.targetId === this._trainerId) player.targetId = null;
     this._trainerId = null;
-    for (const id of [this._liveTrainingDerelict() ? this._derelictId : null, this._miningRockId]) {
+    // OPENING-1: the seam rock may be the bound 47-A sample — a real world body the contract
+    // still needs. Only a rock the tutorial itself spawned (trainingMining) is removed here.
+    const miningRock = this._miningRockId != null && this.state && this.state.entities
+      ? this.state.entities.get(this._miningRockId) : null;
+    const ownedRockId = miningRock && miningRock.data && miningRock.data.trainingMining === true
+      ? this._miningRockId : null;
+    for (const id of [this._liveTrainingDerelict() ? this._derelictId : null, ownedRockId]) {
       if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
     }
     this._derelictId = null;
@@ -5008,7 +5051,11 @@ export const onboarding = {
     }
     else if (beat && beat.key === 'seam') {
       const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
-      if (rock && rock.alive !== false) target = { pos: rock.pos, label: 'Bright Seam' };
+      // The lesson's rock is the bound 47-A source while it lives — the mark keeps the contract's
+      // own site name; only a tutorial-spawned fallback reads as the drill's Bright Seam.
+      if (rock && rock.alive !== false) {
+        target = { pos: rock.pos, label: rock.data && rock.data.trainingMining ? 'Bright Seam' : '47-A Recovery Site' };
+      }
     }
     else if (beat && beat.key === 'dock') target = this._findHelios();
     // The drills land the player back in open space; the job pick waits at the same berth.
