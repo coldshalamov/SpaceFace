@@ -13,36 +13,53 @@
 //
 // Prints one line per step (PASS boot-adventure 74s / FAIL boot-swarm: <first error line>),
 // then GATE PASS or GATE FAIL, writes the same to .devshots/fleet/gate-last.txt, and exits
-// 0/1. Each step's full output lands in .devshots/fleet/gate-<step>.log. Total budget 12 min.
+// 0/1. Each step's full output lands in .devshots/fleet/gate-<step>.log. Total budget 20 min.
 
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT_DIR = join(REPO, '.devshots', 'fleet');
-const QUICK = process.argv.slice(2).includes('--quick');
 const BUDGET_MS = 20 * 60 * 1000;
 
 const SWARM_BOOT_CRITICAL = ['route', 'player_ship', 'player_control', 'spawn_motion', 'crucible_realm', 'sim_stalled', 'play_interrupted'];
-function judgeSwarmBoot() {
+const PLAYER_TRUTH_VERDICTS = ['PASS', 'FAIL', 'INCOMPLETE'];
+
+function judgeSwarmBoot(result, outDir) {
+  const overall = PLAYER_TRUTH_VERDICTS[result.code];
+  if (!overall) {
+    const detail = result.out?.trim() ? ` (${firstErrorLine(result.out)})` : '';
+    return `player-truth exited ${result.code}${detail}`;
+  }
+
+  let verdict;
   try {
-    const v = JSON.parse(readFileSync(join(REPO, 'scratch', 'player-truth', 'swarm', 'verdict.json'), 'utf8'));
-    const rows = Array.isArray(v.results) ? v.results : Object.values(v.results || {});
-    const bad = SWARM_BOOT_CRITICAL.filter((id) => (rows.find((r) => (r.id || r.name) === id) || {}).status !== 'PASS');
-    return bad.length ? `boot-critical checks not PASS: ${bad.join(', ')}` : null;
+    verdict = JSON.parse(readFileSync(join(outDir, 'verdict.json'), 'utf8'));
   } catch (e) { return `no readable verdict: ${e.message}`; }
+  if (verdict?.meta?.mode !== 'swarm' || verdict.overall !== overall || !Array.isArray(verdict.results)) {
+    return 'invalid Swarm verdict for the completed player-truth run';
+  }
+  const bad = SWARM_BOOT_CRITICAL.filter((id) => {
+    const rows = verdict.results.filter((row) => row?.id === id);
+    return rows.length !== 1 || rows[0].status !== 'PASS';
+  });
+  return bad.length ? `boot-critical checks not PASS: ${bad.join(', ')}` : null;
 }
 
-const STEPS = [
-  { name: 'import-lint', args: ['run', 'check:src-imports'] },
-  { name: 'boot-adventure', args: ['run', 'check:playable'] },
-  // player-truth also grades polish (loadout descriptions, readability...). The gate asks only "did Swarm
-  // boot and play": judge the boot-critical rows of its verdict, not its exit code.
-  { name: 'boot-swarm', args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1', '--duration=10'], judge: judgeSwarmBoot },
-  { name: 'sim-47a', args: ['run', 'check:sim'] },
-];
+export function createSwarmBootStep(outputRoot) {
+  // Player-truth can fail preflight before it touches its output directory.
+  // Only the verdict from this child invocation can judge this boot.
+  const outDir = mkdtempSync(join(outputRoot, 'gate-swarm-'));
+  return {
+    name: 'boot-swarm',
+    args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1', '--duration=10', `--out=${outDir}`],
+    // A finished route may fail or be incomplete on noncritical checks such
+    // as loadout polish. Still require each boot-critical row to pass.
+    judge: (result) => judgeSwarmBoot(result, outDir),
+  };
+}
 
 // Inside `npm run gate`, npm_execpath is the npm CLI itself: `node <npm-cli> run ...` works on
 // every platform. Outside npm, fall back to the npm executable on PATH.
@@ -96,35 +113,46 @@ function runStep(step, timeoutMs) {
   });
 }
 
-mkdirSync(OUT_DIR, { recursive: true });
-const lines = [];
-const emit = (l) => { lines.push(l); console.log(l); };
-const deadline = Date.now() + BUDGET_MS;
-let gateOk = true;
+async function main(quick) {
+  mkdirSync(OUT_DIR, { recursive: true });
+  const steps = [
+    { name: 'import-lint', args: ['run', 'check:src-imports'] },
+    { name: 'boot-adventure', args: ['run', 'check:playable'] },
+  ];
+  if (!quick) steps.push(createSwarmBootStep(OUT_DIR), { name: 'sim-47a', args: ['run', 'check:sim'] });
+  const lines = [];
+  const emit = (l) => { lines.push(l); console.log(l); };
+  const deadline = Date.now() + BUDGET_MS;
+  let gateOk = true;
 
-for (const step of QUICK ? STEPS.slice(0, 2) : STEPS) {
-  const remaining = deadline - Date.now();
-  if (remaining <= 0) {
-    emit(`FAIL ${step.name}: gate time budget (20m) already spent`);
-    gateOk = false;
-    break;
+  for (const step of steps) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      emit(`FAIL ${step.name}: gate time budget (20m) already spent`);
+      gateOk = false;
+      break;
+    }
+    const t0 = Date.now();
+    const r = await runStep(step, remaining);
+    const secs = Math.round((Date.now() - t0) / 1000);
+    writeFileSync(join(OUT_DIR, `gate-${step.name}.log`), r.out);
+    const judged = step.judge && !r.timedOut ? step.judge(r) : undefined;
+    if (!r.timedOut && (step.judge ? judged === null : r.code === 0)) {
+      emit(`PASS ${step.name} ${secs}s`);
+    } else {
+      const detail = r.timedOut ? `timed out at ${secs}s (gate budget 20m)` : (judged || firstErrorLine(r.out));
+      emit(`FAIL ${step.name}: ${detail}`);
+      emit(`  log: .devshots/fleet/gate-${step.name}.log (${secs}s)`);
+      gateOk = false;
+      break;
+    }
   }
-  const t0 = Date.now();
-  const r = await runStep(step, remaining);
-  const secs = Math.round((Date.now() - t0) / 1000);
-  writeFileSync(join(OUT_DIR, `gate-${step.name}.log`), r.out);
-  const judged = step.judge && !r.timedOut ? step.judge() : undefined;
-  if (!r.timedOut && (step.judge ? judged === null : r.code === 0)) {
-    emit(`PASS ${step.name} ${secs}s`);
-  } else {
-    const detail = r.timedOut ? `timed out at ${secs}s (gate budget 20m)` : (judged || firstErrorLine(r.out));
-    emit(`FAIL ${step.name}: ${detail}`);
-    emit(`  log: .devshots/fleet/gate-${step.name}.log (${secs}s)`);
-    gateOk = false;
-    break;
-  }
+
+  emit(gateOk ? 'GATE PASS' : 'GATE FAIL');
+  writeFileSync(join(OUT_DIR, 'gate-last.txt'), lines.join('\n') + '\n');
+  return gateOk ? 0 : 1;
 }
 
-emit(gateOk ? 'GATE PASS' : 'GATE FAIL');
-writeFileSync(join(OUT_DIR, 'gate-last.txt'), lines.join('\n') + '\n');
-process.exit(gateOk ? 0 : 1);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = await main(process.argv.slice(2).includes('--quick'));
+}
