@@ -36,6 +36,34 @@ function authoredBirth(seed) {
   return { rows, rng: rng.getState() };
 }
 
+test('non-debris contacts skip run validation and eligible debris retains endpoint order', () => {
+  const h = fixture();
+  try {
+    const { state } = h.sim;
+    const untagged = h.sim.spawn({ type: 'asteroid', hull: 100, hullMax: 100, data: {} });
+    const tagged = h.sim.spawn({ type: 'asteroid', hull: 100, hullMax: 100, data: { [SWARM_DEBRIS_TAG]: true } });
+    let runReads = 0;
+    h.arena.state = Object.create(state, { run: { get() { runReads++; return state.run; } } });
+    const impact = (a, b, tick) => h.arena._onDebrisImpact({ aId: a.id, bId: b.id,
+      dp: 1, preSolveClosingSpeed: 80, tick });
+    impact(untagged, { id: -1 }, 100);
+    assert.equal(runReads, 0);
+    assert.equal(untagged.hull, 100);
+
+    impact(h.parent, tagged, 101);
+    assert.equal(runReads, 1);
+    assert.ok(h.parent.hull < 3);
+    assert.equal(tagged.hull, 100, 'only the first eligible rock wears');
+    impact(tagged, h.parent, 102);
+    assert.ok(tagged.hull < 100, 'the reversed receipt preserves its own endpoint order');
+    const priorHull = tagged.hull;
+    state.run.seed = 'invalid';
+    impact(untagged, tagged, 200);
+    assert.equal(runReads, 3);
+    assert.equal(tagged.hull, priorHull, 'an eligible endpoint still requires a valid run');
+  } finally { h.sim.dispose(); }
+});
+
 test('two actual native fragments start clear without a solver impulse; authored physical intents remain', async () => {
   const h = fixture(), expected = authoredBirth(4242);
   const native = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });

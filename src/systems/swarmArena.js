@@ -587,6 +587,11 @@ function liveSwarmRun(state) {
   return run;
 }
 
+function liveSwarmDebris(entity) {
+  return entity?.type === 'asteroid' && entity.alive !== false && entity.data?.[SWARM_DEBRIS_TAG] === true
+    ? entity : null;
+}
+
 function playerAnchor(state) {
   const player = state && state.entities && state.playerId != null
     && typeof state.entities.get === 'function'
@@ -1529,26 +1534,25 @@ export const swarmArena = {
    */
   _onDebrisImpact(payload) {
     const state = this.state;
-    // Cheap gates first: the crowd's impact fanout is mostly sub-wear-speed grazes, and
-    // liveSwarmRun pays a full validateRunState per emit. All of these are pure reads,
-    // so testing the receipt numbers before the run admits/rejects the identical set.
+    // Check the receipt and its endpoints before validating the entire run. Most crowd impacts
+    // cannot wear the arena's tagged cover.
     const speed = Number(payload && payload.preSolveClosingSpeed);
     const dp = Number(payload && payload.dp);
     if (!(speed >= SWARM_DEBRIS_WEAR_SPEED) || !(dp > 0)) return;
-    const run = state && liveSwarmRun(state);
+    const ents = state?.entities;
+    if (!ents || typeof ents.get !== 'function') return;
+    const a = liveSwarmDebris(ents.get(payload.aId));
+    const b = liveSwarmDebris(ents.get(payload.bId));
+    if (!a && !b) return;
+    const run = liveSwarmRun(state);
     // Only a live fight wears cover — paused phases (draft/refit/cleanup/ended) leave it alone.
     if (!run || run.phase !== 'active') return;
-    const ents = state.entities;
-    if (!ents || typeof ents.get !== 'function') return;
     const tick = Number.isFinite(payload.tick)
       ? Math.max(0, Math.trunc(payload.tick))
       : (Number.isFinite(state.tick) ? Math.max(0, Math.trunc(state.tick)) : 0);
-    const a = ents.get(payload.aId);
-    const b = ents.get(payload.bId);
     for (const rock of [a, b]) {
-      if (!rock || rock.type !== 'asteroid' || rock.alive === false) continue;
+      if (!rock) continue;
       const d = rock.data;
-      if (!d || d[SWARM_DEBRIS_TAG] !== true) continue;
       if (['crystal', 'volatile', 'debris'].includes(environmentMaterialOf(rock))) continue;
       // A rock in its tick-gap skips, but the impact's OTHER rock still earns its check.
       if (Number.isFinite(d._debrisWornTick) && tick - d._debrisWornTick < SWARM_DEBRIS_WEAR_TICK_GAP) {
