@@ -58,14 +58,18 @@ ${W} .sf-cwheel__hub { position:absolute; left:50%; top:50%; transform:translate
   background:radial-gradient(circle, rgb(7 9 13 / .96), rgb(7 9 13 / .9) 70%, rgb(7 9 13 / .6) 100%);
   box-shadow:inset 0 0 0 1.4px rgb(232 226 212 / .3); }
 ${W} .sf-cwheel__hub-title { font-size:14px; letter-spacing:.12em; color:rgb(232 230 216 / .95); max-width:110px; }
-${W} .sf-cwheel__hub-sub { font-size:12px; letter-spacing:.08em; color:rgb(232 230 216 / .55); max-width:110px; }
+${W} .sf-cwheel__hub-sub { font-size:12px; letter-spacing:.08em; color:rgb(232 230 216 / .72); max-width:112px; line-height:1.2; }
 
 /* condensed tier: hold the 12px floor on composited pixels (same compensation the dial uses) */
 @media (max-width:1400px) and (min-width:761px) and (min-height:561px) {
   ${W} { --wr-type:15px; transform:translate(-50%,-50%) scale(.86); }
+  ${W} .sf-cwheel__hub-title { font-size:16px; }
+  ${W} .sf-cwheel__hub-sub { font-size:14px; }
 }
 @media (max-width:760px), (max-height:560px) {
   ${W} { --wr-type:16.7px; transform:translate(-50%,-50%) scale(.72); }
+  ${W} .sf-cwheel__hub-title { font-size:18px; }
+  ${W} .sf-cwheel__hub-sub { font-size:16.7px; }
 }
 @media (prefers-reduced-motion: reduce) { ${W} .sf-cwheel__wedge { transition:none; } }
 html.sf-reduce-motion ${W} .sf-cwheel__wedge { transition:none; }

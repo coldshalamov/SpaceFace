@@ -176,7 +176,7 @@ function overlayText(recorder) {
 }
 
 function installHotkeys(recorder) {
-  if (typeof window === 'undefined' || recorder.hotkeysInstalled) return;
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function' || recorder.hotkeysInstalled) return;
   recorder.hotkeysInstalled = true;
   window.addEventListener('keydown', (event) => {
     if (!event.ctrlKey || !event.altKey) return;
