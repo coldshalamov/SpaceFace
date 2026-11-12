@@ -35,11 +35,11 @@ ${P} :is(.sxb-berth__ident, .sxb-vital__label, .sxb-event__badge, .sxb-event__ti
 ${P} .sxb-berth__ident { text-transform:uppercase; letter-spacing:.06em !important; color:rgb(${BONE} / .85) !important; }
 ${P} .sxb-berth__name { font-family:${TITLE} !important; letter-spacing:0 !important; }
 ${P} .so-command-trigger { display:inline-flex !important; align-items:center; gap:10px !important; height:32px !important;
-  padding:0 12px !important; border:${LINE} !important; border-radius:2px !important; background:${PANEL} !important;
+  padding:0 12px !important; border:${LINE} !important; border-radius:6px !important; background:${PANEL} !important;
   box-shadow:none !important; color:rgb(${BONE} / .92) !important; text-transform:none !important; cursor:pointer; }
 ${P} .so-command-trigger:is(:hover, :focus-visible) { border-color:rgb(${BONE} / .7) !important; background:rgb(${BONE} / .1) !important; box-shadow:none !important; }
 ${P} .so-command-trigger .dp-kbd { font-family:${NUM} !important; font-size:12px !important; letter-spacing:0 !important;
-  color:rgb(${BONE} / .75) !important; border:${LINE} !important; border-radius:2px !important; padding:1px 6px !important; background:rgb(0 0 0 / .35) !important; }
+  color:rgb(${BONE} / .75) !important; border:${LINE} !important; border-radius:4px !important; padding:1px 6px !important; background:rgb(0 0 0 / .35) !important; }
 ${P} .so-command-trigger .dp-kbd::before { content:none !important; }
 
 /* handoff: keep sentence and Dismiss button in disjoint columns so they never collide */
@@ -52,7 +52,7 @@ ${P} .sxb-next__w { order:3; flex:1 0 100% !important; margin-right:0 !important
   font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important; color:rgb(${BONE} / .82) !important; }
 ${P} .sxb-handoff > .sxb-next__x { grid-column:2 !important; grid-row:1 !important; align-self:start !important;
   display:inline-flex !important; align-items:center; height:26px !important; padding:0 10px !important;
-  border:${LINE} !important; border-radius:2px !important; background:transparent !important;
+  border:${LINE} !important; border-radius:6px !important; background:transparent !important;
   font-family:${UI} !important; font-size:12px !important; font-weight:600 !important; letter-spacing:.03em !important;
   text-transform:none !important; color:rgb(${BONE} / .82) !important; cursor:pointer; }
 ${P} .sxb-handoff > .sxb-next__x:is(:hover, :focus-visible) { border-color:rgb(${BONE} / .75) !important; background:rgb(${BONE} / .08) !important; color:#fff !important; }
@@ -63,7 +63,7 @@ ${P} .sxb-crown { gap:12px !important; }
 ${P} .sxb-crown .sxb-purse { position:static !important; display:grid !important; grid-template-columns:auto auto;
   grid-template-areas:"label label" "value delta"; justify-content:end; align-items:baseline; gap:4px 14px !important;
   margin:0 0 0 auto !important; padding:8px 14px 9px !important; min-width:232px; width:max-content;
-  border:${LINE} !important; border-radius:2px !important; background:${PANEL} !important; text-align:right; }
+  border:${LINE} !important; border-radius:8px !important; background:${PANEL} !important; text-align:right; }
 ${P} .sxb-crown .sxb-purse__label { grid-area:label; justify-self:start; text-align:left !important; font-family:${UI} !important; font-stretch:100% !important;
   font-variation-settings:normal !important; font-weight:600 !important; font-size:12px !important; letter-spacing:.06em !important;
   text-transform:uppercase; color:rgb(${BONE} / .72) !important; padding-bottom:4px; width:100%; border-bottom:${LINE_SOFT}; }
@@ -77,7 +77,7 @@ ${P} .sxb-crown .so-credit-delta { grid-area:delta; align-self:end; font-family:
 
 /* ---- the vitals: a label, a figure, a bar inside a ruled vitals strip ---------------------- */
 ${P} .sxb-vitals { display:flex !important; flex-wrap:wrap !important; justify-content:flex-end !important; align-items:flex-start !important;
-  gap:8px 18px !important; margin:0 !important; padding:7px 14px !important; border:${LINE} !important; border-radius:2px !important; background:${PANEL} !important; }
+  gap:8px 18px !important; margin:0 !important; padding:7px 14px !important; border:${LINE} !important; border-radius:8px !important; background:${PANEL} !important; }
 ${P} .sxb-vital { display:block !important; position:relative !important; width:136px !important; min-width:0 !important;
   flex:none !important; padding:0 !important; text-align:left !important; }
 ${P} .sxb-vital--note { width:168px !important; }
@@ -108,7 +108,7 @@ ${P} .sxb-vital__acts { position:static !important; display:flex !important; fle
   width:auto !important; justify-content:flex-start !important; }
 ${P} .sxb-vital__acts:empty { display:none !important; }
 ${P} .sxb-vital__acts > button { display:inline-flex !important; align-items:center; gap:0; min-height:26px !important; height:auto !important;
-  padding:2px 9px !important; border:${LINE} !important; border-radius:2px !important; background:rgb(8 11 16 / .65) !important; clip-path:none !important;
+  padding:2px 9px !important; border:${LINE} !important; border-radius:6px !important; background:rgb(8 11 16 / .65) !important; clip-path:none !important;
   font-family:${UI} !important; font-size:12px !important; font-weight:600 !important; letter-spacing:.01em !important;
   text-transform:none !important; color:rgb(${BONE} / .92) !important; cursor:pointer; white-space:nowrap; }
 ${P} .sxb-vital__acts > button::before, ${P} .sxb-vital__acts > button::after { content:none !important; display:none !important; }
