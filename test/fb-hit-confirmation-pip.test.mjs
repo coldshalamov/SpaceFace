@@ -88,6 +88,27 @@ test('world labels read layout only when a tag needs to be drawn', () => {
   assert.equal(padLayer.children[0].style.display, 'block');
 });
 
+test('two floor tags projected onto one point take separate seats', () => {
+  const world = makeWorld({ helpers: { worldToScreen: () => ({ x: 200, y: 170, onScreen: true }) } });
+  const second = { ...world.target, id: 'other' };
+  world.target.data = { swarmFloorPad: { label: 'THE CRATE' } };
+  second.data = { swarmFloorPad: { label: 'REPAIR' } };
+  world.state.entities.set(second.id, second);
+  world.ft.update(0.016);
+  const padLayer = world.layer.children.find((el) => el.id === 'sf-floorpads');
+  padLayer.clientWidth = 800;
+  padLayer.clientHeight = 600;
+  for (const el of padLayer.children) {
+    el.offsetWidth = 100;
+    el.offsetHeight = 20;
+  }
+  world.ft.update(0.016);
+  const centers = padLayer.children.map(el => el.style.transform.match(/translate3d\(([-.\d]+)px,([-.\d]+)px/).slice(1).map(Number));
+  assert.equal(centers.length, 2);
+  assert.ok(Math.abs(centers[0][0] - centers[1][0]) >= 100
+    || Math.abs(centers[0][1] - centers[1][1]) >= 20, 'both names remain readable');
+});
+
 function liveNodes(world) {
   return world.layer.children.filter((el) => el.style.display === 'block');
 }

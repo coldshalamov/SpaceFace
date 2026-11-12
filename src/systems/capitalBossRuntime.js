@@ -28,8 +28,9 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { missions } from './missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { swarmLevel } from '../data/swarmMode.js';
-import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
-import { SURVIVAL_WAVE_OWNER_PREFIX } from './survivalWave.js';
+import { WAVE_30_SYSTEM_EVENT } from '../data/survivalActs.js';
+import { SURVIVAL_COHORT_TAG, levelForWave } from './waveMaterialization.js';
+import { GAUNTLET_REGENT_FIGHT_ID, SURVIVAL_WAVE_OWNER_PREFIX } from './survivalWave.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
@@ -44,12 +45,12 @@ export function isSwarmFightId(fightId) {
   return typeof fightId === 'string' && fightId.startsWith(SWARM_FIGHT_PREFIX);
 }
 
-function swarmWaveOfFightId(fightId) {
+function survivalWaveOfFightId(fightId) {
   const m = typeof fightId === 'string' ? fightId.match(/:w(\d+)/) : null;
   return m ? Number(m[1]) : 1;
 }
 
-function swarmRunLive(state) {
+function survivalRunLive(state) {
   const run = state && state.run;
   return !!(run && run.kind === 'survival' && run.phase === 'active');
 }
@@ -218,7 +219,9 @@ export function createProductionCapitalBossEncounters() {
     observe(record, state, helpers) {
       if (isLastArgumentFight(record)) return observeLastArgument(record, state, helpers);
       const swarmFight = isSwarmFightId(record.fightId);
-      const mission = swarmFight ? null : missionById(state, record.fightId);
+      const gauntletFight = record.fightId === GAUNTLET_REGENT_FIGHT_ID;
+      const runFight = swarmFight || gauntletFight;
+      const mission = runFight ? null : missionById(state, record.fightId);
       const bossEntity = state.entities.get(record.bossId);
       const targetEntity = state.entities.get(state.playerId);
       const boss = observeCapitalBody(
@@ -236,12 +239,12 @@ export function createProductionCapitalBossEncounters() {
       // Explicit lifecycle activity: the fight suspends while the mission is settled, the player
       // is docked, the boss's sector is unloaded, the pause freeze skips fixed ticks entirely, or
       // the pair leaves the 620/900 WU hysteresis band. Absence of an entity record is NOT a kill.
-      // A swarm champion has no mission row or sector to check — the RUN is its owner, and the
-      // crucible is one room: live while the run is in an active wave and the roles hold.
-      const missionLive = swarmFight
-        ? swarmRunLive(state)
+      // A Crucible score is run-owned and has no campaign mission or sector to check.
+      const missionLive = runFight
+        ? survivalRunLive(state) && (!gauntletFight
+          || (state.run.ruleset === 'scored' && state.run.wave === WAVE_30_SYSTEM_EVENT.wave))
         : !!(mission && mission.status === 'active');
-      const sectorLive = swarmFight
+      const sectorLive = runFight
         ? true
         : !!(state.world
           && state.world.currentSectorId
@@ -261,11 +264,12 @@ export function createProductionCapitalBossEncounters() {
       const state = ctx.state;
       const boss = state.entities.get(record.bossId);
       if (!boss) throw new Error('Wing request reached an unresolved boss');
-      if (isSwarmFightId(record.fightId)) {
+      const swarmFight = isSwarmFightId(record.fightId);
+      if (swarmFight || record.fightId === GAUNTLET_REGENT_FIGHT_ID) {
         // The survival run is the owner: its wave's budget slot pays for the wing, its ledger
         // survives the tick, and each member is restamped as a run cohort exactly like a wave
         // materialization — arena contract, player hunt, morale/surrender immune.
-        const wave = swarmWaveOfFightId(record.fightId);
+        const wave = survivalWaveOfFightId(record.fightId);
         const ownerId = `${SURVIVAL_WAVE_OWNER_PREFIX}${wave}`;
         // The ledger's owner for a swarm fight is the capital system's own state root — the
         // run record itself rejects unknown keys (`validateRunState` whitelists), while this
@@ -278,7 +282,7 @@ export function createProductionCapitalBossEncounters() {
         const ledger = (ledgers[record.fightId] ??= {});
         const budget = ctx.helpers && ctx.helpers.spawnBudget;
         const spawn = ctx.helpers && ctx.helpers.spawnEntity;
-        if (typeof spawn !== 'function') throw new Error('No spawn port for a swarm wing');
+        if (typeof spawn !== 'function') throw new Error('No spawn port for a Crucible wing');
         const memberCount = command && command.wing && Array.isArray(command.wing.members)
           ? command.wing.members.length : 0;
         const granted = budget && typeof budget.request === 'function'
@@ -289,7 +293,7 @@ export function createProductionCapitalBossEncounters() {
           command,
           record,
           boss,
-          level: swarmLevel(wave),
+          level: swarmFight ? swarmLevel(wave) : levelForWave(wave),
           ledger,
           makeEnemySpawnSpec,
           spawnEntity: (spec) => {
