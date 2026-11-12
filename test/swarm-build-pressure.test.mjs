@@ -56,9 +56,10 @@ test('verbBuildFamily only names real verbs', () => {
 });
 
 test('a pressured swarm wave bends roster share toward the testing roles', () => {
-  // Wave 8+: anchors (control) and cutters exist in the unlocked roster so the bias has a target.
-  const plain = swarmPlan(16, null);
-  const pressured = swarmPlan(16, { dominant: 'collision' });
+  // Wave 31: the open ladder past the course — every role is unlocked so the bias has targets
+  // (the course's authored casts bend too, but only among the ids their stream actually fields).
+  const plain = swarmPlan(31, null);
+  const pressured = swarmPlan(31, { dominant: 'collision' });
   assert.ok(!plain.error && !pressured.error, 'both plans legal');
 
   const plainById = new Map(plain.swarm.roster.map((e) => [e.enemyId, e]));
@@ -78,14 +79,14 @@ test('a pressured swarm wave bends roster share toward the testing roles', () =>
 
 test('build pressure never removes a role and never inflates quota or concurrency', () => {
   for (const dominant of ['collision', 'orbit', 'chain']) {
-    const plain = swarmPlan(24, null);
-    const pressured = swarmPlan(24, { dominant });
+    const plain = swarmPlan(31, null);
+    const pressured = swarmPlan(31, { dominant });
     assert.equal(pressured.swarm.roster.length, plain.swarm.roster.length, `${dominant} roster size kept`);
     assert.equal(pressured.swarm.killTarget, plain.swarm.killTarget);
     assert.equal(pressured.swarm.concurrent, plain.swarm.concurrent);
     assert.equal(pressured.swarm.level, plain.swarm.level);
     // Every static roster seat is still represented — emphasis, never an omission.
-    for (const row of swarmRosterFor(24)) {
+    for (const row of swarmRosterFor(31)) {
       assert.ok(
         pressured.swarm.roster.some((e) => e.enemyId === row.enemyId),
         `${row.enemyId} still spawnable`,
@@ -153,18 +154,20 @@ test('a debut wave under heavies_only stages the arrival as a heavy', () => {
 
 test('pressure changes the bodies a wave fields, deterministically', () => {
   // The biased roster feeds the opening packages too: same seed, different composition.
-  // Wave 23 is past every unlock and is neither a mass-gap round (its opening is deliberately
-  // fodder-first regardless of build) nor a debut — a plain wave where pressure owns the mix.
+  // Wave 31 is past every unlock and the course's cast alike, is neither a mass-gap round
+  // (its opening is deliberately fodder-first regardless of build) nor a debut — a plain
+  // generated wave where pressure owns the mix. Course waves author their openings, so
+  // the bend reaches them only through the stream.
   const dominantHits = (plan) => plan.packages.filter(
     (pkg) => !pkg.champion && ['anchor', 'control', 'reach', 'support', 'elite'].includes(pkg.role),
   ).length;
   let differed = false;
   for (let seed = 1; seed <= 20 && !differed; seed++) {
-    const a = swarmPlan(23, null, seed);
-    const b = swarmPlan(23, { dominant: 'collision' }, seed);
+    const a = swarmPlan(31, null, seed);
+    const b = swarmPlan(31, { dominant: 'collision' }, seed);
     if (dominantHits(b) !== dominantHits(a)) differed = true;
     // Always deterministic: same input → same plan.
-    assert.deepEqual(swarmPlan(23, { dominant: 'collision' }, seed).packages, b.packages);
+    assert.deepEqual(swarmPlan(31, { dominant: 'collision' }, seed).packages, b.packages);
   }
   assert.ok(differed, 'at least one seed fields a different opening mix under pressure');
 });

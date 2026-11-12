@@ -199,12 +199,12 @@ for (const marker of ['assertNoScenarioBranch', 'live-state', 'official_recovery
 }
 
 const tape = json('test/47a.inputs.json');
-const envelope = json('test/47a.telemetry.save-v26.expected.json');
+const envelope = json('test/47a.telemetry.save-v27.expected.json');
 const scenarioContract = json('src/data/scenarios/47a.scenario.json');
 const expectedScenarioActorCount = scenarioContract.actors.length;
 const evidenceReport = validateEvidenceCorpus([
   { path: 'test/47a.inputs.json', data: tape },
-  { path: 'test/47a.telemetry.save-v26.expected.json', data: envelope },
+  { path: 'test/47a.telemetry.save-v27.expected.json', data: envelope },
   { path: 'src/data/scenarios/47a.scenario.json', data: scenarioContract },
 ]);
 assert(evidenceReport.ok, evidenceReport.issues.map(formatEvidenceIssue).join('\n'));
@@ -504,7 +504,7 @@ const profile = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.save-v26.expected.json',
+  'test/47a.telemetry.save-v27.expected.json',
   '--physics-backend',
   'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
@@ -534,7 +534,7 @@ const sfProfile = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.save-v26.expected.json',
+  'test/47a.telemetry.save-v27.expected.json',
   '--physics-backend',
   'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
@@ -555,7 +555,7 @@ const sfReplayVerify = JSON.parse(execFileSync(process.execPath, [
   '--ticks',
   '720',
   '--expect',
-  'test/47a.telemetry.save-v26.expected.json',
+  'test/47a.telemetry.save-v27.expected.json',
   '--hash',
   '--repeat',
   '20',
@@ -587,7 +587,7 @@ const sfDiffReplay = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.save-v26.expected.json',
+  'test/47a.telemetry.save-v27.expected.json',
   '--reload-at',
   '600',
   '--physics-backend',
@@ -633,7 +633,7 @@ const compare = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.save-v26.expected.json',
+  'test/47a.telemetry.save-v27.expected.json',
   '--reload-at',
   '600',
   '--physics-backend',
