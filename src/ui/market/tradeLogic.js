@@ -973,9 +973,9 @@ export function calculateHoldWorth(state, ctx) {
   } else if (s?.missions?.active && Array.isArray(s.missions.active)) {
     const trackedId = s.ui?.trackedMissionId;
     const tracked = trackedId ? s.missions.active.find((m) => m && m.id === trackedId) : null;
-    const mission = tracked || s.missions.active.find((m) => m && m.status === 'active' && (m.destinationStationId || m.targetStationId || m.params?.destinationStationId || m.params?.destStationId));
+    const mission = tracked || s.missions.active.find((m) => m && m.status === 'active' && (m.destStationId || m.destinationStationId || m.targetStationId || m.params?.destinationStationId || m.params?.destStationId));
     if (mission) {
-      destStationId = mission.destinationStationId || mission.targetStationId || mission.params?.destinationStationId || mission.params?.destStationId || null;
+      destStationId = mission.destStationId || mission.destinationStationId || mission.targetStationId || mission.params?.destinationStationId || mission.params?.destStationId || null;
     }
   }
 

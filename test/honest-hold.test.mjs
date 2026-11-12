@@ -184,6 +184,84 @@ test('Cargo nobody nearby buys counts as 0 and flags unsellable', () => {
   assert.equal(hold.text, 'HOLD 15/40 · ≈ 1,000 cr · some unsellable here');
 });
 
+test('Hold value follows the mission top-level destStationId', () => {
+  // missionsData carries the canonical destination at mission.destStationId.
+  // The destination's quote (400) must win over the nearer station's (150).
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const near = { id: 2, type: 'station', alive: true, pos: { x: 120, z: 0 }, data: { stationId: 'station_near' } };
+  const dest = { id: 3, type: 'station', alive: true, pos: { x: 900, z: 0 }, data: { stationId: 'station_dest' } };
+  const state = {
+    playerId: 1,
+    player: {
+      credits: 500,
+      cargo: {
+        capVolume: 40,
+        usedVolume: 10,
+        items: {
+          cmdty_ore_iron: 10,
+        },
+      },
+    },
+    missions: {
+      active: [
+        { id: 'mission_haul_1', status: 'active', destStationId: 'station_dest' },
+      ],
+    },
+    entities: new Map([[1, player], [2, near], [3, dest]]),
+    entityList: [player, near, dest],
+    economy: {
+      markets: {
+        station_near: { cmdty_ore_iron: { lastSell: 150 } },
+        station_dest: { cmdty_ore_iron: { lastSell: 400 } },
+      },
+    },
+    ui: {},
+  };
+
+  const hold = calculateHoldWorth(state, { state });
+  assert.equal(hold.destStationId, 'station_dest');
+  assert.equal(hold.totalWorth, 4000, 'destination quote 400 * 10, not the nearer 150');
+  assert.equal(hold.text, 'HOLD 10/40 · ≈ 4,000 cr');
+});
+
+test('Nav waypoint still outranks the mission destination for hold value', () => {
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
+  const wp = { id: 2, type: 'station', alive: true, pos: { x: 120, z: 0 }, data: { stationId: 'station_wp' } };
+  const dest = { id: 3, type: 'station', alive: true, pos: { x: 900, z: 0 }, data: { stationId: 'station_dest' } };
+  const state = {
+    playerId: 1,
+    player: {
+      credits: 500,
+      cargo: {
+        capVolume: 40,
+        usedVolume: 10,
+        items: {
+          cmdty_ore_iron: 10,
+        },
+      },
+    },
+    nav: { waypoint: { stationId: 'station_wp' } },
+    missions: {
+      active: [
+        { id: 'mission_haul_1', status: 'active', destStationId: 'station_dest' },
+      ],
+    },
+    entities: new Map([[1, player], [2, wp], [3, dest]]),
+    entityList: [player, wp, dest],
+    economy: {
+      markets: {
+        station_wp: { cmdty_ore_iron: { lastSell: 250 } },
+        station_dest: { cmdty_ore_iron: { lastSell: 400 } },
+      },
+    },
+    ui: {},
+  };
+
+  const hold = calculateHoldWorth(state, { state });
+  assert.equal(hold.destStationId, 'station_wp');
+  assert.equal(hold.totalWorth, 2500, 'waypoint quote 250 * 10 beats the mission 400');
+});
+
 test('Loose towed cargo on the Line counts and displays as + 1 towed', () => {
   const podEntity = {
     id: 99,
