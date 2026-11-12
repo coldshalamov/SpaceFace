@@ -75,7 +75,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | STAB-06-model-truth-deadline | A stalled model truth census request must reach the boot error boundary and allow retry | BUILT 931c4ffa37f3 |
 | STAB-07-worker-save-restage | Worker Continue must invalidate its latest-slot cache after the main thread stages changed save keys | BUILT 2e613ca67717 |
 | STAB-08-swarm-gate-flare | The round-entry light stays fixed at the gate and has no collision or tether body | BUILT d699dc7747de (live Swarm gate pending) |
-| STAB-09-swarm-repair-cell | A repair cell stays available until a wounded player actually uses it | TAKEN agent2 (Codex sub-agent) |
+| STAB-09-swarm-repair-cell | A repair cell stays available until a wounded player actually uses it | BUILT 39a766463914 |
 | PERF-05-physics-step-summary | Avoid the unused collider and CCD diagnostic walks in each production physics step | BUILT 76863da5a26f (matched Node timing inconclusive) |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | TAKEN agent2 (devin1) |
@@ -125,6 +125,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
 | PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | READY (repeat; last: PL-54 a753e2f6 + lead fix b7df23fb) |
+| PERF-01-ADVENTURE-RUN | Execute the existing locked Adventure diagnostic matrix against the pinned source manifest and report the measurements | TAKEN agent4 (devin1) |
 | UI-DIGEST | `node scripts/check-ui-budgets.mjs` reports `baseline:stale` (digest changed by G18-02, A01-04, G16-01). After G16-01 is BUILT, with no other game running: re-baseline exactly as the failure line says (`node scripts/fleet/game-lock.mjs run -- npm run capture:ui-matrix -- --budgets-out`), rerun the check, commit only the budget files it rewrites | DONE (re-baselined inside G16-01) |
 | KEYS-TESTS-labels | Two UI tests still expect the old key labels (`4` vs `4/Y`) | BUILT f90f0f3f |
 | GATE-RUN | With no other game instance running: `npm run gate`; paste the output into `HANDOFF.md` §1 under "last gate" with the date and `git rev-parse --short HEAD` | READY (repeat) |
