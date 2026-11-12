@@ -1,4 +1,4 @@
-import { krollArrivalLine, krollStoryScene } from '../story/ceresArrivalStory.js';
+import { krollArrivalLine, krollStoryScene, krollNextWorkScene, krollNextWorkCourse } from '../story/ceresArrivalStory.js';
 // One finite rescue, owned by npcJobsRuntime. World owns the originals, native
 // physics owns their motion, and the prompt is only a revalidated work request.
 import { CERES_NINTH_MOUTH as CUT, worldPoint } from '../data/ceresNinthMouth.js';
@@ -235,8 +235,13 @@ function publish(owner, force = false) {
   const status = ceresNinthMouthStatus(owner), guidance = routeGuidance(owner), choices = [];
   let detail;
   if (rt.page === 'story') {
-    const scene = krollStoryScene(status, rt.topic, r.conversation?.plan);
+    const scene = rt.topic === 'nextWork' && status.status === 'rescued'
+      ? krollNextWorkScene(s) : krollStoryScene(status, rt.topic, r.conversation?.plan);
     detail = scene.detail;
+    if (status.status === 'rescued') {
+      choices.push({ id: 'story:nextWork', label: 'Where could this work matter next?' });
+      if (rt.topic === 'nextWork') choices.push({ id: 'course:breakwater', label: 'Plot Breakwater approach · do not engage' });
+    }
     choices.push({ id: 'story:people', label: status.status === 'rescued' ? 'And the crew?' : 'Why are you still here?' });
     if (status.status === 'waiting') {
       choices.push({ id: 'story:work', label: 'Talk me through the cut' });
@@ -277,7 +282,8 @@ function publish(owner, force = false) {
     choices.push({id:'story',label:status.status === 'rescued' ? 'Speak with Kroll · crew home' : 'Speak with Dessa Kroll'});
     choices.push({id:'close',label:'Keep flying'});
   }
-  const headline = rt.page === 'story' ? krollStoryScene(status, rt.topic, r.conversation?.plan).headline
+  const headline = rt.page === 'story' ? (rt.topic === 'nextWork' && status.status === 'rescued'
+    ? krollNextWorkScene(s) : krollStoryScene(status, rt.topic, r.conversation?.plan)).headline
     : status.status === 'rescued' ? 'ONE BARGE HOME' : 'NINTH MOUTH · RESCUE BERTH';
   // A compact radio never erases the chosen route. Distinguish the moving source
   // from the destination; label source only while the pilot needs to acquire it.
@@ -324,7 +330,11 @@ export function installCeresNinthMouth(owner) {
       || !near(owner, CUT.center, CUT.hearingRadius) || !body(owner, 'receiver')) return;
     rt.busy = true;
     try {
-      if (payload.action === 'close') rt.page = 'compact';
+      if (payload.action === 'course:breakwater') {
+        if (ceresNinthMouthStatus(owner)?.status !== 'rescued' || rt.page !== 'story' || rt.topic !== 'nextWork') return;
+        owner.bus.emit('ui:setCourse', krollNextWorkCourse());
+      }
+      else if (payload.action === 'close') rt.page = 'compact';
       else if (payload.action === 'talk' || payload.action === 'work') rt.page = 'full';
       else if (payload.action === 'story' || payload.action.startsWith('story:')) {
         const r = record(owner);

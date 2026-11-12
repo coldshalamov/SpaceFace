@@ -1,5 +1,7 @@
 // One local story told at existing addresses. This module reads owner receipts;
 // it never creates a mission, moves a ship, stops traffic or rewards a conversation.
+import { BREAKWATER_SITE_LOCAL, BREAKWATER_SECTOR_ID } from '../features/breakwaterSpur/definition.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { CERES_NINTH_MOUTH as CUT, worldPoint } from '../data/ceresNinthMouth.js';
 
@@ -106,4 +108,36 @@ export function ceresArrivalMapTarget(state, intent) {
     return intent.focus === 'galaxy' && !intent.pos
       ? { id: CUT.sectorId, kind: 'sector', sectorId: CUT.sectorId, name: 'Ceres Belt' } : null;
   return intent.focus === 'system' && intent.pos?.x === target.x && intent.pos?.z === target.z ? target : null;
+}
+
+// A local referral, not a new contract or a claim that Nessa has stock/wages.
+// Read the existing project each time: Kroll must not advertise a destroyed
+// original as repairable, or send an operating berth back to its first task.
+export function krollNextWorkScene(state) {
+  const row = state?.world?.breakwaterSpur;
+  let work;
+  if (row?.phase === 'failed' || row?.phase === 'degraded'
+    || Object.values(row?.cartridges || {}).some(c => c?.status === 'lost'))
+    work = '“Nessa’s spur has lost an original. I will not promise you a repair job she cannot finish. Ask her what remains before hauling anything.”';
+  else if (row?.commission?.status === 'paid' && ['cooperative', 'bonded'].includes(row?.charter))
+    work = '“You have already put Nessa’s spur on the books. Ask her about its current freight and services; she keeps her own accounts. I cannot promise stock or another paid run.”';
+  else if (row?.commission?.status === 'paid')
+    work = '“Breakwater’s commissioning stock is already paid. Nessa is waiting for a charter decision, not another load of stock. She can explain the cooperative and bonded terms herself.”';
+  else if (['drive', 'drum'].every(role => row?.sockets?.[role]?.status === 'seated'))
+    work = '“Both originals are seated at Breakwater. Nessa still owns commissioning and the charter. Speak to her before buying stock for it.”';
+  else if (Object.values(row?.sockets || {}).some(socket => socket?.status === 'seated')
+    || Object.values(row?.cartridges || {}).some(c => c?.status === 'unconfirmed'))
+    work = '“You have work in progress at Nessa’s loading frame. Ask her which original still needs seating; I will not send you looking for a cartridge that has already moved.”';
+  else
+    work = '“Nessa Vale keeps Breakwater Spur in the outer industrial pocket. It is a loading frame, not scrap. Survey her console and the two sockets; ask Nessa which originals still need bringing in from the nearby salvage pocket. Your Line can put useful things back where they belong.”';
+  return { headline: 'A BERTH FOR THE NEXT SHIFT', detail:
+    '“This crew’s transfer is filed. Keeping another berth useful is different work, if you want it.” Kroll leaves the rescue entry untouched. '
+    + work + ' “This cut is still here if you come back. This is a direction, not a contract.”' };
+}
+export function krollNextWorkCourse() {
+  // Same open approach used by Breakwater's own course action. Do not aim at
+  // its solid loading-frame center or engage the autopilot from a conversation.
+  return { pos: sectorLocalToGlobalForSector({ x: BREAKWATER_SITE_LOCAL.x,
+    z: BREAKWATER_SITE_LOCAL.z + 90 }, BREAKWATER_SECTOR_ID),
+    sectorId: BREAKWATER_SECTOR_ID, label: 'Breakwater Spur · Nessa Vale', autopilot: false };
 }
