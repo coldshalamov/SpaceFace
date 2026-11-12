@@ -106,6 +106,8 @@ export const MOBILE_SCREEN_CSS = `
   ${S} #sf-settings-pane .k-row .k-range { width:100% !important; min-width:0 !important; }
   ${S} > .orr-set-preview { display:grid !important; position:relative !important; inset:auto !important;
     min-height:360px !important; height:360px !important; grid-template-rows:auto minmax(220px,1fr) !important; order:4; }
+  /* the 360px card has two rows: its "Live keys / Live HUD" foot fell out under the card onto BACK */
+  ${S} > .orr-set-preview > .orr-set-foot { display:none !important; }
   ${S} > .k-foot { order:5; position:relative !important; bottom:auto; z-index:5; padding:8px 0 !important; background:rgb(5 7 10 / .96); }
 
   /* Berth phone: identity, a swipeable tape, one row of vitals and the next step stay on glass; the tab body

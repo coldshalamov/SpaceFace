@@ -1073,6 +1073,10 @@ export function createSettingsPreview(doc = globalThis.document) {
     const pr = pane ? pane.getBoundingClientRect() : rr;
     const rowR = beamRow.getBoundingClientRect();
     if (!rowR.height || rowR.bottom < pr.top + 10 || rowR.top > pr.bottom - 30) { hideBeam(); return; }
+    // stacked (a phone column): the instrument sits under the whole list, so a beam would run down
+    // through every row below the worked one; the beam only reads when the instrument is beside the rows
+    const er = typeof el.getBoundingClientRect === 'function' ? el.getBoundingClientRect() : null;
+    if (er && er.width && er.left < pr.right - 2) { hideBeam(); return; }
     const src = beamRow.querySelector(':scope > div.k-words--row > span')
       || beamRow.querySelector(':scope > .k-words--row') || beamRow.querySelector('.sf-bind-btn')
       || beamRow.querySelector(':scope > .k-t-emph') || beamRow.querySelector('select');
