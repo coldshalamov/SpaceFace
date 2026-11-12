@@ -354,6 +354,9 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane { padding-right:8px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }
+  /* the shared deckplate gutter (--dp-margin) is 48px at 390, leaving the label + scale + numeral row a 294px
+     box; the other phone screens (Records Wall, Achievements, Missions) run an ~18-20px gutter */
+  ${S} { padding:28px 20px calc(16px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 /* a very short desktop window (844×390 / ≤540 densify): stacked ≤900 put the five-rung category
    ladder in an auto row (~208px) so the stage track collapsed to ~34px and MUTE ALL printed through
@@ -625,6 +628,10 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${C} > .k-title > p { text-wrap:balance; }
   /* the reel head's word kept shrinking for its trailing rule, so MADE BY broke in two at 375 */
   ${C} .orr-cr-head > b { flex:none; white-space:nowrap; }
+  /* the shared deckplate gutter (--dp-margin, 48px at 390) boxed the reel into a 294px column with 48px of
+     dead air each side, while Records Wall, Achievements and Missions run an ~18-20px phone gutter: match
+     them (Settings takes the same gutter above), so the tabs and reel cards get the width. */
+  ${C} { padding:28px 20px calc(16px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 /* a very short desktop window (844×390 / ≤460): the five-rung section ladder (and on ≤900 the
    stacked MADE BY reel head) ran into ‹ BACK. Compress title, hang, reel head and foot so CLOSE
