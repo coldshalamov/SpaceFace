@@ -310,37 +310,20 @@ function calloutState(over = {}) {
   };
 }
 
-test('physics kill causes ride the stunt line; gun kills stay quiet', () => {
+test('in a live Swarm round the juice lane owns kill speech; this lane stays dark', () => {
+  // 807b63fe82ab (swarm glass, S2/S3): during a live Swarm round swarmJuiceHud already
+  // speaks each kill, so the Adventure-side register never draws it — even for the
+  // physics-cause families the lane once taught, and for friendly words on gun causes.
   const bus = createBus();
   const owner = createStuntCallout({ state: calloutState(), bus, doc: fakeDocument() });
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'SLAMMED', cause: 'terrain', wave: 2 });
+  for (const [word, cause] of [['SLAMMED', 'terrain'], ['MINED', 'explosive'],
+    ['CRUSHED', 'collision'], ['SHREDDED', 'direct'], ['BANKED', 'direct']]) {
+    bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word, cause, wave: 2 });
+  }
   owner.update(0);
-  let text = calloutTextFor(owner.root);
-  assert.match(text, /SLAMMED/, 'the cause word lands on the lane');
-
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'SLAMMED', cause: 'terrain', wave: 2 });
-  owner.update(10);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /SLAMMED\s*×2/, 'a repeat rolls the count, not a second line');
-
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'MINED', cause: 'explosive', wave: 2 });
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'SHREDDED', cause: 'direct', wave: 2 });
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'DOWN', cause: 'direct', wave: 2 });
-  owner.update(20);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /MINED/);
-  assert.ok(!/SHREDDED/.test(text), 'gun kills never needed teaching');
-  assert.ok(!/\bDOWN\b/.test(text));
-
-  // Row 481 — the gate is the CAUSE family, not the word: an arena renames the vocabulary, so
-  // a physics-caused kill lands whatever it is called, and a gun kill stays quiet even when its
-  // word reads like physics.
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'SWALLOWED', cause: 'terrain', wave: 2 });
-  bus.emit('swarm:killPopup', { pos: { x: 0, z: 0 }, word: 'BANKED', cause: 'direct', wave: 2 });
-  owner.update(30);
-  text = calloutTextFor(owner.root);
-  assert.match(text, /SWALLOWED/, "the room's own word lands");
-  assert.ok(!/BANKED/.test(text), 'a physics-looking word on a gun kill stays quiet');
+  const text = calloutTextFor(owner.root);
+  assert.ok(!/SLAMMED|MINED|CRUSHED|SHREDDED|BANKED/.test(text),
+    'no kill word double-speaks on the register the juice lane already owns');
   owner.destroy();
 });
 
