@@ -26,7 +26,7 @@ const rows = [
   ['uncover_the_anchor', 'Uncover the anchor', 'A Warden guards the Anchor Controller. Break the escort or work around its screen; keep outside the marked snare, then attack during recovery. The crowd follows.', 1080, 1080, 1080, 1080],
 ];
 
-export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
+export const SWARM_FOUNDRY_SCORE = Object.freeze([...rows.map(([id, title, preparation,
   shipReadTicks, debutReadTicks, broodReadTicks, sporeReadTicks], index) => Object.freeze({
   id, wave: index + 1, title, preparation, shipReadTicks, debutReadTicks,
   broodReadTicks, sporeReadTicks,
@@ -69,7 +69,19 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
     Object.freeze({ enemyId: 'field_anchor_controller', role: 'anchor', gate: 'nw', readTicks: 1 }),
   ]) } : {}),
 
-})));
+})),
+  // Round 24 keeps the native mass-gap wall. Sparse entries let the next boss
+  // have a first read without taking over that room or the Mooring Line at 26–28.
+  null,
+  Object.freeze({
+    id: 'cross_the_crown', wave: 25, title: 'Cross the crown',
+    preparation: 'Forge Regent opens alone. Leave the locked furnace beam, then work its stern during recovery. Watch the rim check; the screen and crowd follow.',
+    shipReadTicks: 1200, debutReadTicks: 1200, broodReadTicks: 1200, sporeReadTicks: 1200,
+    arenaPhase: 'boss', massGap: false, events: 'quiet',
+    broodPacketSize: 18, broodPacketGapS: 0.75, bankReadS: 0,
+    protectForeground: true, bankScene: false,
+  }),
+]);
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {
   if (arenaId !== 'helios_core' || !Number.isInteger(wave) || wave < 1 || wave > SWARM_FOUNDRY_SCORE.length
