@@ -277,9 +277,11 @@ test('the hive wave opens with walls and sacs, holds the population law, and bir
       'the open fields only the immediate share — the rest is the sacs\'');
 
     // Living geometry: the first ring stands, the sacs berth, all tagged debris.
+    // e995bf59787f: a growth site already held by a live body stays open — the seeded
+    // rim keeps four ring-0 sites, so nine of the thirteen nubs stand.
     const walls = h.spawned.filter((e) => e.data && e.data[HIVE_WALL_TAG]);
     const sacs = h.spawned.filter((e) => e.data && e.data[HIVE_SAC_TAG]);
-    assert.equal(walls.length, HIVE_WALL_ROCKS, 'the first ring stands whole');
+    assert.equal(walls.length, 9, 'the first ring stands on its clear sites');
     assert.equal(sacs.length, HIVE_SAC_COUNT, 'the sacs berth inside it');
     assert.equal(named(h, 'swarm:hiveRoom').length, 1, 'the room receipts its landing');
     assert.ok(walls.every((e) => e.data.swarmArenaDebris === true),
@@ -295,7 +297,9 @@ test('the hive wave opens with walls and sacs, holds the population law, and bir
     assert.equal(named(h, 'alert').length > 0, true, 'the one-voice alert fired');
     ticks(h, HIVE_WALL_GROW_S + 0.2);
     const inner = h.spawned.filter((e) => e.data && e.data[HIVE_WALL_TAG]);
-    assert.ok(inner.length >= HIVE_WALL_ROCKS * HIVE_WALL_RINGS - 1,
+    // e995bf59787f: grown rings yield occupied sites too — 9 + 6 + 10 stand after the
+    // third ring lands.
+    assert.equal(inner.length, 25,
       'the rings keep landing until the law is spent');
 
     // The sacs birth off the reserve — mite ticks, exactly the wave's own plan.
