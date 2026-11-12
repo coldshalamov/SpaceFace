@@ -8,6 +8,7 @@ export const AVOID_SELECTORS = Object.freeze([
   '#sf-stage-banner .sf-stage__item',
   '#sf-stage-banner #alerts > *',
   '#alerts .sf-alert',
+  '#toasts .sf-toast:not(.sf-toast--out)',
   '.sf-leftcontext',
   '.sf-crun',
   '.sf-bars',
@@ -69,4 +70,15 @@ export function createAvoidRects(doc, opts = {}) {
     },
     invalidate() { at = -Infinity; },
   };
+}
+
+/**
+ * Where a centre-top plate (the rope class-up) sits so it overlaps neither the Swarm centre
+ * column nor anything it already holds: just under the lowest column rect. Returns the top (px)
+ * or null when the column is empty, in which case the plate keeps its ordinary lane seat.
+ */
+export function seatBelowColumn(columnRects, gap = 10) {
+  let bottom = -Infinity;
+  for (const r of columnRects) if (r && r.h > 1 && r.y + r.h > bottom) bottom = r.y + r.h;
+  return Number.isFinite(bottom) ? Math.round(bottom + gap) : null;
 }
