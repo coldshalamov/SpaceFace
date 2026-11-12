@@ -209,8 +209,11 @@ function cellKey(cx, cz) {
 
 // mover/rock caches — rebuilt into retained arrays every tick, never reallocated
 const ROCK_CACHE_MAX = 64;
-// One original Foundry offcut has a cover seat without displacing ordinary stones.
-const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + 1;
+// Handled stones keep a small independent budget when fracture debris fills terrain.
+// Eight nearest handled originals supplement, never displace, the ordinary 64 rocks.
+const HANDLED_ROCK_CACHE_MAX = 8;
+// The original Foundry offcut retains its separate cover seat.
+const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + HANDLED_ROCK_CACHE_MAX + 1;
 const MOVER_CACHE_MAX = 96;
 // Champion mass never displaces the original hull/remain budget.
 const BOSS_CHUNK_CACHE_MAX = 8;
@@ -308,6 +311,8 @@ export function createBroodEngine(deps = {}) {
 
   // caches
   const rockEntities = new Array(ROCK_STORAGE_MAX).fill(null);
+  const handledRocks = new Array(HANDLED_ROCK_CACHE_MAX).fill(null);
+  const handledDistances = new Float64Array(HANDLED_ROCK_CACHE_MAX);
   const linkMoverEntities = new Array(MOVER_STORAGE_MAX).fill(null);
   let linkMassHistory = new WeakMap();
   const rockX = new Float32Array(ROCK_STORAGE_MAX);
@@ -1398,8 +1403,9 @@ export function createBroodEngine(deps = {}) {
     rockCount = 0;
     rockEntities.fill(null);
     const list = indexedTypeScan(state, 'asteroids');
-    for (let i = 0; i < list.length && rockCount < ROCK_CACHE_MAX; i++) {
-      const e = list[i];
+    let nextRock = 0;
+    for (; nextRock < list.length && rockCount < ROCK_CACHE_MAX; nextRock++) {
+      const e = list[nextRock];
       if (!e || e.alive === false || !e.pos) continue;
       // A pending Foundry Bank cannot turn an idle pilot into credited terrain.
       if (e.id === state.playerId && bank?.readPending && !swarmPilotHasActed(state)) continue;
@@ -1418,6 +1424,38 @@ export function createBroodEngine(deps = {}) {
       rockVX[rockCount] = finite(e.vel && e.vel.x);
       rockVZ[rockCount] = finite(e.vel && e.vel.z);
       rockCount += 1;
+    }
+    // A late original must not become transparent merely because old fragments
+    // occupy the terrain budget. Use canonical custody/provenance, never scene tags.
+    // The active line wins ties with released bodies; otherwise nearest to the tracked player signature
+    // wins. More than eight overflow bodies remain a documented bounded admission.
+    handledRocks.fill(null);
+    let handledCount = 0;
+    for (let i = nextRock; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.type !== 'asteroid' || e.alive === false || e.collides === false
+        || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)
+        || !playerOwnsBody(state, e)) continue;
+      const active = state.player?.tether?.active && state.player.tether.targetId === e.id;
+      const distance = active ? -1 : (e.pos.x - playerX) ** 2 + (e.pos.z - playerZ) ** 2;
+      let at = handledCount;
+      while (at > 0 && distance < handledDistances[at - 1]) at--;
+      if (at >= HANDLED_ROCK_CACHE_MAX) continue;
+      for (let j = Math.min(handledCount, HANDLED_ROCK_CACHE_MAX - 1); j > at; j--) {
+        handledRocks[j] = handledRocks[j - 1];
+        handledDistances[j] = handledDistances[j - 1];
+      }
+      handledRocks[at] = e; handledDistances[at] = distance;
+      handledCount = Math.min(handledCount + 1, HANDLED_ROCK_CACHE_MAX);
+    }
+    for (let i = 0; i < handledCount; i++) {
+      const e = handledRocks[i];
+      rockEntities[rockCount] = e;
+      rockCredited[rockCount] = 1;
+      rockX[rockCount] = e.pos.x; rockZ[rockCount] = e.pos.z;
+      rockR[rockCount] = finite(e.radius, 10) * 1.05;
+      rockVX[rockCount] = finite(e.vel?.x); rockVZ[rockCount] = finite(e.vel?.z);
+      rockCount++;
     }
     // The same original can be left as shelter instead of thrown. Slow drift
     // uses the room's existing slide/slam law; fast flight stays exclusively in
