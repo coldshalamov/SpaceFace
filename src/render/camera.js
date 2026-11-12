@@ -760,6 +760,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _exceptionalHold = 0;
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
+  let _anchorHoldSimX = 0;
+  let _anchorHoldSimZ = 0;
   let _anchorHoldValid = false;
   // Retained chase lookAt base quat — see applyChaseLookAt.
   const _lookAtCache = {
@@ -919,6 +921,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       }
       cam.position.x += ox;
       cam.position.z += oz;
+      if (_anchorHoldValid) {
+        _anchorHoldX += ox;
+        _anchorHoldZ += oz;
+      }
       if (cameraDirector && typeof cameraDirector.reprojectFrame === 'function') {
         cameraDirector.reprojectFrame(ox, oz);
       } else if (_directorFrame) {
@@ -1151,25 +1157,34 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const vx = p.vel ? finiteOr(p.vel.x, 0) : 0;
         const vz = p.vel ? finiteOr(p.vel.z, 0) : 0;
         playerSpeed = Math.hypot(vx, vz);
-        // The drawn hull can teleport when a mesh is swapped. If the sim ship did not
-        // move with it, the picture is lying — keep the anchor we already believed.
-        // When the ship itself jumps (a real teleport), both agree and the camera follows.
+        // A mesh swap can jump without the ship. After a sparse frame, the actual drawn
+        // hull can instead be following the ship at a delay. Compare both positions and
+        // their travel since the last accepted frame so that delay cannot strand the camera.
+        let acceptAnchor = true;
         if (_anchorHoldValid) {
-          const jump = Math.hypot(fx - _anchorHoldX, fz - _anchorHoldZ);
+          const dx = fx - _anchorHoldX;
+          const dz = fz - _anchorHoldZ;
           const budget = Math.max(120, playerSpeed * frameDt + 80);
-          const simX = p.pos.x - frameOrigin.x;
-          const simZ = p.pos.z - frameOrigin.z;
-          const meshAgrees = Math.hypot(fx - simX, fz - simZ) <= 80;
-          if (jump > budget && !meshAgrees) {
-            fx = _anchorHoldX;
-            fz = _anchorHoldZ;
-            _playerLocalScratch.x = fx;
-            _playerLocalScratch.z = fz;
+          if (Math.hypot(dx, dz) > budget) {
+            const simDx = p.pos.x - _anchorHoldSimX;
+            const simDz = p.pos.z - _anchorHoldSimZ;
+            const meshAgrees = Math.hypot(fx + frameOrigin.x - p.pos.x, fz + frameOrigin.z - p.pos.z) <= 80;
+            acceptAnchor = meshAgrees || Math.hypot(dx - simDx, dz - simDz) <= budget;
           }
         }
-        _anchorHoldX = fx;
-        _anchorHoldZ = fz;
-        _anchorHoldValid = true;
+        if (acceptAnchor) {
+          _anchorHoldX = fx;
+          _anchorHoldZ = fz;
+          // The authority baseline stays global across frame-origin shifts.
+          _anchorHoldSimX = p.pos.x;
+          _anchorHoldSimZ = p.pos.z;
+          _anchorHoldValid = true;
+        } else {
+          fx = _anchorHoldX;
+          fz = _anchorHoldZ;
+          _playerLocalScratch.x = fx;
+          _playerLocalScratch.z = fz;
+        }
         const focusGap = Math.hypot(c.focus.x - fx, c.focus.z - fz);
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW
           && focusGap > Math.max(320, _dynamicZoom * 2.6)) {

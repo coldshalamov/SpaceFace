@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Vector3 } from 'three';
 
 import {
   CHASE_ZOOM_DEFAULT,
@@ -11,6 +12,7 @@ import {
   resolveExceptionalSpeedZoomFactor,
 } from '../src/render/camera.js';
 import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
+import { deriveFrameOrigin } from '../src/core/coordinates.js';
 import { feel } from '../src/render/feel.js';
 import { readOwnedExceptionalSpeed } from '../src/render/velocityLanguage.js';
 import {
@@ -84,6 +86,49 @@ function publishHitchFeel(speed, options = {}) {
   system._updateSpeedLines(0);
   return { player, state, exceptional: readOwnedExceptionalSpeed(state) };
 }
+
+test('chase keeps the delayed drawn hull in frame through a hitch and an origin shift', () => {
+  const { player, state } = hitchPlayer(570);
+  const camera = createChaseCamera(state, { innerWidth: 960, innerHeight: 540 });
+  const projected = new Vector3();
+  const start = 7800;
+  function present(simX, drawnX, dt) {
+    player.pos.x = simX;
+    const oldOrigin = state.world.frameOrigin;
+    const nextOrigin = deriveFrameOrigin(player.pos, oldOrigin);
+    if (oldOrigin.x !== nextOrigin.x) {
+      state.world.frameOrigin = nextOrigin;
+      state.world.frameOriginSeq += 1;
+      camera.reprojectFrame(oldOrigin.x - nextOrigin.x, 0);
+    }
+    const localX = drawnX - nextOrigin.x;
+    camera.follow(dt, 1, { x: localX, z: 0 });
+    camera.obj.updateMatrixWorld(true);
+    projected.set(localX, 0, 0).project(camera.obj);
+    assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1 && Math.abs(projected.z) < 1,
+      `drawn hull should stay in view at sim x=${simX}, drawn x=${drawnX}, ndc=${projected.toArray()}`);
+  }
+
+  present(start, start, 1 / 60);
+  // The raw advance exceeds the jump budget and the fence is 90 WU behind authority.
+  present(start + 225, start + 135, 0.4);
+  for (let i = 1; i <= 60; i++) {
+    present(start + 225 + 9.5 * i, start + 135 + 9.5 * i, 1 / 60);
+  }
+  assert.equal(state.world.frameOriginSeq, 1);
+  // The draw can catch up on a frame without any authoritative movement.
+  present(start + 795, start + 795, 1 / 60);
+});
+
+test('chase rejects a drawn mesh hop while the ship is stationary', () => {
+  const { state } = hitchPlayer(0);
+  const camera = createChaseCamera(state, { innerWidth: 960, innerHeight: 540 });
+  camera.follow(1 / 60, 1, { x: 0, z: 0 });
+  camera.follow(1 / 60, 1, { x: 1500, z: 0 });
+  assert.equal(state.camera.focus.x, 0);
+  camera.follow(1 / 60, 1, { x: 0, z: 0 });
+  assert.equal(state.camera.focus.x, 0);
+});
 
 test('boost depletion keeps a fast ship in its speed frame', () => {
   if (!globalThis.window) globalThis.window = { innerWidth: 1600, innerHeight: 900 };
