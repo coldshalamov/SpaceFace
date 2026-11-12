@@ -247,8 +247,9 @@ function createHighwayRobberyModule(host) {
       if (playerId == null) return;
       const a = thief(stampIfThief(entityAt(host.state, payload.aId)) && payload.aId);
       const b = thief(stampIfThief(entityAt(host.state, payload.bId)) && payload.bId);
-      const culprit = (payload.aId === playerId ? b : payload.bId === playerId ? a : null)
-        || (a && b ? a : null);
+      // A theft requires the pilot at one end of the contact — two Reavers clipping
+      // each other is just a collision, not a robbery.
+      const culprit = payload.aId === playerId ? b : payload.bId === playerId ? a : null;
       if (!culprit) return;
       busy = true;
       try { rob(culprit); } finally { busy = false; }
