@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "2907642c9303f625020c50678416db701f10cf9edd50f03598c1d56fa8922c8d",
+  "uiSourceDigest": "18995925c1ee218e76150a0352b8da37c7aef60f97b66b0ab18a0deeb21de2b3",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -267,7 +267,7 @@
     "src/ui/orrery/stopDial.js": "accaa5f463c11d25101318ca203d99c3c7b476b5856c22595f94eaca085a0419",
     "src/ui/orrery/svg.js": "ec92f1b348ef275a370d855d4fb8402369a8c7edb9d462fc2b31ca363d932b6d",
     "src/ui/orrery/swarmFortifyLayouts.js": "6c8e0922ee3c4f415587af21ecf860573e31042cc81d9d1d0cd40b68cfcb54ae",
-    "src/ui/orrery/tech-treeLayouts.js": "4e4ac07d1bca58834aa566542d93cb62722f679947558fec3541353a10f2ac54",
+    "src/ui/orrery/tech-treeLayouts.js": "2b375b7332cd02f3264353b5ebf8948a7b0ea2807d6b1363ee73691075adcad2",
     "src/ui/orrery/text.js": "0fc736b0d4cd6239984e8e5c5d60e8a2d580971b79915c59146e7d5f2d12cb87",
     "src/ui/orrery/titleAsideLayouts.js": "b0ce92ac9a4066e8d137bf9f39e8f35a1d60025140580f3537bba79c4a55965f",
     "src/ui/orrery/tokens.js": "983cca8bcdfbd289deb43268a8d39764907f7c1e005d39ab5b1d86c5d4998824",
