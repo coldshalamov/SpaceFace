@@ -371,6 +371,20 @@ function viewportSize() {
   return { w, h };
 }
 
+// The worker's completed PERF-02 window is a flat scalar row. Bound every field
+// the same way the scalar diagnostics are bounded so a malformed window can
+// never wedge the diagnostics mirror.
+function laneBoundedPerfWindow(window) {
+  if (!window || typeof window !== 'object' || Array.isArray(window)) return null;
+  const out = {};
+  for (const key of Object.keys(window)) {
+    const value = window[key];
+    out[key] = Number.isFinite(value)
+      ? Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, value)) : null;
+  }
+  return out;
+}
+
 /**
  * Install the whole-sim worker lane. Returns null on the main lane (nothing
  * else changes — production keeps its in-process sim).
@@ -1237,6 +1251,10 @@ export function createSimLaneRuntime({
         heartbeatHolds: bounded(d.heartbeatHolds),
         heartbeatHeld: d.heartbeatHeld === true,
         heartbeatAgeMs: bounded(d.heartbeatAgeMs),
+        heartbeatHeldMs: bounded(d.heartbeatHeldMs, Number.MAX_SAFE_INTEGER),
+        heartbeatHeldTurns: bounded(d.heartbeatHeldTurns),
+        owedTicks: bounded(d.owedTicks, Number.MAX_SAFE_INTEGER),
+        perfWindow: laneBoundedPerfWindow(d.perfWindow),
         commands: bounded(d.commands),
         pendingCommands: bounded(d.pendingCommands, 4096),
         appliedCommandSequence: bounded(d.appliedCommandSequence),
