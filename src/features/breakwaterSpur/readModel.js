@@ -3,7 +3,7 @@
 // live entity references across a frame.
 
 import {
-  BREAKWATER_SITE_ID, BREAKWATER_SECTOR_ID, BREAKWATER_SITE_LOCAL,
+  BREAKWATER_SITE_ID, BREAKWATER_SECTOR_ID, BREAKWATER_SITE_LOCAL, BREAKWATER_POCKET_LOCAL,
   BREAKWATER_POI_ID, BREAKWATER_CONTACT_ID, BREAKWATER_DISPATCHER,
   BREAKWATER_PHASE, BREAKWATER_CHARTER, BREAKWATER_STOCK,
   BREAKWATER_COMMISSION_COST, BREAKWATER_COOP_JOBS, BREAKWATER_BONDED,
@@ -122,6 +122,22 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
     stageLabel,
     statusLine: row.nextAction || nextActionFor(row) || stageLabel,
   }];
+  // Restoration remains navigable while the pilot is away towing an original.
+  // Pocket is a fixed search area, never a promise that a moved original is there.
+  if (row.phase === PH.SURVEYED || row.phase === PH.RESTORING) {
+    const append = (id, name, local, line) => markers.push({
+      id, kind: 'poi', poiType: 'breakwater_spur', name, x: local.x, z: local.z,
+      drawPos: { ...local }, coursePos: { ...local }, courseLabel: name,
+      courseArrivalRadius: 20, stageId: 'restoration_route', stageLabel: 'Restoration route', statusLine: line,
+    });
+    if (Object.values(row.cartridges || {}).some(c => c.status === 'loose' || c.status === 'unconfirmed')) {
+      append('poi_breakwater_salvage_pocket', 'Breakwater · southeast salvage pocket', BREAKWATER_POCKET_LOCAL,
+        'Original search area, not live cargo tracking. Recover each surviving original; this mark does not track cartridges you have moved.');
+    }
+    append('poi_breakwater_restoration_approach', 'Breakwater · receiving shelf approach',
+      { x: BREAKWATER_SITE_LOCAL.x, z: BREAKWATER_SITE_LOCAL.z - 90 },
+      'Open approach to the two cradles. Guide each original through its matching cradle mouth, align and settle against the rear support; then choose Seat.');
+  }
   if (row.charter === BREAKWATER_CHARTER.BONDED && row.looseLoad?.kind === 'consignment'
     && row.looseLoad.status === 'in_transit') {
     const spot = BREAKWATER_CONSIGNMENT.receiverLocal;
@@ -153,7 +169,7 @@ export function buildBreakwaterSpurOffer(state, page = 'home') {
     case PH.SIGNALED:
       return {
         ...base, kind: 'inspect', title: 'Breakwater Spur — dead loading frame',
-        detail: 'An H-shaped freight spur, dark. Two socket cradles on the receiving shelf and a dispatcher console are all that is left working.',
+        detail: 'An H-shaped freight spur, dark. Scan the dispatcher console and both socket cradles on the receiving shelf. Nessa can restore the berth only with its two surviving original cartridges.',
         actions: [...actions, { id: 'course', label: 'Mark course' }, { id: 'close', label: 'Leave' }],
         status,
       };
@@ -163,12 +179,14 @@ export function buildBreakwaterSpurOffer(state, page = 'home') {
       const detail = [
         `Sockets: drive ${row.sockets.drive.status}, drum ${row.sockets.drum.status}.`,
         `Cartridges: drive — ${cartLabel(carts.drive)}; drum — ${cartLabel(carts.drum)}.`,
-        'Both originals lie in the salvage pocket to the south-west.',
+        'The original search pocket is southeast of the spur. This mark does not track originals you have moved; seated originals are already part of the frame.',
+        'Tow each loose original through its matching cradle mouth. Align it with the cradle, settle against the rear support and hold steady until Seat is offered. The chart marks the receiving shelf approach.',
       ].join(' ');
       if (canSeat(row, 'drive')) actions.push({ id: 'seat:drive', label: 'Seat drive cartridge' });
       if (canSeat(row, 'drum')) actions.push({ id: 'seat:drum', label: 'Seat drum cartridge' });
       addCartridgeRepairs(row,actions);
-      actions.push({ id: 'course_pocket', label: 'Mark salvage pocket' }, { id: 'close', label: 'Leave' });
+      if (Object.values(row.cartridges).some(c => c.status === 'loose' || c.status === 'unconfirmed')) actions.push({ id: 'course_pocket', label: 'Mark original search pocket' });
+      actions.push({ id: 'close', label: 'Leave' });
       return { ...base, kind: 'restore', title: 'Breakwater Spur — restoration', detail, actions, status };
     }
     case PH.READY: {

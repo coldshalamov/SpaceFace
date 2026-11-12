@@ -30,7 +30,7 @@ const COURSE_APPROACH = { x: BREAKWATER_SITE_LOCAL.x, z: BREAKWATER_SITE_LOCAL.z
 // that actually occurred; every line keys off a real transition.
 const NESSA = {
   signal: 'Unknown hull, you are passing Breakwater Spur. It is a dead loading frame, not a wreck — mark it if you haul.',
-  inspect: 'Nessa Vale, dispatch. Two empty sockets, one dead light, shelf still square. The cartridges are in the pocket south-west if you want the work.',
+  inspect: 'Nessa Vale, dispatch. Two socket cradles, shelf still square. The original search pocket is southeast. Bring each surviving cartridge through its matching cradle mouth, align it and settle against the rear support. I will offer to seat it once it holds steady.',
   partial: 'One arm is holding. The other socket is still empty.',
   damaged: 'That original is scarred. It will seat — just settle it slower.',
   seat: 'Seated. That is a real part again, not salvage.',
