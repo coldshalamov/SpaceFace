@@ -270,10 +270,74 @@ function createHighwayRobberyModule(host) {
   };
 }
 
+/**
+ * Round 19 — The Law. Lawmen and Cutters stop for the amber lane lights: the
+ * freight owner's `freight:warning` holds every cohort law hull at an anchor just
+ * outside the corridor (a lawman caught in the band steps out first), weapons
+ * still free — The Law waits for traffic, it does not go harmless. `freight:clear`
+ * releases them back onto the pilot. The wave owner seats the opening package
+ * before this module exists, so holds sweep live entities rather than a spawn ledger.
+ */
+const THE_LAW_IDS = new Set(['patrol_lawman', 'customs_cutter']);
+const THE_LAW_LANE_MARGIN = 70; // z clearance out of the freight corridor
+
+function createTheLawModule(host) {
+  const held = new Set(); // law ids currently holding for a string
+
+  function cohortLaw(e) {
+    return e && e.data && e.data.runCohort === 'survival' && THE_LAW_IDS.has(e.data.lootTableId);
+  }
+
+  function holdAll(lane) {
+    const list = host.state && host.state.entityList;
+    if (!Array.isArray(list)) return;
+    const zLane = finite(lane && lane.z0, 0);
+    for (const e of list) {
+      if (!cohortLaw(e) || held.has(e.id)) continue;
+      held.add(e.id);
+      // Step out of the corridor before holding — the stop happens OUTSIDE the lane.
+      const ex = finite(e.pos && e.pos.x);
+      const ez = finite(e.pos && e.pos.z);
+      const side = ez === zLane ? (e.id % 2 === 0 ? -1 : 1) : Math.sign(ez - zLane);
+      const holdZ = Math.abs(ez - zLane) < THE_LAW_LANE_MARGIN ? zLane + side * THE_LAW_LANE_MARGIN : ez;
+      setEntityDoctrine(e, {
+        activity: { kind: 'hail_hold', reason: 'swarm_the_law', anchor: { x: ex, z: holdZ } },
+        roe: 'weapons_free',
+      });
+    }
+  }
+
+  function releaseAll() {
+    for (const id of held) {
+      const e = entityAt(host.state, id);
+      if (!e) continue;
+      setEntityDoctrine(e, {
+        activity: { kind: 'attack_run', reason: 'survival_pursuit',
+          targetId: host.state && host.state.playerId != null ? host.state.playerId : null, anchor: null },
+        roe: 'weapons_free',
+      });
+    }
+    held.clear();
+  }
+
+  return {
+    onFreightWarning(payload) {
+      if (payload && payload.wave === host.wave) holdAll(payload);
+    },
+    onFreightClear(payload) {
+      if (payload) releaseAll();
+    },
+    onEntityKilled(payload) { held.delete(payload && payload.id); },
+    onEntityRetired(payload) { held.delete(payload && payload.id); },
+    teardown() { releaseAll(); },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
   highway_robbery: createHighwayRobberyModule,
+  the_law: createTheLawModule,
 };
 
 export const swarmCourseTwists = {

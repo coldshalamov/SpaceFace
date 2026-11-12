@@ -394,3 +394,38 @@ test('Highway Robbery: an untouched purse lets the thief run empty-handed', () =
     assert.equal(thief.data.ai.forceFlee, true, 'but the robber still runs for the gate');
   } finally { h.destroy(); }
 });
+
+// ── Round 19 — The Law ─────────────────────────────────────────────────────────────────
+
+const LAW_IDS = new Set(['patrol_lawman', 'customs_cutter']);
+
+test('The Law: amber lane lights hold the law hulls at the corridor edge until the string passes', () => {
+  const h = boot(19);
+  try {
+    h.tickUntil(18); // first warning lands ~3 s before the 20 s departure
+    assert.ok(h.events.warnings.length >= 1, 'the freight owner warned the room');
+    const zLane = h.events.warnings[0].z0;
+    const law = h.entities().filter((e) => e.data && e.data.runCohort === 'survival'
+      && LAW_IDS.has(e.data.lootTableId));
+    assert.ok(law.length >= 3, `law hulls are live (${law.length})`);
+    for (const e of law) {
+      const act = e.data.ai && e.data.ai.activity;
+      assert.equal(act.kind, 'hail_hold', `law hull ${e.id} holds for the lights`);
+      assert.equal(e.data.ai.roe, 'weapons_free', 'The Law waits — it does not go harmless');
+      assert.ok(act.anchor && Math.abs(act.anchor.z - zLane) >= 70 - 1e-9,
+        `the hold anchor sits outside the corridor (|${act.anchor.z - zLane}|)`);
+    }
+    const wasps = h.entities().filter((e) => e.data && e.data.runCohort === 'survival'
+      && e.data.lootTableId === 'wasp_swarmer');
+    for (const w of wasps) {
+      assert.notEqual(w.data.ai.activity.kind, 'hail_hold', 'chaff does not observe the lights');
+    }
+    // Ride out the string — the lane clears and The Law goes back to work.
+    h.tickUntil(30, 30000);
+    const held = law.filter((e) => e.data.ai && e.data.ai.activity && e.data.ai.activity.kind === 'hail_hold');
+    assert.equal(held.length, 0, 'every law hull released when the string passed');
+    for (const e of law) {
+      assert.equal(e.data.ai.activity.kind, 'attack_run', 'law resumes the hunt after the string');
+    }
+  } finally { h.destroy(); }
+});
