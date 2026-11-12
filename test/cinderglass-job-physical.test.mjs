@@ -127,6 +127,9 @@ test('real native route reaches low-speed inspection, holds one nested job, then
   for (let i = 0; i < 18000; i++) {
     t.step();
     if (t.st.atLayby && reachedAt == null) {
+      assert.equal(t.st.rememberedFacts.filter(f => f.id === 'inspection_arrived').length, 1);
+      assert.equal(t.st.rememberedFacts.some(f => f.id === 'inspection_departed'), false);
+      assert.notEqual(t.st.scanDone, true, 'radio never grants a scanner read');
       reachedAt = t.state.simTime; heldAt = { ...t.carrier.pos }; heldProgress = entry.job.progress;
       assert.equal(entry.job.routeIndex, 1);
       assert.ok(Math.hypot(t.carrier.vel.x, t.carrier.vel.z) < 3.5);
@@ -141,6 +144,10 @@ test('real native route reaches low-speed inspection, holds one nested job, then
     if (completedAt != null) break;
   }
   assert.ok(reachedAt != null, `physical inspection reached from ${JSON.stringify(start)}; final ${JSON.stringify(t.carrier.pos)} leg ${entry.job.routeIndex} phase ${entry.job.phase}`);
+  assert.equal(t.st.rememberedFacts.filter(f => f.id === 'inspection_arrived').length, 1);
+  assert.equal(t.st.rememberedFacts.filter(f => f.id === 'inspection_departed').length, 1);
+  assert.ok(t.st.rememberedFacts.find(f => f.id === 'inspection_departed').atS > reachedAt + 30);
+  assert.equal(t.st.custody, 'carried', 'radio does not transfer the original');
   assert.equal(resumed, true, 'same original resumes the outbound bend after finite hold');
   assert.ok(completedAt != null, 'canonical finite hauler emits actual completion');
   assert.ok(Math.hypot(t.carrier.pos.x - CINDERGLASS_JOB_POINTS.marshal.x,

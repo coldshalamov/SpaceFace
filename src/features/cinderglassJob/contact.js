@@ -25,9 +25,13 @@ export function cinderglassJobRevisit(st, actor = 'tala') {
       line: dask.dealAccepted ? 'The paid release is filed. Tala’s receipt closes the dispute.'
         : 'The controller left my rack without agreement. Returning it does not erase how it was taken.',
     };
+    if (outcome === O.CONSIGNMENT_DELIVERED) return { title: 'Oren Dask · delivery completed', line: 'CG-7 reached the buyer on my rack. The consignment is delivered; there is no longer a release to negotiate.' };
     if (dask.knowsTheft) return { title: 'Oren Dask · disputed loss', line: 'My manifest still records the missing CG-7 pod. The ordinary law applies to what happened out there.' };
     if (dask.dealAccepted) return { title: 'Oren Dask · release agreed', line: 'Your inspection deposit is posted. Bring the original to Tala; only her accepted return refunds it.' };
     if (dask.dealRefused) return { title: 'Oren Dask · proposal refused', line: 'Paid consignment. I will not release it on those terms. No inspection deposit was accepted.' };
+    if (!outcome && st?.suspicion >= 3) return { title: 'Oren Dask · proposal refused', line: 'Paid consignment. I will not release it on those terms. No inspection deposit was accepted.' };
+    if (!outcome && st?.custody === 'carried' && st?.laybyDone) return { title: 'Oren Dask · outbound consignment', line: 'Inspection is over. I am carrying CG-7 to the buyer; the paid-release offer was for the layby, not a sale on the move.' };
+    if (!outcome && st?.custody === 'carried' && st?.atLayby && st?.laybyHoldActive) return { title: 'Oren Dask · inspection stop', line: 'I am checking the manifest at the pull-off. Bring a scanner read and approach my hull to discuss Tala’s claim before we leave.' };
     return { title: 'Oren Dask · paid consignment', line: 'Read the marked pod and its latch first. I can hear the title claim at the inspection layby.' };
   }
   if (actor === 'broker') {

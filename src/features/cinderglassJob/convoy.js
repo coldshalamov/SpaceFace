@@ -1,5 +1,6 @@
 // Cinderglass convoy: native originals + finite npcJobs itinerary. No movement/health writer.
 import { Masks } from '../../core/entity.js';
+import { rememberFact } from './operation.js';
 import { currentRole } from './identity.js';
 import { makeShipEntitySpec } from '../../systems/ships.js';
 import { modelTruthRow } from '../../data/modelTruth.js';
@@ -181,6 +182,16 @@ export function cinderglassJobStepConvoy(sys, state) {
     if (out?.granted) { st.laybyRemainingS = remaining; st.laybyHoldS = remaining; st.laybyHoldActive = true; }
   }
   st.atLayby = near && speed < 3.5 && st.laybyHoldActive;
+  // Radio records follow the working hull, not a countdown or a guessed scan.
+  // Existing remembered facts survive Continue; never grant knowledge/custody here.
+  if (!st.outcome && st.captainAlive !== false && st.custody === 'carried') {
+    if (st.atLayby && !st.rememberedFacts?.some(f => f.id === 'inspection_arrived')) rememberFact(st, simT, 'inspection_arrived', st.suspicion >= 3
+      ? 'Dask: Inspection stop. The guards are watching CG-7. I will not release this consignment on your terms.'
+      : 'Dask: Inspection stop. CG-7 stays on my rack while I check the manifest. Scan the marked pod, then approach if you want me to hear Tala’s claim.');
+    else if (st.laybyDone && job.routeIndex > CINDERGLASS_JOB_LAYBY_LEG
+      && !st.rememberedFacts?.some(f => f.id === 'inspection_departed')) rememberFact(st, simT, 'inspection_departed',
+      'Dask: Checks finished. We are leaving the pull-off for the buyer. The inspection offer is closed. If CG-7 reaches the buyer on my rack, this recovery ends.');
+  }
 }
 
 export function cinderglassJobDismissConvoy(sys, state) {

@@ -182,6 +182,7 @@ export const CINDERGLASS_JOB_RELEASE_QUIET = 'service_release';
 // source template and its values with the shared localization runtime at the DOM boundary.
 export const CINDERGLASS_JOB_TERMS_COPY = Object.freeze({
   template: 'Convoy: one Mule, two escorts, four legs through the layby at the far pull-off. ' +
+    'Once Dask completes the run with CG-7 aboard, this recovery closes for this campaign. ' +
     'Bring a scanner — you need a real read on the pod before anyone talks. A starter Massline tows the 18t pod home. Force is unlawful; this is no warrant. ' +
     'Intact controller: {intactCr}CR. Damaged but whole: {damagedCr}CR. ' +
     'Dask will hear {depositCr}CR against release; that comes back to you when I accept the pod.',
