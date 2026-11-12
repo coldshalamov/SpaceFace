@@ -309,7 +309,8 @@ test('the round preview exposes the authored name and twist', () => {
   assert.equal(long.event.name, 'Plate drift', 'the preview names the card the twist deals');
   const quiet = swarmRoundPreview({ arenaId: ARENA, wave: 29, seed: SEED });
   assert.equal(quiet.course.name, 'Quiet');
-  assert.equal(quiet.course.twistId, null);
+  assert.equal(quiet.course.twistId, 'quiet', 'the hold is a room mechanic, not a dealt card');
+  assert.equal(quiet.event, null, 'a room-mechanic round deals no card');
   const deep = swarmRoundPreview({ arenaId: ARENA, wave: 35, seed: SEED });
   assert.equal(deep.course, null, 'the open ladder has no authored row');
 });

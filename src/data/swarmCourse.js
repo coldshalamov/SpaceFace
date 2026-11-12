@@ -59,7 +59,7 @@ export const SWARM_COURSE = Object.freeze([
   courseRound(26, 'The Umbrella, Again', 'two Wardens covering each other', null),
   courseRound(27, 'Tailgate', 'a heavy rides the freight round and round. It can only be hit from the lane', null),
   courseRound(28, 'Black Friday', 'every drop type falls at once, and so does every enemy type', 'black_friday'),
-  courseRound(29, 'Quiet', 'forty seconds of nothing. Then the gates all open together', null),
+  courseRound(29, 'Quiet', 'forty seconds of nothing. Then the gates all open together', 'quiet'),
   courseRound(30, 'The Forge Regent', 'Final boss. It runs the furnace. Three stages: it feeds the room to the furnace, then feeds the furnace to the room, then comes out itself. Win, and the lights come up', null),
 ]);
 

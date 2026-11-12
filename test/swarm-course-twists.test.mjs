@@ -592,3 +592,34 @@ test('Black Friday: one of each of the eight drops lands, and the whole sheet fi
     assert.equal(seen.size, 15, `all fifteen types fielded over the round (got ${seen.size})`);
   } finally { h.destroy(); }
 });
+
+// ── Round 29 — Quiet ───────────────────────────────────────────────────────────────────
+
+test('Quiet: forty silent seconds on the chip, then every gate opens on the same tick', () => {
+  const h = boot(29);
+  try {
+    // The silence is named and counting on the presentation seam.
+    const chip = h.state.render.swarmTwistChip;
+    assert.ok(chip && chip.label === 'QUIET', 'the hold announces itself');
+    assert.ok(Math.abs(chip.endsAtSimTime - (h.state.simTime + 40)) < 1e-9, 'the hold owes forty seconds');
+    // Nothing gates in while the room holds its breath.
+    h.tickUntil(39);
+    assert.equal(
+      h.entities().filter((e) => e.data && e.data.runCohort === 'survival' && e.type === 'ship').length,
+      0, 'the silence is real — no body fields inside forty seconds');
+    // Then every owed package lands in the same step: the planner slid the whole
+    // authored schedule to the hold's far side, and the room's own clamp seats it.
+    const spawnTimes = [];
+    h.bus.on('entity:spawned', (p) => {
+      if (p && p.entity && p.entity.data && p.entity.data.runCohort === 'survival') {
+        spawnTimes.push(h.state.simTime);
+      }
+    });
+    h.tickUntil(41);
+    assert.ok(spawnTimes.length >= 15, `the flood arrives as a flood (got ${spawnTimes.length})`);
+    const ticks = new Set(spawnTimes);
+    assert.equal(ticks.size, 1, 'every gate opens on the same tick');
+    assert.ok([...ticks][0] >= 40, 'the flood owes the hold its forty seconds first');
+    assert.ok(h.state.render.swarmTwistChip == null, 'the silence lets go the moment the flood lands');
+  } finally { h.destroy(); }
+});

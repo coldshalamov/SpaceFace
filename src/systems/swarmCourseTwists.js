@@ -29,6 +29,7 @@ import {
   SWARM_YARDMASTER_REVERSALS,
   SWARM_EMG_SECONDS,
   SWARM_EMG_PRICE_FACTOR,
+  SWARM_QUIET_HOLD_TICKS,
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { getCombatKernel } from '../combat/kernel.js';
@@ -564,6 +565,44 @@ function createBlackFridayModule(host) {
   };
 }
 
+/**
+ * Round 29 — Quiet. The planner already slid the whole authored schedule to the
+ * far side of the forty-second hold — every gate owed at tick 0 opens together
+ * at tick 2400 — so the module's only job is the silence itself: a countdown
+ * chip on the same `state.render` seam the sale uses, named for the round and
+ * cleared the moment the room stops holding its breath.
+ */
+const SWARM_QUIET_HOLD_S = SWARM_QUIET_HOLD_TICKS / 60;
+
+function createQuietModule(host) {
+  let endsAt = null;
+
+  function chip(write) {
+    const st = host.state;
+    if (!st) return;
+    const render = st.render || (st.render = {});
+    render.swarmTwistChip = write;
+  }
+
+  return {
+    activate() {
+      endsAt = simTimeOf(host.state) + SWARM_QUIET_HOLD_S;
+      chip({
+        kind: 'quiet', label: 'QUIET',
+        endsAtSimTime: endsAt, totalS: SWARM_QUIET_HOLD_S, wave: host.wave,
+      });
+    },
+    update() {
+      if (endsAt == null) return;
+      if (simTimeOf(host.state) < endsAt) return;
+      endsAt = null;
+      chip(null);
+    },
+    suspend() { chip(null); },
+    teardown() { endsAt = null; chip(null); },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
@@ -573,6 +612,7 @@ const MODULES = {
   chain_gang: createChainGangModule,
   everything_must_go: createEverythingMustGoModule,
   black_friday: createBlackFridayModule,
+  quiet: createQuietModule,
 };
 
 export const swarmCourseTwists = {
