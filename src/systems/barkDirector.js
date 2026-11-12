@@ -3107,6 +3107,9 @@ export const barkDirector = {
   _speakCargoSpill(payload, eventName) {
     const state = this.state;
     if (!state || !payload) return null;
+    // A Swarm run is an arena: every wreck spills, nobody's freight is in it, and the notice repeated ×25 a round
+    // over the fight (lead look, round 3). Owner reactions to spilled cargo belong to the open world.
+    if (state.run && state.run.kind === 'survival') return null;
 
     const resolved = resolveNamedCargoIncident(state, payload, eventName);
     if (!resolved || !resolved.ownerName) return null;
