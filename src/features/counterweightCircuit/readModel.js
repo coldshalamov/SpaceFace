@@ -226,6 +226,7 @@ export function eventPreviewSpec(state, eventId, opts = {}) {
     sender: 'Circuit Registrar',
     headline: `${m.index + 1}. ${m.title}`,
     detail: [lockedDetail + briefing.question, briefing.rule, medalLine, briefing.condition,
+      'Clock: leave the registrar apron and approach the staged load, or attach a line to a course body. Reading here does not start the clock.',
       'Practice: no payout; completions and records count. Ranked: first eligible completion may pay.',
       `Best time: ${m.bestTimeS != null ? `${m.bestTimeS.toFixed(1)}s` : '—'} · Best medal: ${MEDAL_LABEL[m.bestMedal] || '—'}${m.hasGhost ? ' · ghost on file' : ''}`,
     ].filter(Boolean).join('\n'),
@@ -370,7 +371,7 @@ export function attemptProgressSpec(state, opts = {}) {
     headline: opts.attempt?.admissionPending ? `${a.title} — preparing course`
       : a.armed ? `${a.title} — ${(a.elapsedS ?? 0).toFixed(1)}s` : `${a.title} — staged`,
     detail: opts.attempt?.admissionPending ? 'Preparing course. The run has not started.'
-      : `${legLine}${current?.hint ? `\n${current.hint}` : ''}${handling ? `\n${handling}` : ''}${cond}${a.practice ? '\n(practice — no payout)' : ''}`,
+      : `${legLine}${!a.armed ? "\nClock waiting: leave the registrar apron and approach the load, or attach a line." : ""}${current?.hint ? `\n${current.hint}` : ''}${handling ? `\n${handling}` : ''}${cond}${a.practice ? '\n(practice — no payout)' : ''}`,
     statusFlag: 'running',
     choices: [
       ...(!a.practice && !opts.attempt?.admissionPending ? [{ id: 'practiceContinue', label: 'Continue as practice · forfeit payout' }] : []),

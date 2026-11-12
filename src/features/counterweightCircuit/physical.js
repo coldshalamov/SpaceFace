@@ -18,7 +18,7 @@ import { physicsBodyNativeReady, writePhysicsControl } from '../../core/physicsA
 import { modelTruthRow, modelTruthProxyManifest, modelTruthSkinHull } from '../../data/modelTruth.js';
 import { DEFAULT_MASK, Masks } from '../../core/entity.js';
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
-import { VENUE_SECTOR_ID, VENUE_LOCAL, VENUE_STRUCTURES } from './definition.js';
+import { VENUE_SECTOR_ID, VENUE_LOCAL, VENUE_STRUCTURES, OFFER_RANGE_WU, COMMIT_RADIUS_WU } from './definition.js';
 
 export const CIRCUIT_OWNER = 'counterweightCircuit';
 export const VENUE_BODY_PREFIX = 'pro:counterweightCircuit:venue:';
@@ -361,7 +361,13 @@ export function createCircuitPhysical(ctx) {
     if (!obs.committed && p && def) {
       const origin = cohortOrigin(def);
       const d = Math.hypot(p.pos.x - origin.x, p.pos.z - origin.z);
-      if (d <= (def.commitRadius || 260)) obs.committed = true;
+      // Choosing a run and reading its briefing is not a timed maneuver.
+      // Soft Berth's start ring overlaps the registrar: retain the authored
+      // ring/layout, but require departure from the interaction apron for a
+      // proximity start. A real line above still commits immediately.
+      const registrar = venueAnchorGlobal();
+      const outsideBriefingApron = Math.hypot(p.pos.x - registrar.x, p.pos.z - registrar.z) > OFFER_RANGE_WU;
+      if (outsideBriefingApron && d <= (def.commitRadius || COMMIT_RADIUS_WU)) obs.committed = true;
     }
     return obs;
   }
