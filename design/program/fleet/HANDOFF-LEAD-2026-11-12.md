@@ -55,3 +55,38 @@ known reds cleared (KNOWN-REDS + lead fixes), plants PL-54/PL-02 with lead fixes
 **Push** when the gate is green: `npm run gate -- --quick`, then `git fetch && git merge origin/master` (never rebase) and `git push`.
 
 Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
+
+## Stand-in log
+
+### Commit reviews
+
+- `c6fc0a8ac7fc` — fixed. Parked paths and context wheel checked; v27 replay passed. Duty at grace settlement corrected in `b044fc412852`; tender screen review pending.
+- `4f1b1cb46e51` — accepted. Package line endings normalized.
+- `45c4040c59e2` — accepted for contact law. Real Rapier checks passed on Fortify structures.
+- `424bab64bb32` — code accepted. Six of eight Wasps gather in the focused ring test; round 1–5 looks have zero beacon kill credits. Live placement still needs a look.
+- `c59b44df23dc` — fixed in `a2bdab5386b7`. MENU now sits inside the Pause ring.
+- `69a6fab63c4c` — fixed in `a2bdab5386b7`. Opened both orientations; first-use captions clear the tape, wheel tabs and expanded radar.
+- `2adca87ddcc3` — partial. Opened live Swarm captures with merged words; warning plates and HUD placement improved in `57a0a6790425`. The rest of the notice and discovery-plate changes still need the small-window look.
+- `8867962b594c` — accepted. Continue uses a stable latest generation across consecutive saves.
+- `931c4ffa37f3` — accepted. Both model census request and body reads have a bounded retryable deadline.
+- `2e613ca67717` — accepted. Worker restaging invalidates latest-slot cache once on changed save keys.
+- `d699dc7747de` — accepted. Decorative gate flare stays fixed and the live Swarm spawn-motion gate passed.
+- `39a766463914` — accepted. Full hull and foreign contact leave repair cells for the wounded player.
+- `143f7d54ab46` — accepted as instrumentation. Pinned Adventure ran eight arms before the flight crossed into Tethys; three variants had complete neighboring baselines.
+- `76863da5a26f` — accepted. Deferred collider/CCD counts preserve diagnostics; matched Node timings were inconclusive.
+- `e995bf59787f` — accepted from focused checks. Hive wall growth clears hulls and the player's short flight path; ordinary Hive look pending.
+- `91934e41c3b8` — accepted. Identical market and saved state in 20 matched pairs; median cold pass 26.16 to 23.34 ms, warm pass 5.62 to 4.37 ms.
+- `0b3e81f1f83e` — accepted from 42 focused checks. The fence learns a sustained slow stream and resumes the faster rate without a test reseat.
+- `bdd1b2eec033` — accepted. 24 native force receipts avoid 48 body-center reads; replay compare passed.
+- `6f9b48b15603` — accepted. Test now checks the deliberate paired-momentum law from `51ead0a695b1` and separately enforces the fixed-wall graze cap.
+- `35d89e15725c` — accepted. One outgoing sector capture per handoff, identical matched residency and save records, v27 green. Whole-transition timing remains open.
+- `d27e25933d8d` — accepted as a follow-up packet. A suspended Continue neighbor can overwrite a newer FULL sector; the inactive schedule stays off.
+
+### Launches and open work
+
+- Launched Codex backend recon and boot deadline workers, then reassigned them to Swarm, physics, presentation, performance and race owners. Launched the Codex economy worker for market and sector lifecycle work.
+- Launched Devin1 on read-only `PERF-01-ADVENTURE-RUN` and `PERF-01-SWARM-RUN`. Inherited Devin1 PARK-01, Devin2 SWARM-GRIND-01, Devin3 PERF-04 and Flash MOB-03. No Devin frontend assignment.
+- Sent back PERF-04 in `97046bf6f9fd`. The measured pass cut 10 late programs to zero but raised internal first-picture time from 8.9 to 16.1 s. The detached patch was unmeasured at review; the dirty renderer paths belong to the concurrent worker.
+- Full shared-tree gate passed import lint, Adventure, Swarm and v27 replay. Exact-source quick gate passed at `366db36709a6` and that batch is on `origin/master`. Early comms and HUD-area probes accidentally ran outside the lock and were rerun through it.
+- Lead repairs include comms backlog `6db15505ffb9`, mobile quality `94d3cf2dff90`, worker event retention/input reset `52cbcc21e35e`, squad cleanup `ed46120885ed`, idle floor labels `bb7766185116`, owed worker ticks `366db36709a6`, phone receipt/objective copy `6450485b722f`, the desktop latch press `b7ca1a06387e`, and touch tap/flick `9b6018fb3250` and `bc18ca94075d`.
+- Open: ≥30% idle and ≥0.98 sim/wall in Adventure and Swarm 20, steady 30 fps on a phone, physical iPhone play, satisfying live Massline kills, and the owner's full five-item card. C01-05 stays held. Pinned Adventure settled at 0.96 sim/wall with <1% main-thread idle. The first 390×844 live route passed 33 input/UI checks and submitted about 19.5 world frames/s.
