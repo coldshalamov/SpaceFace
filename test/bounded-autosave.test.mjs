@@ -582,6 +582,44 @@ test('three serial production autosaves preserve exact data, report the 8ms targ
   } finally { h.restore(); }
 });
 
+test('periodic autosave reuses proven previous bytes and validates a foreign generation', async () => {
+  const h = autosaveHarness({ productionCapture: true });
+  const requestSaveWorker = save._requestSaveWorker;
+  let previousValidations = 0;
+  save._requestSaveWorker = function (type, ...args) {
+    if (type === 'validate') previousValidations++;
+    return requestSaveWorker.call(this, type, ...args);
+  };
+  try {
+    const slotKey = 'sf.save.auto';
+    const recoveryKey = 'sf.recovery.auto';
+    h.state.settings.gameplay.autosaveIntervalS = 120;
+    const interval = async () => {
+      h.state.meta.playtimeS += 120;
+      save._lastAutosaveAt = -Infinity; // The fixture advances playtime without waiting for wall debounce.
+      save.update(1 / 60, h.state);
+      await h.drain();
+      return h.storage.getItem(slotKey);
+    };
+
+    const first = await interval();
+    assert.ok(first, 'the periodic owner writes the initial save');
+    const second = await interval();
+    assert.notEqual(second, first);
+    assert.equal(h.storage.getItem(recoveryKey), first, 'the proven previous bytes still rotate');
+    assert.equal(previousValidations, 0, 'identical, already validated bytes do not return to the worker');
+
+    const foreign = JSON.stringify({ ...JSON.parse(second), savedAt: '2026-11-12T03:00:00.000Z' });
+    h.storage.setItem(slotKey, foreign);
+    assert.notEqual(await interval(), foreign);
+    assert.equal(previousValidations, 1, 'an unseen generation must validate before rotation');
+    assert.equal(h.storage.getItem(recoveryKey), foreign);
+  } finally {
+    save._requestSaveWorker = requestSaveWorker;
+    h.restore();
+  }
+});
+
 test('six simultaneous autosave requests coalesce into one exact production save', async () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
