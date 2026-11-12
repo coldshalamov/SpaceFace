@@ -6,8 +6,8 @@
 //   node scripts/fleet/game-lock.mjs run -- <command> [args...]   (waits for the lock, runs, releases)
 //   node scripts/fleet/game-lock.mjs status
 //
-// The lock is a file holding the holder's pid and start time. A holder whose process is gone, or
-// that has held it longer than STALE_MIN, is treated as stale and replaced.
+// The lock records the holder's pid and start time. A live holder keeps ownership for the
+// full command, including long capture batches. Recover the lock after the holder exits.
 
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
@@ -17,7 +17,6 @@ import { fileURLToPath } from 'node:url';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = join(REPO, '.devshots', 'fleet');
 const LOCK = join(DIR, 'game.lock');
-const STALE_MIN = 30;
 const WAIT_MAX_MIN = 60;
 
 function alive(pid) {
@@ -28,7 +27,7 @@ function readLock() {
   try { return JSON.parse(readFileSync(LOCK, 'utf8')); } catch { return null; }
 }
 function stale(l) {
-  return !l || !alive(l.pid) || (Date.now() - l.at) > STALE_MIN * 60_000;
+  return !l || !alive(l.pid);
 }
 function tryTake(label) {
   const l = readLock();

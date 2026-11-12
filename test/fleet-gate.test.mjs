@@ -20,6 +20,29 @@ function fixture(t) {
   return () => createSwarmBootStep(root);
 }
 
+test('the game lock still protects a live owner after thirty minutes', (t) => {
+  const root = tempRoot(t);
+  const scripts = join(root, 'scripts', 'fleet');
+  const locks = join(root, '.devshots', 'fleet');
+  mkdirSync(scripts, { recursive: true });
+  mkdirSync(locks, { recursive: true });
+  const entry = join(scripts, 'game-lock.mjs');
+  copyFileSync(new URL('../scripts/fleet/game-lock.mjs', import.meta.url), entry);
+  const lock = join(locks, 'game.lock');
+  const at = Date.now() - 31 * 60 * 1000;
+  const label = 'long-running screen capture';
+  const status = (pid) => {
+    writeFileSync(lock, JSON.stringify({ pid, at, label }));
+    const child = spawnSync(process.execPath, [entry, 'status'], { encoding: 'utf8' });
+    assert.equal(child.status, 0, child.stderr);
+    return child.stdout;
+  };
+  assert.match(status(process.pid), /held by pid \d+: long-running screen capture/);
+  const exited = spawnSync(process.execPath, ['--eval', 'process.exit(0)']);
+  assert.equal(exited.status, 0);
+  assert.match(status(exited.pid), /stale \(long-running screen capture\)/);
+});
+
 function verdictPath(step) {
   const arg = step.args.find((value) => value.startsWith('--out='));
   assert.ok(arg, 'the child gets its own output directory');
