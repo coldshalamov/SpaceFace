@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "2907642c9303f625020c50678416db701f10cf9edd50f03598c1d56fa8922c8d",
+  "uiSourceDigest": "7ab8559e4f45f15fc5c5ad9a6dd6f8931b5119e45d3586096a75af57c4fc8ed6",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -249,7 +249,7 @@
     "src/ui/orrery/scrollExtent.js": "3ce8cfd26641228da0258bdf2ae77f324316a40ce9640a46f5b68a64e83ac126",
     "src/ui/orrery/settingsLayouts.js": "0999fe9cdfdb9dec4ceb6a0d83eefda81d4219b6f5448d2ed1100aa348fbcc7e",
     "src/ui/orrery/settingsPreview.js": "e99e5275f703f434819c96f911b29b441e47fcce08d362469e2ccbd2ef085d35",
-    "src/ui/orrery/shipLayouts.js": "baed1cabde0507adf27755de07c151800ab9e16ccf248e2a297e550f8790c95b",
+    "src/ui/orrery/shipLayouts.js": "741de51bf95ebc04c7d8c2ca8cae557259cc97ff1e7d0109afd636b578590333",
     "src/ui/orrery/shipworksLayouts.js": "34c56ca9a026651a84532d20add4de0f71d34e63de0542fcfaf04af695827c00",
     "src/ui/orrery/slotJig.js": "d0e59cb67cb2beea0e46a16b29933656ce1b46d19744f04cd0759a713f5a6660",
     "src/ui/orrery/speedDial.js": "b2b3cbcea7fefaddc9ac75ecdb027c04447e2e3cc269187bc2da3621acd0cb5b",
