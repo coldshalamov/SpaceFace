@@ -212,8 +212,8 @@ const ROCK_CACHE_MAX = 64;
 // Handled stones keep a small independent budget when fracture debris fills terrain.
 // Eight nearest handled originals supplement, never displace, the ordinary 64 rocks.
 const HANDLED_ROCK_CACHE_MAX = 8;
-// The original Foundry offcut retains its separate cover seat.
-const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + HANDLED_ROCK_CACHE_MAX + 1;
+// Selected Bank cover and the original Foundry offcut each keep one separate seat.
+const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + HANDLED_ROCK_CACHE_MAX + 2;
 const MOVER_CACHE_MAX = 96;
 // Champion mass never displaces the original hull/remain budget.
 const BOSS_CHUNK_CACHE_MAX = 8;
@@ -508,6 +508,8 @@ export function createBroodEngine(deps = {}) {
   // Transient, once per run; the ordinary plan remains the population authority.
   let bankPlayed = false;
   let bank = null;
+  // Keep the selected cover life after the attack-sequencing record retires.
+  let bankCover = null;
   let spawnRequestedBankAttempted = false;
   let foundryScore = null, foundryTicks = 0, foundryLastTick = null;
   let openingVolleyAttempted = false;
@@ -739,7 +741,7 @@ export function createBroodEngine(deps = {}) {
     cellObservedTick.fill(-1);
     chunkBornTick.fill(Infinity);
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
-    bank = null;
+    bank = null; bankCover = null;
     spawnRequestedBankAttempted = false;
     foundryScore = null; foundryTicks = 0; foundryLastTick = null;
     openingVolleyAttempted = false; recoveryFallback = false;
@@ -1144,6 +1146,9 @@ export function createBroodEngine(deps = {}) {
           firstLife: serial[free[0]], spitLife: serial[free[1]], secondLife: serial[free[2]],
           phase: 'first', until: now + 8, readPending: !!foundryScore?.bankReadS, flankX: layout.flankX, flankZ: layout.flankZ,
           rockId: layout.rockId };
+        const cover = state.entities?.get?.(layout.rockId);
+        bankCover = cover?.type === 'asteroid'
+          ? { entity: cover, generation: cover.occupantGeneration, wave: liveWave } : null;
         bankPlayed = true;
         if (foundryScore?.bankReadS > 0) {
           openingBeat = { remaining: foundryScore.bankReadS, lastTick: state.tick, attackPending: true,
@@ -1456,6 +1461,30 @@ export function createBroodEngine(deps = {}) {
       rockR[rockCount] = finite(e.radius, 10) * 1.05;
       rockVX[rockCount] = finite(e.vel?.x); rockVZ[rockCount] = finite(e.vel?.z);
       rockCount++;
+    }
+    // A selected Bank stone is physical shelter even when the pilot never
+    // touches it. Preserve all ordinary/handled seats and the separate Maw seat.
+    // Never grant custody, replace a destroyed life, or reuse a restored identity.
+    const cover = bankCover?.entity;
+    if (cover && bankCover.wave === liveWave && state.run?.wave === liveWave
+      && state.entities?.get?.(cover.id) === cover
+      && cover.occupantGeneration === bankCover.generation
+      && cover.type === 'asteroid' && cover.alive !== false && cover.collides !== false
+      && cover.physicsBody !== false && physicsBodyNativeReady(cover)
+      && Number.isFinite(cover.pos?.x) && Number.isFinite(cover.pos?.z)
+      && Number.isFinite(cover.vel?.x) && Number.isFinite(cover.vel?.z)
+      && !rockEntities.includes(cover)) {
+      const body = resolvePhysicsBodySpec(cover);
+      if (body?.dynamic && body.radius > 0 && body.mass > 0
+        && body.material !== 'sensor' && body.material !== 'massline_sensor'
+        && PHYSICS_MATERIALS[body.material]?.ghost !== true) {
+        rockEntities[rockCount] = cover;
+        rockCredited[rockCount] = playerOwnsBody(state, cover) ? 1 : 0;
+        rockX[rockCount] = cover.pos.x; rockZ[rockCount] = cover.pos.z;
+        rockR[rockCount] = finite(cover.radius, 10) * 1.05;
+        rockVX[rockCount] = cover.vel.x; rockVZ[rockCount] = cover.vel.z;
+        rockCount++;
+      }
     }
     // The same original can be left as shelter instead of thrown. Slow drift
     // uses the room's existing slide/slam law; fast flight stays exclusively in
