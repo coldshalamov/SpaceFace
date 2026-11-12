@@ -5786,16 +5786,19 @@ export const save = {
       rollbackSnapshot = { notNeeded: true };
     }
     let primary = await primaryPromise;
+    let primaryGenerationStable = true;
     // A spec-derived verdict was computed under the generation the arm was minted in — and a
     // spec-miss `raw` was itself getItem'd before this window. A store write landing anywhere
     // inside it (the sliced rollback capture + worker roundtrip) bumps the generation, so
     // whatever bytes `primary` prepared may be pre-write. Re-verify unconditionally before
     // trusting the result; on mismatch discard and re-prepare from the bytes now on disk.
     if (_saveStoreGeneration !== latchGen) {
+      const recheckGen = _saveStoreGeneration;
       let freshRaw = null;
       try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { /* null — the prepare reports its own read reason */ }
       primary = await this._prepareEnvelopeStringAsync(freshRaw);
+      primaryGenerationStable = _saveStoreGeneration === recheckGen;
       // raw must keep naming the bytes primary was validated against: the recovery recheck
       // below compares the stored bytes to raw and reuses primary's verdict when a candidate
       // matches it. Leaving raw at the superseded first read would let a store that drifts
@@ -5803,7 +5806,7 @@ export const save = {
       // promoted over a newer playable primary, the race this recheck exists to prevent.
       raw = freshRaw;
     }
-    if (primary.ok) {
+    if (primary.ok && primaryGenerationStable) {
       // The envelope tells us exactly which ships/stations/places the saved sector will
       // rematerialize — start those authored decodes now so they overlap the chunked
       // restore instead of starting cold at each spawn event inside it.
@@ -5822,11 +5825,10 @@ export const save = {
     try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
     catch (err) { /* primary failure below remains the player-facing reason */ }
     let backup = await this._prepareEnvelopeStringAsync(backupRaw);
-    // The recovery worker is another asynchronous window. A save or shared-store reconcile can
-    // replace either copy while it decodes; promoting that older backup could overwrite a newer
-    // playable primary. Re-read both keys after validation and, if either changed, prepare a
-    // stable pair before choosing a restore source. The bounded retries keep a continuously
-    // changing shared store from holding Continue open indefinitely.
+    // If the primary changed again during revalidation, or needs recovery, check both stored
+    // copies. A save or shared-store reconcile can replace either copy while it decodes.
+    // Choose from a stable pair so an older world cannot displace a newer primary. The bounded
+    // retries keep a continuously changing shared store from holding Continue open indefinitely.
     const readStoredSave = (key) => {
       if (typeof localStorage === 'undefined') return { ok: true, raw: null };
       try { return { ok: true, raw: localStorage.getItem(key) }; }
@@ -5872,17 +5874,17 @@ export const save = {
         });
         return false;
       }
-      if (primary.ok) {
-        if (this.bus && this.bus.emit) {
-          this.bus.emit('save:envelopePrepared', { slot, data: primary.data });
-        }
-        return this._restorePreparedEnvelopeAsync(primary, slot, {
-          ...(skippedNewer ? { skippedNewer } : null),
-          acceptSeq,
-          rollbackSnapshot,
-          rollbackSnapshotError,
-        });
+    }
+    if (primary.ok) {
+      if (this.bus && this.bus.emit) {
+        this.bus.emit('save:envelopePrepared', { slot, data: primary.data });
       }
+      return this._restorePreparedEnvelopeAsync(primary, slot, {
+        ...(skippedNewer ? { skippedNewer } : null),
+        acceptSeq,
+        rollbackSnapshot,
+        rollbackSnapshotError,
+      });
     }
     if (backup.ok) {
       if (this.bus && this.bus.emit) {

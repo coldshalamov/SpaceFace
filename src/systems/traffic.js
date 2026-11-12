@@ -165,6 +165,7 @@ import { tailgaterOps } from './tailgater.js';
 import { rubberneckersOps } from './rubberneckers.js';
 import { nearMissPlantOps } from './nearMissPlant.js';
 import { applausePlantOps } from './applausePlant.js';
+import { fenderBenderPlantOps } from './fenderBenderPlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1635,6 +1636,7 @@ export const traffic = {
   ...rubberneckersOps,
   ...nearMissPlantOps,
   ...applausePlantOps,
+  ...fenderBenderPlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -1746,6 +1748,7 @@ export const traffic = {
     this._initTailgater(ctx);
     this._initRubberneckers(ctx);
     this._initNearMissPlant(ctx);
+    this._initFenderBenderPlant(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
     this.bus.on('endgame:chosen', () => this._materializeEndingWorldPresence());
@@ -4093,6 +4096,11 @@ export const traffic = {
           this._syncTrafficRecordToData(e, rec);
           continue;
         }
+        // PL-02: fender bender plant reaction (alarm lamp strobes, undocks to inspect dent, shout/report)
+        if (this._reactFenderBenderPlant(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         this._reactCivilianViolence(e, rec, stations, state);
         // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
         // job runtime and emits the horn; the choreography keeps its single intent writer.
@@ -4120,6 +4128,11 @@ export const traffic = {
       }
       // PL-01: near miss plant reaction (swerve, flash lamps, "Lane's not yours, pal!", report on 3rd)
       if (this._reactNearMissPlant(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-02: fender bender plant reaction (alarm lamp strobes, undocks to inspect dent, shout/report)
+      if (this._reactFenderBenderPlant(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }

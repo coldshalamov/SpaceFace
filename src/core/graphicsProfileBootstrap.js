@@ -2,6 +2,9 @@
 // renderer/VFX systems. This boundary is deliberately read-only: boot must never rewrite the raw
 // localStorage profile merely because it consumed it.
 
+import { applyAutoQualityPreset } from '../render/adaptiveQuality.js';
+import { isMobileRenderContext } from '../render/renderCapabilityProfile.js';
+
 export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
 export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
@@ -182,11 +185,15 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
   return merged;
 }
 
-export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage) {
+export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage, environment = globalThis) {
   if (!state || !isPlainObject(state.settings)) return false;
+  const stored = readProfileSettings(storage);
+  if (!isPlainObject(stored?.video) && isMobileRenderContext(environment)) {
+    applyAutoQualityPreset(state.settings, 'low');
+  }
   const profile = migrateOneSetOfKeysProfile(
     migrateDefaultShadowsProfile(migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(readProfileSettings(storage)),
+      migrateLegacyMasslineBindingProfile(stored),
     ))),
   );
   if (!profile) return false;
