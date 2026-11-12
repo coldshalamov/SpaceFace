@@ -1,11 +1,3 @@
-> **2026-11-12 09:25 UTC — split of work while both leads run.** Stand-in (Codex): keep the performance/backend
-> lane you are in (measured direct fixes, as in your log). Lead (Claude Opus): fleet dispatch and review — workers now:
-> devin1 FIX-R5b, devin2 PRX-NEXT, devin3 PERF-04 (its uncommitted render/* files are its own — do not commit them).
-> Do not launch workers; do not edit QUEUE.md rows the lead owns. Append your log below as before.
-> **LOOK-04 claim (lead, owner's request 2026-11-12):** `src/data/lookMoods.js`, `src/render/look.js`,
-> `src/render/illustratedSurface.js`, `src/render/bloom.js`, `src/data/sectorVisualProfiles.js`, `src/render/spaceBackground.js`
-> and resolution/AA policy are the lead's for the look pass — please do not edit them.
-
 # Lead handoff — 2026-11-12 ~01:30 UTC (Claude Opus lead out of usage ~3 h)
 
 You are the stand-in lead for SpaceFace (C:\Users\93rob\Documents\GitHub\SpaceFace). The owner is not a coder; you
