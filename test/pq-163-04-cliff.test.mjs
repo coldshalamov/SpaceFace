@@ -5,8 +5,8 @@
 // There are no live playtesters in this environment, so this file does NOT claim a playtest
 // number. It does two honest, deterministic things on seed 16304:
 //
-//   1. Plays session 1 through the existing leftover rescue/first-hour rail and the real 47-A
-//      recovery contract, ending on story beat 1.
+//   1. Plays session 1 through the opening flight, the 47-A recovery seam and the first Helios
+//      dock, ending on story beat 1 before departure activates its next contract.
 //   2. Boots session 2 (a Continue on the same save: the serialized story is restored and
 //      `save:loaded` fires, never `game:started`), classifies beat 1 against PQ-152's definition
 //      (a named physical problem vs a fly-there/fetch), and measures a retention proxy — at
@@ -36,15 +36,10 @@ import {
   STORY_BEATS,
   authoredSetPieceById,
 } from '../src/data/missions.js';
-import { MISSING_THREE_ORDER } from '../src/onboarding/missingThree.js';
 import {
   RESCUE_PROOF_SEED,
-  rescueBeatLine,
-  rescuePodAtBeacon,
   rescueRockHitDerelict,
-  rescueScoutAtAsteroid,
 } from '../src/onboarding/rescueOpening.js';
-import { buildMissionBoardContract } from '../src/story/campaign47a/index.js';
 import { onboarding } from '../src/systems/onboarding.js';
 import { CONTRACT_47A_B0_TAG, missions as missionsProto } from '../src/systems/missions.js';
 
@@ -149,7 +144,7 @@ function makeState(seed) {
     pos: { x: 180, z: -60 },
     vel: { x: 0, z: 0 },
     radius: 14,
-    data: { typeId: 'ast_common_rock' },
+    data: { typeId: 'ast_common_rock', fieldId: 'f_helios_starter', asteroidSlotId: 'fixture-47a-slot' },
   });
   asteroid.id = 2;
   const station = makeEntity({
@@ -165,7 +160,6 @@ function makeState(seed) {
   state.entities.set(3, station);
   state.entityList.push(asteroid, station);
   state.nextEntityId = 10;
-  state._sampleAsteroidId = 2;
   return state;
 }
 
@@ -204,9 +198,8 @@ function makeContext(state) {
   return { state, bus, helpers, missions, sys, registry, ctx };
 }
 
-// The live rail, driven exactly as rescue-opening.test.mjs / pq-163-03-sentence.test.mjs drive it:
-// the tether attach leads, raid/claimed sit inside the rail, the movement drills follow.
-const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
+// The opening rail through the first berth. The swing opens between tether and raid.
+const DRILL_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock'];
 
 function tick(h, dt = 0.25) {
   h.sys.update(dt, h.state);
@@ -225,11 +218,10 @@ function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
   const derelictOf = () => st.entities.get(h.sys._derelictId);
-  const trainerOf = () => (h.sys._trainerId != null ? st.entities.get(h.sys._trainerId) : null);
 
   const step = (key) => {
     if (key === 'tether') {
-      tick(h); // the route opens on the tether beat: one tick stages its derelict
+      tick(h); // the tether beat follows thrust and brake and stages its derelict
       const derelict = derelictOf();
       assert.ok(derelict, 'tether lesson must stage its derelict');
       st.player.targetId = derelict.id;
@@ -265,31 +257,18 @@ function driveDrillTo(h, beatKey) {
       player.vel.x = 0;
       player.vel.z = 0;
       tick(h);
-    } else if (key === 'marker') {
-      tick(h);
-      const trainer = trainerOf();
-      assert.ok(trainer, 'marker lesson must stage its trainer');
-      trainer.pos.x = player.pos.x + 100;
-      trainer.pos.z = player.pos.z;
-      tick(h);
-    } else if (key === 'focus') {
-      const trainer = trainerOf();
-      assert.ok(trainer, 'focus lesson needs its trainer');
-      h.bus.emit('flybyFocus:start', { targetId: trainer.id });
-      tick(h);
-    } else if (key === 'burst') {
-      player.data.weapons[0]._heat = 36;
-      for (let i = 0; i < 3; i++) {
-        h.bus.emit('combat:fire', { ownerId: player.id, weaponId: 'pulse_laser_s' });
-      }
-      player.data.weapons[0]._heat = 2;
-      tick(h);
-    } else if (key === 'disengage') {
-      const trainer = trainerOf();
-      assert.ok(trainer, 'disengage lesson needs its trainer');
-      trainer.pos.x = player.pos.x + 901;
-      trainer.pos.z = player.pos.z;
-      tick(h);
+    } else if (key === 'seam') {
+      const b0 = st.missions.active.find(m => m?.storyTag === CONTRACT_47A_B0_TAG);
+      assert.ok(b0, 'new game receives the 47-A recovery order');
+      const source = h.missions.contract47aSampleEntity();
+      assert.ok(source && source.id === h.sys._miningRockId, 'the seam uses the 47-A field exposure');
+      h.bus.emit('mining:yield', {
+        commodityId: 'cmdty_ore_iron', qty: 3, minerId: st.playerId, pos: { ...source.pos },
+      });
+      assert.equal(b0.params.sampleRecovered, true, 'the marked sample is recovered');
+    } else if (key === 'dock') {
+      h.bus.emit('dock:docked', { stationId: STATION_HELIOS });
+      assert.equal(st.story.beatIndex, 1, 'the first dock settles 47-A');
     }
   };
 
@@ -321,87 +300,7 @@ function completeSwing(h) {
   tick(h);
 }
 
-function completeShove(h) {
-  const scout = rescueActor(h, 'scout');
-  const asteroid = rescueActor(h, 'asteroid');
-  assert.ok(scout && asteroid, 'the shove needs its scout and its wall');
-  scout.pos.x = asteroid.pos.x + 40;
-  scout.pos.z = asteroid.pos.z;
-  scout.vel.x = 20;
-  scout.vel.z = 0;
-  assert.ok(rescueScoutAtAsteroid(scout, asteroid), 'the shove setup is a genuine scout-into-asteroid');
-  tick(h);
-}
-
-function completeGrab(h) {
-  const st = h.state;
-  const player = st.entities.get(st.playerId);
-  const pod = rescueActor(h, 'pod');
-  const beacon = rescueActor(h, 'beacon');
-  assert.ok(pod && beacon, 'the grab needs its pod and its beacon');
-  h.bus.emit('tether:latched', { targetId: pod.id });
-  player.vel.x = 30;
-  player.vel.z = 0;
-  pod.pos.x = beacon.pos.x;
-  pod.pos.z = beacon.pos.z;
-  assert.ok(rescuePodAtBeacon(pod, beacon), 'the grab setup is a genuine delivery');
-  tick(h);
-}
-
-// The missing five (PQ-163.02 + INFERENCE-9): boost, stroke, well, repulsor, cone — each
-// via its live verb signal.
-function driveMissingThree(h) {
-  const st = h.state;
-  const three = st.onboarding.missingThree;
-  assert.ok(three, 'the missing-three rail must be staged by the opening');
-  // The rail speaks one verb at a time: a beat's next leg only stages after ≥SILENCE_S of text
-  // silence, and a field deploy only counts when its beat is the live one — exactly what a real
-  // pilot hears ("Drop the plow…") before plowing. Wait for the beat to go live, then use the verb.
-  const waitForBeat = (key) => {
-    for (let i = 0; i < 12 && three.current !== key; i++) {
-      advanceTime(h);
-      tick(h);
-    }
-    assert.equal(three.current, key, `the ${key} beat must stage inside its silence window`);
-  };
-
-  // boost — the same live verb the flight model raises.
-  st.input.boost = true;
-  advanceTime(h);
-  tick(h);
-  assert.equal(three.beats.boost.state, 'done', 'boost must complete on the live boost input');
-
-  // stroke — draw-to-fly via the live auto-target path.
-  st.input.autoTargetPath = { active: true, drawing: true, points: [{ x: 1, z: 0 }, { x: 2, z: 0 }] };
-  advanceTime(h);
-  tick(h);
-  assert.equal(three.beats.stroke.state, 'done', 'stroke must complete on the live draw-to-fly path');
-  st.input.autoTargetPath = { active: false, drawing: false, points: [] };
-
-  // well — the field deployment the fields owner emits, once the well lesson is the live beat.
-  waitForBeat('well');
-  h.bus.emit('fields:deployed', { kind: 'well', atS: st.simTime });
-  advanceTime(h);
-  tick(h);
-  assert.equal(three.beats.well.state, 'done', 'well must complete on the live fields:deployed signal');
-
-  // repulsor — a player-owned field deploy, once the shove lesson is the live beat.
-  waitForBeat('repulsor');
-  h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: st.playerId, atS: st.simTime });
-  advanceTime(h);
-  tick(h);
-  assert.equal(three.beats.repulsor.state, 'done', 'repulsor must complete on the live fields:deployed signal');
-
-  // cone — the fields owner's own toggle emit (no sourceId on the player path).
-  waitForBeat('cone');
-  h.bus.emit('fields:coneToggled', { active: true, fieldId: 'field_cone_test' });
-  advanceTime(h);
-  tick(h);
-  assert.equal(three.beats.cone.state, 'done', 'cone must complete on the live fields:coneToggled signal');
-  assert.equal(three.completed, true, 'the missing-three rail must complete in order');
-}
-
-// Session 1: the opening rail, then the real 47-A contract, ending on story beat 1.
+// Session 1 ends at the first berth after the recovery contract settles.
 function playSessionOne(seed) {
   const state = makeState(seed);
   const h = makeContext(state);
@@ -416,43 +315,11 @@ function playSessionOne(seed) {
 
   advanceTime(h);
   tick(h);
-  driveDrillTo(h, 'burst');
-  assert.equal(state.onboarding.rescue.current, 'shove', 'the shove opens in the burst gap');
-  completeShove(h);
-
-  advanceTime(h);
-  tick(h);
-  driveDrillTo(h, 'disengage');
-  assert.equal(state.onboarding.rescue.current, 'grab', 'the grab opens after disengage');
-  completeGrab(h);
-  assert.equal(state.onboarding.rescue.completed, true, 'the rescue rail completes');
-
-  advanceTime(h);
-  tick(h);
-  driveMissingThree(h);
-
-  // 47-A on the real missions path: sample the marked rock, dock Helios. The live resolver chooses
-  // the mission's source (a rescue-cast rock may sit nearer after the opening rail), so the receipt
-  // is aimed at the rock the missions owner actually marked — not a hand-assumed one.
-  const b0 = state.missions.active.find((m) => m && m.storyTag === CONTRACT_47A_B0_TAG);
-  assert.ok(b0, 'new game receives the 47-A recovery order');
-  const source = h.missions._resolveContract47aSampleSource(b0);
-  assert.ok(source && source.pos, 'the 47-A sample source resolves to a live rock');
-  h.bus.emit('mining:yield', {
-    commodityId: 'cmdty_ore_iron', qty: 1, minerId: state.playerId, pos: { ...source.pos },
-  });
-  assert.equal(b0.params.sampleRecovered, true, 'the marked sample is recovered');
-  h.bus.emit('dock:docked', { stationId: STATION_HELIOS });
-  assert.equal(state.story.beatIndex, 1, '47-A settles Honest Work (beat 1)');
+  driveDrillTo(h, 'dock');
 
   return {
     state,
     story: JSON.parse(JSON.stringify(state.story)),
-    rail: {
-      rescue: state.onboarding.rescue.completed,
-      missingThree: state.onboarding.missingThree.completed,
-      missingThreeOrder: [...MISSING_THREE_ORDER],
-    },
   };
 }
 
@@ -567,7 +434,6 @@ test('story beat 1 is the authored three-leg book, and the two-solution set piec
 // ── The leaf scenario: opening → 47-A → session 2 → classify → measure ─────────────────────
 test('session 2 after 47-A opens on the authored beat-1 work and holds the beat at T+180s', () => {
   const s1 = playSessionOne(SEED);
-  assert.deepEqual(s1.rail.missingThreeOrder, ['boost', 'stroke', 'well', 'repulsor', 'cone'], 'the leftover rail teaches the five');
   assert.equal(s1.story.beatIndex, 1, 'session 1 hands off on beat 1');
 
   const s2 = playSessionTwo(SEED, s1.story);
