@@ -2466,8 +2466,13 @@ export function createHud(ctx, alerts) {
 
   let lastCargoBarText = '';
   function updateFlightCargoBar() {
-    const holdInfo = calculateHoldWorth(state, ctx);
-    if (holdInfo.text !== lastCargoBarText) {
+    // Lead review (G19-02): the hold line is for a pilot carrying something. An empty hold, or a Swarm run
+    // (the round panel owns that corner and the hold means nothing there), shows no bar at all.
+    const inSwarmRun = !!(state.run && state.run.kind === 'survival');
+    const holdInfo = inSwarmRun ? null : calculateHoldWorth(state, ctx);
+    const show = !!holdInfo && (holdInfo.used > 0 || holdInfo.towedCount > 0);
+    if (elCargoBar.hidden === show) elCargoBar.hidden = !show;
+    if (show && holdInfo.text !== lastCargoBarText) {
       lastCargoBarText = holdInfo.text;
       elCargoBar.textContent = holdInfo.text;
     }
@@ -3802,7 +3807,12 @@ export function createHud(ctx, alerts) {
     pointer-events: none;
     z-index: 900;
   }
+  .sf-cargo-bar[hidden] { display: none !important; }
   .sf-cargo-bar {
+    box-sizing: border-box;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
     padding: 6px 10px;
     font-size: 13px;
     font-weight: 600;
