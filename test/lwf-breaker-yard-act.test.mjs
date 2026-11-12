@@ -99,7 +99,7 @@ test('round 1 (wave 32): the guard link — warden arrives with its ward as one 
   assert.equal(warden.gateGroup, ward.gateGroup, 'guard and ward land on one bearing');
   assert.equal(warden.atTick, ward.atTick);
   assert.ok(warden.atTick > Math.max(...opening.map((pkg) => pkg.atTick)),
-    'the link lands after the ammunition is already on the board');
+    'original offsets remain; Foundry read clocks separately delay the ordinary pack');
   assert.ok(!opening.some((pkg) => pkg.gateGroup === warden.gateGroup),
     'the pair takes a bearing the opening burst does not crowd');
 });
@@ -238,6 +238,7 @@ function waveHarness(wave) {
   resetSwarmPressureState();
   bindSwarmPressureContext(null);
   const state = createGameState(SEED);
+  state.mode = 'flight'; // authored read clocks advance only during active flight
   const raw = createBus();
   const emitted = [];
   const spawned = [];
@@ -301,7 +302,7 @@ function waveHarness(wave) {
 test('sim: the act materializes its specialists and honors the authored fire cap', () => {
   const h34 = waveHarness(34);
   try {
-    h34.tick(900); // opening burst + both staged pairs land, then the 2.5 s arm grace
+    h34.tick(1800); // linked pairs, delayed pack, then the 2.5 s arm grace
     const ids = new Set(h34.spawned.map((e) => e.data && e.data.lootTableId));
     for (const enemyId of ['warden_escort', 'field_anchor_controller', 'mine_layer_jackal', 'tether_control_raider']) {
       assert.ok(ids.has(enemyId), `wave 34 actually fields its staged ${enemyId}`);
@@ -315,7 +316,7 @@ test('sim: the act materializes its specialists and honors the authored fire cap
 
   const h33 = waveHarness(33);
   try {
-    h33.tick(900);
+    h33.tick(1800);
     const ids = new Set(h33.spawned.map((e) => e.data && e.data.lootTableId));
     for (const enemyId of ['mine_layer_jackal', 'bruiser_brawler']) {
       assert.ok(ids.has(enemyId), `wave 33 actually fields its staged ${enemyId}`);

@@ -115,6 +115,23 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze([...rows.map(([id, title, prepa
     foregroundShips: Object.freeze(ships.map(([enemyId, role, gate, readTicks]) => Object.freeze({enemyId, role, gate, readTicks}))),
   })),
 
+  // Round 31 remains a generated encounter. Breaker Yard keeps its authored
+  // linked pairs, original arrival offsets and closing-room fire cap. Only the
+  // ordinary crowd waits so each link can be read before it is surrounded.
+  null,
+  ...[
+    ['read_the_guard_link', 'Read the guard link', 'The Warden and Corsair arrive together beside the active furnace. Break the guard or work around its coverage; the ordinary pack and forecast event follow.', 'furnace_active', 1080],
+    ['read_the_mine_lane', 'Read the mine lane', 'The Jackal and Bruiser share a bearing while the shutters lean. Watch the mine lane and committed hull together; leave a clear crossing before the pack follows.', 'shutter_slow', 1140],
+    ['choose_the_first_link', 'Choose the first link', 'The guarded Anchor arrives first; the Jackal and Raider follow on another bearing. Leave the snare and choose a link to break before the closing lane fills. The three-gun cap does not stop mines or tethers.', 'shutter_lane_close', 1320],
+  ].map(([id, title, preparation, arenaPhase, readTicks], index) => Object.freeze({
+    id, wave: 32 + index, title, preparation, arenaPhase,
+    shipReadTicks: readTicks, debutReadTicks: 1, broodReadTicks: readTicks, sporeReadTicks: readTicks,
+    stagedReadTicks: 1,
+    massGap: false, events: 'seeded', eventReadTicks: readTicks,
+    broodPacketSize: 18, broodPacketGapS: 0.75, bankReadS: 0,
+    protectForeground: true, bankScene: false,
+  })),
+
 ]);
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {

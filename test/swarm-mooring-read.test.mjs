@@ -92,4 +92,4 @@ for (const wave of [26,27,28]) test(`Mooring ${wave} specialist gets a real live
  assert.equal(h.events.filter(e=>e.type==='run:waveCleared').length,0);
  }finally{h.ships.destroy();h.engine.destroy?.();}
 });
-test('later Breaker Yard remains outside Foundry score',()=>{for(const w of [31,32,33,34])assert.equal(planFor(w).swarm.foundry,undefined);});
+test('unscored neighbors remain outside Foundry score',()=>{for(const w of [31,35,36])assert.equal(planFor(w).swarm.foundry,undefined);});
