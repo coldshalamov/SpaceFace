@@ -590,14 +590,20 @@ export const MOBILE_SCREEN_CSS = `
      in the map stage just above OVERVIEW/ROUTE, fully clear of the foot rail and detail lines. */
   ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
   /* Portrait: use the measured foot clearance instead of the sky's page coordinate. The latter put
-     the toolbar below POSITION/TRACKING after the inspector stacked under the sky. */
+     the toolbar below POSITION/TRACKING after the inspector stacked under the sky. The strip keeps
+     the desktop's lower-left seat: right-anchored it printed over the "N u per bar" ruler, which
+     the chart always paints lower-right. */
   ${C}[data-layout="narrow"] .gmh-tools {
-    left:auto !important; right:14px; top:auto !important; bottom:calc(var(--gm-foot, 220px) + 40px) !important;
+    left:calc(var(--gm-stage-x, 14px) + 8px) !important; right:auto; top:auto !important; bottom:calc(var(--gm-foot, 220px) + 40px) !important;
   }
-  /* Keep long tips inside the portrait chart. Right-aligning to each 44px key avoids the right-edge
-     clip of the centered fit tip; wrapping preserves the complete label for touch and focus. */
+  /* Under 360px the four 44px keys reach the ruler's caption column, so the strip steps up one row above it. */
+  @media (max-width: 359px) {
+    ${C}[data-layout="narrow"] .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 80px) !important; }
+  }
+  /* Keep long tips inside the portrait chart. Left-aligning to each 44px key on the left-seated
+     strip avoids an edge clip of the centered tip; wrapping preserves the complete label for touch and focus. */
   ${C}[data-layout="narrow"] .gmh-tool[data-tip]::after {
-    left:auto !important; right:0 !important; bottom:calc(100% + 8px) !important;
+    left:0 !important; right:auto !important; bottom:calc(100% + 8px) !important;
     width:max-content !important; max-width:calc(100vw - 28px) !important; white-space:normal !important; text-align:center !important;
     transform:translate(0, 6px) !important;
   }
