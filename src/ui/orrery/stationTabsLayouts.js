@@ -1297,6 +1297,12 @@ ${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-i
     padding:6px 0 0 10px !important; margin:0 0 14px !important; }
   ${D} .sx-dossier > .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding-left:14px !important; padding-right:18px !important; }
 }
+/* ui-polish-493: on a phone the ring's 54vh host (456px at 390×844) is width-bound (a 342px host draws the minimum radius),
+   so ~115px of it was empty band above and below the ring. A 340px host keeps the ring and crests at full size, moves
+   the chosen crest up to the stage's first screen, and brings the faction's name and standing 116px closer. */
+@media (max-width:650px) and (min-height:601px) {
+  ${T} .orr-fac-orbit { height:340px; }
+}
 /* the jump reading hangs under the ring's foot with its own room */
 ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
 /* the dispatch facts at a size the decision needs */
