@@ -48,10 +48,10 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 |---|---|---|
 | L1-REVIEW | Look at every visible `BUILT` row on screen (ui-bench shots; `npm run player-truth -- --mode=swarm --start-round=N --out=<dir>`; fly it) and mark `DONE` or `REDO <sentence>`. Today: G19-01, G08-01, C01-01, G18-03, G18-04, PERF-02a, the plants. Repeat every session. | READY (repeat) |
 | LOOK-01 one grade | Concept A applied and tuned on screen in 4 passes (771c32c1, 37c9ddcd, 5b11ca4c, ca53d481, 4f828c87): warm key, blue shadows, ambient/fill restored, darkest moods floored, bloom only on true lights, exposure ~+3%, empty space deep indigo. Capture: `design/game/look/captures/2026-11-11-after-look-pass.png` | BUILT (owner to judge) |
-| LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | READY (codex or lead) |
+| LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | TAKEN codex |
 | PERF-03 | Swarm 20 draws too much: measure draw calls per owner, cut the biggest with an identical picture (11.9 fps / 0.15 % idle today) | TAKEN agent2 (devin1) |
 | PERF-02b local prediction | Draw the player's ship from their own input on the main thread (client-side prediction), reconciled to the worker — the cure for input lag and flicker | HOLD on PERF-02a review |
-| PERF-02 | `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`), so a saturated main thread slows the world. Loosen after PERF-03 frees headroom | BUILT dc5f5c03 (sim/wall 0.41–0.59 → 0.89–0.99, lead accepted) — follow-up: main-thread fps cost (packet §Follow-up) READY for devin2 |
+| PERF-02 | `src/core/wholeSimBrowserWorker.js` holds the sim clock after 250 ms without a main-thread heartbeat (`LOCAL_HEARTBEAT_HOLD_MS`) and stops at 4 un-ACKed replies (`LOCAL_MAX_UNACKED`), so a saturated main thread slows the world. Loosen after PERF-03 frees headroom | TAKEN agent2 (devin2) — follow-up: main-thread fps cost of dc5f5c03 |
 | G11-01-never-freeze | The freeze plan end to end (measure quietly → one clock → adaptive playout → cheaper sim) | BUILT in slices. Adaptive playout, bounded clock debt and cheaper economy/physics/AI/save/trace checks pass. Quiet live targets remain open |
 | G18-REVIEW | On a quiet machine: `node --test test/al-race-1-contested-line-4242.test.mjs` (two Hard circuits lost the anchored-lap margin after one feel); one Adventure trace of a throw into a ship | READY |
 | G08 silhouettes | Distinct shapes per Swarm enemy (3D; the Forge route in `docs/visual-assets/README.md`) | READY |
@@ -125,7 +125,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | C01-05-the-room-does-the-twist | Nine round mechanics (Delivery, Lights Out, Highway Robbery theft, The Law, Yardmaster, Chain Gang, Everything Must Go, Black Friday, Quiet) | HOLD on the lead's Swarm 1–5 look |
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
 | PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | TAKEN agent3 (devin3, continue from the working tree — see packet §Continue) |
-| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | TAKEN agent4 (flash) |
+| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | HOLD (flash plants needed lead fixes 3 of 4; PL-09 reverted — rules added to the packet) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
