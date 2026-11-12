@@ -51,7 +51,8 @@ export function podSpec(pos, rot = 0, operationId = null) {
     physicsBody: { dynamic: true, radius, mass, inertiaY: 0.5 * mass * radius * radius, ccd: true, material: 'payload' },
     data: { cinderglassRole: 'pod', worldRecordId: CINDERGLASS_JOB_POD_ID,
       originalId: CINDERGLASS_JOB_POD_ID, cinderglassOperationId: operationId,
-      sealed: true, marking: CINDERGLASS_JOB_POD_MARKING, name: CINDERGLASS_JOB_POD_NAME,
+      // Opaque freight uses its actual physical body for ordinary sensor/law occlusion.
+      sensorBlocking: true, sealed: true, marking: CINDERGLASS_JOB_POD_MARKING, name: CINDERGLASS_JOB_POD_NAME,
       authoredPayloadAssetId: CINDERGLASS_JOB_POD_ASSET,
       cinderglassAssetId: CINDERGLASS_JOB_POD_ASSET, cinderglassAssetFile: modelTruthRow(CINDERGLASS_JOB_POD_ASSET)?.url,
       legalOwnerFactionId: CINDERGLASS_JOB_POD_LEGAL_OWNER, ownerId: 'manifest_oren_dask',

@@ -123,7 +123,8 @@ export function cinderglassJobObserveScan(sys, state, payload) {
   st.hardwareObservation = { pos: { x: pod.pos.x, z: pod.pos.z }, atS: Number(state.simTime) || 0 };
   st.phase = st.phase === P.RECON ? P.DECIDE : st.phase;
   const atS = Number(state.simTime) || 0;
-  rememberFact(st, atS, 'scanned', 'Scanner confirms the original CG-7 controller, its condition and the external yellow latch. Dask’s next inspection is at the freight pull-off.');
+  rememberFact(st, atS, 'scanned', 'Scanner confirms the original CG-7 controller, its condition and the external yellow latch. Dask’s next inspection is at the freight pull-off.'
+    + (pod.data?.sensorBlocking === true ? ' The sealed shell can screen an approach; keep a clear line to the yellow latch.' : ''));
   recordReceipt(st, atS, { kind: 'scan', entityId: pod.id, latchId: access.latch.id,
     podGeneration: pod.occupantGeneration, latchGeneration: access.latch.occupantGeneration });
   cinderglassJobObserveMarkings(sys, state);

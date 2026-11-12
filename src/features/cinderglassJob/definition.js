@@ -35,8 +35,10 @@ const LOCAL = {
   pullOff: [-1600, 800],
   marshal: [1350, 1450],
   bend: [-620, -240],
-  escortBuoyA: [-1720, 960],
-  escortBuoyB: [-1460, 620],
+  // Outer perimeter: escorts guard the approach lanes while the Mule works the layby.
+  // Real travel and sightlines remain active; the original pod supplies close blind-side cover.
+  escortBuoyA: [-2050, 1100],
+  escortBuoyB: [-1200, 650],
   cradle: [-430, 1540],
   broker: [-1790, 260],
 };
@@ -50,7 +52,7 @@ export const CINDERGLASS_JOB_POINTS = Object.freeze(
 
 /* ── Route: four authored legs, ~2.5–3.5 min at working speed ──
    leg 0 freight approach: marshal formup -> pull-off
-   leg 1 inspection layby: hold at the pull-off (real pause; escorts stand at buoys)
+   leg 1 inspection layby: hold at the pull-off (real pause; escorts cover separated outer-perimeter buoys)
    leg 2 outbound bend: pull-off -> bend by the weigh-slip line
    leg 3 return: bend -> marshal (run ends; consignment delivered to buyer) */
 export const CINDERGLASS_JOB_ROUTE = Object.freeze([
