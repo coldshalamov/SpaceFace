@@ -1116,6 +1116,26 @@ ${M} .so-trade-breakdown[open] .sx-trade__rows > li > .k-row__num { flex:1 1 aut
   html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__go.orr-lampkey {
     min-height:44px !important; height:auto !important; padding:6px 12px 6px 8px !important; }
 }
+/* ui-polish-444: where the commodity families ride one sideways strip, the strip faded only at its right
+   edge. Scrolled, the left edge cut a chip mid-word ("ld", "W & RARE") and its border with it, and at the
+   strip's end the fixed right fade still sat over the last family. Each edge now fades only while there
+   is more strip past it, driven by the strip's own scroll position (as Help's section row does). With no
+   overflow the timeline is inactive and both fades rest at 0, so nothing is masked. Each fade runs 40px and
+   clears its last 10px, so a chip's border sliver at the very edge never reads as a stray hairline. */
+@property --sx-mkt-fam-fl { syntax:"<length>"; inherits:false; initial-value:0px; }
+@property --sx-mkt-fam-fr { syntax:"<length>"; inherits:false; initial-value:0px; }
+@keyframes sx-mkt-fam-edges { 0% { --sx-mkt-fam-fl:0px; --sx-mkt-fam-fr:40px; } 12% { --sx-mkt-fam-fl:40px; }
+  88% { --sx-mkt-fam-fr:40px; } 100% { --sx-mkt-fam-fl:40px; --sx-mkt-fam-fr:0px; } }
+@supports (animation-timeline: scroll()) {
+  @media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:400px),
+    (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px),
+    (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+    html:root:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-mkt-browser__filters {
+      -webkit-mask-image:linear-gradient(90deg, transparent calc(var(--sx-mkt-fam-fl) / 4), #000 var(--sx-mkt-fam-fl), #000 calc(100% - var(--sx-mkt-fam-fr)), transparent calc(100% - var(--sx-mkt-fam-fr) / 4)) !important;
+      mask-image:linear-gradient(90deg, transparent calc(var(--sx-mkt-fam-fl) / 4), #000 var(--sx-mkt-fam-fl), #000 calc(100% - var(--sx-mkt-fam-fr)), transparent calc(100% - var(--sx-mkt-fam-fr) / 4)) !important;
+      animation:sx-mkt-fam-edges linear both; animation-timeline:scroll(self inline); }
+  }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
