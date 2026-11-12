@@ -164,6 +164,8 @@ test('scoped swarm hull selection is exact: selected primary, LOD2 fallback, no 
   }))].sort();
   assert.deepEqual(files, [
     'wholeships/ashline_dart.glb',
+    // 74c9aa750695 packaged the dart's authored LOD2 — it warms beside the primary.
+    'wholeships/ashline_dart_lod2.glb',
     'wholeships/mule_production_v1.glb',
     'wholeships/mule_production_v1_lod2.glb',
   ], 'the scoped warm retains the selected wave body and the player stand-in family');
