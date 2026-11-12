@@ -596,6 +596,25 @@ body.k-screen-top #modal-backdrop { background: none; }
   background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-danger, #ff5038) 0);
   box-shadow: 0 0 22px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
 .sf-confirm__key--hazard::after { --sf-bk: var(--dp-danger-hot, #ff8a70); }
+/* Card pass (shadcn drift): the dialog is a hairline card with a 12px radius and a soft drop,
+   in place of four brackets floating 8px outside an edgeless pane; the verbs are rounded fields
+   (no 45-degree cut), the quiet one carrying a hairline so it still reads as a button; focus is
+   one rounded ring that follows the key instead of four corner ticks. */
+.sf-confirm { border: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 16%, transparent); border-radius: 12px;
+  box-shadow: 0 28px 72px -24px rgb(0 0 0 / .75); }
+.sf-confirm--danger { border-color: rgb(255 138 112 / .32); }
+.sf-confirm::before { content: none; }
+.sf-confirm__key { border-radius: 8px; background: var(--dp-field-ink, rgb(232 226 212 / .08));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 14%, transparent); }
+.sf-confirm__key:hover, .sf-confirm__key:focus-visible { background: var(--dp-field-ink-hi, rgb(232 226 212 / .14)); }
+.sf-confirm__key--lamp { background: var(--dp-lamp, #f2b950); box-shadow: none; }
+.sf-confirm__key--lamp:hover, .sf-confirm__key--lamp:focus-visible { background: var(--dp-lamp-hot, #ffd98c);
+  box-shadow: 0 0 22px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); }
+.sf-confirm__key--hazard { box-shadow: inset 0 0 0 1px rgb(255 80 56 / .35), inset 0 -2px 0 var(--dp-danger, #ff5038); }
+.sf-confirm__key--hazard:hover, .sf-confirm__key--hazard:focus-visible { background: var(--dp-danger, #ff5038);
+  box-shadow: 0 0 22px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
+.sf-confirm__key::after { inset: -4px; border-radius: 11px; background: none; box-shadow: 0 0 0 1.5px var(--sf-bk); }
+.sf-confirm .sf-confirm__kbd { border-radius: 4px; }
 /* The Esc legend: an etched cap, filled not boxed. */
 .sf-confirm__kbd { display: inline-block; padding: 4px 7px 3px; border: 0; border-radius: 0;
   background: var(--dp-field-ink, rgb(232 226 212 / .08));
