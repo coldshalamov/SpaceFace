@@ -254,7 +254,7 @@
   :root[data-sf-mobile-wheel="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
     top:auto!important; bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
     left:calc(12px + var(--sf-safe-left,0px))!important; right:auto!important;
-    width:min(224px,56vw)!important; max-width:56vw!important;
+    width:min(210px,52vw)!important; max-width:52vw!important;
     max-height:calc(17dvh - var(--sf-safe-bottom,0px))!important;
     overflow-y:auto!important; overscroll-behavior:contain; touch-action:pan-y;
     pointer-events:auto!important; visibility:visible!important; opacity:1!important; transform:none!important; text-align:left!important;
@@ -430,7 +430,7 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  /* Placement is owned by mobileFlightLayouts. Information keeps its full polite announcement;
     only a receipt's explicit action captures touch, never its text or its empty lane. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info { box-sizing:border-box; width:100%; max-width:100%; min-width:0; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info .sf-toast__text { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info .sf-toast__text { flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; }
  /* Receipts remain information, so a touch through their text still starts the flight stick. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(#toasts,#toasts *) { pointer-events:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast__action { pointer-events:auto!important; min-width:44px; min-height:44px; padding:4px 8px; font-size:12px; }

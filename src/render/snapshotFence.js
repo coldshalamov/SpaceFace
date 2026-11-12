@@ -89,6 +89,9 @@ const PLAYOUT_RATE_MIN = 0.15;
  */
 const PRESENTATION_RATE_WINDOW_S = 1.0;
 const PRESENTATION_RATE_MAX = 1.5;
+const PRESENTATION_RATE_IDLE_S = 0.3;
+const PRESENTATION_SLOW_RATE_INTERVALS = 3;
+const PRESENTATION_FAST_RESEED_S = 0.2;
 /**
  * Bounded velocity extrapolation past the newest pack, measured in the pair's OWN hop. A
  * 390 wu/s hull at 60 Hz hops 6.5 wu per tick; the old fixed 40 wu cap rejected that
@@ -326,8 +329,12 @@ export function createSnapshotFence(options = {}) {
   let rateSeeded = false;            // first real sim interval has set the playback rate
   let rateSeedSimS = 0;              // sim seconds accumulated for the seed
   let rateSeedWallS = 0;             // presented seconds accumulated for the seed
+  let reseedFastRate = false;        // a confirmed slow stream needs prompt recovery on fast replies
   let packElapsedS = 0;              // presented time since the last observed reply
   let rateIdleS = 0;                 // presented time since the newest pack last advanced
+  let slowRateSimS = 0;
+  let slowRateWallS = 0;
+  let slowRateIntervals = 0;
   // Wall-paced playout timeline (E1): the presented moment must not chase the newest pack's
   // staircase. `packAgeS` is the presented time elapsed since that pack landed; the estimated
   // sim moment is `newest + packAgeS * playbackRate`, so the target advances between replies
@@ -364,6 +371,12 @@ export function createSnapshotFence(options = {}) {
     presentedPair.a = a;
     presentedPair.b = b;
     presentedPair.alpha = alpha;
+  }
+
+  function resetSlowRateWindow() {
+    slowRateSimS = 0;
+    slowRateWallS = 0;
+    slowRateIntervals = 0;
   }
 
   function notePackInterval(deltaS) {
@@ -736,11 +749,12 @@ export function createSnapshotFence(options = {}) {
       // NaN before the first sample). Intervals up to the 2 Hz floor are cadence; a multi-second
       // silence is never learned, so it still trips the gap detector below.
       packElapsedS += elapsed;
-      // A long idle is a gap, not evidence of the playback rate; keep the fast-stream
-      // heuristic here. Slow steady cadences (400–600 ms) skip the 1 s window update and
-      // keep the accurate seed, because a window shorter than two replies is boundary-biased
-      // (600 ms at 1x read 0.859x and left the presented clock 68 ms behind its target).
-      const afterIdle = rateIdleS > 0.3;
+      // A single long interval cannot price the playback rate. A sustained slow stream
+      // prices whole reply intervals below, avoiding partial windows between sparse replies.
+      const afterIdle = rateIdleS > PRESENTATION_RATE_IDLE_S;
+      const simDeltaS = current.simTime - presentedSnapshotTime;
+      const reset = presentedEpoch !== current.poseEpoch
+        || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
       if (current.sequence !== lastPackSequence) {
         const previousPackSimTimeS = lastPackSimTimeS;
         const packIntervalElapsedS = packElapsedS;
@@ -753,19 +767,39 @@ export function createSnapshotFence(options = {}) {
         // tab, a test's coalesced burst), not a reply cadence: its newest delta is several
         // replies wide. Learning it would hide the very gap the re-seat exists for.
         const coalescedBurst = packSequenceDelta > 1;
-        if (!coalescedBurst && Number.isFinite(packDeltaS) && packDeltaS > 0
-            && packDeltaS <= PLAYOUT_INTERVAL_LEARN_MAX_S) {
+        const learnedInterval = !coalescedBurst && Number.isFinite(packDeltaS) && packDeltaS > 0
+          && packDeltaS <= PLAYOUT_INTERVAL_LEARN_MAX_S;
+        const deliveryElapsedS = rateIdleS + elapsed;
+        if (learnedInterval && !reset && rawFrameElapsed <= PLAYOUT_MAX_FRAME_GAP_S
+            && afterIdle && deliveryElapsedS <= PLAYOUT_INTERVAL_LEARN_MAX_S) {
+          slowRateSimS += packDeltaS;
+          slowRateWallS += deliveryElapsedS;
+          slowRateIntervals++;
+          if (slowRateIntervals >= PRESENTATION_SLOW_RATE_INTERVALS) {
+            presentationRate = Math.min(PRESENTATION_RATE_MAX, slowRateSimS / slowRateWallS);
+            reseedFastRate = presentationRate < PLAYOUT_RATE_SLOW;
+            rateSeeded = !reseedFastRate;
+            resetSlowRateWindow();
+          }
+        } else if (packDeltaS !== 0) {
+          resetSlowRateWindow();
+        }
+        if (learnedInterval) {
           notePackInterval(packDeltaS);
           // Seed the playback rate from a short run of replies (not one frame-boundary
           // interval): the presented elapsed is quantised to whole frames, so one interval can
           // read 0.756x at 0.109x. Summing until 100 ms of presented time averages the
           // quantisation out, and a coalesced reply still gains its ticks over the same window.
-          if (!rateSeeded) {
+          if (!rateSeeded && !reset && rawFrameElapsed <= PLAYOUT_MAX_FRAME_GAP_S) {
             // The seed window must look like a reply interval, not a stall: a 320 ms idle
             // carrying one 16.7 ms tick is not a 0.05x playback rate. Slow steady cadences
             // (hundreds of ms) still qualify because the learned cadence is equally slow.
-            const seedWindowS = Math.max(recentCadenceS * 2, 0.05);
-            if (packIntervalElapsedS > seedWindowS) {
+            // Once the stream really was slow, two tenths of frequent replies can restore
+            // the rate without letting the normal one-second EMA build a visible backlog.
+            const seedWindowS = reseedFastRate
+              ? PRESENTATION_FAST_RESEED_S / 2
+              : Math.max(recentCadenceS * 2, 0.05);
+            if (packIntervalElapsedS > seedWindowS || (reseedFastRate && afterIdle)) {
               rateSeedSimS = 0;
               rateSeedWallS = 0;
             } else {
@@ -775,21 +809,21 @@ export function createSnapshotFence(options = {}) {
             // Average whole reply intervals until the window is long enough that one frame of
             // quantisation cannot bias the seed: 1 s of presented time, and at least four
             // replies at a slow cadence.
-            const seedMinS = Math.max(PRESENTATION_RATE_WINDOW_S, recentCadenceS * 4);
+            const seedMinS = reseedFastRate
+              ? PRESENTATION_FAST_RESEED_S
+              : Math.max(PRESENTATION_RATE_WINDOW_S, recentCadenceS * 4);
             if (rateSeedWallS >= seedMinS) {
               presentationRate = Math.max(0, Math.min(
                 PRESENTATION_RATE_MAX, rateSeedSimS / rateSeedWallS,
               ));
               rateSeeded = true;
+              reseedFastRate = false;
               rateWallS = 0;
               rateSimS = 0;
             }
           }
         }
       }
-      const simDeltaS = current.simTime - presentedSnapshotTime;
-      const reset = presentedEpoch !== current.poseEpoch
-        || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
       // Forward gap the playout timeline cannot absorb: the newest pack is more than 2.5x the
       // learned reply interval ahead (never less than the 350 ms floor), or this is the first
       // frame after a hidden/occluded interval. A steady 2–10 Hz cadence stays below the learned
@@ -820,6 +854,7 @@ export function createSnapshotFence(options = {}) {
         rateSeedSimS = 0;
         rateSeedWallS = 0;
         rateIdleS = 0;
+        resetSlowRateWindow();
         delayMinSinceCommitS = Infinity;
         packLagMinSinceCommitS = Infinity;
         packAgeS = 0;
@@ -833,9 +868,8 @@ export function createSnapshotFence(options = {}) {
         if (Number.isFinite(simDeltaS) && simDeltaS >= 0) {
           if (simDeltaS > 0) {
             if (afterIdle) {
-              // A pack that lands after a long gap carries the whole gap as one delta. It is
-              // not evidence of a fast clock: keep the last known rate and start the window
-              // fresh from the next interval instead of spiking to the 1.5x cap.
+              // Sparse replies use the whole-interval window above. Keep them out of the
+              // fast window so an isolated late reply cannot spike it to the 1.5x cap.
               rateWallS = 0;
               rateSimS = 0;
             } else {
