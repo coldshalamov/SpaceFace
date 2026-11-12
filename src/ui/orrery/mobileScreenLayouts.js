@@ -656,7 +656,15 @@ export const MOBILE_SCREEN_CSS = `
     mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); }
 
   /* The reference screens are pages: neither their category rail nor their rig can sit off-right. */
-  ${H} { display:flex !important; flex-direction:column; gap:16px !important; overflow-y:auto !important; }
+  ${H} { display:flex !important; flex-direction:column; gap:16px !important; overflow-y:auto !important;
+    scrollbar-width:none; }
+  ${H}::-webkit-scrollbar { display:none; }
+  /* ui-polish-421: Help page (esp. FACTIONS) taller than the phone — hard clip, no fold cue.
+     Fade the foot while more remains below; clear the mask at the end so CLOSE stays solid. */
+  ${H}[data-fold-foot="1"] {
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; }
+  ${H}[data-fold-foot="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
   ${H} > * { position:relative !important; inset:auto !important; flex:none; width:100% !important;
     min-width:0 !important; height:auto !important; max-height:none !important; }
   ${H} .orr-help__tabs { flex-direction:row !important; overflow-x:auto !important; gap:8px !important; background:none !important; }
@@ -682,9 +690,11 @@ export const MOBILE_SCREEN_CSS = `
      crest ring collapsed to nothing and only the open power's reading was left (no way to pick another).
      The ring gets its own square berth above the reading; only the chosen, hovered or focused crest
      names itself, as at ≤560 on the desktop (each crest keeps its aria-label). */
-  ${H} .orr-help-factions { display:flex !important; flex-direction:column; gap:16px; height:auto !important; min-height:0; }
+  /* ui-polish-421: densify the crest berth at phone height so CLOSE / the reading foot peek under the
+     fold fade instead of sitting fully below the viewport with no scroll cue. */
+  ${H} .orr-help-factions { display:flex !important; flex-direction:column; gap:10px; height:auto !important; min-height:0; }
   ${H} .orr-help-factions > * { flex:none; min-width:0; }
-  ${H} .orr-help-factions__orbit { width:100% !important; height:320px !important; }
+  ${H} .orr-help-factions__orbit { width:100% !important; height:250px !important; }
   ${H} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
 
   /* Save portraits retain a horizontal rail, with enough room for each save's own label. */

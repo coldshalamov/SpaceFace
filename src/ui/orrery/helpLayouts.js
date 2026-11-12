@@ -589,6 +589,10 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list__stage > .orr-help-reading { max-height:none; overflow:visible; padding-bottom:18px; }
   ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
   ${HD} .orr-help-factions { display:flex !important; flex-direction:column; gap:16px; height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; }
+  ${HD} .orr-help-factions[data-overflow="1"] {
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); }
+  ${HD} .orr-help-factions[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
+  ${HD} .orr-help-factions::-webkit-scrollbar { display:none; }
   ${HD} .orr-help-factions > * { flex:none; }
   ${HD} .orr-help-factions__orbit { height:380px !important; }
 }
