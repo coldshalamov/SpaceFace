@@ -101,7 +101,7 @@ import {
 } from '../economy/freightCausality.js';
 import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
-import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
+import { applyPersistentDemand, createSectorDemandProjector, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankFromRep, rankServiceDiscount } from './factions.js';
 import { swarmCrossoverServiceDiscount } from '../data/swarmCrossover.js';
 import { endingStationTradeMults } from '../story/endings/worldAfter.js';
@@ -836,6 +836,28 @@ function cycleRngFor(state, stationId, cmdtyId) {
   }
   const seedOwner = { seed: hash32(state && state.meta && state.meta.seed, 'economy-cycle', stationId, cmdtyId) };
   return () => drawSeeded(seedOwner, 'seed', seedOwner.seed);
+}
+
+// A single synchronous pass may share the sector snapshot across commodities. A sliced pass
+// crosses simulation ticks, so the first projection of each commodity still reads live context.
+function createDemandProjectionCache(state, reuseSectorContext = false) {
+  const sectors = new Map();
+  return (def, sectorId) => {
+    let sector = sectors.get(sectorId);
+    if (!sector) {
+      sector = {
+        listings: new Map(),
+        project: reuseSectorContext ? createSectorDemandProjector(state, sectorId) : null,
+      };
+      sectors.set(sectorId, sector);
+    }
+    let result = sector.listings.get(def.id);
+    if (!result) {
+      result = sector.project ? sector.project(def) : effectiveDemandFor({ state, sectorId, commodity: def });
+      sector.listings.set(def.id, result);
+    }
+    return result;
+  };
 }
 
 /** Effective spread for a market entry (base * event spread mods * frontier penalty), clamped. */
@@ -2170,7 +2192,7 @@ export const economy = {
           phase: 'regional',
           index: 0,
           touched: new Map(),
-          demandProjectionCache: new Map(),
+          demandProjectionCache: createDemandProjectionCache(state),
           lastAdvancedTick: null,
         };
         this._advanceEconPass(state);
@@ -2199,7 +2221,7 @@ export const economy = {
 
     // 3) drift every station+commodity stock toward effectiveEq, recompute cached prices
     const markets = econ.markets;
-    const demandProjectionCache = new Map();
+    const demandProjectionCache = createDemandProjectionCache(state, true);
     for (const sid in markets) {
       const market = markets[sid];
       const info = stationInfo(state, sid);
@@ -2434,25 +2456,13 @@ export const economy = {
   },
 
   /** Rebuild one derived demand cache from factions + the averaged sector field. */
-  refreshListingDemand(entry, def, stationId, resolvedInfo = undefined, projectionCache = null) {
+  refreshListingDemand(entry, def, stationId, resolvedInfo = undefined, projectDemand = null) {
     if (!entry || !def) return false;
     const info = resolvedInfo === undefined ? stationInfo(this.state, stationId) : resolvedInfo;
     const sectorId = info && info.sectorId;
-    let result;
-    if (projectionCache instanceof Map) {
-      let sectorCache = projectionCache.get(sectorId);
-      if (!sectorCache) {
-        sectorCache = new Map();
-        projectionCache.set(sectorId, sectorCache);
-      }
-      result = sectorCache.get(def.id);
-      if (!result) {
-        result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
-        sectorCache.set(def.id, result);
-      }
-    } else {
-      result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
-    }
+    const result = projectDemand
+      ? projectDemand(def, sectorId)
+      : effectiveDemandFor({ state: this.state, sectorId, commodity: def });
     const prevMult = Number(entry.demandMult) || 1;
     let nextMult = Number(result.multiplier) || 1;
     // Alien Ecology AE-077/078 — biohazard lots price off the station faction's
@@ -2636,6 +2646,8 @@ export const economy = {
     const state = this.state;
     const now = state.simTime || 0;
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
+    const frontier = info ? this.frontierPenalty(info) : 0;
+    const projectDemand = createSectorDemandProjector(state, info && info.sectorId);
     let regionalProduce = null;
     const producedHere = (def) => {
       if (!def || (Number(def.marketTier) || 0) > PRODUCE_OVERRIDES_TIER_UP_TO) return false;
@@ -2680,7 +2692,6 @@ export const economy = {
         lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
         demandMult: 1, demandDrivers: [],
       };
-      const frontier = info ? this.frontierPenalty(info) : 0;
       // Every market begins with a formula already in progress. That lets the chart expose a
       // learnable current trend on the very first dock instead of faking one in the UI.
       const historyAge = HISTORY_REGIME_AGE_MIN_S
@@ -2688,7 +2699,7 @@ export const economy = {
       const cycle = createCycle(() => this._rng(), def, now - historyAge);
       cycle.cmdtyId = def.id;
       cyclesBucket[def.id] = cycle;
-      this.refreshListingDemand(entry, def, stationId);
+      this.refreshListingDemand(entry, def, stationId, info, projectDemand);
       this.recomputePrices(entry, def, frontier, cycle, now);
       this.seedPriceHistory(entry, def, cycle, now);
       market[def.id] = entry;
@@ -6426,7 +6437,7 @@ export const economy = {
       phase,
       index,
       touched,
-      demandProjectionCache: new Map(),
+      demandProjectionCache: createDemandProjectionCache(this.state),
       lastAdvancedTick: null,
     };
   },
