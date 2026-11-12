@@ -634,6 +634,20 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   html:root[data-sf-mobile="1"] body #screens > .k-screen.of-help.orr-help .orr-help__tabs { ${TAB_EDGES} }
 }
 
+/* ui-polish-497: phone section row (≤480). Even densified to .04em tracking and 4px gaps, the six words ran
+   together ("CONTROLS LOOPS SHIPS COMMODITIES ORES FA") and Ores / Factions sat under the scroll-edge fade.
+   Two rows of three (as on phone Credits) show every section at once with normal tracking; each row carries
+   its own rail so the tick and the Hand still sit under their word. Sits after the edge-fade block so its
+   mask and end pad lose. */
+@media (max-width:480px) and (min-height:461px) {
+  ${HD} > .k-hang { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${HD} .orr-help__tabs { display:grid !important; grid-template-columns:repeat(3, minmax(0, 1fr)) !important; column-gap:0 !important; row-gap:12px !important;
+    padding:0 !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; background:none !important; }
+  ${HD} .orr-help__tabs > li { padding-bottom:14px !important;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
+  ${HD} .orr-help__tabs .sf-tab { width:100% !important; justify-content:center !important; letter-spacing:.12em !important; }
+}
+
 /* ui-polish-281: the side ladder (≥1201 wide) read as loose words on a ruled spine with no edge, so the
    six sections looked unfinished beside the bordered key register. They now sit in one hairline-framed
    list: a rule between rows, the open row on a faint fill with a 2px bar at its left edge (amber on
