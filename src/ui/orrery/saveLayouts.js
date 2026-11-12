@@ -424,11 +424,21 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 /* ui-polish-183/186: a narrow desktop window (≤640 wide, up to the 641 band) gives each strip station ~68-90px,
    so a long filed name broke mid-word ("RECOV / ERY") or ran four lines with CURRENT and its credits into
    EXPORT / IMPORT (561-599 still overlapped). A filed station breaks its name between words, not inside them,
-   with closer tracking, and the badge steps aside (the context line carries CURRENT), so it ends above the foot. */
+   with closer tracking, and the badge steps aside (the context line carries CURRENT), so it ends above the foot.
+   ui-polish-420: even with word breaks, a pilot-authored long title (D249 "Black Flag public recovery") still
+   stacked four lines under the pedestal at 390×844. Clamp the filmstrip label to two lines with an ellipsis;
+   the ledger NAME field keeps the full title. */
 @media (max-width:640px) {
-  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  /* Borrow ~18px per side past the ~60px station pitch so two clamped lines can hold a readable
+     title ("BLACK FLAG / PUBLIC RECOV…") instead of a one-word ellipsis; overflow stays hidden so
+     neighbours do not collide, and the ledger NAME field still carries the full pilot title. */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div {
+    overflow-wrap:normal; margin:0 -18px; width:calc(100% + 36px); max-width:none; overflow:hidden; box-sizing:border-box; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-hang { margin-bottom:34px; }
-  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name {
+    display:-webkit-box !important; -webkit-box-orient:vertical !important; -webkit-line-clamp:2 !important; line-clamp:2 !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:normal !important;
+    letter-spacing:0 !important; line-height:1.25 !important; max-width:100%; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .sf-slot-badges { display:none !important; }
 }
 /* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
