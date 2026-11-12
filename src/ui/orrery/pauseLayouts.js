@@ -423,6 +423,16 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
     min-height:40px !important; scroll-margin-block:10px;
   }
 }
+/* phone foot (≤480 wide): the keycaps and verbs are flat siblings in a wrapping row, so at 390 the
+   line broke between F5 and QUICK SAVE and the key sat orphaned at the end of the first line. A grid
+   of two key/verb column pairs keeps every cap beside its verb and stacks the rows in clean columns
+   (three pairs per row would run QUICK SAVE past the column edge at 390). */
+@media (max-width:480px) {
+  :is(${PH}, ${PN}) > .sf-pause-foot .sf-pause-foot__keys {
+    display:grid !important; grid-template-columns:max-content minmax(0, 1fr) max-content minmax(0, 1fr) !important;
+    align-items:center !important; gap:8px 0 !important; }
+  :is(${PH}, ${PN}) > .sf-pause-foot .sf-pause-key-verb { margin-right:12px !important; }
+}
 `;
 
 export function injectPauseLayouts(doc = globalThis.document) {
