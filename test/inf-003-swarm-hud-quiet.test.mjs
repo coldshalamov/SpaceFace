@@ -192,3 +192,16 @@ test('a remounted readout repaints instead of trusting the old mount cache', () 
     fx.done();
   }
 });
+
+// MOB-07: the phone's one-line round readout carries round, hostiles left (when a census shows) and score.
+test('the phone round line reads round and score, and follows the score', () => {
+  const fx = mount();
+  try {
+    assert.equal(fx.dom().brief.textContent, 'R03 · 1,000', 'round and score, no census while the wave has no clock');
+    fx.state.run.score = 1500;
+    fx.step(1);
+    assert.match(fx.dom().brief.textContent, /^R03 · 1[,.]?500$/);
+  } finally {
+    fx.done();
+  }
+});
