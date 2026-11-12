@@ -1,3 +1,4 @@
+import { tenderDeparturePlan } from './departure.js';
 import { isBlackFlagAdventure } from '../../shipjack/model.js';
 import { createTenderPhysical, TENDER_BODY_ID, TENDER_PHYSICAL } from './physical.js';
 import { TENDER_CONFIG as C, TENDER_STAGES, freshSalvageTender, normalizeSalvageTender,
@@ -203,7 +204,7 @@ export const salvageTender = {
   inspect(page = 'home') {
     if (!this._eligible() || !this._row.discovered || (!this._near(C.offerRange)
       && !(['cargo', 'restock', 'packing'].includes(page) && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
-    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history'].includes(page) ? page : 'home';
+    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history', 'departure'].includes(page) ? page : 'home';
     const row = this._row, body = this.physical.find(row), choices = [];
     const hull = `${Math.ceil(body?.hull || row.physical.tender.hull)}/${TENDER_PHYSICAL.hullMax}`;
     const stateWord = row.physical.disabled ? 'DISABLED' : row.physical.mode === 'released' ? 'MOVING · services paused' : 'SECURED';
@@ -235,6 +236,19 @@ export const salvageTender = {
       choices.push(choice('patch', 'Patch Morrowlight · 1 scrap → 30 hull', {}, patchGate.ok && patchParts.canUseParts && (body?.hull || 0) < TENDER_PHYSICAL.hullMax,
         patchGate.reason || (!patchParts.canUseParts ? 'Bring one unsealed scrap metal.' : 'The hull is already intact.')));
       choices.push(choice('history_menu', 'Read the work log', { action: 'menu', page: 'history' }));
+    } else if (this._page === 'departure') {
+      const plan = tenderDeparturePlan(this.state, row, this.physical.recoveryBodies(row));
+      detail = `Before the next departure: ${plan.fuel.toFixed(1)} fuel, ${plan.hull.toFixed(1)} hull and ${plan.armor.toFixed(1)} armor below capacity. This is a supply estimate, not a requirement to fill everything. `
+        + plan.need.map(n => `${n.units} ${n.name} for current deficits; ${n.hold} unsealed in your hold.`).join(' ')
+        + (row.stage < 2 ? ' Restore the Working Bench before scrap can repair this ship; the starter emergency weld remains separate.' : '')
+        + (row.service ? ' Existing prepaid work is not subtracted from this estimate. It remains booked and pauses if you leave; do not buy it again.' : '')
+        + ' These are surviving original lockers, not new stock. A course only marks the locker; match speed there, take what fits, and return to the same berth. No stock or cargo space is reserved.';
+      for (const source of plan.sources) choices.push(choice(`supply_${source.sourceId}`,
+        `${source.name} · ${source.lines.map(n => `${n.qty} ${n.name}`).join(' / ')} · mark only`,
+        { action: 'supply_course', sourceId: source.sourceId, bodyId: source.bodyId, generation: source.generation }));
+      if (!plan.sources.length) detail += ' No surviving original locker currently offers a missing service supply. Use what is aboard, recover supplies elsewhere, or leave without full service; nothing is replenished here.';
+      choices.push(choice('home_course', 'Mark Morrowlight return berth · no autopilot', { action: 'course', destination: 'home' }));
+      choices.push(choice('service_return', 'Back to booked work / service', { action: 'menu', page: 'service' }));
     } else if (this._page === 'service') {
       detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 wu at matched speed. Leaving pauses prepaid work.`;
       if (row.service) {
@@ -256,6 +270,7 @@ export const salvageTender = {
         choices.push(choice(`repair_${priority}`, `${priority === 'hull' ? 'Hull' : 'Armor'} first · 1 scrap / up to ${C.repairPerScrap} combined HP`,
           { action: 'repair', priority }, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
       }
+      choices.push(choice('departure_menu', 'Plan a supply run before departure', { action: 'menu', page: 'departure' }));
       const supplies = tenderCostQuote(this.state, { items: { cmdty_fuel_cells: 1, cmdty_scrap_metal: 1 } }).items;
       detail += ` Unsealed hold: ${supplies[0].available} fuel cells · ${supplies[1].available} scrap. Sealed freight is never consumed.`;
     } else if (this._page === 'restore') {
@@ -367,6 +382,17 @@ export const salvageTender = {
     if (!this._eligible()) return fail('Adventure flight only.');
     if (revision !== this._row.revision) return this._feedback(fail('This offer changed. Inspect Morrowlight again.'));
     if (action === 'menu') return this.inspect(options.page);
+    if (action === 'supply_course') {
+      if (!this._row.owned || !this._near(C.offerRange) || !this._sameSector()) return fail('Return alongside your tender to plan the supply run.');
+      const plan = tenderDeparturePlan(this.state, this._row, this.physical.recoveryBodies(this._row));
+      const source = plan.sources.find(s => s.sourceId === options.sourceId && s.bodyId === options.bodyId && s.generation === options.generation);
+      if (!source) return this._feedback(fail('That supply or original locker changed. Check departure preparation again.'));
+      const row = this._row, offer = this._offer;
+      const result = this._course('recovery', source.sourceId);
+      // Course listeners may replace the run or open another card synchronously.
+      if (result.ok && owners.get(this.state) === this && this._row === row && this._offer === offer && !this._restoring) { this._dismissed = true; this._hide(); }
+      return result;
+    }
     if (action === 'packing') {
       this._packingTarget = { ...options, body: this.state.entities.get(options.bodyId) };
       return this.inspect('packing');
