@@ -43,6 +43,43 @@ test('free cells retain whole-cell room,8-cell cap,no-service berth and repeated
 test('expired first trade removes its sealed stock, not purchased surplus, through the existing owner',async()=>{
  const t=boot();try{const m=t.accept();addCargo(t.state,CELL,2);t.state.simTime=m.deadline_s+1;t.m._expireMission(m,t.state.missions.active.indexOf(m));assert.equal(t.state.missions.active.some(x=>x.id===m.id),false);assert.equal(t.state.player.cargo.items[CELL],2);await t.reload();assert.equal(t.yard.decantFuelCells().cells,2);assert.equal(t.state.fuel.current,48);assert.equal(t.state.player.credits,20000);}finally{t.close();}
 });
+for (const [arrival, ticksAfterDeadline] of [['before', -1], ['at', 0], ['after', 1]]) {
+  test(`first trade docking ${arrival} its deadline settles exactly once`, () => {
+    const t = boot();
+    try {
+      t.state.simTime = 10.2;
+      t.state.tick = 612;
+      const mission = t.accept();
+      assert.equal(addCargo(t.state, CELL, 2), 2);
+      const credits = t.state.player.credits;
+      const delivered = [];
+      const expired = [];
+      t.bus.on('cargo:delivered', p => delivered.push(p));
+      t.bus.on('mission:expired', p => expired.push(p));
+
+      t.state.simTime = mission.deadline_s + ticksAfterDeadline / 60;
+      t.state.tick = Math.round(t.state.simTime * 60);
+      const onTime = ticksAfterDeadline < 0;
+      t.deliver();
+      // Expiry can accept a separate follow-up, which belongs to a later dock event.
+      if (onTime) t.deliver();
+
+      const receipts = t.state.missions.receipts.filter(r => r.missionId === mission.id);
+      assert.equal(receipts.length, 1);
+      assert.equal(receipts[0].outcome, onTime ? 'completed' : 'expired');
+      assert.equal(receipts[0].reason, onTime ? null : 'deadline');
+      assert.equal(receipts[0].rewardCr, onTime ? 760 : 0);
+      assert.equal(receipts[0].contractCargoRemoved, onTime ? 0 : 8);
+      assert.deepEqual(delivered.map(p => [p.missionId, p.qty]), onTime ? [[mission.id, 8]] : []);
+      assert.deepEqual(expired.map(p => p.missionId), onTime ? [] : [mission.id]);
+      assert.deepEqual(t.completed.map(p => p.missionId), onTime ? [mission.id] : []);
+      assert.equal(t.state.player.credits, credits + (onTime ? 760 : 0));
+      assert.equal(t.state.player.cargo.items[CELL], 2);
+      assert.equal(sellableCargoQty(t.state, CELL), 2);
+      assert.equal(t.state.missions.active.some(row => row.id === mission.id), false);
+    } finally { t.close(); }
+  });
+}
 test('unrelated real cargo loss still uses existing short-delivery write-off and380cr policy',()=>{
  const t=boot();try{t.accept();assert.equal(removeCargo(t.state,CELL,4),4);t.deliver();assert.equal(t.completed.length,1);assert.equal(t.state.player.credits,20380);assert.ok(t.notices.some(s=>/Short delivery: 4\/8u/.test(s)));}finally{t.close();}
 });

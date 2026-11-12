@@ -4058,6 +4058,7 @@ export const missions = {
   /** Dock-at-destination objectives: delivery / passenger / salvage / smuggling / escort. These are
    *  boolean-at-dest (no cargo.delivered event exists; cargo is single-writer so we don't inspect it). */
   _onDockedObjectives(stationId) {
+    const now = this.state.simTime;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
@@ -4080,6 +4081,11 @@ export const missions = {
         continue;
       }
       if (m.destStationId !== stationId) continue;
+      // Docking can settle between calendar updates, and the berth freezes that clock.
+      if (Number.isFinite(m.deadline_s) && now >= m.deadline_s) {
+        this._expireMission(m, i);
+        continue;
+      }
 
       // A blocking physics term is checked BEFORE any cargo is consumed, so a refused turn-in costs
       // the player nothing but a second approach.
