@@ -8,6 +8,8 @@
 //
 // Pure module: no argv reads, no self-execute, no side effects at import.
 
+import { bumpSaveStoreGeneration } from '../../src/save/saveStoreGeneration.js';
+
 // Node's monotonic clock in bigint nanoseconds; browsers (main or worker) fall back
 // to performance.now() scaled — same units, same call sites, never a Date source.
 const _hrtime = (typeof process !== 'undefined' && process && typeof process.hrtime === 'function'
@@ -76,7 +78,7 @@ export function realmFsAvailable() {
 // main stages its `sf.*` keyspace onto it when a load/save event forwards, and
 // the worker's save code runs its own slot/recovery logic against the bytes.
 
-const _laneStore = new Map();
+let _laneStore = new Map();
 // Optional write relay: shim writes also post to main (folded into tick
 // replies) so durable persistence stays main-owned while the bytes are the
 // worker's own — its real sim state, not a mirror serialize.
@@ -144,16 +146,27 @@ export function installLaneStorage(globalObj, { onWrite } = {}) {
   }
 }
 
+function stagedSaveEntriesChanged(previous, staged) {
+  const isSaveKey = (key) => key.startsWith('sf.save.') || key.startsWith('sf.recovery.');
+  for (const [key, value] of staged) {
+    if (isSaveKey(key) && previous.get(key) !== value) return true;
+  }
+  for (const key of previous.keys()) {
+    if (isSaveKey(key) && !staged.has(key)) return true;
+  }
+  return false;
+}
+
 /**
  * Replace the staged snapshot wholesale: entries the main realm no longer
  * holds disappear here too (slot deletes must be visible to recovery logic).
  */
 export function stageLaneStorage(entries, preserveOps = null) {
   if (!entries || typeof entries !== 'object') return;
-  _laneStore.clear();
+  const staged = new Map();
   for (const key of Object.keys(entries)) {
     const v = entries[key];
-    if (typeof v === 'string') _laneStore.set(key, v);
+    if (typeof v === 'string') staged.set(key, v);
   }
   // Writes the worker already staged but has not yet relayed main-side must
   // survive the wholesale restage — the incoming snapshot predates them.
@@ -161,10 +174,14 @@ export function stageLaneStorage(entries, preserveOps = null) {
     for (const op of preserveOps) {
       try {
         if (!op) continue;
-        if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') _laneStore.set(op.key, op.value);
-        else if (op.op === 'remove' && typeof op.key === 'string') _laneStore.delete(op.key);
-        else if (op.op === 'clear') { for (const k of [..._laneStore.keys()]) _laneStore.delete(k); }
+        if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') staged.set(op.key, op.value);
+        else if (op.op === 'remove' && typeof op.key === 'string') staged.delete(op.key);
+        else if (op.op === 'clear') staged.clear();
       } catch (_) { /* staging replay is best-effort */ }
     }
   }
+  const saveChanged = stagedSaveEntriesChanged(_laneStore, staged);
+  _laneStore = staged;
+  // Restaging bypasses the tracked shim methods so it cannot echo host bytes back to main.
+  if (saveChanged) bumpSaveStoreGeneration();
 }
