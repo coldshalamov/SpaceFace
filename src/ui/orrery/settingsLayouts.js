@@ -623,6 +623,8 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
      two rows of three keep every section in view; the tagline balances instead of orphaning "ON." */
   ${C} .k-hang > .k-words { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:space-between; row-gap:0 !important; overflow:visible !important; }
   ${C} > .k-title > p { text-wrap:balance; }
+  /* the balanced two-line tagline left its 72px rule floating mid-air at the far right: under it, flush left, it reads as the title's underline */
+  ${C} > .k-title > p { flex-direction:column; align-items:flex-start; gap:10px; }
   /* the reel head's word kept shrinking for its trailing rule, so MADE BY broke in two at 375 */
   ${C} .orr-cr-head > b { flex:none; white-space:nowrap; }
 }
