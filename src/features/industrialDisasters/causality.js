@@ -279,7 +279,7 @@ function drive(role, goal, speedLimit = 8) {
   return { type: 'drive', role, goal, speed: speedLimit, maxForce: 100 };
 }
 
-function stepRescue(record, scenario, { bodies, anchor }, out) {
+function stepRescue(record, scenario, { bodies, anchor, links }, out) {
   const refuge = sitePoint(SITE.safeBerth, anchor);
   const blockers = corridorBlockers(scenario, bodies, anchor);
   for (const def of scenario.bodies) {
@@ -292,6 +292,14 @@ function stepRescue(record, scenario, { bodies, anchor }, out) {
       emit(record, out, `recovered:${def.role}`, `${def.label}: ${record.losses[def.role] ? 'damaged unit recovered as salvage' : 'safe at the refuge'}.`, 'success', def.role);
     }
     if (def.kind !== 'crew') continue;
+    // A live original player cable is a voluntary alternate evacuation route. Do not fight
+    // the tug with the pod's refuge autopilot; actual berth arrival above still owns rescue.
+    if (links.playerTowRole === def.role) {
+      if (!record.losses[def.role] && record.status[def.role] !== 'safe') {
+        emit(record, out, `tow-handoff:${def.role}`, `${def.label}: your line has us. ${record.status[def.role] === 'stranded' ? 'Thrusters are out' : 'Thrusters idle'}; take us to the refuge.`, 'info', def.role);
+      }
+      continue;
+    }
     if (record.status[def.role] === 'safe') {
       out.intents.push(drive(def.role, refuge, 0));
       continue;

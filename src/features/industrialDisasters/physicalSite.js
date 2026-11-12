@@ -294,6 +294,7 @@ export function createIndustrialPhysicalSite(ctx) {
     return { ready: admitted && linkReady, powerConnected: !!scenario?.connection
       && current?.physical?.powerConnected !== false && !!attachedPower(),
       powerPending: !!scenario?.connection && !linkReady,
+      playerTowRole: playerTetherSnapshot()?.role || null,
       powerAttachmentId, playerTetherPending: !!pendingPlayerTether, contacts: contacts.slice(),
       missingRoles: scenario ? scenario.bodies.filter(spec => current?.physical?.rows?.[spec.role]?.tombstone
         || (bound.has(spec.role) && (state.entities.get(bound.get(spec.role).id) !== bound.get(spec.role)
@@ -437,6 +438,9 @@ export function createIndustrialPhysicalSite(ctx) {
       const entity = entities[intent.role];
       if (!entity) continue;
       if (intent.type === 'drive' && scenario.crewRoles.includes(intent.role)) {
+        // start() can restore a saved player line after the caller sampled links.
+        // Revalidate at the impulse boundary so that first restored tick also yields.
+        if (playerTetherSnapshot()?.role === intent.role) continue;
         drive(entity, intent, Math.max(0, finite(dt))); applied++;
       } else if (intent.type === 'damage') { damage(entity, intent); applied++; }
     }
