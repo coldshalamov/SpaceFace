@@ -135,6 +135,18 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // PL-54: Ten near misses in one minute — Static: "Traffic advisory: there's one of those out today."
     return ['player.ten_near_misses'];
   }
+  if (event === 'band:lostWantedSearch') {
+    return ['player.lost_wanted_search'];
+  }
+  if (event === 'heat:changed') {
+    // PL-59: You lose a search while wanted — Static: "Concord would like a word with a certain rope."
+    const prev = Number(payload.previousValue != null ? payload.previousValue : payload.value) || 0;
+    const threshold = Number(payload.threshold) || 0.15;
+    const prevLevel = Number.isInteger(payload.previousLevel) ? payload.previousLevel : -1;
+    const wasWanted = prev >= threshold || prevLevel >= 1 || (payload.wantedCrossed && !payload.wanted);
+    const escaped = payload.reason === 'escaped heat radius' || payload.reason === 'broke the sweep';
+    return wasWanted && escaped ? ['player.lost_wanted_search'] : [];
+  }
   if (event === 'player:death') {
     // PL-55: killed by TRAFFIC — a civilian hull, not a hostile. The receipt's killerId
     // still resolves at emit time; the law layer's own civilian test decides "traffic".
@@ -326,7 +338,7 @@ export const bandRadio = {
     };
     this._listen('traffic:nearMiss', onNearMiss);
     this._listen('traffic:nearMissPlant', onNearMiss);
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled', 'heat:changed', 'band:lostWantedSearch']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {

@@ -116,6 +116,18 @@ let tail = '';
 
 // Devin (and the others) hit short provider rate limits. On a retryable failure, wait and resume
 // the same conversation (devin --continue) instead of losing the worker's progress.
+// devin-acct starts devin.exe through env.exe, which detaches it from the bash tree, so `taskkill /T` on the
+// wrapper misses it (a PERF-04 worker kept editing for 2 h after its timeout). Also kill every process whose
+// command line carries this run's stamp — the prompt names the run's receipt path.
+function killWorkerTree(child) {
+  try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { try { child.kill(); } catch { /* gone */ } }
+  if (process.platform !== 'win32') return;
+  try {
+    const ps = `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${stamp}') -and $_.ProcessId -ne ${process.pid} } | ForEach-Object { taskkill /PID $_.ProcessId /T /F | Out-Null }`;
+    execFileSync('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore', timeout: 30_000 });
+  } catch { /* best effort */ }
+}
+
 function launch(resume) {
   attempt += 1;
   let a = cmdArgs;
@@ -141,7 +153,7 @@ function launch(resume) {
     if (existsSync(join(runDir, 'RECEIPT.md')) && Date.now() - lastOutputAt > 180_000) {
       log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
       clearInterval(idleWatch);
-      try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+      killWorkerTree(child);
       setTimeout(() => { if (!closed) { closed = true; clearTimeout(timer); finish(0); } }, 30_000);
     }
   }, 30_000);
@@ -154,7 +166,7 @@ function launch(resume) {
     log.write(`
 [fleet] timeout after ${timeoutMin} min
 `);
-    try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+    killWorkerTree(child);
     setTimeout(() => { if (!closed) { closed = true; clearInterval(idleWatch); finish(124); } }, 30_000);
   }, Math.max(1000, deadline - Date.now()));
   child.on('close', (code) => {
