@@ -54,6 +54,7 @@ function harness({ jumpState = 'IDLE', throwing = false, relocate = true, curren
   const missions = { postAndAcceptAuthoredOffer: (offer) => {
     acceptedOffers.push(offer);
     if (throwing) throw new Error('accept failed');
+    state.missions.active.push({ id: 'circuit', status: 'active', type: offer.type, params: offer.params });
     return { ok: true, missionId: 'circuit' };
   } };
   const registry = { get: name => ({ save: saveHost, world, missions })[name] };

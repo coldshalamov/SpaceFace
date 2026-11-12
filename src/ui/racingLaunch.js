@@ -8,6 +8,7 @@ import { normalizeRaceOptions, stageRacingMeeting } from '../systems/racingCaree
 import { laneCommandSink, laneRpc } from '../core/simLaneCommands.js';
 import { validateRacingCircuit } from '../data/raceCourses.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { armRacingGrid } from '../world/racingGridArrival.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { SECTORS } from '../data/sectors.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
@@ -91,6 +92,7 @@ export function completeRacingLaunch(ctx) {
   catch (error) { result = { ok: false, reason: 'arm_exception', error: String(error?.message || error) }; }
   const finish = (resolved) => {
     if (resolved?.ok === true && !resolved.reused) return resolved;
+    if (resolved?.reason === 'superseded') return resolved;
     // Exit while the save owner still quarantines this temporary state. Exit autosave must
     // never write a failed circuit's starter hull over a campaign. The following receipt
     // invalidates pending capture work, but only New Game/Continue may release quarantine.
@@ -217,37 +219,18 @@ export function armRacingContract(ctx, contractId, options = {}) {
     return laneRpc('racingArm', { offer, sectorId: level.sectorId, start, relocate, allowEnterSector })
       .then((ack) => finishArmReply(ack && ack.result, offer, contractId, bus, toast));
   }
-  const result = missions.postAndAcceptAuthoredOffer(offer);
-  if (!result || result.ok !== true || result.reused) {
-    toast(result && result.reused
-      ? 'That circuit is already on the book.'
-      : 'The circuit did not take.');
-    return result && result.ok === false ? result : { ok: false, reason: 'accept_failed', result };
-  }
-  try {
-    if (here !== level.sectorId) world.enterSector(level.sectorId);
-    if (relocate) {
-      if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
-        throw new Error('Grid relocation refused');
-      }
-    }
-  } catch (error) {
-    // Acceptance is rolled back via the mission owner, never by splicing its list from UI.
-    bus?.emit?.('mission:abandon', { missionId: result.missionId });
-    toast('The circuit could not open its starting grid. No active race was left behind.');
-    return { ok: false, reason: 'grid_failed' };
-  }
-  bus?.emit?.('race:armed', { missionId: result.missionId, contractId });
-  toast(offer.summary || offer.title, 'info');
-  return result;
+  const arm = armRacingGrid({ state, bus, missions, world }, {
+    offer, sectorId: level.sectorId, start, relocate, allowEnterSector,
+  });
+  return finishArmReply(arm, offer, contractId, bus, toast);
 }
 
-/** Map a racingArm rpc reply onto the main path's result/emit contract. */
+/** Publish the result of the authoritative arm operation in either lane. */
 function finishArmReply(arm, offer, contractId, bus, toast) {
   const post = arm && arm.result;
   if (!arm || arm.ok !== true || (post && post.reused === true)) {
+    if (arm?.reason === 'superseded') return { ok: false, reason: 'superseded' };
     if (arm && arm.reason === 'grid_failed') {
-      // the rpc already rolled the post back sim-side via mission:abandon
       toast('The circuit could not open its starting grid. No active race was left behind.');
       return { ok: false, reason: 'grid_failed' };
     }

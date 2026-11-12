@@ -132,7 +132,11 @@ function launchHarness(){
   const state=createGameState(239);
   Object.assign(state,{mode:'flight',playerId:1,entities:new Map([[1,p]]),world:{currentSectorId:'other'},missions:{active:[]}});
   const world={enterSector:id=>{calls.push('enter');state.world.currentSectorId=id;},relocatePlayerInSector:()=>{calls.push('relocate');return true;}};
-  const missions={postAndAcceptAuthoredOffer:()=>{calls.push('accept');return {ok:true,missionId:'new'};}};
+  const missions = { postAndAcceptAuthoredOffer(offer) {
+    calls.push('accept');
+    state.missions.active.push({ id: 'new', status: 'active', type: offer.type, params: offer.params });
+    return { ok: true, missionId: 'new' };
+  } };
   return {calls,state,world,missions,ctx:{state,bus:{emit:(name)=>calls.push(name)},registry:{get:name=>name==='world'?world:missions}}};
 }
 test('canonical IDLE permits circuit arming while real jump states still refuse before acceptance',()=>{

@@ -102,6 +102,7 @@ import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
 import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
+import { armRacingGrid } from '../../src/world/racingGridArrival.js';
 import { armAuxJournal, markAuxRowDirty } from '../../src/world/auxRowJournal.js';
 import { createPlayerTruthImpulseObserver } from '../../src/testing/playerTruth/impulseObserver.js';
 
@@ -1815,33 +1816,20 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         return { ok: true, wave };
       }],
       // Circuit arm — post + accept + sector jump + grid relocation run as ONE
-      // sim-side operation so a failed arm can't split across ticks. A grid
-      // refusal rolls back via mission:abandon, same owner as the main path.
+      // sim-side operation so a failed arm can't split across ticks.
       ['racingArm', (args) => {
         const missions = registry.get('missions');
         const world = registry.get('world');
         if (!missions || typeof missions.postAndAcceptAuthoredOffer !== 'function') return { ok: false, reason: 'no_missions' };
         if (!world || (args?.relocate !== false && typeof world.relocatePlayerInSector !== 'function')) return { ok: false, reason: 'no_relocation' };
         if (args?.allowEnterSector === false && args.sectorId !== state.world?.currentSectorId) return { ok: false, reason: 'wrong_sector' };
-        const result = missions.postAndAcceptAuthoredOffer((args && args.offer) || null);
-        if (!result || result.ok !== true || result.reused) {
-          return { ok: result && result.ok === false ? false : !!(result && result.ok), reused: !!(result && result.reused), missionId: result && result.missionId, result: result || null };
-        }
-        const sectorId = args && args.sectorId;
-        const here = state.world && state.world.currentSectorId;
-        try {
-          if (sectorId && here !== sectorId && typeof world.enterSector === 'function') world.enterSector(sectorId);
-          const start = args && args.start;
-          if (args?.relocate !== false && (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false)) {
-            throw new Error('grid relocation refused');
-          }
-        } catch (error) {
-          if (host.bus && typeof host.bus.emit === 'function') {
-            try { host.bus.emit('mission:abandon', { missionId: result.missionId }); } catch (_) {}
-          }
-          return { ok: false, reason: 'grid_failed', missionId: result.missionId };
-        }
-        return { ok: true, missionId: result.missionId, result };
+        return armRacingGrid({ state, bus: host.bus, missions, world }, {
+          offer: args?.offer ?? null,
+          sectorId: args?.sectorId ?? state.world?.currentSectorId,
+          start: args?.start,
+          relocate: args?.relocate !== false,
+          allowEnterSector: args?.allowEnterSector !== false,
+        });
       }],
       // Import an exported envelope JSON into a slot — the lane-twin of
       // saveSystem.importString (main-side importFile reads the File, then
