@@ -255,7 +255,9 @@ export function createToasts(ctx) {
     const now = performance.now();
     for (let i = 0; i < live.length; i++) {
       const r = live[i];
-      if (r.text === text && r.kind === kind && (now - r.born) < GROUP_WINDOW) {
+      // While an identical card is still on screen it absorbs the repeat — two 'Graphics eased automatically'
+      // cards stacked a few seconds apart in a Swarm fight (lead look, round 12).
+      if (r.text === text && r.kind === kind && (now - r.born) < Math.max(GROUP_WINDOW, Number(r.ttl) || 0)) {
         r.count = (r.count || 1) + 1;
         r.born = now;                       // refresh so the grouped toast gets a fresh TTL window
         r.ttl = normalizeTtlMs(ttl);

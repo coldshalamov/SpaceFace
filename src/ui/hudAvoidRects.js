@@ -22,6 +22,10 @@ export const AVOID_SELECTORS = Object.freeze([
   '.sf-cargo-panel',
   '#sf-sector-law',
   '.sf-commtape',
+  // The flight cluster (speed dial, hull/shield, power ring): 'CONCUSSION CANNON S · 500' printed over the speed
+  // numeral in a Swarm fight (lead look, round 12).
+  '#hud .orr-speeddial',
+  '#hud .orr-cluster',
   // The phone deck (MOB-02/03): world labels printed over the vitals strip, the keys and the first-run hint
   // in a phone Swarm round (lead look 2026-11-12). Absent on desktop, so these cost nothing there.
   '#sf-touch-overlay .mf-status',
