@@ -7,6 +7,9 @@
 // selectors/IDs unchanged, no data or launch logic touched.
 // ui-polish-379: short densify (max-height ≤500) seats the sticky Practice/START band fully above
 // the fold at scrollTop=0 on 651×461 / 700×461 — title + fit rail + blurb no longer clip the lamp.
+// ui-polish-482: the board's panels (fit rail, course cards, result/START panels) take radius 8 and its
+// fields and verbs (selects, toggles, contract buttons) radius 6, matching the rounded hairline cards
+// the rest of the UI wears; they were 2px-cornered boxes, the last square chrome on the menus.
 
 const STYLE_ID = 'sf-orrery-race-board-layouts';
 const R = 'html body #screens .k-screen.race-board';
@@ -39,7 +42,7 @@ ${R} > .k-title > .k-sentence:last-child { ${READ} font-size:clamp(13.5px, .95vw
 /* ---------- fit rail: labelled fields + toggles, Back at the far end ---------- */
 ${R} > .race-board-tools { display:flex !important; flex-wrap:wrap !important; align-items:flex-end !important;
   gap:12px 14px !important; margin:0 0 10px !important; padding:14px 16px !important; box-sizing:border-box;
-  background:rgb(14 17 22 / .82) !important; border:1px solid rgb(${BONE} / .1) !important; border-radius:2px; }
+  background:rgb(14 17 22 / .82) !important; border:1px solid rgb(${BONE} / .1) !important; border-radius:8px; }
 ${R} .race-board-tools > label.k-sentence,
 ${R} .race-board-result > label.k-sentence { display:flex !important; flex-direction:column !important; gap:6px !important;
   ${ETCH} font-size:12px !important; line-height:1 !important; letter-spacing:.14em !important;
@@ -50,7 +53,7 @@ ${R} select.k-word { appearance:none !important; -webkit-appearance:none !import
   width:100% !important; min-height:40px !important; margin:0 !important; padding:8px 32px 8px 12px !important;
   ${READ} font-size:15px !important; font-weight:500 !important; line-height:1.2 !important; color:var(--dp-ink, #e8e2d4) !important;
   background:rgb(6 8 11 / .72) ${CHEVRON} no-repeat right 12px center / 10px 6px !important;
-  border:1px solid rgb(${BONE} / .2) !important; border-radius:2px !important; cursor:pointer; }
+  border:1px solid rgb(${BONE} / .2) !important; border-radius:6px !important; cursor:pointer; }
 ${R} select.k-word option { background:#12161c; color:#e8e2d4; }
 ${R} select.k-word:hover:not(:disabled) { border-color:rgb(${BONE} / .42) !important; }
 ${R} select.k-word:disabled { opacity:.5 !important; cursor:not-allowed; }
@@ -60,7 +63,7 @@ ${R} .race-board-result > button.k-word { display:inline-flex !important; align-
   min-height:40px !important; margin:0 !important; padding:0 14px !important; white-space:nowrap !important;
   ${ETCH} font-size:12.5px !important; letter-spacing:.12em !important; line-height:1 !important;
   color:var(--dp-ink, #e8e2d4) !important; background:rgb(6 8 11 / .55) !important;
-  border:1px solid rgb(${BONE} / .2) !important; border-radius:2px !important; box-shadow:none !important; text-shadow:none !important; }
+  border:1px solid rgb(${BONE} / .2) !important; border-radius:6px !important; box-shadow:none !important; text-shadow:none !important; }
 ${R} .race-board-tools > button.k-word:hover,
 ${R} .race-board-result > button.k-word:hover { border-color:rgb(${BONE} / .45) !important; }
 ${R} .race-board-tools > button.k-word[aria-pressed="true"] { color:var(--dp-lamp-hot, #ffd98c) !important; border-color:rgb(242 185 80 / .55) !important; }
@@ -79,7 +82,7 @@ ${R} > p.k-sentence:last-child { margin:6px 0 0 !important; color:rgb(${BONE} / 
 ${R} > .race-board-grid { display:grid !important; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)) !important;
   gap:16px !important; margin:0 0 16px !important; }
 ${R} .race-board-course { display:flex !important; flex-direction:column !important; padding:18px 18px 8px !important; box-sizing:border-box;
-  background:rgb(14 17 22 / .86) !important; border:1px solid rgb(${BONE} / .1) !important; border-radius:2px; }
+  background:rgb(14 17 22 / .86) !important; border:1px solid rgb(${BONE} / .1) !important; border-radius:8px; }
 ${R} .race-board-course > p.k-sentence:first-child { ${ETCH} font-size:12px !important; letter-spacing:.18em !important;
   color:var(--dp-lamp, #f2b950) !important; margin:0 0 4px !important; }
 ${R} .race-board-course > h2.k-t-sub, ${R} .race-board-result > h2.k-t-sub { font-family:var(--dp-face-display, "Archivo"), sans-serif !important;
@@ -99,7 +102,7 @@ ${R} .race-board-contract > button.k-word { display:inline-flex !important; alig
   min-height:38px !important; margin:0 !important; padding:0 16px !important; white-space:nowrap !important;
   ${ETCH} font-size:12.5px !important; letter-spacing:.12em !important; line-height:1 !important;
   color:var(--dp-lamp-hot, #ffd98c) !important; background:rgb(242 185 80 / .06) !important;
-  border:1px solid rgb(242 185 80 / .5) !important; border-radius:2px !important; box-shadow:none !important; text-shadow:none !important; }
+  border:1px solid rgb(242 185 80 / .5) !important; border-radius:6px !important; box-shadow:none !important; text-shadow:none !important; }
 ${R} .race-board-contract > button.k-word:hover:not(:disabled) { background:rgb(242 185 80 / .14) !important; border-color:var(--dp-lamp, #f2b950) !important; }
 ${R} .race-board-contract:not(.race-board-contract ~ .race-board-contract) > button.race-board-launch {
   color:#17120a !important; background:var(--dp-lamp, #f2b950) !important; border-color:var(--dp-lamp, #f2b950) !important; }
@@ -120,7 +123,7 @@ ${R} .race-board-course > h2.k-t-sub + p.k-sentence { margin:6px 0 4px !importan
 
 /* ---------- results / paint / recognition panels: two up, after the cards ---------- */
 ${R} > .race-board-result { padding:18px !important; margin:0 0 16px !important; box-sizing:border-box;
-  background:rgb(14 17 22 / .86) !important; border:1px solid rgb(${BONE} / .1) !important; border-radius:2px; }
+  background:rgb(14 17 22 / .86) !important; border:1px solid rgb(${BONE} / .1) !important; border-radius:8px; }
 ${R} > .race-board-grid ~ .race-board-result { grid-column:auto !important; grid-area:auto !important; }
 ${R} .race-board-result > p.k-sentence { ${READ} font-size:13.5px !important; line-height:1.45 !important;
   color:rgb(${BONE} / .78) !important; margin:6px 0 0 !important; max-width:none !important; }
