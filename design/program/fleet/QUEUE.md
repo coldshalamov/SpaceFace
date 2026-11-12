@@ -75,6 +75,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | STAB-06-model-truth-deadline | A stalled model truth census request must reach the boot error boundary and allow retry | BUILT 931c4ffa37f3 |
 | STAB-07-worker-save-restage | Worker Continue must invalidate its latest-slot cache after the main thread stages changed save keys | BUILT 2e613ca67717 |
 | STAB-08-swarm-gate-flare | The round-entry light stays fixed at the gate and has no collision or tether body | BUILT d699dc7747de (live Swarm gate pending) |
+| STAB-09-swarm-repair-cell | A repair cell stays available until a wounded player actually uses it | TAKEN agent2 (Codex sub-agent) |
 | PERF-05-physics-step-summary | Avoid the unused collider and CCD diagnostic walks in each production physics step | BUILT 76863da5a26f (matched Node timing inconclusive) |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | TAKEN agent2 (devin1) |
