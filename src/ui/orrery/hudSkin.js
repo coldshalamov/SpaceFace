@@ -37,17 +37,14 @@ ${S} #hud .sf-discovery-plate__title { font-family:var(--dp-face-display, "Archi
 ${S} #hud .sf-discovery-plate__meta { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; letter-spacing:.06em;
   color:var(--dp-ink-dim, #b7b4a6); margin-top:7px; }
 
-/* ---- receipts: signals, not cards — a small ring, the line of text, a pool of shadow ------------- */
-${S} #hud .sf-toast { position:relative; background:none !important; box-shadow:none !important; border:0 !important;
-  padding:3px 0 3px 24px; font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; line-height:1.35;
+/* ---- receipts: the shared flight-glass plate keeps the line legible over the field ------------- */
+${S} #hud .sf-toast { position:relative; box-sizing:border-box;
+  background:var(--dp-glass-flight, rgb(8 10 14 / .82));
+  border:1px solid var(--dp-rule, rgb(232 226 212 / .16)); border-radius:var(--dp-r-plate, 3px);
+  padding:5px 10px; font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; line-height:1.35;
   color:var(--dp-ink, #e8e2d4); ${HALO} }
-${S} #hud .sf-toast::before { ${pool('-12px -30px -12px -10px')} }
-${S} #hud .sf-toast::after { content:""; position:absolute; left:0; top:50%; width:15px; height:1px;
-  background:linear-gradient(90deg, transparent, rgb(232 226 212 / .75)); }
-${S} #hud .sf-toast--warn::after, ${S} #hud .sf-toast--error::after, ${S} #hud .sf-toast--danger::after {
-  height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-danger, #ff5038)); box-shadow:0 0 6px rgb(255 80 56 / .35); }
-${S} #hud .sf-toast--discovery::after {
-  height:1.5px; background:linear-gradient(90deg, transparent, var(--dp-phos, #dfeeff)); box-shadow:0 0 6px var(--dp-phos-halo, rgb(150 210 255 / .35)); }
+${S} #hud .sf-toast__text { min-width:0; overflow:hidden; white-space:normal; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; }
 ${S} #hud .sf-toast__count { font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff);
   background:none; border:0; box-shadow:none; margin-left:8px; }
 
@@ -249,7 +246,7 @@ ${S} #hud .sf-overview-footer { color:rgb(232 226 212 / .7); background:none !im
 
 html.sf-reduce-motion ${S} #hud .sf-discovery-plate { transition:opacity .2s linear; }
 @media (forced-colors: active) {
-  ${S} #hud .sf-discovery-plate__frame::after, ${S} #hud .sf-toast::after, ${S} #hud .sf-band-hud__button::before { box-shadow:none; border:1px solid CanvasText; }
+  ${S} #hud .sf-discovery-plate__frame::after, ${S} #hud .sf-toast, ${S} #hud .sf-band-hud__button::before { box-shadow:none; border:1px solid CanvasText; }
 }
 `;
 
