@@ -37,3 +37,12 @@ the belt. Each row says exactly what happens. You build one, exactly as written.
    (`--help` first). Set the row's State to `SHIPPED <hash>` in a second commit.
 
 The receipt's "What I could not verify" must say plainly that nobody saw it on screen, unless you did.
+
+## Hard rule — emit only your own events (added 2026-11-12 after PL-02 and PL-04)
+A plant emits **only events it defines** (`<plantName>:…` / its exported `*_EVENT` constants) plus `bark:triggered` and
+`comms:log`. **Never emit another owner's event to describe an NPC** — `dock:undocked`, `dock:docked`, `pickup:collected`,
+`entity:killed`, `cargo:*`, `mission:*`, `combat:*`, `tether:*` are read by missions, economy, saves, onboarding and audio as
+**the player's** action. Before you emit any event, `grep -rn "on('<event>'" src` and read who listens. Your test must assert
+those events are NOT fired. Anything the player should see needs a renderer/HUD listener for your own event (the sim runs in
+a worker; `ent.data` set in the sim does not reach the drawn entity) — PL-01's `traffic:nearMissFlash` listener in
+`src/render/renderer.js` is the pattern.
