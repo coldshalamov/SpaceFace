@@ -20,25 +20,26 @@ function fakeBus() {
 }
 
 test('encounter and cargo lines format as callsign receipts', () => {
+  // 22a60fcb22b44 carries receipt channels through for the flight attention policy.
   assert.deepEqual(
     commsToastSpec({ from: 'RUMOR', text: 'Sable Iask is dead.', kind: 'encounter' }),
-    { text: 'RUMOR: Sable Iask is dead.', kind: 'info', ttl: 5 },
+    { text: 'RUMOR: Sable Iask is dead.', kind: 'info', ttl: 5, channel: 'encounter' },
   );
   assert.deepEqual(
     commsToastSpec({ from: 'SURVEY', text: 'Signal source identified.', kind: 'encounter' }),
-    { text: 'SURVEY: Signal source identified.', kind: 'info', ttl: 5 },
+    { text: 'SURVEY: Signal source identified.', kind: 'info', ttl: 5, channel: 'encounter' },
   );
   assert.deepEqual(
     commsToastSpec({ from: 'Stricken Hauler', text: 'You came.', kind: 'encounter' }),
-    { text: 'STRICKEN HAULER: You came.', kind: 'info', ttl: 5 },
+    { text: 'STRICKEN HAULER: You came.', kind: 'info', ttl: 5, channel: 'encounter' },
   );
   assert.deepEqual(
     commsToastSpec({ from: 'Free Trader Ana', text: 'holds full', kind: 'cargo' }),
-    { text: 'FREE TRADER ANA: holds full', kind: 'info', ttl: 5 },
+    { text: 'FREE TRADER ANA: holds full', kind: 'info', ttl: 5, channel: 'system' },
   );
   assert.deepEqual(
     commsToastSpec({ speaker: 'Archive censor', text: 'A record changed.', kind: 'encounter' }),
-    { text: 'ARCHIVE CENSOR: A record changed.', kind: 'info', ttl: 5 },
+    { text: 'ARCHIVE CENSOR: A record changed.', kind: 'info', ttl: 5, channel: 'encounter' },
   );
 });
 
