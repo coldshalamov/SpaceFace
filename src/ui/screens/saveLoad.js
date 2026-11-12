@@ -877,6 +877,8 @@ export function paintSavePortrait(nodes, portrait) {
   if (nodes.standing) {
     paintEntityLine(nodes.standing, portrait.standing && portrait.standing.factionId
       ? 'faction:' + portrait.standing.factionId : null, portrait.standing.line);
+    // Short desktop frames cap the line (save-loadLayouts); the whole reading stays on hover.
+    if (typeof nodes.standing.setAttribute === 'function') nodes.standing.setAttribute('title', portrait.standing.line);
   }
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
   paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
@@ -1252,7 +1254,7 @@ export const saveLoadScreen = {
 
     refs = {
       root: rootEl, title, heading, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
-      caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
+      caption, shipName, portrait, scars, repairs, titles, standing, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
       saveSys: ctx && ctx.registry && ctx.registry.get ? ctx.registry.get('save') : null,
@@ -1457,7 +1459,8 @@ export const saveLoadScreen = {
       })
       : null;
     if (portrait && !saveData && currentSlot !== id) {
-      for (const field of ['scars', 'repairs', 'titles', 'rapSheet', 'grudge']) {
+      // An unread record reads unread on every line, standing too: no house is claimed or denied.
+      for (const field of ['scars', 'repairs', 'titles', 'standing', 'rapSheet', 'grudge']) {
         portrait[field].line = 'Record not read';
       }
     }
@@ -1506,7 +1509,8 @@ export const saveLoadScreen = {
       occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : emptyCopy.heading);
     if (occupied && portrait) {
       paintSavePortrait({
-        scars: refs.scars, repairs: refs.repairs, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
+        scars: refs.scars, repairs: refs.repairs, titles: refs.titles, standing: refs.standing,
+        rapSheet: refs.rapSheet, grudge: refs.grudge,
       }, portrait);
       if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.actions);
     } else if (refs.portrait.parentNode) {
