@@ -768,13 +768,24 @@ function layoutGhosts(view, geo, railW, cx, ghosts) {
   const short = hostH > 0 && hostH <= 460;
   const artRatio = short ? 0.36 : 0.52;
   const ghostGeo = { ...geo, plateW: ghostW, artRatio };
-  const liftMid = short ? 108 : 64;
-  const liftSide = short ? 72 : 40;
+  // ≤440 tall (≤460 on ≤560-wide phones) the rail sits 60px above the stage (clipsLayouts.js): the middle ghost's lift drops
+  // to 92 to keep its top inside the frame while still clearing the Hand, and the side ghosts drop
+  // to 16 so they stay where they were, under the EXIT plate and the clip count. On 320-tall
+  // phones (≤560 wide, ≤340 tall) there is no room for a side ghost's subtitle between the counter
+  // and the readout: the side ghosts drop it (their title still names the clip) and keep a 48 lift, so
+  // they end above the readout band while the right icon stays under the "0.0 S TOTAL" counter (under 480
+  // wide the readout wraps to four lines, so 56).
+  const hostW = (view.container && view.container.clientWidth) || 0;
+  const tiny = short && hostH <= (hostW > 0 && hostW <= 560 ? 460 : 440);
+  const tinyPhone = tiny && hostH <= 340 && hostW > 0 && hostW <= 560;
+  const liftMid = tiny ? 92 : short ? 108 : 64;
+  const liftSide = tinyPhone ? (hostW < 480 ? 56 : 48) : tiny ? 16 : short ? 72 : 40;
   ghosts.forEach((ghost, k) => {
     const off = (k - 1) * spread;
     const plate = buildPlate(null, view, ghostGeo, { ghost });
     plate.style.opacity = '0.85';
     plate.style.zIndex = String(20 - Math.abs(k - 1));
+    if (tinyPhone && k !== 1) plate.querySelector('.orr-clip__sub')?.remove();
     view.platesHost.appendChild(plate);
     const h = plate.offsetHeight || Math.round(ghostW * artRatio) + 60;
     const railAt = geo.railY(off / geo.spacing);
