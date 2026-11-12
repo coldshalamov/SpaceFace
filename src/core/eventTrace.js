@@ -67,9 +67,10 @@ export function createDeterministicEventTrace(bus, state, options = {}) {
   const events = Array.isArray(options.events) && options.events.length ? options.events : DEFAULT_TRACE_EVENTS;
   const cap = Math.max(1, Math.floor(options.cap || DEFAULT_CAP));
   const records = [];
+  let oldest = 0;
   let seq = 0;
   const unsubs = events.map((type) => bus.on(type, (payload) => {
-    records.push({
+    const record = {
       seq: seq++,
       tick: state && Number.isFinite(state.tick) ? state.tick : 0,
       simTime: round6(state && state.simTime),
@@ -79,15 +80,33 @@ export function createDeterministicEventTrace(bus, state, options = {}) {
       payload: (type === 'ship:thrust' && THRUST_TRACE_SANITIZE_FAST)
         ? sanitizeThrustPayload(payload)
         : sanitizePayload(payload),
-    });
-    if (records.length > cap) records.splice(0, records.length - cap);
+    };
+    // A full trace receives new flight receipts every tick. Overwrite the
+    // oldest row without moving the rest of the retained history.
+    if (records.length === cap) {
+      records[oldest] = record;
+      oldest += 1;
+      if (oldest === cap) oldest = 0;
+    } else {
+      records.push(record);
+    }
   }));
 
   return {
     name: 'eventTrace',
     events: events.slice(),
-    clear() { records.length = 0; seq = 0; },
-    snapshot() { return records.map((r) => sanitizePayload(r)); },
+    clear() { records.length = 0; oldest = 0; seq = 0; },
+    snapshot() {
+      const count = records.length;
+      const snapshot = new Array(count);
+      let cursor = oldest;
+      for (let i = 0; i < count; i += 1) {
+        snapshot[i] = sanitizePayload(records[cursor]);
+        cursor += 1;
+        if (cursor === count) cursor = 0;
+      }
+      return snapshot;
+    },
     dispose() {
       while (unsubs.length) {
         const unsub = unsubs.pop();
