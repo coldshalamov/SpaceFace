@@ -22,6 +22,17 @@ export const AVOID_SELECTORS = Object.freeze([
   '.sf-cargo-panel',
   '#sf-sector-law',
   '.sf-commtape',
+  // The phone deck (MOB-02/03): world labels printed over the vitals strip, the keys and the first-run hint
+  // in a phone Swarm round (lead look 2026-11-12). Absent on desktop, so these cost nothing there.
+  '#sf-touch-overlay .mf-status',
+  '#sf-touch-overlay .mf-pause',
+  '#sf-touch-overlay .mf-edge',
+  '#sf-touch-overlay .mf-buttons > *',
+  '#sf-touch-overlay .mf-dock:not([hidden])',
+  '#sf-touch-overlay .mf-toast:not([hidden])',
+  '#sf-touch-overlay .mf-ghost:not([hidden]) > svg',
+  '#sf-touch-overlay .mf-ghost-label',
+  '#hud .sf-radar-wrap',
 ]);
 
 /** Keep only rects with real area, as plain {x,y,w,h}. */
