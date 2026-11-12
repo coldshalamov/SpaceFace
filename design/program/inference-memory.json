@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-11",
+  "updated": "2026-11-12",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,19 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-pa-market-desk",
-      "date": "2026-11-04",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Docked, the station PA finally airs what its own market just did - a shortage or a watch-scale move over the desk chime - instead of bells and berth lanes only.",
-      "fingerprint": "verb=speaks,subject=station-PA-market-desk,sector=docked-station,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "ac5f3d86d1c3",
-      "verification": "focused_green"
-    },
     {
       "id": "inf-beacon-lamp",
       "date": "2026-11-04",
@@ -1718,6 +1705,22 @@
       "evidence": ".devshots/fleet/runs/PLANT-NEXT.flash.2026-11-11T03-43-44/RECEIPT.md",
       "kind": "plant",
       "player": "Passing a civilian ship within a ship-length at speed makes them swerve, flash lamps, and say Lane's not yours, pal!, and the third pass reports you."
+    },
+    {
+      "id": "PL-54",
+      "date": "2026-11-12",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "PL-54 plant: ten near misses in one minute opens player.ten_near_misses on the Static",
+      "fingerprint": "verb=report,subject=near-miss-spree,sector=the-static,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "a753e2f6ec0f",
+      "verification": "focused_green",
+      "evidence": ".devshots/fleet/runs/PLANT-RADIO.flash.2026-11-11T23-50-09/RECEIPT.md",
+      "kind": "plant",
+      "player": "Ten near misses in one minute prompts the Static to broadcast a traffic advisory."
     }
   ],
   "knownDefects": [

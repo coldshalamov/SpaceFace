@@ -1427,6 +1427,10 @@ export const input = {
   // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.
   // Pointer activity is also cleared from committed input so it cannot revive without a new event;
   // other committed commands remain intact for the coherent restore snapshot.
+  newGame() {
+    this.releaseHeldControls('new-game');
+  },
+
   releaseHeldControls(_reason = 'lifecycle') {
     const keys = this._keys;
     dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
