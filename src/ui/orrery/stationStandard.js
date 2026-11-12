@@ -260,6 +260,17 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { font-size:12px !important; }
 }
 
+/* 901-1100 wide x 461-640 tall: the one-row crown gives each reading 80-115px, too narrow for a label and a right-hung
+   figure on one line, so FUEL ran into 100, HOLD into 0 and MUNITIONS into 0. Each gauge stacks instead: label and bar,
+   then the figure, then its key. The hull and ledger cells (with their keys) are still the tallest, so the row keeps its height. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) { display:flex !important; flex-direction:column !important; align-items:stretch !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__head { order:0; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__value { order:1; position:static !important; align-self:flex-start !important;
+    width:auto !important; margin:1px 0 3px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__acts { order:3; }
+}
+
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
 ${P} .sx-adboard, ${P} .sx-adboard * { font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${BONE} / .82) !important; }
