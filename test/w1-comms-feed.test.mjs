@@ -66,6 +66,8 @@ function makeNode(tagName = 'div') {
       for (const fn of this.listeners[event && event.type] || []) fn(event);
       return true;
     },
+    // The context wheel (G18-02) builds its dial with insertAdjacentHTML; this feed test only needs it to exist.
+    insertAdjacentHTML(_where, html) { this.innerHTML = (this.innerHTML || '') + String(html); },
     querySelector() { return makeNode('div'); },
     querySelectorAll() { return []; },
     closest() { return null; },

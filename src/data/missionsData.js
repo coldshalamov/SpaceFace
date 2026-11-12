@@ -35,6 +35,10 @@ export const MISSION_TUNING = {
     tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
     authored_set_piece: 5, capital_boss: 6,
     race: 3,
+    // W-TENDER: the open tender pays standing to the paying desk only (faction_dmc via
+    // mission:completed repMult); Concord moves solely through the weigh conditions' secondary
+    // faction:repDelta channel, never through this completion reward.
+    tender_haul: 3,
   },
   distDivisor: 2000,
   valueDivisor: 8000,
@@ -149,7 +153,7 @@ export const MISSION_STANDING_LADDER = [
     maxRisk: 1,
     name: 'Recovery Work',
     short: 'Disliked+',
-    unlocks: 'R0-R1 local hauling, mining, courier, and recovery contracts',
+    unlocks: 'Short hauls, mining, courier, and recovery contracts',
   },
   {
     minRep: -29,
@@ -500,6 +504,28 @@ export const MISSION_TYPES = [
     constraints: { authoredOnly: true, physicalVerb: 'berth' },
   },
   {
+    // W-TENDER — The Tender: an open iron-ore feedstock lot posted through the Tethys junction
+    // rail for the Forge foundry desk. AUTHORED-ONLY, structural zero weight exactly like the
+    // heist, placed BEFORE heist_intercept so "heist stays last" holds and `_pickType` reads
+    // `weights[i] || 0` = 0 for it (named keys, never a positional column). `missions._syncTenderOffer`
+    // is the only poster. `chainable: false` keeps a settled tender from minting a procedural
+    // sequel. NO `duration_s` — the desk's intake window is the drive runtime's close clock, never
+    // a mission deadline, so the shipped expiry path can never mint the red EXPIRED this contract
+    // forbids (late re-prices at base; only a hold under half the lot fails, forward into a
+    // posted spot row). The contract's fork is data: TENDER_HAUL_TUNING below plus the three
+    // tender_haul conditions in missionConditions.js (tender_window, grader_declared,
+    // manifest_undisclosed). Deliberately NOT in ONE_LOAD_CARGO_TYPES: 440 u against a starter
+    // hold is a priced rack ladder (the dossier reads CAUTION and names the honest outs), not a
+    // hard accept block.
+    type: 'tender_haul', riskTierRange: [1, 1], chainable: false, proceduralWeight: 0, collateral: true,
+    completionEvent: 'sold into the desk intake at station_forge (economy:tradeCompleted quota) — late settles at base',
+    rewardFormula: 'authored flat desk fee (TENDER_HAUL_TUNING.rewardCr) × honored condition premiums, scaled to the count the desk finished',
+    timeFormula: 'none — the intake window is the drive runtime\'s close clock, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'at the settle the desk finished under the floor (or never docked) — collateral forfeited, spot-sale row posted',
+    constraints: { authoredOnly: true, physicalVerb: 'deliver' },
+  },
+  {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
     //
     // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is
@@ -519,6 +545,125 @@ export const MISSION_TYPES = [
     constraints: { authoredOnly: true },
   },
 ];
+
+// ── W-TENDER — The Tender: authored constants + the one board row builder ────────────────────
+// The desk, the manifest, the duty, the window, the floor and the rival queue are FROZEN data:
+// missions (the runtime) reads them, the dossier preflight prints them, and the tender module
+// (src/missions/tenderHaul.js) drives the run from them. No runtime state lives here.
+export const TENDER_HAUL_TYPE = 'tender_haul';
+export const TENDER_HAUL_SOURCE = 'tenderDesk';
+export const TENDER_HAUL_TAG = 'tender:tethys-forge';
+export const TENDER_HAUL_FACTION_ID = 'faction_dmc';      // the paying foundry desk
+export const TENDER_HAUL_GATE_FACTION_ID = 'faction_scn'; // Concord's Customs Gate (secondary rep)
+export const TENDER_HAUL_TUNING = Object.freeze({
+  version: 1,
+  cmdtyId: 'cmdty_ore_iron',
+  lotUnits: 440,           // the tender lot, in hold units (the Hitch carries 250 — the ladder binds)
+  manifestUnits: 460,      // printed allowance line — the weigh honors only the lot (see adminField)
+  dutyPerUnitCr: 4,        // everything else aboard gets weighed at 4 cr/u at either weigh
+  rewardCr: 1100,          // authored flat desk fee, before condition premiums
+  collateralPct: 0.25,     // 25% collateral, charged through economy:chargeCredits at accept
+  windowS: 2400,           // the desk's intake window, in sim seconds from accept
+  graceS: 90,              // sell-out grace once the window closes with the hull at the desk
+  floorUnits: 220,         // under half the lot at the settle fails forward (never a red EXPIRED)
+  deskStationId: 'station_forge',
+  deskSectorId: 'sector_vesta_forge',
+  railStationId: 'station_tethys',
+  railSectorId: 'sector_tethys_junction',
+  gateStationId: 'station_customs',
+  gateSectorId: 'sector_tethys_junction',
+  fieldId: 'f_tethys_1',   // the honest free supply: ast_common_rock rolls silicate 0.7 / iron 0.3
+  riskTier: 1,
+  distance: 1900,          // one jump: the sectors are direct neighbors
+  rivalDwellS: 50,         // each rival hauler holds the scan face on its own clock
+  rivalStaggerS: 55,       // the second rival's hold starts after the first's
+  rivalArchetype: 'mule_trader',
+});
+
+/** Collateral the tender charges at accept (25% of the authored desk fee, rounded up). */
+export function tenderCollateralCr() {
+  const t = TENDER_HAUL_TUNING;
+  return Math.max(0, Math.ceil(t.rewardCr * t.collateralPct));
+}
+
+/**
+ * The one authored Tender row. Pure data — the clause rows (tender_window, grader_declared,
+ * manifest_undisclosed) are stamped onto `clauses` by the board sync seam in missionBoardOps.js,
+ * because this file is canonical data only and cannot import the condition catalog. No
+ * `duration_s`: the window is the drive runtime's clock, never a mission deadline.
+ */
+export function buildTenderOffer({ epoch = 0 } = {}) {
+  const t = TENDER_HAUL_TUNING;
+  const collateral = tenderCollateralCr();
+  // The fee is the payout; the stake is refundable on any settled run, never subtracted from it.
+  // The ceiling is the fee under both premiums the offer's condition rows carry
+  // (tender_window ×1.5, grader_declared ×1.10 — missionConditions.js owns those numbers).
+  const feeMax = Math.round(t.rewardCr * 1.5 * 1.10);
+  const fingerprint = `tender:${t.version}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: 'tender_tethys_forge_iron',
+    type: TENDER_HAUL_TYPE,
+    source: TENDER_HAUL_SOURCE,
+    stationId: t.railStationId,
+    factionId: TENDER_HAUL_FACTION_ID,
+    reward_cr: t.rewardCr,
+    collateral_cr: collateral,
+    riskTier: t.riskTier,
+    destStationId: t.deskStationId,
+    destSectorId: t.deskSectorId,
+    distance: t.distance,
+    // Pacing chip input ONLY — `_instanceFromOffer` reads `duration_s`, which this offer
+    // deliberately omits, so the instance carries no deadline and can never expire red.
+    time_limit_s: t.windowS,
+    params: {
+      tenderHaulVersion: t.version,
+      tenderTag: TENDER_HAUL_TAG,
+      cmdtyId: t.cmdtyId,
+      qty: t.lotUnits,
+      manifestUnits: t.manifestUnits,
+      dutyPerUnitCr: t.dutyPerUnitCr,
+      floorUnits: t.floorUnits,
+      graceS: t.graceS,
+      windowS: t.windowS,
+      gateStationId: t.gateStationId,
+      // The rival queue lives at the Customs Gate, not at the desk: the deferred-spawn lifecycle
+      // and the hulls' home sector key on this.
+      gateSectorId: t.gateSectorId,
+      fieldId: t.fieldId,
+      fValue: 1,
+      taskTime: 0,
+    },
+    title: 'The Tender — Tethys to the Forge',
+    // The board seam appends the three term briefs (withClauseBriefSuffix, CONDITION_BRIEF_MAX 150),
+    // so the base stays short enough that no term is ever the cut part. Stake, manifest, and duty
+    // print on the adminField and description.
+    brief: '440u iron ore.',
+    summary: 'An open feedstock tender: one lot, one window, one weigh that remembers.',
+    description: 'The foundry lines are idle and DMC\'s own haulers are elsewhere. The desk posts '
+      + 'an open tender through the Tethys junction rail, under the live front board: 440 u of '
+      + 'iron ore at the Forge before the intake window closes. The junction field is the supply: '
+      + 'cut the lot out of it yourself, and treat the Tethys market as a top-off at most — '
+      + 'cutting rock fills your hold with unmanifested silicate you must dump, declare, or smuggle. '
+      + 'The desk-market ledger opens at accept: ore bought at this desk while the row runs '
+      + 'is desk stock already, and selling it straight back fills nothing. '
+      + 'Concord\'s Customs Gate sits on the chord with a real queue; the rivals on it are working '
+      + 'their own clocks. Late still sells at base terms; only a hold under half the lot at the '
+      + 'settle fails you, and even then the desk posts a spot row so what remains aboard still '
+      + `has a market. Desk fee: ${t.rewardCr.toLocaleString('en-US')} cr, up to `
+      + `${feeMax.toLocaleString('en-US')} cr with the window and paperwork premiums; the `
+      + `${collateral.toLocaleString('en-US')} cr stake is held at accept and returned on settle.`,
+    authorization: 'DMC — FOUNDRY DESK, OPEN TENDER',
+    adminField: `LOT ${t.lotUnits}U IRON ORE · MANIFEST: THE ${t.lotUnits}U LOT ONLY — ALL OTHER MASS WEIGHS ${t.dutyPerUnitCr} CR/U · FEE ${t.rewardCr.toLocaleString('en-US')} CR · STAKE ${collateral.toLocaleString('en-US')} CR RETURNED ON SETTLE`,
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: 'w-tender-feedstock',
+      archetypeId: 'tender_haul',
+      fingerprint,
+    },
+  };
+}
 
 // SP1 — authored set-piece chains compiled into ordinary sequential mission offers.
 // These are definitions, not persistent run state: boards, active missions, their cause records,
