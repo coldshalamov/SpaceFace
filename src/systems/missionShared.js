@@ -36,6 +36,8 @@ import { SET_PIECE_FOLLOW_ON_SOURCE } from '../data/sandboxSetPieceFollowOns.js'
 import { releasableContractUnits, sellableCargoQuantity } from './cargo.js';
 import { isSpineBreakOperation, SPINE_BREAK_CONFIG } from '../missions/spineBreakWorksite.js';
 import { workingBattlefieldObjective } from './workingBattlefieldRuntime.js';
+import { pluralWord } from '../core/numberFormat.js';
+
 
 // ── Static lookups (built once from pure data) ───────────────────────────────────────────────
 export const TYPE_BY_ID = new Map(MISSION_TYPES.map((t) => [t.type, t]));
@@ -999,7 +1001,7 @@ export function missionNavReason(m, station, sector) {
   if (p.frontierBarnRaisingVersion === 1) {
     const remainingModules = Math.max(0, FRONTIER_MODULES.length - Math.max(0, Number(m.objectiveProgress) || 0));
     return remainingModules > 0
-      ? `Tow or push ${remainingModules} marked E-21 module${remainingModules === 1 ? '' : 's'} into the matching Io frame slots`
+      ? `Tow or push ${remainingModules} marked E-21 ${pluralWord(remainingModules, 'module', 'modules')} into the matching Io frame slots`
       : 'Hold the six snapped modules while the frame welders finish';
   }
   if (isSpineBreakOperation(m)) {
@@ -1058,9 +1060,16 @@ export function missionNavReason(m, station, sector) {
   }
   if (isShortageGateRepair(m)) return `Buy or salvage ${p.qty}u ${cargo}, then deliver to ${stationName}`;
   if (p.workingBattlefield) return workingBattlefieldObjective(m);
+  // W-TENDER fail-forward spot row: a qty-less carriage row, so it names its own errand rather
+  // than the cargo_delivery default's empty quantity. The dock truth: berthing completes the
+  // row — the rail-market sale is unverified income, never the contract's term.
+  if (p.tenderSpotForMissionId) return `Spot carriage: dock at ${stationName} to complete — the rail market buys what your hold still carries`;
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
+    // W-TENDER: the desk sale is the act that settles the run — the same sell line as bulk_trade,
+    // counted down by what the desk has already logged.
+    case 'tender_haul': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
     case BULK_HAUL_TYPE: return `Tether-haul ${remaining || p.massU || ''}u bulk ore to ${stationName}`.trim();
     case 'mining_quota': return `Mine ${remaining || p.qty || ''}u ${cargo}`.trim();
     case 'salvage_retrieval': return `Recover ${p.qty || ''}u ${cargo} for ${stationName}`.trim();

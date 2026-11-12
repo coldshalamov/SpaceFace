@@ -25,6 +25,7 @@ import { findLivingWorldActorStation } from '../missions/corridorOpeningReadMode
 import { activeOwnedShip, shipCarriesModule, starterRamKill } from '../data/starterJobs.js';
 import { AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS, ONE_LOAD_CARGO_TYPES, WRECK_BOUND_SET_PIECE_OBJECTIVES } from '../data/missions.js';
 import { heistMissionRuntime } from '../missions/heistMissionRuntime.js';
+import { authoredTenderHaul, onGraderDeclared } from '../missions/tenderHaul.js';
 import { missionIdentityOf } from '../world/worldRecords.js';
 import { RESEARCH_FIRSTS_CAP, RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { getEmpireSeedProgram } from '../story/campaign47a/index.js';
@@ -37,13 +38,19 @@ import { missionTargetSlotOf } from './missionShared.js';
 import { ensureSpineBreakWorksite, isSpineBreakOperation, noteSpineBreakDisposition,
   spineBreakOutcome } from '../missions/spineBreakWorksite.js';
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
+import { counted } from '../core/numberFormat.js';
+
 
 export const missionObjectiveOps = {
   // =========================================================================================
   // OBJECTIVE TRACKING (event resolvers)
   // =========================================================================================
   _onTrade(p) {
-    if (!p || !p.commodityId || p.side !== 'sell') return;
+    if (!p || !p.commodityId) return;
+    // W-TENDER: a BUY at the desk market is tallied so the desk never counts its own ore bought
+    // and sold straight back. Buys settle nothing else here.
+    if (p.side === 'buy') { this._onTenderDeskBuy(p); return; }
+    if (p.side !== 'sell') return;
     const stationId = p.stationId;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
@@ -54,8 +61,74 @@ export const missionObjectiveOps = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+    this._onTenderTrade(p, stationId);
     this._clearCompletedTradeWaypoint(p);
     // B1 now advances through its authored board mission, not an unrelated market sale.
+  },
+
+  /**
+   * W-TENDER — the desk's count scores through the same trade event as bulk_trade's quota. The
+   * completing sale races THIS system's own settlement (missions registers ahead of the clause
+   * observer on the same bus), so the "sold before close" stamp the tender_window premium reads is
+   * written HERE, before _completeMission settles the contract. The receipt's bend words stamp
+   * from the trade payload's priceImpactPct; partial sales keep scoring until the lot completes.
+   * A desk sale first pays down the ore bought at the desk market since accept
+   * (m.tender.deskBoughtUnits) — only ore the pilot brought to the Forge counts toward the lot.
+   */
+  _onTenderTrade(p, stationId) {
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (m.status !== 'active' || !authoredTenderHaul(m)) continue;
+      if (m.params.cmdtyId !== p.commodityId) continue;
+      if (m.destStationId && stationId && m.destStationId !== stationId) continue; // sell at the desk
+      const now = Number(this.state.simTime) || 0;
+      const closeAt = Number(m.tender && m.tender.closeAtS);
+      const soldQty = Math.max(0, Math.floor(Number(p.qty) || 0));
+      const boughtAtDesk = m.tender ? Math.max(0, Math.floor(Number(m.tender.deskBoughtUnits) || 0)) : 0;
+      if (m.tender && boughtAtDesk > 0) m.tender.deskBoughtUnits = Math.max(0, boughtAtDesk - soldQty);
+      const countable = Math.max(0, soldQty - boughtAtDesk);
+      if (countable <= 0) continue; // desk ore sold back to the desk: nothing the lot can count
+      const impact = Number(p.priceImpactPct);
+      if (Number.isFinite(impact)) m.params.deskBuyImpactPct = impact;
+      m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + countable);
+      if (m.objectiveProgress >= m.objectiveTarget) {
+        const soldBeforeClose = Number.isFinite(closeAt) ? now <= closeAt : false;
+        m.params.tenderSoldBeforeClose = soldBeforeClose;
+        m.params.windowSpareS = Number.isFinite(closeAt) ? Math.max(0, closeAt - now) : null;
+        if (!m._clauseState) m._clauseState = {};
+        const runtime = m._clauseState.tender_window
+          || (m._clauseState.tender_window = { count: 0 });
+        if (!(runtime.satisfied || runtime.breached)) {
+          runtime.count = 2;
+          runtime.at = now;
+          runtime.satisfied = soldBeforeClose === true;
+        }
+        this._completeMission(m, i);
+      } else {
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id });
+      }
+    }
+  },
+
+  /**
+   * W-TENDER — tally the contract ore the pilot BUYS at the desk market while the run is live, on
+   * the run's own durable record. The next desk sales pay it down before they count, so the desk
+   * market cannot fill its own lot. Buys anywhere else (the Tethys market top-off) are untouched.
+   */
+  _onTenderDeskBuy(p) {
+    if (!p || p.side !== 'buy' || !p.commodityId || !p.stationId) return false;
+    const qty = Math.max(0, Math.floor(Number(p.qty) || 0));
+    if (qty <= 0) return false;
+    let tallied = false;
+    for (const m of this.state.missions.active || []) {
+      if (!m || m.status !== 'active' || !authoredTenderHaul(m) || !m.tender) continue;
+      if (m.params.cmdtyId !== p.commodityId) continue;
+      if (!m.destStationId || m.destStationId !== p.stationId) continue;
+      m.tender.deskBoughtUnits = Math.max(0, Math.floor(Number(m.tender.deskBoughtUnits) || 0)) + qty;
+      tallied = true;
+    }
+    return tallied;
   },
 
   _clearCompletedTradeWaypoint(p) {
@@ -338,7 +411,7 @@ export const missionObjectiveOps = {
     }
     if (Number(p.mawStunsNeeded) > 0) {
       const left = Math.max(0, p.mawStunsNeeded - (p.mawStuns | 0));
-      if (left > 0) rows.push(`stun the maw ${left} more time${left === 1 ? '' : 's'} with hot slag`);
+      if (left > 0) rows.push(`stun the maw ${counted(left, 'more time', 'more times')} with hot slag`);
     }
     return rows;
   },
@@ -1558,6 +1631,15 @@ export const missionObjectiveOps = {
 
   _onConditionSatisfied(payload) {
     const missionId = payload && payload.missionId;
+    // W-TENDER: the declare latching at the Tally stamps the weigh — duty over unmanifested mass
+    // at the moment of the weigh, +1 Concord through the secondary channel. Stamped before the
+    // blocking-refusal gate, which this non-blocking premium never passes.
+    if (missionId && payload.conditionId === 'grader_declared') {
+      const m = (this.state.missions.active || []).find((candidate) => (
+        candidate && candidate.id === missionId && candidate.status === 'active'
+      ));
+      if (m && authoredTenderHaul(m)) onGraderDeclared(this, m);
+    }
     if (!missionId || payload.blocking !== true) return false;
     const index = this.state.missions.active.findIndex((m) => (
       m && m.id === missionId && m.status === 'active' && m._settlePending === true
