@@ -186,7 +186,10 @@ export function createFloatingText(ctx) {
   const padLayer = document.createElement('div');
   padLayer.id = 'sf-floorpads';
   padLayer.setAttribute?.('aria-hidden', 'true');
-  layer.appendChild(padLayer);
+  // The pad tags sit UNDER the HUD panels (first child of #hud, z 0) so a till tag drifting behind
+  // the round panel or the radar never covers it; the floats keep the layer above.
+  if (root && typeof root.insertBefore === 'function' && root.firstChild) root.insertBefore(padLayer, root.firstChild);
+  else layer.appendChild(padLayer);
   const padNodes = new Map();   // entityId -> { el, lastText, denied }
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
@@ -196,6 +199,7 @@ export function createFloatingText(ctx) {
     if (!helpers.worldToScreen) return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seen = new Set();
+    const padW = padLayer.clientWidth || layer.clientWidth || 0;
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
@@ -205,11 +209,11 @@ export function createFloatingText(ctx) {
         const el = document.createElement('div');
         el.className = 'sf-fp';
         padLayer.appendChild(el);
-        node = { el, lastText: '', denied: null };
+        node = { el, lastText: '', denied: null, w: 0 };
         padNodes.set(e.id, node);
       }
       const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
-      if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; }
+      if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; node.w = 0; }
       // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
       // refusedUntil in sim time, so the red reads exactly as long as the pad is lit denied.
       const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
@@ -225,7 +229,14 @@ export function createFloatingText(ctx) {
       if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;
       if (show) {
         // Sit just above the body's mark so the pad's own light stays visible under the words.
-        const nextTransform = `translate3d(${s.x}px,${s.y - 26}px,0) translate(-50%,-50%)`;
+        // Keep the whole chip on the plate: a pad at the room's edge slides its tag inward
+        // rather than being cut by the layer. Width is measured once per text change.
+        if (!node.w) node.w = node.el.offsetWidth || 0;
+        const viewW = padW;
+        const half = node.w / 2 + 6;
+        const px = viewW > half * 2 ? Math.min(Math.max(s.x, half), viewW - half) : s.x;
+        const py = Math.max(s.y - 26, 16);
+        const nextTransform = `translate3d(${px}px,${py}px,0) translate(-50%,-50%)`;
         if (node.el.style.transform !== nextTransform) node.el.style.transform = nextTransform;
       }
     }
@@ -610,14 +621,17 @@ function injectStyle() {
   /* A01-04 floor pads — a till's price tag rides its lit body, constant screen size so the pad
      reads from anywhere in the room. Lamp warm (a place you spend) at rest, danger red for the
      sim-timed refusal flash. Same keyline law as the floats; never above the prompt deck. */
-  #sf-floorpads { position:absolute; inset:0; pointer-events:none; }
+  #sf-floorpads { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
   .sf-fp { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%);
+    box-sizing:border-box; padding:3px 9px 4px; border-radius:3px;
     font-family:var(--dp-face-read, "Archivo", sans-serif);
-    font-weight:760; font-variant-numeric:tabular-nums lining-nums;
-    font-size:13px; letter-spacing:.07em; white-space:nowrap; will-change:transform;
+    font-weight:700; font-variant-numeric:tabular-nums lining-nums;
+    font-size:13px; line-height:1.15; letter-spacing:.07em; white-space:nowrap; will-change:transform;
     color:var(--dp-lamp, #f2b950);
-    text-shadow:0 0 7px rgb(0 0 0 / .94), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
-  .sf-fp--deny { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); }
+    background:rgb(8 10 14 / .78); border:1px solid rgb(242 185 80 / .42);
+    box-shadow:0 0 0 1px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .5);
+    text-shadow:var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-fp--deny { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); border-color:rgb(255 92 92 / .6); }
   `;
   document.head.appendChild(s);
 }

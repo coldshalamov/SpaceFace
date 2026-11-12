@@ -947,6 +947,15 @@ const BENCH_CRUCIBLE_RESULT = Object.freeze({
   ],
 });
 
+/** The round-30 Swarm win (C01-03): the plate whose foot offers Take the win / Keep going. */
+const BENCH_CRUCIBLE_WIN = Object.freeze({
+  ...BENCH_CRUCIBLE_RESULT,
+  outcome: 'victory', ruleset: 'swarm', wave: 30, deepestWave: 30, wavesCleared: 30, kills: 412,
+  score: 48210, credits: 5200, xp: 9100, level: 11, lastRoundCleared: 30, remainingEnemies: 0,
+  roundThreatResolved: 220, roundThreatBudget: 220, headline: 'The Pit is cleared.',
+  death: null, defeat: null, damageTrail: [],
+});
+
 /** The Market quotes through the game's own economy owner, over the bench state and bus (built on first
  *  ask, once per page): the docked station's exchange is real, so a commodity is buyable at rest and a
  *  confirmed trade settles through the same ui:buy / ui:sell intents the game handles. */
@@ -963,7 +972,7 @@ const registry = {
   get(name) {
     if (name === 'economy') return benchEconomyOwner();
     if (name === 'ui') return { screenManager: manager, manager, hud: window.__benchHud || null };
-    if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
+    if (name === 'survivalResults') return { lastResult: () => (currentShot && currentShot.win ? BENCH_CRUCIBLE_WIN : BENCH_CRUCIBLE_RESULT) };
     if (name === 'survivalDraft') return benchDraftOwner;
     // Populated drill/base shots mount over real owners (seedDrillShot / seedBaseShot below).
     if (name === 'drill') return benchDrillOwner;
