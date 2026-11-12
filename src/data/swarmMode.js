@@ -38,6 +38,7 @@ import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.
 import { ENEMY_TYPES } from './enemies.js';
 import { CAPITAL_BOSS_ENCOUNTERS } from './encounters/capital-boss.js';
 import { hunterTrickById } from './hunterTricks.js';
+import { swarmCastFor, swarmCastIdsFor } from './swarmCourseCast.js';
 
 export const SWARM_RULESET = 'swarm';
 export const SWARM_SCHEMA_VERSION = 2;
@@ -949,6 +950,14 @@ export function swarmEligibleEnemyIds(wave) {
   const w = swarmWaveOf(wave);
   const ids = new Set();
   for (const entry of swarmRosterFor(w)) ids.add(entry.enemyId);
+  // C01-04 — the course's cast table is the wave's real field list on authored rounds:
+  // it may name a silhouette ahead of the roster clock, so eligibility takes the union.
+  // The union is cumulative over the course like the roster's is over the ladder: a hull the
+  // run already fielded can still be standing (the surviving cohort carries between rounds),
+  // so a later wave's prewarm must never let it leave the covered set.
+  for (let round = 1; round <= w; round += 1) {
+    for (const enemyId of swarmCastIdsFor(round)) ids.add(enemyId);
+  }
   const boss = swarmBossFor(w);
   if (boss) {
     // bossPackagesFor, not boss.packages: the capital champion rows carry `enemyId` and no
@@ -1242,6 +1251,11 @@ export const SWARM_ACT = freezeDeep({
 /** The authored act round for this wave, or null on an ordinary generated wave. */
 export function swarmActFor(wave) {
   const w = swarmWaveOf(wave);
+  // C01-04 — the course cast owns rounds 1–30 outright, so the mooring_line act's authored
+  // slots (26–28) now field Umbrella Again / Tailgate / Black Friday instead of its lesson
+  // compositions. The act rows stay in the table for the record (and their own honesty
+  // check); the breaker-yard act past the course's win (32–34) is untouched.
+  if (swarmCastFor(w)) return null;
   return SWARM_ACT[w] || null;
 }
 
@@ -1324,6 +1338,142 @@ export function swarmActPackages(wave) {
       ...(Number.isFinite(spec.distance) ? { distance: spec.distance } : {}),
     };
   });
+}
+
+// ── C01-04 — the course cast: each authored round fields the bodies its twist names ─────────
+// The cast table (src/data/swarmCourseCast.js) is the composition authority on rounds 1–30:
+// its `packages` resolve to the same plan-package shape the generated burst and the act table
+// produce, and its `stream` becomes the wave's reinforcement roster outright — the mix the
+// line promises for the whole round, not just the opening. The generated machinery (debut
+// clock, mass-gap wall, character cameo) stays the fallback for the open ladder past 30.
+
+/**
+ * Every enemy id a course wave can field through authored content, in promise order — the
+ * champion's own packages first (a boss round's star), then the cast stream, then any
+ * package-only extras. Used to find which of them is genuinely new on this round.
+ */
+function swarmCastWaveIds(w, boss) {
+  const ids = [];
+  if (boss) {
+    for (const pkg of bossPackagesFor(boss)) {
+      if (pkg && pkg.enemyId && !ids.includes(pkg.enemyId)) ids.push(pkg.enemyId);
+    }
+  }
+  for (const id of swarmCastIdsFor(w)) {
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * The course wave an enemy id first fields on — counting the champion packages alongside the
+ * cast rows, so the Corsair Wing's wave-10 debut is what introduces the corsair silhouette.
+ * Null for ids no authored wave fields.
+ */
+export function swarmCastDebutWaveFor(enemyId, upToWave = SWARM_WAVE_MAX) {
+  const top = Math.min(swarmWaveOf(upToWave), SWARM_WAVE_MAX);
+  for (let w = 1; w <= top; w += 1) {
+    if (!swarmCastFor(w)) continue;
+    if (swarmCastWaveIds(w, swarmBossFor(w)).includes(enemyId)) return w;
+  }
+  return null;
+}
+
+/**
+ * The wave's reinforcement roster under the cast: the row's stream with roles from the
+ * canonical roster and `fromWave` set to the id's course debut — so the fresh-silhouette
+ * weight boost in pickSwarmArchetype follows the course's own clock instead of the ladder's.
+ */
+export function swarmCastStreamFor(wave) {
+  const w = swarmWaveOf(wave);
+  const cast = swarmCastFor(w);
+  if (!cast) return [];
+  return cast.stream.map((entry) => {
+    const canonical = SWARM_ROSTER.find((r) => r.enemyId === entry.enemyId);
+    return {
+      enemyId: entry.enemyId,
+      role: canonical ? canonical.role : 'pressure',
+      weight: entry.weight,
+      fromWave: swarmCastDebutWaveFor(entry.enemyId, w) || w,
+    };
+  });
+}
+
+/**
+ * The silhouette a cast round introduces — the first id (champion packages first, then cast
+ * order) whose course debut is this wave and which the roster can name. Null when the round
+ * fields nothing new — the slam card and the "X is new." line then stay quiet rather than
+ * naming a roster-clock body the cast never fields.
+ */
+export function swarmCastNewcomerFor(wave, boss = undefined) {
+  const w = swarmWaveOf(wave);
+  if (!swarmCastFor(w)) return null;
+  const champion = boss === undefined ? swarmBossFor(w) : boss;
+  for (const enemyId of swarmCastWaveIds(w, champion)) {
+    if (swarmCastDebutWaveFor(enemyId, w) !== w) continue;
+    const canonical = SWARM_ROSTER.find((r) => r.enemyId === enemyId);
+    if (canonical) return { enemyId: canonical.enemyId, name: canonical.name };
+  }
+  return null;
+}
+
+/**
+ * Resolve a cast round into plan `packages` — the same contract swarmActPackages and
+ * swarmOpeningPackages emit, so every downstream consumer (schedule, dispatch, owed-body
+ * law) sees one shape. The champion's own packages fold in first on boss rounds, exactly
+ * as the generated burst fields them; the row's authored packages follow.
+ */
+export function swarmCastPackages(wave, bossOverride) {
+  const w = swarmWaveOf(wave);
+  const cast = swarmCastFor(w);
+  if (!cast) return [];
+  const boss = bossOverride === undefined ? swarmBossFor(w) : bossOverride;
+  const packages = boss ? swarmBossOpeningPackages(w, boss) : [];
+  const used = packages.map((pkg) => pkg.gateGroup);
+  // Two gate passes, so the solo-arrival law holds regardless of row order: literal and
+  // index bearings land first, then 'same' rides the spec before it and 'free' takes the
+  // first bearing NO package in this wave already uses — the debut's own gate, guaranteed.
+  const resolved = new Array(cast.packages.length);
+  cast.packages.forEach((spec, index) => {
+    const defers = spec.gate === 'free' || spec.gate === 'same'
+      || (spec.gate == null && !Number.isInteger(spec.gateIndex)
+        && (spec.debut === true || spec.staged === true));
+    if (defers) return;
+    const gateGroup = typeof spec.gate === 'string'
+      ? spec.gate
+      : swarmGateFor(w, Number.isInteger(spec.gateIndex) ? spec.gateIndex : index);
+    resolved[index] = gateGroup;
+    used.push(gateGroup);
+  });
+  let lastGate = resolved.find((gate) => gate != null) || null;
+  cast.packages.forEach((spec, index) => {
+    if (resolved[index] != null) { lastGate = resolved[index]; return; }
+    const gateGroup = spec.gate === 'same'
+      ? (lastGate || swarmGateFor(w, 0))
+      : swarmFreeGateFor(w, used);
+    resolved[index] = gateGroup;
+    used.push(gateGroup);
+    lastGate = gateGroup;
+  });
+  cast.packages.forEach((spec, index) => {
+    const solo = spec.debut === true || spec.staged === true;
+    const count = Math.max(1, spec.count | 0);
+    packages.push({
+      atTick: Number.isInteger(spec.atTick) ? spec.atTick : (solo ? SWARM_DEBUT_TICKS : index * 12),
+      gateGroup: resolved[index],
+      role: (SWARM_ROSTER.find((r) => r.enemyId === spec.enemyId) || {}).role || 'pressure',
+      enemyId: spec.enemyId,
+      count,
+      batchSize: count,
+      batchGapTicks: 0,
+      ...(spec.debut === true ? { debut: true } : {}),
+      ...(spec.staged === true ? { staged: true } : {}),
+      ...(Number.isFinite(spec.distance)
+        ? { distance: spec.distance }
+        : (solo ? { distance: SWARM_DEBUT_DISTANCE } : {})),
+    });
+  });
+  return packages;
 }
 
 /**
@@ -1427,31 +1577,7 @@ export function swarmOpeningPackages(wave, rng, roster, bossOverride) {
   // Iron Maw); a boss row uses that champion. The override is applied to the package, the
   // announcement fields and the plan block, so one round never names one boss and field another.
   const boss = bossOverride === undefined ? swarmBossFor(w) : bossOverride;
-  if (boss) {
-    // Every champion body carries `champion: true` all the way into the schedule, so the wave owner
-    // can owe a WING as easily as it owes one Dreadnought without knowing any enemy ids.
-    const wingGate = swarmGateFor(w, 0);
-    bossPackagesFor(boss).forEach((pkg, index) => {
-      const gateGroup = pkg.sameGate
-        ? wingGate
-        : pkg.gateBias === 'near'
-          ? swarmGateFor(w, 0)
-          : pkg.gateBias === 'far'
-            ? swarmGateFor(w, 4)
-            : swarmGateFor(w, index);
-      packages.push({
-        atTick: 0,
-        gateGroup,
-        role: pkg.role,
-        enemyId: pkg.enemyId,
-        count: pkg.count,
-        batchSize: pkg.count,
-        batchGapTicks: 0,
-        champion: true,
-        ...(Number.isFinite(pkg.distance) ? { distance: pkg.distance } : {}),
-      });
-    });
-  }
+  if (boss) packages.push(...swarmBossOpeningPackages(w, boss));
 
   // Two or three arrival groups from different bearings: a swarm wave is surrounded from tick 0.
   // More bearings as the wave count climbs: at ten on you it is two doors, at thirty it is four.
@@ -1478,6 +1604,34 @@ export function swarmOpeningPackages(wave, rng, roster, bossOverride) {
     });
   }
   return packages;
+}
+
+/**
+ * The champion's own opening packages — the bossPackagesFor fold expressed in the same plan
+ * shape the authored packages use. Every champion body carries `champion: true` all the way
+ * into the schedule, so the wave owner can owe a WING as easily as it owes one Dreadnought
+ * without knowing any enemy ids. Shared by the generated burst and the course cast table,
+ * so a boss round fields its champion identically under either author.
+ */
+function swarmBossOpeningPackages(w, boss) {
+  const wingGate = swarmGateFor(w, 0);
+  return bossPackagesFor(boss).map((pkg, index) => ({
+    atTick: 0,
+    gateGroup: pkg.sameGate
+      ? wingGate
+      : pkg.gateBias === 'near'
+        ? swarmGateFor(w, 0)
+        : pkg.gateBias === 'far'
+          ? swarmGateFor(w, 4)
+          : swarmGateFor(w, index),
+    role: pkg.role,
+    enemyId: pkg.enemyId,
+    count: pkg.count,
+    batchSize: pkg.count,
+    batchGapTicks: 0,
+    champion: true,
+    ...(Number.isFinite(pkg.distance) ? { distance: pkg.distance } : {}),
+  }));
 }
 
 /**
@@ -1515,11 +1669,15 @@ export function swarmOpeningCount(packages) {
  * The swarm block carried on the plan. survivalWave.js reads this and nothing else to run the
  * reinforcement stream, so the whole streaming ruleset is described by one serializable object.
  */
-export function swarmPlanBlock(wave, bossOverride) {
+export function swarmPlanBlock(wave, bossOverride, castRow = undefined) {
   const w = swarmWaveOf(wave);
-  const roster = swarmRosterFor(w);
-  const newcomer = swarmNewcomerFor(w);
+  // C01-04 — `castRow === undefined` auto-resolves the course cast (the armory preview calls this
+  // with the wave alone and should still see the round's real mix); an explicit `null` turns the
+  // cast off for callers that suppress it themselves (the planner's heavies-only/Circuit paths).
+  const cast = castRow === undefined ? swarmCastFor(w) : castRow;
+  const roster = cast ? swarmCastStreamFor(w) : swarmRosterFor(w);
   const boss = bossOverride === undefined ? swarmBossFor(w) : bossOverride;
+  const newcomer = cast ? swarmCastNewcomerFor(w, boss) : swarmNewcomerFor(w);
   // SWARM-08 B5 — boss presence follows the override when one is given, not the cadence, so a
   // Circuit survive round suppresses the cadence champion and a Circuit boss round forces its own.
   const bossWave = bossOverride === undefined ? isSwarmBossWave(w) : boss != null;
