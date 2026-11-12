@@ -38,7 +38,7 @@ for(const wave of [16,17,18,19,20])test(`post-Foreman ${wave}: finite source-own
  const preview=swarmRoundPreview({arenaId:'helios_core',wave,seed,plan:p});assert.equal(preview.foreground.title,p.swarm.foundry.title);
  if(wave===20)assert.equal(preview.event.name,swarmEventFor({arenaId:'helios_core',wave,seed}).name);else assert.equal(preview.event,null);
  for(const extra of [{arenaId:'the_hive'},{mutators:['dense']},{mutators:['heavies_only']},{circuitRound:{kind:'survive'}},{ruleset:'scored'}])assert.equal(planFor(wave,extra).swarm?.foundry,undefined);
- assert.equal(planFor(21).swarm.foundry,undefined);
+ assert.equal(planFor(24).swarm.foundry,undefined);
 });
 for(const wave of [16,17,18,19,20])test(`post-Foreman ${wave}: idle, pause, duplicate tick, finite reserve, retry`,t=>{
  const h=fixture(t,wave);h.tick(900);assert.equal(h.owner._foundryTicks,0);assert.equal(h.engine.view.aliveCount,0);assert.equal(h.ships().length,0);

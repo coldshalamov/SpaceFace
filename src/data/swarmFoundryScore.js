@@ -21,6 +21,9 @@ const rows = [
   ['slip_the_weight', 'Slip the weight', 'The Bruiser opens alone. Its engine flare announces a committed pass: slip sideways, then attack while it hauls around. Leave room to escape; the crowd follows.', 840, 1, 840, 840],
   ['cross_the_kraken', 'Cross the Kraken', 'Iron Kraken opens alone. Dodge the marked arms and locked jet; fire into its open front core during recovery. A Bellows pocket follows if solid cover is still usable. Keep an escape lane before the crowd arrives.', 1080, 1080, 1080, 1080],
   ['earn_the_second_exit', 'Earn the second exit', 'A screen covers the Raider; the Bruiser follows. Choose an exposed target, keep an escape lane, then face the forecast event and the crowd. Clear to refit, bank or extract, or carry on.', 1200, 1200, 1200, 1200],
+  ['split_the_chase', 'Split the chase', 'The Ghost hunts from one side; the Bruiser follows from the other. Cross a committed pass rather than backing into the second approach. The crowd follows.', 960, 960, 960, 960],
+  ['read_the_anchor', 'Read the anchor', 'The Anchor Controller opens alone. Leave its marked snare before it commits, then close during recovery. Its field catches the pack too; the crowd follows.', 840, 1, 840, 840],
+  ['uncover_the_anchor', 'Uncover the anchor', 'A Warden guards the Anchor Controller. Break the escort or work around its screen; keep outside the marked snare, then attack during recovery. The crowd follows.', 1080, 1080, 1080, 1080],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
@@ -54,6 +57,18 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
     Object.freeze({ enemyId: 'tether_control_raider', role: 'control', gate: 'nw', readTicks: 1 }),
     Object.freeze({ enemyId: 'bruiser_brawler', role: 'anchor', gate: 'se', readTicks: 360 }),
   ]) } : {}),
+  // The second exit leads into one combined-pressure act. Reuse the canonical
+  // Anchor debut, then pair learned threats; ordinary seats pay every entrance.
+  ...(index === 20 ? { foregroundShips: Object.freeze([
+    Object.freeze({ enemyId: 'quiet_ghost', role: 'reach', gate: 'nw', readTicks: 1 }),
+    Object.freeze({ enemyId: 'bruiser_brawler', role: 'anchor', gate: 'se', readTicks: 360 }),
+  ]) } : {}),
+  ...(index === 21 ? { debutAtTick: 0 } : {}),
+  ...(index === 22 ? { foregroundShips: Object.freeze([
+    Object.freeze({ enemyId: 'warden_escort', role: 'support', gate: 'nw', readTicks: 1 }),
+    Object.freeze({ enemyId: 'field_anchor_controller', role: 'anchor', gate: 'nw', readTicks: 1 }),
+  ]) } : {}),
+
 })));
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {
