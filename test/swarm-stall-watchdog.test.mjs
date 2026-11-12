@@ -171,7 +171,11 @@ function freezeHoldOnPlan(h) {
     forced = true;
     Object.assign(resetSwarmPressureState(), {
       holding: true,
-      holdTicks: 0,
+      // 97fd0ecebfc8 — a standing hold now ages through every skipped refill consult, so a
+      // clock planted at zero unwinds itself inside the watchdog window. The defect these
+      // tests exercise is a hold that CANNOT unwind: a clock planted this far behind cannot
+      // reach the breath's end before the watchdog's nine seconds run out.
+      holdTicks: -SWARM_STALL_RELEASE_TICKS - SWARM_BREATH_TICKS,
       stored: 6,
       killsSinceReinforce: 0,
       telegraphed: true,
