@@ -47,7 +47,7 @@ import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instrument
 import { injectOrrery } from './orrery/tokens.js';
 import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
-export const MOBILE_RADAR_METRICS = Object.freeze({ size: 88, center: 44, radius: 40 });
+export const MOBILE_RADAR_METRICS = Object.freeze({ size: 96, center: 48, radius: 44 });
 const COMPACT_SIZE = 208;
 const COMPACT_C = COMPACT_SIZE / 2;
 const COMPACT_R = 100;
@@ -1553,7 +1553,9 @@ function createRadarFrame(size, center, radius) {
       if (text === rangeText) return;
       rangeText = text;
       if (rangeNode) rangeNode.remove();
-      rangeNode = circularText(center, center, radius + (phone ? 12 : 19), `RANGE  ${text}`.toUpperCase(),
+      // The phone mini dial skips the engraved RANGE legend; it returns on the expanded scope.
+      if (phone) { rangeNode = null; return; }
+      rangeNode = circularText(center, center, radius + 19, `RANGE  ${text}`.toUpperCase(),
         { startDeg: 270, size: 12, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
       root.appendChild(rangeNode);
     },
