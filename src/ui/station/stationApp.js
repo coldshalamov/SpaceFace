@@ -55,6 +55,7 @@ import {
 } from './stationDepartureModel.js';
 import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
+import { STORE_FLIGHT_SENTENCE } from '../../onboarding/storeSentence.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
@@ -1039,6 +1040,37 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
 
+  // PQ-163.03: the first-hour store hook waits for the admitted dock surface — this comms
+  // receipt. Present at most once per offer id and answer only after the receipt actually
+  // drew here. The dock pause leaves no sim ticks to re-offer on, so the surface also pulls
+  // the unpresented line from state.onboarding when it comes live (see onShow).
+  let presentedStoreSentenceOfferId = null;
+  function presentStoreSentence(offerId, text) {
+    if (!shown || typeof text !== 'string' || !text) return false;
+    if (presentedStoreSentenceOfferId === offerId) return false;
+    presentedStoreSentenceOfferId = offerId;
+    showReceipt('FLIGHT SCHOOL', text, 'SHIPWORKS');
+    const bus = ctx && ctx.bus;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('firsthour:sentencePresented', { id: offerId });
+    }
+    return true;
+  }
+  subscribe('firsthour:sentenceOffer', (p = {}) => {
+    presentStoreSentence(p.id != null ? String(p.id) : p.text, p.text);
+  });
+  // An offer can replay before this surface exists (the emit rides the one tick between
+  // the dock commit and the pause, then the frozen sim never ticks again). When the berth
+  // goes live, read the owed line straight from the sim record — shown only stamps after
+  // the ack returns, so an unpainted line is still owed here.
+  function presentOwedStoreSentence() {
+    const st = state();
+    const rec = st && st.onboarding && st.onboarding.storeSentence;
+    if (!rec || rec.shown !== false) return;
+    if (!st.ui || st.ui.docked !== true) return;
+    presentStoreSentence('firsthour:sentence', STORE_FLIGHT_SENTENCE);
+  }
+
   // A live receipt must never stand on a control. Anchored lanes move above the comms/command row
   // only when their measured box covers an actual action. The narrow Market lane is static flow
   // and is handled by its footer layout instead.
@@ -1704,6 +1736,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         const row = pendingReceipts.shift();
         showReceipt(row.kind, row.title, row.delta);
       }
+      // The owed first-dock sentence joins the same receipt lane — its offer may have
+      // replayed before this mount existed, and the paused sim has no ticks to retry on.
+      presentOwedStoreSentence();
       arrivalPresenter.show();
       lifePresenter.show();
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM

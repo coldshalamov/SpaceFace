@@ -128,7 +128,7 @@ function boot() {
       if (entity) entity.alive = false;
     },
   };
-  const seen = { rescue: [], firsthour: [], sentence: [], toast: [] };
+  const seen = { rescue: [], firsthour: [], sentence: [], offers: [], presented: [], toast: [] };
   const sim = createSimulation({ seed: RESCUE_PROOF_SEED, state, bus, helpers, systems: [onboarding] });
   bus.on('rescue:started', (p) => seen.rescue.push({ event: 'rescue:started', ...p }));
   bus.on('rescue:beat', (p) => seen.rescue.push({ event: 'rescue:beat', ...p }));
@@ -139,13 +139,15 @@ function boot() {
   bus.on('firsthour:complete', (p) => seen.firsthour.push({ event: 'firsthour:complete', ...p }));
   bus.on('firsthour:sentence', (p) => seen.sentence.push({ event: 'firsthour:sentence', ...p }));
   bus.on('toast', (p) => seen.toast.push(p));
+  wireDockSentencePresenter(bus, state, seen);
   return { bus, state, sys: sim.registry.get('onboarding'), helpers, spawned, seen, sim };
 }
 
 // The live default route carries `helpers.voice` (voiceArbiter, registry slot 352 — before
-// onboarding at 459). boot() above has no voice helper, so it only exercises the raw-toast
-// fallback. This second harness wires the real arbiter in registry init + update order so the
-// branch a player actually takes is the one under test — through the same real registry steps.
+// onboarding at 459). boot() above has no voice helper; this second harness wires the real
+// arbiter in registry init + update order so the player's actual frozen-dock branch is the
+// one under test — through the same real registry steps. Under both harnesses the sentence
+// itself now travels the dock-surface offer/presented pair, never the arbiter queue.
 function bootLive() {
   const bus = createBus();
   const state = makeState();
@@ -162,7 +164,7 @@ function bootLive() {
       if (entity) entity.alive = false;
     },
   };
-  const seen = { surface: [], clear: [], toast: [] };
+  const seen = { surface: [], clear: [], offers: [], presented: [], toast: [] };
   // Registry update order: the arbiter steps first, then onboarding may enqueue.
   const sim = createSimulation({
     seed: RESCUE_PROOF_SEED, state, bus, helpers, systems: [voiceArbiter, onboarding],
@@ -170,11 +172,29 @@ function bootLive() {
   bus.on('voice:surface', (p) => seen.surface.push({ atS: state.simTime, ...p }));
   bus.on('voice:clear', (p) => seen.clear.push({ atS: state.simTime, ...p }));
   bus.on('toast', (p) => seen.toast.push({ atS: state.simTime, ...p }));
+  wireDockSentencePresenter(bus, state, seen);
   return {
     bus, state, sys: sim.registry.get('onboarding'), arb: sim.registry.get('voiceArbiter'),
     helpers, seen, sim,
     step: (dt = 0.25) => sim.step(dt),
   };
+}
+
+// The real dock presenter contract (stationApp's 'firsthour:sentenceOffer' subscription):
+// while the berth comms receipt is live it paints the offer once per offer id and answers
+// 'firsthour:sentencePresented'. An offer the surface cannot draw — anything that arrives
+// while undocked — goes unanswered, exactly like a receipt queued behind a hidden berth.
+function wireDockSentencePresenter(bus, state, seen) {
+  const presentedIds = new Set();
+  bus.on('firsthour:sentenceOffer', (p = {}) => {
+    seen.offers.push(p);
+    const offerId = p.id != null ? String(p.id) : p.text;
+    if (state.ui && state.ui.docked === true && typeof p.text === 'string' && p.text && !presentedIds.has(offerId)) {
+      presentedIds.add(offerId);
+      seen.presented.push({ atS: state.simTime, ...p });
+      bus.emit('firsthour:sentencePresented', { id: offerId });
+    }
+  });
 }
 
 function launchDefaultRoute(h) {
@@ -440,32 +460,39 @@ test('default New Game glass-gates the sentence in flight and shows it once at t
   assert.equal(h.state.onboarding.storeSentence.shown, false,
     'the sentence must not draw over rescue-start flight');
   assert.equal(h.seen.sentence.length, 0, 'firsthour:sentence waits for an admitted surface');
+  assert.equal(h.seen.offers.length, 0, 'the glass refuses the offer before any lane sees it');
   assert.equal(tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE).length, 0);
   assert.equal(h.seen.toast.filter((t) => t && t.text === STORE_FLIGHT_SENTENCE).length, 0);
 
   // The deferred line lands once on the first glass-legal surface — the dock that owns the
-  // store page it hooks — then silence.
+  // store page it hooks. Production announces that surface through screenManager's forwarded
+  // 'ui:screenTop' (the paused dock has no ticks to re-offer on); the harness emits the same
+  // signal at dock, and the frozen-tick keepalive is the belt behind it. The berth receipt
+  // paints the line; `shown` stamps only after the surface reports it presented — then silence.
   h.state.ui = { docked: true };
+  h.bus.emit('ui:screenTop', { id: 'station' });
   tick(h);
-  assert.equal(h.state.onboarding.storeSentence.shown, true);
+  assert.equal(h.seen.presented.length, 1, 'the dock surface painted the line exactly once');
+  assert.equal(h.seen.presented[0].text, STORE_FLIGHT_SENTENCE);
+  assert.equal(h.state.onboarding.storeSentence.shown, true,
+    'shown stamps after the admitted surface presented the line, not at offer time');
   assert.equal(h.seen.sentence.length, 1, 'firsthour:sentence fires exactly once');
   assert.equal(h.seen.sentence[0].type, 'firsthour:sentence');
   assert.equal(h.seen.sentence[0].shown, true);
   assert.equal(h.seen.sentence[0].atS, h.state.simTime, 'shownAt is the admitted surface time');
   const said = tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE);
   assert.equal(said.length, 1, 'tutorial voice speaks the sentence once');
-  const toasts = h.seen.toast.filter((t) => t && t.text === STORE_FLIGHT_SENTENCE);
-  assert.equal(toasts.length, 1, 'the line is actually shown once');
-  assert.equal(toasts[0].id, 'firsthour:sentence');
-  assert.equal(toasts[0].channel, 'tutorial',
-    'the fallback carries the tutorial channel so the receipt lane agrees with the glass');
+  assert.equal(h.seen.toast.filter((t) => t && t.text === STORE_FLIGHT_SENTENCE).length, 0,
+    'the sentence belongs to the dock receipt — never the flight toast lane');
+  const offersAfterPresent = h.seen.offers.length;
 
   // Silence: no second display if rescue:started is emitted again.
   h.bus.emit('rescue:started', { type: 'rescue:started', beats: ['swing', 'shove', 'grab'], atS: 11 });
   tick(h);
   assert.equal(h.seen.sentence.length, 1);
+  assert.equal(h.seen.presented.length, 1);
+  assert.equal(h.seen.offers.length, offersAfterPresent, 'once stamped, no offer is emitted again');
   assert.equal(tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE).length, 1);
-  assert.equal(h.seen.toast.filter((t) => t && t.text === STORE_FLIGHT_SENTENCE).length, 1);
 });
 
 test('leftover rescue + boost perform each clause before 600s; sentence stays once', () => {
@@ -484,7 +511,9 @@ test('leftover rescue + boost perform each clause before 600s; sentence stays on
   assert.equal(rec.shown, false, 'no sentence over the action, even after the whole drill');
   assert.equal(tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE).length, 0);
   st.ui = { docked: true };
+  h.bus.emit('ui:screenTop', { id: 'station' });
   tick(h);
+  assert.equal(h.seen.presented.length, 1, 'the dock surface presented the deferred line');
   assert.equal(rec.shown, true);
   assert.equal(rec.clauses.swing.performed, true);
   assert.equal(rec.clauses.ammunition.performed, true);
@@ -531,50 +560,58 @@ test('47-A scenario payload still skips the rail and never shows the sentence', 
   assert.equal(h.state.entityList.length, 1, 'no rescue bodies enter the harness snapshot');
   assert.deepEqual(h.seen.rescue, []);
   assert.deepEqual(h.seen.sentence, []);
+  assert.deepEqual(h.seen.offers, []);
   assert.equal(tutorialLines(h).includes(STORE_FLIGHT_SENTENCE), false);
   assert.equal(h.seen.toast.some((t) => t && t.text === STORE_FLIGHT_SENTENCE), false);
 });
 
-test('with the live voice arbiter wired, the sentence is delivered at the dock and takes the floor once', () => {
+test('with the live voice arbiter wired, the dock presenter delivers the line and the flight floor never takes it', () => {
   const h = bootLive();
   assert.equal(typeof h.helpers.voice.say, 'function', 'the live route hands onboarding a voice helper');
   launchDefaultRoute(h);
 
-  // In flight the glass refuses the line: it never even reaches the arbiter queue, so no
-  // floor and no fallback toast for the whole rescue drive.
+  // In flight the glass refuses the line: no offer is even emitted — nothing reaches the
+  // arbiter queue, no floor, no fallback toast for the whole rescue drive.
   for (let i = 0; i < 120; i++) h.step();   // 30 s of sim on the flight glass
+  assert.equal(h.seen.offers.length, 0, 'the glass refuses the offer before any lane sees it');
   assert.equal(h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE).length, 0,
     'the one-voice floor must not show the store hook over flight');
   assert.equal(h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE).length, 0);
   assert.equal(h.state.onboarding.storeSentence.shown, false);
 
   // The dock freeze skips every non-keepalive system — the arbiter among them — so the
-  // keepalive dock caller delivers the line (once) into the arbiter queue, and no docked
-  // tick can promote it to the floor: the frozen world steps no queue.
+  // keepalive caller offers the line to the admitted dock surface instead: the berth comms
+  // receipt paints it, and only then does `shown` stamp. The frozen arbiter never sees it.
   h.state.ui = { docked: true };
+  h.bus.emit('ui:screenTop', { id: 'station' });
   for (let i = 0; i < 40; i++) h.step();
+  assert.ok(h.seen.offers.length >= 1, 'the live surface signal offered the line to the dock surface');
+  assert.equal(h.seen.presented.length, 1, 'the berth receipt presented the line once');
+  assert.equal(h.seen.presented[0].text, STORE_FLIGHT_SENTENCE);
   assert.equal(h.state.onboarding.storeSentence.shown, true,
-    'the HIDDEN_KEEPALIVE dock caller delivers the line at the admitted surface');
+    'shown stamps after the admitted surface presented the line, not at offer time');
   assert.equal(h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE).length, 0,
-    'a frozen dock cannot take the one-voice floor — nothing steps the arbiter');
+    'the one-voice flight floor never carries the store hook');
+  const offersAfterPresent = h.seen.offers.length;
 
-  // Launch: the arbiter's first flight tick promotes the delivered line — exactly once,
-  // while its ttl is still live.
+  // Launch: the line was already delivered berthed — the arbiter resumes with nothing
+  // queued for it, so no surface, no mirror, no floor. Unrelated queued voices are not
+  // promoted to serve it either: the arbiter simply never heard of this line.
   h.state.ui = { docked: false };
   for (let i = 0; i < 40; i++) h.step();
-  const shown = h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE);
-  assert.equal(shown.length, 1, 'the sentence takes the one-voice floor exactly once');
-  assert.equal(shown[0].id, 'firsthour:sentence');
-  assert.equal(shown[0].channel, 'tutorial', 'tutorial channel survives the tutorialProtect policy');
-  const mirrored = h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE);
-  assert.equal(mirrored.length, 1, 'one visible surface, not two');
-  assert.equal(mirrored[0]._fromVoice, true, 'the shown copy is the arbiter mirror');
-  assert.ok(h.seen.clear.some((c) => c.id === 'firsthour:sentence'),
-    'the floor is released again — one line, then silence');
+  assert.equal(h.seen.offers.length, offersAfterPresent, 'once stamped, no offer is emitted again');
+  assert.equal(h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE).length, 0,
+    'after launch the flight floor stays silent — delivery already happened at the dock');
+  assert.equal(h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE).length, 0,
+    'no toast mirror — the line belongs to the dock receipt alone');
+  assert.equal(h.seen.clear.filter((c) => c.id === 'firsthour:sentence').length, 0,
+    'the arbiter never held the line, so nothing is released');
 
-  // Silence: a second rescue:started must not re-take the floor.
+  // Silence: a second rescue:started must not re-present.
   h.bus.emit('rescue:started', { type: 'rescue:started', beats: ['swing', 'shove', 'grab'], atS: h.state.simTime });
+  h.state.ui = { docked: true };
+  h.bus.emit('ui:screenTop', { id: 'station' });
   for (let i = 0; i < 40; i++) h.step();
-  assert.equal(h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE).length, 1);
-  assert.equal(h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE).length, 1);
+  assert.equal(h.seen.presented.length, 1);
+  assert.equal(h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE).length, 0);
 });

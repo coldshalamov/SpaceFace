@@ -687,7 +687,17 @@ export const onboarding = {
     bus.on('combat:fire', (p) => this._onRescueFire(p || {}));
     bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
     bus.on('player:death', () => this._onRescuePlayerDeath());
-    bus.on('rescue:started', (p) => this._showStoreSentenceOnce(p || {}));
+    bus.on('rescue:started', () => this._offerStoreSentence());
+    // The berth surface announces itself live: 'station' atop the screen stack is the
+    // admitted dock surface. The paused sim produces no ticks to re-offer on, so the
+    // offer is re-emitted on this forwarded signal — the round trip lands while the
+    // receipt lane can still draw it.
+    bus.on('ui:screenTop', (p = {}) => {
+      if (p.id === 'station') this._offerStoreSentence();
+    });
+    // The admitted dock surface reports the sentence painted; the shown stamp lands here,
+    // never at offer time, so a line nobody could draw is never marked shown.
+    bus.on('firsthour:sentencePresented', () => this._onStoreSentencePresented());
 
     // TEACH-04 — fitting the transverse snare head speaks its deploy verb once, naming the
     // player's own bound key. The head does nothing until it is asked to lay the line, so the
@@ -2317,7 +2327,7 @@ export const onboarding = {
       // W5/X3: the store sentence is glass-gated at the emit site; a refusal in flight defers
       // (not drops) delivery, so the once-only line lands on the first admitted surface — the
       // dock that owns the store page it hooks.
-      this._showStoreSentenceOnce();
+      this._offerStoreSentence();
       this._teachFieldEscapes();
       this._teachCadencePump();
       this._teachReleaseWindow();
@@ -3003,15 +3013,15 @@ export const onboarding = {
   dockSentenceKeepalive(_dt, state) {
     const st = state || this.state;
     if (!st || !st.ui || st.ui.docked !== true) return;
-    this._showStoreSentenceOnce();
+    this._offerStoreSentence();
   },
 
-  // PQ-163.03: the store-page sentence is shown once, then silence. X3/W5: the line is a
-  // store-page hook, not a flight receipt — the Adventure glass refuses a tutorial-channel
-  // sentence over the action, so delivery defers to the first surface the policy admits
-  // (the dock, where the store it hooks lives). Distinct voice id so leftover B0 / verb
-  // lines do not replace it. Never hudAttention.
-  _showStoreSentenceOnce() {
+  // PQ-163.03: the store-page sentence is offered to the admitted dock surface — the berth
+  // comms receipt — and stamped `shown` only when that surface reports it presented
+  // ('firsthour:sentencePresented'). The flight one-voice floor never carries it: the
+  // arbiter is frozen while berthed, so a queued line could only speak after launch, over
+  // the very glass the admission check exists to protect. Never hudAttention.
+  _offerStoreSentence() {
     const ob = this.state && this.state.onboarding;
     if (!ob) return;
     if (!ob.storeSentence) ob.storeSentence = freshStoreSentenceState();
@@ -3021,29 +3031,28 @@ export const onboarding = {
       kind: 'info',
       text: STORE_FLIGHT_SENTENCE,
     })) return;
-    const atS = this.state.simTime || 0;
-    ob.storeSentence.shown = true;
-    ob.storeSentence.shownAt = atS;
-    this._sayTutorial(STORE_FLIGHT_SENTENCE, { visual: false });
-    const voice = this.helpers && this.helpers.voice;
-    const said = voice && typeof voice.say === 'function'
-      && voice.say({
-        channel: 'tutorial',
-        text: STORE_FLIGHT_SENTENCE,
-        kind: 'info',
-        ttl: 8,
-        id: 'firsthour:sentence',
-      });
-    // The fallback carries the tutorial channel so the receipt lane's own glass policy
-    // refuses it mid-flight too — the emit site above is the gate; this keeps the two
-    // lanes in agreement instead of adding a second filter.
-    if (!said) this.bus.emit('toast', {
-      text: STORE_FLIGHT_SENTENCE,
-      kind: 'info',
-      channel: 'tutorial',
-      ttl: 8,
+    // Re-offered until presented: the lane hop to the dock surface is asynchronous, and the
+    // presenter dedupes on the offer id, so repeats while the receipt is still hidden are
+    // harmless — an offer the surface cannot draw is not delivery.
+    this.bus.emit('firsthour:sentenceOffer', {
       id: 'firsthour:sentence',
+      channel: 'tutorial',
+      kind: 'info',
+      text: STORE_FLIGHT_SENTENCE,
     });
+  },
+
+  // The admitted dock surface painted the line: stamp it, log/speak it through the tutorial
+  // channel (instructor audio + tutorialLog), then emit the once-only funnel receipt.
+  _onStoreSentencePresented() {
+    const st = this.state;
+    const ob = st && st.onboarding;
+    const rec = ob && ob.storeSentence;
+    if (!rec || rec.shown) return;
+    const atS = st.simTime || 0;
+    rec.shown = true;
+    rec.shownAt = atS;
+    this._sayTutorial(STORE_FLIGHT_SENTENCE, { visual: false });
     this.bus.emit('firsthour:sentence', buildFirstHourSentenceEvent(atS));
   },
 
