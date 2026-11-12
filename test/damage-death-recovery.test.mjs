@@ -11,7 +11,10 @@ import {
 } from '../src/combat/playerDefeat.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { protectedStationAt } from '../src/ai/engagementAuthority.js';
+import { createBus } from '../src/core/eventBus.js';
+import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { combat, UNDOCK_INVULN_S } from '../src/systems/combat.js';
+import { input } from '../src/systems/input.js';
 import { gameOverScreen } from '../src/ui/screens/gameOver.js';
 
 function vec(x, z) {
@@ -382,6 +385,47 @@ test('standard death freezes once, emits one recoverable defeat, and applies con
   assert.equal(state.player.cargo.items.cmdty_ore_iron, 3);
   assert.equal(state.player.cargo.items.story_sample_47a, 1);
   assert.equal(state.combat.lastPlayerDefeat, null);
+});
+
+test('after-action recovery starts manual flight without a burn or a tap from the defeated hull', () => {
+  const state = makeState();
+  state.mode = 'flight';
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.pointerScreen = { x: 0, y: 0, active: false };
+  const player = state.entities.get(state.playerId);
+  const bus = createBus();
+  const flightInput = Object.create(input);
+  const combatOwner = Object.create(combat);
+  const ctx = { state, bus, helpers: {}, registry: { get() { return null; } } };
+  const previousTravelBurn = TRAVEL_FLAGS.travelBurn;
+  TRAVEL_FLAGS.travelBurn = true;
+  const tapTravel = () => flightInput.ingestLaneDomEvent({ type: 'wheelVerb', action: 'travelBurn', phase: 'tap' });
+
+  try {
+    flightInput.init(ctx);
+    combatOwner.init(ctx);
+    tapTravel();
+    flightInput.ingestLaneDomEvent({ type: 'blur' });
+    for (let i = 0; i < 120; i++) flightInput.update(1 / 60, state);
+    assert.equal(state.input.travelDrive.state, 'engaged', 'a completed tap survives a simple blur');
+
+    tapTravel();
+    combatOwner.kill(player, 9, { origin: { kind: 'weapon', id: 'wpn_autocannon_s' } });
+    assert.equal(player.alive, false);
+    bus.emit('player:recoveryRequested', { source: 'after_action' });
+    assert.equal(player.alive, true);
+    flightInput.update(1 / 60, state);
+    assert.deepEqual({ drive: state.input.travelDrive.state, pressed: state.input.actions.travelBurn },
+      { drive: 'off', pressed: false });
+
+    tapTravel();
+    flightInput.update(1 / 60, state);
+    assert.equal(state.input.travelDrive.state, 'spooling', 'the recovered hull accepts a fresh input');
+  } finally {
+    flightInput.destroy();
+    TRAVEL_FLAGS.travelBurn = previousTravelBurn;
+  }
 });
 
 test('Continue re-arms recovery from lastPlayerDefeat when the in-memory latch was lost', () => {

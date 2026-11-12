@@ -1430,22 +1430,23 @@ export const input = {
     return action === 'aimedMine' ? !isSwarmControls(st) : contextActionAllowed(st, action);
   },
 
-  // Death and the recovery berth are not key-ups. A boost, thrust, or throw held across the
-  // wreck screen must not still be down when the hull is alive again. Focus loss already
-  // comes through releaseHeldControls('window-blur').
+  // Death and the recovery berth retire the old hull's held controls, sampled taps, and burn.
+  // Focus loss still preserves completed taps on the same hull.
   _bindInterruptControlRelease() {
     this._releaseInterruptControlSubs();
     const bus = this.bus;
     if (!bus || typeof bus.on !== 'function') return;
     const offs = [];
-    const onDeath = () => {
-      if (this._initialized) this.releaseHeldControls('player-death');
+    const releaseHullControls = (reason) => {
+      if (!this._initialized) return;
+      if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
+      this._travel = null;
+      const inp = this.state?.input;
+      if (inp?.travelDrive) delete inp.travelDrive;
+      this.releaseHeldControls(reason);
     };
-    const onRespawn = () => {
-      if (this._initialized) this.releaseHeldControls('player-respawn');
-    };
-    const offDeath = bus.on('player:death', onDeath);
-    const offRespawn = bus.on('player:respawn', onRespawn);
+    const offDeath = bus.on('player:death', () => releaseHullControls('player-death'));
+    const offRespawn = bus.on('player:respawn', () => releaseHullControls('player-respawn'));
     const offMode = bus.on('mode:changed', () => { this._combatStickPilotRun = null; });
     if (typeof offDeath === 'function') offs.push(offDeath);
     if (typeof offRespawn === 'function') offs.push(offRespawn);
