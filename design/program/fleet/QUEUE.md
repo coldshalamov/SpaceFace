@@ -82,8 +82,8 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | MOB-01-pinch-zoom | spec: `drafts/MOB.md` §MOB-01 + `design/game/README.md` ruling 3 (aspect-aware default zoom; pinch 0.6×–1.5×) | BUILT 9c0a921e + lead acaec5ff (default halfway to desktop width; pinch 0.5–2.0×) |
 | MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | BUILT b0268fe6 (devin2 layout, lead finished from looks; 25.0%/23.8% worst case) — real-route pinch look pending |
 | MOB-05 flick to throw | On a phone, drag-and-release while the Line holds a body throws it along the flick (`drafts/MOB.md` §7 q1) | READY |
-| KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | TAKEN agent2 (devin2) |
-| SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | READY |
+| KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | BUILT 965fc1a9..704ee553 + lead 54e6b7de, 66a4a691 (lead reviewed each; comms-log-surface + special500-comms-backlog still red) |
+| SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | TAKEN agent2 (devin2) |
 | PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
 | DOC-02 archive the old plans | Move superseded plan banks (list from DOC-01) into `design/archive/program-2026/` with `git mv`; first `grep -rn` every moved path across `scripts/ src/ test/ tools/` and leave any file a script reads in place; update links in live docs | READY |
 | LOOK-02 sectors on the grade [FE] | Each sector's lights and palette onto LOOK-01's grade | HOLD on LOOK-01 |
