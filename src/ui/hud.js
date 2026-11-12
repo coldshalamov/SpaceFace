@@ -690,6 +690,17 @@ function mtObjectiveAction(action, wp) {
   return `${verb} · ${destination}`;
 }
 
+function compactRecoveryAction(mission, waypoint) {
+  if (mission?.storyTag === CONTRACT_47A_B0_TAG && mission.params?.sampleRecovered) {
+    return localizeText('Deliver 47-A to Helios Station');
+  }
+  if (mission?.storyTag === CONTRACT_47A_B0_TAG
+    || (waypoint?.kind === 'mission' && waypoint.label === '47-A Recovery Site')) {
+    return localizeText('Recover 47-A from marked rock');
+  }
+  return '';
+}
+
 /**
  * Resolve the sole flight command without combining state from different navigation owners.
  * A matching mission waypoint may carry its tracked mission's timer; every other live waypoint
@@ -849,11 +860,8 @@ export function flightDestinationSurface(state, command) {
     if (term) urgent = urgent || term.tone === 'broken';
     const objectiveLine = term ? `${action} · ${term.text}` : action;
     const dest = { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
-    if (!term && tracked?.storyTag === CONTRACT_47A_B0_TAG) {
-      dest.compactAction = tracked.params?.sampleRecovered
-        ? localizeText('Deliver 47-A to Helios Station')
-        : localizeText('Recover 47-A from marked rock');
-    }
+    const compactAction = !term && compactRecoveryAction(tracked, waypoint);
+    if (compactAction) dest.compactAction = compactAction;
     return dest;
   }
   if (command.owner === 'navigation') {
@@ -876,12 +884,17 @@ export function flightDestinationSurface(state, command) {
         `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
       : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
         travel.etaS == null ? '' : travel.etaText);
-    return {
+    const dest = {
       show: true,
       line: readings ? `${action}\n${readings}` : action,
       urgent: false,
       actLine,
     };
+    // The mission waypoint can reach the HUD before the tracked mission row
+    // does, or stay selected after tracking is cleared.
+    const compactAction = compactRecoveryAction(null, wp);
+    if (compactAction) dest.compactAction = compactAction;
+    return dest;
   }
   if (command.owner === 'untracked-mission') {
     const candidate = command.mission;

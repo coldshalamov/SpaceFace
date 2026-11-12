@@ -254,6 +254,18 @@ test('one destination line already carries distance and ETA', () => {
   assert.doesNotMatch(dest.line, /CURRENT OBJECTIVE|TUTORIAL OBJECTIVE|AMBER DIAMOND|GOAL ·/);
 });
 
+test('the phone recovery copy fits even when the mission waypoint owns navigation alone', () => {
+  const state = { mode: 'flight', ui: {}, missions: { active: [] }, nav: {
+    waypoint: { kind: 'mission', missionId: 'sample', label: '47-A Recovery Site',
+      reason: 'Recover the 47-A sample from the marked rock', pos: { x: 20, z: 0 } },
+  } };
+  const command = resolveFlightObjectiveCommand(state);
+  assert.equal(command.owner, 'navigation');
+  const dest = flightDestinationSurface(state, command);
+  assert.equal(dest.compactAction, 'Recover 47-A from marked rock');
+  assert.match(dest.line, /Recover the 47-A sample from the marked rock/);
+});
+
 test('campaign story objective stays off the mission tracker during a live Crucible run', () => {
   const state = { run: { kind: 'survival', ruleset: 'swarm', phase: 'active' } };
   const storyCommand = { owner: 'story' };
