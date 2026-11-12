@@ -64,11 +64,14 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:0 !important; }
 }
 
-/* Phone: same curtain, tighter rail so three ghosts clear the legend above FLY TO MAKE ONE. */
+/* Phone: same curtain, tighter rail so three ghosts clear the legend above FLY TO MAKE ONE.
+   The how-to wraps to three lines at phone width, and at 84px its last line ("→ Clips, choose a
+   moment, then EXPORT.") sat inside the lamp's 48px fade apron and read as a ghost. The legend
+   climbs one apron clear; the empty stage above has the room. */
 @media (max-width: 560px) {
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:14% !important; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__readline {
-    bottom:84px !important; flex-direction:column !important; align-items:center !important; gap:6px !important;
+    bottom:124px !important; flex-direction:column !important; align-items:center !important; gap:6px !important;
   }
   ${R} .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px !important; }
   ${R} .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px !important; letter-spacing:.04em !important; }
