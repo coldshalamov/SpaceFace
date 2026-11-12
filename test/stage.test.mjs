@@ -546,3 +546,44 @@ test('G16-03: a centre dialog waits while a station/menu screen is open', () => 
     sm.destroy();
   } finally { dom.restore(); }
 });
+
+test('G16 fix: a timed voice takes the seat of a standing gate pill, which resumes after', () => {
+  const f = alertsFixture();
+  try {
+    // Real gate:range payload (physics.js) -> the standing gate pill holds the banner, ttl Infinity.
+    f.bus.emit('gate:range', { gateId: 'g1', shipId: 'p1', inRange: true, gateTo: 'ceres', name: 'Ceres Gate' });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:gate']);
+    // Real voice:surface payload (voiceArbiter._flushPresentation): an ordinary objective line.
+    f.bus.emit('voice:surface', { id: 'objective:mine', channel: 'objective', priority: 50, text: 'MINE 20 ORE', kind: 'info', ttl: 4 });
+    assert.deepEqual(f.stage.visible('banner'), ['floor:objective:mine'], 'the voice is seen, not queued behind the pill');
+    assert.deepEqual(f.stage.queued('banner'), ['alert:gate'], 'the pill waits its turn');
+    f.bus.emit('voice:clear', { id: 'objective:mine' });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:gate'], 'the pill resumes');
+    // A standing missile-lock pill is danger; a danger voice (TAKING FIRE) is likewise seen.
+    f.bus.emit('combat:lockChanged', { locked: true });
+    f.bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, text: 'TAKING FIRE', kind: 'danger', ttl: 1.5 });
+    assert.deepEqual(f.stage.visible('banner'), ['floor:alert:incoming']);
+    f.bus.emit('voice:clear', { id: 'alert:incoming' });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:lock']);
+  } finally { f.restore(); }
+});
+
+test('G16 fix: refreshing a queued alert keeps its arrival order', () => {
+  const f = alertsFixture();
+  try {
+    f.bus.emit('combat:lockChanged', { locked: true });
+    f.bus.emit('gate:range', { gateId: 'g1', shipId: 'p1', inRange: true, name: 'Ceres Gate' });
+    f.bus.emit('hazard:enter', { entityId: 'p1', zoneType: 'nebula' });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:lock']);
+    const order = f.stage.queued('banner');
+    assert.equal(order.length, 2);
+    // Refresh the earlier one (same key, same severity) — it must not drop behind its rival.
+    f.bus.emit('gate:range', { gateId: 'g1', shipId: 'p1', inRange: true, name: 'Ceres Gate II' });
+    assert.deepEqual(f.stage.queued('banner'), order, 'queue order unchanged by the refresh');
+    f.bus.emit('combat:lockChanged', { locked: false });
+    assert.deepEqual(f.stage.visible('banner'), [order[0]], 'the earlier alert is promoted first');
+    // A severity change does re-rank.
+    f.host.raise({ key: 'gate', sev: 'danger', text: 'GATE FAULT', ttl: Infinity });
+    assert.deepEqual(f.stage.visible('banner'), ['alert:gate']);
+  } finally { f.restore(); }
+});
