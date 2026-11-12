@@ -270,6 +270,10 @@ ${D} .sf-crd-stakes { gap:10px !important; }
 ${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:28px !important; height:28px !important; opacity:.8; color:var(--dp-ink-dim) !important;
   transition:color .18s linear, opacity .18s linear; }
 ${D} .orr-tile[aria-pressed=true] .orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
+/* ui-polish-516: the rule above never won: the at-rest mark rule (.sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark)
+   outranks it, so the chosen stake's mark stayed bone like the other three. Matched at that weight, the chosen
+   contract's chevrons light amber as its underline does. */
+${D} .sf-crd-stake[aria-pressed=true] .fh-tile-art svg.orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
 ${D} .orr-prep-stake-number { font-size:29px !important; font-weight:250 !important; letter-spacing:-.01em; }
 /* ui-polish-515: the stake marks are drawn on a 128 grid, so at 28px their 2-unit stroke rendered as a .44px
    hairline: four grey specks over the purses. They sit at 36px with a stroke that lands near 1.4px, the weight
