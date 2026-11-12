@@ -1,0 +1,28 @@
+# Asteroid Mill: the material fracture now pays the seam
+
+Parent: [1475e3a83bdc30aae4dbe014be647e3a5c87a593](https://github.com/coldshalamov/SpaceFace/tree/1475e3a83bdc30aae4dbe014be647e3a5c87a593), branch dot/swarm-opening-surgical-20261108 freshly verified by ls-remote. This candidate is source-reviewed/headless-tested, not published, rendered, full-run-earned or accepted.
+
+## Creative decision and native cause
+Preserve Mill as moving cover which can become salvage, not laser-mining or weakened rocks. Actual material-speed fracture was bypassing the room's ore economy: `environmentMaterials.js:_fracture/_cue` owns native fragments and emits `environment:fractured`, while only `swarmArena.js:_fractureDebris` called `_millShake`. A native sufficiently fast physical break therefore produced four useful fragments but no Mill ore. The weaker wear-depletion route did produce ore. This made the same player's physical opportunity pay differently according to invisible owner choice.
+
+Add a terminal, generation-checked material-fracture listener to the Mill room. It does not fracture again, change collision thresholds, add weapons damage, create extra fragment models, or credit a wallet immediately. Both owners share an idempotent ore spawn seam. The authored one-or-two chunks, nine credits each, twenty-second lifetime, and NPC/player collection distinction remain unchanged. This connects existing material art/physics, throwable fragments, room economy and the decision to return through pressure.
+
+## What was actually exercised
+Native production-manifest, node-safe runtime; seed73311, energy-baseline hull, staged Mill round1; production wave-planned/started events admit Brood and ships. Ordinary RMB precision latch, RMB hold with W/D carry, Space boost, then five-tick RMB tap cuts. No synthetic attachment, impulse, fracture, pickup or award. This stages the room rather than earning it through menu/ladder and does not render.
+
+Important correction to earlier Mill probes: `prepareBackend` must run under the runtime's feature flags, as already documented by `src/testing/motionScenarios.js:1260–1276`. Outside that scope the contact capture flag defaults false: bodies move but no physics:impact receipts appear. Prior no-impact findings were probe limitations, not proof of a gameplay defect. Both prepares now snapshot flags, apply runtime.config.features and restore them. Mouse aim controls weapons, not the hull's course; the post-cut actor escapes rather than completing a return route.
+
+Baseline corrected trace: carried original rock15 wears486→484.909 at tick101 (closing27.147, dp120), then483.818 at388; native material fracture at653 after a143.146 closing-speed impact. It emits four fragments and no ore. Neighbor14 likewise fractures252 without ore. A later wear-fracture of another body103 at1515 creates two ore chunks, proving the older payment owner exists but is not universal.
+
+Candidate native trace: neighbor14 material break252 creates one9-credit ore; original carried rock15 material break620 creates one9-credit ore. Later timing differs because new ore consumes RNG and occupies physical/entity slots. Two native NPC scoops consume ore without pilot award. Pilot finishes750ticks with hull140. No pilot ore collection/payment, victory, earned room, Save/Continue or pixels claimed. Slot IDs recycle; compare original generation, not id alone.
+
+## Integration and acceptance
+Source path: src/systems/swarmArena.js. Test path: test/swarm-biomes.test.mjs. Existing tests plus new duplicate, stale-generation, recycled-body, unrelated-body, other-arena, phase, collection-only, reentrant-spawn and teardown checks. Existing catalog assertion `the Mill draws a telegraphed event` fails unchanged on parent and candidate; do not misreport full suite green.
+
+SF-GAME / SF-SECTOR-COHERENCE / SF-LIVING-WORLD remain active, creative integration owner. Native material fractures now have a concrete candidate for correct room reward. Next executable acceptance: steer an ordinary-input return to newly earned ore and observe physics collection→run wallet, then visually judge fragment/ore distinction and navigating the circulating seam under fire. Do not lower hull, alter substance break speeds, count an award request as paid, or commission new models. SF-ASSET-QUALITY review only: existing rock family and native fragments suffice; no wishlist need demonstrated.
+
+## Restore
+Use exact parent above with dependencies installed; apply only files/src/systems/swarmArena.js and files/test/swarm-biomes.test.mjs over that revision after rechecking remote ownership. loader.mjs routes imports to exact-parent git objects except these overlay files. Run `node --loader ./loader.mjs --test --test-name-pattern='Mill|mill shakes|rooms plan|hive' ./files/test/swarm-biomes.test.mjs` and `node --loader ./loader.mjs ./swing-death-route.mjs` after relocating the fixed workspace paths if necessary. SHA256SUMS identifies frozen artifacts. Do not include unrelated/denied files or change shared checkout.
+
+## Frozen verification
+Independent review cleared source SHA256 `88d749b7c6b3a5f87bfc836755ba1a93c375e7ad2c58c2cb4a245225d9f2aba1`. Author targeted tests8/8; reviewer full biomes10/11 with sole baseline catalog failure; native-material-fracture13/13; cycle8/10 with same two baseline failures. Reviewer extra2/2 verify capacity refusal does not invent reward/retry and a second-spawn phase transition cleans the first pickup and ledger. Final safeguarded native replay completes750ticks, original15 fracture→ore at620, original14 at252, pilot hull140, nine spawned ore IDs across seven material breaks. No pilot collection or wallet payment. These are headless observations, not screenshots.

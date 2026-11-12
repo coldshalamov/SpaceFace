@@ -360,3 +360,77 @@ test('a sac only spends the wave\'s own reserve — the cap never moves', () => 
 function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
+
+test('Mill pays native material fractures once, never a stale or unrelated occupant', () => {
+ const h=arenaBoot({wave:1,arenaId:MILL_ARENA_ID});
+ try {
+  const rock={id:9101,occupantGeneration:17,type:'asteroid',alive:false,pos:{x:25,z:40},data:{swarmArenaDebris:true,fractured:true}};
+  h.state.entities.set(rock.id,rock);
+  const receipt={id:rock.id,occupantGeneration:17};
+  h.bus.emit('environment:fractured',{...receipt,occupantGeneration:16});
+  assert.equal(named(h,'swarmArena:millOre').length,0);
+  h.bus.emit('environment:fractured',receipt);
+  assert.equal(named(h,'swarmArena:millOre').length,1);
+  h.bus.emit('environment:fractured',receipt);swarmArena._millShake(rock);
+  assert.equal(named(h,'swarmArena:millOre').length,1,'duplicate and alternate owner cannot pay twice');
+  rock.occupantGeneration=18;
+  h.bus.emit('environment:fractured',receipt);
+  assert.equal(named(h,'swarmArena:millOre').length,1,'recycled slot rejects stale receipt');
+  h.bus.emit('environment:fractured',{...receipt,occupantGeneration:18});
+  assert.equal(named(h,'swarmArena:millOre').length,2,'new actual terminal occupant can pay');
+  rock.occupantGeneration=19;delete rock.data.swarmArenaDebris;
+  h.bus.emit('environment:fractured',{...receipt,occupantGeneration:19});
+  assert.equal(named(h,'swarmArena:millOre').length,2);
+  swarmArena.destroy();
+  h.bus.emit('environment:fractured',{...receipt,occupantGeneration:19});
+  assert.equal(named(h,'swarmArena:millOre').length,2,'destroy unsubscribes');
+ } finally {swarmArena.destroy();}
+});
+
+test('Mill material reward preserves pickup-only payment and wear-first idempotence',()=>{
+ const h=arenaBoot({wave:1,arenaId:MILL_ARENA_ID});
+ try{
+  const rock={id:9101,occupantGeneration:4,type:'asteroid',alive:false,pos:{x:25,z:40},data:{swarmArenaDebris:true,fractured:true}};
+  h.state.entities.set(rock.id,rock);swarmArena._millShake(rock);
+  h.bus.emit('environment:fractured',{id:rock.id,occupantGeneration:4});
+  const ore=h.spawned.filter(e=>e.data?.kind===MILL_ORE_KIND);
+  assert.ok(ore.length>=1&&ore.length<=2);
+  assert.equal(named(h,'run:awardRequested').length,0,'fracture is not collection');
+  h.bus.emit('pickup:collected',{pickupId:ore[0].id,collectorId:h.state.playerId});
+  h.bus.emit('pickup:collected',{pickupId:ore[0].id,collectorId:h.state.playerId});
+  assert.equal(named(h,'run:awardRequested').length,1);
+  h.state.run.arenaId='helios_core';rock.occupantGeneration=5;
+  h.bus.emit('environment:fractured',{id:rock.id,occupantGeneration:5});
+  assert.equal(named(h,'swarmArena:millOre').length,1);
+ }finally{swarmArena.destroy();}
+});
+
+
+test('Mill terminal reward is reentrant-safe and ignores paused phases',()=>{
+ const h=arenaBoot({wave:1,arenaId:MILL_ARENA_ID});
+ try{
+  const rock={id:9101,occupantGeneration:4,type:'asteroid',alive:false,pos:{x:25,z:40},data:{swarmArenaDebris:true,fractured:true}};
+  h.state.entities.set(rock.id,rock);const receipt={id:rock.id,occupantGeneration:4};
+  h.state.run.phase='wave_intro';h.bus.emit('environment:fractured',receipt);
+  assert.equal(named(h,'swarmArena:millOre').length,0);
+  h.state.run.phase='active';const spawn=h.helpers.spawnEntity;
+  h.helpers.spawnEntity=(spec)=>{h.bus.emit('environment:fractured',receipt);return spawn(spec);};
+  h.bus.emit('environment:fractured',receipt);
+  assert.equal(named(h,'swarmArena:millOre').length,1);
+  assert.ok(h.spawned.length>=1&&h.spawned.length<=2);
+ }finally{swarmArena.destroy();}
+});
+
+
+test('Mill spawn teardown cannot repopulate the ended ledger or leave ore behind',()=>{
+ const h=arenaBoot({wave:1,arenaId:MILL_ARENA_ID});
+ try{
+  const rock={id:9101,occupantGeneration:4,type:'asteroid',alive:false,pos:{x:25,z:40},data:{swarmArenaDebris:true,fractured:true}};
+  h.state.entities.set(rock.id,rock);const spawn=h.helpers.spawnEntity;
+  h.helpers.spawnEntity=(spec)=>{h.bus.emit('run:ended',{});return spawn(spec);};
+  h.bus.emit('environment:fractured',{id:rock.id,occupantGeneration:4});
+  assert.equal(named(h,'swarmArena:millOre').length,0);
+  assert.equal(swarmArena._millOres.size,0);
+  assert.ok(h.spawned.every(e=>e.alive===false));
+ }finally{swarmArena.destroy();}
+});

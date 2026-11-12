@@ -755,6 +755,7 @@ export const swarmArena = {
     // B4 — the Mill's ore ledger (pickupId → credits it pays) and the Hive's living
     // geometry ({ ring, nextGrowAt, sacs } while the wave's room is alive).
     this._millOres = new Map();
+    this._millFractures = new WeakMap();
     this._hive = null;
     // The live law-room receipt and the last room signature this voice already named.
     this._law = null;
@@ -796,6 +797,7 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
+    this._unsubs.push(this.bus.on('environment:fractured', (p) => this._onMillMaterialFracture(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', () => this._onOpeningLessonReleased()));
     this._unsubs.push(this.bus.on('run:ended', () => {
       this._broodHeldUntil = null;
@@ -805,6 +807,7 @@ export const swarmArena = {
       if (this._brood) this._brood.clear('run_ended');
       this._hiveRelease('run_ended');
       this._millOres.clear();
+      this._millFractures = new WeakMap();
       this._release('run_ended');
     }));
     // The room owner's install/release pair is the law-phase seam: the receipt carries the
@@ -835,6 +838,7 @@ export const swarmArena = {
     if (this._brood) this._brood.clear('destroyed');
     this._hiveRelease('destroyed');
     if (this._millOres) this._millOres.clear();
+    this._millFractures = new WeakMap();
     this._hive = null;
   },
 
@@ -854,6 +858,7 @@ export const swarmArena = {
     if (this._brood) this._brood.clear('new_game');
     this._hiveRelease('new_game');
     if (this._millOres) this._millOres.clear();
+    this._millFractures = new WeakMap();
     this._releaseWells();
     this._restoreCapacity();
     this._pressureAlive = null;
@@ -1771,6 +1776,19 @@ export const swarmArena = {
    * and only the run wallet. Runs only inside the Mill — every other arena's fracture
    * is just a fracture.
    */
+  // Material-speed fractures own their fragments; the room only adds its ore reward.
+  // Terminal receipts arrive before core recycles the slot. Never credit its next occupant.
+  _onMillMaterialFracture(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || run.arenaId !== MILL_ARENA_ID || run.phase !== 'active') return;
+    const rock = this.state?.entities?.get?.(payload?.id);
+    if (!rock || rock.type !== 'asteroid' || rock.alive !== false
+      || rock.data?.[SWARM_DEBRIS_TAG] !== true || rock.data?.fractured !== true
+      || !Number.isFinite(payload?.occupantGeneration)
+      || rock.occupantGeneration !== payload.occupantGeneration) return;
+    this._millShake(rock);
+  },
+
   _millShake(rock) {
     const state = this.state;
     const run = state && liveSwarmRun(state);
@@ -1780,10 +1798,27 @@ export const swarmArena = {
     if (!rock || !rock.pos || !Number.isFinite(rock.pos.x) || !Number.isFinite(rock.pos.z)) return;
     const rng = state && typeof state.rng === 'function' ? state.rng : null;
     if (!rng) return;
+    // Both native fracture owners can report the same terminal body. Consume once,
+    // before spawning (which can synchronously re-enter); reused slots have a new generation.
+    if (!this._millFractures) this._millFractures = new WeakMap();
+    if (this._millFractures.has(rock)
+      && this._millFractures.get(rock) === rock.occupantGeneration) return;
+    this._millFractures.set(rock, rock.occupantGeneration);
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const count = 1 + (rng() < MILL_ORE_DOUBLE_CHANCE ? 1 : 0);
     const spawned = [];
+    const bodies = [];
+    const ledger = this._millOres, fractures = this._millFractures, wave = run.wave;
+    const current = () => this.state === state && state.run === run
+      && run.phase === 'active' && run.arenaId === MILL_ARENA_ID && run.wave === wave && this._millOres === ledger && this._millFractures === fractures;
+    const abandon = () => {
+      for (const { body, generation } of bodies) {
+        if (body.occupantGeneration === generation && body.data?.swarmMillOre === true) body.alive = false;
+      }
+      for (const id of spawned) ledger.delete(id);
+    };
     for (let i = 0; i < count; i++) {
+      if (!current()) { abandon(); return; }
       const angle = rng() * Math.PI * 2;
       const dist = 6 + rng() * 10;
       const body = helpers.spawnEntity({
@@ -1804,12 +1839,15 @@ export const swarmArena = {
         },
       });
       const id = body && typeof body === 'object' ? body.id : body;
+      const spawnedBody = body && typeof body === 'object' ? body : state.entities?.get?.(id);
+      if (spawnedBody?.type === 'pickup' && spawnedBody.data?.swarmMillOre === true) bodies.push({ body: spawnedBody, generation: spawnedBody.occupantGeneration });
+      if (!current()) { abandon(); return; }
       if (id != null) {
         spawned.push(id);
-        this._millOres.set(id, MILL_ORE_CREDITS);
+        ledger.set(id, MILL_ORE_CREDITS);
       }
     }
-    if (spawned.length > 0) {
+    if (current() && spawned.length > 0) {
       this._emit('swarmArena:millOre', {
         wave: run.wave,
         fractureId: rock.id,
