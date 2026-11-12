@@ -6017,6 +6017,13 @@ export function createHud(ctx, alerts) {
         const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
         setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
       }
+      // Open-world radio (news ticker, hails) has nothing to say inside a Swarm arena — 'TRAGEDY AT HELIOS' printed
+      // over the round panel (lead first-hour look). The housing comes back when the run ends.
+      {
+        const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
+        const want = swarmRadioOff ? 'none' : '';
+        if (commsTape.style.display !== want) commsTape.style.display = want;
+      }
       updateTetherFeedback(tether, latching, ml);
       const auto = !!(state.input && state.input.autoFire);
       if (elReticle) setClass(elReticle, 'autofire', auto);
