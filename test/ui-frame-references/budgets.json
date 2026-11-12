@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "3cd8d20151a63ed57bf5e632e092f497147038c8f2fd8a10bfc7a55981908cbb",
+  "uiSourceDigest": "2d4f8470bd3a2fcb9c47a21e63951f50cf82278c037a0bee27e05f43b8c12cfd",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -234,7 +234,7 @@
     "src/ui/orrery/pipSpannerPreview.js": "f0f2b7424cbff4c0955d91267abbd8663143af62b5e7dfc3df2c4c577c50a3fc",
     "src/ui/orrery/popupsLayouts.js": "de797bd962b5791b6fb8f59e7be23c443fa6f2ef0a8066544a1c11ae36cc9912",
     "src/ui/orrery/power-railLayouts.js": "158d524ed7f3eba030e9b608c93ff53ebeb656a6890d1d00212c49f1b8cb4c65",
-    "src/ui/orrery/raceBoardLayouts.js": "023631eaef7c42b2fe54e11c61c1cfd1ae4452c8fef511dd96d5ee0c7b1720e7",
+    "src/ui/orrery/raceBoardLayouts.js": "b0747b79ad6b2458c4641c6fed03b5c123079e8f29ab78e6476c1b06ce6eae54",
     "src/ui/orrery/rangeLayouts.js": "83653f20a7b8e2c905de64bb7b14ab3b26090fef693e8648825c770e7c08d71c",
     "src/ui/orrery/ringLegend.js": "370e949fbf4a126ccc982fe6927e0b4ce0d55276a07a3358732abf8d8da46b18",
     "src/ui/orrery/routeOrrery.js": "0357352723dcc952411a79a90bf46c3e6f12be8b5d0e47c4da6be2a35f145227",
