@@ -800,6 +800,11 @@ ${P} .sx-bar .sx-choice::after { content:none !important; display:none !importan
 ${P} .sx-bar .sx-choice:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .14) !important; background-image:none !important; outline:none !important; }
 ${P} .sx-bar .sx-choice:focus-visible { outline:2px solid rgb(${AMBER}) !important; outline-offset:2px !important; }
 ${P} .sx-bar .sx-choice:disabled { opacity:.45; cursor:not-allowed; }
+/* ui-polish-494: on a phone the reply list shrink-wrapped to its longest reply (230px of a 366px stage at 390×844),
+   so the numbered keys stood as a narrow ragged column under the full-width contact card. They take the stage's width. */
+@media (max-width:650px) {
+  ${P} .sx-bar .sx-talk__choices { width:100% !important; align-self:stretch !important; box-sizing:border-box; }
+}
 
 /* On a short landscape Market berth the base 136px vital cards lose their compact dock-layout
    sizing: values overlap labels, while the uncapped head leaves only a thin market strip. Keep the
