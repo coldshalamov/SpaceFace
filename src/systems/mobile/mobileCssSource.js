@@ -34,10 +34,11 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay .mf-scale { position:relative; height:4px; background:rgb(var(--mf-bone) / .13); overflow:hidden; }
 #sf-touch-overlay .mf-fill { position:absolute; inset:0; transform-origin:0 50%; transform:scaleX(0); background:rgb(var(--k)); }
 #sf-touch-overlay .mf-scale::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--mf-void) 85%, transparent) 9px 10px); }
-#sf-touch-overlay .mf-pause { pointer-events:auto; touch-action:manipulation; position:relative; margin-left:auto; flex:none; width:calc(52px * var(--mf-scale)); height:calc(52px * var(--mf-scale)); min-width:44px; min-height:44px; padding:0; border:0; background:none; color:rgb(var(--mf-bone)); }
+#sf-touch-overlay .mf-pause { pointer-events:auto; touch-action:manipulation; position:relative; margin-left:auto; flex:none; width:calc(52px * var(--mf-scale)); height:calc(52px * var(--mf-scale)); min-width:44px; min-height:44px; padding:0; border:0; background:none; color:rgb(var(--mf-bone)); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
 #sf-touch-overlay .mf-pause:hover .mf-r-edge { stroke:rgb(var(--mf-bone) / .82); }
-#sf-touch-overlay .mf-pause svg { width:100%; height:100%; overflow:visible; }
+#sf-touch-overlay .mf-pause svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-touch-overlay .mf-pause:active .mf-r-edge { stroke:var(--mf-phos); }
+#sf-touch-overlay .mf-pause-word { position:relative; z-index:2; font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.06em; text-transform:uppercase; color:rgb(var(--mf-bone) / .78); margin-bottom:calc(7px * var(--mf-scale)); pointer-events:none; }
 /* ---- powers handle (the wheel opens from here) ---- */
 #sf-touch-overlay .mf-edge { position:absolute; right:var(--sf-safe-right,0px); bottom:calc(18px + 100px * var(--mf-scale) + 78px + var(--sf-safe-bottom,0px)); width:calc(48px * var(--mf-scale)); height:calc(110px * var(--mf-scale)); min-width:44px; padding:0; border:0; background:none; pointer-events:auto; touch-action:none; color:rgb(var(--mf-bone)); z-index:6; }
 #sf-touch-overlay .mf-edge::before { content:''; position:absolute; inset:-8px -2px -8px -18px; }

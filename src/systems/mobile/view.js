@@ -35,7 +35,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
         <div class="mf-speed"><b data-read="speed">0</b><i>speed</i></div>
         ${row('hull', 'Hull')}${row('shield', 'Shield', 'Shld')}${row('energy', 'Energy', 'Nrg')}${row('boost', 'Boost', 'Bst')}
       </div>
-      <button class="mf-pause" data-ui="pause" aria-label="Pause game"><svg viewBox="0 0 56 56" aria-hidden="true" focusable="false"><circle class="mf-r-band" cx="28" cy="28" r="24"/><circle class="mf-r-edge" cx="28" cy="28" r="24"/><path class="mf-r-glyph" d="M22 19v18 M34 19v18"/></svg></button>
+      <button class="mf-pause" data-ui="pause" aria-label="Pause game"><svg viewBox="0 0 56 56" aria-hidden="true" focusable="false"><circle class="mf-r-band" cx="28" cy="28" r="24"/><circle class="mf-r-edge" cx="28" cy="28" r="24"/><path class="mf-r-glyph" d="M23 14v11 M33 14v11"/></svg><span class="mf-pause-word">MENU</span></button>
     </div>
     <button class="mf-edge" aria-label="Powers: swipe inward to select, or tap to open" aria-expanded="false">
       <svg class="mf-edge-art" viewBox="0 0 48 132" aria-hidden="true" focusable="false"><path class="mf-e-plate" d="M48 0 C22 20 16 46 16 66 C16 86 22 112 48 132 Z"/><path class="mf-e-edge" d="M48 0 C22 20 16 46 16 66 C16 86 22 112 48 132"/><path class="mf-e-tick" d="M31 36l6 0 M26 66l7 0 M31 96l6 0"/></svg>
