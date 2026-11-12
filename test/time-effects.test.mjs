@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBus } from '../src/core/eventBus.js';
@@ -145,6 +146,7 @@ testFeelComposition(createTimeEffects);
 await testSaveRestoreComposition(createTimeEffects);
 await testSerializedRestoreTransitions(createTimeEffects, createRunTransitionGuard);
 testTimeScaleWriterAudit(scanTimeScaleMutations);
+testDiagnosticTimeScaleCopies(auditTimeScaleWriters);
 testWriterAndRuntimeContracts(auditTimeScaleWriters, formatTimeScaleFindings);
 
 console.log('time-effects: service, UI, feel, save, and writer contracts PASS');
@@ -944,6 +946,54 @@ Object.defineProperty(state, 'playbackRate', { value: 1 });
 `;
   assert.deepEqual(scan(benign, 'fixture/benign.mjs'), [],
     'writer audit must allow reads, equality checks, strings, and unrelated object writes');
+}
+
+function testDiagnosticTimeScaleCopies(auditWriters) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'time-scale-writers-'));
+  try {
+    fs.mkdirSync(path.join(root, 'src/core'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'scripts'));
+    fs.writeFileSync(path.join(root, 'src/core/frameTruth.js'), `
+      function record(state) {
+        const recorder = { frameValues: {} };
+        const values = recorder.frameValues;
+        values.timeScale = state.timeScale;
+        const trace = {};
+        trace.timeScale = state.timeScale;
+        state.timeScale = 0;
+      }
+      function wrongAlias(state) {
+        const recorder = { frameValues: state };
+        const values = recorder.frameValues;
+        values.timeScale = 0;
+      }
+      function replacedSlot(state) {
+        const recorder = { frameValues: {} };
+        recorder.frameValues = state;
+        const values = recorder.frameValues;
+        values.timeScale = 1;
+      }
+    `);
+    fs.writeFileSync(path.join(root, 'src/core/presentationRunner.js'), `
+      function present(state) {
+        const frameTruthIngestScratch = {};
+        const sample = frameTruthIngestScratch;
+        sample.timeScale = state.timeScale;
+        Reflect.set(state, 'timeScale', 0);
+        function shadow(sample) { sample.timeScale = 0; }
+      }
+    `);
+
+    assert.deepEqual(auditWriters(root).map(({ kind, snippet }) => [kind, snippet]), [
+      ['assignment =', 'state.timeScale = 0;'],
+      ['assignment =', 'values.timeScale = 0;'],
+      ['assignment =', 'values.timeScale = 1;'],
+      ['Reflect.set', "Reflect.set(state, 'timeScale', 0);"],
+      ['assignment =', 'function shadow(sample) { sample.timeScale = 0; }'],
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 }
 
 function testWriterAndRuntimeContracts(auditWriters, formatFindings) {

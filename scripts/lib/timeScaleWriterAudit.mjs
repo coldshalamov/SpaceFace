@@ -1,5 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { basename, extname, join, relative } from 'node:path';
+import { parse } from '@babel/parser';
+import traverseModule from '@babel/traverse';
+
+const traverse = traverseModule.default || traverseModule;
 
 const SCRIPT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const ALLOWED_WRITERS = new Set([
@@ -10,6 +14,12 @@ const ALLOWED_WRITERS = new Set([
   'src/core/simLaneCommands.js',
   'scripts/lib/timeScaleWriterAudit.mjs',
 ]);
+// These named presentation sinks copy the scalar into a trace or reusable frame sample.
+// Check the lexical allocation as well as the name so aliases of simulation state still fail.
+const DIAGNOSTIC_DESTINATIONS = {
+  'src/core/frameTruth.js': { trace: [], values: ['recorder', 'frameValues'] },
+  'src/core/presentationRunner.js': { sample: ['frameTruthIngestScratch'] },
+};
 const ASSIGNMENT_OPERATORS = new Set([
   '=', '+=', '-=', '*=', '/=', '%=', '**=', '<<=', '>>=', '>>>=',
   '&=', '|=', '^=', '&&=', '||=', '??=',
@@ -154,9 +164,59 @@ export function auditTimeScaleWriters(root) {
   for (const absolute of files) {
     const file = normalizePath(relative(root, absolute));
     if (ALLOWED_WRITERS.has(file)) continue;
-    findings.push(...scanTimeScaleMutations(readFileSync(absolute, 'utf8'), file));
+    const source = readFileSync(absolute, 'utf8');
+    const mutations = scanTimeScaleMutations(source, file);
+    findings.push(...omitDiagnosticCopies(source, mutations, DIAGNOSTIC_DESTINATIONS[file]));
   }
   return dedupeAndSort(findings);
+}
+
+function omitDiagnosticCopies(source, findings, destinations) {
+  if (!destinations || findings.length === 0) return findings;
+  const copies = new Set();
+  traverse(parse(source, { sourceType: 'module' }), {
+    AssignmentExpression(path) {
+      const left = path.get('left');
+      if (path.node.operator !== '=' || !left.isMemberExpression() || left.node.computed
+        || !left.get('property').isIdentifier({ name: 'timeScale' })) return;
+      const target = left.get('object');
+      if (!target.isIdentifier() || !Object.hasOwn(destinations, target.node.name)
+        || !isDiagnosticAllocation(target, destinations[target.node.name])) return;
+      const { line, column } = left.node.property.loc.start;
+      copies.add(`${line}:${column + 1}`);
+    },
+  });
+  return findings.filter((finding) => finding.kind !== 'assignment ='
+    || !copies.has(`${finding.line}:${finding.column}`));
+}
+
+function constInitializer(identifier) {
+  const binding = identifier.scope.getBinding(identifier.node.name);
+  if (binding?.kind === 'const' && binding.constant && binding.path.isVariableDeclarator()) {
+    return binding.path.get('init');
+  }
+  return null;
+}
+
+function isDiagnosticAllocation(target, [owner, field]) {
+  const init = constInitializer(target);
+  if (!init) return false;
+  if (!owner) return init.isObjectExpression();
+  if (!field) return init.isIdentifier({ name: owner }) && !!constInitializer(init)?.isObjectExpression();
+  if (!init.matchesPattern(`${owner}.${field}`) || !init.get('object').isIdentifier({ name: owner })) return false;
+  const allocation = constInitializer(init.get('object'));
+  if (!allocation?.isObjectExpression()) return false;
+  const fields = allocation.get('properties');
+  if (fields.some((property) => property.isSpreadElement() || property.node.computed)) return false;
+  const property = fields.findLast((candidate) => candidate.get('key').isIdentifier({ name: field })
+    || candidate.get('key').isStringLiteral({ value: field }));
+  if (!property?.isObjectProperty() || !property.get('value').isObjectExpression()) return false;
+  // The reusable recorder slot has one use, the const alias above. Another read or replacement
+  // of that slot needs review before its later assignment can be treated as diagnostic.
+  return !init.scope.getBinding(owner).referencePaths.some((reference) => {
+    const member = reference.parentPath;
+    return member !== init && member.node.object === reference.node && member.matchesPattern(`${owner}.${field}`);
+  });
 }
 
 export function formatTimeScaleFindings(findings) {
