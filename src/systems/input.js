@@ -1061,6 +1061,7 @@ export function domMouseDownEvent(host, d = {}) {
     host._m0 = false; host._m1 = false; host._m2 = false;
     host._throwLineAtPress = null;
     host._pendingThrowLineAtPress = null;
+    host._pendingMouseLinePress = false;
     return;
   }
   if (d.button === 0) host._m0 = true;
@@ -1071,6 +1072,7 @@ export function domMouseDownEvent(host, d = {}) {
     host._throwLineAtPress = line?.active && line.targetId != null
       ? { targetId: line.targetId, attachmentId: line.attachmentId } : null;
     host._pendingThrowLineAtPress = host._throwLineAtPress;
+    host._pendingMouseLinePress = true;
   }
   host._kbmActivityPending = true;
 }
@@ -1080,6 +1082,11 @@ export function domMouseUpEvent(host, d = {}) {
   if (d.button === 0) host._m0 = false;
   if (d.button === 1) host._m1 = false;
   if (d.button === 2) { host._m2 = false; host._throwLineAtPress = null; }
+}
+
+function isCurrentMouseLine(line, tether) {
+  return !!line && !!tether?.active
+    && line.targetId === tether.targetId && line.attachmentId === tether.attachmentId;
 }
 
 export const input = {
@@ -1397,6 +1404,8 @@ export const input = {
     this._m2 = false;
     this._throwLineAtPress = null;
     this._pendingThrowLineAtPress = null;
+    this._pendingMouseLinePress = false;
+    this._sampledMouseCutLine = null;
     this._throwTapGuard = null;
     if (hadField) delete inp.worldObjectTargetId;
   },
@@ -2097,6 +2106,7 @@ export const input = {
     acts.siteBeam = siteBeamHeld;
     acts.aimedMine = aimedMineHeld;
     const tether = state.player?.tether;
+    const tetherActive = !!(tether?.active || state.player?.remoteMassline?.active);
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
     // (hostile ship/drone, fracture chunk, cargo mass), the RMB press arms the throw and
     // masslineThrow owns the solution/auto-cut — "RMB throws THEM". The same RMB hold feeds the
@@ -2106,17 +2116,23 @@ export const input = {
     // that click actionable for snap/off without pretending the button is still held for arm.
     const mouseHeld = this._m2 === true;
     const throwLine = mouseHeld ? this._throwLineAtPress : this._pendingThrowLineAtPress;
+    const currentMouseLine = isCurrentMouseLine(throwLine, tether);
+    // An entire tap between ticks still feeds the ordinary latch/cut grammar for one
+    // step. A tap stamped for an older attachment cannot start a gesture on its replacement.
+    const sampledMouseTap = !mouseHeld && this._pendingMouseLinePress === true
+      && (throwLine ? currentMouseLine : !tetherActive);
+    const mouseLineHeld = mouseHeld || sampledMouseTap;
     this._pendingThrowLineAtPress = null;
-    const throwInput = massline2Flag('throw') && !!throwLine && tether?.active
-      && throwLine.targetId === tether.targetId && throwLine.attachmentId === tether.attachmentId
-      && isThrowArmPayload(state);
+    this._pendingMouseLinePress = false;
+    if (sampledMouseTap && throwLine) this._sampledMouseCutLine = throwLine;
+    const throwInput = massline2Flag('throw') && currentMouseLine && isThrowArmPayload(state);
     const throwArmHeld = mouseHeld && throwInput;
     if (throwInput && !mouseHeld) acts.throwTap = true;
     inp.fireGroup = (mineHeld && !throwInput) ? 2 : (inp.fire ? 1 : null);
     // THROW-01: a press that armed a throw owns its own release. The short-press tap grammar below
     // would read the click-up as a tap-to-cut and fling the PLAYER; remember the press so that cut
     // can be withheld (F still frees the player; non-throwable payloads never set this).
-    if (throwArmHeld) this._throwTapGuard = true;
+    if (throwInput) this._throwTapGuard = true;
 
     // Countermeasure deploy (P1-7): edge-triggered flag consumed by systems/countermeasures.js.
     // We set a flag (not deploy directly) so the countermeasures system owns the cooldown/equip
@@ -2220,7 +2236,7 @@ export const input = {
     // The edge's own code is excluded, so a same-key re-press still counts as a release.
     // G18-02: the Line is RMB in every door — the mouse button holds/releases it through the
     // same grammar a rebound key or the pad trigger uses.
-    const tetherHeld = this._m2 === true || (tetherEdge
+    const tetherHeld = mouseLineHeld || (tetherEdge
       ? (tetherEdge.pressed || (tetherEdge.source === 'touch'
         ? input._held.call(this, state, 'tether')
         : this._heldExcept(state, 'tether', tetherEdge.code)))
@@ -2234,10 +2250,6 @@ export const input = {
     // value, so tap-to-cut physics never changes for players who leave the toggle off.
     const masslineHeld = applyHoldToggle(holdLatches, holdEdges, 'massline',
       tetherHeld || gpMasslineHeld, toggleLive('massline'));
-    const tetherActive = !!(state.player && (
-      (state.player.tether && state.player.tether.active)
-      || (state.player.remoteMassline && state.player.remoteMassline.active)
-    ));
     const reelInHeld = applyHoldToggle(holdLatches, holdEdges, 'reelIn',
       this._held(state, 'reelIn'), toggleLive('reelIn')) || wheelOn('reelIn');
     const reelOutHeld = applyHoldToggle(holdLatches, holdEdges, 'reelOut',
@@ -2256,10 +2268,15 @@ export const input = {
           : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
         silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
       });
-    if (this._throwTapGuard && masslineCommand.cut && !mouseHeld && tetherEdge?.pressed !== false) {
-      masslineCommand.cut = false; // THROW-01: the click that threw (or queued a throw) is not a cut.
+    if (!mouseLineHeld) {
+      const sampled = this._sampledMouseCutLine;
+      if (masslineCommand.cut && tetherEdge?.pressed !== false
+          && (this._throwTapGuard || (sampled && !isCurrentMouseLine(sampled, tether)))) {
+        masslineCommand.cut = false;
+      }
+      this._throwTapGuard = null;
+      this._sampledMouseCutLine = null;
     }
-    if (!mouseHeld) this._throwTapGuard = null;
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.massline = masslineCommand;
     acts.tetherFire = masslineCommand.latch;

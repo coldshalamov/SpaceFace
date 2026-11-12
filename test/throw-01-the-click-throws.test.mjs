@@ -160,6 +160,35 @@ test('a sampled click does not follow a replacement attachment or count as hold-
   assert.equal(armed.events.cut.length, 0);
 }));
 
+test('a complete right-click can latch when both edges reach the same worker step', () => withFlags(() => {
+  const w = world();
+  clickBetweenWorkerSteps(w);
+  w.tick();
+  assert.equal(w.state.input.actions.tetherFire, true);
+  Object.assign(w.state.player.tether, { active: true, targetId: w.payload.id, attachmentId: 8 });
+  w.tick(5);
+  assert.equal(w.state.input.actions.tetherFire, false);
+  assert.equal(w.events.cut.length, 0);
+  assert.equal(w.events.throw.length, 0);
+}));
+
+test('a complete right-click on a held rock still cuts exactly once', () => withFlags(() => {
+  const w = world({ payloadType: 'asteroid' });
+  w.latch();
+  clickBetweenWorkerSteps(w);
+  w.tick(5);
+  assert.equal(w.events.cut.length, 1);
+  assert.equal(w.events.throw.length, 0);
+
+  const changed = world({ payloadType: 'asteroid' });
+  changed.latch();
+  clickBetweenWorkerSteps(changed);
+  changed.tick();
+  changed.state.player.tether.attachmentId += 1;
+  changed.tick(5);
+  assert.equal(changed.events.cut.length, 0, 'the synthesized release cannot cut a replacement line');
+}));
+
 test('(c) a tap on an asteroid still cuts the line (non-throwable payloads are unchanged)', () => withFlags(() => {
   const w = world({ payloadType: 'asteroid' });
   w.latch();
