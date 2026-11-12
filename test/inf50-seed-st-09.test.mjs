@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
+import { createRunState } from '../src/core/runState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { speakPlottedRouteTeach } from '../src/ui/hud.js';
 import { plottedRouteEngageTeach } from '../src/ui/map/mapRouteRibbon.js';
@@ -82,4 +83,23 @@ test('same-sector, already engaged, combat, and hints off do not spend the line'
     else globalThis.document = previous;
   }
   assert.equal(seen.length, 0);
+});
+
+test('an arena launch cannot spend or show the Adventure route hint', () => {
+  const state = createGameState(4242);
+  state.mode = 'flight';
+  state.nav.route = crossRoute();
+  const bus = createBus();
+  const seen = [];
+  bus.on('toast', p => seen.push(p));
+  for (const ruleset of ['swarm', 'scored']) {
+    state.run = createRunState({ kind: 'survival', ruleset });
+    state.run.phase = 'active';
+    assert.equal(speakPlottedRouteTeach(state, bus), '');
+    assert.notEqual(state.player.hints.plottedRouteEngage, true);
+  }
+  assert.equal(seen.length, 0);
+  state.run.phase = 'inactive';
+  assert.match(speakPlottedRouteTeach(state, bus), /Engage on the Star Map/);
+  assert.equal(seen.length, 1);
 });

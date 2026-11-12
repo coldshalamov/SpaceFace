@@ -1195,6 +1195,7 @@ export function noteFirstCargoLanding(state, { wasEmpty = false, cargo = null, b
 /** The first plotted cross-sector route, once per profile. Does not engage it. */
 export function speakPlottedRouteTeach(state, bus) {
   if (!state || !state.player) return '';
+  if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return '';
   const gameplay = state.settings && state.settings.gameplay;
   if (gameplay && gameplay.tutorialHints === false) return '';
   if (!shouldShowFirstUseHint(state.player.hints, 'plottedRouteEngage')) return '';
