@@ -2816,6 +2816,11 @@ export function createBroodEngine(deps = {}) {
         const rr = Math.max(r < rockCount ? rockR[r] : 0, nativeRadius || 0) + playerRad;
         if (dx * dx + dz * dz <= rr * rr) {
           kill(i, 'collision', px[i], pz[i]);
+          // A shield or mark can refuse death. Name only the grip actually shed,
+          // not an attempted scrape or a different Leecher killed by gunfire.
+          if (!alive[i] && bus) bus.emit('swarm:broodCounter', {
+            kind: 'scrape', familyId: 'leecher', wave: liveWave,
+          });
           return;
         }
       }
@@ -4304,6 +4309,11 @@ export function createBroodEngine(deps = {}) {
     }
     alive[i] = 0;
     aliveCount -= 1;
+    // The shell really broke, including an uncredited room impact. This names
+    // the changed hazard, never claims a throw or grants a second reward.
+    if (def?.id === 'glassback' && bus) bus.emit('swarm:broodCounter', {
+      kind: 'shell', familyId: 'glassback', wave: liveWave,
+    });
     // B-BLOOM filament flinch: a node's death pushes its linked partner outward this
     // hard — the web's visible recoil, an additive Δv along the corpse→partner axis,
     // the same write shape the Domino shove lands through. A winding or committed

@@ -1,3 +1,4 @@
+import {swarmJuice} from '../src/systems/swarmJuice.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRunState} from '../src/core/runState.js';
@@ -15,12 +16,13 @@ test('native ordinary input sheds against the original selected bank in early an
  const {bootRealPath}=await import('../scripts/lib/bench/realPath.mjs');const {input}=await import('../src/systems/input.js');const {combat}=await import('../src/systems/combat.js');const {COMBAT_LAB_STARTER_PACKAGES}=await import('../src/data/combatLabSetups.js');
  const kit=COMBAT_LAB_STARTER_PACKAGES.find(k=>k.id==='ricochet_runner'),fittings=Array(13).fill(null);for(const row of kit.loadout)fittings[row.slotIndex]=row.defId;
  const report=[];
- for(const old of [0,64]){const mode='scrape';
-  const h=await bootRealPath({seed,systems:[input,runSession,spawnBudget,survivalWave,swarmArena,survivalArena,combat,'tacticalAI','actions','weapons','flightV3','aiPorts','physics'],hulls:[{hullId:kit.hullId,fittings,isPlayer:true,pos:{x:0,z:0}}]});
+ for(const old of [0,64])for(const mode of ['stay','scrape','ram']){
+  const h=await bootRealPath({seed,systems:[swarmJuice,input,runSession,spawnBudget,survivalWave,swarmArena,survivalArena,combat,'tacticalAI','actions','weapons','flightV3','aiPorts','physics'],hulls:[{hullId:kit.hullId,fittings,isPlayer:true,pos:{x:0,z:0}}]});
   try{
    const s=h.state,p=h.player,tells=[],kills=[],actions=[],awards=[];s.run={...createRunState({kind:'survival',ruleset:'swarm',seed}),arenaId:'helios_core',wave:11,phase:'wave_intro'};s.input.autoFire=false;
    for(let n=0;n<old;n++)h.spawnObstacle({pos:{x:10000+n*100,z:10000},radius:18,mass:500,hull:1000});
    h.bus.emit('run:wavePlanned',{wave:11,plan:planFor(11)});s.run.phase='active';h.bus.emit('run:waveStarted',{wave:11});
+   const calls=[];h.bus.on('swarm:announce',x=>calls.push(x));
    const e=h.runtime.getSystem('swarmArena')._brood;
    h.bus.on('swarm:broodTelegraph',x=>tells.push({tick:s.tick,...x}));h.bus.on('swarm:broodKills',x=>kills.push({tick:s.tick,...x}));h.bus.on('run:awardRequested',x=>awards.push(x));
    const ingress=h.runtime.getSystem('input');const key=(code,pressed)=>{actions.push({tick:s.tick,code,pressed});ingress.ingestLaneDomEvent({type:pressed?'keydown':'keyup',code,pressed,blocked:false});};
@@ -35,6 +37,7 @@ test('native ordinary input sheds against the original selected bank in early an
    const latch=tells.filter(x=>x.familyId==='leecher');
    if(mode==='stay'){assert.equal(latch.length,1);assert.equal(kills.length,0);assert.equal(e.view.aliveCount,1);assert.equal(e._bodies.phase[e._bodies.alive.findIndex(Boolean)],4);}
    else {assert.equal(kills.length,1);assert.equal(kills[0].removedCount,1);assert.equal(kills[0].cause,'collision');assert.equal(kills[0].credits,2);assert.equal(kills[0].score,22);assert.equal(s.run.credits,2);assert.equal(s.run.score,22);assert.equal(awards.filter(x=>x.credits===2&&x.score===22).length,1);assert.equal(latch.length,mode==='scrape'?1:0);}
+   assert.deepEqual(calls.filter(x=>x.kind==='recovery').map(x=>x.text),mode==='scrape'?['LEECHER SHED']:[]);
    assert.equal(e.view.pendingCount,swarmBroodPopulation(11)-1);assert.equal(s.run.spawnedThreat,0);
    report.push({old,mode,latch:latch[0]?.tick,kill:kills[0]?.tick,purse:s.run.credits,score:s.run.score,hull:p.hull,position:{...p.pos},actions,surfaceId:identity.id});
   }finally{h.dispose();}

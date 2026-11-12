@@ -164,6 +164,7 @@ export const swarmJuice = {
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
     // SWARM-07 B1 — the Brood tier's room wipes ride the same announcer/popups as ship kills.
     this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
+    this._unsubs.push(this.bus.on('swarm:broodCounter', (p) => this._onBroodCounter(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', () => this._onWaveStarted()));
     this._unsubs.push(this.bus.on(WAVE_CLEARED_SEAM, (p) => this._onWaveCleared(p)));
@@ -224,6 +225,7 @@ export const swarmJuice = {
     this._hitStopNextAt = 0;
     if (!this._deathLedger) this._deathLedger = createRewardDeathLedger();
     else this._deathLedger.clear();
+    this._counterCalls = new Set();
     this._recent = [];              // { t, cause } player-kill window for multi/pile-up
     this._lastHitterId = null;      // last body to damage the player
     this._lastHitterAt = -Infinity;
@@ -492,6 +494,25 @@ export const swarmJuice = {
       // A capital that arrives without a planned boss card is still a boss arriving.
       this._slamCues(true);
     }
+  },
+
+  // The recovery act teaches the room as an answer. Close that causal loop
+  // once per verb/round, without another shake, sound, score or time effect.
+  _onBroodCounter(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || run.phase !== 'active' || this.state.mode !== 'flight'
+      || run.arenaId !== 'helios_core' || run.arenaMutators?.length
+      || run.telemetry?.circuit || payload?.wave !== run.wave) return;
+    const scrape = payload.kind === 'scrape' && payload.familyId === 'leecher'
+      && (run.wave === 11 || run.wave === 12);
+    const shell = payload.kind === 'shell' && payload.familyId === 'glassback' && run.wave === 13;
+    if (!scrape && !shell) return;
+    const key = `${run.wave}:${payload.kind}`;
+    if (this._counterCalls.has(key)) return;
+    this._counterCalls.add(key);
+    this._emit('swarm:announce', {
+      kind: 'recovery', text: scrape ? 'LEECHER SHED' : 'SHELL BROKEN · LEAVE THE SHARDS', count: 1,
+    });
   },
 
   /** inf-storm-discharge — the room's own arc walk bit someone; the moment gets its word. */
