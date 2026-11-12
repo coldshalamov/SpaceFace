@@ -96,6 +96,25 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze([...rows.map(([id, title, prepa
     broodPacketSize: 18, broodPacketGapS: 0.75, bankReadS: 0,
     protectForeground: true, bankScene: false,
   })),
+
+  // The Mooring Line opens into a two-round exit bridge: first crossfire, then
+  // a defended prize. Existing owed seats fund every entrance; no extra boss.
+  ...[
+    ['cross_the_sightline', 'Cross the sightline', 'The Lancer opens alone; the Ghost follows from the opposite side. Cross the charged rail line, then turn toward the hunter instead of retreating into it. The crowd follows.', 29, 'quiet', [
+      ['lancer_sniper', 'reach', 'nw', 1], ['quiet_ghost', 'reach', 'se', 360],
+    ]],
+    ['earn_the_third_exit', 'Earn the third exit', 'A screen guards the Corsair. Break the escort or work around it; the Bruiser follows from the other side. Keep an escape lane for the forecast event and crowd. Clear to refit, bank or extract, or continue.', 30, 'seeded', [
+      ['pd_screen_escort', 'support', 'nw', 1], ['corsair_raider', 'reach', 'nw', 1], ['bruiser_brawler', 'anchor', 'se', 480],
+    ]],
+  ].map(([id, title, preparation, wave, events, ships]) => Object.freeze({
+    id, title, preparation, wave, events,
+    shipReadTicks: 1200, debutReadTicks: 1200, broodReadTicks: 1200, sporeReadTicks: 1200,
+    arenaPhase: 'loose_plate', massGap: false, eventReadTicks: 840,
+    broodPacketSize: 18, broodPacketGapS: 0.75, bankReadS: 0,
+    protectForeground: true, bankScene: false,
+    foregroundShips: Object.freeze(ships.map(([enemyId, role, gate, readTicks]) => Object.freeze({enemyId, role, gate, readTicks}))),
+  })),
+
 ]);
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {
