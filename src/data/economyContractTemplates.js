@@ -312,8 +312,8 @@ export function thresholdGate(signal, key) {
 export const FIRST_TRADE_CONTRACT_KEY = 'first_trade_loop';
 export const FIRST_TRADE_CONTRACT_SOURCE = 'firstTradeContract';
 export const FIRST_TRADE_CONTRACT_STATION_ID = 'station_helios';
-export const FIRST_TRADE_CONTRACT_DEST_STATION_ID = 'station_ceres';
-export const FIRST_TRADE_CONTRACT_DEST_SECTOR_ID = 'sector_ceres_belt';
+export const FIRST_TRADE_CONTRACT_DEST_STATION_ID = 'station_tethys';
+export const FIRST_TRADE_CONTRACT_DEST_SECTOR_ID = 'sector_tethys_junction';
 
 /**
  * Authored first trade contract template.
@@ -328,14 +328,14 @@ export const FIRST_TRADE_CONTRACT = Object.freeze({
   factionId: 'faction_scn',
   destStationId: FIRST_TRADE_CONTRACT_DEST_STATION_ID,
   destSectorId: FIRST_TRADE_CONTRACT_DEST_SECTOR_ID,
-  // True station-to-station run: Helios → Ceres gate is ~4,200 wu, the Ceres arrival leg is
+  // True station-to-station run: Helios → Tethys gate is ~4,200 wu, the Tethys arrival leg is
   // ~4,700 wu. The old 1,800 quoted a run half as long as the corridor the player actually
-  // flies, and priced it below the ~440 cr round-trip gate tolls — the teaching trade taught
+  // flies, and priced it below the ~430 cr round-trip gate tolls — the teaching trade taught
   // that trade loses money.
   distance: 8900,
-  title: 'First trade: 8u Fuel Cells to Ceres',
-  brief: 'Sealed fuel for Ceres Refinery. Gate tolls come out of the run — this pay clears them. Accept, hold the manifest, dock, collect.',
-  reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to Ceres Refinery so the first trade ledger closes cleanly.',
+  title: 'First trade: 8u Fuel Cells to Tethys',
+  brief: 'Sealed fuel for the Tethys Trade Hub. Gate tolls come out of the run — this pay clears them. Accept, hold the manifest, dock, collect.',
+  reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to the Tethys Trade Hub so the first trade ledger closes cleanly.',
   preloadedCargo: true,
   terms: Object.freeze({
     // Authored corridor rate. The wage quote for an honest 8,900 wu tier-0 run is 455 cr,

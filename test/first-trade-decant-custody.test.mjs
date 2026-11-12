@@ -7,7 +7,7 @@ import {missions} from '../src/systems/missions.js';
 import {economy} from '../src/systems/economy.js';
 import {stationServices} from '../src/systems/stationServices.js';
 import {save} from '../src/save/saveSystem.js';
-import {buildFirstTradeOffer} from '../src/data/economyContractTemplates.js';
+import {buildFirstTradeOffer,FIRST_TRADE_CONTRACT_DEST_STATION_ID,FIRST_TRADE_CONTRACT_DEST_SECTOR_ID} from '../src/data/economyContractTemplates.js';
 import {addCargo,removeCargo,sellableCargoQty} from '../src/systems/cargo.js';
 const CELL='cmdty_fuel_cells';
 function boot(){
@@ -16,7 +16,7 @@ function boot(){
  const notices=[],decanted=[],completed=[];bus.on('toast',p=>notices.push(p.text));bus.on('service:decanted',p=>decanted.push(p));bus.on('mission:completed',p=>completed.push(p));const m=sim.registry.get('missions'),yard=sim.registry.get('stationServices');
  const accept=()=>{const offer=buildFirstTradeOffer(4242);state.missions.boards.station_helios={slots:[offer]};assert.equal(m.acceptMission(offer.id),true);return state.missions.active.find(x=>x.sourceOfferId===offer.id);};
  const reload=async()=>{const s=sim.registry.get('save');assert.equal(s.save('quick'),true);assert.equal(await s.load('latest'),true);Object.assign(state.ui,{docked:true,dockedStationId:'station_helios'});state.world.currentSectorId='sector_helios_prime';bus.emit('dock:docked',{stationId:'station_helios'});};
- const deliver=()=>{state.world.currentSectorId='sector_ceres_belt';state.ui.dockedStationId='station_ceres';bus.emit('dock:docked',{stationId:'station_ceres'});};
+ const deliver=()=>{state.world.currentSectorId=FIRST_TRADE_CONTRACT_DEST_SECTOR_ID;state.ui.dockedStationId=FIRST_TRADE_CONTRACT_DEST_STATION_ID;bus.emit('dock:docked',{stationId:FIRST_TRADE_CONTRACT_DEST_STATION_ID});};
  return{sim,state,bus,m,yard,notices,decanted,completed,accept,reload,deliver,close(){sim.dispose();delete globalThis.localStorage;}};
 }
 test('first trade keeps all eight sealed cells and full760cr after station Decant request',()=>{
