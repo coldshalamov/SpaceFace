@@ -468,11 +468,9 @@ function createChainGangModule(host) {
       const waited = odd && tail
         && Number.isInteger(host.state && host.state.tick)
         && host.state.tick - (queuedAt.get(odd.id) || 0) >= SWARM_GANG_ODD_GRACE_TICKS;
-      if (waited) {
-        const oddId = odd.id;
-        bind(odd, tail);
-        dequeue(oddId);
-      }
+      // Same refusal contract as the paired branch: a declined bind keeps the
+      // odd hull queued — the next tick's drain asks again.
+      if (waited && bind(odd, tail)) dequeue(odd.id);
     }
   }
 
