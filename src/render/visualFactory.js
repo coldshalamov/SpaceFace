@@ -7158,6 +7158,52 @@ function remainMesh(parent, geoKey, geoBuild, material, name, pos, rotY, extra =
   return m;
 }
 
+// PERF-03: these payload groups' leaves never move relative to their root — the ordnance
+// tumble and every intake/scoop pose writer transforms the group, no leaf — so every
+// same-material leaf batch bakes into one content-keyed merged geometry (shared across
+// same-spec entities, like the primitive cache). The authored leaf meshes stay mounted,
+// hidden: each body still reads as its composed pieces to any presenter that walks the
+// recipe, while the field pays one draw per material per body instead of one per leaf.
+// Transparent glass keeps its own leaves — batch candidates already exclude it.
+function consolidateStaticGroupDrawCalls(g) {
+  g.updateMatrixWorld(true);
+  const groups = new Map();
+  for (const child of g.children) {
+    if (!isBatchCandidate(child)) continue;
+    const key = batchKey(child, g);
+    let rec = groups.get(key);
+    if (!rec) {
+      rec = { parent: g, material: child.material, renderOrder: child.renderOrder || 0, meshes: [], vertexCount: 0 };
+      groups.set(key, rec);
+    }
+    rec.meshes.push(child);
+    const pos = child.geometry.getAttribute('position');
+    rec.vertexCount += child.geometry.index ? child.geometry.index.count : (pos ? pos.count : 0);
+  }
+  for (const rec of groups.values()) {
+    if (rec.meshes.length < BATCH_MIN_MESHES || rec.vertexCount <= 0) continue;
+    let mergedMesh;
+    try {
+      const geometry = mergeMeshGeometries(rec);
+      if (!geometry) continue;
+      mergedMesh = new THREE.Mesh(geometry, rec.material);
+      mergedMesh.name = 'sf-static-merge';
+      mergedMesh.renderOrder = rec.renderOrder;
+      mergedMesh.userData.staticMerge = true;
+      if (rec.meshes.some((m) => m.castShadow)) mergedMesh.castShadow = true;
+      if (rec.meshes.some((m) => m.receiveShadow)) mergedMesh.receiveShadow = true;
+      g.add(mergedMesh);
+      for (const mesh of rec.meshes) mesh.visible = false;
+    } catch (_) {
+      if (mergedMesh && mergedMesh.parent) mergedMesh.parent.remove(mergedMesh);
+      if (mergedMesh && mergedMesh.geometry
+        && !(mergedMesh.geometry.userData && mergedMesh.geometry.userData.spacefaceSharedAsset)) {
+        mergedMesh.geometry.dispose();
+      }
+    }
+  }
+}
+
 // husk_shards — a mite's chipped carapace: a scatter of thin jagged flakes plus one splinter.
 // Small, flat and irregular — the lightest read on the field.
 function buildRemainHuskShards(g, kind, family) {
@@ -7316,6 +7362,7 @@ function buildBroodRemainVisual(e) {
   const g = new THREE.Group();
   g.name = `SF_BroodRemain_${kind}`;
   builder(g, kind, family);
+  consolidateStaticGroupDrawCalls(g);
   g.scale.setScalar(R);
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
@@ -7471,6 +7518,7 @@ function buildPayload(e) {
       base: claimMat.emissiveIntensity,
     };
   }
+  consolidateStaticGroupDrawCalls(g);
   g.scale.setScalar(R);
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
