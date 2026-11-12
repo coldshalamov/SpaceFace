@@ -72,7 +72,8 @@ export const FLIGHT_CSS = `
 /* TETHER: a ring instrument; latched, a bead of ice orbits it (data in motion) */
 #sf-touch-overlay .mf-tether { left:0; bottom:0; width:calc(66px * var(--mf-scale)); height:calc(66px * var(--mf-scale)); }
 /* the smaller ring still holds its whole word */
-#sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:.03em; font-stretch:100%; }
+#sf-touch-overlay .mf-tether { padding-bottom:7px; }
+#sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:0; font-size:10.5px; font-stretch:100%; }
 #sf-touch-overlay .mf-tether > svg:not([class]) { width:calc(22px * var(--mf-scale)); height:calc(22px * var(--mf-scale)); }
 #sf-touch-overlay .mf-ring-art { position:absolute; inset:0; width:100%; height:100%; overflow:visible; z-index:0; }
 #sf-touch-overlay .mf-pulse { transform-origin:40px 40px; animation:mf-orbit 2.6s linear infinite; opacity:0; }
