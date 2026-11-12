@@ -124,7 +124,9 @@ test('ordinary Swarm keeps its authored gate label and follows the player withou
   const spec = spawned[0];
   assert.equal(spec.data.swarmGateGroup, 'ne');
   assert.equal(spec.data.swarmSourceGateGroup, undefined);
-  assert.equal(receipt.gateGroup, undefined, 'legacy materialization receipts keep their existing shape');
+  // 97fd0ecebfc8 gives every swarm receipt its gate provenance; the unfortified batch
+  // echoes its authored label rather than a remapped Fortify corridor.
+  assert.equal(receipt.gateGroup, 'ne', 'the swarm receipt keeps its authored gate label');
   assert.ok(Math.hypot(spec.pos.x - player.pos.x, spec.pos.z - player.pos.z) > 100,
     'the arrival remains outside the player body');
   assert.ok(Math.hypot(spec.pos.x, spec.pos.z) > 800,
