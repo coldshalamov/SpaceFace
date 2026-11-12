@@ -2,11 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createGameState } from '../src/core/gameState.js';
+import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import {
   PROFILE_SETTINGS_KEY,
   bootstrapProfileSettingsBeforeRegistry,
 } from '../src/core/graphicsProfileBootstrap.js';
-import { input, DEFAULTS } from '../src/systems/input.js';
+import { input, DEFAULTS, domMouseDownEvent, domMouseUpEvent } from '../src/systems/input.js';
+import { createLaneTouchReducer } from '../src/systems/mobile/laneTouchReducer.js';
 
 const DT = 1 / 60;
 
@@ -121,6 +123,90 @@ test('G18-02 RMB press publishes an immediate normalized latch packet', () => {
   assert.equal(state.input.actions.massline.phase, 'preview');
   assert.equal(state.input.actions.tetherFire, true, 'legacy latch consumer stays bridged');
   assert.equal(state.input.brake, false, 'the Line does not also brake');
+});
+
+test('worker touch tap survives when press and neutral arrive before the same sim step', () => {
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  host.touch = createLaneTouchReducer();
+  const frame = (actions, cancelledRoles = []) => host.ingestLaneDomEvent({
+    type: 'touchFrame', frame: { active: true, actions, cancelledRoles },
+  });
+
+  frame({ tether: true });
+  frame({});
+  step(host, state);
+  assert.equal(state.input.actions.tetherFire, true, 'the real press reaches the latch owner');
+  assert.equal(state.input.actions.massline.source, 'touch');
+  Object.assign(state.player.tether, { active: true, targetId: 'rock' });
+  step(host, state);
+  assert.equal(state.input.actions.tetherCut, false, 'the same tap cannot cut a fresh latch');
+
+  frame({ tether: true });
+  frame({});
+  step(host, state, 2);
+  assert.equal(state.input.actions.tetherCut, true, 'a separate tap on the live Line cuts');
+  frame({ tether: true });
+  frame({}, ['tether']);
+  step(host, state, 2);
+  assert.equal(state.input.actions.tetherCut, false, 'a cancelled contact cannot cut the Line');
+});
+
+test('one RMB press can grab a throwable body without immediately throwing it', (t) => {
+  const saved = { ...MASSLINE2_FLAGS };
+  t.after(() => Object.assign(MASSLINE2_FLAGS, saved));
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  state.entities.get('rock').data = { isChunk: true };
+  const pointer = { button: 2, clientX: 40, clientY: 40 };
+
+  domMouseDownEvent(host, pointer);
+  step(host, state);
+  assert.equal(state.input.actions.tetherFire, true);
+  Object.assign(state.player.tether, { active: true, targetId: 'rock', attachmentId: 8 });
+  step(host, state, 12);
+  assert.equal(state.input.actions.throwArm, false, 'the same press only holds and reels');
+  assert.equal(state.input.actions.massline.lineControl, true);
+  domMouseUpEvent(host, pointer);
+  step(host, state);
+  assert.equal(state.input.actions.tetherCut, false, 'letting go of the latch press keeps the Line');
+
+  domMouseDownEvent(host, pointer);
+  step(host, state);
+  assert.equal(state.input.actions.throwArm, true, 'a new press on the held body is deliberate');
+  state.player.tether.attachmentId = 9;
+  step(host, state);
+  assert.equal(state.input.actions.throwArm, false, 'a replacement attachment cannot inherit the press');
+});
+
+test('a touch throw reaches the fixed step once and cannot target a replacement attachment', (t) => {
+  const saved = { ...MASSLINE2_FLAGS };
+  t.after(() => Object.assign(MASSLINE2_FLAGS, saved));
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  const host = makeInput();
+  const state = makeState();
+  host.state = state;
+  state.entities.get('rock').data = { isChunk: true };
+  const line = state.player.tether;
+  Object.assign(line, { active: true, targetId: 'rock', attachmentId: 8 });
+  const flick = () => host.ingestLaneDomEvent({ type: 'touchThrow',
+    x: 0.5, z: 0, targetId: line.targetId, attachmentId: line.attachmentId });
+  flick();
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow.x, 1);
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow, undefined);
+  flick();
+  line.attachmentId = 9;
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow, undefined);
+  flick();
+  host.releaseHeldControls('blur');
+  step(host, state);
+  assert.equal(state.input.actions.touchThrow, undefined);
 });
 
 test('G18-02 quick attached tap cuts on release while a hold enters line control without cutting', () => {

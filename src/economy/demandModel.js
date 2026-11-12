@@ -109,43 +109,52 @@ function depletionContext(state, sectorId) {
   };
 }
 
-export function effectiveDemandFor({ state, sectorId, commodity } = {}) {
-  if (!state || !sectorId || !commodity) {
-    return Object.freeze({ multiplier: 1, drivers: Object.freeze([]), context: Object.freeze({}) });
-  }
+const EMPTY_DRIVERS = Object.freeze([]);
+const NEUTRAL_DEMAND = Object.freeze({ multiplier: 1, drivers: EMPTY_DRIVERS, context: Object.freeze({}) });
+
+function readSectorDemand(state, sectorId) {
   const signal = sectorSignalFor(state, sectorId);
   const contexts = [];
   const war = isWarSector(state, sectorId);
+  const blockade = !!(signal && thresholdGate(signal, 'blockade'));
+  const industrialExpansion = isIndustrialExpansion(signal);
+  const depletion = depletionContext(state, sectorId);
   if (war) contexts.push({ profile: ECONOMY_DEMAND_PROFILES.war, detail: war.pairKey });
-  if (signal && thresholdGate(signal, 'blockade')) {
+  if (blockade) {
     contexts.push({ profile: ECONOMY_DEMAND_PROFILES.blockade, detail: signal.driver.pricePressure });
   }
-  if (isIndustrialExpansion(signal)) {
+  if (industrialExpansion) {
     contexts.push({ profile: ECONOMY_DEMAND_PROFILES.industrialExpansion, detail: signal.driver.pricePressure });
   }
-  const depletion = depletionContext(state, sectorId);
   if (depletion) contexts.push(depletion);
+  const context = Object.freeze({ war: !!war, blockade, industrialExpansion, depletion: !!depletion });
+  return { contexts, context };
+}
 
+function projectCommodityDemand(commodity, { contexts, context }) {
   let delta = 0;
   const drivers = [];
-  for (const context of contexts) {
-    const scale = Number.isFinite(context.intensity) ? context.intensity : 1;
-    const amount = deltaFor(context.profile, commodity) * scale;
+  for (const cause of contexts) {
+    const scale = Number.isFinite(cause.intensity) ? cause.intensity : 1;
+    const amount = deltaFor(cause.profile, commodity) * scale;
     if (Math.abs(amount) < 1e-9) continue;
     delta += amount;
-    drivers.push(driverFor(context.profile, commodity, amount, context.detail));
+    drivers.push(driverFor(cause.profile, commodity, amount, cause.detail));
   }
   const multiplier = clamp(1 + delta, DEMAND_MULTIPLIER_BOUNDS.min, DEMAND_MULTIPLIER_BOUNDS.max);
-  return Object.freeze({
-    multiplier,
-    drivers: Object.freeze(drivers),
-    context: Object.freeze({
-      war: !!war,
-      blockade: !!(signal && thresholdGate(signal, 'blockade')),
-      industrialExpansion: isIndustrialExpansion(signal),
-      depletion: !!depletion,
-    }),
-  });
+  return Object.freeze({ multiplier, drivers: drivers.length ? Object.freeze(drivers) : EMPTY_DRIVERS, context });
+}
+
+/** Share the live sector reads across commodities during one synchronous market update. */
+export function createSectorDemandProjector(state, sectorId) {
+  if (!state || !sectorId) return () => NEUTRAL_DEMAND;
+  const sectorDemand = readSectorDemand(state, sectorId);
+  return commodity => commodity ? projectCommodityDemand(commodity, sectorDemand) : NEUTRAL_DEMAND;
+}
+
+export function effectiveDemandFor({ state, sectorId, commodity } = {}) {
+  if (!state || !sectorId || !commodity) return NEUTRAL_DEMAND;
+  return projectCommodityDemand(commodity, readSectorDemand(state, sectorId));
 }
 
 export function applyPersistentDemand(mid, demand) {
