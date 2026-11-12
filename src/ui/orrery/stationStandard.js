@@ -580,6 +580,23 @@ ${P} .sx-mkt .sx-decision__opt .k-row__name { display:block !important; font-fam
 ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2px 0 0 !important; font-family:${UI} !important; font-size:13px !important; line-height:1.35 !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE} / .78) !important; }
 
+/* ui-polish-498: the stepper row was a fixed 276px, but at 1280x720 the trade plate is only ~216px wide, so Max
+   ran past the plate's right edge onto its border. The row now shrinks to the plate (max 276px): Max rides the
+   Quantity caption's line at the right, and Fewer / input / More share the row under it. Phones and the
+   901-1100 short band keep their own stepper grids. */
+@media (min-width:1101px) and (min-height:641px) {
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0, max-content) minmax(0, 1fr) !important; }
+  ${P} .sx-mkt .sx-qty { width:auto !important; max-width:276px !important; min-width:0 !important; row-gap:4px !important; }
+  ${P} .sx-mkt .sx-qty > .sx-qty__k { flex:1 1 auto !important; order:0; margin:0 !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(3) > .sx-qty__max { order:0; flex:none !important; height:24px !important; min-height:24px !important; padding:0 10px !important; font-size:12px !important; }
+  ${P} .sx-mkt .sx-qty__words > li:not(:nth-child(3)) > .sx-qty__b { flex:1 1 0 !important; min-width:0 !important; padding:0 8px !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(1) > .sx-qty__b { order:2; }
+  ${P} .sx-mkt .sx-qty > .sx-qty__in { flex:0 0 68px !important; order:3; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(2) > .sx-qty__b { order:4; }
+  /* the caption line ends at Max, so the input row starts on a fresh line */
+  ${P} .sx-mkt .sx-qty::after { content:""; order:1; flex:0 0 100%; height:0; }
+}
+
 /* Narrow portrait berths keep the register and selected trade side-by-side. Keep the stage as its
    single scroll surface, and size the dial/action strip to the shallow body above the fixed tabs. */
 @media (max-width:650px) and (min-height:601px), (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
