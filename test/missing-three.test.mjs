@@ -164,9 +164,11 @@ function rescueActor(h, slot) {
   return id == null ? null : h.state.entities.get(id);
 }
 
-// Production route order (onboarding.js BEATS): the tether attach leads; the movement
-// drills follow it. Raid/claimed sit between disengage and seam for the full-route tests.
-const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
+// Production route order (onboarding.js BEATS): thrust/brake open cold, the tether attach
+// leads the story beats, and the firing drills sit behind the first dock (OPENING-1 — the
+// driver walks the same order the player now meets). `choice` stays out: the rescue and
+// missing-three verbs gate it, and this harness owns no offers.
+const DRILL_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -198,8 +200,23 @@ function driveDrillTo(h, beatKey) {
       advanceTime(h);
       tick(h);
       completeClaimed(h, { heatPath: true });
+    } else if (key === 'seam') {
+      // OPENING-1: the seam lesson sits ahead of the first dock and mines the rock the rail
+      // bound at entry — a real mining:yield at its position is the authored SAMPLE receipt.
+      const rock = sys._miningRockId != null ? st.entities.get(sys._miningRockId) : null;
+      assert.ok(rock, 'seam lesson must stage its mining rock');
+      h.bus.emit('mining:yield', {
+        minerId: st.playerId,
+        commodityId: 'cmdty_ore_iron',
+        qty: 3, // SEAM_ORE_TARGET — the authored SAMPLE count
+        pos: { x: rock.pos.x, z: rock.pos.z },
+      });
+      tick(h);
+    } else if (key === 'dock') {
+      h.bus.emit('dock:docked', { stationId: 'station_helios' });
+      tick(h);
     } else if (key === 'tether') {
-      tick(h); // the route opens on the tether beat: one tick stages its derelict
+      tick(h); // the tether beat entered on the previous tick: its derelict is staged
       const derelict = derelictOf();
       assert.ok(derelict, 'tether lesson must stage its derelict');
       st.player.targetId = derelict.id;
@@ -321,6 +338,9 @@ function completeClaimed(h, { heatPath = false } = {}) {
   assert.ok(st.onboarding.beatDoneAt.claimed != null, 'the claimed beat resolves');
 }
 function driveRescueToGrab(h) {
+  // OPENING-1 order: thrust/brake → tether → swing → raid → claimed → seam → dock →
+  // marker/focus/burst → shove → disengage → grab. The verbs still ride the same gates;
+  // only the drill slots they hold open moved behind the first dock.
   driveDrillTo(h, 'tether');
   completeSwing(h);
   advanceTime(h);
@@ -378,7 +398,7 @@ test('missing-three contract: five verbs after grab, one line each, Range-backed
   });
 });
 
-test('drill rail and rescue stay untouched: B0 is thrust, swing still gates burst', () => {
+test('drill library and rescue stay authored: B0 is thrust, swing opens after the first latch', () => {
   assert.deepEqual(
     FLIGHT_DRILL_BEATS.map((beat) => beat.key),
     ['thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage'],
@@ -426,7 +446,7 @@ test('Range fallback lands on the current missing-three rung', () => {
   }), 4);
 });
 
-test('the five verbs complete in play after the rescue grab, then seam may start', () => {
+test('the five verbs complete in play after the rescue grab, then the job choice may open', () => {
   const h = boot();
   // Stub the law owner so the theft receipt is ACCEPTED and the heat path runs end to end.
   h.sys.registry = { get: () => ({ reportIncident: () => ({
@@ -446,7 +466,8 @@ test('the five verbs complete in play after the rescue grab, then seam may start
 
   const gatedBeat = st.onboarding.currentBeat;
   tick(h);
-  assert.equal(st.onboarding.currentBeat, gatedBeat, 'seam waits for the missing three');
+  assert.equal(st.onboarding.currentBeat, gatedBeat,
+    'the job choice waits for the missing three');
 
   st.input.boost = true;
   tick(h);
@@ -532,8 +553,11 @@ test('the five verbs complete in play after the rescue grab, then seam may start
 
   advanceTime(h);
   tick(h);
-  const seam = ROUTE_BEATS.findIndex((b) => b.key === 'seam'); // seam follows the raid + claimed beats
-  assert.equal(st.onboarding.currentBeat, seam, 'seam opens after the five verbs and silence');
+  // OPENING-1: the verbs gate the job choice, not the seam — the seam resolved before the
+  // first dock, so the rail's remaining beat is the choice the verbs held open.
+  const choice = ROUTE_BEATS.findIndex((b) => b.key === 'choice');
+  assert.equal(st.onboarding.currentBeat, choice,
+    'the job choice opens after the five verbs and silence');
 });
 
 test('SAMPLE counts accepted ore pickups, never salvage cargo with an ore commodity', () => {

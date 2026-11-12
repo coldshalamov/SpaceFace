@@ -12,7 +12,8 @@ import { paintTutorialTrackerCaption, tutorialTrackerCaptionText } from '../src/
 
 const PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 const WEAPON = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
-const TETHER_LINE = 'Target the marked derelict.';
+// The tether mark is authored as optional: the tracked 47-A job owns the objective slot.
+const TETHER_LINE = 'Optional: Target the marked derelict.';
 
 function makeState(overrides = {}) {
   const player = makeEntity({
@@ -78,13 +79,19 @@ function bootTutorial(overrides = {}) {
 function startAndReachTether(t) {
   t.bus.emit('game:started', {});
   const step = 1 / 60;
-  for (let i = 0; i < 60 * 60; i++) {
+  const player = t.state.entities.get(t.state.playerId);
+  for (let i = 0; i < 60 * 90; i++) {
+    const ob = t.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (ob && ob.active === true && beat && beat.key === 'tether') return;
+    // OPENING-1: the rail now opens on the twenty-second thrust/brake pair; fly it to reach
+    // the tether lesson instead of waiting on the old beat-0 tether.
+    if (beat && beat.key === 'thrust') { player.vel.x = 50; player.vel.z = 0; }
+    else if (beat && beat.key === 'brake') { player.vel.x = 0; player.vel.z = 0; }
     t.state.simTime += step;
     t.sys.update(step, t.state);
-    const ob = t.state.onboarding;
-    if (ob && ob.currentBeat === 0 && ob.active === true) return;
   }
-  assert.fail('the opening tether lesson did not enter within 60 simulated seconds');
+  assert.fail('the tether lesson did not enter within 90 simulated seconds');
 }
 
 function captionById(state, id) {
@@ -126,7 +133,8 @@ test('muted opening hook: the first lesson captions 47-A while the waypoint keep
   startAndReachTether(t);
 
   assert.equal(t.state.onboarding.active, true);
-  assert.equal(BEATS[t.state.onboarding.currentBeat].key, 'tether', 'the tether lesson owns the opening');
+  assert.equal(BEATS[t.state.onboarding.currentBeat].key, 'tether',
+    'the tether lesson follows the cold-open thrust/brake pair');
   assert.equal(tutorialTrackerCaptionText(t.state), PREMISE,
     'a muted pilot reads the 47-A premise in the tracker');
   assert.equal(t.state.nav.waypoint.reason, TETHER_LINE,

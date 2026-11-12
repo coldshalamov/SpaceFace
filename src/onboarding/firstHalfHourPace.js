@@ -1,12 +1,15 @@
 import { FLIGHT_DRILL_SPEED_WU, FLIGHT_DRILL_BRAKE_WU } from './flightDrill.js';
 
+// OPENING-1: the step strip follows the Director's beat order — flight first, the gun drills
+// behind the first dock.
 export const ONBOARDING_TRACKER_STEPS = Object.freeze([
+  Object.freeze({ id: 'flight', beats: Object.freeze(['thrust', 'brake']) }),
   Object.freeze({ id: 'latch', beats: Object.freeze(['tether']) }),
   Object.freeze({ id: 'raid', beats: Object.freeze(['raid']) }),
   Object.freeze({ id: 'claimed', beats: Object.freeze(['claimed']) }),
-  Object.freeze({ id: 'fight', beats: Object.freeze(['thrust', 'brake', 'marker', 'focus', 'burst', 'disengage']) }),
   Object.freeze({ id: 'seam', beats: Object.freeze(['seam']) }),
   Object.freeze({ id: 'dock', beats: Object.freeze(['dock']) }),
+  Object.freeze({ id: 'fight', beats: Object.freeze(['marker', 'focus', 'burst', 'disengage']) }),
   Object.freeze({ id: 'choice', beats: Object.freeze(['choice']) }),
 ]);
 export const ONBOARDING_TRACKER_STEP_COUNT = ONBOARDING_TRACKER_STEPS.length;

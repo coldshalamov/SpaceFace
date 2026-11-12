@@ -238,13 +238,14 @@ function restoreMissingThreeRecord(d) {
 // are ≤12 words (spec2/00 §5). Each beat fires only when the previous beat's DONE fired AND
 // ≥SILENCE_S of text silence passed.
 //
-// THESIS-FIRST ORDER (design/VISION.md "the 60-second fantasy"): the player DOES the fantasy
-// before anything else — first Massline attach inside the first minute, a raid tableau where the
-// taught swing turns an enemy into a projectile, then the consequence: claimed salvage, a law
-// witness, and a real WANTED search ring to outrun. Flight-control drills follow the attach (the
-// player is already flying); the economy on-ramp (seam → dock → choice) closes the hour. The
-// sandbox stays intact: every beat guides, none walls — a player who ignores the raid or leaves
-// the claimed salvage is never blocked, and the rail simply moves on.
+// THE DIRECTOR'S ORDER (OPENING-1; design/program/fleet/drafts/G10-recon.md): the first ten
+// minutes follow the STORY, not the drill rail — twenty seconds of thrust and brake first, then
+// the signature latch, the swing, the raid tableau (the taught swing turns an enemy into a
+// projectile), the claimed-salvage consequence, the seam (which mines the bound 47-A sample),
+// the first dock, and the job choice. The firing drills, the missing-three verbs, and the power
+// situations sit behind the first dock in the 15–40 minute slot, one at a time on their existing
+// gates. The sandbox stays intact: every beat guides, none walls — a player who ignores the raid
+// or leaves the claimed salvage is never blocked, and the rail simply moves on.
 //
 // `line`  : the verb bark shown at beat entry (the single tutorial voice in its window).
 // `followups` : extra barks gated on in-beat events (latch/reel/cut, scan/seam/vent, sell/board).
@@ -308,7 +309,18 @@ const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long befor
 // the static pacing/one-voice checks still read this literal from source so the audit sees the
 // authored copy, not the imported object.
 export const BEATS = [
-  { // FIRST TETHER — the signature verb leads. Attach lands inside the first minute of control.
+  { // THRUST/BRAKE — twenty seconds of flying first; the premise caption and the bound 47-A
+    // recovery mark are already up when this opens (OPENING-1 item 4).
+    key: 'thrust',
+    line: 'Thrust until speed passes forty.',
+    done: 'speedUp',
+  },
+  {
+    key: 'brake',
+    line: 'Brake below ten.',
+    done: 'speedDown',
+  },
+  { // FIRST TETHER — the signature verb. Attach lands inside the first minutes of control.
     key: 'tether',
     line: 'Target the marked derelict.',
     followups: [
@@ -335,17 +347,21 @@ export const BEATS = [
     ],
     done: 'wantedCleared',
   },
-  { // The player is already flying; the speed drill formalizes what the attach just used.
-    key: 'thrust',
-    line: 'Thrust until speed passes forty.',
-    done: 'speedUp',
+  { // B2 FIRST SEAM — scan + mine the bound 47-A sample: the tutorial's yield is B0's live
+    // mining:yield, so the contract resolves inside the rail (OPENING-1 item 5).
+    key: 'seam',
+    line: 'Pulse the scanner.',
+    followups: [
+      { on: 'scan:hit', line: 'Beam the bright seams.' },
+    ],
+    done: 'oreCollected',
   },
-  {
-    key: 'brake',
-    line: 'Brake below ten.',
-    done: 'speedDown',
+  { // B4 DOCK — the berth itself: selling, fitting and the next job all happen here
+    key: 'dock',
+    line: 'Helios. Dock when close.',
+    done: 'docked',
   },
-  {
+  { // Behind the first dock (the 15–40 minute slot): the firing drills resume one at a time.
     key: 'marker',
     line: 'Follow the amber diamond to the fleeing raider.',
     done: 'trainerRange',
@@ -368,20 +384,7 @@ export const BEATS = [
     line: 'Thrust away until the raider leaves scope.',
     done: 'disengaged',
   },
-  { // B2 FIRST SEAM — scan + mine; modality-neutral verbs
-    key: 'seam',
-    line: 'Pulse the scanner.',
-    followups: [
-      { on: 'scan:hit', line: 'Beam the bright seams.' },
-    ],
-    done: 'oreCollected',
-  },
-  { // B4 DOCK — the berth itself: selling, fitting and the next job all happen here
-    key: 'dock',
-    line: 'Helios. Dock when close.',
-    done: 'docked',
-  },
-  { // B5 CHOICE — at the same berth: the authored Ceres run plus three side-by-side offers.
+  { // B5 CHOICE — back at the berth: the authored Tethys run plus three side-by-side offers.
     // Accepting any real work ends the tutorial; undocking without one hands the player the ship.
     key: 'choice',
     line: 'Pick the work that fits.',
@@ -428,14 +431,24 @@ export function taughtVerbLine(state, id, line) {
   return `${line} (${label})`;
 }
 
-// The rescue verbs fill the new order's gaps: swing opens right after the first attach (the
-// player immediately re-uses the latch on a live rock), shove rides the gun lesson's exit, and
-// grab-and-run fills the gap before the raid. Composed here — rescueOpening.js's own map stays
+// The rescue verbs fill the Director's order's gaps: swing opens right after the first attach
+// and holds the raid, shove rides the gun lesson's exit (behind the first dock), and grab-and-run
+// fills the gap before the job choice. Composed here — rescueOpening.js's own map stays
 // untouched for its audit consumers; the onboarding route owns which drill beat each verb gates.
 const RESCUE_GATE_ROUTE = Object.freeze({
   swing: 'raid',       // while the rock swing is current, the raid waits its turn
   shove: 'disengage',
-  grab: 'seam',        // while the pod run is current, the seam lesson waits
+  grab: 'choice',      // while the pod run is current, the job choice waits
+});
+// Same arrangement for the missing-three ladder: every verb rides the pod run's exit behind the
+// first dock, and the choice beat waits while one is current. missingThree.js's own gate table
+// (authored against the old order's 'seam') stays untouched for its audit consumers.
+const MISSING_THREE_GATE_ROUTE = Object.freeze({
+  boost: 'choice',
+  stroke: 'choice',
+  well: 'choice',
+  repulsor: 'choice',
+  cone: 'choice',
 });
 
 // Cold-open premise (spec2/03 B0 "no modal"): the tutorial voice frames the 47-A contract at the
@@ -1297,7 +1310,9 @@ export const onboarding = {
     if (!beat) return;
     // Leaving inside the silence gap (B4 done at the berth, B5 not yet entered) is the same
     // decline: never let the choice beat open in flight with nothing to pick from.
-    const choicePending = beat.key === 'dock' && ob.beatDoneAt && ob.beatDoneAt.dock != null;
+    const nextBeat = BEATS[ob.currentBeat + 1];
+    const choicePending = beat.key === 'dock' && ob.beatDoneAt && ob.beatDoneAt.dock != null
+      && (!nextBeat || nextBeat.key === 'choice');
     if (beat.key !== 'choice' && !choicePending) return;
     this._finish();
   },
@@ -1851,7 +1866,7 @@ export const onboarding = {
         }
       }
     }
-    this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
+    this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS, captionId: trackerCaptionId });
     // A matching onboarding waypoint already exposes this command through the persistent,
     // accessible HUD objective. Keep the canonical tutorial event (audio/audit/story cadence) but
     // do not repeat the exact imperative on the transient top-center visual floor.
@@ -1893,6 +1908,12 @@ export const onboarding = {
       // leave B0 gated forever.
       this._firstRunSplashPending = false;
     }
+    if (nextIndex === 0) {
+      // Cold-open: frame the 47-A contract as the rail claims its first beat (replaces the old
+      // intro modal's headline intent, spec2/03 B0 "no modal"). The caption id rides tutorial:say
+      // so story can schedule Kessler's B0 line ~4 s later through the ordinary comms queue.
+      this._sayTutorial(COLD_OPEN_PREMISE, { visual: false, trackerCaptionId: 'premise' });
+    }
     // Silence gate: the previous beat must have DONE'd AND ≥SILENCE_S passed since the last text.
     if (nextIndex > 0) {
       const prev = BEATS[nextIndex - 1];
@@ -1914,9 +1935,19 @@ export const onboarding = {
       ? RESCUE_GATE_ROUTE[rescueKey]
       : (rescueKey ? RESCUE_GATE[rescueKey] : null);
     if (rescueGate != null && rescueGate === BEATS[nextIndex].key) return;
-    // Missing-three gate (PQ-163.02): boost, stroke, and the well occupy the grab → seam gap.
+    // Missing-three gate (PQ-163.02): boost, stroke, and the well ride the grab run's exit behind
+    // the first dock — the choice beat waits while one is current (MISSING_THREE_GATE_ROUTE).
+    // OPENING-1: under the old order the 'seam' default held the rail's last beat while the verb
+    // rail idled between lessons. The seam now runs pre-dock, and the verbs gate the job choice —
+    // an active, incomplete rail holds 'choice' through the between-verb silences too, or the
+    // choice could slip into a gap while no verb is current.
     const three = this._missingThree();
-    if (three && !three.completed && (MISSING_THREE_GATE[three.current] || 'seam') === BEATS[nextIndex].key) return;
+    if (three && !three.completed) {
+      const threeGate = three.current
+        ? (MISSING_THREE_GATE_ROUTE[three.current] || MISSING_THREE_GATE[three.current] || 'choice')
+        : 'choice';
+      if (threeGate === BEATS[nextIndex].key) return;
+    }
     // Row 458 — a drill the pilot already flew (or waived with "I've flown before") resolves silently.
     const credit = ob.pace ? paceCreditFor(ob.pace, BEATS[nextIndex].key) : null;
     if (credit) {
@@ -1956,13 +1987,6 @@ export const onboarding = {
     else if (beat.key === 'tether') {
       this._spawnDerelict();
       this._setObjectiveWaypoint(true);
-      // Cold-open: frame the 47-A contract with the opening tether lesson (replaces the old intro
-      // modal's headline intent, per spec2/03 B0 "no modal"). The caption keeps it readable while
-      // muted; the beat voice still speaks the same line for audio.
-      this._sayTutorial(COLD_OPEN_PREMISE, {
-        visual: false,
-        trackerCaptionId: 'premise',
-      });
     }
     else if (beat.key === 'burst') {
       this._spawnTrainer('burst');
@@ -2035,9 +2059,9 @@ export const onboarding = {
     if (!ob || !beat) return;
     if (payload.source === FIRST_TRADE_CONTRACT_SOURCE) ob.recommendedMissionId = payload.missionId || null;
     this._onBeatEvent('mission:accepted', payload);
-    // The rail yields to real work: any accepted contract — a B5 choice, the authored Ceres run,
+    // The rail yields to real work: any accepted contract — a B5 choice, the authored Tethys run,
     // or an ordinary board row — ends the tutorial through the same _finish(), so the objective
-    // slot follows the job the player actually took instead of pinning a stale beat. The Ceres
+    // slot follows the job the player actually took instead of pinning a stale beat. The Tethys
     // delivery is tracked and owns navigation like any other accepted job; nothing local waits
     // for its completion.
     const railWasLive = ob.active && !ob.finished;
@@ -2101,7 +2125,7 @@ export const onboarding = {
   // The board station's sector is where the run started — the "gate home" toll is priced there.
   // At mission:completed the run is already off the active list (missions.js removes before
   // emitting), so a null run falls back to the contract's own board station before the
-  // player's current sector — quoting the Ceres-side toll as "home" would read 194, not 246.
+  // player's current sector — quoting the Tethys-side toll as "home" would read 180, not 246.
   _runOriginSectorId(run) {
     if (run && run.originSectorId) return run.originSectorId;
     const stationId = (run && run.stationId) || FIRST_TRADE_CONTRACT.stationId;
@@ -2189,7 +2213,7 @@ export const onboarding = {
         && choiceIds.includes(payload.sourceOfferId);
     } else if (done === 'docked' && (eventName === 'dock:docked' || eventName === 'recommended:completed')) {
       // B4 resolves at the berth: selling, fitting and choosing the next job are local. The
-      // choice beat opens its offers at this station, beside the authored Ceres run.
+      // choice beat opens its offers at this station, beside the authored Tethys run.
       // The dock intent names the berth; uiRoot commits ui.dockedStationId after this listener.
       const stationId = (payload && payload.stationId) || (this.state.ui && this.state.ui.dockedStationId);
       if (stationId) ob.choiceStationId = stationId;
@@ -2740,8 +2764,27 @@ export const onboarding = {
     if (state.mode && state.mode !== 'flight') return;
     const now = state.simTime || 0;
     const sit = ob.powerSit || (ob.powerSit = normalizePowerSit(null));
+    // OPENING-1: the ladder's window opens behind the first dock (the 15–40 minute slot), so it
+    // anchors to the dock beat's DONE rather than the rail's start. Pre-dock saves never placed
+    // it; post-dock saves keep the same countdown they had.
+    const dockDoneAt = ob.beatDoneAt && ob.beatDoneAt.dock;
+    if (dockDoneAt == null) {
+      // A save written before the ladder moved behind the dock can still carry a live setup
+      // record. It has no place pre-dock — unwind it into a clean requeue instead of holding
+      // a phantom lesson until a berth that may never come.
+      if (sit.active) {
+        const spec = situationFor(sit.active.power);
+        const idx = spec ? POWER_SITUATIONS.indexOf(spec) : -1;
+        this._despawnPowerSituation(sit);
+        if (idx >= 0 && idx < sit.next && sit.doneAt[spec.power] == null) {
+          sit.next = idx;
+          sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        }
+      }
+      return;
+    }
     // Past the window the ladder stands down: nothing new is placed and a live setup expires.
-    if (now - (ob.startedAt || 0) > POWER_SITUATION_WINDOW_S) {
+    if (now - dockDoneAt > POWER_SITUATION_WINDOW_S) {
       this._despawnPowerSituation(sit);
       sit.next = POWER_SITUATIONS.length;
       return;
@@ -2797,7 +2840,7 @@ export const onboarding = {
     }
     if (sit.next >= POWER_SITUATIONS.length) return;
     // The first setup waits out the stick drills; later ones ride the voice-pacing gap.
-    const earliest = sit.next === 0 ? (ob.startedAt || 0) + POWER_SITUATION_FIRST_S : sit.nextAtS;
+    const earliest = sit.next === 0 ? dockDoneAt + POWER_SITUATION_FIRST_S : sit.nextAtS;
     if (now < earliest) return;
     // One tutorial voice: a situation may only speak after the same ≥SILENCE_S of text silence
     // every rail beat obeys. A due setup waits for the next silent tick rather than speaking
@@ -4945,6 +4988,8 @@ export const onboarding = {
       if (rock && rock.alive !== false) target = { pos: rock.pos, label: 'Bright Seam' };
     }
     else if (beat && beat.key === 'dock') target = this._findHelios();
+    // The drills land the player back in open space; the job pick waits at the same berth.
+    else if (beat && beat.key === 'choice') target = this._findHelios();
     if (!target || !target.pos) {
       if (existing && existing.onboarding) st.nav.waypoint = null;
       return;

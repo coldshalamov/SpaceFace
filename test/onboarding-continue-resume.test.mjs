@@ -340,9 +340,10 @@ test('Continue mid-swing rewinds latch state, restages the cast, re-speaks the v
 });
 
 test('Continue mid-tether rewinds a saved reel flag — the restaged derelict is a fresh body', () => {
+  // OPENING-1: tether sits at index 2 in the Director's order (was 0 — the drill rail led).
   const record = saveMidRail((ob) => {
-    ob.currentBeat = 0;
-    ob.beatDoneAt = {};
+    ob.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
+    ob.beatDoneAt = { thrust: 10, brake: 20 };
     ob.tetherReeled = true; // saved progress on a wreck the restore cannot keep
     ob.rescue = freshRescueState();
   });
@@ -356,12 +357,12 @@ test('Continue mid-tether rewinds a saved reel flag — the restaged derelict is
 });
 
 test('an active power situation saved mid-setup re-queues instead of holding a phantom lesson', () => {
-  const seamBeat = BEATS.findIndex((b) => b.key === 'seam');
+  // OPENING-1: the power ladder anchors to the dock beat's DONE, so an honest mid-setup save is
+  // post-dock — a pre-dock live setup is impossible under the new order.
   const record = saveMidRail((ob) => {
-    ob.currentBeat = seamBeat;
+    ob.currentBeat = BEATS.findIndex((b) => b.key === 'marker');
     ob.beatDoneAt = {
-      tether: 10, raid: 20, claimed: 30, thrust: 40, brake: 50,
-      marker: 60, focus: 70, burst: 80, disengage: 90,
+      thrust: 10, brake: 15, tether: 20, raid: 25, claimed: 30, seam: 35, dock: 40,
     };
     ob.powerSit = { next: 1, doneAt: {}, active: { power: 'pull', placedAtS: 90 }, nextAtS: 0 };
   });
