@@ -201,14 +201,15 @@ export function createFloatingText(ctx) {
   const _padScreen = { x: 0, y: 0, onScreen: false };
 
   function syncPadLabels() {
-    if (padNodes.size === 0 && !(state.entities && typeof state.entities.values === 'function')) return;
-    if (!helpers.worldToScreen) return;
+    if (!helpers.worldToScreen || typeof state.entities?.values !== 'function') return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    const seen = new Set();
-    const padW = padLayer.clientWidth || layer.clientWidth || 0;
+    let seen = null;
+    let padW;
+    let padH;
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
+      seen ??= new Set();
       seen.add(e.id);
       let node = padNodes.get(e.id);
       if (!node) {
@@ -238,17 +239,20 @@ export function createFloatingText(ctx) {
         // Keep the whole chip on the plate: a pad at the room's edge slides its tag inward
         // rather than being cut by the layer. Width is measured once per text change.
         if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
-        const viewW = padW;
+        // Reading client dimensions can force layout for the whole HUD. An empty
+        // flight or a tag outside the projection doesn't need either dimension.
+        padW ??= padLayer.clientWidth || layer.clientWidth || 0;
         const half = node.w / 2 + 6;
-        const px = viewW > half * 2 ? Math.min(Math.max(s.x, half), viewW - half) : s.x;
+        const px = padW > half * 2 ? Math.min(Math.max(s.x, half), padW - half) : s.x;
         let py = Math.max(s.y - 26, 16);
         // G16-04: a tag never draws inside the Swarm centre column or a HUD corner panel — it
         // slides to the nearest clear seat, and dims to 35% only when none exists.
         let fade = 1;
         let cx = px;
         if (node.w > 0 && node.h > 0) {
+          padH ??= padLayer.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 720);
           const seat = seatOutOfRects({ x: px - node.w / 2, y: py - node.h / 2, w: node.w, h: node.h },
-            avoid.get(), { w: viewW || (typeof window !== 'undefined' ? window.innerWidth : 1280), h: padLayer.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 720) });
+            avoid.get(), { w: padW || (typeof window !== 'undefined' ? window.innerWidth : 1280), h: padH });
           cx = seat.x + node.w / 2; py = seat.y + node.h / 2; fade = seat.fade;
         }
         const nextTransform = `translate3d(${cx}px,${py}px,0) translate(-50%,-50%)`;
@@ -258,7 +262,7 @@ export function createFloatingText(ctx) {
       }
     }
     for (const [id, node] of padNodes) {
-      if (seen.has(id)) continue;
+      if (seen?.has(id)) continue;
       node.el.parentNode && node.el.parentNode.removeChild(node.el);
       padNodes.delete(id);
     }
