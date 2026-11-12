@@ -142,13 +142,24 @@ function launch(resume) {
       log.write('\n[fleet] receipt written and worker idle 3 min; ending it\n');
       clearInterval(idleWatch);
       try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+      setTimeout(() => { if (!closed) { closed = true; clearTimeout(timer); finish(0); } }, 30_000);
     }
   }, 30_000);
   child.on('close', () => clearInterval(idleWatch));
-  const timer = setTimeout(() => { log.write(`
+  // On Windows child.kill() ends only the shell wrapper; the worker (devin.exe, …) is orphaned, keeps the
+  // pipes open, and 'close' never fires — the slot stays taken for hours. Kill the whole tree, and if
+  // 'close' still has not come 30 s later, finish anyway.
+  let closed = false;
+  const timer = setTimeout(() => {
+    log.write(`
 [fleet] timeout after ${timeoutMin} min
-`); child.kill(); }, Math.max(1000, deadline - Date.now()));
+`);
+    try { execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill(); }
+    setTimeout(() => { if (!closed) { closed = true; clearInterval(idleWatch); finish(124); } }, 30_000);
+  }, Math.max(1000, deadline - Date.now()));
   child.on('close', (code) => {
+    if (closed) return;
+    closed = true;
     clearTimeout(timer);
     const limited = /rate limit|retryable"?\s*:\s*true|429|overloaded|try again/i.test(tail);
     const receiptDone = existsSync(join(runDir, 'RECEIPT.md'));
@@ -186,4 +197,6 @@ function finish(code) {
   log.end();
   console.log(`[fleet] done ${JSON.stringify(exit)}`);
   if (existsSync(receipt)) console.log(readFileSync(receipt, 'utf8').split('\n').slice(0, 6).join('\n'));
+  // An orphaned grandchild can hold stdout/stderr open forever; the run is over, so exit (frees the slot).
+  setTimeout(() => process.exit(code === 0 ? 0 : 1), 2000);
 }

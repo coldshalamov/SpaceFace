@@ -17,6 +17,8 @@ import { quoteProvenance } from '../marketIntelligence.js';
 import { laneSetNavWaypoint } from '../../core/simLaneCommands.js';
 import { SECTORS } from '../../data/sectors.js';
 import { effectiveSectorFor } from '../../systems/sectorSim.js';
+import { isUnsellableCargo } from '../../systems/cargo.js';
+import { formatCount } from '../numberFormat.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
@@ -883,4 +885,134 @@ export function computeBestTrades(state, hereStationId, options = {}) {
     return denied.slice(0, 5);
   }
   return out.slice(0, 5);
+}
+
+/**
+ * Resolves the sell price of a single commodity unit in the current context.
+ * Destination station takes priority; fallback checks best-known buyer, then local sector stations.
+ * Returns { unitSell, unsellable }.
+ */
+export function resolveCargoSellPrice(state, ctx, commodityId, destinationStationId = null) {
+  if (!state || !commodityId) return { unitSell: 0, unsellable: true };
+  if (typeof isUnsellableCargo === 'function' && isUnsellableCargo(state, commodityId)) {
+    return { unitSell: 0, unsellable: true };
+  }
+  const context = ctx || { state };
+  if (destinationStationId) {
+    const price = unitPrice(context, destinationStationId, commodityId, 'sell');
+    if (price != null && price > 0) {
+      return { unitSell: Math.round(price), unsellable: false };
+    }
+    return { unitSell: 0, unsellable: true };
+  }
+  const best = bestKnownSellFor(state, commodityId);
+  if (best && best.sell > 0) {
+    return { unitSell: Math.round(best.sell), unsellable: false };
+  }
+  let fallbackBest = 0;
+  if (state && state.entities) {
+    const ents = typeof state.entities.values === 'function'
+      ? [...state.entities.values()]
+      : Array.isArray(state.entityList)
+        ? state.entityList
+        : [];
+    for (const e of ents) {
+      if (e && e.type === 'station' && e.alive !== false) {
+        const p = unitPrice(context, e.id, commodityId, 'sell');
+        if (p != null && p > fallbackBest) fallbackBest = Math.round(p);
+      }
+    }
+  }
+  if (fallbackBest > 0) {
+    return { unitSell: fallbackBest, unsellable: false };
+  }
+  return { unitSell: 0, unsellable: true };
+}
+
+/**
+ * Calculates hold contents worth and formats the flight cargo bar readout.
+ * EC-G19 §5: "HOLD 12/40 · ≈ 3,480 cr"
+ * Shows loose towed cargo (+ 1 towed) and unsellable cargo flag (· some unsellable here).
+ */
+export function calculateHoldWorth(state, ctx) {
+  const context = ctx || { state };
+  const s = (ctx && ctx.state) || state;
+  const c = (s && s.player && s.player.cargo) || {};
+  const items = c.items || {};
+  const used = Math.round(Number(c.usedVolume) || 0);
+  const cap = Math.round(Number(c.capVolume) || 40);
+
+  // Destination resolution: nav waypoint station, or active job destination
+  let destStationId = null;
+  if (s?.nav?.waypoint?.stationId) {
+    destStationId = s.nav.waypoint.stationId;
+  } else if (s?.player?.waypoint?.stationId) {
+    destStationId = s.player.waypoint.stationId;
+  } else if (s?.missions?.active && Array.isArray(s.missions.active)) {
+    const trackedId = s.ui?.trackedMissionId;
+    const tracked = trackedId ? s.missions.active.find((m) => m && m.id === trackedId) : null;
+    const mission = tracked || s.missions.active.find((m) => m && m.status === 'active' && (m.destinationStationId || m.targetStationId || m.params?.destinationStationId || m.params?.destStationId));
+    if (mission) {
+      destStationId = mission.destinationStationId || mission.targetStationId || mission.params?.destinationStationId || mission.params?.destStationId || null;
+    }
+  }
+
+  let totalWorth = 0;
+  let hasUnsellable = false;
+
+  for (const [cmdtyId, qtyVal] of Object.entries(items)) {
+    const qty = Math.max(0, Math.floor(Number(qtyVal) || 0));
+    if (qty <= 0) continue;
+    const priceInfo = resolveCargoSellPrice(s, context, cmdtyId, destStationId);
+    if (priceInfo.unsellable || priceInfo.unitSell <= 0) {
+      hasUnsellable = true;
+    } else {
+      totalWorth += qty * priceInfo.unitSell;
+    }
+  }
+
+  // Loose cargo on the Line (towed)
+  let towedCount = 0;
+  const tether = s?.player?.tether;
+  if (tether && tether.active && tether.targetId != null) {
+    const target = s?.entities?.get
+      ? s.entities.get(tether.targetId)
+      : (s?.entityList || []).find((e) => e && e.id === tether.targetId);
+    if (target && target.alive !== false) {
+      const isLooseCargo = target.type === 'cargo'
+        || target.type === 'payload'
+        || target.type === 'ore'
+        || target.data?.kind === 'payload'
+        || target.data?.payloadType === 'cargo_pod'
+        || !!target.data?.commodityId
+        || !!target.commodityId
+        || !!target.isCargoPod;
+      if (isLooseCargo) {
+        towedCount = 1;
+        const cmdtyId = target.data?.commodityId || target.commodityId || target.data?.oreType || target.data?.mineralId || 'cmdty_scrap_metal';
+        const qty = Math.max(1, Math.floor(Number(target.data?.amount ?? target.data?.qty ?? target.qty) || 1));
+        const priceInfo = resolveCargoSellPrice(s, context, cmdtyId, destStationId);
+        if (priceInfo.unsellable || priceInfo.unitSell <= 0) {
+          hasUnsellable = true;
+        } else {
+          totalWorth += qty * priceInfo.unitSell;
+        }
+      }
+    }
+  }
+
+  const worthFormatted = formatCount(totalWorth, s);
+  let text = `HOLD ${used}/${cap} · ≈ ${worthFormatted} cr`;
+  if (hasUnsellable) text += ' · some unsellable here';
+  if (towedCount > 0) text += ` + ${towedCount} towed`;
+
+  return {
+    used,
+    cap,
+    destStationId,
+    totalWorth,
+    hasUnsellable,
+    towedCount,
+    text,
+  };
 }
