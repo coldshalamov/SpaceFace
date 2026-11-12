@@ -38,7 +38,7 @@ const fakeDoc = () => ({ createElement: t => new El(t), createElementNS: (_n, t)
 const findAll = (el, pred, out = []) => { if (pred(el)) out.push(el); el.children.forEach(c => findAll(c, pred, out)); return out; };
 const byClass = (el, cls) => findAll(el, n => n._classes.has(cls) || (n.attrs.class || '').split(/\s+/).includes(cls));
 
-test('only informational receipts compact in touch flight; critical copy and touch-through stay intact', () => {
+test('MOB-06 wraps informational receipts and keeps critical copy and touch-through intact', () => {
   const prefix = ':root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts';
   const rule = selector => MOBILE_CSS.slice(MOBILE_CSS.indexOf(selector) + selector.length).match(/^\s*\{([^}]+)\}/)?.[1];
   const row = rule(prefix + ' .sf-toast--info');
@@ -47,9 +47,9 @@ test('only informational receipts compact in touch flight; critical copy and tou
   assert.match(row, /box-sizing:border-box/);
   assert.match(row, /width:100%/);
   assert.match(text, /min-width:0/);
-  assert.match(text, /white-space:nowrap/);
-  assert.match(text, /overflow:hidden/);
-  assert.match(text, /text-overflow:ellipsis/);
+  // 6450485b722f removed the one-line truncation seen on the live 390px route.
+  assert.match(text, /white-space:normal/);
+  assert.match(text, /overflow-wrap:anywhere/);
   for (const kind of ['error', 'danger', 'warn', 'success', 'credits']) {
     assert.equal(rule(prefix + ` .sf-toast--${kind} .sf-toast__text`), undefined,
       `${kind} receipts retain full wrapping`);
