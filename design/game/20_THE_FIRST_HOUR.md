@@ -1,6 +1,6 @@
 # 20 — The first hour, designed end to end
 
-**Status:** authority for the demo (owner, 2026-11-12: "someone needs to think about how we create the optimal game
+**Status: DRAFT** — timings are design targets until the measured demo route (`scripts/fleet/looks/demo-route.mjs`) and RECON-G10 replace them; each row gains "exists today (owner)" and "observable" columns before packets are cut. Authority for the demo (owner, 2026-11-12: "someone needs to think about how we create the optimal game
 experience … from the first loading screen to every UI and the game"). Where 10/16/19 and this disagree on the first hour,
 this wins. Owner of the plan: the lead. Every beat below is judged on screen through `scripts/fleet/looks/demo-route.mjs`.
 
@@ -8,7 +8,13 @@ this wins. Owner of the plan: the lead. Every beat below is judged on screen thr
 
 1. **One focal point per moment.** At any second the player's eye has one obvious place to go — the brightest, most
    saturated, most moving thing on screen is the thing that matters. Everything else recedes (dimmer, smaller, still).
-2. **The world teaches, not panels.** A prompt sits on the object it is about (world-anchored chip: `RMB · LATCH` on the rock),
+2. **One guidance voice, two owners (EC-G09: twelve systems can tell the player what to do today).** *What is next* is
+   said by **one line only — the objective tracker**. *The verb* is said by **one world tag only — the aim tag on the thing
+   under the cursor** (`#hud .sf-aimtag`, today "LINE TARGET"): `RMB · LATCH`, `CLICK · THROW`, `E · DOCK`. The onboarding panel,
+   tutorial voice, act popups, first-use hints, comms nudges and the control bar defer to these two — at most one of them
+   speaks at a time, and never while a verb tag is up. **On-screen text budget in a fight: ≤ 3 lines** besides the HUD
+   instruments, priority: danger alert > verb tag > objective line > callout > receipts.
+   **The world teaches, not panels.** A prompt sits on the object it is about (world-anchored chip: `RMB · LATCH` on the rock),
    appears when the action is possible, and leaves the moment it is done. No modal tutorial slides, no wall of keys.
 3. **The HUD earns its place.** Calm flight shows only what you need this minute: speed, hull, the one objective line, the
    radar. Instruments arrive when their verb arrives (tow strain when you tow; power rail when you own a power). Combat
