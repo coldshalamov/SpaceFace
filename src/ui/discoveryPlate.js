@@ -5,6 +5,7 @@
 // first-contact receipts — discovery:plateUnlocked, uniqueWreck:bearingFixed, and
 // aceMemory:transition 'encountered' — and queues a quiet receipt for the existing HUD lane.
 // It writes no gameplay state; Codex records are durable before the event fires.
+import { seatBelowColumn, visibleRects } from './hudAvoidRects.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
 import { presentReceipt } from '../core/receiptPresenter.js';
 import { isSwarmGlass } from './swarmGlass.js';
@@ -97,6 +98,33 @@ export function createDiscoveryPlate(ctx) {
     return true;
   }
 
+  // The class-up plate sits just below the live Swarm callouts and any receipts in the same column.
+  function seatMomentClearOfColumn() {
+    const item = momentEl && momentEl.parentNode;
+    const doc = typeof document !== 'undefined' ? document : null;
+    if (!item?.style || !doc?.querySelector) return;
+    const centre = doc.querySelector('.sf-sj__col')?.getBoundingClientRect();
+    const rects = visibleRects([centre]);
+    // Receipt lines that share the plate's horizontal span (a phone seats them top-centre) count as
+    // part of the stack, so the plate drops below them rather than over them.
+    if (rects.length) {
+      const vw = typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280;
+      const half = (item.offsetWidth || 292) / 2;
+      const lane = doc.getElementById('toasts');
+      const receipt = lane?.querySelector('.sf-toast:not(.sf-toast--out)') ? lane.getBoundingClientRect() : null;
+      for (const r of visibleRects([receipt])) {
+        if (r.x < vw / 2 + half && r.x + r.w > vw / 2 - half) rects.push(r);
+      }
+    }
+    const top = seatBelowColumn(rects);
+    if (top == null) { if (item.style.position === 'fixed') { item.style.position = ''; item.style.top = ''; item.style.left = ''; item.style.transform = ''; } return; }
+    if (item.style.position !== 'fixed') {
+      item.style.position = 'fixed'; item.style.left = '50%'; item.style.transform = 'translateX(-50%)';
+    }
+    const next = top + 'px';
+    if (item.style.top !== next) item.style.top = next;
+  }
+
   function push(rec) {
     if (destroyed || !rec || !rec.title) return;
     const key = rec.key || `${rec.kicker}|${rec.title}`;
@@ -186,6 +214,7 @@ export function createDiscoveryPlate(ctx) {
     show,
     tick() {
       const now = performance.now();
+      if (momentEl && momentHandle && isSwarmGlass(getState())) seatMomentClearOfColumn();
       if (momentEl) {
         if (momentHandle) {
           if (now >= momentOutAt) removeMoment();
