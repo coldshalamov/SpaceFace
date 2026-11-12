@@ -33,6 +33,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
+import { CONTRACT_47A_B0_TAG } from '../systems/missionShared.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { SHIPS } from '../data/ships.js';
 import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
@@ -847,7 +848,13 @@ export function flightDestinationSurface(state, command) {
     const term = missionTermWord(state, tracked && tracked.id);
     if (term) urgent = urgent || term.tone === 'broken';
     const objectiveLine = term ? `${action} · ${term.text}` : action;
-    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
+    const dest = { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
+    if (!term && tracked?.storyTag === CONTRACT_47A_B0_TAG) {
+      dest.compactAction = tracked.params?.sampleRecovered
+        ? localizeText('Deliver 47-A to Helios Station')
+        : localizeText('Recover 47-A from marked rock');
+    }
+    return dest;
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
@@ -1366,6 +1373,10 @@ const DEFAULT_TELEGRAPH_TICKS = 30;
 const TELL_VISUAL_WIDTH = 240;
 const TELL_VISUAL_HEIGHT = 30;
 const TELL_LAYOUT_GAP = 8;
+const TELL_OBSTACLE_OWNERS = new Set([
+  'vitals', 'hud-rail', 'orrery', 'radar', 'caption', 'flight-caption',
+  'receipt', 'alert', 'swarm-callout', 'touch-control', 'responsive-overlay',
+]);
 const LEAD_PIP_RADIUS = 8.5;
 const LEAD_PIP_CIRCUMFERENCE = Math.PI * 2 * LEAD_PIP_RADIUS;
 const LEAD_PIP_ARC_FRACTION = 0.72;
@@ -3119,7 +3130,9 @@ export function createHud(ctx, alerts) {
       opacity:.7; transform-origin:0 50%; pointer-events:none; }
     .sf-tell {
       position:absolute; left:0; top:0; display:none; align-items:center; gap:6px;
-      max-width:min(42vw, 280px); padding:0;
+      max-width:min(58vw, 300px); padding:3px 6px;
+      border:1px solid rgb(240 229 207 / .18); border-radius:3px;
+      background:rgb(9 12 20 / .92);
       color:var(--k-text-live); font-family:var(--k-text);
       font-size:var(--k-fs-data); line-height:1.2; white-space:nowrap;
       will-change:transform, opacity; opacity:0;
@@ -3198,12 +3211,16 @@ export function createHud(ctx, alerts) {
     for (const entry of entries) {
       const slot = tellSlots.find(item => item.el === entry.target);
       const rect = entry.contentRect;
+      const box = entry.borderBoxSize?.[0];
       if (slot && rect?.width > 0 && rect?.height > 0) {
-        slot.geometry = { width: rect.width + 8, height: rect.height + 8 };
+        slot.geometry = {
+          width: (box?.inlineSize ?? rect.width + 14) + 8,
+          height: (box?.blockSize ?? rect.height + 8) + 8,
+        };
       }
     }
   }) : null;
-  for (const slot of tellSlots) tellGeometryObserver?.observe(slot.el);
+  for (const slot of tellSlots) tellGeometryObserver?.observe(slot.el, { box: 'border-box' });
   hudUnsubscribers.push(() => tellGeometryObserver?.disconnect());
   // Per-frame doctrine-tell projection scratch + shared centered-transform options (never mutated).
   const tellProjectionWorld = { x: 0, y: 0, z: 0 };
@@ -3312,15 +3329,17 @@ export function createHud(ctx, alerts) {
   on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
 
   function updateDoctrineTells(frameDt) {
+    if (!tellSlots.some(slot => slot.age < Infinity)) return;
     const w2s = helpers && helpers.worldToScreen;
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
     const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
     const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
-    const placed = [];
-    if (tellSlots.some(slot => slot.age < Infinity)) refreshFlightTextObstacleSnapshot();
-    const touchReserved = getFlightTextObstacles()
-      .filter(row => row.owner === 'touch-control' || row.owner === 'responsive-overlay')
+    refreshFlightTextObstacleSnapshot();
+    const reserved = getFlightTextObstacles()
+      .filter(row => TELL_OBSTACLE_OWNERS.has(row.owner))
       .map(row => ({ x: row.left, y: row.top, width: row.width, height: row.height }));
+    const measuredLeft = objectiveEdgeObstacles().left;
+    if (measuredLeft) reserved.push(measuredLeft);
     for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
       const slot = tellSlots[slotIndex];
       if (slot.age >= Infinity) continue;
@@ -3338,11 +3357,9 @@ export function createHud(ctx, alerts) {
       tellProjectionWorld.x = ent.pos.x;
       tellProjectionWorld.z = ent.pos.z;
       const proj = w2s(tellProjectionWorld, tellProjectionScreen);
-      const measuredLeft = objectiveEdgeObstacles().left;
-      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex,
-        [measuredLeft, ...touchReserved, ...placed], slot.layoutOffset, slot.geometry);
+      const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, reserved, slot.layoutOffset, slot.geometry);
       if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
-      placed.push({ x: placement.x - placement.width / 2, y: placement.y - placement.height / 2,
+      reserved.push({ x: placement.x - placement.width / 2, y: placement.y - placement.height / 2,
         width: placement.width, height: placement.height });
       slot.layoutOffset = placement.onScreen ? { x: placement.x - proj.x, y: placement.y - proj.y } : null;
       setDisplay(slot.el, true, 'inline-flex');
@@ -6043,7 +6060,7 @@ export function createHud(ctx, alerts) {
         const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
         setText(mtObj, objective);
         const [action, ...readings] = objective.split('\n');
-        setText(mtAction, action);
+        setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
         setText(mtReadings, readings.join('\n'));
         setText(mtDetailsText, [objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
         setDisplay(missionTracker, true);
@@ -6510,6 +6527,9 @@ export function createHud(ctx, alerts) {
     for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
     for (const el of qsa(document, '#alerts > .sf-alert:not([hidden])')) add('alert', el);
     for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
+    if (state.run?.ruleset === 'swarm') {
+      for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) add('swarm-callout', el);
+    }
     for (const el of externalFlightCaptions) add('flight-caption', el);
     for (const el of responsiveOverlayObstacles()) {
       add(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);

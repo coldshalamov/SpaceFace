@@ -143,7 +143,7 @@ export function swarmPilotIsActing(state) {
   if (input.boost || input.brake) return true;
   const actions = input.actions;
   if (actions && (actions.tetherFire || actions.tetherCut || actions.chargeThrow
-    || actions.chargeDetonate || actions.dropBomb || actions.gyreSnare || actions.throwArm
+    || actions.chargeDetonate || actions.dropBomb || actions.gyreSnare || actions.throwArm || actions.touchThrow
     || actions.deployWell || actions.deployRepulsor || actions.deployMassSeed
     || Math.abs(actions.reelDelta || 0) > 0.08)) return true;
   if (input.drawFlightManual === true) return true;
