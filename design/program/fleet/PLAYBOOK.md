@@ -46,8 +46,14 @@ which model fits which lane.
 | Who | Good for | Not for |
 |---|---|---|
 | **Lead (Claude, strongest model)** | diagnosis, architecture, feel and look decisions, reviewing, writing packets | grunt edits a worker can do |
-| **Devin SWE-2 Max** (3 accounts, free) | medium–large packets that name the seam (2–6 files + test); recon drafts; running probes and reporting numbers | judging what looks or feels good; 3D modelling |
-| **Gemini 3.8 Flash** (agy) | one written plant at a time (~15 min), small data rows | anything unreviewed; open design |
+**Owner rule (2026-11-11): Devin is bad at frontend.** Any screen, HUD, popup, menu, map, layout, CSS or
+visual job goes to **Sonnet sub-agents** (spawned by the lead, judged from screenshots) when it matters, or
+**Gemini Flash** for routine visual chores. Devin takes systems, gameplay logic, data and backend. Every
+frontend change is looked at on screen by the lead before `DONE`.
+
+| **Devin SWE-2 Max** (3 accounts, free) | systems, gameplay logic, data, backend: medium–large packets that name the seam (2–6 files + test); recon drafts; running probes and reporting numbers | **any frontend/visual work** (owner: not acceptable); judging what looks or feels good; 3D modelling |
+| **Gemini 3.8 Flash** (agy) | routine frontend chores (labels, a CSS fix, a plate), one written plant at a time, small data rows | anything unreviewed; open design |
+| **Sonnet sub-agents** (spawned by the lead) | frontend that matters (screens, HUD, popups, layout), deep review-and-fix passes on any feature, with screenshots | running unattended without a lead reading the diff |
 | **Codex, GPT 6.1 Sol high** (senior, occasional) | hard backend/architecture reviews, batched reviews (`REVIEW-BATCH`), 3D/Blender, image generation (concept art, textures, mockups, transparent PNGs, GIFs) | final sign-off — it can make odd assumptions; the lead verifies every finding |
 | **DeepSeek (OpenCode Go)** | — produced nothing in 90 min headless; not in rotation | |
 

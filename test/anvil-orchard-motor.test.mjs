@@ -70,7 +70,9 @@ test('cold replacement in publication cancels the old tail and leaves the succes
   f.owner.step(1/60,1);const oldWorld=f.owner.world,token=f.owner.completedOrchardTail();
   assert.equal(f.owner.publishCompletedOrchardContacts(token,()=>f.owner.rebuildWorldFromEntities([f.frame],{orchardColdRestore:true})),null);
   assert.notEqual(f.owner.world,oldWorld);assert.ok(f.owner.readOrchardFramePose(f.frame));
-  f.owner.step(1/60,2);assert.equal(f.owner.tick,1);assert.ok(f.owner.exportWorldSnapshot());
+  // f4c5860f7808 carries the rebuilt owner's clock forward (tick-space contact stamps must not
+  // read as future); the successor still serves a fresh pose and a usable snapshot.
+  f.owner.step(1/60,2);assert.equal(f.owner.tick,2);assert.ok(f.owner.exportWorldSnapshot());
  }finally{f.close();}
 });
 

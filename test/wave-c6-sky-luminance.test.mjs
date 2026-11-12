@@ -1,6 +1,7 @@
-// §22 C6 — six skies. Plate luminance stays under the starter muzzle and the engine core.
-// Exactly one profile is the galaxy. The authored set is the six palette-family skies plus
-// the per-sector rigs that inherit a family's sky (they share the plate, not a seventh sky).
+// §22 C6 — seven skies. Plate luminance stays under the starter muzzle and the engine core.
+// Exactly one profile is the galaxy. The authored set is the seven palette-family skies plus
+// the per-sector rigs that inherit a family's sky (they share the plate, not an eighth sky).
+// The seventh family is the Bolus throat's own dark sky (5ef2693e9dd0, SEED-SC-22).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -24,17 +25,17 @@ test('the authored skies sit under the muzzle and the engine, and only Tethys is
   const profiles = Object.values(SECTOR_VISUAL_PROFILES);
   const muzzle = STARTER_PULSE_MUZZLE_LIGHT_PEAK;
   const engine = engineCoreIntensity(KESTREL_MAIN_PLUME_RECIPE);
-  // The row's "six skies" is six distinct resolved skies, not six profiles — a sector rig
+  // The row's sky count is distinct resolved skies, not profiles — a sector rig
   // shares its family's plate/structure by frozen reference. A new rig grows the profile
-  // count; only a real seventh sky fails this.
+  // count; only a real eighth sky fails this.
   const skyIdentities = new Set(profiles.map((profile) => {
     const paint = resolveBackgroundPaintedSky(profile);
     if (paint && paint.plate) return `plate:${paint.plate}`;
     const structure = resolveBackgroundStructure(profile);
     return `structure:${resolveDeepFieldStructureRecipe(structure).id}`;
   }));
-  assert.equal(skyIdentities.size, 6,
-    'six distinct skies — the palette families; sector rigs inherit, they do not add a sky');
+  assert.equal(skyIdentities.size, 7,
+    'seven distinct skies — the palette families; sector rigs inherit, they do not add a sky');
   assert.ok(muzzle > 1 && engine > muzzle, 'the engine core outshines the starter muzzle');
   const galaxies = profiles.filter((profile) => profile.galaxyPlate === true);
   assert.deepEqual(galaxies.map((profile) => profile.id), ['tethys']);

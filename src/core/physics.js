@@ -83,6 +83,7 @@ const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 const EMPTY_SWEEP_LIST = Object.freeze([]);
+const SG02_STEP_SUMMARY_OPTIONS = Object.freeze({ detailedDiagnostics: false });
 // Exact (or sub-ulp) XZ overlap: hypot is 0 so dx/dist is {0,0} and pushApart is a no-op.
 // 1e-12 world units is far below gameplay contact scale; 47-A goldens never co-locate.
 const DEGENERATE_SEP2 = 1e-24;
@@ -209,12 +210,20 @@ export const physics = {
       this.bus.on('game:newGame', () => clearPhysicalEffects(this.state));
       this.bus.on('sector:exit', () => clearPhysicalEffects(this.state));
     }
+    const facade = this;
+    let colliderCount = 0;
+    let ccdBodyCount = 0;
+    this._sg02DiagnosticsOwner = null;
     this._diag = {
       backend: 'custom',
       rapierReady: false,
       bodies: 0,
-      colliders: 0,
-      ccdBodies: 0,
+      // These two SG-02 counters walk the native records. Keep the diagnostic fields
+      // enumerable and current for readers, without doing the walks in each fixed step.
+      get colliders() { return facade._sg02DiagnosticsOwner?.countColliders() ?? colliderCount; },
+      set colliders(value) { colliderCount = value; },
+      get ccdBodies() { return facade._sg02DiagnosticsOwner?.countCcdBodies() ?? ccdBodyCount; },
+      set ccdBodies(value) { ccdBodyCount = value; },
       rapierContacts: 0,
       rapierEvents: 0,
       sg02Ready: false,
@@ -950,7 +959,7 @@ export const physics = {
     const phPreOn = phPre.active;
     let phPreT = phPreOn ? nowNs() : 0;
     const owner=this._sg02, world=owner.world, epoch=this._sg02Token;
-    const sdiag = owner.step(dt, state.tick);
+    const sdiag = owner.step(dt, state.tick, SG02_STEP_SUMMARY_OPTIONS);
     if (phPreOn) { phPre.record('physics.worldStep', nowNs() - phPreT); phPreT = nowNs(); }
     const sg02ImpactCount = owner.publishCompletedOrchardContacts(owner.completedOrchardTail(),()=>this._emitSg02ContactImpacts(state));
     if (phPreOn) { phPre.record('physics.impacts', nowNs() - phPreT); }
@@ -967,8 +976,7 @@ export const physics = {
     }
     this._diag.sg02InitTimedOut = false;
     this._diag.bodies = sdiag.bodies;
-    this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
-    this._diag.ccdBodies = sdiag.ccdBodies || 0;
+    this._sg02DiagnosticsOwner = owner;
     this._diag.rapierContacts = sg02ImpactCount;
     this._diag.rapierEvents = sg02ImpactCount;
     this._diag.sg02Bodies = sdiag.bodies;
@@ -1130,6 +1138,7 @@ export const physics = {
 
   _disableSg02DynamicAuthority() {
     if (this._sg02 || this._sg02Init) this._sg02Token++;
+    this._sg02DiagnosticsOwner = null;
     // A teardown (load boundary, backend change) ends the episode being timed; a fresh one starts.
     this._clearSg02Stall(true);
     if (this._sg02 && typeof this._sg02.dispose === 'function') this._sg02.dispose();
@@ -1768,6 +1777,7 @@ export const physics = {
     if (this._rapier && typeof this._rapier.dispose === 'function') this._rapier.dispose();
     this._rapier = null;
     this._rapierInit = null;
+    this._sg02DiagnosticsOwner = null;
     this._diag.rapierReady = false;
     this._diag.bodies = 0;
     this._diag.colliders = 0;

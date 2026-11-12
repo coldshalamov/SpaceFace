@@ -765,9 +765,17 @@
     0%, 100% { opacity:.68; }
     50% { opacity:1; }
   }
+  /* Reduced motion holds every edge telegraph steady at the same legible .9 the telegraph slot
+     reads: the inbound-missile and closing-boost tells keep their slot, glyph and channel colour,
+     only the 0.5 s hard-step strobe stops (the tell is never silenced, just not re-flashed). */
   @media (prefers-reduced-motion: reduce) {
-    .sf-threat-halo__slot--telegraph { animation: none; opacity:.9; }
+    .sf-threat-halo__slot--telegraph,
+    .sf-threat-halo__slot--missile,
+    .sf-threat-halo__slot--arc[data-closing="boost"] { animation: none; opacity:.9; }
   }
+  html.sf-reduce-motion .sf-threat-halo__slot--telegraph,
+  html.sf-reduce-motion .sf-threat-halo__slot--missile,
+  html.sf-reduce-motion .sf-threat-halo__slot--arc[data-closing="boost"] { animation:none; opacity:.9; }
   html.sf-reduce-flash .sf-threat-halo__slot--missile,
   html.sf-reduce-flash .sf-threat-halo__slot--arc[data-closing="boost"],
   html.sf-reduce-flash .sf-threat-halo__slot--telegraph { animation:none; }
@@ -3315,6 +3323,9 @@
   backdrop-filter:none !important;
   -webkit-backdrop-filter:none !important;
 }
+:root[data-sf-mobile="1"] body:is(.ui-modal-open,.ui-live-screen) #sf-sector-law {
+  display:none!important;
+}
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
 /* Expanded navigation owns this space; hidden task controls must not intercept radar taps. */
@@ -3346,25 +3357,33 @@
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-edge[aria-expanded="true"] {
     border-bottom-color:var(--mf-hand);
   }
+  /* MOB-02: the status strip is one ~30px row of thin labelled bars beside a small speed
+     numeral — cap its reach so the Powers/Pause lane stays clear. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status {
-    width:min(176px,calc(100vw - 114px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    max-width:calc(100vw - 74px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px));
     min-width:0;
   }
   /* Stack the transient lines: alerts band ~146-170, then the tutorial card, then the
      objective. The card's injected top:18% (~152) sat inside the alerts band and over the
      leftcontext block's top corner. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-tutorial-flight-card { top:calc(178px + var(--sf-safe-top,0px))!important; }
+  /* Danger and warning lines take the clear seat under Powers/Pause, right of the objective line: centred at the
+     top they printed behind the vitals strip (lead look 2026-11-11). */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts .sf-alert--floor:not(.sf-alert--info) {
+    position:fixed!important; left:auto!important; right:calc(8px + var(--sf-safe-right,0px))!important;
+    top:calc(64px + var(--sf-safe-top,0px))!important; bottom:auto!important; transform:none!important;
+    max-width:calc(100vw - 270px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important; white-space:normal;
+  }
 
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
-  /* The two-line flight hint must clear the bottom safe edge on short portrait screens. */
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-ghost-label { top:82px; }
+  /* The two-line flight hint sits under the smaller first-run ring. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-ghost-label { top:50px; }
 }
 
 /* One small task instrument and one radar: disclosure, rather than desktop prose at phone size. */
 @media (max-width:959px), (max-height:599px) {
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud { --sf-radar-size:88px; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status { width:150px!important; gap:3px; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-speed b { font-size:32px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud { --sf-radar-size:96px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status { width:auto!important; gap:6px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-speed b { font-size:20px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock {
     top:calc(112px + var(--sf-safe-top,0px))!important;
     right:calc(8px + var(--sf-safe-right,0px))!important;
@@ -3373,13 +3392,16 @@
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) {
     position:relative!important; inset:auto!important; width:120px!important;
-    --sf-kit-radar-rim:16px; transform:none!important; pointer-events:auto!important;
+    --sf-kit-radar-rim:12px; transform:none!important; pointer-events:auto!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar {
-    width:88px!important; height:88px!important; overflow:visible;
+    width:96px!important; height:96px!important; overflow:visible;
   }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:88px!important; height:88px!important; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:96px!important; height:96px!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-orrery text { font-size:12px!important; }
+  /* MOB-02: the mini dial is a glance instrument; its legend plate returns on the expanded scope. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-objective-key { display:none!important; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-orrery .orr-micro--hi { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar { flex-shrink:0; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar canvas { width:290px!important; height:290px!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-objective-key { margin-top:12px!important; font-size:12px!important; line-height:1.25; letter-spacing:normal; overflow-wrap:anywhere; }
@@ -3392,24 +3414,35 @@
     min-height:0!important; overflow-y:auto!important; transform:none!important; z-index:200;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext {
-    top:calc(112px + var(--sf-safe-top,0px))!important;
+    top:calc(46px + var(--sf-safe-top,0px))!important;
     left:calc(8px + var(--sf-safe-left,0px))!important; bottom:auto!important;
     width:min(320px,calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
     max-width:none!important; transform:none!important; overflow:visible!important; contain:style!important;
     padding:0!important; border:0!important; background:none!important; box-shadow:none!important;
   }
+  /* MOB-02: the tracker is one ellipsized line — act title (when present) plus the objective's
+     first line — and the whole line is the disclosure target. hud.js toggles the card with an
+     inline display, so the line is built from inline children instead of a flex row: the card's
+     own line box carries the one shared ellipsis. The DETAILS button itself is stretched
+     invisible over the card so it keeps its name, focus and expanded state. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext > .sf-mission-tracker {
-    box-sizing:border-box; width:100%; max-width:100%; padding:6px 8px!important;
-    contain:style!important; background:var(--dp-glass-flight,rgb(5 7 10 / .88))!important; overflow:visible;
+    box-sizing:border-box; width:100%; max-width:100%; padding:5px 8px!important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    contain:style!important; background:var(--dp-glass-flight,rgb(5 7 10 / .88))!important;
     border:1px solid var(--dp-line-faint,rgb(232 226 212 / .14)); border-radius:4px;
     pointer-events:none!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
+  /* G19-02 hold line on a phone: one compact line under the objective, only while carrying something. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-cargo-bar { margin-top:4px; padding:3px 8px!important; font-size:12px!important; line-height:1.3; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mission-tracker::before { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-obj { display:none!important; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact { display:block; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-action { height:2.6em; min-height:0; max-height:2.6em; padding-right:58px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-readings { margin-top:2px; white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); font-size:13px; line-height:1.3; }
+  /* The line is the objective: the chapter name ("ACT I - THE PIT") cut the instruction to "Recover the 47-…"
+     on the real route (lead look). The chapter stays in the details sheet the line opens. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-title { display:none!important; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact { display:contents; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-action { display:block; overflow:hidden; text-overflow:ellipsis; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-readings { display:none!important; }
   /* The full objective AND this tutorial caption already live in the existing Details panel. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-time { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-button, :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-close,
@@ -3425,7 +3458,7 @@
      leaving Close visible even when a long objective or tutorial fills the available space. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details:not([hidden]) {
     display:flex; flex-direction:column; position:fixed; z-index:30;
-    left:calc(8px + var(--sf-safe-left,0px)); top:calc(112px + var(--sf-safe-top,0px));
+    left:calc(8px + var(--sf-safe-left,0px)); top:calc(46px + var(--sf-safe-top,0px));
     box-sizing:border-box; width:min(280px,calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     max-height:calc(100dvh - 120px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px));
     padding:10px; color:var(--dp-ink,#e8e2d4); background:var(--dp-void,#05070a); border:1px solid var(--dp-metal-hi,#777);
@@ -3437,11 +3470,21 @@
     white-space:pre-line; overflow-wrap:anywhere;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-close { flex:none; align-self:flex-end; margin-bottom:8px; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-button { position:absolute; top:6px; right:6px; width:54px; height:44px; padding:4px; }
+  /* MOB-02: the DETAILS chip is gone from sight; it stretches invisible across the one-line
+     tracker so a tap anywhere on the objective line (and the existing keyboard focus) keeps
+     opening the same details sheet. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-button {
+    position:absolute; inset:0; width:auto; height:auto;
+    padding:0; border:0; color:transparent; background:transparent; font-size:0;
+  }
+  /* MOB-02: ordinary flight's "View & circuits" chip leaves the flight HUD — Circuits stays on
+     the menu reach (pause / title) instead of a plate over the world. The authored-race
+     instrument (data-compact="false") keeps its seat. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] {
+    display:none!important;
     position:absolute!important; top:-48px!important; right:0!important; left:auto!important; bottom:auto!important;
     width:120px!important; padding:0!important; background:none!important; transform:none!important;
-    display:block; overflow:visible!important;
+    overflow:visible!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-options-trigger { width:100%; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"][data-options-open="false"] .race-tape-actions { display:none!important; }
@@ -3465,8 +3508,9 @@
   }
   /* Important results wrap in full; a pointer-through feed must never require a hidden scroll. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud #toasts { max-height:none!important; overflow:visible!important; gap:5px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-stage__flow { width:100%; min-width:0; align-items:stretch; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast { box-sizing:border-box; width:100%; max-width:100%; font:inherit; min-width:0; padding:3px 0; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast__text { min-width:0; flex:1; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast__text { min-width:0; flex:1; white-space:normal; overflow-wrap:anywhere; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast:not(.sf-toast--info) .sf-toast__text { white-space:normal; overflow:visible; text-overflow:clip; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts .sf-alert--floor.sf-alert--info .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:has(#toasts .sf-toast:not(.sf-toast--out)) #alerts .sf-alert--floor.sf-alert--info { visibility:hidden!important; }
@@ -3504,18 +3548,18 @@
 @media (max-height:500px) and (orientation:landscape) {
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { top:calc(100px + var(--sf-safe-top,0px))!important; width:230px!important; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { top:calc(44px + var(--sf-safe-top,0px))!important; width:236px!important; }
   /* Use landscape's width: results at the upper edge, context at the lower edge, with the
      central ship between them. These seats also clear the mirrored left-hand action cluster. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud #toasts,
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts .sf-alert--floor.sf-alert--info {
-    left:calc(176px + var(--sf-safe-left,0px))!important;
+    left:calc(252px + var(--sf-safe-left,0px))!important;
     width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
     top:calc(10px + var(--sf-safe-top,0px))!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-ml2 .ml2-preview,
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview {
-    left:calc(176px + var(--sf-safe-left,0px))!important; right:auto!important;
+    left:calc(252px + var(--sf-safe-left,0px))!important; right:auto!important;
     bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
     max-width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
   }
