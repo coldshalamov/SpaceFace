@@ -410,3 +410,26 @@ test('absent player identity cannot credit ambient feed; numeric zero and delaye
 });
 
 
+
+
+test('Rookside distinguishes the small first growth from optional paid hauling, then keeps the handoff', () => {
+  const h = fixture('all-lost');
+  const logs = []; h.bus.on('comms:log', row => logs.push(row.text));
+  assert.match(h.garden.data.scanLabel, /13\.4t feed to visible growth/);
+  assert.match(h.garden.data.scanLabel, /optional paid run 0\/240t/);
+  assert.match(h.read().reason, /finishing the paid run is optional/);
+  addCargo(h.state, IRON, 17);
+  h.feed(h.jettison(17));
+  assert.match(h.garden.data.scanLabel, /your first growth recorded; further feeding is optional/);
+  assert.equal(h.garden.data.compostRunComplete, undefined);
+  assert.equal(h.creditIntents.length, 0);
+  assert.deepEqual(h.read().pos, nestApproach());
+  assert.equal(logs.filter(text => text.includes('Your load took root.')).length, 1);
+  addCargo(h.state, IRON, 1);
+  h.feed(h.jettison(1));
+  assert.equal(logs.filter(text => text.includes('Your load took root.')).length, 1);
+  h.gardenOwner.update(1 / 60, h.state);
+  assert.match(h.garden.data.scanLabel, /optional paid run 14\.4\/240t/);
+  assert.match(h.garden.data.scanLabel, /first growth recorded/);
+  assert.equal(h.creditIntents.length, 0);
+});

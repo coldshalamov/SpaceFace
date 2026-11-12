@@ -569,6 +569,15 @@ function syncGardenStage(state, e, rec) {
   const fed = Number(e.data.compostFedMass) || 0;
   const amount = n => String(Math.round(n * 100) / 100);
   e.data.scanLabel = `UNDERSTORY GARDEN · ${stage.label.toUpperCase()} · stage ${stage.stage}/5 · ${amount(rec.biomass)} biomass · ${amount(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t fed · ${amount(Math.max(0, UNDERSTORY_COMPOST_RUN.targetMass - fed))}t remaining · ${e.data.compostRunComplete ? 'run paid once' : 'pays only at 240t (12cr/t)'}`;
+  if (e.data.authoredUnderstoryReceiver === true) {
+    const growth = e.data.gardenFirstPlayerGrowth;
+    const next = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > rec.biomass);
+    const toGrowth = next ? Math.ceil((next.massFloor - rec.biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : 0;
+    const work = growth ? 'your first growth recorded; further feeding is optional'
+      : next ? `${amount(toGrowth)}t feed to visible growth; Line-feed from west, keep cockpit outside`
+      : 'fully grown; no further stage available';
+    e.data.scanLabel = `${UNDERSTORY_RECEIVER.name.toUpperCase()} · ${stage.label.toUpperCase()} · ${work} · optional paid run ${amount(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t · ${e.data.compostRunComplete ? 'paid once' : 'pays at 240t (12cr/t)'}`;
+  }
   rec.stage = stage.stage;
   if (stage.stage > prevStage) return { grew: true, stage };
   return { grew: false, stage };
@@ -1153,13 +1162,19 @@ export const understoryGardens = {
         eatenId: prey.id, eatenType: prey.type, fedMass, gained, byPlayer,
         fromStage, stage: stage.stage, biomass: rec.biomass, tick: s.tick };
       const firstGrowth = grew && byPlayer && hasUnderstoryGardenVisualIdentity(e) && !e.data.gardenFirstPlayerGrowth;
-      if (firstGrowth) e.data.gardenFirstPlayerGrowth = { ...receipt };
+      if (firstGrowth) {
+        e.data.gardenFirstPlayerGrowth = { ...receipt };
+        syncGardenStage(s, e, rec);
+      }
       this.bus.emit('understory:gardenFed', receipt);
       if (firstGrowth) this.bus.emit('understory:playerGrowth', receipt);
       if (grew) {
         this.bus.emit('understory:gardenStage', { ...receipt, stageId: stage.id });
-        this.bus.emit('comms:log', { text: byPlayer ? pickBark(s, UNDERSTORY_BARKS.stageUp)
-          : 'The garden takes root in the drifting dead.', speaker: 'The Understory' });
+        const stageBark = byPlayer ? pickBark(s, UNDERSTORY_BARKS.stageUp)
+          : 'The garden takes root in the drifting dead.';
+        this.bus.emit('comms:log', { text: firstGrowth && e.data.authoredUnderstoryReceiver === true
+          ? 'Your load took root. You can leave the garden now; the 240t paid run is separate. The garden will keep what you have fed it.'
+          : stageBark, speaker: 'The Understory' });
       }
       if (byPlayer) {
         this._creditCompost(e, rec, fedMass);
