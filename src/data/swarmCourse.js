@@ -46,7 +46,7 @@ export const SWARM_COURSE = Object.freeze([
   // sprocket_crate is salvage riding in that you lose if you do not go get it — the
   // Highway Robbery's chase-or-lose-it pressure as one authored crate.
   // Review 2026-11-11: sprocket_crate is a supply reward, not theft — the theft mechanic is C01-05's.
-  courseRound(18, 'Highway Robbery', 'Reavers steal your Scrap and run for the gates. Chase or lose it', null),
+  courseRound(18, 'Highway Robbery', 'Reavers steal your Scrap and run for the gates. Chase or lose it', 'highway_robbery'),
   courseRound(19, 'The Law', 'Lawmen and Cutters box you in — and stop for the lane lights', null),
   courseRound(20, 'The Yardmaster', 'Boss. It controls the freight. The lanes change direction mid-fight. The room changes again. Bench', null),
   // reef_surge's own telegraph is the round's lesson: the room moves. Let it throw for you.

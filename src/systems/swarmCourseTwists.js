@@ -25,6 +25,7 @@ import {
   SWARM_RIDER_CARRY_EXIT_SCALE,
   SWARM_LIGHTS_OUT_INTENSITY,
   SWARM_LIGHTS_OUT_RAMP_S,
+  SWARM_THEFT_FRACTION,
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
@@ -169,9 +170,110 @@ function createLightsOutModule(host) {
   };
 }
 
+/**
+ * Round 18 — Highway Robbery. Every Reaver the wave seats carries the thief stamp;
+ * the first one that touches the pilot lifts 15% of the run purse through the purse
+ * owner's debit seam (`run:spendRequested`, reason `swarm:theft` — the wallet's
+ * negative award) and runs the authored forceFlee egress for the nearest gate.
+ * Killed before it exits, the thief drops exactly what it took through the
+ * `swarm:bonusChip` reward pipeline, so the loot is an ordinary chip you can scoop.
+ * The course suppresses any dealt card on the round — the robbery IS the event.
+ */
+function createHighwayRobberyModule(host) {
+  const thieves = new Set(); // thief ids stamped this round
+  let busy = false;          // one robbery at a time — first toucher is the thief
+
+  // The wave owner's wave-started handler seats the tick-0 package before this
+  // module's runs — spawn events for it precede the module entirely. Stamping is
+  // therefore lazy: the update sweep and the touch path both stamp on sight.
+  function stampIfThief(e) {
+    if (!e || !e.data || e.data.swarmThief) return e;
+    if (e.data.runCohort !== 'survival' || e.data.lootTableId !== 'reaver_pirate') return e;
+    e.data.swarmThief = { stolen: 0, done: false };
+    thieves.add(e.id);
+    return e;
+  }
+
+  function thief(id) {
+    const e = entityAt(host.state, id);
+    return e && e.data && e.data.swarmThief ? e : null;
+  }
+
+  function rob(thiefEntity) {
+    const t = thiefEntity.data.swarmThief;
+    if (!t || t.done) return;
+    t.done = true;
+    const run = liveSwarmRun(host.state);
+    const purse = run && Number.isFinite(run.credits) ? Math.max(0, Math.floor(run.credits)) : 0;
+    const stolen = Math.floor(purse * SWARM_THEFT_FRACTION);
+    t.stolen = stolen;
+    if (stolen > 0 && host.bus && typeof host.bus.emit === 'function') {
+      host.bus.emit('run:spendRequested', {
+        credits: stolen, reason: 'swarm:theft', wave: host.wave,
+        pos: { x: finite(thiefEntity.pos && thiefEntity.pos.x), z: finite(thiefEntity.pos && thiefEntity.pos.z) },
+      });
+    }
+    // Out through the nearest gate — the authored egress resolves the body as 'fled',
+    // so a successful robber leaves the fight and still lets the round clear.
+    thiefEntity.data.ai = thiefEntity.data.ai || {};
+    thiefEntity.data.ai.forceFlee = true;
+    setEntityDoctrine(thiefEntity, { activity: { kind: 'flee', reason: 'swarm_robbery' } });
+  }
+
+  return {
+    update() {
+      const list = host.state && host.state.entityList;
+      if (!Array.isArray(list)) return;
+      for (const e of list) stampIfThief(e);
+    },
+    onEntitySpawned(payload) {
+      stampIfThief((payload && payload.entity) || entityAt(host.state, payload && payload.id));
+    },
+    onPhysicsImpact(payload) {
+      if (busy || !payload) return;
+      const playerId = host.state && host.state.playerId;
+      if (playerId == null) return;
+      const a = thief(stampIfThief(entityAt(host.state, payload.aId)) && payload.aId);
+      const b = thief(stampIfThief(entityAt(host.state, payload.bId)) && payload.bId);
+      const culprit = (payload.aId === playerId ? b : payload.bId === playerId ? a : null)
+        || (a && b ? a : null);
+      if (!culprit) return;
+      busy = true;
+      try { rob(culprit); } finally { busy = false; }
+    },
+    onEntityKilled(payload) {
+      const id = payload && payload.id;
+      if (id == null || !thieves.has(id)) return;
+      // The corpse still carries its stamp and its position — read the raw record,
+      // not entityAt's alive filter.
+      const body = host.state && host.state.entities && typeof host.state.entities.get === 'function'
+        ? host.state.entities.get(id) : null;
+      const t = body && body.data && body.data.swarmThief;
+      if (t && t.stolen > 0 && !t.dropped && body.pos) {
+        t.dropped = true;
+        // The reward owner mints an entitled chip at the corpse — the same pipeline an
+        // earned kill chip rides, so the recovered purse is loot, not a ledger line.
+        if (host.bus && typeof host.bus.emit === 'function') {
+          host.bus.emit('swarm:bonusChip', {
+            credits: t.stolen, pos: { x: finite(body.pos.x), z: finite(body.pos.z) },
+            reason: 'swarm:theft', wave: host.wave,
+          });
+        }
+      }
+      thieves.delete(id);
+    },
+    onEntityRetired(payload) {
+      // A thief that reaches a gate keeps its take — 'fled' is the robbery landing.
+      thieves.delete(payload && payload.id);
+    },
+    teardown() { thieves.clear(); busy = false; },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
+  highway_robbery: createHighwayRobberyModule,
 };
 
 export const swarmCourseTwists = {
@@ -203,7 +305,7 @@ export const swarmCourseTwists = {
     on('entity:retired', (p) => this._dispatch('onEntityRetired', p));
     on('entity:spawned', (p) => this._dispatch('onEntitySpawned', p));
     on('entity:destroyed', (p) => this._dispatch('onEntityDestroyed', p));
-    on('physics:contact', (p) => this._dispatch('onPhysicsContact', p));
+    on('physics:impact', (p) => this._dispatch('onPhysicsImpact', p));
   },
   _onWavePlanned(payload) {
     const run = liveSwarmRun(this.state);

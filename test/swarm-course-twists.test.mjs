@@ -13,6 +13,8 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { survivalArena } from '../src/systems/survivalArena.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { runSession } from '../src/systems/runSession.js';
+import { survivalRewards } from '../src/systems/survivalRewards.js';
 import { swarmCourseTwists } from '../src/systems/swarmCourseTwists.js';
 import { FOUNDRY_ARENA_ID } from '../src/systems/swarmArena.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
@@ -83,8 +85,10 @@ function boot(wave, { ruleset = SWARM_RULESET } = {}) {
   const fields = makeFields();
   const registry = { get: (name) => name === 'fields' ? fields : null };
   const ctx = { state, bus, helpers, registry };
+  runSession.init(ctx);
   survivalArena.init(ctx);
   survivalWave.init(ctx);
+  survivalRewards.init(ctx);
   swarmCourseTwists.init(ctx);
   const run = createRunState({ kind: 'survival', ruleset, seed: SEED });
   run.arenaId = ARENA;
@@ -137,6 +141,9 @@ function boot(wave, { ruleset = SWARM_RULESET } = {}) {
         }
       }
     }
+    // The real loop flushes the deferred queue at end of sim step — entity:spawned is a
+    // queued event, so a headless tick owes the same drain or queued listeners never see it.
+    rawBus.flush();
   }
 
   function tickN(n) { for (let i = 0; i < n; i++) tick(); }
@@ -156,7 +163,11 @@ function boot(wave, { ruleset = SWARM_RULESET } = {}) {
   return {
     state, ctx, bus, kernel, plan, events, emitted, helpers, tick, tickN, tickUntil,
     entities, freightMembers, attachments,
-    destroy() { survivalArena.destroy(); survivalWave.destroy(); swarmCourseTwists.destroy(); kernel.dispose(); },
+    destroy() {
+      survivalArena.destroy(); survivalWave.destroy();
+      survivalRewards.destroy(); swarmCourseTwists.destroy();
+      runSession.destroy(); kernel.dispose();
+    },
   };
 }
 
@@ -305,4 +316,81 @@ test('Lights Out: the dimmer scales only the sector rig — and survives a palet
   assert.equal(lights.rim.intensity, 0.7);
   assert.equal(lights.fill.intensity, 0.35);
   resetSectorDimmerForTest();
+});
+
+// ── Round 18 — Highway Robbery ─────────────────────────────────────────────────────────
+
+test('Highway Robbery: a touching Reaver takes 15% of the purse through the debit seam and runs', () => {
+  const h = boot(18);
+  try {
+    h.state.run.credits = 1000;
+    h.tickUntil(3); // the opening package lands at tick 0 — a few ticks seats it
+    const reavers = h.entities().filter((e) => e.data && e.data.lootTableId === 'reaver_pirate');
+    assert.ok(reavers.length >= 4, `the Reaver package spawned (${reavers.length})`);
+    const thief = reavers[0];
+    assert.equal(thief.data.swarmThief.stolen, 0, 'the robber carries the thief stamp');
+    // No dealt card rides this round — the robbery IS the event.
+    const playerId = h.state.playerId;
+    h.bus.emit('physics:impact', {
+      aId: playerId, bId: thief.id, pos: { x: thief.pos.x, z: thief.pos.z },
+      normal: { x: 1, z: 0 }, preSolveClosingSpeed: 80, tick: h.state.tick,
+    });
+    const spends = h.emitted.filter((e) => e.event === 'run:spendRequested');
+    assert.equal(spends.length, 1, 'exactly one debit request left the purse');
+    assert.equal(spends[0].payload.credits, 150, '15% of 1000');
+    assert.equal(spends[0].payload.reason, 'swarm:theft');
+    const spent = h.emitted.filter((e) => e.event === 'run:spent');
+    assert.equal(spent.length, 1, 'the purse owner answered the debit');
+    assert.equal(h.state.run.credits, 850, 'the run purse is 15% lighter');
+    assert.equal(thief.data.swarmThief.stolen, 150);
+    assert.equal(thief.data.ai.forceFlee, true, 'the thief runs the authored egress for the gate');
+    // A second touch never steals twice.
+    h.bus.emit('physics:impact', {
+      aId: playerId, bId: thief.id, pos: { x: thief.pos.x, z: thief.pos.z },
+      normal: { x: 1, z: 0 }, tick: h.state.tick,
+    });
+    assert.equal(h.emitted.filter((e) => e.event === 'run:spendRequested').length, 1);
+    assert.equal(h.state.run.credits, 850);
+  } finally { h.destroy(); }
+});
+
+test('Highway Robbery: killing a loaded thief drops exactly the take through the chip pipeline', () => {
+  const h = boot(18);
+  try {
+    h.state.run.credits = 1000;
+    h.tickUntil(3);
+    const thief = h.entities().find((e) => e.data && e.data.lootTableId === 'reaver_pirate');
+    h.bus.emit('physics:impact', {
+      aId: h.state.playerId, bId: thief.id,
+      pos: { x: thief.pos.x, z: thief.pos.z }, normal: { x: 1, z: 0 }, tick: h.state.tick,
+    });
+    assert.equal(h.state.run.credits, 850);
+    // Kill the fleeing robber — the corpse drops what it took as a real entitled chip.
+    h.bus.emit('entity:killed', { id: thief.id, tick: h.state.tick, cause: 'player_gun' });
+    const bonus = h.emitted.filter((e) => e.event === 'swarm:bonusChip');
+    assert.equal(bonus.length, 1);
+    assert.equal(bonus[0].payload.credits, 150);
+    assert.equal(bonus[0].payload.reason, 'swarm:theft');
+    const drops = h.emitted.filter((e) => e.event === 'loot:drop');
+    assert.equal(drops.length, 1, 'the reward owner minted the recovery chip at the corpse');
+    const item = drops[0].payload.items && drops[0].payload.items[0];
+    assert.equal(item.credits, 150);
+    assert.equal(item.grantReason, 'swarm:theft');
+  } finally { h.destroy(); }
+});
+
+test('Highway Robbery: an untouched purse lets the thief run empty-handed', () => {
+  const h = boot(18);
+  try {
+    h.state.run.credits = 0;
+    h.tickUntil(3);
+    const thief = h.entities().find((e) => e.data && e.data.lootTableId === 'reaver_pirate');
+    h.bus.emit('physics:impact', {
+      aId: h.state.playerId, bId: thief.id,
+      pos: { x: thief.pos.x, z: thief.pos.z }, normal: { x: 1, z: 0 }, tick: h.state.tick,
+    });
+    assert.equal(h.emitted.filter((e) => e.event === 'run:spendRequested').length, 0,
+      'nothing in the purse, nothing debited');
+    assert.equal(thief.data.ai.forceFlee, true, 'but the robber still runs for the gate');
+  } finally { h.destroy(); }
 });
