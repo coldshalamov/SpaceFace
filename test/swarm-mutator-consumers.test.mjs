@@ -250,12 +250,15 @@ test('reef: the field tops up as the tight crucible_reef ring, not the wave-2 pe
   );
 
   const h2 = arenaBoot();
-  const plain = swarmRun([], 2);
+  // 2ad347c68d11 authored the Foundry opening courts over waves 1-3: a plain wave there
+  // fields the court, not the ladder band. Wave 4 is the first wave the ladder still owns.
+  const plain = swarmRun([], 4);
   h2.state.run = plain;
-  swarmArena._topUp(plain, 2);
+  swarmArena._topUp(plain, 4);
   const plainEmit = named(h2, 'swarmArena:debris');
   assert.equal(plainEmit.length, 1);
-  assert.equal(plainEmit[0].payload.layoutId, 'pebble_field', 'the ladder owns a plain wave 2');
+  const plainBand = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: 4, ratingT: 0 }));
+  assert.equal(plainEmit[0].payload.layoutId, plainBand.id, 'the ladder owns a plain wave 4');
   const plainRocks = debris(h2);
   assert.ok(plainRocks.length > 0, 'the control field still tops up');
   assert.ok(
@@ -264,7 +267,6 @@ test('reef: the field tops up as the tight crucible_reef ring, not the wave-2 pe
   );
   // The reef's tightness lives on the INNER edge: its ring hugs the fight from 58 wu out, while
   // the ladder band keeps its own inner edge — no plain rock poaches the reef pocket.
-  const plainBand = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: 2, ratingT: 0 }));
   assert.ok(
     REEF_DEBRIS_INNER < plainBand.inner,
     `the reef ring hugs the fight inside the ${plainBand.id} band's ${plainBand.inner}wu edge — ` +

@@ -23,17 +23,26 @@ export function sweptDiscsOverlap(pos, radius, other, {
     ? Math.max(0, Math.min(Math.max(0, finite(horizon)), -(rx * vx + rz * vz) / speed2)) : 0;
   const dx = rx + vx * t;
   const dz = rz + vz * t;
-  const nativeRadius = resolvePhysicsBodySpec(other)?.radius;
-  // A pending spawn spec is not an entity yet: `resolvePhysicsBodySpec` can answer a default
-  // radius while the authored `radius` is the hull that is about to exist. Clear the LARGER of
-  // the two, so a reserved neighbour is never treated as smaller than its arriving body.
-  const authoredRadius = finite(other.radius, 10);
-  const measured = [nativeRadius, authoredRadius]
-    .filter((r) => Number.isFinite(r) && r >= 0);
-  const otherRadius = measured.length ? Math.max(...measured) : 10;
+  const otherRadius = clearanceFootprint(other);
   const reach = Math.max(0, finite(radius)) + otherRadius
     + Math.max(0, finite(clearance));
   return dx * dx + dz * dz < reach * reach;
+}
+
+/**
+ * The footprint one body claims inside a placement check: the LARGER of its native
+ * collider and its authored radius. A pending spawn spec is not an entity yet:
+ * `resolvePhysicsBodySpec` can answer a default radius while the authored `radius` is the
+ * hull that is about to exist — so a reserved neighbour is never treated as smaller than
+ * its arriving body. Placement planners that pre-space bodies the live recheck will
+ * measure must space by this same footprint, or the field silently drops what they accept.
+ */
+export function clearanceFootprint(other) {
+  const nativeRadius = resolvePhysicsBodySpec(other)?.radius;
+  const authoredRadius = finite(other && other.radius, 10);
+  const measured = [nativeRadius, authoredRadius]
+    .filter((r) => Number.isFinite(r) && r >= 0);
+  return measured.length ? Math.max(...measured) : 10;
 }
 
 /** All live solid occupants, including the pilot and same-tick arrivals, are obstacles. */

@@ -41,7 +41,7 @@ import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstance
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
 import { mulberry32 } from '../core/rng.js';
-import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
+import { clearanceFootprint, swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
 import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
@@ -550,6 +550,7 @@ const SWARM_DEBRIS_RELEASE_S = 20;
 // annulus left the field one or two monoliths short of its target on some seeds, which is a
 // silently thinner arena rather than an error anybody would notice.
 const PLACEMENT_TRIES = 40;
+const REEF_PLACEMENT_TRIES = 160;
 const TYPE_ID = 'ast_common_rock';
 const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
 
@@ -696,19 +697,29 @@ export function planGravitySlalomWells({ anchor } = {}) {
 }
 
 /** PURE reef obstacle recipe. Tighter inner ring than the default swarm debris field. */
-export function planReefLayout({ anchor, existing = [], want = 0, rng } = {}) {
+export function planReefLayout({ anchor, existing = [], want = 0, rng, materials } = {}) {
   const at = {
     x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
     z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
   };
   const roll = typeof rng === 'function' ? rng : () => 0.5;
-  const placed = existing.map((e) => ({ x: e.x, z: e.z, radius: e.radius || 0 }));
+  // Space by the same footprint the live recheck will measure: each rock's own
+  // material collider (materials[i] is the stamp _topUp will spawn it with), and the
+  // larger-of-native/authored footprint every existing body claims.
+  const footprintOf = (body) => Number.isFinite(body && body.footprint)
+    ? body.footprint : (body && body.radius) || 0;
+  const placed = existing.map((e) => ({ x: e.x, z: e.z, footprint: footprintOf(e) }));
   const out = [];
   const n = Math.max(0, Math.trunc(want));
   for (let i = 0; i < n; i++) {
     const size = SWARM_DEBRIS_SIZE_MIN + roll() * (SWARM_DEBRIS_SIZE_MAX - SWARM_DEBRIS_SIZE_MIN);
+    const material = materials && materials[i];
+    const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+    const selfFootprint = material ? asteroidColliderRadius(typeId, size) : size;
     let chosen = null;
-    for (let attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
+    // The collider footprint law packs the ring tighter than the display-radius recipe
+    // that authored the target, so the reef gets a deeper search than the ambient field.
+    for (let attempt = 0; attempt < REEF_PLACEMENT_TRIES; attempt++) {
       const angle = (roll() * Math.PI * 2) + i * 2.399963;
       const span = REEF_DEBRIS_OUTER - REEF_DEBRIS_INNER;
       const dist = REEF_DEBRIS_INNER + Math.sqrt(roll()) * span;
@@ -719,15 +730,16 @@ export function planReefLayout({ anchor, existing = [], want = 0, rng } = {}) {
       for (const other of placed) {
         const dx = x - other.x;
         const dz = z - other.z;
-        const min = size + (other.radius || 0) + REEF_DEBRIS_SEPARATION;
+        const min = selfFootprint + other.footprint + REEF_DEBRIS_SEPARATION;
         if (dx * dx + dz * dz < min * min) { clear = false; break; }
       }
       if (!clear) continue;
-      chosen = { x, z, radius: size, layoutId: REEF_LAYOUT_ID };
+      chosen = { x, z, radius: size, layoutId: REEF_LAYOUT_ID,
+        ...(material ? { material } : {}) };
       break;
     }
     if (!chosen) continue;
-    placed.push(chosen);
+    placed.push({ x: chosen.x, z: chosen.z, footprint: selfFootprint });
     out.push(chosen);
   }
   return out;
@@ -1421,6 +1433,7 @@ export const swarmArena = {
       const ours = !!(entity.data && entity.data[SWARM_DEBRIS_TAG]);
       if (inReach) {
         nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0,
+          footprint: clearanceFootprint(entity),
           ...(ours && inFight && Number.isInteger(entity.data.openingTerrainSlot)
             ? { openingTerrainSlot: entity.data.openingTerrainSlot } : {}) });
         // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
@@ -1470,13 +1483,25 @@ export const swarmArena = {
       Number.isInteger(run.seed) ? run.seed : 1,
       Number.isInteger(wave) ? wave : 1,
     ));
+    const spawnedIds = [];
+    const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
+      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= fightRadius).map(environmentMaterialOf));
+    const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
+    // The reef planner spaces by the footprints the live recheck below will measure —
+    // which means each spot's own material collider. Hand it the exact material sequence
+    // the spawn loop's rotation will stamp, so a spot the plan accepts is one the field
+    // accepts (321e6d287a99 moved the recheck onto collider footprints).
+    const reefMaterials = reef
+      ? Array.from({ length: want }, (_, i) => ballast ? 'debris'
+          : (missingMaterials[i] || ENVIRONMENT_FAMILIES[i % ENVIRONMENT_FAMILIES.length]))
+      : null;
     // First rooms are authored courts, not a random ring. Later waves and all
     // variant arenas retain the existing seeded planner. No random fallback may
     // close the court's flight lane when a native body blocks an authored slot.
     const spots = openingStage
       ? planSwarmOpeningTerrain({ stage: openingStage, anchor, existing: nearbySolids, want, layout })
       : reef
-      ? planReefLayout({ anchor, existing: nearbySolids, want, rng })
+      ? planReefLayout({ anchor, existing: nearbySolids, want, rng, materials: reefMaterials })
       : planSwarmDebris({
         anchor,
         existing: nearbySolids,
@@ -1485,10 +1510,6 @@ export const swarmArena = {
         layout: { ...layout, axis: { x: 1, z: 0 } },
       });
     if (openingStage && spots.length < want) this._terrainRetry = true;
-    const spawnedIds = [];
-    const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
-      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= fightRadius).map(environmentMaterialOf));
-    const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
     if (!openingStage && spots.length < Math.min(want, missingMaterials.length)) {
       // Tight arena lanes can exhaust their placement search. Their missing toys sit on
       // a safe outer shoulder rather than silently disappearing from this arena's grammar.
