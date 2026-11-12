@@ -254,6 +254,18 @@ test('one destination line already carries distance and ETA', () => {
   assert.doesNotMatch(dest.line, /CURRENT OBJECTIVE|TUTORIAL OBJECTIVE|AMBER DIAMOND|GOAL ·/);
 });
 
+test('the phone recovery copy fits even when the mission waypoint owns navigation alone', () => {
+  const state = { mode: 'flight', ui: {}, missions: { active: [] }, nav: {
+    waypoint: { kind: 'mission', missionId: 'sample', label: '47-A Recovery Site',
+      reason: 'Recover the 47-A sample from the marked rock', pos: { x: 20, z: 0 } },
+  } };
+  const command = resolveFlightObjectiveCommand(state);
+  assert.equal(command.owner, 'navigation');
+  const dest = flightDestinationSurface(state, command);
+  assert.equal(dest.compactAction, 'Recover 47-A from marked rock');
+  assert.match(dest.line, /Recover the 47-A sample from the marked rock/);
+});
+
 test('campaign story objective stays off the mission tracker during a live Crucible run', () => {
   const state = { run: { kind: 'survival', ruleset: 'swarm', phase: 'active' } };
   const storyCommand = { owner: 'story' };
@@ -392,6 +404,7 @@ test('receipt placement handles visible and hidden captions with external flight
       lastCaptionObstacleVisible: false,
       externalCaptionsStale: false,
       externalFlightCaptions: new Set(external ? [{}] : []),
+      swarmColumnObserver: null,
       placeAlertLaneInSafeBands: () => {},
       overlaySafeSlot: () => slot,
       freeOverlayBands: () => [{ top: 0, bottom: 160 }],
@@ -740,6 +753,11 @@ test('short landscape flight text uses the gap between the camera key and radar'
   const bands = freeBands(slot, 390, { viewport: { width: 844 } }, null, true);
   assert.ok(bands.some((band) => band.top >= receipt.getBoundingClientRect().bottom
     && band.bottom - band.top >= 48), 'an additional caption has a separate readable band');
+
+  const swarmCallout = node(box(slot.x, 8, slot.width, 120));
+  context.document.body = { classList: { contains: (name) => name === 'sf-swarm-flight' } };
+  context.document.querySelectorAll = (selector) => selector.includes('.sf-sj__col') ? [swarmCallout] : [];
+  assert.ok(freeBands(slot, 390, { viewport: { width: 844 } }).every((band) => band.top >= 136));
 });
 
 test('natural mobile discovery geometry chooses the opposite thumb lane and waits safely when full', () => {
