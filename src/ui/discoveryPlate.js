@@ -107,14 +107,12 @@ export function createDiscoveryPlate(ctx) {
     const rects = visibleRects([centre]);
     // Receipt lines that share the plate's horizontal span (a phone seats them top-centre) count as
     // part of the stack, so the plate drops below them rather than over them.
-    if (rects.length) {
-      const vw = typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280;
-      const half = (item.offsetWidth || 292) / 2;
-      const lane = doc.getElementById('toasts');
-      const receipt = lane?.querySelector('.sf-toast:not(.sf-toast--out)') ? lane.getBoundingClientRect() : null;
-      for (const r of visibleRects([receipt])) {
-        if (r.x < vw / 2 + half && r.x + r.w > vw / 2 - half) rects.push(r);
-      }
+    const vw = typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280;
+    const half = (item.offsetWidth || 292) / 2;
+    const lane = doc.getElementById('toasts');
+    const receipt = lane?.querySelector('.sf-toast:not(.sf-toast--out)') ? lane.getBoundingClientRect() : null;
+    for (const r of visibleRects([receipt])) {
+      if (r.x < vw / 2 + half && r.x + r.w > vw / 2 - half) rects.push(r);
     }
     const top = seatBelowColumn(rects);
     if (top == null) { if (item.style.position === 'fixed') { item.style.position = ''; item.style.top = ''; item.style.left = ''; item.style.transform = ''; } return; }
