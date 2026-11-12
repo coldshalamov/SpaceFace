@@ -48,7 +48,7 @@ export const SWARM_COURSE = Object.freeze([
   // Review 2026-11-11: sprocket_crate is a supply reward, not theft — the theft mechanic is C01-05's.
   courseRound(18, 'Highway Robbery', 'Reavers steal your Scrap and run for the gates. Chase or lose it', 'highway_robbery'),
   courseRound(19, 'The Law', 'Lawmen and Cutters box you in — and stop for the lane lights', 'the_law'),
-  courseRound(20, 'The Yardmaster', 'Boss. It controls the freight. The lanes change direction mid-fight. The room changes again. Bench', null),
+  courseRound(20, 'The Yardmaster', 'Boss. It controls the freight. The lanes change direction mid-fight. The room changes again. Bench', 'the_yardmaster'),
   // reef_surge's own telegraph is the round's lesson: the room moves. Let it throw for you.
   courseRound(21, 'The Wall', 'heavies, shoulder to shoulder. Guns do nothing. Use the room', 'reef_surge'),
   courseRound(22, 'Chain Gang', 'every enemy is tethered to another. Swing one, swing them all', null),

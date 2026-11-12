@@ -24,8 +24,10 @@ export const SWARM_LIGHTS_OUT_INTENSITY = 0.25;
 export const SWARM_LIGHTS_OUT_RAMP_S = 2;
 /** Round 18 — a touching Reaver lifts this share of the run purse. */
 export const SWARM_THEFT_FRACTION = 0.15;
-/** Round 20 — the Yardmaster throws the lane twice during its fight. */
-export const SWARM_YARDMASTER_REVERSALS = Object.freeze([20 * 60, 55 * 60]);
+/** Round 20 — the Yardmaster throws the lane twice during its fight: once after the
+ *  opening string clears (~25 s, sending the 60 s string west) and once after the
+ *  reversed string is underway (~65 s, restoring east for the rest of the fight). */
+export const SWARM_YARDMASTER_REVERSALS = Object.freeze([25 * 60, 65 * 60]);
 /** Round 12 — a rider owes its release at the lane midpoint; a cut-loose container
  *  carries it away until the box stalls or leaves the room (then it fights loose). */
 export const SWARM_RIDER_STILL_TICKS = 30;

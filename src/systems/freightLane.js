@@ -118,10 +118,11 @@ export function planFreightLane({ at = null } = {}) {
 export function createFreightLaneDirector(ctx) {
   const bus = ctx && ctx.bus;
   const helpers = (ctx && ctx.helpers) || {};
-  let armed = null;       // { lane, arenaId, installedAt, wave, seed, nextDepartAt, warnAt }
-  let strings = [];       // live strings: { id, departAt, members: [entity] }
+  let armed = null;       // { lane, arenaId, installedAt, wave, seed, nextDepartAt, warnAt, dir }
+  let strings = [];       // live strings: { id, departAt, members: [entity], dir }
   let stringSerial = 0;
   let warnEmit = null;    // payload of the last warning, for tests/diag
+  const unsubs = [];
 
   function emit(name, payload) {
     if (bus && typeof bus.emit === 'function') bus.emit(name, payload);
@@ -144,20 +145,24 @@ export function createFreightLaneDirector(ctx) {
       seed,
       nextDepartAt: t0 + FREIGHT_FIRST_DEPART_S,
       warnAt: t0 + FREIGHT_FIRST_DEPART_S - FREIGHT_WARN_LEAD_S,
+      dir: 1,
     };
   }
 
   function _spawnString(state, departAt) {
     if (typeof helpers.spawnEntity !== 'function') return null;
     const lane = armed.lane;
+    // C01-05 — the Yardmaster reverses the lane: the string spawns at the trailing
+    // edge of its travel direction and the exit poll flips with it.
+    const dir = armed.dir === -1 ? -1 : 1;
     const id = `freight-w${armed.wave}-s${stringSerial++}`;
     const members = [];
     for (let i = 0; i < FREIGHT_STRING_COUNT; i++) {
       const e = helpers.spawnEntity({
         type: 'container',
         team: 0,
-        pos: { x: lane.x0 - i * FREIGHT_SPACING_WU, z: lane.z0 },
-        vel: { x: lane.dirX * FREIGHT_SPEED_WU_S, z: lane.dirZ * FREIGHT_SPEED_WU_S },
+        pos: { x: dir === 1 ? lane.x0 - i * FREIGHT_SPACING_WU : lane.x1 + i * FREIGHT_SPACING_WU, z: lane.z0 },
+        vel: { x: lane.dirX * FREIGHT_SPEED_WU_S * dir, z: lane.dirZ * FREIGHT_SPEED_WU_S * dir },
         rot: 0,
         angVel: 0,
         radius: FREIGHT_CONTAINER_RADIUS,
@@ -188,7 +193,7 @@ export function createFreightLaneDirector(ctx) {
       if (e) members.push(e);
     }
     if (!members.length) return null;
-    const rec = { id, departAt, members, dir: 1 };
+    const rec = { id, departAt, members, dir };
     strings.push(rec);
     emit('freight:departed', {
       stringId: id, wave: armed.wave, t: simTimeOf(state), count: members.length,
@@ -206,9 +211,11 @@ export function createFreightLaneDirector(ctx) {
 
   function _memberRailX(member, t) {
     const rec = member.__freightRec;
-    return rec
+    if (!rec) return armed.lane.x0;
+    const d = rec.dir === -1 ? -1 : 1;
+    return d === 1
       ? armed.lane.x0 + FREIGHT_SPEED_WU_S * (t - rec.departAt) - member.data.freightIndex * FREIGHT_SPACING_WU
-      : armed.lane.x0;
+      : armed.lane.x1 - FREIGHT_SPEED_WU_S * (t - rec.departAt) + member.data.freightIndex * FREIGHT_SPACING_WU;
   }
 
   function _driveMember(state, member, t) {
@@ -218,10 +225,11 @@ export function createFreightLaneDirector(ctx) {
     const vx = finite(member.vel && member.vel.x);
     const vz = finite(member.vel && member.vel.z);
     // Commanded velocity: cruise + bounded position correction, capped by maxSpeed.
+    const dir = member.__freightRec && member.__freightRec.dir === -1 ? -1 : 1;
     const corrX = FREIGHT_SERVO.gainPos * (targetX - finite(member.pos && member.pos.x));
     const corrZ = FREIGHT_SERVO.gainPos * (lane.z1 - finite(member.pos && member.pos.z));
-    let wantX = lane.dirX * FREIGHT_SPEED_WU_S + corrX;
-    let wantZ = lane.dirZ * FREIGHT_SPEED_WU_S + corrZ;
+    let wantX = lane.dirX * FREIGHT_SPEED_WU_S * dir + corrX;
+    let wantZ = lane.dirZ * FREIGHT_SPEED_WU_S * dir + corrZ;
     const wantMag = Math.hypot(wantX, wantZ);
     if (wantMag > FREIGHT_SERVO.maxSpeed) {
       const s = FREIGHT_SERVO.maxSpeed / wantMag;
@@ -328,7 +336,8 @@ export function createFreightLaneDirector(ctx) {
       });
     }
     if (isShip || (target.type && FREIGHT_LOOSE_TYPES.has(target.type))) {
-      _shoveOut(target, lane.dirX, lane.dirZ, relSign);
+      const sdir = rec && rec.dir === -1 ? -1 : 1;
+      _shoveOut(target, lane.dirX * sdir, lane.dirZ * sdir, relSign);
       emit('freight:contact', {
         stringId: rec.id,
         containerId: member.id,
@@ -432,6 +441,7 @@ export function createFreightLaneDirector(ctx) {
         t,
         departAt,
         x0: lane.x0, z0: lane.z0, x1: lane.x1, z1: lane.z1,
+        dir: armed.dir === -1 ? -1 : 1,
         blinkHz: FREIGHT_BLINK_HZ,
       };
       emit('freight:warning', warnEmit);
@@ -455,14 +465,18 @@ export function createFreightLaneDirector(ctx) {
         if (_lineTensionCut(st, rec, member)) continue;
         _driveMember(st, member, t);
         _contactSweep(st, rec, member);
-        // East exit.
-        if (finite(member.pos && member.pos.x) >= lane.x1) {
-          _cutLines(member, 'freight_east_exit');
+        // Lane-end exit — east for a forward string, west for a reversed one.
+        const exits = rec.dir === -1
+          ? finite(member.pos && member.pos.x) <= lane.x0
+          : finite(member.pos && member.pos.x) >= lane.x1;
+        if (exits) {
+          const reason = rec.dir === -1 ? 'freight_west_exit' : 'freight_east_exit';
+          _cutLines(member, reason);
           member.alive = false;
           emit('entity:retired', {
             id: member.id, occupantGeneration: member.occupantGeneration,
             type: member.type, pos: { x: member.pos.x, z: member.pos.z },
-            reason: 'freight-east-exit', owner: FREIGHT_OWNER,
+            reason: rec.dir === -1 ? 'freight-west-exit' : 'freight-east-exit', owner: FREIGHT_OWNER,
             freightString: rec.id, simTime: t,
           });
           rec.members.splice(i, 1);
@@ -513,12 +527,46 @@ export function createFreightLaneDirector(ctx) {
     warnEmit = null;
   }
 
+  /**
+   * C01-05 — the Yardmaster's lever. A request flips the lane's travel direction
+   * for every subsequent string (a string already moving keeps its own heading)
+   * and re-paints the amber at once so the reversal is never unwarned. Requests
+   * while unarmed are dropped — the lane is the only writer of its direction.
+   */
+  function _onReverseRequested(payload) {
+    if (!armed) return;
+    const st = ctx && ctx.state;
+    const lane = armed.lane;
+    armed.dir = armed.dir === -1 ? 1 : -1;
+    warnEmit = {
+      stringId: `freight-w${armed.wave}-s${stringSerial}`,
+      wave: armed.wave,
+      t: simTimeOf(st),
+      departAt: armed.nextDepartAt,
+      x0: lane.x0, z0: lane.z0, x1: lane.x1, z1: lane.z1,
+      dir: armed.dir,
+      blinkHz: FREIGHT_BLINK_HZ,
+      reversal: true,
+      requestedBy: payload && typeof payload.requestedBy === 'string' ? payload.requestedBy : 'swarm:yardmaster',
+    };
+    emit('freight:warning', warnEmit);
+    emit('audio:cue', { id: FREIGHT_HORN, position: { x: lane.x1, z: lane.z1 }, gain: 0.9 });
+  }
+
   return {
-    init() {},
+    init() {
+      if (bus && typeof bus.on === 'function') {
+        unsubs.push(bus.on('freight:reverseRequested', (p) => _onReverseRequested(p)));
+      }
+    },
     arm,
     update,
     teardown,
-    destroy() { teardown('destroy'); },
+    destroy() {
+      teardown('destroy');
+      for (const off of unsubs) { try { off(); } catch (_) { /* unsub best-effort */ } }
+      unsubs.length = 0;
+    },
     diagnostics() {
       return {
         armed: !!armed,

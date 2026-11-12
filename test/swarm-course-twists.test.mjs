@@ -429,3 +429,34 @@ test('The Law: amber lane lights hold the law hulls at the corridor edge until t
     }
   } finally { h.destroy(); }
 });
+
+// ── Round 20 — The Yardmaster ──────────────────────────────────────────────────────────
+
+test('The Yardmaster: the lane reverses twice behind a fresh amber, and strings run both ways', () => {
+  const h = boot(20);
+  try {
+    // First string departs east at ~20 s; the first reversal lands at tick 25*60.
+    h.tickUntil(26);
+    const reversals = h.events.warnings.filter((w) => w.reversal === true);
+    assert.equal(reversals.length, 1, 'the first throw repaints the amber at once');
+    assert.equal(reversals[0].dir, -1, 'the next string runs west');
+    assert.equal(reversals[0].requestedBy, 'swarm:yardmaster');
+    // The 60 s string departs reversed: containers spawn at the east lip and travel west.
+    h.tickUntil(61);
+    const reversed = h.events.departures.find((d) => d.dir === -1);
+    assert.ok(reversed, 'a string departed in the reversed direction');
+    for (const seat of reversed.members) {
+      assert.ok(seat.vx < 0, 'reversed members enter moving west');
+      assert.ok(seat.x > 0, 'reversed members spawn at the east lip');
+    }
+    // Second throw at tick 65*60 — back to east, with its own amber first.
+    h.tickUntil(66);
+    const throwsTwo = h.events.warnings.filter((w) => w.reversal === true);
+    assert.equal(throwsTwo.length, 2, 'the Yardmaster threw the lane twice');
+    assert.equal(throwsTwo[1].dir, 1, 'the lane runs east again');
+    // And the reversed string exits at the WEST lip — the direction flip is real motion.
+    h.tickUntil(70);
+    const westExit = h.events.retired.find((r) => r.reason === 'freight-west-exit');
+    assert.ok(westExit, 'the reversed string left through the west end');
+  } finally { h.destroy(); }
+});

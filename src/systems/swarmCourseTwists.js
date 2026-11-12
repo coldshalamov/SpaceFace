@@ -26,6 +26,7 @@ import {
   SWARM_LIGHTS_OUT_INTENSITY,
   SWARM_LIGHTS_OUT_RAMP_S,
   SWARM_THEFT_FRACTION,
+  SWARM_YARDMASTER_REVERSALS,
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
@@ -333,11 +334,37 @@ function createTheLawModule(host) {
   };
 }
 
+/**
+ * Round 20 — The Yardmaster. Twice during the boss fight the module asks the
+ * freight owner to throw the lane: `freight:reverseRequested` flips the armed
+ * direction, the owner re-paints the amber immediately, and the next string to
+ * depart runs the new way. The module never touches a container — the lane is
+ * the single writer of its own direction, so a mid-fight string keeps its heading.
+ */
+function createYardmasterModule(host) {
+  let index = 0;
+  return {
+    update() {
+      if (index >= SWARM_YARDMASTER_REVERSALS.length) return;
+      const tick = host.state && Number.isInteger(host.state.tick) ? host.state.tick : 0;
+      if (tick < SWARM_YARDMASTER_REVERSALS[index]) return;
+      index += 1;
+      if (host.bus && typeof host.bus.emit === 'function') {
+        host.bus.emit('freight:reverseRequested', {
+          wave: host.wave, reversal: index, tick, requestedBy: 'swarm:yardmaster',
+        });
+      }
+    },
+    teardown() { index = 0; },
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
   highway_robbery: createHighwayRobberyModule,
   the_law: createTheLawModule,
+  the_yardmaster: createYardmasterModule,
 };
 
 export const swarmCourseTwists = {
