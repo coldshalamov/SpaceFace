@@ -120,6 +120,12 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
       && payload.causeTag === 'infrastructure_disruption') {
       keys.push('player.break_blockade');
     }
+    if (payload.type === 'lw_helios_empty_plinth'
+      || payload.missionId === 'lw_helios_empty_plinth'
+      || payload.townFirstJob === true) {
+      // PL-60: You finish a town's first job — Static: "Helios Prime says thanks, whoever you are."
+      keys.push('player.town_first_job');
+    }
     return keys;
   }
   if (event === 'pitborn:cullSettled') {
