@@ -2173,6 +2173,13 @@ export const onboarding = {
     this._refreshBeatPanel();
   },
 
+  _contract47aSampleTarget() {
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    const sample = missions && typeof missions.contract47aSampleEntity === 'function'
+      ? missions.contract47aSampleEntity() : null;
+    return sample && sample.pos ? { pos: sample.pos, label: '47-A Recovery Site' } : null;
+  },
+
   // Route a gameplay event to the current beat's followups + DONE resolution.
   _onBeatEvent(eventName, payload) {
     const ob = this.state.onboarding;
@@ -4896,7 +4903,19 @@ export const onboarding = {
         this._tetherCueContext = context;
         this._refreshBeatPanel();
       }
-      if (yielding) return;
+      if (yielding) {
+        // OPENING-1 (item 4): the yield used to leave the marker slot empty while mission nav was
+        // suppressed — the 47-A mark vanished until the lesson ended. While the tracked job is
+        // the 47-A recovery, the diamond stays on its bound rock with the contract's own line.
+        const sampleTarget = this._contract47aSampleTarget();
+        if (sampleTarget) {
+          st.nav.waypoint = {
+            ...buildOnboardingObjectiveWaypoint(beat, sampleTarget),
+            reason: 'Recover the 47-A sample from the marked rock',
+          };
+        }
+        return;
+      }
     }
     if (beat && ob.pace && ob.pace.folded && ob.pace.folded[beat.key]) {
       if (existing && existing.onboarding) st.nav.waypoint = null;
@@ -4971,7 +4990,11 @@ export const onboarding = {
     }
     // Only the current physical lesson owns a waypoint; the marker identity stays beat-stable.
     let target = null;
-    if (beat && (beat.key === 'thrust' || beat.key === 'brake')) target = this._findBeacon();
+    // OPENING-1 (item 4): the flight drill flies toward the bound 47-A sample — the contract's
+    // mark is up from the first frame instead of arriving at tutorial:finished.
+    if (beat && (beat.key === 'thrust' || beat.key === 'brake')) {
+      target = this._contract47aSampleTarget() || this._findBeacon();
+    }
     else if (beat && (beat.key === 'marker' || beat.key === 'focus'
       || beat.key === 'burst' || beat.key === 'disengage')) {
       const trainer = this._trainingActor();

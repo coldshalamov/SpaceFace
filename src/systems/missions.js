@@ -3151,6 +3151,27 @@ export const missions = {
     return { id: null, type: 'sample_site', pos: saved };
   },
 
+  // OPENING-1: pure read — the live world entity bound as the 47-A recovery source, or null.
+  // Onboarding's opening mark and seam lesson consume this; binding stays owned by
+  // _resolveContract47aSampleSource (install + nav refresh paths).
+  contract47aSampleEntity() {
+    const m = (this.state.missions && this.state.missions.active || [])
+      .find((x) => x && x.status === 'active' && x.storyTag === CONTRACT_47A_B0_TAG
+        && !(x.params && x.params.sampleRecovered));
+    const binding = m && m.params && m.params.sampleSource;
+    if (!binding) return null;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (binding.sectorId !== sectorId) return null;
+    for (const entity of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
+      const data = entity && entity.data;
+      if (entity && entity.alive !== false && entity.type === 'asteroid' && entity.pos
+        && data && data.fieldId === binding.fieldId && data.asteroidSlotId === binding.slotId) {
+        return entity;
+      }
+    }
+    return null;
+  },
+
   _nearestBulkChunk() {
     const player = this.state.entities.get(this.state.playerId);
     let best = null;

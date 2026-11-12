@@ -11,9 +11,11 @@ import { SECTORS } from '../data/sectors.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
-// The mission owns acquisition/re-marking. Readers may follow only its exact live resource slot,
-// never pick the nearest asteroid or replace the saved anchor with a moving body's position.
-export function resolveContract47aRecoveryTarget(state, missionOrId, expectedSource = null) {
+// The durable 47-A recovery binding: the live contract is active, unrecovered, in this sector,
+// and `params.sampleSource` still carries the exact identity `expectedSource` stamped. This half
+// of the check reads only mission + world data, so it runs identically on the worker mirror —
+// only the live-entity half needs the (never mirrored) entity domain.
+function contract47aRecoveryBinding(state, missionOrId, expectedSource) {
   const mission = typeof missionOrId === 'object' ? missionOrId
     : state?.missions?.active?.find(m => String(m?.id) === String(missionOrId));
   if (!mission || mission.status !== 'active' || mission.storyTag !== 'campaign47a:b0:recovery'
@@ -23,6 +25,15 @@ export function resolveContract47aRecoveryTarget(state, missionOrId, expectedSou
   if (!source || source.sectorId !== sectorId || mission.destSectorId !== sectorId) return null;
   if (expectedSource && ['sectorId', 'fieldId', 'slotId', 'resourceSlotId']
     .some(key => (source[key] ?? null) !== (expectedSource[key] ?? null))) return null;
+  return { mission, source, sectorId };
+}
+
+// The mission owns acquisition/re-marking. Readers may follow only its exact live resource slot,
+// never pick the nearest asteroid or replace the saved anchor with a moving body's position.
+export function resolveContract47aRecoveryTarget(state, missionOrId, expectedSource = null) {
+  const binding = contract47aRecoveryBinding(state, missionOrId, expectedSource);
+  if (!binding) return null;
+  const { mission, source, sectorId } = binding;
   const matches = entity => {
     const data = entity?.data;
     const home = entity?.homeSectorId || data?.homeSectorId || data?.sectorId;
@@ -158,7 +169,18 @@ export function resolveWaypointPresentationPosition(state, waypoint) {
   if (waypoint.recoverySource) {
     const source = resolveContract47aRecoveryTarget(state, waypoint.missionId, waypoint.recoverySource);
     const selected = waypoint.stable && resolveEntitySelection(state, waypoint.stable);
-    return source && source === selected ? source.pos : null;
+    if (source) return source === selected ? source.pos : null;
+    // Read-model facades (the sim worker mirror) carry no entity domain: the owning writer
+    // verified the bound source before serializing this fix, so its stamped pos stays the
+    // honest mark. The durable binding is still re-proven above — a stale contract, a
+    // recovered sample, a wrong sector, or a re-marked source all stay fail-closed.
+    const entityDomainLive = !!(state && state.entities && typeof state.entities.values === 'function'
+      && state.entities.size > 0)
+      || !!(Array.isArray(state && state.entityList) && state.entityList.length > 0);
+    if (entityDomainLive) return null;
+    if (!contract47aRecoveryBinding(state, waypoint.missionId, waypoint.recoverySource)) return null;
+    const pos = waypoint.pos;
+    return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null;
   }
   if (waypoint.stable) {
     // The bind was stamped at arm time: a durable target follows its new instance, a

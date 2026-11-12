@@ -2565,6 +2565,9 @@ export const missionStoryOps = {
     this.state.missions.active.push(mission);
     this.state.ui = this.state.ui || {};
     this.state.ui.trackedMissionId = mission.id;
+    // OPENING-1: bind the recovery source on the first frame — the mark (and the tutorial seam
+    // lesson) point at the bound rock from spawn instead of waiting for tutorial:finished.
+    this._resolveContract47aSampleSource(mission);
     // Track the cold-start contract, but leave nav free while the staged tutorial owns the opening
     // waypoint (onboarding builds markerId/onboarding:true). After tutorial:finished, release
     // restores mission/story navigation ownership.
@@ -2897,8 +2900,9 @@ export const missionStoryOps = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
-    // The first tether exercise is optional once a real tracked mission is available.
-    // Its own marker yields to the mission; later teaching beats keep their existing priority.
+    // The opening beat yields nav to a real tracked mission: the 47-A recovery mark is up
+    // from the first frame (OPENING-1) while the flight drill runs. Onboarding's own sample
+    // mark lands on the same site; later teaching beats keep their existing priority.
     if (ob && ob.currentBeat === 0) {
       const tracked = this.state.ui && this.state.ui.trackedMissionId;
       if (tracked && (this.state.missions?.active || []).some((m) => m?.id === tracked && m.status === 'active')) return false;

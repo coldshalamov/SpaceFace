@@ -38,6 +38,9 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     const mission = state.missions.active.find(m => m.storyTag === 'campaign47a:b0:recovery');
     // The ordinary quick-save made on the Ceres-to-Helios route carries this old unbound Ceres fix.
     mission.params.samplePos = { x: -12960.599947088484, z: 8615.2890039627 };
+    // OPENING-1: install now binds the source on the first frame — the old-save shape the
+    // correction path owns is an unbound fix, so the fixture drops the new binding to stay one.
+    delete mission.params.sampleSource;
     await publish(); // The facade has already seen the active contract before the fix exists.
     owner._refreshNavigation({ silent: true });
     const source = owner._resolveContract47aSampleSource(mission);
