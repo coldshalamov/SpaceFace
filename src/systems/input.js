@@ -56,13 +56,14 @@ import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
-import { isHostileToPlayer } from './scannerReadModel.js';
+import { isThrowArmPayload } from './masslineThrow.js';
 import { isBeamTargetEligible } from './miningBeamTargetingRead.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
 import { isSwarmControls } from '../data/swarmControls.js';
+export { isThrowArmPayload } from './masslineThrow.js';
 import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
@@ -756,10 +757,11 @@ export function applyFlightKeyEvent(host, event = {}) {
 
 // Touch pylon presses share the bounded sampled queue with keys. A worker can drain
 // both the tap and its neutral frame before stepping; the final hold alone loses that tap.
-function discardSampledTouchPresses(host) {
+function discardSampledTouchPresses(host, action = null) {
   const queue = host._keyEdgeQueue;
   if (queue) for (let i = queue.length - 1; i >= 0; i--) {
-    if (queue[i].source === 'touch') queue.splice(i, 1);
+    const edge = queue[i];
+    if (edge.source === 'touch' && (action == null || edge.action === action)) queue.splice(i, 1);
   }
 }
 
@@ -787,9 +789,15 @@ function queuedPowerPress(host, power) {
   return false;
 }
 
-function takeOldestTetherEdge(host) {
+function takeOldestTetherEdge(host, state) {
   const queue = host._keyEdgeQueue;
   if (!queue || queue.length === 0) return null;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    const edge = queue[i];
+    if (edge.action === 'tether' && edge.source === 'touch' && edge.sector !== state.world?.currentSectorId) {
+      queue.splice(i, 1);
+    }
+  }
   const index = queue.findIndex((edge) => edge.action === 'tether');
   if (index < 0) return null;
   return queue.splice(index, 1)[0];
@@ -1055,7 +1063,12 @@ export function domMouseDownEvent(host, d = {}) {
   }
   if (d.button === 0) host._m0 = true;
   if (d.button === 1) host._m1 = true;
-  if (d.button === 2) host._m2 = true;
+  if (d.button === 2 && host._m2 !== true) {
+    host._m2 = true;
+    const line = host.state?.player?.tether;
+    host._throwLineAtPress = line?.active && line.targetId != null
+      ? { targetId: line.targetId, attachmentId: line.attachmentId } : null;
+  }
   host._kbmActivityPending = true;
 }
 
@@ -1063,7 +1076,7 @@ export function domMouseUpEvent(host, d = {}) {
   if (!host) return;
   if (d.button === 0) host._m0 = false;
   if (d.button === 1) host._m1 = false;
-  if (d.button === 2) host._m2 = false;
+  if (d.button === 2) { host._m2 = false; host._throwLineAtPress = null; }
 }
 
 export const input = {
@@ -1218,8 +1231,10 @@ export const input = {
         // actions and cancelled-role resets into the sim-owned touch surface.
         if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
           const wasHeld = !!this.touch.actions?.deployShieldPylon?.held;
+          const tetherWasHeld = !!this.touch.actions?.tether?.held;
           this.touch.applyLaneFrame(d.frame, this);
           const held = !!this.touch.actions?.deployShieldPylon?.held;
+          const tetherHeld = !!this.touch.actions?.tether?.held;
           if (d.frame?.active === false) {
             discardSampledTouchPresses(this);
             this._touchPylonQuarantined = false;
@@ -1231,6 +1246,28 @@ export const input = {
               sector: this.state.world?.currentSectorId });
             if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
           }
+          if (d.frame?.active === false || d.frame?.cancelledRoles?.includes?.('tether')) {
+            discardSampledTouchPresses(this, 'tether');
+          } else if (tetherWasHeld !== tetherHeld) {
+            // The worker may apply several complete touch snapshots before one
+            // fixed step. Keep both edges of a quick tap for the Line grammar.
+            const queue = flightEdgeQueue(this);
+            queue.push({ action: 'tether', pressed: tetherHeld, source: 'touch',
+              sector: this.state.world?.currentSectorId });
+            if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+          }
+          if (d.frame?.active === false || d.frame?.cancelledRoles?.includes?.('stick')) {
+            this._touchThrow = null;
+          }
+        }
+        break;
+      }
+      case 'touchThrow': {
+        if (!Number.isFinite(d.x) || !Number.isFinite(d.z) || d.targetId == null) break;
+        const length = Math.hypot(d.x, d.z);
+        if (length > 0.001 && length < 2) {
+          this._touchThrow = { targetId: d.targetId, attachmentId: d.attachmentId,
+            sector: this.state.world?.currentSectorId, x: d.x / length, z: d.z / length };
         }
         break;
       }
@@ -1355,6 +1392,7 @@ export const input = {
       try { this.bus.emit('input:worldGestureCancelled', { reason }); } catch (_) {}
     }
     this._m2 = false;
+    this._throwLineAtPress = null;
     if (hadField) delete inp.worldObjectTargetId;
   },
 
@@ -1435,6 +1473,7 @@ export const input = {
     const keys = this._keys;
     dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
     discardSampledTouchPresses(this);
+    this._touchThrow = null;
     // Only a real neutral touch descriptor re-arms the worker deck after interruption.
     this._touchPylonQuarantined ||= !!this.touch?.actions?.deployShieldPylon?.held;
     // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
@@ -1731,6 +1770,9 @@ export const input = {
       pull: null, shove: null, pin: null, bomb: null, rig: null,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
+    const touchThrow = this._touchThrow;
+    this._touchThrow = null;
+    if (acts.touchThrow) delete acts.touchThrow;
     const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
     if (flightInputNeutralized) {
       // Keep ordinary pad holds fenced for the whole non-flight interval. This covers direct
@@ -2047,12 +2089,15 @@ export const input = {
     const mineHeld = siteBeamHeld || aimedMineHeld;
     acts.siteBeam = siteBeamHeld;
     acts.aimedMine = aimedMineHeld;
-    const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
+    const tether = state.player?.tether;
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
     // (hostile ship/drone, fracture chunk, cargo mass), the RMB press arms the throw and
     // masslineThrow owns the solution/auto-cut — "RMB throws THEM". The same RMB hold feeds the
-    // Line grammar below, which is the unified Swarm contract.
-    const throwArmHeld = massline2Flag('throw') && tetherLatched && this._m2 === true
+    // Line grammar below. The press that grabbed a body belongs to the latch,
+    // even when the new attachment becomes active before the mouse lifts.
+    const throwLine = this._throwLineAtPress;
+    const throwArmHeld = massline2Flag('throw') && this._m2 === true && !!throwLine && tether?.active
+      && throwLine.targetId === tether.targetId && throwLine.attachmentId === tether.attachmentId
       && isThrowArmPayload(state);
     inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
@@ -2153,15 +2198,16 @@ export const input = {
       // One press per update. A second press sampled in the same gap stays queued.
       return sampled || (held && !was);
     };
-    const tetherEdge = takeOldestTetherEdge(this);
+    const tetherEdge = takeOldestTetherEdge(this, state);
     // One alias releasing (F or 3) must not drop a second held seat while it is still down.
     // The edge's own code is excluded, so a same-key re-press still counts as a release.
     // G18-02: the Line is RMB in every door — the mouse button holds/releases it through the
     // same grammar a rebound key or the pad trigger uses.
-    const tetherHeld = (!tetherEdge
-      ? this._held(state, 'tether')
-      : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code)))
-      || this._m2 === true;
+    const tetherHeld = this._m2 === true || (tetherEdge
+      ? (tetherEdge.pressed || (tetherEdge.source === 'touch'
+        ? input._held.call(this, state, 'tether')
+        : this._heldExcept(state, 'tether', tetherEdge.code)))
+      : this._held(state, 'tether'));
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
@@ -2189,7 +2235,8 @@ export const input = {
         lineLength: rawLineLength,
         orbitDirection: rawOrbitDirection,
         pump: inp.boost,
-        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
+        source: tetherHeld ? (tetherEdge?.source || 'keyboard')
+          : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
         silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
       });
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
@@ -2264,6 +2311,12 @@ export const input = {
       || wheelOn('bulletTime');
     acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
+    if (touchThrow && tether?.active && touchThrow.targetId === tether.targetId
+      && touchThrow.attachmentId === tether.attachmentId
+      && touchThrow.sector === state.world?.currentSectorId
+      && massline2Flag('throw') && isThrowArmPayload(state)) {
+      acts.touchThrow = touchThrow;
+    }
     // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
     // clump; the falling edge is the bowl. Opt-in press-to-toggle latch rides the same FB-113 path.
     acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
@@ -2393,44 +2446,6 @@ export function selectedWorldSiteTarget(state) {
   return entity && entity.alive !== false && entity.data && entity.data.worldSiteTargetable === true
     ? entity
     : null;
-}
-
-// Combat hull archetypes that stay throwable while their AI posture is standing down.
-// `ai.passive` is a fire-authority read (the hull will not open fire first), not a physical
-// property of the mass on the rope — an ambush pirate lying in wait is still a hull a pilot
-// can swing. Noncombat archetypes (trader/miner/civilian) are absent so unlisted hulls keep
-// the weld-beam default.
-const THROW_ARM_COMBAT_ARCHETYPES = new Set([
-  'pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer',
-  'hunter', 'mercenary', 'miniboss_capital',
-]);
-
-/**
- * True when the active tether payload should steal RMB for throwArm.
- * HOSTILE ships/drones = combat throw (case D). Fracture chunks / tow payloads = throw-mass (case C).
- * A non-hostile casualty keeps RMB as the mining beam: the WF-05 rope-and-weld latches a limping
- * hull precisely so the beam can hold the weld (mining.weldableHullForBeam), and this function's
- * own call-site contract at the RMB arbitration always said "hostile ship/drone" — the code below
- * is what made it true. A latched hostile still throws exactly as before.
- * Parent asteroids and wrecks keep RMB as the mining/salvage beam so latched extraction works.
- */
-export function isThrowArmPayload(state) {
-  const tether = state && state.player && state.player.tether;
-  if (!tether || !tether.active || tether.targetId == null) return false;
-  const target = state.entities && state.entities.get && state.entities.get(tether.targetId);
-  if (!target || target.alive === false) return false;
-  if (target.type === 'ship' || target.type === 'drone') {
-    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
-    if (player && isHostileToPlayer(target, player.team, state)) return true;
-    const data = target.data || {};
-    const ai = data.ai || null;
-    const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role))
-      || data.role || data.scenarioRole || '').toLowerCase();
-    return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
-  }
-  if (target.type === 'asteroid' && target.data && target.data.isChunk) return true;
-  if (target.type === 'payload') return true;
-  return false;
 }
 
 function pointerBeamLane(state, entity) {
