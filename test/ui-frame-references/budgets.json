@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "1e9f2a44094ea572ea85ba9ff42589cc51905a548355a3d5d4747a72deccf90d",
+  "uiSourceDigest": "e136abb6225c5698fccb3fc5dfab93f25bc71d61bf2a402e8c2e30b9ceb4a9e5",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -221,7 +221,7 @@
     "src/ui/orrery/manifestLayouts.js": "399cd56bf1ce6654b4d97dd23ca971c1dba2cc317cd8c5f403fa00d9d038d9b8",
     "src/ui/orrery/marketLayouts.js": "46095a3e0b5c343f9e91dc69fbc401254018c3ee99fddfb538a8474fdfeedd6b",
     "src/ui/orrery/mission-logLayouts.js": "289add95876d7e2618f389ede0213548d3082fe799441ccde591cef9d41362bf",
-    "src/ui/orrery/mobileScreenLayouts.js": "cf78b4106a909661f1fc9bfb5485f7852ce4e6c7a8e603b12529308cb993ecbd",
+    "src/ui/orrery/mobileScreenLayouts.js": "fb0511301f7106971926e974ebc32eccffb75b5a076a7235399d8e8d9b3ea83a",
     "src/ui/orrery/motion.js": "d6b91527f27e6cf6eef7f514a17105d37975d3f936596d987f72f20e15eb0878",
     "src/ui/orrery/new-gameLayouts.js": "6386197d948ea0821c1bb6880bcc4d6eed634789c0160aac7e6003014e382988",
     "src/ui/orrery/newGameLayouts.js": "6dbd46b041988b14d7b674a488de72e44999a0e30f78f48ae6fbbab5f260b51b",
