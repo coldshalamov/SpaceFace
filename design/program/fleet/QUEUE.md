@@ -123,7 +123,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | C01-05-the-room-does-the-twist | Nine round mechanics (Delivery, Lights Out, Highway Robbery theft, The Law, Yardmaster, Chain Gang, Everything Must Go, Black Friday, Quiet) | HOLD on the lead's Swarm 1–5 look |
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
 | PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | TAKEN agent3 (devin3, continue from the working tree — see packet §Continue) |
-| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | READY (repeat; last: PL-02 44deb6c4 + lead fix 7a15cdf6 — no player dock:undocked, strobe drawn) |
+| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | TAKEN agent4 (flash) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
@@ -133,7 +133,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | ID | Job | State |
 |---|---|---|
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
-| PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | TAKEN agent4 (flash) |
+| PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | READY (repeat; last PL-59 99136ecd, lead reviewed) |
 | PERF-01-ADVENTURE-RUN | Execute the existing locked Adventure diagnostic matrix against the pinned source manifest and report the measurements | BUILT (8 of 12 arms, sector crossing stopped the run before skip-render and trace) |
 | PERF-01-SWARM-RUN | Run the locked Swarm 20 diagnostic matrix against the pinned source and report the measurements | DONE. Eight matched arms; cinematic work contaminated flight results. Follow-up in PERF-06 |
 | PERF-01-ADVENTURE-RENDER-RUN | Measure render-off and no-post on the same quiet Adventure scene, with a traced baseline | DONE. Six matched arms; render-off +11.0 fps, no-post −5.9 fps on this route |
