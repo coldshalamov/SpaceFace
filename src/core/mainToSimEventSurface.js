@@ -7,6 +7,7 @@
 // diagnostic instead of crossing the lane.
 
 export const MAIN_TO_SIM_BUS_EVENTS = new Set([
+  'achievement:unlocked',
   'band:cycle',
   'borrowedSun:charter',
   'borrowedSun:debtSettle',
@@ -334,4 +335,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=187 dynamic=39 legacy=18 excluded=6 total=216 knownUnforwarded=85
+// provenance: census=187 dynamic=40 legacy=18 excluded=6 total=217 knownUnforwarded=85
