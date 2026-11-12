@@ -50,6 +50,9 @@ export const wreckChoicePrompt = {
       // annotation (D133 — a refused rescue used to close the card with no contract).
       this._bus.on('survivorPod:stripped', this._onPodTerminal);
       this._bus.on('survivorPod:rescueBlocked', this._onPodBlocked);
+      // A strip refused because the rescue contract is already live is the same dead-end
+      // class as a refused rescue — without a listener the card would show nothing forever.
+      this._bus.on('survivorPod:stripBlocked', this._onPodBlocked);
       this._bus.on('sector:exit', this._onClear);
       this._bus.on('dock:docked', this._onClear);
       this._bus.on('save:loaded', this._onRestore);
@@ -96,27 +99,48 @@ export const wreckChoicePrompt = {
     })) : [{
       id: 'take', label: 'TAKE THE CONTRACT', title: 'Commit to the claim and fly the recovery.',
     }]).concat([{ id: 'leave', label: 'LEAVE IT', cancel: true }]);
-    const podDueAt = isPod && offer.survivorPod && Number.isFinite(offer.survivorPod.oxygenDueAt)
-      ? offer.survivorPod.oxygenDueAt : null;
     const deckId = deckIdFor(offer.id);
     this._live.set(deckId, {
       offerId: offer.id,
       salvagePointId: offer.salvagePointId || (offer.params && offer.params.salvagePointId) || null,
       pod: isPod,
+      oxygenDueAt: offer.survivorPod?.oxygenDueAt,
+      statusFlag: isPod ? 'LIFE SIGNS · CHOOSE' : 'CONTRACT SIGNAL',
     });
     return deck.offerDecision({
       id: deckId,
       kind: isPod ? 'warn' : 'info',
       sender: String(offer.giver || 'WRECK TRANSMITTER'),
-      statusFlag: isPod ? 'LIFE SIGNS · CHOOSE' : 'CONTRACT SIGNAL',
+      statusFlag: isPod ? this._podStatus(deckId) : 'CONTRACT SIGNAL',
       headline: String(offer.title || 'Wreck claim'),
       detail: String((offer.choice && offer.choice.prompt) || offer.summary || 'A contract rides on this wreck.'),
-      // The pod's oxygen clock is the real deadline (producer-owned); other offers stand.
-      deadlineAt: podDueAt,
+      // Promoted pods remain stable after oxygen depletion; only the payout decays.
+      // Show the owner clock without turning it into a terminal decision deadline.
+      deadlineAt: null,
+      onTick: isPod ? () => this._refreshPodStatus(deckId) : null,
       choices,
       onChoose: (choiceId, source) => this._choose(offer.id, choiceId, source),
       onExpire: () => { this._live.delete(deckId); },
     });
+  },
+
+  _podStatus(deckId) {
+    const tracked = this._live.get(deckId);
+    if (!tracked) return null;
+    const rec = this._state?.survivorPod?.promotedByPoint?.[tracked.salvagePointId];
+    const dueAt = rec?.oxygenDueAt ?? tracked.oxygenDueAt;
+    const left = Number.isFinite(dueAt) ? Math.max(0, Math.ceil(dueAt - (this._state?.simTime || 0))) : null;
+    const air = left == null ? null : left > 0 ? `AIR ${left}s` : 'SURVIVOR STABLE · PAYOUT DECAYING';
+    return [tracked.statusFlag, air].filter(Boolean).join(' · ');
+  },
+
+  _refreshPodStatus(deckId) {
+    const tracked = this._live.get(deckId);
+    if (!tracked?.pod) return;
+    const statusFlag = this._podStatus(deckId);
+    if (tracked.lastStatus === statusFlag) return;
+    tracked.lastStatus = statusFlag;
+    getPromptDeck()?.updateDecision(deckId, { statusFlag });
   },
 
   _choose(offerId, choiceId, source) {
@@ -180,13 +204,19 @@ export const wreckChoicePrompt = {
     if (!deck) return;
     // A refused rescue keeps the card: tow_missing still asks for the latch, and a refused
     // contract accept says the filing desk itself would not take the rescue (D133).
-    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED' : 'TETHER REQUIRED';
+    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED'
+      : payload.reason === 'rescue_committed' ? 'RESCUE COMMITTED'
+      : 'TETHER REQUIRED';
     const detail = payload.reason === 'accept_refused'
       ? 'The destination desk will not take this rescue — check your standing, then choose again.'
+      : payload.reason === 'rescue_committed'
+      ? 'The rescue contract is already live — the strip claim is spent. Fly the delivery.'
       : 'Latch the pod to your massline first, then tow it out.';
     for (const [deckId, rec] of [...this._live]) {
       if (rec.salvagePointId !== payload.salvagePointId) continue;
-      deck.updateDecision(deckId, { statusFlag: flag, detail });
+      rec.statusFlag = flag;
+      rec.lastStatus = this._podStatus(deckId);
+      deck.updateDecision(deckId, { statusFlag: rec.lastStatus, detail });
     }
   },
 
@@ -226,7 +256,10 @@ export const wreckChoicePrompt = {
       if (this._onPodTerminal) {
         this._bus.off('survivorPod:stripped', this._onPodTerminal);
       }
-      if (this._onPodBlocked) this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);
+      if (this._onPodBlocked) {
+        this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);
+        this._bus.off('survivorPod:stripBlocked', this._onPodBlocked);
+      }
       if (this._onClear) {
         this._bus.off('sector:exit', this._onClear);
         this._bus.off('dock:docked', this._onClear);
