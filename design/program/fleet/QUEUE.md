@@ -74,8 +74,8 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | STAB-05-continue-latest-primary | Continue must restore the latest stable save when another session writes during decode | BUILT 8867962b594c |
 | STAB-06-model-truth-deadline | A stalled model truth census request must reach the boot error boundary and allow retry | BUILT 931c4ffa37f3 |
 | STAB-07-worker-save-restage | Worker Continue must invalidate its latest-slot cache after the main thread stages changed save keys | BUILT 2e613ca67717 |
-| STAB-08-swarm-gate-flare | The round-entry light stays fixed at the gate and has no collision or tether body | TAKEN agent2 (Codex sub-agent) |
-| PERF-05-physics-step-summary | Avoid the unused collider and CCD diagnostic walks in each production physics step | TAKEN agent2 (Codex sub-agent) |
+| STAB-08-swarm-gate-flare | The round-entry light stays fixed at the gate and has no collision or tether body | BUILT d699dc7747de (live Swarm gate pending) |
+| PERF-05-physics-step-summary | Avoid the unused collider and CCD diagnostic walks in each production physics step | BUILT 76863da5a26f (matched Node timing inconclusive) |
 | PARK-02 boot movie changes | An outside agent left uncommitted edits in `index.html`, `src/ui/bootEntry.js`, `src/ui/bootMediaPlayback.js`, `styles/boot-visualizer.css`, `test/boot-media-playback.test.mjs` (the boot waits for in-memory movie playback; hold raised 9 s → 20 s). Park them byte-for-byte on `parked/boot-media-2026-11-11` (recipe: `PLAYBOOK.md` §1), clear the folder, then land them only if `npm run gate -- --quick` passes **and** the main menu still appears within 12 s of launch on this machine (3 cold launches); otherwise leave parked and say why | READY |
 | PARK-01-land-overnight-lane-b | Land the parked tender-haul / store-sentence work without drifting `check:sim` | TAKEN agent2 (devin1) |
 | A01-02-freight-lane | A container string crosses the Foundry every 40 s: amber lights, horn, crushes, ride it, cut one loose | BUILT 09b4fd4c + lead-review d0d7e438, baaddae2 (crush through shields/armor via a freight-only structuralHull flag; no direct velocity writes; leftover bodies retired) + 5b975a1a (a passive ride never cuts loose; reel/swing/haul-back does; east exit releases the Line through the attachments owner) — lead accepted |
@@ -88,7 +88,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | BUILT b0268fe6 (devin2 layout, lead finished from looks; 25.0%/23.8% worst case) — real-route pinch look pending |
 | MOB-05 flick to throw | On a phone, drag-and-release while the Line holds a body throws it along the flick (`drafts/MOB.md` §7 q1) | READY |
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | BUILT 965fc1a9..704ee553 + lead 54e6b7de, 66a4a691 (lead reviewed each; comms-log-surface + special500-comms-backlog still red) |
-| SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | TAKEN agent2 (devin2) |
+| SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | BUILT 45c4040c59e2 + 424bab64bb32 (focused Rapier and replay pass, lead look pending) |
 | PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
 | DOC-02 archive the old plans | Move superseded plan banks (list from DOC-01) into `design/archive/program-2026/` with `git mv`; first `grep -rn` every moved path across `scripts/ src/ test/ tools/` and leave any file a script reads in place; update links in live docs | READY |
 | LOOK-02 sectors on the grade [FE] | Each sector's lights and palette onto LOOK-01's grade | HOLD on LOOK-01 |
@@ -105,7 +105,8 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | FIX-R1-review-2026-11-11 | Five verified review findings: rubberneckers' payload, held Shove counted twice, release camera pull, near-miss lamps, two seed tests | BUILT 015fbf27..772f8067 (lead checked real payloads) |
 | G17-02-start-in-any-sector | `?sector=<id>` + a script that photographs every sector (needed by LOOK-01 and the towns) | BUILT 7040bd2c |
 | FIX-R4b-invalid-sector | Review b14da677: an invalid `?sector=` must leave the ordinary boot alone | BUILT d396d7c4 |
-| MOB-04 phone quality tier [FE] | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | TAKEN agent1 (lead) |
+| MOB-04 phone quality tier [FE] | spec: `drafts/MOB.md` §MOB-04 + ruling 3: phones default to the `low` preset; prove 30 fps steady in the opening on a 390×844 emulated phone | BUILT 94d3cf2dff90 (live cap 30, observed 18 fps, cadence target open) |
+| MOB-06 phone notices [FE] | Wrap live flight receipts, keep law notices clear of the Powers wheel and Pause, and keep the objective disclosure usable | TAKEN agent1 (lead) |
 | MOB-03-touch-controls-you-can-read [FE] | spec: `drafts/MOB.md` §MOB-03: every touch control labelled on first use; show what a tap does | TAKEN agent3 (flash; lead looks after) |
 | G08-02-thirty-named-rounds | `ROUND 7 — NAME` + twist via the existing seam; fold in the best late content C01-02 listed | BUILT aad98992 (names + twist lines; 7 twists wired — the rest are C01-04/05) |
 | C01-04-each-round-fields-its-cast | Every round's cast matches its name (formations, enemy mix) | BUILT 4757ab20 (lead looks at round 7 next) |
