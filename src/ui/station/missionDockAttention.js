@@ -2,13 +2,32 @@
 // Decides which mission to surface when the player docks and whether the Missions tab
 // should pulse / auto-open so they are not hunting for "Contracts".
 
+import { recommendMissionBoardOffer } from './stationMissionModel.js';
+
 const TURN_IN_TYPES = new Set([
   'cargo_delivery',
   'passenger_transport',
   'salvage_retrieval',
   'smuggling_run',
   'escort',
+  // W-TENDER is deliberately absent: the Forge desk sale happens in the Market, not at a Missions
+  // turn-in, and the lot may land across several runs — a turn-in beat here would open the
+  // Missions tab on a row that has nothing to settle.
 ]);
+
+// The desk row the board itself recommends, when the model names one. The 600 s epoch rebuild
+// reorders nothing but re-posts rows — attention reading offers[0] could refocus a procedural row
+// over the authored one; preferring the recommended row keeps the surface on the desk's row when
+// no active work claims it. Read-only: the model mutates nothing.
+function recommendedBoardRow(state, offers) {
+  if (!offers || !offers.length) return null;
+  try {
+    const pick = recommendMissionBoardOffer(offers, state);
+    return pick && pick.mission ? pick.mission : null;
+  } catch {
+    return null;
+  }
+}
 
 function mid(m) {
   if (!m) return null;
@@ -121,7 +140,7 @@ export function missionDockAttention(state, stationId) {
   // 4) First-hour / empty log: board has work and the player has none — invite accept.
   // Auto-open only when the hold is empty so a cargo-sell first-dock step is not yanked away.
   if (!active.length && offers.length) {
-    const offer = offers[0];
+    const offer = recommendedBoardRow(state, offers) || offers[0];
     const holdUsed = Number(state.player && state.player.cargo && state.player.cargo.usedVolume) || 0;
     return {
       focusMissionId: String(mid(offer)),
@@ -136,13 +155,14 @@ export function missionDockAttention(state, stationId) {
 
   // 5) Soft: board has offers while already flying jobs — badge only, do not auto-open.
   if (offers.length) {
+    const offer = recommendedBoardRow(state, offers) || offers[0];
     return {
-      focusMissionId: String(mid(offers[0])),
+      focusMissionId: String(mid(offer)),
       kind: 'accept',
       reason: 'Additional jobs on the board',
       autoOpen: false,
       badge: offers.length,
-      title: titleOf(offers[0]),
+      title: titleOf(offer),
       surface: 'board',
     };
   }

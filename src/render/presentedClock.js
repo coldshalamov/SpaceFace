@@ -24,11 +24,33 @@ export function stepPresentedRatio(prevRatio, wallDtS, presentedDtS) {
   return prevRatio + (inst - prevRatio) * k;
 }
 
+// Frame-owned mode (review 2026-11-11): the renderer samples ONCE per frame at the start of
+// prepareFrame and every other caller is a pure read. Sampling per call biased the ratio low — the
+// presented clock moves once per frame, so every call after the first in a frame saw no advance.
+let frameOwned = false;
+let frameRatio = 1;
+
 /**
- * Drawn-world seconds per wall second, smoothed. Call with the frame's wall time in ms
- * (performance.now()). Returns 1 when no presented clock exists.
+ * Sample the drawn-world clock once for this frame. `frozenByDesign` (docked, a menu, not in flight)
+ * pins the ratio at 1: sim time is held on purpose there and the scene should animate normally.
+ */
+export function beginPresentedFrame(nowWallMs, { frozenByDesign = false, fence = getLatestSnapshotFence() } = {}) {
+  frameOwned = true;
+  const sampled = samplePresentedRatio(nowWallMs, fence);
+  frameRatio = frozenByDesign ? 1 : sampled;
+  return frameRatio;
+}
+
+/**
+ * Drawn-world seconds per wall second for this frame (a pure read once the renderer owns the frame).
+ * Without a frame owner (tests, tools) it samples on each call, as before.
  */
 export function presentedAdvanceRatio(nowWallMs, fence = getLatestSnapshotFence()) {
+  if (frameOwned) return frameRatio;
+  return samplePresentedRatio(nowWallMs, fence);
+}
+
+function samplePresentedRatio(nowWallMs, fence) {
   const presented = fence ? fence.presentedTimeS : NaN;
   if (!Number.isFinite(presented) || !Number.isFinite(nowWallMs)) {
     lastWallMs = NaN; lastPresentedS = NaN; ratio = 1;
@@ -48,4 +70,5 @@ export function presentedAdvanceRatio(nowWallMs, fence = getLatestSnapshotFence(
 /** Test hook: forget the running sample. */
 export function resetPresentedClock() {
   lastWallMs = NaN; lastPresentedS = NaN; ratio = 1;
+  frameOwned = false; frameRatio = 1;
 }
