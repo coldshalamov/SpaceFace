@@ -22,7 +22,7 @@ import {
   captureEntityRecord, normalizeRecord, normalizeRecordsBag, serializeRecordsBag, spawnSpecFromRecord, recordShouldRematerialize,
 } from '../src/world/worldRecords.js';
 import {
-  restoreLanternWard, serializeLanternWard, lanternWardStatus, lanternWardCompletionReceipt,
+  restoreLanternWard, serializeLanternWard, lanternWardStatus, lanternWardCompletionReceipt, noteLanternWardInteraction,
 } from '../src/systems/lanternWardWork.js';
 
 const SECTOR = 'sector_helios_prime', CONTROL = 'lantern_ward_attended_work';
@@ -38,6 +38,27 @@ function setPieceCustody(e, holder, withClamp = !['source', 'loose', 'player'].i
   } } : {}) };
   e.data.cargoManifest.custody = { holderId: holderId(holder) };
 }
+
+test('survival impacts skip the Ward owner and an Adventure obstruction impact still records credit', () => {
+  const player = { id: 1, occupantGeneration: 2 };
+  const obstruction = entity('obstruction');
+  const state = { tick: 60, simTime: 1, playerId: player.id, world: { currentSectorId: SECTOR },
+    run: { kind: 'survival', phase: 'active' }, entities: new Map([[player.id, player]]) };
+  let entityListReads = 0;
+  Object.defineProperty(state, 'entityList', { get() { entityListReads++; return [...state.entities.values()]; } });
+  const owner = { state };
+  const impact = { tick: state.tick, impulse: 12, playerInvolved: true, aId: player.id,
+    bId: obstruction.id, aGeneration: player.occupantGeneration, bGeneration: obstruction.occupantGeneration };
+  assert.equal(noteLanternWardInteraction(owner, impact, 'impact'), false);
+  assert.equal(entityListReads, 0, 'no obstruction scan in survival');
+  assert.equal(state.npcJobs, undefined, 'unowned combat does not initialize the district');
+
+  state.run.phase = 'inactive';
+  state.entities.set(obstruction.id, obstruction);
+  assert.equal(noteLanternWardInteraction(owner, impact, 'impact'), true);
+  assert.equal(entityListReads, 1, 'the Adventure contact still resolves the original obstruction');
+  assert.equal(state.npcJobs.lanternWard.obstructionTouchedAtS, state.simTime);
+});
 
 test('complete live admission and record restoration accept every original and coherent custody phase', () => {
   for (const role of LANTERN_WARD_HARDWARE_ROLES) {
