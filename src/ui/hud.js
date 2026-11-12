@@ -3291,7 +3291,11 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = tick + durationTicks;
     slot.age = 0;
     const kindLabel = tellId;
-    const hint = DOCTRINE_TELL_HINT[tellId] || '';
+    // Several live tells of one kind (three Fuse carriers at once) each keep their chip, but only the first
+    // carries the sentence: 'FUSE · It goes off where it dies' stacked three times read as clutter (lead look).
+    const sameKindLive = tellSlots.some((other) => other !== slot && other.age < Infinity
+      && other.tellId === tellId && other.entityId !== entityId && other.hintEl && other.hintEl.textContent);
+    const hint = sameKindLive ? '' : (DOCTRINE_TELL_HINT[tellId] || '');
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
     slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE',
       'sf-tell--LAUNCH', 'sf-tell--INCOMING');
