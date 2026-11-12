@@ -33,6 +33,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
+import { CONTRACT_47A_B0_TAG } from '../systems/missionShared.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { SHIPS } from '../data/ships.js';
 import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
@@ -847,7 +848,13 @@ export function flightDestinationSurface(state, command) {
     const term = missionTermWord(state, tracked && tracked.id);
     if (term) urgent = urgent || term.tone === 'broken';
     const objectiveLine = term ? `${action} · ${term.text}` : action;
-    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
+    const dest = { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
+    if (!term && tracked?.storyTag === CONTRACT_47A_B0_TAG) {
+      dest.compactAction = tracked.params?.sampleRecovered
+        ? localizeText('Deliver 47-A to Helios Station')
+        : localizeText('Recover 47-A from marked rock');
+    }
+    return dest;
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
@@ -6053,7 +6060,7 @@ export function createHud(ctx, alerts) {
         const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
         setText(mtObj, objective);
         const [action, ...readings] = objective.split('\n');
-        setText(mtAction, action);
+        setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
         setText(mtReadings, readings.join('\n'));
         setText(mtDetailsText, [objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
         setDisplay(missionTracker, true);
