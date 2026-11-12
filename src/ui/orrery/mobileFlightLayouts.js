@@ -156,6 +156,12 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
     padding:10px; color:var(--dp-ink,#e8e2d4); background:var(--dp-void,#05070a); border:1px solid var(--dp-metal-hi,#777);
     font:14px/1.4 var(--dp-face-body,system-ui,sans-serif); pointer-events:auto;
   }
+  @media (orientation:portrait) {
+    ${FLIGHT} #hud .sf-mt-details:not([hidden]) {
+      top:calc(54px + var(--sf-safe-top,0px));
+      width:min(246px,calc(63vw - var(--sf-safe-left,0px)));
+    }
+  }
   ${FLIGHT} #hud .sf-mt-details-text {
     min-height:0; flex:0 1 auto; overflow-y:auto; overscroll-behavior:contain;
     touch-action:pan-y; -webkit-overflow-scrolling:touch;
