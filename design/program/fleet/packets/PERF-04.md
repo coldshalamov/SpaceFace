@@ -19,3 +19,14 @@ report its late-compile count too.
 ## Checks
 `node --test` for every file you touch's tests; `npm run gate -- --quick` at the end (it takes the lock itself).
 Commit: `fleet(PERF-04): <n> late shader programs now compile in the opening`.
+
+## Continue (2026-11-12, lead)
+The working tree already holds your previous attempt, uncommitted: `src/render/renderer.js`, `latePipelineAdmission.js`,
+`asteroidInstancePool.js`, `vfx.js`, `test/live-sector-cook-owner-runtime.test.mjs` (that session was killed at its
+timeout). Its measurement: late programs 10 → 0, but internal `requiredFirstPicture` 8.9 s → 16.1 s because ~82 minted
+roots (keyed buckets, freighter exemplars, specimens) joined the census and compiled serially inside the first picture.
+Its plan, which is right: keep those minted roots **off the census** and compile them on the paced admission lane during
+post-picture loading (the pending ledger holds the first flight draw, not the first picture). Do that, then measure
+**both** numbers against a fresh HEAD baseline in the same session: late programs = 0 and first picture ≤ baseline + 1 s.
+If renderer.js shows as fully rewritten (line endings), keep CRLF — `git diff --ignore-cr-at-eol --stat` must show only
+your real lines. Commit only measured work.
