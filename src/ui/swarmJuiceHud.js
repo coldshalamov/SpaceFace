@@ -17,6 +17,8 @@
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 import { chainWindowRemaining } from './survivalHud.js';
+import { floatLedger, FT_PRIORITY, seatOutOfRects } from './floatingTextRules.js';
+import { createAvoidRects } from './hudAvoidRects.js';
 import {
   arcadeEffectsLevel,
   swarmChainNextTier,
@@ -120,6 +122,8 @@ export const swarmJuiceHud = {
   },
 
   destroy() {
+    for (const p of this._popups || []) if (p.entry) floatLedger.release(p.entry);
+    this._popups = [];
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
@@ -312,7 +316,7 @@ export const swarmJuiceHud = {
     for (let i = 0; i < this._popups.length; i++) {
       const p = this._popups[i];
       if (simNow - p.at <= POPUP_TTL_S) this._popups[write++] = p;
-      else p.node.hidden = true;
+      else { p.node.hidden = true; if (p.entry) { floatLedger.release(p.entry); p.entry = null; } }
     }
     this._popups.length = write;
     const project = this.helpers && typeof this.helpers.worldToScreen === 'function'
@@ -322,7 +326,19 @@ export const swarmJuiceHud = {
         _world.x = p.wx; _world.z = p.wz;
         const s = project(_world, _screen);
         if (s && s.onScreen !== false && Number.isFinite(s.x) && Number.isFinite(s.y)) {
-          p.node.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px)`;
+          let px = s.x, py = s.y, fade = 1;
+          if (p.entry) { p.entry.x = px; p.entry.y = py; }
+          // G16-04: the kill words never sit in the centre column or over a HUD corner panel.
+          if (!p.w && !p.node.hidden) { p.w = p.node.offsetWidth || 0; p.h = p.node.offsetHeight || 0; }
+          if (p.w > 0 && p.h > 0) {
+            const vw = typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1280;
+            const vh = typeof window !== 'undefined' && window.innerHeight ? window.innerHeight : 720;
+            const seat = seatOutOfRects({ x: px, y: py, w: p.w, h: p.h }, this._avoid().get(), { w: vw, h: vh });
+            px = seat.x; py = seat.y; fade = seat.fade;
+          }
+          p.node.style.transform = `translate(${Math.round(px)}px, ${Math.round(py)}px)`;
+          const filter = fade < 1 ? `opacity(${fade})` : '';
+          if (p.filter !== filter) { p.filter = filter; p.node.style.filter = filter; }
           p.node.hidden = false;
         } else {
           p.node.hidden = true;
@@ -367,22 +383,53 @@ export const swarmJuiceHud = {
     this._shatter = { text: `CHAIN ${ended} LOST`, until: now + SHATTER_TTL_S };
   },
 
+  _avoid() {
+    if (!this._avoidRects) this._avoidRects = createAvoidRects(typeof document !== 'undefined' ? document : null,
+      { exclude: (el) => !!(el.closest && el.closest('.sf-sj__pops')) });
+    return this._avoidRects;
+  },
+
   _onPopup(p) {
     if (!p || !p.pos || !Number.isFinite(p.pos.x) || !Number.isFinite(p.pos.z)) return;
     const text = swarmPopupText(p);
     if (!text || !this._dom) return; // transient — if the layer isn't mounted there is nothing to show
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    // G16-04: the same word near in time and place folds into one label (+12 SHUNTED and +256
+    // SHUNTED read "+268 SHUNTED"), and four words at most live on screen across the float layers.
+    let sx = 0, sy = 0;
+    const project = this.helpers && typeof this.helpers.worldToScreen === 'function' ? this.helpers.worldToScreen : null;
+    if (project) {
+      _world.x = p.pos.x; _world.z = p.pos.z;
+      const s = project(_world, _screen);
+      if (s && Number.isFinite(s.x) && Number.isFinite(s.y)) { sx = s.x; sy = s.y; }
+    }
+    const adm = floatLedger.admit({ text, x: sx, y: sy, priority: FT_PRIORITY.earned });
+    if (adm.action === 'dropped') return;
+    if (adm.action === 'merged') return;
+    const entry = adm.entry;
     let node = this._popupPool.find((n) => n.hidden) || null;
     if (!node) {
       // Pool pressure: the oldest live popup yields its seat — the newest kill always reads.
       const oldest = this._popups.shift();
-      if (oldest) node = oldest.node;
+      if (oldest) { node = oldest.node; if (oldest.entry) floatLedger.release(oldest.entry); }
     }
-    if (!node) return;
+    if (!node) { floatLedger.release(entry); return; }
     node.textContent = text;
     node.dataset.cause = p.cause || '';
+    node.style.filter = '';
     node.hidden = false;
-    this._popups.push({ node, wx: p.pos.x, wz: p.pos.z, at: now, text });
+    const rec = { node, wx: p.pos.x, wz: p.pos.z, at: now, text, entry, w: 0, h: 0, filter: '' };
+    entry.refresh = (t) => {
+      rec.text = t; node.textContent = t; rec.w = 0; rec.h = 0;
+      rec.at = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : rec.at;
+      node.style.animation = 'none'; void node.offsetWidth; node.style.animation = '';
+    };
+    entry.evict = () => {
+      const i = this._popups.indexOf(rec);
+      if (i >= 0) this._popups.splice(i, 1);
+      rec.entry = null; node.hidden = true;
+    };
+    this._popups.push(rec);
   },
 
   _onAnnounce(p) {

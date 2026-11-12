@@ -1523,6 +1523,8 @@ export const survivalWave = {
       vel: { x: 0, z: 0 },
       radius: 5,
       mass: 1e6,
+      collides: false,
+      physicsBody: false,
       hull: 1,
       hullMax: 1,
       data: {
@@ -1530,6 +1532,8 @@ export const survivalWave = {
         storyPropKind: 'claim_beacon',
         scanLabel: 'Gate flare',
         swarmGateFlare: true,
+        tetherable: false,
+        masslineTetherable: false,
         gateGroup: receipt.gateGroup || null,
         wave: this._wave,
         expireAt: now + SWARM_GATE_FLARE_S,
