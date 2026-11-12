@@ -9,8 +9,10 @@ import { setSteeringView, toggleSteeringView } from '../src/ui/racingControls.js
 import { armRacingContract, stageRacingLaunch, noteRacingNewGame, takeRacingLaunch } from '../src/ui/racingLaunch.js';
 import { missions } from '../src/systems/missions.js';
 import { save } from '../src/save/saveSystem.js';
+import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
+import { resetRunState } from '../src/core/newGameBoot.js';
 
 const near=(a,b,eps=1e-6)=>assert.ok(Math.abs(a-b)<eps,`${a} ~= ${b}`);
 const store=()=>{const map=new Map();return {map,getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)};};
@@ -267,21 +269,57 @@ test('recovery finish does not write a clean best; lost player and wrong sector 
     const x=missionHarness();mutate(x);missions._driveAuthoredRace.call(x.host,x.m,0,x.state);assert.equal(x.failed,1);
   }
 });
-test('the real save owner suppresses manual, direct, interval and exit writes throughout an ephemeral circuit',()=>{
-  const state=createGameState(239),bus=createBus(),host={...save},s=store(),old=globalThis.localStorage;globalThis.localStorage=s;
-  try{
-    host.init({state,bus,helpers:{},registry:{get:()=>null}});
-    s.setItem('campaign-proof','KEEP');const before=JSON.stringify([...s.map]);
-    bus.emit('game:new',{racingSession:true});bus.emit('game:newGame',{racingSession:true});bus.emit('game:started',{});
-    state.mode='flight';
-    assert.equal(host._campaignSaveSuppressed(),true);assert.equal(host.save('quick'),false);
-    assert.equal(host.requestAutosave('mission'),false);assert.equal(host.requestExitAutosave(),false);
-    bus.emit('game:save',{slot:'quick'});bus.emit('mission:completed',{});bus.emit('game:exitToMenu',{});
-    assert.equal(JSON.stringify([...s.map]),before);
-    bus.emit('save:loaded',{});assert.equal(host._campaignSaveSuppressed(),false);
-    bus.emit('game:new',{racingSession:true});assert.equal(host._campaignSaveSuppressed(),true);
-    bus.emit('game:new',{});assert.equal(host._campaignSaveSuppressed(),false);
-  }finally{if(old===undefined)delete globalThis.localStorage;else globalThis.localStorage=old;}
+test('the real save owner suppresses manual, direct, interval and exit writes throughout an ephemeral circuit', () => {
+  const state = createGameState(239), bus = createBus(), host = { ...save }, coreHost = { ...core };
+  const storage = store(), previous = globalThis.localStorage;
+  globalThis.localStorage = storage;
+  const helpers = {};
+  const registry = { get: name => name === 'core' ? coreHost : null };
+  try {
+    coreHost.init({ state, bus, helpers, registry });
+    host.init({ state, bus, helpers, registry });
+    state.mode = 'flight';
+    state.world.currentSectorId = 'sector_helios_prime';
+    state.player.credits = state.economy.credits = 4242;
+    state.playerId = helpers.spawnEntity({
+      type: 'ship', isPlayer: true, team: 0, pos: { x: 0, z: 0 },
+      radius: 9, mass: 18, hull: 100, hullMax: 100, data: { defId: 'ship_kestrel' },
+    }).id;
+    const campaign = host.serialize('quick');
+    storage.setItem('campaign-proof', 'KEEP');
+    const before = [...storage.map];
+
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('game:newGame', { racingSession: true });
+    bus.emit('game:started', {});
+    state.player.credits = state.economy.credits = 9999;
+    assert.equal(host._campaignSaveSuppressed(), true);
+    assert.equal(host.save('quick'), false);
+    assert.equal(host.requestAutosave('mission'), false);
+    assert.equal(host.requestExitAutosave(), false);
+    bus.emit('game:save', { slot: 'quick' });
+    bus.emit('mission:completed', {});
+    bus.emit('game:exitToMenu', {});
+    assert.deepEqual([...storage.map], before);
+
+    bus.emit('save:loaded', {});
+    assert.equal(host._campaignSaveSuppressed(), true, 'a mid-restore receipt cannot release the circuit');
+    assert.equal(host.loadEnvelope(campaign, 'quick'), true);
+    assert.equal(state.player.credits, 4242);
+    assert.equal(host._campaignSaveSuppressed(), false, 'a completed Adventure restore releases the circuit');
+
+    bus.emit('game:new', { racingSession: true });
+    assert.equal(host._campaignSaveSuppressed(), true);
+    bus.emit('game:new', {});
+    assert.equal(host._campaignSaveSuppressed(), true, 'a canceled New Game leaves the circuit protected');
+    resetRunState(state, { seed: 240 });
+    bus.emit('game:newGame', {});
+    assert.equal(host._campaignSaveSuppressed(), false, 'New Game releases protection after replacing the circuit');
+  } finally {
+    coreHost.destroy();
+    if (previous === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = previous;
+  }
 });
 
 test('pre-green crossings and time-reversed samples do not advance the circuit',()=>{
