@@ -1190,6 +1190,9 @@ export const pauseScreen = {
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+    // MOB-02: the phone flight HUD dropped its "View & circuits" chip; the board (routes, best times, chase/overhead)
+    // is reached from here instead, so the phone loses no verb.
+    if (isPhoneLayout()) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
     if (ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
