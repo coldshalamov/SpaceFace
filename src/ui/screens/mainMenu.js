@@ -349,7 +349,7 @@ export const MENU_MODE_GLOSSES = Object.freeze({
   swarm: 'One press to round one — the horde arena',
   crucible: 'A scored ten-wave survival run',
   archive: 'Authored intro reels, in the Codex',
-  circuits: 'Logic circuit sandbox',
+  circuits: 'Race rivals or run time trials',
   sandbox: 'Free flight sandbox',
   physics: 'Orbital physics challenges',
 });
@@ -542,7 +542,6 @@ export const mainMenuScreen = {
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
     if (bHelp) bHelp.setAttribute('aria-label', 'Help and flight controls');
-    if (bCircuits) bCircuits.setAttribute('aria-label', 'Logic circuit sandbox');
     if (bSandbox) bSandbox.setAttribute('aria-label', 'Free flight sandbox');
     if (bPhysics) bPhysics.setAttribute('aria-label', 'Orbital physics challenges');
 

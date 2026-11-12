@@ -25,6 +25,8 @@ import {
   swarmPilotIsActing,
 } from './swarmSafety.js';
 import { catalogQuestionIssues } from '../data/survivalWaves.js';
+import { WAVE_30_FINALE_ENEMY_ID, WAVE_30_SYSTEM_EVENT } from '../data/survivalActs.js';
+import { CAPITAL_BOSS_REGENT_ENCOUNTER_ID } from '../data/encounters/capital-boss.js';
 import {
   SWARM_BOSS_ENEMY_ID,
   SWARM_GATE_FLARE_S,
@@ -63,6 +65,7 @@ import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import { turretLossCount } from '../combat/turretSubsystems.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
+export const GAUNTLET_REGENT_FIGHT_ID = `gauntlet:w${WAVE_30_SYSTEM_EVENT.wave}`;
 
 // Three rooted sacs, ahead of the ship, with the far edge inside the swarm picture.
 const CIRCUIT_NODE_SPOTS = Object.freeze([
@@ -426,6 +429,7 @@ export const survivalWave = {
   _onCohortJoined(payload) {
     if (!payload || payload.wave !== this._wave || !Array.isArray(payload.ids)) return;
     if (!this._active || !this._cohort) return;
+    let joined = 0;
     for (const id of payload.ids) {
       if (id == null || this._cohort.has(id)) continue;
       this._cohort.set(id, {
@@ -434,6 +438,15 @@ export const survivalWave = {
           ? this.state.entities.get(id) || null
           : null,
       });
+      joined++;
+    }
+    if (joined > 0 && this._capitalFightId === GAUNTLET_REGENT_FIGHT_ID) {
+      // The authored screen is part of the scored finale once it lands.
+      this._blockingRoles.add('wing');
+      this._plannedBodies += joined;
+      this._requestedTotal += joined;
+      this._admittedTotal += joined;
+      this._publishThreat();
     }
   },
 
@@ -991,6 +1004,8 @@ export const survivalWave = {
     if (!plan) return;
     const run = liveSurvivalRun(this.state);
     const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    const gauntletFinale = !this._swarm && run?.ruleset === 'scored'
+      && this._wave === WAVE_30_SYSTEM_EVENT.wave && plan.systemEvent?.id === WAVE_30_SYSTEM_EVENT.id;
     // The swarm always materializes at swarmLevel 1 so scaleCombatant cannot inflate hull.
     const level = this._swarm ? swarmLevel(this._wave) : levelForWave(this._wave);
     const ownerId = waveOwnerId(this._wave);
@@ -1045,11 +1060,13 @@ export const survivalWave = {
           continue;
         }
       }
-      const capitalChampion = this._swarm
+      const swarmCapitalScore = this._swarm
         && entry.champion === true
         && typeof this._swarm.bossScoreId === 'string'
         && this._swarm.bossScoreId
-        && entry.enemyId === this._swarm.bossEnemyId;
+        && entry.enemyId === this._swarm.bossEnemyId ? this._swarm.bossScoreId : null;
+      const gauntletRegent = gauntletFinale && entry.role === 'elite' && entry.enemyId === WAVE_30_FINALE_ENEMY_ID;
+      const capitalScore = gauntletRegent ? CAPITAL_BOSS_REGENT_ENCOUNTER_ID : swarmCapitalScore;
       const characterScore = this._swarm && typeof entry.characterScoreId === 'string'
         && entry.characterScoreId;
       const receipt = materializeWaveBatch(this.ctx, {
@@ -1070,7 +1087,7 @@ export const survivalWave = {
         arenaId: run && run.arenaId,
         // FB-024: the capital champion's single hull runs the authored score. FB-027: a
         // compositional champion's bodies carry the row's hunter trick.
-        capitalBoss: !!(capitalChampion || characterScore),
+        capitalBoss: !!(capitalScore || characterScore),
         trickId: this._swarm && entry.champion === true && this._swarm.bossTrickId
           ? this._swarm.bossTrickId
           : null,
@@ -1110,16 +1127,16 @@ export const survivalWave = {
         // they are means a kill quota met on chaff cannot end a boss wave with the boss still
         // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
         // of three raiders exactly as easily as it owes one Dreadnought.
-        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID || characterScore) this._bossIds.add(id);
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID || characterScore || gauntletRegent) this._bossIds.add(id);
       }
       // FB-024 — the capital champion lands as an ordinary cohort body first (budget, gate,
       // cohort stamp, `requireBoss` debt all unchanged); only then is its hull handed to the
       // score system. Emitted once per wave — a refused/re-materialized boss rebinds the same
       // fight id instead of minting a second fight.
-      if (capitalChampion && receipt.spawnedIds.length > 0 && !this._capitalFightId) {
-        this._capitalFightId = `swarm:w${this._wave}`;
+      if (capitalScore && receipt.spawnedIds.length > 0 && !this._capitalFightId) {
+        this._capitalFightId = gauntletRegent ? GAUNTLET_REGENT_FIGHT_ID : `swarm:w${this._wave}`;
         this._emit('capitalBoss:start', {
-          encounterId: this._swarm.bossScoreId,
+          encounterId: capitalScore,
           fightId: this._capitalFightId,
           bossId: receipt.spawnedIds[0],
           targetId: this.state && this.state.playerId != null ? this.state.playerId : null,
