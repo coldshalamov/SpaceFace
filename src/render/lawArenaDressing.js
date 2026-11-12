@@ -51,10 +51,11 @@ import {
   STORM_RELAY_PERIOD,
   buildConductivityGraph,
 } from '../systems/stormLatticeArena.js';
+import { MILL_ARENA_ID } from '../systems/asteroidMillArena.js';
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 import { addHazardBand, addWorkLamp, arenaMaterials, machinedBoxGeometry } from './arenaFinish.js';
 
-const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID]);
+const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID]);
 const BOSS_DRESSING_KINDS = new Set([
   'tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant', 'seam_crusher', 'queen_warden',
 ]);
@@ -380,6 +381,75 @@ function buildCurrentMouth(toy, isCinder, sink) {
       seam.emissiveIntensity = calmFlash
         ? 0.8
         : clock.phase === 'surge' ? 1.3 : clock.phase === 'warning' ? 0.7 : 0.35;
+    },
+  };
+}
+
+/**
+ * Grind mouth (Asteroid Mill): the machine each grind cone pours from. The room's law is
+ * two opposed tangential cones (asteroidMillArena.js grindCone — kind/center/dir/radius on
+ * the field spec); the dressing is the gate that shape implies — opposed toothed wheels
+ * chewing a throat, the same hardware the seam_crusher boss wears at room scale. The cone
+ * is invisible, so the mouth reads its aim and its appetite, not its extent.
+ */
+function buildGrindMouth(field, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.emberMat, sink);
+  const root = new THREE.Group();
+  root.name = 'mill_grind_mouth';
+  const dir = field.dir && Number.isFinite(field.dir.x) ? field.dir : { x: 1, z: 0 };
+  root.position.set(field.center.x, 0, field.center.z);
+  root.rotation.y = -Math.atan2(dir.z, dir.x); // local +X points downstream
+
+  // The sill the wheels ride over, and cheek plates flaring open downstream like a
+  // hopper mouth — the throat swallows what the cone sweeps in.
+  const sill = mesh(shared.boxGeo, shared.metalMat, 'mill_grind_sill');
+  sill.scale.set(34, 3.5, 40);
+  sill.position.set(-8, 1.75, 0);
+  root.add(sill);
+  for (const side of [-1, 1]) {
+    const cheek = mesh(shared.boxGeo, shared.darkMat, 'mill_grind_cheek');
+    cheek.scale.set(40, 10, 6);
+    cheek.position.set(-4, 6, side * 22);
+    cheek.rotation.y = side * 0.26;
+    root.add(cheek);
+    addHazardBand(root, { width: 30, height: 0.9, depth: 1.1, x: -4, y: 11.4, z: side * 22.4 });
+    addWorkLamp(root, { width: 3.6, height: 1, depth: 1, x: -20, y: 7.5, z: side * 24.4 });
+  }
+
+  // The grind pair: two toothed wheels counter-rotating over the throat — material
+  // drawn into the gap comes out crushed. GRIND_RATE is the boss wheels' own cadence.
+  const wheels = [];
+  for (const side of [-1, 1]) {
+    const wheel = new THREE.Group();
+    wheel.name = 'mill_grind_wheel';
+    wheel.position.set(-6, 10.5, side * 9.5);
+    const disc = mesh(shared.cylGeo, shared.metalMat, 'mill_grind_disc');
+    disc.rotation.x = Math.PI / 2; // axis -> Z: the wheel face stands outboard
+    disc.scale.set(7.5, 3.2, 7.5);
+    wheel.add(disc);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const tooth = mesh(shared.boxGeo, shared.plateMat, 'mill_grind_tooth');
+      tooth.position.set(Math.cos(a) * 7.5, Math.sin(a) * 7.5, 0);
+      tooth.rotation.z = a;
+      tooth.scale.set(2.6, 1.8, 3.6);
+      wheel.add(tooth);
+    }
+    root.add(wheel);
+    wheels.push({ wheel, side });
+  }
+  const throat = mesh(shared.boxGeo, seam, 'mill_grind_throat');
+  throat.scale.set(2.4, 5, 30);
+  throat.position.set(-16, 6, 0);
+  root.add(throat);
+
+  return {
+    root,
+    mover(elapsed, dt, reduced, calmFlash, pulse) {
+      const rate = reduced ? GRIND_RATE_REDUCED : GRIND_RATE;
+      for (const w of wheels) w.wheel.rotation.z += rate * w.side * dt;
+      seam.emissiveIntensity = calmFlash ? 0.8 : 0.55 + pulse * 0.45;
     },
   };
 }
@@ -1570,7 +1640,11 @@ export function createLawArenaDressing() {
           && Math.hypot(t.center.x - field.center.x, t.center.z - field.center.z) <= 12);
         if (backed) continue; // the mouth owns this anchor
       }
-      const part = buildFieldAnchor(field, clones);
+      // A mill grind cone gets the mouth it pours from — a generic pylon would read as a
+      // field waypoint, not a mill. Its wells/repulsors still anchor on pylons.
+      const part = field.kind === 'cone' && arenaId === MILL_ARENA_ID
+        ? buildGrindMouth(field, clones)
+        : buildFieldAnchor(field, clones);
       parts.push(part);
       root.add(part.root);
     }
