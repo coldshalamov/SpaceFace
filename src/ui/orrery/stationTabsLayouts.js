@@ -1437,6 +1437,13 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding:0 9px 0 8px !important; }
   ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey .orr-lampkey__note { margin-left:14px !important; letter-spacing:.04em !important; }
 }
+/* ui-polish-491: in a short mid-size window (960×540) the right column stacked ACCEPT, the risk sentence and three terms
+   into ~190px, so FOLLOW-UP's "Posted on success" faded out under the fold while the left column sat empty below the reward.
+   The terms run the dossier's full width under both columns, one line each, and every term reads whole on first paint. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${D} .sx-dossier > .sx-dossier__terms { grid-column:1 / -1 !important; grid-row:5 !important; margin-top:2px !important; }
+  ${D} .sx-dossier__terms > li { padding:0 !important; }
+}
 @media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
   ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
   ${D} .sx-dossier > .sx-dossier__foot { order:2 !important; margin:0 0 8px !important; }
