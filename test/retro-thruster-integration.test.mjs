@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
+import { attachRetroMounts, sharedRetroHardwareMaterial } from '../src/render/thruster/retroMounts.js';
 import { retroProfileFor, retroWorldScale } from '../src/render/thruster/retroProfiles.js';
 import { PlayerRetroJets, retroEnvelopeForDemand } from '../src/render/thruster/systems/playerRetroVolume.js';
 import { vfx } from '../src/render/vfx.js';
@@ -18,6 +18,37 @@ function mountedHull(defId, rot = 0) {
   root.updateWorldMatrix(true, true);
   return { root, hull, assembly };
 }
+
+test('poolable retro metal is shared without sharing a ship’s heated hardware', () => {
+  const record = {
+    url: 'parts/hulls/shared-retro-test.glb',
+    assetId: 'shared-retro-test',
+    bounds: { size: [2, 1, 1] },
+    primitives: [{ geometry: new THREE.BoxGeometry(2, 0.5, 0.7), matrix: new THREE.Matrix4(), tags: {} }],
+  };
+  const mount = () => attachRetroMounts(new THREE.Group(), { data: { defId: 'ship_wasp' } }, {}, null, record);
+  const first = mount();
+  const second = mount();
+  const eligible = [];
+  first.traverse((node) => { if (sharedRetroHardwareMaterial(node)) eligible.push(node); });
+  assert.equal(eligible.length, 6);
+  for (const part of eligible) {
+    const other = second.getObjectByName(part.name);
+    const shared = sharedRetroHardwareMaterial(part);
+    assert.equal(shared, sharedRetroHardwareMaterial(other));
+    assert.equal(shared, sharedRetroHardwareMaterial(part.clone(false)), 'the template clone keeps the pool identity');
+    assert.equal(part.material.color.getHex(), shared.color.getHex());
+    assert.equal(part.material.roughness, shared.roughness);
+    assert.equal(part.material.metalness, shared.metalness);
+    assert.equal(part.geometry, other.geometry);
+  }
+  for (const name of ['Retro_Throat_Port', 'Retro_Iris_Port']) {
+    const one = first.getObjectByName(name);
+    const two = second.getObjectByName(name);
+    assert.equal(sharedRetroHardwareMaterial(one), null);
+    assert.notEqual(one.material, two.material);
+  }
+});
 
 test('the paired mouths are physical hull parts, separated and mounted on every profile family', () => {
   const ids = ['ship_kestrel', 'ship_pelican', 'ship_mule', 'ship_wasp', 'ship_warden', 'ship_leviathan'];

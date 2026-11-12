@@ -2729,7 +2729,7 @@ const SWARM_HOSTILE_COLOR_MIX = 0.15;
  * leaves it when one wasp despawns or a LOD child is torn down. The WeakMap
  * drops the clone when the source material itself is collected.
  */
-function hostileTintMaterial(mat) {
+export function hostileTintMaterial(mat) {
   if (!mat) return mat;
   if (mat.userData && mat.userData.swarmHostileTint) return mat;
   const cached = _hostileTintOf.get(mat);

@@ -114,10 +114,10 @@ import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius, primeDrawnCullStamps } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
-import { attachRetroMounts } from './thruster/retroMounts.js';
+import { attachRetroMounts, sharedRetroHardwareMaterial } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, installStaticLodLeafMatrixUpdate } from './staticChildMatrices.js';
-import { optimizeStaticBatchesForRoot } from './visualFactory.js';
+import { hostileTintMaterial, optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
   canInstallWholeShipLodFamily,
@@ -11539,7 +11539,10 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     const cached = yield* instantiateFlightRootTemplateSteps(
       template, entity, templateKey, loadoutFingerprint, assemblySeed, library, scene, ownerBoundary, palette,
     );
-    if (cached) return cached;
+    if (cached) {
+      poolSwarmRetroHardware(cached, entity, scene, ownerBoundary);
+      return cached;
+    }
     removeFlightRootTemplate(templateKey);
   }
   const root = new THREE.Group();
@@ -11758,7 +11761,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   }
   ensureStandardSockets(hull, hullRecord);
   if (!ceresWorkfleetRole(entity) && !isRedKiteEntity(entity) && !isSableVennEntity(entity) && !isIlexArkEntity(entity)
-    && !isKilnbackEntity(entity) && !isScissorwakeEntity(entity) && !isTowlineCrewEntity(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
+    && !isKilnbackEntity(entity) && !isScissorwakeEntity(entity) && !isTowlineCrewEntity(entity)) {
+    attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
+  }
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
@@ -12007,8 +12012,35 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
       authoredSlots: authoredSlotMap,
     }));
   }
+  poolSwarmRetroHardware(result, entity, scene, ownerBoundary);
   if (composeTrace) composeTrace.root = null;
   return result;
+}
+
+function poolSwarmRetroHardware(ship, entity, scene, owner) {
+  if (!scene?.isScene || owner?.userData?.kind !== 'ship' || entity.team !== 1
+    || !entity.data?.swarmCharacter || authoredRuntimeState()?.run?.kind !== 'survival') return;
+  const retros = ship.root.userData.hull?.getObjectByName('Retro_Bow_Assembly');
+  if (!retros) return;
+
+  // Pool the live instance after template capture, including on template hits. Each
+  // proxy stays under its gimbal. The independently heated throat and iris stay direct.
+  const admissions = new Set(ship.packagePoolAdmissions);
+  const localMaterials = new Set(ship.ownerLocalMaterials);
+  retros.traverse((object) => {
+    const material = sharedRetroHardwareMaterial(object);
+    if (!material) return;
+    localMaterials.add(object.material);
+    object.material = hostileTintMaterial(material);
+    try {
+      admitRenderPackageShipPoolCandidate(scene, owner, object, object.geometry, object.material,
+        object.name, admissions, ship.packagePoolReleases);
+    } catch (error) {
+      dedupWarn('partsLibrary:retro-pool', '[partsLibrary] retro hardware remains on its direct draw', error);
+    }
+  });
+  ship.packagePoolAdmissions = [...admissions];
+  ship.ownerLocalMaterials = [...localMaterials];
 }
 
 function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {

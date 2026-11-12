@@ -28,6 +28,26 @@ import { buildSkinSeatIndex, flankSeat } from './retroSkinSeat.js';
 export const RETRO_IRIS_IDLE = 0.1;
 export const RETRO_IRIS_LIT = 2.4;
 
+function createOpaqueMaterials(shared = false) {
+  return [
+    new THREE.MeshStandardMaterial({ color: '#6e767c', metalness: 0.22, roughness: 0.6 }),
+    new THREE.MeshStandardMaterial({ color: '#2c3338', metalness: 0.3, roughness: 0.5 }),
+    new THREE.MeshStandardMaterial({ color: '#4a545c', metalness: 0.5, roughness: 0.34 }),
+  ].map((material) => {
+    if (shared) material.userData.spacefaceSharedAsset = true;
+    return material;
+  });
+}
+
+const RETRO_OPAQUE_MATERIALS = createOpaqueMaterials(true);
+
+export function sharedRetroHardwareMaterial(mesh) {
+  const index = mesh.userData.retroOpaqueMaterialIndex;
+  if (!Number.isInteger(index) || mesh.isMesh !== true
+    || mesh.geometry?.userData?.spacefaceSharedAsset !== true) return null;
+  return RETRO_OPAQUE_MATERIALS[index] || null;
+}
+
 function merged(parts) {
   const geometry = mergeGeometries(parts, false);
   for (const part of parts) part.dispose();
@@ -175,15 +195,7 @@ export function attachRetroMounts(
   // palette can run saturated (teal faction hulls paint every procedural part cyan). The fairing
   // stays a plated grey close to hull plating; nozzle and gland are darker machined metal. Keep
   // metalness low — glossy skins mirror the teal environment and glow.
-  const metal = new THREE.MeshStandardMaterial({
-    color: '#6e767c', metalness: 0.22, roughness: 0.6,
-  });
-  const nozzleMetal = new THREE.MeshStandardMaterial({
-    color: '#2c3338', metalness: 0.3, roughness: 0.5,
-  });
-  const trim = new THREE.MeshStandardMaterial({
-    color: '#4a545c', metalness: 0.5, roughness: 0.34,
-  });
+  const [metal, nozzleMetal, trim] = createOpaqueMaterials();
   const throat = new THREE.MeshStandardMaterial({
     color: '#0a1016', emissive: engine.plumeCore || '#36c8ff', emissiveIntensity: 0.04,
     metalness: 0.55, roughness: 0.52, side: THREE.DoubleSide,
@@ -342,6 +354,7 @@ export function attachRetroMounts(
     for (let i = 0; i < MESH_PARTS.length; i++) {
       const mesh = new THREE.Mesh(baked.geometries[i], MESH_PARTS[i][1]);
       mesh.name = `Retro_${MESH_PARTS[i][0]}_${sideName}`;
+      if (i < RETRO_OPAQUE_MATERIALS.length) mesh.userData.retroOpaqueMaterialIndex = i;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       pivot.add(mesh);
