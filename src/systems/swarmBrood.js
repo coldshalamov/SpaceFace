@@ -510,6 +510,7 @@ export function createBroodEngine(deps = {}) {
   let bank = null;
   // Keep the selected cover life after the attack-sequencing record retires.
   let bankCover = null;
+  let scrapeSurface = null;
   let spawnRequestedBankAttempted = false;
   let foundryScore = null, foundryTicks = 0, foundryLastTick = null;
   let openingVolleyAttempted = false;
@@ -741,7 +742,7 @@ export function createBroodEngine(deps = {}) {
     cellObservedTick.fill(-1);
     chunkBornTick.fill(Infinity);
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
-    bank = null; bankCover = null;
+    bank = null; bankCover = null; scrapeSurface = null;
     spawnRequestedBankAttempted = false;
     foundryScore = null; foundryTicks = 0; foundryLastTick = null;
     openingVolleyAttempted = false; recoveryFallback = false;
@@ -1041,6 +1042,8 @@ export function createBroodEngine(deps = {}) {
       const leechSlot = scrape ? findFreeSlot() : -1;
       if (scrape && leechSlot >= 0) {
         spawnAt(leechSlot, leecher, scrape.pos.x, scrape.pos.z);
+        const surface = state.entities?.get?.(scrape.rockId);
+        scrapeSurface = surface ? { entity: surface, generation: surface.occupantGeneration, wave: liveWave } : null;
         pendingPlan.find(part => part.id === 'leecher').count -= 1;
         // Only the ordinary owed life enters. Its real latch, braking and rock
         // scrape own the outcome; the scored reserve clock owns the next pressure.
@@ -2755,6 +2758,21 @@ export function createBroodEngine(deps = {}) {
     }
   }
 
+  function validScrapeSurface() {
+    const state = getState(), surface = scrapeSurface?.entity;
+    if (!surface || scrapeSurface.wave !== liveWave || state?.run?.wave !== liveWave
+      || state.entities?.get?.(surface.id) !== surface
+      || surface.occupantGeneration !== scrapeSurface.generation
+      || surface.type !== 'asteroid' || !surface.alive || surface.collides === false
+      || surface.physicsBody === false || !physicsBodyNativeReady(surface)
+      || !Number.isFinite(surface.pos?.x) || !Number.isFinite(surface.pos?.z)
+      || rockEntities.includes(surface)) return null;
+    const body = resolvePhysicsBodySpec(surface);
+    if (!body || !(body.radius > 0) || PHYSICS_MATERIALS[body.material]?.ghost
+      || ['sensor', 'massline_sensor'].includes(body.material)) return null;
+    return surface;
+  }
+
   function stepLatched(i, fam, dt, state) {
     // Ride the host at a hull offset so it reads as attached, not overlapping.
     const rad = liveFamilyRadius[fam];
@@ -2781,18 +2799,21 @@ export function createBroodEngine(deps = {}) {
     }
     // The shed: a wall scrape — the pilot's own physical verb, not a timer.
     if (speed >= BROOD_SHED_SPEED) {
-      for (let r = 0; r < rockCount; r++) {
-        const dx = playerX - rockX[r];
-        const dz = playerZ - rockZ[r];
+      // Preserve the selected scrape surface even beyond the terrain budget.
+      // This contact-only seat does not change cover, collision, or custody.
+      const extra = validScrapeSurface();
+      for (let r = 0; r < rockCount + (extra ? 1 : 0); r++) {
+        const surface = r < rockCount ? rockEntities[r] : extra;
+        const dx = playerX - (r < rockCount ? rockX[r] : surface.pos.x);
+        const dz = playerZ - (r < rockCount ? rockZ[r] : surface.pos.z);
         // Authored rock proxies can exceed their visual/cache radius. Read the
         // actual native contact envelope for this shed, without expanding the
         // general Brood terrain solve or moving either participant.
-        const surface = rockEntities[r];
         const body = surface?.physicsBody !== false && physicsBodyNativeReady(surface)
           ? resolvePhysicsBodySpec(surface) : null;
         const nativeRadius = body && !PHYSICS_MATERIALS[body.material]?.ghost
           && !['sensor', 'massline_sensor'].includes(body.material) ? body.radius : 0;
-        const rr = Math.max(rockR[r], nativeRadius || 0) + playerRad;
+        const rr = Math.max(r < rockCount ? rockR[r] : 0, nativeRadius || 0) + playerRad;
         if (dx * dx + dz * dz <= rr * rr) {
           kill(i, 'collision', px[i], pz[i]);
           return;
