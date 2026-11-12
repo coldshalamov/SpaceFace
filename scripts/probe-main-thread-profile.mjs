@@ -59,7 +59,7 @@
 
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
+import { distribution, installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
 import { captureHostPowerState } from './lib/performancePowerState.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
 import { installFirstLightPromptHandler, racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
@@ -1945,6 +1945,29 @@ async function runSteadyFlightProfile(page, cdp) {
   const measuredStartTick = activeCadenceRows[0]?.tick ?? null;
   const measuredEndTick = activeCadenceRows.at(-1)?.tick ?? null;
   const clockEnd = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
+  // PERF-02 follow-up: the metric under judgment is the per-reply main-thread apply cost inside
+  // this exact cadence window. frameTruth's replies ring is the retained per-reply ledger —
+  // applyMs is stamped by the lane's timed apply wrapper, and ring wallMs is relative to
+  // recorder start — so it resolves applyTickReply's p95 without a second instrument.
+  const replyApply = await page.evaluate(({ started, ended }) => {
+    const ft = window.SF?.state?.frameTruth || window.__SF_FRAME_TRUTH__;
+    const ring = ft?.replies;
+    if (!ring || !Number.isInteger(ring.count) || !Number.isInteger(ring.size)
+      || !Number.isFinite(ft.startedAtMs)) return null;
+    const start = (ring.write - ring.count + ring.size) % ring.size;
+    const out = { count: 0, applyMs: [], steps: [], journalRecords: [], workMs: [] };
+    for (let i = 0; i < ring.count; i++) {
+      const idx = (start + i) % ring.size;
+      const wall = ft.startedAtMs + ring.columns.wallMs[idx];
+      if (wall < started || wall > ended) continue;
+      out.count++;
+      out.applyMs.push(ring.columns.applyMs[idx]);
+      out.steps.push(ring.columns.steps[idx]);
+      out.journalRecords.push(ring.columns.journalRecords[idx]);
+      out.workMs.push(ring.columns.workMs[idx]);
+    }
+    return out;
+  }, { started: cadence.started, ended: cadence.ended }).catch(() => null);
   const machineEnd = os.cpus();
   const totals = cpus => cpus.reduce((out, cpu) => {
     out.idle += cpu.times.idle;
@@ -1966,12 +1989,20 @@ async function runSteadyFlightProfile(page, cdp) {
     requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
     sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
     clockStart, clockEnd,
+    replyApply: replyApply ? {
+      count: replyApply.count,
+      applyMs: distribution(replyApply.applyMs),
+      steps: distribution(replyApply.steps),
+      journalRecords: distribution(replyApply.journalRecords),
+      workMs: distribution(replyApply.workMs),
+    } : null,
     observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
       + (TRACE ? '+trace' : '') + (TRACE_STACKS ? '+trace-stacks' : '')
       + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify({ metadata, summary: summaryCadence, raw: cadence }, null, 1));
   log(`game cadence: ${JSON.stringify(summaryCadence)}`);
+  if (metadata.replyApply) log(`reply apply in window: ${JSON.stringify(metadata.replyApply)}`);
   const profile = CADENCE_ONLY ? null : (await cdp.send('Profiler.stop')).profile;
   if (workerProfiler) {
     const workerProfile = await workerProfiler.stop();
