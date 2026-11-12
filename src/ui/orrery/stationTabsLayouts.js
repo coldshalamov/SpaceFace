@@ -2309,6 +2309,8 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 }
 /* the case-board head broke one word, TOGETHER, onto its own line at 960–1920; the two lines now split evenly */
 ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
+/* the case-board head wore a key plate with a sharp chamfered corner and no edge; it now reads as a rounded hairline caption */
+${T} .sx-ledger .st-ledger-board-head.fh-key { background:rgb(232 226 212 / .06) !important; border:1px solid rgb(236 230 216 / .16) !important; border-radius:6px !important; padding-inline:16px !important; align-content:center !important; }
 
 /* Ledger at 800×600-class (651–900 wide, ≤640 tall): the prior 140px purse starved the ring so
    BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
