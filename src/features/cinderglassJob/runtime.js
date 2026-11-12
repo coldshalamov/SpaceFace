@@ -9,7 +9,7 @@ import { cinderglassJobEnsureLatchMount, cinderglassJobCohortReady, cinderglassJ
 import { attachments, podEntity, carrierEntity, cinderglassJobEnsureClamp,
   cinderglassJobObserveCustody, cinderglassJobReleasePod, cinderglassJobStepHandoff,
   cinderglassJobReceiveQuote, nativeCinderglassAttachment, nativeCinderglassPose } from './custody.js';
-import { cinderglassJobProposalAvailable, cinderglassJobPropose, cinderglassJobDaskRelease, cinderglassJobExtensionAvailable, cinderglassJobRequestExtension } from './negotiation.js';
+import { cinderglassJobProposalAvailable, cinderglassJobNearCarrier, cinderglassJobPropose, cinderglassJobDaskRelease, cinderglassJobExtensionAvailable, cinderglassJobRequestExtension } from './negotiation.js';
 import { cinderglassJobObserveScan, cinderglassJobObserveMarkings, cinderglassJobServiceGate,
   cinderglassJobServiceProgress, cinderglassJobServiceAbort } from './interception.js';
 import { cinderglassJobApplyClosingMemory, cinderglassJobApplyConsequences } from './consequences.js';
@@ -269,12 +269,32 @@ export const cinderglassJobSystem = {
           : st.laybyRemainingS <= 15 ? 'fifteen seconds or less'
             : st.laybyRemainingS <= 30 ? 'thirty seconds or less' : 'more than thirty seconds';
         headline = `Dask · inspection stop · ${window}`;
-        detail = '“I have a delivery slot to make. Read the latch, then tell me your terms.” The clock keeps running while you choose. If CG-7 stays aboard, Dask resumes the paid delivery; closing this conversation does not stop him. Force is unlawful.';
+        detail = (st.suspicion >= 3
+          ? '“The manifest stands. I am not releasing CG-7 on those terms.” '
+          : '“I have a delivery slot to make. Read the latch, then tell me your terms.” ')
+          + 'The clock keeps running while you choose. If CG-7 stays aboard, Dask resumes the paid delivery; closing this conversation does not stop him. Force is unlawful.';
         if (st.actors.dask.inspectionExtensionUsed === true) detail += ' Your one extra thirty-second window is already included.';
       }
       if (cinderglassJobExtensionAvailable(this, state)) choices.push({ id: 'extendInspection', label: 'Ask Dask for 30 more seconds · once, no fee' });
       if (cinderglassJobProposalAvailable(this, state)) choices.push({ id: 'propose', label: 'Post the quoted 150CR inspection deposit' });
-      if (cinderglassJobServiceGate(this, state).ok) choices.push({ id: 'serviceStart', label: 'Quietly service the latch · five seconds' });
+      const service = cinderglassJobServiceGate(this, state);
+      if (service.ok) choices.push({ id: 'serviceStart', label: 'Quietly service the latch · five seconds' });
+      else if (st.scanDone && st.custody === C.CARRIED && st.atLayby && st.laybyHoldActive
+        && cinderglassJobNearCarrier(this, state)) {
+        // Explain this physical opportunity without granting it. A hidden button
+        // made watched/fast/occluded approaches look like the route did not exist.
+        // Nearby scanned hardware authorizes the hint, not an unseen witness name.
+        const guidance = {
+          range: ['Move closer to the external latch', 'Close on the scanned external latch, not the centre of the Mule.'],
+          too_fast: ['Match the Mule’s drift', 'Match the Mule’s drift before starting the five-second service.'],
+          obstructed: ['Find a clear approach to the latch', 'A solid body blocks access. Move around it to a clear side of the latch.'],
+          watched: ['Break sightlines before quiet service', 'The approach is watched. Quiet service needs an unwatched, clear approach. Waiting here does not guarantee a gap.'],
+        }[service.reason];
+        if (guidance) {
+          choices.push({ id: 'serviceStart', label: `Quiet service · ${guidance[0]}`, disabled: true, reason: guidance[1] });
+          detail += ` Quiet service: ${guidance[1]}`;
+        }
+      }
     } else if (st.phase === P.RECOVERY && st.receiveQuote) {
       const q = st.receiveQuote;
       headline = `${q.recipient === 'tala' ? 'Tala' : 'Khand'} offers ${q.amount}CR for this ${q.condition} original.`;

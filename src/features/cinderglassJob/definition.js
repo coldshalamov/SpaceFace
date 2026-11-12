@@ -204,7 +204,7 @@ export const CINDERGLASS_JOB_TEXT = Object.freeze({
   negotiateLine: 'Dask is on the layby. You could put the offer to him — clean title dispute, paid release.',
   serviceLine: 'The rack latch is aft. Unwatched, close aboard, under drift — five seconds of service cuts it free.',
   serviceInterrupted: 'Service broken off. The latch is untouched.',
-  watchedLine: 'Too many eyes on the rack. Wait for the gap.',
+  watchedLine: 'The rack is watched. Break sightlines before trying quiet service again.',
   tooFastLine: 'Too much speed. Match the Mule and drift in.',
   releasedNegotiated: 'Dask cut the pod loose under seal. Tow it to my cradle — slow, gentle.',
   releasedQuiet: 'Latch opened. The pod is adrift — same as it ever was.',
