@@ -34,7 +34,8 @@ export function createLaneTouchSurface({ state, bus, helpers }) {
     || !window || typeof window.addEventListener !== 'function') {
     return { dispose() {} };
   }
-  const ctx = { state, bus, helpers };
+  // A release is an edge, not a held action in a stream of touch snapshots.
+  const ctx = { state, bus, helpers, sendTouchThrow: (command) => laneDomEvent(command) };
   let touch = null;
   try {
     touch = createTouch(ctx);

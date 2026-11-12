@@ -3525,12 +3525,18 @@ export class Sg02DynamicBodyOwner {
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
 
-      const translationA = recA.body.translation();
-      const translationB = recB.body.translation();
-      pointScratch.x = (finite(translationA.x) + finite(translationB.x)) * 0.5;
-      pointScratch.z = (finite(translationA.z) + finite(translationB.z)) * 0.5;
+      pointScratch.x = NaN;
+      pointScratch.z = NaN;
       if (typeof this.world.contactPair === 'function') {
         this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
+      }
+      // A native solver point normally supplies both coordinates. Read the body centers only
+      // when the point is missing or partial, preserving the per-coordinate midpoint fallback.
+      if (!Number.isFinite(pointScratch.x) || !Number.isFinite(pointScratch.z)) {
+        const translationA = recA.body.translation();
+        const translationB = recB.body.translation();
+        pointScratch.x = finite(pointScratch.x, (finite(translationA.x) + finite(translationB.x)) * 0.5);
+        pointScratch.z = finite(pointScratch.z, (finite(translationA.z) + finite(translationB.z)) * 0.5);
       }
       const global = frameToGlobal(pointScratch, this._frameOrigin, this._globalScratch);
       const causalActorId = directContactCausalActorId(
