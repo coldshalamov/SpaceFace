@@ -53,7 +53,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | THROW-01-the-click-throws | A right-click on a held enemy always throws it (today a newcomer's click mostly cuts and self-slings: 3/7) | TAKEN sonnet (lead-run) |
 | OPENING-1-the-story-leads | First ten minutes follow the story: Tethys trade, Kessler's line, beats reordered (drills after dock), sample marked at spawn, seam mines the sample | TAKEN agent2 (devin2) |
 | OPENING-2 the Skim as a scene | The black-line ship takes your tow in view; escorts die by real damage (G10 recon item 6) | NEEDS-PACKET (after OPENING-1) |
-| OPENING-3 Kessler's face [FE] | Portrait-capable comms card for the B0 line (art: assets/portraits/portrait_kessler.jpg) | NEEDS-PACKET |
+| OPENING-3 Kessler's face [FE] | Portrait-capable comms card for the B0 line (art: assets/portraits/portrait_kessler.jpg) | TAKEN sonnet (lead-run; named cast get portrait speaker cards) |
 | TITLE-01 two doors [FE] | Title shows ADVENTURE and SWARM side by side; New Game one-press default launch, form behind Custom; Swarm PLAY one click to round 1 | NEEDS-PACKET (after the menu-frame agent) |
 | PERF-03 | Swarm 20 draws too much: measure draw calls per owner, cut the biggest with an identical picture (11.9 fps / 0.15 % idle today) | BUILT b9daa415 (debris merged: 7.2 → 9.0 fps, draws 222 → 137); hostile hulls are the rest → PERF-08 |
 | PERF-08 | One draw per enemy kind (instanced hostile hulls; 174 fighter draws/frame at round 20) | HOLD on PERF-04 (renderer.js) |
