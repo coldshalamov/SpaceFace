@@ -325,6 +325,7 @@ export const save = {
     this._retainTemporaryCampaignState();
     this._restoring = false;           // guards autosave re-entrancy during load / boot enterSector
     this._pendingRunTransition = null; // latest load/new-game request queued by restore event re-entry
+    this._pendingRunTransitionSuperseded = null;
     this._lastAutosaveAt = -Infinity;  // wall-clock ms of last successful autosave (first is eligible)
     this._lastAutosavePlaytime = 0;    // meta.playtimeS at last interval autosave
     this._playerDead = false;          // set by player:death, cleared by player:respawn (autosave gate)
@@ -387,17 +388,9 @@ export const save = {
       });
     });
     bus.on('game:load', (p) => {
-      // Loading out of a live run is legal — it is how a player leaves — but the run has to END,
-      // not silently vanish: without a receipt the results owner never learns the run is over.
-      //
-      // Deliberately `run:endRequested` and NOT `game:exitToMenu`. Both abort the run, but
-      // exitToMenu also flips state.mode to 'menu' synchronously, and this handler is about to
-      // restore a save that will itself set the mode. Do not put a mode flip in the middle of a
-      // load. The envelope reset was already covered either way — runSession clears state.run on
-      // save:restoring — so this adds the receipt and nothing else.
-      if (this._campaignSaveSuppressed()) {
-        bus.emit('run:endRequested', { outcome: 'aborted', reason: 'load_during_run', tick: 0 });
-      }
+      // A request is not a departure. Missing/corrupt saves and refused rollback captures
+      // leave the active run playable. The validated restore boundary below owns its one
+      // run:endRequested receipt, immediately before save:restoring clears the run.
       // Worker lane: the forwarded game:load drives the sim realm's own load
       // (staged sf.* bytes). Restoring here would parse the envelope on main —
       // exactly the stall the lane exists to remove — into a dead mirror.
@@ -980,13 +973,23 @@ export const save = {
    * responsibility for starting immediately when this returns false. While restoring, only the
    * latest callback survives so a burst of reentrant load/new-game requests has one clear winner.
    */
-  deferRunTransition(callback) {
+  deferRunTransition(callback, onSuperseded = null) {
     if (typeof callback !== 'function') {
       throw new TypeError('deferred run transition callback must be a function');
     }
     if (!this._restoring) return false;
+    const previousSuperseded = this._pendingRunTransitionSuperseded;
     this._pendingRunTransition = callback;
+    this._pendingRunTransitionSuperseded = typeof onSuperseded === 'function' ? onSuperseded : null;
+    if (previousSuperseded) previousSuperseded();
     return true;
+  },
+
+  _takePendingRunTransition() {
+    const callback = this._pendingRunTransition;
+    this._pendingRunTransition = null;
+    this._pendingRunTransitionSuperseded = null;
+    return callback;
   },
 
   // ── serialization ─────────────────────────────────────────────────────────────────────────
@@ -5695,14 +5698,17 @@ export const save = {
     // scan/prepare is suspended; all loser outcomes below must resolve handled without publishing
     // the stale request's error receipt.
     const acceptSeq = this._restoreSequence;
+    const acceptEpoch = this._runEpoch;
+    const request = { acceptSeq, acceptEpoch };
     let skippedNewer = null;
     let slotBurst = null;
     if (slot === 'latest') {
       slotBurst = {};
       try { skippedNewer = await this._newerUnplayableSkipAsync(slotBurst); } catch (err) { skippedNewer = null; }
+      if (this._restoreRequestStale(request)) return true;
       const resolved = await this._latestSlotAsync(slotBurst);
+      if (this._restoreRequestStale(request)) return true;
       if (!resolved) {
-        if (acceptSeq !== this._restoreSequence) return true;
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
           skippedNewer ? { skippedNewer } : null));
         return false;
@@ -5741,7 +5747,7 @@ export const save = {
       } else {
         try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
         catch (err) {
-          if (acceptSeq !== this._restoreSequence) return true;
+          if (this._restoreRequestStale(request)) return true;
           this.bus.emit('save:error', { slot, reason: 'read_failed' });
           return false;
         }
@@ -5786,6 +5792,7 @@ export const save = {
       rollbackSnapshot = { notNeeded: true };
     }
     let primary = await primaryPromise;
+    if (this._restoreRequestStale(request)) return true;
     // A spec-derived verdict was computed under the generation the arm was minted in — and a
     // spec-miss `raw` was itself getItem'd before this window. A store write landing anywhere
     // inside it (the sliced rollback capture + worker roundtrip) bumps the generation, so
@@ -5796,6 +5803,7 @@ export const save = {
       try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { /* null — the prepare reports its own read reason */ }
       primary = await this._prepareEnvelopeStringAsync(freshRaw);
+      if (this._restoreRequestStale(request)) return true;
       // raw must keep naming the bytes primary was validated against: the recovery recheck
       // below compares the stored bytes to raw and reuses primary's verdict when a candidate
       // matches it. Leaving raw at the superseded first read would let a store that drifts
@@ -5813,6 +5821,7 @@ export const save = {
       return this._restorePreparedEnvelopeAsync(primary, slot, {
         ...(skippedNewer ? { skippedNewer } : null),
         acceptSeq,
+        acceptEpoch,
         rollbackSnapshot,
         rollbackSnapshotError,
       });
@@ -5822,6 +5831,7 @@ export const save = {
     try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
     catch (err) { /* primary failure below remains the player-facing reason */ }
     let backup = await this._prepareEnvelopeStringAsync(backupRaw);
+    if (this._restoreRequestStale(request)) return true;
     // The recovery worker is another asynchronous window. A save or shared-store reconcile can
     // replace either copy while it decodes; promoting that older backup could overwrite a newer
     // playable primary. Re-read both keys after validation and, if either changed, prepare a
@@ -5848,6 +5858,7 @@ export const save = {
           ? primary : await this._prepareEnvelopeStringAsync(candidatePrimaryRaw);
         const candidateBackup = candidateBackupRaw === backupRaw
           ? backup : await this._prepareEnvelopeStringAsync(candidateBackupRaw);
+        if (this._restoreRequestStale(request)) return true;
         const confirmedPrimary = readStoredSave(LS_PREFIX + slot);
         const confirmedBackup = readStoredSave(RECOVERY_PREFIX + slot);
         if (confirmedPrimary.ok && confirmedBackup.ok
@@ -5864,7 +5875,7 @@ export const save = {
         observedBackup = confirmedBackup;
       }
       if (!stablePair) {
-        if (acceptSeq !== this._restoreSequence) return true;
+        if (this._restoreRequestStale(request)) return true;
         this.bus.emit('save:error', {
           slot,
           reason: 'load_failed',
@@ -5879,6 +5890,7 @@ export const save = {
         return this._restorePreparedEnvelopeAsync(primary, slot, {
           ...(skippedNewer ? { skippedNewer } : null),
           acceptSeq,
+          acceptEpoch,
           rollbackSnapshot,
           rollbackSnapshotError,
         });
@@ -5895,11 +5907,12 @@ export const save = {
       const restored = await this._restorePreparedEnvelopeAsync(backup, slot, Object.assign(
         { emitError: false, recovered: true },
         skippedNewer ? { skippedNewer } : null,
-        { acceptSeq, rollbackSnapshot, rollbackSnapshotError }));
+        { acceptSeq, acceptEpoch, rollbackSnapshot, rollbackSnapshotError }));
       if (restored) {
         // A newer load took over this one: its world, not the recovered copy, is what the
         // player is in, so there is nothing to promote and no repair to announce.
-        if (acceptSeq !== restoreSeqBefore || this._restoreSequence > restoreSeqBefore + 1) return true;
+        if (acceptEpoch !== this._runEpoch || acceptSeq !== restoreSeqBefore
+          || this._restoreSequence > restoreSeqBefore + 1) return true;
         const promoted = this._restoreSequence === restoreSeqBefore + 1
           && this._promoteRecoveryCopy(slot, backup, backupRaw, selectedPrimaryRaw);
         this._publishRecovery({
@@ -5913,7 +5926,7 @@ export const save = {
         return true;
       }
     }
-    if (acceptSeq !== this._restoreSequence) return true;
+    if (this._restoreRequestStale(request)) return true;
     this.bus.emit('save:error', Object.assign(
       { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
       skippedNewer ? { skippedNewer } : null));
@@ -6103,11 +6116,11 @@ export const save = {
   },
 
   /** Parse + validate + migrate a raw JSON string, then restore. Shared by load() and import. */
-  loadEnvelopeFromString(raw, slot) {
+  loadEnvelopeFromString(raw, slot, options = {}) {
     // FB-093 — a compressed string cannot decode synchronously; the async lane restores it
     // with the same save:error/save:loaded contract and resolves to the same bool.
     if (typeof raw === 'string' && isGzippedSaveText(raw)) {
-      return this._loadEnvelopeFromStringAsync(raw, slot);
+      return this._loadEnvelopeFromStringAsync(raw, slot, options);
     }
     // Keep the O(1) rejects synchronous — importString still answers literal `false`
     // for them (byte-cap/pre-parse pins). The deep walks (parse → preflight →
@@ -6124,18 +6137,21 @@ export const save = {
       });
       return false;
     }
-    return this._loadEnvelopeFromStringAsync(raw, slot);
+    return this._loadEnvelopeFromStringAsync(raw, slot, options);
   },
 
-  async _loadEnvelopeFromStringAsync(raw, slot) {
+  async _loadEnvelopeFromStringAsync(raw, slot, options = {}) {
     // NXI-234, same stamp the Continue lane applies: the worker decode spans real frames, and a
     // newer restore may commit inside that window. A candidate stamped before that commit must
     // not overwrite the newer run — the guard lives at the destructive boundary so the same
     // check also fires when this request was queued mid-restore and drained later.
     const acceptSeq = this._restoreSequence;
+    const acceptEpoch = this._runEpoch;
+    const request = { acceptSeq, acceptEpoch };
     const prepared = await this._prepareEnvelopeStringAsync(raw);
+    if (this._restoreRequestStale(request)) return prepared.ok && options.requireCommit !== true;
     if (!prepared.ok) {
-      if (prepared.reason === 'superseded' || acceptSeq !== this._restoreSequence) return false;
+      if (prepared.reason === 'superseded') return false;
       this.bus.emit('save:error', {
         slot,
         reason: prepared.reason,
@@ -6144,8 +6160,9 @@ export const save = {
       });
       return false;
     }
-    this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelopeAsync(prepared, slot, { acceptSeq });
+    return this._restorePreparedEnvelopeAsync(prepared, slot, {
+      ...request, importProfile: prepared.env?.profile, requireCommit: options.requireCommit === true,
+    });
   },
 
   /** Validate an already-parsed envelope and restore it (atomic: validate before destructive work). */
@@ -6161,8 +6178,7 @@ export const save = {
       });
       return false;
     }
-    this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelope(prepared, slot);
+    return this._restorePreparedEnvelope(prepared, slot, { importProfile: prepared.env?.profile });
   },
 
   // Proven-envelope verdict cache: any lane that already verified a raw stored string
@@ -6323,6 +6339,23 @@ export const save = {
     }
   },
 
+  // Restore sequence fences loads against other loads; run epoch fences them against New
+  // Game and temporary launches. Both are needed because new-game does not open a restore.
+  _restoreRequestStale(options = {}) {
+    return (options.acceptSeq != null && options.acceptSeq !== this._restoreSequence)
+      || (options.acceptEpoch != null && options.acceptEpoch !== this._runEpoch);
+  },
+
+  _commitImportedProfile(result, slot, options, request) {
+    // A parsed candidate owns no profile writes. Commit only after its world finished,
+    // including native reconciliation; a successor may run before the await resumes.
+    if (options.rollback === true || result?.restored !== true || result.superseded === true || result.queued
+      || request.acceptEpoch !== this._runEpoch
+      || this._restoreSequence > request.acceptSeq + 1) return false;
+    if (options.importProfile != null) this._importProfileSideBags({ profile: options.importProfile }, slot);
+    return true;
+  },
+
   _restorePreparedEnvelope(prepared, slot, options = {}) {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
@@ -6330,8 +6363,8 @@ export const save = {
     // NXI-234: a request stamped before a newer restore committed is stale — it resolves
     // handled without touching the newer world. Checked on every entry, including the
     // deferred re-run below, because the queue only survives until a session closes.
-    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
-      return true;
+    if (!rollbackAttempt && this._restoreRequestStale(options)) {
+      return options.requireCommit !== true;
     }
 
     // SFQ-B223: a load arriving inside the restore window defers whole — the deferred call
@@ -6374,6 +6407,7 @@ export const save = {
       rollbackSnapshot = { notNeeded: true };
     }
 
+    const commitRequest = { acceptSeq: this._restoreSequence, acceptEpoch: this._runEpoch };
     try {
       const result = this._restore(prepared.data, slot, {
         ...options,
@@ -6386,6 +6420,7 @@ export const save = {
       // so there is no failure to report. Returning false here would misread a legitimate preemption
       // as a failed load (and the lab harness would file it as infra).
       if (result && result.restored === false) return result.superseded === true;
+      this._commitImportedProfile(result, slot, options, commitRequest);
       return true;
     } catch (err) {
       return this._handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
@@ -6487,6 +6522,7 @@ export const save = {
           reason: 'load_failed',
           rollback: rollbackAttempt ? 'failed' : 'not_needed',
           error: restoreErrorMessage(err),
+          ...(this._temporaryCampaignState ? { temporarySession: true } : null),
           // SFQ-B228: the damaged save region, when the restore walk could name one.
           ...(err && err.region ? { region: err.region } : null),
         });
@@ -6512,6 +6548,7 @@ export const save = {
         reason: 'load_failed',
         rollback: rollbackError ? 'failed' : 'restored',
         error: restoreErrorMessage(err),
+        ...(this._temporaryCampaignState ? { temporarySession: true } : null),
         // SFQ-B228: the damaged save region, when the restore walk could name one.
         ...(err && err.region ? { region: err.region } : null),
         // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
@@ -6543,8 +6580,8 @@ export const save = {
 
     // NXI-234: the worker prepare is the slow leg — a newer load may have committed while it
     // ran. Bail before capturing a rollback snapshot over a world this load must not touch.
-    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
-      return true;
+    if (!rollbackAttempt && this._restoreRequestStale(options)) {
+      return options.requireCommit !== true;
     }
 
     // SFQ-B223, same rule the sync twin applies: a load arriving inside the restore window
@@ -6552,23 +6589,23 @@ export const save = {
     // the now-restored world instead of a half-restored one captured here. Rollback restores
     // are internal and must never defer.
     if (this._restoring && !rollbackAttempt) {
-      this.deferRunTransition(() => {
+      let complete = null;
+      const pending = options.requireCommit === true ? new Promise(resolve => { complete = resolve; }) : null;
+      this.deferRunTransition(async () => {
         try {
-          // The deferred call is async too: chain the rejection handler like the
-          // _restoreAsync twin so a late failure reports instead of escaping as
-          // an unhandled rejection through the drain's return path.
-          return this._restorePreparedEnvelopeAsync(prepared, slot, options).catch((error) => {
-            console.error('[save] deferred restore failed', error);
-            this.bus.emit('save:error', { slot, reason: 'load_failed' });
-            return { restored: false, slot, error: true };
-          });
+          const accepted = await this._restorePreparedEnvelopeAsync(prepared, slot, options);
+          if (complete) complete(accepted === true);
+          return accepted;
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          if (complete) complete(false);
           return { restored: false, slot, error: true };
         }
-      });
-      return true;
+      }, complete ? () => complete(false) : null);
+      // Slot requests report that the route was handled. Import's UI success means
+      // committed: wait for the winning queued restore, or settle false if replaced.
+      return pending || true;
     }
 
     let rollbackSnapshot = null;
@@ -6593,7 +6630,7 @@ export const save = {
         rollbackSnapshot = { notNeeded: true };
       }
       if (rollbackSnapshotError) {
-        if (options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) return true;
+        if (this._restoreRequestStale(options)) return options.requireCommit !== true;
         console.error('[save] rollback snapshot failed', rollbackSnapshotError);
         if (options.emitError !== false) {
           this.bus.emit('save:error', {
@@ -6607,6 +6644,8 @@ export const save = {
       }
     }
 
+    if (!rollbackAttempt && this._restoreRequestStale(options)) return options.requireCommit !== true;
+    const commitRequest = { acceptSeq: this._restoreSequence, acceptEpoch: this._runEpoch };
     try {
       // Test seams stub the synchronous _restore twin alone; honoring it keeps those
       // contracts identical across sync/async lanes (a stubbed _restoreAsync wins first).
@@ -6617,9 +6656,10 @@ export const save = {
         ...options,
         rollbackSnapshot,
       });
-      if (result && result.queued) return true;
-      if (result && result.restored === false) return result.superseded === true;
-      return true;
+      if (result && result.queued) return options.requireCommit !== true;
+      if (result && result.restored === false) return options.requireCommit !== true && result.superseded === true;
+      const committed = this._commitImportedProfile(result, slot, options, commitRequest);
+      return options.requireCommit === true ? committed : true;
     } catch (err) {
       return this._handleLoadFailureAsync(err, slot, options, rollbackSnapshot, rollbackAttempt);
     }
@@ -6731,7 +6771,7 @@ export const save = {
 
     // NXI-234: last gate before the destructive session — a request whose captured generation
     // no longer matches was superseded by a newer committed restore while it waited.
-    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+    if (options.rollback !== true && this._restoreRequestStale(options)) {
       return { restored: false, superseded: true, stale: true, slot };
     }
 
@@ -6779,14 +6819,14 @@ export const save = {
   async _restoreAsync(data, slot, options = {}) {
     if (options.rollback !== true && typeof this.helpers?.prepareLocale === 'function') {
       const sequence = this._restoreSequence;
-      if (options.acceptSeq != null && options.acceptSeq !== sequence) {
+      if (this._restoreRequestStale(options)) {
         return { restored: false, superseded: true, stale: true, slot };
       }
       const profile = this._readProfileSettings?.();
       // Match the existing settings restore precedence: the profile wins over the slot.
       const locale = profile?.locale || data?.settings?.locale || this.state.settings?.locale || 'en-US';
       await this.helpers.prepareLocale(locale);
-      if (sequence !== this._restoreSequence) {
+      if (sequence !== this._restoreSequence || this._restoreRequestStale(options)) {
         return { restored: false, superseded: true, stale: true, slot };
       }
     }
@@ -6814,7 +6854,7 @@ export const save = {
 
     // NXI-234: last gate before the destructive session — a request whose captured generation
     // no longer matches was superseded by a newer committed restore while it waited.
-    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+    if (options.rollback !== true && this._restoreRequestStale(options)) {
       return { restored: false, superseded: true, stale: true, slot };
     }
 
@@ -6957,7 +6997,7 @@ export const save = {
       // before the first restore chunk; a capture failure closes without it.
       pendingRestoringEmit = { slot, source: restoreSource };
     } else {
-      this.bus.emit('save:restoring', { slot, source: restoreSource });
+      this._emitRestoreStarted({ slot, source: restoreSource }, options);
     }
     // sector:exit slicing is restore-scoped: the world-restore chunk's departure emit
     // parks its listener tail on the bus and the restore's own yields + frame-leftover
@@ -7013,8 +7053,7 @@ export const save = {
       if (timeEffects && restoreSource) {
         try { timeEffects.clear(restoreSource); } catch (_) { /* freeze release is best-effort */ }
       }
-      const pendingRunTransition = this._pendingRunTransition;
-      this._pendingRunTransition = null;
+      const pendingRunTransition = this._takePendingRunTransition();
       this._restoring = false;
       // Record-id deferral is restore-scoped (cleared in _closeRestoreSession): a publish that
       // ran before the fault must not suppress record rematerialize for the rest of the run.
@@ -7039,7 +7078,21 @@ export const save = {
     if (!s || !s.pendingRestoringEmit) return;
     const pending = s.pendingRestoringEmit;
     s.pendingRestoringEmit = null;
-    this.bus.emit('save:restoring', pending);
+    this._emitRestoreStarted(pending, s.options);
+  },
+
+  _emitRestoreStarted(payload, options = {}) {
+    const run = this.state?.run;
+    if (options.rollback !== true && run && (run.kind === 'survival' || run.kind === 'lab')
+      && !['inactive', 'ended', 'victory'].includes(run.phase)) {
+      // Validation and rollback capture succeeded. Settle through the run owner before
+      // save:restoring retires it; an attempted F9 never earns this receipt by itself.
+      this.bus.emit('run:endRequested', {
+        outcome: 'aborted', reason: 'load_during_run',
+        tick: Number.isFinite(this.state.tick) ? this.state.tick : 0,
+      });
+    }
+    this.bus.emit('save:restoring', payload);
   },
 
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
@@ -7763,9 +7816,8 @@ export const save = {
     // The epilogue always runs (the old finally{}): a failed chunk still releases the restore
     // freeze, clears the transition latch, and drains a newer queued route before surfacing.
     if (!s.finalizerPending) timeEffects.clear(restoreSource);
-    const pendingRunTransition = this._pendingRunTransition;
+    const pendingRunTransition = this._takePendingRunTransition();
     hadPendingRunTransition = !!pendingRunTransition;
-    this._pendingRunTransition = null;
     // save:loaded is mid-restore: native reconciliation can still fail after it. A
     // rollback restores the temporary world, not campaign ownership. Release only on
     // successful campaign replacement, before a newer queued route can claim state.
@@ -7816,7 +7868,8 @@ export const save = {
     // Success or supersession owns 'loading' from here — the pending finalizer (or the newer
     // route) drives the exit, so the stranded-mode channel for THIS session is spent.
     this._restoreModeBeforeLoading = null;
-    return { restored: true, slot, drained: drainedRunTransition };
+    return { restored: true, slot, drained: drainedRunTransition,
+      ...(hadPendingRunTransition ? { superseded: true } : null) };
   },
 
   _restoreMeta(m) {
@@ -8178,6 +8231,9 @@ export const save = {
   },
 
   destroy() {
+    const pendingSuperseded = this._pendingRunTransitionSuperseded;
+    this._takePendingRunTransition();
+    if (pendingSuperseded) pendingSuperseded();
     this._sharedStoreMirrorGeneration = (this._sharedStoreMirrorGeneration || 0) + 1;
     this._sharedStoreCollectQueued = false;
     if (this._sharedStoreFlushTimer != null) clearTimeout(this._sharedStoreFlushTimer);
@@ -8821,7 +8877,7 @@ export const save = {
     } catch (err) { return json; }
   },
 
-  // FB-104 — the envelope has already validated when this runs, so each side bag merges into
+  // FB-104 — the envelope has restored successfully when this runs, so each side bag merges into
   // localStorage additively: the achievement write keeps the earliest unlock stamp and the max
   // of every counter, and mergeCrucibleProfiles never lowers a record. A hostile or unreadable
   // bag can forfeit its own transfer; it must never block or corrupt the world load.
@@ -8870,7 +8926,7 @@ export const save = {
 
   /** Import a JSON envelope string: validate + migrate + load into `slot` or the first empty slot. */
   importString(jsonStr, slot) {
-    return this.loadEnvelopeFromString(jsonStr, slot || this._firstEmptyImportSlot());
+    return this.loadEnvelopeFromString(jsonStr, slot || this._firstEmptyImportSlot(), { requireCommit: true });
   },
 
   /** Import from a File (FileReader → importString). Calls cb(ok) when done. */
@@ -8894,8 +8950,11 @@ export const save = {
     // and a restore that commits in between owns the error channel — a superseded import's
     // read failure must not reach the player over the newer run.
     const acceptSeq = this._restoreSequence;
+    const acceptEpoch = this._runEpoch;
+    const request = { acceptSeq, acceptEpoch };
     const reader = new FileReader();
     reader.onload = () => {
+      if (this._restoreRequestStale(request)) { if (cb) cb(false); return; }
       const out = this.importString(String(reader.result || ''), slot);
       // Imports restore through the sliced async lane and report on resolution; rejection
       // paths still return a sync bool.
@@ -8903,7 +8962,7 @@ export const save = {
       else if (cb) cb(!!out);
     };
     reader.onerror = () => {
-      if (acceptSeq === this._restoreSequence) {
+      if (!this._restoreRequestStale(request)) {
         this.bus.emit('save:error', { slot: 'import', reason: 'read_failed' });
       }
       if (cb) cb(false);
