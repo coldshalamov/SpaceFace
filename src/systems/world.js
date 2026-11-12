@@ -1488,10 +1488,13 @@ export const world = {
     // Retire only FULL combat/dressing from sectors that are losing FULL before the new FULL bag
     // requests capacity. Structural residents stay materialized, so there is no empty-world frame,
     // while the shared ship cap remains true even inside this synchronous handoff.
+    const retiredBags = new Map();
     for (const [id, previousTier] of previousTiers) {
       const nextTier = plan.tiers.get(id) || RESIDENCY_TIER.RECORD_ONLY;
       if (previousTier === RESIDENCY_TIER.FULL && nextTier !== RESIDENCY_TIER.FULL) {
+        const bag = state.world.sectorContents[id];
         this._stripSectorFullExtras(id);
+        if (bag && nextTier === RESIDENCY_TIER.REDUCED) retiredBags.set(id, bag);
       }
     }
 
@@ -1528,7 +1531,7 @@ export const world = {
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
         && tier === RESIDENCY_TIER.FULL;
-      this._syncSectorTierContent(id, tier, { restoreDurableRecords });
+      this._syncSectorTierContent(id, tier, { restoreDurableRecords, retiredBag: retiredBags.get(id) });
     }
 
     if (deferred.length) {
@@ -1719,16 +1722,16 @@ export const world = {
   _syncSectorTierContent(sectorId, tier, opts = {}) {
     const state = this.state;
     const rec = state.world.residentSectors[sectorId];
-    if (!rec || rec.tier === tier) {
-      // Still may need FULL extras if bag was created as REDUCED.
-      if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId, opts);
-      if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
-      this._setResidentMeta(sectorId, tier, rec && rec.reason);
-      return;
-    }
     if (tier === RESIDENCY_TIER.FULL) this._promoteSectorToFull(sectorId, opts);
-    if (tier === RESIDENCY_TIER.REDUCED) this._stripSectorFullExtras(sectorId);
-    this._setResidentMeta(sectorId, tier, rec.reason);
+    if (tier === RESIDENCY_TIER.REDUCED) {
+      const bag = state.world.sectorContents[sectorId];
+      // The early retirement already captured and released this bag. A rebuilt
+      // bag or one that gained extras while materializing still needs a strip.
+      const alreadyRetired = bag && bag === opts.retiredBag && bag.fullExtrasBuilt === false
+        && !bag.enemies?.length && !bag.dressing?.length && !bag.worldOneOffSpins?.length && !bag.boss;
+      if (!alreadyRetired) this._stripSectorFullExtras(sectorId);
+    }
+    this._setResidentMeta(sectorId, tier, rec && rec.reason);
   },
 
   _promoteSectorToFull(sectorId, opts = {}) {
