@@ -46,25 +46,33 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   ${FLIGHT} #sf-touch-overlay .mf-edge[aria-expanded="true"] {
     border-bottom-color:var(--mf-hand);
   }
+  /* MOB-02: the status strip is one ~30px row of thin labelled bars beside a small speed
+     numeral — cap its reach so the Powers/Pause lane stays clear. */
   ${FLIGHT} #sf-touch-overlay .mf-status {
-    width:min(176px,calc(100vw - 114px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    max-width:calc(100vw - 74px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px));
     min-width:0;
   }
   /* Stack the transient lines: alerts band ~146-170, then the tutorial card, then the
      objective. The card's injected top:18% (~152) sat inside the alerts band and over the
      leftcontext block's top corner. */
   ${FLIGHT} .sf-tutorial-flight-card { top:calc(178px + var(--sf-safe-top,0px))!important; }
+  /* Danger and warning lines take the clear seat under Powers/Pause, right of the objective line: centred at the
+     top they printed behind the vitals strip (lead look 2026-11-11). */
+  ${FLIGHT} #alerts .sf-alert--floor:not(.sf-alert--info) {
+    position:fixed!important; left:auto!important; right:calc(8px + var(--sf-safe-right,0px))!important;
+    top:calc(64px + var(--sf-safe-top,0px))!important; bottom:auto!important; transform:none!important;
+    max-width:calc(100vw - 270px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important; white-space:normal;
+  }
 
-  ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
-  /* The two-line flight hint must clear the bottom safe edge on short portrait screens. */
-  ${FLIGHT} #sf-touch-overlay .mf-ghost-label { top:82px; }
+  /* The two-line flight hint sits under the smaller first-run ring. */
+  ${FLIGHT} #sf-touch-overlay .mf-ghost-label { top:50px; }
 }
 
 /* One small task instrument and one radar: disclosure, rather than desktop prose at phone size. */
 @media (max-width:959px), (max-height:599px) {
-  ${FLIGHT} #hud { --sf-radar-size:88px; }
-  ${FLIGHT} #sf-touch-overlay .mf-status { width:150px!important; gap:3px; }
-  ${FLIGHT} #sf-touch-overlay .mf-speed b { font-size:32px; }
+  ${FLIGHT} #hud { --sf-radar-size:96px; }
+  ${FLIGHT} #sf-touch-overlay .mf-status { width:auto!important; gap:6px; }
+  ${FLIGHT} #sf-touch-overlay .mf-speed b { font-size:20px; }
   ${FLIGHT} #hud .sf-rightdock {
     top:calc(112px + var(--sf-safe-top,0px))!important;
     right:calc(8px + var(--sf-safe-right,0px))!important;
@@ -73,13 +81,16 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   }
   ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) {
     position:relative!important; inset:auto!important; width:120px!important;
-    --sf-kit-radar-rim:16px; transform:none!important; pointer-events:auto!important;
+    --sf-kit-radar-rim:12px; transform:none!important; pointer-events:auto!important;
   }
   ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar {
-    width:88px!important; height:88px!important; overflow:visible;
+    width:96px!important; height:96px!important; overflow:visible;
   }
-  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:88px!important; height:88px!important; }
+  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:96px!important; height:96px!important; }
   ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-orrery text { font-size:12px!important; }
+  /* MOB-02: the mini dial is a glance instrument; its legend plate returns on the expanded scope. */
+  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-objective-key { display:none!important; }
+  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-orrery .orr-micro--hi { display:none!important; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded .sf-radar { flex-shrink:0; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded .sf-radar canvas { width:290px!important; height:290px!important; }
   ${FLIGHT} #hud .sf-radar-objective-key { margin-top:12px!important; font-size:12px!important; line-height:1.25; letter-spacing:normal; overflow-wrap:anywhere; }
@@ -92,24 +103,42 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
     min-height:0!important; overflow-y:auto!important; transform:none!important; z-index:200;
   }
   ${FLIGHT} #hud > .sf-leftcontext {
-    top:calc(112px + var(--sf-safe-top,0px))!important;
+    top:calc(46px + var(--sf-safe-top,0px))!important;
     left:calc(8px + var(--sf-safe-left,0px))!important; bottom:auto!important;
     width:min(320px,calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
     max-width:none!important; transform:none!important; overflow:visible!important; contain:style!important;
     padding:0!important; border:0!important; background:none!important; box-shadow:none!important;
   }
+  /* MOB-02: the tracker is one ellipsized line — act title (when present) plus the objective's
+     first line — and the whole line is the disclosure target. hud.js toggles the card with an
+     inline display, so the line is built from inline children instead of a flex row: the card's
+     own line box carries the one shared ellipsis. The DETAILS button itself is stretched
+     invisible over the card so it keeps its name, focus and expanded state. */
   ${FLIGHT} #hud > .sf-leftcontext > .sf-mission-tracker {
-    box-sizing:border-box; width:100%; max-width:100%; padding:6px 8px!important;
-    contain:style!important; background:var(--dp-glass-flight,rgb(5 7 10 / .88))!important; overflow:visible;
+    box-sizing:border-box; width:100%; max-width:100%; padding:5px 8px!important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    contain:style!important; background:var(--dp-glass-flight,rgb(5 7 10 / .88))!important;
     border:1px solid var(--dp-line-faint,rgb(232 226 212 / .14)); border-radius:4px;
     pointer-events:none!important;
   }
   ${FLIGHT} #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
+  /* G19-02 hold line on a phone: one compact line under the objective, only while carrying something. */
+  ${FLIGHT} #hud .sf-cargo-bar { margin-top:4px; padding:3px 8px!important; font-size:12px!important; line-height:1.3; }
   ${FLIGHT} #hud .sf-mission-tracker::before { display:none!important; }
   ${FLIGHT} #hud .sf-mt-obj { display:none!important; }
-  ${FLIGHT} #hud .sf-mt-compact { display:block; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
-  ${FLIGHT} #hud .sf-mt-compact-action { height:2.6em; min-height:0; max-height:2.6em; padding-right:58px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
-  ${FLIGHT} #hud .sf-mt-compact-readings { margin-top:2px; white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); font-size:13px; line-height:1.3; }
+  ${FLIGHT} #hud .sf-mt-title {
+    display:inline-block!important; max-width:45%; overflow:hidden; text-overflow:ellipsis; vertical-align:baseline;
+    white-space:nowrap; border-bottom:0!important; padding-bottom:0; margin:0; font-size:14px; line-height:1.3;
+  }
+  /* setDisplay writes an inline display:block/none on the title; the inline block must yield to the
+     owner's hide, but never revert to a stacked block line. */
+  ${FLIGHT} #hud .sf-mt-title[style*="none"] { display:none!important; }
+  ${FLIGHT} #hud .sf-mission-tracker:has(.sf-mt-title:not(:empty)) .sf-mt-compact-action::before {
+    content:'·'; margin:0 6px; color:var(--dp-line-faint,rgb(232 226 212 / .5));
+  }
+  ${FLIGHT} #hud .sf-mt-compact { display:contents; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
+  ${FLIGHT} #hud .sf-mt-compact-action { display:inline; }
+  ${FLIGHT} #hud .sf-mt-compact-readings { display:none!important; }
   /* The full objective AND this tutorial caption already live in the existing Details panel. */
   ${FLIGHT} #hud .sf-mt-time { display:none!important; }
   ${FLIGHT} #hud .sf-mt-details-button, ${FLIGHT} #hud .sf-mt-details-close,
@@ -125,7 +154,7 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
      leaving Close visible even when a long objective or tutorial fills the available space. */
   ${FLIGHT} #hud .sf-mt-details:not([hidden]) {
     display:flex; flex-direction:column; position:fixed; z-index:30;
-    left:calc(8px + var(--sf-safe-left,0px)); top:calc(112px + var(--sf-safe-top,0px));
+    left:calc(8px + var(--sf-safe-left,0px)); top:calc(46px + var(--sf-safe-top,0px));
     box-sizing:border-box; width:min(280px,calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     max-height:calc(100dvh - 120px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px));
     padding:10px; color:var(--dp-ink,#e8e2d4); background:var(--dp-void,#05070a); border:1px solid var(--dp-metal-hi,#777);
@@ -137,11 +166,21 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
     white-space:pre-line; overflow-wrap:anywhere;
   }
   ${FLIGHT} #hud .sf-mt-details-close { flex:none; align-self:flex-end; margin-bottom:8px; }
-  ${FLIGHT} #hud .sf-mt-details-button { position:absolute; top:6px; right:6px; width:54px; height:44px; padding:4px; }
+  /* MOB-02: the DETAILS chip is gone from sight; it stretches invisible across the one-line
+     tracker so a tap anywhere on the objective line (and the existing keyboard focus) keeps
+     opening the same details sheet. */
+  ${FLIGHT} #hud .sf-mt-details-button {
+    position:absolute; inset:0; width:auto; height:auto;
+    padding:0; border:0; color:transparent; background:transparent; font-size:0;
+  }
+  /* MOB-02: ordinary flight's "View & circuits" chip leaves the flight HUD — Circuits stays on
+     the menu reach (pause / title) instead of a plate over the world. The authored-race
+     instrument (data-compact="false") keeps its seat. */
   ${FLIGHT} #race-tape[data-compact="true"] {
+    display:none!important;
     position:absolute!important; top:-48px!important; right:0!important; left:auto!important; bottom:auto!important;
     width:120px!important; padding:0!important; background:none!important; transform:none!important;
-    display:block; overflow:visible!important;
+    overflow:visible!important;
   }
   ${FLIGHT} #race-tape[data-compact="true"] .race-tape-options-trigger { width:100%; }
   ${FLIGHT} #race-tape[data-compact="true"][data-options-open="false"] .race-tape-actions { display:none!important; }
@@ -204,18 +243,19 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
 @media (max-height:500px) and (orientation:landscape) {
   ${FLIGHT} #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
-  ${FLIGHT} #hud > .sf-leftcontext { top:calc(100px + var(--sf-safe-top,0px))!important; width:230px!important; }
+  ${FLIGHT} #hud > .sf-leftcontext { top:calc(44px + var(--sf-safe-top,0px))!important; width:236px!important; }
+  ${FLIGHT} #hud .sf-mt-title { max-width:58%; }
   /* Use landscape's width: results at the upper edge, context at the lower edge, with the
      central ship between them. These seats also clear the mirrored left-hand action cluster. */
   ${FLIGHT} body #hud #toasts,
   ${FLIGHT} #alerts .sf-alert--floor.sf-alert--info {
-    left:calc(176px + var(--sf-safe-left,0px))!important;
+    left:calc(252px + var(--sf-safe-left,0px))!important;
     width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
     top:calc(10px + var(--sf-safe-top,0px))!important;
   }
   ${FLIGHT} #sf-ml2 .ml2-preview,
   ${FLIGHT}[data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview {
-    left:calc(176px + var(--sf-safe-left,0px))!important; right:auto!important;
+    left:calc(252px + var(--sf-safe-left,0px))!important; right:auto!important;
     bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
     max-width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
   }

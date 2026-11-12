@@ -1363,6 +1363,12 @@ async function mountMobileDeck(shot) {
   } else {
     view.render({ flight: { brake: false }, actions: {} });
   }
+  // The flight HUD ran its frames before the deck flagged the page as a phone; the live game draws
+  // the next frame with the flag set, so give the HUD those frames too (phone-only text, seats).
+  try {
+    const hud = window.__benchHud;
+    if (hud && typeof hud.frame === 'function') for (let i = 0; i < 4; i++) hud.frame(1 / 60);
+  } catch (error) { note(`HUD phone frame: ${error && error.message ? error.message : String(error)}`); }
   note('— phone deck mounted (' + pose + ', ' + cfg.layout + ')');
 }
 

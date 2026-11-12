@@ -16,8 +16,8 @@ const NO_FLY_SELECTOR = '.screen,[aria-modal="true"],.sf-radar-wrap,#sf-sector-l
 const EDGE_ZONE_PX = 34;
 const STATUS_MS = 100;
 
-const row = (key, label) => `<div class="mf-row" data-k="${key}" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100">
-        <span class="mf-lab">${label}</span><span class="mf-scale"><i class="mf-fill" data-read="${key}"></i></span></div>`;
+const row = (key, label, short) => `<div class="mf-row" data-k="${key}" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100">
+        <span class="mf-lab">${short || label}</span><span class="mf-scale"><i class="mf-fill" data-read="${key}"></i></span></div>`;
 
 /** Pointer ownership and presentation. Physics is deliberately absent from this module. */
 export function mountMobileView({ state, model, activate, reset, config, saveConfig, doc = document, win = window }) {
@@ -33,7 +33,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     <div class="mf-top">
       <div class="mf-status" role="group" aria-label="Ship status">
         <div class="mf-speed"><b data-read="speed">0</b><i>speed</i></div>
-        ${row('hull', 'Hull')}${row('shield', 'Shield')}${row('energy', 'Energy')}${row('boost', 'Boost')}
+        ${row('hull', 'Hull')}${row('shield', 'Shield', 'Shld')}${row('energy', 'Energy', 'Nrg')}${row('boost', 'Boost', 'Bst')}
       </div>
       <button class="mf-pause" data-ui="pause" aria-label="Pause game"><svg viewBox="0 0 56 56" aria-hidden="true" focusable="false"><circle class="mf-r-band" cx="28" cy="28" r="24"/><circle class="mf-r-edge" cx="28" cy="28" r="24"/><path class="mf-r-glyph" d="M22 19v18 M34 19v18"/></svg></button>
     </div>
@@ -150,7 +150,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       ? clamp((h + safeTop - safeBottom) * .5, safeTop + radius + 12, h - safeBottom - radius - 12)
       : clamp(h * 0.56, topClear + radius, Math.max(topClear + radius, h - bottomClear - radius));
     const side = hand();
-    const clusterWidth = 170 * Number(root.style.getPropertyValue?.('--mf-scale') || 1);
+    const clusterWidth = 150 * Number(root.style.getPropertyValue?.('--mf-scale') || 1);
     const cx = portrait ? w / 2 + (w <= 360 ? (side === 'left' ? 12 : -12) : 0) : side === 'left'
       ? Math.max(bounds.left + 4, keys.width ? keys.right + 12 : clusterWidth + 28)
       : Math.min(bounds.right - 4, keys.width ? keys.left - 12 : w - clusterWidth - 28);
@@ -187,7 +187,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // the page's own receipts line keeps clear of the key cluster: it needs the cluster's side and width
     const html = doc.documentElement;
     html.dataset.sfMobileLefty = layout === 'lefty' ? '1' : '0';
-    html.style.setProperty('--mf-cluster-w', `${Math.round(196 * scale)}px`);
+    html.style.setProperty('--mf-cluster-w', `${Math.round(160 * scale)}px`);
   }
 
   // ---- pointer ownership -------------------------------------------------------------------------------
@@ -219,9 +219,13 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // through (the travel tape, the contextual stack, alerts, receipts, the cadence card), and
     // against the frame itself. Ties fall to 'below', the reading's resting place.
     const drop = p.radius * 1.62, readH = 60;
+    // Beside the ring (MOB-02): a landscape phone has no room under the ring and the top band is HUD, so
+    // the reading may sit to either side of the dashed rim instead of printing through the objective line.
     const sides = {
       below: { l: centre - half, r: centre + half, t: p.oy + drop + 6, b: p.oy + drop + 6 + readH },
       above: { l: centre - half, r: centre + half, b: p.oy - drop - 24, t: p.oy - drop - 24 - readH },
+      right: { l: p.ox + drop + 8, r: p.ox + drop + 8 + 2 * half, t: p.oy - readH / 2, b: p.oy + readH / 2 },
+      left: { l: p.ox - drop - 8 - 2 * half, r: p.ox - drop - 8, t: p.oy - readH / 2, b: p.oy + readH / 2 },
     };
     const obstacles = [q('.mf-buttons'), q('.mf-dock')];
     for (const sel of ['#hud .sf-leftcontext', '#hud .sf-vtape', '#hud .sf-tells', '#alerts', '#toasts', '.ml2-cadence-slot']) {
@@ -235,9 +239,15 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       const h2 = Math.min(rect.b, b.bottom) - Math.max(rect.t, b.top);
       return w2 > 0 && h2 > 0 ? w2 * h2 : 0;
     };
-    const cost = rect => (rect.t < 0 || rect.b > h ? 1e9
+    const cost = rect => (rect.t < 0 || rect.b > h || rect.l < 0 || rect.r > w ? 1e9
       : obstacles.reduce((sum, el) => sum + blocked(rect, el), 0));
-    stickUI.root.dataset.side = cost(sides.above) < cost(sides.below) ? 'above' : 'below';
+    // Strictly cheaper wins, in preference order: under, over, then beside (thumb side last).
+    let side = 'below', best = cost(sides.below);
+    for (const name of ['above', hand() === 'left' ? 'left' : 'right', hand() === 'left' ? 'right' : 'left']) {
+      const c = cost(sides[name]);
+      if (c < best) { best = c; side = name; }
+    }
+    stickUI.root.dataset.side = side;
   }
   function pointerDown(e) {
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
