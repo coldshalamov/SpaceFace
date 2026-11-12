@@ -25,7 +25,7 @@ test('the glosses say what the mode is, not the verb again', () => {
   // The failure ST-01 fixes is a bare label; a gloss that merely repeats the label is a stub.
   assert.ok(!/^(Help|Archive|Circuits|Sandbox|Physics challenges|Crucible)$/i.test(MENU_MODE_GLOSSES.physics));
   assert.match(MENU_MODE_GLOSSES.crucible, /survival/i);
-  assert.match(MENU_MODE_GLOSSES.circuits, /logic|circuit/i);
+  assert.match(MENU_MODE_GLOSSES.circuits, /race.*time trials/i);
   assert.match(MENU_MODE_GLOSSES.sandbox, /flight/i);
   assert.match(MENU_MODE_GLOSSES.physics, /orbital/i);
   assert.match(MENU_MODE_GLOSSES.archive, /codex/i);
