@@ -1055,7 +1055,12 @@ export function domMouseDownEvent(host, d = {}) {
   }
   if (d.button === 0) host._m0 = true;
   if (d.button === 1) host._m1 = true;
-  if (d.button === 2) host._m2 = true;
+  if (d.button === 2 && host._m2 !== true) {
+    host._m2 = true;
+    const line = host.state?.player?.tether;
+    host._throwLineAtPress = line?.active && line.targetId != null
+      ? { targetId: line.targetId, attachmentId: line.attachmentId } : null;
+  }
   host._kbmActivityPending = true;
 }
 
@@ -1063,7 +1068,7 @@ export function domMouseUpEvent(host, d = {}) {
   if (!host) return;
   if (d.button === 0) host._m0 = false;
   if (d.button === 1) host._m1 = false;
-  if (d.button === 2) host._m2 = false;
+  if (d.button === 2) { host._m2 = false; host._throwLineAtPress = null; }
 }
 
 export const input = {
@@ -2047,12 +2052,15 @@ export const input = {
     const mineHeld = siteBeamHeld || aimedMineHeld;
     acts.siteBeam = siteBeamHeld;
     acts.aimedMine = aimedMineHeld;
-    const tetherLatched = !!(state.player && state.player.tether && state.player.tether.active);
+    const tether = state.player?.tether;
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
     // (hostile ship/drone, fracture chunk, cargo mass), the RMB press arms the throw and
     // masslineThrow owns the solution/auto-cut — "RMB throws THEM". The same RMB hold feeds the
-    // Line grammar below, which is the unified Swarm contract.
-    const throwArmHeld = massline2Flag('throw') && tetherLatched && this._m2 === true
+    // Line grammar below. The press that grabbed a body belongs to the latch,
+    // even when the new attachment becomes active before the mouse lifts.
+    const throwLine = this._throwLineAtPress;
+    const throwArmHeld = massline2Flag('throw') && this._m2 === true && !!throwLine && tether?.active
+      && throwLine.targetId === tether.targetId && throwLine.attachmentId === tether.attachmentId
       && isThrowArmPayload(state);
     inp.fireGroup = (mineHeld && !throwArmHeld) ? 2 : (inp.fire ? 1 : null);
 
