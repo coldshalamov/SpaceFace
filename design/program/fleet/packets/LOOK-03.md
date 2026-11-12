@@ -32,3 +32,9 @@ the cause lives there, write the exact change in the receipt and stop.
    events and saves frames; extend a copy to log the hovered/aimed entity's id, type, defId and material name when the aim tag
    reads `LINE TARGET · BLOCKED`). Name the cause with evidence.
 2. Then fix within the allowlist.
+
+## Second relaunch notes
+Waiting for the game lock is normal (other workers run looks too) — wait up to 45 minutes; never stop a waiter early.
+The white rock is intermittent: run your `scripts/fleet/looks/look-03.mjs` (prepared in the last run) on rounds 3, 5 and 2,
+logging every frame's aimed/hovered body + material, until a white body shows; also scan saved frames for any large region
+with mean luma > 240 and log what was under it. Commit the diagnostic script when it works.
