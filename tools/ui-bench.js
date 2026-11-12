@@ -1302,7 +1302,7 @@ async function openOverlay(kind) {
       headline: 'The convoy requests clearance', detail: 'Read the manifest before the convoy departs.',
       deadlineAt: state.simTime + 50,
       choices: [{ id: 'inspect', label: 'Request the sealed manifest' }, { id: 'release', label: 'Release the convoy' }],
-      onChoose: () => {},
+      onChoose: () => deck.resolveDecision('bench-clearance'),
     });
     releaseFlightPopup = () => deck.destroy();
     window.__BENCH_OVERLAY = document.querySelector('#sf-prompt-deck [data-choice-id]') ? 'decision open' : 'decision did not open';
