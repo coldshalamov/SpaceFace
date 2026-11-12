@@ -1266,7 +1266,7 @@ export class Sg02DynamicBodyOwner {
     return true;
   }
 
-  step(dt = this.fixedDt, simTick = null) {
+  step(dt = this.fixedDt, simTick = null, options = null) {
     const fixedDt = this.fixedDt;
     if (!Number.isFinite(fixedDt) || fixedDt <= 0) {
       throw new RangeError(`SG-02 owner step requires a finite positive fixedDt, got ${fixedDt}`);
@@ -1285,7 +1285,7 @@ export class Sg02DynamicBodyOwner {
         + ` would require ${estimatedSteps} substeps (max ${MAX_OWNER_SUBSTEPS})`);
     }
     const capability=ORCHARD_OWNER_CAPABILITIES.get(this), boundary=beginOrchardOwnerStep(this,capability);
-    if(!boundary) return this.diagnostics();
+    if(!boundary) return this._stepReport(options);
     this._simTick = Number.isFinite(simTick) ? Math.max(0, Math.trunc(simTick)) : null;
     const canonicalTick=this._simTick;
     this.accumulator = prospectiveTotal;
@@ -1294,11 +1294,11 @@ export class Sg02DynamicBodyOwner {
       while (this.accumulator + 1e-12 >= this.fixedDt) {
         this._stepFixed();
         // An old stack must never subtract a completed old-world slice from successor debt.
-        if(!orchardStepCurrent(this,capability,boundary)) return this.diagnostics();
+        if(!orchardStepCurrent(this,capability,boundary)) return this._stepReport(options);
         this.accumulator -= this.fixedDt; completed++;
       }
       ORCHARD_OWNER_TAILS.set(this,finishOrchardOwnerStep(this,capability,boundary,canonicalTick,completed));
-      return this.diagnostics();
+      return this._stepReport(options);
     } catch(error) {cancelOrchardOwnerStep(this,capability,boundary);throw error;}
   }
 
@@ -1313,26 +1313,43 @@ export class Sg02DynamicBodyOwner {
       .map((rec) => ({ ...rec.snapshot }));
   }
 
-  diagnostics() {
-    let ccdBodies = 0;
-    for (const rec of this.dynamicRecords) {
-      if (rec.ccdEnabled) ccdBodies++;
-    }
-    let colliders = 0;
-    for (const rec of this.records.values()) {
-      colliders += Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders.length : 1;
-    }
+  _stepReport(options) {
+    return options?.detailedDiagnostics === false ? this._refreshStepSummary() : this.diagnostics();
+  }
+
+  _refreshStepSummary() {
     const diag = this._diagnostics;
     diag.tick = this.tick;
     diag.fixedDt = this.fixedDt;
     diag.bodies = this.records.size;
-    diag.colliders = colliders;
     diag.attachments = this.attachments.size;
     diag.suspendedAttachments = this._suspendedAttachments.size;
     diag.pendingNativeRebuilds = this._pendingNativeRebuilds.size;
     diag.dynamicBodies = this.dynamicRecords.size;
-    diag.ccdBodies = ccdBodies;
     diag.lockedPlaneBodies = this.records.size;
+    return diag;
+  }
+
+  countColliders() {
+    let count = 0;
+    for (const rec of this.records.values()) {
+      count += Array.isArray(rec.colliders) && rec.colliders.length ? rec.colliders.length : 1;
+    }
+    return count;
+  }
+
+  countCcdBodies() {
+    let count = 0;
+    for (const rec of this.dynamicRecords) {
+      if (rec.ccdEnabled) count++;
+    }
+    return count;
+  }
+
+  diagnostics() {
+    const diag = this._refreshStepSummary();
+    diag.colliders = this.countColliders();
+    diag.ccdBodies = this.countCcdBodies();
     return diag;
   }
 

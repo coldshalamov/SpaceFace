@@ -131,6 +131,9 @@ export function objectiveText(m) {
   if (p.setPieceObjective === 'long_read_fence') {
     return `CHOOSE / CONFIRM DISPOSITION · ${titleCaseWords(p.wreckChoiceId || 'wreck outcome')}`;
   }
+  // W-TENDER fail-forward spot row: the same errand the nav marker names (missionNavReason).
+  // The dock truth: berthing completes the row — the rail-market sale is unverified income.
+  if (p.tenderSpotForMissionId) return `Spot carriage: dock at ${dest} to complete — the rail market buys what your hold still carries`;
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();
@@ -148,6 +151,9 @@ export function objectiveText(m) {
       return `Deliver to ${dest}`;
     case 'bulk_trade':
       return `Sell ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
+    // W-TENDER: the desk sale settles the run — name what the desk still needs, where.
+    case 'tender_haul':
+      return `Sell ${Math.max(0, tgt - prog)}u ${cmdtyName(p.cmdtyId)} at ${dest}`;
     case 'mining_quota':
       return `Mine ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
     case 'bounty_hunt':
