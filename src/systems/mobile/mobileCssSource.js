@@ -244,8 +244,8 @@ export const FLIGHT_CSS = `
 /* ---- toast, guide pill, guide dialog ---- */
 /* the deck's own feedback sits in the clear lane above the key cluster and below the wheel's orbit:
    the top corners belong to the status strip, the alerts and the receipts (#toasts) */
-#sf-touch-overlay .mf-toast { position:absolute; z-index:8; left:calc(14px + var(--sf-safe-left,0px)); bottom:calc(18px + 178px * var(--mf-scale) + var(--sf-safe-bottom,0px)); transform:none; max-width:min(76vw,360px); padding:9px 16px 9px 20px; background:color-mix(in srgb, var(--mf-void) 84%, transparent); color:rgb(var(--mf-bone)); font:600 13px/1.3 var(--mf-face); font-stretch:106%; letter-spacing:.04em; text-align:left; animation:mf-key-in 220ms var(--mf-out) both; }
-#sf-touch-overlay .mf-toast::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--mf-hand); }
+#sf-touch-overlay :is(.mf-toast, .mf-caption) { position:absolute; z-index:8; left:calc(14px + var(--sf-safe-left,0px)); bottom:calc(18px + 178px * var(--mf-scale) + var(--sf-safe-bottom,0px)); transform:none; max-width:min(88vw,420px); white-space:nowrap; pointer-events:none; padding:9px 16px 9px 20px; background:color-mix(in srgb, var(--mf-void) 84%, transparent); color:rgb(var(--mf-bone)); font:600 13px/1.3 var(--mf-face); font-stretch:106%; letter-spacing:.04em; text-align:left; animation:mf-key-in 220ms var(--mf-out) both; }
+#sf-touch-overlay :is(.mf-toast, .mf-caption)::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--mf-hand); }
 #sf-touch-overlay .mf-guide-open { position:absolute; z-index:70; bottom:calc(58px + var(--sf-safe-bottom,0px)); right:calc(14px + var(--sf-safe-right,0px)); isolation:isolate; display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 18px 0 12px; border:0; border-radius:0; background:none; color:rgb(var(--mf-bone) / .92); pointer-events:auto; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.1em; text-transform:uppercase; }
 #sf-touch-overlay .mf-guide-open::before { content:''; position:absolute; inset:0; z-index:-1; background:color-mix(in srgb, var(--mf-void) 80%, transparent); clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
 #sf-touch-overlay .mf-guide-open svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
@@ -321,6 +321,8 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
 #sf-touch-overlay[data-lefty="1"] .mf-edge::before { inset:-8px -18px -8px -2px; }
 #sf-touch-overlay[data-lefty="1"] .mf-edge-art { transform:scaleX(-1); }
 #sf-touch-overlay[data-lefty="1"] .mf-edge-word { left:auto; right:calc(17px * var(--mf-scale)); transform:translateY(-50%); }
+#sf-touch-overlay[data-lefty="1"] :is(.mf-toast, .mf-caption) { left:auto; right:calc(14px + var(--sf-safe-right,0px)); text-align:right; }
+#sf-touch-overlay[data-lefty="1"] :is(.mf-toast, .mf-caption)::before { left:auto; right:0; }
 `;
 
 /* Narrow-screen adaptations use actual Deckplate/ORRERY hooks; no transforms on the whole app. */
