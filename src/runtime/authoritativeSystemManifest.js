@@ -768,6 +768,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   swarmJuice: MODE_SCOPE_SWARM_ONLY,
   swarmElites: MODE_SCOPE_SWARM_ONLY,
   swarmDrops: MODE_SCOPE_SWARM_ONLY,
+  swarmCourseTwists: MODE_SCOPE_SWARM_ONLY,
 
   // Flight & Swarm Combat systems (active when piloting or fighting, inactive when docked)
   autoTargetAssist: MODE_SCOPE_COMBAT_FLIGHT,
