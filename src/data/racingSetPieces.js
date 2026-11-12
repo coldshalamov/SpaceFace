@@ -8,6 +8,7 @@
 const RIVAL_LINE = Object.freeze({ entryBackWU: 180, releaseAheadWU: 60, maxHoldS: 4 });
 // Per-anchor override: a swing pays only when its geometry matches the apex it serves —
 // a tight hairpin wants the rope held farther down the outgoing leg than a sweeper does.
+// approachLeadWU holds the pre-crossing aim inside the aperture, independent of rope release.
 // Falls back to RIVAL_LINE fieldwise so a partial override still reads the shared shape.
 const anchor = (id, name, gateIndex, line = null) => Object.freeze({ id, name, gateIndex,
   rivalLine: line ? Object.freeze({ ...RIVAL_LINE, ...line }) : RIVAL_LINE });
@@ -48,7 +49,7 @@ export const RACING_SET_PIECES = Object.freeze({
   }),
   circuit_veil_wash: Object.freeze({
     anchors: Object.freeze([
-      anchor('cold_wake_anchor', 'Cold Wake Anchor', 3, { entryBackWU: 220, releaseAheadWU: 180, maxHoldS: 7 }),
+      anchor('cold_wake_anchor', 'Cold Wake Anchor', 3, { entryBackWU: 220, approachLeadWU: 95, releaseAheadWU: 120, maxHoldS: 7 }),
       anchor('orchard_slingshot', 'Orchard Slingshot', 6, { entryBackWU: 220, releaseAheadWU: 180, maxHoldS: 7 }),
     ]),
     rivalAnchors: rivalAnchors(
