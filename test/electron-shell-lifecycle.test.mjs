@@ -50,6 +50,7 @@ async function loadMain({
   activateBeforeServerReady = 0,
   failWindowLoads = 0,
   windowLoadFailure = null,
+  paintBeforeFirstLoadSettles = false,
   allowStartupFailure = false,
 } = {}) {
   const windows = [];
@@ -128,6 +129,7 @@ async function loadMain({
       minimized: false,
       focused: false,
       destroyed: false,
+      loadRequests: [],
       fullscreen: options?.fullscreen === true,
       isFullScreen() { return this.fullscreen; },
       setFullScreen(val) { this.fullscreen = !!val; },
@@ -144,29 +146,36 @@ async function loadMain({
       blur() { this.focused = false; this.emit('blur'); },
       async loadURL(url) {
         this.loadedUrl = url;
+        this.loadRequests.push(url);
         currentUrl = url;
         if (failWindowLoads > 0) {
           failWindowLoads -= 1;
           throw new Error('injected window load failure');
         }
-        if (windowLoadFailure?.phase === 'before-commit') {
+        const failure = this.loadRequests.length <= (windowLoadFailure?.times ?? Infinity)
+          ? windowLoadFailure : null;
+        if (failure?.phase === 'before-commit') {
           const error = Object.assign(new Error('injected pre-commit navigation failure'), {
-            code: windowLoadFailure.code,
-            url: windowLoadFailure.rejectedUrl || currentUrl,
+            code: failure.code,
+            url: failure.rejectedUrl || currentUrl,
           });
-          webContents.emit('did-fail-load', {}, error.code, error.message, error.url, true);
+          webContents.emit('did-fail-load', {}, failure.eventCode ?? error.code, error.message, error.url, true);
+          if (paintBeforeFirstLoadSettles && this.loadRequests.length === 1) {
+            this.emit('ready-to-show');
+            this.visibleBeforeLoadSettled = this.isVisible();
+          }
           throw error;
         }
         webContents.emit('did-finish-load');
-        if (windowLoadFailure?.phase === 'after-commit') {
-          currentUrl = windowLoadFailure.currentUrl || currentUrl;
-          if (windowLoadFailure.destroyWindow) {
+        if (failure?.phase === 'after-commit') {
+          currentUrl = failure.currentUrl || currentUrl;
+          if (failure.destroyWindow) {
             this.destroyed = true;
             webContents.destroyed = true;
           }
           const error = Object.assign(new Error('injected post-commit navigation failure'), {
-            code: windowLoadFailure.code,
-            url: windowLoadFailure.rejectedUrl || currentUrl,
+            code: failure.code,
+            url: failure.rejectedUrl || currentUrl,
           });
           webContents.emit('did-fail-load', {}, error.code, error.message, error.url, true);
           throw error;
@@ -199,9 +208,10 @@ async function loadMain({
     module: { exports: {} },
     exports: {},
     process: {
-      env: allowBackgroundExecution
-        ? { SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' }
-        : {},
+      env: {
+        SPACEFACE_DEV_SIM_WORKER_BUNDLE: '0',
+        ...(allowBackgroundExecution ? { SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' } : {}),
+      },
       platform,
       execPath: path.join(ROOT, 'electron.exe'),
       resourcesPath: path.join(ROOT, 'resources'),
@@ -651,6 +661,44 @@ test('a committed canonical reload abort settles startup without hiding real fai
   assert.equal(later.receipts.filter((entry) => entry.status === 'canonical-reload-aborted-after-commit').length, 0);
 });
 
+test('desktop retries one pre-commit canonical ERR_FAILED without publishing failure or readiness early', async () => {
+  const canonicalUrl = 'http://127.0.0.1:41788/';
+  const failure = { phase: 'before-commit', code: 'ERR_FAILED', eventCode: -2 };
+  const recovered = await loadMain({
+    windowLoadFailure: { ...failure, times: 1 },
+    paintBeforeFirstLoadSettles: true,
+    allowStartupFailure: true,
+  });
+  assert.deepEqual(recovered.win.loadRequests, [canonicalUrl, canonicalUrl]);
+  assert.equal(recovered.serverStats.listens, 1);
+  assert.deepEqual(recovered.serverStats.exits, []);
+  assert.equal(recovered.win.visibleBeforeLoadSettled, false);
+  assert.equal(recovered.win.isVisible(), true);
+  assert.equal(recovered.receipts.filter((entry) => entry.status === 'window-ready').length, 1);
+  assert.ok(!recovered.receipts.some((entry) => ['navigation-failed', 'startup-failed'].includes(entry.status)));
+
+  const fatal = await loadMain({
+    windowLoadFailure: failure,
+    paintBeforeFirstLoadSettles: true,
+    allowStartupFailure: true,
+  });
+  assert.deepEqual(fatal.win.loadRequests, [canonicalUrl, canonicalUrl]);
+  assert.deepEqual(fatal.serverStats.exits, [1]);
+  assert.equal(fatal.win.isVisible(), false);
+  assert.equal(fatal.receipts.filter((entry) => entry.status === 'navigation-failed').length, 1);
+  assert.ok(!fatal.receipts.some((entry) => entry.status === 'window-ready'));
+
+  const isolated = await loadMain({ isolatedEvidence: true, windowLoadFailure: failure, allowStartupFailure: true });
+  assert.deepEqual(isolated.win.loadRequests, ['http://127.0.0.1:41991/']);
+  assert.deepEqual(isolated.serverStats.exits, [1]);
+  const foreign = await loadMain({
+    windowLoadFailure: { ...failure, rejectedUrl: 'https://example.invalid/' },
+    allowStartupFailure: true,
+  });
+  assert.deepEqual(foreign.win.loadRequests, [canonicalUrl]);
+  assert.deepEqual(foreign.serverStats.exits, [1]);
+});
+
 test('window hide, minimize, focus, and blur publish normalized lifecycle states', async () => {
   const h = await loadMain();
   h.commands.length = 0;
@@ -750,12 +798,12 @@ test('main accepts only the documented quit send channel and invoke IPC set', as
 test('preload exposes one monotonic one-way subscription and replays the latest command', () => {
   const h = loadPreload();
   assert.deepEqual([...h.exposed.keys()], ['spacefaceLifecycle', 'spacefaceShell', 'spacefaceQuit']);
-  assert.deepEqual([...h.ipcListeners.keys()], [CHANNEL]);
+  assert.deepEqual([...h.ipcListeners.keys()], [CHANNEL, 'spaceface:prepare-quit']);
   const lifecycle = h.exposed.get('spacefaceLifecycle');
   assert.deepEqual(Object.keys(lifecycle), ['subscribe', 'quit']);
   assert.deepEqual(
     Object.keys(h.exposed.get('spacefaceShell')),
-    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync', 'perfMetrics', 'getWindowMode', 'setWindowMode'],
+    ['quit', 'onPrepareQuit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync', 'perfMetrics', 'getWindowMode', 'setWindowMode'],
   );
   assert.equal(typeof h.exposed.get('spacefaceQuit'), 'function');
 

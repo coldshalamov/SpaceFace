@@ -1319,6 +1319,17 @@ async function createWindow() {
   bindWindowStatePersistence(win, windowStatePath);
   let canonicalLoadCommitted = false;
   let initialCanonicalLoadPending = false;
+  let canonicalRetryAvailable = !launchConfig.isolatedEvidence;
+  let retryableNavigationFailure = null;
+  let initialLoadReady = false;
+  let firstPaintReady = false;
+
+  function canRetryCanonicalNavigation(code, url) {
+    return canonicalRetryAvailable && initialCanonicalLoadPending && !canonicalLoadCommitted
+      && !appQuitting && (code === 'ERR_FAILED' || code === -2) && isCanonicalGameUrl(url, gameUrl)
+      && !win.isDestroyed() && !win.webContents.isDestroyed();
+  }
+
   // Normal close remains cancellable until the renderer's save owner has settled its
   // existing exit save and shared-store writes. Forced process termination has no such guarantee.
   let quitPrepared = false;
@@ -1376,8 +1387,7 @@ async function createWindow() {
   installWindowSecurity(win, gameUrl);
   // BrowserWindow.loadURL() can reject with ERR_ABORTED when the already-committed canonical page
   // reloads itself before Electron settles the original promise. That is no longer a startup
-  // failure, but every pre-commit, foreign-URL, destroyed-window, and non-abort rejection remains
-  // fatal. Observe the main-frame commit directly rather than inferring it from promise timing.
+  // failure. Observe the main-frame commit directly rather than inferring it from promise timing.
   win.webContents.on('did-finish-load', () => {
     if (isCanonicalGameUrl(win.webContents.getURL(), gameUrl)) canonicalLoadCommitted = true;
   });
@@ -1405,7 +1415,8 @@ async function createWindow() {
       }
     }
   });
-  win.once('ready-to-show', () => {
+  function showReadyWindow() {
+    if (!firstPaintReady || !initialLoadReady || win.isDestroyed()) return;
     receipt('window-ready', {
       port,
       backgroundThrottling,
@@ -1413,6 +1424,10 @@ async function createWindow() {
       fullscreen: !launchConfig.isolatedEvidence,
     });
     if (!hideEvidenceWindow) win.show();
+  }
+  win.once('ready-to-show', () => {
+    firstPaintReady = true;
+    showReadyWindow();
   });
   win.webContents.on('did-fail-load', (_event, code, message, url, isMainFrame) => {
     if (!isMainFrame) return;
@@ -1424,7 +1439,13 @@ async function createWindow() {
       canonicalLoadCommitted,
       initialCanonicalLoadPending,
     )) return;
-    receipt('navigation-failed', { code, message, url });
+    const failure = { code, message, url };
+    if (canRetryCanonicalNavigation(code, url)) {
+      retryableNavigationFailure = failure;
+      return;
+    }
+    if (initialCanonicalLoadPending) canonicalRetryAvailable = false;
+    receipt('navigation-failed', failure);
   });
   let motionHoldReceipts = 0;
   win.webContents.on('console-message', (details) => {
@@ -1442,24 +1463,33 @@ async function createWindow() {
   // Release-only debug stripping is handled by the production bundle, not by a gameplay URL flag.
   initialCanonicalLoadPending = true;
   try {
-    await win.loadURL(gameUrl);
-  } catch (error) {
-    if (!isCommittedCanonicalLoadAbort(
-      error && error.code,
-      error && error.url,
-      win,
-      gameUrl,
-      canonicalLoadCommitted,
-      initialCanonicalLoadPending,
-    )) throw error;
-    receipt('canonical-reload-aborted-after-commit', {
-      code: error.code,
-      url: win.webContents.getURL(),
-    });
+    for (;;) {
+      try {
+        await win.loadURL(gameUrl);
+        break;
+      } catch (error) {
+        if (isCommittedCanonicalLoadAbort(
+          error?.code, error?.url, win, gameUrl, canonicalLoadCommitted, initialCanonicalLoadPending,
+        )) {
+          receipt('canonical-reload-aborted-after-commit', { code: error.code, url: win.webContents.getURL() });
+          break;
+        }
+        if (!canRetryCanonicalNavigation(error?.code, error?.url ?? retryableNavigationFailure?.url)) {
+          if (retryableNavigationFailure) receipt('navigation-failed', retryableNavigationFailure);
+          throw error;
+        }
+        // Retry the observed pre-commit ERR_FAILED once, on the original window and save origin.
+        canonicalRetryAvailable = false;
+        retryableNavigationFailure = null;
+        receipt('canonical-navigation-retry', { code: error.code, url: gameUrl });
+      }
+    }
   } finally {
     initialCanonicalLoadPending = false;
   }
   if (recovery) recovery.arm();
+  initialLoadReady = true;
+  showReadyWindow();
   // win.webContents.openDevTools();
 }
 
