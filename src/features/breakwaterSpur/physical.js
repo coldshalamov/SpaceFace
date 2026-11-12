@@ -432,6 +432,25 @@ export function createBreakwaterSpurPhysical(ctx) {
     return {ok:true,entity,receiver,socket,speed};
   }
 
+  // On-request dispatch guidance. Read-only: does not advance mouth memory,
+  // stable time or custody. Only discuss an actual original near its own cradle.
+  function restorationGuidance(row, role) {
+    if (row.phase !== 'restoring' || row.cartridges[role]?.status !== 'loose') return null;
+    const entity = cartridgeEntity(row, role);
+    const receiver = findByRecordId(breakwaterRecordId(`structure_shelf_${role}`));
+    if (!nativeRecord(entity) || !nativeRecord(receiver) || !(entity.hull > 0)
+      || Math.hypot(entity.pos.x-receiver.pos.x,entity.pos.z-receiver.pos.z)>60) return null;
+    const yaw = Math.abs(yawWrap(finite(entity.rot)-finite(receiver.rot)))*180/Math.PI;
+    const speed = Math.hypot(entity.vel.x-receiver.vel.x,entity.vel.z-receiver.vel.z);
+    const spin = Math.abs(finite(entity.angVel)-finite(receiver.angVel));
+    const label = BREAKWATER_CARTRIDGES[role].label;
+    if (yaw>BREAKWATER_SEAT_CAPS.yawDeg)
+      return `${label}: the cartridge is still skewed. Square it with the cradle before pushing through the mouth; I cannot seat it sideways.`;
+    if (speed>BREAKWATER_SEAT_CAPS.speedWuPerS || spin>.25)
+      return `${label}: alignment looks right, but it is still drifting or turning too fast. Ease off and let it settle.`;
+    return `${label}: alignment looks right. Guide it through the open mouth and gently against the rear support; hold steady until Seat is offered. Proximity alone is not a seat.`;
+  }
+
   // Fixed-step watch — stable for holdS before custody is offered.
   function updateSeatWatch(row, socketRole, dt) {
     const pending = pendingSeats.get(socketRole);
@@ -692,6 +711,7 @@ export function createBreakwaterSpurPhysical(ctx) {
     spawnRaider,
     cartridgeEntity,
     seatGate,
+    restorationGuidance,
     updateSeatWatch,
     trySeat,
     custodyGate,

@@ -128,7 +128,10 @@ export function createBreakwaterSpurSystem() {
       const offer = buildBreakwaterSpurOffer(this.state, page);
       if (!offer) return;
       this._offerRevision = offer.revision;
-      const projected = {...offer, expiresAt:this.state.simTime + BREAKWATER_OFFER_TTL_S};
+      const guidance = offer.kind === 'restore'
+        ? ['drive','drum'].map(role => this.physical.restorationGuidance(this._row(),role)).filter(Boolean)
+        : [];
+      const projected = {...offer, detail: [offer.detail,...guidance].join(' '), expiresAt:this.state.simTime + BREAKWATER_OFFER_TTL_S};
       this.state.breakwaterSpurOffer = projected;
       this.bus.emit('breakwaterSpur:offer', projected);
     },
