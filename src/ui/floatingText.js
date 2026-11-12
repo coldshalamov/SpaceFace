@@ -206,6 +206,7 @@ export function createFloatingText(ctx) {
     let seen = null;
     let padW;
     let padH;
+    let padObstacles;
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
@@ -216,7 +217,7 @@ export function createFloatingText(ctx) {
         const el = document.createElement('div');
         el.className = 'sf-fp';
         padLayer.appendChild(el);
-        node = { el, lastText: '', denied: null, w: 0 };
+        node = { el, lastText: '', denied: null, w: 0, seat: { x: 0, y: 0, w: 0, h: 0 } };
         padNodes.set(e.id, node);
       }
       const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
@@ -251,9 +252,17 @@ export function createFloatingText(ctx) {
         let cx = px;
         if (node.w > 0 && node.h > 0) {
           padH ??= padLayer.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 720);
+          padObstacles ??= avoid.get().slice();
           const seat = seatOutOfRects({ x: px - node.w / 2, y: py - node.h / 2, w: node.w, h: node.h },
-            avoid.get(), { w: padW || (typeof window !== 'undefined' ? window.innerWidth : 1280), h: padH });
+            padObstacles, { w: padW || (typeof window !== 'undefined' ? window.innerWidth : 1280), h: padH });
           cx = seat.x + node.w / 2; py = seat.y + node.h / 2; fade = seat.fade;
+          // Earlier tags keep their seat for this frame, including when two
+          // pads project to the same point. The cached HUD rects stay read-only.
+          node.seat.x = seat.x;
+          node.seat.y = seat.y;
+          node.seat.w = node.w;
+          node.seat.h = node.h;
+          padObstacles.push(node.seat);
         }
         const nextTransform = `translate3d(${cx}px,${py}px,0) translate(-50%,-50%)`;
         if (node.el.style.transform !== nextTransform) node.el.style.transform = nextTransform;
