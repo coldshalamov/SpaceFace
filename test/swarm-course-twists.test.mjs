@@ -15,6 +15,7 @@ import { survivalArena } from '../src/systems/survivalArena.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRewards } from '../src/systems/survivalRewards.js';
+import { swarmDrops } from '../src/systems/swarmDrops.js';
 import { swarmCourseTwists } from '../src/systems/swarmCourseTwists.js';
 import { FOUNDRY_ARENA_ID } from '../src/systems/swarmArena.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
@@ -89,6 +90,7 @@ function boot(wave, { ruleset = SWARM_RULESET } = {}) {
   survivalArena.init(ctx);
   survivalWave.init(ctx);
   survivalRewards.init(ctx);
+  swarmDrops.init(ctx);
   swarmCourseTwists.init(ctx);
   const run = createRunState({ kind: 'survival', ruleset, seed: SEED });
   run.arenaId = ARENA;
@@ -165,7 +167,7 @@ function boot(wave, { ruleset = SWARM_RULESET } = {}) {
     entities, freightMembers, attachments,
     destroy() {
       survivalArena.destroy(); survivalWave.destroy();
-      survivalRewards.destroy(); swarmCourseTwists.destroy();
+      survivalRewards.destroy(); swarmDrops.destroy(); swarmCourseTwists.destroy();
       runSession.destroy(); kernel.dispose();
     },
   };
@@ -549,5 +551,44 @@ test('Everything Must Go: ninety seconds at half price on every till, chip on th
     assert.equal(h.state.render.swarmTwistChip, null, 'the chip left the glass');
     const cratePad = pads.find((e) => e.data.swarmFloorPad.kind === 'crate');
     assert.equal(cratePad.data.swarmFloorPad.price, 950, 'the till restored');
+  } finally { h.destroy(); }
+});
+
+// ── Round 28 — Black Friday ────────────────────────────────────────────────────────────
+
+test('Black Friday: one of each of the eight drops lands, and the whole sheet fields', () => {
+  const h = boot(28);
+  try {
+    h.tickN(3);
+    // The deal: eight drops, one of each house id, through the drop owner's receipts.
+    const deal = h.emitted.filter((e) => e.event === 'swarm:dropDropped'
+      && e.payload.reason === 'swarm:black_friday');
+    const dealIds = new Set(deal.map((e) => e.payload.dropId));
+    assert.equal(deal.length, 8, 'the twist dealt eight drops');
+    assert.equal(dealIds.size, 8, 'every drop type fell exactly once');
+    for (const id of dealIds) {
+      assert.ok(['full_rack', 'heavy_hands', 'dead_weight', 'magnet',
+        'big_bang', 'double_scrap', 'loose_cannon', 'free_forge'].includes(id), `house id ${id}`);
+    }
+    // The goods are real pickups on the floor, inside the despawn law like any drop.
+    const goods = h.entities().filter((e) => e.data && e.data.swarmDrop === true);
+    assert.equal(goods.length, 8, 'the deal is on the floor');
+    for (const g of goods) assert.ok(g.data.despawnAt > h.state.simTime, 'the deal lives under drop law');
+    // The crowd: the authored schedule carries every one of the fifteen sheet types,
+    // and the room's own clamp — not the twist — owns when the back half lands.
+    const types = new Set(h.plan.schedule.map((e) => e.enemyId));
+    assert.equal(types.size, 15, `the cast contains every enemy type (got ${types.size})`);
+    h.tickUntil(1);
+    let cohort = h.entities().filter((e) => e.data && e.data.runCohort === 'survival' && e.type === 'ship');
+    assert.ok(cohort.length <= 30, 'the cap owns the ceiling');
+    // Free the ledger: the held half of the sheet dispatches once bodies resolve.
+    for (const e of cohort.slice(0, 8)) h.helpers.removeEntity(e.id);
+    h.tickUntil(6);
+    cohort = h.entities().filter((e) => e.data && e.data.runCohort === 'survival' && e.type === 'ship');
+    const seen = new Set([
+      ...h.emitted.filter((e) => e.event === 'entity:spawned')
+        .map((e) => e.payload && e.payload.entity && e.payload.entity.data && e.payload.entity.data.lootTableId),
+    ].filter(Boolean));
+    assert.equal(seen.size, 15, `all fifteen types fielded over the round (got ${seen.size})`);
   } finally { h.destroy(); }
 });

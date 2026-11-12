@@ -90,6 +90,9 @@ export const swarmDrops = {
 
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
     this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
+    // C01-05 — Black Friday's deal: the twist names the drop id and the spot; the
+    // drop owner still owns the spawn, the ledger and the receipt.
+    this._unsubs.push(this.bus.on('swarm:dropRequested', (p) => this._onDropRequested(p)));
     this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onSpawned(p)));
     this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onCollected(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onDestroyed(p)));
@@ -249,27 +252,39 @@ export const swarmDrops = {
     if (!helpers || typeof helpers.spawnEntity !== 'function') return;
     const pos = (victim && victim.pos) || (payload && payload.pos);
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
-    const state = this.state;
-    const now = simNow(state);
-    const index = this._dropIndex++;
-
     // Seeded from the run seed and the drop's ordinal alone (the swarmSupply shape), so the same
     // seed always deals the same sequence of drops and the draw never perturbs the shared stream.
+    // The ordinal peeks ahead of the shared spawn lane's own increment.
+    const index = this._dropIndex;
     const rng = mulberry32((((run.seed >>> 0) ^ Math.imul(index + 1, 0x9e3779b9) ^ 0x5d0b5) >>> 0) || 1);
     const dropDef = selectSwarmDrop(rng);
     const angle = rng() * Math.PI * 2;
     const eject = 12 + rng() * 14;
-
-    const spawned = helpers.spawnEntity({
-      type: 'pickup',
-      name: dropDef.name,
-      pos: { x: pos.x, z: pos.z },
+    this._spawnDrop(run, dropDef, pos, {
       vel: {
         x: (victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x * 0.25 : 0)
           + Math.cos(angle) * eject,
         z: (victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z * 0.25 : 0)
           + Math.sin(angle) * eject,
       },
+    });
+  },
+
+  /**
+   * The single spawn lane every drop rides — earned kill-drops and twist-requested
+   * ones alike — so the ledger, the live set and the receipts can never disagree.
+   */
+  _spawnDrop(run, dropDef, pos, { vel = null, reason = null } = {}) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return;
+    const state = this.state;
+    const now = simNow(state);
+    const index = this._dropIndex++;
+    const spawned = helpers.spawnEntity({
+      type: 'pickup',
+      name: dropDef.name,
+      pos: { x: pos.x, z: pos.z },
+      vel: vel || { x: 0, z: 0 },
       radius: 5,
       mass: 0.1,
       collides: true,
@@ -295,12 +310,37 @@ export const swarmDrops = {
       name: dropDef.name,
       pos: { x: pos.x, z: pos.z },
       ttl: SWARM_DROP_TTL_S,
+      ...(reason ? { reason } : {}),
     });
     this._emit('audio:cue', {
       id: 'sfx_vent_chime',
       position: { x: pos.x, z: pos.z },
       gain: 0.35,
       rate: 1.1,
+    });
+  },
+
+  /**
+   * C01-05 — a twist names its drop: id and floor spot in, the owner's own spawn
+   * out. Unknown ids and off-map spots are refused; the requester gets nothing it
+   * could mistake for a deal.
+   */
+  _onDropRequested(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || !payload || typeof payload.dropId !== 'string') return;
+    const dropDef = SWARM_DROP_BY_ID.get(payload.dropId);
+    if (!dropDef) return;
+    const pos = payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    // The deal lands soft — the goods scatter a few WU off the named spot so the
+    // ring the twist authored reads as scattered merchandise, not a queue.
+    const index = this._dropIndex;
+    const rng = mulberry32((((run.seed >>> 0) ^ Math.imul(index + 1, 0x9e3779b9) ^ 0x5d0b5) >>> 0) || 1);
+    const angle = rng() * Math.PI * 2;
+    const eject = 6 + rng() * 6;
+    this._spawnDrop(run, dropDef, pos, {
+      vel: { x: Math.cos(angle) * eject, z: Math.sin(angle) * eject },
+      reason: typeof payload.reason === 'string' ? payload.reason : 'swarm:twist',
     });
   },
 

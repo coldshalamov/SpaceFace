@@ -32,6 +32,7 @@ import {
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { SWARM_DROP_DEFS } from '../data/swarmDrops.js';
 
 function finite(v, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
@@ -528,6 +529,41 @@ function createEverythingMustGoModule(host) {
   };
 }
 
+/**
+ * Round 28 — Black Friday. One of each of the eight house drops lands on a ring
+ * around the player at the round's open — the module names each id and its spot,
+ * the drop owner owns the spawn, the ledger and the despawn. The crowd itself is
+ * the cast's authored roster: every enemy type fields inside the room's own
+ * opening-burst cap, no module law needed.
+ */
+const SWARM_BLACK_FRIDAY_RING_WU = 110;
+
+function createBlackFridayModule(host) {
+  return {
+    activate() {
+      const st = host.state;
+      const player = st && st.entities && typeof st.entities.get === 'function'
+        ? st.entities.get(st.playerId) : null;
+      const cx = finite(player && player.pos && player.pos.x);
+      const cz = finite(player && player.pos && player.pos.z);
+      const n = SWARM_DROP_DEFS.length;
+      for (let i = 0; i < n; i++) {
+        const def = SWARM_DROP_DEFS[i];
+        const angle = (i / n) * Math.PI * 2;
+        if (host.bus && typeof host.bus.emit === 'function') {
+          host.bus.emit('swarm:dropRequested', {
+            dropId: def.id,
+            pos: { x: cx + Math.cos(angle) * SWARM_BLACK_FRIDAY_RING_WU, z: cz + Math.sin(angle) * SWARM_BLACK_FRIDAY_RING_WU },
+            wave: host.wave,
+            reason: 'swarm:black_friday',
+          });
+        }
+      }
+    },
+    teardown() {},
+  };
+}
+
 const MODULES = {
   delivery: createDeliveryModule,
   lights_out: createLightsOutModule,
@@ -536,6 +572,7 @@ const MODULES = {
   the_yardmaster: createYardmasterModule,
   chain_gang: createChainGangModule,
   everything_must_go: createEverythingMustGoModule,
+  black_friday: createBlackFridayModule,
 };
 
 export const swarmCourseTwists = {
