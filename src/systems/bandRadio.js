@@ -131,6 +131,10 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // PL-52: You throw a ship into a station — the Static roasts: "Whoever parked that in the dock: bold."
     return ['player.throw_ship_station'];
   }
+  if (event === 'band:tenNearMisses') {
+    // PL-54: Ten near misses in one minute — Static: "Traffic advisory: there's one of those out today."
+    return ['player.ten_near_misses'];
+  }
   if (event === 'player:death') {
     // PL-55: killed by TRAFFIC — a civilian hull, not a hostile. The receipt's killerId
     // still resolves at emit time; the law layer's own civilian test decides "traffic".
@@ -301,6 +305,27 @@ export const bandRadio = {
         }
       }
     });
+    this._recentNearMissTimes = [];
+    const onNearMiss = (payload) => {
+      if (!payload) return;
+      const state = this.state;
+      const now = Number(payload.t != null ? payload.t : (state && state.simTime)) || 0;
+      // One close pass can raise both the horn ladder and the PL-01 plant for the same hull: count a
+      // hull once per 2 s so ten near misses means ten passes, not five passes heard twice.
+      const id = payload.entityId;
+      this._recentNearMissTimes = this._recentNearMissTimes.filter((m) => now >= m.t && now - m.t <= 60.0);
+      if (id != null && this._recentNearMissTimes.some((m) => m.id === id && now - m.t < 2.0)) return;
+      this._recentNearMissTimes.push({ t: now, id });
+      if (this._recentNearMissTimes.length >= 10) {
+        this._recentNearMissTimes.length = 0;
+        const own = this._ensureState();
+        for (const eventKey of deriveBandEventKeys('band:tenNearMisses', {}, state)) {
+          if (BAND_EVENT_KEYS.includes(eventKey)) own.eventKeys[eventKey] = true;
+        }
+      }
+    };
+    this._listen('traffic:nearMiss', onNearMiss);
+    this._listen('traffic:nearMissPlant', onNearMiss);
     for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
@@ -314,6 +339,7 @@ export const bandRadio = {
   newGame() {
     this.state.bandRadio = defaultBandRadioState();
     if (this._thrownShips) this._thrownShips.clear();
+    if (this._recentNearMissTimes) this._recentNearMissTimes.length = 0;
     this._lastStatusSignature = null;
     this._lastBedSignature = null;
     this._bearingRequestEmitted = false;
@@ -503,6 +529,7 @@ export const bandRadio = {
 
   destroy() {
     if (this._thrownShips) this._thrownShips.clear();
+    if (this._recentNearMissTimes) this._recentNearMissTimes.length = 0;
     for (const unsub of this._unsubs || []) {
       try { unsub(); } catch (_) {}
     }

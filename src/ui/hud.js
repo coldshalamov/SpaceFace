@@ -85,7 +85,7 @@ import {
 } from '../combat/targetTruth.js';
 import { classifyContact, contactMark, gunLineDenial, isSurrenderedContact } from '../combat/contactClassifier.js';
 import { confirm } from './confirm.js';
-import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
+import { bestKnownSellFor, applyTradeNavigation, calculateHoldWorth, resolveCargoSellPrice } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 import { planGaugeSettle } from './effects/gaugeSettle.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
@@ -120,6 +120,8 @@ import {
   receiptLaneRect,
   shipGlyphBox,
 } from './hudAttention.js';
+import { counted } from './numberFormat.js';
+
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
 export function stepHudGLagSpring(spring, targetX, targetY, dt, reducedMotion = false) {
@@ -313,7 +315,7 @@ function mtRouteGuidance(state, waypoint) {
     return {
       next: `Next jump: ${mtSectorName(first.to)}`,
       destination: first.to === waypoint.sectorId ? '' : `To ${mtSectorName(waypoint.sectorId)}`,
-      summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
+      summary: `${counted(hops, 'hop', 'hops')} / ${fuel}F`,
     };
   }
   return {
@@ -802,6 +804,21 @@ export function flightDestinationSurface(state, command) {
       const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
       deadline = mtFmtTime(remaining);
       urgent = remaining < 120;
+    } else if (tracked && tracked.type === 'tender_haul' && tracked.params
+      && Number.isFinite(Number(tracked.params.tenderCloseAt_s))) {
+      // W-TENDER: no deadline — the desk's intake window is the clock. It re-prices the run at the
+      // close rather than expiring it, so it reads as a window and never takes the urgent tone.
+      // Once the close has armed the sell-out grace, the clock reads graceUntilS — the clock the
+      // settle actually keeps — so a pilot holding the lot past the close always sees time left.
+      const graceArmed = !!(tracked.tender && tracked.tender.windowClosedAt_s != null
+        && Number.isFinite(Number(tracked.tender.graceUntilS)));
+      const deadlineS = graceArmed
+        ? Number(tracked.tender.graceUntilS)
+        : Number(tracked.params.tenderCloseAt_s);
+      const remaining = Math.max(0, deadlineS - (state.simTime || 0));
+      deadline = remaining > 0
+        ? `${graceArmed ? 'grace' : 'window'} ${mtFmtTime(remaining)}`
+        : 'window closed';
     }
     // A cross-sector objective has no local fix — the honest answer is the gate that starts the
     // trip, with the plot step named, never a bare "ROUTE PENDING" the pilot cannot act on.
@@ -1012,7 +1029,7 @@ export function contactOverflowSummary(contacts, visibleCount) {
   }
   const parts = [];
   for (const [key, count] of Object.entries(counts)) {
-    if (count) parts.push(`${count} ${key.toUpperCase()}${count === 1 ? '' : 'S'}`);
+    if (count) parts.push(`${count} ${pluralWord(count, key.toUpperCase(), key.toUpperCase() + 'S')}`);
   }
   if (parts.length === 1) return `+${parts[0]}`;
   return `+${omitted.length} · ${parts.join(' · ')}`;
@@ -2198,7 +2215,14 @@ export function createHud(ctx, alerts) {
     // slot this same tracker owns. Progress never voices; the break voices once at mission
     // priority (announceTermBreak skips the already-voiced 'forfeit' half).
     on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
-    on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
+    // W-TENDER: tender_window's count of 2 is internal bookkeeping (the desk-sale stamp, then the
+    // "sold before close" stamp), not a fraction the player works toward — a '1/2' would read as
+    // if the premium needed two of something. Its progress tick is not surfaced; the objective
+    // line keeps the desk's own count ('Sell 190u … at Forge Foundry') as the measure.
+    on('mission:conditionProgress', (p) => {
+      if (p && p.conditionId === 'tender_window') return;
+      noteMissionTermEvent(state, p, 'progress');
+    });
     on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
     on('mission:conditionBroken', (p) => {
       noteMissionTermEvent(state, p, 'broken');
@@ -2431,6 +2455,29 @@ export function createHud(ctx, alerts) {
     elDecision.style.display = next ? '' : 'none';
     if (elDecision.textContent !== next) elDecision.textContent = next;
   }
+
+  // ---- G19-02: in-flight cargo bar (HOLD 12/40 · ≈ 3,480 cr) ----
+  const elCargoBar = document.createElement('div');
+  elCargoBar.className = 'sf-cargo-bar mono';
+  elCargoBar.id = 'sf-cargo-bar';
+  elCargoBar.setAttribute('role', 'status');
+  elCargoBar.setAttribute('aria-label', 'Cargo hold worth');
+  leftContext.appendChild(elCargoBar);
+
+  let lastCargoBarText = '';
+  function updateFlightCargoBar() {
+    // Lead review (G19-02): the hold line is for a pilot carrying something. An empty hold, or a Swarm run
+    // (the round panel owns that corner and the hold means nothing there), shows no bar at all.
+    const inSwarmRun = !!(state.run && state.run.kind === 'survival');
+    const holdInfo = inSwarmRun ? null : calculateHoldWorth(state, ctx);
+    const show = !!holdInfo && (holdInfo.used > 0 || holdInfo.towedCount > 0);
+    if (elCargoBar.hidden === show) elCargoBar.hidden = !show;
+    if (show && holdInfo.text !== lastCargoBarText) {
+      lastCargoBarText = holdInfo.text;
+      elCargoBar.textContent = holdInfo.text;
+    }
+  }
+  updateFlightCargoBar();
 
 
   const arrow = document.createElement('div');
@@ -3760,6 +3807,24 @@ export function createHud(ctx, alerts) {
     pointer-events: none;
     z-index: 900;
   }
+  .sf-cargo-bar[hidden] { display: none !important; }
+  .sf-cargo-bar {
+    box-sizing: border-box;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-ink, var(--hud-paper, #e0f0ff));
+    background: color-mix(in srgb, var(--panel-2, #0d1b2a) 75%, transparent);
+    border: 1px solid var(--visor-cyan-dim, rgba(79, 143, 221, 0.3));
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    margin-top: 4px;
+    font-family: var(--dp-face-read, var(--k-mono, monospace));
+  }
   `;
 
   if (!document.getElementById('sf-cargohold-style')) {
@@ -3778,17 +3843,14 @@ export function createHud(ctx, alerts) {
     <div class="sf-cargo-panel__head">
       <div class="sf-cargo-title-group">
         <span class="sf-cargo-panel__title">CARGO HOLD MANIFEST</span>
-        <span class="sf-cargo-status-tag">MANIFEST ACQUIRED</span>
+        <span class="sf-cargo-status-tag">Cargo loaded</span>
       </div>
       <div class="sf-cargo-gauges">
         <div class="sf-cargo-gauge-item" id="sf-gauge-used">
           <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40 u</span></span>
         </div>
-        <div class="sf-cargo-gauge-item" id="sf-gauge-risk">
-          <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
-        </div>
         <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
-          <span class="sf-gauge-label">HOLD READS: <span class="sf-cargo-summary-lean"></span></span>
+          <span class="sf-gauge-label">In the hold: <span class="sf-cargo-summary-lean"></span></span>
         </div>
       </div>
       <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
@@ -3814,7 +3876,7 @@ export function createHud(ctx, alerts) {
           <div class="sf-ins-meta">
             <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
             <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
-            <div class="sf-ins-meta-row"><span>Avg Basis:</span><span class="sf-ins-basis">N/A</span></div>
+            <div class="sf-ins-meta-row"><span>You paid:</span><span class="sf-ins-basis">N/A</span></div>
           </div>
           <div class="sf-ins-market">
             <h4>Market Intelligence</h4>
@@ -3856,11 +3918,8 @@ export function createHud(ctx, alerts) {
   const gaugeUsedEl = cargoPanel.querySelector('#sf-gauge-used');
   const gaugeUsedFx = createCircularGauge(gaugeUsedEl, { size: 36, stroke: 4, kind: 'route' });
 
-  const gaugeRiskEl = cargoPanel.querySelector('#sf-gauge-risk');
-  const gaugeRiskFx = createCircularGauge(gaugeRiskEl, { size: 36, stroke: 4, kind: 'danger' });
   const cargoGaugeSettle = {
     used: { value: 0, peakTimer: 0 },
-    risk: { value: 0, peakTimer: 0 },
   };
   function clearCargoGaugeSettle(slot) {
     if (!slot) return;
@@ -4149,17 +4208,7 @@ export function createHud(ctx, alerts) {
     applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap} u` });
     cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
 
-    let hasContraband = false;
-    for (const id in items) {
-      if (items[id] > 0) {
-        const def = CMDTY_MAP.get(id);
-        if (def && def.legality === 'contraband') hasContraband = true;
-      }
-    }
-    applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
-    cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
-
-    // HOLD READS — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
+    // In the hold — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
     // never a rep delta; a neutral hold renders '—' rather than a fake label.
     const leanHost = cargoPanel.querySelector('.sf-cargo-summary-lean');
     if (leanHost) {
@@ -4182,7 +4231,7 @@ export function createHud(ctx, alerts) {
       const gaugeItem = leanHost.closest('.sf-cargo-gauge-item') || leanHost;
       gaugeItem.setAttribute('role', 'status');
       gaugeItem.setAttribute('aria-label',
-        labels.length ? `Hold reads: ${labels.join(', ')}` : 'Hold reads: neutral');
+        labels.length ? `In the hold: ${labels.join(', ')}` : 'In the hold: neutral');
     }
 
     const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
@@ -4312,14 +4361,17 @@ export function createHud(ctx, alerts) {
         }
       }
 
+      const rowPriceInfo = resolveCargoSellPrice(state, ctx, id);
+      const rowWorth = Math.round(qty * (rowPriceInfo.unitSell || 0));
+
       block.innerHTML = `
         <div class="sf-cargo-block-top">
           <span class="sf-cargo-block-name">${name}</span>
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
         </div>
         <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty">${qty} units</span>
-          <span class="sf-cargo-block-vol">${vol.toFixed(1)} u vol</span>
+          <span class="sf-cargo-block-qty">${name} · ${qty} · ≈ ${formatCount(rowWorth, state)} cr</span>
+          <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
           ${badgeHtml}
         </div>
       `;
@@ -4419,7 +4471,6 @@ export function createHud(ctx, alerts) {
     hexFx.setActive(cargoPanelOpen);
     beamFx.setActive(cargoPanelOpen);
     gaugeUsedFx.setActive(cargoPanelOpen);
-    gaugeRiskFx.setActive(cargoPanelOpen);
 
     if (cargoPanelOpen) {
       refreshCargoPanel();
@@ -4432,7 +4483,6 @@ export function createHud(ctx, alerts) {
       });
     } else {
       clearCargoGaugeSettle(cargoGaugeSettle.used);
-      clearCargoGaugeSettle(cargoGaugeSettle.risk);
       beamFx.setPath([], { active: false });
     }
     ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
@@ -4449,9 +4499,7 @@ export function createHud(ctx, alerts) {
     hexFx.setActive(false);
     beamFx.setActive(false);
     gaugeUsedFx.setActive(false);
-    gaugeRiskFx.setActive(false);
     clearCargoGaugeSettle(cargoGaugeSettle.used);
-    clearCargoGaugeSettle(cargoGaugeSettle.risk);
     beamFx.setPath([], { active: false });
 
     ctx.bus.emit('audio:cue', { id: 'ui_back' });
@@ -4469,6 +4517,7 @@ export function createHud(ctx, alerts) {
   let holdWasEmpty = !cargoOccupied(state.player && state.player.cargo);
   on('cargo:changed', (payload) => {
     if (cargoPanelOpen) refreshCargoPanel();
+    updateFlightCargoBar();
     const cargo = (payload && payload.cargo) || (state.player && state.player.cargo);
     const line = noteFirstCargoLanding(state, {
       wasEmpty: holdWasEmpty,
@@ -4478,6 +4527,11 @@ export function createHud(ctx, alerts) {
     holdWasEmpty = !cargoOccupied(cargo);
     if (line) ctx.bus.emit('toast', { text: line, kind: 'info', ttl: 6 });
   });
+
+  on('tether:latched', updateFlightCargoBar);
+  on('tether:released', updateFlightCargoBar);
+  on('navigation:waypoint', updateFlightCargoBar);
+  on('navigation:cleared', updateFlightCargoBar);
 
   // Expose toggle/close for the input system
   on('ui:toggleCargo', toggleCargoPanel);
@@ -5612,6 +5666,7 @@ export function createHud(ctx, alerts) {
   // NOW and sailing past the station IS the gameplay. The route follower auto-brakes; manual does
   // not, and that asymmetry is deliberate.
   const VTAPE_HEADROOM = 1.14;   // scale runs to 114% of V-MAX so the ceiling is a line, not the edge
+  let travelTapePhone = null; // MOB-02: the phone reads a shorter stop line; rewrite it the frame the layout flips
   function updateTravelTape(p, dtS, slow) {
     if (!vt.root) return;
     if (!travelFlag('travelBurn') || !p) {
@@ -5716,8 +5771,15 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcStop, 'width', (clamp01(cue.stopDistance / span) * 100).toFixed(1) + '%');
       setStyle(vt.arcRing, 'left', (clamp01(cue.distance / span) * 100).toFixed(1) + '%');
       setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
-      if (slow) {
-        const arcText = cue.overshoot
+      // MOB-02: on a phone the objective line already reads the distance to the target, and the
+      // full sentence wrapped the narrow tape onto three lines — the phone keeps stop + verb.
+      const phoneTape = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+      if (slow || phoneTape !== travelTapePhone) {
+        travelTapePhone = phoneTape;
+        const arcText = phoneTape
+          ? (cue.overshoot ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u'
+            : 'STOP ' + Math.round(cue.stopDistance) + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase())
+          : cue.overshoot
           ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u / ARRIVAL ' + Math.round(cue.distance) + ' u'
           : 'STOP ' + Math.round(cue.stopDistance) + ' u · ARRIVAL ' + Math.round(cue.distance)
             + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase();
@@ -5767,6 +5829,7 @@ export function createHud(ctx, alerts) {
       : null;
     resolveReticle();
     updateDoctrineTells(frameDt);
+    if (slow) updateFlightCargoBar();
 
     // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -6516,7 +6579,7 @@ export function createHud(ctx, alerts) {
     const elements = [
       ...qsa(root, '#race-tape'),
       ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
-      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
+      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || [],
     ];
     const elementSet = new Set(elements);
     for (const el of responsiveOverlayElements) {
@@ -7314,6 +7377,7 @@ export function createHud(ctx, alerts) {
     lastNavEta = '';
     if (radar.invalidate) radar.invalidate();
     if (targetPanel.forceRefresh) targetPanel.forceRefresh();
+    updateFlightCargoBar();
   }
 
   // Moment 3 (Task B §2.3): the HUD arrives on undock. Four anchors settle 200 ms apart, each with
@@ -7377,7 +7441,6 @@ export function createHud(ctx, alerts) {
       restoreYieldedFlightVisuals();
       externalFlightCaptions.clear();
       clearCargoGaugeSettle(cargoGaugeSettle.used);
-      clearCargoGaugeSettle(cargoGaugeSettle.risk);
       if (radar && typeof radar.destroy === 'function') radar.destroy();
       if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();
       if (hudMeta && typeof hudMeta.destroy === 'function') hudMeta.destroy();
