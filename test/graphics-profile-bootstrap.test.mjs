@@ -21,6 +21,36 @@ function storageWith(raw) {
   };
 }
 
+test('fresh phone profiles use High performance in Auto before the renderer starts', () => {
+  const phone = { navigator: { userAgent: 'iPhone' } };
+  const storage = storageWith(null);
+  const state = createGameState(1);
+  bootstrapProfileSettingsBeforeRegistry(state, storage, phone);
+  assert.equal(state.settings.video.qualityPreset, 'low');
+  assert.equal(state.settings.video.qualityMode, 'auto');
+  assert.equal(state.settings.video.frameCap, 30);
+  assert.equal(state.settings.video.renderScale, 1);
+  assert.equal(storage.writes(), 0);
+});
+
+test('phone bootstrap keeps a saved video profile and desktop keeps Balanced', () => {
+  const phone = { navigator: { userAgent: 'Android' } };
+  const raw = JSON.stringify({ settings: { video: { qualityPreset: 'high', qualityMode: 'manual', frameCap: 0 } } });
+  const storage = storageWith(raw);
+  const saved = createGameState(1);
+  bootstrapProfileSettingsBeforeRegistry(saved, storage, phone);
+  assert.equal(saved.settings.video.qualityPreset, 'high');
+  assert.equal(saved.settings.video.qualityMode, 'manual');
+  assert.equal(saved.settings.video.frameCap, 0);
+  assert.equal(storage.getItem(PROFILE_SETTINGS_KEY), raw);
+  assert.equal(storage.writes(), 0);
+
+  const desktop = createGameState(1);
+  bootstrapProfileSettingsBeforeRegistry(desktop, storageWith(null), {});
+  assert.equal(desktop.settings.video.qualityPreset, 'medium');
+  assert.equal(desktop.settings.video.frameCap, 0);
+});
+
 test('pre-registry bootstrap applies current graphics profile without rewriting raw bytes', () => {
   const raw = JSON.stringify({
     version: 1,
