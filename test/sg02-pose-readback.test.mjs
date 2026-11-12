@@ -39,6 +39,44 @@ test('ordinary awake bodies read native translation once per fixed tick', async 
   } finally { owner.dispose(); }
 });
 
+test('contact receipts read native body centers only for missing manifold coordinates', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const queue = owner._eventQueue;
+  const contactPair = owner.world.contactPair;
+  try {
+    const entities = [craft(1, 100), craft(2, 200)];
+    entities[0].pos.z = 20;
+    entities[1].pos.z = 40;
+    owner.syncFromEntities(entities);
+    const a = owner.records.get(1);
+    const b = owner.records.get(2);
+    let reads = 0;
+    for (const rec of [a, b]) {
+      const translation = rec.body.translation.bind(rec.body);
+      rec.body.translation = () => { reads++; return translation(); };
+    }
+    owner._eventQueue = { drainContactForceEvents(receive) {
+      receive({ collider1: () => a.colliders[0].handle, collider2: () => b.colliders[0].handle,
+        totalForceMagnitude: () => 120, maxForceDirection: () => ({ x: 1, y: 0, z: 0 }) });
+    } };
+    const capture = points => {
+      reads = 0;
+      owner.world.contactPair = (_a, _b, receive) => {
+        for (const point of points) receive({ numSolverContacts: () => 1, solverContactPoint: () => point });
+      };
+      return { pos: owner._captureContactImpacts()[0].pos, reads };
+    };
+
+    assert.deepEqual(capture([{ x: 110, z: 24 }, { x: 113, z: 26 }]), { pos: { x: 113, z: 26 }, reads: 0 });
+    assert.deepEqual(capture([{ x: 118, z: NaN }]), { pos: { x: 118, z: 30 }, reads: 2 });
+    assert.deepEqual(capture([]), { pos: { x: 150, z: 30 }, reads: 2 });
+  } finally {
+    owner._eventQueue = queue;
+    owner.world.contactPair = contactPair;
+    owner.dispose();
+  }
+});
+
 test('batched pose publication matches native rereads through control, teleports, and solver recovery', async () => {
   const owners = await Promise.all([
     createSg02DynamicBodyOwner({ publishTelemetry: false }),

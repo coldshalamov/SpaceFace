@@ -102,6 +102,26 @@ function aliveIds(state) {
   return state.entityList.filter((e) => e && e.alive).map((e) => e.id).sort((a, b) => a - b);
 }
 
+test('Helios to Tethys retires the outgoing FULL sector once before promotion', (t) => {
+  const { state, world, player } = bootWorld();
+  world.enterSector(HELIOS);
+  const anchors = structuralIdsForSector(state, HELIOS);
+  assert.equal(state.world.residentSectors[TETHYS].tier, RESIDENCY_TIER.REDUCED);
+  const capture = t.mock.method(world, '_captureSectorDurableRecords');
+  const helios = sectorGlobalOrigin(HELIOS);
+  const tethys = sectorGlobalOrigin(TETHYS);
+  player.pos.x = helios.x + (tethys.x - helios.x) * 0.95;
+  player.pos.z = helios.z + (tethys.z - helios.z) * 0.95;
+  dwellMembership(state, world);
+
+  assert.equal(state.world.currentSectorId, TETHYS);
+  assert.equal(state.world.residentSectors[TETHYS].tier, RESIDENCY_TIER.FULL);
+  assert.equal(state.world.residentSectors[HELIOS].tier, RESIDENCY_TIER.REDUCED);
+  assert.deepEqual(structuralIdsForSector(state, HELIOS), anchors);
+  assert.equal(capture.mock.calls.filter(call => call.arguments[0] === HELIOS).length, 1,
+    'the plan already captured the outgoing sector before promoting its replacement');
+});
+
 test('corridor membership is nearest-origin and deterministic on ties', () => {
   assert.equal(sectorMembershipAtGlobal({ x: 0, z: 0 }), HELIOS);
   assert.equal(sectorMembershipAtGlobal(sectorGlobalOrigin(CERES)), CERES);
