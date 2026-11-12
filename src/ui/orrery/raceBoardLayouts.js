@@ -178,6 +178,14 @@ ${R}:has(> .race-board-start) { scroll-padding-top:128px; }
   ${R} > .race-board-start { top:-22px !important; }
   ${R}:has(> .race-board-start) { scroll-padding-top:168px; }
 }
+/* ui-polish-511: the 1400px column cap is in pre-zoom pixels, so on the zoomed bands the column ran
+   1596px (1080p) / 1960px (1440p) and stopped short of the frame's right gutter, leaving the board
+   hung left with a wide empty strip. On those bands each row takes the frame's full measure instead. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px), (min-width: 2200px) and (min-height: 1200px) {
+  ${R} > * { max-width:none; }
+  /* five cards to a row on 1080p: the course reading wraps evenly instead of orphaning ALIGNED */
+  ${R} .race-board-course > .race-map + p + p { text-wrap:balance; }
+}
 /* 1080p band: lift the whole flow (no getBoundingClientRect positioning on this board). */
 @media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px) { ${R} > * { zoom:1.14; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.14) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:148px; } }
 @media (min-width: 2200px) and (min-height: 1200px) { ${R} > * { zoom:1.4; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.4) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:180px; } }
