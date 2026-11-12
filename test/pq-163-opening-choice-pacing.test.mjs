@@ -36,11 +36,6 @@ import {
   missions as missionsProto,
 } from '../src/systems/missions.js';
 import { BEATS, onboarding } from '../src/systems/onboarding.js';
-import {
-  FIRST_TRADE_CONTRACT_DEST_STATION_ID,
-  FIRST_TRADE_CONTRACT_SOURCE,
-  buildFirstTradeOffer,
-} from '../src/data/economyContractTemplates.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
 // ── Minimal DOM stub (the system builds its status panel on the presentation route) ──────
@@ -185,10 +180,25 @@ function rescueActor(h, slot) {
 function driveToChoiceOffered(h) {
   h.bus.emit('game:started', {});
   h.mark('new game: rescue staged');
-  tick(h); // B0 tether opens
-  h.mark('first verb: tether');
+  tick(h); // B0 thrust opens — the premise caption and the bound 47-A mark are already up
+  h.mark('first verb: thrust');
 
-  // First attach — the derelict the tether beat staged.
+  // Twenty seconds of flying first: past forty, then back under ten.
+  const player = playerOf(h);
+  player.vel.x = 41; player.vel.z = 0;
+  tick(h);
+  assert.ok(h.state.onboarding.beatDoneAt.thrust != null, 'the rail opens on the thrust beat');
+  h.mark('thrust past forty');
+  settle(h, 5);
+  player.vel.x = 0; player.vel.z = 0;
+  tick(h);
+  assert.ok(h.state.onboarding.beatDoneAt.brake != null, 'the brake beat follows');
+  h.mark('brake below ten');
+
+  // The signature latch — the derelict the tether beat staged.
+  settle(h, 5);
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'tether', 'the latch lesson follows the flight warm-up');
+  h.mark('first verb: tether');
   const derelictId = h.sys._derelictId;
   assert.ok(derelictId != null, 'tether lesson stages its derelict');
   h.state.player.targetId = derelictId;
@@ -234,7 +244,6 @@ function driveToChoiceOffered(h) {
   assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'claimed', 'the claimed choice follows the raid');
   const claimed = h.state.onboarding.claimed;
   assert.ok(claimed && claimed.ids.pickups.length >= 1, 'the spill is staged');
-  const player = playerOf(h);
   const spill = h.state.entities.get(claimed.ids.pickups[0]);
   const spillDist = Math.hypot(spill.pos.x - player.pos.x, spill.pos.z - player.pos.z);
   assert.ok(spillDist <= 260, `the choice is staged in view, not a commute (${spillDist.toFixed(0)} wu)`);
@@ -245,7 +254,8 @@ function driveToChoiceOffered(h) {
   return claimed;
 }
 
-// Walk the movement drills + remaining rescue verbs + missing three to the seam beat.
+// Walk the seam + the first dock + the post-dock drills + the remaining rescue verbs and the
+// missing three to the point where the job choice is the only beat left (OPENING-1 order).
 function driveToDock(h) {
   const player = playerOf(h);
   // Back inside the pocket after the wanted escape: the rescue verbs read distances from
@@ -253,15 +263,32 @@ function driveToDock(h) {
   player.pos.x = 0;
   player.pos.z = 0;
 
-  // The claimed beat is resolved by the caller (take or leave). The drills follow.
+  // The claimed beat is resolved by the caller (take or leave). The seam lesson follows —
+  // it mines the rock the rail bound at entry (the bound 47-A source while it lives).
   settle(h, 5);
-  player.vel.x = 41; player.vel.z = 0;
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'seam', 'the seam lesson follows the claimed choice');
+  const seamRock = h.state.entities.get(h.sys._miningRockId);
+  assert.ok(seamRock, 'the seam beat stages its marked rock');
+  for (let i = 0; i < 3; i++) {
+    h.bus.emit('mining:yield', { minerId: h.state.playerId, qty: 1, pos: { x: seamRock.pos.x, z: seamRock.pos.z } });
+  }
   tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.thrust != null, 'thrust resolves');
+  assert.ok(h.state.onboarding.beatDoneAt.seam != null, 'seam resolves');
+  h.mark('the seam lesson mines the bound 47-A sample');
+
+  // First dock — Helios. The berth itself: selling, fitting and the next job all happen here.
   settle(h, 5);
-  player.vel.x = 0; player.vel.z = 0;
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'dock', 'the first dock follows the seam');
+  h.state.ui.dockedStationId = 'station_helios';
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  h.bus.emit('economy:tradeCompleted', { side: 'sell', commodityId: 'cmdty_ore_iron', qty: 3 });
   tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.brake != null, 'brake resolves');
+  assert.ok(h.state.onboarding.beatDoneAt.dock != null, 'the dock beat resolves at the berth');
+  h.mark('first dock: Helios — the firing drills resume behind it');
+  h.bus.emit('dock:undocked', { stationId: 'station_helios' });
+
+  // Behind the first dock (the 15–40 minute slot): marker, focus, burst, disengage — one at
+  // a time on their existing gates.
   settle(h, 5);
   let trainer = h.state.entities.get(h.sys._trainerId);
   assert.ok(trainer, 'the marker beat stages its trainer');
@@ -317,7 +344,8 @@ function driveToDock(h) {
   h.mark('pod grabbed and run to the beacon');
 
   // The missing three (boost, stroke, well — plus the repulsor and clearing cone the rail
-  // grew) occupy the grab → seam gap.
+  // grew) ride the grab run's exit behind the first dock — the job choice waits while any of
+  // them is current, and through the between-verb silences too.
   settle(h, 5);
   h.state.input.boost = true;
   tick(h);
@@ -342,43 +370,16 @@ function driveToDock(h) {
   assert.ok(h.state.onboarding.missingThree.beats.cone.state === 'done', 'cone completes');
   assert.equal(h.state.onboarding.missingThree.completed, true, 'the verb rail completes');
   h.mark('boost / draw-to-fly / well (+ plow, cone) taught by doing');
-
-  // The seam lesson closes the drills.
-  settle(h, 5);
-  const rock = h.state.entities.get(h.sys._miningRockId);
-  assert.ok(rock, 'the seam beat stages its marked rock');
-  for (let i = 0; i < 3; i++) {
-    h.bus.emit('mining:yield', { minerId: h.state.playerId, qty: 1, pos: { x: rock.pos.x, z: rock.pos.z } });
-  }
-  tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.seam != null, 'seam resolves');
 }
 
-// Walk the dock: sell, take the recommended delivery, finish it → the choice rail opens.
+// The job choice is the rail's last beat: it opens once the verb rail releases it, at the
+// berth the dock beat was taken at (Helios under the OPENING-1 order), and accepting any real
+// work ends the tutorial.
 function driveDockAndChoice(h) {
-  const player = playerOf(h);
   settle(h, 5);
-  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'dock');
-  h.state.ui.dockedStationId = FIRST_TRADE_CONTRACT_DEST_STATION_ID;
-  h.bus.emit('dock:docked', {});
-  h.bus.emit('economy:tradeCompleted', { side: 'sell', commodityId: 'cmdty_ore_iron', qty: 3 });
-  tick(h);
-  h.mark('first dock: the board offers ONE job', { note: 'the recommended delivery' });
-
-  const firstTrade = h.missions._instanceFromOffer(buildFirstTradeOffer(SEED));
-  h.state.missions.active.push(firstTrade);
-  h.state.ui.trackedMissionId = firstTrade.id;
-  h.bus.emit('mission:accepted', { missionId: firstTrade.id, source: FIRST_TRADE_CONTRACT_SOURCE });
-  h.bus.emit('mission:completed', {
-    missionId: firstTrade.id, source: FIRST_TRADE_CONTRACT_SOURCE, type: 'cargo_delivery',
-  });
-  tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.dock != null, 'the delivery closes the dock beat');
-  h.mark('first job completed');
-
-  settle(h, 5);
-  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'choice', 'the choice beat opens at the dock');
-  const choices = h.missions.ensureOnboardingChoiceOffers(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'choice', 'the choice beat opens behind the post-dock drills');
+  const stationId = h.state.onboarding.choiceStationId || 'station_helios';
+  const choices = h.missions.ensureOnboardingChoiceOffers(stationId);
   assert.deepEqual(choices.map((offer) => offer.onboardingChoice.label), ['HAUL', 'BOUNTY', 'SURVEY']);
   h.mark('FIRST JOB CHOICE posted: HAUL / BOUNTY / SURVEY');
 
@@ -441,13 +442,18 @@ test('the first ten minutes: the opening timeline on a fixed seed', () => {
   driveToDock(h);
   driveDockAndChoice(h);
 
-  // Rail-order bar: the choice is offered before any pure flight drill runs.
-  assert.ok(h.state.onboarding.beatDoneAt.claimed < h.state.onboarding.beatDoneAt.thrust,
-    'the refusable choice precedes the movement drills');
+  // Rail-order bar (OPENING-1): the ship flies first, the story's beats run ahead of the
+  // first dock, and the firing drills wait behind it.
+  assert.ok(h.state.onboarding.beatDoneAt.thrust < h.state.onboarding.beatDoneAt.claimed,
+    'the flight warm-up opens the rail');
+  assert.ok(h.state.onboarding.beatDoneAt.claimed < h.state.onboarding.beatDoneAt.dock,
+    'the refusable choice precedes the first dock');
+  assert.ok(h.state.onboarding.beatDoneAt.dock < h.state.onboarding.beatDoneAt.marker,
+    'the firing drills sit behind the first dock');
   const kill = milestones.find((m) => m.milestone === 'momentumKill');
   const wanted = milestones.find((m) => m.milestone === 'wantedBeat');
   assert.ok(kill && wanted, 'the thesis milestones fired: momentum kill + wanted beat');
-  console.log(`\n  choice offered at t=${choiceAt}s, first attach at t=${attachAt}s (driven) — the choice leads the drills.\n`);
+  console.log(`\n  choice offered at t=${choiceAt}s, first attach at t=${attachAt}s (driven) — the story leads, the drills follow the first dock.\n`);
 });
 
 // ── The refusal branch ───────────────────────────────────────────────────────────────────
@@ -471,12 +477,16 @@ test('the choice is genuinely refusable: leaving the salvage stands the tableau 
   }
   h.mark('CHOICE REFUSED: tableau stands down, rail moves on', { note: 'no heat, no wall' });
 
-  // The rail continues: the drills open after the refusal.
+  // The rail continues: the seam lesson opens after the refusal — the story moves on.
   settle(h, 5);
-  const player = playerOf(h);
-  player.vel.x = 41; player.vel.z = 0;
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'seam', 'the seam lesson follows a refusal');
+  const seamRock = h.state.entities.get(h.sys._miningRockId);
+  assert.ok(seamRock, 'the seam beat stages its marked rock');
+  for (let i = 0; i < 3; i++) {
+    h.bus.emit('mining:yield', { minerId: h.state.playerId, qty: 1, pos: { x: seamRock.pos.x, z: seamRock.pos.z } });
+  }
   tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.thrust != null, 'the rail moves on after a refusal');
+  assert.ok(h.state.onboarding.beatDoneAt.seam != null, 'the rail moves on after a refusal');
 });
 
 // ── The staging stays honest under the choice ────────────────────────────────────────────

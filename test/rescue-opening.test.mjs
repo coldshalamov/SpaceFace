@@ -249,9 +249,10 @@ function shoveScoutWithStarterGun(state, attacker, scout, shots = 4) {
 // proof). Resumes where the last call stopped: the drill retires old training actors on
 // trainer spawn, and an open rescue verb gates its drill beat, so replaying from thrust
 // would fight both. Rescue verbs are completed explicitly in the gaps between calls.
-// Production route order (onboarding.js BEATS): the tether attach leads; the movement
-// drills follow it. Raid/claimed sit between disengage and seam for the full-route tests.
-const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
+// Production route order (onboarding.js BEATS): thrust/brake open cold, the tether attach
+// leads the story beats, and the firing drills sit behind the first dock (OPENING-1 — the
+// driver walks the same order the player now meets).
+const DRILL_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -326,6 +327,21 @@ function driveDrillTo(h, beatKey) {
         commodityId: 'cmdty_salvage_electronics',
         pos: { x: h.state.entities.get(h.state.playerId).pos.x, z: h.state.entities.get(h.state.playerId).pos.z },
       });
+      tick(h);
+    } else if (key === 'seam') {
+      // OPENING-1: the seam lesson sits ahead of the first dock and mines the rock the rail
+      // bound at entry — a real mining:yield at its position is the authored SAMPLE receipt.
+      const rock = sys._miningRockId != null ? st.entities.get(sys._miningRockId) : null;
+      assert.ok(rock, 'seam lesson must stage its mining rock');
+      h.bus.emit('mining:yield', {
+        minerId: st.playerId,
+        commodityId: 'cmdty_ore_iron',
+        qty: 3, // SEAM_ORE_TARGET — the authored SAMPLE count
+        pos: { x: rock.pos.x, z: rock.pos.z },
+      });
+      tick(h);
+    } else if (key === 'dock') {
+      h.bus.emit('dock:docked', { stationId: 'station_helios' });
       tick(h);
     }
   };

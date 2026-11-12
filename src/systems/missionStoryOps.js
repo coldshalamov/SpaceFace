@@ -2900,13 +2900,10 @@ export const missionStoryOps = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
-    // The opening beat yields nav to a real tracked mission: the 47-A recovery mark is up
-    // from the first frame (OPENING-1) while the flight drill runs. Onboarding's own sample
-    // mark lands on the same site; later teaching beats keep their existing priority.
-    if (ob && ob.currentBeat === 0) {
-      const tracked = this.state.ui && this.state.ui.trackedMissionId;
-      if (tracked && (this.state.missions?.active || []).some((m) => m?.id === tracked && m.status === 'active')) return false;
-    }
+    // OPENING-1: no teaching beat hands nav ownership to missions. The old tether-lesson yield
+    // keyed `currentBeat === 0`; with the story-first rail that index is the flight drill, and
+    // onboarding now self-fills the 47-A mark during any yield — one writer, one diamond, the
+    // bound sample's site, from the first frame.
     // Once B4's authored delivery is accepted, that physical mission must own its route. The
     // tutorial remains active only to await completion and present B5; keeping the Helios marker
     // here would strand the player at the origin with a tracked job pointing nowhere.

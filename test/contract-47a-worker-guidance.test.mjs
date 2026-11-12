@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
 import { createGameState } from '../src/core/gameState.js';
+import { BEATS } from '../src/systems/onboarding.js';
 import { missionMapAction, mapActionButtonAttrs, mapOpenIntentFromButton } from '../src/ui/screens/missionLog.js';
 import { resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
 import { pauseStatusLines } from '../src/ui/screens/pause.js';
@@ -52,6 +53,11 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     assert.ok(sourceIdentity?.fieldId && sourceIdentity?.slotId, 'the actual world slot supplies durable identity');
     assert.deepEqual(owner.serialize().active.find(m => m.id === mission.id).params.samplePos, marked,
       'the existing mission save owns the recovery fix');
+    // OPENING-1: the tutorial owns the visible mark while it teaches — the live route's
+    // game:started enters the flight drill (beat 0 under the story-first rail), whose waypoint
+    // is the bound 47-A site. The zero-steps publish never ticks the system, so enter the beat
+    // the way the route does; the missions writer itself stays suppressed behind the rail.
+    registry.get('onboarding')._enterBeat(BEATS[0]);
     await publish();
     let mirrored = main.missions.active.find(m => m.id === mission.id);
     assert.deepEqual(main.nav.waypoint.pos, { x: source.pos.x, z: source.pos.z });
