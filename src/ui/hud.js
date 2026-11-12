@@ -6579,7 +6579,7 @@ export function createHud(ctx, alerts) {
     const elements = [
       ...qsa(root, '#race-tape'),
       ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
-      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
+      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || [],
     ];
     const elementSet = new Set(elements);
     for (const el of responsiveOverlayElements) {

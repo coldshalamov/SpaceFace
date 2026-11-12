@@ -15,6 +15,9 @@ ${FLIGHT} #ui-root > #sf-sector-law {
   backdrop-filter:none !important;
   -webkit-backdrop-filter:none !important;
 }
+:root[data-sf-mobile="1"] body:is(.ui-modal-open,.ui-live-screen) #sf-sector-law {
+  display:none!important;
+}
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
 /* Expanded navigation owns this space; hidden task controls must not intercept radar taps. */
@@ -130,7 +133,7 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
      on the real route (lead look). The chapter stays in the details sheet the line opens. */
   ${FLIGHT} #hud .sf-mt-title { display:none!important; }
   ${FLIGHT} #hud .sf-mt-compact { display:contents; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
-  ${FLIGHT} #hud .sf-mt-compact-action { display:inline; }
+  ${FLIGHT} #hud .sf-mt-compact-action { display:block; overflow:hidden; text-overflow:ellipsis; }
   ${FLIGHT} #hud .sf-mt-compact-readings { display:none!important; }
   /* The full objective AND this tutorial caption already live in the existing Details panel. */
   ${FLIGHT} #hud .sf-mt-time { display:none!important; }
@@ -197,8 +200,9 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   }
   /* Important results wrap in full; a pointer-through feed must never require a hidden scroll. */
   ${FLIGHT} body #hud #toasts { max-height:none!important; overflow:visible!important; gap:5px; }
+  ${FLIGHT} #toasts .sf-stage__flow { width:100%; min-width:0; align-items:stretch; }
   ${FLIGHT} #toasts .sf-toast { box-sizing:border-box; width:100%; max-width:100%; font:inherit; min-width:0; padding:3px 0; }
-  ${FLIGHT} #toasts .sf-toast__text { min-width:0; flex:1; }
+  ${FLIGHT} #toasts .sf-toast__text { min-width:0; flex:1; white-space:normal; overflow-wrap:anywhere; }
   ${FLIGHT} #toasts .sf-toast:not(.sf-toast--info) .sf-toast__text { white-space:normal; overflow:visible; text-overflow:clip; }
   ${FLIGHT} #alerts .sf-alert--floor.sf-alert--info .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
   ${FLIGHT}:has(#toasts .sf-toast:not(.sf-toast--out)) #alerts .sf-alert--floor.sf-alert--info { visibility:hidden!important; }
