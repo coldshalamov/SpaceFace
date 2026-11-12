@@ -5131,6 +5131,18 @@ export const save = {
   },
 
   _autosaveValidatePrevious(job, snapshot, tx) {
+    // The previous local write already proved these exact bytes. Match the worker's
+    // current-version player check before reusing that verdict; other bytes still validate.
+    const cached = this._cachedPreparedEnvelope(tx.previousRaw);
+    const envelope = cached?.env;
+    const player = envelope?.data?.entities?.player;
+    if (cached?.version === CURRENT_VERSION && envelope?.fmt === FMT
+        && player && typeof player === 'object' && (!player.type || player.type === 'ship')) {
+      tx.previousValid = true;
+      tx.previousSavedAt = envelope.savedAt || null;
+      this._scheduleAutosaveWork(() => this._autosaveWriteBackup(job, snapshot, tx));
+      return true;
+    }
     const started = workNowMs();
     const posted = this._requestSaveWorker('validate', {
       raw: tx.previousRaw,
