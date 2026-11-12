@@ -39,7 +39,7 @@ function sectorField() {
   };
 }
 
-function boot({ war = true } = {}) {
+function boot({ war = true, warm = true } = {}) {
   const bus = makeBus();
   const state = {
     mode: 'flight', simTime: 0, meta: { seed: 0x5face },
@@ -69,7 +69,7 @@ function boot({ war = true } = {}) {
   };
   const econ = { ...economy };
   econ.init({ state, bus, helpers: {}, registry: { get: () => null } });
-  econ.newGame();
+  if (warm) econ.newGame();
   return { state, bus, econ };
 }
 
@@ -81,6 +81,25 @@ function settleCycle(state, stationId, commodityId) {
     amp2: 0, amp3: 0, regimeStartT: 0, regimeEndT: 1000,
   });
 }
+
+test('minting a station reads the regional signal once and later quotes see changed demand', () => {
+  const { state, econ } = boot({ warm: false });
+  const field = state.sectorSim.field;
+  let reads = 0;
+  Object.defineProperty(state.sectorSim, 'field', {
+    get() { reads++; return field; },
+  });
+
+  const market = econ.ensureMarket('station_helios');
+  assert.ok(market.cmdty_weapons.demandMult > 1);
+  assert.ok(market.cmdty_medical.demandMult > 1);
+  assert.equal(reads, 1, 'one regional signal serves all listings minted together');
+
+  state.conflicts['faction_reach:faction_scn'].state = 'cold';
+  econ.refreshStationDemand('station_helios');
+  assert.equal(market.cmdty_weapons.demandMult, 1);
+  assert.equal(market.cmdty_medical.demandMult, 1);
+});
 
 test('board, history, forecast, and executable quote share one demand-adjusted price composition', () => {
   const { state, econ } = boot({ war: false });
