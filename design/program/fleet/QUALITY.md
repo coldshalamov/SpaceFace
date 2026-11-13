@@ -285,7 +285,12 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
 - The locked Ceres probe opened on the correct sector and its PNG was inspected. It mistook remote
   activation at 1,230 WU for contact and collected zero on-screen frames for the target. `1c7225d24604`
   distinguishes close contact from remote activation and stages against the rock's drift position.
-  A corrected Ceres verification is queued. The previous report is `2026-11-13T12-59-43-929Z.json`.
+  The previous report is `2026-11-13T12-59-43-929Z.json`. `1a37fa62f9bb` reads the nested world
+  RPC receipt. The corrected Ceres run observed promotion at 63 WU with a 41 WU target radius,
+  but stamped zero visible target frames and produced no approach PNG. The inspected contact PNG
+  does not show the target. Contact visibility remains unverified. Next capture must identify the
+  exact rendered target and bracket at approach and contact. The same run separately recorded a
+  952 ms Helios rescue rock admission gap. See `2026-11-13T13-25-50-256Z.json`.
 - `db9ecd228b47` fixes one proven reply recovery delay. With four replies posted and a fifth
   retained, the first ACK freed credit but left the ready reply waiting for a later worker turn.
   Native ordered delivery now releases the retained reply immediately when all preceding posted
