@@ -61,6 +61,7 @@ import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
 import { applySharedPlayerStoreCapability, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import { registerActivityPresentationMirror } from './worldActivityManager.js';
+import { applyAsteroidFieldPresentationDelta } from '../world/asteroidField.js';
 import {
   installSimCommandSink,
   uninstallSimCommandSink,
@@ -1026,6 +1027,15 @@ export function createSimLaneRuntime({
   if (helpers) helpers.workerReadGeneration = () => laneClosed ? -1 : lifecycleGeneration;
 
   // ---- reply application ------------------------------------------------------------------
+  function applyLaneAuxDelta(msg) {
+    const upserts = Array.isArray(msg.auxUpserts) ? msg.auxUpserts : [];
+    const removals = Array.isArray(msg.auxRemovals) ? msg.auxRemovals : [];
+    if (!upserts.length && !removals.length) return;
+    applyAuxUpserts(readModel, upserts);
+    applyAuxRemovals(readModel, removals);
+    applyAsteroidFieldPresentationDelta(state, upserts, removals);
+  }
+
   function applyInitReply(msg) {
     applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback, laneSaveStorageFailures, acknowledgeLaneSaveStorage);
     if (msg.initRebuild && msg.initRebuild.pack) {
@@ -1040,8 +1050,7 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
     }
-    if (Array.isArray(msg.auxUpserts)) applyAuxUpserts(readModel, msg.auxUpserts);
-    if (Array.isArray(msg.auxRemovals)) applyAuxRemovals(readModel, msg.auxRemovals);
+    applyLaneAuxDelta(msg);
     applyDomainUpdates(msg.domainUpdates);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     reconcileEntities();
@@ -1152,8 +1161,7 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.entityVitals) && msg.entityVitals.length) {
       applyEntityVitals(readModel, msg.entityVitals, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
     }
-    if (Array.isArray(msg.auxUpserts) && msg.auxUpserts.length) applyAuxUpserts(readModel, msg.auxUpserts);
-    if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
+    applyLaneAuxDelta(msg);
     applyDomainUpdates(msg.domainUpdates);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     const mirrorDone = nowMs();

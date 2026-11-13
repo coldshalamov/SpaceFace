@@ -185,6 +185,52 @@ export function getAsteroidFieldRock(state, id) {
   return field.byId.get(id) || null;
 }
 
+// The presentation realm owns this projection only. The worker still owns
+// IDs, collisions, promotion, persistence and all field mutations.
+export function applyAsteroidFieldPresentationDelta(state, upserts = [], removals = []) {
+  let field = state.world?.asteroidField;
+  for (const update of upserts) {
+    if (!Number.isSafeInteger(update?.id)) continue;
+    let row = field?.byId.get(update.id);
+    if (update.kind !== 'rock' || update.alive === false || update.liveEntityId != null) {
+      if (row) removeFieldRecord(field, row);
+      continue;
+    }
+    if (!row) {
+      field = field || ensureAsteroidField(state);
+      row = {
+        id: update.id, type: 'asteroid', fieldResident: true, alive: true,
+        liveEntityId: null, pos: {}, vel: {}, data: {},
+      };
+      field.byId.set(row.id, row);
+      field.rocks.push(row);
+    }
+    const x = finite(update.x), z = finite(update.z);
+    const nextCell = cellKey(x, z);
+    const changedCell = row._cell !== nextCell;
+    if (changedCell) gridRemove(field, row);
+    row.pos.x = x;
+    row.pos.z = z;
+    row.vel.x = finite(update.vx);
+    row.vel.z = finite(update.vz);
+    row.rot = finite(update.rot);
+    row.angVel = finite(update.angVel);
+    row.radius = finite(update.radius, 8);
+    row.lastExactT = update.lastExactT;
+    row.homeSectorId = update.sectorId;
+    row.data = update.rockAppearance || {};
+    row._noMesh = update.noMesh === true;
+    if (changedCell) gridAdd(field, row);
+    noteFieldRockMotion(field, row);
+    field.dirtyPoseIds.add(row.id);
+    field.version++;
+  }
+  for (const id of removals) {
+    const row = field?.byId?.get(id);
+    if (row) removeFieldRecord(field, row);
+  }
+}
+
 // Chunked twin: yields per grid column (cell path) or per `batchRows` scanned
 // keys (oversize-disc path) so a corridor-wide refill can ride a slice clock.
 // `out` accumulates across suspensions; the caller commits its memo key only

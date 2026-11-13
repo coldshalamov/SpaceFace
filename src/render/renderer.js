@@ -320,7 +320,7 @@ import { NEMESIS_KITS } from '../data/nemesisRival.js';
 import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
 import { promoteAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldNearestSteps, queryAsteroidFieldSteps } from '../world/asteroidField.js';
-import { laneCommandSink, lanePromote } from '../core/simLaneCommands.js';
+import { laneCommandSink } from '../core/simLaneCommands.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
@@ -14458,7 +14458,7 @@ export const render = {
       const player = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(state.playerId)
         : null;
-      if (player && player.pos && !recook) {
+      if (player && player.pos && !recook && !laneCommandSink()) {
         const px = Number(player.pos.x) || 0;
         const pz = Number(player.pos.z) || 0;
         const rockCookRadius = firstFlightRockCookRadiusWu(state);
@@ -14492,9 +14492,7 @@ export const render = {
             if (dx * dx + dz * dz > reach * reach) continue;
             const key = asteroidFirstFlightCookKey(rec);
             if (seenRockKeys.has(key)) continue;
-            const promoted = laneCommandSink()
-              ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
-              : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+            const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
             if (!promoted) continue;
             seenRockKeys.add(key);
             // A promote fans a synchronous entity:spawned emit to ~24 listeners —
@@ -14644,7 +14642,7 @@ export const render = {
         // into existence mid-round, cold, exactly what this exists to prevent.
         let survivalSliceStart = openingProviderNow();
         let survivalSliceArmed = state.mode === 'flight';
-        if (player && player.pos) {
+        if (player && player.pos && !laneCommandSink()) {
           const coveredKeys = new Set();
           let coveredSinceYield = 0;
           for (const entity of state.entityList || []) {
@@ -14718,12 +14716,6 @@ export const render = {
             }
             const key = asteroidFirstFlightCookKey(rec);
             if (coveredKeys.has(key)) continue;
-            if (laneCommandSink()) {
-              if (lanePromote({ id: rec.id, source: 'rock', reason: 'survival-roster-prewarm' })) {
-                coveredKeys.add(key);
-              }
-              continue;
-            }
             const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers,
               'survival-roster-prewarm');
             if (!promoted) continue;
@@ -17962,7 +17954,7 @@ export const render = {
         const player = state.entities && typeof state.entities.get === 'function'
           ? state.entities.get(state.playerId)
           : null;
-        if (player && player.pos) {
+        if (player && player.pos && !laneCommandSink()) {
           const px = Number(player.pos.x) || 0;
           const pz = Number(player.pos.z) || 0;
           const rockCookRadius = firstFlightRockCookRadiusWu(state);
@@ -17995,9 +17987,7 @@ export const render = {
               if (dx * dx + dz * dz > reach * reach) continue;
               const key = asteroidFirstFlightCookKey(rec);
               if (seenRockKeys.has(key)) continue;
-              const promoted = laneCommandSink()
-                ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
-                : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+              const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
               if (!promoted) continue;
               seenRockKeys.add(key);
               // A promote fans a synchronous entity:spawned emit to ~24 listeners —

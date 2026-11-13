@@ -21,6 +21,8 @@ import { createSabJournalArena, SAB_JOURNAL_MAGIC } from '../scripts/lib/simWork
 import { bindSabEnvelopeChannel, sabEnvelopeDrain, sabEnvelopePost,
   SAB_ENV_KIND, SAB_REPLY_SEQ_INDEX, SAB_REPLY_FREE_INDEX } from '../scripts/lib/simSabEnvelope.mjs';
 import { getPromptDevice, setPromptDevice, getGamepadCaptureHandler, setGamepadCaptureHandler } from '../src/ui/bindings.js';
+import { queryAsteroidField } from '../src/world/asteroidField.js';
+import { resolveWorldPresentationEntity } from '../src/world/presentationSources.js';
 
 function waitFor(predicate, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
@@ -196,6 +198,41 @@ test('autonomous SAB replies coexist with ordered input bursts larger than the c
   ['KeyW', 'KeyD', 'KeyJ', 'KeyJ', 'KeyD', 'KeyW']);
 });
 
+test('worker asteroid deltas reach the renderer field before the rock becomes a live body', t => {
+  const f = makeFixture(t);
+  const id = 17;
+  const rock = {
+    id, kind: 'rock', x: 16, z: 12, radius: 10, lastExactT: 1,
+    rockAppearance: { typeId: 'ast_metallic', tint: '#aabbcc', opticMaterial: 'metal' },
+  };
+  const update = (clockSequence, fields) => f.receive({
+    kind: 'clockTick', clockSequence, stateTick: clockSequence,
+    simTime: clockSequence / 60, journalEnd: 0, ...fields,
+  });
+  update(1, { auxUpserts: [rock] });
+  const row = resolveWorldPresentationEntity(f.state, id);
+  assert.equal(row?.fieldResident, true);
+  assert.equal(row.data.typeId, 'ast_metallic');
+  assert.equal(row.data.tint, '#aabbcc');
+  assert.equal(f.state.entities.has(id), false, 'the visual row owns no live physics body');
+  assert.deepEqual(queryAsteroidField(f.state, rock, 30), [row]);
+
+  update(2, { auxUpserts: [{ ...rock, x: 900 }] });
+  assert.equal(resolveWorldPresentationEntity(f.state, id), row, 'pose updates retain the drawn row');
+  assert.deepEqual(queryAsteroidField(f.state, rock, 30), []);
+  assert.deepEqual(queryAsteroidField(f.state, { x: 900, z: 12 }, 30), [row]);
+
+  update(3, { auxUpserts: [{ ...rock, liveEntityId: id }] });
+  assert.equal(resolveWorldPresentationEntity(f.state, id), null, 'promotion retires the dormant projection');
+  assert.equal(row.alive, false);
+  update(4, { auxUpserts: [rock] });
+  update(5, { auxRemovals: [id] });
+  assert.equal(resolveWorldPresentationEntity(f.state, id), null);
+  update(6, { auxUpserts: [rock] });
+  update(7, { auxUpserts: [{ id, kind: 'far' }] });
+  assert.equal(resolveWorldPresentationEntity(f.state, id), null, 'another table can reuse a retired rock ID');
+});
+
 function makeWatchdogFixture(t) {
   let clock = 0;
   const performanceDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'performance');
@@ -338,6 +375,8 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
       events: [{ id: 'first' }],
       entityVitals: [{ id: 1, hull: 10 }],
       spawnInfos: [{ id: 1, type: 'ship' }],
+      auxUpserts: [{ id: 31, kind: 'rock', x: 10 }, { id: 33, kind: 'rock' }],
+      auxRemovals: [32],
     };
     const second = {
       kind: 'clockTick',
@@ -353,6 +392,8 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
       events: [{ id: 'second' }],
       entityVitals: [{ id: 2, hull: 20 }],
       spawnInfos: [{ id: 2, type: 'asteroid' }],
+      auxUpserts: [{ id: 31, kind: 'rock', x: 20 }, { id: 32, kind: 'rock' }],
+      auxRemovals: [33],
     };
 
     const merged = worker.localMergeReply(first, second);
@@ -367,6 +408,8 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
     assert.deepEqual(merged.spawnInfos, [
       { id: 1, type: 'ship' }, { id: 2, type: 'asteroid' },
     ]);
+    assert.deepEqual(merged.auxUpserts, second.auxUpserts);
+    assert.deepEqual(merged.auxRemovals, [33]);
 
     const pack = worker.localMaterializePack(merged);
     assert.equal(pack.count, 5);

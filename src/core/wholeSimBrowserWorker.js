@@ -267,7 +267,7 @@ function resetLocalClockTiming() {
 
 const LOCAL_DURABLE_KEYS = Object.freeze([
   'events', 'storageOps', 'rpcAcks', 'settingsAcks', 'spawnAcks',
-  'commandAcks', 'inputPublishes', 'auxUpserts', 'auxRemovals',
+  'commandAcks', 'inputPublishes',
   'spawnInfos', 'warmStubs',
 ]);
 // These are complete read snapshots, unlike one-shot events and lifecycle receipts. Retaining
@@ -400,7 +400,24 @@ function localDurableCount(reply) {
   let count = 0;
   for (const key of LOCAL_DURABLE_KEYS) count += localArrayLength(reply, key);
   for (const key of LOCAL_LATEST_KEYS) count += localArrayLength(reply, key);
+  count += localArrayLength(reply, 'auxUpserts') + localArrayLength(reply, 'auxRemovals');
   return count;
+}
+
+function localMergeAuxRows(previous, next) {
+  if (!localArrayLength(next, 'auxUpserts') && !localArrayLength(next, 'auxRemovals')) return;
+  const upserts = new Map((previous.auxUpserts || []).map(row => [row.id, row]));
+  const removals = new Set(previous.auxRemovals);
+  for (const row of next.auxUpserts || []) {
+    removals.delete(row.id);
+    upserts.set(row.id, row);
+  }
+  for (const id of next.auxRemovals || []) {
+    upserts.delete(id);
+    removals.add(id);
+  }
+  previous.auxUpserts = [...upserts.values()];
+  previous.auxRemovals = [...removals];
 }
 
 function localMergeLatestRows(previous, next, key) {
@@ -486,6 +503,7 @@ function localMergeReply(previous, next) {
     if (!Array.isArray(previous[key])) previous[key] = [];
     previous[key].push(...incoming);
   }
+  localMergeAuxRows(previous, next);
   // Drop the oldest background impact effects first. The sim already consumed
   // them, but the main bus still needs save/run lifecycle events and player hits.
   if (Array.isArray(previous.events) && previous.events.length > LOCAL_EVENT_RETAIN_LIMIT) {

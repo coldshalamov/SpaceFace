@@ -789,6 +789,15 @@ function auxRowBlock(kind, row) {
     lastExactT: Number.isFinite(row.lastExactT) ? row.lastExactT : null,
     liveEntityId: Number.isSafeInteger(row.liveEntityId) ? row.liveEntityId : null,
     noMesh: row._noMesh === true,
+    ...(kind === 'rock' ? {
+      angVel: finite(row.angVel),
+      rockAppearance: {
+        typeId: data.typeId, tint: data.tint, variant: data.variant,
+        opticMaterial: data.opticMaterial, opticStructureId: data.opticStructureId,
+        placeId: data.placeId, placeTargetRadius: data.placeTargetRadius,
+        oreHP: finite(data.oreHP, row.hull), oreHPMax: finite(data.oreHPMax, row.hullMax),
+      },
+    } : {}),
     sectorId: typeof row.sectorId === 'string' ? row.sectorId
       : (typeof row.homeSectorId === 'string' ? row.homeSectorId
         : (typeof data.sectorId === 'string' ? data.sectorId : null)),
@@ -800,6 +809,7 @@ function auxRowBlock(kind, row) {
 function auxSignature(b) {
   return `${b.type}|${b.alive ? 1 : 0}|${b.x}|${b.z}|${b.vx}|${b.vz}|${b.rot}|${b.radius}`
     + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`
+    + (b.rockAppearance ? `|${b.angVel}|${JSON.stringify(b.rockAppearance)}` : '')
     + (b.warmFreighterPose ? `|${b.warmFreighterPose.height}|${b.warmFreighterPose.bank}|${b.warmFreighterPose.pitch}|${b.warmFreighterPose.localYaw}` : '');
 }
 
