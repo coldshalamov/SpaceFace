@@ -662,8 +662,9 @@ ${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
 ${R} .k-foot .sf-cru-fine, ${R} .k-foot .sf-cru-keynote {
   color:rgb(${BONE} / .86) !important; position:relative; z-index:1; max-width:42ch;
 }
+/* the lamp primary (Take the win) is an amber field, so its bare hold F·X glyph reads in ink (like the draft's Esc cap text), not bone-on-amber. */
 ${R} .k-foot .k-word--primary.is-lamp .sf-cru-kbd {
-  color:rgb(${BONE} / .92) !important; border-color:rgb(${BONE} / .55) !important;
+  color:rgb(11 13 16 / .88) !important; border-color:rgb(11 13 16 / .42) !important;
 }
 /* Keycaps — .sf-cru-kbd on foot verbs + Enter on lit FIT (override bare-hint strip in screenLayouts). */
 ${R} .k-foot .sf-cru-kbd {
