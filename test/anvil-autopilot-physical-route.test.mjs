@@ -6,6 +6,7 @@ import {flightV3} from '../src/systems/flightV3.js';
 import {input,applyFlightKeyEvent} from '../src/systems/input.js';
 import {fields} from '../src/systems/fields.js';
 import {planetRuntime} from '../src/systems/planetRuntime.js';
+import {save} from '../src/save/saveSystem.js';
 import {world} from '../src/systems/world.js';
 import {makeShipEntitySpec} from '../src/systems/ships.js';
 import {PLANET_FLAGS,PLANET_SITE} from '../src/data/planets.js';
@@ -29,7 +30,7 @@ test('local autopilot settles safely at Anvil and stays under control', async t=
  assert.equal(s.nav.autopilot.active,false,'leaving the planet sector releases the hold');
 });
 
-test('public Anvil chart course rounds the planet to the Orchard side', async t=>{
+test('public Anvil chart course still rounds the planet after restoring the saved burn', async t=>{
  const {buildSystemModel,systemZoneTarget,commitCoursePayload}=await import('../src/ui/galaxyMap.js');
  const {anvilOrchardFramePosition}=await import('../src/data/planets.js');
  const old=[PLANET_FLAGS.enabled,FIELD_FLAGS.enabled];PLANET_FLAGS.enabled=true;FIELD_FLAGS.enabled=true;
@@ -43,6 +44,10 @@ test('public Anvil chart course rounds the planet to the Orchard side', async t=
  const course=commitCoursePayload(s,systemZoneTarget(zone,PLANET_SITE.sectorId,p.pos));
  assert.equal(course.planetaryApproach,PLANET_SITE.id);
  sim.bus.emit('ui:setCourse',course);
+ for (let i = 0; i < 60; i++) sim.step(SIM_DT);
+ const saver = Object.assign(Object.create(save), { state: s, bus: sim.bus });
+ const savedNav = JSON.parse(JSON.stringify(saver._serializeNav()));
+ saver._restoreNav(savedNav);
  let arrived=-1,min=Infinity;
  for(let i=0;i<24000;i++){sim.step(SIM_DT);min=Math.min(min,Math.hypot(p.pos.x-c.x,p.pos.z-c.z));if(s.nav.autopilot.arrivalHolding&&arrived<0)arrived=i;if(arrived>=0&&i-arrived===600)break;}
  const finalRadius=Math.hypot(p.pos.x-c.x,p.pos.z-c.z),frameDistance=Math.hypot(p.pos.x-frame.x,p.pos.z-frame.z);

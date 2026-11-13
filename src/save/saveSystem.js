@@ -20,6 +20,7 @@ import {
 } from './saveSlotIdentity.js';
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
+import { PLANET_SITE } from '../data/planets.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
 // envelope from a fixed deps-first registry of systems, writes autosave + manual slots to
 // localStorage and to the shared loopback player store both shells use, plus an exportable
@@ -9903,6 +9904,8 @@ function sanitizeNavAutopilot(autopilot, opts) {
     status: navString(source.status) || (target ? 'armed' : 'idle'),
     arrivalRadius: Number.isFinite(source.arrivalRadius) ? Math.max(12, Math.min(500, source.arrivalRadius)) : 36,
   };
+  // Anvil's approach routes around the sling band. A fixed destination alone would cut through it.
+  if (target && source.planetaryApproach === PLANET_SITE.id) out.planetaryApproach = PLANET_SITE.id;
   const targetWorldRecordId = navString(source.targetWorldRecordId);
   if (targetWorldRecordId) {
     out.targetWorldRecordId = targetWorldRecordId;
