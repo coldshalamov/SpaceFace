@@ -76,7 +76,7 @@ test('a busy main thread still delivers the warm on the bounded timer', () => {
     let calls = 0;
     armCallbackAfterPresent(() => { calls++; }, { idleBoundMs: 48 });
     h.frame();
-    assert.equal(h.timers(), 2, 'the outer arm and the bounded fallback both have a timer');
+    assert.equal(h.timers(), 1, 'the frame replaces its timer with the background starvation bound');
     h.advance(48);
     assert.equal(calls, 1, 'starvation cannot hold the warm forever');
     h.task();

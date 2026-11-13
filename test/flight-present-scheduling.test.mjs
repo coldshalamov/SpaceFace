@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   armCallbackAfterPresent,
+  postTaskAtBackgroundPriority,
   yieldAfterPresent,
 } from '../src/render/compilePresentSlice.js';
 
@@ -52,7 +53,7 @@ test('armCallbackAfterPresent runs after the display callback, not inside it', a
   }
 });
 
-test('armCallbackAfterPresent prefers scheduler.yield after present', async () => {
+test('armCallbackAfterPresent uses scheduler.yield when priorities are unavailable', async () => {
   const order = [];
   const realRaf = globalThis.requestAnimationFrame;
   const realTimeout = globalThis.setTimeout;
@@ -85,6 +86,27 @@ test('armCallbackAfterPresent prefers scheduler.yield after present', async () =
   } finally {
     globalThis.requestAnimationFrame = realRaf;
     globalThis.setTimeout = realTimeout;
+    globalThis.scheduler = realScheduler;
+  }
+});
+
+test('admission posts background work even when a boosted continuation is available', async () => {
+  const realScheduler = globalThis.scheduler;
+  let run;
+  let calls = 0;
+  globalThis.scheduler = {
+    yield() { assert.fail('yield would inherit the foreground task priority'); },
+    postTask(callback, options) {
+      assert.deepEqual(options, { priority: 'background' });
+      run = callback;
+    },
+  };
+  try {
+    postTaskAtBackgroundPriority(() => { calls++; });
+    assert.equal(calls, 0);
+    run();
+    assert.equal(calls, 1);
+  } finally {
     globalThis.scheduler = realScheduler;
   }
 });

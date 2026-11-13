@@ -357,10 +357,9 @@ export function yieldAfterPresent() {
 
 /**
  * Dispatch admission work off the frame's critical path. A setTimeout(0) queued from a display
- * callback lands the job at timer priority on that frame's compositor beat — it raced the
- * present and was the largest named hitch owner (externalScheduling). After present, prefer
- * scheduler.yield() so the resume does not stack on the compositor beat; postTask(background)
- * is the next-best and setTimeout remains the headless/legacy fallback.
+ * callback lands the job at timer priority on that frame's compositor beat. When the browser
+ * supports explicit task priorities, admit work at background priority so input and presentation
+ * get the next turn. A bare scheduler.yield() inherits priority and boosts the continuation.
  * (vm-drop shader-admission-slice, PERF backlog #27)
  */
 export function postTaskAtBackgroundPriority(callback) {
@@ -373,11 +372,27 @@ export function postTaskAtBackgroundPriority(callback) {
   const postTask = sched && typeof sched.postTask === 'function'
     ? sched.postTask.bind(sched)
     : null;
-  if (yieldFn) {
-    Promise.resolve(yieldFn()).then(callback, () => { callback(); });
+  if (postTask) {
+    let started = false;
+    const run = () => {
+      started = true;
+      callback();
+    };
+    const fallback = () => {
+      if (!started) setTimeout(run, 0);
+    };
+    try {
+      Promise.resolve(postTask(run, { priority: 'background' })).catch(error => {
+        if (started) setTimeout(() => { throw error; }, 0);
+        else fallback();
+      });
+    } catch (error) {
+      if (started) throw error;
+      fallback();
+    }
     return;
   }
-  if (postTask) postTask(callback, { priority: 'background' });
+  if (yieldFn) Promise.resolve(yieldFn()).then(callback, () => { callback(); });
   else setTimeout(callback, 0);
 }
 
@@ -390,13 +405,15 @@ export function postTaskAtBackgroundPriority(callback) {
  */
 export function postTaskAtBackgroundPriorityBounded(callback, boundMs = 48) {
   let fired = false;
+  let fallback;
   const fire = () => {
     if (fired) return;
     fired = true;
+    clearTimeout(fallback);
     callback();
   };
+  fallback = setTimeout(fire, Math.max(0, Number(boundMs) || 0));
   postTaskAtBackgroundPriority(fire);
-  setTimeout(fire, Math.max(0, Number(boundMs) || 0));
 }
 
 /**
@@ -407,9 +424,11 @@ export function postTaskAtBackgroundPriorityBounded(callback, boundMs = 48) {
 export function armCallbackAfterPresent(callback, { idleBoundMs = 0 } = {}) {
   if (typeof callback !== 'function') return;
   let fired = false;
+  let frameFallback;
   const fire = () => {
     if (fired) return;
     fired = true;
+    clearTimeout(frameFallback);
     if (idleBoundMs > 0) postTaskAtBackgroundPriorityBounded(callback, idleBoundMs);
     else postTaskAtBackgroundPriority(callback);
   };
@@ -419,5 +438,5 @@ export function armCallbackAfterPresent(callback, { idleBoundMs = 0 } = {}) {
   if (raf) raf(fire);
   // Headless / background documents can stall rAF forever. A short timeout unsticks
   // admission without putting the job on the present callback.
-  setTimeout(fire, raf ? 48 : 0);
+  if (!fired) frameFallback = setTimeout(fire, raf ? 48 : 0);
 }
