@@ -6,11 +6,21 @@ export const RACING_PRECISION = Object.freeze({
   baseEnergy: 2, maxEnergy: 5,
 });
 const issued = new WeakMap();
-const spent = new WeakMap();
+const attempts = new WeakMap();
 const activeCircuit = mission => mission?.status === 'active' && mission.type === 'race'
   && !!mission.params?.racingContractId && mission.params.closedCircuit === true;
 const nonNegativeInt = value => Number.isSafeInteger(value) && value >= 0;
 const ordinalOf = (lap, gate, count) => lap * (count - 1) + gate;
+
+/** A restart creates a new scoring attempt without replacing the active mission. */
+export function restartRacingPrecision(params) {
+  attempts.delete(params);
+  delete params.precisionLastOrdinal;
+  delete params.precisionResetCount;
+  delete params.precisionBest;
+  delete params.lastPrecision;
+  params.precisionChain = 0;
+}
 
 /** Score one event returned by advanceCircuit, using that call's unchanged swept sample. */
 export function scoreRacingPrecision(mission, event, sample = {}) {
@@ -60,8 +70,13 @@ export function scoreRacingPrecision(mission, event, sample = {}) {
   };
   let intent = null;
   if (energy > 0) {
+    let attempt = attempts.get(params);
+    if (!attempt) {
+      attempt = { lastSpent: -1 };
+      attempts.set(params, attempt);
+    }
     intent = Object.freeze({ missionId: mission.id, lap, gateIndex, ordinal, energy });
-    issued.set(intent, { mission, params, resets });
+    issued.set(intent, { mission, params, resets, attempt });
   }
   return { patch, intent, reason: kind };
 }
@@ -71,12 +86,13 @@ export function consumePrecisionBoostIntent(state, intent) {
   const receipt = intent && typeof intent === 'object' ? issued.get(intent) : null;
   if (!receipt) return 0;
   issued.delete(intent);
-  const { mission, params, resets } = receipt;
+  const { mission, params, resets, attempt } = receipt;
   if (state?.mode !== 'flight' || !activeCircuit(mission)
       || !state.missions?.active?.includes(mission) || mission.params !== params
       || state.entities?.get?.(state.playerId)?.alive !== true
       || params.precisionLastOrdinal !== intent.ordinal || params.precisionChain < 1
-      || (params.resetCount | 0) !== resets || (spent.get(params) ?? -1) >= intent.ordinal) return 0;
-  spent.set(params, intent.ordinal);
+      || (params.resetCount | 0) !== resets || attempts.get(params) !== attempt
+      || attempt.lastSpent >= intent.ordinal) return 0;
+  attempt.lastSpent = intent.ordinal;
   return Math.min(RACING_PRECISION.maxEnergy, intent.energy);
 }

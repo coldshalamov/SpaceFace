@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { advanceCircuit, gateApproach } from '../src/systems/racingGeometry.js';
-import { RACING_PRECISION, scoreRacingPrecision } from '../src/systems/racingPrecision.js';
+import { RACING_PRECISION, restartRacingPrecision, scoreRacingPrecision } from '../src/systems/racingPrecision.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 
 function harness() {
@@ -15,7 +15,7 @@ function harness() {
   const bus = createBus(), flight = { ...flightV3 };
   flight.init({ state, bus });
   let now = 0;
-  function cross({ offset = 0, speed = 200, alignment = 1, sweep = 0 } = {}) {
+  function cross({ offset = 0, speed = 200, alignment = 1, sweep = 0, deliver = true } = {}) {
     const index = params.nextGate, gate = gates[index], from = gateApproach(gates, index);
     const point = (along, side) => ({ x: gate.x + from.nx * along - from.nz * side,
       z: gate.z + from.nz * along + from.nx * side });
@@ -29,7 +29,7 @@ function harness() {
     assert.equal(events.length, 1);
     const result = scoreRacingPrecision(mission, events[0], sample);
     Object.assign(params, result.patch);
-    if (result.intent) bus.emit('flight:racePrecision', result.intent);
+    if (deliver && result.intent) bus.emit('flight:racePrecision', result.intent);
     return { ...result, event: events[0], sample };
   }
   return { gates, params, mission, player, state, bus, cross };
@@ -99,6 +99,20 @@ test('recovery breaks the chain, consumes its next gate without credit, and pres
   assert.equal(h.params.precisionChain, 0);
   assert.equal(scoreRacingPrecision(h.mission, first.event, first.sample).reason, 'duplicate');
   assert.equal(h.cross().intent.energy, 2);
+});
+
+test('an unconsumed precision intent cannot claim the same gate in a restarted attempt', () => {
+  const h = harness();
+  const old = h.cross({ deliver: false }).intent;
+  restartRacingPrecision(h.params);
+  h.params.nextGate = 0;
+  const fresh = h.cross({ deliver: false }).intent;
+  assert.equal(fresh.ordinal, old.ordinal);
+
+  h.bus.emit('flight:racePrecision', old);
+  assert.equal(h.player.boost.energy, 10);
+  h.bus.emit('flight:racePrecision', fresh);
+  assert.equal(h.player.boost.energy, 12);
 });
 
 test('detached, completed and ordinary races cannot grant precision energy', () => {

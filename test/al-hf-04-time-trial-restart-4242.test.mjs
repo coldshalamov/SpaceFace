@@ -9,8 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { world as worldSystem } from '../src/systems/world.js';
 import { missions } from '../src/systems/missions.js';
+import { flightV3 } from '../src/systems/flightV3.js';
 import {
   RACE_LEVELS, RACE_CONTRACTS, racingSeedFor, raceGateGlobals, startLineFor,
 } from '../src/data/raceLevels.js';
@@ -18,6 +20,7 @@ import { configureRacingCorridorSession } from '../src/world/racingCorridor.js';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { observeRacingGhost } from '../src/systems/racingGhosts.js';
 import { raceRecordKey } from '../src/systems/racingSteer.js';
+import { gateApproach } from '../src/systems/racingGeometry.js';
 
 const DT = 1 / 60;
 const LEVEL = RACE_LEVELS[0];
@@ -134,6 +137,75 @@ test('restart writes no record, no save, and never calls rememberRaceRecord', ()
   drive(1);
   assert.equal(writes.length, before,
     'the restart path touches no storage — rememberRaceRecord and saves stay silent');
+});
+
+test('a real restart restores precision boost on the same gate in the new attempt', () => {
+  const { state, bus, mission, player, drive } = fixture();
+  const params = mission.params;
+  const intents = [];
+  bus.on('flight:racePrecision', (intent) => intents.push(intent));
+  Object.create(flightV3).init({ state, bus });
+  player.boost = { max: 100, energy: 10 };
+  const gates = raceGateGlobals(params);
+  const from = gateApproach(gates, 0);
+  const crossFirstGate = () => {
+    player.pos.x = gates[0].x - from.nx * 2;
+    player.pos.z = gates[0].z - from.nz * 2;
+    player.vel.x = from.nx * 180;
+    player.vel.z = from.nz * 180;
+    drive();
+    player.pos.x = gates[0].x + from.nx * 2;
+    player.pos.z = gates[0].z + from.nz * 2;
+    drive();
+    assert.equal(params.nextGate, 1);
+  };
+
+  drive(60);
+  crossFirstGate();
+  assert.equal(player.boost.energy, 12);
+  assert.equal(intents.length, 1);
+
+  bus.emit('race:restart', {});
+  assert.equal(params.nextGate, 0);
+  drive(60);
+  crossFirstGate();
+  assert.equal(player.boost.energy, 14, 'the restarted attempt earns its first gate credit');
+  assert.equal(params.precisionChain, 1);
+  assert.equal(intents.length, 2);
+  bus.emit('flight:racePrecision', intents[0]);
+  bus.emit('flight:racePrecision', intents[1]);
+  assert.equal(player.boost.energy, 14, 'neither attempt can replay its used receipt');
+});
+
+test('a restarted time trial can earn the same authored boost ring once again', () => {
+  const { bus, mission, player, drive } = fixture();
+  const params = mission.params;
+  params.boostGateIndex = 0;
+  const gates = raceGateGlobals(params);
+  const from = gateApproach(gates, 0);
+  const crossBoostRing = () => {
+    player.pos.x = gates[0].x - from.nx * 2;
+    player.pos.z = gates[0].z - from.nz * 2;
+    drive();
+    player.pos.x = gates[0].x + from.nx * 2;
+    player.pos.z = gates[0].z + from.nz * 2;
+    player.vel.x = from.nx * 180;
+    player.vel.z = from.nz * 180;
+    drive();
+    assert.equal(params.boostSpentLap, 0);
+  };
+
+  drive(60);
+  crossBoostRing();
+  const initial = consumePhysicsCommand(player);
+  assert.ok(initial?.impulses?.length, 'the first crossing queues its boost');
+  bus.emit('race:restart', {});
+  drive(60);
+  assert.equal(params.boostSpentLap, undefined, 'restart does not issue a boost until a crossing');
+  crossBoostRing();
+  assert.deepEqual(consumePhysicsCommand(player)?.impulses, initial.impulses);
+  drive();
+  assert.equal(consumePhysicsCommand(player)?.impulses?.length ?? 0, 0, 'the same gate cannot boost twice');
 });
 
 test('race and cup modes refuse with a toast and change nothing', () => {

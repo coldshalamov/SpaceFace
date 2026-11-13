@@ -256,7 +256,7 @@ import { stepAdventureSpeed } from '../missions/adventureSpeedRuntime.js';
 import { createAdventureSpeedSetPieces } from '../missions/adventureSpeedSetPieces.js';
 import { createRacingSetPieces } from '../missions/racingSetPieces.js';
 import { createRacingOpponents } from '../missions/racingOpponents.js';
-import { scoreRacingPrecision } from './racingPrecision.js';
+import { restartRacingPrecision, scoreRacingPrecision } from './racingPrecision.js';
 import { observeRacingGhost, getRacingGhostPlayback, raceGhostSplitDelta,
   resetRacingGhostSession } from './racingGhosts.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
@@ -3707,7 +3707,9 @@ export const missions = {
     params.lapTimesS = [];
     params.planeSample = null;
     params.planeSampleSimS = null;
-    params.precisionChain = 0;
+    restartRacingPrecision(params);
+    delete params.boostClearedLap;
+    delete params.boostSpentLap;
     params.draftTimeS = 0;
     params.drafting = false;
     params.resetCount = 0;
