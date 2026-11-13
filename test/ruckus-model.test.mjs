@@ -92,6 +92,9 @@ test('browser-shaped model import is cold and standalone Crucible skips its unre
   assert.equal(m.requiresRuckusWarmForNewGame({crucibleLaunch:true,startSectorId:'sector_ceres_belt'}),true,'an explicit Ceres start still warms');
   assert.equal(warmSlices,0,'classification alone does not request RU-7 data');
   assert.equal(fetches,0,'importing the production model makes no asset requests');
+  // Advance the clock at each budget check so cooperative yielding is tested on fast hosts too.
+  const nativePerformance=globalThis.performance;let fakeNow=0;
+  globalThis.performance={now:()=>++fakeNow};
   const ready=m.warmRuckusModel();
   assert.strictEqual(m.warmRuckusModel(),ready,'repeated callers share one warm');
   await assert.rejects(ready,error=>error.message.includes('RU-7 asset fetch failed (503)'), 'a failed binary request rejects the shared warm');
@@ -102,6 +105,7 @@ test('browser-shaped model import is cold and standalone Crucible skips its unre
   await retry;
   assert.equal(fetches,8,'retry requests a complete consistent four-asset set');
   assert.ok(warmSlices>0,'demand warm fully decodes authored templates in bounded tasks');
+  globalThis.performance=nativePerformance;
   for(const part of [undefined,'core']){
    const root=m.buildRuckusVisual(ruckusEntitySpec(part));
    assert.equal(root.userData.authoredAssetState,'authored');

@@ -93,7 +93,20 @@ function* templateSteps(key) {
     if (!Type || !width || a.sparse) throw Error(`Unsupported RU-7 accessor ${index}`);
     const stride = v.byteStride || Type.BYTES_PER_ELEMENT * width;
     const offset = (v.byteOffset || 0) + (a.byteOffset || 0), data = new Type(a.count * width);
-    for (let i = 0; i < a.count; i++) data.set(new Type(buffer, offset + i * stride, width), i * width);
+    if (a.count > 0) {
+      if (stride === Type.BYTES_PER_ELEMENT * width) {
+        data.set(new Type(buffer, offset, a.count * width));
+      } else {
+        // GLB attributes are often interleaved. One source view per accessor avoids
+        // allocating a short-lived typed-array view for every vertex and index.
+        const step = stride / Type.BYTES_PER_ELEMENT;
+        if (!Number.isInteger(step)) throw Error(`Unsupported RU-7 accessor ${index} stride`);
+        const source = new Type(buffer, offset, (a.count - 1) * step + width);
+        for (let i = 0; i < a.count; i++) {
+          for (let c = 0; c < width; c++) data[i * width + c] = source[i * step + c];
+        }
+      }
+    }
     return new THREE.BufferAttribute(data, width, a.normalized || false);
   };
   const materials = doc.materials.map(spec => {
@@ -249,6 +262,11 @@ export function warmRuckusModel() {
       return [key, parseRuckusGlb(await response.arrayBuffer(), key)];
     }));
     for (const [key, entry] of entries) meshData.set(key, entry);
+    // A timer after every tiny decode step adds more than a hundred scheduler turns to
+    // Adventure startup. Keep the same stepped decoder, yielding when its actual work
+    // reaches a short slice instead of waiting between already-cheap primitives.
+    const now = () => globalThis.performance?.now ? globalThis.performance.now() : Date.now();
+    let sliceStarted = now();
     for (const key of RUCKUS_MESH_KEYS) {
       if (templates.has(key)) continue;
       let it = pendingTemplates.get(key);
@@ -256,7 +274,10 @@ export function warmRuckusModel() {
       try {
         let step;
         while (!(step = it.next()).done) {
-          await new Promise((resolve) => setTimeout(resolve, 0));
+          if (now() - sliceStarted >= 4) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            sliceStarted = now();
+          }
         }
       } finally {
         pendingTemplates.delete(key);

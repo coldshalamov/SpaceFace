@@ -35,15 +35,29 @@ for (const [ship, hostile] of [['dart', 'wasp_swarmer'], ['rig', 'reaver_pirate'
     assert.equal(binding.runtimeAssetId, source.getRoot().getAsset().extras.spacefaceAsset.assetId);
     const pkg = JSON.parse(await readFile(binding.metadataUrl));
     assert.equal(pkg.contentHash, binding.expectedContentHash);
+    const packagedPath = binding.metadataUrl.replace(/[^/]+$/, pkg.render.uri);
+    const packagedBytes = await readFile(packagedPath);
+    assert.equal(packagedBytes.byteLength, pkg.render.bytes);
+    assert.equal(createHash('sha256').update(packagedBytes).digest('hex'), pkg.render.sha256,
+      'the renderer receives the exact packaged geometry declared by the verified manifest');
+    const packaged = await io.read(packagedPath);
+    const packagedNodes = new Map(packaged.getRoot().listNodes().map(n => [n.getName(), n]));
+    for (const role of ['Armor', 'BrushedMetal', 'Hull', 'Livery', 'Mechanical', 'MechanicalDark', 'Warning']) {
+      const name = `LOD${tier}_MOTION_HULL_CORE_${role}`;
+      assert.ok(packagedNodes.get(name)?.getMesh(), `${name} exists as real packaged geometry`);
+      assert.ok(pkg.runtime.primitives.some(primitive => primitive.name === name), `${name} is in the runtime table`);
+    }
     const authored = await io.read(`assets/ships/parts/${file}`);
     const authoredNodes = authored.getRoot().listNodes();
-    const baseNames = sourceNodes.filter(n => n.getName().startsWith('LOD0_')).map(n => n.getName()).sort();
-    assert.deepEqual(authoredNodes.filter(n => n.getName().startsWith('LOD0_')).map(n => n.getName()).sort(), baseNames);
+    const tierNames = sourceNodes.filter(n => n.getName().startsWith(`LOD${tier}_`)).map(n => n.getName());
+    // The Rig carries its original livery into every tier under that tier's own name.
+    if (ship === 'rig') tierNames.push(`LOD${tier}_MOTION_HULL_CORE_Livery`);
+    assert.deepEqual(authoredNodes.filter(n => n.getName().startsWith(`LOD${tier}_`)).map(n => n.getName()).sort(), tierNames.sort());
     for (const n of authoredNodes) {
       let name = n.getName();
-      if (name.startsWith('LOD0_')) {
+      if (name.startsWith(`LOD${tier}_`)) {
         const preserve = ship === 'dart' ? name.endsWith('_Warning') : name.endsWith('_Livery');
-        if (!preserve) name = name.replace(/^LOD0_/, `LOD${tier}_`);
+        if (preserve) name = name.replace(/^LOD[12]_/, 'LOD0_');
       }
       const original = sourceNodes.find(x => x.getName() === name);
       assert.ok(original, name);

@@ -356,30 +356,26 @@ export function createResidencyManager(options = {}) {
     }
     // BatchedMesh owns its own draw list and residency; never second-guess it here.
     if (object.isBatchedMesh === true) return true;
-    // The player, forceRender and neverCull roots are never hidden by this lane. They upload
-    // inline/fail-open instead, and a stale hold (from before the latch was known) is cleared.
-    const protectedDrawable = isResidencyProtected(object);
     if (geometryGpuResident(geometry)) {
       // Three uploads instanceMatrix at bind. A capacity that grew beyond the proven upload
       // is unready even when the shared vertex geometry is stamped. Protected roots skip the
-      // hold: a protected body is never blanked by the measurement lane.
-      if (!protectedDrawable) {
-        const instanceReason = instanceResidencyReason(object);
-        if (instanceReason) {
-          object.__sfResidencyRefusalReason = instanceReason;
-          counters.instancedGrowthHolds += 1;
-          counters.heldDraws += 1;
-          holdRoot(rootOf(object), instanceReason, geometry, true);
-          return false;
-        }
-      } else if (isHeld(object)) {
-        releaseRoot(object);
+      // hold: a protected body is never blanked by the measurement lane. Most resident draws
+      // have no pending instance upload, so only walk their ancestors when a hold is possible.
+      const instanceReason = instanceResidencyReason(object);
+      if (instanceReason && !isResidencyProtected(object)) {
+        object.__sfResidencyRefusalReason = instanceReason;
+        counters.instancedGrowthHolds += 1;
+        counters.heldDraws += 1;
+        holdRoot(rootOf(object), instanceReason, geometry, true);
+        return false;
       }
       counters.admittedResident += 1;
       raiseHeldRoot(object);
       return true;
     }
-    if (protectedDrawable) {
+    // The player, forceRender and neverCull roots are never hidden by this lane. They upload
+    // inline/fail-open instead, and a stale hold (from before the latch was known) is cleared.
+    if (isResidencyProtected(object)) {
       // Admit inline rather than hide: protected roots must never be blanked by residency.
       if (isHeld(object)) releaseRoot(object);
       object.__sfResidencyPendingGeometry = geometry;

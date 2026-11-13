@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildFaunaMesh } from '../src/render/faunaVisuals.js';
+import { disposeObjectNode } from '../src/render/renderer.js';
 import { faunaSpeciesById } from '../src/data/alienFauna.js';
 import { readFaunaMotion, resolveFaunaApproachDrive } from '../src/data/faunaMotionRead.js';
 
@@ -17,6 +18,41 @@ function createFaunaEntity(speciesId, driveState = 'drift') {
     },
   };
 }
+
+test('anchor beasts share identical finishes only within their own independently animated lifetime', () => {
+  const firstEntity = createFaunaEntity('anchor_beast', 'drift');
+  const secondEntity = createFaunaEntity('anchor_beast', 'drift');
+  const first = buildFaunaMesh(firstEntity);
+  const second = buildFaunaMesh(secondEntity);
+  const tissue = first.children[0].material;
+  const otherTissue = second.children[0].material;
+  assert.notEqual(tissue, otherTissue, 'different creatures retain independent materials');
+  assert.equal(first.children.filter((child) => child.material === tissue).length, 6,
+    'mound and identical tissue spikes share one finish within a creature');
+  const otherIntensity = otherTissue.emissiveIntensity;
+  firstEntity.data.ecology.driveState = 'charge';
+  first.userData.updateAuthoredMotion(firstEntity, 0.7, {});
+  assert.notEqual(tissue.emissiveIntensity, otherIntensity);
+  assert.equal(otherTissue.emissiveIntensity, otherIntensity, 'one creature cannot change another glow');
+
+  let otherDisposals = 0;
+  let sharedGeometryDisposals = 0;
+  let tissueDisposals = 0;
+  let glowDisposals = 0;
+  tissue.addEventListener('dispose', () => { tissueDisposals += 1; });
+  first.children[1].material.addEventListener('dispose', () => { glowDisposals += 1; });
+  otherTissue.addEventListener('dispose', () => { otherDisposals += 1; });
+  const sharedGeometry = second.children[0].geometry;
+  assert.equal(first.children[0].geometry, sharedGeometry);
+  sharedGeometry.addEventListener('dispose', () => { sharedGeometryDisposals += 1; });
+  first.traverse((object) => disposeObjectNode(object));
+  assert.equal(tissueDisposals, 1, 'the mound retires its shared tissue once');
+  assert.equal(glowDisposals, 1, 'the first spike retires its shared glow once');
+  assert.equal(otherDisposals, 0, 'retiring the first creature cannot dispose the second finish');
+  assert.equal(sharedGeometryDisposals, 0, 'shared geometry survives creature retirement');
+  second.userData.updateAuthoredMotion(secondEntity, 1.2, {});
+  assert.ok(Number.isFinite(otherTissue.emissiveIntensity));
+});
 
 test('SFQ-B175: buildFaunaMesh attaches updateAuthoredMotion and stamps initial motion read', () => {
   const ram = createFaunaEntity('bristle_ram', 'charge');

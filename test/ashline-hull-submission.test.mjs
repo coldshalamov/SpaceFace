@@ -21,6 +21,7 @@ async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }), 
     const loaded = await loadMotionBank(ref, async () => ({ ok: true, arrayBuffer: async () => bytes.slice().buffer }));
     const sourceId = loaded.bank.sourceAssetId;
     const url = `assets/ships/release/parts/wholeships/${family.replaceAll('-', '_')}.glb`;
+    const lod = family.endsWith('-lod1') ? 1 : family.endsWith('-lod2') ? 2 : 0;
     const json = readGlbJson(readFileSync(url));
     const tags = new Map(manifest.runtime.primitives.map(primitive => [primitive.name, primitive.tags]));
     for (let copy = 0; copy < 2; copy++) {
@@ -41,9 +42,9 @@ async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }), 
         node.geometry = new THREE.BoxGeometry(1, 1, 1);
         node.userData.spacefacePartUrl = url;
         node.userData.spacefaceTags = { ...tags.get(node.name) };
-        node.visible = !node.userData.spacefaceTags.lod || node.userData.spacefaceTags.lod === 'lod0';
+        node.visible = !node.userData.spacefaceTags.lod || node.userData.spacefaceTags.lod === `lod${lod}`;
         if (node.userData.nonRender || node.userData.collision) node.visible = false;
-        const roleIndex = ROLES.findIndex(role => node.name === `LOD0_MOTION_HULL_CORE_${role}`);
+        const roleIndex = ROLES.findIndex(role => node.name === `LOD${lod}_MOTION_HULL_CORE_${role}`);
         // Distinct cold roles retain distinct uniforms; identical roles across ships may batch.
         if (roleIndex >= 0) {
           node.material.color.setRGB((roleIndex + 1) / 8, 0.3, 0.4);

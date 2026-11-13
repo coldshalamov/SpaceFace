@@ -86,9 +86,13 @@ test('late detail decodes retain the neutral surface until the requested tile is
   const decode = deferred();
   const upload = deferred();
   const eagerUploads = [];
+  const requested = [];
   const library = preloadPlanetDetailLibrary({ initTexture: t => eagerUploads.push(t) }, {
-    loadTexture: async () => { await decode.promise; return new THREE.Texture(); },
+    onDemand: true,
+    loadTexture: async (url) => { requested.push(url); await decode.promise; return new THREE.Texture(); },
   });
+  await library;
+  assert.deepEqual(requested, [], 'initialization does not decode tiles before a planet needs them');
   const f = detailAdmissionFixture(upload);
   const group = withCanvas(() => buildPlanetSiteVisual(site('rocky'), { detailAdmission: f.admission }));
   const { bodyMat: mat, detail } = group.userData.planetVisual;
@@ -96,9 +100,9 @@ test('late detail decodes retain the neutral surface until the requested tile is
   assert.equal(mat.uniforms.uDetail.value.isDataTexture, true, 'a neutral 1x1 stands in, so the program is final from the first draw');
   const shader = mat.fragmentShader;
   decode.resolve();
-  await library;
   await f.started.promise;
-  assert.equal(eagerUploads.length, 0, 'decoding all six tiles uploads none of the catalog');
+  assert.deepEqual(requested, [PLANET_DETAIL_ASSETS.rock], 'only the requested planet tile decodes');
+  assert.equal(eagerUploads.length, 0, 'decoding a tile does not eagerly upload it');
   assert.equal(f.initialized.length, 0, 'requested upload is still waiting for its paced owner');
   assert.equal(mat.uniforms.uDetailAmt.value, 0);
   upload.resolve();
@@ -107,6 +111,35 @@ test('late detail decodes retain the neutral surface until the requested tile is
   assert.deepEqual(f.initialized, [planetDetailFor('rocky')]);
   assert.equal(mat.uniforms.uDetail.value, f.initialized[0]);
   assert.equal(mat.fragmentShader, shader, 'publication changes the texture, not the authored program');
+});
+
+test('on-demand tiles share in-flight work and one failed type does not hide others', async () => {
+  const isolated = await import('../src/render/planetDetailLibrary.js?detail-on-demand-contract');
+  const decode = deferred();
+  const requests = [];
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await isolated.preloadPlanetDetailLibrary(null, {
+      onDemand: true,
+      loadTexture: async (url) => {
+        requests.push(url);
+        if (url === PLANET_DETAIL_ASSETS.lava) throw new Error('missing lava');
+        await decode.promise;
+        return new THREE.Texture();
+      },
+    });
+    const ice = isolated.whenPlanetDetailReady('ice');
+    const sameIce = isolated.whenPlanetDetailReady('ice');
+    const lava = isolated.whenPlanetDetailReady('lava');
+    await Promise.resolve();
+    assert.deepEqual(requests, [PLANET_DETAIL_ASSETS.ice, PLANET_DETAIL_ASSETS.lava]);
+    assert.equal(await lava, null);
+    decode.resolve();
+    assert.equal(await ice, await sameIce);
+    assert.equal(isolated.planetDetailFor('ice'), await ice);
+    assert.equal(isolated.planetDetailFor('lava'), null);
+  } finally { console.warn = warn; }
 });
 
 test('a failed decode publishes nothing and resolves null', async () => {

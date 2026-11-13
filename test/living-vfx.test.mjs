@@ -76,6 +76,17 @@ test('moving body collision is swept, retained, and never aliases producer recor
   const cx=18+3*p.forceKinematics[6];
   assert.ok(Math.hypot(p.position.x-cx,p.position.z)>=4-1e-6);
 }));
+test('a fast parcel crossing a moving body is retained even when both endpoints are outside it',()=>{
+  const p=parcel('coherent'),v=new Float64Array(3),scratch=new Float64Array(6);
+  p.s[0]=-1;p.s[2]=0;p.s[3]=480;p.s[5]=0;
+  const contacts=new Float64Array([0,0,4,-120,0,0,1,0]);
+  const unimpeded=new Float64Array(p.s);
+  advanceMaterialParcel(p.m,unimpeded,2,1/120,null,0,new Float64Array(3),new Float64Array(6));
+  assert.ok(unimpeded[0]*p.m[6]>contacts[0]+contacts[2],'the unconstrained endpoint clears the other side');
+  advanceMaterialParcel(p.m,p.s,2,1/120,contacts,1,v,scratch);
+  assert.ok(p.s[13]>0,'the swept trajectory reaches the moving contact');
+  assert.ok(p.s[0]*p.m[6]<0,'the parcel remains on the entry side');
+});
 test('initial overlaps resolve before first draw; impossible decorative occupancy is culled',()=>withFlow(f=>{
   f.emit({...event('cone'),radius:10,environment:{count:1,records:[{x:0,z:0,radius:40,strength:1}]}});
   const p=f.system.particles[0];assert.ok(p.forceKinematics[13]>0);assert.equal(p.color.w,0);

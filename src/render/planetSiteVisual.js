@@ -31,18 +31,42 @@ function mix32(h) {
   return ((h ^= h >>> 16) >>> 0) / 4294967296;
 }
 function cellHash(ix, iz, seed) { return mix32(ix * 374761393 + iz * 668265263 + seed * 962287); }
-function vnoise(x, z, seed) {
+// This bake samples the same lattice cells millions of times. Cache each octave's exact
+// hash values once; Float64 storage preserves the original pixel values. Bounds grow with
+// each octave and cover the fixed bake coordinates below, keeping temporary memory small.
+function noiseGrids(seed, maxX, maxZ) {
+  return Array.from({ length: 5 }, (_, octave) => {
+    const width = Math.floor(maxX) + 2, height = Math.floor(maxZ) + 2;
+    const data = new Float64Array(width * height);
+    const octaveSeed = seed + octave * 101;
+    for (let z = 0; z < height; z++) {
+      for (let x = 0; x < width; x++) {
+        data[z * width + x] = cellHash(x, z, octaveSeed);
+      }
+    }
+    maxX = maxX * 2.03 + 1.7;
+    maxZ = maxZ * 2.03 + 3.1;
+    return { data, width, height };
+  });
+}
+function vnoise(x, z, seed, grid) {
   const ix = Math.floor(x), iz = Math.floor(z);
   const fx = x - ix, fz = z - iz;
   const ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
-  const a = cellHash(ix, iz, seed), b = cellHash(ix + 1, iz, seed);
-  const c = cellHash(ix, iz + 1, seed), d = cellHash(ix + 1, iz + 1, seed);
+  let a, b, c, d;
+  if (grid && ix >= 0 && iz >= 0 && ix < grid.width - 1 && iz < grid.height - 1) {
+    const i = iz * grid.width + ix, values = grid.data;
+    a = values[i]; b = values[i + 1]; c = values[i + grid.width]; d = values[i + grid.width + 1];
+  } else {
+    a = cellHash(ix, iz, seed); b = cellHash(ix + 1, iz, seed);
+    c = cellHash(ix, iz + 1, seed); d = cellHash(ix + 1, iz + 1, seed);
+  }
   return (a + (b - a) * ux) * (1 - uz) + (c + (d - c) * ux) * uz;
 }
-function fbm(x, z, seed) {
+function fbm(x, z, seed, grids) {
   let v = 0, a = 0.5, px = x, pz = z;
   for (let i = 0; i < 5; i++) {
-    v += a * vnoise(px, pz, seed + i * 101);
+    v += a * vnoise(px, pz, seed + i * 101, grids[i]);
     px = px * 2.03 + 1.7; pz = pz * 2.03 + 3.1;
     a *= 0.5;
   }
@@ -60,7 +84,7 @@ function neutralDetailTexture() {
   return _neutralDetail;
 }
 
-/** Bake the planet surface (continents + clouds, lighting-free albedo) once. ~0.3 MP; the
+/** Bake the planet surface (continents + clouds, lighting-free albedo) once. ~0.5 MP; the
  *  registration adapter runs at sector entry where a transition already covers a one-off cost. */
 function bakePlanetTexture(planetType, seed) {
   const pal = PLANET_COLORS[planetType] || PLANET_COLORS.rocky;
@@ -72,20 +96,23 @@ function bakePlanetTexture(planetType, seed) {
   const data = img.data;
   const c1 = pal.c1, c2 = pal.c2, cc = pal.cloud;
   const cloudAmt = planetType === 'dead' || planetType === 'scorched' ? 0.05 : planetType === 'lava' ? 0.1 : 0.45;
+  const warpGrid = noiseGrids(seed, 8.2, 4.3);
+  const landGrid = noiseGrids(seed + 7, 4.8, 4.8);
+  const cloudGrid = noiseGrids(seed + 13, 7.6, 10.2);
   for (let y = 0; y < H; y++) {
     const v = y / H;
     for (let x = 0; x < W; x++) {
       const u = x / W;
       // Same construction as PLANET_FRAG: domain-warped fbm continents + a cloud octave.
-      const wx = fbm(u * 3, v * 3, seed);
-      const wz = fbm(u * 3 + 5.2, v * 3 + 1.3, seed);
-      const land = fbm(u * 4 + wx * 0.8, v * 4 + wz * 0.8, seed + 7);
+      const wx = fbm(u * 3, v * 3, seed, warpGrid);
+      const wz = fbm(u * 3 + 5.2, v * 3 + 1.3, seed, warpGrid);
+      const land = fbm(u * 4 + wx * 0.8, v * 4 + wz * 0.8, seed + 7, landGrid);
       const t = Math.min(1, Math.max(0, (land - 0.38) / 0.24));
       const s = t * t * (3 - 2 * t);
       let r = c2[0] + (c1[0] - c2[0]) * s;
       let gg = c2[1] + (c1[1] - c2[1]) * s;
       let b = c2[2] + (c1[2] - c2[2]) * s;
-      let cloud = fbm(u * 5.5 + 2.1, v * 5.5 + 4.7, seed + 13);
+      let cloud = fbm(u * 5.5 + 2.1, v * 5.5 + 4.7, seed + 13, cloudGrid);
       cloud = Math.min(1, Math.max(0, (cloud - 0.52) / 0.18)) * cloudAmt;
       r += (cc[0] - r) * cloud; gg += (cc[1] - gg) * cloud; b += (cc[2] - b) * cloud;
       const i = (y * W + x) * 4;
@@ -256,7 +283,7 @@ export function buildPlanetSiteVisual(e, { detailAdmission = null } = {}) {
       && surfaceMat.uniforms.uDetail.value === prior;
     detail.status = 'decoding';
     detail.error = null;
-    detail.ready = Promise.resolve(whenPlanetDetailReady()).then(async () => {
+    detail.ready = Promise.resolve(whenPlanetDetailReady(site.planetType || 'rocky')).then(async () => {
       if (!active()) return { skipped: true, reason: 'owner-inactive' };
       const tile = planetDetailFor(site.planetType);
       if (!tile) { detail.status = 'unavailable'; return { skipped: true, reason: 'detail-unavailable' }; }

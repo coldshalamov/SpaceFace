@@ -553,6 +553,31 @@ test('a protected root is admitted inline, never hidden, and its stale hold is c
   assert.equal(shouldSubmitEntityMesh({ isPlayer: true, residencyHeld: true }), true);
 });
 
+test('resident instance growth respects protection added to an ancestor and releases its old hold', () => {
+  const geometry = new THREE.BoxGeometry();
+  stampGeometryGpuResident(geometry);
+  const material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(geometry, material, 4);
+  const parent = new THREE.Group();
+  parent.add(mesh);
+  const manager = createResidencyManager({ requestRoots: () => {} });
+  try {
+    assert.equal(manager.admitGeometry(mesh, geometry), false, 'unproven instance capacity waits');
+    assert.equal(manager.isHeld(mesh), true);
+    parent.userData.sfResidencyProtected = true;
+    assert.equal(manager.admitGeometry(mesh, geometry), true, 'ancestor protection admits the same buffer');
+    assert.equal(manager.isHeld(mesh), false, 'the old hold is cleared');
+    assert.equal(mesh.visible, true);
+    assert.equal(manager.pendingCount(), 0);
+    parent.userData.sfResidencyProtected = false;
+    assert.equal(manager.admitGeometry(mesh, geometry), false, 'unprotected growth still waits');
+  } finally {
+    manager.dispose();
+    geometry.dispose();
+    material.dispose();
+  }
+});
+
 test('a redrawn-while-held root cannot renew its hold deadline', () => {
   let now = 0;
   const manager = createResidencyManager({

@@ -327,11 +327,15 @@ function buildMourningKite(colors) {
 // Anchor Beast: a mound fused to the wreck — sessile, the size of a small station module.
 function buildAnchorBeast(colors) {
   const g = new THREE.Group();
+  // These parts wear identical tissue or signal finishes and receive the same creature-wide
+  // motion envelope. Share only within this creature so separate beasts animate independently.
+  const tissue = tissueMat(colors.tissue);
+  const spikeGlow = glowMat(colors.glow, 0.6);
   const mound = new THREE.Mesh(geo('ab_mound', () => {
     const s = new THREE.SphereGeometry(1, 18, 10);
     s.scale(1.4, 0.6, 1.4);
     return s;
-  }), tissueMat(colors.tissue));
+  }), tissue);
   mound.scale.setScalar(26);
   g.add(mound);
   const spike = geo('ab_spike', () => {
@@ -341,7 +345,10 @@ function buildAnchorBeast(colors) {
   });
   for (let i = 0; i < 8; i += 1) {
     const a = (i / 8) * Math.PI * 2;
-    const sp = new THREE.Mesh(spike, i % 3 ? tissueMat(colors.tissue) : glowMat(colors.glow, 0.6));
+    const sp = new THREE.Mesh(spike, i % 3 ? tissue : spikeGlow);
+    // The mound owns the tissue and the first spike owns the glow. Every other
+    // spike borrows both its finish and cached geometry during root teardown.
+    if (i > 0) sp.userData.borrowedGeometryMaterial = true;
     sp.position.set(Math.cos(a) * 24, 6, Math.sin(a) * 24);
     sp.rotation.z = Math.cos(a) * 1.1;
     sp.rotation.x = -Math.sin(a) * 1.1;
@@ -729,8 +736,10 @@ export function installFaunaMotion(root, initialEntity, species, colors) {
   const rootBaseScale = root.scale.clone();
 
   const emissiveEntries = [];
+  const seenMaterials = new Set();
   root.traverse((obj) => {
-    if (obj.isMesh && obj.material && obj.material.emissive) {
+    if (obj.isMesh && obj.material && obj.material.emissive && !seenMaterials.has(obj.material)) {
+      seenMaterials.add(obj.material);
       emissiveEntries.push({
         mat: obj.material,
         baseIntensity: Number.isFinite(obj.material.emissiveIntensity) ? obj.material.emissiveIntensity : 1.0,

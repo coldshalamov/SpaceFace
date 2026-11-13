@@ -1,6 +1,7 @@
 import { presentedAdvanceRatio, beginPresentedFrame } from './presentedClock.js';
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
 import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
+import { renderPackagePilotForSourceUrl } from './renderPackageManifest.js';
 import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
 import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { createShadowDepthStageMethods } from './runtime/shadowDepthStage.js';
@@ -3953,6 +3954,7 @@ function liveFlyDefersOnGlassAuthoredUpgrade(state) {
 }
 
 function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state, scan = null) {
+  if (entity?.type === 'fauna') owner?._syncFaunaSpeciesAppearance?.(entity, mesh);
   if (ceresWorkfleetRole(entity) || mesh?.userData?.appearanceReplacementFailure) {
     owner?._retryAppearanceReplacement?.(entity, mesh);
   }
@@ -9157,13 +9159,21 @@ const RIGID_ASHLINE_RIG_MOTION_IDENTITY = Object.freeze({
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_RIG', rigId: 'hull', bindingId: 'hull_core',
 });
 
-// Each sibling is pinned to its own package hash and the same verified source motion bank.
+// Each sibling is pinned to its shipping manifest's package hash and the same verified source
+// motion bank. A release rebuild updates the generated manifest; a second copied hash here went
+// stale and silently sent all four Ashline distance tiers back to individual hull draws.
+function rigidAshlineLodIdentity(url, packageAssetId, motionIdentity) {
+  const pilot = renderPackagePilotForSourceUrl(url);
+  if (pilot?.assetId !== packageAssetId || pilot.runtimeAssetId !== motionIdentity.sourceAssetId
+      || !/^[0-9a-f]{64}$/.test(pilot.expectedContentHash || '')) return null;
+  return Object.freeze({ ...motionIdentity, packageAssetId, packageContentHash: pilot.expectedContentHash });
+}
 const RIGID_ASHLINE_LOD_IDENTITIES = new Map([
-  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod1', packageContentHash: 'dc52d2b8c5a964e982b2886e6912895ff8661eaffbf860e7519055196cb6b64d' })],
-  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod2', packageContentHash: '1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42' })],
-  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod1', packageContentHash: 'b39460ff39cf194c9cd5ea9c9538c999bfe324527ece5a11bc3b34e1723f2c81' })],
-  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod2', packageContentHash: 'cdebb6c8a30e25b81c51d778598ce7ba51d3c70aab6fa2427f2e65455f59b631' })],
-]);
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', 'sf.render.ashline-dart-lod1', RIGID_ASHLINE_CURRENT_MOTION_IDENTITY],
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', 'sf.render.ashline-dart-lod2', RIGID_ASHLINE_CURRENT_MOTION_IDENTITY],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', 'sf.render.ashline-rig-lod1', RIGID_ASHLINE_RIG_MOTION_IDENTITY],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', 'sf.render.ashline-rig-lod2', RIGID_ASHLINE_RIG_MOTION_IDENTITY],
+].map(([url, assetId, motionIdentity]) => [url, rigidAshlineLodIdentity(url, assetId, motionIdentity)]));
 function rigidAshlineIdentityForUrl(owner, url) {
   if (url === RIGID_ASHLINE_HULL_URL) return owner._ashlineHullBatchEnabled === false
     ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
@@ -10452,8 +10462,8 @@ export const render = {
     this.rockFamilyLibraryReady = preloadRockFamilyLibrary(renderer);
     // Alien fauna tissue and Verge-Layer machine nacre decode alongside (never fatal; flat colours on failure).
     this.creatureSkinLibraryReady = preloadCreatureSkinLibrary(renderer);
-    // Terrain / cloud relief tiles for the colossal planet-site bodies (never fatal; plain baked surface on failure).
-    this.planetDetailLibraryReady = preloadPlanetDetailLibrary(renderer);
+    // Planet-site relief tiles decode only when a site needs them; other modes pay no catalog cost.
+    this.planetDetailLibraryReady = preloadPlanetDetailLibrary(renderer, { onDemand: true });
     // The opening only waits 4 s for these maps (prepareOpeningGpuResources races them against a
     // timeout), and the onboarding rescue rock spawns the moment flight starts. On a slow decode
     // that rock used to publish the bare white material and keep it for the session. When the
@@ -28065,6 +28075,35 @@ export const render = {
     return this._replaceShipAppearance(id, options);
   },
 
+  // Species can change on an existing fauna entity (the Bolus valve becomes a
+  // suture). Keep its current root until the same staged admission used for
+  // ship refits has prepared the new graph. The residency poll calls this once
+  // per retained entity, so an unchanged or already-pending species does no work.
+  _syncFaunaSpeciesAppearance(entity, mesh) {
+    const speciesId = entity?.data?.ecology?.speciesId;
+    const presentedSpeciesId = mesh?.userData?.speciesId;
+    if (!speciesId || !presentedSpeciesId || mesh.userData.kind !== 'fauna'
+        || this.state?.entities?.get(entity.id) !== entity || entity.alive === false
+        || this._meshes.get(entity.id) !== mesh || entity.mesh !== mesh) return false;
+    const pending = this._appearanceReplacements?.get(entity.id);
+    if (speciesId === presentedSpeciesId) {
+      if (pending?.faunaSpeciesId && pending.faunaSpeciesId !== speciesId) {
+        pending.cancel('fauna-species-reverted');
+      }
+      return false;
+    }
+    if (pending?.faunaSpeciesId === speciesId) return false;
+    const failure = mesh.userData.appearanceReplacementFailure;
+    if (failure) {
+      // The ordinary retry owner supplies bounded backoff for this request. A
+      // different species is a new request and must not inherit that failure.
+      if (failure.isCurrentOwner?.(entity) !== false) return false;
+      delete mesh.userData.appearanceReplacementFailure;
+    }
+    void this._replaceShipAppearance(entity.id);
+    return true;
+  },
+
   _replaceShipAppearance(id, options = {}) {
     if (this._sectorBoundaryPreparations?.has(id)) {
       this._sectorBoundaryPreparations.abortEntity(id, 'ship-rebuild-during-sector-prewarm');
@@ -28076,8 +28115,10 @@ export const render = {
     if (!e || e.alive === false) return;
     const occupantGeneration = e.occupantGeneration;
     const requestedDefId = e.data?.defId || null;
+    const requestedFaunaSpeciesId = e.type === 'fauna' ? e.data?.ecology?.speciesId || null : null;
     const compositionFingerprint = authoredCompositionFingerprintForEntity(e);
     const compositionIsCurrent = () => (e.data?.defId || null) === requestedDefId
+      && (e.type !== 'fauna' || (e.data?.ecology?.speciesId || null) === requestedFaunaSpeciesId)
       && authoredCompositionFingerprintForEntity(e) === compositionFingerprint;
     const pending = this._appearanceReplacements || (this._appearanceReplacements = new Map());
     pending.get(id)?.cancel('appearance-superseded');
@@ -28105,6 +28146,7 @@ export const render = {
     const preparationSignature = authoredBoundaryPreparationSignature(nativeRenderer, state, contextGeneration);
     const scope = createAsyncAdmission({ label: `appearance:${id}` });
     const record = { boundary: null, scope, committed: false, gpuWork: [], gpuPending: 0,
+      faunaSpeciesId: requestedFaunaSpeciesId,
       phase: priorRetirement ? 'waiting-for-gpu-retirement' : 'building' };
     record.cancel = (reason) => {
       scope.abort(reason);
@@ -28390,7 +28432,8 @@ export const render = {
         || this._appearanceReplacements?.has(entity.id)
         || this._appearanceRetirements?.has(entity.id)
         || this._meshes.get(entity.id) !== mesh || entity.mesh !== mesh) return false;
-    this.rebuildShipMesh(entity.id, { retry: true });
+    if (entity.type === 'fauna') this._replaceShipAppearance(entity.id, { retry: true });
+    else this.rebuildShipMesh(entity.id, { retry: true });
     return true;
   },
 

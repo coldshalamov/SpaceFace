@@ -162,8 +162,7 @@ export function endRenderEntityFrame(frame) {
       visited += 1;
       const id = step.value;
       const record = frame.byId.get(id);
-      if (!record || record.seenFrame === frame.frameId) continue;
-      frame.byId.delete(id);
+      if (record && record.seenFrame !== frame.frameId) frame.byId.delete(id);
       if (visited >= 256) break;
     }
   } else if (frame._evictIter) {

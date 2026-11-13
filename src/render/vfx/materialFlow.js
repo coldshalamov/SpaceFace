@@ -144,7 +144,13 @@ function collide(m, s, life, step, oldX, oldZ, contacts, count) {
     if (!(radius > 0 && strength > 0)) continue;
     const bx = contacts[o] + contacts[o + 3] * time, bz = contacts[o + 1] + contacts[o + 4] * time;
     const ax = px - (bx - contacts[o + 3] * step), az = pz - (bz - contacts[o + 4] * step);
-    let dx = wx - bx, dz = wz - bz, d = Math.hypot(dx, dz);
+    let dx = wx - bx, dz = wz - bz;
+    // The relative segment cannot touch the circular body when both endpoints are beyond
+    // the same side of its bounding square. Most free parcels are away from the bodies in
+    // their shared contact snapshot, so reject those before the distance and swept test.
+    if ((ax > radius && dx > radius) || (ax < -radius && dx < -radius)
+      || (az > radius && dz > radius) || (az < -radius && dz < -radius)) continue;
+    let d = Math.hypot(dx, dz);
     // Relative swept circle: a fast small parcel cannot tunnel through a moving body.
     if (d >= radius) {
       const qx = dx - ax, qz = dz - az, A = qx * qx + qz * qz;
@@ -188,7 +194,9 @@ function resolveFootprint(m,s,contacts,count){
     const o=i*8,r=contacts[o+2];
     if(!(r>0&&contacts[o+6]>0))continue;
     const bx=contacts[o]+contacts[o+3]*s[6],bz=contacts[o+1]+contacts[o+4]*s[6];
-    if(Math.hypot(wx-bx,wz-bz)<r-1e-6){s[14]=0;return;}
+    const dx=wx-bx,dz=wz-bz;
+    if(dx>r||dx< -r||dz>r||dz< -r)continue;
+    if(Math.hypot(dx,dz)<r-1e-6){s[14]=0;return;}
   }
 }
 /** Resolve initial overlaps before the very first drawn frame, without consuming lifetime. */

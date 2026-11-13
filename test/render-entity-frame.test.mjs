@@ -112,6 +112,32 @@ test('one traversal retains records, reclaims membership, and detects visibility
   assert.deepEqual(frame.authored, [], 'hidden owners leave the authored frame set for cleanup');
 });
 
+test('record eviction bounds visits through live entries and eventually reclaims a late stale entry', () => {
+  const frame = createRenderEntityFrame();
+  const mesh = new THREE.Group();
+  const entities = Array.from({ length: 1025 }, (_, id) => ({ id, alive: true, type: 'ship' }));
+  beginRenderEntityFrame(frame);
+  for (const entity of entities) classifyRenderEntity(frame, entity, mesh);
+  endRenderEntityFrame(frame);
+
+  let visits = 0;
+  const keys = frame.byId.keys.bind(frame.byId);
+  frame.byId.keys = () => {
+    const iterator = keys();
+    return { next() { visits++; return iterator.next(); } };
+  };
+
+  for (let pass = 0; pass < 5; pass++) {
+    beginRenderEntityFrame(frame);
+    for (let i = 0; i < 1024; i++) classifyRenderEntity(frame, entities[i], mesh);
+    visits = 0;
+    endRenderEntityFrame(frame);
+    assert.ok(visits <= 256, `pass ${pass}: visited ${visits} entries`);
+    for (let i = 0; i < 1024; i++) assert.ok(frame.byId.has(i), `live id ${i} was evicted`);
+  }
+  assert.equal(frame.byId.has(1024), false, 'late stale entry is eventually reclaimed');
+});
+
 test('authored instance pools consume bounded frame records, clean omissions, and retain fallback sync', () => {
   assert.equal(typeof partsLibrary.runAuthoredInstanceFrameContractProbe, 'function',
     'parts library exposes a real-object contract probe for the retained frame path');
