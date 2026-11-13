@@ -40,6 +40,7 @@ import {
   CHARACTER_INTERRUPTS, SHIP,
 } from '../data/narrative.js';
 import { SECTORS } from '../data/sectors.js';
+import { elroyLedgerNote, reconcileElroyLedgerRows } from '../story/campaign47a/elroyLedger.js';
 import {
   ORRIN_WITNESS_CONTACT_ID,
   ORRIN_WITNESS_SECTOR_ID,
@@ -1728,9 +1729,11 @@ export const story = {
       s.kurtzLedgerRows = [
         { column: 'BENEFICIARY', name: 'VALE, D.', note: 'ADMINISTRATIVE COUNTERPARTY' },
         { column: 'COUNTERPARTY', name: callsign, note: `PRIOR TRANSPONDER ${priorXponder} — FILED PRE-B0` },
-        { column: 'COUNTERPARTY', name: 'ELROY', note: 'DECEASED (B2) — MAINTENANCE / PIT ENGINEERING' },
+        { column: 'COUNTERPARTY', name: 'ELROY', note: elroyLedgerNote(s) },
       ];
     }
+    // Reconcile only our generated Elroy row in older saves; retain unrelated/custom evidence.
+    s.kurtzLedgerRows = reconcileElroyLedgerRows(s.kurtzLedgerRows, s);
     if (action === 'takeLedger' || action === 'openLedger') {
       // Add the ledger as a persistent cargo item (PERSONAL EFFECTS — 1 UNIT / 0.4t).
       this._addPersistentCargo(KURTZ.ledgerCargoId, KURTZ.ledgerName, 1, KURTZ.ledgerMass);

@@ -437,7 +437,7 @@ export const BEAT_CONTENT = [
   },
   { // B7 — THE DEEP REACH
     beat: 7, phase: 3,
-    hint: 'Deep Reach operation, then Ashfall desk. Ledger COUNTERPARTY: your prior transponder; Elroy DECEASED (B2). Five dispositions — not a title.',
+    hint: 'Deep Reach operation, then Ashfall desk. Ledger COUNTERPARTY: your prior transponder; Elroy B2 disposition. Five dispositions — not a title.',
     graffiti: [
       { line: GRAFFITI.THEY_ALWAYS_KNEW, where: 'bulkhead' },
       // The algorithm line lands here, beside the Kurtz ledger: the horror is that nothing was wrong.
