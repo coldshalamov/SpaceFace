@@ -150,6 +150,17 @@ test('the HUD tracker paints the act as its own line above the objective', () =>
   assert.equal(ended.actLine, '', 'a closed book has no live act to name');
 });
 
+test('temporary Circuits keep their gate guidance without campaign tracker text', () => {
+  const state = { story: { beatIndex: 0, flags: {} } };
+  const gate = { owner: 'navigation', waypoint: { reason: 'Gate 1/16', label: 'Textile Belt' } };
+  const racing = flightDestinationSurface(state, gate, true);
+  assert.equal(racing.show, true);
+  assert.match(racing.line, /^Gate 1\/16/);
+  assert.equal(racing.actLine, '');
+  assert.equal(flightDestinationSurface(state, { owner: 'story' }, true).show, false);
+  assert.match(flightDestinationSurface(state, gate).actLine, /^ACT I /);
+});
+
 function slot(overrides = {}) {
   return {
     id: 'mo_procedural', type: 'cargo_delivery', title: 'Open Manifest — food to Ceres',

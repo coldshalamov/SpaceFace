@@ -791,8 +791,11 @@ function journeyActTrackerFullLine(state) {
  * One painted destination for the live flight tracker: where, then a line break, then the readings
  * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
  */
-export function flightDestinationSurface(state, command) {
-  const actLine = journeyActTrackerLine(state);
+export function flightDestinationSurface(state, command, temporaryCircuit = false) {
+  const actLine = temporaryCircuit ? '' : journeyActTrackerLine(state);
+  if (temporaryCircuit && command?.owner === 'story') {
+    return { show: false, line: '', urgent: false, actLine };
+  }
   // Crucible runs are sealed from campaign navigation. Keep the mission tracker quiet at its
   // owner, rather than relying only on the run-focus stylesheet to catch inherited story state.
   if (state && state.run && state.run.kind === 'survival' && isRunSealed(state)) {
@@ -2237,7 +2240,14 @@ export function createHud(ctx, alerts) {
   if (mtTime) mtTime.setAttribute('aria-label', 'Tutorial caption');
   const objectiveRecall = createObjectiveRecall();
   let lastFlightObjectiveOwner = null;
+  let temporaryCircuit = false;
   if (ctx.bus) {
+    // The simulation's corridor registration is local to its realm. Use the
+    // same public launch and exit events as the racing HUD.
+    on('game:new', opts => { temporaryCircuit = opts?.racingSession === true; });
+    for (const event of ['game:load', 'save:restoring', 'game:exitToMenu']) {
+      on(event, () => { temporaryCircuit = false; });
+    }
     // FB-065 — the three condition states the sim already emits, surfaced on the objective
     // slot this same tracker owns. Progress never voices; the break voices once at mission
     // priority (announceTermBreak skips the already-voiced 'forfeit' half).
@@ -6018,11 +6028,10 @@ export function createHud(ctx, alerts) {
         const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
         setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
       }
-      // Open-world radio (news ticker, hails) has nothing to say inside a Swarm arena — 'TRAGEDY AT HELIOS' printed
-      // over the round panel (lead first-hour look). The housing comes back when the run ends.
+      // Arcade fights and temporary circuits carry their own flight context.
       {
         const swarmRadioOff = !!(state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
-        const want = swarmRadioOff ? 'none' : '';
+        const want = swarmRadioOff || temporaryCircuit ? 'none' : '';
         if (commsTape.style.display !== want) commsTape.style.display = want;
       }
       updateTetherFeedback(tether, latching, ml);
@@ -6052,7 +6061,7 @@ export function createHud(ctx, alerts) {
       const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
       const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
-      const dest = flightDestinationSurface(state, command);
+      const dest = flightDestinationSurface(state, command, temporaryCircuit);
       if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
         // Recall can be pinned or dismissed while a course runs; it must not resurrect that
         // course after the public attempt has ended or the pilot has left it.
@@ -6090,7 +6099,7 @@ export function createHud(ctx, alerts) {
       setDisplay(mtTitle, !!actLine);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
       // the objective's verb, distance and recall state above are untouched.
-      const showCaption = paintTutorialTrackerCaption(mtTime, state);
+      const showCaption = paintTutorialTrackerCaption(mtTime, temporaryCircuit ? null : state);
       if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
       if (!showObjective && !showCaption) {
         if (!mtDetails.hidden) setMissionDetails(false);

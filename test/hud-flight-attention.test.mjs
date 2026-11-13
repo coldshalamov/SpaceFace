@@ -228,11 +228,11 @@ test('one destination line already carries distance and ETA', () => {
     HUD_SRC.indexOf('// --- mission tracker @10Hz ---'),
     HUD_SRC.indexOf('// --- credits / cargo / objectives'),
   );
-  assert.match(paint, /flightDestinationSurface\(state, command\)/);
+  assert.match(paint, /flightDestinationSurface\(state, command, temporaryCircuit\)/);
   assert.match(paint, /setText\(mtTitle,\s*actLine\)/);
   assert.match(paint, /setDisplay\(mtTitle,\s*!!actLine\)/);
   // mtTime's display is owned by paintTutorialTrackerCaption; no redundant pre-hide.
-  assert.match(paint, /paintTutorialTrackerCaption\(mtTime,\s*state\)/);
+  assert.match(paint, /paintTutorialTrackerCaption\(mtTime, temporaryCircuit \? null : state\)/);
   assert.doesNotMatch(paint, /setDisplay\(mtTime,\s*false\)/);
   assert.doesNotMatch(paint, /mtMarkerLine\(/);
   assert.doesNotMatch(paint, /coreText\('currentObjective'\)/);
