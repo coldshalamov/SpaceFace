@@ -72,7 +72,7 @@ for (const option of ['bloomLevels', 'maxLevels']) {
       }
       assert.equal(getPostRenderTargetTelemetry().renderTargetAllocationsTotal, allocationsBefore);
       assert.equal(steadyDisposals, 0);
-      assert.equal(h.draws.length, 18, 'each wide frame has scene, four bloom passes, composite');
+      assert.equal(h.draws.length, 27, 'each wide frame has scene, four bloom downsamples, three upsamples, composite');
       assert.equal(disposed.length, 3);
     } finally { bloom.dispose(); }
   });

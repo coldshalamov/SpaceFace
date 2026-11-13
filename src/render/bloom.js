@@ -1234,27 +1234,82 @@ const DOWNSAMPLE_FRAG = /* glsl */`
   }
 
   // Sample and (optionally) bright-pass in one step so the deepest taps are already thresholded.
+  // Taps clamp inside the active content sub-rect so a dyn-res frame never gathers stale texels.
   vec3 tap(vec2 uv) {
-    vec3 c = texture2D(tDiffuse, uv).rgb;
+    vec3 c = texture2D(tDiffuse, clamp(uv, uUvOffset, uUvOffset + uUvScale - uTexel * 0.5)).rgb;
     return uBright > 0.5 ? brightPass(c) : max(c, vec3(0.0));
   }
 
+  // Karis average (Brian Karis, "Real Shading in Unreal Engine 4"): on the first level each 2x2
+  // group is weighted by 1/(1+luma), so a single sub-pixel spark cannot flash the whole halo on and
+  // off as it crosses texels. Deeper levels are already smooth and use the plain average.
+  float karisWeight(vec3 c) {
+    return uBright > 0.5 ? 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722))) : 1.0;
+  }
+
   void main() {
-    // Dyn-res content lives in a viewport sub-rect of a max-sized target. Remap the
-    // fullscreen-quad UV into that sub-rect before gathering; uTexel is one allocated
+    // LOOK-04: the 13-tap downsample from Jimenez, "Next Generation Post Processing in Call of Duty:
+    // Advanced Warfare" (SIGGRAPH 2014) — the filter Unreal and HDRP bloom are built on. Five
+    // overlapping 2x2 boxes (one centre box at 0.5, four corner boxes at 0.125) give a wide,
+    // round, alias-free footprint instead of a box that shimmers and squares off.
+    // Dyn-res content lives in a viewport sub-rect of a max-sized target; uTexel is one allocated
     // texel in texture UV (equal to one content pixel when packed at the origin).
     vec2 base = vUv * uUvScale + uUvOffset;
     vec2 t = uTexel;
-    vec2 tl = vec2(-1.0, -1.0) * t;
-    vec2 tr = vec2( 1.0, -1.0) * t;
-    vec2 bl = vec2(-1.0,  1.0) * t;
-    vec2 br = vec2( 1.0,  1.0) * t;
-    vec3 sum  = tap(base)            * (4.0 / 8.0);
-    sum += tap(base + tl)            * (1.0 / 8.0);
-    sum += tap(base + tr)            * (1.0 / 8.0);
-    sum += tap(base + bl)            * (1.0 / 8.0);
-    sum += tap(base + br)            * (1.0 / 8.0);
+    vec3 a = tap(base + t * vec2(-2.0, -2.0));
+    vec3 b = tap(base + t * vec2( 0.0, -2.0));
+    vec3 c = tap(base + t * vec2( 2.0, -2.0));
+    vec3 d = tap(base + t * vec2(-1.0, -1.0));
+    vec3 e = tap(base + t * vec2( 1.0, -1.0));
+    vec3 f = tap(base + t * vec2(-2.0,  0.0));
+    vec3 g = tap(base);
+    vec3 h = tap(base + t * vec2( 2.0,  0.0));
+    vec3 i = tap(base + t * vec2(-1.0,  1.0));
+    vec3 j = tap(base + t * vec2( 1.0,  1.0));
+    vec3 k = tap(base + t * vec2(-2.0,  2.0));
+    vec3 l = tap(base + t * vec2( 0.0,  2.0));
+    vec3 m = tap(base + t * vec2( 2.0,  2.0));
+    vec3 g0 = (d + e + i + j) * 0.25;
+    vec3 g1 = (a + b + f + g) * 0.25;
+    vec3 g2 = (b + c + g + h) * 0.25;
+    vec3 g3 = (f + g + k + l) * 0.25;
+    vec3 g4 = (g + h + l + m) * 0.25;
+    float w0 = 0.5 * karisWeight(g0);
+    float w1 = 0.125 * karisWeight(g1);
+    float w2 = 0.125 * karisWeight(g2);
+    float w3 = 0.125 * karisWeight(g3);
+    float w4 = 0.125 * karisWeight(g4);
+    vec3 sum = (g0 * w0 + g1 * w1 + g2 * w2 + g3 * w3 + g4 * w4) / max(w0 + w1 + w2 + w3 + w4, 1e-5);
     gl_FragColor = vec4(sum, 1.0);
+  }
+`;
+
+// LOOK-04: progressive upsample (Jimenez 2014 / Unreal / HDRP). Walking back up the pyramid, each
+// level receives a 3x3 tent-filtered read of the level below it, added in place with ONE/ONE
+// blending. Every level is therefore blurred again at its own resolution on the way up, so the
+// final halo is a smooth, wide falloff of light — never a coarse texel stretched into a square.
+// uScatter is how much of the wider light this level keeps (the halo's shape across scales).
+const UPSAMPLE_FRAG = /* glsl */`
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D tDiffuse; // the coarser level, already holding everything below it
+  uniform vec2 uTexel;        // 1.0 / allocated size of the coarser level
+  uniform vec2 uUvScale;      // coarser level contentSize / allocatedSize
+  uniform float uScatter;
+
+  vec3 tapUp(vec2 uv) {
+    return texture2D(tDiffuse, clamp(uv, vec2(0.0), uUvScale - uTexel * 0.5)).rgb;
+  }
+
+  void main() {
+    vec2 base = vUv * uUvScale;
+    vec2 t = uTexel;
+    vec3 sum = tapUp(base) * 4.0;
+    sum += (tapUp(base + vec2(-t.x, 0.0)) + tapUp(base + vec2(t.x, 0.0))
+          + tapUp(base + vec2(0.0, -t.y)) + tapUp(base + vec2(0.0, t.y))) * 2.0;
+    sum +=  tapUp(base + vec2(-t.x, -t.y)) + tapUp(base + vec2(t.x, -t.y))
+          + tapUp(base + vec2(-t.x,  t.y)) + tapUp(base + vec2(t.x,  t.y));
+    gl_FragColor = vec4(sum * (uScatter / 16.0), 1.0);
   }
 `;
 
@@ -1267,6 +1322,24 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 // halo tightens around the emitter instead of laying a low fog over neighbouring edges.
 const BLOOM_MID_WEIGHT = 0.40;
 const BLOOM_WIDE_WEIGHT = 0.14;
+// LOOK-04 upsample chain: how much each pyramid level (1/2, 1/4, 1/8, 1/16) adds to the final halo.
+// Owner 2026-11-13: a glow should throw a pool of light that splays over the area around it, so
+// the wider levels carry more than the old 1/8 + 1/16 reads did. The total for a flat bright field
+// is renormalized to the old 1 + 0.40 + 0.14, so strength, BLOOM_PYRAMID_NORM and every sector
+// profile keep their meaning; only the shape of the falloff changes (tighter core, longer tail).
+export const BLOOM_LEVEL_CONTRIBUTION = Object.freeze([1.0, 0.50, 0.38, 0.28]);
+export function bloomChainWeights(levels) {
+  const n = Math.max(0, Math.min(BLOOM_LEVEL_CONTRIBUTION.length, levels | 0));
+  const scatter = [];
+  let raw = n > 0 ? BLOOM_LEVEL_CONTRIBUTION[0] : 0;
+  for (let i = 1; i < n; i++) {
+    scatter.push(BLOOM_LEVEL_CONTRIBUTION[i] / BLOOM_LEVEL_CONTRIBUTION[i - 1]);
+    raw += BLOOM_LEVEL_CONTRIBUTION[i];
+  }
+  const target = n === 0 ? 0 : 1 + (n > 1 ? BLOOM_MID_WEIGHT : 0) + (n > 2 ? BLOOM_WIDE_WEIGHT : 0);
+  // scatter[i] is the weight with which level i+1 is added into level i on the way up.
+  return { scatter, composite: raw > 0 ? target / raw : 0 };
+}
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
@@ -1306,15 +1379,6 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform vec2 uUvOffset;
   uniform vec2 uPresentationScale; // presentation pixels per composite pixel (CAS input can be smaller)
 
-  vec3 spaceBloomSoft(sampler2D t, vec2 uv, vec2 texel) {
-    vec2 hi = uUvScale - texel * 0.5;
-    vec3 c = texture2D(t, clamp(uv + vec2( texel.x,  texel.y), vec2(0.0), hi)).rgb;
-    c += texture2D(t, clamp(uv + vec2(-texel.x,  texel.y), vec2(0.0), hi)).rgb;
-    c += texture2D(t, clamp(uv + vec2( texel.x, -texel.y), vec2(0.0), hi)).rgb;
-    c += texture2D(t, clamp(uv + vec2(-texel.x, -texel.y), vec2(0.0), hi)).rgb;
-    return c * 0.25;
-  }
-
   void main() {
     // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
     // still use screen vUv so corner treatment follows the displayed frame, not the RT packing.
@@ -1332,17 +1396,14 @@ const COMPOSITE_FRAG = /* glsl */`
     // Participating media transports linear HDR radiance before the one exposure/tone-map/encode.
     // Vacuum is an exact uniform-disabled path; bloom never stands in for surface illumination.
     scene = composeNocturneAtmosphere(scene, (sceneUv - uUvOffset) / uUvScale, sceneUv);
-    // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
-    // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
+    // LOOK-04: the upsample chain has already folded every pyramid level into tBloom0 (half res,
+    // tent-filtered at each scale), so the halo is one read here. Pyramid targets share the same
+    // content/allocated ratio, so one UV remap serves all. tBloom1/2 remain bound for the
+    // levels==1 path and cost nothing while their weights are zero.
     vec3 bloom = vec3(0.0);
-    // These weights are uniform for the whole draw. A disabled pyramid level
-    // contributes exactly zero, so avoid its texture read on every output pixel.
     if (uBloomW0 != 0.0) bloom += texture2D(tBloom0, sceneUv).rgb * uBloomW0;
-    // LOOK-04 (owner: "big square pixel pieces going out from a center"): the mid level is 1/8 and the wide level
-    // 1/16 of the scene, so one bilinear read stretched every halo texel into an 8–16 px square. Four diagonal
-    // bilinear taps one level-texel out average a 4x4 footprint — a soft tent — for 8 extra reads of tiny textures.
-    if (uBloomW1 != 0.0) bloom += spaceBloomSoft(tBloom1, sceneUv, uSceneTexel * 8.0) * uBloomW1;
-    if (uBloomW2 != 0.0) bloom += spaceBloomSoft(tBloom2, sceneUv, uSceneTexel * 16.0) * uBloomW2;
+    if (uBloomW1 != 0.0) bloom += texture2D(tBloom1, sceneUv).rgb * uBloomW1;
+    if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy * uPresentationScale, uExposure, uAces,
@@ -2517,6 +2578,20 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uKnee: { value: knee },
     uBright: { value: 1.0 },                                // 1.0 only on level 0
   });
+  const upsampleMat = mkMat(UPSAMPLE_FRAG, {
+    tDiffuse: { value: null },
+    uTexel: { value: new THREE.Vector2(1 / W, 1 / H) },     // set per level in render()
+    uUvScale: { value: new THREE.Vector2(1, 1) },
+    uScatter: { value: 1.0 },
+  });
+  // ONE/ONE: each level keeps its own light and gains the wider light from below it.
+  upsampleMat.blending = THREE.CustomBlending;
+  upsampleMat.blendEquation = THREE.AddEquation;
+  upsampleMat.blendSrc = THREE.OneFactor;
+  upsampleMat.blendDst = THREE.OneFactor;
+  upsampleMat.blendSrcAlpha = THREE.ZeroFactor;
+  upsampleMat.blendDstAlpha = THREE.OneFactor;
+  upsampleMat.transparent = true;
   const compositeMat = mkMat(COMPOSITE_FRAG, {
     tScene:     { value: null },
     tBloom0:    { value: null },
@@ -2665,6 +2740,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   function releaseBloomSceneSamplers() {
     downsampleMat.uniforms.tDiffuse.value = null;
+    upsampleMat.uniforms.tDiffuse.value = null;
     compositeMat.uniforms.tScene.value = null;
     compositeMat.uniforms.tBloom0.value = null;
     compositeMat.uniforms.tBloom1.value = null;
@@ -3096,6 +3172,22 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       if (tier1) tier1.countRenderPassPixels(dstContentW * dstContentH, 'bloom-downsample');
       src = down[i].texture;
     }
+    // LOOK-04 upsample chain: deepest to shallowest, tent-filter level i+1 into level i in place.
+    const { scatter } = bloomChainWeights(levels);
+    for (let i = levels - 2; i >= 0; i--) {
+      const srcAllocW = Math.max(1, W >> (i + 2));
+      const srcAllocH = Math.max(1, H >> (i + 2));
+      const srcContentW = Math.max(1, contentW >> (i + 2));
+      const srcContentH = Math.max(1, contentH >> (i + 2));
+      const dstContentW = Math.max(1, contentW >> (i + 1));
+      const dstContentH = Math.max(1, contentH >> (i + 1));
+      upsampleMat.uniforms.tDiffuse.value = down[i + 1].texture;
+      upsampleMat.uniforms.uTexel.value.set(1 / srcAllocW, 1 / srcAllocH);
+      upsampleMat.uniforms.uUvScale.value.set(srcContentW / srcAllocW, srcContentH / srcAllocH);
+      upsampleMat.uniforms.uScatter.value = scatter[i];
+      blit(upsampleMat, down[i], dstContentW, dstContentH);
+      if (tier1) tier1.countRenderPassPixels(dstContentW * dstContentH, 'bloom-upsample');
+    }
   }
 
   function renderCompositePass(tier1, bloomActive) {
@@ -3121,9 +3213,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       compositeMat.uniforms.tNocturneDepth.value = rtScene.texture;
       compositeMat.uniforms.tNocturneSceneDepth.value = rtScene.texture;
     }
-    compositeMat.uniforms.uBloomW0.value = bloomActive ? 1.0 : 0.0;
-    compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_MID_WEIGHT : 0.0;
-    compositeMat.uniforms.uBloomW2.value = bloomActive && levels > 2 ? BLOOM_WIDE_WEIGHT : 0.0;
+    // The upsample chain folded every level into down[0]; one read, renormalized.
+    compositeMat.uniforms.uBloomW0.value = bloomActive ? bloomChainWeights(levels).composite : 0.0;
+    compositeMat.uniforms.uBloomW1.value = 0.0;
+    compositeMat.uniforms.uBloomW2.value = 0.0;
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
@@ -3266,6 +3359,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         // the opening receipt includes this renderer-owned buffer; the first visible bloom pass
         // must never be the quad's first GPU admission.
         if (typeof renderer.render === 'function') renderQuadScene(renderer, quadScene, quadCam);
+        // The upsample program links here too, so the first bloom frame never links it in-frame.
+        quadMesh.material = upsampleMat;
+        if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
       }
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
@@ -3369,6 +3465,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       ...down,
       quadGeo,
       downsampleMat,
+      upsampleMat,
       compositeMat,
       casMat,
       contrastLutTexture,
@@ -3377,7 +3474,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function openingProgramMaterials() {
-    return [downsampleMat, compositeMat, casMat, ...(atmosphere ? atmosphere.openingProgramMaterials() : [])];
+    return [downsampleMat, compositeMat, casMat, upsampleMat, ...(atmosphere ? atmosphere.openingProgramMaterials() : [])];
   }
 
   function setSize(w, h, displayW, displayH) {
@@ -3614,6 +3711,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       releaseContrastLutTexture();
     }
     downsampleMat.dispose();
+    upsampleMat.dispose();
     compositeMat.dispose();
     casMat.dispose();
     releaseSharedQuadGeometry();

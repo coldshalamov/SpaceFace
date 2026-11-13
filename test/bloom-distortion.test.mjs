@@ -46,7 +46,7 @@ test('default bloom has no distortion target or draw without an attached produce
     }
     bloom.render(new THREE.Scene(), new THREE.PerspectiveCamera());
     // scene + the four-level halo pyramid (1/2, 1/4, 1/8, 1/16) + composite.
-    assert.equal(h.draws.length, 6, 'the existing scene/pyramid/composite cost is unchanged');
+    assert.equal(h.draws.length, 9, 'the existing scene/pyramid/upsample/composite cost is unchanged');
     assert.equal(bloom.diagnostics().renderTargetCount, 5);
     assert.equal(bloom.diagnostics().distortionAttached, false);
     assert.equal(bloom.diagnostics().passFamilies.distortion, 0);
@@ -64,7 +64,7 @@ test('native weapon and Well producers share one default-route target, then slee
     const target = bloom.contextLossResources().find((rt) => rt.texture.name === 'Bloom:Distortion');
     assert.ok(target);
     bloom.render(new THREE.Scene(), camera);
-    assert.equal(h.draws.length, 6, 'attached idle pools add no draw');
+    assert.equal(h.draws.length, 9, 'attached idle pools add no draw');
     activate(presenter.distortion);
     activate(presenter.wellDistortion);
     h.draws.length = 0;
