@@ -309,3 +309,77 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   found the target activated away from the ship (1,227 WU) and captured zero visible target
   frames. This does not attribute the visibility gap to player relocation. Its separate Helios
   rescue rock remained late by 891 ms. See `2026-11-13T13-29-39-195Z.json`.
+
+## Shared flight costs under thrust, turn, and fire
+
+The public Electron Adventure and Gauntlet routes used held W, D, and primary fire through the
+game lock. The comparison pins the shared spatial hash and retained opaque batch modules at
+`5d2ef99c92eb` and `fa30330f4048`. The other modules and assets come from the shared checkout.
+Successful draws and moving ship poses are measured at submission. Hardware display scanout
+is outside the probe. Both arms of each route closed cleanly, and their PNGs were opened.
+
+| Active route window | World draws/s | Drawn ship gap p95 | Worst drawn ship gap |
+|---|---:|---:|---:|
+| Adventure, 24 s | 11.33 → 10.03 | 156 → 172 ms | 258 → 213 ms |
+| Gauntlet, first 8 s | 10.15 → 12.78 | 148 → 121 ms draw gap | 350 → 190 ms draw gap |
+
+Adventure fired 54 shots in each arm. Fresh poses fell from 9.49 to 8.95/s. There were zero
+signed backtracks in 227 and 200 assessable intervals. The route had different combat states
+and no live performance win. The before arm shed 600 fixed ticks in 24 s with zero measured
+backpressure and 12 ms held for a missed presentation heartbeat. Its measured worker-step
+window was 25.13 ms median and 41.47 ms p95 against a 16.67 ms target. Preparing and drawing
+the world used 29.43 ms median on the main thread. External callback gaps also mattered.
+
+Gauntlet's opening segment improved directionally. The before arm reached Rearm at 9.8 s.
+The after arm continued through 18 s. Signed movement direction had too few assessable
+intervals for a conclusion. The initial probe used the wrong ruleset selector and timed out at
+the door. The corrected run used the public Gauntlet tile. The Circuit filter was briefly
+present in the unpinned checkout during Gauntlet, so the comparison cannot isolate source effect.
+See `.devshots/fleet/coordination/player-freeze/shared-owners-pair-pair-summary.json` and
+`shared-owners-gauntlet-pair-summary.json`.
+
+- `1e66a7186520` shortened 105,600 shared radius queries from 537 to 214 ms in the isolated
+  replay with exact ordered results and diagnostics. `fa30330f4048` removes redundant
+  retained geometry and unused texture-slot checks. The distinct-material fixture measured
+  1,313 to 1,029 ms across 180 frames before adding shared-geometry reuse.
+- `68fb41cd6a98` admits a flying rock when its visible footprint reaches glass and simplifies
+  per-entity activity bookkeeping. The original code failed the boundary regression. The
+  corrected code passed 61 checks. The first matched native Adventure classifier replay used
+  354 to 296 ms over 144 ticks with identical motion, pins, and 14 shot receipts before adding
+  the boundary fix. Live rock coverage remains open.
+- `395256f5ff06` removes the Circuit owner scan for foreign cargo impacts. `745f433d3b66`
+  avoids collision proxy resolution for ineligible bodies and reuses its computed substance.
+  The 14 Circuit and 43 collision proxy checks passed. The 47-A replay matched 20 of 20.
+- `9a4c3b27e2da` stops repeated journal acknowledgements from restarting paused worker
+  maintenance at an already trimmed cursor. The native Gauntlet baseline generated roughly
+  3,000 extra directives after Rearm opened. The regression failed on the old worker and all
+  33 clock tests passed after the fix. In the locked, single-file worker comparison, Rearm
+  dropped from 2,772 directives in 7.17 s to 441 in 6.97 s (387 to 63 per second). The after
+  arm processed 440 actual commands and ended with zero unacknowledged replies. Both arms
+  traveled about 2,294 WU and fired 274 and 276 shots before Rearm. Active flight drew 15.98
+  to 13.24/s and moving ship gap p95 rose from 111 to 138 ms, so sustained flight remains
+  open. Both Rearm PNGs were opened. See `shared-paused-journal-pair-summary.json` in the
+  same `player-freeze/` directory.
+- `8276b9524eba` reads the typed projectile lane for the weapon effects mirror. The production
+  worker fixture confirmed pulse projectile publication and retirement.
+- `aee1b488efe5` is a measured candidate that removes two unused bloom inputs and skips the
+  unused tone curve at either endpoint. The locked Adventure fixture compared 15 frame pairs at 1832×973 and found zero
+  differing RGBA pixels. All 19 focused tests passed. GPU timing drifted across the baseline
+  blocks, so a speedup is unverified. `b6735b6bf4c5` returned the live file to the lead-owned
+  look version. The capture was opened. See `eval-result.json` under
+  `.devshots/main-thread-profile/stand-in-bloom-composite-paired/`.
+
+The later locked Adventure pair compared seven pinned files across `5d2ef99c92eb` and
+`aee1b488efe5`, including the isolated bloom candidate. Both arms shared the typed projectile
+mirror and the unpinned checkout. During 24 s of held thrust, turn, and fire, world draws rose
+10.48 → 12.59/s, fresh poses 8.77 → 10.28/s, and moving ship gaps fell 178 → 132 ms p95 and
+347 → 184 ms maximum. Maximum stale ticks fell 329 → 177 ms. Shots were 51 and 54, with no
+signed reversals in 221 and 267 assessable intervals. The after arm still executed only 0.61 s
+of simulation per wall second. Combat evolved differently and the pair does not isolate a
+single change. Both flight PNGs were opened. See `shared-latest-adventure-pair-summary.json`.
+
+The next substantial performance owners are the worker's fixed-step physics and tactical AI,
+and the renderer's HDR world draw and admission. The old raw CPU profile's largest named
+sample fell in a lost sampling interval. Filtering intervals over 20 ms leaves physics at
+22.8% and tactical AI at 14.4% of sampled worker CPU. Do not treat Rearm settling or successful
+movement receipts as closure of the live flight cadence failure.
