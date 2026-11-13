@@ -877,6 +877,12 @@ ${A} .k-foot .k-word:is(:disabled, [aria-disabled="true"]) { opacity:.45 !import
   ${D} .sf-crd-arenas .orr-tile { min-height:0 !important; padding:4px 6px 6px !important; gap:4px !important; }
   ${D} .sf-crd-arenas .fh-tile-art, ${D} .sf-crd-arenas .fh-tile-art img { height:28px !important; }
 }
+/* ui-polish-523: on a phone the four stakes split ~81px each, so CONTENDER and IRONBOUND were cut by the tile's
+   chamfer clip, each purse broke into "2,400 / CR" and the payout line stacked four lines deep. The ladder reads
+   as two rows of two there: every name, purse and payout line sits whole. */
+@media (max-width:640px) {
+  ${D} .sf-crd-stakes { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}
 /* a 900px-tall window: the centre column (pip spanner, glyph disc, label, hull jig) needs ~600px and had
    ~560, so the hull schematic was cropped by the footer. The disc and the jig are trimmed to fit. */
 @media (max-height:960px) {
