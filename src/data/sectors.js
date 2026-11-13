@@ -49,6 +49,16 @@ export const SECTOR_PALETTE_CLASSES = {
   viscera: BOLUS_PALETTE,
 };
 
+// LOOK-05A: a small hot work lamp on a lane prop. A Nocturne descriptor (src/render/nocturne/content.js owns the
+// budget, the reach and the phone skip); `profile: 'ore'` only names the archetype, the explicit light carries the
+// colour. Amber is the working harbour's key. Lamps are small and bright so the bloom
+// chain carries a halo and the dark around them stays dark.
+const poiLamp = (color, intensity = 2200, range = 110, y = 5) => ({
+  profile: 'ore',
+  lights: [{ id: 'lamp', profile: 'ore', color, intensity, range, offset: [0, y, 0] }],
+});
+const LAMP_AMBER = 0xffb45e;
+
 const CORE_SECTORS = [
   {
     id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98, charted: true,
@@ -103,7 +113,7 @@ const CORE_SECTORS = [
     ],
     hazards: [],
     pois: [
-      { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
+      { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon', nocturne: poiLamp(LAMP_AMBER, 3000, 130, 9) },
       { id: 'poi_vesper_rehearsal', type: 'anomaly', name: 'Vesper’s Rehearsal',
         pos: { ...VESPER.anchor }, runtimeOwner: 'vesper', scannerSignalKind: 'anomaly',
         discoveryPlate: { title: 'SV-3 / Kinetic Choir',
@@ -135,9 +145,9 @@ const CORE_SECTORS = [
       // Lane furniture (design/fiction/LANE_FURNITURE.md). Deliberately placed ON the corridor a
       // new pilot actually flies — spawn, tutorial beacon, starter seam — because the camera can
       // only see ~50 world units of ground plane and clutter parked anywhere else is radar content.
-      { id: 'poi_helios_lane_pin', type: 'beacon', name: 'Corridor Pin 44-C' },
-      { id: 'poi_helios_tally', type: 'beacon', name: 'Helios Weigh-Point' },
-      { id: 'poi_helios_claim_mark', type: 'beacon', name: 'Starter Seam Claim' },
+      { id: 'poi_helios_lane_pin', type: 'beacon', name: 'Corridor Pin 44-C', nocturne: poiLamp(LAMP_AMBER) },
+      { id: 'poi_helios_tally', type: 'beacon', name: 'Helios Weigh-Point', nocturne: poiLamp(LAMP_AMBER, 2400, 120) },
+      { id: 'poi_helios_claim_mark', type: 'beacon', name: 'Starter Seam Claim', nocturne: poiLamp(LAMP_AMBER, 2600, 120) },
       {
         id: 'poi_helios_locker',
         type: 'cache',

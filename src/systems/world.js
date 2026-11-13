@@ -3648,6 +3648,8 @@ export const world = {
           : {}),
         ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
         ...(poi.manualInvestigation === true ? { manualInvestigation: true } : {}),
+        // LOOK-05A: authored local light (a Nocturne descriptor, src/render/nocturne/content.js). Render-only; phones skip Nocturne.
+        ...(poi.nocturne && typeof poi.nocturne === 'object' ? { nocturne: poi.nocturne } : {}),
         ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
         ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
         ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),

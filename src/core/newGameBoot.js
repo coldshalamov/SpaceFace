@@ -55,7 +55,31 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   // world regen and opening composition instead of one frozen monolith.
   if (typeof options.yield === 'function') await options.yield();
   if (!state.physicsVenueSession && !racingSession) {
-    spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
+    const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
+    light47aOpeningLandmarks(scene);
+  }
+}
+
+// LOOK-05A — light the two things the eye must find in the first minute (design/game/20 beats 1 and 4).
+// Live route only: the deterministic 47-A harness never calls this, so its snapshot is untouched.
+// The tow can the objective marks gets a small warm lamp (a halo that says "this one", over a dark
+// field); the Bourse carrier hulk gets its emergency strobes and a thin haze, so the derelict reads
+// as a lit target. Both are Nocturne descriptors (src/render/nocturne/content.js): Nocturne owns the
+// budget, skips phones, and an absent Nocturne leaves the bodies exactly as they were.
+export function light47aOpeningLandmarks(scene) {
+  if (!scene) return;
+  const can = scene.spindle;
+  if (can && can.data) {
+    can.data.luminous = true;
+    can.data.nocturne = {
+      profile: 'ore',
+      lights: [{ id: 'mark', profile: 'ore', color: 0xffc27a, intensity: 2600, range: 150, offset: [0, 7, 0] }],
+    };
+  }
+  const hulk = scene.carrier;
+  if (hulk && hulk.data) {
+    hulk.data.emergencyLight = true;
+    hulk.data.smoke = true;
   }
 }
 
