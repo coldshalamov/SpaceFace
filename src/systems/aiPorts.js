@@ -725,11 +725,11 @@ export const aiPorts = {
       this._capabilityCacheTick = tick;
       this._capabilityCache.clear();
     }
-    const key = stableId(entity && entity.id);
-    let capabilities = this._capabilityCache.get(key);
+    // The entity allocator may recycle a numeric ID before the tick changes.
+    let capabilities = this._capabilityCache.get(entity);
     if (!capabilities) {
       capabilities = Object.freeze(capabilitiesFor(state, entity));
-      this._capabilityCache.set(key, capabilities);
+      this._capabilityCache.set(entity, capabilities);
     }
     return capabilities;
   },
@@ -741,11 +741,10 @@ export const aiPorts = {
       this._tagCacheTick = tick;
       this._tagCache.clear();
     }
-    const key = stableId(entity && entity.id);
-    let tags = this._tagCache.get(key);
+    let tags = this._tagCache.get(entity);
     if (!tags) {
       tags = tagsFor(entity, runtime, Object.freeze);
-      this._tagCache.set(key, tags);
+      this._tagCache.set(entity, tags);
     }
     return tags;
   },
@@ -757,11 +756,10 @@ export const aiPorts = {
       this._subsystemFractionCacheTick = tick;
       this._subsystemFractionCache.clear();
     }
-    const key = stableId(entity && entity.id);
-    let fractions = this._subsystemFractionCache.get(key);
+    let fractions = this._subsystemFractionCache.get(entity);
     if (!fractions) {
       fractions = Object.freeze(subsystemFractions(runtime));
-      this._subsystemFractionCache.set(key, fractions);
+      this._subsystemFractionCache.set(entity, fractions);
     }
     return fractions;
   },
@@ -773,12 +771,11 @@ export const aiPorts = {
       this._contactBaseCacheTick = tick;
       this._contactBaseCache.clear();
     }
-    const key = stableId(entity && entity.id);
-    let base = this._contactBaseCache.get(key);
+    let base = this._contactBaseCache.get(entity);
     if (!base) {
       base = buildContactBase(state, entity, combatRuntimeFor(state, entity.id),
         attachmentIndex, kind, identity, this);
-      this._contactBaseCache.set(key, base);
+      this._contactBaseCache.set(entity, base);
     }
     return base;
   },

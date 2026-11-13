@@ -4,6 +4,27 @@ import assert from 'node:assert/strict';
 import { ContactKind, ManeuverKind } from '../src/ai/contracts.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
 import { PerceptionMemory } from '../src/ai/perception.js';
+import { createSimulation } from '../src/core/sim.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
+
+test('a replacement hull gets its own live sensor pose and tags when an ID recycles within a tick', t => {
+  const sim = createSimulation({ seed: 47, systems: [aiPorts], updateOrder: [] });
+  t.after(() => sim.dispose());
+  const observer = sim.spawn({ type: 'ship', team: 2, pos: { x: 0, z: 0 } });
+  const first = sim.spawn({ type: 'ship', team: 1, pos: { x: 120, z: 0 }, factionId: 'faction_free' });
+  const find = () => sim.helpers.aiSensors.liveFrameFor(observer.id, sim.state.tick).contacts
+    .find(contact => contact.id === first.id);
+  assert.equal(find().pos.x, 120);
+  assert.ok(find().tags.includes('faction_free'));
+  sim.helpers.removeEntity(first.id, { immediate: true });
+  const next = sim.spawn({ type: 'ship', team: 2, pos: { x: 265, z: 0 }, factionId: 'faction_scn' });
+  assert.equal(next.id, first.id);
+  const contact = find();
+  assert.equal(contact.pos.x, 265);
+  assert.equal(contact.team, 2);
+  assert.ok(contact.tags.includes('faction_scn'));
+  assert.ok(!contact.tags.includes('faction_free'));
+});
 
 test('maneuver contact indexing preserves decisions while reducing repeated contact visits', () => {
   const directive = {
