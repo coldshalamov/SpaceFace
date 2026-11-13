@@ -22,7 +22,7 @@ function harness(id = 'contract_junction_jam') {
     settings: { gameplay: { steeringView: 'overhead' } } };
   const emitted = [];
   let completed = 0, failed = 0, expired = 0, reason = null;
-  const host = {
+  const host = Object.assign(Object.create(missions), {
     state, bus: { emit: (...args) => emitted.push(args) },
     registry: { get: (name) => name === 'world' ? { relocatePlayerInSector: () => true } : null },
     _raceGateGlobal(mission, index) { return raceGateGlobals(mission.params)[index] || null; },
@@ -30,7 +30,7 @@ function harness(id = 'contract_junction_jam') {
     _completeMission(mission) { completed++; mission.status = 'completed'; },
     _failMission(mission, _index, why) { failed++; reason = why; mission.status = 'failed'; },
     _expireMission(mission) { expired++; mission.status = 'expired'; },
-  };
+  });
   return { offer, p, player, m, state, host, emitted,
     get completed() { return completed; }, get failed() { return failed; },
     get expired() { return expired; }, get reason() { return reason; } };
@@ -50,20 +50,10 @@ function attachMissionEvents(h) {
     },
   };
   Object.assign(h.host, {
-    _dnfAuthoredRaces(reason) { return missions._dnfAuthoredRaces.call(this, reason); },
-    _onDockedAuthoredRaces(stationId) { return missions._onDockedAuthoredRaces.call(this, stationId); },
     _projectMissionTargetDecodes() {},
     ensureBoard() {},
     _onDockedObjectives() {},
     _onContract47aB3Docked() {},
-    // W-BOOKS-0-2 added this dock-side call on the real handler; delegate like the
-    // authored-race hooks so the fixture exercises its real no-op guard instead of
-    // pretending the method does not exist.
-    _resolveContract47aSkimForDock(stationId) { return missions._resolveContract47aSkimForDock.call(this, stationId); },
-    // W5 relief gratitude and W-BOOKS-3-4 seam weld joined the same dock handler; delegate them
-    // too so their real guards run (no captain cycles / no seam here means a no-op).
-    _settleCaptainGratitude(stationId) { return missions._settleCaptainGratitude.call(this, stationId); },
-    _resolveVarianceSeamWeld(stationId) { return missions._resolveVarianceSeamWeld.call(this, stationId); },
     _storyTrigger() {},
     _refreshNavigation() {},
   });
