@@ -721,6 +721,51 @@ test('the first freed reply credit sends the contiguous retained tail before the
   }
 });
 
+test('paused reply credits at the same journal end cannot keep ACK maintenance alive', async () => {
+  const previousSelf = globalThis.self;
+  const replies = [];
+  globalThis.self = { postMessage: reply => replies.push(reply) };
+  const send = data => globalThis.self.onmessage({ data });
+  const ticks = () => replies.filter(reply => reply.kind === 'clockTick');
+  const barrier = async (seq) => {
+    send({ kind: 'finalize', seq });
+    await waitFor(() => replies.some(reply => reply.seq === seq));
+  };
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?paused-journal-ack-${Date.now()}`);
+    send({ kind: 'init', seq: 'paused-ack-init', profile: 'production', clockMode: 'worker-local',
+      timeScale: 0, seed: 4242, settings: {},
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')) });
+    await waitFor(() => replies.some(reply => reply.kind === 'ready'));
+    send({ kind: 'clockCommand', commandSequence: 1, lifecycleGeneration: 0, timeScale: 0,
+      commands: [{ t: 'spawn', seq: 1, p: { token: 'paused-ack-rock', spec: {
+        type: 'asteroid', pos: { x: 200, z: 1000 }, vel: { x: 0, z: 0 }, radius: 12,
+        collides: false, data: { typeId: 'ast_common_rock' },
+      } } }] });
+    send({ kind: 'clockCommand', commandSequence: 2, lifecycleGeneration: 0, timeScale: 0, commands: [] });
+    await barrier('paused-ack-start');
+    const [first, second] = ticks();
+    assert.ok(first.journalEnd > 0);
+    assert.equal(second.journalEnd, first.journalEnd);
+    const ack = reply => send({ kind: 'clockAck', lifecycleGeneration: 0,
+      clockSequence: reply.clockSequence, ackJournalEnd: reply.journalEnd });
+    ack(first);
+    await barrier('paused-ack-first');
+    const afterFirst = ticks().length;
+    ack(second);
+    await barrier('paused-ack-repeat');
+    assert.equal(ticks().length, afterFirst, 'a later credit at an already trimmed journal end emits no reply');
+    ack(ticks().at(-1));
+    await barrier('paused-ack-settled');
+    assert.equal(ticks().length, afterFirst);
+  } finally {
+    send({ kind: 'shutdown', seq: 'paused-ack-shutdown' });
+    await waitFor(() => replies.some(reply => reply.seq === 'paused-ack-shutdown'));
+    if (previousSelf === undefined) delete globalThis.self;
+    else globalThis.self = previousSelf;
+  }
+});
+
 test('coalesced journal keeps generation reuse ordering, type remaps, and SAB bounds', { timeout: 60000 }, async (t) => {
   const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
   const previousSelf = globalThis.self;

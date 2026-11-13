@@ -148,6 +148,7 @@ const localClock = {
   appliedCommandSequence: 0,
   pendingCommands: [],
   pendingAckJournalEnd: 0,
+  trimmedJournalEnd: 0,
   sentAwaitingAck: false,
   sentClockSequence: 0,
   sentJournalEnd: 0,
@@ -1003,6 +1004,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
+  localClock.trimmedJournalEnd = Math.max(localClock.trimmedJournalEnd, ackJournalEnd);
+  if (localClock.pendingAckJournalEnd <= localClock.trimmedJournalEnd) localClock.pendingAckJournalEnd = 0;
   // A budget limit is a yield between steps. Restore the part of the reserved
   // debt that did not execute. The next turn still applies the normal debt cap.
   const executed = Number.isSafeInteger(reply.stepsExecuted) ? reply.stepsExecuted : steps;
@@ -1258,7 +1261,10 @@ async function handleLocalClockControl(msg) {
 // publish pipeline moving while a heavy tick batch owns the chain; the
 // chained handler re-checks the sequence idempotently.
 async function localReleaseClockAck(clockSequence, ackJournalEnd) {
-  if (Number.isSafeInteger(ackJournalEnd)) {
+  // Clock replies repeat the journal end even if they carry no records. Free
+  // their reply credit, but never start another paused maintenance tick for a
+  // journal range already trimmed by the host.
+  if (Number.isSafeInteger(ackJournalEnd) && ackJournalEnd > localClock.trimmedJournalEnd) {
     localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, ackJournalEnd);
   }
   if (!Number.isSafeInteger(clockSequence)) return false;
@@ -1330,13 +1336,11 @@ function recoverClockCreditFromHeartbeat(msg) {
 
 async function handleLocalClockAck(msg) {
   if (!localClock.enabled || localClock.stopped) return;
-  let retainedReplyPublished = false;
-  if (Number.isSafeInteger(msg.ackJournalEnd)) {
-    localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, msg.ackJournalEnd);
-  }
+  if (Number.isSafeInteger(msg.lifecycleGeneration)
+    && msg.lifecycleGeneration !== localClock.lifecycleGeneration) return;
   // localReleaseClockAck clears whichever pipeline slots this cumulative ACK
   // covers — older-than-newest sequences still free real slots.
-  retainedReplyPublished = await localReleaseClockAck(msg.clockSequence, msg.ackJournalEnd);
+  const retainedReplyPublished = await localReleaseClockAck(msg.clockSequence, msg.ackJournalEnd);
   const needsImmediateMaintenance = !localClock.active || localClock.scale <= 0;
   if (localClock.latestReply && !retainedReplyPublished) {
     if (needsImmediateMaintenance) await runLocalClockTick(true);
@@ -1355,7 +1359,6 @@ async function handleLocalClockAck(msg) {
 async function handleLocalClockCommand(msg) {
   if (!localClock.enabled || localClock.stopped) return;
   if (Number.isSafeInteger(msg.lifecycleGeneration) && msg.lifecycleGeneration < localClock.lifecycleGeneration) return;
-  let retainedReplyPublished = false;
   localClock.commandCount++;
   if (Number.isSafeInteger(msg.lifecycleGeneration)) {
     if (msg.lifecycleGeneration !== localClock.lifecycleGeneration) resetLocalClockTiming();
@@ -1363,12 +1366,7 @@ async function handleLocalClockCommand(msg) {
   }
   applyPresentationTimeEffects(msg.timeEffectsSnapshot, localClock.lifecycleGeneration);
   refreshLocalClockScale(msg.timeScale);
-  if (Number.isSafeInteger(msg.ackJournalEnd)) {
-    localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, msg.ackJournalEnd);
-  }
-  if (Number.isSafeInteger(msg.ackClockSequence)) {
-    retainedReplyPublished = await localReleaseClockAck(msg.ackClockSequence, msg.ackJournalEnd);
-  }
+  await localReleaseClockAck(msg.ackClockSequence, msg.ackJournalEnd);
   if (Number.isSafeInteger(msg.commandSequence)) {
     localClock.pendingCommandSequence = Math.max(localClock.pendingCommandSequence, msg.commandSequence);
   }
@@ -1389,8 +1387,6 @@ async function handleLocalClockCommand(msg) {
   // lifecycle transitions cannot wait on a timer that is intentionally off.
   if (!localClock.active || localClock.scale <= 0 || explicitSteps > 0) {
     await runLocalClockTick(true, explicitSteps);
-  } else if (!retainedReplyPublished) {
-    scheduleLocalClock();
   }
   scheduleLocalClock();
 }
