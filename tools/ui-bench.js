@@ -74,6 +74,9 @@ const SCREENS = Object.freeze({
   automation: () => import('../src/ui/screens/automationPanel.js').then((m) => m.automationScreen),
   base: () => import('../src/ui/screens/base.js').then((m) => m.baseScreen),
   crucible: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleScreen),
+  // TITLE-01: the Swarm entrance as the title's SWARM door lands on it (the one-button PLAY state).
+  swarmPlay: () => Promise.all([import('../src/ui/screens/crucible.js'), import('../src/ui/crucibleLaunch.js')])
+    .then(([m, launch]) => { launch.requestSwarmPlayEntry(); return m.crucibleScreen; }),
   crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
   crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
   crucibleFortify: () => import('../src/ui/swarmFortifyPanel.js').then((m) => m.crucibleFortifyScreen),

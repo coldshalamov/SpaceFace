@@ -27,6 +27,9 @@ import {
   normalizeSeed,
   practiceLaunchFor,
   canChooseSwarmOpeningLesson,
+  consumeSwarmPlayEntry,
+  defaultSwarmStakeId,
+  rememberSwarmStake,
 } from '../crucibleLaunch.js';
 import {
   SWARM_STAKES,
@@ -792,6 +795,8 @@ export const crucibleScreen = {
   mount(rootEl, ctx) {
     this._embarkSpecActive = false;
     const door = this;
+    // TITLE-01: the title's SWARM door lands here in its one-button PLAY state; Customise opens the rest.
+    let playMode = consumeSwarmPlayEntry();
     let enterButton = null;
     let preparation = null;
     let syncTrainingChoice = () => {};
@@ -834,7 +839,8 @@ export const crucibleScreen = {
     let practiceQueued = false;
     // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
     // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
-    let stake = normalizeSwarmStake(previous && previous.swarmStake);
+    // First-timers start on Exhibition (the roomy purse); after that, the stake last used.
+    let stake = previous && previous.swarmStake ? normalizeSwarmStake(previous.swarmStake) : defaultSwarmStakeId();
     // SWARM-06 §6.4: the Threat wager — opt-in cards that stack, each paying a Bounty
     // multiplier for the honestly harder run. A retry restores the wager it flew; a daily
     // never carries one (shared challenge, shared purse — same law as the stake).
@@ -855,7 +861,7 @@ export const crucibleScreen = {
 
     // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
-    const h = el('h1', 'k-display k-t-name fh-hero', 'Crucible');
+    const h = el('h1', 'k-display k-t-name fh-hero', 'Swarm');
     h.id = 'sf-crucible-title';
     paintMarking(h);
     title.appendChild(h);
@@ -2344,7 +2350,7 @@ export const crucibleScreen = {
     footWords.setAttribute('aria-label', 'Crucible');
     let trainingOpening = false;
     // The one launch path, shared by Enter and Quick play. INF-038.
-    function launchCurrent(trialRuleset = null) {
+    function launchCurrent(trialRuleset = null, { inFlight = false } = {}) {
       const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
       const launchRuleset = conveyor ? POWERED_CONVEYOR_RULESET : ruleset;
       const launchArenaId = conveyor ? CRUCIBLE_ARENA_ID : arenaId;
@@ -2388,6 +2394,7 @@ export const crucibleScreen = {
           swarmStake: launchStake,
           swarmThreats: launchThreats,
           startWave: conveyor ? 1 : startWave,
+          ...(inFlight ? { openArmoryBeforeRound1: false } : {}),
         });
       if (!setup.ok || !setup.value) {
         cue('deny');
@@ -2395,6 +2402,7 @@ export const crucibleScreen = {
         return;
       }
       cue('confirm');
+      if (launchRuleset === SWARM_RULESET && launchStake) rememberSwarmStake(launchStake);
       const payload = { ...setup.value };
       const offer = currentGhostOffer();
       let ghostHash = !conveyor && raceGhost && offer.available ? offer.hash : null;
@@ -2455,15 +2463,16 @@ export const crucibleScreen = {
       cue('confirm');
     });
     addWord(footWords, training);
-    const quick = word('Quick play', 'k-word--emph');
+    const quick = word('Quick play', 'k-word--emph sf-swarm-quick-key');
     quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
     quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
     // A key like Back beside it, not loose words in front of the launch key.
     paintKey(quick, 'small');
-    quick.addEventListener('click', () => {
-      // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the
-      // picked checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is
-      // the player's to keep. seedCustom clears so the authored seed fills the field.
+    // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the picked
+    // checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is the player's to keep.
+    // seedCustom clears so the authored seed fills the field. PLAY (the title door's one button) is
+    // the same launch with round 1 starting in flight.
+    function quickLaunch({ inFlight = false } = {}) {
       ruleset = SWARM_RULESET;
       daily = false;
       weekly = false;
@@ -2474,10 +2483,11 @@ export const crucibleScreen = {
       syncMode();
       syncHull();
       syncGhost();
-      launchCurrent();
-    });
+      launchCurrent(null, { inFlight });
+    }
+    quick.addEventListener('click', () => quickLaunch());
     addWord(footWords, quick);
-    const enter = word('Hold the line', 'k-word--emph k-word--primary');
+    const enter = word('Hold the line', 'k-word--emph k-word--primary sf-swarm-enter-key');
     enterButton = enter;
     paintKey(enter, 'hazard');
     enter.addEventListener('click', () => {
@@ -2488,6 +2498,22 @@ export const crucibleScreen = {
     const back = word('Back', 'k-word--emph sf-back');
     back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
     addWord(footWords, back);
+    // TITLE-01: PLAY (one press to round 1 on the shipped defaults) and Customise (the full entrance).
+    // Both are in the DOM always; the play state shows only these, Training and Back.
+    const play = word('Play', 'k-word--emph k-word--primary sf-swarm-play-key');
+    paintKey(play, 'hazard');
+    play.addEventListener('click', () => quickLaunch({ inFlight: true }));
+    addWord(footWords, play);
+    const customise = word('Customise', 'k-word--emph sf-swarm-customise-key');
+    paintKey(customise, 'small');
+    customise.addEventListener('click', () => {
+      playMode = false;
+      rootEl.classList.remove('orr-swarm-play');
+      cue('confirm');
+      try { enterButton && enterButton.focus({ preventScroll: true }); } catch { /* focus is a courtesy */ }
+    });
+    addWord(footWords, customise);
+    rootEl.classList.toggle('orr-swarm-play', playMode);
     foot.appendChild(footWords);
     // r2: the door documents its input — one quiet line under the keys.
     foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));

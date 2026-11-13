@@ -240,6 +240,26 @@ ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not
   ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { min-height:42px !important; font-size:17px !important; min-width:200px !important; padding:6px 20px !important; }
   ${D} .k-foot .orr-door-hint { display:none !important; }
 }
+/* TITLE-01 — the Swarm entrance's PLAY state (the title's SWARM door lands here). One obvious PLAY with
+   the shipped defaults, a quiet Customise that opens everything above, Training and Back. The picture
+   of the room carries the screen. The play keys exist always and show only in this state. */
+${D} .k-foot li:has(> .sf-swarm-play-key), ${D} .k-foot li:has(> .sf-swarm-customise-key) { display:none !important; }
+${D}.orr-swarm-play { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:auto minmax(0,1fr) auto !important; }
+${D}.orr-swarm-play .orr-prep-tabs, ${D}.orr-swarm-play .orr-prep-nextstep, ${D}.orr-swarm-play > .k-stage, ${D}.orr-swarm-play .orr-door-hint,
+${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-quick-key), ${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-enter-key) { display:none !important; }
+${D}.orr-swarm-play .sf-crd-sub { display:block !important; }
+${D}.orr-swarm-play .orr-door-hero { grid-column:1 !important; grid-row:2 !important; }
+${D}.orr-swarm-play .orr-prep-continue, ${D}.orr-swarm-play .orr-cabinet-preview { display:none !important; }
+${D}.orr-swarm-play .orr-door-hero__words { bottom:28px !important; left:28px !important; right:auto !important; width:min(52%, 620px) !important; max-width:none !important; }
+${D}.orr-swarm-play .orr-prep-brief { position:absolute !important; right:28px !important; left:auto !important; bottom:28px !important; text-align:right !important; width:min(34%, 380px) !important; }
+${D}.orr-swarm-play .orr-door-hero__name { font-size:clamp(34px,5vw,64px) !important; }
+${D}.orr-swarm-play .k-foot { display:flex !important; justify-content:space-between; align-items:center; gap:24px; }
+${D}.orr-swarm-play .k-foot .k-words { display:flex !important; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px 18px; width:100%; }
+${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-play-key), ${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-customise-key) { display:list-item !important; }
+${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-play-key) { order:1; margin-left:auto; }
+${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-customise-key) { order:0; }
+${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-play-key) > button { min-width:min(360px,44vw) !important; min-height:64px !important; font-size:28px !important; letter-spacing:.1em !important; text-transform:uppercase; }
+${D}.orr-swarm-play .k-foot li:has(> .sf-back) { order:-1; margin-right:auto; }
 /* reduced motion: the one transition this sheet adds follows the game's own setting */
 html.sf-reduce-motion ${D} .sf-crd-arenas .fh-tile-art img { transition:none !important; }
 `;

@@ -341,6 +341,27 @@ export function practiceLaunchFor(line) {
   };
 }
 
+// TITLE-01: the title's SWARM door opens the Swarm entrance in its one-button PLAY state. The flag is
+// one-shot: the title sets it, the door consumes it on mount; every other route in (More, Pause, a retry
+// that replaces the screen) gets the full entrance as before.
+let swarmPlayEntry = false;
+export function requestSwarmPlayEntry() { swarmPlayEntry = true; }
+export function consumeSwarmPlayEntry() { const was = swarmPlayEntry; swarmPlayEntry = false; return was; }
+
+const LAST_STAKE_KEY = 'sf.swarm.lastStake.v1';
+/** The stake the player last flew, persisted across sessions; null for a first-timer. */
+export function lastSwarmStakeUsed() {
+  try {
+    const v = globalThis.localStorage && globalThis.localStorage.getItem(LAST_STAKE_KEY);
+    return typeof v === 'string' && v ? normalizeSwarmStake(v) : null;
+  } catch { return null; }
+}
+export function rememberSwarmStake(stakeId) {
+  try { if (globalThis.localStorage && stakeId) globalThis.localStorage.setItem(LAST_STAKE_KEY, normalizeSwarmStake(stakeId)); } catch { /* optional */ }
+}
+/** First-timers start on Exhibition (the roomy purse); after that, the stake last used. */
+export function defaultSwarmStakeId() { return lastSwarmStakeUsed() || 'exhibition'; }
+
 /** The setup the live (or most recent) run launched with, or null before the first launch. */
 export function lastCrucibleSetup() {
   if (!lastSetup) return null;

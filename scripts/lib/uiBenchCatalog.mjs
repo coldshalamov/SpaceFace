@@ -116,6 +116,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucible', screen: 'crucible', backdrop: 'world' },
   { id: 'crucible-door', screen: 'crucible', backdrop: 'world' },
   { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
+  { id: 'swarm-play', screen: 'swarmPlay', backdrop: 'world' },
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
   { id: 'crucible-fortify', screen: 'crucibleFortify', backdrop: 'world' },
