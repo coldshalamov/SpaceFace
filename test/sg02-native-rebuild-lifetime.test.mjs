@@ -2,7 +2,64 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createSg02DynamicBodyOwner} from '../src/core/sg02DynamicBodyOwner.js';
 import {physicsBodyNativeReady,markPhysicsBodyNativeFailure,clearPhysicsBodyNativeFailure} from '../src/core/physicsAuthority.js';
+import { createSimulation, SIM_DT } from '../src/core/sim.js';
 const body=(id=1)=>({id,occupantGeneration:1,type:'wreck',alive:true,hull:100,hullMax:100,collides:true,radius:6,mass:24,pos:{x:0,z:0},vel:{x:0,z:0},rot:0,angVel:0,data:{},physicsBody:{schemaVersion:1,dynamic:true,ccd:true,shape:'ball',radius:6,mass:24,inertiaY:48,revision:0}});
+
+test('recycled id starts a fresh layered native body at the successor pose and velocity', async () => {
+  const sim = createSimulation({ seed: 4242, systems: [] });
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const { id, occupantGeneration, ...spec } = body();
+  try {
+    const first = sim.spawn({ ...spec, vel: { x: 83, z: 0 } });
+    owner.syncFromEntityLayers([], [first], 1);
+    owner.step(SIM_DT);
+    const previousRecord = owner.records.get(first.id);
+    assert.equal(previousRecord.body.linvel().x, 83);
+
+    assert.equal(sim.helpers.removeEntity(first.id, { immediate: true }), true);
+    const second = sim.spawn({ ...spec, pos: { x: first.pos.x, z: first.pos.z } });
+    assert.equal(second.id, first.id);
+    assert.notEqual(second.occupantGeneration, first.occupantGeneration);
+    const startX = second.pos.x;
+    owner.syncFromEntityLayers([], [second], 1);
+    const currentRecord = owner.records.get(second.id);
+    assert.equal(currentRecord.body.linvel().x, 0, 'the new body cannot borrow its predecessor velocity');
+    assert.notEqual(currentRecord, previousRecord);
+    assert.equal(owner.world.bodies.len(), 1);
+
+    owner.step(SIM_DT);
+    assert.equal(second.pos.x, startX);
+    owner.syncFromEntityLayers([], [second], 1);
+    assert.equal(owner.records.get(second.id), currentRecord, 'an ordinary resync keeps this life');
+  } finally {
+    owner.dispose();
+    sim.dispose();
+  }
+});
+
+test('recycled id cannot reuse a static native record through the layer shortcut', async () => {
+  const sim = createSimulation({ seed: 4242, systems: [] });
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const { id, occupantGeneration, ...spec } = body();
+  spec.physicsBody.dynamic = false;
+  try {
+    const first = sim.spawn(spec);
+    owner.syncFromEntityLayers([first], [], 1);
+    const previousRecord = owner.records.get(first.id);
+
+    assert.equal(sim.helpers.removeEntity(first.id, { immediate: true }), true);
+    const second = sim.spawn(spec);
+    assert.equal(second.id, first.id);
+    assert.notEqual(second.occupantGeneration, first.occupantGeneration);
+    owner.syncFromEntityLayers([second], [], 2);
+    assert.notEqual(owner.records.get(second.id), previousRecord);
+    assert.equal(owner.world.bodies.len(), 1);
+  } finally {
+    owner.dispose();
+    sim.dispose();
+  }
+});
+
 function failConstruction(owner,entity) {
  const create=owner.world.createCollider.bind(owner.world);
  owner.world.createCollider=()=>{throw new Error('injected construction failure');};

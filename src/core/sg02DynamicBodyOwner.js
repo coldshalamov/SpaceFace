@@ -1250,7 +1250,8 @@ export class Sg02DynamicBodyOwner {
 
   _reuseUnchangedStaticRecord(entity, spec) {
     const rec = this.records.get(entity.id);
-    if (!rec || rec.spec.dynamic || !recordMatchesSpec(rec, spec)) return false;
+    if (!rec || rec.spec.dynamic || recordBelongsToPriorLife(rec, entity)
+      || !recordMatchesSpec(rec, spec)) return false;
     if (rec.proxyId !== proxyIdForEntity(entity, spec)) return false;
     const kinematics = rec.kinematics;
     if (!kinematics || (entity.flags && entity.flags.noInterp)) return false;
@@ -3329,7 +3330,14 @@ export class Sg02DynamicBodyOwner {
       clearPhysicsBodyNativeFailure(pending.entity,this,pending.failureReceipt);
       this._pendingNativeRebuilds.delete(entity.id);
     }
-    const rec = this.records.get(entity.id);
+    let rec = this.records.get(entity.id);
+    if (recordBelongsToPriorLife(rec, entity)) {
+      // A recycled ID does not carry its predecessor's native pose, velocities or joints.
+      // Explicit save adoption/rebind has already claimed the replacement when it is allowed.
+      const world = this.world;
+      if (this._removeRecord(entity.id, rec) === false || this.world !== world) return null;
+      rec = null;
+    }
     const preserveRebound = !!(rec && rec.spec && rec.spec.dynamic
       && rec.entity === entity && this._reboundEntityIds.has(entity.id));
     // Compound-proxy membership is part of the collider identity: a station gaining/losing its
@@ -5142,6 +5150,13 @@ function quantize(value, quantum) {
 function compareIds(a, b) {
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   return String(a).localeCompare(String(b));
+}
+
+function recordBelongsToPriorLife(rec, entity) {
+  if (!rec || rec.entity === entity) return false;
+  const currentLife = occupantGenerationOf(entity);
+  const recordedLife = occupantGenerationOf(rec.entity);
+  return currentLife != null && recordedLife != null && currentLife !== recordedLife;
 }
 
 function recordMatchesSpec(rec, spec) {
