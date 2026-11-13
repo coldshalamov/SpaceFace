@@ -34,6 +34,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // run starts at class I with no winch heat and no held body.
   'lineProgression',
   'world',
+  'livingPoiBehaviors',
   'reactiveMatter', 'spectrum', 'orbitalGallery', 'kineticLeague', 'mercyService', 'wreckCourt',
   'regionalEcology',
   'factions',

@@ -14,6 +14,7 @@ import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector, TRI
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 const AUTHORED_INTERACTIONS = [TRITON_FIELD_LAB_INTERACTION, VEIL_FAR_SOUNDING_INTERACTION];
@@ -176,6 +177,7 @@ export const livingPoiBehaviors = {
   // No progress, reward, world-zone mutation or actor iteration occurs here.
   update() {
     const state = this.state;
+    if (isRacingCorridorSession(state)) return;
     const own = ensureState(state);
     const triton = own.activeByZone[TRITON_FIELD_LAB_INTERACTION.zoneId];
     const tritonPhase = tritonArrivalPhase(state, own, triton);
@@ -199,6 +201,7 @@ export const livingPoiBehaviors = {
   },
 
   _activateSector(payload = {}) {
+    if (isRacingCorridorSession(this.state)) return [];
     // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
     // must not flip activeSectorId/activeByZone to the departed sector.
     if (payload.enterEpoch != null && this.state && this.state.world

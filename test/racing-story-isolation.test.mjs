@@ -46,15 +46,19 @@ test('Textile keeps Adventure story and traffic off its course until campaign re
       await send(ring);
     };
     const actReceipts = [];
+    const poiGuidance = [];
     bus.on('comms:popup', row => { if (row.id === 'act:I') actReceipts.push(row); });
+    bus.on('poi:behaviorGuidance', row => poiGuidance.push(row));
 
     await boot({ seed: campaignSeed });
     assert.ok(coldStart(state), 'the ordinary opening installs 47-A');
     assert.ok(campaignCast(state).length > 0, 'the ordinary opening spawns its scenario cast');
     assert.ok(courseTraffic(state).length > 0, 'Adventure retains its normal local traffic');
     assert.ok(actReceipts.length > 0, 'the ordinary opening announces Act I');
+    assert.ok(Object.keys(state.world.poiReadouts).length > 0, 'the Adventure sector has local work');
     const campaign = save.serialize('quick');
     actReceipts.length = 0;
+    poiGuidance.length = 0;
 
     await boot({ seed: racingSeedFor(contractId), racingSession: true });
     assert.equal(isRacingCorridorSession(state), true);
@@ -70,6 +74,8 @@ test('Textile keeps Adventure story and traffic off its course until campaign re
     assert.deepEqual(courseTraffic(state), [], 'the race starts with only course-owned ships');
     for (let batch = 0; batch < 6; batch++) await send(undefined, 12);
     assert.deepEqual(courseTraffic(state), [], 'campaign owners stay dormant as the grid runs');
+    assert.deepEqual(state.world.poiReadouts, {}, 'a temporary race does not activate Adventure work');
+    assert.deepEqual(poiGuidance, [], 'Adventure yard guidance stays off the racing grid');
 
     let corridorAtRestoreEntry = null;
     const stopWatching = bus.on('sector:enter', () => { corridorAtRestoreEntry = isRacingCorridorSession(state); });
