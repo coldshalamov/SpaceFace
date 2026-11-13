@@ -224,8 +224,11 @@ function buildLanternCyst(colors) {
     s.translate(0, -0.8, 0);
     return s;
   });
+  // The rootlets use one finish per cyst, with independent motion across cysts.
+  const rootletMaterial = tissueMat(colors.filament);
   for (let i = 0; i < 5; i += 1) {
-    const r = new THREE.Mesh(rootlet, tissueMat(colors.filament));
+    const r = new THREE.Mesh(rootlet, rootletMaterial);
+    if (i > 0) r.userData.borrowedGeometryMaterial = true;
     const a = (i / 5) * Math.PI * 2;
     r.position.set(Math.cos(a) * 2.2, -4.5, Math.sin(a) * 2.2);
     r.rotation.z = Math.cos(a) * 0.4;
