@@ -1222,9 +1222,12 @@ try {
       if (!row || row.alive === false || !row.pos) return;
       if (row.data && row.data.opticStructureId) return; // ordinary rocks only
       if (!(Number(row.radius) >= 8)) return;
-      const d = Math.hypot(row.pos.x - p.pos.x, row.pos.z - p.pos.z);
+      const drift = Number.isFinite(row.lastExactT) ? Math.max(0, s.simTime - row.lastExactT) : 0;
+      const x = row.pos.x + (row.vel?.x || 0) * drift;
+      const z = row.pos.z + (row.vel?.z || 0) * drift;
+      const d = Math.hypot(x - p.pos.x, z - p.pos.z);
       if (stageApproach && row.homeSectorId !== s.world.currentSectorId) return;
-      if (d < bestD) { bestD = d; best = row; }
+      if (d < bestD) { bestD = d; best = { id: row.id, x, z, radius: row.radius }; }
     };
     for (const row of rocks) if (row && row.liveEntityId == null) consider(row);
     for (const e of s.entityList) {
@@ -1233,25 +1236,25 @@ try {
     if (!best) return null;
     let approach = null;
     if (stageApproach && bestD > 500) {
-      const heading = Math.atan2(best.pos.z - p.pos.z, best.pos.x - p.pos.x);
+      const heading = Math.atan2(best.z - p.pos.z, best.x - p.pos.x);
       // Stage short of the selected rock. Steering and contact still use public input.
-      approach = { x: best.pos.x - Math.cos(heading) * 260,
-        z: best.pos.z - Math.sin(heading) * 260, heading };
+      approach = { x: best.x - Math.cos(heading) * 260,
+        z: best.z - Math.sin(heading) * 260, heading };
     }
-    return { id: best.id, x: best.pos.x, z: best.pos.z, radius: best.radius,
-      dist: Math.round(bestD), approach };
+    return { ...best, dist: Math.round(bestD), approach };
   }, RAM_ONLY);
   let ramResult = null;
   let approachShot = null;
   if (ramTarget && !routeDeadlineHit) {
     await page.evaluate((id) => { window.__SF_ASTEROID_PROBE__.probe.ramTargetId = id; }, ramTarget.id);
     if (ramTarget.approach) {
-      await page.evaluate(async (pose) => {
+      staging.ramRelocate = await page.evaluate(async (pose) => {
         const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
         const opts = { reason: 'asteroid-appear-ram-stage' };
-        if (laneCommandSink()) await laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts });
-        else window.SF.registry.get('world').relocatePlayerInSector(pose, opts);
+        if (laneCommandSink()) return laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts });
+        return { ok: true, result: window.SF.registry.get('world').relocatePlayerInSector(pose, opts) };
       }, ramTarget.approach);
+      if (staging.ramRelocate?.result !== true) throw new Error('Ceres ram staging relocation was refused');
     }
     console.log(`  ram target id=${ramTarget.id} r=${ramTarget.radius} dist=${ramTarget.dist}`);
     const start = Date.now();
@@ -1270,13 +1273,14 @@ try {
         const promoted = !!(live && live.alive !== false && live.fieldResident !== true)
           || (!row && !!live);
         const pos = (row && row.alive !== false && row.pos)
-          ? { x: row.pos.x + (row.vel ? row.vel.x * Math.max(0, s.simTime - (row.lastExactT || s.simTime)) : 0),
-              z: row.pos.z + (row.vel ? row.vel.z * Math.max(0, s.simTime - (row.lastExactT || s.simTime)) : 0) }
+          ? { x: row.pos.x + (row.vel?.x || 0) * Math.max(0, s.simTime - (row.lastExactT ?? s.simTime)),
+              z: row.pos.z + (row.vel?.z || 0) * Math.max(0, s.simTime - (row.lastExactT ?? s.simTime)) }
           : (live && live.pos ? { x: live.pos.x, z: live.pos.z } : null);
         return {
           mode: s.mode, px: p.pos.x, pz: p.pos.z, rot: p.rot,
           vx: p.vel ? p.vel.x : 0, vz: p.vel ? p.vel.z : 0,
           tx: pos && pos.x, tz: pos && pos.z, promoted,
+          maxContactReach: Number(p.radius || 0) + Number((row || live)?.radius || 0) + 30,
           undrawnCount: window.__SF_ASTEROID_PROBE__.rec.lastUndrawn.count,
         };
       }, ramTarget.id);
@@ -1298,13 +1302,19 @@ try {
             .catch(() => { approachShot = null; });
         }
       }
-      if (!contact && snap.promoted) {
+      if (!contact && snap.promoted && dist <= snap.maxContactReach) {
         contact = { at: Date.now() - start, dist: Math.round(dist) };
         contactPos = { x: snap.tx, z: snap.tz };
         const speed = Math.hypot(snap.vx || 0, snap.vz || 0) || 1;
         contactDir = { x: (snap.vx || 0) / speed, z: (snap.vz || 0) / speed };
         console.log(`  ram contact at +${(contact.at / 1000).toFixed(1)}s dist=${contact.dist}`);
         try { await page.screenshot({ path: `${OUT_DIR}/${stamp}-ram-contact.png` }); } catch (_) {}
+      }
+      if (!contact && snap.promoted) {
+        ramResult = { target: ramTarget, promoted: true, contact: null,
+          offscreenPromotionDistance: Math.round(dist) };
+        console.log(`  ram target promoted away from contact at ${Math.round(dist)} WU`);
+        break;
       }
       // Aim at the rock until promoted; afterwards keep the same heading to
       // carry ~300 WU clear.
@@ -1323,8 +1333,9 @@ try {
       await page.waitForTimeout(POLL_MS);
     }
     await releaseAll();
-    ramResult = { target: ramTarget, promoted: !!contact, contact };
-    phases.push({ phase: 'ram', ms: Date.now() - start, done: contact ? 'promoted' : 'timeout', target: ramTarget.id });
+    if (!ramResult) ramResult = { target: ramTarget, promoted: !!contact, contact };
+    phases.push({ phase: 'ram', ms: Date.now() - start,
+      done: contact ? 'contact' : ramResult.promoted ? 'promoted-away' : 'timeout', target: ramTarget.id });
     // keep the timeline's +3s tail: leave ramTargetId armed while drifting clear
     await page.waitForTimeout(3000);
     await page.evaluate(() => { window.__SF_ASTEROID_PROBE__.probe.ramTargetId = null; });
