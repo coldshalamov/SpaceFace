@@ -7,9 +7,11 @@ import { syncMarrowCone, disposeMarrowCone } from '../src/render/marrowCone.js';
 import { lightCensusSignature, shadowCensusEpoch } from '../src/render/shadowDepthAdmission.js';
 
 test('Bolus lights invalidate census on membership changes and remain stable across exit and reentry', () => {
+  const player = { alive: true, pos: { x: 0, z: 0 }, rot: 0 };
   const renderer = {
     scene: new THREE.Scene(),
-    state: { meta: { seed: 7 }, simTime: 0, world: { currentSectorId: 'sector_helios' }, entityList: [] },
+    state: { meta: { seed: 7 }, simTime: 0, world: { currentSectorId: 'sector_helios' },
+      playerId: 1, entities: new Map([[1, player]]), entityList: [player] },
     _frameMembrane: { toLocal(pos, out) { out.x = pos.x - 100; out.z = pos.z + 50; return out; } },
   };
   const initialEpoch = shadowCensusEpoch();
@@ -33,6 +35,14 @@ test('Bolus lights invalidate census on membership changes and remain stable acr
     assert.deepEqual(view.lightGroup.position.toArray(), view.group.position.toArray());
     assert.ok(view.lights.every((light) => light.intensity > 0));
     assert.ok(spot.intensity > 0);
+
+    renderer.state.entities.delete(1);
+    syncMarrowCone(renderer);
+    assert.equal(spot.intensity, 0, 'the player-mounted spotlight is dark without a player');
+    renderer.state.entities.set(1, player);
+    syncMarrowCone(renderer);
+    assert.ok(spot.intensity > 0, 'the spotlight returns when the player returns');
+    assert.equal(shadowCensusEpoch(), mountedEpoch, 'player loss does not change light membership');
 
     renderer.state.world.currentSectorId = 'sector_helios';
     syncBolusView(renderer);
