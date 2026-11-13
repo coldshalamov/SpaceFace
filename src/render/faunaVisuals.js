@@ -668,6 +668,9 @@ function buildBolusFauna(colors, species) {
   const id = species && species.id || 'bolus_knob';
   const scale = Math.max(6, (species && species.radius) || 12);
   const recipe = bolusSilhouette(id);
+  // A creature's repeated parts can share the same authored finish. Keep the
+  // cache local: drive-state emission is animated independently per creature.
+  const materials = recipe.parts.length > 1 ? new Map() : null;
   for (let i = 0; i < recipe.parts.length; i++) {
     const part = recipe.parts[i];
     const geometry = geo(`bolus_sil_${id}_${part.id}`, () => {
@@ -679,8 +682,18 @@ function buildBolusFauna(colors, species) {
       else buffer.computeVertexNormals();
       return buffer;
     });
-    const material = part.glow ? glowMat(part.color, 0.9) : tissueMat(part.color || colors.tissue);
+    const color = part.glow ? part.color : part.color || colors.tissue;
+    const key = `${part.glow ? 'glow' : 'tissue'}:${color}`;
+    let material = materials?.get(key);
+    const borrowed = !!material;
+    if (!material) {
+      material = part.glow ? glowMat(color, 0.9) : tissueMat(color);
+      materials?.set(key, material);
+    }
     const mesh = new THREE.Mesh(geometry, material);
+    // The first part owns the finish; later identical parts borrow it and the
+    // cached geometry when the creature's root is retired.
+    if (borrowed) mesh.userData.borrowedGeometryMaterial = true;
     mesh.scale.setScalar(scale);
     mesh.name = part.id;
     g.add(mesh);
