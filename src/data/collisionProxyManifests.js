@@ -32,7 +32,7 @@ import {
   modelTruthSkinHull,
   modelTruthSkinPolygon,
 } from './modelTruth.js';
-import { isDynamicPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
+import { substanceFor } from '../core/physicsAuthority.js';
 import { PHYSICS_MATERIALS } from './physicsMaterials.js';
 import { foundryFurnitureProxy } from './foundryFurniture.js';
 
@@ -272,16 +272,19 @@ function declaresMeasuredSkinProxy(entity) {
  * convex hull when the census outline permits, else a bounded compound — proven deterministic
  * across save/reload. Ghost/sensor bodies and authored geometry opt-outs never adopt a skin. */
 export function measuredSkinAllowedFor(entity) {
-  if (!entity || entity.physicsBody === false || entity.collides === false) return false;
+  return measuredSkinSubstance(entity) !== null;
+}
+
+function measuredSkinSubstance(entity) {
+  if (!entity || entity.physicsBody === false || entity.collides === false) return null;
   const type = entity.type;
-  if (type === 'projectile' || type === 'pickup' || type === 'sensor') return false;
-  if (type === 'fx' && !declaresMeasuredSkinProxy(entity)) return false;
+  if (type === 'projectile' || type === 'pickup' || type === 'sensor') return null;
+  if (type === 'fx' && !declaresMeasuredSkinProxy(entity)) return null;
   const substance = substanceFor(entity);
   const material = PHYSICS_MATERIALS[substance.material];
-  if (substance.sensor === true || (material && material.ghost === true)) return false;
-  if (hasAuthoredSkinOverride(entity)) return false;
-  if (!substance.dynamic) return true;
-  return isCompoundSkinDynamicEligible(entity);
+  if (substance.sensor === true || (material && material.ghost === true)) return null;
+  if (hasAuthoredSkinOverride(entity)) return null;
+  return !substance.dynamic || isCompoundSkinDynamicEligible(entity) ? substance : null;
 }
 
 function authoredProxyManifest(entity) {
@@ -317,10 +320,14 @@ export function resolveCollisionProxyManifest(entity) {
   }
   const id = data && typeof data.collisionProxy === 'string' ? data.collisionProxy : null;
   const declared = id && COLLISION_PROXY_MANIFESTS[id] || null;
+  // Only the retired hoop, gate and explicit skin IDs can replace a stamped proxy.
+  if (id && id !== 'station_ring_hub' && id !== 'helios_trade_hub'
+    && id !== 'gate_jump_ring' && !id.startsWith('skin:')) return declared;
   // Eligibility owns the opt-outs: sensors, ghosts, and authored geometry never take a skin —
   // the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
-  if (!measuredSkinAllowedFor(entity)) return declared;
-  const dynamic = isDynamicPhysicsBodyEntity(entity);
+  const substance = measuredSkinSubstance(entity);
+  if (!substance || (!id && !substance.dynamic)) return declared;
+  const dynamic = substance.dynamic;
   // Canonical identity is mutable in place — a hull swap rewrites data.defId on the SAME data
   // object — so the data shell, stamped id, and type are not enough: the resolved row is the
   // identity, and any change to it must invalidate the cached manifest.
@@ -328,12 +335,12 @@ export function resolveCollisionProxyManifest(entity) {
   const cached = MEASURED_PROXY_CACHE.get(entity);
   if (cached && cached.data === data && cached.id === id && cached.type === entity.type
     && cached.dynamic === dynamic && cached.row === row) return cached.manifest;
-  const manifest = resolveMeasuredProxyManifest(entity, id, declared);
+  const manifest = resolveMeasuredProxyManifest(entity, dynamic, declared);
   MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, row, manifest });
   return manifest;
 }
 
-function resolveMeasuredProxyManifest(entity, id, declared) {
+function resolveMeasuredProxyManifest(entity, dynamic, declared) {
   let measured = modelTruthProxyManifest(entity);
   // The measured skin replaces the retired hoop, the gate ball, and any hull capsule
   // or rock ball that does not meet the flight-plane tolerance. Gas and other
@@ -355,19 +362,11 @@ function resolveMeasuredProxyManifest(entity, id, declared) {
       };
     }
   }
-  // A skin replaces a declared legacy collider, an explicit skin id, or — once eligibility
-  // already admitted it — a dynamic body that declares nothing (older saves stamp no proxy id).
-  // Fixed bodies still adopt only through a declared id, so a station that declares nothing keeps
-  // the legacy center-radius dock contract.
-  if (measured && ((!id && isDynamicPhysicsBodyEntity(entity)) || id === 'station_ring_hub' || id === 'helios_trade_hub'
-    || id === 'gate_jump_ring' || (typeof id === 'string' && id.startsWith('skin:')))) {
-    return compactSkinManifest(entity, measured);
-  }
-  return declared;
+  return measured ? compactSkinManifest(measured, dynamic) : declared;
 }
 
-function compactSkinManifest(entity, manifest) {
-  if (manifest.opening || !isDynamicPhysicsBodyEntity(entity)) return manifest;
+function compactSkinManifest(manifest, dynamic) {
+  if (manifest.opening || !dynamic) return manifest;
   const key = manifest.id;
   let resolved = DYNAMIC_SKIN_CACHE.get(key);
   if (resolved === undefined) {
