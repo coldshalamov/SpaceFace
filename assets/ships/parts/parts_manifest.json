@@ -835,7 +835,7 @@
       "priority": "P1",
       "file": "fins/fin_wedge.glb",
       "tris": 1058,
-      "bytes": 2989344,
+      "bytes": 2989736,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

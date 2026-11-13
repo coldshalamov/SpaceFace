@@ -72,6 +72,7 @@ export async function compileRenderPackage(options = {}) {
   const io = await createIo();
   const document = await io.readBinary(new Uint8Array(sourceBytes));
   document.setLogger(new Logger(Logger.Verbosity.SILENT));
+  normalizeFinWedgeRuntimeDefaults(document, assetId);
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
   // Quantization otherwise folds its position decode transform into a leaf mesh node.
@@ -235,6 +236,44 @@ export async function compileRenderPackage(options = {}) {
     renderResourceBytes: renderResources.reduce((sum, resource) => sum + resource.bytes.length, 0),
     renderResources: renderResources.length,
   });
+}
+
+// The authored fin source must carry complete texture roles, while its previous runtime Accent
+// intentionally used the procedural fallback and none of its materials used AO. Its authoring
+// tool marks only the neutral contract placeholders so the render package can retain that
+// established runtime policy. Never strip a live map based on a material name alone.
+export function normalizeFinWedgeRuntimeDefaults(document, assetId) {
+  if (assetId !== 'sf.render.fin-wedge') return;
+  const materials = document.getRoot().listMaterials();
+  const hasMarker = materials.some((material) => Object.hasOwn(material.getExtras() || {}, 'spacefaceFinWedgeSourceDefaults'));
+  if (!hasMarker) return;
+  const marked = materials.filter((material) => Array.isArray(material.getExtras()?.spacefaceFinWedgeSourceDefaults));
+  if (marked.length !== materials.length || marked.length !== 3) {
+    throw new Error('fin-wedge: incomplete source-default material markers');
+  }
+  const names = new Set(marked.map((material) => material.getName()));
+  if (names.size !== 3 || !['Material_Hull', 'Material_Mechanical', 'Material_Accent'].every((name) => names.has(name))) {
+    throw new Error('fin-wedge: unexpected marked material set');
+  }
+  for (const material of marked) {
+    const accent = material.getName() === 'Material_Accent';
+    const defaults = material.getExtras().spacefaceFinWedgeSourceDefaults;
+    const expected = accent ? ['normal', 'metallicRoughness', 'occlusion'] : ['normal', 'occlusion'];
+    if (defaults.length !== expected.length || expected.some((name) => !defaults.includes(name))
+      || !material.getBaseColorTexture() || !material.getNormalTexture()
+      || !material.getMetallicRoughnessTexture() || !material.getOcclusionTexture()
+      || material.getNormalScale() !== 0 || material.getOcclusionStrength() !== 0
+      || material.getOcclusionTexture() !== material.getMetallicRoughnessTexture()) {
+      throw new Error(`fin-wedge: unexpected source defaults on ${material.getName()}`);
+    }
+  }
+  for (const material of marked) {
+    material.setOcclusionTexture(null);
+    if (material.getName() === 'Material_Accent') {
+      material.setNormalTexture(null);
+      material.setMetallicRoughnessTexture(null);
+    }
+  }
 }
 
 // Windows file locks (antivirus/indexer scans of freshly written package files) surface as

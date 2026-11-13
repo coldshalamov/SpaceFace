@@ -6919,20 +6919,6 @@
       "contractNodeCount": 64
     },
     {
-      "id": "fin_wedge",
-      "kind": "part:fins",
-      "source": "assets/ships/parts/fins/fin_wedge.glb",
-      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
-      "sourceSha256": "b2003ec52eb6c853a661d0ee889e292b9fb8d12e336c12b663bd0d7c401c123c",
-      "releaseSha256": "03850896561ef6e23b5bcffdaf50f17581a26df42b3d2a39ab537bc619e83992",
-      "sourceBytes": 2989344,
-      "releaseBytes": 3707428,
-      "textures": 4,
-      "ktx2Textures": 4,
-      "meshoptBufferViews": 22,
-      "contractNodeCount": 1
-    },
-    {
       "id": "wholeship_hornet_scn_customs_cutter",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/hornet_scn_customs_cutter.glb",
@@ -7001,6 +6987,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 54,
       "contractNodeCount": 26
+    },
+    {
+      "id": "fin_wedge",
+      "kind": "part:fins",
+      "source": "assets/ships/parts/fins/fin_wedge.glb",
+      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
+      "sourceSha256": "243aeefcfa16386746292830258a163bd6cc9a76685977c4891f699435d9479b",
+      "releaseSha256": "27c847b4a8c2e9147314df6af9e6f970fe6f2984d8e66d693522adaf65c69749",
+      "sourceBytes": 2989736,
+      "releaseBytes": 2537460,
+      "textures": 5,
+      "ktx2Textures": 5,
+      "meshoptBufferViews": 22,
+      "contractNodeCount": 1
     }
   ]
 }

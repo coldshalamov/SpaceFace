@@ -1326,12 +1326,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.fin-wedge",
-    "expectedContentHash": "9aa47f9f5b9d03a19157929795876a731f88c27c8d045f6ef3cb2034d053aa60",
+    "expectedContentHash": "3ddf6177edd7615956d7cafeb0e9681e8370a3ddc7b2528adf7bdbe0a0af8979",
     "key": "fin-wedge",
     "metadataUrl": "assets/ships/release/render-packages/fin-wedge/render-package.json",
     "runtimeAssetId": "SF_FIN_WEDGE",
     "slot": "fin",
-    "sourceSha256": "03850896561ef6e23b5bcffdaf50f17581a26df42b3d2a39ab537bc619e83992",
+    "sourceSha256": "27c847b4a8c2e9147314df6af9e6f970fe6f2984d8e66d693522adaf65c69749",
     "sourceUrl": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
   {

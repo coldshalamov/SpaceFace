@@ -1,9 +1,14 @@
 {
-  "route": "The modular part library includes fin_wedge in its fin selection; its exact encounter-level frequency is not established.",
+  "route": "The modular part library includes fin_wedge in its fin selection. The 15 roster ship definitions resolve complete bodies; the fin plan also selects this part for some IDs of separately spawned non-roster craft, including Vael writ tenders and Lamplighter wayfarers. Actual visible encounter frequency and ordinary-play admission remain unverified.",
   "deploymentCode": [
     "src/render/partsLibrary.js",
     "src/render/assetLoader.js",
     "src/render/renderPackageManifest.js"
   ],
-  "status": "part selection traced; candidate preview incomplete and final package unchanged"
+  "status": "neutral-normal source and package built and inspected through the package loader; ordinary-play admission remains pending",
+  "latestPreview": {
+    "status": "the current compiled package drew six meshes in both isolated views; the four-pixel neutral normal loaded without the one-pixel compressed-texture warning",
+    "evidence": ".devshots/fleet/fin-wedge-overhaul/shipping-package-4px/report.json",
+    "next": "Seek an ordinary assembled non-roster craft encounter before claiming player-facing acceptance."
+  }
 }

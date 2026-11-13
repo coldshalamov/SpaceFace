@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9aa47f9f5b9d03a19157929795876a731f88c27c8d045f6ef3cb2034d053aa60",
+  "contentHash": "3ddf6177edd7615956d7cafeb0e9681e8370a3ddc7b2528adf7bdbe0a0af8979",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.fin-wedge.node.det-mount-bracket.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "materialHash": "58c6380baba828404a6c042dba859cda67b3e5d87e8d926e05a5d9ee58a2cba4",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.fin-wedge.node.det-mount-bracket",
@@ -52,7 +52,7 @@
       "id": "sf.render.fin-wedge.node.det-radiator-slit.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "materialHash": "58c6380baba828404a6c042dba859cda67b3e5d87e8d926e05a5d9ee58a2cba4",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.fin-wedge.node.det-radiator-slit",
@@ -77,7 +77,7 @@
       "id": "sf.render.fin-wedge.node.det-root-soot.primitive.0",
       "indexCount": 6,
       "indexed": true,
-      "materialHash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
+      "materialHash": "58c6380baba828404a6c042dba859cda67b3e5d87e8d926e05a5d9ee58a2cba4",
       "materialPipelineKey": "opaque",
       "meshName": "Plane",
       "nodeId": "sf.render.fin-wedge.node.det-root-soot",
@@ -102,7 +102,7 @@
       "id": "sf.render.fin-wedge.node.det-wear-patch.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b3d13aa8b39edce602930cbe4c185da0c200ffa535296323c814afc3d44e5bbf",
+      "materialHash": "1bd66d2fcd53ef7f3147bba6be2d40a71aaaeef433e3fb70530a1fedbdf8e954",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.fin-wedge.node.det-wear-patch",
@@ -127,7 +127,7 @@
       "id": "sf.render.fin-wedge.node.wedge-edge-light.primitive.0",
       "indexCount": 1440,
       "indexed": true,
-      "materialHash": "b3d13aa8b39edce602930cbe4c185da0c200ffa535296323c814afc3d44e5bbf",
+      "materialHash": "1bd66d2fcd53ef7f3147bba6be2d40a71aaaeef433e3fb70530a1fedbdf8e954",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge_Edge_Light",
       "nodeId": "sf.render.fin-wedge.node.wedge-edge-light",
@@ -152,7 +152,7 @@
       "id": "sf.render.fin-wedge.node.wedge-main.primitive.0",
       "indexCount": 1332,
       "indexed": true,
-      "materialHash": "12b0f0fef1ed7ede2bc61f1c9409cbf6a242458383b4b527df73bf047e08ff6a",
+      "materialHash": "7df08e403f24d2d7bf5f1ff44b3c4e8bfcf5c2aff92ad1091a161c317e30416d",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge_Main",
       "nodeId": "sf.render.fin-wedge.node.wedge-main",
@@ -165,34 +165,22 @@
   "lods": [],
   "materials": [
     {
-      "hash": "12b0f0fef1ed7ede2bc61f1c9409cbf6a242458383b4b527df73bf047e08ff6a",
-      "id": "material:12b0f0fef1ed7ede2bc61f1c",
-      "name": "Material_Hull",
+      "hash": "1bd66d2fcd53ef7f3147bba6be2d40a71aaaeef433e3fb70530a1fedbdf8e954",
+      "id": "material:1bd66d2fcd53ef7f3147bba6",
+      "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "fin_wedge_trim_sheet_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
           "name": "fin_wedge_wear_mask_1k",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "fin_wedge_trim_sheet_1k_normal_slot",
-          "slot": "normal",
+          "slot": "baseColor",
           "uri": null
         }
       ]
     },
     {
-      "hash": "361974a70ee488f5097e2c84ef319dec75a5dea60674911bb0a51188e86a828a",
-      "id": "material:361974a70ee488f5097e2c84",
+      "hash": "58c6380baba828404a6c042dba859cda67b3e5d87e8d926e05a5d9ee58a2cba4",
+      "id": "material:58c6380baba828404a6c042d",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -210,22 +198,34 @@
         },
         {
           "colorSpace": "linear",
-          "name": "fin_wedge_trim_sheet_1k_normal_slot",
+          "name": "spaceface_neutral_normal_4",
           "slot": "normal",
           "uri": null
         }
       ]
     },
     {
-      "hash": "b3d13aa8b39edce602930cbe4c185da0c200ffa535296323c814afc3d44e5bbf",
-      "id": "material:b3d13aa8b39edce602930cbe",
-      "name": "Material_Accent",
+      "hash": "7df08e403f24d2d7bf5f1ff44b3c4e8bfcf5c2aff92ad1091a161c317e30416d",
+      "id": "material:7df08e403f24d2d7bf5f1ff4",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "fin_wedge_wear_mask_1k",
+          "name": "fin_wedge_trim_sheet_1k",
           "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fin_wedge_wear_mask_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4",
+          "slot": "normal",
           "uri": null
         }
       ]
@@ -1068,19 +1068,19 @@
       "sha256": "41b18e343600c2857d430be2e4ef7bbe6941202038edb69573d3a062f501df15"
     },
     "sourceGlb": {
-      "bytes": 3707428,
-      "sha256": "03850896561ef6e23b5bcffdaf50f17581a26df42b3d2a39ab537bc619e83992",
+      "bytes": 2537460,
+      "sha256": "27c847b4a8c2e9147314df6af9e6f970fe6f2984d8e66d693522adaf65c69749",
       "uri": "fin_wedge.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 344570,
+      "sha256": "0402b05e12c66a1f4bd1d5f72420d0f5500541d028bbba537a4413043c03f3a8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3706328,
-    "sha256": "ec398b528112a746a75c6fc9d19308bce3c81a4d9b6bd120b44eede0d3c65da9",
+    "bytes": 2535648,
+    "sha256": "6a2234d67bc857dc7fdf1998081fe6ac22a3730e6fc3d9f73a0f8fcdf59455cf",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1344,7 +1344,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
-  "runtimeHash": "4081da7bda1e9804f92631e283fde4988f1b8630251bc89ddac356e83cadc168",
+  "runtimeHash": "582899e4291eaeb8f8324369a313b00ebc196a56a5e3f4459793efc73a268b3a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
