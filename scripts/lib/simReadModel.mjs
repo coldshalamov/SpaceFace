@@ -1603,6 +1603,7 @@ export function domainSigDigest(sig) {
 
 const SIG_OPAQUE = '@@opaque';
 const SIG_CYCLE = '@@cycle';
+const NO_SIGNED_SCALAR = Symbol('no signed scalar');
 
 export function writeDomainSignature(value, parts, seen) {
   if (value === null) {
@@ -1989,6 +1990,7 @@ export function createDomainDiffer(options = {}) {
       kids: null,
       digest: null,
       signature: null,
+      signedScalar: NO_SIGNED_SCALAR,
       bytes: 0,
       lastSign: -1,
       lastEnum: null,
@@ -2240,7 +2242,12 @@ export function createDomainDiffer(options = {}) {
       return;
     }
     const pv = projectDomainLeaf(leafRule, v, state);
-    const sig = canonicalSignature(pv, sigScratch);
+    // Mutable containers still need the complete canonical walk. Identical scalar values
+    // already have the exact wire text, including NaN and signed zero.
+    const type = typeof pv;
+    const scalar = pv === null || (type !== 'object' && type !== 'function') ? pv : NO_SIGNED_SCALAR;
+    const sig = scalar !== NO_SIGNED_SCALAR && node.lastSign >= 0 && Object.is(scalar, node.signedScalar)
+      ? node.signature : canonicalSignature(pv, sigScratch);
     // Production sends the canonical value, never its hash. Compare the retained
     // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
     // every due reply. The optional parity probe still gets the same digest,
@@ -2251,6 +2258,7 @@ export function createDomainDiffer(options = {}) {
     node.urgentSign = false;
     node.lastSign = tick;
     node.bytes = sig.length;
+    node.signedScalar = scalar;
     if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
     if (path === 'counterweightCircuitGhost') node.circuitGhostSource = v;
     if (currentCombatTraceWatermark) {

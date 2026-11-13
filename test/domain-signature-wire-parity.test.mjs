@@ -42,3 +42,43 @@ test('production signature comparison preserves complete probe wire values throu
   assert.deepEqual(mirror.get('player'), state.player);
   assert.equal(mirror.get('run'), null);
 });
+
+test('a due scalar leaf retains exact signature bytes and publishes signed zero and kind changes', () => {
+  configureDomainMirroring({});
+  const differ = createDomainDiffer({ probe: true });
+  const state = { run: { phase: 'active', wave: 1, spawnedThreat: 0 } };
+  const segs = ['run', 'spawnedThreat'];
+  const path = segs.join('.');
+  const find = result => result.updates.find(update => update.segs.join('.') === path);
+  const due = tick => {
+    assert.equal(differ.invalidateLeaf(path), true);
+    return differ.diff(state, tick);
+  };
+  const first = differ.diff(state, 0);
+  const slot = differ.paths.get(path);
+  assert.deepEqual(find(first), { segs, v: 0, bytes: 3 });
+  const initialDigest = slot.digest;
+  const unchanged = due(1);
+  assert.equal(find(unchanged), undefined);
+  assert.equal(slot.lastSign, 1, 'an unchanged due scalar still counts as signed');
+  assert.equal(slot.bytes, 3);
+  assert.equal(slot.digest, initialDigest);
+
+  state.run.spawnedThreat = -0;
+  const negativeZero = due(2);
+  assert.deepEqual(find(negativeZero), { segs, v: -0, bytes: 4 });
+  assert.notEqual(slot.digest, initialDigest);
+  state.run.spawnedThreat = NaN;
+  assert.deepEqual(find(due(3)), { segs, v: NaN, bytes: 5 });
+  assert.equal(find(due(4)), undefined, 'a second NaN has the same wire signature');
+
+  const mutable = { count: 0 };
+  state.run.spawnedThreat = mutable;
+  const objectBytes = canonicalSignature(mutable).length;
+  assert.deepEqual(find(due(5)), { segs, v: { count: 0 }, bytes: objectBytes });
+  mutable.count = 1;
+  assert.deepEqual(find(due(6)), { segs, v: { count: 1 }, bytes: objectBytes });
+  state.run.spawnedThreat = 0;
+  assert.deepEqual(find(due(7)), { segs, v: 0, bytes: 3 });
+  assert.equal(slot.digest, initialDigest);
+});
