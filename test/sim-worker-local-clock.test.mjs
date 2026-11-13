@@ -177,10 +177,23 @@ test('the main lane frees SAB reply cells before sending one cumulative ACK', t 
   }
   f.lane.runner.consumeLatestCompletedTick({});
   assert.equal(Atomics.load(arena.header, SAB_REPLY_FREE_INDEX), 4);
-  const acks = [];
-  sabEnvelopeDrain(worker, 'cmd', message => acks.push(message));
+  const acks = f.posts.filter(message => message.kind === 'clockAck');
   assert.deepEqual(acks.map(message => [message.kind, message.clockSequence]), [['clockAck', 4]]);
   assert.equal(f.state.tick, 4);
+});
+
+test('autonomous SAB replies coexist with ordered input bursts larger than the command ring', t => {
+  const f = makeFixture(t, { sab: true });
+  f.state.mode = 'flight';
+  f.lane.runner.setClockActive(true);
+  for (const code of ['KeyW', 'KeyD', 'KeyJ', 'KeyJ', 'KeyD', 'KeyW']) {
+    laneDomEvent({ type: 'keydown', code });
+  }
+  assert.equal(f.lane.runner.isClosed(), false);
+  assert.deepEqual(f.posts.filter(message => message.kind === 'clockCommand')
+    .flatMap(message => message.commands.filter(command => command.p?.d?.type === 'keydown')
+      .map(command => command.p.d.code)),
+  ['KeyW', 'KeyD', 'KeyJ', 'KeyJ', 'KeyD', 'KeyW']);
 });
 
 function makeWatchdogFixture(t) {

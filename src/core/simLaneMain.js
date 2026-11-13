@@ -874,13 +874,12 @@ export function createSimLaneRuntime({
     }
   }
 
-  // One post path for every directive: pre-arm (or SAB-off) directives ride
-  // postMessage; post-arm everything goes through the cmd ring so the two
-  // channels can never interleave directives. A cell that cannot take the
-  // payload (oversize / occupied) fails the lane — the same fail-closed
-  // contract the stall detector uses.
+  // Keep one command path per clock. An autonomous worker can spend several
+  // frames in one physics batch. Its four-cell command ring cannot absorb that
+  // burst without blocking main or rejecting controls. Use its ordered message
+  // queue for commands while retaining the shared pose and reply buffers.
   function postLaneDirective(msg) {
-    if (!sabEnv) { channel.post(msg); return; }
+    if (!sabEnv || workerClockMode === 'worker-local') { channel.post(msg); return; }
     const kind = msg.kind === 'tick' ? SAB_ENV_KIND.TICK
       : msg.kind === 'finalize' ? SAB_ENV_KIND.FINALIZE
       : msg.kind === 'shutdown' ? SAB_ENV_KIND.SHUTDOWN
