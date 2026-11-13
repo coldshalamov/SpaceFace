@@ -34,11 +34,11 @@ import { VAEL_LIEN } from '../src/data/factions/vael.js';
 const SEED = 7341;
 const HOME = 'sector_veil_nebula';
 
-function boot({ sector = HOME, contract = false, credits = 50000, mode = 'flight' } = {}) {
+function boot({ sector = HOME, contract = false, credits = 50000 } = {}) {
   const bus = createBus();
   const sim = createSimulation({ seed: SEED, bus, systems: [vaelLiens] });
   const { state } = sim;
-  state.mode = mode;
+  state.mode = 'flight';
   state.world.currentSectorId = sector;
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 12, mass: 24,
@@ -1010,12 +1010,15 @@ test('a stale writ telegraph on a recycled tender id cannot serve with no wind-u
 });
 
 test('the lien serves only in open space — a non-flight contract telegraph never arms', () => {
-  const { sim, state, player, visit, collect } = boot({ contract: true, mode: 'station' });
+  const { sim, state, player, visit, collect, sys } = boot({ contract: true });
   try {
     quiet(visit);
     tender(sim, 100, 0); // inside clampRange with a contract job running
     const telegraphs = collect('vael:lienTelegraph');
-    sim.step();
+    // The station registry deliberately parks the faction owner. Exercise the Vael guard
+    // directly so a future call during a dock transition still cannot begin a wind-up.
+    state.mode = 'station';
+    sys.update(1 / 60, state);
     assert.equal(Object.keys(ensureVaelState(state).telegraphs).length, 0,
       'no wind-up while the pilot is not flying');
     assert.equal(telegraphs.length, 0);
@@ -1023,6 +1026,13 @@ test('the lien serves only in open space — a non-flight contract telegraph nev
     state.mode = 'flight';
     sim.step();
     assert.equal(telegraphs.length, 1, 'back in open space the tender reads its clause');
+    state.mode = 'station';
+    sys.update(1 / 60, state);
+    assert.equal(Object.keys(ensureVaelState(state).telegraphs).length, 0,
+      'a pending wind-up is also cleared at the station boundary');
+    state.mode = 'flight';
+    sim.step();
+    assert.equal(telegraphs.length, 2, 'leaving the station starts a fresh wind-up');
     sim.runTicks(Math.ceil(VAEL_LIEN.telegraphS * 60) + 2);
     assert.ok(lienAnchorFor(state, player.id), 'the wind-up still lands in flight');
   } finally {

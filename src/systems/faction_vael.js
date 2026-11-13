@@ -291,7 +291,8 @@ export function ensureVaelState(state) {
   for (const r of v.writs) {
     r.tenderId = r.tenderId == null ? null : r.tenderId;
     r.tenderGen = r.tenderGen == null ? null : intOr(r.tenderGen, null);
-    r.lanceIds = Array.isArray(r.lanceIds) ? r.lanceIds.filter((x) => x != null) : [];
+    if (!Array.isArray(r.lanceIds)) r.lanceIds = [];
+    else if (r.lanceIds.some((id) => id == null)) r.lanceIds = r.lanceIds.filter((id) => id != null);
     r.postedAt = num(r.postedAt);
     r.despawnAt = num(r.despawnAt, r.postedAt + VAEL_LEDGER.writTtlS);
     r.mass = Math.max(0, num(r.mass, VAEL_LIEN.anchorMass));
@@ -366,8 +367,7 @@ export function ensureVaelState(state) {
 }
 
 /** True while the player is inside contract work — the lien only bites there. */
-export function vaelContractJobActive(state) {
-  const v = ensureVaelState(state);
+export function vaelContractJobActive(state, v = ensureVaelState(state)) {
   if (v.pageNine && v.pageNine.armed) return true;
   if (v.contractJobActive === true) return true;
   // A signed hazard clause IS contract work — the paper the player walked into.
@@ -616,12 +616,14 @@ export const vaelLiens = {
   },
 
   // ── The telegraph: readable wind-up before the clamp ─────────────────────────
-  _telegraphTenders(state) {
-    const v = ensureVaelState(state);
+  _telegraphTenders(state, v) {
     const player = state.entities.get(state.playerId);
     if (!player || player.alive === false) return;
-    const contract = vaelContractJobActive(state);
-    const already = lienAnchorFor(state, player.id) != null;
+    const contract = vaelContractJobActive(state, v);
+    if (!contract || state.mode !== 'flight' || lienAnchorFor(state, player.id) != null) {
+      for (const id in v.telegraphs) delete v.telegraphs[id];
+      return;
+    }
     const range2 = VAEL_LIEN.clampRange * VAEL_LIEN.clampRange;
     const seen = new Set();
     for (const e of state.entityList) {
@@ -638,7 +640,7 @@ export const vaelLiens = {
       // The clamp serves in open space only — the same flight gate the writ
       // crew lives under. A docked or loading pilot is not serveable, and a
       // wind-up armed before the transition dies with it.
-      if (!contract || already || !near || state.mode !== 'flight') {
+      if (!near) {
         if (tg) delete v.telegraphs[e.id];
         continue;
       }
@@ -709,8 +711,7 @@ export const vaelLiens = {
    * Anchors ride their host until thrown. A thrown anchor that reaches a hostile hull
    * transfers the debt: `LIEN TRANSFERRED: <name> NOW OWES THE VAEL.`
    */
-  _tickAnchors(state, dt) {
-    const v = ensureVaelState(state);
+  _tickAnchors(state, dt, v = ensureVaelState(state)) {
     const riding = new Set(); // host ids whose clamped mass still has live metal attached
     for (const e of state.entityList) {
       if (!e || e.alive === false || e.data?.lienAnchor !== true) continue;
@@ -923,8 +924,7 @@ export const vaelLiens = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** The sector's visit row — the desk's clocks are per-sector. */
-  _visit(state) {
-    const v = ensureVaelState(state);
+  _visit(state, v = ensureVaelState(state)) {
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
     let row = v.visits[sectorId];
     if (!row) {
@@ -1002,8 +1002,7 @@ export const vaelLiens = {
   },
 
   /** The desk's reminder cadence: stage 0 open → stage 1 reminded → stage 2 writ. */
-  _tickInvoices(state) {
-    const v = ensureVaelState(state);
+  _tickInvoices(state, v) {
     const player = this._player(state);
     // A copy — _postWrit's emits can re-enter payInvoice, which gc's this list.
     for (const inv of [...v.invoices]) {
@@ -1121,8 +1120,7 @@ export const vaelLiens = {
     this._log(state, LEDGER_BARKS.writRecalled);
   },
 
-  _tickWrits(state, dt, scan) {
-    const v = ensureVaelState(state);
+  _tickWrits(state, dt, scan, v) {
     const player = scan.player;
     // A copy — _closeWrit gc's this very list mid-iteration and a splice would
     // skip the next crew's whole tick. Same discipline as the patrol rows.
@@ -1226,8 +1224,7 @@ export const vaelLiens = {
 
   // ── Patrols: the presence the Veil keeps ──────────────────────────────────────
 
-  _tickPatrols(state, dt, scan, visit) {
-    const v = ensureVaelState(state);
+  _tickPatrols(state, dt, scan, visit, v) {
     const player = scan.player;
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
     const inHome = VAEL_HOME.has(sectorId);
@@ -1416,8 +1413,7 @@ export const vaelLiens = {
 
   // ── Hazard clauses: the desk's posted work ────────────────────────────────────
 
-  _tickClauses(state, dt, scan, visit) {
-    const v = ensureVaelState(state);
+  _tickClauses(state, dt, scan, visit, v) {
     const player = scan.player;
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
     const openCount = v.clauses.reduce((n, c) => n + (CLAUSE_OPEN.has(c.state) ? 1 : 0), 0);
@@ -1725,8 +1721,7 @@ export const vaelLiens = {
 
   // ── Named debtors: hulls that ran from their paper ────────────────────────────
 
-  _tickDebtors(state, dt, scan, visit) {
-    const v = ensureVaelState(state);
+  _tickDebtors(state, dt, scan, visit, v) {
     const player = scan.player;
     const sectorId = state.world && state.world.currentSectorId || 'unknown';
     const open = v.debtors.filter((r) => r.state === 'open');
@@ -1878,8 +1873,7 @@ export const vaelLiens = {
   // ── The book: dividends and turned pages ───────────────────────────────────────
 
   /** Punctuality dividends — the Vael pay their punctual, once per threshold. */
-  _tickMilestones(state) {
-    const v = ensureVaelState(state);
+  _tickMilestones(state, v = ensureVaelState(state)) {
     VAEL_LEDGER.milestones.forEach((m, i) => {
       if (v.book.settledCr < m.cr) return;
       if (!this._paidOnce(v, `milestone:${i}`)) return;
@@ -1891,8 +1885,7 @@ export const vaelLiens = {
   },
 
   /** Forgiveness: enough honored clauses turn a page and close an old stain. */
-  _tickBook(state) {
-    const v = ensureVaelState(state);
+  _tickBook(state, v) {
     const earned = Math.floor((v.book.clauses | 0) / VAEL_LEDGER.forgiveEvery);
     // The page turns only when a stain actually closes. Earned pages can outrun
     // stains forever (a clean book earns pages with nothing to forgive), and a
@@ -1908,7 +1901,7 @@ export const vaelLiens = {
       });
     }
     // Restored or externally-settled credit still catches its dividends.
-    this._tickMilestones(state);
+    this._tickMilestones(state, v);
   },
 
   /** Drop the oldest closed rows past the keep count — bounded ledger discipline. */
@@ -2036,9 +2029,11 @@ export const vaelLiens = {
             || e.data?.lienAnchor === true || e.data?.vaelPatrol === true
             || e.data?.vaelWritTender === true || e.data?.vaelLance === true
             || e.data?.vaelDebtor === true))))) return;
-    const visit = this._visit(state);
-    if (strideDt(this, 'telegraph', dt, 3, state) > 0) this._telegraphTenders(state);
-    this._tickAnchors(state, dt);
+    // One normalization at the update boundary. The ledger remains the same object
+    // for the synchronous phases below, even when they add or settle rows.
+    const visit = this._visit(state, v);
+    if (strideDt(this, 'telegraph', dt, 3, state) > 0) this._telegraphTenders(state, v);
+    this._tickAnchors(state, dt, v);
     this._overrideHead(state, dt);
     // The bucket census is a fast index (rows re-prove ownership): refresh at 20 Hz.
     if (strideDt(this, 'scan', dt, 3, state) > 0 || !this._scanCache || this._scanState !== state) {
@@ -2046,12 +2041,12 @@ export const vaelLiens = {
       this._scanState = state;
     }
     const scan = this._scanCache;
-    this._tickInvoices(state);
-    this._tickWrits(state, dt, scan);
-    this._tickPatrols(state, dt, scan, visit);
-    this._tickClauses(state, dt, scan, visit);
-    this._tickDebtors(state, dt, scan, visit);
-    this._tickBook(state);
+    this._tickInvoices(state, v);
+    this._tickWrits(state, dt, scan, v);
+    this._tickPatrols(state, dt, scan, visit, v);
+    this._tickClauses(state, dt, scan, visit, v);
+    this._tickDebtors(state, dt, scan, visit, v);
+    this._tickBook(state, v);
   },
 };
 
