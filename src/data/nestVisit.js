@@ -46,6 +46,26 @@ export function nestOutcomeReceipt(state, payload = null) {
       || payload.outcome !== r.outcome || (payload.sectorId != null && payload.sectorId !== r.sectorId))) return null;
   return { ...r };
 }
+// Presentation reads the encounter owner's published state. It never infers a hit from proximity.
+function liveNestRead(live, carrier) {
+  const rec = live?.data?.nest;
+  if (live?.shapeId !== 'the_nest' || live.phase !== 'conflict' || !rec?.contactEstablished
+      || !carrier || carrier.alive === false || carrier.data?.nestEncounterId !== live.id
+      || !Number.isInteger(rec.remaining) || rec.remaining < 0 || rec.remaining > 6
+      || !Number.isInteger(rec.returnHits) || rec.returnHits < 0 || rec.returnHits > 3) return null;
+  const exposed = carrier.data.nestBayOpen === true;
+  const count = `${rec.returnHits}/3 confirmed coupling returns; ${rec.remaining}/6 Wasps still aboard.`;
+  return {
+    label: exposed ? 'The Nest — exposed coupling' : rec.remaining === 0
+      ? 'The Nest — brood deployed' : 'The Nest — guarded couplings',
+    reason: `${count} ${exposed
+      ? 'EXPOSED: drive a caught Wasp into the coupling; only real contact counts.'
+      : rec.remaining === 0
+      ? 'No more launch windows. Guns still work; tearing a baffle exposes its flank if your rig can handle it.'
+      : 'GUARDED: catch a launched Wasp and watch for the next exposed coupling.'} `
+      + 'To break contact, fly more than 3,000 WU from the carrier while alive, or leave the sector. The nearby approach marker is not the escape boundary.',
+  };
+}
 export function nestWaypoint(state) {
   const own = normalizeNestVisit(state?.encounterDirector?.nestVisit);
   if (Object.prototype.hasOwnProperty.call(state?.encounterDirector || {}, 'nestVisit') && !own) {
@@ -55,15 +75,16 @@ export function nestWaypoint(state) {
   const live = own?.status === 'active' ? state?.encounterDirector?.live?.[own.encounterId] : null;
   const anchor = own?.status === 'active' ? finitePos(own.snapshot?.carrier?.pos) || own.anchor : nestPosition();
   const carrier = live?.data?.nest?.carrierId != null ? state.entities?.get(live.data.nest.carrierId) : null;
+  const read = liveNestRead(live, carrier);
   const compact = (live?.data?.nest?.broodVariant || own?.snapshot?.broodVariant) === 'nursery_compact_v1';
   const handling = compact
     ? 'The compact 16t nursery Wasps fit Class I and a bare Line'
     : 'These standard 16t Wasps need Class I capacity AND current Line rating T1';
-  return { label: own?.status === 'active' ? 'The Nest — cycling bays' : 'The Nest — south radiation-lane approach',
+  return { label: read?.label || (own?.status === 'active' ? 'The Nest — cycling bays' : 'The Nest — south radiation-lane approach'),
     reason: own?.status === 'waiting' && state.encounterDirector.nestVisit.waitReason
       ? 'Nursery signal acquired. Other lane traffic must clear first. Hold at the outside approach; do not fly into the berth. No victory or progress is being credited while admission waits.'
       : own?.status === 'active'
-      ? `Watch GUARDED change to EXPOSED COUPLING. ${handling}: use the Line to drive one into the exposed coupling. Real contact is required; holding it nearby does nothing. The 400t salvaged blast baffles need Class III capacity AND current Line rating T1; guns or withdrawing alive remain valid.`
+      ? read ? `${read.reason} ${handling}. Baffles: 400t, Class III + current Line T1; optional.` : `Watch GUARDED change to EXPOSED COUPLING. ${handling}: use the Line to drive one into the exposed coupling. Real contact is required; holding it nearby does nothing. The 400t salvaged blast baffles need Class III capacity AND current Line rating T1; guns or withdrawing alive remain valid.`
       : 'The garden growth is recorded. Approach the south-lane nursery from the east. A Reach carrier launches six compact 16t nursery Wasps; watch the exposed couplings, fight or withdraw alive. Ripping the salvaged blast baffles is optional, not a required upgrade.',
     stationId: null, sectorId: NEST_VISIT.sectorId,
     // Keep navigation outside the hull even during combat; selection remains an explicit action.
