@@ -454,13 +454,21 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float grainFrame
   ) {
     vec3 hdr = max(scene, vec3(0.0)) * exposure;
-    vec3 filmic = spaceAcesFilmic(hdr);
-    float peak = max(hdr.r, max(hdr.g, hdr.b));
-    if (peak > 0.65) {
-      filmic = mix(filmic, spaceRadianceShoulder(hdr),
-        0.55 * smoothstep(0.65, 2.5, peak));
+    // The house curve is PBR Neutral (toneNeutral 1); the ACES fit + shoulder are only evaluated
+    // when a mood blends toward them. The branch is uniform for the whole draw.
+    float toneNeutral = clamp(uLookToneNeutral, 0.0, 1.0);
+    vec3 filmic;
+    if (toneNeutral >= 1.0) {
+      filmic = clamp(spacePbrNeutral(hdr), 0.0, 1.0);
+    } else {
+      filmic = spaceAcesFilmic(hdr);
+      float peak = max(hdr.r, max(hdr.g, hdr.b));
+      if (peak > 0.65) {
+        filmic = mix(filmic, spaceRadianceShoulder(hdr),
+          0.55 * smoothstep(0.65, 2.5, peak));
+      }
+      if (toneNeutral > 0.0) filmic = mix(filmic, clamp(spacePbrNeutral(hdr), 0.0, 1.0), toneNeutral);
     }
-    filmic = mix(filmic, clamp(spacePbrNeutral(hdr), 0.0, 1.0), clamp(uLookToneNeutral, 0.0, 1.0));
     vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
     // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
     // shoulders so movement does not turn into flickering hard posterization. Do this
