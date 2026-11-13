@@ -400,8 +400,9 @@ The next batch landed three focused changes:
 
 The locked pair `shared-dressing-slot-and-pool-pair-summary.json` pinned those three changes.
 Adventure drew 12.00 → 12.11/s, with moving mesh gaps of 135 → 143 ms p95 and 196 → 276 ms max.
-Gauntlet drew 9.86 → 9.77/s during active flight, with mesh gaps of 122 → 126 ms p95 and
-171 → 185 ms max. Adventure fired 53 and 54 shots. Gauntlet fired 191 in each arm before Rearm.
+Gauntlet drew 13.98 → 13.48/s during active flight and 9.86 → 9.77/s including Rearm. Active-flight
+mesh gaps were 122 → 126 ms p95 and 171 → 185 ms max. Adventure fired 53 and 54 shots. Gauntlet
+fired 191 in each arm before Rearm.
 All four PNGs were opened. This pair did not demonstrate a sustained cadence gain.
 
 `cf1508fed30a` moves background shader and residency work to an explicit background task when
