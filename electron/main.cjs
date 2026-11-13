@@ -1428,6 +1428,9 @@ async function createWindow() {
   ipcMain.on('spaceface:quit-prepared', onQuitPrepared);
   quitContents.on('render-process-gone', onQuitRendererGone);
   quitContents.on('unresponsive', releaseInterruptedQuit);
+  // WebContents survives a main-frame reload, but the preload that owns its
+  // save request does not. A new document must get a fresh token on next close.
+  quitContents.on('did-navigate', releaseInterruptedQuit);
   win.once('closed', () => {
     cancelStartupTimer();
     clearPreparedUpdateQuit();
@@ -1437,6 +1440,7 @@ async function createWindow() {
     if (!quitContents.isDestroyed()) {
       quitContents.removeListener('render-process-gone', onQuitRendererGone);
       quitContents.removeListener('unresponsive', releaseInterruptedQuit);
+      quitContents.removeListener('did-navigate', releaseInterruptedQuit);
     }
   });
   const requestQuitPreparation = (install = null) => {

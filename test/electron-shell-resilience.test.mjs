@@ -560,6 +560,35 @@ test('a healthy close still waits for the matching durable save receipt', async 
   }
 });
 
+test('a replaced renderer document invalidates its quit receipt and can prepare a fresh close', async () => {
+  const h = await loadShell();
+  try {
+    const { win, ipcMain } = h;
+    const contents = win.webContents;
+    const prepare = () => contents.sent.filter(([channel]) => channel === 'spaceface:prepare-quit');
+    const reply = (token) => ipcMain.emit('spaceface:quit-prepared', { sender: contents }, token, { ok: true });
+
+    win.close();
+    assert.equal(prepare().length, 1);
+    const [, oldToken] = prepare()[0];
+    contents.emit('did-navigate-in-page', {}, win.loads[0] + '#menu', true);
+    win.close();
+    assert.equal(prepare().length, 1, 'same-document navigation keeps its existing save owner');
+
+    contents.emit('did-navigate', {}, win.loads[0], 200, 'OK');
+    reply(oldToken);
+    assert.equal(win.destroyed, false, 'the replaced document cannot close the new one');
+    win.close();
+    assert.equal(prepare().length, 2, 'the replacement document can begin a fresh save handoff');
+    const [, newToken] = prepare()[1];
+    assert.notEqual(newToken, oldToken);
+    reply(newToken);
+    assert.equal(win.destroyed, true);
+  } finally {
+    h.cleanup();
+  }
+});
+
 test('a renderer crash during the save handoff finishes closing without restarting it', async () => {
   const h = await loadShell();
   try {
