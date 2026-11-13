@@ -3,8 +3,16 @@
 blender -b assets/ships/parts/blender/fin_wedge_authored.blend --python
   tools/art/blender/export_fin_wedge.py -- --out <candidate.glb> [--save-source]
 Then prepare_fin_wedge.mjs and finalize_part.mjs own the source texture contract.
+
+For the reviewed light-only reduction, preserve the current prepared source exactly:
+  blender -b --python tools/art/blender/export_fin_wedge.py --
+    --light-only-from assets/ships/parts/fins/fin_wedge.glb --out <candidate.glb>
+This mode retains the source texture contract; do not run prepare_fin_wedge.mjs again.
+It writes the light geometry and provenance beside the candidate. It does not publish.
 """
 import argparse
+import math
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,7 +30,53 @@ LIVE_MESHES = {
 parser = argparse.ArgumentParser()
 parser.add_argument('--out', required=True)
 parser.add_argument('--save-source', action='store_true')
+parser.add_argument('--light-only-from', help='Prepared source GLB whose non-light data must remain exact')
 args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:])
+if args.light_only_from:
+    if args.save_source:
+        parser.error('--save-source is incompatible with --light-only-from')
+    source = Path(args.light_only_from).resolve()
+    output = Path(args.out).resolve()
+    geometry = output.with_suffix('.light-geometry.glb')
+    provenance = Path(str(output) + '.provenance.json')
+    if source in (output, geometry, provenance):
+        parser.error('output or sidecar path would overwrite the prepared source')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    # Closed octagonal bar: preserve the reviewed narrow stroke and its source-space origin.
+    angle = math.atan2(.73, 2.53)
+    c, s = math.cos(angle), math.sin(angle)
+    vertices = []
+    for x in (-1.316, 1.316):
+        for i in range(8):
+            theta = 2 * math.pi * i / 8
+            y, z = .04 * math.cos(theta), .005 + .035 * math.sin(theta)
+            vertices.append((x * c - y * s, x * s + y * c, z))
+    faces = [tuple(reversed(range(8))), tuple(range(8, 16))]
+    faces += [(i, (i + 1) % 8, (i + 1) % 8 + 8, i + 8) for i in range(8)]
+    mesh = bpy.data.meshes.new('FinLight_Octagonal')
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    light = bpy.data.objects.new('FinLight_Refinement', mesh)
+    bpy.context.collection.objects.link(light)
+    bpy.ops.object.select_all(action='DESELECT')
+    light.select_set(True)
+    bpy.context.view_layer.objects.active = light
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.uv.smart_project()
+    bpy.ops.object.mode_set(mode='OBJECT')
+    triangulate = light.modifiers.new('Export triangulation', 'TRIANGULATE')
+    bpy.ops.object.modifier_apply(modifier=triangulate.name)
+    bpy.ops.export_scene.gltf(
+        filepath=str(geometry), export_format='GLB', use_selection=True,
+        export_apply=True, export_texcoords=True, export_normals=True, export_tangents=True,
+    )
+    subprocess.run([
+        'node', str(ROOT / 'tools/art/refine_fin_wedge_light.mjs'),
+        str(source), str(geometry), str(output),
+    ], check=True, cwd=str(ROOT))
+    print('FIN_WEDGE_LIGHT_EXPORT', output)
+    raise SystemExit(0)
+
 for name in ('Material_Hull', 'Material_Mechanical'):
     material = bpy.data.materials[name]
     normal = material.node_tree.nodes['Principled BSDF'].inputs['Normal']

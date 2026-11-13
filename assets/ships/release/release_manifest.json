@@ -6933,20 +6933,6 @@
       "contractNodeCount": 26
     },
     {
-      "id": "fin_wedge",
-      "kind": "part:fins",
-      "source": "assets/ships/parts/fins/fin_wedge.glb",
-      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
-      "sourceSha256": "243aeefcfa16386746292830258a163bd6cc9a76685977c4891f699435d9479b",
-      "releaseSha256": "27c847b4a8c2e9147314df6af9e6f970fe6f2984d8e66d693522adaf65c69749",
-      "sourceBytes": 2989736,
-      "releaseBytes": 2537460,
-      "textures": 5,
-      "ktx2Textures": 5,
-      "meshoptBufferViews": 22,
-      "contractNodeCount": 1
-    },
-    {
       "id": "wholeship_helios_lark",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/helios_lark.glb",
@@ -7004,6 +6990,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 40,
       "contractNodeCount": 13
+    },
+    {
+      "id": "fin_wedge",
+      "kind": "part:fins",
+      "source": "assets/ships/parts/fins/fin_wedge.glb",
+      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
+      "sourceSha256": "bce6224fedc8426ef39307a86f31569d167c4e2582f97683e9b7a922abfa3805",
+      "releaseSha256": "e98ae169f1676be98595cbabcd928d50facbe9da90dee4d98de4f92f51eb8b88",
+      "sourceBytes": 2968432,
+      "releaseBytes": 2527636,
+      "textures": 5,
+      "ktx2Textures": 5,
+      "meshoptBufferViews": 22,
+      "contractNodeCount": 1
     }
   ]
 }

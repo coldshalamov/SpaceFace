@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3ddf6177edd7615956d7cafeb0e9681e8370a3ddc7b2528adf7bdbe0a0af8979",
+  "contentHash": "5f7c799e2c3d126474057eddf05065ad0b30ed680a497b8a1d8eca09ad60ac3e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -112,27 +112,27 @@
     {
       "bounds": {
         "max": [
-          2.2953901290893555,
-          0.2328285426731352,
-          3.819080609050251
+          2.2905073165893555,
+          0.2200339266923319,
+          3.8183182838049183
         ],
         "min": [
-          -0.26539015769958496,
-          0.13717147699639756,
-          3.0109190762372244
+          -0.26050734519958496,
+          0.14996607807603968,
+          3.0116816399011364
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3bc6de5f15034d84d53962eca3426b2cbef1c077b88e6c59b07f5bca7616ce02",
+      "geometryHash": "5d0d715ab66df164dd43d887ac6296768490a52c48e8c74776a123babbd3b9a2",
       "id": "sf.render.fin-wedge.node.wedge-edge-light.primitive.0",
-      "indexCount": 1440,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "1bd66d2fcd53ef7f3147bba6be2d40a71aaaeef433e3fb70530a1fedbdf8e954",
       "materialPipelineKey": "opaque",
       "meshName": "Wedge_Edge_Light",
       "nodeId": "sf.render.fin-wedge.node.wedge-edge-light",
       "primitiveIndex": 0,
-      "vertexCount": 490
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -721,21 +721,21 @@
     {
       "id": "sf.render.fin-wedge.node.wedge-edge-light",
       "localTransform": [
-        1.2803901433944702,
+        1.2755073308944702,
         0,
         0,
         0,
         0,
-        1.2803901433944702,
+        1.2755073308944702,
         0,
         0,
         0,
         0,
-        1.2803901433944702,
+        1.2755073308944702,
         0,
         1.0149999856948853,
-        0.1850000098347664,
-        3.414999842643738,
+        0.1850000023841858,
+        3.4149999618530273,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -750,21 +750,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.fin-wedge.body",
       "worldTransform": [
-        1.2803901433944702,
+        1.2755073308944702,
         0,
         0,
         0,
         0,
-        1.2803901433944702,
+        1.2755073308944702,
         0,
         0,
         0,
         0,
-        1.2803901433944702,
+        1.2755073308944702,
         0,
         1.0149999856948853,
-        0.1850000098347664,
-        3.414999842643738,
+        0.1850000023841858,
+        3.4149999618530273,
         1
       ]
     },
@@ -1068,19 +1068,19 @@
       "sha256": "41b18e343600c2857d430be2e4ef7bbe6941202038edb69573d3a062f501df15"
     },
     "sourceGlb": {
-      "bytes": 2537460,
-      "sha256": "27c847b4a8c2e9147314df6af9e6f970fe6f2984d8e66d693522adaf65c69749",
+      "bytes": 2527636,
+      "sha256": "e98ae169f1676be98595cbabcd928d50facbe9da90dee4d98de4f92f51eb8b88",
       "uri": "fin_wedge.glb"
     },
     "sourceManifest": {
       "bytes": 344570,
-      "sha256": "0402b05e12c66a1f4bd1d5f72420d0f5500541d028bbba537a4413043c03f3a8",
+      "sha256": "b32a4055e4ea55ab4b8355c7b95026fd30b6211125f4317158a34e29714f0a29",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2535648,
-    "sha256": "6a2234d67bc857dc7fdf1998081fe6ac22a3730e6fc3d9f73a0f8fcdf59455cf",
+    "bytes": 2526424,
+    "sha256": "df8851cf1a0caba6febeaa8821be0eefb9d7445d0efdb0f8b9298fd04d15b654",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1212,21 +1212,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.2803901433944702,
+          1.2755073308944702,
           0,
           0,
           0,
           0,
-          1.2803901433944702,
+          1.2755073308944702,
           0,
           0,
           0,
           0,
-          1.2803901433944702,
+          1.2755073308944702,
           0,
           1.0149999856948853,
-          0.1850000098347664,
-          3.414999842643738,
+          0.1850000023841858,
+          3.4149999618530273,
           1
         ],
         "name": "Wedge_Edge_Light",
@@ -1344,7 +1344,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
-  "runtimeHash": "582899e4291eaeb8f8324369a313b00ebc196a56a5e3f4459793efc73a268b3a",
+  "runtimeHash": "6526e3841b70d2560d1a3a984371593bcca548df6463b3ee1b8369d5bff86340",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
