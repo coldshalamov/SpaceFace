@@ -346,6 +346,10 @@ import { getDressingRow } from '../world/dressingTable.js';
 import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
 
 const COMMODITY_NAME = new Map(COMMODITIES.map((row) => [row.id, row.name]));
+
+function isPlottedLocalCourse(waypoint) {
+  return waypoint?.kind === 'local' || waypoint?.kind === 'nav' || waypoint?.kind === 'zone';
+}
 // NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
 // the posting used (pure exported read; economy stays the sole stock/market writer).
 import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
@@ -2284,7 +2288,7 @@ export const missions = {
     if (!m || m.id !== trackedId || m.status !== 'active') return;
     const current = this.state.nav && this.state.nav.waypoint;
     if (!options.forceRoute && current && !current.onboarding
-      && (current.kind === 'local' || current.kind === 'nav' || current.kind === 'trade')) {
+      && (isPlottedLocalCourse(current) || current.kind === 'trade')) {
       if (m.storyTag === CONTRACT_47A_B0_TAG && !m.params?.sampleRecovered) this._resolveContract47aSampleSource(m);
       return;
     }
@@ -2347,7 +2351,7 @@ export const missions = {
     if (sectorId) this.spawnTargetsForSector(sectorId);
     const nav = this.state.nav;
     const existing = nav && nav.waypoint;
-    if (existing && existing.kind === 'local') {
+    if (isPlottedLocalCourse(existing)) {
       const pos = existing.pos;
       if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
           && (!existing.sectorId || existing.sectorId === sectorId)) {
@@ -3459,11 +3463,11 @@ export const missions = {
     const allowReplaceTrade = force || !!options.preferStory;
     // Story progress updates guidance; it never cancels a pilot's explicit local burn.
     // This also applies to completion/restore refreshes that force story guidance.
-    if (existing && (existing.kind === 'local' || existing.kind === 'nav')) return false;
+    if (isPlottedLocalCourse(existing)) return false;
     // The optional physical weigh follows delivery; never hijack a pilot's own
     // course (even the completion path's forceStory refresh) to perform it.
     if (kesslerScalePending(state) && existing
-        && (existing.kind === 'local' || existing.kind === 'trade' || existing.onboarding)) return false;
+        && (existing.kind === 'trade' || existing.onboarding)) return false;
     if (existing && existing.onboarding && !force) return false;
     if (existing && existing.kind === 'mission') return false;
     if (existing && existing.kind === 'trade' && !allowReplaceTrade) return false;

@@ -5,6 +5,7 @@ import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
 import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
 import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
+import { commitCoursePayload } from '../src/ui/galaxyMap.js';
 
 const FIX = { x: -15187.322021484375, z: 7062.294677734375 };
 const SECTOR = 'sector_ceres_belt';
@@ -70,6 +71,27 @@ test('an explicit saved local course keeps Continue priority over a tracked miss
   assert.equal(h.state.nav.autopilot.active, true);
   targetsAgree(h.state, FIX);
 });
+test('a plotted chart zone keeps its marker and burn aligned with a tracked mission through Continue', () => {
+  const h = harness();
+  const mission = { id: 'tracked-haul', status: 'active', type: 'cargo_delivery', title: 'Deliver provisions',
+    params: { cmdtyId: 'cmdty_food', qty: 2 }, destSectorId: 'sector_tethys_junction',
+    destStationId: 'station_tethys', objectiveProgress: 0, objectiveTarget: 2, targetEntityIds: [] };
+  h.state.missions.active = [mission];
+  h.state.ui.trackedMissionId = mission.id;
+  const course = commitCoursePayload(h.state, { kind: 'zone', sectorId: SECTOR,
+    name: 'Survey zone', x: FIX.x, z: FIX.z, radius: 60 });
+  assert.equal(course.waypointKind, 'zone');
+  h.course._onSetCourse(course);
+  h.restore(JSON.parse(JSON.stringify(h.saver._serializeNav())));
+  h.mission._refreshNavigation();
+  assert.equal(h.state.ui.trackedMissionId, mission.id);
+  assert.equal(h.state.nav.waypoint.kind, 'zone');
+  assert.equal(h.state.nav.autopilot.active, true);
+  targetsAgree(h.state, FIX);
+  h.mission.trackMission(mission.id);
+  assert.equal(h.state.nav.waypoint.missionId, mission.id, 'explicit Track can replace the plotted course');
+});
+
 test('trade guidance and normal story restoration are unchanged', () => {
   const h = harness();
   const trade = { kind: 'trade', label: 'Provisions', sectorId: SECTOR, commodityId: 'cmdty_food', pos: FIX };
