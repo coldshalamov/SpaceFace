@@ -31,7 +31,8 @@ export const LOOK_BASE = deepFreeze({
   surface: {
     // Paint value. 1.0 shows the authored albedo; <1 lifts it toward pastel (the retired
     // Lacquer & Starlight pass shipped 0.80, which is what bleached the fleet).
-    albedoGamma: 0.90,
+    // LOOK-04 round-20 sweep (2026-11-13): authored albedo at full value — the lift read as chalk.
+    albedoGamma: 1.0,
     // Paint chroma around its own luminance. >1 deepens colour without changing value.
     albedoSaturation: 1.18,
     // Share of form shading replaced by graphic light bands. 0 = physical falloff, 1 = poster.
@@ -40,7 +41,8 @@ export const LOOK_BASE = deepFreeze({
     // Colour of the unlit side and of the lit side (multipliers on diffuse light).
     // Raised shadow floor prevents dark hulls and unlit enemies from vanishing into pitch-black voids.
     // Deep slate-ultramarine shadow floor fights warm solar key for two-color contrast.
-    shadowTint: [0.70, 0.80, 1.00],
+    // LOOK-04 sweep: deeper ultramarine on the unlit side so rocks and hulls carry form (ruling 2: blue, not black).
+    shadowTint: [0.42, 0.52, 1.00],
     lightTint: [1.12, 1.03, 0.87],
     // Dark contour where the hull turns away from the camera. 0 = none.
     contour: 0.18,
@@ -56,11 +58,13 @@ export const LOOK_BASE = deepFreeze({
     coatTint: [1.0, 1.0, 1.0],
     // Edge light: a coloured grazing-angle rim, strongest away from the key.
     rim: [1.00, 0.70, 0.35],
-    rimStrength: 0.32,
-    rimPower: 3.5,
+    // LOOK-04 sweep: a wider, brighter rim on every body (LOOK bible: rim on every silhouette).
+    rimStrength: 0.60,
+    rimPower: 2.6,
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
-    rockFill: 0.85,
+    // LOOK-04 sweep: the 0.85 fill flattened every rock into a pale cut-out; 0.45 keeps a shadow side.
+    rockFill: 0.45,
     // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
     // dark geological faces without changing their hue or texture strata; it is never emission.
     rockFloor: 0.12,
@@ -92,10 +96,10 @@ export const LOOK_BASE = deepFreeze({
     // Extra saturation for muted colours only, so skin-of-paint pops without neon clipping.
     vibrance: 0.20,
     // Painted-edge ink and value steps from the retired illustration pass. 0 = clean.
-    ink: 0.08,
+    ink: 0,
     // LOOK-04: blend from the per-channel ACES fit (whitens and desaturates bright colours) toward the Khronos PBR
-    // Neutral curve (linear midtones, hue-true highlights). 0 = today's picture.
-    toneNeutral: 0,
+    // Neutral curve (linear midtones, hue-true highlights). 1 = Neutral (house default since the 2026-11-13 sweep).
+    toneNeutral: 1,
     // Colour of bloom spill: subtle electric blue-white aura.
     bloomTint: [1.04, 1.00, 0.94],
     // Corner darkening colour (multiplied in at full vignette): deep cosmic midnight.
@@ -107,8 +111,10 @@ export const LOOK_BASE = deepFreeze({
     // the lead chose concept A, a working harbour at golden hour: design/game/look/concepts/). Gains on the
     // sector's authored ambient and fill intensities. The key stays a hard rake and the rim keeps
     // silhouettes, so the side a sun does not reach is left for real lamps to find.
-    ambientGain: 0.90,
-    fillGain: 0.80,
+    // LOOK-04 sweep chose 0.65 / 0.55; held at 0.75 / 0.65 so ruling 2 (not bleak) still holds — the rim
+    // and the deeper shadow tint carry the form instead of a flat lift.
+    ambientGain: 0.75,
+    fillGain: 0.65,
   },
 });
 
