@@ -286,3 +286,10 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   activation at 1,230 WU for contact and collected zero on-screen frames for the target. `1c7225d24604`
   distinguishes close contact from remote activation and stages against the rock's drift position.
   A corrected Ceres verification is queued. The previous report is `2026-11-13T12-59-43-929Z.json`.
+- `db9ecd228b47` fixes one proven reply recovery delay. With four replies posted and a fifth
+  retained, the first ACK freed credit but left the ready reply waiting for a later worker turn.
+  Native ordered delivery now releases the retained reply immediately when all preceding posted
+  ranges prove a contiguous, same-lifecycle prefix. Only the real ACK trims the journal. Gaps,
+  rebuilds and other transport paths retain their existing rules. The production clock fixture
+  failed before the fix and passed after. The 32-test clock suite passed. A same-lock, single-file
+  source comparison is queued as `player-freeze/pair-credit.mjs`.
