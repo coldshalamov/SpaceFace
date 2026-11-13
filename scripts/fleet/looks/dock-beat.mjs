@@ -38,6 +38,7 @@ try {
     me.pos.x = st.pos.x + 60; me.pos.z = st.pos.z; me.vel && (me.vel.x = 0, me.vel.z = 0);
     return st.name || st.id;
   });
+  await sleep(14000); // the idle warm of the station screen runs about 6 s into flight
   console.log('station', await park());
   await page.mouse.click(640, 360);
   const dock = async (label, skipAfterMs) => {
