@@ -125,7 +125,9 @@ try {
     return h.worldToScreen({ x: c.x, y: 0, z: c.z }, {});
   });
   const releaseAt = await page.evaluate(() => window.SF.state.simTime);
-  await page.mouse.move(aim && Number.isFinite(aim.x) ? aim.x : 640, aim && Number.isFinite(aim.y) ? aim.y : 200, { steps: 2 });
+  // A real player clicks on the playfield: keep the release click inside the canvas, never off-screen.
+  const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  await page.mouse.move(cl(aim && Number.isFinite(aim.x) ? aim.x : 640, 300, 980), cl(aim && Number.isFinite(aim.y) ? aim.y : 200, 140, 600), { steps: 2 });
   await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
   await page.keyboard.up('KeyW');
   for (let i = 0; i < 6; i++) await shot('release');      // back to back: the release beat
