@@ -38,6 +38,7 @@
 //                         choose the diagnostic domain mirror shape before the worker initializes;
 //                         the default empty profile remains unchanged.
 //   --trace-stacks        with --trace, include style/layout invalidation records and source stacks.
+//   --eval-fire           hold the real primary mouse button on the flight canvas during --eval-file.
 //   --swarm-round=20     start the real Swarm run at the requested round, seed 4242.
 //   --experiments=hide-hud,no-post,render-scale=0.5,no-shadows,skip-render
 //                         bracket each named arm with baselines in one flight. Use --ms=15000
@@ -223,10 +224,12 @@ const GPU_TIMERS = process.argv.includes('--gpu-timers');
 // Eval scripts can await __sfProfileScreenshot(label) to save a compositor screenshot in the output directory.
 const EVAL_FILE = argValue('--eval-file');
 const EVAL_THRUST = process.argv.includes('--eval-thrust') && !process.argv.includes('--eval-brake');
+const EVAL_FIRE = process.argv.includes('--eval-fire');
 const WORKER_COST = process.argv.includes('--worker-cost');
 const PROFILE_EVAL = EVAL_FILE && (TRACE || CADENCE_ONLY || WORKER_PROFILE || GPU_TIMERS
   || WORKER_COST || argValue('--sampling-us') !== null);
 if (EVAL_FILE && FROM_LAUNCH) throw new Error('--eval-file requires steady flight');
+if (EVAL_FIRE && !EVAL_FILE) throw new Error('--eval-fire requires --eval-file');
 if (SWARM_ROUND !== null && (FROM_LAUNCH || GAUNTLET || RACING)) {
   throw new Error('--swarm-round requires steady Swarm flight');
 }
@@ -1842,10 +1845,24 @@ async function prepareSteadyEvalWorkload(page) {
   return async () => {
     log(`running ${EVAL_FILE} in the page`);
     try {
+      if (EVAL_FIRE) {
+        const point = await page.locator('#gl-canvas').evaluate(canvas => {
+          const box = canvas.getBoundingClientRect();
+          for (const [u, v] of [[0.5, 0.52], [0.53, 0.6], [0.57, 0.61], [0.46, 0.5]]) {
+            const x = box.left + box.width * u, y = box.top + box.height * v;
+            if (document.elementFromPoint(x, y) === canvas) return { x, y };
+          }
+          return null;
+        });
+        if (!point) throw new Error('Flight canvas is covered at every fire aim point');
+        await page.mouse.move(point.x, point.y);
+      }
       if (heldKey) await page.keyboard.down(heldKey);
       if (turnKey) await page.keyboard.down(turnKey);
+      if (EVAL_FIRE) await page.mouse.down();
       return await page.evaluate(source);
     } finally {
+      if (EVAL_FIRE) await page.mouse.up().catch(() => {});
       if (turnKey) await page.keyboard.up(turnKey).catch(() => {});
       if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
       await page.evaluate(() => {
