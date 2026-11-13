@@ -1,0 +1,23 @@
+{
+  "route": "The ecological Lantern Cyst is spawned by ecology site casts and built by the procedural fauna renderer. The same-named Swarm brood family uses a separate instanced presentation body.",
+  "deploymentCode": [
+    "src/data/alienEcology.js",
+    "src/systems/alienEcology.js",
+    "src/render/visualFactory.js",
+    "src/render/faunaVisuals.js"
+  ],
+  "status": "Two site-cast color strains traced in source and inspected after diagnostic relocation. A public-map New Game journey reached a Charon cyst with the new geometry and shared skin, but its marked view was partly covered by the ship; an unobstructed ordinary view and a natural Veil encounter remain unverified.",
+  "variationDiscovery": "unresolved",
+  "playableVariants": [
+    {
+      "id": "charon_grave",
+      "description": "Charon Grave tissue, filament and glow colors, spawned by the Warm Freighter and Three Hull Garden ecology casts.",
+      "evidence": ["src/data/alienEcology.js", "src/systems/alienEcology.js", "src/render/faunaVisuals.js"]
+    },
+    {
+      "id": "veil_glass",
+      "description": "Veil Glass tissue, filament and glow colors, spawned by the Quiet Ice ecology cast.",
+      "evidence": ["src/data/alienEcology.js", "src/systems/alienEcology.js", "src/render/faunaVisuals.js"]
+    }
+  ]
+}

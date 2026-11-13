@@ -10,6 +10,7 @@ import { creatureSkin } from './creatureSkinLibrary.js';
 import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
 import { createCasketSegmentGeometry, createCasketHeadGeometry } from './casketWormGeometry.js';
+import { createLanternSacGeometry, createLanternCoreGeometry, createLanternRootletGeometry } from './lanternCystGeometry.js';
 import { readFaunaMotion } from '../data/faunaMotionRead.js';
 
 const TISSUE = 0x9aa08e;
@@ -202,29 +203,24 @@ function buildHullLeech(colors) {
 // Lantern Cyst: a translucent bioluminescent sac — drifts warm-facing, ruptures if killed.
 function buildLanternCyst(colors) {
   const g = new THREE.Group();
+  const skin = creatureSkin('tissue');
   const sac = new THREE.Mesh(
-    geo('lc_sac', () => {
-      const s = new THREE.SphereGeometry(1, 14, 10);
-      s.scale(1, 1.25, 1);
-      return s;
-    }),
+    geo('lc_sac', createLanternSacGeometry),
     new THREE.MeshStandardMaterial({
-      color: colors.tissue, roughness: 0.35, metalness: 0.0,
+      color: skin ? new THREE.Color(0xffffff).lerp(new THREE.Color(colors.tissue), TISSUE_TINT_MIX) : colors.tissue,
+      map: skin ? skin.baseColor : null,
+      roughness: 0.35, metalness: 0.0,
       transparent: true, opacity: 0.55,
       emissive: colors.glow, emissiveIntensity: 0.35,
     }),
   );
   sac.scale.setScalar(7);
   g.add(sac);
-  const core = new THREE.Mesh(geo('lc_core', () => new THREE.SphereGeometry(0.42, 10, 8)), glowMat(colors.glow, 1.6));
+  const core = new THREE.Mesh(geo('lc_core', createLanternCoreGeometry), glowMat(colors.glow, 1.6));
   core.scale.setScalar(7);
   core.position.y = -1;
   g.add(core);
-  const rootlet = geo('lc_root', () => {
-    const s = new THREE.CylinderGeometry(0.03, 0.09, 1.6, 5);
-    s.translate(0, -0.8, 0);
-    return s;
-  });
+  const rootlet = geo('lc_root', createLanternRootletGeometry);
   // The rootlets use one finish per cyst, with independent motion across cysts.
   const rootletMaterial = tissueMat(colors.filament);
   for (let i = 0; i < 5; i += 1) {
