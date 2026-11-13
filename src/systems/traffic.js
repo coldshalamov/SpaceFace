@@ -166,6 +166,26 @@ import { rubberneckersOps } from './rubberneckers.js';
 import { nearMissPlantOps } from './nearMissPlant.js';
 import { applausePlantOps } from './applausePlant.js';
 import { fenderBenderPlantOps } from './fenderBenderPlant.js';
+import { busDoesntMoveOps } from './plants/busDoesntMove.js'; // PL-101..PL-256: world-reacts plant family
+import { doorstopOps } from './plants/doorstop.js';
+import { ducklingsOps } from './plants/ducklings.js';
+import { farBerthOps } from './plants/farBerth.js';
+import { freightMannersOps } from './plants/freightManners.js';
+import { knownByNameOps } from './plants/knownByName.js';
+import { litterOps } from './plants/litter.js';
+import { mistakenOps } from './plants/mistaken.js';
+import { oneYankOps } from './plants/oneYank.js';
+import { orphanWreckOps } from './plants/orphanWreck.js';
+import { paperTrailOps } from './plants/paperTrail.js';
+import { perspectiveOps } from './plants/perspective.js';
+import { redAtHomeOps } from './plants/redAtHome.js';
+import { seenOps } from './plants/seen.js';
+import { sweepingLineOps } from './plants/sweepingLine.js';
+import { otherNameOps } from './plants/theOtherName.js';
+import { twoNamesOps } from './plants/twoNames.js';
+import { witnessOps } from './plants/witness.js';
+import { wrongWayOps } from './plants/wrongWay.js';
+import { yourBerthOps } from './plants/yourBerth.js';
 import { scramblePlantOps } from './scramblePlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
@@ -1638,6 +1658,26 @@ export const traffic = {
   ...nearMissPlantOps,
   ...applausePlantOps,
   ...fenderBenderPlantOps,
+  ...busDoesntMoveOps,
+  ...doorstopOps,
+  ...ducklingsOps,
+  ...farBerthOps,
+  ...freightMannersOps,
+  ...knownByNameOps,
+  ...litterOps,
+  ...mistakenOps,
+  ...oneYankOps,
+  ...orphanWreckOps,
+  ...paperTrailOps,
+  ...perspectiveOps,
+  ...redAtHomeOps,
+  ...seenOps,
+  ...sweepingLineOps,
+  ...otherNameOps,
+  ...twoNamesOps,
+  ...witnessOps,
+  ...wrongWayOps,
+  ...yourBerthOps,
   ...scramblePlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
@@ -1751,6 +1791,27 @@ export const traffic = {
     this._initRubberneckers(ctx);
     this._initNearMissPlant(ctx);
     this._initFenderBenderPlant(ctx);
+// PL-101..PL-256: world-reacts plants install their listeners once, guarded internally.
+    this._initBusDoesntMove(ctx);
+    this._initDoorstop(ctx);
+    this._initDucklings(ctx);
+    this._initFarBerth(ctx);
+    this._initFreightManners(ctx);
+    this._initKnownByName(ctx);
+    this._initLitter(ctx);
+    this._initMistaken(ctx);
+    this._initOneYank(ctx);
+    this._initOrphanWreck(ctx);
+    this._initPaperTrail(ctx);
+    this._initPerspective(ctx);
+    this._initRedAtHome(ctx);
+    this._initSeen(ctx);
+    this._initSweepingLine(ctx);
+    this._initOtherName(ctx);
+    this._initTwoNames(ctx);
+    this._initWitness(ctx);
+    this._initWrongWay(ctx);
+    this._initYourBerth(ctx);
     this._initScramblePlant(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
@@ -3934,6 +3995,16 @@ export const traffic = {
     stepSpillVultures(this);
     stepGratitudeParcel(this);
     this._stepRubberneckers(state);
+    // Plant-owned actors tick independently of the freighter census; other plant checks
+    // share the dispatch player lookup. Each module owns its lifecycle and cooldowns.
+    this._stepPl103Bus(state, dt);
+    this._stepSweepingLine(state);
+    const plantsPlayer = state.entities && state.entities.get(state.playerId);
+    this._stepFarBerthShadow(state, plantsPlayer);
+    if (plantsPlayer) {
+      this._stepWrongWayTurnaround(state, plantsPlayer);
+      this._stepPerspectiveFind(state, plantsPlayer);
+    }
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
@@ -4109,6 +4180,60 @@ export const traffic = {
           this._syncTrafficRecordToData(e, rec);
           continue;
         }
+        // PL-101..PL-256: world-reacts plants. Each claims a hull for the tick only when its
+        // own row fires; every movement goes through the reaction lease, never a raw write.
+        if (this._reactBusDoesntMove(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactDoorstop(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactDucklings(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactFarBerth(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactFreightManners(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactKnownByName(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactMistaken(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactOneYank(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactOrphanWreck(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactPerspective(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactSweepingLine(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactWrongWay(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactYourBerth(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         this._reactCivilianViolence(e, rec, stations, state);
         // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
         // job runtime and emits the horn; the choreography keeps its single intent writer.
@@ -4146,6 +4271,60 @@ export const traffic = {
       }
       // PL-04: scramble plant reaction (civilians grab spilled pods and scatter)
       if (this._reactScramblePlant(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-101..PL-256: world-reacts plants. Each claims a hull for the tick only when its
+      // own row fires; every movement goes through the reaction lease, never a raw write.
+      if (this._reactBusDoesntMove(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactDoorstop(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactDucklings(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactFarBerth(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactFreightManners(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactKnownByName(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactMistaken(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactOneYank(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactOrphanWreck(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactPerspective(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactSweepingLine(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactWrongWay(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactYourBerth(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
