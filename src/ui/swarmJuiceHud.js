@@ -44,7 +44,7 @@ const MAX_CALL_LINES = 1;
 // Higher speaks over lower. Boss beats outrank kill words; counted repeats and small receipts
 // (a close call, a pile-up tick) never talk over a bigger moment.
 const CALL_PRIORITY = Object.freeze({ bossdown: 5, bossact: 4, overdrive: 3, chainstar: 3,
-  collateral: 3, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, discharge: 1 });
+  firstbeat: 4, collateral: 3, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, discharge: 1 });
 const CALL_PRIORITY_DEFAULT = 2;
 /** A beat that waited this long behind a higher one is stale news — it is dropped, not shown late. */
 const BEAT_STALE_S = 12;

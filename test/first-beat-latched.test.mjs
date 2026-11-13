@@ -69,3 +69,21 @@ test('lane: the first physics kill says CRUSHED once; a gun kill stays with DEST
     assert.doesNotMatch(calloutTextFor(callout.root), /CRUSHED/);
   } finally { callout.destroy(); }
 });
+
+import { SWARM_RULESET } from '../src/data/swarmMode.js';
+const swarmHarness = harness.replace('run: null', "run: { kind: 'survival', phase: 'wave', ruleset: SWARM_RULESET }");
+const { mount: mountSwarm } = new Function('createStuntCallout', 'SEED', 'SWARM_RULESET', `${swarmHarness}; return { mount };`)(createStuntCallout, 4242, SWARM_RULESET);
+
+test('Swarm: the first latch goes to the centre announcer, not the column', () => {
+  const { bus, callout } = mountSwarm();
+  try {
+    const heard = [];
+    bus.on('swarm:announce', (p) => heard.push(p));
+    bus.emit('tether:latched', { sourceId: 1, targetId: 2 });
+    callout.update(0);
+    assert.deepEqual(heard.map((p) => [p.kind, p.text]), [['firstbeat', 'LATCHED']]);
+    assert.doesNotMatch(calloutTextFor(callout.root), /LATCHED/);
+    bus.emit('tether:latched', { sourceId: 1, targetId: 3 });
+    assert.equal(heard.length, 1, 'once per run');
+  } finally { callout.destroy(); }
+});

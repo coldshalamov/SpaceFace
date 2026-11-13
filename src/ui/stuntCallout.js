@@ -923,6 +923,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       // plain ≤3-word callout — LOG registers, snag/ride/strain telemetry and mass figures never
       // reach the lane in either mode.
       if ((isSwarmGlass(state) || isAdventureFlight(state)) && !plainCallout(line.name)) return;
+      // Swarm: a first-beat word is spoken in the centre lane by the announcer (it outranks kill
+      // words there, ~1.3 s, then hands back). The column below stays for Adventure.
+      if (FIRST_BEAT_NAMES.has(line.name) && isSwarmGlass(state) && bus) {
+        firstBeatsSaid.add(line.name);
+        bus.emit('swarm:announce', { kind: 'firstbeat', text: line.name, count: 1 });
+        return;
+      }
       // One callout voice: a first-beat word is the verb landing (priority 3); the physics
       // narrator and sense lines are quieter (1) and give way to a live higher word.
       if (!claimCalloutVoice(`stunt:${line.key}`, FIRST_BEAT_NAMES.has(line.name) ? 3 : 1, CALLOUT_TTL_MS)) return;

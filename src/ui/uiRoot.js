@@ -1590,8 +1590,9 @@ export const ui = {
       const arrivalMs = reducedDock ? 350 : 900;
       if (!dockWordSaid) {
         dockWordSaid = true;
-        const berth = this.state.entities && this.state.entities.get && this.state.entities.get(stationId);
-        dockWord.textContent = String((berth && berth.name) || 'DOCKED');
+        let berthName = '';
+        try { berthName = this._stationNameFor ? String(this._stationNameFor(this.state, stationId) || '') : ''; } catch (_) { berthName = ''; }
+        dockWord.textContent = berthName ? berthName.toUpperCase() : 'DOCKED';
         dockWord.hidden = false;
       }
       if (dockSkipOff) dockSkipOff();
@@ -1722,7 +1723,22 @@ export const ui = {
     });
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
+    // The first dock must open as fast as the second: once flight has settled and the browser is
+    // idle, load the station screen's module (and the berth-name lookup the arrival word reads)
+    // in the background. Registration is the existing owner path; nothing mounts or paints here.
+    const warmFirstDock = () => {
+      this._stationWarmTimer = null;
+      if (!this.state || this.state.mode !== 'flight') return;
+      const run = () => {
+        try { this._ensureStationScreenRegistered().catch(() => {}); } catch (_) { /* stays lazy */ }
+        import('./sectorLawPresenter.js').then((m) => { this._stationNameFor = m.stationName; }).catch(() => {});
+      };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 5000 });
+      else setTimeout(run, 1500);
+    };
     this.bus.on('game:started', () => {
+      if (this._stationWarmTimer) clearTimeout(this._stationWarmTimer);
+      this._stationWarmTimer = setTimeout(warmFirstDock, 6000);
       reconcileGameStartedScreens(this);
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
