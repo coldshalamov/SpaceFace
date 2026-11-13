@@ -200,6 +200,60 @@ test('dotted mirrors reuse expanded parent nodes across scheduled collapse and r
   }
 });
 
+test('expanded profiles keep station projections atomic through docking and departure', (t) => {
+  configureDomainMirroring({ expandPaths: [{ segs: [], depth: 8 }] });
+  t.after(() => configureDomainMirroring({}));
+  const helios = 'station_helios';
+  const other = 'station_ceres';
+  const slipId = 'mass-slip:eco_mass_scale_weight_audit_station_helios:0';
+  const paths = ['stationServices', 'factionPresence.servicesByStation', 'economyContracts.massScale.slips'];
+  const state = { ui: { docked: false } };
+  const differ = createDomainDiffer({ probe: true });
+  const mirror = new Map();
+  const checker = createDomainProbeChecker(mirror);
+  function publish(tick) {
+    const result = differ.diff(state, tick);
+    for (const update of result.updates) applyDomainPathUpdate(mirror, update, new WeakSet());
+    assert.deepEqual(checker.consume(result.probe).events, [], `probe parity at tick ${tick}`);
+    const stationUpdates = result.updates.filter(update => paths.includes(update.segs[0]));
+    assert.ok(stationUpdates.every(update => update.segs.length === 1));
+  }
+
+  publish(0);
+  assert.deepEqual(mirror.get(paths[0]), { player: null, stations: {} });
+  assert.deepEqual(mirror.get(paths[1]), {});
+  assert.deepEqual(mirror.get(paths[2]), {});
+
+  state.ui = { docked: true, dockedStationId: helios };
+  state.stationServices = {
+    player: { stationId: helios, padIdx: 2,
+      jobs: [{ type: 'repair', status: 'active', total: 18, applied: 3, internalJob: true }] },
+    stations: { [helios]: { waitingClients: 1, busyCrews: 2, internalYard: true }, [other]: {} },
+  };
+  state.factionPresence = {
+    servicesByStation: { [helios]: { factionId: 'faction_scn', services: ['market'], internalService: true }, [other]: {} },
+  };
+  state.economyContracts = { massScale: { slips: {
+    [slipId]: { slipId, internalSlip: true, filedAtStations: {
+      [helios]: { outcome: 'accepted', internalFiling: true }, [other]: { outcome: 'accepted' },
+    } },
+    unrelated: { slipId: 'unrelated' },
+  } } };
+  for (let tick = 1; tick <= 10; tick++) publish(tick);
+  assert.deepEqual(mirror.get(paths[0]).player.summary, { count: 1,
+    head: { type: 'repair', status: 'active', total: 18, applied: 3 },
+    hasRepair: true, hasRefuel: false, repairHull: 15, repairArmor: 0 });
+  assert.deepEqual(mirror.get(paths[0]).stations, { [helios]: { waitingClients: 1, busyCrews: 2 } });
+  assert.deepEqual(mirror.get(paths[1]), { [helios]: { factionId: 'faction_scn', services: ['market'] } });
+  assert.deepEqual(mirror.get(paths[2]), { [slipId]: { slipId, filedAtStations: { [helios]: { outcome: 'accepted' } } } });
+
+  state.ui.docked = false;
+  for (let tick = 11; tick <= 20; tick++) publish(tick);
+  assert.deepEqual(mirror.get(paths[0]), { player: null, stations: {} });
+  assert.deepEqual(mirror.get(paths[1]), {});
+  assert.equal(mirror.get(paths[2])[slipId].filedAtStations[helios].outcome, 'accepted');
+});
+
 test('expanded profiles keep bounded Orchard projections atomic across source replacement', (t) => {
   configureDomainMirroring({ expandPaths: [{ segs: [], depth: 2 }] });
   t.after(() => configureDomainMirroring({}));
