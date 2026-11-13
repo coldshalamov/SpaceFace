@@ -1813,8 +1813,10 @@ async function runSteadyFlightProfile(page, cdp) {
     // racingToFlight owns a six-minute readiness deadline. Race it against the same event-aware
     // reader so a real start failure exits immediately without shortening the genuine route wait.
     if (RACING) {
+      const step = (name, ok, detail) => log(`${name}: ${ok} ${detail}`);
+      await installFirstLightPromptHandler(page, step);
       const flightWaitAbort = new AbortController();
-      const route = racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
+      const route = racingToFlight(page, step);
       try {
         await Promise.race([
           route.then(() => Date.now()),
