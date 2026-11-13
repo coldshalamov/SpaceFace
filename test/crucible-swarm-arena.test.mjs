@@ -24,17 +24,15 @@ import { compileSwarmOptic } from '../src/data/opticStructures.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { swarmOpeningTerrainStage } from '../src/data/swarmOpeningTerrain.js';
 import {
   OPENING_THROWABLE_SEPARATION_WU,
   swarmArenaDebrisLayout,
   swarmArenaTierForRun,
 } from '../src/data/swarmArenaLadder.js';
 
-// §33 row 485 — wave 1's room is the arena ladder's pebble tier (wave band 1–3, rating 0 t): the
-// band, safe radius and separation are the TIER's law now, not the fixed monolith defaults. The
-// tier also installs its authored opening pocket (up to five pebbles) on top of the seeded field,
-// which is why the wave-1 ceiling carries the openers and the loosest gap law in play is the
-// pocket's, not the field's.
+// Waves 1–3 use the pebble tier's band and the authored Foundry court's slot counts.
+// The opening pocket adds up to five throwables with its own separation law.
 const TIER1 = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: 1, ratingT: 0 }));
 const WAVE1_GAP_MIN = Math.min(TIER1.separation, OPENING_THROWABLE_SEPARATION_WU) - 1;
 
@@ -70,6 +68,14 @@ function boot({ ruleset = SWARM_RULESET, playerAt = { x: 0, z: 0 } } = {}) {
 
 function planFor(wave) {
   return planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
+}
+
+function openingStage(wave) {
+  return swarmOpeningTerrainStage({ arenaId: ARENA, wave, lineTier: 0 });
+}
+
+function openingBankSlots(field) {
+  return field.map((rock) => rock.data.openingTerrainSlot).filter(Number.isInteger).sort((a, b) => a - b);
 }
 
 function rocks(h) {
@@ -143,14 +149,26 @@ test('nothing spawns on the player, or inside another rock', () => {
   }
 });
 
-test('the field is topped up, never re-poured — a second wave adds nothing', () => {
+test('the opening field extends across waves, keeping surviving rocks and avoiding repeat top-ups', () => {
   const h = boot();
-  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
-  const first = rocks(h).length;
-  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
-  h.bus.emit('run:wavePlanned', { wave: 3, plan: planFor(3) });
-  assert.equal(rocks(h).length, first, 'the field held at target across three waves');
-  assert.ok(rocks(h).length <= SWARM_DEBRIS_MAX);
+  let previous = [];
+  let openerCount = 0;
+  for (const wave of [1, 2, 3]) {
+    const plan = planFor(wave);
+    h.bus.emit('run:wavePlanned', { wave, plan });
+    const field = rocks(h);
+    const { count } = openingStage(wave);
+    assert.deepEqual(openingBankSlots(field), Array.from({ length: count }, (_, slot) => slot));
+    if (wave === 1) openerCount = field.length - count;
+    assert.equal(field.length, count + openerCount, 'only the new bank slots are added');
+    for (const rock of previous) assert.ok(field.includes(rock), 'surviving terrain keeps its identity');
+    assert.ok(field.length <= SWARM_DEBRIS_MAX);
+    if (wave === 3) {
+      h.bus.emit('run:wavePlanned', { wave, plan });
+      assert.deepEqual(rocks(h).map((rock) => rock.id), field.map((rock) => rock.id));
+    }
+    previous = field;
+  }
 });
 
 test('a destroyed rock is replaced on the next wave', () => {
@@ -172,23 +190,22 @@ test('a destroyed rock is replaced on the next wave', () => {
 test('the field follows the fight: drifting far re-anchors it around the player', () => {
   const h = boot();
   h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
-  const before = rocks(h).map((r) => r.id);
+  const before = rocks(h);
+  const originalDeadlines = new Map(before.map((rock) => [rock.id, rock.data.despawnAt]));
   // Fly well past the keep radius, as a long run drifting across the sector would.
   h.player.pos.x = SWARM_DEBRIS_KEEP_RADIUS * 3;
   h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
   const near = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_KEEP_RADIUS,
   );
-  assert.ok(near.length >= SWARM_DEBRIS_TARGET - 1, `a full field exists around where the fight now is (${near.length})`);
+  assert.equal(near.length, openingStage(2).count, 'the new court has the full second-wave bank');
+  assert.equal(new Set(openingBankSlots(near)).size, near.length);
   // The rocks left behind are released to the engine's ordinary sweep, never deleted by hand.
-  const abandoned = h.state.entityList.filter(
-    (e) => e.data && e.data[SWARM_DEBRIS_TAG] && !before.includes(e.id) === false,
-  );
-  for (const rock of abandoned) {
-    if (Math.hypot(rock.pos.x - h.player.pos.x, rock.pos.z - h.player.pos.z) > SWARM_DEBRIS_KEEP_RADIUS) {
-      assert.ok(Number.isFinite(rock.data.despawnAt), 'the abandoned rock has a despawn time');
-      assert.ok(rock.alive !== false, 'and was not deleted by hand');
-    }
+  for (const rock of before) {
+    assert.ok(Number.isFinite(rock.data.despawnAt) && rock.data.despawnAt < originalDeadlines.get(rock.id),
+      'the abandoned rock gets a shorter release deadline');
+    assert.equal(h.state.entities.get(rock.id), rock, 'the sweep still owns the rock');
+    assert.equal(rock.alive, true);
   }
 });
 
@@ -198,23 +215,30 @@ test('the field stays dense where the FIGHT is, not merely within reach', () => 
   // to anybody. Drift a short distance and the field must fill back in around the player.
   const h = boot();
   h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
-  assert.ok(rocks(h).length >= SWARM_DEBRIS_TARGET - 1);
+  const opening = rocks(h);
+  assert.equal(openingBankSlots(opening).length, openingStage(1).count);
+  const originalDeadlines = new Map(opening.map((rock) => [rock.id, rock.data.despawnAt]));
 
-  // Move less than the keep radius, so nothing is released, but far enough that the old field is
-  // no longer around the fight.
+  // Move less than the keep radius but far enough to leave part of the field outside the fight.
   h.player.pos.x += SWARM_DEBRIS_FIGHT_RADIUS + 120;
   h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
 
   const near = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_FIGHT_RADIUS,
   );
-  assert.ok(near.length >= SWARM_DEBRIS_TARGET - 1, `a full field around where the fight now is (${near.length})`);
+  assert.equal(new Set(openingBankSlots(near)).size, openingStage(2).count,
+    'the fight radius contains the full second-wave bank');
+  const nearbyOpeners = near.filter((rock) => rock.data.openingPocket || rock.data.openingLesson);
+  assert.equal(near.length, openingStage(2).count + nearbyOpeners.length);
   assert.ok(near.length <= SWARM_DEBRIS_MAX, 'and inside the ceiling, which counts the fight');
   // The ones left behind are on the release clock, not counted, and not deleted by hand.
   const behind = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) > SWARM_DEBRIS_FIGHT_RADIUS,
   );
-  for (const rock of behind) assert.ok(Number.isFinite(rock.data.despawnAt));
+  assert.ok(behind.length > 0, 'drift leaves part of the original field outside the fight');
+  for (const rock of behind) {
+    assert.ok(Number.isFinite(rock.data.despawnAt) && rock.data.despawnAt < originalDeadlines.get(rock.id));
+  }
 });
 
 test('wobbling back to a rock cancels its release — it does not vanish under you', () => {
