@@ -211,3 +211,8 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   in cadence, worker CPU and Chrome scheduling traces. Use `combined-input-trace.mjs` under
   `.devshots/fleet/coordination/` with the locked steady-flight probe. Keep the timing of actual
   moving poses distinct from successful draws and validate that player fire occurred.
+- `b30d3e7d4070` gives each posted catch-up wake a one-shot timer for the same pending operation.
+  In a deterministic loss injection, the old worker remained on one tick through two seconds of
+  foreground heartbeats with no outstanding ACK. The fixed clock recovered after two fixed-step
+  periods. The delayed task could not step again, and pause and shutdown still cancel pending work.
+  This mechanism has not been attributed to the retail recording.
