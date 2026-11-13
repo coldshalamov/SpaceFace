@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "1a3d7081ea4b6dba1164556872ae4bdc005327141f6df6ba7d5880da48938dcf",
+  "uiSourceDigest": "c2b17308c1febfcae3dc2b9a3d6ec5ce9f53ed4f91cdfc84e6534707b84774bc",
   "uiSourceFiles": {
     "index.html": "1aa5213313ea5a99a7caca90ee9a9cf541307fe870374b7a29c97224e1dec28a",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -200,7 +200,7 @@
     "src/ui/orrery/deathDial.js": "d3b958011a57888791065a4f9ecc283065f8d2b9f3e4ce660a299f80e0261ffa",
     "src/ui/orrery/drillLayouts.js": "dd04b0c06ca73cc31cca5767695f89d69461a9cf20634b5d04e4cda54b085b98",
     "src/ui/orrery/equipmentGlyphs.js": "3aa7082cac37839a1e91126d50801b625fffede01080c5de9585365cb6808c54",
-    "src/ui/orrery/flight-radialsLayouts.js": "03411d7212a79fe65d9f62ec104a84dd0c470d8e370cd7b95099809e85e88e82",
+    "src/ui/orrery/flight-radialsLayouts.js": "34e96814bfcd4eb17f416fa547882165d2f44f75af373622755440167b892fff",
     "src/ui/orrery/flightCluster.js": "7982c82e92c0ede146cb154e615e12c03ebaf2a6c990da0b253519a083543b2e",
     "src/ui/orrery/footprintDial.js": "854bd512776d8d8b4157fb68876a4b3c587692d978462451038b01477ab0786e",
     "src/ui/orrery/footprintLayouts.js": "025ed52127146335a2c7202a078ae1cd4d56ea98041969b00ba901fb0a898be7",
