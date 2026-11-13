@@ -1351,7 +1351,7 @@ export const tetherGameplay = {
       maxLength,
       this._targetScratch || (this._targetScratch = []),
     );
-    const obstacles = collectAcquisitionObstacles(this, state, player, entities);
+    const obstacles = collectAcquisitionObstacles(this, state, player, entities, maxLength);
     let nearest = null;
     let nearestSurfaceDistance = Infinity;
     for (const entity of entities) {
@@ -3176,7 +3176,7 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
   // One obstacle batch for every candidate's prospective segment: the dormant field is walked
   // once per snapshot instead of once per candidate. In Twin Bridle's second press the segments
   // are the remote A→candidate pairs the bridle will actually span.
-  const obstacles = collectAcquisitionObstacles(host, state, player, candidates, admissionSource);
+  const obstacles = collectAcquisitionObstacles(host, state, player, candidates, maxLength, admissionSource);
 
   const physicallyEligible = [];
   const deniedCandidates = [];
@@ -3380,13 +3380,17 @@ export function acquisitionDenialReason(entity, playerId) {
   return 'target-lost';
 }
 
+function acquisitionOutOfRange(player, target, maxLength) {
+  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+  return distance > maxLength + Math.max(0, finite(target.radius));
+}
+
 function validateAcquisitionTarget(host, player, target, def, state, obstacles = null, admissionSource = null) {
   if (!isAttachable(target, player && player.id, state)) {
     return acquisitionDenialReason(target, player && player.id);
   }
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
-  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
-  if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
+  if (acquisitionOutOfRange(player, target, maxLength)) return 'out-of-range';
   // Twin Bridle's second press is admitted on the remote A→candidate pair, the same segment the
   // pair validator and the bridle's own create call use. The controller ship is never an endpoint.
   const endpoints = admissionSource
@@ -3459,11 +3463,12 @@ function masslineObstructed(host, state, player, target, endpoints = null, obsta
 }
 
 /**
- * One obstacle batch for a whole acquisition pass. Bounds cover every candidate's prospective
- * attachment segment, so the dormant field is walked once per snapshot rather than once per
- * candidate. Returns the host's reusable scratch array (never retain it across decisions).
+ * One obstacle batch for the reachable attachment segments. Untetherable bodies can still
+ * obstruct those segments. The ranking pass handles denials separately. Injected obstruction
+ * providers retain the original obstacle batch. The returned scratch is for synchronous use.
  */
-function collectAcquisitionObstacles(host, state, player, candidates, admissionSource = null) {
+function collectAcquisitionObstacles(host, state, player, candidates, maxLength, admissionSource = null) {
+  const useReachableBounds = typeof host.helpers?.isMasslineObstructed !== 'function';
   const scratch = host._obstructionScratch || (host._obstructionScratch = []);
   const bounds = host._obstructionBounds || (host._obstructionBounds = { minX: 0, minZ: 0, maxX: 0, maxZ: 0 });
   let minX = Infinity;
@@ -3474,6 +3479,8 @@ function collectAcquisitionObstacles(host, state, player, candidates, admissionS
   for (let i = 0; i < candidates.length; i++) {
     const entity = candidates[i];
     if (!entity || !entity.pos) continue;
+    if (useReachableBounds && (!isAttachable(entity, player.id, state)
+      || acquisitionOutOfRange(player, entity, maxLength))) continue;
     const worlds = admissionSource
       ? bridleAcquisitionEndpoints(admissionSource, entity)
       : acquisitionAttachmentEndpoints(player, entity);

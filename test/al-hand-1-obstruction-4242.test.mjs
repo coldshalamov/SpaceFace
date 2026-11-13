@@ -323,6 +323,31 @@ test('AL-HF-08 §2: a collidable but non-tetherable rock denies the Wasp on the 
 
 // ── §3 normal foreground selection ───────────────────────────────────────────────────────────
 
+test('preview obstruction preserves a surface-range target and its drifting blocker amid distant hits', () => {
+  const wasp = hostileShip(2, { pos: { x: 400, z: 0 } });
+  const distant = hostileShip(3, { pos: { x: 650, z: 0 } });
+  const h = buildHarness({ contacts: [wasp, distant], simTime: 10 });
+  dormantRock(h, {
+    pos: { x: 250, z: 60 }, vel: { x: 0, z: -6 }, lastExactT: 0,
+    data: { masslineTetherable: false },
+  });
+  const remoteRock = dormantRock(h, { pos: { x: 600, z: 0 }, data: { masslineTetherable: false } });
+
+  step(h, { cursor: true, aim: wasp.pos });
+  assert.equal(h.state.masslineAcquisition?.selected?.targetId, wasp.id);
+  assert.equal(h.state.masslineAcquisition?.selected?.status, 'blocked');
+
+  // The existing injected provider may inspect the entire candidate batch.
+  let remoteRockIncluded = false;
+  h.helpers.isMasslineObstructed = (request) => {
+    remoteRockIncluded = request.obstacles.includes(remoteRock);
+    return isMasslineObstructed(request);
+  };
+  step(h, { cursor: true, aim: wasp.pos, latch: true });
+  assert.equal(remoteRockIncluded, true);
+  assert.equal(h.events.denied.at(-1)?.reason, 'blocked');
+});
+
 test('AL-HF-08 §3: a tetherable foreground rock stands as the pick while the Wasp stays blocked', () => {
   const wasp = hostileShip(2);
   const h = buildHarness({ contacts: [wasp] });
