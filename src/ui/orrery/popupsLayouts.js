@@ -203,6 +203,14 @@ const CSS = `
   .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; }
   .sf-drawer--entity > .sf-drawer__apron { margin: 20px 20px 0 14px; }
+  /* ui-polish-526: the verbs wrapped as a flex row, so OPEN ON THE CHART and WATCH filled the first line and
+     CLOSE sat alone under the primary at its own width. The rail is a two-column grid: the primary key takes
+     the full row, the quiet keys pair beneath it, and an odd one out takes a full row rather than half. */
+  .sf-drawer--entity > .sf-drawer__apron { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb { justify-content: center; text-align: center; }
+  .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb:first-child:not(.sf-drawer__verb--quiet),
+  .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb:first-child:not(.sf-drawer__verb--quiet) ~ .sf-drawer__verb:last-child:nth-child(even),
+  .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb--quiet:first-child ~ .sf-drawer__verb:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 
 /* 641–1100 wide: at 48vw the 960x540 sheet left a 336px column, so CLOSE wrapped to a second apron
