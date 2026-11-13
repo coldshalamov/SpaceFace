@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { projectBridgeEvent, flattenEventPayload, resolveEventEntityRef } from '../scripts/lib/simEventBridge.mjs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
@@ -56,6 +57,42 @@ test('native combat/fracture and queued core retirement retain emit-time life th
     assert.equal(fractured.p.occupantGeneration, next.occupantGeneration);
     assert.equal(next.alive, false, 'the explicit asteroid receipt comes from a real native fracture');
     assert.equal(killed.p.simTime, state.simTime);
+  } finally { lane.shutdown(); }
+});
+
+test('native contact completion stays on the worker while impact receipts cross the wire', async () => {
+  const lane = createSimHost();
+  try {
+    const init = await lane.init({ profile: 'production', seed: 4242, bridgeAll: true,
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url))) });
+    const { bus, state } = lane.host;
+    let tick = 0;
+    let ackEnd = init.initRebuild?.end ?? 0;
+    const send = async (steps, ...commands) => {
+      const ring = createSimCommandRing();
+      for (const command of commands) pushLaneCommand(ring, command);
+      const reply = await lane.tick({ tick: ++tick, steps, commands: ring.drain(), ackEnd });
+      ackEnd = reply.journalEnd;
+      return reply;
+    };
+    const boot = await send(0, {
+      kind: 'rpc', id: 'boot', op: 'newGameBoot', args: { opts: { seed: 4242 } },
+    });
+    assert.equal(boot.rpcAcks.find(row => row.id === 'boot')?.result?.ok, true);
+    const completions = [];
+    bus.on('physics:contactsCompleted', payload => completions.push(payload.tick));
+    await send(0, { kind: 'mode', mode: 'flight' },
+      { kind: 'domEvent', d: { type: 'keydown', code: 'KeyW', pressed: true, repeat: false, blocked: false } });
+    const wire = [];
+    for (let i = 0; i < 30 && completions.length === 0; i += 1) {
+      const reply = await send(4);
+      wire.push(...reply.events);
+    }
+    assert.ok(completions.length > 0, 'the worker subscriber receives the real native contact fence');
+    assert.ok(wire.some(row => row.t === 'physics:impact' && completions.includes(row.p.tick)),
+      'presentation receives the real impact on the same tick');
+    assert.ok(wire.every(row => row.t !== 'physics:contactsCompleted'));
+    assert.ok(state.tick > 0);
   } finally { lane.shutdown(); }
 });
 

@@ -1203,6 +1203,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   // and the capture-all emit wrap (production lane — the sim owns events main
   // has never seen, so whitelisting there would silently drop real traffic).
   function recordBridgeEvent(type, payload) {
+    // This fence settles native contact consequences inside the simulation.
+    // Presentation still receives the impacts and consequence receipts.
+    if (type === 'physics:contactsCompleted') return;
     let receipt = payload;
     if ((type === 'entity:killed' || type === 'entity:destroyed' || type === 'asteroid:destroyed'
       || type === 'environment:detonated' || type === 'entity:retired')
