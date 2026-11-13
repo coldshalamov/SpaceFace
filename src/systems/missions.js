@@ -3705,6 +3705,9 @@ export const missions = {
     params.raceOpened = false;
     params.orderWarnGate = null;
     params.lapTimesS = [];
+    delete params.lastGhostDeltaS;
+    delete params.lastSplitDeltaS;
+    delete params.lastSplitElapsedS;
     params.planeSample = null;
     params.planeSampleSimS = null;
     restartRacingPrecision(params);

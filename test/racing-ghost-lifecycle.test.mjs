@@ -25,7 +25,8 @@ function fixture(t) {
     pos: { x: 0, y: 0, z: 0 }, vel: { x: 100, z: 0 }, rot: 0, mass: 10,
     data: { shipDefId: 'ship_kestrel' } };
   state.mode = 'flight'; state.playerId = player.id; state.entities.set(player.id, player);
-  host.init({ state, bus, helpers: {} });
+  const world = { relocatePlayerInSector(pose) { Object.assign(player.pos, pose); return true; } };
+  host.init({ state, bus, helpers: {}, registry: { get: name => name === 'world' ? world : null } });
   const events = [];
   bus.on('mission:gateCleared', event => events.push(event));
   let serial = 0;
@@ -118,4 +119,20 @@ test('abort, load and expiry discard the mission recording before a stale run ca
     assert.equal(fresh.params.raceGhostSaved, true, 'cleanup must also permit a fresh complete recording');
     assert.ok(validateRacingGhost(readRacingGhost(h.storage, fresh.params, h.state)));
   });
+});
+
+test('Restart clears the published personal-best split until the new attempt crosses a gate', t => {
+  const h = fixture(t);
+  h.launch('time-trial').finish();
+  const current = h.launch('time-trial');
+  while (current.params.nextGate === 0) current.step();
+  assert.ok(Number.isFinite(h.events.at(-1).ghostDeltaS));
+  assert.equal(current.params.lastGhostDeltaS, h.events.at(-1).ghostDeltaS);
+
+  h.bus.emit('race:restart', { source: 'hud' });
+  assert.equal(current.params.nextGate, 0, 'the real restart accepted the HUD intent');
+  assert.equal(current.params.lastGhostDeltaS, undefined);
+  assert.equal(current.params.lastSplitDeltaS, undefined);
+  assert.equal(current.params.lastSplitElapsedS, undefined);
+  assert.ok(getRacingGhostPlayback(h.state, current.params), 'the saved personal best remains available');
 });
