@@ -627,7 +627,7 @@ def finish_object(obj):
     if bevel > 0:
         mod = obj.modifiers.new('ForgeBevel', 'BEVEL')
         mod.width = bevel
-        mod.segments = 3
+        mod.segments = max(1, int(obj.get('forge_bevel_segments', 3)))
         mod.limit_method = 'ANGLE'
         mod.angle_limit = math.radians(32)
         mod.harden_normals = True

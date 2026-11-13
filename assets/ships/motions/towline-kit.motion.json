@@ -2,7 +2,7 @@
   "schema": "spaceface.rigidMotionBank.v1",
   "rigId": "towline_kit_controls",
   "sourceAssetId": "SF_SHIP_TOWLINE_KIT",
-  "sourceGlbSha256": "202555f7eca9488bc8bb1481963d5270f7e3dc59903725047da486fede850d32",
+  "sourceGlbSha256": "f535f9369f1ef0916018a3e5417f6acf2240bda95b793583e1b54f0357d3f519",
   "fps": 60,
   "bindings": [
     {

@@ -5793,48 +5793,6 @@
       "contractNodeCount": 12
     },
     {
-      "id": "wholeship_towline_kit",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/towline_kit.glb",
-      "release": "assets/ships/release/parts/wholeships/towline_kit.glb",
-      "sourceSha256": "fcd9a7894deb5b6b8199fca6f15dffb3afbb24c67f1764a52b9a6dae470a1846",
-      "releaseSha256": "202555f7eca9488bc8bb1481963d5270f7e3dc59903725047da486fede850d32",
-      "sourceBytes": 519492,
-      "releaseBytes": 397348,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 41,
-      "contractNodeCount": 13
-    },
-    {
-      "id": "wholeship_towline_kit_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/towline_kit_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb",
-      "sourceSha256": "d9ad52699f48934273476ec144b082b613f904f87a4665308e4d04e4636ca1c9",
-      "releaseSha256": "3478e1bc9fe651ae19792040d51d52065c8bc94bab80f12cd14e3868b5532147",
-      "sourceBytes": 387744,
-      "releaseBytes": 363932,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 41,
-      "contractNodeCount": 13
-    },
-    {
-      "id": "wholeship_towline_kit_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/towline_kit_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb",
-      "sourceSha256": "dee44e9a2b03867622b533512e9b91f387bee23b79dc079177e23bc25adab6e0",
-      "releaseSha256": "8838f9250bdc8965f1a023d264587d43112ace6666a32e20157f82ebbc10b266",
-      "sourceBytes": 337264,
-      "releaseBytes": 349600,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 41,
-      "contractNodeCount": 13
-    },
-    {
       "id": "place_hush_gap",
       "kind": "part:places",
       "source": "assets/ships/release/parts/places/place_hush_gap.glb",
@@ -7004,6 +6962,48 @@
       "textureProfiles": {
         "baseColorTexture": "ETC1S KTX2, mipmapped, quality255, sRGB transfer for helios_lark_panel_albedo; other color textures use UASTC"
       }
+    },
+    {
+      "id": "wholeship_towline_kit",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/towline_kit.glb",
+      "release": "assets/ships/release/parts/wholeships/towline_kit.glb",
+      "sourceSha256": "f535f9369f1ef0916018a3e5417f6acf2240bda95b793583e1b54f0357d3f519",
+      "releaseSha256": "06b366f0ecdd8c3e0dabc19ca55db5b3f007b97f8e653e29da9c1c92d67e7339",
+      "sourceBytes": 605356,
+      "releaseBytes": 420296,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 41,
+      "contractNodeCount": 13
+    },
+    {
+      "id": "wholeship_towline_kit_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/towline_kit_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb",
+      "sourceSha256": "db4a5f4964e159a05bcc1f49723044293527e8792e8b04cd662aa1f9a3f9e2ef",
+      "releaseSha256": "63d87f7cb110bbdf85cdffacfa8d04acb109efed0a7a55616dc6536697f9e89b",
+      "sourceBytes": 458216,
+      "releaseBytes": 385328,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 41,
+      "contractNodeCount": 13
+    },
+    {
+      "id": "wholeship_towline_kit_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/towline_kit_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb",
+      "sourceSha256": "783dc8aedd497ab9dfdd1fe64db42f878ec37d6d16f45f31476cdea3aaa2292b",
+      "releaseSha256": "d3b04f86dbae1953cf08b9dc767bc49140bec70159d05041fd1b05b9deef556f",
+      "sourceBytes": 386168,
+      "releaseBytes": 363544,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 40,
+      "contractNodeCount": 13
     }
   ]
 }

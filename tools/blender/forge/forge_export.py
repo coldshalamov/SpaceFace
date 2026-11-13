@@ -173,7 +173,27 @@ def _lod_meshes(ship, level, prefix):
                 p.parent = pivot
                 p.matrix_world = world
             named.append(p)
-    return named + _join_named(objs, level, prefix)
+    result = named + _join_named(objs, level, prefix)
+    finishes = getattr(ship, 'lod_normal_finishes', ())
+    if level > 0 and finishes:
+        for ob in result:
+            if ob.name not in {prefix + '_' + finish for finish in finishes}:
+                continue
+            _select_only([ob])
+            bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35), keep_sharp_edges=True)
+            weighted = ob.modifiers.new('AuthoredLodWeightedNormal', 'WEIGHTED_NORMAL')
+            weighted.keep_sharp = True
+            weighted.weight = 50
+            bpy.ops.object.modifier_apply(modifier=weighted.name)
+            if ob.name == prefix + '_Hull':
+                mesh = ob.data
+                normals = [tuple(normal.vector) for normal in mesh.corner_normals]
+                for face in mesh.polygons:
+                    if face.normal.z > .999:
+                        for index in face.loop_indices:
+                            normals[index] = tuple(face.normal)
+                mesh.normals_split_custom_set(normals)
+    return result
 
 
 def _mount_motion_pivots(ship, root):

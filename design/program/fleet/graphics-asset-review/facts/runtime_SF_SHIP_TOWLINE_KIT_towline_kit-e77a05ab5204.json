@@ -4,10 +4,22 @@
     "src/data/towlineTable.js",
     "src/systems/towlineTable.js",
     "src/render/towlineTableVisuals.js",
+    "src/render/wholeShipLodPolicy.js",
+    "src/render/partsLibrary.js",
     "src/data/wholeShipVisualIdentity.js"
   ],
   "authoringCode": [
     "tools/blender/forge/ships/towline_table.py"
   ],
-  "status": "source-traced; historical images only, current gameplay review pending"
+  "status": "reviewed geometry and LOD shading built into all three released packages; current isolated package views reviewed, ordinary Ceres gameplay review pending",
+  "packageReview": {
+    "status": "all three canonical package hashes and render.glb requests observed; chase, side and close views each submitted nine target draws; no renderer warnings",
+    "evidence": ".devshots/fleet/towline-kit-astra/shipping-package/report.json",
+    "sharedTextures": ".devshots/fleet/towline-kit-astra/shipping-shared-textures.json"
+  },
+  "lodReachability": "The ordinary crew entity is named and excluded by the current initial and live whole-ship LOD eligibility predicate, so it appears pinned to LOD0; LOD1/2 remain authored representations, not an established visible transition.",
+  "gameplayPreview": {
+    "status": "incomplete: assisted diagnostic spawned Kit in Ceres, then its render-root wait timed out; no image",
+    "evidence": ".devshots/fleet/graphics-overhaul-asset-review-current/towline-kit-ceres-2/report.json"
+  }
 }

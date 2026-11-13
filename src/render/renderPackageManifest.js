@@ -2920,32 +2920,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.towline-kit",
-    "expectedContentHash": "46b6a1efe8ce68f92316e155386be29dc89edf1f691ce9431da2ee6d5bd39acd",
+    "expectedContentHash": "da8eb2275aa6d9430c5ca8f360be6206bca5aee9e8cd6d449e72915862e86529",
     "key": "towline-kit",
     "metadataUrl": "assets/ships/release/render-packages/towline-kit/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
     "slot": "hull",
-    "sourceSha256": "202555f7eca9488bc8bb1481963d5270f7e3dc59903725047da486fede850d32",
+    "sourceSha256": "06b366f0ecdd8c3e0dabc19ca55db5b3f007b97f8e653e29da9c1c92d67e7339",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit.glb"
   },
   {
     "assetId": "sf.render.towline-kit-lod1",
-    "expectedContentHash": "9cdbdfd2434267fc5156dafe4cc9c471cf47e59ca1d6140609386f042280a01c",
+    "expectedContentHash": "3c61cb5d4f76d723b46a9f4bac5fe90161f74b70eae012136c7889e54fdd8d6d",
     "key": "towline-kit-lod1",
     "metadataUrl": "assets/ships/release/render-packages/towline-kit-lod1/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
     "slot": "hull",
-    "sourceSha256": "3478e1bc9fe651ae19792040d51d52065c8bc94bab80f12cd14e3868b5532147",
+    "sourceSha256": "63d87f7cb110bbdf85cdffacfa8d04acb109efed0a7a55616dc6536697f9e89b",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb"
   },
   {
     "assetId": "sf.render.towline-kit-lod2",
-    "expectedContentHash": "d060499593da406afaf54be65f6ad83b41e992f22c92700ebb386d052299da20",
+    "expectedContentHash": "4f53b1e6f8b193aad25ad89d8092e0adc080f6887674ff5f16a9e79adab624ec",
     "key": "towline-kit-lod2",
     "metadataUrl": "assets/ships/release/render-packages/towline-kit-lod2/render-package.json",
     "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
     "slot": "hull",
-    "sourceSha256": "8838f9250bdc8965f1a023d264587d43112ace6666a32e20157f82ebbc10b266",
+    "sourceSha256": "d3b04f86dbae1953cf08b9dc767bc49140bec70159d05041fd1b05b9deef556f",
     "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb"
   },
   {

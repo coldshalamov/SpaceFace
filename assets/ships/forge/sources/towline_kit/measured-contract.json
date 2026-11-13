@@ -2,31 +2,31 @@
   "schema": "spaceface.conceptSourceGeometry.v1",
   "assetId": "SF_SHIP_TOWLINE_KIT",
   "renderScale": 1,
-  "recipeSha256": "42e09152d8c1846ee92f72d703c7a6465445f308b5bdfb0425901071aeb107ab",
+  "recipeSha256": "a7787bbf9c0309516bd1ae5e0987047e5d82195166f080045c5a403318a80b0d",
   "lods": {
     "0": {
       "file": "towline_kit.glb",
-      "sha256": "fcd9a7894deb5b6b8199fca6f15dffb3afbb24c67f1764a52b9a6dae470a1846",
-      "bytes": 519492,
-      "triangles": 4720,
+      "sha256": "f535f9369f1ef0916018a3e5417f6acf2240bda95b793583e1b54f0357d3f519",
+      "bytes": 605356,
+      "triangles": 5588,
       "drawPrimitives": 9,
       "materials": 6,
       "sharedImages": 6
     },
     "1": {
       "file": "towline_kit_lod1.glb",
-      "sha256": "d9ad52699f48934273476ec144b082b613f904f87a4665308e4d04e4636ca1c9",
-      "bytes": 387744,
-      "triangles": 1886,
+      "sha256": "db4a5f4964e159a05bcc1f49723044293527e8792e8b04cd662aa1f9a3f9e2ef",
+      "bytes": 458216,
+      "triangles": 2234,
       "drawPrimitives": 9,
       "materials": 6,
       "sharedImages": 6
     },
     "2": {
       "file": "towline_kit_lod2.glb",
-      "sha256": "dee44e9a2b03867622b533512e9b91f387bee23b79dc079177e23bc25adab6e0",
-      "bytes": 337264,
-      "triangles": 848,
+      "sha256": "783dc8aedd497ab9dfdd1fe64db42f878ec37d6d16f45f31476cdea3aaa2292b",
+      "bytes": 386168,
+      "triangles": 1004,
       "drawPrimitives": 9,
       "materials": 6,
       "sharedImages": 6
@@ -4715,18 +4715,8 @@
     }
   },
   "preflight": {
-    "idea": "Wide skiff keeps two berths empty",
-    "authority": [
-      "design/archive/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/06_towline_table.md"
-    ],
-    "supportedViews": [
-      "chase",
-      "close",
-      "top"
-    ],
-    "palette": "Mid orange or teal work paint; light shared slash; dark machinery and real warm windows",
-    "role": "A source-owned real cleanup or tow job; idle winch motion forbidden",
-    "review": "Open the real game renderer image and repair material defects"
+    "idea": "Wide rescue workboat, empty cradles",
+    "scope": "Canonical recipe, scratch export only"
   },
   "provenance": "Original SpaceFace Forge source; no external geometry/media"
 }

@@ -134,9 +134,47 @@ def build_kit():
     # Marks belong on the cabin roof (top 2.4, footprint x -2..7, half-width ~2.6): the old
     # 6.2-wide layout hovered 0.07-0.2 up and ended mid-air off the cabin edge.
     crew_details(s,4.4,2.44,-11.12,windows_x=4.6,window_top=2.26,xoff=1.0)
+
+    # Open-ended low protective hoops: bed remains visibly empty.
+    for side in (-1, 1):
+        y = side * 4.6
+        F.beams(s, 'CradleEndFrames'+str(side), [
+            ((x,y-1.0,1.25),(x,y-1.0,1.85)) for x in (-7.2,-2.8)
+        ] + [((x,y+1.0,1.25),(x,y+1.0,1.85)) for x in (-7.2,-2.8)]
+          + [((x,y-1.0,1.85),(x,y+1.0,1.85)) for x in (-7.2,-2.8)],
+          .16,h=.16,material='paint2',bevel=.018)
+        F.boxes(s, 'CradleAnchorFeet'+str(side),
+            [((x,y+dy,.97),(.52,.48,.18)) for x in (-7.2,-2.8) for dy in (-1,1)],
+            material='paint2',bevel=.025)
+    # Seated deck edge ribs carry a physical manufacturing cue without new finishes.
+    F.beams(s, 'DeckEdgeSills', [((-8.0,y,.95),(-.4,y,.95)) for y in (-8.35,8.35)],
+        .22,h=.18,material='paint',bevel=.025)
+
+    # One low stern machinery assembly between the empty rescue berths.
+    F.plate(s,'SternServiceCasing',[(-10.1,-1.7),(-7.2,-1.7),(-6.5,-1.1),
+        (-6.5,1.1),(-7.2,1.7),(-10.1,1.7)],z0=.87,thickness=.55,
+        material='paint',chamfer=.16,bevel=.025)
+    F.box(s,'SternServiceHatch',(-8.05,0,1.44),(1.45,2.15,.08),
+        material='paint2',bevel=.025)
+    F.boxes(s,'SternServiceCooling', [((-9.4,y,1.43),(.42,.24,.055))
+        for y in (-1.0,-.5,0,.5,1.0)],material='dark',bevel=.008)
+    # Low fairings above each existing drive; no change to drive cores or sockets.
+    for side in (-1,1):
+        F.plate(s,'DriveAccessFairing'+str(side),[(-10.65,side*2.0),
+            (-8.6,side*2.0),(-8.2,side*2.7),(-10.65,side*3.0)]
+            if side>0 else [(-10.65,side*3.0),(-8.2,side*2.7),(-8.6,side*2.0),(-10.65,side*2.0)],
+            z0=.88,thickness=.24,material='paint2',chamfer=.065,bevel=.015)
+    # Kit-only geometry economy; other Towline crew keep the default finish.
+    for obj in s.objects:
+        if obj.name.startswith(('CradleEndFrames', 'CradleAnchorFeet', 'DeckEdgeSills',
+                'SeatedCrewWindows', 'RescueLampLens', 'SternService', 'DriveAccess')):
+            obj['forge_bevel_segments'] = 1
+    # Restore source-like static shading after simplification, excluding the moving lamp.
+    s.lod_normal_finishes = ('Hull', 'Armor', 'MechanicalDark', 'Livery')
     s.socket_names=list(s.sockets)
     s.finish()
     return s,{'deck':[core],'cabin':[cabin]},pivots,groups,[]
+
 
 def build_debris():
     s=source_ship('towline_debris',{**COLORS,'paint':'#6f6c58'})
