@@ -173,12 +173,15 @@ function buildCustodian(entity = null) {
     s.translate(0, 0, -1.0);
     return s;
   });
+  // Identical arms use one finish per machine. The first arm and first tip own
+  // their materials; the other arms/tips borrow them during root teardown.
+  const armMat = seamMat();
   const tipMat = lightMat(1.8);
-  const tips = [];
   const arms = [];
   for (let i = 0; i < 4; i += 1) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const m = new THREE.Mesh(arm, seamMat());
+    const m = new THREE.Mesh(arm, armMat);
+    if (i > 0) m.userData.borrowedGeometryMaterial = true;
     m.position.set(Math.cos(a) * 12, -3, Math.sin(a) * 12);
     m.rotation.y = -a;
     m.scale.setScalar(8);
@@ -186,12 +189,12 @@ function buildCustodian(entity = null) {
     arms.push(m);
     const tip = new THREE.Mesh(geo('cust_tip', () => new THREE.SphereGeometry(0.14, 8, 6)), tipMat);
     tip.name = 'cust_tip';
+    if (i > 0) tip.userData.borrowedGeometryMaterial = true;
     // Child of the arm: the tip rides the deploy pitch instead of floating at the
     // flat pose. Local z -1.75 lands where the world offset -14 used to put it.
     tip.position.set(0, 0, -1.75);
     tip.scale.setScalar(0.75);
     m.add(tip);
-    tips.push(tip);
   }
   const eye = new THREE.Mesh(geo('cust_eye', () => new THREE.SphereGeometry(0.22, 8, 6)), lightMat(1.5));
   eye.position.y = 5;
@@ -205,9 +208,6 @@ function buildCustodian(entity = null) {
     (deploy, motionTime) => {
       const targetIntensity = 0.25 + deploy * (1.55 + (Math.sin(motionTime * 6) * 0.5 + 0.5) * 0.6);
       tipMat.emissiveIntensity = targetIntensity;
-      for (const t of tips) {
-        if (t.material) t.material.emissiveIntensity = targetIntensity;
-      }
       for (const a of arms) a.rotation.x = 0.35 - deploy * 0.9;
       spindle.apply(deploy);
       spindle.tipMat.emissiveIntensity = 0.4 + deploy * 2.0;
