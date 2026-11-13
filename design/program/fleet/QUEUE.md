@@ -42,6 +42,23 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 | G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
 | LOOK-00-concept-frames | Three frames in `design/game/look/concepts/`; lead chose A (B = brightest a place may go, C = darkest) | DONE |
 
+## Whole-game stability and performance
+
+Resume from the first open player route below when the owner asks for a whole-game pass. The lead can
+run disjoint investigations in parallel. Keep the latest outcome and next action on this board.
+See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
+
+| ID | Player route and next action | State |
+|---|---|---|
+| QUAL-01 | Windows browser and desktop launch → close → relaunch. Finish the crash/relaunch check and verify startup watchdog changes through the actual shell. | TAKEN Codex |
+| QUAL-02 | Adventure New Game → fly → save/Continue → berth → first story delivery. Verify preserved chart courses, paid jumps and sealed cargo recovery in the ordinary route. | TAKEN Codex |
+| QUAL-03 | Adventure opening and crowded Helios. Isolate the largest repeatable CPU/GPU cost and compare fresh poses and hitches on the same route. | TAKEN Codex |
+| QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex |
+| QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | READY |
+| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex |
+| QUAL-07 | Shared flight holds. Exercise Pause, minimize/return, jump and load while moving. Trace any remaining frozen poses or backwards corrections independently of FPS. | READY |
+| QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
+
 ## Lane 1 — taste, creative, 3D, architecture, review
 
 | ID | Job | State |
