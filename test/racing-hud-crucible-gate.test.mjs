@@ -222,6 +222,30 @@ function busStub() {
   };
 }
 
+test('the accepted time-trial restart releases the prior gate pulse', () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div'), state = flightState(), bus = busStub();
+    state.missions.active.push({ id: 'm_race', type: 'race', status: 'active',
+      params: { racingContractId: 'practice', raceMode: 'time-trial', nextGate: 0 } });
+    hud = mountRacingHud({ root, state, bus, screens: { isOpen: () => false } });
+    hud.frame(state);
+    const panel = root.children.find((child) => child.id === 'race-tape');
+    const live = panel.children.find((child) => child.className === 'race-sr-only');
+    bus.emit('mission:gateCleared', { missionId: 'm_race', gateIndex: 0 });
+    assert.equal(live.textContent, 'GATE 1 CLEAR');
+    bus.emit('race:restarted', { racingContractId: 'elsewhere' });
+    assert.equal(live.textContent, 'GATE 1 CLEAR', 'another race does not clear the active pulse');
+    bus.emit('race:restarted', { racingContractId: 'practice' });
+    assert.equal(live.textContent, 'Time trial restarted');
+    state.simTime += 0.2;
+    hud.frame(state);
+    const readings = panel.children.find((child) => child.className === 'race-tape-readings');
+    assert.ok(readings.children.every((child) => !child.textContent.includes('GATE 1 CLEAR')));
+  } finally { hud?.dispose(); dom.restore(); }
+});
+
 test('temporary result waits for the matching terminal mission projection before pausing on the board', async () => {
   const dom = installDom();
   let hud;

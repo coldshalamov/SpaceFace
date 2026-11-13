@@ -128,6 +128,14 @@ export function mountRacingHud({ root, bus, state, screens }) {
   }
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
   listen('settings:changed',()=>{lastTick=-Infinity;});
+  listen('race:restarted', p => {
+    const race = activeAuthoredRace(state);
+    if (!race || p?.racingContractId !== race.params.racingContractId) return;
+    pulse = '';
+    pulseUntil = -Infinity;
+    lastTick = -Infinity;
+    live.textContent = 'Time trial restarted';
+  });
   listen('mission:gateCleared',p=>{
     if (p?.missionId !== missionId) return;
     const split = Number.isFinite(p.ghostDeltaS) ? ` · ${p.ghostDeltaS>=0?'+':''}${p.ghostDeltaS.toFixed(2)}s personal best`
