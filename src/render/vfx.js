@@ -456,6 +456,7 @@ import { resolveCausalVfxPresentation } from '../presentation/causalVfxGrammar.j
 import { createExplosionPresentationMethods } from './vfx/explosionPresentationVfx.js';
 import { createWeaponImpactVfxMethods } from './vfx/weaponImpactVfx.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
+import { attachPreliftSceneWarm } from './preliftSceneWarm.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import { collectHullWounds, resolveWoundBeat, resolveWoundMetalHeat, woundWorldPoint } from './vfx/woundSmoke.js';
 import { WOUND_METAL_HEAT_S } from './vfx/woundSmoke.js';
@@ -13067,7 +13068,22 @@ export const vfx = {
       plasma = true;
     }
     if (playerPlasmaOnly) {
-      return { skipped: false, plasma, plasmaRoot: plasmaStream.group, isActive, releaseWarmSamples,
+      // Ride the strict pre-lift plasma admission with the first-use programs that otherwise link
+      // inside presented flight (cause marks, industrial plume core/distortion, per-body rock).
+      let sceneWarm = null;
+      try {
+        sceneWarm = attachPreliftSceneWarm(plasmaStream.group, this._scene);
+      } catch (error) {
+        sceneWarm = null;
+        if (typeof console !== 'undefined') console.warn('[vfx] pre-lift scene warm failed', error);
+      }
+      const releasePlasmaSamples = releaseWarmSamples;
+      const releaseWithSceneWarm = () => {
+        if (sceneWarm) { sceneWarm.release(); sceneWarm = null; }
+        return releasePlasmaSamples();
+      };
+      return { skipped: false, plasma, plasmaRoot: plasmaStream.group, isActive,
+        releaseWarmSamples: releaseWithSceneWarm, sceneWarm: sceneWarm ? sceneWarm.receipt : null,
         initMs, ms: clock() - startedAt };
     }
     let plumes = 0;

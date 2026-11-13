@@ -24,6 +24,17 @@ const CUTS = 4;
 const SHAPES = 83;
 const SEGMENTS = SCARS + RING * WELLS + HANDOFF + CUTS + SHAPES;
 
+// One factory for the live layer and the pre-lift program warm (preliftSceneWarm.js), so both
+// resolve the same LineBasicMaterial program key.
+export function createCauseMarkMaterial() {
+  return new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+  });
+}
+
 export class CauseMarkLayer {
   constructor(scene, toLocal) {
     this.scene = scene;
@@ -48,12 +59,7 @@ export class CauseMarkLayer {
     geo.setAttribute('position', this.posAttr);
     geo.setAttribute('color', this.colAttr);
     geo.setDrawRange(0, 0);
-    this.mesh = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      toneMapped: false,
-    }));
+    this.mesh = new THREE.LineSegments(geo, createCauseMarkMaterial());
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 6;
     this.mesh.name = 'sf-cause-marks';
