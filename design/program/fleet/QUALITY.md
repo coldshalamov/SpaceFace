@@ -420,8 +420,20 @@ input hold. Intel D3D11 drew 13.14/s with a 124 ms p95 moving mesh gap, and D3D1
 9.25/s with a 190 ms p95 gap. Both hardware adapters and both flight PNGs were verified. The
 launcher retains D3D11. See `angle-d3d11-adventure.json` and `angle-d3d11on12-adventure.json`.
 
+Changing only the worker's 72 ms batch budget to 36 ms moved typical replies from 3–4 steps to
+2. Locked Adventure still fired 54 shots in each 24 s arm. Fresh snapshots rose 9.87 → 11.60/s
+and maximum stale simulation time fell 412 → 204 ms. Actual moving mesh gap p95 was 144 → 148 ms
+and the maximum was 398 → 394 ms. Draw rate fell 12.53 → 11.85/s and simulation per wall second
+fell 0.61 → 0.56. Both pictures were opened. The shorter budget was an overlay only. See
+`worker-batch-72-adventure.json` and `worker-batch-36-adventure.json`.
+
 The next substantial performance owners are the worker's fixed-step physics and tactical AI,
 and the renderer's HDR world draw and admission. The old raw CPU profile's largest named
 sample fell in a lost sampling interval. Filtering intervals over 20 ms leaves physics at
 22.8% and tactical AI at 14.4% of sampled worker CPU. Do not treat Rearm settling or successful
 movement receipts as closure of the live flight cadence failure.
+
+The oldest economy spike comes from constructing remote listings and their 64-point price
+histories on the first due period. Ten matched Node digests preserved exact market and receipt
+values, but the candidate formulas did not reliably shorten the spike. Preserve the current
+publication boundary until staged preparation can account for earlier on-demand mint and RNG.
