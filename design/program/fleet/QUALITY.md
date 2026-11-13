@@ -174,10 +174,11 @@ sector. Its opened screenshot still showed the campaign act heading above the ra
 heading and radio, keeping gate guidance. Fifty-three focused checks passed. Scored finish,
 and restart after a cleared gate remain open. The post-fix public Time Trial capture confirmed
 gate guidance, the campaign heading and comms tape hidden, and a same-attempt F8 restart.
-The image still showed an Adventure yard-control line above the racing panel. `f859298abed6`
+The first image still showed an Adventure yard-control line above the racing panel. `f859298abed6`
 resets POI guidance on New Game and keeps its sector planner out of temporary circuits.
 The regression enters a race after Adventure and continues the campaign afterward. Twenty-three
-focused checks passed.
+focused checks passed. A follow-up public F8 restart retained gate guidance and cleared the
+yard-control line in the opened `circuits-place-isolated.png` capture.
 The released checkpoints for flight restore, AI identity and Helios wash used the existing deterministic replay hash.
 
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.
