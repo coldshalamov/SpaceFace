@@ -210,6 +210,12 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   missing native `show` event previously left a visible window marked hidden, which cancels
   presentation and simulation. The regression failed before and passed after. The earlier live
   Adventure stalls did not record enough native state to attribute them to this race.
+  The `ledger-shell` follow-up captured a different failure. Native Electron was actually
+  minimized while the Chromium document reported visible and focused. The game was at tick 0
+  with four draws, the first-picture hold active, and a black playfield under the HUD. Its
+  isolated teardown needed the exact-child fallback. The opened screenshot and native receipt
+  are `flight-holds-timeout-ledger-shell.png` and `flight-holds-owner-ledger-shell.json` under
+  `.devshots/fleet/coordination/whole-game/`. Capture native state on any future opening stall.
 - `64092aa260a1` and `15f2694cd228` capture the same held thrust, turn and primary-fire workload
   in cadence, worker CPU and Chrome scheduling traces. Use `combined-input-trace.mjs` under
   `.devshots/fleet/coordination/` with the locked steady-flight probe. Keep the timing of actual
