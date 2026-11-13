@@ -107,6 +107,49 @@ function killTree(pid) {
   assert.doesNotMatch(result.out, /\bat\s+\S+\s+\(/, 'a plain message, not a stack trace');
 }
 
+// A response reset after headers must not strand the launch promise.
+{
+  const port = await freePort();
+  const srv = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Content-Length': '1000' });
+    res.write('<title>SpaceFace</title>', () => req.socket.destroy());
+  });
+  srv.listen(port, '127.0.0.1');
+  await once(srv, 'listening');
+  let result;
+  try {
+    result = await runLauncher(port, { timeoutMs: 5_000 });
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /could not verify the program serving port/i);
+    assert.doesNotMatch(result.out, /unsettled top-level await/i);
+  } finally {
+    if (result?.code === null) killTree(result.pid);
+    srv.close();
+  }
+}
+
+// Socket-idle timeout is not a deadline when a response keeps trickling bytes.
+{
+  const port = await freePort();
+  const srv = createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.write('<title>SpaceFace</title>');
+    const drip = setInterval(() => res.write(' '), 50);
+    res.on('close', () => clearInterval(drip));
+  });
+  srv.listen(port, '127.0.0.1');
+  await once(srv, 'listening');
+  let result;
+  try {
+    result = await runLauncher(port, { timeoutMs: 5_000 });
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /could not verify the program serving port/i);
+  } finally {
+    if (result?.code === null) killTree(result.pid);
+    srv.close();
+  }
+}
+
 // A foreign process on the port gets the plain port-busy sentence.
 {
   const port = await freePort();

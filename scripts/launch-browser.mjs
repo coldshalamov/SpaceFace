@@ -47,7 +47,8 @@ try {
     process.exit(0);
   }
   if (existing.reachable) {
-    console.error(`Port ${PORT} is already serving something else.`);
+    if (existing.incomplete) console.error(`Could not verify the program serving port ${PORT} because its response did not finish.`);
+    else console.error(`Port ${PORT} is already serving something else.`);
     console.error(`Stop that process or launch with a different port: node scripts/launch-browser.mjs --port 8124`);
     process.exit(1);
   }
@@ -158,7 +159,17 @@ async function waitForSpaceFace(url, child, outputForError) {
 
 function probeSpaceFace(url) {
   return new Promise((resolve) => {
-    const req = http.get(url, { timeout: 1500 }, (res) => {
+    let response = null;
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      resolve(result);
+    };
+    const fail = () => finish({ reachable: response !== null, ok: false, incomplete: response !== null });
+    const req = http.get(url, (res) => {
+      response = res;
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk) => {
@@ -166,11 +177,16 @@ function probeSpaceFace(url) {
       });
       res.on('end', () => {
         const ok = res.statusCode === 200 && /<title>SpaceFace<\/title>|id="gl-canvas"/.test(body);
-        resolve({ reachable: true, ok, status: res.statusCode });
+        finish({ reachable: true, ok, status: res.statusCode });
       });
+      res.on('aborted', fail);
+      res.on('error', fail);
     });
-    req.on('timeout', () => req.destroy());
-    req.on('error', () => resolve({ reachable: false, ok: false }));
+    const deadline = setTimeout(() => {
+      fail();
+      req.destroy();
+    }, 1500);
+    req.on('error', fail);
   });
 }
 
