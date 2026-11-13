@@ -1004,7 +1004,8 @@ ${RE} .k-foot .k-words { position:relative; z-index:1; }
   ${A} .orr-armory-item { height:120px; min-height:100px; }
   ${A} .orr-armory-item::before { width:100px; height:100px; }
   ${A} .orr-armory-item > .orr-equipment-glyph { width:84px; height:84px; }
-  ${A} .orr-armory-reading__jig { height:90px !important; min-height:80px; }
+  /* the slot jig's hull art is laid out for a taller box and spilled past it under the price line; the Current build list below carries the same fitted count */
+  ${A} .orr-armory-reading__jig { display:none !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
