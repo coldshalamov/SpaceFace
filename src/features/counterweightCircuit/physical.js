@@ -441,15 +441,22 @@ export function createCircuitPhysical(ctx) {
 
   // Generic collisionConsequences ignores these payloads. Reuse its approved
   // payload-only kernel law and the sole combat hull writer, without re-impact.
+  const impactTarget = (entity) => {
+    if (entity.type !== 'payload' || entity.flags?.invuln) return false;
+    const identity = entity.data?.worldRecordId;
+    return identity != null && isOwnedBody(entity, identity);
+  };
   on('physics:impact', (payload = {}) => {
     if (payload.backend!=='rapier-dynamic' || payload.tick!==state.tick) return;
     const a=state.entities?.get(payload.aId),b=state.entities?.get(payload.bId);
     if (!a || !b || (a.type!=='payload' && b.type!=='payload')) return;
     if (a.alive===false || b.alive===false
-      || a.occupantGeneration!==payload.aGeneration || b.occupantGeneration!==payload.bGeneration
-      || !nativeReady(a) || !nativeReady(b)) return;
-    for (const [hit,other] of [[a,b],[b,a]]) {
-      if (hit.type!=='payload' || hit.flags?.invuln || byIdentity(hit.data?.worldRecordId)!==hit) continue;
+      || a.occupantGeneration!==payload.aGeneration || b.occupantGeneration!==payload.bGeneration) return;
+    const hitA = impactTarget(a);
+    const hitB = impactTarget(b);
+    if ((!hitA && !hitB) || !nativeReady(a) || !nativeReady(b)) return;
+    for (const [hit,other,eligible] of [[a,b,hitA],[b,a,hitB]]) {
+      if (!eligible || byIdentity(hit.data.worldRecordId)!==hit) continue;
       const key=`${hit.id}:${hit.occupantGeneration}:${other.id}:${other.occupantGeneration}`;
       if (state.tick-(impactTicks.get(key)??-Infinity)<12) continue;
       impactTicks.set(key,state.tick);
