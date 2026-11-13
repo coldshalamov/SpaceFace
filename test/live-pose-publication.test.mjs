@@ -4,6 +4,7 @@ import { render } from '../src/render/renderer.js';
 import { createSnapshotFence, packPresentationWorldToFence } from '../src/render/snapshotFence.js';
 import { createPresentationWorld } from '../src/render/presentationWorld.js';
 import { createPresentationPublisher } from '../src/render/presentationPublisher.js';
+import { createPresentationJournal } from '../src/core/presentationJournal.js';
 import { createSimLaneJournal } from '../src/core/simLaneJournal.js';
 import { notePacedFrameSpend } from '../src/render/decodeTaskBudget.js';
 
@@ -93,4 +94,126 @@ test('entering flight repacks a repaired loading fallback at the same completed 
   const snapshot = owner._snapshotFence.latestSnapshot();
   assert.equal(snapshot.count, rows.length);
   for (let row = 0; row < snapshot.count; row++) assert.equal(snapshot.columns.position[row * 3], 20);
+});
+
+function rebuildFlightFixture() {
+  const { owner } = fixture();
+  const player = {
+    id: 1, type: 'ship', isPlayer: true, alive: true, occupantGeneration: 9,
+    pos: { x: 0, y: 0, z: 0 }, prevPos: { x: 0, y: 0, z: 0 }, rot: 0,
+  };
+  const npc = { ...player, id: 2, isPlayer: false, occupantGeneration: 10,
+    pos: { x: 30, y: 0, z: 0 }, prevPos: { x: 30, y: 0, z: 0 } };
+  const state = owner.state;
+  state.playerId = player.id;
+  state.entities = new Map([[player.id, player], [npc.id, npc]]);
+  state.entityList = [player, npc];
+  owner._frameMembrane = { origin: { x: 0, z: 0 } };
+  owner._presentationFrameDt = DT;
+  const world = owner._presentationWorld = createPresentationWorld();
+  const fence = owner._snapshotFence;
+  const journal = createSimLaneJournal();
+  const source = createPresentationJournal(1024);
+  const publisher = createPresentationPublisher(world, state, { journal });
+  let publication;
+  owner._presentationPublisher = {
+    ...publisher,
+    consume(frame, options) {
+      publication = publisher.consume(frame, options);
+      return publication;
+    },
+  };
+  const mesh = { position: { x: 0, y: 0, z: 0 }, rotation: { y: 0 }, userData: {} };
+  function draw() {
+    const alpha = fence.samplePresentationAlpha(DT, 0, DT, 1);
+    owner._snapshotPresentationAlpha = alpha;
+    owner._snapshotPresentationSequence = fence.sequence;
+    assert.equal(owner._applyPresentationPose(world.getSlotForEntityId(1), mesh, alpha), true);
+    return { time: fence.presentedTimeS, raw: fence.presentedPose(1).x, drawn: mesh.position.x };
+  }
+  function publish(tick, { rebuild = false, lifecycleGeneration = 0 } = {}) {
+    state.tick = tick;
+    state.simTime = tick * DT;
+    const completedTick = { sequence: tick, tick, simTime: state.simTime };
+    const start = source.getWriteSequence();
+    if (rebuild) source.rebuildFrom(state.entityList, tick);
+    else source.recordTransform(tick, player);
+    const end = source.getWriteSequence();
+    source.markTransferredThrough(end);
+    const scalars = new Float64Array((end - start) * 18);
+    let index = 0;
+    source.visitRange(start, end, {}, record => {
+      scalars.set([
+        record.tick, record.sequence, record.entityId, record.generation, record.revision,
+        record.x, record.y, record.z, record.prevX, record.prevY, record.prevZ,
+        record.rot, record.bank, record.pitch, record.prevRot, record.prevBank, record.prevPitch,
+        record.visualRevision,
+      ], index++ * 18);
+    });
+    const pack = { start, end, count: end - start, scalars, typeTable: ['ship'],
+      kinds: new Uint8Array(end - start).fill(rebuild ? 1 : 3), typeIndex: new Uint16Array(end - start) };
+    if (rebuild) assert.equal(journal.applyRebuildPack({ start, end, pack }), true);
+    else assert.equal(journal.applyPack(pack), true);
+    owner.prepareFrame(0, DT, {
+      journal, journalStart: start, journalEnd: end, journalValid: true,
+      journalFullRebuild: rebuild, journalRebuildGeneration: journal.getRebuildGeneration(),
+      completedTick, lifecycleGeneration,
+    });
+    return publication;
+  }
+
+  for (let tick = 1; tick <= 120; tick++) {
+    player.prevPos.x = player.pos.x;
+    player.pos.x = tick * DT * 390;
+    publish(tick, { rebuild: tick === 1 });
+    draw();
+  }
+  let before;
+  for (let frame = 0; frame < 60; frame++) before = draw();
+  assert.ok(before.drawn > player.pos.x + 45, 'stall must reach real forward extrapolation');
+  return { owner, state, player, npc, world, fence, publish, draw, before };
+}
+
+test('a stalled same-life worker rebuild keeps the drawn player ahead of the recovering tick', () => {
+  const { state, player, npc, world, fence, publish, draw, before } = rebuildFlightFixture();
+  const playerHandle = world.handleForEntityId(player.id);
+  const npcHandle = world.handleForEntityId(npc.id);
+  const epoch = fence.newestSnapshot().poseEpoch;
+  const replacement = { ...npc, occupantGeneration: 11, pos: { x: -220, y: 0, z: 0 } };
+  state.entityList[1] = replacement;
+  state.entities.set(npc.id, replacement);
+  player.prevPos.x = player.pos.x;
+  player.pos.x += 390 * DT;
+  const publication = publish(121, { rebuild: true });
+  const after = draw();
+  assert.equal(publication.retainedPlayerPose, true);
+  assert.equal(fence.newestSnapshot().poseEpoch, epoch);
+  assert.equal(world.handleForEntityId(player.id).generation, playerHandle.generation);
+  assert.notEqual(world.handleForEntityId(player.id).sourceGeneration, playerHandle.sourceGeneration);
+  const newest = fence.newestSnapshot();
+  const playerRow = newest.indexByEntityId.get(player.id);
+  assert.equal(newest.columns.position[playerRow * 3], player.pos.x, 'the rebuilt SPAWN supplies the new pose');
+  assert.ok(after.time >= before.time);
+  assert.ok(after.raw >= before.raw);
+  assert.ok(after.drawn >= before.drawn);
+  assert.notEqual(world.handleForEntityId(npc.id).generation, npcHandle.generation);
+  assert.equal(fence.presentedPose(npc.id).x, -220, 'the recycled NPC never blends against its old life');
+});
+
+test('a reused player ID or hard lifecycle boundary reseats even during an extrapolation hold', () => {
+  for (const boundary of ['player life', 'sector', 'restore', 'explicit epoch']) {
+    const { owner, state, player, world, fence, publish, draw } = rebuildFlightFixture();
+    const epoch = fence.newestSnapshot().poseEpoch;
+    const playerHandle = world.handleForEntityId(player.id);
+    if (boundary === 'player life') player.occupantGeneration++;
+    if (boundary === 'sector') state.world.currentSectorId = 'another-sector';
+    if (boundary === 'explicit epoch') owner._posePackEpoch++;
+    player.pos.x = 806;
+    const publication = publish(121, { rebuild: true, lifecycleGeneration: boundary === 'restore' ? 1 : 0 });
+    assert.equal(publication.retainedPlayerPose, false, boundary);
+    assert.ok(fence.newestSnapshot().poseEpoch > epoch, boundary);
+    assert.notEqual(world.handleForEntityId(player.id).generation, playerHandle.generation, boundary);
+    const after = draw();
+    assert.deepEqual([after.raw, after.drawn], [806, 806], boundary);
+  }
 });

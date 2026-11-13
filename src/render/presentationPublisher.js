@@ -36,12 +36,10 @@ export function createPresentationPublisher(world, state, options = {}) {
     start: 0,
     end: 0,
     rebuilt: false,
-    // Slot-remap marker: true only when the world was actually cleared
-    // (journalFullRebuild, rebuildFromEntities, clear) — poses teleport and the
-    // pose-pack epoch must bump. A diff-apply fallback (updateFromEntities)
-    // preserves id-keyed slot identity, so it stays a non-remap even though it
-    // is also `rebuilt` — its rows remain copy/blend-safe.
+    // A journal rebuild can change slot membership even if the player survives.
+    // The renderer still has to rebind remapped rows in that case.
     remapped: false,
+    retainedPlayerPose: false,
     fallback: false,
     // A complete current-state fallback can repair poses without membership
     // churn or a newer tick. Its consumer must still repack that repaired world.
@@ -99,6 +97,7 @@ export function createPresentationPublisher(world, state, options = {}) {
     result.end = end;
     result.rebuilt = false;
     result.remapped = false;
+    result.retainedPlayerPose = false;
     result.fallback = false;
     result.refreshed = false;
     result.valid = true;
@@ -315,11 +314,14 @@ export function createPresentationPublisher(world, state, options = {}) {
     return result;
   }
 
-  function applyRecord(record) {
+  function applyRecord(record, rebuiltIds = null) {
     const entity = entityForId(state, record.entityId);
     switch (record.kind) {
       case PRESENTATION_JOURNAL_KINDS.SPAWN: {
-        const handle = world.allocateRecord(record, entity);
+        const firstInRebuild = rebuiltIds && !rebuiltIds.has(record.entityId);
+        const handle = firstInRebuild
+          ? world.rebuildRecord(record, entity) : world.allocateRecord(record, entity);
+        if (firstInRebuild) rebuiltIds.add(record.entityId);
         spawnedSlots.push(handle.slot);
         diagnostics.spawnRecords++;
         break;
@@ -386,10 +388,20 @@ export function createPresentationPublisher(world, state, options = {}) {
     const nextRebuildGeneration = fullRebuild
       ? presentationFrame.journalRebuildGeneration >>> 0
       : rebuildGeneration;
+    let retainedPlayer = null;
+    let rebuiltIds = null;
     if (fullRebuild && nextRebuildGeneration !== rebuildGeneration) {
-      pendingClearIter = typeof world.clearSteps === 'function'
-        ? world.clearSteps() : null;
-      if (!pendingClearIter) world.clear();
+      const player = atomic && consumeOptions.retainPlayerPose === true
+        ? entityForId(state, state.playerId) : null;
+      if (frameEnd > frameStart && player && world.canRetainOccupant?.(player)) {
+        retainedPlayer = world.handleForEntityId(player.id);
+        rebuiltIds = new Set();
+        pendingClearIter = null;
+      } else {
+        pendingClearIter = typeof world.clearSteps === 'function'
+          ? world.clearSteps() : null;
+        if (!pendingClearIter) world.clear();
+      }
       // A clear supersedes any parked diff-apply or apply-range — resuming
       // either would re-alloc the stale feed's rows into the fresh world.
       if (pendingApplyIter && typeof pendingApplyIter.return === 'function') {
@@ -489,7 +501,7 @@ export function createPresentationPublisher(world, state, options = {}) {
           get applied() { return visitApplied; },
           get lastSeq() { return visitLastSeq; },
           iter: journal.visitRangeSteps(start, frameEnd, scratch, (record) => {
-            applyRecord(record);
+            applyRecord(record, rebuiltIds);
             visitApplied++;
             visitLastSeq = record.sequence;
           }),
@@ -516,11 +528,17 @@ export function createPresentationPublisher(world, state, options = {}) {
           return result;
         }
       } else {
-        result.applied = journal.visitRange(start, frameEnd, scratch, applyRecord);
+        result.applied = journal.visitRange(start, frameEnd, scratch, (record) => applyRecord(record, rebuiltIds));
         lastAppliedSequence = frameEnd;
         diagnostics.lastAppliedSequence = lastAppliedSequence;
         diagnostics.appliedRecords += result.applied;
         diagnostics.lastError = null;
+      }
+      if (rebuiltIds) {
+        world.retireUnpublishedRecords(rebuiltIds);
+        const current = world.handleForEntityId(retainedPlayer.entityId);
+        result.retainedPlayerPose = !!current && current.slot === retainedPlayer.slot
+          && current.generation === retainedPlayer.generation;
       }
       result.spawnedCount = spawnedSlots.length;
       initialized = true;

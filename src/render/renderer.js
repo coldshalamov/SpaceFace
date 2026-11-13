@@ -295,6 +295,7 @@ import {
 } from './presentationWorld.js';
 import { createPresentationPublisher } from './presentationPublisher.js';
 const LIVE_POSE_PUBLICATION = Object.freeze({ atomic: true });
+const LIVE_POSE_RECOVERY = Object.freeze({ atomic: true, retainPlayerPose: true });
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   clearWaveHullRunwayKeys,
@@ -8728,6 +8729,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._snapshotSourceTick = null;
   owner._posePackEpoch = 0;
   owner._posePackSectorId = null;
+  owner._posePackLifecycleGeneration = null;
   owner._activityFrame = null;
   owner._activityFrameTick = null;
   owner._frameMembrane = null;
@@ -10752,6 +10754,7 @@ export const render = {
     this._snapshotSourceTick = null;
     this._posePackEpoch = 0;
     this._posePackSectorId = null;
+    this._posePackLifecycleGeneration = null;
     this._persistentSubmitLanes = createPersistentSubmitLanes();
     this._activityFrame = null;
     this._activityFrameTick = null;
@@ -19660,6 +19663,9 @@ export const render = {
     onBus('dock:undocked', () => {
       this._posePackEpoch = (this._posePackEpoch | 0) + 1;
     });
+    onBus('dock:docked', () => {
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
+    });
     globalShipMicroMotion.bindEvents(bus);
     globalAsteroidMotion.bindEvents(bus);
     globalPickupMotion.bindEvents(bus);
@@ -19776,6 +19782,7 @@ export const render = {
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
     onBus('game:new', () => {
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
       vf.clearReadyPackagedBodies('game-new');
       // New Game (including Crucible retry) destroys the entity graph and reuses numeric
       // ids. The same-sector save recook cannot identify those replacement hulls by id.
@@ -19832,6 +19839,7 @@ export const render = {
     // rather than leaving it mounted hidden until the next New Game supersedes it.
     onBus('game:startFailed', () => { this._discardEarlyCrucibleWarm(); });
     onBus('save:restoring', () => {
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
       for (const record of this._appearanceReplacements?.values() || []) record.cancel('appearance-save-restoring');
       // Continue / quick-load replaces the run: drop the outgoing run's claim-defense rosters.
       // The director's restore republishes any warning still mid-countdown after this fires.
@@ -28556,25 +28564,41 @@ export const render = {
    * Stamp the pose-interpolation epoch the next snapshot pack belongs to.
    *
    * Interpolation between two packs is only meaningful while the pose stream between them is
-   * continuous. A sector jump teleports every body to another part of the galaxy, and a mirror
-   * rebuild reassigns slots (and can hand a recycled id to a different body), so the pack before
-   * one of those is not a blend source for the pack after it. Blending across a jump drew the
-   * player's own hull thousands of world units from its camera, and — because a standing-still
-   * root is neither dirty nor pose-delta — that wrong pose then never got rewritten.
+   * continuous. A sector jump or lifecycle change invalidates the previous pack. A journal
+   * rebuild can also invalidate slot identities, unless the recovering publication reconciles
+   * the exact same player life and invalidates changed rows individually.
    */
-  _advancePosePackEpoch(publication) {
+  _advancePosePackEpoch(publication, presentationFrame = null) {
     const sectorId = String((this.state && this.state.world && this.state.world.currentSectorId) || '');
-    // Only a real slot remap (world.clear/full rebuild) teleports every row —
-    // a diff-apply fallback during a suspended stepped rebuild preserves
-    // id-keyed slots, so it must not bump the epoch (each bump would kill the
-    // pack's copy path AND previous→latest interpolation for the whole window).
-    if (publication && publication.remapped === true) {
-      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
-    } else if (this._posePackSectorId !== sectorId) {
+    const lifecycle = presentationFrame?.lifecycleGeneration;
+    const lifecycleChanged = Number.isSafeInteger(lifecycle)
+      && Number.isSafeInteger(this._posePackLifecycleGeneration)
+      && lifecycle !== this._posePackLifecycleGeneration;
+    if (this._posePackSectorId !== sectorId || lifecycleChanged
+      || (publication?.remapped === true && publication.retainedPlayerPose !== true)) {
       this._posePackEpoch = (this._posePackEpoch | 0) + 1;
     }
     this._posePackSectorId = sectorId;
+    if (Number.isSafeInteger(lifecycle)) this._posePackLifecycleGeneration = lifecycle;
     return this._posePackEpoch;
+  },
+
+  _livePosePublicationOptions(presentationFrame) {
+    if (presentationFrame?.journalFullRebuild !== true) return LIVE_POSE_PUBLICATION;
+    const fence = this._snapshotFence;
+    const newest = fence?.newestSnapshot();
+    const lifecycle = presentationFrame?.lifecycleGeneration;
+    // A same-life recovery that lands behind the drawn clock would otherwise
+    // discard its history and snap back to the incoming raw pose. In the
+    // extrapolation zone the newest pack also serves new/remapped rows directly.
+    if (Number.isSafeInteger(lifecycle)
+      && lifecycle === this._posePackLifecycleGeneration
+      && newest?.poseEpoch === this._posePackEpoch
+      && this._posePackSectorId === String(this.state.world?.currentSectorId || '')
+      && this.state.simTime >= newest.simTime && this.state.simTime <= fence.presentedTimeS) {
+      return LIVE_POSE_RECOVERY;
+    }
+    return LIVE_POSE_PUBLICATION;
   },
 
   // The state.render mirror is a stats record, not an event: consumers read the fields
@@ -28635,6 +28659,10 @@ export const render = {
     const entityId = world.entityIds[slot];
     if (entityId && this.state && entityId === this.state.playerId) {
       const cont = this._poseContinuity || (this._poseContinuity = createPoseContinuity());
+      if (this._poseContinuityEpoch !== snapshot.poseEpoch) {
+        cont.clear();
+        this._poseContinuityEpoch = snapshot.poseEpoch;
+      }
       const scratch = this._poseContinuityScratch
         || (this._poseContinuityScratch = { x: 0, z: 0, yaw: 0 });
       const ox = Number.isFinite(origin.x) ? origin.x : 0;
@@ -30940,7 +30968,7 @@ export const render = {
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame,
-      this.state && this.state.mode === 'flight' ? LIVE_POSE_PUBLICATION : undefined);
+      this.state?.mode === 'flight' ? this._livePosePublicationOptions(presentationFrame) : undefined);
     // The stepped apply can legitimately ack only what it reached this present —
     // the runner discards the wire journal by this watermark, not by the merged
     // range end, so a paced apply never evicts records it has not presented.
@@ -31107,10 +31135,11 @@ export const render = {
         ? completedPublication.tick
         : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0));
     const packEpoch = this._snapshotFence && this._presentationWorld
-      ? this._advancePosePackEpoch(publication) : 0;
+      ? this._advancePosePackEpoch(publication, presentationFrame) : 0;
     const snapshotNeedsPack = this._snapshotFence && this._presentationWorld
       && (this._snapshotSourceTick !== completedTick
         || this._snapshotFence.packCount === 0
+        || this._snapshotFence.newestSnapshot()?.poseEpoch !== packEpoch
         || (publication.rebuilt === true && publication.appliedDelta !== 0)
         || publication.refreshed === true
         || publication.applied > 0);

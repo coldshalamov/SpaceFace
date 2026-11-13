@@ -175,6 +175,7 @@ export function createPresentationWorld(options = {}) {
     visible: new Uint8Array(0),
     slotGenerations: new Uint32Array(0),
     sourceGenerations: new Uint32Array(0),
+    occupantGenerations: new Float64Array(0),
     revisions: new Uint32Array(0),
     visualRevisions: new Uint32Array(0),
     // Per-slot seen stamps for updateFromEntities' dedupe — slot-indexed so a
@@ -252,6 +253,7 @@ export function createPresentationWorld(options = {}) {
     world.visible = growTyped(world.visible, Uint8Array, capacity);
     world.slotGenerations = growTyped(world.slotGenerations, Uint32Array, capacity);
     world.sourceGenerations = growTyped(world.sourceGenerations, Uint32Array, capacity);
+    world.occupantGenerations = growTyped(world.occupantGenerations, Float64Array, capacity);
     world.revisions = growTyped(world.revisions, Uint32Array, capacity);
     world.visualRevisions = growTyped(world.visualRevisions, Uint32Array, capacity);
     world.lastSeenSeq = growTyped(world.lastSeenSeq, Uint32Array, capacity);
@@ -636,6 +638,7 @@ export function createPresentationWorld(options = {}) {
     world.visible[slot] = 0;
     world.slotGenerations[slot] = nextGeneration(world.slotGenerations[slot]);
     world.sourceGenerations[slot] = sourceGeneration(record);
+    world.occupantGenerations[slot] = entity?.occupantGeneration || 0;
     world.revisions[slot] = sourceRevision(record);
     world.visualRevisions[slot] = Number.isSafeInteger(record && record.visualRevision)
       ? record.visualRevision >>> 0
@@ -789,6 +792,37 @@ export function createPresentationWorld(options = {}) {
       : world.visualRevisions[slot];
     markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
     return slot;
+  }
+
+  // A transport rebuild gives every SPAWN a new journal generation, even when
+  // the authoritative body is the same. Keep its local pose identity only when
+  // the original occupant token and live facade both still agree.
+  function canRetainOccupant(entity) {
+    const slot = byId.get(entity?.id);
+    const life = entity?.occupantGeneration;
+    return slot !== undefined && entity.alive !== false && Number.isSafeInteger(life) && life > 0
+      && world.entityRefs[slot] === entity && world.occupantGenerations[slot] === life;
+  }
+
+  function rebuildRecord(record, entity) {
+    const slot = byId.get(sourceEntityId(record));
+    if (slot !== undefined && canRetainOccupant(entity)) {
+      world.sourceGenerations[slot] = sourceGeneration(record);
+      world.revisions[slot] = 0;
+      world.visualRevisions[slot] = 0;
+      applyVisual(record, entity);
+      return handleForSlot(slot);
+    }
+    // If this ID was present, reallocate its own slot so the next generation
+    // cannot match that ID's older pose by accident in a different slot.
+    if (slot !== undefined) retireSlot(slot);
+    return allocateRecord(record, entity);
+  }
+
+  function retireUnpublishedRecords(publishedIds) {
+    for (const [entityId, slot] of byId) {
+      if (!publishedIds.has(entityId)) retireSlot(slot);
+    }
   }
 
   function bindMesh(handle, mesh, entity = null, visualRadius = null) {
@@ -1500,6 +1534,9 @@ export function createPresentationWorld(options = {}) {
     retire,
     applyTransform,
     applyVisual,
+    canRetainOccupant,
+    rebuildRecord,
+    retireUnpublishedRecords,
     bindMesh,
     unbindMesh,
     refreshVisibleEntity,
