@@ -114,7 +114,8 @@ export function stampSolidDressing(data, options = {}) {
 // count row inserts/drops/pose writes — both stay far below the span in practice.
 const DRESSING_VERSION_SPAN = 0x2000000; // 2^25
 
-const LAYER_CACHE = new WeakMap(); // dressing table -> { dressingVersion, baseVersion, statics, staticVersion }
+const EMPTY_BASE_STATICS = Object.freeze([]);
+const LAYER_CACHE = new WeakMap(); // dressing table -> base roster -> folded layer
 
 export function dressingStaticVersion(state, baseVersion = 0) {
   const table = ensureDressingTable(state);
@@ -123,15 +124,22 @@ export function dressingStaticVersion(state, baseVersion = 0) {
 
 /**
  * The SG-02/projectile static layer: the entity statics plus every collidable dressing row,
- * cached until either membership version changes. Returns the cached array (do not mutate)
- * and its folded static version for the owner's reconcile gate.
+ * cached per base roster until either membership version changes. The two owners advance
+ * independent versions. Returns the cached array (do not mutate) and its folded version
+ * for the owner's reconcile gate.
  */
-export function dressingStaticLayerFor(state, baseStatics = [], baseVersion = 0) {
+export function dressingStaticLayerFor(state, baseStatics = EMPTY_BASE_STATICS, baseVersion = 0) {
   const table = ensureDressingTable(state);
+  const roster = Array.isArray(baseStatics) ? baseStatics : EMPTY_BASE_STATICS;
   const base = Math.max(0, baseVersion | 0);
-  let cache = LAYER_CACHE.get(table);
+  let layers = LAYER_CACHE.get(table);
+  if (!layers) {
+    layers = new WeakMap();
+    LAYER_CACHE.set(table, layers);
+  }
+  let cache = layers.get(roster);
   if (!cache || cache.dressingVersion !== table.version || cache.baseVersion !== base) {
-    const statics = Array.isArray(baseStatics) ? baseStatics.slice() : [];
+    const statics = roster.slice();
     for (const row of table.rows) {
       if (row && row.alive !== false && row.collides === true && row.physicsBody !== false) {
         statics.push(row);
@@ -143,7 +151,7 @@ export function dressingStaticLayerFor(state, baseStatics = [], baseVersion = 0)
       statics,
       staticVersion: table.version * DRESSING_VERSION_SPAN + base,
     };
-    LAYER_CACHE.set(table, cache);
+    layers.set(roster, cache);
   }
   return cache;
 }

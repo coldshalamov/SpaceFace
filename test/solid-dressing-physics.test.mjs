@@ -117,6 +117,39 @@ test('measured skins admit presentation fx only through an explicit skin proxy d
   assert.equal(measuredSkinAllowedFor(ghostMarker), false);
 });
 
+test('dressing layers retain separate static rosters and invalidate each owner on its own version', () => {
+  const state = createGameState(7010);
+  const solid = insertDressingRow(state, { collides: true, physicsBody: { dynamic: false } });
+  const nativeStatic = { id: 1001 };
+  const projectileStatic = { id: 1002 };
+  const nativeStatics = [nativeStatic];
+  const projectileStatics = [projectileStatic];
+
+  const nativeLayer = dressingStaticLayerFor(state, nativeStatics, 1);
+  const projectileLayer = dressingStaticLayerFor(state, projectileStatics, 1);
+  assert.deepEqual(nativeLayer.statics, [nativeStatic, solid]);
+  assert.deepEqual(projectileLayer.statics, [projectileStatic, solid]);
+  assert.equal(nativeLayer.staticVersion, dressingStaticVersion(state, 1));
+  assert.equal(projectileLayer.staticVersion, dressingStaticVersion(state, 1));
+
+  const extraProjectileStatic = { id: 1003 };
+  projectileStatics.push(extraProjectileStatic);
+  const updatedProjectile = dressingStaticLayerFor(state, projectileStatics, 2);
+  assert.deepEqual(updatedProjectile.statics, [projectileStatic, extraProjectileStatic, solid]);
+  assert.equal(updatedProjectile.staticVersion, dressingStaticVersion(state, 2));
+  assert.equal(dressingStaticLayerFor(state, nativeStatics, 1), nativeLayer);
+  assert.equal(dressingStaticLayerFor(state, projectileStatics, 2), updatedProjectile);
+
+  const secondSolid = insertDressingRow(state, { collides: true, physicsBody: { dynamic: false } });
+  const updatedNative = dressingStaticLayerFor(state, nativeStatics, 1);
+  const refreshedProjectile = dressingStaticLayerFor(state, projectileStatics, 2);
+  assert.deepEqual(updatedNative.statics, [nativeStatic, solid, secondSolid]);
+  assert.deepEqual(refreshedProjectile.statics, [projectileStatic, extraProjectileStatic, solid, secondSolid]);
+  assert.notEqual(updatedNative.staticVersion, nativeLayer.staticVersion);
+  assert.notEqual(refreshedProjectile.staticVersion, updatedProjectile.staticVersion);
+  assert.equal(dressingStaticLayerFor(state), dressingStaticLayerFor(state));
+});
+
 test('solid dressing rows join the SG-02 static layer as fixed measured-skin bodies', async () => {
   const t = bootCore(7011);
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
