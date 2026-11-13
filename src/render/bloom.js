@@ -454,13 +454,21 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float grainFrame
   ) {
     vec3 hdr = max(scene, vec3(0.0)) * exposure;
-    vec3 filmic = spaceAcesFilmic(hdr);
-    float peak = max(hdr.r, max(hdr.g, hdr.b));
-    if (peak > 0.65) {
-      filmic = mix(filmic, spaceRadianceShoulder(hdr),
-        0.55 * smoothstep(0.65, 2.5, peak));
+    float toneNeutral = clamp(uLookToneNeutral, 0.0, 1.0);
+    vec3 filmic;
+    if (toneNeutral == 1.0) {
+      filmic = clamp(spacePbrNeutral(hdr), 0.0, 1.0);
+    } else {
+      filmic = spaceAcesFilmic(hdr);
+      float peak = max(hdr.r, max(hdr.g, hdr.b));
+      if (peak > 0.65) {
+        filmic = mix(filmic, spaceRadianceShoulder(hdr),
+          0.55 * smoothstep(0.65, 2.5, peak));
+      }
+      if (toneNeutral != 0.0) {
+        filmic = mix(filmic, clamp(spacePbrNeutral(hdr), 0.0, 1.0), toneNeutral);
+      }
     }
-    filmic = mix(filmic, clamp(spacePbrNeutral(hdr), 0.0, 1.0), clamp(uLookToneNeutral, 0.0, 1.0));
     vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
     // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
     // shoulders so movement does not turn into flickering hard posterization. Do this
@@ -1353,13 +1361,9 @@ const COMPOSITE_FRAG = /* glsl */`
   varying vec2 vUv;
   uniform sampler2D tScene;
   uniform sampler2D tBloom0;  // half-res bright extract (always present when bloom is on)
-  uniform sampler2D tBloom1;  // mid halo level (or same as tBloom0 when levels==1)
-  uniform sampler2D tBloom2;  // widest halo level (or same as tBloom0 when levels==1)
   uniform sampler2D tDistortion;
   uniform float uDistortion;
   uniform float uBloomW0;
-  uniform float uBloomW1;
-  uniform float uBloomW2;
   uniform float uStrength;
   uniform float uBloomNorm;   // pyramid energy runs hot; normalize before perceptual strength
   uniform float uExposure;
@@ -1396,14 +1400,9 @@ const COMPOSITE_FRAG = /* glsl */`
     // Participating media transports linear HDR radiance before the one exposure/tone-map/encode.
     // Vacuum is an exact uniform-disabled path; bloom never stands in for surface illumination.
     scene = composeNocturneAtmosphere(scene, (sceneUv - uUvOffset) / uUvScale, sceneUv);
-    // LOOK-04: the upsample chain has already folded every pyramid level into tBloom0 (half res,
-    // tent-filtered at each scale), so the halo is one read here. Pyramid targets share the same
-    // content/allocated ratio, so one UV remap serves all. tBloom1/2 remain bound for the
-    // levels==1 path and cost nothing while their weights are zero.
+    // The tent upsample chain folds every level into the half-resolution bloom target.
     vec3 bloom = vec3(0.0);
     if (uBloomW0 != 0.0) bloom += texture2D(tBloom0, sceneUv).rgb * uBloomW0;
-    if (uBloomW1 != 0.0) bloom += texture2D(tBloom1, sceneUv).rgb * uBloomW1;
-    if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy * uPresentationScale, uExposure, uAces,
@@ -2595,13 +2594,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   const compositeMat = mkMat(COMPOSITE_FRAG, {
     tScene:     { value: null },
     tBloom0:    { value: null },
-    tBloom1:    { value: null },
-    tBloom2:    { value: null },
     tDistortion: { value: null },
     uDistortion: { value: 0 },
     uBloomW0:   { value: 1.0 },
-    uBloomW1:   { value: 0.0 },
-    uBloomW2:   { value: 0.0 },
     uStrength:  { value: strength },
     uBloomNorm: { value: BLOOM_PYRAMID_NORM },
     uExposure:  { value: exposure },
@@ -2743,8 +2738,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     upsampleMat.uniforms.tDiffuse.value = null;
     compositeMat.uniforms.tScene.value = null;
     compositeMat.uniforms.tBloom0.value = null;
-    compositeMat.uniforms.tBloom1.value = null;
-    compositeMat.uniforms.tBloom2.value = null;
     compositeMat.uniforms.tDistortion.value = null;
     compositeMat.uniforms.tNocturneScatter.value = null;
     compositeMat.uniforms.tNocturneDepth.value = null;
@@ -3197,13 +3190,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
     // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
     // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
-    const fine = bloomActive ? down[0].texture : rtScene.texture;
-    const mid = bloomActive && levels > 1 ? down[Math.min(2, levels - 1)].texture : fine;
-    const wide = bloomActive && levels > 2 ? down[levels - 1].texture : fine;
     compositeMat.uniforms.tScene.value = rtScene.texture;
-    compositeMat.uniforms.tBloom0.value = fine;
-    compositeMat.uniforms.tBloom1.value = mid;
-    compositeMat.uniforms.tBloom2.value = wide;
+    compositeMat.uniforms.tBloom0.value = bloomActive ? down[0].texture : rtScene.texture;
     compositeMat.uniforms.tDistortion.value = distortionLiveCount > 0 ? rtDistortion.texture : rtScene.texture;
     compositeMat.uniforms.uDistortion.value = distortionLiveCount > 0 ? 1 : 0;
     if (atmosphere) atmosphere.bindComposite(compositeMat.uniforms, rtScene.depthTexture, atmosphereCamera, rtScene.texture);
@@ -3215,8 +3203,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
     // The upsample chain folded every level into down[0]; one read, renormalized.
     compositeMat.uniforms.uBloomW0.value = bloomActive ? bloomChainWeights(levels).composite : 0.0;
-    compositeMat.uniforms.uBloomW1.value = 0.0;
-    compositeMat.uniforms.uBloomW2.value = 0.0;
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
