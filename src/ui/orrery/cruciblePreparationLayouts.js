@@ -638,6 +638,11 @@ ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp):is(:hover, :focus-visib
   color:#fff !important;
   background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
 }
+/* keyboard focus: the same bone ring the draft's foot keys carry (screenLayouts' foot hover/focus rule strips outline). */
+${R} .k-foot .k-word:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
+/* short frames turn the foot into a scrollport with no inline padding, which shaved the ring's left edge: 5px of inline
+   room, handed back by an equal negative margin so the keys don't move. */
+${R} > .k-foot.sf-cru-foot.sf-cru-foot { padding-left:5px !important; padding-right:5px !important; margin-left:-5px !important; margin-right:-5px !important; }
 ${R} .k-foot .k-word.k-word--primary:not(.is-lamp) {
   display:inline-flex !important; align-items:center; min-height:42px; padding:0 20px;
   font:700 15px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
