@@ -14,6 +14,8 @@ const STYLE_ID = 'sf-orrery-help-layouts';
 const H = 'html body #screens > .k-screen.of-help.orr-help';
 /** Help on a desktop (not the phone shell); same weight as H plus the mobile guard. */
 const HD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help';
+/** The Controls tab only (the section row below 1500 wide is scoped to it). */
+const HDC = `${HD}[data-tab="controls"]`;
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
@@ -668,6 +670,29 @@ ${SCROLL_EXTENT_CSS}
 @media (forced-colors: active) {
   ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:Highlight !important; }
   .orr-hkey::after { background:CanvasText; }
+}
+
+/* Controls at 1201-1500 wide (first-hour pass): the six sections stand as one row of words on a rule beside
+   the title, as they already do under 1200, so the ship rig gets the width it needs. With the side ladder the
+   rig's column was ~617px at 1280 and its right-hand callouts (LATERAL RIGHT, COUNTERMEASURE) ran over EVERY KEY. */
+@media (min-width:1201px) and (max-width:1500px) {
+  ${HDC} { grid-template-columns:auto minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title hang" "stage stage" "foot foot" !important; }
+  ${HDC} > .k-hang { grid-area:hang; align-self:end; justify-self:end; -webkit-mask-image:none; mask-image:none; } /* one row: nothing scrolls, so the kit fade would only dim the rule */
+  ${HDC} > .k-foot { grid-area:foot; }
+  ${HDC} > .orr-help__stage { grid-area:stage; }
+  ${HDC} .orr-help__tabs { flex-direction:row !important; gap:clamp(14px, 2.2vw, 26px) !important; padding:0 0 14px !important;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
+  ${HDC} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HDC} .orr-help__tabs > li::before { display:none; }
+  ${HDC} .orr-help__tabs .sf-tab { width:auto !important; min-height:32px !important; padding:3px 0 4px !important; font-size:12px !important; letter-spacing:.16em !important; }
+  ${HDC} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-12px !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HDC} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:12px !important; margin:0 0 0 -1px !important; }
+  ${HDC} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-14px !important; width:9px !important; height:9px !important; margin:0 0 0 -4.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HDC}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HDC} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
 }
 `;
 
