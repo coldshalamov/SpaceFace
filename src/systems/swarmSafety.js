@@ -109,12 +109,14 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
   return null;
 }
 
-// Per-wave pilot latch. Held on the state object, never on state.run: survivalWave
-// must not write the run record. A new wave number forgets the previous act, so a
-// round cannot be won, or shot through, on the last round's thrust. A save/load
-// re-arms the opener until the next pilot act — a fresh boot is a fresh opener,
-// and a playing pilot re-acts on the next tick, so nothing observable is lost.
-const _pilotActedWave = new WeakMap();
+// First act belongs to one round of one run. New Game reuses the state object and
+// Retry reuses the wave number, while wallet/phase changes replace the run object.
+// The run owner's token survives those replacements and changes on each launch.
+const pilotActs = new WeakMap();
+
+function isCurrentPilotAct(act, run) {
+  return act?.wave === run.wave && act.runToken === run.retireToken;
+}
 
 function liveFirstActFight(state) {
   const run = state && state.run;
@@ -128,13 +130,13 @@ function liveFirstActFight(state) {
 export function swarmPilotHasActed(state) {
   const run = liveFirstActFight(state);
   if (!run) return true;
-  return _pilotActedWave.get(state) === run.wave;
+  return isCurrentPilotAct(pilotActs.get(state), run);
 }
 
 export function noteSwarmPilotAction(state) {
   const run = liveFirstActFight(state);
-  if (!run) return;
-  _pilotActedWave.set(state, run.wave);
+  if (!run || isCurrentPilotAct(pilotActs.get(state), run)) return;
+  pilotActs.set(state, { runToken: run.retireToken, wave: run.wave });
 }
 
 /**

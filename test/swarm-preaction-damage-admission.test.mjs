@@ -9,7 +9,9 @@ import { input } from '../src/systems/input.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { readFileSync } from 'node:fs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { buildCrucibleRetryRequest, crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
 
 function harness(ruleset = 'swarm') {
   const state = createGameState(4242);
@@ -215,3 +217,65 @@ test('native Gauntlet loading births carry damage admission before progress is p
       'the native Gauntlet never enters the Swarm pacing branch');
   } finally { lane.shutdown(); }
 });
+
+for (const ruleset of ['swarm', 'scored']) {
+  test(`same-seed ${ruleset} Retry waits for a new first act`, async () => {
+    const lane = createSimHost();
+    try {
+      const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url)));
+      const init = await lane.init({ profile: 'production', seed: 4242, scenarioContract });
+      const { state, runtime } = lane.host;
+      const launchBus = createBus();
+      const ring = createSimCommandRing();
+      launchBus.on('game:new', opts => {
+        pushLaneCommand(ring, { kind: 'mode', mode: 'loading' });
+        pushLaneCommand(ring, { kind: 'rpc', id: 'new-run', op: 'newGameBoot', args: { opts } });
+      });
+      let tick = 0;
+      let ackEnd = init.initRebuild?.end ?? 0;
+      async function drain(steps = 0) {
+        const reply = await lane.tick({ tick: ++tick, steps, ackEnd, commands: ring.drain() });
+        ackEnd = reply.rebuild?.end ?? ackEnd;
+        return reply;
+      }
+      async function launch(setup, mode) {
+        assert.equal(requestCrucibleRun(launchBus, setup, mode), true);
+        const reply = await drain();
+        const boot = reply.rpcAcks.find(row => row.id === 'new-run');
+        assert.equal(boot?.ok, true, JSON.stringify(boot));
+        assert.equal(state.run.phase, 'active');
+        assert.equal(state.run.wave, 1);
+      }
+      async function fly() {
+        pushLaneCommand(ring, { kind: 'mode', mode: 'flight' });
+        pushLaneCommand(ring, { kind: 'domEvent', d: { type: 'keydown', code: 'KeyW', pressed: true } });
+        assert.equal((await drain(1)).stepsExecuted, 1);
+        assert.equal(swarmPilotHasActed(state), true);
+      }
+      const setup = crucibleSetupFor({ starterId: 'ricochet_runner', seed: 4242, ruleset,
+        openArmoryBeforeRound1: false }).value;
+      await launch(setup, ruleset);
+      assert.equal(swarmPilotHasActed(state), false);
+      await fly();
+      const beforeAward = state.run;
+      lane.host.bus.emit('run:awardRequested', { credits: 1, reason: 'test:first_act' });
+      assert.notEqual(state.run, beforeAward, 'a canonical wallet award replaces the run snapshot');
+      assert.equal(swarmPilotHasActed(state), true, 'the same round retains its act across a wallet commit');
+      const firstRun = state.run.retireToken;
+      const combat = runtime.getSystem('combat');
+      combat.kill(state.entities.get(state.playerId), null, { cause: 'collision' });
+      assert.equal(state.run.result?.outcome, 'defeat');
+
+      const retry = buildCrucibleRetryRequest();
+      await launch(retry.setup, retry.ruleset);
+      assert.notEqual(state.run.retireToken, firstRun);
+      const target = state.entityList.find(entity => entity.alive && entity.data?.runCohort === 'survival');
+      assert.ok(target, 'the real first round materialized');
+      const hit = () => combat.ensureKernel().routeDamage({ attackerId: state.playerId, targetId: target.id,
+        packet: scalarHitToDamagePacket({ damage: 1, damageType: 'kinetic' }) });
+      assert.equal(hit().reason, 'swarm_waiting_for_input');
+      await fly();
+      assert.equal(hit().ok, true);
+    } finally { lane.shutdown(); }
+  });
+}
