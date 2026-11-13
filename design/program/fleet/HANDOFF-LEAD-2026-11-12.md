@@ -305,3 +305,12 @@ The locked Supply Pod pair confirmed thrust, turn, and primary fire. Draws rose 
 - `006b297c58d0` accepted. The active queue and quality checkpoint retain the commit IDs and incomplete routes.
 
 Workers were Codex backend_recon (Three.js hot path), sim_hotpath (Rapier and domain mirror), economy_perf (shared-clock tracing), and boot_deadline (Electron startup and SwiftShader fixture). No Devin worker launched. Next live checks use the shared lock for Ceres pre-contact, combined-input motion cadence, and Adventure startup, pause and restore. The original seconds-long freeze, sustained cadence, full load/Continue coverage, and broader route acceptance remain open.
+
+### Stand-in log — clock wake recovery
+
+- `b30d3e7d4070` fixed. Dropping one accepted catch-up message held the old worker on one tick through repeated heartbeats. The same wake now has a two-tick fallback, and late delivery cannot execute it again.
+- `3cf7ffb44e01` accepted. Records clock fault injection and its proof boundary.
+- `f2c2f8b2f9f5` accepted. The production Ceres worker supplied 525 dormant rows and verified one transfer from field projection to a live body.
+- `28bf6c3d3d76` accepted in syntax and scope review. The dedicated locked Ceres ram route collects the before-contact PNG.
+
+The 47-A deterministic replay matched its baseline over all 20 repetitions, and source imports passed. The native Adventure follow-up, combined-input trace, Ceres ram picture and SwiftShader fixture use the existing game lock. Opus's visual/UI batches continued. The recorded retail freeze and cross-mode frame pacing remain open.
