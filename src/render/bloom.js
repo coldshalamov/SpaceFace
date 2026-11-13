@@ -261,6 +261,7 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   uniform float uLookSaturation;    // global saturation (1 = none)
   uniform float uLookVibrance;      // extra saturation for muted colours only
   uniform float uLookInk;           // painted-edge deposit and value steps (0 = clean)
+  uniform float uLookToneNeutral;   // 0 = ACES fit, 1 = Khronos PBR Neutral (LOOK-04)
 
   // Edge resolve + wet-ink finish, fused into the existing composite. The scene target is
   // single-sampled by design, so this is where post-AA lives: a Lottes-style tap resolve that
@@ -327,6 +328,22 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     const float d = 0.59;
     const float e = 0.14;
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+  }
+
+  // Khronos PBR Neutral (2024): linear below the compression start, hue-preserving highlight roll-off.
+  vec3 spacePbrNeutral(vec3 color) {
+    const float startCompression = 0.8 - 0.04;
+    const float desaturation = 0.15;
+    float x = min(color.r, min(color.g, color.b));
+    float offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+    color -= offset;
+    float peak = max(color.r, max(color.g, color.b));
+    if (peak < startCompression) return color;
+    const float d = 1.0 - startCompression;
+    float newPeak = 1.0 - d * d / (peak + d - startCompression);
+    color *= newPeak / peak;
+    float g = 1.0 - 1.0 / (desaturation * (peak - newPeak) + 1.0);
+    return mix(color, newPeak * vec3(1.0), g);
   }
 
   vec3 spaceLinearToSrgb(vec3 c) {
@@ -443,6 +460,7 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
       filmic = mix(filmic, spaceRadianceShoulder(hdr),
         0.55 * smoothstep(0.65, 2.5, peak));
     }
+    filmic = mix(filmic, clamp(spacePbrNeutral(hdr), 0.0, 1.0), clamp(uLookToneNeutral, 0.0, 1.0));
     vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
     // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
     // shoulders so movement does not turn into flickering hard posterization. Do this

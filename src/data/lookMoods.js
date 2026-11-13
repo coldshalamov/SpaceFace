@@ -93,6 +93,9 @@ export const LOOK_BASE = deepFreeze({
     vibrance: 0.20,
     // Painted-edge ink and value steps from the retired illustration pass. 0 = clean.
     ink: 0.08,
+    // LOOK-04: blend from the per-channel ACES fit (whitens and desaturates bright colours) toward the Khronos PBR
+    // Neutral curve (linear midtones, hue-true highlights). 0 = today's picture.
+    toneNeutral: 0,
     // Colour of bloom spill: subtle electric blue-white aura.
     bloomTint: [1.04, 1.00, 0.94],
     // Corner darkening colour (multiplied in at full vignette): deep cosmic midnight.

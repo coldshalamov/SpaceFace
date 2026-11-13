@@ -11,7 +11,7 @@ import { DEFAULT_LOOK_MOOD, resolveLookMood } from '../data/lookMoods.js';
 const SURFACE_SCALARS = ['albedoGamma', 'albedoSaturation', 'bandMix', 'contour', 'coat',
   'coatRoughness', 'coatEnv', 'coatSun', 'coatEdge', 'rimStrength', 'rimPower', 'rockFill', 'rockFloor', 'rockRim', 'paintCeiling', 'surfaceCeiling', 'sceneEnv'];
 const SURFACE_COLORS = ['shadowTint', 'lightTint', 'coatTint', 'rim'];
-const POST_SCALARS = ['contrast', 'saturation', 'vibrance', 'ink'];
+const POST_SCALARS = ['contrast', 'saturation', 'vibrance', 'ink', 'toneNeutral'];
 const POST_COLORS = ['shadowTint', 'highlightTint', 'bloomTint', 'vignetteTint'];
 
 function uniformName(prefix, key) {
