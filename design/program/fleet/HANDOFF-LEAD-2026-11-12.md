@@ -388,3 +388,10 @@ Launched Codex `shared_sim` (spatial hash and activity), `shared_render` (retain
 - `5105aa79edac` reviewed. Casket Worm geometry and material ownership were inspected and the lock-protected production camera PNG was opened. Fine surface detail remained hard to see at the production camera distance. Visual acceptance belongs to the lead.
 
 Reassigned Codex `shared_sim` to fixed-step and economy profiling, `shared_render` to shared render traversal, and `cross_mode_probe` to the dressing roster fix. No Devin launches. See [QUALITY.md](QUALITY.md) for pinned comparisons and unfinished routes. The fixed-step and renderer costs still block sustained smoothness.
+
+### Stand-in log — contact receipt follow-up
+
+- `ba792dafb6ff` accepted. Each compound contact pair keeps one private receipt through the native event drain, preserving the strongest closing normal and latest impact normal and point. Forty-six focused checks passed. The live cadence effect is unmeasured.
+- `0508cfe642e0` reviewed. The Lark's release GLB and render package dropped by roughly 87 kB apiece. The locked close and chase PNGs show the panel seams and distinctive cyan bands. The lead owns the visual sign-off.
+
+Open performance work remains in the fixed-step owners and the world draw. The shorter worker budget and alternate graphics backend did not meet the motion target. The original retail freeze, packaged launch, and outstanding player routes remain open on [QUALITY.md](QUALITY.md).
