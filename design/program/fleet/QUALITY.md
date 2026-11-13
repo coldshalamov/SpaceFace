@@ -164,14 +164,20 @@ worker's current timer had stopped. Clip samples and the matching receipt are un
   The 13 focused pose and view checks passed. Its isolated live frame gain is unmeasured.
 
 The Windows matrix status is in `.devshots/fleet/coordination/whole-game/pending-routes.jsonl`.
-The standalone hold probe timed out before live flight and closed gracefully. The latest locked
-Circuits run used the public Time Trial route and F8 reset the same attempt in its authored
+Two isolated Adventure launches reached the route's flight state but timed out before its clock
+was live. A third reached full-speed play. Pause held tick 122 and minimize held tick 405.
+After Resume and native Restore, both advanced ticks, resumed drawing, and accepted thrust.
+Opened both captures from `flight-holds-owner.json`. The intermittent first-picture hold remains open.
+The locked Circuits run used the public Time Trial route and F8 reset the same attempt in its authored
 sector. Its opened screenshot still showed the campaign act heading above the race objective.
 `8566b710688a` uses the temporary run's existing public launch context to hide the campaign
 heading and radio, keeping gate guidance. Fifty-three focused checks passed. Scored finish,
 and restart after a cleared gate remain open. The post-fix public Time Trial capture confirmed
 gate guidance, the campaign heading and comms tape hidden, and a same-attempt F8 restart.
-The opened image still showed an Adventure yard-control line above the racing panel.
+The image still showed an Adventure yard-control line above the racing panel. `f859298abed6`
+resets POI guidance on New Game and keeps its sector planner out of temporary circuits.
+The regression enters a race after Adventure and continues the campaign afterward. Twenty-three
+focused checks passed.
 The released checkpoints for flight restore, AI identity and Helios wash used the existing deterministic replay hash.
 
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.
