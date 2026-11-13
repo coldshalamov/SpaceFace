@@ -388,7 +388,8 @@ async function boot() {
     // a GameState write, so the deterministic sim cannot see it. It unlocks from real gameplay events
     // on the bus; this is deliberately independent of the environment drain.
     ctx.achievements = installAchievements({ bus, state, telemetry });
-    const eventTrace = createDeterministicEventTrace(bus, state);
+    let eventTrace;
+    SF_DEBUG_ONLY: if (SF_DEBUG) eventTrace = createDeterministicEventTrace(bus, state);
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
