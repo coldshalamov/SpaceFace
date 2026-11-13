@@ -279,7 +279,9 @@ ${D} .orr-prep-stake-number { font-size:29px !important; font-weight:250 !import
    hairline: four grey specks over the purses. They sit at 36px with a stroke that lands near 1.4px, the weight
    of the mode marks above them, so the service ladder reads as marks rather than dust. */
 ${D} .sf-crd-stake .fh-tile-art { height:36px !important; }
-${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:36px !important; height:36px !important; stroke-width:5; opacity:.9; }
+/* ui-polish-521: at stroke-width 5 the marks landed near 1.4px and read bolder than the mode marks' hairlines above;
+   3 lands near .85px, the mode marks' weight. The opacity:.9 here never applied (the tile art's .95 !important wins). */
+${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:36px !important; height:36px !important; stroke-width:3; }
 ${D} .orr-prep-stake-pressure { margin-top:3px; font:400 12px/1.3 var(--dp-face-label); letter-spacing:.1em; text-transform:uppercase; }
 ${D} .orr-prep-stake-yield { margin-top:2px; font:400 12px/1.3 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
 /* arena: one strip of five; the words carry the choice, the hero carries the rooms */
