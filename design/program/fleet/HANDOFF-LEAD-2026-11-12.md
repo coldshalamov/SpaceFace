@@ -346,3 +346,12 @@ Source imports passed and the 47-A deterministic replay matched the expected has
 Codex used sim_hotpath for impact projection and backend_recon for the production worker reply-credit reproduction. No Devin workers launched. The corrected Ceres run and matched native reply comparison are queued under the existing game lock. The latest stress route still fails the smoothness target. The onset of the 717 ms reply gap, original retail freeze, Adventure docking, live load/Continue, and wider release acceptance remain open.
 
 The earlier handoff commit `33def1ced2dc` also included two Opus-owned paths that entered the shared index during the commit. The files remain intact in history. Opus's coordination note is in `.devshots/fleet/coordination/CODEX-SWARM20.md`.
+
+### Stand-in log — matched flight result
+
+- `ec45a1f5f3d2` accepted. Opened both matched Electron pictures. During 204 and 208 shots the combat windows drew 9.72 and 10.55 frames/s. Maximum moving hull gap fell 525 to 248 ms. p95 stayed near 150 ms. Both runtimes closed cleanly.
+- `1a37fa62f9bb` fixed. Check the nested world RPC relocation receipt.
+- `c6c147bdd3b4` accepted. Keep sustained cadence and ordinary-route checks open in the fleet queue.
+- `de41835f905e` accepted. The corrected Ceres run observed target activation at 63 WU. No target draw was stamped and no before-contact PNG was produced. The contact PNG was opened. This does not close Ceres visibility.
+
+Completed the two previously queued game-lock checks. No workers launched during these captures. The next work is the main-thread and worker step budget across Adventure, Swarm, Gauntlet and Circuits, the Ceres target's actual draw ownership, and live load/Continue. See [QUALITY.md](QUALITY.md).
