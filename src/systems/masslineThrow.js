@@ -222,6 +222,19 @@ export const masslineThrow = {
     // even if the pilot's held-button assist normally waits for a release arc.
     const mode = touchRelease && assist === 'arm' ? 'snap' : assist;
     const identity = releasePredictionIdentity(payload.id, runtime.releaseTarget);
+    // THROW-01: a queued click is a promise to throw. When only the pointer's target changed (a
+    // swarm reshuffles the body under the cursor every few frames) the click releases NOW along the
+    // current swing instead of being dropped; nothing is re-aimed. A replaced attachment or a lost
+    // aim still cancels: that click no longer belongs to this line.
+    if (this._pendingSnap && this._pendingSnap.attachmentId === tether.attachmentId && aim
+        && this._pendingSnap.identity !== identity) {
+      this._executeThrow(state, player, payload, aim, {
+        valid: false, errorRad: Math.PI, tolRad: 0, onSolution: false,
+        interceptAngle: Math.atan2(payload.vel.z, payload.vel.x),
+        payloadSpeed: Math.hypot(payload.vel.x, payload.vel.z), timeOfFlight: 0,
+      }, 'snap-manual');
+      return;
+    }
     if (this._pendingSnap && (this._pendingSnap.identity !== identity
         || this._pendingSnap.attachmentId !== tether.attachmentId || !aim)) {
       this.bus.emit('massline:releaseCancelled', { sourceId: player.id, payloadId: payload.id,

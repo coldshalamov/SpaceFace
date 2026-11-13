@@ -48,7 +48,7 @@ try {
     const log = (window.__throwLog = []);
     const bus = window.SF && window.SF.bus;
     const sim = () => (window.SF && window.SF.state && window.SF.state.simTime) || 0;
-    for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'entity:killed', 'combat:collisionConsequence', 'tether:cut', 'swarm:drop:spawned', 'pickup:collected']) {
+    for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'massline:releaseCancelled', 'entity:killed', 'combat:collisionConsequence', 'tether:cut', 'swarm:drop:spawned', 'pickup:collected']) {
       bus && bus.on && bus.on(ev, (p) => {
         const s = window.SF && window.SF.state;
         const imp = p && p.impactorId != null && s && s.entities && s.entities.get(p.impactorId);

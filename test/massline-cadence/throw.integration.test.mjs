@@ -94,17 +94,18 @@ test('a queued press whose window arrives one tick after the forecast still rele
   assert.equal(receipt.mode, 'snap', 'the accepted press releases on the solution it was promised');
   assert.equal(receipt.prediction.onSolution, true);
 });
-test('queued throw cannot redirect when pointer identity changes', () => {
+test('a queued click whose pointer target changes throws now, un-redirected', () => {
   const f = setup(); nextWindow(f); f.press(); f.step(); assert.ok(f.host._pendingSnap);
   const other = body('other', 50, 250, 0, 0, 100, 10);
   f.state.entities.set(other.id, other); f.state.entityList.push(other);
   f.state.input.aimIntentActive = true; f.state.input.aimWorld = { ...other.pos };
   tick(f); f.step();
   assert.equal(f.host._pendingSnap, null);
-  assert.equal(f.state.massline2.throw.solution, null);
-  assert.equal(f.bus.count('massline:releaseCancelled'), 1);
+  assert.equal(f.bus.count('massline:releaseCancelled'), 0);
+  assert.equal(f.bus.count('massline:throw'), 1, 'the click is not dropped');
+  assert.equal(f.state.massline2.throw.lastThrow.mode, 'snap-manual');
   for (let i = 0; i < 8; i++) { tick(f); f.step(); }
-  assert.equal(f.bus.count('massline:throw'), 0);
+  assert.equal(f.bus.count('massline:throw'), 1, 'exactly one throw');
 });
 test('held input through a menu/latch boundary is not fresh authorization', () => {
   const f = setup('arm'); f.state.mode = 'station'; f.press(); f.step();
