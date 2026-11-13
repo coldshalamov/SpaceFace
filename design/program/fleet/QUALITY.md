@@ -304,3 +304,8 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   One reply starvation episode during startup became zero. Both pictures were opened and both
   Electron runs closed cleanly. Combat state evolved differently, and one pair gives directional
   evidence only. The game still misses a smooth cadence target.
+- `9dc2491bfc1d` makes an authored same-sector relocation reseat the player pose even during
+  extrapolation recovery. Ten pose and journal checks passed. The next locked Ceres run again
+  found the target activated away from the ship (1,227 WU) and captured zero visible target
+  frames. This does not attribute the visibility gap to player relocation. Its separate Helios
+  rescue rock remained late by 891 ms. See `2026-11-13T13-29-39-195Z.json`.
