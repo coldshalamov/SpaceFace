@@ -136,6 +136,12 @@ test('SwiftShader pixel matrix keeps canonical base presentation within one byte
       };
       const wrapper = makeRoute('wrapper');
       const graph = makeRoute('graph');
+      // The real wrapper receives admitted scene materials from the game.
+      // Admit this fixture's scene on the same HDR target before sampling it.
+      const admission = await wrapper.processor.compileScenePipelines(wrapper.scene, wrapper.camera);
+      if (admission.skipped || admission.incomplete) {
+        throw new Error(`Wrapper scene admission failed: ${JSON.stringify(admission)}`);
+      }
       const colors = {
         black: [0, 0, 0],
         mid: [0.18, 0.2, 0.22],
