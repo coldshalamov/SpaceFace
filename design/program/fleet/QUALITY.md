@@ -57,8 +57,38 @@ Additional matched CPU measurements under the same inputs and owner state:
 These owner measurements establish specific CPU savings. Live world cadence remains open. The main
 thread's recurring render submission and the worker's above-budget simulation steps both need work.
 
-The queued Windows checks write their status to `.devshots/fleet/coordination/whole-game/pending-routes.jsonl`.
-If the runner exits before it acquires the lock, resume the checks and gate with `node scripts/fleet/game-lock.mjs run -- node .devshots/fleet/coordination/whole-game/run-pending-locked.mjs`.
+## Playtest checkpoint
+
+- Windows Electron recovered an injected renderer crash, offered Quit on the next crash, and
+  relaunched to an interactive title. The two public F5/F9 cycles also returned to flight.
+  The packaged updater remains unverified. Crash evidence is in
+  `.devshots/fleet/coordination/electron-crash-quit/report.json`.
+- The matched powered turn and release measured p95 hull-to-pose heading error at 17.8° → below
+  measurement precision. Callback p95 was about 100 ms in both arms. `5faee660d029` fixes a
+  worker pose overwrite, and `052899aebd10` stops a patrol's side impact from creating a false
+  player warrant while preserving real player ram attribution.
+- `e8cce95972ea` keeps campaign actors, ambient collision and Act I outside standalone Circuits.
+  Time Trial and Pack/Cup retained zero and two authored rivals respectively in the three-format
+  worker reproduction. The production restore test confirmed campaign traffic returns on Continue.
+  Fifteen focused checks passed. Live F8, a completed scored run and a new Circuits capture remain open.
+- `a73aee08fa79` preserved measured telemetry values and historical snapshot identity. On a matched
+  360-tick native 60-ship fixture median time fell from 326.3 to 287.5 ms. The 12-ship result was
+  87.4 → 85.9 ms. The deterministic replay matched v27 across 20 repeats. Live impact remains open.
+- `e9fd39b0eb63` gives Retry/Back when native physics preparation refuses flight. The next desktop
+  investigation is a diagnostic Adventure launch where HTML rendered with native lifecycle
+  `hidden-or-minimized`, zero world draws and only the first-picture hold. Trace the native window
+  state and shell command before changing the hold. Fresh-app Ceres Continue also needs to warm
+  RU-7 before the worker restore publishes entities. Its cold fallback was reproduced in isolation.
+- The four-arm Clips run showed no consistent frame or hitch improvement from disabling capture.
+  Circuits candidate and stock drew 13.7 and 16.2 frames/s with different public seeds and world
+  paths. Repeat with matched seeds only after live flight and the Circuits roster changes settle.
+  Import lint and Adventure passed the fleet gate. Swarm stopped in asset preflight because six
+  Works files were being edited. Those edits have since landed, so repeat Swarm through the lock.
+
+The Windows matrix status is in `.devshots/fleet/coordination/whole-game/pending-routes.jsonl`.
+The standalone hold probe timed out before live flight and closed gracefully. The F8 retry was
+cancelled while queued for the user's playtest. After the playtest, start the pending Circuits check
+with `node scripts/fleet/game-lock.mjs run -- node .devshots/fleet/coordination/whole-game/run-race-restart.mjs`.
 The released checkpoints for flight restore, AI identity and Helios wash used the existing deterministic replay hash.
 
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.

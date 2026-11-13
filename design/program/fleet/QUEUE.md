@@ -50,13 +50,13 @@ See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
 
 | ID | Player route and next action | State |
 |---|---|---|
-| QUAL-01 | Windows browser and desktop launch → close → relaunch. Finish the crash/relaunch check and verify startup watchdog changes through the actual shell. | TAKEN Codex |
+| QUAL-01 | Windows browser and desktop launch → close → relaunch. Trace the occasional native hidden/minimized first-picture hold and verify the packaged updater. | TAKEN Codex. Injected renderer crash recovery, Quit and relaunch passed. |
 | QUAL-02 | Adventure New Game → fly → save/Continue → berth → first story delivery. Verify preserved chart courses, paid jumps and sealed cargo recovery in the ordinary route. | TAKEN Codex. Two public F5/F9 cycles returned to flight in Electron. The berth and story route remain open. |
 | QUAL-03 | Adventure opening and crowded Helios. Isolate the largest repeatable CPU/GPU cost and compare fresh poses and hitches on the same route. | TAKEN Codex |
 | QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex |
 | QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | READY |
-| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex |
-| QUAL-07 | Shared flight holds. Run a matched powered turn and release, then exercise Pause, minimize/return, jump and load while moving. Measure pose cadence independently of FPS. | TAKEN Codex. Wrapped heading, turn response, and worker pose ownership fixed. Live comparison and hold checks underway. |
+| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex. Campaign traffic and Act I removed from standalone races. Post-fix player route pending. |
+| QUAL-07 | Shared flight holds. Exercise Pause, minimize/return, jump and load while moving. Measure pose cadence independently of FPS. | TAKEN Codex. Matched powered turn and release passed. Hold probe timed out before flight became live. |
 | QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
 | QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex |
 
