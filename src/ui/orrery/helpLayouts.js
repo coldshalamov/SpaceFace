@@ -681,7 +681,7 @@ ${SCROLL_EXTENT_CSS}
   ${HDC} > .k-hang { grid-area:hang; align-self:end; justify-self:end; -webkit-mask-image:none; mask-image:none; } /* one row: nothing scrolls, so the kit fade would only dim the rule */
   ${HDC} > .k-foot { grid-area:foot; }
   ${HDC} > .orr-help__stage { grid-area:stage; }
-  ${HDC} .orr-help__tabs { flex-direction:row !important; gap:clamp(14px, 2.2vw, 26px) !important; padding:0 0 14px !important;
+  ${HDC} .orr-help__tabs { flex-direction:row !important; gap:clamp(14px, 2.2vw, 26px) !important; padding:0 14px 14px !important;
     background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
   ${HDC} .orr-help__tabs > li { width:auto !important; flex:none; }
   ${HDC} .orr-help__tabs > li::before { display:none; }
