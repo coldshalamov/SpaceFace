@@ -12,9 +12,14 @@ import {
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { protectedStationAt } from '../src/ai/engagementAuthority.js';
 import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
+import { addCargo } from '../src/systems/cargo.js';
 import { combat, UNDOCK_INVULN_S } from '../src/systems/combat.js';
+import { economy } from '../src/systems/economy.js';
 import { input } from '../src/systems/input.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { world } from '../src/systems/world.js';
 import { gameOverScreen } from '../src/ui/screens/gameOver.js';
 
 function vec(x, z) {
@@ -577,19 +582,76 @@ test('cross-sector recovery asks the world owner to enter the last lawful dock s
       state.world.activeSector = {
         stations: [{ stationId: 'station_ceres', pos: { x: -900, z: 240 } }],
       };
+      return state.world.activeSector;
     },
   };
   combat.state = state;
   combat.registry = { get(name) { return name === 'world' ? world : null; } };
   combat.bus = { emit() {} };
-  const plan = buildRecoveryPlan(state, state.entities.get(1));
+  const wreck = state.entities.get(1);
+  wreck.alive = false;
+  wreck.flags.defeated = true;
+  const plan = buildRecoveryPlan(state, wreck);
 
   assert.equal(plan.sectorId, 'sector_ceres_belt');
-  combat.restorePlayerAtRecoveryDock(state.entities.get(1), plan);
+  assert.equal(combat.restorePlayerAtRecoveryDock(wreck, plan), true);
   assert.equal(entered.sectorId, 'sector_ceres_belt');
   assert.equal(entered.options.via, 'recovery');
   assert.equal(state.entities.get(1).pos.x, -760);
   assert.equal(state.entities.get(1).pos.z, 240);
+});
+
+test('a superseded recovery keeps the wreck and money intact until the pilot can retry', t => {
+  const sim = createSimulation({ seed: 47, systems: [world, economy, combat], updateOrder: [] });
+  t.after(() => sim.dispose());
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  const ship = sim.spawn(makeShipEntitySpec('ship_kestrel', { isPlayer: true, team: 0, pos: { x: 0, z: 0 } }));
+  state.playerId = ship.id;
+  const worldOwner = sim.registry.get('world');
+  const combatOwner = sim.registry.get('combat');
+  worldOwner.enterSector('sector_helios_prime');
+  state.player.insurance.lastStationId = 'station_ceres';
+  state.player.credits = 5000;
+  assert.equal(addCargo(state, 'cmdty_ore_iron', 6), 6);
+  combatOwner.kill(ship, null, { origin: { kind: 'hazard_radiation' } });
+  const defeat = state.combat.lastPlayerDefeat;
+  assert.equal(defeat.recovery.stationId, 'station_ceres');
+  const respawns = [];
+  const failures = [];
+  bus.on('player:respawn', receipt => respawns.push(receipt));
+  bus.on('player:recoveryFailed', receipt => failures.push(receipt.reason));
+  const stop = bus.on('sector:exit', () => {
+    stop();
+    worldOwner.enterSector('sector_tethys_junction');
+  });
+
+  bus.emit('player:recoveryRequested', { source: 'after_action' });
+  assert.equal(state.world.currentSectorId, 'sector_tethys_junction');
+  assert.equal(ship.alive, false);
+  assert.equal(ship.flags.defeated, true);
+  assert.equal(state.combat.lastPlayerDefeat, defeat);
+  assert.equal(state.player.credits, 5000);
+  assert.equal(state.player.cargo.items.cmdty_ore_iron, 6);
+  assert.equal(respawns.length, 0);
+  assert.deepEqual(failures, ['recovery_failed']);
+
+  // With no live boss target, the retry option falls back to the same lawful berth.
+  bus.emit('player:recoveryRequested', { source: 'after_action', plan: 'boss_staging' });
+  assert.equal(state.world.currentSectorId, 'sector_ceres_belt');
+  assert.equal(state.entities.get(state.playerId), ship);
+  assert.equal(ship.alive, true);
+  assert.equal(ship.hull, ship.hullMax);
+  const berth = state.world.activeSector.stations.find(station => station.stationId === 'station_ceres');
+  assert.deepEqual({ x: ship.pos.x, z: ship.pos.z }, { x: berth.pos.x + 140, z: berth.pos.z });
+  assert.deepEqual({ x: ship.vel.x, z: ship.vel.z }, { x: 0, z: 0 });
+  assert.equal(ship.flags.defeated, undefined);
+  assert.equal(ship.flags.docked, undefined);
+  assert.equal(state.player.credits, 4500);
+  assert.equal(state.player.cargo.items.cmdty_ore_iron, 3);
+  assert.equal(state.combat.lastPlayerDefeat, null);
+  assert.equal(respawns.length, 1);
+  assert.equal(respawns[0].stationId, 'station_ceres');
 });
 
 test('recovery never resurrects a dock latch on the revived hull', () => {

@@ -1005,10 +1005,9 @@ export const combat = {
       this.notifyRecoveryFailure('no_pending_defeat');
       return { ok: false, reason: 'no_pending_defeat' };
     }
-    const player = this.state.entities && typeof this.state.entities.get === 'function'
-      ? (this.state.entities.get(pending.playerId) || this.state.entities.get(this.state.playerId))
-      : null;
-    if (!player) {
+    const player = this.state.playerId === pending.playerId
+      ? this.state.entities?.get?.(pending.playerId) : null;
+    if (!player || (player.alive !== false && !player.flags?.defeated)) {
       this.notifyRecoveryFailure('player_missing');
       return { ok: false, reason: 'player_missing' };
     }
@@ -1031,7 +1030,10 @@ export const combat = {
 
       // Place first. Cargo/credit consequences apply only after the berth is committed so a
       // failed cross-sector restore cannot strip inventory and leave the after-action modal stuck.
-      this.restorePlayerAtRecoveryDock(player, plan);
+      if (!this.restorePlayerAtRecoveryDock(player, plan)) {
+        if (this._pendingPlayerRecovery === pending) this.notifyRecoveryFailure('recovery_failed');
+        return { ok: false, reason: 'recovery_failed' };
+      }
 
       let cargoLostQty = 0;
       for (const loss of plan.cargoLosses || []) {
@@ -1075,7 +1077,7 @@ export const combat = {
       return { ok: true, ...recoveryReceipt };
     } catch (err) {
       console.error('[combat] player recovery failed', err);
-      this.notifyRecoveryFailure('recovery_failed');
+      if (this._pendingPlayerRecovery === pending) this.notifyRecoveryFailure('recovery_failed');
       return { ok: false, reason: 'recovery_failed' };
     } finally {
       this._recoveryInFlight = false;
@@ -1132,16 +1134,25 @@ export const combat = {
   },
 
   restorePlayerAtRecoveryDock(t, plan) {
-    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    const state = this.state;
+    const currentWorld = state.world;
+    const pending = this._pendingPlayerRecovery;
+    const generation = occupantGenerationOf(t);
+    const currentSectorId = currentWorld?.currentSectorId;
     if (plan && plan.sectorId && plan.sectorId !== currentSectorId) {
       const world = this.registry && typeof this.registry.get === 'function' ? this.registry.get('world') : null;
-      if (world && typeof world.enterSector === 'function') {
-        world.enterSector(plan.sectorId, {
-          via: 'recovery',
-          fromSectorId: currentSectorId || null,
-          placePlayer: true,
-        });
-      }
+      const entered = world?.enterSector?.(plan.sectorId, {
+        via: 'recovery',
+        fromSectorId: currentSectorId || null,
+        placePlayer: true,
+      });
+      // Sector listeners can synchronously supersede entry or replace the player. Charge
+      // and repair only after the intended berth is committed for this same wreck.
+      if (!entered || this.state !== state || state.world !== currentWorld
+        || currentWorld.currentSectorId !== plan.sectorId || currentWorld.activeSector !== entered
+        || this._pendingPlayerRecovery !== pending || state.playerId !== t.id
+        || state.entities.get(t.id) !== t || occupantGenerationOf(t) !== generation
+        || (t.alive !== false && !t.flags?.defeated)) return false;
     }
     const livePos = this.respawnPosition(plan && plan.stationId);
     const stationPos = livePos && (livePos.x !== 0 || livePos.z !== 0) ? livePos
@@ -1170,6 +1181,7 @@ export const combat = {
     delete t.flags.docked;
     t.flags.invuln = false;
     t._invulnUntil = null;
+    return true;
   },
 
   rollLoot(loot, r) {
