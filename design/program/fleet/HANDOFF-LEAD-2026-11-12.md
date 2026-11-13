@@ -333,3 +333,16 @@ The 47-A deterministic replay matched its baseline over all 20 repetitions, and 
 Codex used sim_hotpath for matched physics guard runs, backend_recon for the staged terrain fixtures and the delayed fence reproduction, and boot_deadline for the native startup owner review. No Devin workers launched. Opus continued the visual and UI capture batches.
 
 Source imports passed and the 47-A deterministic replay matched the expected hash in 20 of 20 runs. The locked Ceres contact and lightweight combined-input checks are queued behind Opus captures. The original retail freeze, motion cadence across modes, startup minimize timing, Helios first-build delay, live load/Continue, and full hardware acceptance remain open. See [QUALITY.md](QUALITY.md) and [QUEUE.md](QUEUE.md).
+
+### Stand-in log — retained reply recovery
+
+- `23fa79612f51` accepted. Serialize the pooled native impact through its own snapshot. The nine contact checks passed with the same wire fields.
+- `01707c0e6cc7` accepted. Retain impact copy and live-profile costs.
+- `1c7225d24604` fixed. The Ceres diagnostic previously counted remote activation at 1,230 WU as contact. The opened PNG and empty target timeline disproved contact. Stage against the live drift position and classify remote activation separately.
+- `617dae1b6f3a` accepted. The locked lightweight run fired 189 shots at 8.23 draws/s, 188 ms p95 moving hull gap and up to 600 ms stale ticks. Worker advanced 20 ticks during a 717 ms presentation reply gap. Opened flight PNG and confirmed graceful Electron cleanup. Opus's Adventure diagnostic measured 10.5 FPS outside captures and did not reach docking.
+- `db9ecd228b47` fixed. The first freed reply credit can send a provably contiguous, same-lifecycle retained reply immediately. Regression failed before and passed after. The 32-test worker clock suite passed.
+- `13cd60aa8784` accepted. Record the first-credit fix and its separate live comparison.
+
+Codex used sim_hotpath for impact projection and backend_recon for the production worker reply-credit reproduction. No Devin workers launched. The corrected Ceres run and matched native reply comparison are queued under the existing game lock. The latest stress route still fails the smoothness target. The onset of the 717 ms reply gap, original retail freeze, Adventure docking, live load/Continue, and wider release acceptance remain open.
+
+The earlier handoff commit `33def1ced2dc` also included two Opus-owned paths that entered the shared index during the commit. The files remain intact in history. Opus's coordination note is in `.devshots/fleet/coordination/CODEX-SWARM20.md`.
