@@ -1860,6 +1860,7 @@ async function runSteadyFlightProfile(page, cdp) {
     log(`running ${EVAL_FILE} in the page`);
     const heldKey = process.argv.includes('--eval-brake') ? 'Digit0'
       : process.argv.includes('--eval-thrust') ? 'KeyW' : null;
+    const turnKey = process.argv.includes('--eval-turn') ? 'KeyD' : null;
     let screenshotSequence = 0;
     await page.exposeBinding('__sfProfileScreenshot', async (_source, label) => {
       if (typeof label !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,47}$/i.test(label)) {
@@ -1871,8 +1872,12 @@ async function runSteadyFlightProfile(page, cdp) {
     });
     if (heldKey) await page.keyboard.down(heldKey);
     let result;
-    try { result = await page.evaluate(source); }
+    try {
+      if (turnKey) await page.keyboard.down(turnKey);
+      result = await page.evaluate(source);
+    }
     finally {
+      if (turnKey) await page.keyboard.up(turnKey).catch(() => {});
       if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
       await page.evaluate(() => { delete window.__sfProfileScreenshot; }).catch(() => {});
     }
