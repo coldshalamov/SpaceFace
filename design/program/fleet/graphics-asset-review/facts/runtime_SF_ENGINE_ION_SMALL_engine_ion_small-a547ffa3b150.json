@@ -6,10 +6,17 @@
     "src/systems/faction_vael.js"
   ],
   "authoringCode": [
-    "tools/art/generate_ship_parts_library.py"
+    "tools/art/refine_engine_ion_small.mjs",
+    "tools/art/blender/refine_engine_ion_small.py",
+    "tools/art/sources/engine_ion_small/provenance.json"
   ],
   "authoringCaveat": "The shipped source contains later full-finish additions beyond the earlier generator recipe; do not rebuild it from that recipe alone.",
-  "status": "current isolated package baseline inspected; shape and cost candidates under review; ordinary gameplay unverified",
+  "status": "Selected geometry, material sheet and static merge promoted through the production release and package pipeline. Three isolated canonical package views passed; an ordinary actor encounter and gameplay frame-time comparison remain unverified.",
+  "selectedCandidate": {
+    "scope": "Reduced rivets and cooling rings, scoped static merges, and a generated 256-pixel replacement for the existing base-color sheet; drive hooks and other material roles preserved.",
+    "evidence": ".devshots/fleet/engine-ion-small-astra/shipping-combined/report.json",
+    "cost": ".devshots/fleet/engine-ion-small-astra/publish-combined-state.json"
+  },
   "diagnostics": [
     ".devshots/fleet/engine-ion-small-review/trace.json",
     ".devshots/fleet/engine-ion-small-review/components.json",

@@ -280,8 +280,8 @@
       "category": "engines",
       "priority": "P0",
       "file": "engines/engine_ion_small.glb",
-      "tris": 14192,
-      "bytes": 874484,
+      "tris": 4880,
+      "bytes": 515500,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

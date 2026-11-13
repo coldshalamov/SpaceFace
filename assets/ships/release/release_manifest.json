@@ -4221,20 +4221,6 @@
       "contractNodeCount": 4
     },
     {
-      "id": "engine_ion_small",
-      "kind": "part:engines",
-      "source": "assets/ships/parts/engines/engine_ion_small.glb",
-      "release": "assets/ships/release/parts/engines/engine_ion_small.glb",
-      "sourceSha256": "08b52602319f0f2c6a86eb97be351bd3fce19786e9562c83401a34cd16fdc568",
-      "releaseSha256": "0716296ab92c24b32b30f0404e91ba9765f6efa96c9564fc1ccab168e3710cb6",
-      "sourceBytes": 874484,
-      "releaseBytes": 368032,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 37,
-      "contractNodeCount": 4
-    },
-    {
       "id": "engine_ion_twin",
       "kind": "part:engines",
       "source": "assets/ships/parts/engines/engine_ion_twin.glb",
@@ -7004,6 +6990,20 @@
       "ktx2Textures": 5,
       "meshoptBufferViews": 22,
       "contractNodeCount": 1
+    },
+    {
+      "id": "engine_ion_small",
+      "kind": "part:engines",
+      "source": "assets/ships/parts/engines/engine_ion_small.glb",
+      "release": "assets/ships/release/parts/engines/engine_ion_small.glb",
+      "sourceSha256": "8e08e4fe39df41603f5c4a0b17e08e6fcddca5df2b6664de773160bf441c5e50",
+      "releaseSha256": "8f9e4ac1f091ceeb36fe6a54036b87b86265c28963f1457039438f5c9bd19375",
+      "sourceBytes": 515500,
+      "releaseBytes": 225628,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 24,
+      "contractNodeCount": 4
     }
   ]
 }

@@ -1,0 +1,33 @@
+{
+  "assetId": "SF_ENGINE_ION_SMALL",
+  "origin": "Built-in OpenAI imagegen, two successive user-authorized edits of the existing project engine UV sheet; not a third-party downloaded texture.",
+  "rights": "Project-authored derivative of the existing project asset using generated imagery; no additional third-party asset license introduced.",
+  "retainedFile": "albedo-brighter-generated.png",
+  "retainedSha256": "bcd4a200cea381d8435be7da6164c0399974bdfe7c8674ab1a824b67547bf623",
+  "retainedDimensions": [1254, 1254],
+  "retainedFormat": "RGB8 PNG",
+  "originalSourceGitBlob": "99a051c97a22c95907be99928f0909d79042a56e",
+  "originalSourceSha256": "08b52602319f0f2c6a86eb97be351bd3fce19786e9562c83401a34cd16fdc568",
+  "stages": [
+    {
+      "tool": "Built-in imagegen",
+      "target": "Extracted original engine base-color sheet",
+      "targetSha256": "9b79ac38832e27c9640b33787735d536d6e15dae62ea8fb1a02b9309c8e562cf",
+      "outputSha256": "339c4f2cf2212fbefc4614acc1e659f916c33655c961ce9d6b297f9be1649988",
+      "prompt": "Edit the attached square texture into a production-quality base-color / albedo texture for a small spacecraft ion engine in a grounded, realistic industrial space game. This image is a UV-mapped material texture, not concept art: retain the square crop and the same placement and scale of the fine horizontal and vertical grid/panel divisions and the long inset rectangular panel near the left center. Replace the crude flat brown oval blobs with restrained, organically irregular worn paint, subtle oxidized metal, hairline scuffs, and tiny machining variation appropriate to those locations. Make the underlying surface a legible medium-dark neutral graphite and gunmetal painted alloy, with low-contrast cool gray and muted warm metallic variation. Fine convincing material detail should be visible at close range, yet it must read coherently from far away. Flat orthographic diffuse base color, uniform neutral illumination, no cast shadows, no baked highlights, no directional light, no perspective, no objects, no lettering, no symbols, no labels, no borders, no glow, no photographic backdrop. Keep the panel layout unobtrusive and the distribution of value restrained because this texture wraps around curved 3D geometry; avoid large high-contrast motifs. Design clean tileable edges and natural fine surface detail. Render only the flat square texture."
+    },
+    {
+      "tool": "Built-in imagegen",
+      "target": "First generated result",
+      "targetSha256": "339c4f2cf2212fbefc4614acc1e659f916c33655c961ce9d6b297f9be1649988",
+      "outputSha256": "bcd4a200cea381d8435be7da6164c0399974bdfe7c8674ab1a824b67547bf623",
+      "prompt": "Edit this flat square spacecraft engine UV albedo texture. Change only the overall tonal range: lift the graphite metal midtones moderately so fine manufactured surface grain and restrained wear remain readable on a small spacecraft in a dark space scene. Keep it neutral cool gunmetal, with dark recesses and subtle variation; do not turn it into bright silver, tan, painted colors, glow, or a flat gray wash. Preserve the exact positions, shapes, proportions, and apparent width of every existing grid line, panel division, scuff, and the long inset rectangle. Maintain the square crop and seamless tileable edges. This must remain a flat diffuse base-color texture, with no directional lighting, specular highlights, cast shadows, perspective, new marks, text, logo, or objects."
+    }
+  ],
+  "derivation": {
+    "method": "sharp Lanczos3: retained 1254px original to 1024px RGB PNG, then to 256px RGB PNG",
+    "intermediate1024RawRgbSha256": "daceac0c53f49e2026819b3b2828503079fdb364e424a39b5dea26c9be913f3d",
+    "derived256PngSha256": "ab8a163b1c207998060b85f0a398190300e0553dfd281f01d63c43e3034f31fd",
+    "role": "Replace only the existing shared base-color image; preserve UVs, material factors, sampler, normal image and hooks. Release build encodes with the owning production KTX2 color profile."
+  }
+}

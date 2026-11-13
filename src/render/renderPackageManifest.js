@@ -1206,12 +1206,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-ion-small",
-    "expectedContentHash": "5d740616787b3788bfa86a3d9e038437511222813d4feafcdd0a8930348f051f",
+    "expectedContentHash": "904936d385f73d4f0bf95c669e6c5a3a051d7299577d0eca24266a2ce77f775e",
     "key": "engine-ion-small",
     "metadataUrl": "assets/ships/release/render-packages/engine-ion-small/render-package.json",
     "runtimeAssetId": "SF_ENGINE_ION_SMALL",
     "slot": "engine",
-    "sourceSha256": "0716296ab92c24b32b30f0404e91ba9765f6efa96c9564fc1ccab168e3710cb6",
+    "sourceSha256": "8f9e4ac1f091ceeb36fe6a54036b87b86265c28963f1457039438f5c9bd19375",
     "sourceUrl": "assets/ships/release/parts/engines/engine_ion_small.glb"
   },
   {
