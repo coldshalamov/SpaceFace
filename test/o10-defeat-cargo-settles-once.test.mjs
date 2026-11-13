@@ -241,6 +241,28 @@ test('real defeat: freight that survives the wreck keeps its contract and the lo
   assertHoldSane(world);
 });
 
+test('real defeat counts only the undelivered part of an accounted manifest', () => {
+  const world = makeWorld();
+  const mission = acceptSealed(world, 'offer_o10_accounted_remainder', 10);
+  assert.deepEqual(world.missions.deliverSealedPortion(mission.id, 6), { ok: true, removed: 6, remaining: 4 });
+  assert.equal(addCargo(world.state, GOOD, 4), 4);
+
+  combat.kill(world.player, 9, LETHAL);
+  assert.equal(events(world.bus, 'player:death')[0].recovery.cargoLostQty, 4);
+  assert.equal(failedFor(world, mission).length, 0);
+  world.bus.emit('player:recoveryRequested', { source: 'after_action' });
+  assert.equal(held(world), 4);
+  assert.equal(releasableContractUnits(world.state, mission), 4);
+  assert.equal(mission.params.sealedDelivered, 6);
+
+  world.bus.emit('dock:docked', { stationId: 'station_beltout' });
+  world.bus.emit('dock:docked', { stationId: 'station_beltout' });
+  assert.equal(held(world), 0);
+  assert.equal(receiptsFor(world, mission).length, 1);
+  assert.equal(receiptsFor(world, mission)[0].outcome, 'completed');
+  assert.equal(receiptsFor(world, mission)[0].rewardCr, 800);
+});
+
 test('real defeat: two sealed contracts of one good - only the one the wreck breaks fails, the other keeps its freight', () => {
   const world = makeWorld();
   const a = acceptSealed(world, 'offer_o10_a', 10);

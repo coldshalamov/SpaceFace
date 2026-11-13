@@ -1588,7 +1588,12 @@ export const missionObjectiveOps = {
       if (!m || m.status !== 'active' || !ONE_LOAD_CARGO_TYPES.has(m.type)) continue;
       const cmdtyId = m.params && m.params.cmdtyId;
       if (!cmdtyId || persistent.includes(cmdtyId)) continue;
-      const need = Math.max(1, Math.floor(Number(m.params.qty) || 1));
+      // An accounted seal can already have delivered some or all of its original manifest.
+      const remaining = Number(m.params.sealedRemaining);
+      const need = m.preloadedCargo === true && m.params.sealAccounted === true && Number.isFinite(remaining)
+        ? Math.max(0, Math.floor(remaining))
+        : Math.max(1, Math.floor(Number(m.params.qty) || 1));
+      if (need === 0) continue;
       const have = Math.max(0, Math.floor(Number(items[cmdtyId]) || 0));
       // Recovery halves a non-persistent hold (playerDefeat.buildRecoveryPlan); when the receipt
       // is not present in this payload the same floor-half rule applies for the contract check.
