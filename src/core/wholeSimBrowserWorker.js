@@ -1047,7 +1047,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   // waiting, that trim is an internal maintenance tick: emitting another
   // clockTick would make the main ACK feed back into this branch forever.
   if (!publishReply && !localClock.sentAwaitingAck && !localClock.latestReply
-    && !localArrayLength(reply, 'events') && !localArrayLength(reply, 'storageOps')) return;
+    && !localArrayLength(reply, 'events') && !localArrayLength(reply, 'storageOps')
+    && !localArrayLength(reply, 'auxUpserts') && !localArrayLength(reply, 'auxRemovals')) return;
 
   if (localClock.unackedSequences.length >= LOCAL_MAX_UNACKED) {
     // Pipeline saturated — fold this tick into the retained reply. Merging
