@@ -421,6 +421,8 @@ export const routeFollower = {
     // gate handoff latch is live, that receipt belongs to this executor and must become an explicit
     // resumable interruption instead of leaving the route claiming it is still in transit.
     bus.on('jump:chargeAbort', (p) => this._onJumpChargeAbort(p || {}));
+    // Staying in Ashfall resolves the deferred departure before any jump is charged.
+    bus.on('endgame:chosen', (p) => this._onEndingChosen(p || {}));
 
     // Gate handoff: crossing into the leg's destination sector completes that leg, whether the
     // transition came from a gate jump or continuous M2a geography.
@@ -827,6 +829,16 @@ export const routeFollower = {
     if (executor.handoffRequestedLegIndex !== executor.legIndex) return;
     const reason = String(payload.reason || 'rejected');
     this.interrupt(`gate-${reason}`, { detail: reason });
+  },
+
+  _onEndingChosen({ choice }) {
+    const state = this.state;
+    if (choice !== 'D' || state.jump?.state !== 'IDLE') return;
+    const executor = state.nav?.executor;
+    if (!executor?.engaged || executor.handoffRequestedLegIndex !== executor.legIndex) return;
+    const leg = executor.legs?.[executor.legIndex];
+    if (!leg || leg.fromSectorId !== state.world?.currentSectorId || leg.fromSectorId === leg.toSectorId) return;
+    this.interrupt('stayed-at-ashfall');
   },
 
   _onSectorEnter({ sectorId, enterEpoch, noTeleport, continuous }) {

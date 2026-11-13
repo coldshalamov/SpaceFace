@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { ENDGAME_NET_WORTH_CR, ENDGAME_REP_MIN } from '../src/story/endings/endingDefs.js';
+import { routeFollower as routeFollowerPrototype } from '../src/systems/routeFollower.js';
 import { story as storyPrototype } from '../src/systems/story.js';
 import { world as worldPrototype } from '../src/systems/world.js';
 
@@ -69,7 +70,20 @@ function makeHarness(seed = 4710) {
   const ctx = { state, bus, registry, helpers: { voice: { say: () => true } } };
   world.init(ctx);
   story.init(ctx);
-  return { state, bus, world, story, events };
+  const routeFollower = cloneSystem(routeFollowerPrototype);
+  routeFollower.init(ctx);
+  return { state, bus, world, story, events, routeFollower };
+}
+
+function arriveAtGate(h) {
+  h.state.nav.autoTravel = true;
+  h.state.nav.route = { legs: [{ from: ASHFALL, to: CHARON, target: { x: 100, z: 100 } }] };
+  h.bus.emit('nav:engageRoute', {});
+  h.bus.emit('nav:autopilot', { status: 'arrived', active: false });
+  assert.equal(h.events.filter(event => event.name === 'endgame:promptChoiceD').length, 1);
+  assert.equal(h.state.jump.state, 'IDLE');
+  assert.equal(h.state.nav.executor.handoffRequestedLegIndex, 0);
+  return h.state.nav.executor;
 }
 
 test('ledger holder departure is deferred before jump state until the physical decision', () => {
@@ -113,6 +127,38 @@ test('No files Choice D and leaves the player stationary in Ashfall', () => {
   assert.equal(h.events.filter((event) => event.name === 'jump:chargeStart').length, 0);
   assert.ok(h.events.some((event) => event.name === 'endgame:chosen'
     && event.payload.choice === 'D'));
+});
+
+test('staying in Ashfall releases an engaged route waiting at the deferred gate', () => {
+  const h = makeHarness();
+  const executor = arriveAtGate(h);
+  const plot = h.state.nav.route;
+  const credits = h.state.player.credits;
+  h.bus.emit('ui:endgameStayAshfall');
+  h.routeFollower.update(1 / 60, h.state);
+  assert.equal(h.state.world.currentSectorId, ASHFALL);
+  assert.equal(h.state.jump.state, 'IDLE');
+  assert.equal(executor.status, 'interrupted');
+  assert.equal(executor.engaged, false);
+  assert.equal(executor.handoffRequestedLegIndex, null);
+  assert.equal(h.state.nav.route, plot);
+  assert.equal(h.state.player.credits, credits);
+
+  h.bus.emit('nav:engageRoute', {});
+  h.bus.emit('nav:autopilot', { status: 'arrived', active: false });
+  assert.equal(h.state.jump.state, 'CHARGING');
+  assert.equal(h.state.jump.targetSectorId, CHARON);
+  assert.equal(h.events.filter(event => event.name === 'endgame:promptChoiceD').length, 1);
+});
+
+test('departing Ashfall keeps the engaged gate handoff for the accepted jump', () => {
+  const h = makeHarness();
+  const executor = arriveAtGate(h);
+  h.bus.emit('ui:endgameDepartAshfall', { targetSectorId: CHARON, via: 'gate' });
+  assert.equal(executor.engaged, true);
+  assert.equal(executor.handoffRequestedLegIndex, 0);
+  assert.equal(h.state.jump.state, 'CHARGING');
+  assert.equal(h.events.filter(event => event.name === 'jump:chargeStart').length, 1);
 });
 
 test('ordinary departures remain direct when Choice D is ineligible', () => {
