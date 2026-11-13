@@ -234,6 +234,7 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
 const MEASURED_PROXY_CACHE = new WeakMap();
 const AUTHORED_PROXY_CACHE = new WeakMap();
 const DYNAMIC_SKIN_CACHE = new Map();
+const MEASURED_HULL_BOUNDS = new WeakMap();
 
 const SKIN_DYNAMIC_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'debris', 'payload', 'pod', 'prop', 'buoy']);
 
@@ -371,8 +372,13 @@ function compactSkinManifest(entity, manifest) {
   let resolved = DYNAMIC_SKIN_CACHE.get(key);
   if (resolved === undefined) {
     const hull = modelTruthSkinHull(manifest.sourceRow);
-    if (hull) resolved = { ...manifest, id: `${manifest.id}:hull`, compactHull: hull };
-    else {
+    if (hull) {
+      const compactHull = Object.freeze(hull.map(point => Object.freeze({ ...point })));
+      resolved = { ...manifest, id: `${manifest.id}:hull`, compactHull };
+      let radius = 0;
+      for (const point of compactHull) radius = Math.max(radius, Math.hypot(point.x, point.z));
+      MEASURED_HULL_BOUNDS.set(resolved, { hull: compactHull, radius });
+    } else {
       const polygon = modelTruthSkinPolygon(manifest.sourceRow);
       resolved = polygon
         ? { ...manifest, id: `${manifest.id}:polygon`, planarPolygon: polygon }
@@ -381,6 +387,12 @@ function compactSkinManifest(entity, manifest) {
     DYNAMIC_SKIN_CACHE.set(key, resolved);
   }
   return resolved;
+}
+
+/** Normalized broadphase bound for the unchanged measured hull geometry. */
+export function measuredCompactHullRadius(manifest) {
+  const bound = MEASURED_HULL_BOUNDS.get(manifest);
+  return bound && bound.hull === manifest.compactHull ? bound.radius : undefined;
 }
 
 /** Station id → manifest id, for world spawn wiring. */

@@ -4,12 +4,15 @@ import assert from 'node:assert/strict';
 import { core } from '../src/core/coreSystem.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { isDynamicPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
+import { physics } from '../src/core/physics.js';
+import { ensurePhysicsBodySpec, isDynamicPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import {
   expandProxyPrimitives,
   isCompoundSkinDynamicEligible,
+  measuredCompactHullRadius,
   measuredSkinAllowedFor,
+  proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../src/data/collisionProxyManifests.js';
 import { modelTruthRow, modelTruthSkinHull } from '../src/data/modelTruth.js';
@@ -57,6 +60,39 @@ test('core.spawn stamps measured skins on plain solid dynamic bodies', () => {
     assert.equal(resolveCollisionProxyManifest(spawned.pod).id, 'skin:place_cargo_pod_standard:hull');
     assert.equal(resolveCollisionProxyManifest(spawned.kestrel).id, 'skin:ship_kestrel:polygon');
     assert.equal(resolveCollisionProxyManifest(spawned.wreck).id, 'skin:place_dead_hulk:polygon');
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('projectile broadphase uses exact measured hull bounds and reads mutable authored geometry', () => {
+  const t = bootCore(4242);
+  const host = Object.create(physics);
+  try {
+    const rock = t.helpers.spawnEntity(SPECS.rock());
+    const measured = resolveCollisionProxyManifest(rock);
+    const checkPadding = () => {
+      const manifest = resolveCollisionProxyManifest(rock);
+      const scale = proxyScaleFor(rock, manifest);
+      const bounds = manifest.compactHull.map(point => Math.hypot(point.x, point.z) * scale);
+      const expected = Math.max(rock.radius, ...bounds.filter(Number.isFinite)) - rock.radius;
+      host._syncProjectileBroadphase(t.state);
+      assert.equal(host._projectileHullPadding, expected);
+    };
+    assert.equal(measuredCompactHullRadius(measured), Math.max(...measured.compactHull.map(point => Math.hypot(point.x, point.z))));
+    checkPadding();
+    rock.radius *= 2.5;
+    checkPadding();
+
+    const authoredHull = [{ x: 1.7, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 }];
+    ensurePhysicsBodySpec(rock).collisionProxyManifest = {
+      schemaVersion: 1, id: 'test:authored-hull', referenceRadius: 'radius', compactHull: authoredHull,
+      primitives: [{ id: 'test:circle', kind: 'circle', x: 0, z: 0, r: 1 }],
+    };
+    assert.equal(measuredCompactHullRadius(resolveCollisionProxyManifest(rock)), undefined);
+    checkPadding();
+    authoredHull[0].x = 3.1;
+    checkPadding();
   } finally {
     t.cleanup();
   }

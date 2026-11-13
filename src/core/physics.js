@@ -40,6 +40,7 @@ import {
   resetActivityRuntimeForRestore,
 } from '../world/activityRuntime.js';
 import {
+  measuredCompactHullRadius,
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
@@ -129,6 +130,9 @@ function projectileProxyRadius(entity, manifest) {
   let radius = Number.isFinite(entity.radius) ? Math.max(0, entity.radius) : 0;
   if (!Array.isArray(manifest?.compactHull)) return radius;
   const scale = proxyScaleFor(entity, manifest);
+  const measuredBound = measuredCompactHullRadius(manifest) * scale;
+  if (Number.isFinite(measuredBound)) return Math.max(radius, measuredBound);
+  // Authored hulls and overflowing bounds keep the per-point behavior.
   for (const p of manifest.compactHull) {
     if (!Number.isFinite(p?.x) || !Number.isFinite(p?.z)) return radius;
     const bound = Math.hypot(p.x, p.z) * scale;
