@@ -19,6 +19,7 @@
 
 import { attachTowWatch, towTargetIdOf } from './towWatch.js';
 import { plantMapOrder } from '../plantEntityViews.js';
+import { indexedTypeScan } from '../../world/livingWorldViews.js';
 
 export const PLANTS_STRANGER_HAIL_EVENT = 'plants:strangerHail';
 export const PLANTS_STRANGER_DELIVERED_EVENT = 'plants:strangerDelivered';
@@ -92,7 +93,11 @@ export function otherSideRowFor(memory, key, now, cap = OTHER_SIDE_TUNING.memory
       for (const [id, old] of memory) {
         if (!(now >= old.lastAt) || (key !== 'karma' && old.phase === 'done')) memory.delete(id);
       }
-      while (memory.size >= cap) memory.delete(memory.keys().next().value);
+      for (const id of memory.keys()) {
+        if (memory.size < cap) break;
+        if (id !== 'karma') memory.delete(id);
+      }
+      if (memory.size >= cap) return null;
     }
     if (key === 'karma') {
       row = { karma: 0, lastNoHelpAt: -Infinity, lastAt: now };
@@ -145,7 +150,7 @@ export const otherSidePlant = {
     const hitId = payload.aId === this.state.playerId ? payload.bId : payload.aId;
     if (hitId == null) return;
     const row = this._otherSideMemory.get(`stranger:${hitId}`);
-    if (!row || row.phase !== 'hailed') return;
+    if (!row || row.phase !== 'hailed' || row.entity !== this._otherSideEntityById(hitId)) return;
     row.playerContactAt = now;
     row.lastAt = now;
   },
@@ -175,16 +180,23 @@ export const otherSidePlant = {
     for (let i = 0; i < budget; i += 1) {
       const idx = (this._otherSideCursor + i) % ents.length;
       const ent = ents[idx];
-      if (!ent || ent.alive === false) continue;
-      const row = otherSideRowFor(this._otherSideMemory, `stranger:${ent.id}`, now);
-      if (!row) continue;
-      row.lastAt = now;
+      if (!ent || ent.type !== 'ship' || ent.alive === false || ent.id === player.id) continue;
+      const key = `stranger:${ent.id}`;
+      let row = this._otherSideMemory.get(key);
+      if (row && (row.entity !== ent || !(now >= row.lastAt))) {
+        this._otherSideMemory.delete(key);
+        row = null;
+      }
+      if (row) row.lastAt = now;
 
-      if (row.phase === 'none') {
-        // A hail happens once: the nearest good hull is you.
+      if (!row || row.phase === 'none') {
+        // Only a real hail needs a row in the bounded rescue memory.
         if (!isDisabledStranger(ent, this.state)) continue;
         if (!playerIsNearestGoodHull(player, ent, ents, this.state)) continue;
-        if (now - row.hailedAt < OTHER_SIDE_TUNING.hailCooldownS) continue;
+        if (row && now - row.hailedAt < OTHER_SIDE_TUNING.hailCooldownS) continue;
+        row = row || otherSideRowFor(this._otherSideMemory, key, now);
+        if (!row) continue;
+        row.entity = ent;
         row.phase = 'hailed';
         row.hailedAt = now;
         row.deadline = now + OTHER_SIDE_TUNING.hailCooldownS;
@@ -207,19 +219,21 @@ export const otherSidePlant = {
 
       if (row.phase === 'hailed') {
         const stranger = ent;
-        if (!stranger || stranger.alive === false || !stranger.pos) {
+        if (!stranger.pos) {
           row.phase = 'none';
           continue;
         }
 
         // Pushed to the dock — BY YOU: delivery credits only the player's own effort (hull
         // contact inside pushWindowS, or an active tether to this stranger).
-        const stations = Array.isArray(this.state.stations) ? this.state.stations : [];
         const contactFresh = now - row.playerContactAt <= OTHER_SIDE_TUNING.pushWindowS;
         const tethered = towTargetIdOf(this.state, this._otherSideTowMemoryMap(), now) === stranger.id;
         if (contactFresh || tethered) {
+          const stations = Array.isArray(this.state.stations)
+            ? this.state.stations
+            : indexedTypeScan(this.state, 'stations');
           for (const station of stations) {
-            if (!station || station.alive === false || !station.pos) continue;
+            if (!station || station.type !== 'station' || station.alive === false || !station.pos) continue;
             const sd = station.data || {};
             if (sd.isGate || sd.isWormhole) continue;
             const d = Math.hypot(finite(stranger.pos.x) - finite(station.pos.x), finite(stranger.pos.z) - finite(station.pos.z));

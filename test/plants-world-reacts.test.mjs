@@ -2076,6 +2076,55 @@ test('PL-251 a disabled stranger hails the nearest good hull — today that is y
   otherSidePlant.destroy();
 });
 
+for (const sceneryCount of [0, 90]) {
+  test(`PL-251 delivers a stranger to a live indexed dock with ${sceneryCount} scenery bodies`, () => {
+    const sim = createSimulation({ systems: [otherSidePlant] });
+    try {
+      const { state, bus } = sim;
+      state.mode = 'flight';
+      const hull = { pos: { x: 0, z: 0 }, radius: 6, hull: 100, hullMax: 100 };
+      const player = sim.spawn({ ...hull, type: 'ship', isPlayer: true, team: 0 });
+      state.playerId = player.id;
+      const stranger = sim.spawn({
+        ...hull, type: 'ship', pos: { x: 100, z: 0 }, hull: 10,
+        data: { trafficRole: 'courier', disabled: true },
+      });
+      const station = sim.spawn({
+        type: 'station', pos: { x: 300, z: 0 }, radius: 60,
+        data: { stationId: 'dockA' },
+      });
+      assert.equal(state.stations, undefined);
+      assert.equal(state.entityIndex.byStationId.get('dockA'), station);
+
+      const hails = [];
+      const deliveries = [];
+      bus.on(PLANTS_STRANGER_HAIL_EVENT, (event) => hails.push(event.strangerId));
+      bus.on(PLANTS_STRANGER_DELIVERED_EVENT, (event) => deliveries.push(event));
+      sim.step();
+      assert.deepEqual(hails, [stranger.id]);
+
+      for (let i = 0; i < sceneryCount; i += 1) {
+        sim.spawn({ type: 'asteroid', pos: { x: 2000 + i * 100, z: 0 }, radius: 6 });
+      }
+      stranger.pos.x = 220;
+      sim.runTicks(4);
+      assert.deepEqual(hails, [stranger.id], 'scenery never displaces a pending rescue');
+      assert.equal(deliveries.length, 0, 'drifting into dock range does not earn credit');
+
+      bus.emit('physics:impact', {
+        aId: stranger.id, bId: player.id, causalActorId: player.id, trauma: 5, pos: { x: 220, z: 0 },
+      });
+      sim.runTicks(6);
+      assert.deepEqual(deliveries.map(({ strangerId, stationId }) => ({ strangerId, stationId })), [
+        { strangerId: stranger.id, stationId: 'dockA' },
+      ]);
+      assert.deepEqual(hails, [stranger.id]);
+    } finally {
+      sim.dispose();
+    }
+  });
+}
+
 test('PL-251 push them to the dock and they thank you; fly past and the lane remembers', () => {
   const bus = createBus();
   const deliveredEvents = [];
