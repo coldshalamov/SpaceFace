@@ -16,6 +16,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
+import { createSimulation } from '../src/core/sim.js';
+import { createLiveGeometryAdmissionQueue } from '../src/render/liveGeometryAdmission.js';
 import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
 import {
   compilePipelineSubject,
@@ -26,6 +28,8 @@ import {
 } from '../src/render/renderer.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
+import { insertAsteroidFieldRock } from '../src/world/asteroidField.js';
+import { collectJournalPresentationEntities } from '../src/world/presentationSources.js';
 
 const R0 = PRESENTATION_TIER.R0_GLASS;
 const R1 = PRESENTATION_TIER.R1_RUNWAY;
@@ -389,6 +393,74 @@ test('live mesh builds send on-glass pipelines to the urgent lane and discard st
     else globalThis.requestAnimationFrame = priorRaf;
     if (priorScheduler === undefined) delete globalThis.scheduler;
     else globalThis.scheduler = priorScheduler;
+  }
+});
+
+test('an off-glass dormant rock earns residency before any contact in settled flight', async () => {
+  for (const mode of ['loading', 'flight']) {
+    const sim = createSimulation({ systems: [] });
+    try {
+      const { state } = sim;
+      state.mode = mode;
+      state.simTime = 10;
+      Object.assign(state.camera, { zoom: 144, fov: 50, tilt: 60 });
+      const player = sim.spawn({ type: 'ship', isPlayer: true, radius: 7, pos: { x: 0, z: 0 } });
+      state.playerId = player.id;
+      state.render = { firstPlayableFrameAt: mode === 'flight' ? 1 : undefined };
+      const rock = insertAsteroidFieldRock(state, {
+        pos: { x: 0, z: 230 }, vel: { x: 0, z: 0 }, radius: 16, mass: 400,
+        data: { typeId: 'ast_common_rock' },
+      });
+      const scene = new THREE.Scene();
+      const geometry = new THREE.IcosahedronGeometry(16);
+      const leaf = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial());
+      const root = new THREE.Group();
+      root.add(leaf);
+      const ready = [];
+      const admissions = createLiveGeometryAdmissionQueue({
+        compile: async () => {},
+        prepare: async () => { geometry.userData.spacefaceGpuResident = true; },
+        yieldToMain: () => new Promise(resolve => setImmediate(resolve)),
+        isActive: (entity, mesh) => entity === rock && mesh === root && mesh.parent === scene,
+        onReady: (entity, mesh) => {
+          mesh.userData.geometryPending = false;
+          ready.push(entity.id);
+        },
+        onError: error => assert.fail(error),
+      });
+      const owner = {
+        state, scene,
+        _initialMeshReconcileComplete: true,
+        _meshBuildLateSkips: 0,
+        _meshBuildQueue: [rock.id],
+        _meshBuildQueueHead: 0,
+        _meshBuildQueuedIds: new Set([rock.id]),
+        _meshes: new Map([[player.id, new THREE.Group()]]),
+        _meshesVersion: 0,
+        _liveGeometryAdmissions: admissions,
+        // The opening cook already picked its roster before calling the drain.
+        _openingLoadingAdmission: { owns: entity => mode === 'loading' && entity === rock },
+        vf: { build: entity => entity === rock ? root : null },
+        _bindPresentationMesh: render._bindPresentationMesh,
+        _frameMembrane: { toLocal: (pos, out) => Object.assign(out, pos) },
+      };
+      assert.equal(render._drainMeshBuildQueue.call(owner, Infinity), 1);
+      assert.equal(owner._meshes.get(rock.id), root);
+      assert.equal(root.userData.geometryPending, true);
+      assert.equal(collectJournalPresentationEntities(state).includes(rock), false);
+      assert.equal(state.entities.has(rock.id), false, 'the real field record has no live physics body');
+      assert.equal(admissions.stats().enqueuedTotal, mode === 'flight' ? 1 : 0);
+      if (mode === 'flight') {
+        assert.equal(await admissions.enqueue(rock, root), true, 'the existing admission settles');
+        assert.equal(admissions.stats().enqueuedTotal, 1);
+        assert.deepEqual(ready, [rock.id]);
+        assert.equal(root.userData.geometryPending, false);
+        assert.equal(geometry.userData.spacefaceGpuResident, true);
+        assert.equal(state.entities.has(rock.id), false, 'residency completes before the rock is touched');
+      }
+    } finally {
+      sim.dispose();
+    }
   }
 });
 

@@ -27876,7 +27876,7 @@ export const render = {
         // bound it and the submit gate hid it (entityMeshVisibility geometryPending) until the
         // lane finally ran — the blink. Hand every held live build to the lane at build time,
         // bound or not: the lane dedupes, stamps residency present-sliced, and pools the rock.
-        if (holdLiveBuildBuffers && !holdFirstFlightBuffers
+        if (holdLiveBuildBuffers
             && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt)) {
           void this._liveGeometryAdmissions?.enqueue(e, m);
         }
