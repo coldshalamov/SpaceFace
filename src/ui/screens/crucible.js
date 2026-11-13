@@ -2347,7 +2347,7 @@ export const crucibleScreen = {
     // .k-foot — Enter as one word (the mode's verb), Back.
     const foot = el('footer', 'k-foot sf-crd-foot');
     const footWords = el('ul', 'k-words k-words--row');
-    footWords.setAttribute('aria-label', 'Crucible');
+    footWords.setAttribute('aria-label', 'Swarm');
     let trainingOpening = false;
     // The one launch path, shared by Enter and Quick play. INF-038.
     function launchCurrent(trialRuleset = null, { inFlight = false } = {}) {
@@ -2398,7 +2398,7 @@ export const crucibleScreen = {
         });
       if (!setup.ok || !setup.value) {
         cue('deny');
-        ctx.bus.emit('toast', { text: 'Crucible setup invalid', kind: 'error', ttl: 4 });
+        ctx.bus.emit('toast', { text: 'Swarm setup invalid', kind: 'error', ttl: 4 });
         return;
       }
       cue('confirm');

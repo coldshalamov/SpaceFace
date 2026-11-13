@@ -785,7 +785,7 @@ export const mainMenuScreen = {
     if (refs.bHelp) setScreenButtonReady(refs.bHelp, ctx, 'help', 'Help');
     if (refs.bCircuits) setScreenButtonReady(refs.bCircuits, ctx, 'raceBoard', 'Circuits');
     if (refs.bPhysics) setScreenButtonReady(refs.bPhysics, ctx, 'physicsVenues', 'Physics challenges');
-    if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
+    if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Swarm setup');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());
     const latest = latestSave(readSaveIndex(ctx));
