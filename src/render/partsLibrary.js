@@ -14604,14 +14604,31 @@ function promoteStaticPositionToFloat(geometry) {
   return geometry;
 }
 
+function allStaticVerticesReferenced(geometry) {
+  const position = geometry.getAttribute('position');
+  const index = geometry.index;
+  const count = position && position.count;
+  if (!index || !Number.isSafeInteger(count) || count <= 0 || index.count < count) return false;
+  const seen = new Uint8Array(count);
+  let referenced = 0;
+  for (let i = 0; i < index.count; i++) {
+    const vertex = index.getX(i);
+    if (!Number.isInteger(vertex) || vertex < 0 || vertex >= count) return false;
+    if (seen[vertex] === 0) { seen[vertex] = 1; referenced++; }
+  }
+  return referenced === count;
+}
+
 export function normalizeStaticBatchGeometries(geometries, options = {}) {
   const available = geometries.filter(Boolean);
-  // BufferGeometryUtils can merge an all-indexed set directly. Only explicitly qualified,
-  // topology-proven place paths opt in; any mixed set still normalizes to the established
-  // non-indexed shape.
-  const preserveIndexedGeometry = options.preserveIndexedGeometry === true
-    && available.length > 0
-    && available.every((geometry) => !!geometry.index);
+  // Preserve authored vertex sharing only when every member has an index, authored normals,
+  // and no unused position vertices. Computing missing normals before deindexing changes flat
+  // faces to smooth shading; unused vertices can enlarge bounds that the expanded geometry
+  // did not contain. Explicitly topology-qualified callers retain their existing opt-in.
+  const preserveIndexedGeometry = available.length > 0
+    && available.every((geometry) => !!geometry.index
+      && (options.preserveIndexedGeometry === true
+        || (!!geometry.getAttribute('normal') && allStaticVerticesReferenced(geometry))));
   const tier1Geometry = tier1CausalCounters();
   const normalized = available.map((geometry) => {
     if (!geometry) return geometry;
