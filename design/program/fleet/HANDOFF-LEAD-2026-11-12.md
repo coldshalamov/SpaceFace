@@ -234,3 +234,23 @@ Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
 
 - Codex workers `backend_recon`, `boot_deadline`, and `economy_perf` covered shared simulation and save transport, desktop and browser launch, and Adventure progression and custody. No new Devin run. Opus owns visual and UI work. Claude stayed open.
 - The four locked Intel Electron runs and screenshots cover Adventure, early Swarm, Gauntlet, and public Circuits. Their moving-world cadence and next checks are in `QUALITY.md`. The turn, foreground return, F5/F9, Circuits Restart, desktop crash and matched performance runs are pending behind Opus's first-hour walk. The stale-write reproduction and recovery-safe repair remain open.
+
+### Backend, flight, and performance follow-up
+
+- `f1ad79d2f8b0` accepted. Defeat and insurance fixtures use normal same-sector berth placement.
+- `b78c7a31cd50` accepted. Helios wash retains swept contact results and skips remote geometry.
+- `c3e94a199ae7` accepted. Tactical sensor caches follow the live hull through numeric ID reuse.
+- `07ce0fff5c04` accepted. A delayed DOM focus cannot override native window blur.
+- `ef4e43cbd680` accepted. A listener resetting the bus cannot discard the first new presentation event.
+- `280970113e27` accepted. Live HTTP checks cover late upload, late delete, recovery and a dead writer.
+- `dfa4e4f95176` accepted. Recovery tracks the correct wreck and waits for the full lot aboard before guiding home.
+- `5939abb2cc09` accepted. Defeat preserves partially delivered freight when the remaining units survive.
+- `453f0992bb3a` accepted. Staying in Ashfall releases the waiting gate handoff and retains the route.
+- `4162156aef77` accepted. Massline skips obstacle preparation for unreachable attachments and preserves the selected target, denials and blockers.
+- `91a04da72389` accepted in focused motion checks. Powered turns no longer trigger a long heading lag or continue rotating after release.
+- `399bb0ba24c2` accepted. Vael uses one normalized ledger per tick, preserving serialized state and receipts in matched trials.
+- `8aef717c4fe4` accepted. Seven plant owners share bounded cursor or station lookups, preserving canonical iteration order.
+- `8fd052a4363c` accepted. A disabled stranger can now reach a live station and keeps its rescue receipt while scenery comes and goes.
+- `fe46207e4035` accepted for probe wiring. The launcher check answers First Light, the Circuits actor can choose Time Trial, and the turn probe releases its held key.
+
+Codex used `economy_perf`, `backend_recon` and `sim_hotpath` for separate navigation, new plant, and simulation/presentation owners. No Devin launches. Opus retained visual ownership and the live lock during his captures. The main-thread and worker route evidence, patch measurements, and runnable pending checks are in `QUALITY.md`. Node tests confirmed the owner changes. Live acceptance and sustained cadence remain open.
