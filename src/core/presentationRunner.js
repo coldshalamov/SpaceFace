@@ -525,6 +525,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         pauseRequests: readTimeEffectsRequests(state),
         tether: { active: state.player?.tether?.active === true, targetId: state.player?.tether?.targetId ?? null },
         worker: sim.workerClockLastDiagnostics || null,
+        workerLive: sim.workerClockLive || null,
+        sabEnvelopeActive: sim.sabEnvelopeActive ?? null,
         workerWork: sim.workerLastReplyWork || null,
         replyCount: sim.replyCount ?? null,
       }));
