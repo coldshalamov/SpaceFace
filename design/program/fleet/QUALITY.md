@@ -85,10 +85,78 @@ thread's recurring render submission and the worker's above-budget simulation st
   Import lint and Adventure passed the fleet gate. Swarm stopped in asset preflight because six
   Works files were being edited. Those edits have since landed, so repeat Swarm through the lock.
 
+## Recorded Windows world freeze
+
+The November 12 player recording shows Ricochet Foundry round 2 with the Supply Pod wager.
+The matching unpackaged Electron launcher receipt records five full-scale, focused flight holds.
+At tick 2491, 16 world draws occurred in 1.01 s while simulation time and the ship's position
+stayed fixed at a reported speed of 100 WU/s. There was no pause request. The timer and ACK
+values in the receipt came from the last delivered reply, so they cannot establish whether the
+worker's current timer had stopped. Clip samples and the matching receipt are under
+`.devshots/fleet/coordination/player-freeze/`.
+
+- `aa5b5517ed0c` unified main and worker shared-memory layout sizing. The old main allocation
+  silently prevented the envelope ring from binding. Activating the ring exposed a second issue
+  in live combat, where four queued command batches could stop flight. `da56112e4fba` uses the
+  ordered worker message queue for controls, retaining shared buffers for completed replies.
+- `5c70500d527f` releases cumulative ACKs before queued authoritative work. `14faa9c79438`
+  sends journal progress as a cumulative ACK without asking the worker for a command reply.
+  `37e2ce7e8425` adds the independent worker watermark to the existing launcher freeze receipt.
+- `64678c44a573` re-sends the already applied reply watermark with a foreground heartbeat
+  during starvation. In the dropped-ACK regression, four credits filled while the worker kept
+  stepping. Motion delivery resumed before the three-second rebuild watchdog, and incorrect
+  lifecycle and future watermarks did not free credits.
+- `2c0f3ecd0856` fixes a separate forward-then-backward ship snap. The same live player moved
+  authoritatively from 780 to 786.5 WU. After a rebuild the drawn ship previously moved from
+  838.5 back to 786.5 WU. It now advances to 839.28 WU. Reused IDs, restore, sector changes and
+  explicit resets still invalidate old poses. The regression crosses the real journal,
+  publisher, pose fence and renderer. The player's recording cannot tie each snap to this path.
+- In a locked Foundry round 2 diagnostic entry at seed 4242, both arms cleared the round and
+  reached the Armory. The largest sampled active-flight reply age fell from 522 to 158 ms and
+  the recorder's reply-starvation episodes fell from three to zero. Callback and moving ship
+  gap p95 were 117 → 100 ms and 120 → 100 ms. Active simulation advanced 0.61 → 0.64 s per wall
+  second. Outcomes and durations differed, and the recording had a different arena event.
+  The harness did not yet confirm firing in this pair.
+- A second locked pair used the recorded Supply Pod event, and confirmed held thrust, turn, and
+  primary fire in both arms. Neither reproduced the recorded multi-second freeze. Over the first
+  27 s of active flight, world submits fell from 21.1 to 16.3/s and simulation advanced 1.00 to
+  0.84 s per wall second. Peak sampled reply age fell from 242 to 167 ms. Across the complete
+  samples, drawn moving-mesh gap p95 rose from 70 to 100 ms, with a maximum of 126 to 193 ms.
+  Stock cleared round 2. The envelope candidate was still in combat when its window ended.
+- `386eebfd9305` keeps the shared numeric journal but returns message envelopes to structured
+  clone. The fixed-size JSON envelope is diagnostic opt-in. In the isolated locked comparison,
+  the ordinary journal route fired 210 times in about 24 seconds, with 13.4 world submits/s and
+  a 126 ms drawn-motion gap p95. The envelope arm reached Armory and timed out entering active
+  flight, so that run cannot establish an FPS gain. Neither transport result closes QUAL-07.
+- `6bb94413ed9d` keeps duplicate and rewind semantics while skipping repeated AI membership lookups.
+  The native 240-tick Foundry replay kept its hash and contact counts. The isolated owner pass was
+  about 10% faster. `f4de88a6214a` batches floor-label layout reads, preserving separate chip seats.
+  Its isolated frame benefit has not been measured.
+- `60cd8a4cdc35` keeps native contact fences on the simulation side, preserving all impact and
+  consequence receipts. In a 480-tick Adventure replay this removed 451 of 1,754 bridge rows.
+- `7dfe58b4ac73` queues cold dormant rock geometry during flight, before contact or simulation
+  promotion. The real admission queue passes its focused regression with a controlled GPU port.
+  The Ceres browser probe reached live flight but staged no dormant row, so its ram leg did not
+  exercise this fix. Three common live rocks met its frustum-sphere check without a mesh for
+  1.8–2.5 s. A remaining short episode was a separate reentry by one of the same rocks.
+- `07df4340e225` keeps a rock on the direct draw path until its instance is drawable. The old
+  instance batch retains only the records it covered, and releases an old matrix before its
+  entity ID can be reused. The admission and pool fixtures passed. This is separate from the
+  remaining meshless live-rock episodes.
+- In a follow-up Ceres flight after the pool fix, all 55 observed entries drew, six with delays
+  of up to 43 ms. The probe followed a different path and saw no common live or dormant rocks.
+  Keep the long no-mesh case open. `13d2a084fd8c` makes the probe match the submitted instance
+  to its actual draw batch and retain camera and admission data on missing meshes.
+- A 33-second locked Supply Pod flight on the journal path recorded 382 player shots, no
+  detected multi-second holds and no drawn backtracks in 58 assessable intervals. It submitted
+  20.7 world frames/s, with 77 ms p95 and 155 ms maximum drawn-motion gaps. It ended with one
+  hostile still alive. This is a single flight, captured before the heartbeat recovery landed.
+
 The Windows matrix status is in `.devshots/fleet/coordination/whole-game/pending-routes.jsonl`.
-The standalone hold probe timed out before live flight and closed gracefully. The F8 retry was
-cancelled while queued for the user's playtest. After the playtest, start the pending Circuits check
-with `node scripts/fleet/game-lock.mjs run -- node .devshots/fleet/coordination/whole-game/run-race-restart.mjs`.
+The standalone hold probe timed out before live flight and closed gracefully. The latest locked
+Circuits run used the public Time Trial route and F8 reset the same attempt in its authored
+sector. The opened restart screenshot still showed the campaign act heading above the race
+objective. Scored finish, restart after a cleared gate, and campaign presentation isolation are open.
 The released checkpoints for flight restore, AI identity and Helios wash used the existing deterministic replay hash.
 
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.

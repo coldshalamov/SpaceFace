@@ -55,8 +55,8 @@ See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
 | QUAL-03 | Adventure opening and crowded Helios. Isolate the largest repeatable CPU/GPU cost and compare fresh poses and hitches on the same route. | TAKEN Codex |
 | QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex |
 | QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | READY |
-| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex. Campaign traffic and Act I removed from standalone races. Post-fix player route pending. |
-| QUAL-07 | Shared flight holds. Exercise Pause, minimize/return, jump and load while moving. Measure pose cadence independently of FPS. | TAKEN Codex. Matched powered turn and release passed. Hold probe timed out before flight became live. |
+| QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex. F8 resets the public attempt on its grid. Scored finish and stray campaign HUD heading remain open. |
+| QUAL-07 | World motion freezes during thrust, turning and fire. Measure authoritative ticks, ship pose and draw cadence in Foundry, then cover Pause, minimize/return and load. | TAKEN Codex. Combined inputs verified in the Supply Pod fight. Recorded freeze remains open. See QUALITY.md for comparisons. |
 | QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
 | QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex |
 
