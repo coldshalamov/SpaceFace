@@ -223,9 +223,10 @@ function buildCustodian(entity = null) {
 // opening (`machine.interrogating`, written by the sim tick) (row 384).
 function buildGateAuditor(entity = null) {
   const g = new THREE.Group();
+  const frameMaterial = metalMat();
   const ring = new THREE.Mesh(
     geo('aud_ring', () => new THREE.TorusGeometry(1, 0.09, 8, 48)),
-    metalMat(),
+    frameMaterial,
   );
   ring.scale.setScalar(18);
   ring.rotation.x = Math.PI / 2;
@@ -238,7 +239,8 @@ function buildGateAuditor(entity = null) {
   });
   for (let i = 0; i < 3; i += 1) {
     const a = (i / 3) * Math.PI * 2;
-    const p = new THREE.Mesh(pillar, metalMat());
+    const p = new THREE.Mesh(pillar, frameMaterial);
+    p.userData.borrowedGeometryMaterial = true;
     p.position.set(Math.cos(a) * 18, -10, Math.sin(a) * 18);
     p.scale.setScalar(12);
     g.add(p);
@@ -326,8 +328,10 @@ function buildMason(entity = null) {
     return s;
   });
   const gantry = [];
+  const gantryMaterial = metalMat();
   for (let i = 0; i < 2; i += 1) {
-    const a = new THREE.Mesh(arm, metalMat());
+    const a = new THREE.Mesh(arm, gantryMaterial);
+    if (i > 0) a.userData.borrowedGeometryMaterial = true;
     a.scale.setScalar(14);
     a.rotation.z = i === 0 ? 0 : Math.PI;
     a.position.x = i === 0 ? -2 : 2;
@@ -434,9 +438,11 @@ function buildConservator() {
 function buildMeasure() {
   const g = new THREE.Group();
   const rail = geo('mea_rail', () => new THREE.TorusGeometry(0.9, 0.05, 6, 36));
-  for (const dz of [-8, 8]) {
-    const r = new THREE.Mesh(rail, metalMat());
-    r.position.z = dz;
+  const railMaterial = metalMat();
+  for (let i = 0; i < 2; i += 1) {
+    const r = new THREE.Mesh(rail, railMaterial);
+    if (i > 0) r.userData.borrowedGeometryMaterial = true;
+    r.position.z = i === 0 ? -8 : 8;
     r.scale.setScalar(12);
     g.add(r);
   }
@@ -534,9 +540,11 @@ function buildSleepingJury(entity = null) {
     return s;
   });
   const pods = [];
+  const podMaterial = metalMat();
   for (let i = 0; i < 3; i += 1) {
     const a = (i / 3) * Math.PI * 2;
-    const p = new THREE.Mesh(pod, metalMat());
+    const p = new THREE.Mesh(pod, podMaterial);
+    if (i > 0) p.userData.borrowedGeometryMaterial = true;
     p.position.set(Math.cos(a) * 10, 0, Math.sin(a) * 10);
     p.scale.setScalar(12);
     g.add(p);

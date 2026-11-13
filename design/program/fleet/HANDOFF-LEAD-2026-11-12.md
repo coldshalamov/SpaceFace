@@ -314,3 +314,22 @@ Workers were Codex backend_recon (Three.js hot path), sim_hotpath (Rapier and do
 - `28bf6c3d3d76` accepted in syntax and scope review. The dedicated locked Ceres ram route collects the before-contact PNG.
 
 The 47-A deterministic replay matched its baseline over all 20 repetitions, and source imports passed. The native Adventure follow-up, combined-input trace, Ceres ram picture and SwiftShader fixture use the existing game lock. Opus's visual/UI batches continued. The recorded retail freeze and cross-mode frame pacing remain open.
+
+### Stand-in log — stress playback and Ceres promotion
+
+- `e3623802e1d6`, `e40e745c7fe0`, and `70a2beea992e` accepted. The failed Adventure run had a genuinely minimized native window. The next run entered flight and resumed from Pause and native minimize. Startup minimize timing remains open.
+- `14408fb59bef` fixed. Warm the fixture through the real HDR target. All three locked pixel checks passed at the original tolerance.
+- `ce512bc3625e` fixed. Drop the first unsampled worker profiler interval from owner timing.
+- `8e07e2006e4e` accepted. Record combined-input trace and initial Ceres frame visibility.
+- `b53f3b894584` accepted. Stage the diagnostic within ordinary flight range and use live controls to reach contact.
+- `63dc0d82086f` accepted. Projection reads the current CSS viewport without repeated layout dimension reads.
+- `5be2cb0782a6` accepted. Validate runs using the reusable schema key set.
+- `3287b160abe1` fixed. The arena fixtures now test staged growth, retained rocks and release clocks against authored Foundry behavior.
+- `14d03ddb7252` accepted. Compound overlap screening preserved all 319 guard outcomes and the final simulation hash in each of four Foundry arms. Average isolated guard time fell 218 to 154 ms under variable host load.
+- `44aa8f37f041` fixed. The already-visible Ceres rock remains drawn until the delayed presentation bracket reaches the exact live promotion.
+- `d99ec3d67d1b` accepted. The worker bridge distinguishes a real field promotion from a reused numeric ID.
+- `e1c8bd6314a2` accepted. Current quality ledger links the fixes and unfinished routes.
+
+Codex used sim_hotpath for matched physics guard runs, backend_recon for the staged terrain fixtures and the delayed fence reproduction, and boot_deadline for the native startup owner review. No Devin workers launched. Opus continued the visual and UI capture batches.
+
+Source imports passed and the 47-A deterministic replay matched the expected hash in 20 of 20 runs. The locked Ceres contact and lightweight combined-input checks are queued behind Opus captures. The original retail freeze, motion cadence across modes, startup minimize timing, Helios first-build delay, live load/Continue, and full hardware acceptance remain open. See [QUALITY.md](QUALITY.md) and [QUEUE.md](QUEUE.md).
