@@ -576,7 +576,7 @@ function nodeFile(node) {
 
 /**
  * Self time per call frame, inclusive time per top-level entry point, and self time per source
- * file, optionally restricted to samples taken in [fromMicros, toMicros) of the profile.
+ * file, optionally restricted to the sampled intervals in [fromMicros, toMicros).
  * The entry table is the one that names an owner: a parasite shows up as a top-level entry that is
  * not the game's own presentation frame.
  */
@@ -584,9 +584,12 @@ function summarizeProfile(profile, index, fromMicros = 0, toMicros = Infinity) {
   const { nodesById, parentOf, offsets } = index;
   const selfMicros = new Map();
   let totalMicros = 0;
-  for (let i = 0; i < profile.samples.length; i++) {
-    if (offsets[i] < fromMicros || offsets[i] >= toMicros) continue;
-    const delta = Math.max(0, profile.timeDeltas?.[i] || 0);
+  // V8 deltas lead into each sample. Attribute the interval after a sample to
+  // that frame, leaving the unsampled startup and shutdown intervals out.
+  for (let i = 0; i + 1 < profile.samples.length; i++) {
+    if (offsets[i] >= toMicros) break;
+    const delta = Math.min(offsets[i + 1], toMicros) - Math.max(offsets[i], fromMicros);
+    if (delta <= 0) continue;
     totalMicros += delta;
     const id = profile.samples[i];
     selfMicros.set(id, (selfMicros.get(id) || 0) + delta);
