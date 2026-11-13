@@ -189,8 +189,10 @@ export const swarmChain = {
       const mark = this._pendingMilestone;
       this._pendingMilestone = 0;
       // `audio: false`: the mark already has its own voice (swarmJuice's chain-tier chord); the
-      // toast's generic click would sit under it as a second sound for one moment.
-      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8, audio: false });
+      // toast's generic click would sit under it as a second sound for one moment. Channel
+      // 'receipt': the hero number and tier already say it, so the Swarm glass keeps it off screen
+      // (receipts go quiet in a fight, 20_THE_FIRST_HOUR rule 2).
+      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8, audio: false, channel: 'receipt' });
     }
     if (this._chain <= 0) return;
     const run = liveSwarmRun(st);

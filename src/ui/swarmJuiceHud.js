@@ -14,6 +14,7 @@
 // Ownership: read-only presentation. It never writes state.run and never emits gameplay
 // intents; the only outbound traffic is its own DOM.
 
+import { claimCalloutVoice, resetCalloutVoice } from './calloutVoice.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 import { chainWindowRemaining } from './survivalHud.js';
@@ -39,7 +40,12 @@ const BOSSDOWN_TTL_S = 2.2;
 const SHATTER_TTL_S = 1.7;
 // Two announcer lines at most: the centre column is one flow (see the CSS), and two lines plus
 // one beat keep it clear of the ship at 1280x720. A third arrival retires the oldest line.
-const MAX_CALL_LINES = 2;
+const MAX_CALL_LINES = 1;
+// Higher speaks over lower. Boss beats outrank kill words; counted repeats and small receipts
+// (a close call, a pile-up tick) never talk over a bigger moment.
+const CALL_PRIORITY = Object.freeze({ bossdown: 5, bossact: 4, overdrive: 3, chainstar: 3,
+  collateral: 3, multikill: 3, callin: 2, revenge: 2, closecall: 2, lastone: 2, pileup: 2, discharge: 1 });
+const CALL_PRIORITY_DEFAULT = 2;
 /** A beat that waited this long behind a higher one is stale news — it is dropped, not shown late. */
 const BEAT_STALE_S = 12;
 
@@ -137,6 +143,7 @@ export const swarmJuiceHud = {
   },
 
   _resetModel() {
+    resetCalloutVoice();
     this._chain = 0;
     this._chainBest = 0;
     this._chainStep = 0;
@@ -432,23 +439,35 @@ export const swarmJuiceHud = {
     this._popups.push(rec);
   },
 
+  // One announcer voice at a time (20_THE_FIRST_HOUR rule 2: danger > verb > objective > callout
+  // > receipts). A lower-priority word arriving while a higher one is still up is dropped; an
+  // equal or higher one replaces it; the same kind again updates in place (its text already
+  // carries the count). The old two-line stack is gone.
   _onAnnounce(p) {
     if (!p || typeof p.text !== 'string' || !p.text || !this._dom) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    const existing = this._calls.find((c) => c.kind === p.kind);
-    if (existing) {
-      existing.text = p.text;
-      existing.until = now + CALL_TTL_S;
-      return;
+    const kind = p.kind || '';
+    const pri = CALL_PRIORITY[kind] ?? CALL_PRIORITY_DEFAULT;
+    const cur = this._calls[0];
+    // The stunt lane shares this voice: a first-beat word (LATCHED) holds the centre against a
+    // lower kill word, and the reverse.
+    if (!claimCalloutVoice(`sj:${kind}`, pri, CALL_TTL_S * 1000)) return;
+    if (cur && cur.until > now) {
+      if (cur.kind === kind) {
+        cur.text = p.text;
+        cur.until = now + CALL_TTL_S;
+        return;
+      }
+      if (pri < cur.pri) return;
     }
-    const node = makeNode(document, 'div', 'sf-sj__call', this._dom.calls);
-    node.textContent = p.text;
-    node.dataset.kind = p.kind || '';
-    this._calls.push({ kind: p.kind || '', text: p.text, node, until: now + CALL_TTL_S });
-    while (this._calls.length > MAX_CALL_LINES) {
+    while (this._calls.length) {
       const dead = this._calls.shift();
       if (dead.node) dead.node.remove();
     }
+    const node = makeNode(document, 'div', 'sf-sj__call', this._dom.calls);
+    node.textContent = p.text;
+    node.dataset.kind = kind;
+    this._calls.push({ kind, pri, text: p.text, node, until: now + CALL_TTL_S });
   },
 
   _onSlam(p) {

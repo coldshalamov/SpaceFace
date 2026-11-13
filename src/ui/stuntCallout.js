@@ -28,6 +28,7 @@
 // (returns false) the moment it does not; bus events wake it. Node-safe: without a usable
 // document the owner is inert and every builder stays pure and testable.
 
+import { claimCalloutVoice } from './calloutVoice.js';
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
 import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
@@ -922,6 +923,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       // plain ≤3-word callout — LOG registers, snag/ride/strain telemetry and mass figures never
       // reach the lane in either mode.
       if ((isSwarmGlass(state) || isAdventureFlight(state)) && !plainCallout(line.name)) return;
+      // One callout voice: a first-beat word is the verb landing (priority 3); the physics
+      // narrator and sense lines are quieter (1) and give way to a live higher word.
+      if (!claimCalloutVoice(`stunt:${line.key}`, FIRST_BEAT_NAMES.has(line.name) ? 3 : 1, CALLOUT_TTL_MS)) return;
       if (FIRST_BEAT_NAMES.has(line.name)) firstBeatsSaid.add(line.name);
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();

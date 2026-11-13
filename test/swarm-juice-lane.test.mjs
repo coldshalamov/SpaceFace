@@ -113,12 +113,15 @@ test('a clear tally held behind BOSS DOWN is not spent while it waits', () => {
   swarmJuiceHud.destroy();
 });
 
-test('the announcer keeps two lines at most, newest wins', () => {
+test('the announcer speaks one line: higher priority replaces, lower is dropped, repeats update in place', () => {
   const h = boot();
   h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
-  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×4' });
-  h.emit('swarm:announce', { kind: 'chainstar', text: 'CHAIN STAR · ×12' });
+  h.emit('swarm:announce', { kind: 'pileup', text: 'PILE-UP ×4' });          // lower: dropped
   h.tick();
-  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['PILE-UP ×4', 'CHAIN STAR · ×12']);
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['COLLATERAL']);
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×2' });    // same kind: in place
+  h.emit('swarm:announce', { kind: 'bossdown', text: 'BOSS DOWN' });          // higher: replaces
+  h.tick();
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['BOSS DOWN']);
   swarmJuiceHud.destroy();
 });
