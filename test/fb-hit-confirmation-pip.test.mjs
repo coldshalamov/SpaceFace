@@ -98,11 +98,18 @@ test('two floor tags projected onto one point take separate seats', () => {
   const padLayer = world.layer.children.find((el) => el.id === 'sf-floorpads');
   padLayer.clientWidth = 800;
   padLayer.clientHeight = 600;
+  const layoutAccesses = [];
   for (const el of padLayer.children) {
-    el.offsetWidth = 100;
+    Object.defineProperty(el, 'offsetWidth', { get() { layoutAccesses.push('read'); return 100; } });
     el.offsetHeight = 20;
+    let transform = el.style.transform;
+    Object.defineProperty(el.style, 'transform', {
+      get: () => transform,
+      set: value => { layoutAccesses.push('write'); transform = value; },
+    });
   }
   world.ft.update(0.016);
+  assert.deepEqual(layoutAccesses.slice(0, 2), ['read', 'read'], 'measure both chips before positioning either');
   const centers = padLayer.children.map(el => el.style.transform.match(/translate3d\(([-.\d]+)px,([-.\d]+)px/).slice(1).map(Number));
   assert.equal(centers.length, 2);
   assert.ok(Math.abs(centers[0][0] - centers[1][0]) >= 100

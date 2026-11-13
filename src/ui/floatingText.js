@@ -199,19 +199,18 @@ export function createFloatingText(ctx) {
   const padNodes = new Map();   // entityId -> { el, lastText, denied }
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
+  const visiblePads = [];
+  const padObstacles = [];
+  const padBounds = { w: 0, h: 0 };
+  const padBox = { x: 0, y: 0, w: 0, h: 0 };
 
   function syncPadLabels() {
     if (!helpers.worldToScreen || typeof state.entities?.values !== 'function') return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    let seen = null;
-    let padW;
-    let padH;
-    let padObstacles;
+    visiblePads.length = 0;
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
-      seen ??= new Set();
-      seen.add(e.id);
       let node = padNodes.get(e.id);
       if (!node) {
         const el = document.createElement('div');
@@ -220,6 +219,7 @@ export function createFloatingText(ctx) {
         node = { el, lastText: '', denied: null, w: 0, seat: { x: 0, y: 0, w: 0, h: 0 } };
         padNodes.set(e.id, node);
       }
+      node.seen = true;
       const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
       if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; node.w = 0; node.h = 0; }
       // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
@@ -236,47 +236,58 @@ export function createFloatingText(ctx) {
       const nextDisplay = show ? 'block' : 'none';
       if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;
       if (show) {
-        // Sit just above the body's mark so the pad's own light stays visible under the words.
-        // Keep the whole chip on the plate: a pad at the room's edge slides its tag inward
-        // rather than being cut by the layer. Width is measured once per text change.
-        if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
-        // Reading client dimensions can force layout for the whole HUD. An empty
-        // flight or a tag outside the projection doesn't need either dimension.
-        padW ??= padLayer.clientWidth || layer.clientWidth || 0;
-        const half = node.w / 2 + 6;
-        const px = padW > half * 2 ? Math.min(Math.max(s.x, half), padW - half) : s.x;
-        let py = Math.max(s.y - 26, 16);
-        // G16-04: a tag never draws inside the Swarm centre column or a HUD corner panel — it
-        // slides to the nearest clear seat, and dims to 35% only when none exists.
-        let fade = 1;
-        let cx = px;
-        if (node.w > 0 && node.h > 0) {
-          padH ??= padLayer.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 720);
-          padObstacles ??= avoid.get().slice();
-          const seat = seatOutOfRects({ x: px - node.w / 2, y: py - node.h / 2, w: node.w, h: node.h },
-            padObstacles, { w: padW || (typeof window !== 'undefined' ? window.innerWidth : 1280), h: padH });
-          cx = seat.x + node.w / 2; py = seat.y + node.h / 2; fade = seat.fade;
-          // Earlier tags keep their seat for this frame, including when two
-          // pads project to the same point. The cached HUD rects stay read-only.
-          node.seat.x = seat.x;
-          node.seat.y = seat.y;
-          node.seat.w = node.w;
-          node.seat.h = node.h;
-          padObstacles.push(node.seat);
-        }
-        const nextTransform = `translate3d(${cx}px,${py}px,0) translate(-50%,-50%)`;
-        if (node.el.style.transform !== nextTransform) node.el.style.transform = nextTransform;
-        // On a phone a faded tag over the vitals or keys is still clutter (lead look, MOB-07): a blocked tag hides.
-        const phoneDeck = typeof document !== 'undefined'
-          && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
-        const nextOp = fade < 1 ? (phoneDeck ? '0' : String(fade)) : '';
-        if (node.op !== nextOp) { node.op = nextOp; node.el.style.opacity = nextOp; }
+        node.x = s.x;
+        node.y = s.y;
+        visiblePads.push(node);
       }
     }
     for (const [id, node] of padNodes) {
-      if (seen?.has(id)) continue;
+      if (node.seen) { node.seen = false; continue; }
       node.el.parentNode && node.el.parentNode.removeChild(node.el);
       padNodes.delete(id);
+    }
+    if (!visiblePads.length) return;
+
+    // Read layout together after text/visibility changes. Placing one chip
+    // before measuring the next can force the HUD to lay out repeatedly.
+    const padW = padLayer.clientWidth || layer.clientWidth || 0;
+    const viewport = document.defaultView;
+    padBounds.w = padW || viewport?.innerWidth || 1280;
+    padBounds.h = padLayer.clientHeight || viewport?.innerHeight || 720;
+    let hasMeasuredPad = false;
+    for (const node of visiblePads) {
+      if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
+      hasMeasuredPad ||= node.w > 0 && node.h > 0;
+    }
+    padObstacles.length = 0;
+    if (hasMeasuredPad) for (const rect of avoid.get()) padObstacles.push(rect);
+    const phoneDeck = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+
+    for (const node of visiblePads) {
+      const half = node.w / 2 + 6;
+      let px = padW > half * 2 ? Math.min(Math.max(node.x, half), padW - half) : node.x;
+      let py = Math.max(node.y - 26, 16);
+      let fade = 1;
+      if (node.w > 0 && node.h > 0) {
+        padBox.x = px - node.w / 2;
+        padBox.y = py - node.h / 2;
+        padBox.w = node.w;
+        padBox.h = node.h;
+        const seat = seatOutOfRects(padBox, padObstacles, padBounds);
+        px = seat.x + node.w / 2;
+        py = seat.y + node.h / 2;
+        fade = seat.fade;
+        // Earlier chips keep their seats without mutating cached HUD rectangles.
+        node.seat.x = seat.x;
+        node.seat.y = seat.y;
+        node.seat.w = node.w;
+        node.seat.h = node.h;
+        padObstacles.push(node.seat);
+      }
+      const transform = `translate3d(${px}px,${py}px,0) translate(-50%,-50%)`;
+      if (node.transform !== transform) { node.transform = transform; node.el.style.transform = transform; }
+      const opacity = fade < 1 ? (phoneDeck ? '0' : String(fade)) : '';
+      if (node.op !== opacity) { node.op = opacity; node.el.style.opacity = opacity; }
     }
   }
 
