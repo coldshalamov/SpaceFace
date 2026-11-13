@@ -1894,6 +1894,9 @@ export const crucibleScreen = {
         syncChoice(button, startWave === wave);
         addWord(els.zoneWords, button);
       }
+      // One zone is not a choice: a lone, already-picked button answered no press, so it reads as the
+      // sentence alone until a checkpoint opens a second start.
+      els.zoneWords.hidden = checkpoint === 0;
       const picked = swarmZoneFor(startWave);
       // The picked zone's own open asks ride the sentence — the read line, not just the hover.
       const pickedRec = zones[String(swarmZoneIndexFor(startWave))];
