@@ -764,6 +764,9 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${A} .orr-armory-fitline { margin:0 0 6px; }
   ${A} .orr-armory-reading__compare { margin:6px 0 !important; }
   ${A} .orr-armory-reading__budget { margin:6px 0 !important; }
+  ${A} .orr-armory-reading__compare { margin:4px 0 !important; }
+  ${A} .orr-armory-reading__demo, ${A} .orr-armory-reading__hold { display:inline-block !important; vertical-align:top; margin:0 10px 0 0 !important; }
+  ${A} .orr-armory-reading__buy { margin:6px 0 4px !important; }
   ${A} .orr-armory-reading__buy { margin:6px 0 8px !important; }
   ${A} .orr-armory-purchase { min-height:40px; padding:9px 14px; font-size:14px; }
   ${A} > .k-foot { padding:6px 0 0 !important; flex-wrap:nowrap !important; align-items:center !important; gap:16px !important; }
@@ -944,6 +947,64 @@ ${RE} .k-foot .k-words { position:relative; z-index:1; }
 @media (min-width:641px) and (max-width:820px) and (max-height:560px) {
   ${RE} .k-foot .k-words { gap:8px 12px !important; }
   ${RE} .k-foot .k-word { font-size:12px !important; min-height:30px !important; padding:0 8px !important; white-space:normal !important; }
+}
+
+/* —— Laptop height (first-hour pass): the Swarm armory on a 1280x720 screen or a shorter browser window.
+   The dealt three become three rows in the left column (a ~130px-wide card cut every sentence), the
+   title block closes up, the reading column drops its schematic height so the name, the sentence, the
+   price line and the Install key all stand inside the frame, and the foot is one row. Type never goes
+   under 12px; the full sentence of a dealt card is also in the reading panel beside it. —— */
+@media (min-width:1151px) and (max-height:800px) {
+  ${A} { padding:14px 40px 10px !important; gap:8px 32px !important; }
+  ${A} > .k-title h1 { font-size:36px !important; }
+  ${A} > .k-title .sf-cru-sub { margin:4px 200px 0 0 !important; font-size:14px !important; }
+  ${A} > .k-title .sf-cru-preview, ${A} > .k-title .sf-cru-note { margin:3px 200px 0 0 !important; font-size:13px !important; line-height:1.3 !important; }
+  ${A} .orr-armory-wallet strong { font-size:32px; }
+  ${A} .orr-armory-wallet span { margin-top:2px; }
+  ${A} .sf-cru-dealt { grid-template-columns:minmax(0,1fr) !important; gap:8px !important; margin:0 !important; }
+  ${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:0 !important; }
+  ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt { display:grid !important; grid-template-columns:64px minmax(0,1fr) !important; column-gap:12px !important; row-gap:2px !important; align-content:start !important; min-height:0 !important; padding:10px 12px !important; }
+  ${A} .sf-cru-dealt .sf-cru-dealtface { grid-column:1 !important; grid-row:1 / span 6 !important; min-height:0 !important; border-bottom:0 !important; margin:0 !important; align-self:start !important; }
+  ${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph, ${A} .sf-cru-dealt .sf-cru-dealtface > svg { width:56px !important; height:56px !important; }
+  ${A} .sf-cru-dealt .sf-cru-card--dealt > :not(.sf-cru-dealtface) { grid-column:2 !important; min-width:0; }
+  ${A} .sf-cru-dealt .sf-cru-name { font-size:18px !important; margin:0 !important; }
+  ${A} .sf-cru-dealt .sf-cru-blurb { font-size:13px !important; line-height:1.4 !important; }
+  ${A} .sf-cru-dealt .sf-cru-slot, ${A} .sf-cru-dealt .sf-cru-activation { display:none !important; }
+  ${A} .orr-armory-reading.orr-armory-reading { gap:16px !important; padding:8px 2px 8px 16px !important; }
+  ${A} .orr-armory-visual { gap:8px; }
+  ${A} .orr-armory-item { height:150px; min-height:120px; }
+  ${A} .orr-armory-item::before { width:130px; height:130px; }
+  ${A} .orr-armory-item > .orr-equipment-glyph { width:110px; height:110px; }
+  ${A} .orr-armory-reading__jig { height:110px !important; min-height:90px; }
+  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
+  ${A} .orr-armory-object-label, ${A} .orr-crew-names, ${A} .orr-crew-status { display:none; }
+  ${A} .orr-armory-build summary { min-height:32px; padding:6px 0; }
+  ${A} .orr-armory-reading__name { font-size:clamp(24px,2.2vw,30px) !important; margin:4px 0 8px !important; }
+  ${A} .orr-armory-reading__blurb { font-size:14px !important; line-height:1.45 !important; }
+  ${A} .orr-armory-reading__act { font-size:13px !important; line-height:1.4 !important; }
+  ${A} .orr-armory-reading__compare { margin:8px 0 !important; }
+  ${A} .orr-armory-reading__budget { margin:10px 0 !important; }
+  ${A} .orr-armory-reading__buy { margin:10px 0 6px !important; }
+  ${A} .orr-armory-purchase { min-height:44px; padding:9px 16px; }
+  ${A} .orr-armory-refusal { margin:6px 0 0; }
+  ${A} .orr-armory-fitline { margin:0 0 6px; }
+  ${A} > .k-foot { padding:8px 0 0 !important; display:flex !important; align-items:center !important; justify-content:space-between !important; gap:24px !important; }
+  ${A} > .k-foot .k-words { flex-wrap:nowrap !important; gap:10px !important; justify-content:flex-start !important; flex:1 1 auto; min-width:0; }
+  ${A} .k-foot .k-word:not(.k-word--primary) { padding:0 12px !important; white-space:nowrap; }
+  ${A} .k-foot .sf-cru-fine { flex:0 1 190px; margin:0 !important; flex-wrap:wrap !important; justify-content:flex-end !important; gap:4px 10px !important; }
+}
+@media (min-width:1151px) and (max-height:680px) {
+  ${A} > .k-title .sf-cru-note { display:none !important; }
+  ${A} .orr-armory-reading__act { display:none !important; }
+  ${A} .orr-armory-reading__budget { margin:6px 0 !important; }
+  ${A} .orr-armory-reading__compare { margin:4px 0 !important; }
+  ${A} .orr-armory-reading__demo, ${A} .orr-armory-reading__hold { display:inline-block !important; vertical-align:top; margin:0 10px 0 0 !important; }
+  ${A} .orr-armory-reading__buy { margin:6px 0 4px !important; }
+  ${A} .orr-armory-fitline { display:none; }
+  ${A} .orr-armory-item { height:120px; min-height:100px; }
+  ${A} .orr-armory-item::before { width:100px; height:100px; }
+  ${A} .orr-armory-item > .orr-equipment-glyph { width:84px; height:84px; }
+  ${A} .orr-armory-reading__jig { height:90px !important; min-height:80px; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
