@@ -8,7 +8,7 @@ import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceL
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { addCargo, releasableContractUnits } from './cargo.js';
 import { reckoningKilled } from '../missions/reckoningRuntime.js';
-import { b2RescueActorCount } from './missionShared.js';
+import { b2RescueActorCount, mutationRecoveryTarget } from './missionShared.js';
 import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
@@ -255,7 +255,7 @@ export const missionObjectiveOps = {
         const cmdtyId = m.params && m.params.cmdtyId;
         const got = cmdtyId ? Math.max(0, Math.floor(Number(p.loot[cmdtyId]) || 0)) : 0;
         if (got <= 0) continue;
-        const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
+        const target = mutationRecoveryTarget(m.params);
         const before = m.objectiveProgress || 0;
         m.objectiveProgress = Math.min(target, before + got);
         if (m.objectiveProgress !== before) {

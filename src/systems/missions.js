@@ -391,6 +391,7 @@ import { missionBoardOps } from './missionBoardOps.js';
 import { missionObjectiveOps } from './missionObjectiveOps.js';
 import { missionSpawningOps } from './missionSpawningOps.js';
 import { missionStoryOps } from './missionStoryOps.js';
+import { mutationRecoveryTarget } from './missionShared.js';
 
 import {
   TYPE_BY_ID, TYPE_ORDER, CMDTY_BY_ID, FACTION_BY_ID, SHIP_BY_ID, DESK_SERVICES, STATION_INFO, SECTOR_BY_ID, ALL_STATIONS, stationInfoFor, passengerIdentityFor, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, CONTRABAND_CMDTYS, MISSION_RECEIPT_LIMIT, BULK_HAUL_TYPE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_FEE, PHYSICAL_TYPE_SET, PHYSICAL_ROLE, CAPITAL_SUBSYSTEM_ORDER, CAPITAL_SUBSYSTEM_BY_ID, THROWN_MASS_SUBSYSTEM_DAMAGE, authoredDefinitionOf, authoredEncounterOf, isCampaign47aB2Rescue, b2RescueActorForRole, b2RescueActorCount, b2RescueActorIdentity, b2RescueActorIndexFromEntity, ensureB2RescueActorOutcomes, authoredMethodFor, authoredMethodDebriefPhrase, stampAuthoredTwist, stampCapitalBossTwist, isCapitalBossMission, completedEndgamePull, capitalSubsystemWorldPos, PHYSICAL_BERTH_WU, STORY_LATCH_DOCK_SLACK_WU, MISSION_WRECK_COLLISION_MASK, CONDITION_WARN_COOLDOWN_S, CONDITION_BRIEF_MAX, withClauseBriefSuffix, TICK_CONDITION_ID_SET, MISSION_HOSTILE_SPAWN_MIN_WU, MISSION_HOSTILE_SPAWN_MAX_WU, MISSION_HOSTILE_SPAWN_ATTEMPTS, MISSION_PORT_SAFE_RADIUS_WU, CONTRACT_CLAIM_PLAYER_RANGE_WU, CONTRACT_CLAIM_WORK_RANGE_WU, CONTRACT_CLAIM_CUT_PERIOD_S, CONTRACT_CLAIM_FLEE_RANGE_WU, CONTRACT_CLAIM_ORBIT_RAD_PER_S, CONTRACT_CLAIM_SCAN_LABEL, MUTATION_MAX_DEPTH, MUTATION_SALVAGE_CMDTYS, MISSION_MUTATIONS, ESCORT_TURN_DELAY_S, MUTATION_TOAST, missionMutationFor, escortLossSite, driveDisabledRuntime, mutationWreckRouting, isMutationRecovery, convoyClientVoice, CONVOY_WRECK_RING_WU, CONVOY_WRECK_DRIFT_WU_S, convoyWreckPocket, bountyTargetLost, externalTargetLoss, mutationPartialSettlement, partialDeliverySettlement, LONG_READ_RUMOR_EVENT, SET_PIECE_RECOVERY_OBJECTIVES, SET_PIECE_DISPOSITION_OBJECTIVES, CHOIR_RETURN_RADIUS_WU, CONTRACT_47A_B0_TAG, CONTRACT_47A_SAMPLE_ID, CONTRACT_47A_B1_TAG, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, ONBOARDING_CHOICE_LOOPS, markCorridorFirstDock, CONTRACT_47A_REWARD_CR, contract47aBalanceNote, CONTRACT_47A_B2_SCAN_RADIUS_WU, CONTRACT_47A_B2_CUSTODY_REEL_WU, SIZE_TIER, BRANCH_FACTION, BRANCH_INTRO_BY_FACTION, BRANCH_INTRO_BY_BRANCH, HOME_FACTION, clamp, round, cargoFootprint, fmtCargoUnits, signedRep, factionShortName, isStoryBranchIntroOffer, storyBranchIntroForOffer, missionOfferMinRep, setPieceCauseOf, isFingerprintBoardSource, isCompetingStarvedRow, isZeroPayLandmarkMission, setPieceEventFields, setPieceUpfrontCost, missionObservesClauseEvent, sectorDistanceWu, missionNavReason, plainFollowupPlace, B6_DEPLOYMENT_KINDS, b6DeploymentPayload, campaign47aEmbodiedEvidence, campaign47aRegisterResolved, campaign47aRouteKind, campaign47aOutcomeKey, normalizeMissionReceipts, setPieceEpochFrom, normalizeSetPieceSettlements, CLEAN_PHYSICAL_RELEASE, physicalRoleOf, contractClaimSiteOffer, contractClaimSiteMission, salvagePoolUnits, steerIntentToward, missionHostileSpawnPos, missionTargetSlotOf, completedMissionTargetSlots, lowestVacantSlot, ashfallCacheApproachPos, ashfallBlockadeDoorPos, stableEntityId, missionStoryTargetSpawnPos, outsideMissionPortSafety, capitalBossPlacementClear, CAPITAL_BOSS_PLACEMENT_ATTEMPTS, capitalBossAdjustedPlacement, distSq, BEAT_TRIGGER, STORY_SIGNAL_BY_KIND, BRANCH_CHAIN_TYPE, BRANCH_CHAIN_LEG_LABEL, BRANCH_CHAIN_COUNT, BEAT_HINT, storyBeatTitle, hasActiveMissionEntityIndex, missionIndexedEntities, sameNavWaypoint, sameStableBind, sameNavPos, wrapAngleLocal, mulberryLocal,
@@ -615,7 +616,11 @@ export const missions = {
       // Persistent trains must rebind while the restore's identity window is open,
       // even if 3/3 couplers are already complete or the player saved in another sector.
       for (const m of this.state.missions?.active || []) {
-        if (m.status === 'active' && isSpineBreakOperation(m)) this._adoptLiveMissionTargets(m);
+        if (m.status !== 'active') continue;
+        if (isSpineBreakOperation(m)) this._adoptLiveMissionTargets(m);
+        if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
+          m.objectiveTarget = mutationRecoveryTarget(m.params);
+        }
       }
       this._spineBreakSaveRestorePending = false;
       this._reconcileCompostGrowth();
@@ -2179,6 +2184,7 @@ export const missions = {
       case TENDER_HAUL_TYPE: return Math.max(1, Math.round(Number(params && params.qty) || 1));
       case BULK_HAUL_TYPE: return params.massU || 1;
       case 'mining_quota': return params.qty;
+      case 'salvage_retrieval': return params?.mutationReroute ? mutationRecoveryTarget(params) : 1;
       case 'patrol_clear': return params.clearCount;
       case 'bounty_hunt':
         // Ghost-convoy lane bounties pay per nest hull: the authored pack clears as a set, and the
@@ -2850,24 +2856,41 @@ export const missions = {
 
     // INF-066: a salvage successor's recovery leg marks the wreck it was mutated for. While the
     // hold is short of the full qty the marker sits on the loss site with both legs in words;
-    // once recovery is complete it falls through to the generic delivery marker below.
+    // once recovery is complete the marker switches to the client's berth.
     // INF-068: no marker on an empty position — once the armed core's clock has run out the
     // wreck is gone (burst takes the cargo), and the delivery leg below owns the marker.
     if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
       const sectorNow = this.state.world && this.state.world.currentSectorId;
       const routing = mutationWreckRouting(m, sectorNow);
-      const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
-      const short = (m.objectiveProgress || 0) < target;
-      const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
+      const target = mutationRecoveryTarget(m.params);
+      // The beam can release several loose pickups before its final salvage receipt. A full
+      // hold is the same criterion the destination uses to pay for the full recovery.
+      const short = sellableCargoQuantity(this.state, m.params?.cmdtyId) < target;
+      const armedDueAt = Number(m.params?.convoyWreckDueAt ?? NaN);
       const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(deferredEnterNow(this.state)) || 0);
-      if (short && !clockOut && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
+      if (short && !clockOut && routing.wreckPos && routing.sectorId) {
         const home = (station && station.name) || 'home';
+        const wreckSector = SECTOR_BY_ID.get(routing.sectorId);
+        const wreckName = m.params?.playerWreckSite ? 'your wreck' : 'the convoy wreck';
         return {
           ...base,
+          label: m.params?.playerWreckSite ? 'Your wreck' : 'Convoy wreck',
           stationId: null,
           sectorId: routing.sectorId,
-          pos: { x: routing.wreckPos.x, z: routing.wreckPos.z },
-          reason: `Recover the convoy wreck, then deliver to ${home}`,
+          sectorName: wreckSector?.name || null,
+          pos: routing.sectorId === sectorNow ? routing.wreckPos : null,
+          reason: `Recover ${wreckName}, then deliver to ${home}`,
+        };
+      }
+      const homeSector = station && SECTOR_BY_ID.get(station.sectorId);
+      if (homeSector) {
+        const home = sectorNow === homeSector.id ? this._liveStation(m.destStationId) : null;
+        return {
+          ...base,
+          sectorId: homeSector.id,
+          sectorName: homeSector.name,
+          pos: home?.pos ? { x: home.pos.x, z: home.pos.z } : null,
+          reason: short ? `Report to ${station.name} with what you recovered` : `Deliver recovered cargo to ${station.name}`,
         };
       }
     }
@@ -4222,7 +4245,7 @@ export const missions = {
         // the cargo single-writer, mission completed as a partial recovery. Ordinary salvage
         // and every other type keep the legacy all-or-nothing path below.
         if (t === 'salvage_retrieval' && isMutationRecovery(m) && m.params && m.params.cmdtyId) {
-          const need = Math.max(1, m.params.qty || 1);
+          const need = mutationRecoveryTarget(m.params);
           const have = m.preloadedCargo === true
             ? releasableContractUnits(this.state, m)
             : sellableCargoQuantity(this.state, m.params.cmdtyId);

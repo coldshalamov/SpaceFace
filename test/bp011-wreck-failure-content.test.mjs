@@ -28,6 +28,7 @@ import { missions } from '../src/systems/missions.js';
 import { salvage } from '../src/systems/salvage.js';
 import { survivorPod } from '../src/systems/survivorPod.js';
 import { playerWreckMarker } from '../src/systems/aftermathWrecks.js';
+import { addCargo, removeCargo } from '../src/systems/cargo.js';
 
 class Bus {
   constructor() {
@@ -375,6 +376,56 @@ test('player death with contract cargo fails ship_lost and posts recovery at the
   const last = bus.log.filter((e) => e.name === 'mission:failed').pop();
   assert.equal('mutatedToMissionId' in last.payload, false,
     'a bounded-out failure keeps the legacy payload shape');
+});
+
+test('a cross-sector salvage successor marks the wreck until recovery, then marks the actual berth', () => {
+  const state = baseState();
+  const bus = new Bus();
+  const owner = initMissions(state, bus);
+  const helios = 'sector_helios_prime';
+  const ceres = 'sector_ceres_belt';
+  const good = 'cmdty_salvage_electronics';
+  const offer = {
+    id: 'offer_cross_sector_death', type: 'cargo_delivery', stationId: 'station_helios',
+    destStationId: 'station_beltout', destSectorId: ceres, factionId: 'faction_mts',
+    params: { cmdtyId: good, qty: 4 }, title: 'Cross-sector freight', reward_cr: 800,
+    collateral_cr: 0, riskTier: 2, source: 'careerContract',
+  };
+  bus.emit('mission:offered', offer);
+  bus.emit('ui:acceptMission', { missionId: offer.id });
+  state.world.currentSectorId = ceres;
+  assert.equal(addCargo(state, good, 4), 4);
+  bus.emit('player:death', { recoverable: true, pos: { x: 777, z: -222 },
+    recovery: { cargoLosses: [{ commodityId: good, qty: 2 }] } });
+  const successor = state.missions.active.find(row => row.mutationTag === 'recovery');
+  assert.ok(successor);
+  assert.equal(successor.objectiveTarget, 2);
+  // This test drives the mission owner directly. Production defeat removes the actual hold
+  // contents before the player can fly the recovery leg.
+  removeCargo(state, good, state.player.cargo.items[good] || 0);
+
+  state.world.currentSectorId = helios;
+  owner.trackMission(successor.id);
+  assert.equal(state.nav.waypoint.sectorId, ceres);
+  assert.equal(state.nav.waypoint.stationId, null);
+  assert.equal(state.nav.waypoint.pos, null);
+
+  state.world.currentSectorId = ceres;
+  owner.trackMission(successor.id);
+  assert.deepEqual(state.nav.waypoint.pos, { x: 777, z: -222 });
+  const wreck = { id: 7010, type: 'wreck', pos: { x: 777, z: -222 } };
+  state.entities.set(wreck.id, wreck);
+  bus.emit('salvage:completed', { wreckId: wreck.id, loot: { [good]: 2 } });
+  assert.equal(successor.objectiveProgress, 2);
+  assert.deepEqual(state.nav.waypoint.pos, { x: 777, z: -222 });
+
+  assert.equal(addCargo(state, good, 1), 1);
+  owner.trackMission(successor.id);
+  assert.deepEqual(state.nav.waypoint.pos, { x: 777, z: -222 });
+  assert.equal(addCargo(state, good, 1), 1);
+  owner.trackMission(successor.id);
+  assert.equal(state.nav.waypoint.sectorId, helios);
+  assert.equal(state.nav.waypoint.stationId, 'station_helios');
 });
 
 function missionSystemFor(state, bus) {

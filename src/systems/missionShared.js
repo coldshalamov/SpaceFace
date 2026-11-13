@@ -571,6 +571,11 @@ export function isMutationRecovery(m) {
   return tag === 'salvage' || tag === 'recovery' || tag === 'cooked';
 }
 
+export function mutationRecoveryTarget(params) {
+  const qty = Number(params?.qty);
+  return Number.isFinite(qty) ? Math.max(1, Math.floor(qty)) : 1;
+}
+
 /**
  * INF-069: the convoy client's three-state arc, bound to live settlement — never to intent.
  * `recovering` answers the first salvage credit; `completed` answers the dock (full thanks
