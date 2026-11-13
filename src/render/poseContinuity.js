@@ -33,6 +33,8 @@ export const POSE_CONTINUITY_DECAY_S = 0.12;
 export const POSE_CONTINUITY_VEL_TAU_S = 0.15;
 /** Same absorb threshold on the yaw channel. */
 export const POSE_CONTINUITY_YAW_JUMP_RAD = (2 * Math.PI) / 180;
+// Covers the fastest hull's 6.5 rad/s with both targeting and coast steering assist.
+const POSE_CONTINUITY_YAW_RATE_RAD_S = 12;
 /**
  * While the carried offset heals, the drawn pose may drift back toward the raw stream —
  * but only at a crawl, so a heal never reads as the flicker this module exists to hide.
@@ -191,18 +193,23 @@ export function createPoseContinuity() {
         rec.oz += fz * along + fx * across;
         if (settle && Math.abs(rec.ox) + Math.abs(rec.oz) < 1e-9) rec.ox = rec.oz = 0;
       }
-      // Heading: same absorb-and-heal on the yaw channel, wrap-aware.
-      const ivYaw = wrapPi(rYaw - rec.rawYaw) / dt;
+      // Apply the discontinuity test to the raw step. A difference from the predicted
+      // heading alone also fires on ordinary turn input and can keep renewing a lag.
+      const rawYawStep = wrapPi(rYaw - rec.rawYaw);
+      const ivYaw = rawYawStep / dt;
       const wasYawVelSeeded = rec.yawVelSeeded;
-      if (!wasYawVelSeeded) {
-        rec.vyaw = ivYaw; rec.yawVelSeeded = true;
-      }
-      const eYaw = rec.yaw + rec.vyaw * dt;
-      const jYaw = wrapPi(rYaw - eYaw);
-      if (Math.abs(jYaw) > POSE_CONTINUITY_YAW_JUMP_RAD) {
-        rec.oyaw = wrapPi(eYaw - rYaw);
+      const yawJump = Math.abs(rawYawStep) > Math.max(
+        POSE_CONTINUITY_YAW_JUMP_RAD, POSE_CONTINUITY_YAW_RATE_RAD_S * dt,
+      );
+      if (yawJump) {
+        const predicted = rec.yaw + (wasYawVelSeeded ? rec.vyaw * dt : 0);
+        rec.oyaw = wrapPi(predicted - rYaw);
       } else {
         rec.oyaw *= decay;
+        if (!wasYawVelSeeded) {
+          rec.vyaw = ivYaw;
+          rec.yawVelSeeded = true;
+        }
       }
       // The frame's raw deltas now join the smoothed estimates for the NEXT frame.
       const k = 1 - Math.exp(-dt / POSE_CONTINUITY_VEL_TAU_S);
@@ -210,7 +217,7 @@ export function createPoseContinuity() {
         rec.vx += (ivx - rec.vx) * k;
         rec.vz += (ivz - rec.vz) * k;
       }
-      if (wasYawVelSeeded) rec.vyaw += (ivYaw - rec.vyaw) * k;
+      if (wasYawVelSeeded && !yawJump) rec.vyaw += (ivYaw - rec.vyaw) * k;
       rec.x = x + rec.ox;
       rec.z = z + rec.oz;
       rec.yaw = wrapPi(rYaw + rec.oyaw);

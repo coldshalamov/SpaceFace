@@ -167,6 +167,27 @@ test('yaw absorbs a heading snap and heals wrap-aware', () => {
   cont.sample(7, 0, 0, snapped, DT, o);
   assert.ok(Math.abs(o.yaw - (yaw + RATE * DT)) < 0.05,
     `drawn yaw ${o.yaw} continues the turn instead of snapping to ${snapped}`);
+
+  for (let n = 0; n < 90; n++) cont.sample(7, 0, 0, snapped, DT, o);
+  assert.ok(Math.abs(wrap(o.yaw - snapped)) < 0.01,
+    `stationary drawn yaw ${o.yaw} must rejoin the corrected heading ${snapped}`);
+});
+
+test('a normal powered turn and stop do not drag the drawn heading past the ship', () => {
+  const cont = createPoseContinuity();
+  const o = out();
+  const dt = 1 / 30;
+  let yaw = 2;
+  for (let n = 0; n < 30; n++) cont.sample(7, 0, 0, yaw, dt, o);
+  for (let n = 0; n < 30; n++) {
+    yaw = wrap(yaw + 3.6 * dt);
+    cont.sample(7, 0, 0, yaw, dt, o);
+    assert.ok(Math.abs(wrap(o.yaw - yaw)) < 1e-6, `turn frame ${n}: ${o.yaw} vs ${yaw}`);
+  }
+  for (let n = 0; n < 30; n++) {
+    cont.sample(7, 0, 0, yaw, dt, o);
+    assert.ok(Math.abs(wrap(o.yaw - yaw)) < 1e-6, `stop frame ${n}: ${o.yaw} vs ${yaw}`);
+  }
 });
 
 test('a heading through the ±pi seam is not mistaken for a snap', () => {
