@@ -1,10 +1,11 @@
 // SFQ-B202 — one sentence for the next flight decision. Empty when the picture is quiet,
-// so a healthy cluster does not grow a caption. Reads a cluster model; writes nothing.
+// so a healthy cluster does not grow a caption. Danger tier: each line is short enough for one
+// row under the instruments (a second row clips off the bottom of a 720-high screen). Reads a cluster model; writes nothing.
 
-const HULL_BREAK = 'Hull critical — disengage and repair at a station';
-const SHIELD_DOWN = 'Shield is down — keep the next hit off the hull';
+const HULL_BREAK = 'Hull critical — disengage';
+const SHIELD_DOWN = 'Shield down — protect the hull';
 const GUN_HOT = 'Ease fire — the gun is hot';
-const ORDNANCE_EMPTY = 'Ordnance is empty — restock at a station';
+const ORDNANCE_EMPTY = 'Out of ordnance — restock';
 
 export const NEXT_DECISION_CLASS = 'orr-cluster__next';
 

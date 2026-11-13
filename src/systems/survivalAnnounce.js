@@ -1058,6 +1058,9 @@ export const survivalAnnounce = {
   _tryCounterHint(enemyId) {
     if (this._hintedEnemyIds.has(enemyId)) return;
     if (this._hintsThisWave >= MAX_HINTS_PER_WAVE) return;
+    // The boss is on the field: its card and bar are the one callout. A tip about a lesser hull
+    // waits for a calmer wave (not marked as told) instead of talking over the boss.
+    if (this._bossAnnouncedWave === this._wave) return;
     const text = hintTextFor(enemyId, this.state);
     if (!text) return;
     // 'tutorial' (70) — voiceArbiter.js:40 calls this channel "first-hour teaching", which is

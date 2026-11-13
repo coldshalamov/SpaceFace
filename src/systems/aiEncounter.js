@@ -462,7 +462,7 @@ export const aiEncounter = {
         key: `reinforcements_inbound_${command.seq}`, sev: 'warn',
         text: 'HOSTILE REINFORCEMENTS INBOUND', ttl: 2.5,
       });
-      emit(this.bus, 'toast', { text: 'Hostile reinforcements inbound!', kind: 'warn', ttl: 2.5 });
+      // One voice: the alert above says it; a second toast with the same sentence was a duplicate.
     }
   },
 

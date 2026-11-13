@@ -41,6 +41,7 @@ const SHATTER_TTL_S = 1.7;
 // Two announcer lines at most: the centre column is one flow (see the CSS), and two lines plus
 // one beat keep it clear of the ship at 1280x720. A third arrival retires the oldest line.
 const MAX_CALL_LINES = 1;
+const NEXT_MARK_REACH = 8;
 // Higher speaks over lower. Boss beats outrank kill words; counted repeats and small receipts
 // (a close call, a pile-up tick) never talk over a bigger moment.
 const CALL_PRIORITY = Object.freeze({ bossdown: 5, bossact: 4, overdrive: 3, chainstar: 3,
@@ -80,9 +81,12 @@ export function swarmSlamSub({ boss = null, newcomer = null } = {}) {
 export function swarmHeroTierText(chain) {
   const tier = swarmChainTier(chain);
   const next = swarmChainNextTier(chain);
-  if (tier && next) return `${tier.name} · next ${next.name} ${next.at}`;
+  // The chase target only speaks when it is within reach (the player can act on it); a far
+  // mark is noise in the centre column.
+  const close = next && next.at - (Number(chain) || 0) <= NEXT_MARK_REACH;
+  if (tier && close) return `${tier.name} · next ${next.name} ${next.at}`;
   if (tier) return tier.name;
-  if (next) return `next ${next.name} ${next.at}`;
+  if (close) return `next ${next.name} ${next.at}`;
   return '';
 }
 

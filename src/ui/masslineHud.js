@@ -1685,7 +1685,7 @@ export const masslineHud = {
     const thrown = isQuickThrowVerdict(state, verdict);
     const displayGrade = thrown ? 'good' : grade;
     const text = releaseVerdictCopy(thrown ? { ...verdict, quickThrow: true } : verdict,
-      { plain: isAdventureFlight(state) });
+      { plain: isAdventureFlight(state) || isSwarmGlass(state) });
     const placed = placeHudBracketWords(this, dom.previewEl, text,
       { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     setStyle(dom.previewMark, 'display', 'block');

@@ -934,6 +934,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       // narrator and sense lines are quieter (1) and give way to a live higher word.
       if (!claimCalloutVoice(`stunt:${line.key}`, FIRST_BEAT_NAMES.has(line.name) ? 3 : 1, CALLOUT_TTL_MS)) return;
       if (FIRST_BEAT_NAMES.has(line.name)) firstBeatsSaid.add(line.name);
+      // The first-beat word is one word; the speed figure belongs to the details surfaces.
+      if (FIRST_BEAT_NAMES.has(line.name)) line = { ...line, detail: '' };
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
       sr.textContent = spoken;

@@ -71,6 +71,7 @@ import { createForkInstrument } from './forkInstrument.js';
 import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
+import { isSwarmGlass } from './swarmGlass.js';
 import { targetBracketShape } from './targetBracket.js';
 import { flightBearingAngle, resolveFlightEdgePlacement, resolveSelectedTargetMarker } from './flightViewProjection.js';
 import { resolveSteeringView } from '../systems/racingSteer.js';
@@ -1411,6 +1412,25 @@ export function doctrineTellKind(payload) {
   const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
   if (byKind) return byKind;
   return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
+}
+
+const TELL_URGENCY = Object.freeze({ INCOMING: 3, LAUNCH: 2 });
+/** The one tell that speaks: most urgent kind, nearest carrier; `count` = live tells of that kind. */
+function pickLeadTell(slots, state) {
+  const me = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  let best = null;
+  let bestRank = -1;
+  let bestD = Infinity;
+  const counts = new Map();
+  for (const slot of slots) {
+    if (slot.age >= Infinity) continue;
+    counts.set(slot.tellId, (counts.get(slot.tellId) || 0) + 1);
+    const rank = TELL_URGENCY[slot.tellId] || 1;
+    const ent = state.entities && state.entities.get ? state.entities.get(slot.entityId) : null;
+    const d = me && me.pos && ent && ent.pos ? Math.hypot(ent.pos.x - me.pos.x, ent.pos.z - me.pos.z) : 0;
+    if (rank > bestRank || (rank === bestRank && d < bestD)) { best = slot; bestRank = rank; bestD = d; }
+  }
+  return best ? { slot: best, count: counts.get(best.tellId) } : null;
 }
 
 function rectsOverlap(a, b) {
@@ -3374,6 +3394,10 @@ export function createHud(ctx, alerts) {
       .map(row => ({ x: row.left, y: row.top, width: row.width, height: row.height }));
     const measuredLeft = objectiveEdgeObstacles().left;
     if (measuredLeft) reserved.push(measuredLeft);
+    // Danger tier in a Swarm round: ONE line (20_THE_FIRST_HOUR rule 2). Live tells of one kind
+    // merge into the nearest carrier's chip with a count; of several kinds only the most urgent
+    // kind speaks (a thrown mass outranks a launch, which outranks the rest).
+    const lead = isSwarmGlass(state) ? pickLeadTell(tellSlots, state) : null;
     for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
       const slot = tellSlots[slotIndex];
       if (slot.age >= Infinity) continue;
@@ -3381,6 +3405,12 @@ export function createHud(ctx, alerts) {
       if (tick > slot.expiresAtTick) { retireTell(slot); continue; }
       const ent = state.entities && state.entities.get && state.entities.get(slot.entityId);
       if (!ent || ent.alive === false || !ent.pos) { retireTell(slot); continue; }
+      if (lead) {
+        if (slot !== lead.slot) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
+        const label = lead.count > 1 ? `${slot.tellId} ×${lead.count}` : slot.tellId;
+        setText(slot.kindEl, label);
+        setText(slot.hintEl, DOCTRINE_TELL_HINT[slot.tellId] || '');
+      }
       if (!w2s) {
         // The shared live-region announcement remains available, but a visual chip without an
         // authoritative projection would lie about direction and therefore stays hidden.

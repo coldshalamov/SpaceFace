@@ -2768,6 +2768,17 @@ function swarmThreatGlyphGeometry() {
   for (let i = 1; i < upper.length; i++) shape.lineTo(upper[i][0], upper[i][1]);
   for (let i = upper.length - 1; i >= 1; i--) shape.lineTo(upper[i][0], -upper[i][1]);
   shape.closePath();
+  // An OUTLINE, not a filled sticker: the hull's own lit model reads through the fighter, and
+  // the glyph is a crisp contour of it (the shape still says "hostile fighter" without colour).
+  // The hole is the same silhouette inset toward its centre.
+  const INSET = 0.8;
+  const cx = 0.08;
+  const hole = new THREE.Path();
+  hole.moveTo(cx + (upper[0][0] - cx) * INSET, 0);
+  for (let i = upper.length - 1; i >= 1; i--) hole.lineTo(cx + (upper[i][0] - cx) * INSET, -upper[i][1] * INSET);
+  for (let i = 1; i < upper.length; i++) hole.lineTo(cx + (upper[i][0] - cx) * INSET, upper[i][1] * INSET);
+  hole.closePath();
+  shape.holes.push(hole);
   return new THREE.ShapeGeometry(shape);
 }
 
@@ -2929,7 +2940,7 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     // painted after the rim would cover it whole. 11.98 < rim's 12 — the
     // under-plate always paints first.
     const under = new THREE.Mesh(
-      getGeometry('swarm:threat-under', () => new THREE.RingGeometry(0.86, 1.05, 48)),
+      getGeometry('swarm:threat-under', () => new THREE.RingGeometry(0.9, 1.03, 48)),
       getMaterial('swarm:threat-under', () => new THREE.MeshBasicMaterial({
         color: 0x5a0f18,
         side: THREE.DoubleSide,
