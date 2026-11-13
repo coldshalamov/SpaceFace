@@ -254,3 +254,14 @@ Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
 - `fe46207e4035` accepted for probe wiring. The launcher check answers First Light, the Circuits actor can choose Time Trial, and the turn probe releases its held key.
 
 Codex used `economy_perf`, `backend_recon` and `sim_hotpath` for separate navigation, new plant, and simulation/presentation owners. No Devin launches. Opus retained visual ownership and the live lock during his captures. The main-thread and worker route evidence, patch measurements, and runnable pending checks are in `QUALITY.md`. Node tests confirmed the owner changes. Live acceptance and sustained cadence remain open.
+
+### Playtest pause
+
+- 5faee660d029 accepted. The main presentation read no longer shifts worker-owned poses or writes world records.
+- 2be4e430d105 accepted. The interruption fixture uses the shipped Space boost binding.
+- e9fd39b0eb63 accepted. Refused native physics startup now reaches Retry/Back.
+- 052899aebd10 fixed. A patrol side impact cannot file a player warrant. A real ram still does.
+- a73aee08fa79 accepted. Matched 60-ship native steps took 326.3 to 287.5 ms over 360 ticks. Replay v27 matched.
+- e8cce95972ea fixed. Temporary Circuits skip Adventure story and traffic and restore campaign rules on Continue. Fifteen focused checks passed.
+- Workers in this slice were the existing Codex backend_recon, economy_perf and sim_hotpath agents. No Devin worker was launched.
+- Windows crash recovery, Quit and relaunch passed, as did two public F5/F9 cycles and the live turn/release comparison. The next work is the intermittent native hidden/minimized first-picture hold, cold Ceres Continue asset admission, Swarm gate rerun, and post-fix Circuits F8 and finish. The active board and QUALITY.md carry the evidence and commands. Codex game probes have stopped for the owner's playtest.
