@@ -99,6 +99,8 @@ export function runRenderUpdatePhase({
     return false;
   }
 
+  if (splitRender && presentationFrame) presentationFrame.worldSubmitted = false;
+
   // A stage cannot cover a flight/loading or Photo picture in the one GL context.
   if (uiStageResident() && state && (state.mode === 'flight' || state.mode === 'loading' || photoFrame)) {
     releaseUiStage(photoFrame ? 'photo-entered' : state.mode === 'loading' ? 'loading-started' : 'flight-resumed');
@@ -159,6 +161,7 @@ export function runRenderUpdatePhase({
       if (!renderError && renderedPreparedScene) {
         if (worldDrawFollows) warmUiStagePrewarm({ render, state });
         const submitted = render.drawPreparedFrame();
+        if (presentationFrame) presentationFrame.worldSubmitted = submitted === true;
         if (submitted === true) publishSceneTruthPlayStep(render);
       }
     } catch (err) {

@@ -129,6 +129,52 @@ test('restore stamps the worker pause boundary with the new lifecycle generation
   controller.destroy();
 });
 
+test('returning to unobscured flight keeps the worker suspended until the renderer submits a picture', () => {
+  const raf = createRaf();
+  const listeners = new EventTarget();
+  const visibility = Object.assign(listeners, { visibilityState: 'visible' });
+  const state = { mode: 'flight', accumulator: 0, timeScale: 1, tick: 0, simTime: 0 };
+  const transitions = [];
+  let submitted = false;
+  const registry = {
+    renderUpdate(_alpha, _dt, frame) {
+      frame.worldSubmitted = submitted;
+      return true; // the renderer consumed the journal even while the draw was unavailable
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: {
+      ...createStubSimulationRunner([], []),
+      clockOwner: 'worker-local',
+      setClockActive(active, reason) { transitions.push({ active, reason }); },
+    },
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: visibility,
+    lifecyclePort: null,
+  });
+  try {
+    visibility.visibilityState = 'hidden';
+    visibility.dispatchEvent(new Event('visibilitychange'));
+    visibility.visibilityState = 'visible';
+    visibility.dispatchEvent(new Event('visibilitychange'));
+    raf.flushOne(1016);
+    assert.equal(controller.getLifecycleState(), 'restoring');
+    assert.equal(transitions.at(-1).active, false);
+    assert.equal(controller.getDiagnostics().restoreFrameCount, 0);
+
+    submitted = true;
+    raf.flushOne(1032);
+    assert.equal(controller.getLifecycleState(), 'foreground-visible');
+    assert.deepEqual(transitions.at(-1), { active: true, reason: 'restore-frame-complete' });
+    assert.equal(controller.getDiagnostics().restoreFrameCount, 1);
+  } finally {
+    controller.destroy();
+  }
+});
+
 test('every callback simulates the time that passed and then presents it; the order never flips', () => {
   const raf = createRaf();
   const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };

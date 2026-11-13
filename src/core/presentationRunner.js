@@ -15,7 +15,7 @@ import {
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
 import { autoPresentationCapFor, resolveFrameCap } from '../render/adaptiveQuality.js';
-import { shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { shouldSkipFlightDraw, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
 import { createTimeEffects, readTimeEffectsRequests } from './timeEffects.js';
@@ -314,6 +314,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // Unclamped rAF delta for this present. Presentation consumes the loop-clamped frameDt;
     // the fence uses this only to recognise a hidden-tab/occlusion re-entry (E1).
     rawFrameDt: 0,
+    worldSubmitted: null,
     alpha: 0,
     lifecycleState,
     lifecycleGeneration,
@@ -1250,6 +1251,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     presentationFrame.sequence++;
     presentationFrame.frameDt = frameDt;
     presentationFrame.rawFrameDt = rawFrameDt;
+    presentationFrame.worldSubmitted = null;
     if (state && state.render) {
       // The presented interval is wall time since the last present, not the last rAF callback.
       // At a 30 Hz cap the callback dt is 16.7 ms while the picture cadence is 33.3 ms.
@@ -1280,13 +1282,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       diagnostics.lastPresentMs = presentationMs;
       perf.recordPresentationFrame?.(presentationMs);
     }
-    if (presentationAccepted && typeof deps.onPresented === 'function') {
+    const worldSubmitted = presentationAccepted && presentationFrame.worldSubmitted !== false;
+    if (worldSubmitted && typeof deps.onPresented === 'function') {
       try { deps.onPresented(); } catch { /* the paint-freshness hook is best-effort */ }
     }
     // P7: the first presented frame whose completed tick consumed a newer input command is that
     // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is
     // measurement only and never enters sim state.
-    if (presentationAccepted && completedTickCount > 0
+    if (worldSubmitted && completedTickCount > 0
       && latestCompletedTick.inputCommandSeq > lastPhotonInputSeq
       && latestCompletedTick.inputWallMs > 0) {
       perf.recordInputToPhoton?.(Math.max(0, measureNow() - latestCompletedTick.inputWallMs),
@@ -1305,7 +1308,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
     else if (presentationAccepted) acknowledgePresentedJournal();
     else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
-    return presentationMs;
+    return worldSubmitted;
   }
 
   // Warm sim steps behind the veil (see advanceSimulation): one per presented frame, at most
@@ -1392,6 +1395,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     const callbackStart = measureNow();
     let perf = null;
     let renderedSnapshot = false;
+    let completedPresentation = false;
     let frameDt = restoring ? 0 : (now - last) / 1000;
     if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = 0;
     // Raw rAF delta before the loop's safety clamp. The frame-truth FPS/hitch summary must
@@ -1534,8 +1538,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         try {
           presentationFrame.presentElapsedS = presentedElapsedS;
           presentedElapsedS = 0;
-          presentationMs = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt);
-          renderedSnapshot = true;
+          renderedSnapshot = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt);
+          presentationMs = diagnostics.lastPresentMs;
+          completedPresentation = true;
         } catch (error) {
           presentationError = error;
           presentationMs = diagnostics.lastPresentMs || 0;
@@ -1777,7 +1782,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // transition after its audio/listener/transport owners have already been destroyed.
       if (!mustRescheduleAfterFrame({ destroyed })) return;
       if (destroyed) return;
-      if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
+      // A paused, loading, or blacked-out scene can legitimately skip a world draw. A refused
+      // draw in uncovered flight must first recover its picture before the worker moves ahead.
+      const restoreReady = renderedSnapshot || (restoring && completedPresentation
+        && (presentationFrame.worldSubmitted === null || state.mode !== 'flight'
+          || shouldSkipFullTickSystems(state) || shouldSkipFlightDraw(state)));
+      if (restoring && restoreReady && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
         diagnostics.restoreFrameCount++;
         diagnostics.restoreTarget = null;
         setAudioLifecycle('resumeFromLifecycle', 'restore-frame-complete');

@@ -124,3 +124,14 @@ test('empty screen stack keeps submitting the resident flight scene', () => {
   assert.equal(accepted, true);
   assert.deepEqual(ctx.calls, ['prepare', 'vfx', 'draw', 'feel', 'ui']);
 });
+
+test('a refused world draw still consumes the journal without reporting a submitted picture', () => {
+  const ctx = phase();
+  const frame = { worldSubmitted: null };
+  ctx.render.drawPreparedFrame = () => false;
+  assert.equal(runRenderUpdatePhase({ ...ctx, presentationFrame: frame }), true);
+  assert.equal(frame.worldSubmitted, false);
+  ctx.render.drawPreparedFrame = () => true;
+  assert.equal(runRenderUpdatePhase({ ...ctx, presentationFrame: frame }), true);
+  assert.equal(frame.worldSubmitted, true);
+});
