@@ -216,6 +216,9 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   isolated teardown needed the exact-child fallback. The opened screenshot and native receipt
   are `flight-holds-timeout-ledger-shell.png` and `flight-holds-owner-ledger-shell.json` under
   `.devshots/fleet/coordination/whole-game/`. Capture native state on any future opening stall.
+  The next public launch was already visible and focused at flight entry. Pause held tick 66
+  and native minimize held tick 178. Both advanced simulation, drew the world and accepted
+  thrust after return. Both PNGs were opened. Cleanup passed. See `flight-holds-owner-native-resume.json`.
 - `64092aa260a1` and `15f2694cd228` capture the same held thrust, turn and primary-fire workload
   in cadence, worker CPU and Chrome scheduling traces. Use `combined-input-trace.mjs` under
   `.devshots/fleet/coordination/` with the locked steady-flight probe. Keep the timing of actual
