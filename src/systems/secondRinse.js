@@ -2,6 +2,7 @@
 // Sim only. The sheet is a rectangle, not an entity, and it is never cargo.
 
 import { makeShipEntitySpec } from './ships.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
   LINES,
   SECOND_RINSE as C,
@@ -22,13 +23,6 @@ const owners = new WeakMap();
 
 function playerOf(state) {
   return state?.entities?.get(state.playerId) || null;
-}
-
-function findSkiff(state) {
-  for (const e of state.entityList || []) {
-    if (e && e.alive !== false && e.data?.worldRecordId === C.worldRecordId) return e;
-  }
-  return null;
 }
 
 export const secondRinseEncounter = Object.freeze({
@@ -79,7 +73,7 @@ export const secondRinse = {
   place() {
     const state = this.state;
     if (!this._home()) return null;
-    const existing = findSkiff(state);
+    const existing = indexedWorldRecordEntity(state, C.worldRecordId);
     if (existing) return existing;
     const pocket = secondRinsePocket();
     if (!pocket || !this.helpers?.spawnEntity) return null;
@@ -124,7 +118,7 @@ export const secondRinse = {
     if (this.helpers?.removeEntity && e.alive !== false) this.helpers.removeEntity(e.id);
   },
   _shelf() {
-    const e = findSkiff(this.state);
+    const e = indexedWorldRecordEntity(this.state, C.worldRecordId);
     if (e && this.helpers?.removeEntity) this.helpers.removeEntity(e.id);
     this._resetContact();
   },
@@ -150,7 +144,7 @@ export const secondRinse = {
     this._lastVoice = this.state.simTime || 0;
   },
   _cue(id) {
-    const e = findSkiff(this.state);
+    const e = indexedWorldRecordEntity(this.state, C.worldRecordId);
     this.bus?.emit?.('audio:cue', { id, position: e ? { x: e.pos.x, z: e.pos.z } : undefined });
   },
   _tickContact(skiff) {
@@ -166,21 +160,34 @@ export const secondRinse = {
     const continuous = prior?.player === player && prior?.skiff === skiff
       && simTime >= prior.time && simTime - prior.time <= 0.1;
     const prev = continuous ? prior.pos : player.pos;
-    const blue = localsToWorld(origin, rot, blueSheetLocal(simTime, flag));
-    const onBlue = flag === 'open' && circleHitsPoly(player.pos.x, player.pos.z, radius, blue);
-    const sweptBlue = flag === 'open' && continuous && sweptCircleHitsPoly(prev, player.pos, radius, blue);
+    // Every sheet and the cord lie inside the hail radius for every heading and whip phase.
+    // Even when both endpoints are outside, a fast pass through the pocket still tests contact.
+    const reach = C.hailRadius + Math.abs(radius);
+    const testContact = flag === 'open'
+      && Math.min(prev.x, player.pos.x) <= origin.x + reach
+      && Math.max(prev.x, player.pos.x) >= origin.x - reach
+      && Math.min(prev.z, player.pos.z) <= origin.z + reach
+      && Math.max(prev.z, player.pos.z) >= origin.z - reach;
+    let onBlue = false;
+    let sweptBlue = false;
     let onWhite = false;
-    if (flag === 'open') {
+    let cordCut = false;
+    if (testContact) {
+      const blue = localsToWorld(origin, rot, blueSheetLocal(simTime, flag));
+      onBlue = circleHitsPoly(player.pos.x, player.pos.z, radius, blue);
+      sweptBlue = continuous && sweptCircleHitsPoly(prev, player.pos, radius, blue);
       for (let i = 0; i < 3; i++) {
         const sheet = localsToWorld(origin, rot, whiteSheetLocal(i));
         if (circleHitsPoly(player.pos.x, player.pos.z, radius, sheet)
           || (continuous && sweptCircleHitsPoly(prev, player.pos, radius, sheet))) { onWhite = true; break; }
       }
+      if (continuous) {
+        const pin = pinCordLocal();
+        const a = localToWorld(origin, rot, pin.a);
+        const b = localToWorld(origin, rot, pin.b);
+        cordCut = sweptCircleHitsSegment(prev, player.pos, radius, a, b);
+      }
     }
-    const pin = pinCordLocal();
-    const a = localToWorld(origin, rot, pin.a);
-    const b = localToWorld(origin, rot, pin.b);
-    const cordCut = flag === 'open' && continuous && sweptCircleHitsSegment(prev, player.pos, radius, a, b);
     const hit = continuous ? secondRinseResolve(flag, {
       overlapsBlue: onBlue || sweptBlue,
       wasOnBlue: this._wasOnBlue,

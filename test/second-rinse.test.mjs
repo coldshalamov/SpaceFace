@@ -179,6 +179,14 @@ test('load, dock and sector placements never sweep an old path through the cord'
   assert.equal(f.state.entityList.filter(e => e.alive && e.data?.secondRinseId).length, 0);
 });
 
+test('a swept pass reaches the cord even with both endpoints outside the pocket', () => {
+  const f = fixture();
+  f.at(-400, 26); f.step();
+  assert.equal(f.state.secondRinse.flag, 'open');
+  f.at(400, 26); f.step();
+  assert.equal(f.state.secondRinse.flag, 'cut');
+});
+
 test('laundry keeps the admitted Forge hull visible and resets after a saved cut', () => {
   const f = fixture(), root = new THREE.Group(), hull = new THREE.Group();
   hull.name = 'admitted-forge-hull'; root.add(hull);
