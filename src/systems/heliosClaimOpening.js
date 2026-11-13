@@ -1,6 +1,7 @@
 // One first-visit opportunity in the EXISTING Helios claim, not a tutorial or a board job.
 // Traffic's authored survey chain makes the claim available; fieldDepletion/mining own work and save memory.
 import { openRichSeamOpportunity, richSeamOpportunityReadout } from './fieldDepletion.js';
+import { indexedTypeScan, isFieldRockEntity } from '../world/livingWorldViews.js';
 
 export const HELIOS_CLAIM_OPENING = Object.freeze({
   sectorId: 'sector_helios_prime', fieldId: 'f_helios_starter',
@@ -11,6 +12,45 @@ export const HELIOS_CLAIM_OPENING = Object.freeze({
 
 const visualEpochs = new WeakMap();
 let nextVisualEpoch = 0;
+const fieldFaces = new WeakMap();
+
+function isHeliosClaimFace(rock) {
+  return rock?.data?.fieldId === HELIOS_CLAIM_OPENING.fieldId
+    && rock.data.activityObjectSlotId === HELIOS_CLAIM_OPENING.slotId;
+}
+
+/** Resolve the authored face without reading every dormant rock on each traffic update. */
+export function findHeliosClaimFace(state) {
+  const field = state.world?.asteroidField;
+  let face = null;
+  if (Array.isArray(field?.rocks)) {
+    let entry = Number.isFinite(field.version) ? fieldFaces.get(field) : null;
+    if (!entry || entry.version !== field.version || entry.roster !== field.rocks) {
+      entry = { version: field.version, roster: field.rocks, matches: field.rocks.filter(isHeliosClaimFace) };
+      if (Number.isFinite(field.version)) fieldFaces.set(field, entry);
+    }
+    for (const rock of entry.matches) {
+      if (rock.alive !== false && rock.liveEntityId == null) face = rock;
+    }
+  }
+  // The live view follows the compact records in canonical order. A promoted face
+  // wins, and its current pose and liveness are read on every visit.
+  const index = state.entityIndex;
+  if (index?.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byActivityObjectSlotId instanceof Map) {
+    const live = index.byActivityObjectSlotId.get(HELIOS_CLAIM_OPENING.slotId);
+    if (!live?.size) return face;
+    if (live.size === 1) {
+      const rock = live.values().next().value;
+      return isFieldRockEntity(rock) && rock.alive !== false && isHeliosClaimFace(rock) ? rock : face;
+    }
+    // Ambiguous slots retain the type bucket's order even if a restamp changed Set order.
+  }
+  for (const rock of indexedTypeScan(state, 'asteroids')) {
+    if (isFieldRockEntity(rock) && rock.alive !== false && isHeliosClaimFace(rock)) face = rock;
+  }
+  return face;
+}
 // A deferred presentation fact cannot cross deserialize/New Game into a new owner table.
 export function heliosClaimVisualEpoch(state) {
   const table = state?.fieldDepletion?.opportunities;

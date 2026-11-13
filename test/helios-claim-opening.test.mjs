@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { stepHeliosClaimOpening, isHeliosClaimCutter, heliosClaimAwaitingWitness, heliosClaimVisualEpoch, HELIOS_CLAIM_OPENING as D } from '../src/systems/heliosClaimOpening.js';
+import { findHeliosClaimFace, stepHeliosClaimOpening, isHeliosClaimCutter, heliosClaimAwaitingWitness, heliosClaimVisualEpoch, HELIOS_CLAIM_OPENING as D } from '../src/systems/heliosClaimOpening.js';
 import { claimRichSeamOpportunity, expireRichSeamOpportunities, openRichSeamOpportunity, richSeamOpportunityReadout, recordFieldExtraction, fieldDepletion } from '../src/systems/fieldDepletion.js';
 
 function fixture() {
@@ -43,6 +43,36 @@ test('ordinary approach opens one physical face with hints skipped, no waypoint 
   assert.equal(f.state.nav.waypoint.reason,'My route');
   assert.equal(f.events.filter(e=>e.type==='field:richSeamOpened').length,1);
   f.step(); assert.equal(f.events.length,3);
+});
+
+test('claim face lookup follows promotion, exhaustion and replaced field ledgers', () => {
+  const { face, state } = fixture();
+  const dormant = { ...face, pos: { x: 220, z: 0 } };
+  const field = { rocks: [dormant], version: 1 };
+  state.world.asteroidField = field;
+  state.entityList = [];
+  assert.equal(findHeliosClaimFace(state), dormant);
+
+  dormant.liveEntityId = face.id;
+  state.entityList.push(face);
+  assert.equal(findHeliosClaimFace(state), face);
+  const duplicate = { ...face, id: 3 };
+  const bucket = new Set([duplicate, face]);
+  state.entityIndex = { __spacefaceEntityIndexV1: true, ready: true,
+    byActivityObjectSlotId: new Map([[D.slotId, bucket]]), asteroids: [face, duplicate] };
+  assert.equal(findHeliosClaimFace(state), duplicate, 'ambiguous slots keep the live roster order');
+  bucket.delete(duplicate);
+  state.entityIndex.asteroids.pop();
+  assert.equal(findHeliosClaimFace(state), face);
+  face.alive = false;
+  assert.equal(findHeliosClaimFace(state), null);
+
+  const restored = { ...dormant, liveEntityId: null };
+  state.world.asteroidField = { rocks: [restored], version: 1 };
+  assert.equal(findHeliosClaimFace(state), restored);
+  state.world.asteroidField.rocks.length = 0;
+  state.world.asteroidField.version++;
+  assert.equal(findHeliosClaimFace(state), null);
 });
 test('unseen distance and optional rail do not burn the finite window',()=>{
   const f=fixture(); f.player.pos.x=1000; f.state.simTime=5000; assert.equal(f.step(),null);
@@ -127,7 +157,7 @@ test('early player may lawfully cut ordinary face: no bonus and no phantom first
 test('ordinary traffic update owns staging, not New Game hints or board acceptance',()=>{
   const traffic=fs.readFileSync(new URL('../src/systems/trafficCausalChainOps.js',import.meta.url),'utf8');
   const method=traffic.slice(traffic.indexOf('  _stepCeresCausalChain(dt)'),traffic.indexOf('  /** Test/support seam:'));
-  assert.match(method,/stepHeliosClaimOpening\(this/); assert.match(method,/forEachFieldRock/);
+  assert.match(method,/stepHeliosClaimOpening\(this/); assert.match(method,/findHeliosClaimFace\(this\.state\)/);
   assert.doesNotMatch(method,/mission:accepted|tutorial:finished|tutorialHints/);
 });
 
@@ -229,9 +259,10 @@ test('actual default Helios chain advances hunt→stake at20s, not an injected s
   const methods=vm.runInNewContext(declarations.slice(declarations.indexOf('export const trafficCausalChainOps =')).replace('export const ','const ')+';trafficCausalChainOps',{
     SECTOR_CAUSAL_CHAINS:new Map([[D.sectorId,spec]]),CERES_ACTIVITY_SECTOR_ID:'sector_ceres_belt',
     TETHYS_ACTIVITY_SECTOR_ID:'sector_tethys_junction',deferredEnterNow:s=>s.simTime,
-    stepHeliosClaimOpening,forEachFieldRock:(s,fn)=>{for(const e of s.entities.values())if(e.type==='asteroid')fn(e);},
+    stepHeliosClaimOpening,findHeliosClaimFace,
   });
   const f=fixture();delete f.owner._ceresCausal;
+  f.state.entityList = [f.face];
   Object.assign(f.owner,methods,{
     _emitCeresCausalReceipt(){},_stampCeresCausalCue(){},_applyCeresCausalJobHints(){},
     _ceresCausalRequiredActorsLive:()=>true,_ceresCausalRequiredActorsTerminallyGone:()=>false,_ceresCausalActorBySlot:()=>null,
