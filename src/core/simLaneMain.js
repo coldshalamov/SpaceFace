@@ -1868,6 +1868,7 @@ export function createSimLaneRuntime({
       watchFlight(commandFlight);
     }
     postLaneDirective(msg);
+    workerClockLastAckedSequence = Math.max(workerClockLastAckedSequence, msg.ackClockSequence);
   }
 
   function scheduleDomEventFlush() {

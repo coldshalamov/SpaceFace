@@ -1422,6 +1422,8 @@ test('worker-local ACK flushes an unsolicited timer reply while a command is in 
   const followUp = f.posts.at(-1);
   assert.equal(followUp.kind, 'clockCommand');
   assert.ok(followUp.commands.some((envelope) => envelope.t === 'dom'));
+  assert.equal(followUp.ackClockSequence, 2);
+  assert.equal(f.lane.getDiagnostics().workerClockLastAckedSequence, 2);
 });
 
 test('worker-local cumulative ACK preserves the newer journal end without a command reply', async (t) => {
