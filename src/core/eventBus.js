@@ -563,7 +563,9 @@ export function createBus() {
       head.index += 1;
       ran += 1;
       invokeBusListener(fn, head.payload, head.event, 'presentation handler error');
-      if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
+      // A listener can clear/rebind the bus or emit a burst that retires this slice.
+      // The queue head after that callback belongs to the new work.
+      if (queue[0] === head && head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
     if (ran > 0) notePacedFrameSpend(performance.now() - drainStart);

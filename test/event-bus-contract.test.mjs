@@ -478,6 +478,23 @@ test('clear() drops the presentation queue; a claimed bus keeps slicing after cl
   assert.deepEqual(seen, ['fresh'], 'the claim survives clear(): the runner still owns the frame pump');
 });
 
+test('a presentation listener that clears and rebinds the bus preserves the first fresh event', () => {
+  const bus = createBus();
+  const seen = [];
+  bus.claimPresentationDrain();
+  bus.on('e', () => {
+    seen.push('old');
+    bus.clear();
+    bus.on('e', () => seen.push('fresh'), { presentation: true });
+    bus.emit('e', null);
+  }, { presentation: true });
+  bus.emit('e', null);
+  bus.drainPresentationTail();
+  bus.drainPresentationTail();
+  assert.deepEqual(seen, ['old', 'fresh']);
+  assert.equal(bus.pendingPresentationCount(), 0);
+});
+
 test('clear() also drops the lifecycle priority queue', () => {
   const bus = createBus();
   bus.claimPresentationDrain();
