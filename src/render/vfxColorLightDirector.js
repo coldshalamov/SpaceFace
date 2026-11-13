@@ -30,12 +30,12 @@ const PRESETS = {
   muzzleExplosive: { color: '#ff8844', peak: 3.1, decay: 10, distance: 115, priority: 0.5 },
   muzzleTorpedo: { color: '#ff8844', peak: 4.4, decay: 10, distance: 160, priority: 0.55 },
 
-  explosion: { color: '#ffb05b', peak: 7.5, decay: 6, distance: 120, priority: 0.9 },
-  explosionCapital: { color: '#fff0c0', peak: 12.0, decay: 5.5, distance: 150, priority: 1.0 },
+  explosion: { color: '#ffb05b', peak: 7.5, decay: 6, distance: 200, priority: 0.9 },
+  explosionCapital: { color: '#fff0c0', peak: 12.0, decay: 5.5, distance: 260, priority: 1.0 },
   // Explosion severities — the phased/causal identities inside a destruction sequence.
   explosionIgnition: { color: '#fff0c0', peak: 7.5, decay: 11, distance: 120, priority: 0.85 },
-  explosionBurst: { color: '#ffa050', peak: 8.0, decay: 5.5, distance: 180, priority: 0.95 },
-  explosionBurstCapital: { color: '#ffa050', peak: 13.0, decay: 5.5, distance: 180, priority: 1.0 },
+  explosionBurst: { color: '#ffa050', peak: 8.0, decay: 5.5, distance: 260, priority: 0.95 },
+  explosionBurstCapital: { color: '#ffa050', peak: 13.0, decay: 5.5, distance: 300, priority: 1.0 },
   explosionCompression: { color: '#ffc080', peak: 6.4, decay: 12, distance: 100, priority: 0.8 },
   explosionShear: { color: '#dcecff', peak: 6.8, decay: 12, distance: 110, priority: 0.8 },
   explosionKineticIgnition: { color: '#fff0d0', peak: 5.8, decay: 11, distance: 110, priority: 0.8 },

@@ -2246,6 +2246,9 @@ export const vfx = {
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
     add(this._spriteBatches && this._spriteBatches.smoke.mesh);
     add(this._spriteBatches && this._spriteBatches.combustion.mesh);
+    if (this._spriteBatches && this._spriteBatches.flip) {
+      for (const key of ['fire', 'smoke', 'ring', 'spark', 'wisp']) add(this._spriteBatches.flip[key].mesh);
+    }
     add(this._explosionRupture && this._explosionRupture.mesh);
     if (this._miningBeam) { add(this._miningBeam.mesh); add(this._miningBeam.glow); }
     if (this._tetherCable) {
@@ -9253,6 +9256,17 @@ export const vfx = {
     const motionTime = masslineA11y.animateMotion ? visualTime : 0;
     const pulseTime = masslineA11y.animatePulse ? visualTime : 0;
     const px = -dz / chord, pz = dx / chord;   // chord perpendicular
+    if (live && chord > 30 && masslineA11y.animateMotion
+      && this._spriteBatches && this._spriteBatches.flip) {
+      const w = this._tetherWisp || (this._tetherWisp = { ax: 0, az: 0, bx: 0, bz: 0, r: 1, g: 1, b: 1, opacity: 0 });
+      const wl = Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth));
+      w.ax = ax; w.az = az; w.bx = bx; w.bz = bz;
+      // Cyan stays cyan; a working line warms the arc toward its load colour.
+      const warm = Math.max(0, (wl - 0.45) / 0.55);
+      w.r = 1 + warm * 0.6; w.g = 1 - warm * 0.35; w.b = 1 - warm * 0.7;
+      w.opacity = 0.35 + 0.65 * Math.max(wl, 0.25);
+      this._tetherWispLive = true;
+    }
 
     // Slack bow from REAL slack (restLength - distance): a line reeled longer than the gap hangs
     // lazy; a stretched line snaps straight. The bow lags the swing — it flips away from the
@@ -11519,7 +11533,7 @@ export const vfx = {
       this._integrateParticles(dt);
       sub.particles = 0;
     }
-    if (this._liveSpriteCount > 0) {
+    if (this._liveSpriteCount > 0 || this._tetherWispLive || this._tetherWispPublished) {
       this._integrateSprites(dt);
       sub.sprites = 1;
     } else {
@@ -15842,7 +15856,8 @@ export const vfx = {
   },
 
   _integrateSprites(dt) {
-    if (this._liveSpriteCount <= 0) {
+    if (this._liveSpriteCount <= 0 && !this._tetherWispLive) {
+      this._tetherWispPublished = false;
       // Quiet settled flight: vfx.update still calls integrate when live===0.
       // After one reset+commit(0) across 4 buckets, mesh.count is already 0 —
       // re-assert + bindings sweep is pure CPU. Soft-GPU fps not claimed.
@@ -15904,6 +15919,27 @@ export const vfx = {
         cursor++;
         continue;
       }
+      const flip = this._spriteBatches.flip;
+      if (flip && (s.kind === SPR_COMBUSTION || s.kind === SPR_RING || s.kind === SPR_FRESNEL)) {
+        // Authored flipbooks (LOOK-05C): the painted fireball / shock ring replaces the volume
+        // proxy; the square quad faces the camera and the sheet fills ~70% of its cell.
+        const fire = s.kind === SPR_COMBUSTION;
+        writeInstancedSpriteFields(
+          this._spriteBatches, fire ? 'flipFire' : 'flipRing',
+          s.x, s.y, s.z, scale * (fire ? 1.35 : 1.2), scale * (fire ? 1.35 : 1.2), scale * (fire ? 1.35 : 1.2),
+          s.roll, s.r, s.g, s.b, op, t, s.seed, s.axis,
+        );
+        cursor++;
+        continue;
+      }
+      if (flip && s.kind === SPR_FLASH) {
+        // Sparks and embers ride the flash glow: an authored burst, not just a soft disc.
+        writeInstancedSpriteFields(
+          this._spriteBatches, 'flipSpark',
+          s.x, s.y, s.z, scale * 1.5, scale * 1.5, scale * 1.5,
+          s.roll, s.r, s.g, s.b, op * 0.9, t, s.seed, s.axis,
+        );
+      }
       const bucketKind = s.kind === SPR_COMBUSTION
         ? 'combustion'
         : (s.kind === SPR_RING || s.kind === SPR_FRESNEL);
@@ -15960,6 +15996,14 @@ export const vfx = {
       const s = st[smokeOrder[orderIndex]];
       const t = s.age / s.life;
       const scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
+      if (this._spriteBatches.flip) {
+        writeInstancedSpriteFields(
+          this._spriteBatches, 'flipSmoke',
+          s.x, s.y, s.z, scale * 1.3, scale * 1.3, scale * 1.3,
+          s.roll, s.r, s.g, s.b, s.op0 + (s.op1 - s.op0) * t, t, s.seed, s.axis,
+        );
+        continue;
+      }
       writeInstancedSpriteFields(
         this._spriteBatches,
         'smoke',
@@ -15978,6 +16022,25 @@ export const vfx = {
         s.seed,
         s.axis,
       );
+    }
+    // Line energy (LOOK-05C): one authored plasma-arc flipbook stretched along the live cable,
+    // looping its crackle at ~14 fps; the cable shader keeps owning the rope itself.
+    const wisp = this._tetherWisp;
+    if (this._tetherWispLive && wisp && this._spriteBatches.flip && camera && camera.matrixWorldInverse) {
+      this._tetherWispLive = false;
+      const e = camera.matrixWorldInverse.elements;
+      const dx = wisp.bx - wisp.ax, dz = wisp.bz - wisp.az;
+      // Chord projected onto the camera's screen axes gives the in-plane roll.
+      const roll = Math.atan2(e[1] * dx + e[9] * dz, e[0] * dx + e[8] * dz);
+      const len = Math.hypot(dx, dz);
+      const crackle = (this._t * 14) % 1;
+      writeInstancedSpriteFields(
+        this._spriteBatches, 'flipWisp',
+        (wisp.ax + wisp.bx) * 0.5, 2, (wisp.az + wisp.bz) * 0.5,
+        len * 1.25, len * 1.25, Math.min(46, 16 + len * 0.12),
+        roll, wisp.r, wisp.g, wisp.b, wisp.opacity, crackle, 0, roll,
+      );
+      this._tetherWispPublished = true;
     }
     commitInstancedSpriteBuckets(this._spriteBatches);
   },
@@ -16542,7 +16605,10 @@ function disposeEnergyVolumeMaterials(group) {
 
 function spriteBucketValues(buckets) {
   if (!buckets) return [];
-  return [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion];
+  const flip = buckets.flip;
+  return flip
+    ? [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion, flip.fire, flip.smoke, flip.ring, flip.spark, flip.wisp]
+    : [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion];
 }
 
 function releaseVfxDynamicBufferOwner(owner) {

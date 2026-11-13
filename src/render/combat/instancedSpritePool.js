@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createVfxEventGeometry } from '../vfx/runtime/eventGeometry.js';
 import { createTransientDensityTexture, createTransientVfxMaterial } from './transientVfxMaterials.js';
+import { createFlipbookGeometry, createFlipbookMaterial, flipbooksAvailable, getFlipbookTexture } from './flipbookSprites.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -35,7 +36,31 @@ export function createInstancedSpriteBuckets(
     scene, 'combustion', safeCapacity, densityTexture, THREE.AdditiveBlending, 1.6,
   );
   scene.add(glow.mesh, ring.mesh, smoke.mesh, combustion.mesh);
-  return { glow, ring, smoke, combustion, capacity: safeCapacity };
+  const buckets = { glow, ring, smoke, combustion, capacity: safeCapacity };
+  // Authored flipbooks (LOOK-05C): present only where a DOM can load the sheets. Each family
+  // replaces the matching volume write; the volume buckets stay as the headless/fallback path.
+  if (flipbooksAvailable() && !flipbooksDisabled()) {
+    buckets.flip = {
+      fire: createBucket(scene, 'flipFire', safeCapacity, getFlipbookTexture('fire'), THREE.AdditiveBlending, 1, 'fire'),
+      smoke: createBucket(scene, 'flipSmoke', safeCapacity, getFlipbookTexture('smoke'), THREE.NormalBlending, 1, 'smoke'),
+      ring: createBucket(scene, 'flipRing', safeCapacity, getFlipbookTexture('ring'), THREE.AdditiveBlending, 1, 'ring'),
+      spark: createBucket(scene, 'flipSpark', safeCapacity, getFlipbookTexture('spark'), THREE.AdditiveBlending, 1, 'spark'),
+      // One crackling Line arc at a time; a tiny bucket keeps its buffers negligible.
+      wisp: createBucket(scene, 'flipWisp', 4, getFlipbookTexture('wisp'), THREE.AdditiveBlending, 1, 'wisp'),
+    };
+    for (const b of flipBucketList(buckets)) scene.add(b.mesh);
+  }
+  return buckets;
+}
+
+function flipbooksDisabled() {
+  try {
+    return typeof location !== 'undefined' && /[?&]vfxFlip=0/.test(location.search || '');
+  } catch (_) { return false; }
+}
+function flipBucketList(buckets) {
+  const f = buckets && buckets.flip;
+  return f ? [f.fire, f.smoke, f.ring, f.spark, f.wisp] : [];
 }
 
 export function resetInstancedSpriteBuckets(buckets) {
@@ -48,6 +73,7 @@ export function resetInstancedSpriteBuckets(buckets) {
   buckets.ring.writeCount = 0;
   buckets.smoke.writeCount = 0;
   buckets.combustion.writeCount = 0;
+  for (const b of flipBucketList(buckets)) { assertDynamicBufferOwnerWritable(b.dynamicBufferOwner); b.writeCount = 0; }
 }
 
 export function writeInstancedSprite(buckets, bucketKind, sprite) {
@@ -94,9 +120,15 @@ export function writeInstancedSpriteFields(
   seed = 0,
   axis = roll,
 ) {
-  const bucket = bucketKind === 'smoke'
-    ? buckets.smoke
-    : (bucketKind === 'combustion' ? buckets.combustion : (bucketKind ? buckets.ring : buckets.glow));
+  const flip = buckets.flip;
+  const bucket = bucketKind === 'flipFire' ? flip.fire
+    : bucketKind === 'flipSmoke' ? flip.smoke
+      : bucketKind === 'flipRing' ? flip.ring
+        : bucketKind === 'flipSpark' ? flip.spark
+          : bucketKind === 'flipWisp' ? flip.wisp
+          : bucketKind === 'smoke'
+            ? buckets.smoke
+            : (bucketKind === 'combustion' ? buckets.combustion : (bucketKind ? buckets.ring : buckets.glow));
   const index = bucket.writeCount;
   if (index >= bucket.capacity) return false;
   assertDynamicBufferOwnerWritable(bucket.dynamicBufferOwner);
@@ -130,11 +162,12 @@ export function commitInstancedSpriteBuckets(buckets) {
   commitBucket(buckets.ring);
   commitBucket(buckets.smoke);
   commitBucket(buckets.combustion);
+  for (const b of flipBucketList(buckets)) commitBucket(b);
 }
 
-function createBucket(scene, id, capacity, texture, blending, radiance = 1.0) {
-  const volume = id === 'smoke' || id === 'combustion';
-  const geometry = volume ? new THREE.BoxGeometry(1, 1, 1) : createVfxEventGeometry();
+function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, flipFamily = null) {
+  const volume = !flipFamily && (id === 'smoke' || id === 'combustion');
+  const geometry = flipFamily ? createFlipbookGeometry() : (volume ? new THREE.BoxGeometry(1, 1, 1) : createVfxEventGeometry());
   const position = dynamicAttribute(capacity * 3, 3);
   const scale = dynamicAttribute(capacity * 2, 2);
   const roll = dynamicAttribute(capacity, 1);
@@ -150,7 +183,7 @@ function createBucket(scene, id, capacity, texture, blending, radiance = 1.0) {
   geometry.setAttribute('aSpritePhase', phase);
   geometry.setAttribute('aSpriteAxis', axis);
 
-  const material = createTransientVfxMaterial(id, radiance, volume ? texture : null);
+  const material = flipFamily ? createFlipbookMaterial(flipFamily) : createTransientVfxMaterial(id, radiance, volume ? texture : null);
   const mesh = new THREE.InstancedMesh(geometry, material, capacity);
   mesh.name = `SF_VFX_${id}_sprite_instances`;
   mesh.count = 0;
