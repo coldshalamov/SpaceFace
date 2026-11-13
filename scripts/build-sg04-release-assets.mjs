@@ -19,6 +19,7 @@ import {
 import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
 import { deduplicateExactEmbeddedTextures } from './lib/deduplicateExactEmbeddedTextures.mjs';
 import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mjs';
+import { applyReleaseColorTextureProfile, hasReleaseColorTextureProfile } from './lib/releaseColorTextureProfiles.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -192,7 +193,7 @@ for (let index = 0; index < assets.length; index++) {
   try {
     if (!existsSync(sourceAbs)) throw new Error(`missing SG-04 source asset: ${asset.source}`);
 
-    if (RESUME_VALID) {
+    if (RESUME_VALID && !hasReleaseColorTextureProfile(asset.id)) {
       const existingPair = inspectExistingReleasePair(asset, outputReleasePath);
       if (existingPair) {
         const sourceBytes = readFileSync(sourceAbs);
@@ -219,6 +220,7 @@ for (let index = 0; index < assets.length; index++) {
     const sourceAlreadyKtx2 = sourceInspection.metrics.textureCount > 0
       && sourceInspection.metrics.ktx2TextureCount === sourceInspection.metrics.textureCount;
     if (sourceInspection.metrics.textureCount > 0 && !sourceAlreadyKtx2) {
+      asset.textureProfiles = await applyReleaseColorTextureProfile(document, asset.id, decodeImage);
       transforms.push(
         ktx2({
           slots: /^(baseColorTexture|emissiveTexture)$/,
@@ -365,6 +367,7 @@ function appendManifestAsset(manifest, asset, pair, sourceBytes, releaseBytes) {
     ktx2Textures: pair.release.metrics.ktx2TextureCount,
     meshoptBufferViews: pair.release.metrics.meshoptBufferViewCount,
     contractNodeCount: pair.release.metrics.contractNodeNames.length,
+    ...(asset.textureProfiles ? { textureProfiles: asset.textureProfiles } : {}),
   });
 }
 

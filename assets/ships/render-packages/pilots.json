@@ -2671,8 +2671,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_helios_lark",
       "sourceUrl": "assets/ships/release/parts/wholeships/helios_lark.glb",
-      "releaseSha256": "f7527c4f5c408f8bf21b553a99374eac607068a36ff8a7e1416548ea970b8664",
-      "releaseBytes": 744112,
+      "releaseSha256": "04a6ed74e88ec68c88877012ed7b2d048780b51f973c2e41f7effde20bc2c645",
+      "releaseBytes": 656928,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",

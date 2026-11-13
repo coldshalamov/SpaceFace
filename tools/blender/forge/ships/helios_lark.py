@@ -5,12 +5,15 @@ colour carried in bands. The Lark is the quick one: long nose, swept engine pylo
 """
 import os
 import sys
+import bpy
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_38  # noqa: E402
+import skin  # noqa: E402
 
 SHIP_ID = 'helios_lark'
 COLORS = {
@@ -36,7 +39,7 @@ def build():
         dict(x=7.2, w=0.95, ht=0.78, hb=0.6, zc=0.05, n=2.1),
         dict(x=8.6, w=0.45, ht=0.4, hb=0.32, zc=0.0, n=2.0),
         dict(x=9.3, w=0.08, ht=0.08, hb=0.06, zc=0.0, n=2.0),
-    ], material='paint', belly='paint2', back_material='dark', count=56)
+    ], material='paint', belly='paint2', back_material='dark', count=40)
     # Courier band round the cabin and a teal dorsal stripe down the boom.
     F.band(s, 'Body', (5.6, 0, 0), (1, 0, 0), 0.7, 'paint2', inset=0.02, depth=0.015)
     F.band(s, 'Body', (-2.0, 0, 0), (0, 1, 0), 0.55, 'stripe', facing=(0, 0, 1), min_facing=0.6)
@@ -49,6 +52,9 @@ def build():
 
     # Wraparound cabin glass.
     F.canopy(s, 'Canopy', x0=5.9, x1=8.3, w=0.95, h=0.55, z=0.95, peak=0.35, n=2.6, frame=False)
+    F.band(s, 'Canopy', (6.65, 0, 0), (1, 0, 0), 0.085, 'gunmetal', inset=0.0, depth=0.0)
+    F.band(s, 'Canopy', (0, 0, 0), (0, 1, 0), 0.065, 'gunmetal', facing=(0, 0, 1),
+           min_facing=0.35, inset=0.0, depth=0.0)
     F.windows(s, 'CabinWin', 2.2, 4.8, 1.38, 0.55, 4, size=(0.42, 0.22), mirror=True)
 
     # Swept engine pylons and pods.
@@ -60,7 +66,7 @@ def build():
         dict(x=-4.4, w=0.6, ht=0.6, hb=0.6, zc=0.08, n=2.0, y=3.35),
         dict(x=-3.4, w=0.42, ht=0.42, hb=0.42, zc=0.08, n=2.0, y=3.35),
         dict(x=-3.0, w=0.12, ht=0.12, hb=0.12, zc=0.08, n=2.0, y=3.35),
-    ], material='paint', count=40, mirror=True)
+    ], material='paint', count=28, mirror=True)
     F.band(s, 'Pod', (-5.9, 3.35, 0), (1, 0, 0), 0.5, 'stripe', mirror=True)
     # Lit pod trim: a thin lit teal ring on the ivory just forward of each pod's stripe.
     F.band(s, 'Pod', (-5.4, 3.35, 0), (1, 0, 0), 0.14, 'glow_cyan.helios', inset=0.01, depth=-0.02, mirror=True)
@@ -74,21 +80,106 @@ def build():
     for i, x in enumerate((-1.2, -2.7, -4.2)):
         F.container(s, f'Case{i}', (x, 0.0, 1.22), (1.2, 1.1, 0.5), finish='paint2', ribs=2)
     F.box(s, 'RackRail', (-2.7, 0.0, 1.0), (4.6, 1.3, 0.08), material='gunmetal', bevel=0.01)
+    before = len(s.objects)
     F.vent(s, 'Vent', (-6.4, 0.72, 0.62), (1.0, 0.36, 0.1), mirror=True)
+    bpy.context.view_layer.update()
+    for obj in s.objects[before:]:
+        center = (-6.4, -0.72 if obj.name.endswith('_M') else 0.72, 0.62)
+        _seat(obj, center, center[0], center[1], 0.035)
     F.rcs(s, 'RCS', (4.0, 1.42, 0.3), mirror=True)
     F.antenna(s, 'Mast', (3.2, 0.5, 1.2), 0.9, tip='glow_red')
+    before = len(s.objects)
     F.sensor_dome(s, 'Dome', (6.1, 0.0, 1.3), 0.3)
+    bpy.context.view_layer.update()
+    for obj in s.objects[before:]:
+        _seat(obj, (6.1, 0.0, 1.3), 5.55, 0.0, 0.01)
     s.detail = 0
     F.light(s, 'NavPort', (-6.0, 3.95, 0.1), 'glow_red')
     F.light(s, 'NavStarboard', (-6.0, -3.95, 0.1), 'glow_green')
     F.light(s, 'Beacon', (-7.4, 0.0, 0.75), 'glow_amber.beacon', size=0.12)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    # Forty-eight coarse triangles retain the courier cargo silhouette in authored LOD2.
+    before = len(s.objects)
+    for i, x in enumerate((-1.2, -2.7, -4.2)):
+        F.box(s, f'FarCase{i}', (x, 0.0, 1.22), (1.2, 1.1, 0.5), material='paint2', bevel=0.0)
+    F.box(s, 'FarRackRail', (-2.7, 0.0, 1.0), (4.6, 1.3, 0.08), material='gunmetal', bevel=0.0)
+    for obj in s.objects[before:]:
+        obj['lark_far_proxy'] = True
+        obj['forge_motion'] = 'hull_core'
+        obj['forge_detail'] = 0
+    image = bpy.data.images.load(os.path.join(F.TEXTURE_DIR, 'helios_lark_panel_albedo.png'), check_existing=True)
+    image.colorspace_settings.name = 'sRGB'
+    for finish in ('paint', 'paint2', 'stripe'):
+        for node in s.mat(finish).node_tree.nodes:
+            if node.type == 'TEX_IMAGE' and node.image and node.image.name.startswith('forge_panel_albedo'):
+                node.image = image
+    for node in s.mat('glass').node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Roughness'].default_value = 0.12
+            # Slightly below the exporter default keeps an explicit physical-material extension.
+            node.inputs['Specular IOR Level'].default_value = 0.4995
     return s
+
+
+def _seat(obj, center, x, y, clearance):
+    point, normal = skin.hit('Body', x, y)
+    target = point + normal * clearance
+    rotation = Vector((0, 0, 1)).rotation_difference(normal).to_matrix().to_4x4()
+    obj.matrix_world = Matrix.Translation(target) @ rotation @ Matrix.Translation(-Vector(center)) @ obj.matrix_world
+
+
+def _original_collider(ship, root, sources=None):
+    """Import the independent original collider through Blender's glTF pipeline."""
+    source = os.path.join(os.path.dirname(__file__), '..', 'source_assets', SHIP_ID, 'collision.glb')
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.abspath(source))
+    imported = set(bpy.data.objects) - before
+    collider = next(obj for obj in imported if obj.type == 'MESH')
+    world = collider.matrix_world.copy()
+    collider.parent = root
+    collider.matrix_world = world
+    collider.name = 'COLLISION_HULL'
+    collider['collision'] = True
+    collider['nonRender'] = True
+    collider.hide_render = True
+    return collider
+
+
+def export(ship, spec=None, **kwargs):
+    """Lark-only export adapter; shared Forge functions are restored before returning."""
+    original_lod_meshes = E._lod_meshes
+    original_collision = E._collision_hull
+    def lark_lods(current, level, prefix):
+        if current is not ship:
+            return original_lod_meshes(current, level, prefix)
+        objects = current.objects
+        current.objects = [o for o in objects if not o.get('lark_far_proxy')]
+        try:
+            result = original_lod_meshes(current, level, prefix)
+            if level == 2:
+                proxies = E._join_named([o for o in objects if o.get('lark_far_proxy')], 0, prefix + '_FAR_PROXY')
+                for proxy in proxies:
+                    target = next(o for o in result if o.data.materials[0] == proxy.data.materials[0])
+                    E._select_only([target, proxy])
+                    bpy.context.view_layer.objects.active = target
+                    bpy.ops.object.join()
+            return result
+        finally:
+            current.objects = objects
+    E._lod_meshes = lark_lods
+    E._collision_hull = lambda current, root, sources=None: (_original_collider(current, root, sources)
+        if current is ship else original_collision(current, root, sources))
+    try:
+        written = E.export_ship(ship, spec or E.fleet_spec(SHIP_ID), **kwargs)
+    finally:
+        E._lod_meshes = original_lod_meshes
+        E._collision_hull = original_collision
+    return written
 
 
 if __name__ == '__main__':
     ship = build().finish()
     live = '--live' in sys.argv
-    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    written = export(ship, preview=not live)
     if live:
         ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

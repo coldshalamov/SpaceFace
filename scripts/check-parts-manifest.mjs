@@ -26,6 +26,7 @@ import {
   resolveManifestAssetMetadata,
 } from './lib/partsManifestAssetContract.mjs';
 import { isPublishedPartsSourceFile } from './lib/partsManifestScope.mjs';
+import { partsManifestSyncSelection, shouldSyncPart } from './lib/partsManifestSyncSelection.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_ROOT = resolve(ROOT, 'assets/ships/parts');
@@ -74,6 +75,8 @@ function finiteRange(value) {
 }
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
+// Validate the complete write selection before measuring or changing any rows.
+const syncSelection = partsManifestSyncSelection(process.argv.slice(2), manifest.parts || []);
 const AUTHORING_PATH = resolve(ROOT, 'assets/ships/parts/blender/authoring.json');
 const placeAuthoring = existsSync(AUTHORING_PATH)
   ? JSON.parse(readFileSync(AUTHORING_PATH, 'utf8'))
@@ -396,7 +399,7 @@ for (const part of manifest.parts || []) {
   const manifestDimensions = part.bounds?.dimensionsM;
   check(`${label}: computed dimensions match manifest`, sameVec(dimensions, manifestDimensions),
     `metric=${boundsMetric.metric} computed=${dimensions.map((v) => v.toFixed(3)).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
-  if (process.argv.includes('--sync')) {
+  if (process.argv.includes('--sync') && shouldSyncPart(syncSelection, part.id)) {
     part.bytes = bytes.length;
     if (triangleMetric.supported && Number.isFinite(triangleMetric.measured)) part.tris = triangleMetric.measured;
     if (!part.mount) part.mount = 'origin';

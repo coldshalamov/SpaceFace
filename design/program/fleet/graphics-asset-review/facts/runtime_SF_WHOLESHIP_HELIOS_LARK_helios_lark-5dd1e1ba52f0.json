@@ -11,5 +11,31 @@
     "tools/blender/forge/forge.py",
     "tools/blender/forge/forge_textures.py"
   ],
-  "status": "source-traced; ordinary gameplay and final revised package remain unverified"
+  "status": "canonical source, release and render package promoted; packaged-loader close/chase check passed; ordinary courier gameplay remains unverified",
+  "iterationAccounting": {
+    "completedDistinctScratchPasses": 21,
+    "evidence": ".devshots/fleet/lark-surface-astra/ITERATIONS.md",
+    "note": "Journal entries 3 through 6 group scratch passes 1 through 10; entries 7 through 16 record distinct scratch passes 11 through 20. Entry17 records the lead-requested256px cost comparison. Earlier grouped rows are preserved and not duplicated. Row count is not release acceptance."
+  },
+  "integration": {
+    "releaseSha256": "04a6ed74e88ec68c88877012ed7b2d048780b51f973c2e41f7effde20bc2c645",
+    "packageContentHash": "80f2c6a9d3fa9687b080230b2780f5fa1172633b0184a5b87cab6e778c89f010",
+    "releaseBytes": 656928,
+    "renderBytes": 668800,
+    "lodTriangles": [
+      15748,
+      6302,
+      2232
+    ],
+    "albedo": {
+      "edge": 256,
+      "codec": "ETC1S",
+      "encodedBytes": 19307,
+      "mipmapped": true
+    },
+    "sourceContracts": "Original collider, sockets and motion node contract exact; baked bank differs only in authored source hash",
+    "loaderEvidence": ".devshots/fleet/lark-surface-astra/render-promoted/report.json",
+    "loaderResult": "Canonical metadata and render.glb requested successfully; expected content hash observed; 14 target draws at close and chase",
+    "limitation": "Fleet-look diagnostic camera, not an ordinary courier encounter or FPS measurement"
+  }
 }
