@@ -23,7 +23,7 @@ import {
   clearPhysicsBodyNativeFailure,
   measureThrusterAuthority,
   resolvePhysicsBodySpec,
-  writePhysicsTelemetry,
+  capturePhysicsTelemetry,
 } from './physicsAuthority.js';
 import {
   MAX_PROXY_PRIMITIVES,
@@ -4039,8 +4039,7 @@ export class Sg02DynamicBodyOwner {
     // shutters, Kilnback capital completion); publishing for every dynamic body was ~one frozen
     // object + one thruster-authority read per body per tick that nothing read.
     if (simCoreFlag('telemetryDemand') && rec.entity && rec.entity.physicsTelemetryRequested !== true) return;
-    // Retained input record: writePhysicsTelemetry reads every field synchronously into its own
-    // frozen publication, so the input literal does not need to be fresh per call.
+    // Capture reads every value synchronously, so this scratch can serve every body.
     const input = this._telemetryInput || (this._telemetryInput = {
       linearAcceleration: { x: 0, y: 0, z: 0 },
     });
@@ -4060,7 +4059,7 @@ export class Sg02DynamicBodyOwner {
     input.lateralAcceleration = 0;
     input.authority = measureThrusterAuthority(rec.entity);
     input.mode = this.mode;
-    writePhysicsTelemetry(rec.entity, input);
+    capturePhysicsTelemetry(rec.entity, input);
   }
 
   _findAttachment(input = {}) {

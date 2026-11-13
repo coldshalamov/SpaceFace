@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { physics } from '../src/core/physics.js';
 import {
+  capturePhysicsTelemetry,
   clearPhysicsAuthority,
   queueProjectileContinuation,
   queuePhysicsTorqueImpulse,
@@ -618,4 +619,36 @@ test('physics telemetry shares unchanged immutable value parts across fresh tick
   assert.notEqual(afterClear.force, third.force, 'clear must drop the sharing history');
   assert.equal(readPhysicsTelemetry(entity), afterClear);
   clearPhysicsAuthority(entity);
+});
+
+test('captured telemetry preserves completed values and publication identity across unread ticks', () => {
+  const entity = {};
+  const input = { tick: 10, force: { x: 1, y: 0, z: 2 }, authority: { forward: 0.75 } };
+  capturePhysicsTelemetry(entity, input);
+  input.force.x = 9;
+  input.authority.forward = 0.5;
+  const first = readPhysicsTelemetry(entity);
+  assert.equal(first.force.x, 1);
+  assert.equal(first.authority.forward, 0.75);
+  assert.equal(readPhysicsTelemetry(entity), first);
+
+  input.tick = 11;
+  capturePhysicsTelemetry(entity, input);
+  input.tick = 12;
+  input.force.x = 1;
+  input.authority.forward = 0.75;
+  capturePhysicsTelemetry(entity, input);
+  const last = readPhysicsTelemetry(entity);
+  assert.equal(last.tick, 12);
+  assert.notEqual(last.force, first.force, 'an unread change still breaks consecutive sharing');
+  assert.notEqual(last.authority, first.authority);
+  assert.equal(last.torque, first.torque);
+  assert.deepEqual(last.force, first.force);
+  assert.deepEqual(last.authority, first.authority);
+  assert.equal(first.tick, 10);
+  for (const value of [first, last, last.force, last.authority]) assert.ok(Object.isFrozen(value));
+
+  capturePhysicsTelemetry(entity, { tick: 13 });
+  clearPhysicsAuthority(entity);
+  assert.equal(readPhysicsTelemetry(entity), null);
 });

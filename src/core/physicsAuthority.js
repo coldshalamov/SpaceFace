@@ -331,35 +331,43 @@ export function clearPhysicsAuthority(entity) {
   RESOLVED_BODY_CACHE.delete(entity);
 }
 
-/** Physics-only: publish measured post-solve state without polluting authoritative serialization. */
-export function writePhysicsTelemetry(entity, telemetry = {}) {  if (!entity || typeof entity !== 'object') return null;
-  const previous = TELEMETRY.get(entity);
-  const value = Object.freeze({
-    schemaVersion: PHYSICS_TELEMETRY_SCHEMA_VERSION,
-    tick: Math.max(0, Math.trunc(finite(telemetry.tick))),
-    bodyHandle: finite(telemetry.bodyHandle, -1),
-    dynamic: !!telemetry.dynamic,
-    ccd: !!telemetry.ccd,
-    mass: positive(telemetry.mass, 1),
-    inertiaY: positive(telemetry.inertiaY, 1),
-    // The outer snapshot is intentionally fresh because tick is a freshness signal and old
-    // readers may retain it. Its immutable value parts can safely be shared when unchanged,
-    // avoiding three short-lived vector objects on steady telemetry without mutating history.
-    force: sharedFrozenVector3(previous && previous.force, telemetry.force),
-    torque: sharedFrozenVector3(previous && previous.torque, telemetry.torque),
-    linearAcceleration: sharedFrozenVector3(previous && previous.linearAcceleration,
-      telemetry.linearAcceleration),
-    angularAccelerationY: finite(telemetry.angularAccelerationY),
-    lateralAcceleration: finite(telemetry.lateralAcceleration),
-    authority: sharedFrozenAuthority(previous && previous.authority, telemetry.authority),
-    mode: String(telemetry.mode || 'uncontrolled'),
-  });
-  TELEMETRY.set(entity, value);
-  return value;
+/** Physics-only: capture completed solver values before its scratch is reused. */
+export function capturePhysicsTelemetry(entity, telemetry = {}) {
+  if (!entity || typeof entity !== 'object') return;
+  let entry = TELEMETRY.get(entity);
+  if (!entry) {
+    entry = { snapshot: null, sample: { schemaVersion: PHYSICS_TELEMETRY_SCHEMA_VERSION } };
+    TELEMETRY.set(entity, entry);
+  }
+  const sample = entry.sample;
+  sample.tick = Math.max(0, Math.trunc(finite(telemetry.tick)));
+  sample.bodyHandle = finite(telemetry.bodyHandle, -1);
+  sample.dynamic = !!telemetry.dynamic;
+  sample.ccd = !!telemetry.ccd;
+  sample.mass = positive(telemetry.mass, 1);
+  sample.inertiaY = positive(telemetry.inertiaY, 1);
+  sample.force = sharedFrozenVector3(sample.force, telemetry.force);
+  sample.torque = sharedFrozenVector3(sample.torque, telemetry.torque);
+  sample.linearAcceleration = sharedFrozenVector3(sample.linearAcceleration, telemetry.linearAcceleration);
+  sample.angularAccelerationY = finite(telemetry.angularAccelerationY);
+  sample.lateralAcceleration = finite(telemetry.lateralAcceleration);
+  sample.authority = sharedFrozenAuthority(sample.authority, telemetry.authority);
+  sample.mode = String(telemetry.mode || 'uncontrolled');
+  entry.snapshot = null;
+}
+
+/** Capture and return a snapshot for callers that consume the receipt immediately. */
+export function writePhysicsTelemetry(entity, telemetry = {}) {
+  capturePhysicsTelemetry(entity, telemetry);
+  return readPhysicsTelemetry(entity);
 }
 
 export function readPhysicsTelemetry(entity) {
-  return entity && TELEMETRY.get(entity) || null;
+  const entry = entity && TELEMETRY.get(entity);
+  if (!entry) return null;
+  // Most bodies go unread. Freeze the outer receipt once when requested, while
+  // older returned receipts keep their original scalars and immutable parts.
+  return (entry.snapshot ||= Object.freeze({ ...entry.sample }));
 }
 
 /**
