@@ -151,12 +151,25 @@ worker's current timer had stopped. Clip samples and the matching receipt are un
   detected multi-second holds and no drawn backtracks in 58 assessable intervals. It submitted
   20.7 world frames/s, with 77 ms p95 and 155 ms maximum drawn-motion gaps. It ended with one
   hostile still alive. This is a single flight, captured before the heartbeat recovery landed.
+- The final locked Supply Pod pair overlaid the 12 changed runtime paths from the pre-fix and
+  post-fix commits and opened both flight captures. Over approximately 28 seconds per arm, world
+  submissions rose from 12.0 to 20.2/s. Callback gap p95 fell from 133 to 83 ms. Drawn moving-ship
+  gap p95 fell from 129 to 85 ms and max fell from 177 to 113 ms. Peak sampled reply age fell
+  from 482 to 199 ms, and the simulation advanced 0.66 to 0.96 s per wall second. There was one
+  reply-starvation episode before and none after. Player fire was confirmed (210 and 318 shots).
+  The encounter evolved differently in the two arms. The original seconds-long freeze did not
+  recur, and the final candidate still hitches. Raw measurements and screenshots are
+  `round2-final-pair-before*` and `round2-final-pair-after*` in the recording evidence folder.
+- `1c0bc6a49b6d` removes unused per-entity slice-clock checks from synchronous rendering.
+  The 13 focused pose and view checks passed. Its isolated live frame gain is unmeasured.
 
 The Windows matrix status is in `.devshots/fleet/coordination/whole-game/pending-routes.jsonl`.
 The standalone hold probe timed out before live flight and closed gracefully. The latest locked
 Circuits run used the public Time Trial route and F8 reset the same attempt in its authored
-sector. The opened restart screenshot still showed the campaign act heading above the race
-objective. Scored finish, restart after a cleared gate, and campaign presentation isolation are open.
+sector. Its opened screenshot still showed the campaign act heading above the race objective.
+`8566b710688a` uses the temporary run's existing public launch context to hide the campaign
+heading and radio, keeping gate guidance. Fifty-three focused checks passed. Scored finish,
+restart after a cleared gate, and post-fix presentation capture are open.
 The released checkpoints for flight restore, AI identity and Helios wash used the existing deterministic replay hash.
 
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.
