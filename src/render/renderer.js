@@ -28725,7 +28725,7 @@ export const render = {
   },
 
   syncEntityViews(alpha) {
-    const iter = this.syncEntityViewsSteps(alpha);
+    const iter = this.syncEntityViewsSteps(alpha, false);
     // Drive belt: a machinery-level fault outside the row quarantine (query
     // mint, drains, publish tail) must not reach the presented-frame caller —
     // the last-painted picture stands instead of a PRESENTATION STALLED.
@@ -28752,7 +28752,7 @@ export const render = {
   // loops so an async drive (the opening publish) can pace the ~665-line
   // block across beats. The sync driver above exhausts it inline — the
   // presented-frame path stays byte-identical.
-  *syncEntityViewsSteps(alpha) {
+  *syncEntityViewsSteps(alpha, paced = true) {
     // Per-pass sequence stamp: the shadow light census memo keys on it so a frame's
     // N withhold-gate evaluations share one whole-scene traverse.
     this._viewSyncSeq = (this._viewSyncSeq || 0) + 1;
@@ -28842,7 +28842,7 @@ export const render = {
     // order either way.
     const viewSweepNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now() : Date.now());
-    let viewSweepStrideAt = viewSweepNow();
+    let viewSweepStrideAt = paced ? viewSweepNow() : 0;
 
     const innerView = viewHalfExtents(
       this.state.camera && this.state.camera.zoom,
@@ -28868,7 +28868,7 @@ export const render = {
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
-      if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
+      if (paced && ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2)) {
         yield;
         viewSweepStrideAt = viewSweepNow();
       }
@@ -28993,7 +28993,7 @@ export const render = {
     this._drainHiddenFreezeQueue();
 
     for (let index = 0; index < query.visibleCount; index++) {
-      if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
+      if (paced && ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2)) {
         yield;
         viewSweepStrideAt = viewSweepNow();
       }
