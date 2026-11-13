@@ -244,8 +244,12 @@ function buildCasketWorm(colors) {
     s.scale(1, 1, 1);
     return s;
   });
+  // Each finish belongs to this worm; only its repeated plates borrow it.
+  const filament = tissueMat(colors.filament);
+  const tissue = tissueMat(colors.tissue);
   for (let i = 0; i < 6; i += 1) {
-    const m = new THREE.Mesh(seg, tissueMat(i % 2 ? colors.tissue : colors.filament));
+    const m = new THREE.Mesh(seg, i % 2 ? tissue : filament);
+    if (i >= 2) m.userData.borrowedGeometryMaterial = true;
     m.position.set(0, (i % 2) * 0.5 - 0.3, -i * 2.2);
     m.scale.set(8 - i * 0.6, 6, 8);
     g.add(m);
@@ -254,7 +258,8 @@ function buildCasketWorm(colors) {
     const s = new THREE.ConeGeometry(0.8, 1.6, 6);
     s.rotateX(Math.PI / 2);
     return s;
-  }), tissueMat(colors.tissue));
+  }), tissue);
+  head.userData.borrowedGeometryMaterial = true;
   head.position.z = 2.4;
   head.scale.setScalar(8);
   g.add(head);
