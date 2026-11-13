@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// check-first-hour.mjs — spec2/03 THE FIRST HOUR acceptance assertions (spec §5).
+// check-first-hour.mjs — authored first-hour route and pacing contracts.
 //
 // The first 15 minutes must be PACED: one beat → one verb → ≥4s silence → next beat. This check
-// audits the authored 10-beat pacing engine in src/systems/onboarding.js against the first-hour
+// audits the authored pacing engine in src/systems/onboarding.js against the first-hour
 // assertions:
 //   1. Beats fire in order; no beat text before predecessor DONE + 4s silence.
 //   2. Text overlap count == 0 across the full scripted first-15 (one-voice audit).
@@ -10,10 +10,8 @@
 //   4. Training actors are inert, invulnerable, non-colliding with ships, and physically reachable.
 //   5. §4 difficulty ramp: telemetry funnel milestones exist (first kill/1000cr/module/jump).
 //
-// The beat FSM is too entangled with the full sim to drive headlessly for every assertion, so we
-// (a) extract the authored BEATS table + barks statically and verify voice/order, (b) simulate the
-// beat FSM against a synthetic in-order event timeline to prove the timing gate + zero-overlap, and
-// (c) verify the B3 flee/respawn constants and the telemetry funnel keys.
+// This check reads the authored beat table, drives the production entry clock in isolation, and
+// verifies the one-voice, trainer safety and telemetry source contracts. It does not boot a game.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -22,7 +20,7 @@ import { ENCOUNTERS } from '../src/data/encounters.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { planZoneSpawns } from '../src/data/sectorZones.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
-import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
+import { BEATS, onboarding, taughtVerbLine } from '../src/systems/onboarding.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -38,40 +36,6 @@ const newGameSrc = read('src/ui/screens/newGame.js');
 const mainMenuSrc = read('src/ui/screens/mainMenu.js');
 const contractsScreenSrc = read('src/ui/station/screens/contracts.js');
 
-// ── Extract the authored BEATS table (source of truth for the first-15 pacing) ────────────────
-// We exec the BEATS constant by importing the module in a sandboxed way is not feasible without the
-// full DOM/sim deps, so we parse the BEATS array literal from source. Each beat has a `line` (the
-// entry verb) and optional `followups[]` (in-beat barks). We reconstruct them with a tolerant regex.
-function extractBeats(src) {
-  const beatsBlock = src.match(/const BEATS = \[([\s\S]*?)\n\];/);
-  assert.ok(beatsBlock, 'BEATS table must exist in onboarding.js (spec2/03 §2)');
-  const body = beatsBlock[1];
-  // Match each beat object's key + line + followup lines.
-  const beats = [];
-  const beatRegex = /key:\s*'([a-z_]+)'[\s\S]*?line:\s*'((?:[^'\\]|\\.)*)'/g;
-  let m;
-  while ((m = beatRegex.exec(body)) !== null) {
-    const key = m[1];
-    const line = m[2].replace(/\\'/g, "'");
-    const followups = [];
-    const fuRegex = /\{\s*on:\s*'([^']+)',\s*line:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
-    // Scope followup search to this beat's segment (until the next key:).
-    const segStart = m.index;
-    const nextKey = body.indexOf('key:', segStart + 1);
-    const seg = body.slice(segStart, nextKey === -1 ? body.length : nextKey);
-    let f;
-    while ((f = fuRegex.exec(seg)) !== null) {
-      followups.push({ on: f[1], line: f[2].replace(/\\'/g, "'") });
-    }
-    beats.push({ key, line, followups });
-  }
-  return beats;
-}
-
-// The thesis-first route (2026-09-18): the full first-hour table is authored as literals in
-// onboarding.js — the tether attach leads, the raid + claimed beats carry the thesis spine, and
-// the movement drills plus seam/dock/choice follow.
-const BEATS = extractBeats(onboardingSrc);
 // ── B1 control truth: massline verb + production tether:reel ─────────────────────────────────
 assert.doesNotMatch(authoredOnboardingSrc, /Latch it\. G\./, 'B1 must not teach Latch it. G. (G is combat computer)');
 assert.doesNotMatch(authoredOnboardingSrc, /tether:reelMax/, 'B1 must not listen for dead tether:reelMax');
@@ -79,21 +43,20 @@ assert.match(flightDrillSrc, /Latch it\. Massline\./, 'B1 entry must teach massl
 assert.match(flightDrillSrc, /on:\s*'tether:reel'/, 'B1 cut follow-up must use production tether:reel');
 assert.match(onboardingSrc, /_onTetherReel/, 'B1 must gate reel follow-up on tether:reel payload');
 
-assert.equal(BEATS.length, 12, 'the thesis-first route authors exactly 12 paced beats');
-
-// Spec §2 beat keys in the thesis-first order: attach → raid → wanted → drills → seam → dock → choice.
-const EXPECTED_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage', 'seam', 'dock', 'choice'];
+// OPENING-1: movement first, the story through the first berth, then optional flight drills.
+const EXPECTED_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock',
+  'marker', 'focus', 'burst', 'disengage', 'choice'];
 assert.deepEqual(
   BEATS.map((b) => b.key),
   EXPECTED_KEYS,
-  'beats must teach flight controls in order before seam→dock→choice',
+  'the story opening must reach seam and dock before staging the optional flight drills',
 );
 
 // ── Assertion 3: tutorial copy is authored and safe for an inline localized UI surface ──
 const allLines = [];
 for (const b of BEATS) {
   allLines.push({ beat: b.key, line: b.line });
-  for (const fu of b.followups) allLines.push({ beat: b.key + ':' + fu.on, line: fu.line });
+  for (const fu of b.followups || []) allLines.push({ beat: b.key + ':' + fu.on, line: fu.line });
 }
 assert.ok(allLines.length >= 8, 'beats must author entry lines + in-beat followups');
 for (const { beat, line } of allLines) {
@@ -103,130 +66,71 @@ for (const { beat, line } of allLines) {
   assert.doesNotMatch(line, /[\u0000-\u001f\u007f\ufffd]/u, `tutorial line contains an unsafe control/replacement character — beat "${beat}"`);
 }
 
-// ── Assertion 1 + 2: simulate the beat FSM to prove order + silence gate + zero overlap ───────
-// Reconstruct the FSM from the authored constants + the engine rules. We feed DONE events in spec
-// order with ≥4s gaps and verify: beats advance in order, no beat text fires before predecessor
-// DONE + SILENCE_S, and no two text surfaces overlap (each tutorial:say is discrete + ≥4s apart).
-const SILENCE_S = 4;
-function simulateFirstHour(beats) {
-  const log = [];          // { atS, beat, kind:'entry'|'followup', text }
-  const beatDoneAt = {};   // beatKey -> simTimeS
-  let currentBeat = -1;
-  let lastTextAtS = -Infinity;
-
-  function tryAdvance(simTime) {
-    const nextIndex = currentBeat + 1;
-    if (nextIndex >= beats.length) return;
-    if (nextIndex > 0) {
-      const prev = beats[nextIndex - 1];
-      const prevDoneAt = beatDoneAt[prev.key];
-      if (prevDoneAt == null) return;
-      if (simTime - Math.max(prevDoneAt, lastTextAtS) < SILENCE_S) return;
-    }
-    currentBeat = nextIndex;
-    const beat = beats[nextIndex];
-    log.push({ atS: simTime, beat: beat.key, kind: 'entry', text: beat.line });
-    lastTextAtS = simTime;
-  }
-
-  function fireFollowup(simTime, beat, eventName) {
-    for (const fu of beat.followups) {
-      if (fu.on !== eventName) continue;
-      // Followups must also respect silence vs the entry/prev followup (one voice).
-      if (simTime - lastTextAtS < SILENCE_S) {
-        // Followups within the SAME beat window are allowed to be tighter than the inter-beat gate,
-        // but must still not overlap (>= a small epsilon). The engine emits them on discrete events.
-      }
-      log.push({ atS: simTime, beat: beat.key, kind: 'followup:' + eventName, text: fu.line });
-      lastTextAtS = simTime;
-    }
-  }
-
-  function beatDone(simTime, beat) {
-    if (beatDoneAt[beat.key] != null) return;
-    beatDoneAt[beat.key] = simTime;
-  }
-
-  // Drive every authored beat and followup in order. Five seconds between voice lines is enough to
-  // prove the four-second one-voice gate without coupling the check to a particular play speed.
-  const timeline = [];
-  let t = 0;
-  for (const beat of beats) {
-    timeline.push({ t, advance: true });
-    for (const followup of beat.followups || []) {
-      t += 5;
-      timeline.push({ t, followup: { beat: beat.key, event: followup.on } });
-    }
-    t += 5;
-    timeline.push({ t, done: beat.key });
-    t += SILENCE_S;
-  }
-
-  for (const step of timeline) {
-    if (step.advance) {
-      tryAdvance(step.t);
-      // If a beat just advanced, fire its entry (already logged in tryAdvance).
-    } else if (step.followup) {
-      const beat = beats.find((b) => b.key === step.followup.beat);
-      if (beat) fireFollowup(step.t, beat, step.followup.event);
-    } else if (step.done) {
-      const beat = beats.find((b) => b.key === step.done);
-      if (beat) beatDone(step.t, beat);
-    }
-  }
-
-  return log;
+// Run the production beat advance function with an isolated clock and observe its entry lines.
+// Use DONE facts as inputs. The focused rescue and docking tests exercise their gameplay writers.
+function openingClock(previousKey, lastLineAt = 10) {
+  const currentBeat = BEATS.findIndex(beat => beat.key === previousKey);
+  const state = { simTime: 10, onboarding: { active: true, currentBeat, beatDoneAt: {} } };
+  const lines = [];
+  const owner = Object.assign(Object.create(onboarding), {
+    state, _lastTextAtS: lastLineAt,
+    _enterBeat() {},
+    _sayTutorial(text) { this._lastTextAtS = state.simTime; lines.push({ text, at: state.simTime }); },
+    _refreshBeatPanel() {},
+  });
+  return { state, owner, lines };
 }
 
-const simLog = simulateFirstHour(BEATS);
-
-// Assertion 1a: beats fire in order.
-const entryOrder = simLog.filter((e) => e.kind === 'entry').map((e) => e.beat);
-assert.deepEqual(entryOrder, EXPECTED_KEYS, 'simulated beats must advance in spec order');
-
-// Assertion 1b: no beat text before predecessor DONE + SILENCE_S.
-for (let i = 1; i < entryOrder.length; i++) {
-  const prevKey = EXPECTED_KEYS[i - 1];
-  const thisKey = EXPECTED_KEYS[i];
-  const prevDoneAt = simLog.find((e) => e.beat === prevKey && e.kind.startsWith('done'))?.atS
-    ?? null;
-  // Re-derive from the timeline (done events aren't in the log; recompute from beatDoneAt semantics).
-  // The entry for thisKey must be >= prevDoneAt + SILENCE_S. We approximate by checking the entry
-  // time against the prior beat's last text + the silence gap.
-  const thisEntry = simLog.find((e) => e.beat === thisKey && e.kind === 'entry');
-  const prevEntries = simLog.filter((e) => e.beat === prevKey);
-  const prevLastText = prevEntries.length ? prevEntries[prevEntries.length - 1].atS : 0;
-  assert.ok(
-    thisEntry.atS - prevLastText >= SILENCE_S,
-    `beat "${thisKey}" text must be ≥${SILENCE_S}s after predecessor "${prevKey}" last text`,
-  );
+for (const [index, previous] of BEATS.slice(0, -1).entries()) {
+  const { state, owner, lines } = openingClock(previous.key);
+  const next = BEATS[index + 1];
+  owner._tryAdvanceBeat();
+  assert.equal(lines.length, 0, `${next.key} waits for ${previous.key} to finish`);
+  state.onboarding.beatDoneAt[previous.key] = 11;
+  state.simTime = 14.99;
+  owner._tryAdvanceBeat();
+  assert.equal(lines.length, 0, `${next.key} waits four seconds after DONE`);
+  state.simTime = 15;
+  owner._tryAdvanceBeat();
+  owner._tryAdvanceBeat();
+  assert.deepEqual(lines, [{ text: taughtVerbLine(state, next.key, next.line), at: 15 }],
+    `${next.key} speaks once at entry`);
 }
 
-// Assertion 2: text overlap count == 0. Each tutorial:say is discrete; two surfaces overlap only if
-// a new text fires before the previous one's window elapsed. We model each text as occupying a
-// SILENCE_S window and assert no two windows overlap (the one-voice guarantee).
-let overlapCount = 0;
-for (let i = 1; i < simLog.length; i++) {
-  if (simLog[i].atS - simLog[i - 1].atS < 0.5) overlapCount++; // same-instant = overlap
+{
+  const { state, owner, lines } = openingClock('dock', 11);
+  state.onboarding.beatDoneAt.dock = 10;
+  state.simTime = 15;
+  owner._tryAdvanceBeat({ atBerth: true });
+  assert.deepEqual(lines, [], 'the station cannot start a flight drill even after the silence window');
+  state.simTime = 14.99;
+  owner._tryAdvanceBeat();
+  assert.deepEqual(lines, [], 'the departure waits for silence after the last tutorial line');
+  state.simTime = 15;
+  owner._tryAdvanceBeat();
+  assert.equal(BEATS[state.onboarding.currentBeat].key, 'marker');
 }
-// The real one-voice guarantee is enforced by the _sayTutorial chokepoint + the silence gate. Here
-// we confirm the simulated timeline never stacks two texts at the same instant.
-assert.equal(overlapCount, 0, 'text overlap count must be 0 across the first-15 (one-voice)');
 
-// ── Assertion 1c: the timing-gate engine exists in source ─────────────────────────────────────
-assert.match(onboardingSrc, /_tryAdvanceBeat/, 'the beat timing-gate engine (_tryAdvanceBeat) must exist');
-assert.match(onboardingSrc, /SILENCE_S = 4/, 'the ≥4s silence gate constant must be authored');
-assert.match(onboardingSrc, /ob\.beatDoneAt/, 'beat DONE timestamps must be tracked on state.onboarding');
+{
+  const { state, owner, lines } = openingClock('dock');
+  state.onboarding.beatDoneAt = { dock: 10, marker: 1, focus: 2, burst: 3, disengage: 4 };
+  owner._tryAdvanceBeat({ atBerth: true });
+  assert.equal(BEATS[state.onboarding.currentBeat].key, 'choice', 'a pilot who already drilled can choose at the berth');
+  assert.deepEqual(lines, [{ text: BEATS.at(-1).line, at: 10 }]);
+}
+
+// ── Assertion 2: the tutorial speaks through one arbiter slot ─────────────────────────────────
 assert.match(
   onboardingSrc,
-  /_sayTutorial\(text,\s*\{\s*visual\s*=\s*true\s*\}\s*=\s*\{\}\)/,
-  'a single tutorial-voice chokepoint (_sayTutorial) must exist',
+  /voice\.say\(\{\s*channel:\s*'tutorial',[^}]*id:\s*'tutorial:beat'/,
+  'the tutorial must use the arbiter’s stable slot so followups replace the current line',
 );
 
 // ── The intro modal must be GONE (spec2/03 B0: "no modal") ────────────────────────────────────
 assert.doesNotMatch(onboardingSrc, /_showIntro/, 'the intro modal (_showIntro) must be removed (spec2/03 B0: no modal)');
 assert.doesNotMatch(onboardingSrc, /sf-ob-intro/, 'the intro modal CSS/DOM (.sf-ob-intro) must be removed');
-assert.doesNotMatch(onboardingSrc, /The manifest says one mass/, 'the old intro headline must be removed');
+assert.match(onboardingSrc, /_sayTutorial\(COLD_OPEN_PREMISE, \{ visual: false, trackerCaptionId: 'premise' \}\)/,
+  'the manifest premise must use the tracker caption without a second visual line');
 
 // ── COLD_START must be gated during onboarding (one-voice: no parallel t=0 comms) ─────────────
 assert.match(storySrc, /_onboardingActive\(\)/, 'story.js must check onboarding-active before firing cold-start');
@@ -234,6 +138,8 @@ assert.match(storySrc, /_tutorialOwnsOpening\(\)/, 'story.js must defer cold-sta
 assert.match(storySrc, /_coldStartDeferred/, 'story.js must defer cold-start while the tutorial owns the channel');
 assert.match(storySrc, /tutorial:finished/, 'story.js must release the deferred cold-start on tutorial:finished');
 assert.match(storySrc, /_recentTutorialLine/, 'story.js must suppress ambient comms near a tutorial line');
+assert.match(storySrc, /p\.captionId === 'premise'\) this\._scheduleColdStartKesslerLine\(\)/,
+  'the premise receipt queues Kessler’s line through the existing story owner');
 assert.match(missionsSrc, /tutorial:finished.*_releaseStoryNavigationAfterTutorial/s,
   'missions.js must release the story waypoint only after the tutorial finishes');
 assert.match(missionsSrc, /_onboardingOwnsOpeningNav\(\)/,
@@ -361,7 +267,7 @@ for (const desc of diffDescs) {
 }
 
 // ── B0 one-verb exclusivity (UIUX-B0-ONE-VERB / SPEC2/03 §1–2) ─────────────────
-// During active B0 (wake): no simultaneous non-empty onboarding-panel objective AND
+// During active B0: no simultaneous visible onboarding-panel objective AND
 // HUD tracker command. firstFlight control wall defers until B0 DONE + silence.
 // Mission Log stays optional on-demand context (not a second always-on teacher).
 // Source/headless contract — deterministic even when the browser runtime probe is
@@ -392,33 +298,23 @@ for (const desc of diffDescs) {
   assert.match(hudAttentionSrc, /openingWindowActive\(state\) && openingObjectivePending\(state\)/,
     'the solo gate must hold while an objective is pending inside the opening window');
 
-  // Panel must demote/suppress non-empty B0 objective title while the HUD tracker owns the command.
-  // Acceptable shapes: empty title for wake, key!=='wake' gate, display/aria hide, or demote flag.
-  // Extract is CRLF-safe (\r?\n) — Windows working trees use CRLF in onboarding.js.
-  const refreshMatch = onboardingSrc.match(/_refreshBeatPanel\(\)\s*\{([\s\S]*?)\r?\n  \},?\r?\n/);
-  assert.ok(refreshMatch, '_refreshBeatPanel must exist (panel objective render path)');
-  const refreshBody = refreshMatch[1];
-  const titlePath = refreshBody.match(/_titleEl[\s\S]{0,800}/) || [refreshBody];
-  const titleChunk = titlePath[0];
-  const demotesWakePanel =
-    // Explicit wake/B0 demotion in the refresh body
-    (
-      /['"]wake['"]/.test(refreshBody)
-      && (
-        /textContent\s*=\s*['"]{2}/.test(titleChunk)
-        || /line\s*=\s*['"]{2}/.test(refreshBody)
-        || /\?\s*['"]{2}\s*:/.test(refreshBody)
-        || /demote|suppress|oneVerb|statusOnly|hudOwns|trackerOwns|panelCommand/i.test(refreshBody)
-        || /style\.display\s*=\s*['"]none['"]/.test(titleChunk)
-        || /setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/.test(titleChunk)
-      )
-    )
-    // Title only when not wake
-    || /key\s*!==\s*['"]wake['"]/.test(refreshBody)
-    || /demoteObjectiveCopy\s*=\s*!![\s\S]{0,180}waypoint\.onboarding/.test(refreshBody);
-  assert.ok(demotesWakePanel,
-    'B0 one-verb: onboarding-panel objective title must be demoted/suppressed during active wake '
-    + 'so it does not duplicate the HUD tracker command (preserve progress/status only)');
+  const attributes = new Map();
+  const title = { style: {}, textContent: '',
+    getAttribute: key => attributes.get(key),
+    setAttribute: (key, value) => attributes.set(key, value),
+    hasAttribute: key => attributes.has(key),
+    removeAttribute: key => attributes.delete(key),
+  };
+  const state = { nav: { waypoint: { onboarding: true, reason: BEATS[0].line } },
+    onboarding: { active: true, currentBeat: 0, beatDoneAt: {} } };
+  const owner = Object.assign(Object.create(onboarding), { state, _panel: {}, _titleEl: title });
+  owner._refreshBeatPanel();
+  assert.equal(title.style.display, 'none', 'the panel yields when the HUD owns the opening waypoint');
+  assert.equal(title.getAttribute('aria-hidden'), 'true', 'assistive readers get a single objective');
+  state.nav.waypoint = null;
+  owner._refreshBeatPanel();
+  assert.equal(title.style.display, '', 'the panel can teach a non-spatial opening beat');
+  assert.equal(title.hasAttribute('aria-hidden'), false);
 
   // Mission Log remains optional context — onboarding must not force-push it as a B0 teacher.
   assert.doesNotMatch(onboardingSrc, /pushScreen\(\s*['"]missionLog['"]\s*\)/,
@@ -429,5 +325,5 @@ for (const desc of diffDescs) {
     'Mission Log may still expose optional RECOMMENDED NEXT context when opened on demand');
 }
 
-console.log(`First-hour OK — 10 beats in order, ${allLines.length} authored inline-safe tutorial lines, ` +
-  `one-voice overlap=0, first-flight trainers nonlethal, §4 funnel milestones present.`);
+console.log(`First-hour OK — ${BEATS.length} beats in order, ${allLines.length} authored inline-safe tutorial lines, ` +
+  'entry timing, one-voice routing, nonlethal trainers and funnel milestones checked.');
