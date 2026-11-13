@@ -50,6 +50,7 @@ export function createAsteroidInstancePool(scene, options = {}) {
       reservedCapacity: 0,
       records: [],
       entityIds: [],
+      submittedRecords: [],
     };
     variantStats[variant] = createVariantStats(variant);
   }
@@ -139,6 +140,7 @@ function createKeyedBucket(key, geometry, material, castShadow, receiveShadow, l
     reservedCapacity: 0,
     records: [],
     entityIds: [],
+    submittedRecords: [],
     retiredOwnerCount: 0,
     stats: createVariantStats(logicalKey || key),
   };
@@ -259,6 +261,22 @@ export function isBorrowedAsteroidInstanceResource(object) {
 function releasePoolRecord(pool, bucket, record) {
   const index = bucket.records.indexOf(record);
   if (index >= 0) bucket.records.splice(index, 1);
+  const bridge = bucket.retiring;
+  if (bridge?.submittedRecords.delete(record)) {
+    const slot = bridge.instanceRecords.indexOf(record);
+    const last = bridge.instanceRecords.length - 1;
+    if (slot < last) {
+      bridge.instanceRecords[slot] = bridge.instanceRecords[last];
+      const matrices = bridge.mesh.instanceMatrix.array;
+      matrices.copyWithin(slot * 16, last * 16, (last + 1) * 16);
+      if (bridge.owner) markDynamicBufferItems(bridge.owner, 0, slot);
+      else bridge.mesh.instanceMatrix.needsUpdate = true;
+    }
+    bridge.instanceRecords.pop();
+    if (bridge.owner) commitDynamicBufferOwner(bridge.owner, last);
+    else bridge.mesh.count = last;
+    if (last === 0) bridge.mesh.visible = false;
+  }
   const leaf = record.leaf;
   if (leaf) {
     const ud = leaf.userData;
@@ -614,10 +632,13 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
   // matrices and re-hides every leaf, so the handoff stays blinkless. A leaf
   // whose own program is still cold is hidden by the unready walk exactly as an
   // unadopted leaf would be, so this never widens a miss.
-  if (!bucket.retiring
-      && bucket.mesh.userData && bucket.mesh.userData.pipelinesPending === true) {
+  const replacementPending = bucket.mesh.userData?.pipelinesPending === true;
+  const bridgedRecords = replacementPending ? bucket.retiring?.submittedRecords : null;
+  if (replacementPending && !bucket.retiring) {
     drawPendingBucketLeaves(bucket);
     bucket.mesh.visible = false;
+    bucket.entityIds.length = 0;
+    bucket.submittedRecords.length = 0;
     return;
   }
 
@@ -639,7 +660,10 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
     const root = record.ownerRoot;
     const leaf = record.leaf;
     if (!root || !leaf) continue;
-    leaf.visible = false;
+    // The old batch covers only the records in its last published matrices.
+    // Keep newcomers and previously culled records on the ordinary leaf draw path.
+    leaf.visible = !!bridgedRecords && !bridgedRecords.has(record)
+      && (record.detail !== true || leaf.userData?.poolLeafVisible !== false);
     // A LOD-hidden detail leaf (hlod parks it via poolLeafVisible, not visible) submits
     // nothing while the hide holds.
     if (record.detail === true && leaf.userData && leaf.userData.poolLeafVisible === false) continue;
@@ -688,6 +712,7 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
       }
     }
     bucket.entityIds[submitted] = record.entityId;
+    bucket.submittedRecords[submitted] = record;
     submitted++;
   }
 
@@ -709,6 +734,7 @@ function syncPoolBucket(pool, bucket, variantStats, viewFrustumReady, shadowFrus
   stats.submitted += submitted;
   if (submitted > 0) stats.visibleBatches++;
   bucket.entityIds.length = submitted;
+  bucket.submittedRecords.length = submitted;
 }
 
 export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
@@ -716,6 +742,12 @@ export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
   const bucket = object.userData.asteroidInstanceBucket
     || pool.variants[object.userData.asteroidInstanceVariant | 0];
   if (!bucket || !Number.isInteger(instanceId) || instanceId < 0) return null;
+  if (bucket.retiring?.mesh === object) {
+    const record = bucket.retiring.instanceRecords[instanceId];
+    if (!record) return null;
+    const owned = record.detail ? pool.byDetail.get(record.detailKey) : pool.byEntity.get(record.entityId);
+    return owned?.record === record ? record.entityId : null;
+  }
   return bucket.entityIds[instanceId] ?? null;
 }
 
@@ -764,6 +796,7 @@ export function clearAsteroidInstancePool(pool) {
     }
     bucket.records.length = 0;
     bucket.entityIds.length = 0;
+    bucket.submittedRecords.length = 0;
     if (bucket.mesh) {
       if (bucket.dynamicBufferOwner) commitDynamicBufferOwner(bucket.dynamicBufferOwner, 0);
       else bucket.mesh.count = 0;
@@ -958,9 +991,11 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
     assetId: `asteroid-instance-pool-v${bucket.variant}`,
     producer: 'asteroid-instance-pool',
   });
-  // Only one retiring batch per bucket: a second growth while the first replacement is still
-  // pending releases the older batch now (its rocks are already covered by the pending one).
-  if (bucket.retiring) {
+  // A second growth can replace an unready batch. Its staged matrices never reached
+  // the picture, so keep the existing drawable bridge and discard that batch.
+  const keepExistingBridge = !rebuild && bucket.retiring
+    && previous?.userData?.pipelinesPending === true;
+  if (bucket.retiring && !keepExistingBridge) {
     const stale = bucket.retiring;
     bucket.retiring = null;
     disposeOwnedInstanceMesh(stale.mesh, stale.owner, pool.scene);
@@ -974,14 +1009,19 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
     // the replacement clears the latch (settleRetiringBucketMesh, per sync), then release it.
     // A rebuild after a retired buffer owner has nothing drawable to keep; a pool without the
     // admission latch (tests, previews) shows the new batch immediately, so nothing to bridge.
-    const keepDrawing = !rebuild
+    const keepDrawing = !rebuild && !keepExistingBridge
       && typeof pool.onMeshCreated === 'function'
+      && previous.userData?.pipelinesPending !== true
       && previous.visible === true
       && (previous.count | 0) > 0
       && previous.parent === pool.scene
       && !(previousOwner && previousOwner.invalid);
     if (keepDrawing) {
-      bucket.retiring = { mesh: previous, owner: previousOwner, frames: 0 };
+      const instanceRecords = bucket.submittedRecords.slice();
+      bucket.retiring = {
+        mesh: previous, owner: previousOwner, frames: 0,
+        instanceRecords, submittedRecords: new Set(instanceRecords),
+      };
     } else {
       disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
     }
@@ -991,6 +1031,8 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
   }
   bucket.mesh = mesh;
   bucket.capacity = capacity;
+  bucket.entityIds.length = 0;
+  bucket.submittedRecords.length = 0;
   pool.dirty = true;
   if (pool.scene) {
     pool.scene.add(mesh);

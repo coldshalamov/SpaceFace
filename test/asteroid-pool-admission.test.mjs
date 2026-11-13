@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import {
   createAsteroidInstancePool,
   registerAsteroidBaseLeaf,
+  releaseAsteroidInstancesForEntity,
+  resolveAsteroidInstanceEntityId,
   syncAsteroidInstancePool,
 } from '../src/render/asteroidInstancePool.js';
 
@@ -261,7 +263,7 @@ test('a pending bucket respects detail leaves parked by hlod', () => {
 
 // A pending batch WITH a retiring bridge: the outgoing committed batch already covers the
 // records — the direct-draw fallback must not double-draw them while the bridge runs.
-test('a retiring bridge covers the records — no direct-draw double-up', () => {
+test('a retiring bridge hides only the leaves that it draws', () => {
   const scene = new THREE.Scene();
   const pool = createAsteroidInstancePool(scene, {
     onMeshCreated: (mesh) => { mesh.userData.pipelinesPending = true; },
@@ -278,7 +280,7 @@ test('a retiring bridge covers the records — no direct-draw double-up', () => 
   const firstLeaf = first.root.userData.asteroidInstanceBody;
   assert.equal(firstLeaf.visible, false);
 
-  // Growth: replacement pending, original bridges. Records must stay submitted-state hidden.
+  // Growth: the replacement stages both rocks, while the original draws only the first.
   pool.variants[4].capacity = 1;
   const second = makeCommonRock(44, 4, geometry, material);
   scene.add(second.root);
@@ -290,6 +292,65 @@ test('a retiring bridge covers the records — no direct-draw double-up', () => 
   const stats = syncAsteroidInstancePool(pool);
   assert.equal(stats.submitted, 2, 'records still submit into the pending replacement');
   assert.equal(firstLeaf.visible, false, 'the bridged record keeps its leaf hidden — no double draw');
+  const secondLeaf = second.root.userData.asteroidInstanceBody;
+  assert.equal(original.count, 1, 'the bridge has only the rock drawn before growth');
+  assert.equal(resolveAsteroidInstanceEntityId(pool, original, 0), first.entity.id);
+  assert.equal(resolveAsteroidInstanceEntityId(pool, original, 1), null);
+  assert.equal(secondLeaf.visible, true, 'a new rock draws through its own leaf while the batch is pending');
+
+  // A second growth can land while the first replacement is still waiting.
+  pool.variants[4].capacity = 2;
+  const third = makeCommonRock(45, 4, geometry, material);
+  scene.add(third.root);
+  registerAsteroidBaseLeaf(pool, third.entity, third.root);
+  const finalBatch = pool.variants[4].mesh;
+  assert.equal(replacement.parent, null, 'the never-drawn replacement retires');
+  assert.equal(pool.variants[4].retiring.mesh, original, 'the actual drawing bridge survives');
+  syncAsteroidInstancePool(pool);
+  assert.equal(firstLeaf.visible, false);
+  assert.equal(secondLeaf.visible, true);
+  assert.equal(third.root.userData.asteroidInstanceBody.visible, true);
+
+  finalBatch.userData.pipelinesPending = false;
+  assert.equal(syncAsteroidInstancePool(pool).submitted, 3);
+  assert.equal(original.parent, null);
+  assert.equal(firstLeaf.visible, false);
+  assert.equal(secondLeaf.visible, false, 'the ready replacement now owns its draw');
+  assert.equal(third.root.userData.asteroidInstanceBody.visible, false);
+});
+
+test('a released rock leaves the drawing bridge before its id is registered again', () => {
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene, {
+    onMeshCreated: (mesh) => { mesh.userData.pipelinesPending = true; },
+  });
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const material = new THREE.MeshStandardMaterial();
+  const addRock = (id, x) => {
+    const rock = makeCommonRock(id, 4, geometry, material);
+    rock.root.position.x = x;
+    scene.add(rock.root);
+    registerAsteroidBaseLeaf(pool, rock.entity, rock.root);
+    return rock;
+  };
+  const oldRock = addRock(50, 1);
+  addRock(51, 2);
+  const bucket = pool.variants[4];
+  const bridge = bucket.mesh;
+  bridge.userData.pipelinesPending = false;
+  syncAsteroidInstancePool(pool);
+  bucket.capacity = 2;
+  addRock(52, 3);
+  assert.equal(bucket.retiring.mesh, bridge);
+
+  releaseAsteroidInstancesForEntity(pool, oldRock.entity.id, oldRock.root);
+  oldRock.root.removeFromParent();
+  const revived = addRock(50, 4);
+  syncAsteroidInstancePool(pool);
+  assert.equal(bridge.count, 1, 'the old matrix cannot draw over the new source leaf');
+  assert.equal(resolveAsteroidInstanceEntityId(pool, bridge, 0), 51);
+  assert.equal(bridge.instanceMatrix.array[12], 2);
+  assert.equal(revived.root.userData.asteroidInstanceBody.visible, true);
 });
 
 test('the renderer routes created pool meshes through the admission latch', () => {
