@@ -293,12 +293,9 @@ async function installAsteroidAppearProbe() {
     const mem = membership(pool, id);
     const owned = pool && pool.byEntity && pool.byEntity.get(id);
     const bucket = owned && owned.bucket;
-    let bucketStamped = false;
-    if (bucket) {
-      if (bucket.mesh && bucket.mesh.__sfProbeDrawnFrame === frame) bucketStamped = true;
-      const retiringMesh = bucket.retiring && bucket.retiring.mesh;
-      if (!bucketStamped && retiringMesh && retiringMesh.__sfProbeDrawnFrame === frame) bucketStamped = true;
-    }
+    const bucketStamped = bucket?.mesh?.__sfProbeDrawnFrame === frame && mem.submitted;
+    const bridgeStamped = bucket?.retiring?.mesh?.__sfProbeDrawnFrame === frame
+      && bucket.retiring.submittedRecords?.has(owned.record);
     const memOut = {
       registered: mem.registered === true,
       submitted: mem.submitted === true,
@@ -306,11 +303,15 @@ async function installAsteroidAppearProbe() {
       variant: mem.variant ?? null,
       adopted: mem.adopted === true,
     };
-    if (subtreeStamped || (mem.registered && mem.submitted && bucketStamped)) {
+    if (subtreeStamped || (mem.registered && (bucketStamped || bridgeStamped))) {
       return { drawn: true, via: subtreeStamped ? 'subtree' : 'bucket', mem: memOut, root };
     }
     const out = { drawn: false, reason: 'other', flags: null, detail: null, mem: memOut, root };
-    if (!root) { out.reason = 'noMesh'; return out; }
+    if (!root) {
+      out.reason = 'noMesh';
+      out.flags = rootFlags({}, id, item, af);
+      return out;
+    }
     let top = root;
     while (top.parent) top = top.parent;
     if (top !== scene) { out.reason = 'detached'; return out; }
@@ -483,6 +484,18 @@ async function installAsteroidAppearProbe() {
           ep.firstReason = verdict.reason;
           ep.firstFlags = verdict.flags || null;
           ep.firstDetail = verdict.detail || null;
+          ep.firstProjection = {
+            centerOnScreen: frustum.containsPoint(sphere.center),
+            x: pos.x, z: pos.z, radius: sphere.radius, originX: ox, originZ: oz,
+            camera: camera.position.toArray(), projectionView: Array.from(projView.elements),
+            noMeshFlag: item.entity?._noMesh === true,
+            admission: {
+              firstPlayableFrameAt: r.firstPlayableFrameAt,
+              sectorShell: r.sectorShellAdmission === true,
+              liveSectorGpu: r.liveSectorGpuAdmission === true,
+              activityComplete: af?.complete === true,
+            },
+          };
           try {
             ep.firstDebug = typeof r.debugGeometryPending === 'function'
               ? r.debugGeometryPending(id) : 'debugGeometryPending unavailable';
