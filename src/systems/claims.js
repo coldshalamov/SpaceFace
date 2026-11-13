@@ -308,13 +308,12 @@ function goodsDeltaLabel(goods) {
   return parts.join(', ');
 }
 
-function firstMissingModuleMaterial(mod, player) {
+function firstMissingModuleMaterial(mod, state) {
   const recipe = mod && mod.materials;
   if (!recipe || typeof recipe !== 'object') return null;
-  const items = player && player.cargo && player.cargo.items || {};
   for (const id of Object.keys(recipe)) {
     const need = Math.max(0, Math.floor(Number(recipe[id]) || 0));
-    const have = Math.max(0, Math.floor(Number(items[id]) || 0));
+    const have = sellableCargoQuantity(state, id);
     if (have < need) return { id, need, have, missing: need - have };
   }
   return null;
@@ -444,7 +443,7 @@ export const claims = {
       });
       return false;
     }
-    const missingMaterial = firstMissingModuleMaterial(mod, player);
+    const missingMaterial = firstMissingModuleMaterial(mod, this.state);
     if (missingMaterial) {
       this.bus.emit('toast', {
         text: 'Need ' + missingMaterial.missing + ' more ' + materialName(missingMaterial.id) + ' for ' + mod.name,

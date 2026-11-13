@@ -12,6 +12,7 @@ import {
   resolveLaneSegmentInto,
 } from '../src/systems/travelLanes.js';
 import { traffic as trafficBase } from '../src/systems/traffic.js';
+import { addCargo } from '../src/systems/cargo.js';
 import {
   applyConfirmedBaseInvestment,
   describeBaseBuildAction,
@@ -271,6 +272,37 @@ test('Throughline surveys the whole physical tube and never spends into an obstr
   assert.equal(blocked.body.modules.includes('mod_throughline_sling'), false);
   assert.equal(blocked.body.infrastructure, undefined);
   assert.match(blocked.bus.of('toast').at(-1).payload.text, /No clear Throughline corridor/);
+});
+
+test('Throughline fabrication only spends loose cargo and leaves a sealed manifest aboard', () => {
+  const h = bootClaims();
+  const module = BODY_MODULE_BY_ID.get('mod_throughline_sling');
+  for (const [id, qty] of Object.entries(module.materials)) {
+    assert.equal(addCargo(h.state, id, qty), qty);
+  }
+  h.state.missions = { active: [{
+    id: 'alloy-run', status: 'active', preloadedCargo: true,
+    params: { cmdtyId: 'cmdty_alloys', qty: 6 },
+  }] };
+  const credits = h.state.player.credits;
+  const cargo = structuredClone(h.state.player.cargo);
+  const charges = h.bus.of('economy:chargeCredits').length;
+
+  assert.equal(h.sys.buildModule(h.body.id, module.id), false);
+  assert.equal(h.state.player.credits, credits);
+  assert.deepEqual(h.state.player.cargo, cargo);
+  assert.equal(h.body.modules.includes(module.id), false);
+  assert.equal(h.body.infrastructure, undefined);
+  assert.equal(h.bus.of('economy:chargeCredits').length, charges);
+
+  assert.equal(addCargo(h.state, 'cmdty_alloys', 6), 6);
+  assert.equal(h.sys.buildModule(h.body.id, module.id), true);
+  assert.deepEqual(h.state.player.cargo.items, { cmdty_alloys: 6 });
+  assert.equal(h.state.player.credits, credits - module.cost);
+  assert.equal(h.body.infrastructure.stage, 'aligning');
+  assert.equal(h.sys.buildModule(h.body.id, module.id), false);
+  assert.equal(h.bus.of('economy:chargeCredits').length, charges + 1);
+  assert.equal(h.state.player.cargo.items.cmdty_alloys, 6);
 });
 
 test('a close endpoint pair is refused before any ring is built (NXI-142)', () => {
