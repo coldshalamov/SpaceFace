@@ -37,8 +37,15 @@ import {
 import { registerEntityWorldRecordId } from './livingWorldViews.js';
 
 const RUNTIMES = new WeakMap();
+const PRESENTATION_MIRRORS = new WeakSet();
 const RECENT_DAMAGE_TICKS = 120;
 const DAMAGE_PIN_S = 2;
+
+// Bind the exact entity table. It stays a mirror after a worker error, and the
+// in-process boot fallback replaces it with its own authoritative table.
+export function registerActivityPresentationMirror(entities) {
+  PRESENTATION_MIRRORS.add(entities);
+}
 
 // Glass/runway membership is tested per entity per rendered frame
 // (entityMeshVisibility.shouldSubmitEntityMesh + renderer hold-exempt paths), so these must be
@@ -472,7 +479,7 @@ function attachStamp(entity, rec) {
   return rec;
 }
 
-function applyStamp(entity, classified, simTime, runtime) {
+function applyStamp(entity, classified, simTime, runtime, canWriteWorld) {
   let rec = entity.activity;
   if (!rec) {
     rec = makeStamp(classified, simTime);
@@ -500,7 +507,7 @@ function applyStamp(entity, classified, simTime, runtime) {
       rec.lastExactT = simTime;
     }
   } else if (nowExact) {
-    if (!wasExact && rec.lastExactT >= 0 && simTime > rec.lastExactT + 1e-4) {
+    if (canWriteWorld && !wasExact && rec.lastExactT >= 0 && simTime > rec.lastExactT + 1e-4) {
       catchUpEntity(entity, rec, simTime, runtime);
     }
     rec.lastExactT = simTime;
@@ -1856,6 +1863,9 @@ function classifyWorld(state, runtime) {
   // the world-record bag is the same object for every entity this pass.
   const passCollisionIds = authoritativeCollisionIds(state);
   const passWorldRecordBag = state.world && state.world.records && state.world.records.byId;
+  // Presentation reads keep their local tier/pin stamps for visibility, asset
+  // residency and audio, while completed worker messages own pose and records.
+  const canWriteWorld = !PRESENTATION_MIRRORS.has(state.entities);
   for (let i = 0; i < visit.length; i++) {
     const entity = visit[i];
     if (!entity || entity.alive === false) continue;
@@ -2007,12 +2017,12 @@ function classifyWorld(state, runtime) {
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
     classified.pins = reusablePins(runtime, entity.id, classified.pins);
-    const stamp = applyStamp(entity, classified, simTime, runtime);
+    const stamp = applyStamp(entity, classified, simTime, runtime, canWriteWorld);
     if (worldRec && Number.isFinite(worldRec.nextEventAtT)) {
       stamp.nextEventAtT = worldRec.nextEventAtT;
     }
     if (isExactTier(priorTier) && !isExactTier(stamp.simTier)) {
-      captureDematerialized(state, entity, simTime, stamp.simTier);
+      if (canWriteWorld) captureDematerialized(state, entity, simTime, stamp.simTier);
       if (ai) runtime.activityTransitionAiEntities.push(entity);
     }
     if (firstActivityObservation && ai && !isExactTier(stamp.simTier)) {

@@ -60,6 +60,7 @@ import { normalizePadSensitivity, sampleGamepadFrame } from '../systems/gamepad.
 import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
 import { applySharedPlayerStoreCapability, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
+import { registerActivityPresentationMirror } from './worldActivityManager.js';
 import {
   installSimCommandSink,
   uninstallSimCommandSink,
@@ -458,6 +459,7 @@ export function createSimLaneRuntime({
   const laneWeaponVfxProjectiles = [];
   state.weaponVfxProjectiles = laneWeaponVfxProjectiles;
   state.entities = readModel.entities;
+  registerActivityPresentationMirror(state.entities);
   // The list only changes shape when the facade roster mutated (spawn/despawn bump
   // rosterVersion) or weapon-VFX rows exist (their alive flags flip per reply).
   // Otherwise the O(entities) refill is skipped; length/size checks guard against

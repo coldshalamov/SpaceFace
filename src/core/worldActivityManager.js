@@ -10,6 +10,7 @@ export {
   getActivityInitialInactiveEntities,
   getActivityWakeEvents,
   physicsReachWuFromState,
+  registerActivityPresentationMirror,
 } from '../world/activityRuntime.js';
 
 import { ensureActivityClassified as classify } from '../world/activityRuntime.js';
