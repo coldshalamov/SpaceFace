@@ -191,6 +191,9 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   table. The old path only updated the private read model. Field rows now enter the render roster
   before promotion, without becoming live bodies. The 56 focused checks include grid movement,
   promotion, reused IDs, and coalesced replies. Ceres live contact remains open.
+  The production worker's Ceres entry emitted 525 dormant rows, including 27 diamond cells.
+  One ordinary rock resolved in the presentation grid before the ram-promotion command, then
+  transferred to the live body roster and left the field. The owner probe found no aux breaches.
 - `0427216c1975` drains dirty and removed IDs directly. New and replaced tables compare membership
   once. The 720-tick auxiliary probe had no reader mismatches or missing journal marks. The separate
   transport threshold failed on this host (2.54 ms p95 against the 0.5 ms per-tick threshold).
