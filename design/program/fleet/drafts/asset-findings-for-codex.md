@@ -1,0 +1,17 @@
+
+## B — hulls (LOOK-05B, stopped unfinished at owner's scope change; nothing in src/ was changed)
+
+**How hull marks work today.** `src/render/illustratedStencils.js` draws one 1024 canvas sheet per decal style (9 ids = `SHIP_DECALS` minus none), in code, in normalized hull plan space (u aft to nose, v across the beam; larger of x/z spans the sheet). `illustratedSurface.js` samples it once (`STENCIL_GLSL`) on top-facing surfaces and mixes it over paint. Payload is installed per material by `installShipStencils` in `partsLibrary.js` (only when `palette.decalId` is a real style, so hulls whose faction has `decal: null`, and 'none', get NO marks and NO scratches/soot/grime). Panel layout and seams come from `illustratedHullLayout.js` (`HULL_LAYOUT_GLSL`, only for asset ids matched in `hullLayoutForAsset`). Faction to decal default: `PAINT_PROFILES.decal` in `src/data/palettes.js`; `resolvePalette` in `visualFactory.js` applies it. Wear amount = `palette.wear`.
+
+**Gaps found.** (1) No hull without a decal shows any wear at all (zealot, archivist, helix, default factions, explicit 'none'). (2) Code-drawn sheet has chips only inside marks; no scratches, edge wear, soot behind drives, grime. (3) No edge wear in the shader.
+
+**Plan I had designed (not applied).** Add a `worn` sheet used when decalId is none/absent (keep `STENCIL_STYLE_IDS` and the test pin `stencilPayloadFor('none') === null`; map in partsLibrary and map `worn` back to 'none' in `hullDecalToken`). Composite two authored atlases into the same sheet (repaint on image load): faction marks per style (hull numbers, hazard patches, tags, roundels), soot plumes at u 0.05-0.25 behind the drives, grime/rust blotches, bare-metal scratches and chips. Add a cheap screen-space edge-wear term in `STENCIL_GLSL` (curvature from `fwidth(vNormal)` over `fwidth(vSfHullPosition)`, noise-broken, bare-metal tint, wear uniform on the payload), no new samplers, no new materials.
+
+**Generated and checked by eye.**
+- `assets/textures/hull-wear/hull_marks_atlas.png` — 1024x1024 RGBA, 4x4 tiles of 256: KIT tag, skull+wrenches, 07, NX-214, hazard yellow/black, hazard red/white, warning triangle, chevrons, star roundel, gear+wrench, tally, NO STEP, CARGO, eye, bolt diamond, MK II plate. Good quality; keyed from green.
+- Raw green-key original: `.devshots/look05b/raw/marks_raw.png` (not committed).
+- `tools/hull-wear-atlas.mjs` builds the alpha atlas (and a 512x1024 mask atlas from `scratch_raw.png` white-on-black and `grime_raw.png` black-on-white). The scratch/grime generations were still running when stopped.
+- Lesson: Codex "transparent PNG" requests come back cropped and broken; ask for flat `#00FF00` backdrop and key it yourself (or white/black for soft masks).
+- Prompt used for marks: "Generate ONE image ... 1024x1024 ... flat pure green #00FF00 backdrop ... 4x4 grid of 16 paint decals each centered in a 256x256 cell, at least 20px margin ... weathered spray-stencil paint on a spaceship hull, chipped, faded, flaking, flat top-down ... reading order: KIT orange tag with drip; skull over crossed wrenches white; hull number 07 stencil; NX-214 pale yellow stencil; hazard patch yellow/black; hazard patch red/white; warning triangle; two chevrons; star roundel blue/white; gear+wrench orange; 13 chalk tallies; NO STEP + arrow; CARGO + box; menacing eye red; lightning bolt in diamond; MK II serial plate with rivets."
+
+**Before shots** were queued (`.devshots/look05b/`, look-bench of 10 hulls and a Swarm round-3 throw) but not finished.
