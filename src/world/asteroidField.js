@@ -17,6 +17,11 @@ import { racingAsteroidSpec } from './racingCorridor.js';
 import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
+const promotedFieldRocks = new WeakSet();
+
+export function isPromotedFieldRock(entity) {
+  return promotedFieldRocks.has(entity);
+}
 export const ASTEROID_FIELD_CELL = 220;
 const CANONICAL_OPTIC_STRUCTURES = new Set(OPTIC_STRUCTURES.map(spec => spec.id));
 
@@ -765,6 +770,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     data,
   });
   if (!ent) return null;
+  promotedFieldRocks.add(ent);
   if (rec.homeSectorId) {
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;

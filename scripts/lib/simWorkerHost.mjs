@@ -100,7 +100,7 @@ import { LANTERN_WARD_VITAL_KEYS, lanternWardPresentationLife, lanternWardVitalV
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
-import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
+import { insertAsteroidFieldRock, isPromotedFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
 import { armRacingGrid } from '../../src/world/racingGridArrival.js';
@@ -737,6 +737,7 @@ function entityInfoBlock(state, entityId, host) {
     isPlayer: e.isPlayer === true,
     farResident: e.farResident === true,
     fieldResident: e.fieldResident === true,
+    ...(isPromotedFieldRock(e) ? { promotedFieldRock: true } : {}),
     noMesh: e._noMesh === true,
     flags: flatFlags,
     ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) }

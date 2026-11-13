@@ -1031,6 +1031,23 @@ export function createSimLaneRuntime({
     const upserts = Array.isArray(msg.auxUpserts) ? msg.auxUpserts : [];
     const removals = Array.isArray(msg.auxRemovals) ? msg.auxRemovals : [];
     if (!upserts.length && !removals.length) return;
+    const field = state.world?.asteroidField;
+    if (state.mode === 'flight' && field && msg.lifecycleGeneration === lifecycleGeneration) {
+      for (const info of msg.spawnInfos || []) {
+        if (info.promotedFieldRock !== true || !Number.isSafeInteger(info.occupantGeneration)) continue;
+        const dormant = field.byId.get(info.entityId);
+        if (!dormant || dormant.alive === false) continue;
+        const live = readModel.entities.get(info.entityId);
+        if (live?.alive !== true || live.occupantGeneration !== info.occupantGeneration) continue;
+        const root = state.render?.meshes?.get(info.entityId);
+        if (root?.parent && dormant.mesh === root && root.visible && root.userData?.sfAdmittedOnce === true) {
+          root.userData.fieldPromotionPose = {
+            id: info.entityId, life: info.occupantGeneration,
+            sector: state.world.currentSectorId, lifecycle: lifecycleGeneration,
+          };
+        }
+      }
+    }
     applyAuxUpserts(readModel, upserts);
     applyAuxRemovals(readModel, removals);
     applyAsteroidFieldPresentationDelta(state, upserts, removals);

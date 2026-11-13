@@ -7,8 +7,56 @@ import { createPresentationPublisher } from '../src/render/presentationPublisher
 import { createPresentationJournal } from '../src/core/presentationJournal.js';
 import { createSimLaneJournal } from '../src/core/simLaneJournal.js';
 import { notePacedFrameSpend } from '../src/render/decodeTaskBudget.js';
+import { applyEntityMeshVisibility, shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
 
 const DT = 1 / 60;
+
+test('a visible field rock keeps its pose while the delayed fence reaches its live spawn', () => {
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, y: 0, z: 0 }, rot: 0 };
+  const rock = { id: 299, type: 'asteroid', alive: true, occupantGeneration: 41, pos: { x: 11, y: 0, z: 0 }, rot: 0 };
+  const state = { mode: 'flight', world: { currentSectorId: 'ceres' }, entities: new Map([[1, player]]) };
+  const world = createPresentationWorld();
+  const source = createPresentationJournal(1024);
+  const publisher = createPresentationPublisher(world, state, { journal: source });
+  const fence = createSnapshotFence({ capacity: 8 });
+  const owner = Object.assign(Object.create(render), {
+    state, _presentationWorld: world, _snapshotFence: fence, _posePackLifecycleGeneration: 5,
+    _frameMembrane: { origin: { x: 0, z: 0 } },
+  });
+  const root = {
+    position: { x: 10, y: 0, z: 0 }, rotation: { y: 0 }, visible: true, parent: {},
+    userData: {
+      presentationOccupantGeneration: 41,
+      fieldPromotionPose: { id: rock.id, life: 41, sector: 'ceres', lifecycle: 5 },
+    },
+  };
+  function publish(tick, spawn = null) {
+    if (spawn) source.recordSpawn(tick, spawn);
+    else source.recordTransform(tick, player);
+    publisher.consume(null, { atomic: true });
+    packPresentationWorldToFence(world, fence, tick * DT, 7);
+    return fence.samplePresentationAlpha(DT, 0, DT, 1);
+  }
+  publish(1, player);
+  for (let tick = 2; tick <= 60; tick++) publish(tick);
+  state.entities.set(rock.id, rock);
+  for (let tick = 61; tick <= 63; tick++) {
+    const alpha = publish(tick, tick === 61 ? rock : null);
+    const slot = world.getSlotForEntityId(rock.id);
+    const applied = owner._applyPresentationPose(slot, root, alpha);
+    assert.equal(applied, tick === 63);
+    const posed = owner._keepFieldPromotionPose(slot, root, rock, applied) || applied;
+    applyEntityMeshVisibility(root, shouldSubmitEntityMesh({ onLiveGlass: true, snapshotMissing: !posed }));
+    assert.equal(root.visible, true);
+    assert.equal(root.position.x, tick === 63 ? 11 : 10);
+    if (tick === 61) {
+      const reused = { ...root, userData: { ...root.userData } };
+      assert.equal(owner._keepFieldPromotionPose(slot, reused, { ...rock, occupantGeneration: 42 }, false), false);
+      assert.equal(reused.userData.fieldPromotionPose, undefined);
+    }
+  }
+  assert.equal(root.userData.fieldPromotionPose, undefined);
+});
 
 function fixture(count = 2, mode = 'flight') {
   const world = {

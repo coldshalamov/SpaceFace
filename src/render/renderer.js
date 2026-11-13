@@ -28716,6 +28716,27 @@ export const render = {
       || generations[index] === (expectedGeneration >>> 0);
   },
 
+  _keepFieldPromotionPose(slot, mesh, entity, posed) {
+    const promotion = mesh.userData?.fieldPromotionPose;
+    if (!promotion) return false;
+    const fence = this._snapshotFence;
+    const served = fence?.latestSnapshot();
+    const newest = fence?.newestSnapshot();
+    // The live slot may arrive before the delayed bracket reaches its spawn. Keep the
+    // already-admitted dormant pose for that exact occupant until the bracket catches up.
+    if (posed || !mesh.visible || !mesh.parent || entity?.id !== promotion.id
+      || entity.occupantGeneration !== promotion.life || entity.alive !== true
+      || mesh.userData.presentationOccupantGeneration !== promotion.life || this.state.mode !== 'flight'
+      || promotion.sector !== this.state.world?.currentSectorId
+      || promotion.lifecycle !== this._posePackLifecycleGeneration
+      || !served || !newest || served.poseEpoch !== newest.poseEpoch
+      || !snapshotHasEntityGeneration(newest, entity.id, this._presentationWorld.slotGenerations[slot], slot)) {
+      delete mesh.userData.fieldPromotionPose;
+      return false;
+    }
+    return true;
+  },
+
   syncEntityViews(alpha) {
     const iter = this.syncEntityViewsSteps(alpha, false);
     // Drive belt: a machinery-level fault outside the row quarantine (query
@@ -28897,7 +28918,9 @@ export const render = {
         if (entity && entity.alive !== false) {
           world.refreshVisibleEntity(slot, entity, cullRadius);
         }
-        const posed = this._applyPresentationPose(slot, mesh, alpha, true);
+        const applied = this._applyPresentationPose(slot, mesh, alpha, true);
+        const posed = mesh.userData?.fieldPromotionPose
+          ? this._keepFieldPromotionPose(slot, mesh, entity, applied) || applied : applied;
         const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER) || entityId === this.state.playerId;
         const forceRender = !!(packedFlags & PRESENTATION_FLAGS.FORCE_RENDER)
           || !!(entity && entity.flags && entity.flags.forceRender);
@@ -29058,11 +29081,6 @@ export const render = {
           | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot) || tokenChanged) {
           posed = this._applyPresentationPose(slot, mesh, alpha);
           poseApplied = !!posed;
-          if (!posed && !protectedRoot) {
-            if (applyEntityMeshVisibility(mesh, false)) {
-              this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-            }
-          }
           if (posed && presentedToken !== 0) {
             userData.sfPresentedSampleToken = presentedToken;
             userData.sfPresentedSampleEntityId = entityId;
@@ -29070,6 +29088,7 @@ export const render = {
           if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
           transformed++;
         }
+        if (userData.fieldPromotionPose) posed = this._keepFieldPromotionPose(slot, mesh, entity, posed) || posed;
         // Table-row motion arrives on the bounded aux channel, not the ordinary
         // entity transform journal. Its live facade can change while the snapshot is clean.
         if (posed && entity?.data?.warmFreighterVisualPose
