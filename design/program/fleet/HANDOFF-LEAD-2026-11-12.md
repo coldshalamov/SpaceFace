@@ -355,3 +355,10 @@ The earlier handoff commit `33def1ced2dc` also included two Opus-owned paths tha
 - `de41835f905e` accepted. The corrected Ceres run observed target activation at 63 WU. No target draw was stamped and no before-contact PNG was produced. The contact PNG was opened. This does not close Ceres visibility.
 
 Completed the two previously queued game-lock checks. No workers launched during these captures. The next work is the main-thread and worker step budget across Adventure, Swarm, Gauntlet and Circuits, the Ceres target's actual draw ownership, and live load/Continue. See [QUALITY.md](QUALITY.md).
+
+### Stand-in log — relocation continuity
+
+- `9dc2491bfc1d` fixed. An authored same-sector relocation advances the render pose epoch. The real fence fixture confirmed the relocated ship reseats immediately while ordinary same-life recovery remains continuous. Ten focused tests passed.
+- `3bf8ef3490ff` accepted. The locked Ceres run did not establish contact visibility. The target activated 1,227 WU away and was never stamped in view. Helios still showed an 891 ms rescue rock admission gap.
+
+No workers launched during this final capture. Continue from the measured reply and pose timing in [QUALITY.md](QUALITY.md).
