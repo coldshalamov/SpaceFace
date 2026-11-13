@@ -97,9 +97,11 @@ function captureMaterialUniforms(material) {
     iridescenceRange: material.iridescenceThicknessRange?.slice() || null,
     textures: MATERIAL_TEXTURES.map(key => {
       const texture = material[key];
-      return { texture, repeat: captureUniformComponents(texture?.repeat),
-        offset: captureUniformComponents(texture?.offset), center: captureUniformComponents(texture?.center),
-        rotation: texture?.rotation };
+      // Preserve null versus undefined without recording transforms for an unused slot.
+      if (texture == null) return texture;
+      return { texture, repeat: captureUniformComponents(texture.repeat),
+        offset: captureUniformComponents(texture.offset), center: captureUniformComponents(texture.center),
+        rotation: texture.rotation };
     }),
     pigmentColor: data.spacefaceIllustratedPigment?.color,
     pigmentStrength: data.spacefaceIllustratedPigment?.strength,
@@ -128,10 +130,14 @@ function materialUniformsStable(previous, material) {
   if (!uniformArrayStable(previous.iridescenceRange, material.iridescenceThicknessRange)) return false;
   for (let i = 0; i < MATERIAL_TEXTURES.length; i++) {
     const record = previous.textures[i], texture = material[MATERIAL_TEXTURES[i]];
-    if (record.texture !== texture || !Object.is(record.rotation, texture?.rotation)
-      || !uniformComponentsStable(record.repeat, texture?.repeat)
-      || !uniformComponentsStable(record.offset, texture?.offset)
-      || !uniformComponentsStable(record.center, texture?.center)) return false;
+    if (record == null) {
+      if (record !== texture) return false;
+      continue;
+    }
+    if (record.texture !== texture || !Object.is(record.rotation, texture.rotation)
+      || !uniformComponentsStable(record.repeat, texture.repeat)
+      || !uniformComponentsStable(record.offset, texture.offset)
+      || !uniformComponentsStable(record.center, texture.center)) return false;
   }
   const data = material.userData || EMPTY_ARRAY;
   const pigment = data.spacefaceIllustratedPigment, layout = data.spacefaceHullLayout;
@@ -232,6 +238,7 @@ function makeGeometrySnapshot(geometry) {
   const drawRange = geometry && geometry.drawRange;
   return {
     geometry,
+    shared: false,
     attributes,
     version: geometry && geometry.version,
     rows,
@@ -243,8 +250,17 @@ function makeGeometrySnapshot(geometry) {
   };
 }
 
-function geometrySnapshotStable(snapshot, geometry) {
+function geometrySnapshotStable(snapshot, geometry, stability) {
   if (!snapshot || snapshot.geometry !== geometry) return false;
+  if (!snapshot.shared) return geometryAttributesStable(snapshot, geometry);
+  const cached = stability.get(snapshot);
+  if (cached !== undefined) return cached;
+  const stable = geometryAttributesStable(snapshot, geometry);
+  stability.set(snapshot, stable);
+  return stable;
+}
+
+function geometryAttributesStable(snapshot, geometry) {
   if (snapshot.version !== geometry?.version) return false;
   const index = geometry && geometry.index;
   if (snapshot.index !== index
@@ -580,6 +596,7 @@ function buildCandidate(scene, plan, options) {
   const batches = [];
   const entries = [];
   const materialUniforms = new Map();
+  const geometrySnapshots = new Map();
   const motionPivotBySource = options.motionPivotBySource;
   const motionPivots = options.motionPivots;
   motionPivotBySource.clear();
@@ -635,6 +652,13 @@ function buildCandidate(scene, plan, options) {
           if (!materialUniforms.has(source.material)) {
             materialUniforms.set(source.material, captureMaterialUniforms(source.material));
           }
+          let geometrySnapshot = geometrySnapshots.get(source.geometry);
+          if (geometrySnapshot) {
+            geometrySnapshot.shared = true;
+          } else {
+            geometrySnapshot = makeGeometrySnapshot(source.geometry);
+            geometrySnapshots.set(source.geometry, geometrySnapshot);
+          }
           const entry = {
             source,
             motionPivot: motionPivotBySource.get(source) || null,
@@ -659,7 +683,7 @@ function buildCandidate(scene, plan, options) {
             receiveShadow: source.receiveShadow === true,
             matrix: new Float64Array(16),
             color: colorSnapshot(color),
-            geometrySnapshot: makeGeometrySnapshot(source.geometry),
+            geometrySnapshot,
             tags: relevantTagSnapshot(source),
             visible: true,
             removed: false,
@@ -699,7 +723,7 @@ function buildCandidate(scene, plan, options) {
 }
 
 function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null,
-  materialUniformStability = null, noteCheck = null, shadowDepthDisabled = false) {
+  stability, noteCheck = null, shadowDepthDisabled = false) {
   const check = (name, ok) => { if (!ok && noteCheck) noteCheck(name); return ok; };
   const source = entry.source;
   const material = source && source.material;
@@ -707,11 +731,10 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
   const currentColor = material ? colorFromMaterial(material, _sourceColor) : null;
   let uniformsStable = false;
   if (material === entry.material) {
-    if (materialUniformStability && materialUniformStability.has(entry.materialUniforms)) {
-      uniformsStable = materialUniformStability.get(entry.materialUniforms);
-    } else {
+    uniformsStable = stability.materials.get(entry.materialUniforms);
+    if (uniformsStable === undefined) {
       uniformsStable = materialUniformsStable(entry.materialUniforms, material);
-      materialUniformStability?.set(entry.materialUniforms, uniformsStable);
+      stability.materials.set(entry.materialUniforms, uniformsStable);
     }
   }
   if (material === entry.material && !uniformsStable && noteMutableMaterial) noteMutableMaterial(material);
@@ -723,7 +746,7 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     // traverse this source for roofs, picking, and opaque ownership.
     && check('visible-flip', source.visible === entry.originalVisible)
     && check('geometry-swap', source.geometry === entry.geometry)
-    && check('geometry-mutated', geometrySnapshotStable(entry.geometrySnapshot, source.geometry))
+    && check('geometry-mutated', geometrySnapshotStable(entry.geometrySnapshot, source.geometry, stability.geometries))
     && check('material-swap', material === entry.material)
     && check('material-visibility', (material && material.visible !== false) === entry.materialVisible)
     && check('material-version', (material && material.version) === entry.materialVersion)
@@ -1176,13 +1199,13 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       stats.lastDetail = detail;
     }
     let visibleCount = 0;
-    const materialUniformStability = new Map();
+    const stability = { materials: new Map(), geometries: new Map() };
     const unstableEntries = [];
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
       let failedCheck = null;
       if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
-        materialUniformStability, (name) => { if (failedCheck == null) failedCheck = name; },
+        stability, (name) => { if (failedCheck == null) failedCheck = name; },
         shadowDepthDisabled)) {
         // Material/tint drift only changes what this leaf would draw, so demote that one leaf to
         // its authored direct draw and keep the resident cohort. Topology/program/geometry
@@ -1573,13 +1596,13 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         const topologyStable = entryTopologyMatches(record.entryTopology);
         if (!topologyStable) stats.lastDetail = 'entry-topology-before-commit';
         refreshEntryMotionPivots(candidate.entries, motionPivots);
-        const materialUniformStability = new Map();
+        const stability = { materials: new Map(), geometries: new Map() };
         const cacheKeySwaps = new Set();
         const cacheKeySwapsByBatch = new Map();
         const sourcesStable = topologyStable && candidate.entries.every((entry) => {
           let failedCheck = null;
           const stable = sourceStaticStateStable(entry, false, isRenderHookSafe, noteMutableMaterial,
-            materialUniformStability, (name) => { failedCheck = name; }, shadowDepthDisabled);
+            stability, (name) => { failedCheck = name; }, shadowDepthDisabled);
           if (stable) return true;
           noteUnstableCheck(entry)(failedCheck);
           if (failedCheck !== 'cache-key-swap') return false;

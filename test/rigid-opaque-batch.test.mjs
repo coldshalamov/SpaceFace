@@ -894,7 +894,8 @@ test('actual retro heat changes retire stale retained material copies before the
 test('live uniform component and texture-transform changes retire the retained copy', async () => {
   for (const mutate of [material => { material.emissive.r = 0.8; },
     material => { material.roughness = 0.7; }, material => { material.normalScale.x = 2; },
-    material => { material.map.offset.x = 0.5; }]) {
+    material => { material.map.offset.x = 0.5; },
+    material => { material.emissiveMap = new THREE.Texture(); }]) {
     const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
     const material = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), roughness: 0.4 });
     const a = new THREE.Mesh(new THREE.BoxGeometry(), material), b = new THREE.Mesh(new THREE.BoxGeometry(), material);
@@ -904,7 +905,8 @@ test('live uniform component and texture-transform changes retire the retained c
     mutate(material);
     assert.equal((await controller.sync(root)).status, 'idle');
     assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
-    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); material.map.dispose(); material.dispose();
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose();
+    material.map.dispose(); material.emissiveMap?.dispose(); material.dispose();
   }
 });
 
@@ -1412,16 +1414,21 @@ test('retained batches update translated matrices and roll back on reparent or g
   assert.equal(controller.getDiagnostics().status, 'idle');
   assert.equal(scene.children.includes(batch), false);
 
-  // Rebuild from the intact sibling, then mutate its geometry in place. The mutation invalidates
-  // the retained copy and forces a fresh admission before either source is suppressed again.
+  // Both meshes now share a geometry. An in-place mutation must invalidate its retained copy
+  // and force a fresh admission before either source is suppressed again.
   replacementParent.remove(a);
   root.add(a);
+  b.geometry.dispose();
+  b.geometry = a.geometry;
   root.updateMatrixWorld(true);
   await controller.sync(root);
   assert.equal(controller.getDiagnostics().status, 'active');
+  const sharedBatch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+  assert.ok(sharedBatch);
   b.geometry.getAttribute('position').setX(0, 4);
   b.geometry.getAttribute('position').needsUpdate = true;
   await controller.sync(root);
+  assert.equal(scene.children.includes(sharedBatch), false);
   assert.equal(a.visible, true);
   assert.equal(b.visible, true);
   assert.equal(a.layers.mask, 0);
@@ -1430,7 +1437,6 @@ test('retained batches update translated matrices and roll back on reparent or g
 
   controller.dispose();
   a.geometry.dispose();
-  b.geometry.dispose();
   a.material.dispose();
   b.material.dispose();
 });
