@@ -55,6 +55,7 @@ import {
   SWARM_FLOOR_CRATE_MOVE_S,
   SWARM_FLOOR_CRATE_LABEL,
   swarmFloorPlanFor,
+  swarmPadNocturne,
   wallGunLabel,
 } from '../data/swarmFloor.js';
 import {
@@ -324,6 +325,7 @@ export function createSwarmFloorDirector(ctx) {
         amount: 1,
         playerCollectOnly: true,
         swarmFloorPad: rec,
+        nocturne: swarmPadNocturne(rec.kind),
       },
     });
     if (!entity || entity.id == null) return null;

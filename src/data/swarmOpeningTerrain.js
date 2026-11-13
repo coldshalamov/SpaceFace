@@ -1,14 +1,15 @@
-// Foundry's first three rooms: a small throwing court, a flanking yard, then an
+// Foundry's first three rooms (every bank keeps clear of the shop pads in swarmFloor.js —
+// test/swarm-floor-apron.test.mjs): a small throwing court, a flanking yard, then an
 // outer bank. This is placement, not a new encounter/reward/physics authority.
 // Existing pebbles, lesson hull/well and the arena tier remain their owners' work.
 const STATIONS = Object.freeze([
   // Near shoulders leave the bank-only X strip open; crosswise throws meet a bank.
   [150, -100, 'rock'], [150, 100, 'metal'],
   [-150, -100, 'cryo'], [-150, 100, 'debris'],
-  [30, -235, 'crystal'], [180, 225, 'volatile'],
+  [30, -230, 'crystal'], [180, 225, 'volatile'],
   [-80, -245, 'calcite'], [-175, 235, 'metal'],
   // Round two stretches the same court onto flanks rather than filling its exits.
-  [225, -165, 'metal'], [225, 165, 'rock'], [-230, -170, 'debris'],
+  [270, -130, 'metal'], [225, 165, 'rock'], [-210, -210, 'debris'],
   // Bank centers stay inside the T0 300wu band, away from the positive-Z optic fuse.
   // Round three's outer bank gives a longer throw somewhere to end.
   [-230, 170, 'crystal'], [100, -275, 'rock'], [235, 100, 'metal'],

@@ -40,6 +40,7 @@ import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } f
 import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
+import { swarmFloorKeepClear } from '../data/swarmFloor.js';
 import { mulberry32 } from '../core/rng.js';
 import { clearanceFootprint, swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -416,6 +417,17 @@ export const SWARM_DEBRIS_SAFE_RADIUS = 120;
 /** Foundry (Helios) default: dense banks to shove into. Other arenas retune the band, not HP. */
 export const FOUNDRY_ARENA_ID = 'helios_core';
 
+/**
+ * The Foundry's shops are landmarks (15_ARENA_FLOORS composition rules): whichever layout the room
+ * uses (the ladder tier's or the arena default), the seeded ring keeps an apron clear around every
+ * pad, so a rock never sits on the wall gun, Crate, Forge or Tap. Other arenas pass through.
+ */
+export function withShopAprons(layout, arenaId) {
+  if (!layout) return layout;
+  const keepClear = arenaId === FOUNDRY_ARENA_ID ? swarmFloorKeepClear(arenaId) : null;
+  return keepClear && keepClear.length ? { ...layout, keepClear } : layout;
+}
+
 export function debrisLayoutForArena(arenaId) {
   if (arenaId === LAGRANGE_ARENA_ID) {
     return Object.freeze({
@@ -625,6 +637,10 @@ export function planSwarmDebris({ anchor, existing = [], want = 0, rng, layout =
     : null;
   const laneBias = !!(layout && layout.laneBias);
   const placed = existing.map((e) => ({ x: e.x, z: e.z, radius: e.radius || 0 }));
+  // Authored no-build zones (shop aprons), given as offsets from the anchor. Never returned.
+  for (const k of (layout && Array.isArray(layout.keepClear) ? layout.keepClear : [])) {
+    if (Number.isFinite(k.x) && Number.isFinite(k.z)) placed.push({ x: at.x + k.x, z: at.z + k.z, radius: k.radius || 0 });
+  }
   const out = [];
   const n = Math.max(0, Math.trunc(want));
 
@@ -1402,7 +1418,7 @@ export const swarmArena = {
       wave: Number.isInteger(wave) ? wave : 1,
       ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
     });
-    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
+    const layout = withShopAprons((reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId), run && run.arenaId);
     // The fight band follows the room this tier actually builds. The fixed census radius (400)
     // sat inside the wider ladder rooms (outer 391 / 459 / 544): rocks the top-up placed past it
     // were never counted, so the field kept spawning toward the cap. Same 60 WU margin as before.

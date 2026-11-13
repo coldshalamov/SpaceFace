@@ -69,7 +69,7 @@ export const SWARM_FLOOR_PLANS = Object.freeze({
       Object.freeze({ id: 'foundry-gun-ne', defId: 'wpn_concussion_cannon_s', dx: 220, dz: -220 }),
     ]),
     crateSpots: Object.freeze([
-      Object.freeze({ dx: 190, dz: 90 }),
+      Object.freeze({ dx: 195, dz: -5 }),
       Object.freeze({ dx: -220, dz: -140 }),
       Object.freeze({ dx: 20, dz: 230 }),
     ]),
@@ -78,12 +78,53 @@ export const SWARM_FLOOR_PLANS = Object.freeze({
     // freight lane's centreline just like the Crate spots.
     forge: Object.freeze({ id: 'foundry-forge', dx: 0, dz: -300 }),
     taps: Object.freeze([
-      Object.freeze({ id: 'foundry-tap-west', dx: -300, dz: 110 }),
-      Object.freeze({ id: 'foundry-tap-east', dx: 300, dz: 110 }),
+      Object.freeze({ id: 'foundry-tap-west', dx: -320, dz: 120 }),
+      Object.freeze({ id: 'foundry-tap-east', dx: 320, dz: 120 }),
     ]),
   }),
 });
 
 export function swarmFloorPlanFor(arenaId) {
   return SWARM_FLOOR_PLANS[arenaId] || null;
+}
+
+/**
+ * 15_ARENA_FLOORS (composition rules): a shop is a landmark and nothing else stands on it. The
+ * apron is the extra clear radius around a pad body; the ring planner adds each rock's own radius
+ * and its separation on top, so a rock edge ends up about 60 WU from a pad centre.
+ */
+export const SWARM_FLOOR_APRON_WU = 14;
+
+/** Pad bodies of an arena as [{ x, z, radius }] offsets from the room anchor (empty without a plan). */
+export function swarmFloorKeepClear(arenaId) {
+  const plan = swarmFloorPlanFor(arenaId);
+  if (!plan) return [];
+  const spot = (s, radius) => ({ x: s.dx, z: s.dz, radius: radius + SWARM_FLOOR_APRON_WU });
+  return [
+    ...plan.wallGuns.map((g) => spot(g, SWARM_FLOOR_PAD_RADIUS)),
+    ...plan.crateSpots.map((c) => spot(c, SWARM_FLOOR_CRATE_RADIUS)),
+    ...(plan.forge ? [spot(plan.forge, SWARM_FLOOR_FORGE_RADIUS)] : []),
+    ...(plan.taps || []).map((t) => spot(t, SWARM_FLOOR_PAD_RADIUS)),
+  ];
+}
+
+/**
+ * Each shop lights itself (src/render/nocturne reads `data.nocturne`): a small hot source whose
+ * halo lands on the floor around it, with the surroundings left in shade. Wall guns and the Forge
+ * also carry a short haze volume (the engine holds four at once; the furnace takes the fourth).
+ * Offsets are metres above the pad. Phones skip NOCTURNE; the pad is still readable without it.
+ */
+const PAD_HAZE = Object.freeze({ radii: Object.freeze([5, 2.2, 5]), density: 0.0016, color: 0xffc58a, anisotropy: 0.3, extinction: 1, noise: 0.3 });
+const FORGE_HAZE = Object.freeze({ radii: Object.freeze([6, 2.4, 6]), density: 0.0022, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.4 });
+// Only the wall guns, the Forge and the furnace take an 'industrial' composition (haze + a colour probe;
+// the engine holds four probes). The rest use 'dock': a light and nothing else.
+const PAD_NOCTURNE = Object.freeze({
+  wall_gun: Object.freeze({ profile: 'industrial', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'shop_amber', offset: Object.freeze([0, 22, 0]), intensity: 3200, range: 150 })]), medium: PAD_HAZE }),
+  crate: Object.freeze({ profile: 'dock', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'shop_amber', offset: Object.freeze([0, 20, 0]), intensity: 2600, range: 125 })]), medium: false }),
+  forge: Object.freeze({ profile: 'industrial', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'forge_hot', offset: Object.freeze([0, 24, 0]), intensity: 5600, range: 190 })]), medium: FORGE_HAZE }),
+  tap: Object.freeze({ profile: 'dock', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'work_cyan', offset: Object.freeze([0, 20, 0]), intensity: 2000, range: 130 })]), medium: false }),
+});
+
+export function swarmPadNocturne(kind) {
+  return PAD_NOCTURNE[kind] || null;
 }
