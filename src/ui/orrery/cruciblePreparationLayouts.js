@@ -844,6 +844,13 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
    5. The reading's two columns keep a real gutter so the schematic's labels never touch the words. */
 ${A} .sf-cru-dealt .sf-cru-dealtface { flex:0 0 auto !important; min-height:140px !important; }
 ${A} .sf-cru-dealt .sf-cru-blurb { flex:1 1 auto !important; }
+/* ui-polish-485: on narrow cards (phone, 960/1280 desktop) the fixed 132px glyph outran its card and printed
+   over its neighbour; the face now holds the glyph inside the card's own measure, and the card wears the
+   6px hairline-card corner the rest of the console uses. */
+${A} .sf-cru-dealt .sf-cru-dealtface { min-width:0 !important; overflow:hidden !important; }
+${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph, ${A} .sf-cru-dealt .sf-cru-dealtface > svg { width:min(132px,100%) !important;
+  height:auto !important; max-height:132px !important; aspect-ratio:1 / 1 !important; }
+${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt { border-radius:6px !important; min-width:0 !important; }
 ${A} .sf-cru-dealt .sf-cru-cardhead { flex-wrap:wrap !important; row-gap:2px !important; align-items:center !important; }
 ${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-price { margin-left:auto !important; }
 ${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-verb { order:3; flex:1 0 100% !important; white-space:normal !important;
