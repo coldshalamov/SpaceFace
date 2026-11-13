@@ -502,6 +502,15 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 .boot-ring__fill { fill:none; stroke:#8fcbff; stroke-width:2; stroke-linecap:round; }
 .boot-ring__head { fill:#dfeeff; filter:drop-shadow(0 0 5px rgb(143 203 255 / .9)); }
 .boot-ring__marks path { stroke:rgb(236 230 216 / .8); stroke-width:1.4; }
+/* A phone: the registry tag wrapped to "SPACEFACE · FLIGHT / SYSTEMS" and the clock fell into a
+   ragged left-aligned stack beside it. The tag keeps one line at a tighter track, and the clock
+   reads as a small right-aligned stat (label over figure) seated on the same top edge. */
+@media (max-width: 520px) {
+  #boot-overlay.boot-overlay--orrery .boot-meta { align-items: flex-start; gap: 16px; }
+  #boot-overlay.boot-overlay--orrery .boot-meta__registry { white-space: nowrap; letter-spacing: .12em; }
+  #boot-overlay.boot-overlay--orrery .boot-meta__clock { text-align: right; white-space: nowrap; }
+  #boot-overlay.boot-overlay--orrery .boot-meta__clock::before { display: block; margin-bottom: 2px; }
+}
 @keyframes boot-ring-turn { to { transform:rotate(360deg); } }
 html.sf-reduce-motion .boot-ring__emblem { animation:none; }
 @media (prefers-reduced-motion: reduce) { .boot-ring__emblem { animation:none; } }
