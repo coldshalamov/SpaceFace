@@ -1212,31 +1212,47 @@ try {
 
   // --- Ram leg: a dormant ordinary rock (radius >= 8) near the cluster,
   // flown straight into until it promotes. -------------------------------
-  const ramTarget = await page.evaluate(() => {
+  const ramTarget = await page.evaluate((stageApproach) => {
     const s = window.SF.state;
     const p = s.entities.get(s.playerId);
     let best = null;
     let bestD = Infinity;
+    const rocks = s.world?.asteroidField?.rocks || [];
     const consider = (row) => {
       if (!row || row.alive === false || !row.pos) return;
       if (row.data && row.data.opticStructureId) return; // ordinary rocks only
       if (!(Number(row.radius) >= 8)) return;
       const d = Math.hypot(row.pos.x - p.pos.x, row.pos.z - p.pos.z);
+      if (stageApproach && row.homeSectorId !== s.world.currentSectorId) return;
       if (d < bestD) { bestD = d; best = row; }
     };
-    const rocks = s.world && s.world.asteroidField && s.world.asteroidField.rocks;
-    if (Array.isArray(rocks)) {
-      for (const row of rocks) if (row && row.liveEntityId == null) consider(row);
-    }
+    for (const row of rocks) if (row && row.liveEntityId == null) consider(row);
     for (const e of s.entityList) {
       if (e && e.alive !== false && e.type === 'asteroid' && e.fieldResident === true) consider(e);
     }
-    return best ? { id: best.id, x: best.pos.x, z: best.pos.z, radius: best.radius, dist: Math.round(bestD) } : null;
-  });
+    if (!best) return null;
+    let approach = null;
+    if (stageApproach && bestD > 500) {
+      const heading = Math.atan2(best.pos.z - p.pos.z, best.pos.x - p.pos.x);
+      // Stage short of the selected rock. Steering and contact still use public input.
+      approach = { x: best.pos.x - Math.cos(heading) * 260,
+        z: best.pos.z - Math.sin(heading) * 260, heading };
+    }
+    return { id: best.id, x: best.pos.x, z: best.pos.z, radius: best.radius,
+      dist: Math.round(bestD), approach };
+  }, RAM_ONLY);
   let ramResult = null;
   let approachShot = null;
   if (ramTarget && !routeDeadlineHit) {
     await page.evaluate((id) => { window.__SF_ASTEROID_PROBE__.probe.ramTargetId = id; }, ramTarget.id);
+    if (ramTarget.approach) {
+      await page.evaluate(async (pose) => {
+        const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
+        const opts = { reason: 'asteroid-appear-ram-stage' };
+        if (laneCommandSink()) await laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts });
+        else window.SF.registry.get('world').relocatePlayerInSector(pose, opts);
+      }, ramTarget.approach);
+    }
     console.log(`  ram target id=${ramTarget.id} r=${ramTarget.radius} dist=${ramTarget.dist}`);
     const start = Date.now();
     let contact = null;
