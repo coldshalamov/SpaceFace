@@ -407,7 +407,17 @@ All four PNGs were opened. This pair did not demonstrate a sustained cadence gai
 `cf1508fed30a` moves background shader and residency work to an explicit background task when
 available. The old bare yield used the caller's priority and boosted its continuation. The
 starvation fallback still fires once if the browser never schedules the background task.
-All 43 admission and scheduling tests passed.
+All 43 admission and scheduling tests passed. Its isolated locked Adventure pair drew
+11.72 → 12.78/s and reduced p95 moving mesh gaps from 170 to 150 ms, while the worst gap
+increased from 219 to 272 ms. Both arms fired 54 shots with zero observed backsteps. Median
+worker pack time was below 0.1 ms, and the median reply tail was 4.6 → 3.5 ms against
+89 → 84 ms spent in fixed steps per batch. Both flight PNGs were opened. See
+`shared-admission-priority-pair-summary.json`.
+
+A locked diagnostic compared the existing Windows graphics backends during the same Adventure
+input hold. Intel D3D11 drew 13.14/s with a 124 ms p95 moving mesh gap, and D3D11on12 drew
+9.25/s with a 190 ms p95 gap. Both hardware adapters and both flight PNGs were verified. The
+launcher retains D3D11. See `angle-d3d11-adventure.json` and `angle-d3d11on12-adventure.json`.
 
 The next substantial performance owners are the worker's fixed-step physics and tactical AI,
 and the renderer's HDR world draw and admission. The old raw CPU profile's largest named
