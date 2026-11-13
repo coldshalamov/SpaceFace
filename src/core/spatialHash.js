@@ -2,6 +2,23 @@
 // Static colliders live in a cached layer; dynamic bodies use incremental membership so only
 // entities that cross cells / change radius / spawn / die are removed and reinserted.
 
+const QUERY_KEY_CELL_RANGE = 4096;
+const QUERY_KEY_CELL_OFFSET = QUERY_KEY_CELL_RANGE / 2;
+
+function dynamicQueryCacheKey(x0, x1, z0, z1, scanActive) {
+  const a = x0 + QUERY_KEY_CELL_OFFSET;
+  const b = x1 + QUERY_KEY_CELL_OFFSET;
+  const c = z0 + QUERY_KEY_CELL_OFFSET;
+  const d = z1 + QUERY_KEY_CELL_OFFSET;
+  const mode = scanActive ? 1 : 0;
+  if (a >= 0 && a < QUERY_KEY_CELL_RANGE && b >= 0 && b < QUERY_KEY_CELL_RANGE
+      && c >= 0 && c < QUERY_KEY_CELL_RANGE && d >= 0 && d < QUERY_KEY_CELL_RANGE) {
+    // Four 12-bit cells and one mode bit fit exactly in a JavaScript number.
+    return (((a * QUERY_KEY_CELL_RANGE + b) * QUERY_KEY_CELL_RANGE + c) * QUERY_KEY_CELL_RANGE + d) * 2 + mode;
+  }
+  return `${x0}|${x1}|${z0}|${z1}|${mode}`;
+}
+
 export class SpatialHash {
   constructor(cell = 64) {
     this.cell = cell;
@@ -21,7 +38,6 @@ export class SpatialHash {
     this._staticQueryCacheLimit = 128;
     this._staticVersion = null;
     this._dynamicQueryCache = new Map();
-    this._dynamicQueryCacheEntries = 0;
     this._dynamicQueryCacheLimit = 64;
     this._dynamicQueryVersion = 1;
     this._coherentQueries = new Map();
@@ -537,29 +553,32 @@ export class SpatialHash {
     const scanActive = activeCount > 0 && rectangularVisits > activeCount * 3;
     const staticResult = this._cachedStaticQuery(x0, x1, z0, z1, scanActive);
     candidates += staticResult.candidates;
+    const staticEntities = staticResult.entities;
     const seen = this._seenIds;
-    const stamp = this._nextQueryStamp();
-    const cachedDynamic = this._getDynamicQueryCache(x0, x1, z0, z1, scanActive);
-    let dynamicEntities;
-    if (cachedDynamic) {
+    const cache = this._dynamicQueryCache;
+    const key = dynamicQueryCacheKey(x0, x1, z0, z1, scanActive);
+    let dynamicEntities = cache.get(key);
+    let stamp;
+    if (dynamicEntities) {
       this.diagnostics.dynamicQueryCacheHits++;
-      dynamicEntities = cachedDynamic;
+      if (staticEntities.length > 0) {
+        stamp = this._nextQueryStamp();
+        for (const entity of dynamicEntities) seen.set(entity.id, stamp);
+      }
     } else {
       this.diagnostics.dynamicQueryCacheMisses++;
+      stamp = this._nextQueryStamp();
       dynamicEntities = [];
       candidates += this._queryLayer(
         this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ,
         scanActive, x0, x1, z0, z1, stamp, dynamicEntities,
       );
-      this._setDynamicQueryCache(x0, x1, z0, z1, scanActive, dynamicEntities);
+      if (cache.size >= this._dynamicQueryCacheLimit) cache.clear();
+      cache.set(key, dynamicEntities);
+      this.diagnostics.dynamicQueryCacheEntries = cache.size;
     }
-    for (let i = 0; i < dynamicEntities.length; i++) {
-      const entity = dynamicEntities[i];
-      seen.set(entity.id, stamp);
-      out.push(entity);
-    }
-    for (let i = 0; i < staticResult.entities.length; i++) {
-      const entity = staticResult.entities[i];
+    for (const entity of dynamicEntities) out.push(entity);
+    for (const entity of staticEntities) {
       if (seen.get(entity.id) === stamp) continue;
       seen.set(entity.id, stamp);
       out.push(entity);
@@ -948,27 +967,8 @@ export class SpatialHash {
     this.diagnostics.staticQueryCacheEntries = 0;
   }
 
-  _dynamicQueryCacheKey(x0, x1, z0, z1, scanActive) {
-    return `${this._dynamicQueryVersion}|${x0}|${x1}|${z0}|${z1}|${scanActive ? 1 : 0}`;
-  }
-
-  _getDynamicQueryCache(x0, x1, z0, z1, scanActive) {
-    return this._dynamicQueryCache.get(this._dynamicQueryCacheKey(x0, x1, z0, z1, scanActive)) || null;
-  }
-
-  _setDynamicQueryCache(x0, x1, z0, z1, scanActive, entities) {
-    if (this._dynamicQueryCacheEntries >= this._dynamicQueryCacheLimit) this._clearDynamicQueryCache();
-    const key = this._dynamicQueryCacheKey(x0, x1, z0, z1, scanActive);
-    if (!this._dynamicQueryCache.has(key)) {
-      this._dynamicQueryCacheEntries++;
-      this.diagnostics.dynamicQueryCacheEntries = this._dynamicQueryCacheEntries;
-    }
-    this._dynamicQueryCache.set(key, entities);
-  }
-
   _clearDynamicQueryCache() {
     this._dynamicQueryCache.clear();
-    this._dynamicQueryCacheEntries = 0;
     this.diagnostics.dynamicQueryCacheEntries = 0;
   }
 

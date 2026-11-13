@@ -98,3 +98,43 @@ test('a shrinking query footprint inside the recorded cell rectangle still retur
   assert.equal(hash.diagnostics.coherentQueryHits, hitsBefore + 1, 'the narrow footprint stays inside the recorded cells: coherent hit');
   assert.equal(narrow.includes(farRock), true, 'coherent returns the broad-phase superset; consumers apply the exact circle test');
 });
+
+test('ordinary radius cache preserves ordered layer deduplication across a membership change', () => {
+  const hash = new SpatialHash(64);
+  const ship = body(1, 20, 20);
+  const moving = body(2, 24, 20);
+  const overlappingId = body(2, 28, 20);
+  const rock = body(3, 30, 20);
+  const existing = body(99, 0, 0);
+  hash.rebuildLayers([overlappingId, rock], [ship, moving], 1);
+
+  for (let i = 0; i < 2; i++) {
+    const out = [existing];
+    assert.equal(hash.queryRadius(20, 20, 10, out), out);
+    assert.deepEqual(out, [existing, ship, moving, rock]);
+  }
+  assert.equal(hash.diagnostics.dynamicQueryCacheHits, 1);
+
+  moving.pos.x = 200;
+  hash.rebuildLayers([overlappingId, rock], [ship, moving], 1);
+  assert.deepEqual(hash.queryRadius(20, 20, 10), [ship, overlappingId, rock]);
+  assert.equal(hash.diagnostics.dynamicQueryCacheMisses, 2);
+});
+
+test('ordinary radius cache distinguishes signed, distant, and nonfinite cell rectangles', () => {
+  const hash = new SpatialHash(64);
+  const negative = body(1, -2048 * 64 + 20, 20);
+  const positive = body(2, 2048 * 64 + 20, 20);
+  const distant = body(3, 6144 * 64 + 20, 20);
+  hash.rebuildLayers([], [negative, positive, distant], 1);
+
+  for (let i = 0; i < 2; i++) {
+    for (const entity of [negative, positive, distant]) {
+      assert.deepEqual(hash.queryRadius(entity.pos.x, 20, 10), [entity]);
+    }
+    assert.deepEqual(hash.queryRadius(0, 0, NaN), []);
+    assert.deepEqual(hash.queryRadius(0, 0, Infinity), [negative, positive, distant]);
+  }
+  assert.equal(hash.diagnostics.dynamicQueryCacheHits, 5);
+  assert.equal(hash.diagnostics.dynamicQueryCacheMisses, 5);
+});
