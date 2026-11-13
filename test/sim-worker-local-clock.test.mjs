@@ -17,7 +17,9 @@ import {
   laneWriteSetting,
 } from '../src/core/simLaneCommands.js';
 import { crucibleSetupFor } from '../src/ui/crucibleLaunch.js';
-import { SAB_JOURNAL_MAGIC } from '../scripts/lib/simWorkerHost.mjs';
+import { createSabJournalArena, SAB_JOURNAL_MAGIC } from '../scripts/lib/simWorkerHost.mjs';
+import { bindSabEnvelopeChannel, sabEnvelopeDrain, sabEnvelopePost,
+  SAB_ENV_KIND, SAB_REPLY_SEQ_INDEX } from '../scripts/lib/simSabEnvelope.mjs';
 import { getPromptDevice, setPromptDevice, getGamepadCaptureHandler, setGamepadCaptureHandler } from '../src/ui/bindings.js';
 
 function waitFor(predicate, timeoutMs = 30000) {
@@ -1992,6 +1994,78 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
     try { lane?.close(); } catch (_) {}
     await new Promise((resolve) => setTimeout(resolve, 10));
     try { await worker.terminate(); } catch (_) {}
+  }
+});
+
+test('SAB presentation ACKs free reply capacity before an earlier directive completes', { timeout: 30000 }, async (t) => {
+  const previousSelf = globalThis.self;
+  const arena = createSabJournalArena();
+  const channel = bindSabEnvelopeChannel(arena);
+  const replies = [];
+  const ackTimers = new Set();
+  let ackTimersAtFinalize;
+  globalThis.self = { postMessage(reply) {
+    replies.push(reply);
+    if (reply.kind === 'done') ackTimersAtFinalize = ackTimers.size;
+  } };
+  const send = (data) => globalThis.self.onmessage({ data });
+  const post = (data, kind = SAB_ENV_KIND.OTHER) => sabEnvelopePost(channel, 'cmd', data, kind);
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?sab-early-ack-${Date.now()}`);
+    send({
+      kind: 'init', seq: 'sab-early-ack-init', profile: 'production', clockMode: 'worker-local',
+      timeScale: 0, seed: 4242, settings: {}, sabArena: arena,
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'sab-early-ack',
+    });
+    await waitFor(() => replies.some((reply) => reply.kind === 'ready'));
+
+    // Observe the actual watchdog handles without waiting for their deadline.
+    const schedule = globalThis.setTimeout;
+    const cancel = globalThis.clearTimeout;
+    t.mock.method(globalThis, 'setTimeout', (callback, delay, ...args) => {
+      const handle = schedule(callback, delay, ...args);
+      if (delay === 3000) ackTimers.add(handle);
+      return handle;
+    });
+    t.mock.method(globalThis, 'clearTimeout', (handle) => {
+      ackTimers.delete(handle);
+      return cancel(handle);
+    });
+
+    post({ kind: 'clockCommand', seq: 'first-command', commandSequence: 1, lifecycleGeneration: 0 });
+    await waitFor(() => Atomics.load(arena.header, SAB_REPLY_SEQ_INDEX) > 0);
+    let firstReply;
+    sabEnvelopeDrain(channel, 'reply', (reply) => { firstReply = reply; });
+    assert.equal(firstReply.kind, 'clockTick');
+    assert.equal(ackTimers.size, 1);
+
+    // The two commands land in one drain. The ACK must release transport
+    // capacity immediately even though finalize dispatches first in FIFO order.
+    post({ kind: 'finalize', seq: 'prior-directive' }, SAB_ENV_KIND.FINALIZE);
+    post({ kind: 'clockAck', clockSequence: firstReply.clockSequence, ackJournalEnd: firstReply.journalEnd });
+    await waitFor(() => replies.some((reply) => reply.kind === 'done'));
+    assert.equal(ackTimersAtFinalize, 0);
+
+    post({ kind: 'clockCommand', seq: 'second-command', commandSequence: 2, lifecycleGeneration: 0 });
+    await waitFor(() => Atomics.load(arena.header, SAB_REPLY_SEQ_INDEX) > 1);
+    let secondReply;
+    sabEnvelopeDrain(channel, 'reply', (reply) => { secondReply = reply; });
+    post({ kind: 'clockControl', generation: 1, active: false, lifecycleGeneration: 1 });
+    post({ kind: 'finalize', seq: 'after-transition' }, SAB_ENV_KIND.FINALIZE);
+    post({ kind: 'clockCommand', commandSequence: 3, lifecycleGeneration: 0,
+      ackClockSequence: secondReply.clockSequence, ackJournalEnd: secondReply.journalEnd });
+    await waitFor(() => replies.some((reply) => reply.seq === 'after-transition'));
+    assert.equal(ackTimersAtFinalize, 1, 'an obsolete command cannot release an ACK past a queued lifecycle transition');
+    assert.equal(ackTimers.size, 1);
+  } finally {
+    if (replies.some((reply) => reply.kind === 'ready')) {
+      post({ kind: 'shutdown', seq: 'sab-early-ack-shutdown' }, SAB_ENV_KIND.SHUTDOWN);
+      await waitFor(() => replies.some((reply) => reply.kind === 'bye'), 1000);
+    }
+    t.mock.restoreAll();
+    if (previousSelf === undefined) delete globalThis.self;
+    else globalThis.self = previousSelf;
   }
 });
 

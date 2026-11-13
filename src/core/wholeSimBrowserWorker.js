@@ -37,6 +37,7 @@ import {
   sabEnvelopeWaitCommand,
   SAB_CMD_SEQ_INDEX,
   SAB_ENV_KIND,
+  SAB_ENV_STATUS,
 } from '../../scripts/lib/simSabEnvelope.mjs';
 
 const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
@@ -1232,6 +1233,27 @@ async function localReleaseClockAck(clockSequence, ackJournalEnd) {
   return await publishRetainedReplyAfterAck(ackEnd);
 }
 
+function releaseLocalClockAckOnReceipt(msg) {
+  if (msg.kind !== 'clockAck' && msg.kind !== 'clockCommand') return;
+  if (!localClock.enabled || localClock.stopped) return;
+  if (Number.isSafeInteger(msg.lifecycleGeneration)
+    && msg.lifecycleGeneration !== localClock.lifecycleGeneration) return;
+  if (sabEnv) {
+    // Main may send an ACK from inside its reply callback, before freeing the
+    // cell. Wait for serial dispatch if an early publish would park the worker.
+    const nextCell = sabEnv.reply.cells[sabEnv.reply.nextWrite];
+    if (Atomics.load(nextCell.head, SAB_ENV_STATUS) !== 0) return;
+  }
+  const sequence = msg.kind === 'clockAck' ? msg.clockSequence : msg.ackClockSequence;
+  localReleaseClockAck(sequence, msg.ackJournalEnd).catch((error) => {
+    self.postMessage({
+      kind: 'error', seq: msg.seq,
+      message: error && error.message ? error.message : String(error),
+      stack: error && error.stack ? String(error.stack) : null,
+    });
+  });
+}
+
 async function handleLocalClockAck(msg) {
   if (!localClock.enabled || localClock.stopped) return;
   let retainedReplyPublished = false;
@@ -1403,6 +1425,14 @@ async function sabParkLoop() {
     const seen = Atomics.load(sabEnv.header, SAB_CMD_SEQ_INDEX);
     const batch = [];
     sabEnvelopeDrain(sabEnv, 'cmd', (msg) => batch.push(msg));
+    // Release ACKs before commands wait on authoritative work. Let the FIFO
+    // path handle ACKs after a queued lifecycle advance or shutdown.
+    for (const msg of batch) {
+      if (msg.kind === 'shutdown' || ((msg.kind === 'clockControl' || msg.kind === 'clockCommand')
+        && Number.isSafeInteger(msg.lifecycleGeneration)
+        && msg.lifecycleGeneration > localClock.lifecycleGeneration)) break;
+      releaseLocalClockAckOnReceipt(msg);
+    }
     for (const msg of batch) {
       if (localClock.enabled) {
         // Timer-driven ticks and SAB commands share this chain. Without this
@@ -1456,23 +1486,7 @@ self.onmessage = (event) => {
     }
     return;
   }
-  // ACK release is host-independent lane bookkeeping — run it on receipt
-  // instead of parking it behind an in-flight tick batch on the serial chain.
-  // The chained handler re-applies it through the same sequence check, so a
-  // double pass is a no-op; only the retained publish must not wait.
-  if (msg.kind === 'clockAck' || msg.kind === 'clockCommand') {
-    if (localClock.enabled && !localClock.stopped) {
-      const seq = msg.kind === 'clockAck' ? msg.clockSequence : msg.ackClockSequence;
-      const early = localReleaseClockAck(seq, msg.ackJournalEnd);
-      early.catch((error) => {
-        self.postMessage({
-          kind: 'error', seq: msg && msg.seq,
-          message: error && error.message ? error.message : String(error),
-          stack: error && error.stack ? String(error.stack) : null,
-        });
-      });
-    }
-  }
+  releaseLocalClockAckOnReceipt(msg);
   chain = chain.then(() => dispatchDirective(msg));
 };
 
