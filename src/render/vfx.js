@@ -15936,7 +15936,7 @@ export const vfx = {
         // Sparks and embers ride the flash glow: an authored burst, not just a soft disc.
         writeInstancedSpriteFields(
           this._spriteBatches, 'flipSpark',
-          s.x, s.y, s.z, scale * 1.5, scale * 1.5, scale * 1.5,
+          s.x, s.y, s.z, scale * 1.15, scale * 1.15, scale * 1.15,
           s.roll, s.r, s.g, s.b, op * 0.9, t, s.seed, s.axis,
         );
       }
