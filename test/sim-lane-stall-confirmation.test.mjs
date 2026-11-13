@@ -4,6 +4,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { LOOP_FIXED_DT, MAX_CATCHUP_STEPS } from '../src/core/simulationRunner.js';
 import { laneRpc, laneWriteSetting } from '../src/core/simLaneCommands.js';
+import { applyAsteroidFieldPresentationDelta } from '../src/world/asteroidField.js';
 
 async function fixture(t) {
   let clock = 0;
@@ -55,6 +56,31 @@ test('a mirrored worker undock wakes the main UI pause owner after the station p
   });
   assert.equal(f.state.ui.docked, false);
   assert.deepEqual(f.resumeSignals, [{ source: 'sim-lane-domain-mirror' }]);
+});
+
+test('the worker bridge marks a drawn dormant root only for its authoritative promotion', async (t) => {
+  const { state, receive, firstFlight } = await fixture(t);
+  state.mode = 'flight';
+  state.world = { currentSectorId: 'sector_ceres_belt' };
+  const roots = new Map([299, 300].map(id => [id, {
+    parent: {}, visible: true, userData: { sfAdmittedOnce: true },
+  }]));
+  state.render = { meshes: roots };
+  applyAsteroidFieldPresentationDelta(state, [299, 300].map(id => ({ kind: 'rock', id })));
+  for (const [id, root] of roots) state.world.asteroidField.byId.get(id).mesh = root;
+  receive({
+    kind: 'tickDone', seq: firstFlight.seq, stateTick: 1, lifecycleGeneration: 0,
+    spawnInfos: [
+      { entityId: 299, type: 'asteroid', occupantGeneration: 41, promotedFieldRock: true },
+      { entityId: 300, type: 'asteroid', occupantGeneration: 42 },
+    ],
+    auxRemovals: [299, 300],
+  });
+  assert.equal(state.world.asteroidField.rocks.length, 0);
+  assert.deepEqual(roots.get(299).userData.fieldPromotionPose, {
+    id: 299, life: 41, sector: 'sector_ceres_belt', lifecycle: 0,
+  });
+  assert.equal(roots.get(300).userData.fieldPromotionPose, undefined);
 });
 
 test('cold main-thread work is excluded even when WebKit dispatches timers before a queued worker reply', async (t) => {
