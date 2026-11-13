@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { request } from 'node:http';
+import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { CURRENT_VERSION } from '../src/data/saveVersion.js';
+import { encodeSavePayload, validateSaveJson } from '../src/save/saveWorker.js';
 
 import {
   applySharedStoreKeys,
@@ -418,6 +424,107 @@ test('two game servers sharing a store directory see the same slots', async (t) 
   const body = await get.json();
   assert.equal(body.keys['sf.save.quick'], payload);
   assert.equal(body.keys['sf.settings.profile.v1'], '{"mode":"test"}');
+});
+
+test('a late mirror PUT cannot replace newer saved bytes or their slot card', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'spaceface-player-store-race-'));
+  const server = createGameServer({ root: ROOT, async: true, devDiagnostics: false, playerStoreDir: dir });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    await new Promise(resolve => server.close(resolve));
+    await rm(dir, { recursive: true, force: true });
+  });
+  const url = `http://127.0.0.1:${server.address().port}${PLAYER_STORE_ROUTE}`;
+  const save = (savedAt, hull) => {
+    const descriptor = { fmt: 'spaceface-save', version: CURRENT_VERSION, slot: 'quick', savedAt };
+    const { json } = encodeSavePayload({ descriptor, data: { entities: { player: { type: 'ship', hull } } } });
+    assert.equal(validateSaveJson(json, CURRENT_VERSION).ok, true);
+    return { 'sf.save.quick': json, 'sf.save.index': JSON.stringify({ quick: { savedAt, hull } }) };
+  };
+  const older = save('2026-11-12T21:00:00.000Z', 25);
+  const newer = save('2026-11-12T21:01:00.000Z', 80);
+  const olderBody = JSON.stringify({ keys: older });
+  const lateRequest = request(url, { method: 'PUT', headers: {
+    'Content-Type': 'application/json', Prefer: 'return=minimal', 'Content-Length': Buffer.byteLength(olderBody),
+  } });
+  t.after(() => lateRequest.destroy());
+  const olderStatus = new Promise((resolve, reject) => {
+    lateRequest.once('response', response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { body += chunk; });
+      response.once('end', () => resolve({ status: response.statusCode, body: JSON.parse(body) }));
+    });
+    lateRequest.once('error', reject);
+  });
+  lateRequest.write(olderBody.slice(0, -1));
+  try {
+    const earlyResponse = await fetch(url, { method: 'PUT', headers: {
+      'Content-Type': 'application/json', Prefer: 'return=minimal',
+    }, body: JSON.stringify({ keys: newer }) });
+    assert.equal(earlyResponse.status, 204);
+    assert.deepEqual(readPlayerStoreKeysSync(dir), newer);
+  } finally {
+    lateRequest.end(olderBody.slice(-1));
+  }
+  assert.deepEqual(await olderStatus, { status: 409,
+    body: { ok: false, error: 'generation_conflict', keys: ['sf.save.quick'] } });
+  assert.deepEqual(readPlayerStoreKeysSync(dir), newer);
+
+  const repair = await fetch(url, { method: 'PUT', headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ keys: older, expectedPrimary: {
+      'sf.save.quick': createHash('sha256').update(older['sf.save.quick']).digest('hex'),
+    } }) });
+  assert.equal(repair.status, 409, 'recovery cannot replace a primary other than the one it inspected');
+  assert.deepEqual(readPlayerStoreKeysSync(dir), newer);
+
+  const delayedDelete = await fetch(url, { method: 'PUT', headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ keys: {
+      'sf.save.quick': null,
+      'sf.save.deleted.quick': JSON.stringify({ slot: 'quick', deletedAt: '2026-11-12T21:00:30.000Z' }),
+      'sf.save.index': '{}',
+    } }) });
+  assert.equal(delayedDelete.status, 409, 'a delete older than the current save cannot erase it');
+  assert.deepEqual(readPlayerStoreKeysSync(dir), newer);
+});
+
+test('another shell can hold the drawer without blocking GET or losing a waiting save', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'spaceface-player-store-lock-'));
+  const lock = path.join(dir, '.writer-lock');
+  const initial = envelope('quick', '2026-11-12T21:00:00.000Z');
+  const saved = envelope('quick', '2026-11-12T21:01:00.000Z');
+  writePlayerStoreKeysSync(dir, { 'sf.save.quick': initial });
+  // Keep a separate OS owner alive until a GET arrives while the other request waits.
+  const other = spawn(process.execPath, ['-e', 'process.stdin.resume()'], { stdio: ['pipe', 'ignore', 'ignore'] });
+  const closed = once(other, 'exit');
+  await once(other, 'spawn');
+  const marker = path.join(lock, `.writer-${other.pid}-test`);
+  await mkdir(marker, { recursive: true });
+  const server = createGameServer({ root: ROOT, async: true, devDiagnostics: false, playerStoreDir: dir });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    other.stdin.end();
+    await closed;
+    await new Promise(resolve => server.close(resolve));
+    await rm(dir, { recursive: true, force: true });
+  });
+  const putReceived = new Promise(resolve => {
+    server.on('request', req => { if (req.method === 'PUT') req.once('end', resolve); });
+  });
+  const url = `http://127.0.0.1:${server.address().port}${PLAYER_STORE_ROUTE}`;
+  const put = fetch(url, { method: 'PUT', headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ keys: { 'sf.save.quick': saved } }) });
+  await putReceived;
+  const first = await Promise.race([
+    put.then(() => 'put'),
+    fetch(url).then(async res => (await res.json()).keys['sf.save.quick']),
+  ]);
+  assert.equal(first, initial);
+  // An owner that exits without removing its marker leaves a recoverable lock.
+  other.stdin.end();
+  await closed;
+  assert.equal((await put).status, 204);
+  assert.equal(readPlayerStoreKeysSync(dir)['sf.save.quick'], saved);
 });
 
 test('a store-less server does not expose player saves', async (t) => {

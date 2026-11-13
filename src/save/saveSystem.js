@@ -34,6 +34,7 @@ import { PLANET_SITE } from '../data/planets.js';
 // candidate and validates (fmt → version ≤ CURRENT → checksum → migrate) BEFORE any destructive
 // restore, so a bad save aborts with save:error and leaves live state untouched.
 import { fnv1a } from './checksum.js';
+import { sha256Hex } from '../runtime/runtimeFingerprint.js';
 import { normalizeShipjack } from '../shipjack/model.js';
 import { DEFAULT_CONFIG as CHRONICLER_CONFIG, MAX_RETAINED_FACTS } from '../chronicler/schema.js';
 import {
@@ -349,6 +350,7 @@ export const save = {
     this._sharedStoreMirrorHealthy = true;
     this._publishSharedStoreStatus();
     this._sharedStorePatch = null;
+    this._sharedStoreExpectedPrimary = null;
     this._sharedStoreFlushTimer = null;
     this._sharedStoreMirrorWaiters = [];
     this._sharedStoreMirrorPending = new Set();
@@ -799,7 +801,7 @@ export const save = {
     }
   },
 
-  _queueSharedStoreMirror(patch = null) {
+  _queueSharedStoreMirror(patch = null, expectedPrimary = null) {
     if (!sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent') return Promise.resolve(true);
     if (!patch || typeof patch !== 'object') {
       // No delta supplied: the whole-corpus collect is megabyte-scale sync work, so it runs
@@ -839,12 +841,18 @@ export const save = {
     (this._sharedStoreMirrorPending ||= new Set()).add(completion);
     completion.then(() => this._sharedStoreMirrorPending.delete(completion));
     this._sharedStorePatch = this._sharedStorePatch || {};
+    if (this._sharedStoreExpectedPrimary) {
+      for (const key of Object.keys(patch)) delete this._sharedStoreExpectedPrimary[key];
+    }
+    if (expectedPrimary) Object.assign(this._sharedStoreExpectedPrimary ||= {}, expectedPrimary);
     Object.assign(this._sharedStorePatch, patch);
     if (this._sharedStoreFlushTimer != null) return completion;
     const flush = () => {
       this._sharedStoreFlushTimer = null;
       const keys = this._sharedStorePatch;
       this._sharedStorePatch = null;
+      const expectedPrimary = this._sharedStoreExpectedPrimary;
+      this._sharedStoreExpectedPrimary = null;
       const waiters = this._sharedStoreMirrorWaiters || [];
       this._sharedStoreMirrorWaiters = [];
       if (!keys) { for (const waiter of waiters) waiter.resolve(false); return; }
@@ -863,7 +871,7 @@ export const save = {
       // Profile generations must remain ordered while retaining page-outliving
       // keepalive when the payload fits the browser's limit.
       const profileRaw = typeof keys[PROFILE_SETTINGS_KEY] === 'string' ? keys[PROFILE_SETTINGS_KEY] : null;
-      const work = pushSharedPlayerStore(keys, { keepalive: true, serialize: profileRaw !== null }).then((landed) => {
+      const work = pushSharedPlayerStore(keys, { keepalive: true, serialize: profileRaw !== null, expectedPrimary }).then((landed) => {
         if (!ownerCurrent()) return landed || sharedPlayerStoreCapability().status === 'absent';
         if (!landed && sharedPlayerStoreCapability().status === 'absent'
           && profileRaw !== null && this._currentDirtyProfile() === profileRaw) this._profileMirrorDirty = null;
@@ -5602,9 +5610,10 @@ export const save = {
       promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
       if (promoted) {
         const indexJson = this._updateIndex(slot, backup.env, backupRaw);
+        const key = LS_PREFIX + slot;
         this._queueSharedStoreMirror(typeof indexJson === 'string'
-          ? { [LS_PREFIX + slot]: backupRaw, [INDEX_KEY]: indexJson }
-          : { [LS_PREFIX + slot]: backupRaw });
+          ? { [key]: backupRaw, [INDEX_KEY]: indexJson }
+          : { [key]: backupRaw }, { [key]: primaryRaw == null ? null : sha256Hex(primaryRaw) });
       }
     } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
     return promoted;
@@ -8213,6 +8222,7 @@ export const save = {
     if (this._sharedStoreFlushTimer != null) clearTimeout(this._sharedStoreFlushTimer);
     this._sharedStoreFlushTimer = null;
     this._sharedStorePatch = null;
+    this._sharedStoreExpectedPrimary = null;
     for (const waiter of this._sharedStoreMirrorWaiters || []) waiter.resolve(false);
     this._sharedStoreMirrorWaiters = [];
     this._removeUnloadExitSave();

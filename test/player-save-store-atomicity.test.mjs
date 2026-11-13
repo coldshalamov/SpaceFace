@@ -30,7 +30,11 @@ test('a failed promote preserves the previous primary and cleans only its own te
   fs.writeFileSync(primary, ORIGINAL);
 
   const boom = new Error('rename denied');
-  t.mock.method(fs, 'renameSync', () => { throw boom; });
+  const rename = fs.renameSync;
+  t.mock.method(fs, 'renameSync', (source, dest) => {
+    if (dest === primary) throw boom;
+    return rename(source, dest);
+  });
 
   assert.throws(
     () => writePlayerStoreKeysSync(dir, { 'sf.save.auto': '{"v":2}' }),

@@ -75,17 +75,12 @@ export function resetSharedPlayerStoreMemoForTests() {
 }
 
 // ── Accepted-generation ledger (NXI-236) ─────────────────────────────────────────────────────
-// The store applies per-key last-writer-wins, so two pushes in flight can otherwise settle in
-// either order — an older patch landing last would write the older snapshot over the newer one
-// and every later read would label that older envelope the latest successful save. Regular
-// pushes therefore settle strictly in request order (one in-flight PUT at a time), and the
-// accepted-generation ledger names the newest envelope stamp this module has actually seen the
-// store accept, monotonically: an older completion can never relabel the latest success.
+// Regular pushes settle in request order. The accepted-generation ledger names the newest
+// envelope stamp this module has seen the store accept, monotonically.
 //
 // A keepalive-eligible push (a dying page's page-outliving guarantee) still fires immediately —
-// it cannot wait behind an in-flight mirror flush. Those patches raced unordered before this
-// ledger existed; the monotonic check keeps them from dragging the accepted-generation label
-// backwards even when one lands after a newer queued write.
+// it cannot wait behind an in-flight mirror flush. The live store refuses stale generations;
+// the monotonic ledger also protects the label when connected to an older store server.
 let _sharedStoreWriteChain = Promise.resolve();
 let _sharedStoreWriteInFlight = false;
 let _lastAcceptedStoreWrite = null;
@@ -424,7 +419,8 @@ export async function fetchSharedPlayerStore() {
   }
 }
 
-export function pushSharedPlayerStore(keys, { keepalive = false, serialize = false, timeoutMs = SHARED_STORE_PUT_TIMEOUT_MS } = {}) {
+export function pushSharedPlayerStore(keys, { keepalive = false, serialize = false,
+  timeoutMs = SHARED_STORE_PUT_TIMEOUT_MS, expectedPrimary = null } = {}) {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return Promise.resolve(false);
   const patch = {};
   const deletions = new Map();
@@ -458,7 +454,8 @@ export function pushSharedPlayerStore(keys, { keepalive = false, serialize = fal
   if (count === 0) return Promise.resolve(true);
   const capability = sharedPlayerStoreCapability();
   if (capability.status === 'absent') return Promise.resolve(false);
-  const body = JSON.stringify({ keys: patch });
+  const body = JSON.stringify(expectedPrimary && Object.keys(expectedPrimary).length
+    ? { keys: patch, expectedPrimary } : { keys: patch });
   // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and the
   // encoder only runs when the guarantee was actually requested.
   let byteLength = 0;
@@ -503,12 +500,10 @@ export function pushSharedPlayerStore(keys, { keepalive = false, serialize = fal
     }
   };
   if (carriesKeepalive && !serialize) {
-    // A dying page cannot wait behind an in-flight mirror flush — fire now (unordered, as
-    // before); the monotonic ledger below keeps an older late completion from relabeling.
+    // A dying page cannot wait behind an in-flight mirror flush.
     return attempt();
   }
-  // Serialized: one in-flight PUT at a time, settled in request order, so an older patch can
-  // never land after a newer one and out-argue it on the last-writer-wins store. An uncontended
+  // Serialized: one in-flight PUT at a time, settled in request order. An uncontended
   // push still starts synchronously (the deadline request must be visible to the caller before
   // the first await — the hung-store pin in player-save-store.test.mjs).
   let run;

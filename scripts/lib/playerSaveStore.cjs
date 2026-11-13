@@ -6,9 +6,10 @@
 'use strict';
 
 const fs = require('node:fs');
-const fsp = require('node:fs/promises');
+const { createHash } = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
+const { setTimeout: wait } = require('node:timers/promises');
 
 const PLAYER_STORE_ROUTE = '/__spaceface_player_store';
 const PLAYER_STORE_ORIGIN_ROUTE = '/__spaceface_player_store/origin';
@@ -18,6 +19,11 @@ const ALLOWED_KEY = /^(sf\.save\.[A-Za-z0-9._-]+|sf\.recovery\.[A-Za-z0-9._-]+|s
 const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const MAX_KEYS = 64;
 const MAX_VALUE_CHARS = 6 * 1024 * 1024;
+const INDEX_KEY = 'sf.save.index';
+const SAVE_KEY = /^sf\.(save|recovery)\.(?!deleted\.).+$/;
+const TOMBSTONE_KEY = /^sf\.(save|recovery)\.deleted\.(.+)$/;
+const ENVELOPE_STAMP = /^\s*\{\s*"fmt"\s*:\s*"spaceface-save(?:-gz)?"[^{}]*?"savedAt"\s*:\s*"([^"]+)"/;
+const LOCK_WAIT_MS = 1500;
 const LOCAL_STORAGE_DUMP_SOURCE = [
   '(() => {',
   '  const keys = {};',
@@ -124,7 +130,151 @@ function writeAtomicSync(file, contents) {
   }
 }
 
-function writePlayerStoreKeysSync(dir, patch, { returnKeys = true } = {}) {
+function processExists(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (err) { return err.code !== 'ESRCH'; }
+}
+
+function removeEmptyLock(lock) {
+  try { fs.rmdirSync(lock); }
+  catch (err) { if (!['ENOENT', 'ENOTEMPTY', 'EEXIST', 'EPERM'].includes(err.code)) throw err; }
+}
+
+function withStoreWriter(root, work) {
+  const lock = path.join(root, '.writer-lock');
+  const stage = fs.mkdtempSync(path.join(root, `.writer-${process.pid}-`));
+  const owner = path.basename(stage);
+  try {
+    fs.mkdirSync(path.join(stage, owner));
+    try { fs.renameSync(stage, lock); }
+    catch (err) {
+      if (!['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(err.code)) throw err;
+      let owners = [];
+      try { owners = fs.readdirSync(lock); }
+      catch (err) { if (err.code !== 'ENOENT') throw err; }
+      const marker = owners.length === 1 && /^\.writer-(\d+)-[\w-]+$/.exec(owners[0]);
+      const stale = marker && !processExists(Number(marker[1]));
+      if (stale) removeEmptyLock(path.join(lock, owners[0]));
+      // A live lock always has a unique marker. Removing an empty directory
+      // cannot remove a successor whose marker arrived after our read.
+      if (!owners.length || stale) removeEmptyLock(lock);
+      try { fs.renameSync(stage, lock); }
+      catch (retry) {
+        if (!['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(retry.code)) throw retry;
+        throw Object.assign(new Error('player store writer busy'), { code: 'STORE_BUSY' });
+      }
+    }
+    try { return work(); }
+    finally { fs.renameSync(lock, stage); }
+  } finally {
+    removeEmptyLock(path.join(stage, owner));
+    removeEmptyLock(stage);
+  }
+}
+
+async function writeLivePlayerStoreKeys(dir, patch, options) {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try { return writePlayerStoreKeysSync(dir, patch, options); }
+    catch (error) {
+      if (error?.code !== 'STORE_BUSY' || Date.now() >= deadline) throw error;
+      await wait(25);
+    }
+  }
+}
+
+function readStoreValue(root, key) {
+  try { return fs.readFileSync(path.join(root, fileNameForKey(key)), 'utf8'); }
+  catch (err) { if (err.code === 'ENOENT') return null; throw err; }
+}
+
+function saveTime(raw) {
+  if (typeof raw !== 'string') return 0;
+  const stamp = ENVELOPE_STAMP.exec(raw.slice(0, 4096));
+  if (stamp) return Date.parse(stamp[1]) || 0;
+  try {
+    const env = JSON.parse(raw);
+    if (env?.fmt === 'spaceface-save' || env?.fmt === 'spaceface-save-gz') return Date.parse(env.savedAt) || 0;
+  } catch { /* unrecognized legacy bytes have no generation */ }
+  return 0;
+}
+
+function parseRecord(raw) {
+  try {
+    const value = JSON.parse(raw);
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  } catch { return null; }
+}
+
+function preflightLivePatch(root, patch, expectedPrimary) {
+  const conflicts = [];
+  const repairs = new Set();
+  const generationForKey = key => saveTime(readStoreValue(root, key));
+  for (const [key, value] of Object.entries(patch)) {
+    if (!isAllowedPlayerStoreKey(key) || key === INDEX_KEY) continue;
+    const tombstone = TOMBSTONE_KEY.exec(key);
+    if (tombstone) {
+      const deletedAt = Date.parse(parseRecord(value)?.deletedAt) || 0;
+      if (!deletedAt) continue;
+      const previous = Date.parse(parseRecord(readStoreValue(root, key))?.deletedAt) || 0;
+      if (deletedAt < previous) conflicts.push(key);
+      const target = `sf.${tombstone[1]}.${tombstone[2]}`;
+      if (Object.hasOwn(patch, target) && patch[target] === null && deletedAt < generationForKey(target)) {
+        // A quota deletion can accompany a newer primary. Preserve the already
+        // newer recovery copy without blocking that primary or filing a false delete.
+        const primary = `sf.save.${tombstone[2]}`;
+        if (target !== primary && saveTime(patch[primary]) > generationForKey(primary)) {
+          delete patch[target];
+          delete patch[key];
+        } else conflicts.push(target);
+      }
+      continue;
+    }
+    if (!SAVE_KEY.test(key) || typeof value !== 'string') continue;
+    const expected = Object.hasOwn(expectedPrimary, key) ? expectedPrimary[key] : undefined;
+    const incomingTime = saveTime(value);
+    if (!incomingTime && expected === undefined) continue;
+    if (key.startsWith('sf.save.')) {
+      const deletedAt = Date.parse(parseRecord(readStoreValue(root, `sf.save.deleted.${key.slice('sf.save.'.length)}`))?.deletedAt) || 0;
+      if (deletedAt > 0 && deletedAt >= incomingTime) { conflicts.push(key); continue; }
+    }
+    const current = readStoreValue(root, key);
+    if (expected !== undefined) {
+      const digest = current === null ? null : createHash('sha256').update(current).digest('hex');
+      if (current === value || expected === digest) repairs.add(key.slice('sf.save.'.length));
+      else conflicts.push(key);
+    } else if (incomingTime < saveTime(current)) {
+      // A forward primary can rotate a local backup older than the drawer's
+      // backup. Keep the stronger recovery copy while admitting that primary.
+      const primary = key.replace(/^sf\.recovery\./, 'sf.save.');
+      if (key !== primary && saveTime(patch[primary]) > generationForKey(primary)) delete patch[key];
+      else conflicts.push(key);
+    }
+  }
+  if (conflicts.length) throw Object.assign(new Error('player store generation conflict'), { code: 'GENERATION_CONFLICT', conflicts });
+  if (typeof patch[INDEX_KEY] !== 'string') return;
+  const incoming = parseRecord(patch[INDEX_KEY]);
+  const current = parseRecord(readStoreValue(root, INDEX_KEY));
+  if (!incoming || !current) return;
+  let changed = false;
+  for (const [slot, card] of Object.entries(current)) {
+    const key = `sf.save.${slot}`;
+    if (repairs.has(slot) || (Object.hasOwn(patch, key) && patch[key] == null)) continue;
+    const priorTime = Date.parse(card?.savedAt) || 0;
+    const nextTime = Object.hasOwn(incoming, slot) ? Date.parse(incoming[slot]?.savedAt) || 0 : 0;
+    if (priorTime > nextTime) {
+      Object.defineProperty(incoming, slot, { value: card, enumerable: true, configurable: true, writable: true });
+      changed = true;
+    }
+  }
+  if (changed) {
+    const index = JSON.stringify(incoming);
+    if (index.length > MAX_VALUE_CHARS) throw new Error(`player store value too large: ${INDEX_KEY}`);
+    patch[INDEX_KEY] = index;
+  }
+}
+
+function writePlayerStoreKeysSync(dir, patch, { returnKeys = true, live = false, expectedPrimary = {} } = {}) {
   const raw = String(dir || '').trim();
   if (!raw) throw new Error('player store directory is required');
   const root = path.resolve(raw);
@@ -138,18 +288,22 @@ function writePlayerStoreKeysSync(dir, patch, { returnKeys = true } = {}) {
     }
   }
   fs.mkdirSync(root, { recursive: true });
-  for (const [key, value] of entries) {
-    const fileName = fileNameForKey(key);
-    if (!fileName) continue;
-    const file = path.join(root, fileName);
-    if (value == null) {
-      try { fs.rmSync(file, { force: true }); } catch { /* already gone */ }
-      continue;
+  return withStoreWriter(root, () => {
+    const accepted = Object.fromEntries(entries);
+    if (live) preflightLivePatch(root, accepted, expectedPrimary);
+    for (const [key, value] of Object.entries(accepted)) {
+      const fileName = fileNameForKey(key);
+      if (!fileName) continue;
+      const file = path.join(root, fileName);
+      if (value == null) {
+        try { fs.rmSync(file, { force: true }); } catch { /* already gone */ }
+        continue;
+      }
+      if (typeof value !== 'string') continue;
+      writeAtomicSync(file, value);
     }
-    if (typeof value !== 'string') continue;
-    writeAtomicSync(file, value);
-  }
-  return returnKeys ? readPlayerStoreKeysSync(root) : undefined;
+    return returnKeys ? readPlayerStoreKeysSync(root) : undefined;
+  });
 }
 
 function jsonHeaders() {
@@ -245,10 +399,19 @@ async function handlePlayerStoreRequest(req, res, dir) {
       sendJson(res, 400, { ok: false, error: 'missing_keys' });
       return;
     }
+    const expectedPrimary = payload.expectedPrimary === undefined ? {} : payload.expectedPrimary;
+    if (!expectedPrimary || typeof expectedPrimary !== 'object' || Array.isArray(expectedPrimary)
+      || Object.entries(expectedPrimary).some(([key, digest]) => key === INDEX_KEY
+        || !key.startsWith('sf.save.') || !SAVE_KEY.test(key) || !isAllowedPlayerStoreKey(key)
+        || !Object.hasOwn(patch, key) || typeof patch[key] !== 'string'
+        || (digest !== null && (typeof digest !== 'string' || !/^[\da-f]{64}$/.test(digest))))) {
+      sendJson(res, 400, { ok: false, error: 'bad_expected_primary' });
+      return;
+    }
     try {
       const minimal = String(req.headers?.prefer || '').split(',')
         .some((preference) => preference.trim().toLowerCase() === 'return=minimal');
-      const keys = writePlayerStoreKeysSync(dir, patch, { returnKeys: !minimal });
+      const keys = await writeLivePlayerStoreKeys(dir, patch, { returnKeys: !minimal, live: true, expectedPrimary });
       if (minimal) {
         res.writeHead(204, { 'Cache-Control': 'no-store', 'Preference-Applied': 'return=minimal' });
         res.end();
@@ -256,6 +419,14 @@ async function handlePlayerStoreRequest(req, res, dir) {
         sendJson(res, 200, { ok: true, keys });
       }
     } catch (error) {
+      if (error?.code === 'GENERATION_CONFLICT') {
+        sendJson(res, 409, { ok: false, error: 'generation_conflict', keys: error.conflicts });
+        return;
+      }
+      if (error?.code === 'STORE_BUSY') {
+        sendJson(res, 503, { ok: false, error: 'store_busy' });
+        return;
+      }
       const message = error && error.message ? String(error.message) : '';
       if (message.includes('too many keys')) {
         sendJson(res, 400, { ok: false, error: 'too_many_keys' });

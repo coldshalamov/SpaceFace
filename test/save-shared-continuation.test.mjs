@@ -33,6 +33,7 @@ import { save as saveDefinition } from '../src/save/saveSystem.js';
 import { resetSharedPlayerStoreMemoForTests } from '../src/save/sharedPlayerStore.js';
 
 const require = createRequire(import.meta.url);
+const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const {
   PLAYER_STORE_ROUTE,
   readPlayerStoreKeysSync,
@@ -197,6 +198,67 @@ async function flushMirror() {
   await new Promise((resolve) => setTimeout(resolve, 0));
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+test('same-shell Continue repairs the matching corrupt drawer primary without restamping recovery', async (t) => {
+  const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-shared-recovery-'));
+  const server = createGameServer({ root: storeDir, async: true, devDiagnostics: false, playerStoreDir: storeDir });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}${PLAYER_STORE_ROUTE}`;
+  const realFetch = globalThis.fetch;
+  resetSharedPlayerStoreMemoForTests();
+  const primaryKey = 'sf.save.quick';
+  const recoveryKey = 'sf.recovery.quick';
+  const indexKey = 'sf.save.index';
+  const recovery = makeShell({ seed: 73, marker: 'recovered-drawer' }).save.serialize('quick');
+  recovery.savedAt = '2026-11-12T21:00:00.000Z';
+  const recoveryRaw = JSON.stringify(recovery);
+  const corrupt = makeShell({ seed: 77, marker: 'corrupt-newer' }).save.serialize('quick');
+  corrupt.savedAt = '2026-11-12T21:01:00.000Z';
+  corrupt.data.economy.marker = 'damaged after checksum';
+  const corruptRaw = JSON.stringify(corrupt);
+  const initial = { [primaryKey]: corruptRaw, [recoveryKey]: recoveryRaw,
+    [indexKey]: JSON.stringify({ quick: { savedAt: corrupt.savedAt } }) };
+  writePlayerStoreKeysSync(storeDir, initial);
+  const storage = memoryStorage();
+  for (const [key, value] of Object.entries(initial)) storage.setItem(key, value);
+  const writes = [];
+  const fetchStore = async (route, options = {}) => {
+    assert.equal(String(route), PLAYER_STORE_ROUTE);
+    const response = await realFetch(url, options);
+    if (options.method === 'PUT') writes.push({ status: response.status, body: JSON.parse(options.body) });
+    return response;
+  };
+  const restore = installEnv({ storage, fetchImpl: fetchStore });
+  t.after(async () => {
+    restore();
+    resetSharedPlayerStoreMemoForTests();
+    await new Promise(resolve => server.close(resolve));
+    fs.rmSync(storeDir, { recursive: true, force: true });
+  });
+
+  const shell = makeShell();
+  assert.equal(await shell.save.loadAsync('quick'), true);
+  assert.equal(shell.state.economy.marker, 'recovered-drawer');
+  assert.equal(storage.getItem(primaryKey), recoveryRaw, 'same shell promotes the exact accepted backup');
+  assert.equal((await shell.save.drainSharedStoreWrites()).ok, true);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].status, 204);
+  assert.match(writes[0].body.expectedPrimary[primaryKey], /^[\da-f]{64}$/);
+  const drawer = readPlayerStoreKeysSync(storeDir);
+  assert.equal(drawer[primaryKey], recoveryRaw);
+  assert.equal(drawer[recoveryKey], recoveryRaw);
+  assert.equal(JSON.parse(drawer[indexKey]).quick.savedAt, recovery.savedAt);
+
+  const nextStorage = memoryStorage();
+  const restoreSecond = installEnv({ storage: nextStorage, fetchImpl: fetchStore });
+  try {
+    const secondShell = makeShell();
+    await secondShell.save._syncSharedPlayerStore();
+    assert.equal(await secondShell.save.loadAsync('quick'), true);
+    assert.equal(secondShell.state.economy.marker, 'recovered-drawer');
+    assert.equal(nextStorage.getItem(primaryKey), recoveryRaw);
+  } finally { restoreSecond(); }
+});
 
 test('a save written in one shell is the save Continue restores in the other', async () => {
   const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-shared-store-'));
