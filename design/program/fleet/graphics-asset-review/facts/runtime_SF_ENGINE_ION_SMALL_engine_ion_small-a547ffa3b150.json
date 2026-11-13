@@ -1,0 +1,19 @@
+{
+  "route": "The modular composer selects the small ion engine for sampled Lamplighter wayfarers and Vael writ tenders. The traced player-roster examples select whole-ship models instead; these code traces do not establish an ordinary encounter.",
+  "deploymentCode": [
+    "src/render/partsLibrary.js",
+    "src/systems/lamplighter.js",
+    "src/systems/faction_vael.js"
+  ],
+  "authoringCode": [
+    "tools/art/generate_ship_parts_library.py"
+  ],
+  "authoringCaveat": "The shipped source contains later full-finish additions beyond the earlier generator recipe; do not rebuild it from that recipe alone.",
+  "status": "current isolated package baseline inspected; shape and cost candidates under review; ordinary gameplay unverified",
+  "diagnostics": [
+    ".devshots/fleet/engine-ion-small-review/trace.json",
+    ".devshots/fleet/engine-ion-small-review/components.json",
+    ".devshots/fleet/engine-ion-small-review/neutral-map.json",
+    ".devshots/fleet/engine-ion-small-review/baseline/report.json"
+  ]
+}
