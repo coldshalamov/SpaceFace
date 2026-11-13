@@ -191,3 +191,46 @@ Lessons file for the lead: memory `lead-loop-2026-11-12.md`.
 - Opened live screenshots for Asteroid Mill, Cryo Drift, and Storm Lattice. The worker mounted the correct room parts and applied the inverse floating origin, and the Adventure hint was absent. The shortened public Gauntlet follow-up kept the ship in all 198 graded frames and recorded a Wasp death with raw-ID reuse. That reuse went to a projectile between samples, so the exact recycled-credit-chip case is covered by the focused lifetime test. The shortened run leaves completion and software frame time ungraded.
 - Open work includes whole-game hardware cadence and physical phone play, the seven first-presentation pops from the full Gauntlet run, the Yardmaster instruction collision, and B1 retiring the post-berth drills. B1 still gets immediate acceptance and the sole objective and voice lane. The design calls for contextual practice later in the first hour. The two pre-existing Racing fixture failures and full Circuits validation remain open. No publication.
 - Final locked gate at `7bba7e4a80dd` passed import lint (9 s), Adventure boot (192 s), Swarm boot (247 s) and the v27 replay (19 s). Adventure passed all 18 playable checks. The Swarm gate covers boot-critical checks. No game-lock holder remained.
+
+### Whole-game quality pass with Opus on visuals
+
+- `38b32852efe3` accepted. A crashed renderer can quit through native recovery without waiting for a dead save callback.
+- `497814d84c4b` accepted. Continue preserves the Anvil approach route around the hazard in the native physics fixture.
+- `f07646fe67a7` accepted. Chart courses survive Continue and mission refresh.
+- `94ecd46689ca` accepted. Recycled Rapier IDs discard the predecessor's body and velocity.
+- `a082946968b5` accepted. A signaled Electron child exit stops the wrapper's readiness poll.
+- `276d5367de24` fixed. Circuits fixtures use the live mission dock owner.
+- `2024492bf5ab` accepted. Restart re-arms race precision and boost awards.
+- `1c905c84edfe` accepted. Save requests during a paid, uncommitted jump preserve the last coherent slot.
+- `51cd46eb2209` accepted. Restart clears old ghost splits while retaining the best recording.
+- `47580244082c` accepted. Installer restart waits for the normal save acknowledgement.
+- `ecf7b829c450` accepted. The desktop launcher removes the inherited Electron CLI mode flag.
+- `a32bc900d89d` fixed. The first-hour check runs the shipped onboarding owner and pacing.
+- `1a29bf4711d7` accepted. Legacy browser save migration launches Electron in app mode.
+- `00fe1054ceb1` accepted. Duplicate desktop launch retains its focus request until readiness.
+- `966f2d70f417` accepted. Opening a modal clears queued action edges and held gestures.
+- `05ab8a839342` accepted. Circuits Restart retires stale gate announcements.
+- `e1512147a913` accepted. Same-seed Swarm and Gauntlet Retry re-arm first-action protection.
+- `bab29f9ac002` accepted. The active fleet board now tracks whole-game quality by route.
+- `e8ad2e96653f` fixed. The stock Circuits profiler answers First Light through the shared player route.
+- `8bde9b72f7f5` accepted. Activity classification collects canonical pins once in all modes.
+- `ed9a9ebe6529` accepted. Continue after the first berth directs the player to Weigh-In, and Helios replaces the remaining sealed alloys.
+- `ca21b36890ad` accepted. Unchanged scalar leaves reuse wire signatures, with byte parity.
+- `8c5e463e88da` accepted. Base storage can take only loose freight.
+- `44096fab0953` accepted. The desktop shell recovers when navigation or the first paint misses its deadline.
+- `13262e9605e5` accepted. Base fabrication checks loose materials before it spends credits.
+- `e0f8ac41727a` accepted. The hull and its anchors interpolate wrapped headings along the short arc.
+- `6292f61ccfe4` accepted. Compound contacts read the final receipt point once per body pair.
+- `4c32805ffe3f` accepted. Browser launcher probes settle interrupted or trickling responses.
+- `bf0a4ea4b093` accepted. The worker keeps bounded station projections atomic.
+- `90465f6f912c` accepted. Asteroid workbench construction and lane deposits leave sealed cargo aboard.
+- `2f5c69e3b39d` accepted. The locked profiler can use a real held-turn input.
+- `f5ecc154d26e` accepted. The fleet board records the current route outcomes and pending checks.
+- `1ba4013322e4` accepted. Oversized save batches reject before deleting or writing any slot.
+- `3576c855aa3d` accepted. Relay freight settles from the convoy's custody, with normal market refusals intact.
+- `6c50040217fe` accepted. A replaced desktop document cannot reuse its predecessor's quit receipt.
+- `1aa922156005` accepted. Return to uncovered flight waits for a submitted picture before waking the worker.
+- `ae48547c908d` accepted. Death recovery commits the destination before applying any penalty.
+
+- Codex workers `backend_recon`, `boot_deadline`, and `economy_perf` covered shared simulation and save transport, desktop and browser launch, and Adventure progression and custody. No new Devin run. Opus owns visual and UI work. Claude stayed open.
+- The four locked Intel Electron runs and screenshots cover Adventure, early Swarm, Gauntlet, and public Circuits. Their moving-world cadence and next checks are in `QUALITY.md`. The turn, foreground return, F5/F9, Circuits Restart, desktop crash and matched performance runs are pending behind Opus's first-hour walk. The stale-write reproduction and recovery-safe repair remain open.
