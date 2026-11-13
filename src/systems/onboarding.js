@@ -597,6 +597,7 @@ export const onboarding = {
     // recycle; a stale resume latch would restage a tutorial the new run never saved).
     this._powerSitIds = null;
     this._resumeMainTutorial = false;
+    this._awaitingRestoredBerthContract = false;
     this._storyMode = false;
     this._storySig = '';
     this._ownedScanAt = undefined;
@@ -648,6 +649,7 @@ export const onboarding = {
       this._combatStickHintOwed = false;
       this._gateControlInRange = false;
       this._lastControlMode = null;
+      if (this._resumeAtCompletedBerth()) return;
       // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
       // the returning-pilot path (story tracker + recap) is for finished rails only.
       if (this._resumeSavedRail()) return;
@@ -1453,6 +1455,7 @@ export const onboarding = {
     const flownBefore = this._pendingFlownBefore === true; this._pendingFlownBefore = false;
     const st = this.state;
     this._resumeMainTutorial = false;
+    this._awaitingRestoredBerthContract = false;
     this._autoFireWasOn = null;
     this._combatStickHintOwed = false;
     // Temporary physics challenges share New Game, but own their actors and instructions.
@@ -1589,7 +1592,7 @@ export const onboarding = {
     const rescue = ob.rescue && typeof ob.rescue === 'object' ? ob.rescue : null;
     const railDone = !rail || rail.completed === true || ob.finished === true;
     const rescueDone = !rescue || rescue.completed === true;
-    const mainRailActive = ob.active === true && ob.finished !== true;
+    const mainRailActive = (ob.active === true || this._awaitingRestoredBerthContract) && ob.finished !== true;
     // A finished or never-started first hour carries nothing durable; writing it would
     // risk a mature save re-firing the tutorial on load.
     if (railDone && rescueDone && !mainRailActive) return null;
@@ -1661,6 +1664,30 @@ export const onboarding = {
     ob.claimed = plainClone(d.claimed);
     ob.missingThree = restoreMissingThreeRecord(d.missingThree);
     st.onboarding = ob;
+  },
+
+  _resumeAtCompletedBerth() {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!this._resumeMainTutorial || st.settings?.gameplay?.tutorialHints === false || st.ui?.docked
+      || BEATS[ob?.currentBeat]?.key !== 'dock' || ob.beatDoneAt?.dock == null) return false;
+    // An already-started exercise keeps its saved verb and restages normally.
+    const { rescue, raid, claimed, missingThree, powerSit } = ob;
+    if ((rescue?.active && rescue.current && !rescue.completed)
+      || (raid && ob.beatDoneAt.raid == null)
+      || (claimed && !claimed.resolved && ob.beatDoneAt.claimed == null)
+      || (missingThree?.active && missingThree.current && !missingThree.completed)
+      || powerSit?.active) return false;
+    const missions = this.registry?.get('missions');
+    const offer = missions?.pendingAlloyRunOffer?.();
+    if (!offer || ob.choiceStationId !== offer.stationId) return false;
+    // Continue starts in flight without an undock event. Keep the completed berth
+    // checkpoint until real work is accepted and let the story own the board marker.
+    this._resumeMainTutorial = false;
+    this._awaitingRestoredBerthContract = true;
+    this._beginStoryMode();
+    missions.releaseOnboardingNavigation();
+    return true;
   },
 
   // Re-enter an unfinished rail after save:loaded tore the live tutorial down.
@@ -1797,6 +1824,7 @@ export const onboarding = {
   },
 
   _teardown({ removeActors = true } = {}) {
+    this._awaitingRestoredBerthContract = false;
     this._deferredHints = null;
     this._firstUseHintUntilS = -Infinity;
     const prepared = this._preparedRescue;
@@ -2065,6 +2093,10 @@ export const onboarding = {
   _onMissionAccepted(payload) {
     const ob = this.state.onboarding;
     if (!ob) return;
+    if (this._awaitingRestoredBerthContract) {
+      this._finish();
+      return;
+    }
     if (payload.source === 'racingCircuit' && ob.active && !ob.finished) {
       this._finish();
       return;
@@ -2335,6 +2367,7 @@ export const onboarding = {
 
   _finish() {
     const ob = this.state.onboarding; if (!ob) return;
+    this._awaitingRestoredBerthContract = false;
     this._removeTrainingActors();
     this._removeRescueActors();
     this._removeMissingThreeActors();
@@ -2347,8 +2380,7 @@ export const onboarding = {
     if (ob.claimed) ob.claimed.active = false;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
-    // Captions live only for the tutorial's lifetime. _teardown must not clear them: save:loaded
-    // tears the rail down and then resumes the restored one.
+    // Captions live only for the tutorial's lifetime.
     if (Array.isArray(ob.trackerCaptions)) ob.trackerCaptions.length = 0;
     this._clearObjectiveWaypoint();
     // Tell the story system the tutorial is over so it can release the deferred cold-start voice.

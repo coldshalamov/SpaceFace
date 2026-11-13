@@ -346,9 +346,14 @@ import { getDressingRow } from '../world/dressingTable.js';
 import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
 
 const COMMODITY_NAME = new Map(COMMODITIES.map((row) => [row.id, row.name]));
+const B1_ALLOY_RUN_TAG = 'campaign47a:b1:alloy_run';
 
 function isPlottedLocalCourse(waypoint) {
   return waypoint?.kind === 'local' || waypoint?.kind === 'nav' || waypoint?.kind === 'zone';
+}
+
+function isB1CargoDelivery(mission) {
+  return mission.storyTag === CONTRACT_47A_B1_TAG || mission.storyTag === B1_ALLOY_RUN_TAG;
 }
 // NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
 // the posting used (pure exported read; economy stays the sole stock/market writer).
@@ -2034,8 +2039,9 @@ export const missions = {
     return boarded;
   },
 
-  /** Hand the B4 marker from the completed flight lesson to its newly tracked real contract. */
+  /** Give the story or accepted contract the marker after the opening rail yields. */
   releaseOnboardingNavigation(missionId) {
+    if (missionId == null) return this._refreshNavigation({ silent: true });
     const mission = (this.state.missions.active || []).find((candidate) => (
       candidate && candidate.id === missionId && candidate.status === 'active'
     ));
@@ -2554,12 +2560,14 @@ export const missions = {
       return { ...base, label: '47-A Recovery Site', stationId: null };
     }
 
-    if (m.storyTag === CONTRACT_47A_B1_TAG && m.params && m.params.cargoRecoveryNeeded) {
+    if (isB1CargoDelivery(m) && m.params?.cargoRecoveryNeeded) {
       const origin = this._liveStation(m.stationId);
       const originInfo = STATION_INFO.get(m.stationId);
+      const originName = originInfo?.name || 'Helios Station';
       return {
         ...base,
-        label: originInfo && originInfo.name || 'Helios Station',
+        label: originName,
+        reason: `Return to ${originName} for replacement cargo`,
         stationId: m.stationId,
         sectorId: originInfo && originInfo.sectorId || 'sector_helios_prime',
         sectorName: originInfo && SECTOR_BY_ID.get(originInfo.sectorId)?.name || 'Helios Prime',
@@ -3279,6 +3287,14 @@ export const missions = {
     return this._recordCampaignBookSignal('understory:playerGrowth', receipt);
   },
 
+  pendingAlloyRunOffer() {
+    const state = this.state;
+    if (state.story?.beatIndex !== 1) return null;
+    if (state.missions.active.some(m => m?.status === 'active' && isB1CargoDelivery(m))) return null;
+    const offer = buildMissionBoardContract(1, { state });
+    return offer?.storyTag === B1_ALLOY_RUN_TAG ? offer : null;
+  },
+
   _storyWaypointForBeat(beat) {
     if (!beat) return null;
     const state = this.state;
@@ -3295,6 +3311,20 @@ export const missions = {
     if (beat.beat === 1) {
       const scale = kesslerScaleWaypoint(state);
       if (scale) return { ...base, ...scale };
+      const offer = this.pendingAlloyRunOffer();
+      const info = offer && STATION_INFO.get(offer.stationId);
+      if (info) {
+        const station = currentSectorId === info.sectorId ? this._liveStation(info.id) : null;
+        return {
+          ...base,
+          label: `${info.name} Contract Board`,
+          reason: `Dock at ${info.name} and accept “${offer.title}” from the Contract Board.`,
+          stationId: info.id,
+          sectorId: info.sectorId,
+          sectorName: SECTOR_BY_ID.get(info.sectorId)?.name || null,
+          pos: station?.pos ? { x: station.pos.x, z: station.pos.z } : null,
+        };
+      }
     }
     if (beat.beat === 2) {
       const done = new Set(getBeatStepStatus(state, 2)?.completed || []);
@@ -4074,18 +4104,22 @@ export const missions = {
       if (m.params?.wakeHandoff) continue;
       const t = m.type;
       if (m.params && String(m.params.setPieceObjective || '').startsWith('long_read_')) continue;
-      if (m.storyTag === CONTRACT_47A_B1_TAG && m.params && m.params.cargoRecoveryNeeded
-        && stationId === m.stationId) {
-        const need = Math.max(1, m.params.qty || 1);
-        const have = Number(this.state.player.cargo.items[m.params.cmdtyId]) || 0;
-        const loaded = addCargo(this.state, m.params.cmdtyId, Math.max(0, need - have));
-        if (have + loaded >= need) {
+      if (isB1CargoDelivery(m) && m.params?.cargoRecoveryNeeded && stationId === m.stationId) {
+        const { cmdtyId } = m.params;
+        if (m.preloadedCargo) this._accountSeal(m);
+        const tracked = m.preloadedCargo && m.params.sealAccounted;
+        const need = tracked ? m.params.sealedRemaining : Math.max(1, m.params.qty || 1);
+        const have = () => tracked ? releasableContractUnits(this.state, m)
+          : Number(this.state.player.cargo.items[cmdtyId]) || 0;
+        addCargo(this.state, cmdtyId, Math.max(0, need - have()));
+        const missing = need - have();
+        if (missing <= 0) {
           m.params.cargoRecoveryNeeded = false;
           this._refreshTrackedMissionNav(m);
           this.bus.emit('mission:updated', { missionId: m.id, recovery: false });
-          this._sayStoryLine('Replacement sealed. Deliver it to Tycho.', 4);
+          this._sayStoryLine(`Replacement sealed. Deliver it to ${this._destName(m)}.`, 4);
         } else {
-          this.bus.emit('toast', { text: `Free ${need - have - loaded}u cargo for Kessler's replacement`, kind: 'warn', ttl: 4 });
+          this.bus.emit('toast', { text: `Make room for ${missing}u of Kessler’s replacement cargo.`, kind: 'warn', ttl: 4 });
         }
         continue;
       }
@@ -4238,11 +4272,12 @@ export const missions = {
             this.bus.emit('toast', { text: '47-A sample missing. Recovery site re-marked.', kind: 'warn', ttl: 4 });
             continue;
           }
-          if (m.storyTag === CONTRACT_47A_B1_TAG) {
+          if (isB1CargoDelivery(m)) {
             m.params.cargoRecoveryNeeded = true;
             this._refreshTrackedMissionNav(m);
             this.bus.emit('mission:updated', { missionId: m.id, recovery: true });
-            this.bus.emit('toast', { text: 'Sealed cargo missing. Return to Helios.', kind: 'warn', ttl: 4 });
+            const originName = this._stationName(m.stationId) || 'Helios Station';
+            this.bus.emit('toast', { text: `Sealed cargo missing. Return to ${originName}.`, kind: 'warn', ttl: 4 });
             continue;
           }
           // NXB-028: a freight contract that arrives short settles the delivered fraction on its
