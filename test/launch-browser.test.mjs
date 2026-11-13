@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdirSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,9 +47,10 @@ function stubServer({ storeResponse }) {
   return srv;
 }
 
-function runLauncher(port, { timeoutMs = 30_000, env = {}, readyPattern = null } = {}) {
+function runLauncher(port, { timeoutMs = 30_000, env = {}, readyPattern = null, preload = null } = {}) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [LAUNCHER, '--port', String(port), '--no-open'], {
+    const args = preload ? ['--require', preload] : [];
+    const child = spawn(process.execPath, [...args, LAUNCHER, '--port', String(port), '--no-open'], {
       cwd: ROOT,
       env: { ...process.env, ...LAUNCH_ENV, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -145,6 +146,47 @@ if (process.platform === 'win32') {
     rmdirSync(runtime);
     rmdirSync(store);
     rmdirSync(temp);
+  }
+}
+
+// Use the real migration wrapper and shared store. A stub child acts as Node mode
+// when the flag leaks, or publishes one restored legacy save when GUI mode is used.
+{
+  const port = await freePort();
+  const temp = mkdtempSync(join(tmpdir(), 'sf-launch-migration-env-'));
+  const store = join(temp, 'store');
+  const preload = join(temp, 'migration.cjs');
+  mkdirSync(store);
+  writeFileSync(preload, `
+    const childProcess = require('node:child_process');
+    const spawn = childProcess.spawn;
+    const { EventEmitter } = require('node:events');
+    const { writeFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    childProcess.spawn = function (exe, args, options) {
+      if (options.env?.SPACEFACE_MIGRATE_PLAYER_STORE !== '1') return spawn.call(this, exe, args, options);
+      const child = new EventEmitter();
+      if (!Object.keys(options.env).some((key) => key.toUpperCase() === 'ELECTRON_RUN_AS_NODE')) {
+        writeFileSync(join(options.env.SPACEFACE_PLAYER_STORE_DIR, 'sf.save.legacy.json'), '{"credits":47}');
+        writeFileSync(options.env.SPACEFACE_LAUNCH_RECEIPT, '{"status":"player-store-migrated","keyCount":1}\\n');
+      }
+      queueMicrotask(() => child.emit('exit', 0));
+      return child;
+    };
+    require('node:module').syncBuiltinESMExports();
+  `);
+  let result;
+  try {
+    result = await runLauncher(port, {
+      preload, readyPattern: /Server is running/,
+      env: { ELECTRON_RUN_AS_NODE: '1', SPACEFACE_PLAYER_STORE_DIR: store, TMPDIR: temp, TEMP: temp, TMP: temp },
+    });
+    assert.match(result.out, /Server is running/);
+    assert.equal(readFileSync(join(store, 'sf.save.legacy.json'), 'utf8'), '{"credits":47}');
+    assert.ok(JSON.parse(readFileSync(join(store, 'electron-migration.done.json'), 'utf8')).migratedAt);
+  } finally {
+    if (result?.code === null) killTree(result.pid);
+    rmSync(temp, { recursive: true, force: true });
   }
 }
 

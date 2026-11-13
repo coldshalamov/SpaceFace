@@ -10,6 +10,7 @@ import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs'
 
 const require = createRequire(import.meta.url);
 const {
+  electronApplicationEnvironment,
   evaluateLaunchOutcome,
   formatLaunchOutcome,
   parseLaunchReceipts,
@@ -49,17 +50,11 @@ if (electronRuntime) await launchElectron();
 
 async function launchElectron() {
   const logFd = openSync(logPath, 'a');
-  const env = {
-    ...process.env,
+  const env = electronApplicationEnvironment(process.env, {
     SPACEFACE_LAUNCH_RECEIPT: receiptPath,
     SPACEFACE_LAUNCH_LOG: logPath,
     SPACEFACE_PLAYER_STORE_DIR: resolvePlayerSaveDir(process.env),
-  };
-  // The desktop launcher must start Electron's application entrypoint.
-  // Windows treats environment keys as case-insensitive.
-  for (const key of Object.keys(env)) {
-    if (key.toUpperCase() === 'ELECTRON_RUN_AS_NODE') delete env[key];
-  }
+  });
   let child;
   let spawnError = null;
   let exitCode = null;

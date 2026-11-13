@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs';
 
 const require = createRequire(import.meta.url);
+const { electronApplicationEnvironment } = require('./lib/electronLaunchProtocol.cjs');
 const { playerStoreHasSaves, resolvePlayerSaveDir } = require('./lib/playerSaveStore.cjs');
 
 const PORT = Number(flagValue('--port') || process.env.PORT || 8123);
@@ -223,13 +224,12 @@ async function migrateElectronSavesIfNeeded(playerStoreDir) {
       cwd: ROOT,
       windowsHide: true,
       stdio: ['ignore', logFd, logFd],
-      env: {
-        ...process.env,
+      env: electronApplicationEnvironment(process.env, {
         SPACEFACE_PLAYER_STORE_DIR: playerStoreDir,
         SPACEFACE_MIGRATE_PLAYER_STORE: '1',
         SPACEFACE_LAUNCH_RECEIPT: receiptPath,
         SPACEFACE_LAUNCH_LOG: logPath,
-      },
+      }),
     });
   } catch {
     closeSync(logFd);

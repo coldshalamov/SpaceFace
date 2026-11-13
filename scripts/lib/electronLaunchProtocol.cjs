@@ -10,6 +10,16 @@ const ELECTRON_ISOLATED_EVIDENCE_MODE = 'isolated-evidence';
 const ELECTRON_EVIDENCE_PROFILE_DIR = 'spaceface-electron-evidence';
 const EVIDENCE_PROFILE_NAME = /^probe-[a-z0-9][a-z0-9_-]{0,63}-[a-z0-9]{6}$/i;
 
+function electronApplicationEnvironment(baseEnv, overrides = {}) {
+  const env = { ...baseEnv, ...overrides };
+  // An Electron app must start its application entrypoint. Windows treats env keys
+  // as case-insensitive, including values copied from the calling terminal.
+  for (const key of Object.keys(env)) {
+    if (key.toUpperCase() === 'ELECTRON_RUN_AS_NODE') delete env[key];
+  }
+  return env;
+}
+
 function electronEvidenceProfileRoot(tmpDir = os.tmpdir()) {
   return path.resolve(tmpDir, ELECTRON_EVIDENCE_PROFILE_DIR);
 }
@@ -310,6 +320,7 @@ const TERMINAL_PRIORITY = Object.freeze([
 
 module.exports = {
   appendLaunchReceipt,
+  electronApplicationEnvironment,
   electronEvidenceProfileRoot,
   evaluateLaunchOutcome,
   formatLaunchOutcome,
