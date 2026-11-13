@@ -124,3 +124,33 @@
 4. **The floor test:** after ten minutes a stranger can draw the floor from memory — the loop, where the Thump gun is, where the lane crosses.
 
 **Ways this gets faked.** A wing with nothing in it. A door that opens onto more of the same room. A loop that is a circle with no decision on it. A lane that never matters on the route players actually run.
+
+---
+
+## How a floor is composed and lit (LOOK-05D, 2026-11-13)
+
+This extends the rules above; it does not replace them. The mood is README ruling 2: a working harbour at golden hour, deep indigo shadows (never black), light as pools on top of that, bloom as a budget.
+
+**Composition rules**
+
+1. **The shops are the landmarks; nothing else stands on them.** Every pad (wall guns, Crate spots, Forge, Taps) has a clear apron of about 60 WU. No rock, plate or gate post sits inside it. Authored banks and random rocks both respect it.
+2. **Plates belong to the guns.** The Concussion Cannon pad stands in the corner between two bank plates, so the first shot a player banks teaches the room. The third plate covers the opposite quarter. Plates are fixed per floor, not respun each round; the only thing that moves between rounds is the lane gate.
+3. **Cover and ammunition are the same rocks.** Each quarter of the fight ring has one rock big enough to hide behind and a couple small enough to throw. Round 1-3 courts are authored; later rounds use the seeded ring but with the apron rule.
+4. **The centre is the stage.** Nothing solid within 120 WU of the room centre (the start room), so the first ten seconds are flight and a throw, not navigation.
+5. **Edges are dark.** The fight ring is about 400 WU. Beyond about 340 the room falls to indigo: no props, no lamps, no pads.
+6. **Readability.** Enemies are dark hulls with team-coloured accents; the floor behind them is mid-value. So the floor carries light pools rather than flat fill: a pool under each shop and a hot spot at the furnace, with the space between them left in shade.
+
+**Lighting rules (NOCTURNE, `src/render/nocturne/`, phones skip it)**
+
+- Light is sprinkled where a working yard would hang it, each source lighting what is near it: a sodium floodlight over each bank plate, a lamp on each arrival-gate post, a warm lamp on each wall-gun emplacement and the Crate, a cyan work light on each Tap, the furnace mouth and the Forge hot. Each declares itself through `data.nocturne` (explicit lights, plus a medium where there is haze). No arena-wide fill: before this pass a live Foundry fight ran Nocturne with zero lights and zero media (lead probe), because nothing in the arena declared a source.
+- Light sources are small and hot (emissive 2-6, bloom spreads them), not large and dim.
+- At most four haze volumes (the engine limit) and four colour probes: the furnace, the Forge and the two wall guns take them; every other lamp is a light and nothing else.
+- Phones show the same room with the pads and hulls lit by the ordinary rig; nothing depends on Nocturne for readability.
+
+**Gaps against this page (Foundry, as of this pass)**
+
+- The Casting Hall and Scrap Yard wings and their doors do not exist; the floor is one room.
+- There is no conveyor lane or crusher on the floor yet; "the lane crosses the loop" is not true here.
+- Pads have no model of their own: all of them draw as the generic pickup gem (see `design/program/fleet/drafts/asset-findings-for-codex.md`, D1).
+- No arena except the Foundry has a floor plan, so no other arena has shops to light or keep clear.
+- The room has no visible bounds, only a spawn and debris radius.

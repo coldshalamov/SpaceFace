@@ -3,21 +3,33 @@
 // (forge, crate, wall guns, taps), (c) beside the furnace/plates if the round has them, and writes a
 // JSON of where every pad, plate, rock and hostile sat relative to the room centre.
 //
-//   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/arena-rounds.mjs <outDir> [1,3,20]
+//   node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/arena-rounds.mjs <outDir> [1,3,20] [before,after]
 //
+// `before` serves the HEAD copy of the files named in BEFORE_FILES to the page (Playwright route),
+// `after` serves the working tree, so one lock hold gives a true before/after of a placement change.
+
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const PORT = 8166;
 const outDir = process.argv[2] || '.devshots/look05d/arena';
 const rounds = String(process.argv[3] || '1,3,20').split(',').map(Number);
+const variants = String(process.argv[4] || 'after').split(',');
+const BEFORE_FILES = (process.env.BEFORE_FILES || '').split(',').filter(Boolean);
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore' });
 
-async function runRound(browser, round) {
+async function runRound(browser, round, variant) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  if (variant === 'before') {
+    for (const file of BEFORE_FILES) {
+      const body = execFileSync('git', ['show', `HEAD:${file}`], { encoding: 'utf8', maxBuffer: 1 << 28 });
+      await page.route(`**/${file}*`, (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body }));
+    }
+  }
   page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 160)));
   await page.goto(`http://127.0.0.1:${PORT}/?swarmRound=${round}`);
   const t0 = Date.now();
@@ -37,7 +49,7 @@ async function runRound(browser, round) {
   }
   console.log(`round ${round}: fight live (${live} hostiles) after ${Math.round((Date.now() - t0) / 1000)} s`);
   await sleep(3000);
-  const tag = `${outDir}/r${round}`;
+  const tag = `${outDir}/${variant}-r${round}`;
   await page.screenshot({ path: `${tag}-wide.png` });
   const layout = await page.evaluate(() => {
     const s = window.SF.state;
@@ -76,7 +88,7 @@ async function runRound(browser, round) {
 try {
   await sleep(2500);
   const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
-  for (const round of rounds) await runRound(browser, round);
+  for (const variant of variants) for (const round of rounds) await runRound(browser, round, variant);
   await browser.close();
   console.log('done');
 } finally {
