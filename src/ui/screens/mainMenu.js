@@ -14,13 +14,12 @@ import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSlotIdentity.js';
 import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
-import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
+import { injectTitleDoorsLayouts } from '../orrery/titleDoorsLayouts.js';
 import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
-import { crucibleSetupFor, freshSeed, requestCrucibleRun } from '../crucibleLaunch.js';
-import { swarmQuickStartExtras, SWARM_QUICK_START } from '../../data/swarmQuickStart.js';
+import { requestSwarmPlayEntry } from '../crucibleLaunch.js';
 import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
 import {
@@ -354,6 +353,9 @@ export const MENU_MODE_GLOSSES = Object.freeze({
   physics: 'Orbital physics challenges',
 });
 
+/** TITLE-01: the Adventure door's line (the glosses above are the secondary verbs'). */
+const ADVENTURE_DOOR_GLOSS = 'The campaign — your ship, the Helios Reach';
+
 export function titleVerbOrder() {
   return ['continue', 'swarm', 'newGame', 'load', 'crucible', 'settings', 'quit'];
 }
@@ -419,7 +421,8 @@ export const mainMenuScreen = {
     // continue, New Game when there is not. Marking it here would light a dead verb on first paint.
     // titleVerbOrder owns the reading order.
     const labels = {
-      newGame: coreText('newGame'),
+      // TITLE-01: the two doors. Visible words are the door names; the accessible names keep the core copy.
+      newGame: 'Adventure',
       continue: coreText('continue'),
       load: 'Load',
       // "Swarm" — the mode the title sells (S4): one press straight into round 1 through the
@@ -428,7 +431,7 @@ export const mainMenuScreen = {
       swarm: 'Swarm',
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
       // launches through the ordinary New Game path and never touches the Adventure save.
-      crucible: 'Crucible',
+      crucible: 'Swarm setup',
       settings: coreText('settings'),
       quit: 'Quit',
     };
@@ -437,6 +440,7 @@ export const mainMenuScreen = {
       label: labels[action],
       ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
       ...(MENU_MODE_GLOSSES[action] ? { sub: MENU_MODE_GLOSSES[action] } : {}),
+      ...(action === 'newGame' ? { sub: ADVENTURE_DOOR_GLOSS } : {}),
       ...(action === 'quit' ? { danger: true } : {}),
     }));
     // The quiet line: reference and dev, at etch size, out of the way of the decision.
@@ -479,7 +483,21 @@ export const mainMenuScreen = {
     });
     aside.classList.add('of-title-aside');
     injectTitleAsideLayouts();
+    injectTitleDoorsLayouts();
     stage.appendChild(aside);
+    // TITLE-01: everything that is not a door or the small row waits behind one quiet "More".
+    const bMore = el('button', 'dp-menu__item dp-menu__item--fine of-title-more', 'More');
+    bMore.type = 'button';
+    bMore.dataset.titleMore = '1';
+    bMore.setAttribute('aria-expanded', 'false');
+    bMore.addEventListener('click', () => {
+      const open = !stage.classList.contains('is-more-open');
+      stage.classList.toggle('is-more-open', open);
+      bMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+      bMore.textContent = open ? 'Less' : 'More';
+      cue('confirm');
+    });
+    stage.appendChild(bMore);
     detachLamp = attachAttentionLamp(stage);
     // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
     // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
@@ -489,6 +507,9 @@ export const mainMenuScreen = {
     // Deckplate column under the logotype, in big thumb-sized words, and the world is the backdrop.
     const phone = isPhoneLayout();
     rootEl.classList.add(phone ? 'orr-title--phone' : 'orr-title');
+    // TITLE-01: on a desktop the title is two doors over the live scene, not the dial. The same buttons
+    // (data-action, aria, order) stand as a door pair, a small row, and a closed "More".
+    if (!phone) rootEl.classList.add('orr-title--doors');
     // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
@@ -496,35 +517,9 @@ export const mainMenuScreen = {
     // line holds every stop where it sits with Quit, instead of spreading four verbs down the whole
     // arc onto the console prop.
     const quitShown = canQuit();
-    arcRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
-      // T-S1: the title's signature — the Hand follows the pointer round the dial, the rings answer
-      freeTrack: true,
-      // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
-      place: (W, H) => { const re = Math.round(H * 0.278); const c = Math.max(Math.round(H * 0.305), re + 33); return { pivot: { x: c, y: c }, re, centerDeg: 112 }; },
-      span: 74,
-      extraGap: quitShown ? 0 : 1,
-      // the awake word steps 6% toward the dial; seated this far out it stops short of its tick and
-      // the Hand's leader instead of landing on them (half the verb size, plus air)
-      seat: (W, H) => Math.round(8 + Math.min(31, Math.max(20, H * 0.027)) * 0.5),
-      engraving: (W, H) => (H <= 800 ? 'Orrery of the Helios Reach' : 'SpaceFace · Orrery of the Helios Reach'),
-      engravingDeg: 292,
-      // the kicker's box spans the frame: its words' own extent (a range over its text, the dot included) is what clears
-      clearOf: () => {
-        const eyebrow = rootEl.querySelector('.dp-title__eyebrow');
-        let words = null;
-        if (eyebrow && typeof document !== 'undefined' && typeof document.createRange === 'function') {
-          const range = document.createRange();
-          range.selectNodeContents(eyebrow);
-          words = { getBoundingClientRect: () => { const r = range.getBoundingClientRect(); const e = eyebrow.getBoundingClientRect(); return { left: e.left, top: r.top, width: r.right - e.left, height: r.height }; } };
-        }
-        // ONE knockout round the name and its kicker together, so no ring stub is left between them
-        const boxes = [rootEl.querySelector('.dp-logotype'), words].filter(Boolean).map((b) => b.getBoundingClientRect()).filter((r) => r && r.width > 0);
-        if (!boxes.length) return [];
-        const l = Math.min(...boxes.map((r) => r.left)); const t = Math.min(...boxes.map((r) => r.top));
-        const r = Math.max(...boxes.map((b) => b.left + b.width)); const b = Math.max(...boxes.map((x) => x.top + x.height));
-        return [{ getBoundingClientRect: () => ({ left: l, top: t, width: r - l, height: b - t }) }];
-      },
-    });
+    // TITLE-01: no dial. The doors are CSS over the same buttons (src/ui/orrery/titleDoorsLayouts.js).
+    arcRail = null;
+    void quitShown;
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
@@ -538,6 +533,7 @@ export const mainMenuScreen = {
     const bSettings = byAction('settings');
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
+    if (bNew) bNew.setAttribute('aria-label', coreText('newGame'));
     if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
@@ -726,18 +722,14 @@ export const mainMenuScreen = {
       case 'newGame': pushWhenReady(ctx, 'newGame', 'New Game'); return;
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
       case 'swarm': {
-        // S4 — one press to the fight. The quick-start record names the arena, the stake and
-        // the starter build; `crucibleSetupFor` validates them into the same setup the door
-        // hands `requestCrucibleRun`, so the launch IS the ordinary route — only the opening
-        // armory is declined. If the record or its ids ever stop validating, the verb falls
-        // back to the door rather than dying silent on the title.
-        const extras = swarmQuickStartExtras();
-        const setup = extras && crucibleSetupFor({ ...extras, seed: freshSeed() });
-        if (setup && setup.ok && requestCrucibleRun(ctx.bus, setup, SWARM_QUICK_START.ruleset)) return;
-        pushWhenReady(ctx, 'crucible', 'Crucible');
+        // TITLE-01 — the SWARM door opens the Swarm entrance in its one-button PLAY state: PLAY is the
+        // shipped defaults (Ricochet Foundry, the default ship and kit, Exhibition for a first-timer and
+        // the last-used stake after), one press to round 1; Customise opens the full entrance.
+        requestSwarmPlayEntry();
+        pushWhenReady(ctx, 'crucible', 'Swarm');
         return;
       }
-      case 'crucible': pushWhenReady(ctx, 'crucible', 'Crucible'); return;
+      case 'crucible': pushWhenReady(ctx, 'crucible', 'Swarm'); return;
       case 'help': pushWhenReady(ctx, 'help', 'Help'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
       case 'circuits': pushWhenReady(ctx, 'raceBoard', 'Circuits'); return;
@@ -768,6 +760,17 @@ export const mainMenuScreen = {
       screenReady(ctx, 'physicsVenues') ? '1' : '0',
       screenReady(ctx, 'crucible') ? '1' : '0',
     ].join('');
+  },
+
+  // TITLE-01: the small row (Continue, Settings, Help, Quit) is centred under the doors by how many of
+  // its words are showing (Continue waits for a save; Quit waits for a shell).
+  _layoutTitleRow() {
+    if (!refs || !refs.stage) return;
+    const lis = ['continue', 'settings', 'help', 'quit']
+      .map((a) => refs.stage.querySelector('li:has(> [data-action="' + a + '"])'))
+      .filter((li) => li && !li.hidden);
+    const start = Math.floor((24 - 6 * lis.length) / 2) + 1;
+    lis.forEach((li, i) => { li.style.gridColumn = (start + 6 * i) + ' / span 6'; li.style.gridRow = '2'; });
   },
 
   _render(ctx) {
@@ -823,6 +826,7 @@ export const mainMenuScreen = {
     const primaryAction = titlePrimaryAction(!!latest);
     this._setPrimary(primaryAction === 'continue' ? refs.bContinue : refs.bNew);
     this._syncCurrent();
+    this._layoutTitleRow();
     reapplyTitleContinueLoadFailure(refs);
     // With the failure state settled, the eyebrow returns to its rest line — the re-render that
     // clears a stale failure must not leave the error words standing on the calmest screen in

@@ -48,9 +48,10 @@ test('title verbs are words of light on the ORRERY dial, and the empty decorativ
   assert.match(menu, /system: 'light'/);
   assert.doesNotMatch(menu, /of-title-rail/, 'the painted-and-empty 64x787 rail must not come back');
   assert.doesNotMatch(menu, /fh-menu-item/);
-  // ORRERY (design/frontend/ORRERY.md §6 Title): the same buttons ride the rim of the emblem's dial
-  // and the Hand swings to the awake verb. The rail only positions the list; it builds no menu.
-  assert.match(menu, /createArcRail\(\{ host: stage, list, frame: rootEl/);
+  // TITLE-01 (design/game/20_THE_FIRST_HOUR.md): the dial is retired from the title. The same buttons stand
+  // as two doors (ADVENTURE, SWARM), a small row, and a closed More; the sheet only sets them out.
+  assert.doesNotMatch(menu, /createArcRail\(/);
+  assert.match(menu, /orr-title--doors/);
   // the dial's face is drawn in the rail's own line language, not a raster emblem
   assert.match(DECKPLATE_LAYOUT_CSS, /\.dp-menu__item\[aria-disabled="true"\]/);
 });
