@@ -23,6 +23,7 @@ import {
 } from '../src/render/camera.js';
 import { createCameraDirector, CameraDirectorMode } from '../src/render/cameraDirector.js';
 import { attachStationHlod } from '../src/render/hlod.js';
+import { render } from '../src/render/renderer.js';
 import { evaluatePresentationContinuity, frameSeriesSettleIndex } from '../scripts/lib/presentationContinuity.mjs';
 
 const LARGE_ORIGIN = Object.freeze({ x: 12_000_000, z: -8_000_000 });
@@ -207,6 +208,38 @@ test('worldToScreen accepts global XZ; raycast returns global XZ (round-trip)', 
     !Number.isFinite(rawBad.x) || Math.abs(rawBad.x) > 1 || Math.abs(rawBad.y) > 1 || Math.abs(rawBad.z) > 1,
     'raw global without frame subtract must not look like a valid on-screen local project',
   );
+});
+
+test('worldToScreen uses CSS pixels from the resize owner without per-point viewport reads', t => {
+  const previous = globalThis.window;
+  t.after(() => { globalThis.window = previous; });
+  let width = 1393;
+  let height = 817;
+  let reads = 0;
+  globalThis.window = {
+    get innerWidth() { reads++; return width; },
+    get innerHeight() { reads++; return height; },
+    devicePixelRatio: 2,
+  };
+  const owner = Object.create(render);
+  const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+  owner._syncProjectionCamera = () => camera;
+  owner._applySize = () => {
+    assert.deepEqual(owner._projectionViewport, { width, height });
+  };
+  owner.cam = { onResize() {} };
+  owner._syncProjectionViewport();
+  const before = reads;
+  const point = { x: 0, z: -50 };
+  for (let i = 0; i < 32; i++) {
+    assert.deepEqual(owner.worldToScreen(point), { x: width / 2, y: height / 2, onScreen: true, behind: false });
+  }
+  assert.equal(reads, before);
+  width = 837;
+  height = 1191;
+  owner.onResize();
+  assert.deepEqual(owner.worldToScreen(point), { x: width / 2, y: height / 2, onScreen: true, behind: false });
+  assert.equal(reads, before + 2);
 });
 
 test('frameOriginSeq change cannot leave membrane cache stale', () => {

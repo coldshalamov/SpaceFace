@@ -8689,6 +8689,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._rendererLifecycle = null;
   owner._contextRestoreReceipt = null;
   owner._resizeHandler = null;
+  owner._projectionViewport = null;
   owner._videoSettingsOff = null;
   owner._firstPresentGpuAdmission = null;
   owner._firstPresentGpuReady = false;
@@ -9715,6 +9716,7 @@ export const render = {
 
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.setClearColor(0x060912, 1);
+    this._syncProjectionViewport();
     const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
@@ -33790,8 +33792,7 @@ export const render = {
     if (!Number.isFinite(_pt.x) || !Number.isFinite(_pt.y) || !Number.isFinite(_pt.z)) {
       return writeScreenProjection(out, 0, 0, false, behind);
     }
-    const width = typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 0;
-    const height = typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 0;
+    const { width, height } = this._projectionViewport || this._syncProjectionViewport();
     const x = (_pt.x * 0.5 + 0.5) * width;
     const y = (-_pt.y * 0.5 + 0.5) * height;
     const onScreen = !behind && _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
@@ -34398,7 +34399,18 @@ export const render = {
     return drawSize;
   },
 
+  _syncProjectionViewport() {
+    const viewport = this._projectionViewport || (this._projectionViewport = {});
+    const width = globalThis.window?.innerWidth;
+    const height = globalThis.window?.innerHeight;
+    viewport.width = Number.isFinite(width) ? width : 0;
+    viewport.height = Number.isFinite(height) ? height : 0;
+    return viewport;
+  },
+
   onResize() {
+    // CSS changes immediately, even while an orientation resize retains the old GPU buffer.
+    this._syncProjectionViewport();
     const before = authoredBoundaryPreparationSignature(
       this.renderer, this.state, this._contextRecovery?.generation || 0,
     );
