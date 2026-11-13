@@ -265,3 +265,9 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   did not load remembered window state. The failed screenshot shows the window already minimized
   at timeout. A subsequent native probe passed Pause and minimize/restore from active flight.
   The timing of the unexpected startup minimize remains unknown.
+- `23fa79612f51` reuses the physics owner's snapshot for its pooled impact receipt. The final
+  retail hold recorded 20,464 cumulative shed background impact events. Those events had already
+  paid recursive serialization before being dropped. A same-payload copy benchmark measured
+  72–73 ms versus 5–10 ms for 20,464 snapshots. The traced workload attributed about 118 ms of
+  29.8 s of worker CPU samples to this bridge path. Preserve all effect and gameplay receipts
+  under the existing policy. The measured cost cannot account for the original freezes by itself.
