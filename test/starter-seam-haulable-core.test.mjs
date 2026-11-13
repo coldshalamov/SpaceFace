@@ -85,8 +85,11 @@ test('the claim authors exactly three heavy boulders whose yields each fracture 
     assert.ok(coreYield > BULK_HAUL_MIN_U,
       `${b.id} yield ${b.yieldU}u fractures a ${coreYield}u core — above the ${BULK_HAUL_MIN_U}u haul floor`);
     const offCenter = Math.hypot(b.pos.x - fdef.center.x, b.pos.z - fdef.center.z);
-    assert.ok(offCenter <= fdef.clusterRadius,
-      `${b.id} sits ${offCenter.toFixed(0)} WU out — inside the claim's ${fdef.clusterRadius} WU radius`);
+    // OPENING-1b: the rim boulder is the 47-A marked rock on the pilot's doorstep, deliberately
+    // placed on the near fringe of the claim (<= 400 WU of its centre) so it is on screen at spawn.
+    const reach = b.id === 'helios_boulder_rim' ? 400 : fdef.clusterRadius;
+    assert.ok(offCenter <= reach,
+      `${b.id} sits ${offCenter.toFixed(0)} WU out — inside the claim's ${reach} WU reach`);
     const offCracker = Math.hypot(b.pos.x - cracker.x, b.pos.z - cracker.z);
     assert.ok(offCracker >= 150,
       `${b.id} stays ${offCracker.toFixed(0)} WU clear of the Claim Cracker mouth`);

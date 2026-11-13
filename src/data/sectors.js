@@ -97,13 +97,15 @@ const CORE_SECTORS = [
         // stamps a metal surface as optic-tagged and the mining beam refuses optic-tagged bodies
         // (systems/mining.js applyMining opticMaterial guard) — see the demo defect ledger row
         // for that surface-tag/lattice-guard collision; ore comes from the type, not the surface.
+        // OPENING-1b: the rim boulder is the 47-A marked rock and sits ~410 WU from the spawn so it
+        // is on screen in the first seconds (design/game/20 beat 1); the other two stay deeper in.
         boulders: [
           { id: 'helios_boulder_mass', type: 'ast_metallic', material: 'rock',
             pos: { x: 600, z: -300 }, radius: 20, oreHP: 860, yieldU: 30 },
           { id: 'helios_boulder_mid', type: 'ast_metallic', material: 'rock',
             pos: { x: 830, z: -180 }, radius: 17, oreHP: 700, yieldU: 27 },
           { id: 'helios_boulder_rim', type: 'ast_metallic', material: 'rock',
-            pos: { x: 640, z: -120 }, radius: 15, oreHP: 600, yieldU: 25 },
+            pos: { x: 380, z: -160 }, radius: 15, oreHP: 600, yieldU: 25 },
         ],
       },
       {

@@ -345,6 +345,8 @@ import { getDressingRow } from '../world/dressingTable.js';
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
 
+// OPENING-1b: how close an authored starter boulder must be to claim the first 47-A pick.
+const OPENING_BOULDER_PICK_WU = 600;
 const COMMODITY_NAME = new Map(COMMODITIES.map((row) => [row.id, row.name]));
 const B1_ALLOY_RUN_TAG = 'campaign47a:b1:alloy_run';
 
@@ -3108,6 +3110,8 @@ export const missions = {
     let nearestD2 = Infinity;
     let replacement = null;
     let replacementD2 = Infinity;
+    let boulder = null;
+    let boulderD2 = Infinity;
     for (const entity of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
       if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
       if (binding) {
@@ -3148,7 +3152,12 @@ export const missions = {
       const dz = entity.pos.z - anchor.z;
       const d2 = dx * dx + dz * dz;
       if (d2 < nearestD2) { nearestD2 = d2; nearest = entity; }
+      // OPENING-1b: a first pick prefers the starter seam's authored heavy boulder when it is
+      // on the pilot's doorstep, so the marked rock is the one placed on screen at spawn.
+      if (!saved && data.authoredBoulderId && d2 < OPENING_BOULDER_PICK_WU * OPENING_BOULDER_PICK_WU
+        && d2 < boulderD2) { boulderD2 = d2; boulder = entity; }
     }
+    if (!saved && boulder) { nearest = boulder; nearestD2 = boulderD2; }
     if (!saved || wrongLegacyFix) {
       if (nearest) {
         p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };

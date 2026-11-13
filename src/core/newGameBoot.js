@@ -57,7 +57,28 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   if (!state.physicsVenueSession && !racingSession) {
     const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
     light47aOpeningLandmarks(scene);
+    drift47aOpeningTowardMark(state, player);
   }
+}
+
+// OPENING-1b (design/game/20 beat 1): the ship is already drifting toward the marked rock when the
+// first frame draws, so the field is alive and the eye has somewhere to go. Live route only (the
+// deterministic 47-A harness never calls this); gentle, below the old thrust-drill speed.
+export const OPENING_DRIFT_WU_S = 26;
+export function drift47aOpeningTowardMark(state, player) {
+  if (!state || !player || !player.pos || !player.vel) return false;
+  let best = null; let bestD2 = Infinity;
+  for (const e of state.entityList || []) {
+    if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos || !(e.data && e.data.authoredBoulderId)) continue;
+    const dx = e.pos.x - player.pos.x; const dz = e.pos.z - player.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD2) { bestD2 = d2; best = e; }
+  }
+  if (!best || bestD2 < 1) return false;
+  const d = Math.sqrt(bestD2);
+  player.vel.x = ((best.pos.x - player.pos.x) / d) * OPENING_DRIFT_WU_S;
+  player.vel.z = ((best.pos.z - player.pos.z) / d) * OPENING_DRIFT_WU_S;
+  return true;
 }
 
 // LOOK-05A — light the two things the eye must find in the first minute (design/game/20 beats 1 and 4).

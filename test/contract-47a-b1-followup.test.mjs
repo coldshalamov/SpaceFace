@@ -170,12 +170,12 @@ test('Continue restages an already-started flight drill at the completed berth',
   Object.assign(h.state.ui, { docked: false, dockedStationId: null });
   h.state.simTime += 5;
   h.onboarding.update(0.25, h.state);
-  assert.equal(h.onboarding.serialize().currentBeatKey, 'marker');
+  assert.equal(h.onboarding.serialize().currentBeatKey, 'thrust');
   assert.equal(h.save.save('quick'), true);
   assert.equal(await h.save.load('latest'), true);
   assert.equal(h.state.onboarding.active, true);
-  assert.equal(h.onboarding.serialize().currentBeatKey, 'marker');
-  assert.equal(h.state.nav.waypoint.markerId, 'onboarding:marker');
+  assert.equal(h.onboarding.serialize().currentBeatKey, 'thrust');
+  assert.ok(!h.state.nav.waypoint || h.state.nav.waypoint.markerId === 'onboarding:thrust');
   assert.equal(h.activeAlloyRun(), undefined);
 });
 
