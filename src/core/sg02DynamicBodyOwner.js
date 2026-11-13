@@ -3554,7 +3554,7 @@ export class Sg02DynamicBodyOwner {
         a.entity.id, b.entity.id, aVx, aVz, bVx, bVz, normal.x, normal.z,
       );
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
-      const receipt = {
+      const receipt = existing || {
         schemaVersion: 1,
         tick: this.tick + 1,
         aId: a.entity.id,
@@ -3562,17 +3562,19 @@ export class Sg02DynamicBodyOwner {
         // Capture lives before any contact listener can recycle an endpoint id.
         aGeneration: a.entity.occupantGeneration,
         bGeneration: b.entity.occupantGeneration,
-        impulse,
         pos: null,
-        normal,
-        causalActorId,
-        preSolveClosingSpeed: keepClosingContact ? existing.preSolveClosingSpeed : pairClosing,
       };
+      // The row stays private until this drain ends. Reuse its receipt for compound
+      // contacts, keeping the prior strongest normal independent of the latest normal.
+      receipt.impulse = impulse;
+      receipt.normal = normal;
+      receipt.causalActorId = causalActorId;
+      if (!keepClosingContact) receipt.preSolveClosingSpeed = pairClosing;
       if (isPlayerReceipt) {
         // Compound pairs may report several force events in one step. Keep the normal beside
         // the largest closing measurement for the player braking classifier; public receipt
         // normal remains the current event's normal for impact/VFX consumers.
-        receipt.preSolveClosingNormal = keepClosingContact ? existing.preSolveClosingNormal : normal;
+        if (!keepClosingContact) receipt.preSolveClosingNormal = normal;
         receipt.appliedPlayerDeltaV = 0;
         // Filled by _distributeAppliedPlayerDeltaV. Present from birth so a reader can tell
         // "the rule reported nothing" from "the field does not exist on this build".
@@ -3583,7 +3585,6 @@ export class Sg02DynamicBodyOwner {
         receipt.appliedPlayerCourseRad = 0;
       }
       if (row) {
-        row.receipt = receipt;
         row.ownedA = ownedA;
         row.ownedB = ownedB;
       } else {
