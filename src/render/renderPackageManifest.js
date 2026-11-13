@@ -3430,7 +3430,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-derrick",
-    "expectedContentHash": "7af9d4940cefcbe903fd48d9373aefc9a6b05ce8ca7e443147ab593983519ddc",
+    "expectedContentHash": "b78df612b4fc04ff72430f71f82741402a6e0dbdf8e808a8b0d41574e68f08d2",
     "key": "works-derrick",
     "metadataUrl": "assets/ships/release/render-packages/works-derrick/render-package.json",
     "runtimeAssetId": "place_works_derrick",
@@ -3450,7 +3450,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-fabricator",
-    "expectedContentHash": "8b7e29e4671a3986c0d11dc53570a1fcc072ca271d8ff02009a3e6b30c93f8b7",
+    "expectedContentHash": "0728448c5c96347acae970654a56c02e9f1351f6bc8cd6a0e4ac2d7179fa9f31",
     "key": "works-fabricator",
     "metadataUrl": "assets/ships/release/render-packages/works-fabricator/render-package.json",
     "runtimeAssetId": "place_works_fabricator",
@@ -3490,7 +3490,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-refinery",
-    "expectedContentHash": "896d6eb406211746e3420754250d2bebb30faeee6d72c2c1beebaa5364bd0eac",
+    "expectedContentHash": "358a18ab9c97dd7cf9ae9e2b90c28f7b0d8f5f393fc3b9a0952faabd8d188913",
     "key": "works-refinery",
     "metadataUrl": "assets/ships/release/render-packages/works-refinery/render-package.json",
     "runtimeAssetId": "place_works_refinery",

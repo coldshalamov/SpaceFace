@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Document, NodeIO } from '@gltf-transform/core';
-import { ALL_EXTENSIONS, KHRMeshPrimitiveRestart } from '@gltf-transform/extensions';
+import { ALL_EXTENSIONS, KHRMaterialsClearcoat, KHRMeshPrimitiveRestart } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
@@ -613,6 +613,44 @@ test('semantic IDs, anchors, and dynamic groups are canonical across source decl
       normalizeSemanticManifest(semanticManifest({ reverse: true })),
     );
   });
+});
+
+test('compiler removes orphan textures while retaining regular, extension, and extras-owned images', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-render-package-unused-textures-'));
+  try {
+    const sourcePath = join(root, 'source.glb');
+    await createTinyIndexedFixture(sourcePath);
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+    const document = await io.read(sourcePath);
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64');
+    const texture = (name) => document.createTexture(name).setMimeType('image/png').setImage(png);
+    const base = texture('used-base');
+    const coat = texture('used-clearcoat');
+    texture('unused-lod-atlas');
+    texture('extras-owned').setExtras({ owner: 'custom-contract' });
+    const material = document.getRoot().listMaterials()[0];
+    material.setBaseColorTexture(base);
+    const extension = document.createExtension(KHRMaterialsClearcoat);
+    material.setExtension('KHR_materials_clearcoat', extension.createClearcoat().setClearcoatTexture(coat));
+    await io.write(sourcePath, document);
+
+    const outputDir = join(root, 'output');
+    await compileRenderPackage({
+      assetId: 'fixture.ship', sourceGlbPath: sourcePath,
+      semanticManifest: semanticManifest(), outputDir,
+    });
+    const compiled = await readCompiledGlb(join(outputDir, 'render.glb'));
+    const textures = compiled.getRoot().listTextures();
+    assert.deepEqual(textures.map((item) => item.getName()).sort(),
+      ['extras-owned', 'used-base', 'used-clearcoat']);
+    assert.ok(textures.every((item) => Buffer.from(item.getImage()).equals(png)));
+    const compiledMaterial = compiled.getRoot().listMaterials()[0];
+    assert.equal(compiledMaterial.getBaseColorTexture().getName(), 'used-base');
+    assert.equal(compiledMaterial.getExtension('KHR_materials_clearcoat').getClearcoatTexture().getName(), 'used-clearcoat');
+    assert.ok(compiled.getRoot().listMeshes().some((mesh) => mesh.listPrimitives().length > 0));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('compiler records deterministic source, semantic, render, and package content hashes', async () => {

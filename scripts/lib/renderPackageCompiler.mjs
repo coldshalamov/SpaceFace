@@ -144,6 +144,16 @@ export async function compileRenderPackage(options = {}) {
   }
   stampSemanticLocators(semanticManifest, resolvedNodes);
 
+  // Some authored sources retain texture atlases for LODs whose meshes were removed from the
+  // compiled package. The GLB pre-pass copies every embedded image, even when no material or
+  // extension can reach it. Remove only unreferenced textures: keep authored extras and solid
+  // textures, and leave every material, geometry stream, and live texture untouched.
+  await document.transform(prune({
+    propertyTypes: [PropertyType.TEXTURE],
+    keepExtras: true,
+    keepSolidTextures: true,
+  }));
+
   const encodedRenderBytes = await encodeRenderPackageGlb(io, document);
   const externalized = options.externalizeKtx2 === true
     ? externalizeRenderPackageKtx2(encodedRenderBytes, options.externalizeKtx2Hashes || null)
