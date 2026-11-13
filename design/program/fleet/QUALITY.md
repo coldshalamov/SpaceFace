@@ -219,6 +219,8 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   The next public launch was already visible and focused at flight entry. Pause held tick 66
   and native minimize held tick 178. Both advanced simulation, drew the world and accepted
   thrust after return. Both PNGs were opened. Cleanup passed. See `flight-holds-owner-native-resume.json`.
+  This route deliberately introduces two holds, so its aggregated cadence is not a steady-flight
+  comparison. In its active samples it still recorded 1.73 s maximum simulation staleness.
 - `64092aa260a1` and `15f2694cd228` capture the same held thrust, turn and primary-fire workload
   in cadence, worker CPU and Chrome scheduling traces. Use `combined-input-trace.mjs` under
   `.devshots/fleet/coordination/` with the locked steady-flight probe. Keep the timing of actual
