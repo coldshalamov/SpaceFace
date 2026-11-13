@@ -194,6 +194,13 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   The production worker's Ceres entry emitted 525 dormant rows, including 27 diamond cells.
   One ordinary rock resolved in the presentation grid before the ram-promotion command, then
   transferred to the live body roster and left the field. The owner probe found no aux breaches.
+  The locked Chrome probe staged 556 rows in Ceres and recorded 288 of 293 dormant metallic
+  entries drawing immediately. Five drew late. One common rock was never stamped while its
+  bounding sphere intersected the frustum. Its center started offscreen. Two late live entries
+  started with their centers onscreen (671 ms for a rescue rock and 279 ms for a metallic rock).
+  The ram target began 2,122 WU away and never reached the frustum. The probe therefore does
+  not establish contact continuity. Opened `2026-11-13T12-01-28-862Z-shot0.png` and recorded its
+  sibling JSON under `.devshots/asteroid-appear/`.
 - `0427216c1975` drains dirty and removed IDs directly. New and replaced tables compare membership
   once. The 720-tick auxiliary probe had no reader mismatches or missing journal marks. The separate
   transport threshold failed on this host (2.54 ms p95 against the 0.5 ms per-tick threshold).
@@ -225,6 +232,14 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   in cadence, worker CPU and Chrome scheduling traces. Use `combined-input-trace.mjs` under
   `.devshots/fleet/coordination/` with the locked steady-flight probe. Keep the timing of actual
   moving poses distinct from successful draws and validate that player fire occurred.
+  The source-stable Intel D3D11 Foundry round 2 diagnostic recorded 101 player shots in the
+  21.34 s controlled input window. Over the full observer interval it submitted 5.45 world
+  draws/s, with a 267 ms callback p95, 259 ms drawn-motion p95, and 0.38 s of simulation per wall
+  second. No intervals supported a signed reversal verdict. The renderer trace reported no data
+  loss. The capture ran Chrome tracing and a worker CPU sampler together, so compare only with a
+  matched run and establish absolute live cadence without these observers. The raw worker report
+  assigned its first unsampled 4.21 seconds to squad merge. Correctly timed samples give that
+  function 265 ms (0.89%). Artifacts are in `.devshots/main-thread-profile/combined-input-trace/`.
 - `b30d3e7d4070` gives each posted catch-up wake a one-shot timer for the same pending operation.
   In a deterministic loss injection, the old worker remained on one tick through two seconds of
   foreground heartbeats with no outstanding ACK. The fixed clock recovered after two fixed-step
