@@ -944,7 +944,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cockpit-dome",
-    "expectedContentHash": "7d170522a081699972158d8421e15a58b6f6d18561fe024d03ffeaf65e4239be",
+    "expectedContentHash": "c46df47b3a56f23c5df6b8112de453cc01d151fe81448888246ff733644638bd",
     "key": "cockpit-dome",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-dome/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_DOME",
@@ -1226,7 +1226,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-plasma-ring",
-    "expectedContentHash": "9b97a67a046683575bc298c1a4a3a98acb513d21c79fa8105bafad0d7f915b05",
+    "expectedContentHash": "ba8ab715ec64ce9cc5f137b2e06dfc8ccdc6a93c72fd0cc6f40e20af60ed87d9",
     "key": "engine-plasma-ring",
     "metadataUrl": "assets/ships/release/render-packages/engine-plasma-ring/render-package.json",
     "runtimeAssetId": "SF_ENGINE_PLASMA_RING",
@@ -1236,7 +1236,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-resonator",
-    "expectedContentHash": "68868c3e78d7d0d9465e298bf80fa91703776d9453c587b87c0a564acb0fc620",
+    "expectedContentHash": "8df327c48328e9f6fcb2909bcf437baaed7eb0a1f28ddc96d4825b2a378eff80",
     "key": "engine-resonator",
     "metadataUrl": "assets/ships/release/render-packages/engine-resonator/render-package.json",
     "runtimeAssetId": "SF_ENGINE_RESONATOR",

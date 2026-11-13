@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7d170522a081699972158d8421e15a58b6f6d18561fe024d03ffeaf65e4239be",
+  "contentHash": "c46df47b3a56f23c5df6b8112de453cc01d151fe81448888246ff733644638bd",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged.primitive.0",
       "indexCount": 1776,
       "indexed": true,
-      "materialHash": "344a008719209281820c5f469c45157212f873057db40fe84d13067e8b22cf02",
+      "materialHash": "b4b411cbad49ee3eee0f331334f8fea10186f3c6500d504b9d26427d5d99ee2f",
       "materialPipelineKey": "opaque",
       "meshName": "cockpit_dome_Material_Accent_Merged",
       "nodeId": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged",
@@ -52,7 +52,7 @@
       "id": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged.primitive.0",
       "indexCount": 1572,
       "indexed": true,
-      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
+      "materialHash": "6bd56dbbb092cf91a0108c4697b26e0caeefb4b83558449968c3579fc2d7b2d0",
       "materialPipelineKey": "opaque",
       "meshName": "cockpit_dome_Material_Mechanical_Merged",
       "nodeId": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged",
@@ -77,7 +77,7 @@
       "id": "sf.render.cockpit-dome.node.det-collar-seam.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "fb471debc7908fcb08376f490884facea8c2f088e9914cb17dc84c7ec6b142f2",
+      "materialHash": "1b4d6e4556ee87ac0520440c4277fabfb4c5422703abcf088b63daa1ba97e6a4",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.cockpit-dome.node.det-collar-seam",
@@ -102,7 +102,7 @@
       "id": "sf.render.cockpit-dome.node.det-core-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "344a008719209281820c5f469c45157212f873057db40fe84d13067e8b22cf02",
+      "materialHash": "b4b411cbad49ee3eee0f331334f8fea10186f3c6500d504b9d26427d5d99ee2f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.cockpit-dome.node.det-core-stencil",
@@ -127,7 +127,7 @@
       "id": "sf.render.cockpit-dome.node.det-frame-rib-l.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
+      "materialHash": "6bd56dbbb092cf91a0108c4697b26e0caeefb4b83558449968c3579fc2d7b2d0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.cockpit-dome.node.det-frame-rib-l",
@@ -152,7 +152,7 @@
       "id": "sf.render.cockpit-dome.node.det-frame-rib-r.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
+      "materialHash": "6bd56dbbb092cf91a0108c4697b26e0caeefb4b83558449968c3579fc2d7b2d0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.cockpit-dome.node.det-frame-rib-r",
@@ -177,7 +177,7 @@
       "id": "sf.render.cockpit-dome.node.det-glass-scratch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4b03b38e584f3bfbfabc18ff1735bbbcacebbafcbc7b202ecbbcdfb81eda5fd2",
+      "materialHash": "978d87e890dd09cc8e18f8d2da4c2d9a8c73178657bfbdac3e1aa8a27571e759",
       "materialPipelineKey": "blend",
       "meshName": "Cube.004",
       "nodeId": "sf.render.cockpit-dome.node.det-glass-scratch",
@@ -202,7 +202,7 @@
       "id": "sf.render.cockpit-dome.node.det-mount-bolt-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
+      "materialHash": "6bd56dbbb092cf91a0108c4697b26e0caeefb4b83558449968c3579fc2d7b2d0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.cockpit-dome.node.det-mount-bolt-001",
@@ -227,7 +227,7 @@
       "id": "sf.render.cockpit-dome.node.det-mount-bolt.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
+      "materialHash": "6bd56dbbb092cf91a0108c4697b26e0caeefb4b83558449968c3579fc2d7b2d0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.cockpit-dome.node.det-mount-bolt",
@@ -252,7 +252,7 @@
       "id": "sf.render.cockpit-dome.node.dome-glass.primitive.0",
       "indexCount": 3042,
       "indexed": true,
-      "materialHash": "4b03b38e584f3bfbfabc18ff1735bbbcacebbafcbc7b202ecbbcdfb81eda5fd2",
+      "materialHash": "978d87e890dd09cc8e18f8d2da4c2d9a8c73178657bfbdac3e1aa8a27571e759",
       "materialPipelineKey": "blend",
       "meshName": "Dome_Glass",
       "nodeId": "sf.render.cockpit-dome.node.dome-glass",
@@ -277,7 +277,7 @@
       "id": "sf.render.cockpit-dome.node.dome-mount-collar.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "fb471debc7908fcb08376f490884facea8c2f088e9914cb17dc84c7ec6b142f2",
+      "materialHash": "1b4d6e4556ee87ac0520440c4277fabfb4c5422703abcf088b63daa1ba97e6a4",
       "materialPipelineKey": "opaque",
       "meshName": "Dome_Mount_Collar",
       "nodeId": "sf.render.cockpit-dome.node.dome-mount-collar",
@@ -290,98 +290,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "344a008719209281820c5f469c45157212f873057db40fe84d13067e8b22cf02",
-      "id": "material:344a008719209281820c5f46",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "cockpit_dome_trim_sheet_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_4x4",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
-      "id": "material:3be13bfd349463356a72d8e7",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "cockpit_dome_trim_sheet_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_4x4",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "4b03b38e584f3bfbfabc18ff1735bbbcacebbafcbc7b202ecbbcdfb81eda5fd2",
-      "id": "material:4b03b38e584f3bfbfabc18ff",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_4x4",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "fb471debc7908fcb08376f490884facea8c2f088e9914cb17dc84c7ec6b142f2",
-      "id": "material:fb471debc7908fcb08376f49",
+      "hash": "1b4d6e4556ee87ac0520440c4277fabfb4c5422703abcf088b63daa1ba97e6a4",
+      "id": "material:1b4d6e4556ee87ac0520440c",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -393,7 +303,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
+          "name": "spaceface_neutral_orm_4x4",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -405,7 +315,97 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6bd56dbbb092cf91a0108c4697b26e0caeefb4b83558449968c3579fc2d7b2d0",
+      "id": "material:6bd56dbbb092cf91a0108c46",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cockpit_dome_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4x4",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "978d87e890dd09cc8e18f8d2da4c2d9a8c73178657bfbdac3e1aa8a27571e759",
+      "id": "material:978d87e890dd09cc8e18f8d2",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4x4",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b4b411cbad49ee3eee0f331334f8fea10186f3c6500d504b9d26427d5d99ee2f",
+      "id": "material:b4b411cbad49ee3eee0f3313",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cockpit_dome_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4x4",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
           "slot": "occlusion",
           "uri": null
         }
@@ -1597,13 +1597,13 @@
     },
     "sourceManifest": {
       "bytes": 344570,
-      "sha256": "37b151412e9ba78aeb28fad88aaf050f831b23946c16532fb3a321b92619cb6e",
+      "sha256": "b32a4055e4ea55ab4b8355c7b95026fd30b6211125f4317158a34e29714f0a29",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 125044,
-    "sha256": "03d965fd7b5b8f32828614bf2971182c965307e5e541ebf8220ca0e78baa4c7c",
+    "bytes": 124528,
+    "sha256": "5dec5c2737323d3557189a86eddc4c0b4f7230644b3ad35721134a4a925918cb",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2023,7 +2023,7 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
-  "runtimeHash": "cb47da2703e47d8ce6f6e1e7332739522f688467a70f7d67f09d43c6e730ccbc",
+  "runtimeHash": "355d8a1927cfbb23fcee6556fcd32372d9ecd11aa6b5a91b1ff1e4f39194f646",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
