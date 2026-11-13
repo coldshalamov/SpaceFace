@@ -246,7 +246,6 @@ function ensureRuntime(state) {
       _lastPruneMembership: undefined,
       _lastPruneLiveCount: -1,
       pinResolveScratch: [],
-      pinNormalizeScratch: { out: [], seen: new Set() },
     };
     RUNTIMES.set(state, runtime);
   }
@@ -1844,7 +1843,6 @@ function classifyWorld(state, runtime) {
   ctx.physicsReachWu = reach;
   ctx.currentTargetId = facts.targetId;
   ctx.pinScratch = runtime.pinResolveScratch;
-  ctx.pinNormalizeScratch = runtime.pinNormalizeScratch;
   ctx.classifiedOut = runtime.classifiedOut || (runtime.classifiedOut = {
     pins: null,
     simTier: null,

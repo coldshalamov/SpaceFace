@@ -147,6 +147,23 @@ test('pin normalize scratch reuses the same buffers without changing reasons', (
   assert.notEqual(fresh, identity);
 });
 
+test('the classifier reuses its sorted pin buffer and emits duplicate reasons only once', () => {
+  const pinScratch = [];
+  const pins = resolvePins({
+    id: 1, type: 'projectile', flags: { missionPinned: true, tethered: true },
+  }, {
+    pinScratch, playerId: 1, currentTargetId: 1, dockingOrLanding: true, escortOrFollow: true,
+    fieldDriven: true, hailOrConversation: true, hostileAggro: true, imminentCollision: true,
+    missionCritical: true, physicalInterest: true, playerMiningTarget: true,
+    playerScannedAndTracked: true, projectileThreat: true, simTime: 2,
+    damagedByPlayerUntilT: 2, damagedPlayerUntilT: 3, tetherOrAttachment: true, visibleOnGlass: true,
+  });
+  assert.equal(pins, pinScratch);
+  assert.deepEqual(pins, Object.values(PIN_REASON).sort());
+  assert.equal(resolvePins({ id: 2 }, { pinScratch }), pinScratch);
+  assert.deepEqual(pinScratch, []);
+});
+
 test('tether flag on the entity is an explicit pin', () => {
   const pins = resolvePins({ id: 7, data: {}, flags: { tethered: true }, pos: { x: 9999, z: 0 } }, {});
   assert.ok(pins.includes(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT));

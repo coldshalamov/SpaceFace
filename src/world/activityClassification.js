@@ -149,28 +149,45 @@ export function normalizePinReasons(list, scratch = null) {
  */
 export function resolvePins(entity, context = {}) {
   const pins = context.pinScratch || [];
-  if (context.pinScratch) pins.length = 0;
-  if (!entity) return normalizePinReasons(pins, context.pinNormalizeScratch);
+  pins.length = 0;
+  if (!entity) return pins;
+
+  // These are known enum values. Append each reason once, in the same alphabetical
+  // order as normalizePinReasons, without a second buffer, Set pass, or sort.
   const playerId = context.playerId;
-  if (entity.isPlayer === true || entity.id === playerId) pins.push(PIN_REASON.PLAYER);
+  const d = entity.data;
+  const flags = entity.flags;
+  const ai = d?.ai;
   if (context.currentTargetId != null && entity.id === context.currentTargetId) {
     pins.push(PIN_REASON.CURRENT_TARGET);
   }
-  if (context.visibleOnGlass === true) pins.push(PIN_REASON.VISIBLE_ON_GLASS);
+  if (context.dockingOrLanding === true) pins.push(PIN_REASON.DOCKING_OR_LANDING);
+  if (context.escortOrFollow === true) pins.push(PIN_REASON.ESCORT_OR_FOLLOW_RELATION);
+  if (context.fieldDriven === true) pins.push(PIN_REASON.FIELD_DRIVEN);
+  if (context.hailOrConversation === true) pins.push(PIN_REASON.HAIL_OR_SCRIPTED_CONVERSATION);
   if (context.hostileAggro === true) pins.push(PIN_REASON.HOSTILE_AGGRO);
+  if (context.imminentCollision === true) pins.push(PIN_REASON.IMMINENT_COLLISION);
+  if (context.missionCritical === true || flags?.missionPinned || (d && (
+    d.missionPinned || d.missionId || d.missionTag || d.jobId
+    // A live convoy's transit cast is mission-critical from data alone — the run must
+    // physically complete regardless of the owner's context fill (check §J).
+    || d.transitCritical === true
+    || d.activityActorSlotId
+    || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))
+    || d.predationRole || ai?.predationRole || ai?.predationStatus
+    || d.freightCustodyPersistence || d.freightCustody
+    || (typeof ai?.spawnContext === 'string' && ai.spawnContext.includes('zone_hostile'))
+    // A law response must remain exact while pursuing an aggressor or holding a wreck.
+    || (ai && (ai.securityTargetId != null || ai.witnessRole != null))))) {
+    pins.push(PIN_REASON.MISSION_CRITICAL);
+  }
+  if (context.physicalInterest === true) pins.push(PIN_REASON.PHYSICAL_INTEREST);
+  if (entity.isPlayer === true || entity.id === playerId) pins.push(PIN_REASON.PLAYER);
+  if (context.playerMiningTarget === true) pins.push(PIN_REASON.PLAYER_MINING_TARGET);
+  if (context.playerScannedAndTracked === true) pins.push(PIN_REASON.PLAYER_SCANNED_AND_TRACKED);
   if (context.projectileThreat === true || entity.type === 'projectile') {
     pins.push(PIN_REASON.PROJECTILE_THREAT);
   }
-  if (context.tetherOrAttachment === true) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
-  if (context.fieldDriven === true) pins.push(PIN_REASON.FIELD_DRIVEN);
-  if (context.physicalInterest === true) pins.push(PIN_REASON.PHYSICAL_INTEREST);
-  if (context.dockingOrLanding === true) pins.push(PIN_REASON.DOCKING_OR_LANDING);
-  if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);
-  if (context.escortOrFollow === true) pins.push(PIN_REASON.ESCORT_OR_FOLLOW_RELATION);
-  if (context.hailOrConversation === true) pins.push(PIN_REASON.HAIL_OR_SCRIPTED_CONVERSATION);
-  if (context.playerMiningTarget === true) pins.push(PIN_REASON.PLAYER_MINING_TARGET);
-  if (context.playerScannedAndTracked === true) pins.push(PIN_REASON.PLAYER_SCANNED_AND_TRACKED);
-  if (context.imminentCollision === true) pins.push(PIN_REASON.IMMINENT_COLLISION);
   const now = finite(context.simTime);
   const damagedByPlayerUntil = finite(context.damagedByPlayerUntilT, -1);
   const damagedPlayerUntil = finite(context.damagedPlayerUntilT, -1);
@@ -180,27 +197,11 @@ export function resolvePins(entity, context = {}) {
   if (damagedPlayerUntil >= 0 && now <= damagedPlayerUntil) {
     pins.push(PIN_REASON.RECENTLY_DAMAGED_PLAYER);
   }
-  const d = entity.data || {};
-  const flags = entity.flags || {};
-  if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.jobId
-    // A live convoy's transit cast is mission-critical from data alone — the run must
-    // physically complete regardless of the owner's context fill (check §J).
-    || d.transitCritical === true
-    || d.activityActorSlotId
-    || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))
-    || d.predationRole || (d.ai && (d.ai.predationRole || d.ai.predationStatus))
-    || d.freightCustodyPersistence || d.freightCustody
-    || (d.ai && typeof d.ai.spawnContext === 'string'
-      && d.ai.spawnContext.includes('zone_hostile'))
-    // PQ-138.00: a lawful ship answering an incident — pursuing an aggressor or holding at a
-    // witnessed wreck — is the world reacting to the player. Measured 2026-09-12 on the live route:
-    // reserves launched 800 WU out were classified far, shelved, and crawled at 5 WU/s for twenty
-    // seconds, so "nobody comes after you". A live response stays exact until it is cleared.
-    || (d.ai && (d.ai.securityTargetId != null || d.ai.witnessRole != null))) {
-    pins.push(PIN_REASON.MISSION_CRITICAL);
+  if (context.tetherOrAttachment === true || flags?.tethered || d?.tethered) {
+    pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
   }
-  if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
-  return normalizePinReasons(pins, context.pinNormalizeScratch);
+  if (context.visibleOnGlass === true) pins.push(PIN_REASON.VISIBLE_ON_GLASS);
+  return pins;
 }
 
 export function resolvePresentationTier(options = {}) {
