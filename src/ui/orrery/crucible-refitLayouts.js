@@ -291,6 +291,50 @@ ${RF} > .k-title .sf-cru-preview {
   }
 }
 
+/* —— Laptop height (first-hour pass, 561-800 tall): the same scrollport the short band uses, with the
+   type left at its full size. The list gets the room the preview paragraph and a three-row foot were
+   taking; the preview keeps two lines (the whole sentence is the stage's own tooltip text), and the
+   foot lays its offers side by side with each consequence beneath, so nothing is cut at the bottom. —— */
+@media (min-width:761px) and (min-height:561px) and (max-height:800px) {
+  ${RF} {
+    display:grid !important; grid-template-columns:minmax(0,1fr) !important;
+    grid-template-rows:auto minmax(0,1fr) auto !important; gap:10px !important;
+    padding:14px 48px 10px !important; overflow:hidden !important;
+    height:100dvh !important; max-height:100dvh !important; align-content:stretch !important; box-sizing:border-box !important;
+  }
+  ${RF} > .k-title { margin:0 !important; padding:0 !important; min-width:0 !important; }
+  ${RF} > .k-title .k-t-title, ${RF} > .k-title h1 { font-size:clamp(30px, 5.2vh, 40px) !important; line-height:.95 !important; }
+  ${RF} > .k-title .sf-cru-sub { margin-top:4px !important; font-size:14px !important; }
+  ${RF} > .k-title .sf-cru-preview, ${RF} > .k-title .sf-cru-note {
+    margin-top:3px !important; line-height:1.3 !important; max-width:110ch;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) {
+    position:relative !important; z-index:1 !important; min-height:0 !important; height:auto !important; max-height:100% !important;
+    overflow:hidden !important; display:flex !important; flex-direction:column !important; padding-top:2px !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows {
+    flex:1 1 auto !important; min-height:0 !important; max-height:100% !important; overflow:auto !important; gap:0 !important; padding-bottom:6px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows { display:grid !important; grid-template-columns:repeat(2, minmax(0,1fr)) !important; column-gap:36px !important; align-content:start !important; }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { padding:6px 0 8px !important; }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .orr-hull-fitcount { position:static !important; margin:0 0 4px !important; }
+  ${RF} > .k-foot {
+    z-index:8 !important; position:relative !important; isolation:isolate; flex:none !important; grid-row:3 !important;
+    margin:0 !important; padding:8px 0 4px !important; border-top:1px solid rgb(236 230 216 / .16) !important;
+    background:rgb(5 7 10) !important; min-height:0 !important; max-height:42dvh !important; overflow-y:auto !important; overflow-x:hidden !important;
+  }
+  ${RF} .k-foot .k-words {
+    display:grid !important; width:100% !important; min-width:0 !important; gap:6px 18px !important; justify-content:stretch !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(15rem, 100%), 1fr)) !important; align-items:start !important;
+  }
+  ${RF} .k-foot .k-words > li { min-width:0 !important; }
+  ${RF} .k-foot .k-word { max-width:100% !important; height:auto !important; min-height:36px !important; white-space:normal !important; overflow-wrap:anywhere; }
+  ${RF} .k-foot .sf-cru-keynote, ${RF} .k-foot .sf-cru-fine { max-width:none !important; margin:4px 0 0 !important; font-size:12px !important; line-height:1.35 !important; }
+}
+
 `;
 
 // One more jig layout after the arrival window: the foot's settle transform is done (kit settle
