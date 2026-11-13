@@ -276,6 +276,7 @@ import { createChronicler } from '../systems/chronicler.js';           // Genie 
 import { isRunSealed } from './runSeal.js';
 import { factionPresence } from '../systems/factionPresence.js';       // Depth Program K1: five additive faction presences + service/boarding seams
 import { bandRadio } from '../systems/bandRadio.js';                   // Depth Program A1: deterministic in-flight radio/ticker state
+import { plantsRuntime } from '../systems/plants/plantsRuntime.js';      // PL-101..PL-256: the world-reacts plant bank (one registration point)
 import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';       // Depth Program V2 physical-carrier flavor reachability
 import { lossInvestigation } from '../systems/lossInvestigation.js';   // CONVOY_LOSS_INVESTIGATION: loss-ledger provenance overlay on salvage communicator offers
 import { salvageActions } from '../systems/salvageActions.js';         // SALVAGE_DISTINCT_FROM_MINING: wreck verb readouts + unstable reactor counterplay
@@ -591,6 +592,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['crew', crew], // GOLD-CREW: roster, perks via efficiencyMods, banter, loyalty, injury/loss
     ['beacons', beacons],
     ['bandRadio', bandRadio],
+    ['plants', plantsRuntime],
     ['v2FlavorRuntime', v2FlavorRuntime],
     ['onboarding', onboarding],
     ['masslineHud', masslineHud],

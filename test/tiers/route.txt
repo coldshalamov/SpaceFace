@@ -53,6 +53,18 @@ test/professional-travel-public-route-contract.test.mjs
 test/m4-living-galaxy-player-route-contract.test.mjs
 test/station-walk-route-coverage.test.mjs
 
+# --- PL-101..PL-256 world-reacts plant bank (10 suites; the wiring gate is plants-wiring) ---
+test/plants-wiring.test.mjs
+test/plants-world-reacts.test.mjs
+test/plants-chance-meetings.test.mjs
+test/plants-pit.test.mjs
+test/plants-yard-secrets.test.mjs
+test/plants-outposts-1.test.mjs
+test/plants-outposts-2.test.mjs
+test/plants-street-life-1.test.mjs
+test/plants-street-life-2.test.mjs
+test/plants-radio.test.mjs
+
 # --- ordinary player routes ---
 # Boot -> New Game -> flight: the six invariants (menu, launch, pilot, hull, world, controls).
 npm run check:playable

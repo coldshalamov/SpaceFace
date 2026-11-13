@@ -68,7 +68,8 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
   'varianceAdjustmentBerth',
-  'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'longBerth', 'crew', 'onboarding', 'masslineHud',
+  'drill', 'claims', 'beacons', 'bandRadio', 'plants', // plants: PL-101..PL-256 world-reacts bank; after bandRadio so the radio floor is settled before plants speak
+  'v2FlavorRuntime', 'longBerth', 'crew', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
   // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
@@ -211,7 +212,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // swarmDrops: the eight Pit drops; ticks effect timers, Loose Cannon and drop TTLs.
   'swarmDrops',
   'heat', 'traffic', 'drill', 'claims', 'chronicler', 'longBerth', 'crew',
-  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud',
+  'bandRadio', 'plants', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
   'survivalHud',
@@ -570,6 +571,10 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket',
+  // plants: the PL-101..PL-256 world-reacts bank. Per-tick pass-through (each plant
+  // internally gates its scans to ~1 Hz), needed at table cadence for lamp timers,
+  // tow latches and the Pit round seams.
+  'plants',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'dyingHull', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
   'lineProgression',
@@ -836,6 +841,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   longBerth: MODE_SCOPE_ADVENTURE,
   crew: MODE_SCOPE_ADVENTURE,
   bandRadio: MODE_SCOPE_ADVENTURE,
+  plants: MODE_SCOPE_COMBAT_FLIGHT, // the plant bank lives in both doors (flight + swarm + yard)
   onboarding: MODE_SCOPE_ADVENTURE,
   noFireAdvisory: MODE_SCOPE_ADVENTURE,
   moralTrapSystem: MODE_SCOPE_ADVENTURE,

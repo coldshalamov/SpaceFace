@@ -265,6 +265,7 @@ import { historyWear } from '../systems/historyWear.js';
 import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
 import { bandRadio } from '../systems/bandRadio.js';
+import { plantsRuntime } from '../systems/plants/plantsRuntime.js';
 import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';
 import { lossInvestigation } from '../systems/lossInvestigation.js';
 import { salvageActions } from '../systems/salvageActions.js';
@@ -528,6 +529,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['crew', crew],
     ['beacons', beacons],
     ['bandRadio', bandRadio],
+    ['plants', plantsRuntime],
     ['v2FlavorRuntime', v2FlavorRuntime],
     ['onboarding', onboarding],
     ['masslineHud', masslineHud],
