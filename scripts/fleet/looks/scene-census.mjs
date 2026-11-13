@@ -72,7 +72,18 @@ try {
     });
     const rows = [...groups.entries()].sort((a, b) => b[1].scale - a[1].scale).slice(0, 40)
       .map(([k, g]) => `${k} ×${g.count} op=${g.opacity.join('/')} dw=${g.depthWrite} bl=${g.blending} scale≤${g.scale}`);
-    return { total, rows, cam: camera ? camera.type : null };
+    // Detail for the big blended lit bodies (the usual suspects for see-through rocks).
+    const detail = [];
+    scene.traverseVisible((o) => {
+      if (!o.isMesh || detail.length >= 12) return;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (!m || !(m.transparent || m.opacity < 0.999) || !(m.isMeshPhysicalMaterial || m.isMeshStandardMaterial)) return;
+      const chain = [];
+      let p = o; while (p && chain.length < 6) { chain.push(`${p.name || p.type}${p.userData && Object.keys(p.userData).length ? '{' + Object.keys(p.userData).slice(0, 5).join(',') + '}' : ''}`); p = p.parent; }
+      const wp = o.getWorldPosition(new o.position.constructor());
+      detail.push({ chain: chain.join(' < '), geo: o.geometry && (o.geometry.name || o.geometry.type), mat: m.name, color: m.color && m.color.getHexString(), op: m.opacity, transmission: m.transmission, pos: [Math.round(wp.x), Math.round(wp.y), Math.round(wp.z)] });
+    });
+    return { total, rows, detail, cam: camera ? camera.type : null };
   });
   console.log(JSON.stringify(report, null, 1).slice(0, 6000));
   await browser.close();
