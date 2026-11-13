@@ -4985,20 +4985,6 @@
       "contractNodeCount": 32
     },
     {
-      "id": "wholeship_wasp_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/wasp_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
-      "sourceSha256": "23f1f312b699a523158a26eb86c5e161bd80cae58ee0f8c0a2384dc3ed16fd1a",
-      "releaseSha256": "58aa882b40036e3af8ec56f190180443a4a6e937e13c38f2cc2e7adf7dc896c3",
-      "sourceBytes": 2175964,
-      "releaseBytes": 798728,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 82,
-      "contractNodeCount": 34
-    },
-    {
       "id": "wholeship_wasp_free_militia",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/wasp_free_militia.glb",
@@ -5417,34 +5403,6 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 76,
       "contractNodeCount": 32
-    },
-    {
-      "id": "wholeship_wasp_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/wasp_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb",
-      "sourceSha256": "6e5f5cbc3e0e58e36ffdf4225224b3187cef8b9a8eebec091ab02c04b7f89381",
-      "releaseSha256": "309d2964c5dcca953118985e765e919c8cc24566735fef2ead2ddc1dfe5d7785",
-      "sourceBytes": 1075432,
-      "releaseBytes": 567016,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 81,
-      "contractNodeCount": 34
-    },
-    {
-      "id": "wholeship_wasp_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/wasp_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb",
-      "sourceSha256": "8ecc5de89c76569a67116370f04306c0b612ef3bf45aa0692723b175bdb0f4f3",
-      "releaseSha256": "ed8c4b8f310bfe65874dd11135145d8f0ad34ddf981425203c9ec6d1ff4d076d",
-      "sourceBytes": 633996,
-      "releaseBytes": 446576,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 71,
-      "contractNodeCount": 31
     },
     {
       "id": "wholeship_borrowed_voice_ring",
@@ -7004,6 +6962,48 @@
       "ktx2Textures": 3,
       "meshoptBufferViews": 24,
       "contractNodeCount": 4
+    },
+    {
+      "id": "wholeship_wasp_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+      "sourceSha256": "b246d5a411b72b48656aafd706ff32e64c56d46b0fc56bddd6cfb404da728781",
+      "releaseSha256": "3577ef7532ee916f488b23c8ee6187f168e9803f27afb377f3467e5e7ce4c2b8",
+      "sourceBytes": 1660088,
+      "releaseBytes": 698132,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 82,
+      "contractNodeCount": 34
+    },
+    {
+      "id": "wholeship_wasp_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/wasp_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb",
+      "sourceSha256": "e32c99fd82b1faadb7a22c1a8382bfa9b7b0bc3fe3a0757232a01e913587f406",
+      "releaseSha256": "64266d44a58493d36d7b6a8326d12de5babc12df5a80543a4beef8654050bbdd",
+      "sourceBytes": 869956,
+      "releaseBytes": 515452,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 82,
+      "contractNodeCount": 34
+    },
+    {
+      "id": "wholeship_wasp_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/wasp_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb",
+      "sourceSha256": "fb57f52cec41731ff7ac0450537352781f58e60d922b0efbe14335fced2e970a",
+      "releaseSha256": "aa8f60447ed41ed43f2b5fffb5539092377fe16964352737921e945f92764fe1",
+      "sourceBytes": 539696,
+      "releaseBytes": 424136,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 73,
+      "contractNodeCount": 31
     }
   ]
 }

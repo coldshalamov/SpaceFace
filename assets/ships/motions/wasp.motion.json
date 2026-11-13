@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "wasp",
  "sourceAssetId": "SF_WASP_PRODUCTION_V1",
- "sourceGlbSha256": "23f1f312b699a523158a26eb86c5e161bd80cae58ee0f8c0a2384dc3ed16fd1a",
+ "sourceGlbSha256": "b246d5a411b72b48656aafd706ff32e64c56d46b0fc56bddd6cfb404da728781",
  "fps": 60,
  "bindings": [
   {

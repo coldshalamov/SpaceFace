@@ -7,6 +7,8 @@ recognisable by its lights as much as by its outline.
 """
 import os
 import sys
+import bpy
+from mathutils import Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
@@ -16,13 +18,10 @@ import ANI_31  # noqa: E402
 
 SHIP_ID = 'wasp'
 COLORS = {
-    # Graphite arrow, but the fleet audit (2026-10-24) found the old #1a1f28/#2b313b pair read
-    # as ONE near-black value at the gameplay camera — no light-primary per the look bar
-    # (FORGE.md: paint channels ≈ 0x30–0x90). The fuselage is lifted to the bar floor and the
-    # armour plates to a light graphite, so the three values separate: light hull plates, mid
-    # fuselage, dark recesses — while the cyan channels keep the recognisable-by-lights identity.
-    'paint': '#2e3540',    # graphite fuselage — the mid value, now lifted to the bar floor
-    'paint2': '#4d5663',   # armour plates — the light value of the three
+    # Judged at chase/close in the live renderer: graphite midtones keep the panel map readable
+    # alongside the original cyan signature. Explicit player paint remains authoritative.
+    'paint': '#596574',
+    'paint2': '#8994a1',
     'dark': '#0e1013',     # recesses, gaps, intakes
     'stripe': '#5c646e',
     'hazard': '#8a6d22',
@@ -56,6 +55,7 @@ def vfin(s, name, profile, y, thickness, material='paint', mirror=False, bevel=0
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.lod_normal_finishes = ('Hull', 'Armor')
 
     # --- Central arrow fuselage ------------------------------------------------------------
     F.loft(s, 'Fuselage', [
@@ -67,7 +67,7 @@ def build():
         dict(x=6.5, w=0.78, ht=0.7, hb=0.42, zc=0.03, n=2.4),
         dict(x=9.3, w=0.32, ht=0.3, hb=0.2, zc=0.0, n=2.2),
         dict(x=10.9, w=0.05, ht=0.05, hb=0.05, zc=-0.02, n=2.0),
-    ], material='paint', belly='gunmetal', back_material='dark', count=64)
+    ], material='paint', belly='gunmetal', back_material='dark', count=32)
     # Knife-edged chine: the arrowhead in plan, running from the nose tip into the wing roots.
     F.plate(s, 'Chine', [(10.6, 0.0), (4.0, 1.9), (-3.0, 2.9), (-3.0, -2.9), (4.0, -1.9)], z0=-0.24,
             thickness=0.3, material='paint', chamfer=0.45, side_material='gunmetal')
@@ -97,7 +97,7 @@ def build():
         dict(x=1.8, w=0.92, ht=0.88, hb=0.82, zc=0.0, n=2.6, y=NY),
         dict(x=4.2, w=0.78, ht=0.72, hb=0.7, zc=0.0, n=2.4, y=NY),
         dict(x=5.0, w=0.62, ht=0.58, hb=0.55, zc=0.0, n=2.2, y=NY),
-    ], material='paint', back_material='dark', front_material='dark', count=64, mirror=True)
+    ], material='paint', back_material='dark', front_material='dark', count=32, mirror=True)
     F.band(s, 'Nacelle', (3.3, NY, 0), (1, 0, 0), 1.3, 'paint2', inset=0.02, depth=0.02, mirror=True)
     F.band(s, 'Nacelle', (-8.8, NY, 0), (1, 0, 0), 0.35, 'dark', inset=0.02, depth=-0.03, mirror=True)
     F.panel(s, 'Nacelle', (-3.4, NY), (8.6, 0.38), 'dark', inset=0.03, depth=-0.05, mirror=True)
@@ -112,14 +112,14 @@ def build():
 
     # Stinger guns on the inboard shoulder of each nacelle.
     F.box(s, 'GunHousing', (3.2, NY - 0.52, 0.52), (3.4, 0.42, 0.4), material='paint2', mirror=True, taper=0.85)
-    F.cylinder(s, 'Barrel', (4.8, NY - 0.52, 0.55), (8.4, NY - 0.52, 0.55), 0.1, material='gunmetal', mirror=True)
+    F.cylinder(s, 'Barrel', (4.8, NY - 0.52, 0.55), (8.4, NY - 0.52, 0.55), 0.1, material='gunmetal', mirror=True, segments=12)
     F.cylinder(s, 'Muzzle', (8.0, NY - 0.52, 0.55), (8.9, NY - 0.52, 0.55), 0.15, material='gunmetal',
-               mirror=True, cap_material='dark')
+               mirror=True, cap_material='dark', segments=12)
 
     # Outer tail wings with tip rails and dorsal fins.
     F.plate(s, 'TailWing', [(-5.3, 5.0), (-8.6, 7.9), (-10.0, 7.9), (-9.5, 5.0)], z0=-0.12, thickness=0.2,
             material='paint2', chamfer=0.15, mirror=True)
-    F.cylinder(s, 'TipRail', (-10.3, 7.95, -0.02), (-8.1, 7.95, -0.02), 0.13, 0.1, material='gunmetal', mirror=True)
+    F.cylinder(s, 'TipRail', (-10.3, 7.95, -0.02), (-8.1, 7.95, -0.02), 0.13, 0.1, material='gunmetal', mirror=True, segments=12)
     vfin(s, 'TailFin', [(-6.4, 0.7), (-9.2, 0.7), (-9.8, 1.75), (-8.8, 1.75)], NY + 0.1, 0.14, 'paint2', mirror=True)
 
     # Dorsal armour saddle over the core drive with twin cyan slots.
@@ -152,10 +152,92 @@ def build():
     return s
 
 
+def _seat_vents(ship):
+    if getattr(ship, '_wasp_vents_seated', False):
+        return
+    for sign in (1, -1):
+        body = next(o for o in ship.objects if o.name == ('Nacelle' if sign == 1 else 'Nacelle_M'))
+        old = Vector((-7.2, sign * (NY + 0.45), 0.82))
+        hit, point, normal, _ = body.ray_cast(Vector((old.x, old.y, 10)), Vector((0, 0, -1)))
+        if not hit:
+            raise RuntimeError('Wasp vent support surface is missing')
+        rotation = Vector((0, 0, 1)).rotation_difference(normal)
+        target = point + normal * 0.013
+        for obj in ship.objects:
+            if not obj.name.startswith('NacVent_') or obj.name.endswith('_M') != (sign == -1):
+                continue
+            normals = [rotation @ n.vector for n in obj.data.corner_normals]
+            for vertex in obj.data.vertices:
+                vertex.co = target + rotation @ (vertex.co - old)
+            obj.data.update()
+            obj.data.normals_split_custom_set(normals)
+    ship._wasp_vents_seated = True
+
+
+def _original_collider(root):
+    """Keep gameplay collision independent of reduced render lofts."""
+    source = os.path.join(os.path.dirname(__file__), '..', 'source_assets', SHIP_ID, 'collision.glb')
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.abspath(source))
+    meshes = [obj for obj in set(bpy.data.objects) - before if obj.type == 'MESH']
+    if len(meshes) != 1:
+        raise RuntimeError('Wasp collider source must contain exactly one mesh')
+    collider = meshes[0]
+    world = collider.matrix_world.copy()
+    collider.parent = root
+    collider.matrix_world = world
+    collider.name = 'COLLISION_HULL'
+    collider['collision'] = True
+    collider['nonRender'] = True
+    collider.hide_render = True
+    return collider
+
+
+def _restore_lod_strips(objects, prefix):
+    """Eight triangles retain the narrow nacelle lights lost to decimation; no extra draw."""
+    target = next(obj for obj in objects if obj.name == prefix + '_Lights_Cyan')
+    vertices, faces = [], []
+    for sign in (-1, 1):
+        start = len(vertices)
+        for x, z in ((-7.5, 0.9198332357), (-3, 0.9549873996), (0.5999263, 0.9024869728)):
+            vertices.extend(((x, sign * NY - 0.06, z), (x, sign * NY + 0.06, z)))
+        for i in (0, 2):
+            faces.append((start + i, start + i + 2, start + i + 3, start + i + 1))
+    mesh = bpy.data.meshes.new('WaspLowTierLight')
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new('WaspLowTierLight', mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    mesh.materials.append(target.data.materials[0])
+    E._select_only([target, obj])
+    bpy.context.view_layer.objects.active = target
+    bpy.ops.object.join()
+
+
+def export(ship, spec=None, **kwargs):
+    """Wasp-only adapter; never change shared Forge export behavior for other ships."""
+    _seat_vents(ship)
+    original_lods, original_collision = E._lod_meshes, E._collision_hull
+
+    def wasp_lods(current, level, prefix):
+        objects = original_lods(current, level, prefix)
+        if current is ship and level > 0:
+            _restore_lod_strips(objects, prefix)
+        return objects
+
+    E._lod_meshes = wasp_lods
+    E._collision_hull = lambda current, root, sources=None: (_original_collider(root)
+        if current is ship else original_collision(current, root, sources))
+    try:
+        return E.export_ship(ship, spec or E.fleet_spec(SHIP_ID), **kwargs)
+    finally:
+        E._lod_meshes, E._collision_hull = original_lods, original_collision
+
+
 if __name__ == '__main__':
     ship = build().finish()
     live = '--live' in sys.argv
-    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    written = export(ship, preview=not live)
     if live:
         ship.ani31_bank.bake([path for path, _tris in written],
                              out_path=os.path.join(ANI_31.motion_bank.MOTIONS_DIR,

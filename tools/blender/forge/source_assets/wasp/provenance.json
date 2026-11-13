@@ -1,0 +1,5 @@
+{
+  "sourcePath": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+  "sourceSha256": "23f1f312b699a523158a26eb86c5e161bd80cae58ee0f8c0a2384dc3ed16fd1a",
+  "purpose": "Independent original collider for import within Blender export; reduced render geometry must not alter gameplay collision."
+}

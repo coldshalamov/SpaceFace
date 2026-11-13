@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "45fd7efde668b156ba10d45865bac51e0ff48d4aba258bde0b06e05d7e3d653b",
+  "contentHash": "c98b5eeef44c474eeba9aea87279e9eb6b467a111f5fa5761d9922738d86babb",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.dynamic",
@@ -597,18 +597,18 @@
     {
       "bounds": {
         "max": [
-          10.90002155303955,
-          1.7476470196061922,
-          8.078171735134829
+          10.900202751159668,
+          1.749431561818146,
+          8.079558375204297
         ],
         "min": [
-          -10.720288276672363,
-          -0.8995493376069856,
-          -8.078171735134829
+          -10.72028636932373,
+          -0.8977867478037111,
+          -8.079558375204297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13bef19873dce596b97ddca4e8f6a890b6e6d6c38286abc3cb2532cef64ac566",
+      "geometryHash": "4f2683bd19ab9f6cf39d8f5a5d1fc42b892cf78fce2960db6e8483c18e1fa0ea",
       "id": "sf.render.wasp-production-v1-lod2.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -617,32 +617,32 @@
       "meshName": "COLLISION_HULL.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 844
+      "vertexCount": 838
     },
     {
       "bounds": {
         "max": [
-          3.9502506256103516,
-          1.174444004942872,
-          5.1893095612602345
+          3.950066566467285,
+          1.1741840379813384,
+          5.1896798089348986
         ],
         "min": [
-          -9.091981887817383,
-          -0.7965980619687814,
-          -5.1893095612602345
+          -9.091095924377441,
+          -0.7966963189223479,
+          -5.1896798089348986
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ebb7139b9155d094b8878c887f2be2c9c09722f98967ebb207ce80144737b1a",
+      "geometryHash": "f25c4b4717451f012c73b799d01b2083b4148e0b9ae0bcfaeeeefea061f4d473",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-armor.primitive.0",
-      "indexCount": 2700,
+      "indexCount": 1716,
       "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialHash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1054
+      "vertexCount": 609
     },
     {
       "bounds": {
@@ -673,76 +673,76 @@
       "bounds": {
         "max": [
           6.900122165679932,
-          1.2863448763206917,
-          0.6176261118874871
+          1.2861580720787704,
+          0.617659632141227
         ],
         "min": [
-          1.7998675107955933,
-          0.7197709774657768,
-          -0.6176295093522393
+          1.7995907068252563,
+          0.7195534237975418,
+          -0.6176630296059792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6eacac5f0edab95ff2824374da7dffd5f462c8ecf36adfe167e34d2de48b90e1",
+      "geometryHash": "42342184f2b17dcec8a4245809b2799bcd3b0961b1801cff9ad4ad20ff7caec3",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-canopy.primitive.0",
-      "indexCount": 690,
+      "indexCount": 588,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_CANOPY.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 150
     },
     {
       "bounds": {
         "max": [
-          -7.368184234034602,
-          0.034450873609667615,
-          -1.5020532608032227
+          -7.368084077949028,
+          0.034432524539786985,
+          -1.5019906759262085
         ],
         "min": [
-          -9.091999863255438,
-          -0.13740081327784617,
-          -3.848330020904541
+          -9.092104310875435,
+          -0.13738246420796554,
+          -3.847766399383545
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4463c5e3fd6e07d31993d359262d032d148bbd365424ed26fc747e46340260b6",
+      "geometryHash": "8879381ad76a4a7fdf8502b0c96beb0c5cde5e52d91b50c01670b0732dddd002",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialHash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_ARMOR_FLAP_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor",
       "primitiveIndex": 0,
-      "vertexCount": 67
+      "vertexCount": 68
     },
     {
       "bounds": {
         "max": [
-          -9.23980881826054,
-          0.43463114554432947,
-          4.7345565552823246
+          -9.239797374168743,
+          0.434631133437136,
+          4.734556471463293
         ],
         "min": [
-          -10.295175770362507,
-          -0.4346305718496235,
-          -4.734558701980859
+          -10.29516432627071,
+          -0.434630583956817,
+          -4.734558785799891
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03ccfaeeda08d4e08a92e604ad1305b0146b9d2be23e014a55ea5910ccb072bc",
+      "geometryHash": "7f630872aa6315a868ee2fd4c44f19a8c3aa6f5f1ed0e7408d7ddd01e7a1213c",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core.primitive.0",
-      "indexCount": 144,
+      "indexCount": 114,
       "indexed": true,
       "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 54
+      "vertexCount": 44
     },
     {
       "bounds": {
@@ -797,202 +797,202 @@
     {
       "bounds": {
         "max": [
-          10.90002155303955,
-          1.1491793091363292,
-          5.29982714315837
+          10.899747848510742,
+          1.1492857481393772,
+          5.299729927053209
         ],
         "min": [
-          -10.000139236450195,
-          -0.8995684082574229,
-          -5.29982714315837
+          -10.000029563903809,
+          -0.8994243885431248,
+          -5.299729927053209
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa06d8fb7c0b5a591f19cf81829f0d7125bc148e09bb49b8b61517d84cc1327f",
+      "geometryHash": "8049e03ab7ba7a8a02e4ba5a57d0335b14344b436ae9c5265d4f28206b2295ca",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hull.primitive.0",
-      "indexCount": 5559,
+      "indexCount": 3891,
       "indexed": true,
-      "materialHash": "da148cbaefaecb6182128472d62bfd3ca2b38aa103bde95ec1258e32c644a71a",
+      "materialHash": "c43c0bcc424b2620718c9f3fd6bb2ae3bf3fe92c6c577efb497fd6dd29275b27",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1541
+      "vertexCount": 1157
     },
     {
       "bounds": {
         "max": [
           10.133886337280273,
-          1.164209672574809,
-          3.9981088900393655
+          1.1590497674450093,
+          4.457682754499604
         ],
         "min": [
-          -6.899877071380615,
-          -0.12292672074299138,
-          -3.995548751336973
+          -7.669513702392578,
+          -0.12321666200010117,
+          -4.360072280866792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e03837793ca07836b1b56259599bf1a90f6c4b3f99f2aad7bd3fd10087454ca2",
+      "geometryHash": "14fb138d8ae16a1dc4cbbe4694839538664fa346c32885aa233d35a5f7ab4df2",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 705,
+      "indexCount": 573,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 284
+      "vertexCount": 261
     },
     {
       "bounds": {
         "max": [
-          10.90002155303955,
-          0.8749208299263893,
-          5.174635451506567
+          10.899747848510742,
+          0.8735981849630595,
+          5.1732980129931025
         ],
         "min": [
-          -10.720288276672363,
-          -0.8749208299263893,
-          -5.174635451506567
+          -10.720487594604492,
+          -0.8735981849630595,
+          -5.1732980129931025
         ]
       },
       "drawMode": 4,
-      "geometryHash": "713c8125bd46587617daf5037557ae786c4cb1b3896e8dd9a467c51364726ec1",
+      "geometryHash": "b83df8dfda29acb9b5121ac019718b01f8e6568307047353e0a690565600436e",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical.primitive.0",
-      "indexCount": 3363,
+      "indexCount": 2499,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1094
+      "vertexCount": 862
     },
     {
       "bounds": {
         "max": [
           6.845832347869873,
-          0.9454470837798747,
-          5.256380521130961
+          0.9411744159769488,
+          5.256440163830156
         ],
         "min": [
-          -10.720288276672363,
-          -0.8558214271751079,
-          -5.2563800442938025
+          -10.720487594604492,
+          -0.8558257502626849,
+          -5.256439686992998
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa7d2839890661dc2d333d69929d1340f39611448179bb5fea8fabd0d76e1d95",
+      "geometryHash": "e92ac0262c39c6b023caac2923c47a1118dbb577c7e714bd6de616f7464e3806",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 4383,
+      "indexCount": 2865,
       "indexed": true,
       "materialHash": "8214949ffc1c28fa4a3d3fdbbf0329870ff799e2738678a6d06faf31e01c844b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1776
+      "vertexCount": 1073
     },
     {
       "bounds": {
         "max": [
-          4.89178074917482,
-          0.7162325919210177,
-          3.986781120300293
+          4.892114894516057,
+          0.7145389819758585,
+          3.9820735454559326
         ],
         "min": [
-          1.5081208793194427,
-          0.3220197915495175,
+          1.5104527305297195,
+          0.32445008510177825,
           -3.986781120300293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9cd2d5a429fa3c01e07b5cc81f87acf5f16f12f308cf5e589b921dd85a39685b",
+      "geometryHash": "defc26bf767996f6f4f08289edc9d28b5d7c799e71aa866fd723ba1c5bb1f1d2",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor.primitive.0",
-      "indexCount": 180,
+      "indexCount": 78,
       "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialHash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_GUNS_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor",
       "primitiveIndex": 0,
-      "vertexCount": 76
+      "vertexCount": 49
     },
     {
       "bounds": {
         "max": [
-          8.898472454168648,
-          0.6991355008882449,
-          3.9291152954101562
+          8.897882318312616,
+          0.697177111530419,
+          3.927158832550049
         ],
         "min": [
-          4.800439331910759,
-          0.40083513786373864,
-          -3.9281258583068848
+          4.802332782929449,
+          0.40282297191608374,
+          -3.927158832550049
         ]
       },
       "drawMode": 4,
-      "geometryHash": "042a63521712b80126cef6c507bdc7dc24371660cc8a8e9dc881923ce3e32514",
+      "geometryHash": "24b73cd7fe13613751b8b45058fe6283a31b61d496862f5bbe073b4bc95fc0f6",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical.primitive.0",
-      "indexCount": 669,
+      "indexCount": 408,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_GUNS_Mechanical.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 240
+      "vertexCount": 176
     },
     {
       "bounds": {
         "max": [
-          8.899279038724993,
-          0.6991355008882449,
-          3.9291152954101562
+          8.897672196559759,
+          0.697177111530419,
+          3.927158832550049
         ],
         "min": [
-          8.000541289033796,
-          0.40083513786373864,
-          -3.9281258583068848
+          8.002145270176081,
+          0.40282297191608374,
+          -3.927158832550049
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44bf393366a3e63bd664db46fd16f00a84e4979b3442a81fca415ba941755bad",
+      "geometryHash": "21d69c93595f20da324113fc3e2ef10ec358d86b0cf5d61ea3d5fa428d63a7c7",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark.primitive.0",
-      "indexCount": 309,
+      "indexCount": 120,
       "indexed": true,
       "materialHash": "8214949ffc1c28fa4a3d3fdbbf0329870ff799e2738678a6d06faf31e01c844b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_GUNS_MechanicalDark.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 92
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          -5.313957691192627,
-          0.07689189157030983,
-          -5.00101724414541
+          -5.312219142913818,
+          0.07694060159547851,
+          -5.002227270633487
         ],
         "min": [
           -9.99467658996582,
-          -0.11681076130412026,
-          -7.898271820545992
+          -0.11683399779422805,
+          -7.8982715414533935
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c33b1b4b1357ec9b4c8ba5d1a7420d53b62eec5bf700570e58c1760c7ae675c8",
+      "geometryHash": "b97486ec8c3134610513b13e5f9d9245b4558860080fc14bbc5140a0a6ed64ea",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor.primitive.0",
-      "indexCount": 162,
+      "indexCount": 126,
       "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialHash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_WINGLET_P_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor",
       "primitiveIndex": 0,
-      "vertexCount": 59
+      "vertexCount": 49
     },
     {
       "bounds": {
@@ -1012,7 +1012,7 @@
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialHash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor",
@@ -1022,77 +1022,77 @@
     {
       "bounds": {
         "max": [
-          -8.100729942321777,
-          0.1086469038229064,
-          -7.8212203254639165
+          -8.102411270141602,
+          0.10701904228055983,
+          -7.823116866037625
         ],
         "min": [
-          -10.299532890319824,
-          -0.14876476366329947,
-          -8.07890040970454
+          -10.297576904296875,
+          -0.14701910844171553,
+          -8.076887044027071
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e79c47f8561acf227271a2c24a66ad0c283c8929f4e7276873cf663bb0cae5e3",
+      "geometryHash": "c92883435b5522ea44ba5e5eb198808cf13d4d604363ff63e0310bf974d600b9",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical.primitive.0",
-      "indexCount": 234,
+      "indexCount": 132,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_WINGLET_P_Mechanical.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 83
+      "vertexCount": 56
     },
     {
       "bounds": {
         "max": [
-          -5.314978122711182,
-          1.7463529750349598,
-          7.897491987652638
+          -5.312056541442871,
+          1.7463630696496402,
+          7.897747466752959
         ],
         "min": [
           -9.994950294494629,
-          -0.11738056387925899,
-          4.332132164530894
+          -0.1173906286916171,
+          4.331876864244508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6624f6e2919529d9da1a4877adff0955e42cda0feda2933a1eabd7fffa08ee9",
+      "geometryHash": "4f9018f62f0a62c013f8601804df786886831911b853edc31bd00d0faaaae163",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor.primitive.0",
-      "indexCount": 240,
+      "indexCount": 210,
       "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialHash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_WINGLET_S_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor",
       "primitiveIndex": 0,
-      "vertexCount": 99
+      "vertexCount": 88
     },
     {
       "bounds": {
         "max": [
-          -8.100625038146973,
-          0.10866117973697922,
-          8.078834076718218
+          -8.10250473022461,
+          0.10668278198025158,
+          8.076928827219582
         ],
         "min": [
-          -10.299732208251953,
-          -0.14878610272777817,
-          7.821386794253461
+          -10.2976713180542,
+          -0.14735547910711697,
+          7.823426511830711
         ]
       },
       "drawMode": 4,
-      "geometryHash": "644068799d5de84c7df062674f81579866b6114bedc7dd085b9c1dc081e4147c",
+      "geometryHash": "5efb347ae3e9b4dc0ed80a26730f2626725b6ca554539ae676176094ee9e8fc8",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical.primitive.0",
-      "indexCount": 240,
+      "indexCount": 132,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_WASP_WINGLET_S_Mechanical.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 87
+      "vertexCount": 56
     }
   ],
   "hlods": [],
@@ -1114,8 +1114,8 @@
       "textures": []
     },
     {
-      "hash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
-      "id": "material:290090c68723aa64e419348a",
+      "hash": "4ede357bea8862fa7354ffc283a4801da9757e71dc0df66a0543288342b38a59",
+      "id": "material:4ede357bea8862fa7354ffc2",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1224,15 +1224,8 @@
       "textures": []
     },
     {
-      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
-      "id": "material:cec17a80b2afb25553594f50",
-      "name": "Material_Emissive_NavGreen",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "da148cbaefaecb6182128472d62bfd3ca2b38aa103bde95ec1258e32c644a71a",
-      "id": "material:da148cbaefaecb6182128472",
+      "hash": "c43c0bcc424b2620718c9f3fd6bb2ae3bf3fe92c6c577efb497fd6dd29275b27",
+      "id": "material:c43c0bcc424b2620718c9f3f",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1263,6 +1256,13 @@
       ]
     },
     {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
       "id": "material:f64dcbc7e999cc81995955b9",
       "name": "Material_Thruster",
@@ -1274,20 +1274,20 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.collision-hull",
       "localTransform": [
-        10.810154914855957,
+        10.8102445602417,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.8102445602417,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.8102445602417,
         0,
-        0.08986663818359375,
-        0.42404884099960327,
+        0.08995819091796875,
+        0.4258224070072174,
         0,
         1
       ],
@@ -1302,20 +1302,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        10.810154914855957,
+        10.8102445602417,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.8102445602417,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.8102445602417,
         0,
-        0.08986663818359375,
-        0.42404884099960327,
+        0.08995819091796875,
+        0.4258224070072174,
         0,
         1
       ]
@@ -1323,20 +1323,20 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-armor",
       "localTransform": [
-        6.521116256713867,
+        6.520581245422363,
         0,
         0,
         0,
         0,
-        6.521116256713867,
+        6.520581245422363,
         0,
         0,
         0,
         0,
-        6.521116256713867,
+        6.520581245422363,
         0,
-        -2.5708656311035156,
-        0.1889229714870453,
+        -2.570514678955078,
+        0.18874385952949524,
         0,
         1
       ],
@@ -1351,20 +1351,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        6.521116256713867,
+        6.520581245422363,
         0,
         0,
         0,
         0,
-        6.521116256713867,
+        6.520581245422363,
         0,
         0,
         0,
         0,
-        6.521116256713867,
+        6.520581245422363,
         0,
-        -2.5708656311035156,
-        0.1889229714870453,
+        -2.570514678955078,
+        0.18874385952949524,
         0,
         1
       ]
@@ -1421,20 +1421,20 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-canopy",
       "localTransform": [
-        2.550127327442169,
+        2.5502657294273376,
         0,
         0,
         0,
         0,
-        2.550127327442169,
+        2.5502657294273376,
         0,
         0,
         0,
         0,
-        2.550127327442169,
+        2.5502657294273376,
         0,
-        4.3499948382377625,
-        1.0030579268932343,
+        4.349856436252594,
+        1.0028557479381561,
         -0.0000016987323760986328,
         1
       ],
@@ -1449,20 +1449,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        2.550127327442169,
+        2.5502657294273376,
         0,
         0,
         0,
         0,
-        2.550127327442169,
+        2.5502657294273376,
         0,
         0,
         0,
         0,
-        2.550127327442169,
+        2.5502657294273376,
         0,
-        4.3499948382377625,
-        1.0030579268932343,
+        4.349856436252594,
+        1.0028557479381561,
         -0.0000016987323760986328,
         1
       ]
@@ -1470,21 +1470,21 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor",
       "localTransform": [
-        1.1731383800506592,
+        1.1728878617286682,
         0,
         0,
         0,
         0,
-        1.1731383800506592,
+        1.1728878617286682,
         0,
         0,
         0,
         0,
-        1.1731383800506592,
+        1.1728878617286682,
         0,
-        -8.23009204864502,
+        -8.230094194412231,
         -0.05147496983408928,
-        -2.675191640853882,
+        -2.6748785376548767,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1498,21 +1498,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        1.1731383800506592,
+        1.1728878617286682,
         0,
         0,
         0,
         0,
-        1.1731383800506592,
+        1.1728878617286682,
         0,
         0,
         0,
         0,
-        1.1731383800506592,
+        1.1728878617286682,
         0,
-        -8.23009204864502,
+        -8.230094194412231,
         -0.05147496983408928,
-        -2.675191640853882,
+        -2.6748785376548767,
         1
       ]
     },
@@ -1531,9 +1531,9 @@
         0,
         4.734557628631592,
         0,
-        -9.767492294311523,
-        2.868473529815674e-7,
-        -0.000001073349267244339,
+        -9.767480850219727,
+        2.7474015951156616e-7,
+        -0.000001157168298959732,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1559,9 +1559,9 @@
         0,
         4.734557628631592,
         0,
-        -9.767492294311523,
-        2.868473529815674e-7,
-        -0.000001073349267244339,
+        -9.767480850219727,
+        2.7474015951156616e-7,
+        -0.000001157168298959732,
         1
       ]
     },
@@ -1666,20 +1666,20 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hull",
       "localTransform": [
-        10.450080394744873,
+        10.449888706207275,
         0,
         0,
         0,
         0,
-        10.450080394744873,
+        10.449888706207275,
         0,
         0,
         0,
         0,
-        10.450080394744873,
+        10.449888706207275,
         0,
-        0.44994115829467773,
-        0.12480545043945312,
+        0.4498591423034668,
+        0.12493067979812622,
         0,
         1
       ],
@@ -1694,20 +1694,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        10.450080394744873,
+        10.449888706207275,
         0,
         0,
         0,
         0,
-        10.450080394744873,
+        10.449888706207275,
         0,
         0,
         0,
         0,
-        10.450080394744873,
+        10.449888706207275,
         0,
-        0.44994115829467773,
-        0.12480545043945312,
+        0.4498591423034668,
+        0.12493067979812622,
         0,
         1
       ]
@@ -1715,21 +1715,21 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan",
       "localTransform": [
-        8.516881704330444,
+        8.901700019836426,
         0,
         0,
         0,
         0,
-        8.516881704330444,
+        8.901700019836426,
         0,
         0,
         0,
         0,
-        8.516881704330444,
+        8.901700019836426,
         0,
-        1.617004632949829,
-        0.5206414759159088,
-        0.001280069351196289,
+        1.2321863174438477,
+        0.5179165527224541,
+        0.04880523681640625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1743,40 +1743,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        8.516881704330444,
+        8.901700019836426,
         0,
         0,
         0,
         0,
-        8.516881704330444,
+        8.901700019836426,
         0,
         0,
         0,
         0,
-        8.516881704330444,
+        8.901700019836426,
         0,
-        1.617004632949829,
-        0.5206414759159088,
-        0.001280069351196289,
+        1.2321863174438477,
+        0.5179165527224541,
+        0.04880523681640625,
         1
       ]
     },
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical",
       "localTransform": [
-        10.810154914855957,
+        10.810117721557617,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.810117721557617,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.810117721557617,
         0,
-        0.08986663818359375,
+        0.089630126953125,
         0,
         0,
         1
@@ -1792,19 +1792,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        10.810154914855957,
+        10.810117721557617,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.810117721557617,
         0,
         0,
         0,
         0,
-        10.810154914855957,
+        10.810117721557617,
         0,
-        0.08986663818359375,
+        0.089630126953125,
         0,
         0,
         1
@@ -1813,20 +1813,20 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark",
       "localTransform": [
-        8.783060312271118,
+        8.783159971237183,
         0,
         0,
         0,
         0,
-        8.783060312271118,
+        8.783159971237183,
         0,
         0,
         0,
         0,
-        8.783060312271118,
+        8.783159971237183,
         0,
-        -1.9372279644012451,
-        0.04481282830238342,
+        -1.9373276233673096,
+        0.04267433285713196,
         2.384185791015625e-7,
         1
       ],
@@ -1841,20 +1841,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        8.783060312271118,
+        8.783159971237183,
         0,
         0,
         0,
         0,
-        8.783060312271118,
+        8.783159971237183,
         0,
         0,
         0,
         0,
-        8.783060312271118,
+        8.783159971237183,
         0,
-        -1.9372279644012451,
-        0.04481282830238342,
+        -1.9373276233673096,
+        0.04267433285713196,
         2.384185791015625e-7,
         1
       ]
@@ -1862,21 +1862,21 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor",
       "localTransform": [
-        3.986781120300293,
+        3.984427332878113,
         0,
         0,
         0,
         0,
-        3.986781120300293,
+        3.984427332878113,
         0,
         0,
         0,
         0,
-        3.986781120300293,
+        3.984427332878113,
         0,
-        -0.000049233436584472656,
-        -0.030873820185661316,
-        0,
+        0.0012837648391723633,
+        -0.030505478382110596,
+        -0.0023537874221801758,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1891,42 +1891,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        3.986781120300293,
+        3.984427332878113,
         0,
         0,
         0,
         0,
-        3.986781120300293,
+        3.984427332878113,
         0,
         0,
         0,
         0,
-        3.986781120300293,
+        3.984427332878113,
         0,
-        3.1999508142471313,
-        0.5191261917352676,
-        0,
+        3.201283812522888,
+        0.5194945335388184,
+        -0.0023537874221801758,
         1
       ]
     },
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical",
       "localTransform": [
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
-        3.6494558453559875,
-        -0.000014692544937133789,
-        0.0004947185516357422,
+        3.650107502937317,
+        2.9802322387695312e-8,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1941,42 +1941,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
-        6.849455893039703,
-        0.5499853193759918,
-        0.0004947185516357422,
+        6.850107550621033,
+        0.5500000417232513,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark",
       "localTransform": [
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
-        5.249910116195679,
-        -0.000014692544937133789,
-        0.0004947185516357422,
+        5.249908685684204,
+        2.9802322387695312e-8,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1991,42 +1991,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
         0,
         0,
         0,
-        3.9286205768585205,
+        3.927158832550049,
         0,
-        8.449910163879395,
-        0.5499853193759918,
-        0.0004947185516357422,
+        8.44990873336792,
+        0.5500000417232513,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor",
       "localTransform": [
-        2.3403594493865967,
+        2.341228723526001,
         0,
         0,
         0,
         0,
-        2.3403594493865967,
+        2.341228723526001,
         0,
         0,
         0,
         0,
-        2.3403594493865967,
+        2.341228723526001,
         0,
-        0.34568285942077637,
-        -0.21995943784713745,
-        -1.449644532345701,
+        0.34655213356018066,
+        -0.219946701079607,
+        -1.45024940604344,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2041,21 +2041,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        2.3403594493865967,
+        2.341228723526001,
         0,
         0,
         0,
         0,
-        2.3403594493865967,
+        2.341228723526001,
         0,
         0,
         0,
         0,
-        2.3403594493865967,
+        2.341228723526001,
         0,
-        -7.654317140579224,
-        -0.019959434866905212,
-        -6.449644532345701,
+        -7.653447866439819,
+        -0.01994669809937477,
+        -6.45024940604344,
         1
       ]
     },
@@ -2112,21 +2112,21 @@
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical",
       "localTransform": [
-        1.0994014739990234,
+        1.0975828170776367,
         0,
         0,
         0,
         0,
-        1.0994014739990234,
+        1.0975828170776367,
         0,
         0,
         0,
         0,
-        1.0994014739990234,
+        1.0975828170776367,
         0,
-        -1.2001314163208008,
-        -0.22005893290042877,
-        -2.9500603675842285,
+        -1.1999940872192383,
+        -0.2200000360608101,
+        -2.9500019550323486,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2141,42 +2141,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        1.0994014739990234,
+        1.0975828170776367,
         0,
         0,
         0,
         0,
-        1.0994014739990234,
+        1.0975828170776367,
         0,
         0,
         0,
         0,
-        1.0994014739990234,
+        1.0975828170776367,
         0,
-        -9.2001314163208,
-        -0.020058929920196533,
-        -7.9500603675842285,
+        -9.199994087219238,
+        -0.02000003308057785,
+        -7.950001955032349,
         1
       ]
     },
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor",
       "localTransform": [
-        2.3399860858917236,
+        2.341446876525879,
         0,
         0,
         0,
         0,
-        2.3399860858917236,
+        2.341446876525879,
         0,
         0,
         0,
         0,
-        2.3399860858917236,
+        2.341446876525879,
         0,
-        0.3450357913970947,
-        0.6144862025976181,
-        1.1148120760917664,
+        0.34649658203125,
+        0.6144862174987793,
+        1.1148121654987335,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2191,42 +2191,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        2.3399860858917236,
+        2.341446876525879,
         0,
         0,
         0,
         0,
-        2.3399860858917236,
+        2.341446876525879,
         0,
         0,
         0,
         0,
-        2.3399860858917236,
+        2.341446876525879,
         0,
-        -7.654964208602905,
-        0.8144862055778503,
-        6.114812076091766,
+        -7.65350341796875,
+        0.8144862204790115,
+        6.1148121654987335,
         1
       ]
     },
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical",
       "localTransform": [
-        1.0995535850524902,
+        1.097583293914795,
         0,
         0,
         0,
         0,
-        1.0995535850524902,
+        1.097583293914795,
         0,
         0,
         0,
         0,
-        1.0995535850524902,
+        1.097583293914795,
         0,
-        -1.200178623199463,
-        -0.2200624644756317,
-        2.95011043548584,
+        -1.2000880241394043,
+        -0.22033635154366493,
+        2.9501776695251465,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2241,21 +2241,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
       "worldTransform": [
-        1.0995535850524902,
+        1.097583293914795,
         0,
         0,
         0,
         0,
-        1.0995535850524902,
+        1.097583293914795,
         0,
         0,
         0,
         0,
-        1.0995535850524902,
+        1.097583293914795,
         0,
-        -9.200178623199463,
-        -0.020062461495399475,
-        7.95011043548584,
+        -9.200088024139404,
+        -0.020336348563432693,
+        7.9501776695251465,
         1
       ]
     },
@@ -3048,18 +3048,18 @@
       "sha256": "ac04d30f45e51dda623d4e3b1757c182e8d75445d5786bbbea728c353bd95042"
     },
     "sourceGlb": {
-      "bytes": 446576,
-      "sha256": "ed8c4b8f310bfe65874dd11135145d8f0ad34ddf981425203c9ec6d1ff4d076d",
+      "bytes": 424136,
+      "sha256": "aa8f60447ed41ed43f2b5fffb5539092377fe16964352737921e945f92764fe1",
       "uri": "wasp_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 344570,
+      "sha256": "dbe63e445b88f520a343755c9be7bf54e8be076a72d89190293e870a281bd747",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 161860,
+    "bytes": 139520,
     "resources": [
       {
         "bytes": 5381,
@@ -3098,30 +3098,30 @@
         "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
       }
     ],
-    "sha256": "d4093b6e5c83dfecc69d30f3232df0cc60a933a52407aa29e9a4208e353b19d3",
+    "sha256": "307643fe988972c3308683e080f47c5ce127d678a8519cfe99f7f35d8f73242f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.08986663818359375,
-        0.4243053886482908,
-        -0.000033166493160763366
+        0.08985757827758789,
+        0.4250035866375106,
+        0
       ],
       "max": [
-        10.90002155303955,
-        1.7481791855540045,
-        8.078834076718218
+        10.900202751159668,
+        1.749431561818146,
+        8.079558375204297
       ],
       "min": [
-        -10.720288276672363,
-        -0.8995684082574229,
-        -8.07890040970454
+        -10.720487594604492,
+        -0.8994243885431248,
+        -8.079558375204297
       ],
       "size": [
-        21.620309829711914,
-        2.6477475938114274,
-        16.157734486422758
+        21.62069034576416,
+        2.6488559503612708,
+        16.159116750408593
       ]
     },
     "hidden": [
@@ -3131,21 +3131,21 @@
     "markers": [
       {
         "matrix": [
-          1.1731383800506592,
+          1.1728878617286682,
           0,
           0,
           0,
           0,
-          1.1731383800506592,
+          1.1728878617286682,
           0,
           0,
           0,
           0,
-          1.1731383800506592,
+          1.1728878617286682,
           0,
-          -8.23009204864502,
+          -8.230094194412231,
           -0.05147496983408928,
-          -2.675191640853882,
+          -2.6748785376548767,
           1
         ],
         "name": "LOD0_HOOK_ARMOR_FLAP_Armor",
@@ -3179,9 +3179,9 @@
           0,
           4.734557628631592,
           0,
-          -9.767492294311523,
-          2.868473529815674e-7,
-          -0.000001073349267244339,
+          -9.767480850219727,
+          2.7474015951156616e-7,
+          -0.000001157168298959732,
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE",
@@ -4253,20 +4253,20 @@
       {
         "canopy": false,
         "matrix": [
-          6.521116256713867,
+          6.520581245422363,
           0,
           0,
           0,
           0,
-          6.521116256713867,
+          6.520581245422363,
           0,
           0,
           0,
           0,
-          6.521116256713867,
+          6.520581245422363,
           0,
-          -2.5708656311035156,
-          0.1889229714870453,
+          -2.570514678955078,
+          0.18874385952949524,
           0,
           1
         ],
@@ -4307,20 +4307,20 @@
       {
         "canopy": true,
         "matrix": [
-          2.550127327442169,
+          2.5502657294273376,
           0,
           0,
           0,
           0,
-          2.550127327442169,
+          2.5502657294273376,
           0,
           0,
           0,
           0,
-          2.550127327442169,
+          2.5502657294273376,
           0,
-          4.3499948382377625,
-          1.0030579268932343,
+          4.349856436252594,
+          1.0028557479381561,
           -0.0000016987323760986328,
           1
         ],
@@ -4334,21 +4334,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.1731383800506592,
+          1.1728878617286682,
           0,
           0,
           0,
           0,
-          1.1731383800506592,
+          1.1728878617286682,
           0,
           0,
           0,
           0,
-          1.1731383800506592,
+          1.1728878617286682,
           0,
-          -8.23009204864502,
+          -8.230094194412231,
           -0.05147496983408928,
-          -2.675191640853882,
+          -2.6748785376548767,
           1
         ],
         "name": "LOD0_HOOK_ARMOR_FLAP_Armor002",
@@ -4374,9 +4374,9 @@
           0,
           4.734557628631592,
           0,
-          -9.767492294311523,
-          2.868473529815674e-7,
-          -0.000001073349267244339,
+          -9.767480850219727,
+          2.7474015951156616e-7,
+          -0.000001157168298959732,
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE002",
@@ -4397,9 +4397,9 @@
             0,
             4.734557628631592,
             0,
-            -9.767492294311523,
-            2.868473529815674e-7,
-            -0.000001073349267244339,
+            -9.767480850219727,
+            2.7474015951156616e-7,
+            -0.000001157168298959732,
             1
           ],
           "lod": "lod0"
@@ -4464,20 +4464,20 @@
       {
         "canopy": false,
         "matrix": [
-          10.450080394744873,
+          10.449888706207275,
           0,
           0,
           0,
           0,
-          10.450080394744873,
+          10.449888706207275,
           0,
           0,
           0,
           0,
-          10.450080394744873,
+          10.449888706207275,
           0,
-          0.44994115829467773,
-          0.12480545043945312,
+          0.4498591423034668,
+          0.12493067979812622,
           0,
           1
         ],
@@ -4491,21 +4491,21 @@
       {
         "canopy": false,
         "matrix": [
-          8.516881704330444,
+          8.901700019836426,
           0,
           0,
           0,
           0,
-          8.516881704330444,
+          8.901700019836426,
           0,
           0,
           0,
           0,
-          8.516881704330444,
+          8.901700019836426,
           0,
-          1.617004632949829,
-          0.5206414759159088,
-          0.001280069351196289,
+          1.2321863174438477,
+          0.5179165527224541,
+          0.04880523681640625,
           1
         ],
         "name": "LOD0_Lights_Cyan",
@@ -4518,19 +4518,19 @@
       {
         "canopy": false,
         "matrix": [
-          10.810154914855957,
+          10.810117721557617,
           0,
           0,
           0,
           0,
-          10.810154914855957,
+          10.810117721557617,
           0,
           0,
           0,
           0,
-          10.810154914855957,
+          10.810117721557617,
           0,
-          0.08986663818359375,
+          0.089630126953125,
           0,
           0,
           1
@@ -4545,20 +4545,20 @@
       {
         "canopy": false,
         "matrix": [
-          8.783060312271118,
+          8.783159971237183,
           0,
           0,
           0,
           0,
-          8.783060312271118,
+          8.783159971237183,
           0,
           0,
           0,
           0,
-          8.783060312271118,
+          8.783159971237183,
           0,
-          -1.9372279644012451,
-          0.04481282830238342,
+          -1.9373276233673096,
+          0.04267433285713196,
           2.384185791015625e-7,
           1
         ],
@@ -4572,21 +4572,21 @@
       {
         "canopy": false,
         "matrix": [
-          3.986781120300293,
+          3.984427332878113,
           0,
           0,
           0,
           0,
-          3.986781120300293,
+          3.984427332878113,
           0,
           0,
           0,
           0,
-          3.986781120300293,
+          3.984427332878113,
           0,
-          3.1999508142471313,
-          0.5191261917352676,
-          0,
+          3.201283812522888,
+          0.5194945335388184,
+          -0.0023537874221801758,
           1
         ],
         "name": "LOD0_MOTION_WASP_GUNS_Armor",
@@ -4600,21 +4600,21 @@
       {
         "canopy": false,
         "matrix": [
-          3.9286205768585205,
+          3.927158832550049,
           0,
           0,
           0,
           0,
-          3.9286205768585205,
+          3.927158832550049,
           0,
           0,
           0,
           0,
-          3.9286205768585205,
+          3.927158832550049,
           0,
-          6.849455893039703,
-          0.5499853193759918,
-          0.0004947185516357422,
+          6.850107550621033,
+          0.5500000417232513,
+          0,
           1
         ],
         "name": "LOD0_MOTION_WASP_GUNS_Mechanical",
@@ -4628,21 +4628,21 @@
       {
         "canopy": false,
         "matrix": [
-          3.9286205768585205,
+          3.927158832550049,
           0,
           0,
           0,
           0,
-          3.9286205768585205,
+          3.927158832550049,
           0,
           0,
           0,
           0,
-          3.9286205768585205,
+          3.927158832550049,
           0,
-          8.449910163879395,
-          0.5499853193759918,
-          0.0004947185516357422,
+          8.44990873336792,
+          0.5500000417232513,
+          0,
           1
         ],
         "name": "LOD0_MOTION_WASP_GUNS_MechanicalDark",
@@ -4656,21 +4656,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.3403594493865967,
+          2.341228723526001,
           0,
           0,
           0,
           0,
-          2.3403594493865967,
+          2.341228723526001,
           0,
           0,
           0,
           0,
-          2.3403594493865967,
+          2.341228723526001,
           0,
-          -7.654317140579224,
-          -0.019959434866905212,
-          -6.449644532345701,
+          -7.653447866439819,
+          -0.01994669809937477,
+          -6.45024940604344,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_P_Armor",
@@ -4713,21 +4713,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.0994014739990234,
+          1.0975828170776367,
           0,
           0,
           0,
           0,
-          1.0994014739990234,
+          1.0975828170776367,
           0,
           0,
           0,
           0,
-          1.0994014739990234,
+          1.0975828170776367,
           0,
-          -9.2001314163208,
-          -0.020058929920196533,
-          -7.9500603675842285,
+          -9.199994087219238,
+          -0.02000003308057785,
+          -7.950001955032349,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_P_Mechanical",
@@ -4741,21 +4741,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.3399860858917236,
+          2.341446876525879,
           0,
           0,
           0,
           0,
-          2.3399860858917236,
+          2.341446876525879,
           0,
           0,
           0,
           0,
-          2.3399860858917236,
+          2.341446876525879,
           0,
-          -7.654964208602905,
-          0.8144862055778503,
-          6.114812076091766,
+          -7.65350341796875,
+          0.8144862204790115,
+          6.1148121654987335,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_S_Armor",
@@ -4769,21 +4769,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.0995535850524902,
+          1.097583293914795,
           0,
           0,
           0,
           0,
-          1.0995535850524902,
+          1.097583293914795,
           0,
           0,
           0,
           0,
-          1.0995535850524902,
+          1.097583293914795,
           0,
-          -9.200178623199463,
-          -0.020062461495399475,
-          7.95011043548584,
+          -9.200088024139404,
+          -0.020336348563432693,
+          7.9501776695251465,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_S_Mechanical",
@@ -4799,20 +4799,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
-  "runtimeHash": "7534f99fc00c3693e3fbfbfdac5c3e1888c51109b2909deef293a95924a4c289",
+  "runtimeHash": "89e532aa6e58541dfed7237fb12aa7a54994fe9344e602ee360aac477f821d8a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          10.90002155303955,
-          1.7481791855540045,
-          8.078834076718218
+          10.900202751159668,
+          1.749431561818146,
+          8.079558375204297
         ],
         "min": [
-          -10.720288276672363,
-          -0.8995684082574229,
-          -8.07890040970454
+          -10.720487594604492,
+          -0.8994243885431248,
+          -8.079558375204297
         ]
       },
       "id": "sf.render.wasp-production-v1-lod2.body",

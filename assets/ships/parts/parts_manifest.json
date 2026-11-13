@@ -10052,8 +10052,8 @@
       },
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
-      "tris": 39784,
-      "bytes": 2175964,
+      "tris": 28400,
+      "bytes": 1660088,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

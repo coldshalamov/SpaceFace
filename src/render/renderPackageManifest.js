@@ -3120,12 +3120,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp",
-    "expectedContentHash": "53f5cb7c2022db57c75598c4cd7f31eed403059d5c00702eded9959a3b76a76d",
+    "expectedContentHash": "8c1cbf23da8724d35d079f3a9c0904e42a50eedf3b62654968bf895f2f6b49d6",
     "key": "wasp",
     "metadataUrl": "assets/ships/release/render-packages/wasp/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "58aa882b40036e3af8ec56f190180443a4a6e937e13c38f2cc2e7adf7dc896c3",
+    "sourceSha256": "3577ef7532ee916f488b23c8ee6187f168e9803f27afb377f3467e5e7ce4c2b8",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1.glb"
   },
   {
@@ -3170,22 +3170,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wasp-production-v1-lod1",
-    "expectedContentHash": "f17d577c74e7e9ee2569bc38fa785a37364a98a4d48bcd1312de821f535af830",
+    "expectedContentHash": "9dc5a82f22d023ae398af3b36f6f746ad05b659b6ca9e577dfd53bf0ba629393",
     "key": "wasp-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "309d2964c5dcca953118985e765e919c8cc24566735fef2ead2ddc1dfe5d7785",
+    "sourceSha256": "64266d44a58493d36d7b6a8326d12de5babc12df5a80543a4beef8654050bbdd",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.wasp-production-v1-lod2",
-    "expectedContentHash": "45fd7efde668b156ba10d45865bac51e0ff48d4aba258bde0b06e05d7e3d653b",
+    "expectedContentHash": "c98b5eeef44c474eeba9aea87279e9eb6b467a111f5fa5761d9922738d86babb",
     "key": "wasp-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/wasp-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WASP_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "ed8c4b8f310bfe65874dd11135145d8f0ad34ddf981425203c9ec6d1ff4d076d",
+    "sourceSha256": "aa8f60447ed41ed43f2b5fffb5539092377fe16964352737921e945f92764fe1",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
   {

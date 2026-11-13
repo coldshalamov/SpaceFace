@@ -1,0 +1,62 @@
+{
+  "status": "Reviewed Wasp recipe, three source/release tiers, motion bank and selected render packages promoted. Nine canonical package-loader views passed; ordinary flight and frame-time remain unverified.",
+  "route": "Base Wasp maps ship_wasp, lancer_sniper/sniper_lance and pirate roles to wasp_production_v1; patrol/escort faction kits and Quiet ghost have separate runtime asset identities.",
+  "authoringCode": [
+    "tools/blender/forge/ships/wasp.py",
+    "tools/blender/forge/animations/ANI_31.py"
+  ],
+  "deploymentCode": [
+    "src/data/wholeShipVisualIdentity.js",
+    "src/render/partsLibrary.js",
+    "src/render/wholeShipLodPolicy.js",
+    "src/render/renderPackageManifest.js"
+  ],
+  "shippedLods": [
+    "wasp_production_v1.glb",
+    "wasp_production_v1_lod1.glb",
+    "wasp_production_v1_lod2.glb"
+  ],
+  "baseline": {
+    "evidence": ".devshots/fleet/wasp-astra/baseline.json",
+    "releaseBytes": [
+      798728,
+      567016,
+      446576
+    ],
+    "renderTrianglesExcludingCollider": [
+      39392,
+      15696,
+      6646
+    ],
+    "materials": 10,
+    "textures": 6,
+    "motionPivots": 3,
+    "sockets": 12,
+    "lod2PackageStorage": "LOD2 render.glb externalizes all six KTX2 images through pilot sharedKtx2Hashes; its 161860-byte geometry file excludes those shared payloads. Preserve this contract in any rebuild."
+  },
+  "findings": [
+    "Shipped colors #1a1f28/#2b313b and the previous recipe #2e3540/#4d5663 were too dark in the current renderer. Accepted #596574/#8994a1 restores panel readability while retaining original cyan strength.",
+    "Accepted 32-section lofts, twelve-sided small tubes, eight-triangle lower-tier light restoration, lower-tier Hull/Armor normal finish and supported vent seating. Shared six-map texture set retained; imperceptible wear texture rejected.",
+    "Independent original collider imported through Blender. Canonical recipe scratch rebuild preserves all source positions, UVs, world transforms, oriented triangles, normals, materials and texture bytes against the reviewed candidate across all three tiers; sockets/motion/collision match the original.",
+    "Runtime whole-ship demotion is disabled; anonymous hostile initial admission can choose LOD2 under 32 projected pixels. Player/protected initial bodies stay LOD0.",
+    "Explicit player paint still replaces default color; fixed predation/flee controller poses match baseline. These are composed diagnostic views, not ordinary flight."
+  ],
+  "constraints": [
+    "Do not revive rejected freed-slot batching prototype.",
+    "Preserve moving guns/winglets, damage hooks, sockets and collision.",
+    "Keep the three selected sources, release packages, motion bank and shared manifest rows in sync when changing the Wasp."
+  ],
+  "followUp": [
+    "Painted variant still lacks some physical surface richness; pursue only visible improvements, not an imperceptible extra texture.",
+    "Ordinary player-route acceptance and measured frame-time benefit remain open."
+  ],
+  "evidence": [
+    ".devshots/fleet/wasp-astra/material-final-camera/report.json",
+    ".devshots/fleet/wasp-astra/final-followup-camera/report.json",
+    ".devshots/fleet/wasp-astra/canonical-parity.json",
+    ".devshots/fleet/wasp-astra/canonical-contract.json",
+    ".devshots/fleet/wasp-astra/INTEGRATION.md",
+    ".devshots/fleet/wasp-astra/publish-canonical-state.json",
+    ".devshots/fleet/wasp-astra/shipping-single/report.json"
+  ]
+}
