@@ -62,10 +62,16 @@ export function syncBolusView(renderer) {
   const lean = ciliaLean(sim, coasting);
   const pitch = baleenPitch(Number(flags['bolus:baleenKickUntil']) > sim);
 
+  // The crest has only two radial poses. Skip unchanged buffers, but reapply
+  // the pose if a geometry replacement installs a different position attribute.
+  const ribPositions = view.ribPositions || (view.ribPositions = []);
   for (let i = 0; i < view.ribs.length; i++) {
     const mesh = view.ribs[i];
     const attr = mesh.geometry.attributes.position;
-    if (!mesh.userData.base) mesh.userData.base = attr.array.slice();
+    if (view.ribRadial === radial && ribPositions[i] === attr) continue;
+    if (!mesh.userData.base || mesh.userData.base.length !== attr.array.length) {
+      mesh.userData.base = attr.array.slice();
+    }
     const base = mesh.userData.base;
     for (let v = 0; v < base.length; v += 3) {
       const x = base[v];
@@ -74,7 +80,9 @@ export function syncBolusView(renderer) {
       attr.setXYZ(v / 3, x + (x / len) * radial, y + (y / len) * radial, base[v + 2]);
     }
     attr.needsUpdate = true;
+    ribPositions[i] = attr;
   }
+  view.ribRadial = radial;
   for (let i = 0; i < view.cilia.length; i++) view.cilia[i].rotation.x = lean;
   for (let i = 0; i < view.baleen.length; i++) view.baleen[i].rotation.x = pitch;
   if (view.acid) {
