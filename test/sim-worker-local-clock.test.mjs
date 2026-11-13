@@ -1014,6 +1014,18 @@ test('overdue worker wakes yield a timer and discard obsolete posted tasks', asy
     await fireTimer();
     assert.equal(tasks.length, 1, 'task wakes resume after the fairness timer');
 
+    const delayed = tasks.shift();
+    const recovery = Array.from(timers.values()).find(timer => timer.delay > 30 && timer.delay < 40);
+    assert.ok(recovery, 'an accepted but undelivered task has a bounded timer');
+    const beforeRecovery = ticks();
+    now += recovery.delay;
+    recovery.fire();
+    await settle();
+    assert.equal(ticks(), beforeRecovery + 1, 'the fallback advances the active clock');
+    delayed();
+    await settle();
+    assert.equal(ticks(), beforeRecovery + 1, 'late delivery cannot run the same wake again');
+
     const obsolete = tasks.shift();
     control(2, false);
     await settle();

@@ -1164,7 +1164,7 @@ function scheduleLocalClock() {
   const wake = { timerHandle: null, token: 0, fire: null };
   wake.fire = () => {
     if (localClock.wake !== wake) return;
-    localClock.wake = null;
+    cancelLocalClockWake();
     localClock.timerFires++;
     if (!isCurrent()) return;
     localClock.consecutiveTaskWakes = wake.token ? localClock.consecutiveTaskWakes + 1 : 0;
@@ -1187,7 +1187,12 @@ function scheduleLocalClock() {
     });
   };
   localClock.wake = wake;
-  if (!useTask || !postLocalClockWake(wake)) wake.timerHandle = setTimeout(wake.fire, delayMs);
+  if (useTask && postLocalClockWake(wake)) {
+    // A successful post only means the task was accepted. Recover if it never runs.
+    wake.timerHandle = setTimeout(wake.fire, 2 * LOCAL_FIXED_DT * 1000);
+  } else {
+    wake.timerHandle = setTimeout(wake.fire, delayMs);
+  }
 }
 
 function refreshLocalClockScale(fallback) {
