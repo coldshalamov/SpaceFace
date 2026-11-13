@@ -169,7 +169,9 @@ Circuits run used the public Time Trial route and F8 reset the same attempt in i
 sector. Its opened screenshot still showed the campaign act heading above the race objective.
 `8566b710688a` uses the temporary run's existing public launch context to hide the campaign
 heading and radio, keeping gate guidance. Fifty-three focused checks passed. Scored finish,
-restart after a cleared gate, and post-fix presentation capture are open.
+and restart after a cleared gate remain open. The post-fix public Time Trial capture confirmed
+gate guidance, the campaign heading and comms tape hidden, and a same-attempt F8 restart.
+The opened image still showed an Adventure yard-control line above the racing panel.
 The released checkpoints for flight restore, AI identity and Helios wash used the existing deterministic replay hash.
 
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.
