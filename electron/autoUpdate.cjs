@@ -22,6 +22,7 @@ function configureAutoUpdate({
   receipt,
   dialogApi,
   browserWindowApi,
+  requestRestart,
   updaterModule,
   loadUpdater = loadUpdaterModule,
   checkForUpdates = true,
@@ -60,7 +61,7 @@ function configureAutoUpdate({
   autoUpdater.on('update-downloaded', (info) => {
     const version = info && info.version ? String(info.version) : '';
     log('update-downloaded', { version });
-    promptRestartToInstall({ dialogApi, browserWindowApi, autoUpdater, version, log });
+    promptRestartToInstall({ dialogApi, browserWindowApi, autoUpdater, requestRestart, version, log });
   });
 
   if (checkForUpdates) {
@@ -75,10 +76,10 @@ function configureAutoUpdate({
 
 // A downloaded update applies two ways: the player picks Restart, or — if they pick Later or the
 // dialog itself cannot run — autoInstallOnAppQuit applies it at the next normal exit.
-async function promptRestartToInstall({ dialogApi, browserWindowApi, autoUpdater, version, log }) {
+async function promptRestartToInstall({ dialogApi, browserWindowApi, autoUpdater, requestRestart, version, log }) {
   const tell = typeof log === 'function' ? log : () => {};
   if (!dialogApi || typeof dialogApi.showMessageBox !== 'function'
-    || !autoUpdater || typeof autoUpdater.quitAndInstall !== 'function') {
+    || !autoUpdater || typeof autoUpdater.quitAndInstall !== 'function' || typeof requestRestart !== 'function') {
     tell('update-prompt-skipped', { version, reason: 'no-dialog-or-install' });
     return;
   }
@@ -99,7 +100,7 @@ async function promptRestartToInstall({ dialogApi, browserWindowApi, autoUpdater
     });
     if (picked && picked.response === 0) {
       tell('update-install-requested', { version });
-      autoUpdater.quitAndInstall();
+      requestRestart(parent, () => autoUpdater.quitAndInstall());
     } else {
       tell('update-install-deferred', { version });
     }

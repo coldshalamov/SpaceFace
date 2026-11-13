@@ -15,6 +15,7 @@ const SHELL_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-lifecycle-'));
 process.on('exit', () => { try { fs.rmSync(SHELL_TMP, { recursive: true, force: true }); } catch {} });
 const CHANNEL = 'spaceface:shell-lifecycle';
 const windowStateModule = createRequire(import.meta.url)('../electron/windowState.cjs');
+const { configureAutoUpdate } = createRequire(import.meta.url)('../electron/autoUpdate.cjs');
 
 function emitter(base = {}) {
   const listeners = new Map();
@@ -31,6 +32,7 @@ function emitter(base = {}) {
       };
       return this.on(type, wrapped);
     },
+    removeListener(type, listener) { listeners.get(type)?.delete(listener); },
     emit(type, ...args) {
       for (const listener of [...(listeners.get(type) || [])]) listener(...args);
     },
@@ -52,10 +54,26 @@ async function loadMain({
   windowLoadFailure = null,
   paintBeforeFirstLoadSettles = false,
   allowStartupFailure = false,
+  updateDialogResponse = null,
+  updaterWillQuit = true,
 } = {}) {
   const windows = [];
   const commands = [];
   const receipts = [];
+  const quitRequests = [];
+  const nativeUpdater = emitter();
+  const updater = emitter({
+    installs: 0,
+    checkForUpdates() {},
+    quitAndInstall() {
+      this.installs += 1;
+      if (!updaterWillQuit) return;
+      setImmediate(() => {
+        nativeUpdater.emit('before-quit-for-update');
+        app.quit();
+      });
+    },
+  });
   const pendingServerListens = [];
   const serverStats = { created: 0, listens: 0, quits: 0, exits: [] };
   const security = {
@@ -77,6 +95,11 @@ async function loadMain({
   };
   const dialog = {
     saveCalls: [],
+    messageCalls: [],
+    async showMessageBox(parent, options) {
+      this.messageCalls.push({ parent, options });
+      return { response: options?.title === 'Update ready' ? updateDialogResponse : 0 };
+    },
     showSaveDialog(parent, options) {
       this.saveCalls.push({ parent, options });
       return Promise.resolve({ canceled: true, filePath: '' });
@@ -90,7 +113,7 @@ async function loadMain({
     syncCalls: 0,
   };
   const app = emitter({
-    isPackaged: false,
+    isPackaged: updateDialogResponse !== null,
     commandLine: { appendSwitch() {} },
     getPath(name) { return path.join(SHELL_TMP, `.electron-${name}`); },
     setPath(name, value) { this.pathSets.push([name, value]); },
@@ -98,7 +121,11 @@ async function loadMain({
     pathSets: [],
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
-    quit() { serverStats.quits += 1; this.emit('before-quit'); },
+    quit() {
+      serverStats.quits += 1;
+      this.emit('before-quit');
+      if (this.isPackaged) for (const win of windows) if (!win.destroyed) win.close();
+    },
     exit(code) {
       serverStats.exits.push(code);
       if (!allowStartupFailure) throw new Error(`unexpected app.exit(${code})`);
@@ -118,6 +145,7 @@ async function loadMain({
       getURL() { return currentUrl; },
       setWindowOpenHandler(handler) { this.windowOpenHandler = handler; },
       send(channel, command) {
+        if (channel === 'spaceface:prepare-quit') { quitRequests.push(command); return; }
         assert.equal(channel, CHANNEL);
         commands.push(command);
       },
@@ -144,6 +172,14 @@ async function loadMain({
       restore() { this.minimized = false; this.visible = true; this.emit('restore'); },
       focus() { this.visible = true; this.focused = true; this.emit('focus'); },
       blur() { this.focused = false; this.emit('blur'); },
+      close() {
+        let prevented = false;
+        this.emit('close', { preventDefault() { prevented = true; } });
+        if (prevented) return;
+        this.destroyed = true;
+        webContents.destroyed = true;
+        this.emit('closed');
+      },
       async loadURL(url) {
         this.loadedUrl = url;
         this.loadRequests.push(url);
@@ -182,6 +218,7 @@ async function loadMain({
         }
       },
     });
+    webContents.loadURL = (url) => win.loadURL(url);
     windows.push(win);
     return win;
   }
@@ -223,7 +260,7 @@ async function loadMain({
       },
     },
     require(specifier) {
-      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain, dialog, crashReporter };
+      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain, dialog, crashReporter, autoUpdater: nativeUpdater };
       if (specifier === 'http') return { get() { throw new Error('unexpected HTTP probe'); } };
       if (specifier === 'path') return path;
       if (specifier === 'fs') return fs;
@@ -243,6 +280,13 @@ async function loadMain({
         };
       }
       if (specifier === './autoUpdate.cjs') {
+        if (updateDialogResponse !== null) {
+          return {
+            configureAutoUpdate(options) {
+              return configureAutoUpdate({ ...options, updaterModule: { autoUpdater: updater } });
+            },
+          };
+        }
         return { configureAutoUpdate() { return { enabled: false, reason: 'test-disabled' }; } };
       }
       if (specifier === './windowState.cjs') {
@@ -338,7 +382,7 @@ async function loadMain({
   }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats, workshop };
+  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats, workshop, updater, quitRequests };
 }
 
 function loadPreload() {
@@ -553,6 +597,73 @@ test('macOS Dock activation recreates a window on the one process-owned server',
   assert.equal(h.windows[1].loadedUrl, firstUrl, 'replacement window preserves the fixed save origin');
   assert.equal(h.serverStats.created, 1, 'replacement window reuses the existing server instance');
   assert.equal(h.serverStats.listens, 1, 'replacement window does not attempt a second fixed-port bind');
+});
+
+test('a packaged update Restart waits for a matching durable save and can retry after a refused close', async () => {
+  const h = await loadMain({ updateDialogResponse: 0 });
+  const download = () => h.updater.emit('update-downloaded', { version: '0.2.0' });
+  const reply = (token, result, sender = h.win.webContents) => {
+    h.ipcMain.emit('spaceface:quit-prepared', { sender }, token, result);
+  };
+  download();
+  await settle();
+  assert.equal(h.updater.installs, 0, 'Restart cannot start NSIS before a save receipt');
+  assert.equal(h.quitRequests.length, 1);
+  reply(h.quitRequests[0], { ok: true }, {});
+  assert.equal(h.updater.installs, 0, 'another renderer cannot release the install');
+  reply(h.quitRequests[0], { ok: false, reason: 'exit-save-failed' });
+  await settle();
+  assert.equal(h.updater.installs, 0);
+  assert.equal(h.win.destroyed, false);
+  assert.ok(h.dialog.messageCalls.some(({ options }) => options.title === 'Save not finished'));
+
+  download();
+  await settle();
+  assert.equal(h.quitRequests.length, 2);
+  reply(h.quitRequests[0], { ok: true });
+  assert.equal(h.updater.installs, 0, 'the refused close token cannot release the retry');
+  reply(h.quitRequests[1], { ok: true });
+  await settle();
+  assert.equal(h.updater.installs, 1);
+  assert.equal(h.win.destroyed, true, 'the updater closes using the save it already received');
+  assert.equal(h.quitRequests.length, 2, 'the successful restart does not request a second save');
+});
+
+test('packaged update Later leaves the normal install-on-quit path armed', async () => {
+  const h = await loadMain({ updateDialogResponse: 1 });
+  h.updater.emit('update-downloaded', { version: '0.2.0' });
+  await settle();
+  assert.equal(h.updater.autoInstallOnAppQuit, true);
+  assert.equal(h.updater.installs, 0);
+  assert.deepEqual(h.quitRequests, []);
+  assert.equal(h.win.destroyed, false);
+});
+
+test('renderer death during update preparation cancels the installer and keeps recovery active', async () => {
+  const h = await loadMain({ updateDialogResponse: 0 });
+  h.updater.emit('update-downloaded', { version: '0.2.0' });
+  await settle();
+  assert.equal(h.quitRequests.length, 1);
+  h.win.webContents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 });
+  await settle();
+  h.ipcMain.emit('spaceface:quit-prepared', { sender: h.win.webContents }, h.quitRequests[0], { ok: true });
+  assert.equal(h.updater.installs, 0);
+  assert.equal(h.win.destroyed, false);
+  assert.ok(h.receipts.some(({ status }) => status === 'renderer-auto-reload'));
+});
+
+test('an updater that does not confirm shutdown leaves later normal close save-protected', async () => {
+  const h = await loadMain({ updateDialogResponse: 0, updaterWillQuit: false });
+  h.updater.emit('update-downloaded', { version: '0.2.0' });
+  await settle();
+  h.ipcMain.emit('spaceface:quit-prepared', { sender: h.win.webContents }, h.quitRequests[0], { ok: true });
+  await settle();
+  assert.equal(h.updater.installs, 1);
+  h.win.close();
+  assert.equal(h.win.destroyed, false);
+  assert.equal(h.quitRequests.length, 2, 'a normal close still needs a new save');
+  h.ipcMain.emit('spaceface:quit-prepared', { sender: h.win.webContents }, h.quitRequests[1], { ok: true });
+  assert.equal(h.win.destroyed, true);
 });
 
 test('a second macOS launch focuses a live window or single-flights its replacement', async () => {

@@ -99,6 +99,7 @@ let windowCreationPromise = null;
 let appQuitting = false;
 let resolvedUserContentDir;
 let fatalBoxShown = false;
+const windowQuitPreparation = new WeakMap();
 
 // User content ("mods") mount, PQ-172.00/.01. Resolved lazily so an isolated-evidence profile's
 // userData override (applied at module scope below) governs the mods home too; isolated evidence
@@ -1335,27 +1336,61 @@ async function createWindow() {
   let quitPrepared = false;
   let quitPreparing = false;
   let quitToken = 0;
+  let installAfterSave = null;
+  let closeAfterSave = false;
   const quitContents = win.webContents;
+  let preparedUpdateQuit = null;
+  const clearPreparedUpdateQuit = () => {
+    if (preparedUpdateQuit === null) return;
+    electron.autoUpdater?.removeListener('before-quit-for-update', preparedUpdateQuit);
+    preparedUpdateQuit = null;
+  };
+  const canPrepareQuit = () => canonicalLoadCommitted && !quitContents.isDestroyed()
+    && !quitContents.isCrashed?.();
   const releaseInterruptedQuit = () => {
     if (!quitPreparing) return;
     quitPreparing = false;
     quitToken += 1;
+    installAfterSave = null;
+    closeAfterSave = false;
     appQuitting = false;
   };
   const onQuitRendererGone = () => {
     if (!quitPreparing || win.isDestroyed()) return;
-    // The player has already requested close, and this renderer can no longer save.
+    const shouldClose = closeAfterSave;
     releaseInterruptedQuit();
+    // An ordinary close can finish without a renderer. A restart for an
+    // update still needs the save receipt, so renderer recovery owns that case.
+    if (!shouldClose) return;
     quitPrepared = true;
     win.close();
   };
   const onQuitPrepared = async (event, token, result) => {
     if (event.sender !== quitContents || !quitPreparing || token !== quitToken) return;
     quitPreparing = false;
+    const install = installAfterSave;
+    installAfterSave = null;
+    closeAfterSave = false;
     if (win.isDestroyed() || quitContents.isDestroyed()) return;
     if (result?.ok === true) {
-      quitPrepared = true;
-      win.close();
+      if (install) {
+        // The installer starts before the updater asks Electron to quit.
+        // Reuse this save only for the native updater's confirmed shutdown.
+        clearPreparedUpdateQuit();
+        preparedUpdateQuit = () => {
+          preparedUpdateQuit = null;
+          quitPrepared = true;
+        };
+        electron.autoUpdater?.once('before-quit-for-update', preparedUpdateQuit);
+        try { install(); }
+        catch (error) {
+          clearPreparedUpdateQuit();
+          receipt('update-install-failed', { message: receiptText(error?.message || error) });
+        }
+      } else {
+        quitPrepared = true;
+        win.close();
+      }
       return;
     }
     appQuitting = false;
@@ -1372,27 +1407,40 @@ async function createWindow() {
   quitContents.on('render-process-gone', onQuitRendererGone);
   quitContents.on('unresponsive', releaseInterruptedQuit);
   win.once('closed', () => {
+    clearPreparedUpdateQuit();
+    windowQuitPreparation.delete(win);
     ipcMain.removeListener('spaceface:quit-prepared', onQuitPrepared);
     if (!quitContents.isDestroyed()) {
       quitContents.removeListener('render-process-gone', onQuitRendererGone);
       quitContents.removeListener('unresponsive', releaseInterruptedQuit);
     }
   });
-  win.on('close', (event) => {
-    // A crashed renderer has no save owner to acknowledge a close. Keep the
-    // normal handoff for a healthy renderer, including one that has recovered.
-    if (quitPrepared || !canonicalLoadCommitted || quitContents.isDestroyed()
-      || quitContents.isCrashed?.()) return;
-    event.preventDefault();
+  const requestQuitPreparation = (install = null) => {
+    clearPreparedUpdateQuit();
+    if (!install) closeAfterSave = true;
     if (quitPreparing) return;
     quitPreparing = true;
+    installAfterSave = install;
     try { quitContents.send('spaceface:prepare-quit', ++quitToken); }
     catch (_) {
       releaseInterruptedQuit();
+      if (install) return;
       // The renderer cannot service the handoff. Honor the close without claiming a save.
       quitPrepared = true;
       if (!win.isDestroyed()) win.close();
     }
+  };
+  windowQuitPreparation.set(win, (install) => {
+    if (appQuitting || win.isDestroyed()) return;
+    if (canPrepareQuit()) requestQuitPreparation(install);
+    else if (!canonicalLoadCommitted) install();
+  });
+  win.on('close', (event) => {
+    // A crashed renderer has no save owner to acknowledge a close. Keep the
+    // normal handoff for a healthy renderer, including one that has recovered.
+    if (quitPrepared || !canPrepareQuit()) return;
+    event.preventDefault();
+    requestQuitPreparation();
   });
   installWindowSecurity(win, gameUrl);
   // BrowserWindow.loadURL() can reject with ERR_ABORTED when the already-committed canonical page
@@ -1629,6 +1677,10 @@ if (!app.requestSingleInstanceLock()) {
             receipt,
             dialogApi: dialog,
             browserWindowApi: BrowserWindow,
+            requestRestart(win, install) {
+              if (win) windowQuitPreparation.get(win)?.(install);
+              else if (!appQuitting && BrowserWindow.getAllWindows().length === 0) install();
+            },
           });
           if (update && update.enabled === false) receipt('update-skipped', { reason: update.reason });
         }

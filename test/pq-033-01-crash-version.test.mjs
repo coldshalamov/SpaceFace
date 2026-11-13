@@ -599,6 +599,10 @@ test('auto-update wires only on the packaged route and installs on confirm', asy
         return Promise.resolve({ response: 0 });
       },
     },
+    requestRestart(win, install) {
+      assert.equal(win, gameWindow);
+      install();
+    },
     updaterModule: { autoUpdater: fakeUpdater },
   });
   assert.equal(on.enabled, true);
