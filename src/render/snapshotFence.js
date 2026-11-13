@@ -484,7 +484,7 @@ export function createSnapshotFence(options = {}) {
       b.published, rowA >= 0 ? a.published : null, entityId, alpha, -1, out, rowB, rowA,
     );
     if (!pose) return null;
-    pose.rot = -2 * Math.atan2(pose.qy, pose.qw || 1);
+    pose.rot = -2 * Math.atan2(pose.qy, pose.qw);
     pose.valid = true;
     return pose;
   }
@@ -1385,8 +1385,15 @@ function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, row
     t = resolveExtrapolationAlpha(t, px, pz, x, z, spanS);
     x = px + (x - px) * t;
     z = pz + (z - pz) * t;
-    qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * t;
-    qw = previous.columns.quaternion[pq + 3] + (qw - previous.columns.quaternion[pq + 3]) * t;
+    const prevQy = previous.columns.quaternion[pq + 1];
+    const prevQw = previous.columns.quaternion[pq + 3];
+    // Opposite quaternion signs can encode adjacent headings at the ±π wrap.
+    if (prevQy * qy + prevQw * qw < 0) {
+      qy = -qy;
+      qw = -qw;
+    }
+    qy = prevQy + (qy - prevQy) * t;
+    qw = prevQw + (qw - prevQw) * t;
   }
   out.x = x;
   out.y = snapshot.columns.position[p + 1] || 0;
@@ -1411,7 +1418,7 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   mesh.position.x = pose.x - ox;
   mesh.position.y = pose.y - oy;
   mesh.position.z = pose.z - oz;
-  mesh.rotation.y = -2 * Math.atan2(pose.qy, pose.qw || 1);
+  mesh.rotation.y = -2 * Math.atan2(pose.qy, pose.qw);
   // Static-presentation roots keep matrixAutoUpdate=false (PERF-59): compose the pose here or
   // the walk never sees it.
   if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();

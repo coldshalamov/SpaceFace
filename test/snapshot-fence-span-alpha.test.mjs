@@ -18,9 +18,9 @@ import {
 const PLAYER_ID = 1;
 const DT = 1 / 60;
 
-function packOne(fence, { x, z = 0, simTime = 0, poseEpoch = 0 }) {
+function packOne(fence, { x, z = 0, yaw = 0, simTime = 0, poseEpoch = 0 }) {
   const snapshot = fence.beginPack(1, simTime, poseEpoch);
-  snapshot.write(PLAYER_ID, 0, x, 0, z, 0, 0, 0, 1, 1, 1, 1, 0);
+  snapshot.write(PLAYER_ID, 0, x, 0, z, 0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2), 1, 1, 1, 0);
   fence.commit();
 }
 
@@ -34,6 +34,27 @@ function twoPackFence(spanTicks, x0 = 0, x1 = 20) {
   packOne(fence, { x: x1, simTime: spanTicks * DT });
   return fence;
 }
+
+test('turning across wrapped yaw draws the short turn in both the hull and its anchors', () => {
+  for (const direction of [-1, 1]) {
+    const fence = createSnapshotFence({ capacity: 4 });
+    packOne(fence, { x: 0, yaw: direction * (Math.PI - 0.03) });
+    packOne(fence, { x: 3, yaw: direction * (-Math.PI + 0.03), simTime: DT });
+    fence.samplePresentationAlpha(DT, 0, DT);
+    const mesh = meshStub();
+    for (const fraction of [0.25, 0.5, 0.75, 1.25]) {
+      const alpha = fence.resolvePresentedBracket(DT * fraction);
+      applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
+        fence.previousSnapshot(), alpha);
+      const anchor = fence.presentedPose(PLAYER_ID);
+      const expected = -direction * (Math.PI - 0.03 + 0.06 * fraction);
+      assert.ok(Math.abs(Math.sin(mesh.rotation.y - expected)) < 0.0001);
+      assert.ok(Math.cos(mesh.rotation.y - expected) > 0.9999, `hull turned away at ${fraction}`);
+      assert.equal(anchor.rot, mesh.rotation.y);
+      assert.ok(Math.abs(mesh.position.x - 3 * fraction) < 1e-9);
+    }
+  }
+});
 
 test('a one-tick span reduces to the legacy accumulator alpha', () => {
   const fence = twoPackFence(1);
