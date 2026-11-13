@@ -26,6 +26,14 @@ const makeLine = (host, color, weight = 600) => {
   host.appendChild(el);
   return el;
 };
+// "The whole ball commits a bearing and cannot steer inside it — step off and the coast is the
+// window." -> "step off and the coast is the window." The clause after the dash is the verb.
+const counterInstruction = (text) => {
+  const t = String(text || '');
+  const i = t.lastIndexOf(' — ');
+  const tail = i >= 0 ? t.slice(i + 3).trim() : t;
+  return tail ? tail.charAt(0).toUpperCase() + tail.slice(1) : t;
+};
 const setLine = (el, value) => { if (el.textContent !== value) el.textContent = value; };
 // The readout sits on the shared flight-glass plate the Stage uses, never bare over the world, and
 // its counter wraps to at most three lines (the full text stays in the node and the live region).
@@ -451,8 +459,14 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       group.castId = null;
       announce(`boss|${readout.fightId}`, `${readout.name} is on you.`);
     }
-    setLine(group.name, readout.name);
-    setLine(group.act, readout.actTitle);
+    // Swarm owns its champion bar, which already names the boss: the arena readout drops the
+    // name + act lines and trims the counter to the instruction half, so the tell is a short
+    // timed callout (move word + what to do), not a paragraph over the fight.
+    const compact = !showHealth;
+    setLine(group.name, compact ? '' : readout.name);
+    setLine(group.act, compact ? '' : readout.actTitle);
+    const hideTop = compact ? 'none' : '';
+    if (group.name.style.display !== hideTop) { group.name.style.display = hideTop; group.act.style.display = hideTop; }
     if (group.actId !== readout.actId) {
       group.actId = readout.actId;
       if (readout.actId) announce(`act|${readout.fightId}|${readout.actId}`, `${readout.name}: ${readout.actTitle}`);
@@ -465,7 +479,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       }
     }
     setLine(group.moveTitle, readout.move ? readout.move.title : '');
-    setLine(group.counter, readout.move ? readout.move.counter : '');
+    setLine(group.counter, readout.move ? (compact ? counterInstruction(readout.move.counter) : readout.move.counter) : '');
     if (showHealth) {
       if (group.scaleHost.style.display !== 'block') group.scaleHost.style.display = 'block';
       if (group.gauge.style.display === 'none') group.gauge.style.display = 'block';
