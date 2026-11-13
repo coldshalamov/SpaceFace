@@ -2016,12 +2016,7 @@ export const save = {
     // SFQ-B223: a write inside the restore window would serialize half-restored live state over
     // the very slot being loaded. requestAutosave already refuses while _restoring; the direct
     // path must refuse too, before it can supersede a queued autosave or touch a journal.
-    if (this._restoring) {
-      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
-      this._recordSaveTiming(timing);
-      this._emitSaveTimingError(timing);
-      return false;
-    }
+    if (this._refuseSaveBoundary({ slot, reason, autosave, started })) return false;
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
     // the old token and becomes a no-op, so the player never pays two back-to-back full writes.
     if (!autosave && this._autosavePending) this._autosavePending = null;
@@ -2042,6 +2037,8 @@ export const save = {
     let envelope;
     let serializeMs = 0;
     try {
+      // save:started is synchronous. Recheck in case a listener began a jump before capture.
+      if (this._refuseSaveBoundary({ slot, reason, autosave, started }, { pending: true })) return false;
       const t = nowMs();
       envelope = this.serialize(slot);
       serializeMs = nowMs() - t;
@@ -2103,12 +2100,7 @@ export const save = {
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
     const started = nowMs();
-    if (this._restoring) {
-      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
-      this._recordSaveTiming(timing);
-      this._emitSaveTimingError(timing);
-      return Promise.resolve(false);
-    }
+    if (this._refuseSaveBoundary({ slot, reason, autosave, started })) return Promise.resolve(false);
     if (!autosave && this._autosavePending) this._autosavePending = null;
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
@@ -2181,11 +2173,18 @@ export const save = {
       let t = nowMs();
       let data;
       try {
-        data = await this._serializeDataFrozenAsync();
+        if (this._saveJumpInProgress()) return fail('jump_in_progress');
+        data = await this._serializeDataFrozenAsync(() => {
+          if (this._saveJumpInProgress()) {
+            throw Object.assign(new Error('Cannot retake a save in transit'), { code: 'jump_in_progress' });
+          }
+          return this._frozenTickBoundary();
+        });
       } catch (err) {
         // A torn-down realm fails the same way a corrupt one does — stale wins.
         const rr = abortReason();
         if (rr) return fail(rr);
+        if (err?.code === 'jump_in_progress') return fail(err.code);
         console.error('[save] serialize failed', err);
         return fail('serialize_failed');
       }
@@ -2760,6 +2759,22 @@ export const save = {
     if (perf && typeof perf.recordSave === 'function') perf.recordSave(timing);
   },
 
+  _saveJumpInProgress() {
+    const jump = this.state?.jump;
+    // World serializes a confirmed Ashfall ending as its committed return, including the fare.
+    return (jump?.state === 'CHARGING' || jump?.state === 'JUMPING')
+      && !(jump._unfiled === true && jump._unfiledConfirmed === true);
+  },
+
+  _refuseSaveBoundary({ slot, reason, autosave, started }, { pending = false } = {}) {
+    const failure = this._restoring ? 'restoring' : this._saveJumpInProgress() ? 'jump_in_progress' : null;
+    if (!failure) return false;
+    const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure });
+    this._recordSaveTiming(timing);
+    this._emitSaveTimingError(timing, { clearPending: pending || failure !== 'jump_in_progress' });
+    return true;
+  },
+
   // SF-281 — durable write receipt on state.save. The toast fades; pending/durable/failed must
   // remain readable on the state record so any surface (pause sheet, save browser, HUD) can
   // tell "saving now" from "saved" from "save failed" without replaying events. Only real write
@@ -2777,13 +2792,13 @@ export const save = {
     };
   },
 
-  _noteWriteOutcome(slot, timing) {
+  _noteWriteOutcome(slot, timing, { clearPending = true } = {}) {
     const bag = this.state && this.state.save;
     if (!bag || typeof bag !== 'object' || !timing) return;
     // A superseded write is a recorded cancellation, not an outcome: the receipt belongs to a
     // dead writer and must neither clear the live writer's pending marker nor stamp a failure.
     if (timing.failure === 'superseded') return;
-    if (bag.pendingWrite && bag.pendingWrite.slot === slot) bag.pendingWrite = null;
+    if (clearPending && bag.pendingWrite && bag.pendingWrite.slot === slot) bag.pendingWrite = null;
     const at = nowMs();
     const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : null;
     if (timing.ok) {
@@ -2814,8 +2829,8 @@ export const save = {
   // Save-error emissions on the write path carry _saveTiming receipts; record the durable
   // outcome BEFORE subscribers run so a listener that reads state.save inside its save:error
   // handler sees the settled result rather than a stale pending row.
-  _emitSaveTimingError(timing) {
-    this._noteWriteOutcome(timing && timing.slot, timing);
+  _emitSaveTimingError(timing, options) {
+    this._noteWriteOutcome(timing && timing.slot, timing, options);
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:error', timing);
   },
 

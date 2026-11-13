@@ -74,6 +74,7 @@ function saveErrorReasonText(payload = {}) {
         ? 'Save data exceeds storage bounds — previous save kept'
         : slot + ' is too complex to load';
     case 'restoring': return 'Could not save ' + slot + ' — a load is in progress';
+    case 'jump_in_progress': return 'Save after the jump finishes';
     case 'schedule_failed':
     case 'save_worker_failed':
     case 'save_worker_timeout':
