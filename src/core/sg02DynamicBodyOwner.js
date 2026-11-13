@@ -3139,15 +3139,7 @@ export class Sg02DynamicBodyOwner {
         const partnerX = finite(other._bodyPoseX, NaN);
         const partnerZ = finite(other._bodyPoseZ, NaN);
         if (!Number.isFinite(partnerX) || !Number.isFinite(partnerZ)) continue;
-        const spines = other.coincidentSpines;
-        if (spines?.length === 1) {
-          // The rotated window cannot reach past the offset plus the spine and its margins
-          // along either axis. Read the current spine so an authored offset can still move.
-          const spine = spines[0];
-          const reach = Math.abs(spine.ox) + Math.abs(spine.oz) + spine.halfLen
-            + COINCIDENT_SPAWN_AXIAL_EPS + COINCIDENT_SPAWN_BAND;
-          if (Math.abs(posX - partnerX) > reach || Math.abs(posZ - partnerZ) > reach) continue;
-        }
+        if (!canReachCoincidentWindow(other.coincidentSpines, posX - partnerX, posZ - partnerZ)) continue;
         if (contactMaterialFor(other.entity, other.spec).ghost) continue;
         if (!collisionPairsForm(candidateEntity, candidateSpec, other.entity, other.spec)) continue;
         if (pointHitsCoincidentWindow(other, partnerX, partnerZ, posX, posZ)) {
@@ -5257,6 +5249,19 @@ function coincidentSpineForCollider(collider) {
     uz: len > 1e-9 ? uz / len : 0,
     halfLen,
   };
+}
+
+function canReachCoincidentWindow(spines, dx, dz) {
+  if (!spines?.length) return true; // preserve the existing point fallback
+  const distance = Math.max(Math.abs(dx), Math.abs(dz));
+  for (const spine of spines) {
+    // An axis-aligned bound of the rotated offset, spine and its two margins.
+    // Read current offsets because authored articulation can change them.
+    const reach = Math.abs(spine.ox) + Math.abs(spine.oz) + spine.halfLen
+      + COINCIDENT_SPAWN_AXIAL_EPS + COINCIDENT_SPAWN_BAND;
+    if (!(distance > reach)) return true;
+  }
+  return false;
 }
 
 // True when a candidate centre at (posX,posZ) — frame coords — sits inside any of the partner's

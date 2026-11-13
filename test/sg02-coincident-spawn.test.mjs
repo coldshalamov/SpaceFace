@@ -200,6 +200,27 @@ test('the +x slot is safe against a rotated capsule partner (axis off-x)', async
   }
 });
 
+test('the slot guard still reaches an offset child of a rotated compound body', async () => {
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: DT });
+  try {
+    const station = staticBody(80);
+    station.rot = Math.PI / 2;
+    station.physicsBody.collisionProxyManifest = {
+      schemaVersion: 1, id: 'coincident-offset', referenceRadius: 'radius',
+      primitives: [
+        { id: 'center', kind: 'circle', x: 0, z: 0, r: 0.1 },
+        { id: 'arm', kind: 'circle', x: 0.75, z: 0, r: 0.1 },
+      ],
+    };
+    const pod = dynamicBody(81);
+    pod.pos.z += station.radius * 0.75;
+    owner.syncFromEntities([station, pod]);
+    assert.ok(Math.abs(pod.pos.x - (SPAWN.x + 2.5)) < 0.01);
+  } finally {
+    owner.dispose();
+  }
+});
+
 test('a scripted teleport onto an occupied point cannot land coincident', async () => {
   const owner = await createSg02DynamicBodyOwner({ fixedDt: DT });
   try {
