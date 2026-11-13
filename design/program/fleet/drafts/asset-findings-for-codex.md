@@ -15,3 +15,21 @@
 - Prompt used for marks: "Generate ONE image ... 1024x1024 ... flat pure green #00FF00 backdrop ... 4x4 grid of 16 paint decals each centered in a 256x256 cell, at least 20px margin ... weathered spray-stencil paint on a spaceship hull, chipped, faded, flaking, flat top-down ... reading order: KIT orange tag with drip; skull over crossed wrenches white; hull number 07 stencil; NX-214 pale yellow stencil; hazard patch yellow/black; hazard patch red/white; warning triangle; two chevrons; star roundel blue/white; gear+wrench orange; 13 chalk tallies; NO STEP + arrow; CARGO + box; menacing eye red; lightning bolt in diamond; MK II serial plate with rivets."
 
 **Before shots** were queued (`.devshots/look05b/`, look-bench of 10 hulls and a Swarm round-3 throw) but not finished.
+
+## D — clean models (LOOK-05D, stopped at owner's scope change; no model or src change landed)
+
+Looked at: look-bench hull grid (`.devshots/look05d/before/hulls.png`, per-row crops `part0.png`..`part3.png` beside it) and a Swarm round-3 throw (`.devshots/look05d/before-throw/r-*.png`). Row order in the sheet: kestrel, hornet, helios_lark, wasp, pelican, mule, drifter, ranger, ironback, bastion, atlas, swarm_warden, swarm_jackal, swarm_anchor, ashline_dart, salvage_cutter, place_dead_hulk.
+
+**Offenders, what each should become**
+1. **Swarm floor pads have no model at all.** `src/systems/swarmFloor.js` spawns wall guns, THE CRATE, the Forge and the Taps as `type: 'pickup'` entities (`data.kind = swarm_floor_pad`, radius 12). Nothing in `src/render` reads `data.swarmFloorPad`, so `buildPickup` (`visualFactory.js` ~4035) gives them the generic octahedron gem. Should become: one machined prop per kind built from `arenaFinish.js` (chamfered box, `arenaMaterials()` three values, hazard band, work lamp): wall gun = turret on a plinth, Crate = banded freight crate with a lit lid, Forge = furnace block with a lit mouth, Tap = valve/pump. Not shot yet (lock queue); confirm on a round-3 frame.
+2. **Fortify devices are raw `BoxGeometry` with flat colour** (`src/render/swarmFortifyVisuals.js`, 13 sharp boxes: reflector fin slab, tesla forks, repulsor shoes, turret cradle). Should take chamfered edges and a three-value finish like `arenaFinish.js`. I wrote a chamfer helper and it passed `test/swarm-fortify-visuals.test.mjs`, but it was never looked at on screen, so I removed it.
+3. **swarm_anchor** (`tools/blender/forge/ships/swarm_specialists.py` `build_anchor`, `CoreSleeve`): the core is a flat, fully lit amber disc inside a cyan ring (`part3` row 2). Should be a dark lens in a gunmetal bezel with a thin amber ring and a small lit centre. Preview build worked (11.2k tris, same materials); not rendered, not published.
+4. **kestrel** (`ships/kestrel.py` `RepairPod`, ~line 174): flat salvage-green box with an orange hazard band, bevel 0.08, on the port shoulder; reads as a lime block next to the teal hull (`part0` row 1). Should take the hull paint family or a darker panel and a deeper bevel. It carries the ANI-06 service-arm mechanism and the check script pins sockets, so republish needs the kestrel runtime checks and silhouettes/posters.
+5. **pelican** (`part1` row 1): a black rectangular outline frame on the dorsal deck (`HatchRim` beams) reads as a drawn box; the front boarding ramp reads flat orange.
+6. **swarm_jackal** (`part3` row 1): the two rack rails are big flat orange slabs with no break-up beside the keel; the hazard bands are the only detail.
+7. **hornet** (`part0` row 2): the "1010" numerals are coarse pixel-boxes (decal sheet, strand B).
+8. **Fallback builders** (`src/render/enemyRoleVariants.js`, `visualFactory.js` greeble clusters): box cores, plates and vanes. They only run when the authored hull fails admission, so they do not show in normal play; do not spend time here.
+
+**Looks fine on screen:** helios_lark, wasp, mule, drifter, ranger, ironback, bastion, atlas, ashline_dart, salvage_cutter (its orange scrap cage is deliberate and reads as one).
+
+**Look script left behind:** `scripts/fleet/looks/props-d.mjs` parks the player beside one of each pad / fortify device / hostile hull in a live Swarm round and shoots each (`node scripts/fleet/game-lock.mjs run -- node scripts/fleet/looks/props-d.mjs <outPrefix> <round>`). Its before run is queued behind the lock.
