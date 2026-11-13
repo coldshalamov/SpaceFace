@@ -1870,6 +1870,9 @@ async function runSteadyFlightProfile(page, cdp) {
       await page.screenshot({ path: path.join(OUT_DIR, filename), timeout: 15_000 });
       return { path: path.relative(ROOT, path.join(OUT_DIR, filename)).replace(/\\/g, '/') };
     });
+    if (turnKey) {
+      await page.exposeBinding('__sfProfileReleaseTurn', () => page.keyboard.up(turnKey));
+    }
     if (heldKey) await page.keyboard.down(heldKey);
     let result;
     try {
@@ -1879,7 +1882,10 @@ async function runSteadyFlightProfile(page, cdp) {
     finally {
       if (turnKey) await page.keyboard.up(turnKey).catch(() => {});
       if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
-      await page.evaluate(() => { delete window.__sfProfileScreenshot; }).catch(() => {});
+      await page.evaluate(() => {
+        delete window.__sfProfileScreenshot;
+        delete window.__sfProfileReleaseTurn;
+      }).catch(() => {});
     }
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
     const sourceDigestAfter = await digestServedSourcePaths();

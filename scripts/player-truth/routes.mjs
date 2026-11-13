@@ -1076,9 +1076,10 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
   return { tutorials, seedSet: seed != null, runSeed };
 }
 
-export async function racingToFlight(page, step) {
+export async function racingToFlight(page, step, { format = null } = {}) {
   await clickText(page, 'Circuits', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'raceBoard', null, { timeout: 60000 });
+  if (format) await page.getByRole('combobox', { name: 'Race format' }).selectOption(format);
   const { course, contractId } = await page.evaluate(() => {
     const board = document.querySelector('#screens [data-screen="raceBoard"]');
     const c = board?.querySelector('.race-board-start h2') || board?.querySelector('.race-board-course h2');

@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import { closeOwnedElectronRuntime } from './lib/alphaLiveBaselineElectronContracts.mjs';
 import { flightReadyInPage } from './lib/alphaLiveBaselineRoute.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 import {
   cleanupIsolatedElectronProfile,
   launchElectron,
@@ -225,6 +226,7 @@ async function waitForLoad(page, baselineLoadCount, timeoutMs) {
 
 async function startPublicNewGame(page, { flightTimeoutMs = 240_000 } = {}) {
   await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 90_000 });
+  await installFirstLightPromptHandler(page);
   const splash = page.locator('#cinematic-splash');
   if (await splash.isVisible().catch(() => false)) {
     await page.keyboard.press('Space');
