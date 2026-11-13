@@ -2423,34 +2423,21 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
     if (def.variant === 'ice') {
-      const material = new THREE.MeshPhysicalMaterial({
-        color,
-        roughness: 0.06,
+      // LOOK-04 (owner 2026-11-13: "why do they wash out white like that?"): ordinary world ice was a see-through,
+      // mirror-smooth, clear-coated body reflecting the environment at full strength — on screen a pale blue-white
+      // blob brighter than any ship, sorted as a transparent with depthWrite off. Ice is now stylised and opaque: a
+      // cool blue-grey stone with a satin sheen and a faint cold glow, so it reads as ice beside tan rock, sits in the
+      // terrain value band (bible LOOK §3: terrain 25–50 lit) and draws as an ordinary opaque rock.
+      const iceColor = color.clone().lerp(new THREE.Color('#5d8aa6'), 0.55);
+      const material = new THREE.MeshStandardMaterial({
+        color: iceColor,
+        roughness: 0.38,
         metalness: 0.0,
-        transmission: 0.78,
-        ior: 1.31,
-        thickness: 2.8,
-        attenuationColor: new THREE.Color('#6eb8d8'),
-        attenuationDistance: 1.6,
-        emissive: new THREE.Color(def.emissive),
-        emissiveIntensity: Math.min(eiBoost, 0.22),
-        clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        envMapIntensity: 1.15,
+        emissive: new THREE.Color(def.emissive || '#2a5f80'),
+        emissiveIntensity: Math.min(eiBoost, 0.10),
+        envMapIntensity: 0.55,
         fog: true,
       });
-      // Ordinary world ice keeps its colour/specular skin without re-rendering the whole
-      // opaque scene for screen-space refraction. Retain the exact source params for the
-      // bounded pilot comparison; authored hero/ship/station materials use other owners.
-      material.userData.spacefaceTransmissionBudget = {
-        family: 'ordinary-ice', strategy: 'environment-alpha',
-        original: { transmission: material.transmission, opacity: material.opacity,
-          transparent: material.transparent, depthWrite: material.depthWrite },
-      };
-      material.transmission = 0;
-      material.opacity = Math.min(material.opacity, 0.72);
-      material.transparent = true;
-      material.depthWrite = false;
       return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
     }
 

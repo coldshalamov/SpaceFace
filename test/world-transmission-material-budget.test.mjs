@@ -45,15 +45,16 @@ const assertBudget = (material, family, opacity, transmission, transparent = fal
 };
 
 test('real factory ice and gas keep their material identity and optical surface response', () => {
+  // LOOK-04 (owner 2026-11-13, "why do they wash out white"): ordinary ice is no longer a see-through clear-coated
+  // glass body — it is an opaque, satin, cool-blue stone in the terrain value band. It leaves the alpha budget.
   const ice = body('ast_icy').material;
-  assertBudget(ice, 'ordinary-ice', 0.72, 0.78);
-  assert.equal(ice, asteroidLeafResources('ast_icy', 0).material, 'actual leaf getter shares candidate material');
-  assert.equal(ice.roughness, 0.06);
-  assert.equal(ice.clearcoat, 1);
-  assert.equal(ice.ior, 1.31);
-  assert.equal(ice.thickness, 2.8);
-  assert.equal(ice.emissiveIntensity, 0.22);
-  assert.equal(ice.color.getHex(), 0x8fd8f0);
+  assert.equal(ice, asteroidLeafResources('ast_icy', 0).material, 'actual leaf getter shares the ice material');
+  assert.equal(ice.isMeshPhysicalMaterial, undefined, 'ice is a standard (opaque) material');
+  assert.equal(ice.transparent, false);
+  assert.equal(ice.depthWrite, true);
+  assert.ok(ice.roughness >= 0.3, 'satin, not mirror');
+  assert.ok(ice.emissiveIntensity <= 0.1, 'a faint cold glow, not a light source');
+  assert.equal(ice.userData.spacefaceTransmissionBudget, undefined);
 
   const gasRoot = body('ast_gas_cloud').root;
   const gas = gasRoot.children.find(node => node.material?.userData?.spacefaceTransmissionBudget?.family === 'ordinary-gas')?.material;
@@ -65,7 +66,7 @@ test('real factory ice and gas keep their material identity and optical surface 
   assert.equal(gas.side, THREE.DoubleSide);
 });
 
-test('pool warm resources bind the same alpha ice and live/spent optic materials', () => {
+test('pool warm resources bind the ice and live/spent optic materials', () => {
   const ice = asteroidLeafResources('ast_icy', 0).material;
   const resources = asteroidPoolWarmResources();
   assert.ok(resources.some(resource => resource.material === ice));
@@ -78,7 +79,8 @@ test('pool warm resources bind the same alpha ice and live/spent optic materials
 test('alpha body leaves remain visible on the ordinary mesh path, outside the opaque instance pool', () => {
   const scene = new THREE.Scene();
   const pool = createAsteroidInstancePool(scene);
-  for (const [typeId, kind] of [['ast_icy', null], ['ast_crystalline', 'diamond'], ['ast_crystalline', 'spent']]) {
+  // Opaque ice now joins the instance pool like any rock (LOOK-04); the optic crystals stay alpha.
+  for (const [typeId, kind] of [['ast_crystalline', 'diamond'], ['ast_crystalline', 'spent']]) {
     const { entity, root } = body(typeId, kind);
     scene.add(root);
     assert.equal(registerAsteroidBaseLeaf(pool, entity, root), false);
@@ -114,10 +116,10 @@ test('spend and rekindle preserve body geometry, shared materials, facets and ch
   assert.equal(syncOpticCellSkin(entity, root), false, 'steady-state sync remains idle');
 });
 
-test('four-family provenance allows exact scalar restore with finally and preserves hooks/maps', () => {
+test('three-family provenance (gas, live and spent optics) allows exact scalar restore with finally and preserves hooks/maps', () => {
   const gasRoot = body('ast_gas_cloud').root;
   const gas = gasRoot.children.find(node => node.material?.userData?.spacefaceTransmissionBudget?.family === 'ordinary-gas').material;
-  for (const material of [asteroidLeafResources('ast_icy', 0).material, gas,
+  for (const material of [gas,
     opticCellBodyMaterial('diamond'), opticCellBodyMaterial('spent')]) {
     const candidate = params(material), hook = material.onBeforeCompile, key = material.customProgramCacheKey;
     const map = material.map, normalMap = material.normalMap;
