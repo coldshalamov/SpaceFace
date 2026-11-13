@@ -77,22 +77,28 @@ test('contact receipts read native body centers only for missing manifold coordi
   }
 });
 
-test('a merged pair reads only the last accepted ordered manifold', async () => {
+test('a merged pair retains closing causality and reads only the last accepted manifold', async () => {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
   const queue = owner._eventQueue;
   const contactPair = owner.world.contactPair;
   try {
-    owner.syncFromEntities([craft(1, 100, true), craft(2, 200)]);
+    const player = craft(1, 100, true);
+    const other = craft(2, 200);
+    player.vel = { x: 0, z: 80 };
+    other.vel = { x: -120, z: 60 };
+    other.pos.z = 60;
+    owner.syncFromEntities([player, other]);
+    owner.step(DT);
     const a = owner.records.get(1).colliders[0];
     const b = owner.records.get(2).colliders[0];
-    const event = (first, second, force) => ({
+    const event = (first, second, force, normal) => ({
       collider1: () => first.handle, collider2: () => second.handle,
-      totalForceMagnitude: () => force, maxForceDirection: () => ({ x: 1, y: 0, z: 0 }),
+      totalForceMagnitude: () => force, maxForceDirection: () => normal,
     });
     owner._eventQueue = { drainContactForceEvents(receive) {
-      receive(event(a, b, 120));
-      receive(event(b, a, 240));
-      receive(event(a, b, 0));
+      receive(event(a, b, 120, { x: 1, y: 0, z: 0 }));
+      receive(event(b, a, 240, { x: 0, y: 0, z: -1 }));
+      receive(event(a, b, 0, { x: 1, y: 0, z: 0 }));
     } };
     const queries = [];
     owner.world.contactPair = (first, second, receive) => {
@@ -106,6 +112,11 @@ test('a merged pair reads only the last accepted ordered manifold', async () => 
     assert.equal(receipt.bId, 2);
     assert.equal(receipt.impulse, 6);
     assert.deepEqual(receipt.pos, { x: 170, z: 3 });
+    assert.equal(Math.abs(receipt.normal.x), 0);
+    assert.equal(receipt.normal.z, 1);
+    assert.deepEqual(receipt.preSolveClosingNormal, { x: 1, z: 0 });
+    assert.equal(receipt.preSolveClosingSpeed, 120);
+    assert.equal(receipt.causalActorId, other.id);
   } finally {
     owner._eventQueue = queue;
     owner.world.contactPair = contactPair;

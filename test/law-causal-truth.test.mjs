@@ -30,6 +30,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
+import { bootRealPath } from '../scripts/lib/bench/realPath.mjs';
+import { COLLISION_PROXY_SCHEMA_VERSION } from '../src/data/collisionProxyManifests.js';
+import { collisionConsequences } from '../src/systems/collisionConsequences.js';
+import { combat } from '../src/systems/combat.js';
 import { heat, THRESHOLD as WANTED_THRESHOLD } from '../src/systems/heat.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { factions } from '../src/systems/factions.js';
@@ -40,6 +44,70 @@ import { save as saveDefinition } from '../src/save/saveSystem.js';
 
 const SEED = 43117;
 const SECTOR = 'sector_tethys_junction';
+
+test('a lethal native side contact charges only the pilot closing along the contact normal', async () => {
+  for (const playerRams of [false, true]) {
+    const sectorId = 'sector_helios_prime';
+    const run = await bootRealPath({
+      seed: 47,
+      systems: [collisionConsequences, combat, lawSecurity, heat],
+      bounds: { center: { x: 0, z: 0 }, radius: 3500, hardRadius: 4000 },
+      prepareState({ state }) {
+        state.world.currentSectorId = sectorId;
+        state.world.sectors ??= {};
+        state.world.sectors[sectorId] = { id: sectorId, factionId: 'faction_scn', security: 0.9, tier: 0 };
+      },
+      hulls: [{ hullId: 'ship_wasp', isPlayer: true, pos: { x: -250, z: 0 } }],
+    });
+    try {
+      const player = run.state.entities.get(run.state.playerId);
+      Object.assign(player, {
+        pos: { x: 0, z: 0 }, vel: { x: playerRams ? 120 : 0, z: 100 }, rot: 0, radius: 80,
+      });
+      Object.assign(player.physicsBody, {
+        radius: 80, mass: 35, revision: 1,
+        collisionProxyManifest: {
+          id: 'test-long-side-contact', schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+          primitives: [{ kind: 'obb', x: 0, z: 0, hx: 0.125, hz: 1, angleDeg: 0 }],
+        },
+      });
+      const spawnLawfulShip = (pos, vel, hull) => run.runtime.spawn({
+        type: 'ship', team: 2, factionId: 'faction_scn', pos, vel, hull, hullMax: 80,
+        radius: 10, mass: 35, shield: 0, armorHp: 0, collides: true,
+        physicsBody: {
+          schemaVersion: 1, radius: 10, mass: 35, inertiaY: 40, dynamic: true,
+          ccd: true, material: 'ship', revision: 0,
+        },
+        data: {
+          shipClass: 'fighter', combatProfileId: 'combat_profile_standard_ship', ai: { lawful: true },
+        },
+      });
+      const patrol = spawnLawfulShip({ x: 19, z: 60 }, { x: playerRams ? 0 : -120, z: 120 }, 1);
+      spawnLawfulShip({ x: 120, z: 0 }, { x: 0, z: 0 }, 80);
+      const impacts = [], kills = [], reports = [], responses = [];
+      run.bus.on('physics:impact', impact => impacts.push({ ...impact }));
+      run.bus.on('entity:killed', kill => kills.push(kill));
+      run.bus.on('law:reportIncidentReceipt', report => reports.push(report));
+      run.bus.on('law:response', response => responses.push(response));
+
+      run.step(4);
+
+      const impact = impacts.find(event => event.aId === player.id && event.bId === patrol.id);
+      assert.equal(impact?.backend, 'rapier-dynamic');
+      assert.deepEqual(impact.normal, { x: 1, z: 0 });
+      assert.ok(impact.preSolveClosingSpeed > 100);
+      const kill = kills.find(event => event.id === patrol.id);
+      assert.equal(kill?.presentation.cause, 'ship_collision');
+      assert.equal(impact.causalActorId, playerRams ? player.id : patrol.id);
+      assert.equal(kill.killerId === player.id, playerRams);
+      assert.equal(responses.some(event => event.action === 'warrant_posted'), playerRams);
+      assert.deepEqual(reports.map(report => report.kind), playerRams ? ['lawful_kill'] : []);
+      assert.equal(run.state.player.heat >= WANTED_THRESHOLD, playerRams);
+    } finally {
+      run.dispose();
+    }
+  }
+});
 
 function boot(systems, { security = 0.9, sectorId = SECTOR } = {}) {
   const sim = createSimulation({ seed: SEED, systems });

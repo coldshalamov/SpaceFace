@@ -3539,16 +3539,6 @@ export class Sg02DynamicBodyOwner {
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
 
-      const causalActorId = directContactCausalActorId(
-        a.entity.id,
-        b.entity.id,
-        aVx,
-        aVz,
-        bVx,
-        bVz,
-        nABx,
-        nABz,
-      );
       let byB = merged.get(a.entity.id);
       if (!byB) {
         byB = this._impactByBPool.length ? this._impactByBPool.pop() : new Map();
@@ -3565,15 +3555,13 @@ export class Sg02DynamicBodyOwner {
       // against it. nAB (computed above from the pair kinematics) is the positional a→b axis;
       // the flip keeps the solver's true normal direction and fixes only which half it names.
       // A degenerate axis (co-located kinematics) stays unflipped — nothing honest to sign.
-      // A compound hull's center can lie far along the wall from the actual surface the
-      // player is driving into. Classify its stopping response by that surface normal;
-      // the centroid axis otherwise mistakes native wall braking for an external shove
-      // and restores thrust velocity while the solver correctly keeps the hull outside.
-      const closingSpeed = pairClosing;
+      // A compound hull's center can lie far along a face from the contact point. Use the
+      // strongest closing contact's surface for both stopping response and causal attribution.
+      const keepClosingContact = existing && pairClosing <= existing.preSolveClosingSpeed;
+      const causalActorId = keepClosingContact ? existing.causalActorId : directContactCausalActorId(
+        a.entity.id, b.entity.id, aVx, aVz, bVx, bVz, normal.x, normal.z,
+      );
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
-      const preSolveClosingNormal = existing && closingSpeed <= finite(existing.preSolveClosingSpeed, -Infinity)
-        ? (existing.preSolveClosingNormal || existing.normal)
-        : normal;
       const receipt = {
         schemaVersion: 1,
         tick: this.tick + 1,
@@ -3586,15 +3574,13 @@ export class Sg02DynamicBodyOwner {
         pos: null,
         normal,
         causalActorId,
-        preSolveClosingSpeed: existing
-          ? Math.max(existing.preSolveClosingSpeed, closingSpeed)
-          : closingSpeed,
+        preSolveClosingSpeed: keepClosingContact ? existing.preSolveClosingSpeed : pairClosing,
       };
       if (isPlayerReceipt) {
         // Compound pairs may report several force events in one step. Keep the normal beside
         // the largest closing measurement for the player braking classifier; public receipt
         // normal remains the current event's normal for impact/VFX consumers.
-        receipt.preSolveClosingNormal = preSolveClosingNormal;
+        receipt.preSolveClosingNormal = keepClosingContact ? existing.preSolveClosingNormal : normal;
         receipt.appliedPlayerDeltaV = 0;
         // Filled by _distributeAppliedPlayerDeltaV. Present from birth so a reader can tell
         // "the rule reported nothing" from "the field does not exist on this build".
