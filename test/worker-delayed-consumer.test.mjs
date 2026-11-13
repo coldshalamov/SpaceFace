@@ -40,7 +40,7 @@ function info(id, generation = 1, hull = 100) {
 }
 
 async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
-  stepCostMs = 0, wakeDelays = [], onWake } = {}) {
+  stepCostMs = 0, wakeDelays = [], onWake, eventFor = id => ({ t: 'fixture:one-shot', p: { id } }) } = {}) {
   let now = 1000;
   let nextTimer = 0;
   let tick = 0;
@@ -60,9 +60,11 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   const posts = [];
   const heldAcks = [];
   const seenEvents = [];
+  const seenImpacts = [];
   const state = createGameState(4242);
   const bus = createBus();
   bus.on('fixture:one-shot', event => seenEvents.push(event.id));
+  bus.on('physics:impact', event => seenImpacts.push(event.id));
   const context = vm.createContext({
     performance: { now: () => now },
     setTimeout(fn, delay) {
@@ -103,7 +105,7 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
             ? Array.from({ length: bodies }, (_, i) => info(i + 1)) : []),
           entityVitals: supplied.entityVitals || (active ? Array.from({ length: bodies }, (_, i) => [i + 1, { hull: 100, rot: tick }]) : []),
           domainUpdates: supplied.domainUpdates || (active ? [{ segs: ['fuel'], v: { current: tick } }] : []),
-          events: Array.from({ length: active ? eventsPerTick : 0 }, () => ({ t: 'fixture:one-shot', p: { id: ++eventId } })),
+          events: Array.from({ length: active ? eventsPerTick : 0 }, () => eventFor(++eventId)),
         };
       },
     }),
@@ -142,7 +144,7 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
   await settle();
   t.after(async () => { lane.close(); await settle(); });
   return {
-    state, lane, posts, seenEvents, batches, appliedCommands, timerDelays, clock: context.fixture.clock,
+    state, lane, posts, seenEvents, seenImpacts, batches, appliedCommands, timerDelays, clock: context.fixture.clock,
     maxPendingTimers: () => maxPendingTimers,
     generatedEvents: () => eventId, deliveredAcks: () => deliveredAcks,
     async until(elapsedMs) {
@@ -199,12 +201,15 @@ test('delayed consumer keeps cheap worker ticking with one latest scalar row per
 });
 
 test('true one-shot backlog remains bounded and its pressure is reported before ACK recovery', async t => {
-  // Events shed at the retained cap as droppable presentation rows, so they can
-  // no longer trip the durable limit. spawnInfos concat without a shed cap —
-  // they are the durable rows a genuinely dead consumer still overflows with.
-  const f = await fixture(t, { eventsPerTick: 300, payload: ({ tick }) => ({
-    spawnInfos: Array.from({ length: 200 }, (_, i) => info(9000 + tick * 200 + i)),
-  }) });
+  const f = await fixture(t, {
+    eventsPerTick: 300,
+    eventFor: id => id % 300 === 1
+      ? { t: 'fixture:one-shot', p: { id } }
+      : { t: 'physics:impact', p: { id, playerInvolved: false } },
+    payload: ({ tick }) => ({
+      spawnInfos: Array.from({ length: 200 }, (_, i) => info(9000 + tick * 200 + i)),
+    }),
+  });
   await f.until(1000);
   assert.equal(f.clock.backpressured, true, 'actual durable events still stop an unconsumed producer');
   assert.ok(f.clock.durableCount >= 4096 && f.clock.durableCount < 4096 + 442);
@@ -215,13 +220,13 @@ test('true one-shot backlog remains bounded and its pressure is reported before 
   assert.equal(f.clock.stepCount, stopped, 'a stopped consumer cannot grow the durable queue indefinitely');
   await f.pause();
   await f.releaseAcks();
-  // Retained events shed at the droppable cap: the wire stream stays ordered and
-  // monotone, early replies already shipped their ranges, and the diagnostics
-  // counter accounts for every dropped row rather than delivering stale volume.
-  assert.ok(f.seenEvents.length >= 1 && f.seenEvents[0] === 1);
-  assert.ok(f.seenEvents.every((v, i) => i === 0 || v > f.seenEvents[i - 1]),
-    'dropped presentation events never reorder or duplicate the delivered stream');
-  assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.shedEvents > 0);
+  assert.deepEqual(f.seenEvents, Array.from({ length: f.generatedEvents() / 300 }, (_, i) => i * 300 + 1),
+    'the durable one-shots all arrive in order');
+  assert.ok(f.seenImpacts.every((v, i) => i === 0 || v > f.seenImpacts[i - 1]),
+    'ambient impacts are delivered in order and without duplicates');
+  const shedImpacts = f.generatedEvents() - f.seenEvents.length - f.seenImpacts.length;
+  assert.ok(shedImpacts > 0, 'the worker actually sheds stale ambient impacts');
+  assert.equal(f.lane.getDiagnostics().workerClockLastDiagnostics.shedEvents, shedImpacts);
   assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.backpressureEpisodes >= 1);
   assert.ok(f.clock.backpressureTotalMs > 0);
   assert.equal(f.lane.getDiagnostics().error, null);
@@ -347,6 +352,32 @@ test('pause discards whole old debt and resume does not charge the hidden wall i
   assert.ok(f.clock.stepCount - pausedSteps >= 5 && f.clock.stepCount - pausedSteps <= 7);
   assert.equal(f.clock.shedStepCount, 0, 'the hidden interval is excluded, not reported as overload');
   assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
+});
+
+test('stopped presentation heartbeats hold the world until foreground beats resume', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.releaseAcks();
+  f.lane.runner.heartbeat();
+  await f.until(100);
+  assert.ok(f.clock.stepCount >= 5);
+  assert.equal(f.clock.heartbeatHeld, false);
+
+  await f.until(400);
+  assert.equal(f.clock.heartbeatHeld, true, 'the real worker clock enters its heartbeat hold');
+  const heldTick = f.clock.stepCount;
+  await f.until(900);
+  assert.equal(f.clock.stepCount, heldTick, 'ticks stay parked during the hold');
+
+  for (let elapsed = 920; elapsed <= 1100; elapsed += 20) {
+    f.lane.runner.heartbeat();
+    await f.until(elapsed);
+  }
+  assert.equal(f.clock.heartbeatHeld, false);
+  assert.ok(f.clock.stepCount - heldTick >= 11 && f.clock.stepCount - heldTick <= 12,
+    'recurring foreground beats resume the fixed-step cadence without charging the held interval');
+  assert.equal(f.lane.getDiagnostics().workerClockLastDiagnostics.heartbeatHolds, 1);
+  assert.equal(f.clock.shedStepCount, 0);
+  assert.equal(f.lane.getDiagnostics().error, null);
 });
 
 for (const boundary of ['scale', 'lifecycle']) {
