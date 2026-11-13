@@ -656,6 +656,12 @@ test('active ACK publishes only a contiguous retained reply and fails closed on 
       'a retained range that starts after the applied-watermark ACK is mid-apply backpressure, '
         + 'not a dropped hole — keep retaining instead of scheduling another rebuild',
     );
+    assert.equal(worker.localAckReplyAction(retained, {
+      ackJournalEnd: 40, orderedPostedEnd: 42, active: true, scale: 1,
+    }), 'publish');
+    assert.equal(worker.localAckReplyAction(retained, {
+      ackJournalEnd: 40, orderedPostedEnd: 41, active: true, scale: 1,
+    }), 'schedule');
     assert.equal(
       worker.localAckReplyAction(retained, {
         ackJournalEnd: 42, active: true, scale: 1, needsRebuild: true,
@@ -671,6 +677,47 @@ test('active ACK publishes only a contiguous retained reply and fails closed on 
   } finally {
     if (hadSelf) globalThis.self = previousSelf;
     else delete globalThis.self;
+  }
+});
+
+test('the first freed reply credit sends the contiguous retained tail before the next physics wake', async () => {
+  const previousSelf = globalThis.self;
+  const replies = [];
+  globalThis.self = { postMessage: reply => replies.push(reply) };
+  const send = data => globalThis.self.onmessage({ data });
+  const ticks = () => replies.filter(reply => reply.kind === 'clockTick');
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?retained-fifo-${Date.now()}`);
+    send({ kind: 'init', seq: 'fifo-init', profile: 'production', clockMode: 'worker-local',
+      timeScale: 1, seed: 4242, settings: {},
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')) });
+    await waitFor(() => replies.some(reply => reply.kind === 'ready'));
+    send({ kind: 'clockControl', active: true, generation: 1, lifecycleGeneration: 0, timeScale: 1 });
+    for (let i = 1; i <= 5; i++) {
+      send({ kind: 'clockCommand', commandSequence: i, lifecycleGeneration: 0, timeScale: 1, steps: 1,
+        commands: [{ t: 'spawn', seq: i, p: { token: `fifo-spawn-${i}`, spec: {
+          type: 'asteroid', pos: { x: i * 200, z: 1000 }, vel: { x: 0, z: 0 }, radius: 12,
+          collides: false, data: { typeId: 'ast_common_rock' },
+        } } }] });
+    }
+    send({ kind: 'finalize', seq: 'fifo-barrier' });
+    await waitFor(() => replies.some(reply => reply.seq === 'fifo-barrier'));
+    const before = ticks();
+    assert.equal(before.length, 4, 'one reply remains retained while all four credits are used');
+    send({ kind: 'clockAck', lifecycleGeneration: 0, clockSequence: before[0].clockSequence,
+      ackJournalEnd: before[0].journalEnd });
+    const after = ticks();
+    assert.equal(after.length, 5, 'the freed credit sends the retained reply during ACK ingress');
+    assert.equal(after[4].clockSequence, after[3].clockSequence + 1);
+    assert.equal(after[4].journalStart, after[3].journalEnd);
+    assert.equal(after[4].journalFullRebuild, false);
+    assert.equal(after[4].spawnInfos.length, 1);
+    assert.equal(after[4].commandSequence, 5);
+  } finally {
+    send({ kind: 'shutdown', seq: 'fifo-shutdown' });
+    await waitFor(() => replies.some(reply => reply.seq === 'fifo-shutdown'));
+    if (previousSelf === undefined) delete globalThis.self;
+    else globalThis.self = previousSelf;
   }
 });
 

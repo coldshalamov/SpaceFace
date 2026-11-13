@@ -151,6 +151,7 @@ const localClock = {
   sentAwaitingAck: false,
   sentClockSequence: 0,
   sentJournalEnd: 0,
+  postedJournalRanges: new Map(),
   lastHeartbeatAtMs: 0,
   heartbeatHeld: false,
   heartbeatHolds: 0,
@@ -483,6 +484,10 @@ function localStampCompletedMetadata(reply) {
 
 function localMergeReply(previous, next) {
   if (!previous) return next;
+  if (previous.lifecycleGeneration !== next?.lifecycleGeneration || previous.journalValid !== true
+    || next?.journalValid !== true || next.orderedJournalRange === false) {
+    previous.orderedJournalRange = false;
+  }
   const previousCompletedCount = localCompletedTickCount(previous);
   const nextCompletedCount = localCompletedTickCount(next);
   const previousFullCount = localCompletedFullRebuildCount(previous);
@@ -677,6 +682,7 @@ function localRefreshDurablePressure() {
 // dependency.
 function localAckReplyAction(reply, {
   ackJournalEnd = 0,
+  orderedPostedEnd = null,
   active = false,
   scale = 0,
   durableCount = 0,
@@ -684,7 +690,8 @@ function localAckReplyAction(reply, {
 } = {}) {
   if (!reply || !active || !(scale > 0)) return 'schedule';
   if (needsRebuild || durableCount >= LOCAL_DURABLE_LIMIT) return 'schedule-rebuild';
-  if (Number.isSafeInteger(reply.journalStart) && reply.journalStart > ackJournalEnd) {
+  if (Number.isSafeInteger(reply.journalStart) && reply.journalStart > ackJournalEnd
+    && reply.journalStart !== orderedPostedEnd) {
     // The retained window starts past the last applied-watermark ack: the
     // previous publish is still mid-apply on main (a paced visit spreads a
     // dense range over several presents). That is ordinary backpressure, not
@@ -698,8 +705,24 @@ function localAckReplyAction(reply, {
 
 async function publishRetainedReplyAfterAck(ackJournalEnd) {
   const reply = localClock.latestReply;
+  // The standard reply stream is FIFO. A contiguous retained range can follow
+  // the last posted range while main is still applying earlier replies.
+  let orderedPostedEnd = null;
+  if (!sabEnv && reply?.journalValid === true && !reply.journalFullRebuild && reply.orderedJournalRange !== false
+    && reply.lifecycleGeneration === localClock.lifecycleGeneration) {
+    orderedPostedEnd = ackJournalEnd;
+    for (const sequence of localClock.unackedSequences) {
+      const range = localClock.postedJournalRanges.get(sequence);
+      if (!range || range.lifecycle !== reply.lifecycleGeneration || range.start !== orderedPostedEnd) {
+        orderedPostedEnd = null;
+        break;
+      }
+      orderedPostedEnd = range.end;
+    }
+  }
   const action = localAckReplyAction(reply, {
     ackJournalEnd,
+    orderedPostedEnd,
     active: localClock.active,
     scale: localClock.scale,
     durableCount: localDurableCount(reply),
@@ -753,6 +776,7 @@ function localArmStaleAckWatchdog(clockSequence) {
     // and lands as an idempotent replace even when the original apply is
     // still queued on main. A late duplicate ACK is sequence-rejected below.
     localClock.unackedSequences.length = 0;
+    localClock.postedJournalRanges.clear();
     localClock.sentAwaitingAck = false;
     localClock.needsRebuildOnSend = true;
     localClock.staleAckRecoveries++;
@@ -780,12 +804,19 @@ async function publishLocalReply(reply) {
   localClock.sentAwaitingAck = true;
   localClock.sentClockSequence = reply.clockSequence;
   localClock.sentJournalEnd = Number.isSafeInteger(reply.journalEnd) ? reply.journalEnd : 0;
-  if (localClock.unackedSequences.length === 1) localArmStaleAckWatchdog(reply.clockSequence);
   localClock.latestReply = null;
   localReplyLatestRows.delete(reply);
   localClock.durableCount = 0;
   localSetBackpressure(false);
   postTickLikeReply(reply);
+  if (!sabEnv && reply.journalValid === true && !reply.journalFullRebuild && reply.orderedJournalRange !== false
+    && Number.isSafeInteger(reply.journalStart) && Number.isSafeInteger(reply.journalEnd)
+    && reply.journalEnd >= reply.journalStart && localClock.unackedSequences.includes(reply.clockSequence)) {
+    localClock.postedJournalRanges.set(reply.clockSequence, {
+      lifecycle: reply.lifecycleGeneration, start: reply.journalStart, end: reply.journalEnd,
+    });
+  }
+  if (localClock.unackedSequences.length === 1) localArmStaleAckWatchdog(reply.clockSequence);
 }
 
 // ---- PERF-02 windowed lane accounting --------------------------------------
@@ -1237,7 +1268,7 @@ async function localReleaseClockAck(clockSequence, ackJournalEnd) {
   let cleared = 0;
   while (localClock.unackedSequences.length
     && localClock.unackedSequences[0] <= clockSequence) {
-    localClock.unackedSequences.shift();
+    localClock.postedJournalRanges.delete(localClock.unackedSequences.shift());
     cleared++;
   }
   if (!cleared) return false;
