@@ -378,6 +378,37 @@ signed reversals in 221 and 267 assessable intervals. The after arm still execut
 of simulation per wall second. Combat evolved differently and the pair does not isolate a
 single change. Both flight PNGs were opened. See `shared-latest-adventure-pair-summary.json`.
 
+The follow-up pinned only committed runtime changes and left out the bloom candidate. Adventure
+drew 11.89 → 11.33/s over 24 s of simultaneous thrust, turn, and fire. Actual moving mesh gaps
+were 149 → 157 ms p95 and 246 → 322 ms maximum. The ship fired 57 and 54 shots, with zero
+backsteps over 252 and 238 assessable intervals. The after arm ran 0.58 s of simulation per wall
+second and shed 551 steps. Both flight PNGs were opened. See `shared-shipped-adventure-pair-summary.json`.
+
+The next batch landed three focused changes:
+
+- `1c5e7bdfa661` keys static dressing layers by roster identity. Before the fix, native physics
+  and the projectile grid could see each other's obstacles when unrelated version counters
+  matched, and they rebuilt both arrays every alternating call when the counters differed.
+  The regression reproduced the wrong obstacle on baseline. All 26 focused dressing tests passed.
+- `a8762fb12660` resolves the Helios claim face through the authored live slot or the versioned
+  dormant roster. The opportunity still follows promotion, exhaustion and save restoration.
+  All 21 focused Helios tests passed. The 20-run 47-A replay and reload matched its checked-in digest.
+- `f09dfb9255bb` retains the visible tail of each authored instance chunk and reuses the owner's
+  existing cull result across its proxy slots. `2daf823dbc0a` repaired the existing field-device
+  fixture to assert both the skipped 60 Hz callback and the actual 30 Hz update. The 59 buffer
+  range, package lifecycle, and instance policy checks passed.
+
+The locked pair `shared-dressing-slot-and-pool-pair-summary.json` pinned those three changes.
+Adventure drew 12.00 → 12.11/s, with moving mesh gaps of 135 → 143 ms p95 and 196 → 276 ms max.
+Gauntlet drew 9.86 → 9.77/s during active flight, with mesh gaps of 122 → 126 ms p95 and
+171 → 185 ms max. Adventure fired 53 and 54 shots. Gauntlet fired 191 in each arm before Rearm.
+All four PNGs were opened. This pair did not demonstrate a sustained cadence gain.
+
+`cf1508fed30a` moves background shader and residency work to an explicit background task when
+available. The old bare yield used the caller's priority and boosted its continuation. The
+starvation fallback still fires once if the browser never schedules the background task.
+All 43 admission and scheduling tests passed.
+
 The next substantial performance owners are the worker's fixed-step physics and tactical AI,
 and the renderer's HDR world draw and admission. The old raw CPU profile's largest named
 sample fell in a lost sampling interval. Filtering intervals over 20 ms leaves physics at
