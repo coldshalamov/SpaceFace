@@ -144,11 +144,11 @@ function buildDrum() {
 }
 
 function buildValve() {
-  return {
-    parts: [
-      quad('valve_lip', [-0.9, 0.4, 0], [0.2, 0.55, 0.1], [0.4, -0.1, 0.25], [-0.7, -0.35, 0.05], 0x9a6070),
-    ],
-  };
+  const lip = quad('valve_lip', [-0.9, 0.4, 0], [0.2, 0.55, 0.1], [0.4, -0.1, 0.25], [-0.7, -0.35, 0.05], 0x9a6070);
+  // The tissue material already binds its skin maps. Match the duplicated
+  // vertices across the two triangles so the existing maps cover the card.
+  lip.uvs = [0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1];
+  return { parts: [lip] };
 }
 
 function buildGlove() {

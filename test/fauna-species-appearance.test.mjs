@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { BOLUS_SECTOR_ID } from '../src/data/theBolus.js';
 import { tickBolus } from '../src/systems/theBolus.js';
 import { buildFaunaMesh } from '../src/render/faunaVisuals.js';
+import { preloadCreatureSkinLibrary } from '../src/render/creatureSkinLibrary.js';
 import { render, disposeRendererOwnedResources } from '../src/render/renderer.js';
 
 const flush = async () => { for (let i = 0; i < 100; i++) await Promise.resolve(); };
@@ -62,6 +63,7 @@ function fixture() {
 }
 
 test('a held Bolus valve becomes a prepared suture without repeatedly rebuilding', async () => {
+  const skins = await preloadCreatureSkinLibrary(null, { loadTexture: async () => new THREE.Texture() });
   const t = fixture(); const gate = deferred(); let options;
   t.state.render.compileObjectPipelines = (_root, opts) => { options = opts; return gate.promise; };
   try {
@@ -71,6 +73,9 @@ test('a held Bolus valve becomes a prepared suture without repeatedly rebuilding
     for (let i = 0; i < 13; i++) tickBolus(world, 0.1);
     assert.equal(t.entity.data.ecology.speciesId, 'bolus_suture');
     assert.deepEqual(t.initial.children.map(child => child.name), ['valve_lip']);
+    assert.equal(t.initial.children[0].geometry.attributes.uv.count, 6);
+    assert.equal(t.initial.children[0].material.map, skins.tissue.baseColor);
+    assert.equal(t.initial.children[0].material.normalMap, skins.tissue.normal);
     t.poll(); await flush();
     const pending = t.owner._appearanceReplacements.get(t.entity.id);
     assert.ok(pending);
@@ -87,6 +92,8 @@ test('a held Bolus valve becomes a prepared suture without repeatedly rebuilding
     gate.resolve({ ready: true });
     assert.equal((await pending.completion).status, 'committed');
     assert.deepEqual(t.entity.mesh.children.map(child => child.name), ['suture_strap', 'suture_stitch']);
+    assert.ok(t.entity.mesh.children.every(child => child.material.map === skins.tissue.baseColor
+      && child.material.normalMap === skins.tissue.normal), 'the prepared successor retains the shared live skins');
     assert.equal(t.entity.mesh.position.x, -460, 'publication uses the current entity pose');
     assert.equal(t.entity.mesh.visible, true);
     assert.equal(t.initial.parent, null);
