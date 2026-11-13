@@ -431,7 +431,7 @@ export function createSwarmFloorDirector(ctx) {
         ? `Need ${missing} more · ${rec.label.split('·')[0].trim()}`
         : rec.refuseText || `${rec.label.split('·')[0].trim()} does not fit your hull.`,
       kind: 'warn',
-      ttl: 2,
+      ttl: 1.1,
     });
     emit('audio:cue', { id: DENY_CUE, position: { x: pad.spot.x, z: pad.spot.z }, gain: 0.5 });
   }
