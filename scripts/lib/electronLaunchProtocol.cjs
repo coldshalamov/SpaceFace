@@ -4,6 +4,7 @@ const os = require('os');
 const path = require('path');
 
 const PLAYER_ELECTRON_PORT = 41788;
+const ELECTRON_STARTUP_TIMEOUT_MS = 90_000;
 const SPACEFACE_HEALTH_MAX_BYTES = 4096;
 const SPACEFACE_HEALTH_TIMEOUT_MS = 1000;
 const ELECTRON_ISOLATED_EVIDENCE_MODE = 'isolated-evidence';
@@ -319,6 +320,7 @@ const TERMINAL_PRIORITY = Object.freeze([
 ]);
 
 module.exports = {
+  ELECTRON_STARTUP_TIMEOUT_MS,
   appendLaunchReceipt,
   electronApplicationEnvironment,
   electronEvidenceProfileRoot,

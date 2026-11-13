@@ -222,7 +222,11 @@ async function loadMain({ env = {}, isPackaged = false, isolatedEvidence = false
       isMinimized() { return false; },
       isFocused() { return true; },
       show() {},
-      async loadURL(url) { webContents.url = url; webContents.emit('did-finish-load'); },
+      async loadURL(url) {
+        webContents.url = url;
+        webContents.emit('did-finish-load');
+        this.emit('ready-to-show');
+      },
     });
     windows.push(win);
     return win;
@@ -232,6 +236,8 @@ async function loadMain({ env = {}, isPackaged = false, isolatedEvidence = false
     __dirname: path.join(ROOT, 'electron'),
     console,
     URL,
+    setTimeout,
+    clearTimeout,
     module: { exports: {} },
     exports: {},
     process: processEvents,
@@ -269,6 +275,7 @@ async function loadMain({ env = {}, isPackaged = false, isolatedEvidence = false
       }
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
+          ELECTRON_STARTUP_TIMEOUT_MS: 90_000,
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
           isAllowedElectronListenerPort() { return true; },
           isAssetPreloadFailureMessage() { return false; },

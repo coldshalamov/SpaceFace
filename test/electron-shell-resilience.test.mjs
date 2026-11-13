@@ -85,6 +85,7 @@ async function loadShell({
   showMessageBoxThrows = false,
   noDialog = false,
   seed = null,
+  deferFirstPaint = false,
 } = {}) {
   const tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'sf-resilience-'));
   const paths = {
@@ -198,6 +199,7 @@ async function loadShell({
         if (failure) throw failure;
         webContents.crashed = false;
         webContents.emit('did-finish-load');
+        if (!deferFirstPaint) this.emit('ready-to-show');
       },
     });
     // Electron exposes loadURL on both the window and its webContents; the shell reloads through the latter.
@@ -254,6 +256,7 @@ async function loadShell({
       }
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
+          ELECTRON_STARTUP_TIMEOUT_MS: 90_000,
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
           isAllowedElectronListenerPort() { return true; },
           isAssetPreloadFailureMessage() { return false; },
@@ -383,7 +386,7 @@ test('isolated evidence never raises a blocking box or recovers over a crash', a
     await settle();
     assert.equal(live.win.loads.length, 1, 'a probe sees the crash instead of an automatic reload');
     assert.equal(live.dialog.messageBoxes.length, 0);
-    assert.equal(live.timers.length, 0);
+    assert.equal(live.timers.filter((timer) => !timer.cleared).length, 0);
   } finally {
     live.cleanup();
   }
@@ -500,6 +503,23 @@ test('the automatic reload budget comes back after two minutes', async () => {
   }
 });
 
+test('renderer restart failure before the first paint offers an unparented recovery choice', async () => {
+  const h = await loadShell({ loadFailures: [null, new Error('reload failed')], dialogResponses: [1], deferFirstPaint: true });
+  try {
+    assert.equal(h.win.isVisible(), false);
+    h.win.webContents.crashed = true;
+    h.win.webContents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 3 });
+    await settle();
+    const [box] = h.dialog.messageBoxes;
+    assert.ok(box);
+    assert.deepEqual([...box.options.buttons], ['Reload', 'Quit']);
+    assert.equal(box.parented, false, 'an unopened game window cannot own the only recovery UI');
+    assert.equal(h.win.destroyed, true);
+  } finally {
+    h.cleanup();
+  }
+});
+
 test('Quit from renderer recovery closes the crashed window without a dead save IPC', async () => {
   const h = await loadShell({ dialogResponses: [1] });
   try {
@@ -560,26 +580,27 @@ test('a hung renderer is offered Wait / Reload after 15 s, and Reload restarts i
   const h = await loadShell({ dialogResponses: [0, 1] });
   try {
     const { win } = h;
+    const timers = () => h.timers.filter((timer) => timer.ms !== 90_000);
     win.webContents.emit('unresponsive');
-    assert.equal(h.timers.length, 1);
-    assert.equal(h.timers[0].ms, 15 * 1000);
+    assert.equal(timers().length, 1);
+    assert.equal(timers()[0].ms, 15 * 1000);
 
     win.webContents.emit('responsive');
-    assert.equal(h.timers[0].cleared, true, 'recovering on its own cancels the prompt');
+    assert.equal(timers()[0].cleared, true, 'recovering on its own cancels the prompt');
 
     win.webContents.emit('unresponsive');
-    assert.equal(h.timers.length, 2);
-    h.timers[1].fn();
+    assert.equal(timers().length, 2);
+    timers()[1].fn();
     await settle();
     assert.equal(h.dialog.messageBoxes.length, 1);
     const asked = h.dialog.messageBoxes[0].options;
     assert.deepEqual([...asked.buttons], ['Wait', 'Reload']);
     assert.match(asked.message, /not responding/);
     assert.equal(win.loads.length, 1, 'Wait changes nothing');
-    assert.equal(h.timers.length, 3, 'still hung after Wait: ask again later');
-    assert.ok(h.timers[2].ms > 15 * 1000);
+    assert.equal(timers().length, 3, 'still hung after Wait: ask again later');
+    assert.ok(timers()[2].ms > 15 * 1000);
 
-    h.timers[2].fn();
+    timers()[2].fn();
     await settle();
     assert.equal(h.dialog.messageBoxes.length, 2);
     assert.equal(win.webContents.forcefulKills, 1, 'Reload ends the stuck renderer first');
@@ -604,14 +625,15 @@ test('a hung renderer is offered Wait / Reload after 15 s, and Reload restarts i
 test('a machine waking from sleep is not asked about a hang', async () => {
   const h = await loadShell();
   try {
+    const timers = () => h.timers.filter((timer) => timer.ms !== 90_000);
     h.powerMonitor.emit('suspend');
     h.win.webContents.emit('unresponsive');
-    h.timers[0].fn();
+    timers()[0].fn();
     await settle();
     assert.equal(h.dialog.messageBoxes.length, 0);
-    assert.equal(h.timers.length, 2, 'asks again after the grace period instead');
+    assert.equal(timers().length, 2, 'asks again after the grace period instead');
     h.powerMonitor.emit('resume');
-    h.timers[1].fn();
+    timers()[1].fn();
     await settle();
     assert.equal(h.dialog.messageBoxes.length, 1);
   } finally {

@@ -286,6 +286,7 @@ async function loadMainWithCrashReporter({ isPackaged = false, isolatedEvidence 
       async loadURL(url) {
         webContents.url = url;
         webContents.emit('did-finish-load');
+        this.emit('ready-to-show');
       },
     });
     windows.push(win);
@@ -297,6 +298,8 @@ async function loadMainWithCrashReporter({ isPackaged = false, isolatedEvidence 
     __dirname: path.join(ROOT, 'electron'),
     console: { ...console, error: (...args) => consoleErrors.push(args) },
     URL,
+    setTimeout,
+    clearTimeout,
     module: { exports: {} },
     exports: {},
     process: processEvents,
@@ -326,6 +329,7 @@ async function loadMainWithCrashReporter({ isPackaged = false, isolatedEvidence 
       if (specifier === './autoUpdate.cjs' && updaterSpy) return updaterSpy;
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
+          ELECTRON_STARTUP_TIMEOUT_MS: 90_000,
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
           isAllowedElectronListenerPort() { return true; },
           isAssetPreloadFailureMessage() { return false; },

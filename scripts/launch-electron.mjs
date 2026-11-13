@@ -10,6 +10,7 @@ import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs'
 
 const require = createRequire(import.meta.url);
 const {
+  ELECTRON_STARTUP_TIMEOUT_MS,
   electronApplicationEnvironment,
   evaluateLaunchOutcome,
   formatLaunchOutcome,
@@ -81,7 +82,7 @@ async function launchElectron() {
     });
   }
 
-  const deadline = Date.now() + 90_000;
+  const deadline = Date.now() + ELECTRON_STARTUP_TIMEOUT_MS;
   let result;
   do {
     const parsed = readReceipts();

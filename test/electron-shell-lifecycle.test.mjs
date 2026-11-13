@@ -57,6 +57,7 @@ async function loadMain({
   updateDialogResponse = null,
   updaterWillQuit = true,
   deferFirstPaint = false,
+  hangInitialNavigation = false,
 } = {}) {
   const windows = [];
   const commands = [];
@@ -76,6 +77,7 @@ async function loadMain({
     },
   });
   const pendingServerListens = [];
+  const timers = [];
   const serverStats = { created: 0, listens: 0, quits: 0, exits: [] };
   const security = {
     permissionCheckHandler: null,
@@ -186,6 +188,7 @@ async function loadMain({
         this.loadedUrl = url;
         this.loadRequests.push(url);
         currentUrl = url;
+        if (hangInitialNavigation) await new Promise(() => {});
         if (failWindowLoads > 0) {
           failWindowLoads -= 1;
           throw new Error('injected window load failure');
@@ -244,6 +247,12 @@ async function loadMain({
   const sandbox = {
     __dirname: path.join(ROOT, 'electron'),
     console,
+    setTimeout(callback, delay) {
+      const timer = { callback, delay, cleared: false, unref() {} };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimeout(timer) { timer.cleared = true; },
     URL,
     module: { exports: {} },
     exports: {},
@@ -333,6 +342,7 @@ async function loadMain({
       }
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
+          ELECTRON_STARTUP_TIMEOUT_MS: 90_000,
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
           isAllowedElectronListenerPort() { return true; },
           isAssetPreloadFailureMessage(message) { return /authored preload failed/i.test(String(message || '')); },
@@ -385,7 +395,7 @@ async function loadMain({
   }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats, workshop, updater, quitRequests };
+  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats, workshop, updater, quitRequests, timers };
 }
 
 function loadPreload() {
@@ -706,6 +716,36 @@ test('second Windows launch waits for the existing window to finish loading and 
   assert.equal(h.windows.length, 1);
   assert.equal(h.serverStats.listens, 1);
   assert.equal(h.receipts.filter(({ status }) => status === 'window-ready').length, 1);
+});
+
+test('a hidden shell with an unsettled navigation reaches a terminal startup failure', async () => {
+  const h = await loadMain({ hangInitialNavigation: true, allowStartupFailure: true });
+  assert.equal(h.win.isVisible(), false);
+  assert.deepEqual(h.serverStats.exits, []);
+  const startup = h.timers.find((timer) => !timer.cleared && timer.delay === 90_000);
+  assert.ok(startup, 'the in-process shell owns the same bound as the launch wrapper');
+  startup.callback();
+  await settle();
+  assert.equal(h.receipts.filter(({ status }) => status === 'startup-failed').length, 1);
+  assert.deepEqual(h.serverStats.exits, [1]);
+  assert.ok(!h.receipts.some(({ status }) => status === 'window-ready'));
+});
+
+test('first window deadline covers absent paint and clears for a ready window', async () => {
+  const h = await loadMain({ deferFirstPaint: true, allowStartupFailure: true });
+  assert.equal(h.win.isVisible(), false);
+  const timer = h.timers.find((row) => row.delay === 90_000);
+  assert.ok(timer && !timer.cleared);
+  timer.callback();
+  await settle();
+  h.win.emit('ready-to-show');
+  assert.equal(h.win.isVisible(), false, 'a late paint cannot revive abandoned startup');
+  assert.equal(h.receipts.filter(({ status }) => status === 'startup-failed').length, 1);
+  assert.deepEqual(h.serverStats.exits, [1]);
+
+  const ready = await loadMain();
+  assert.equal(ready.win.isVisible(), true);
+  assert.ok(ready.timers.find((row) => row.delay === 90_000)?.cleared);
 });
 
 test('shutdown never recreates a zero-window application', async () => {

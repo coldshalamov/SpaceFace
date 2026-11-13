@@ -24,6 +24,7 @@ const fs = require('fs');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const { resolveMountedUserContentDir } = require('../scripts/lib/userContentStore.cjs');
 const {
+  ELECTRON_STARTUP_TIMEOUT_MS,
   appendLaunchReceipt,
   isAllowedElectronListenerPort,
   isAssetPreloadFailureMessage,
@@ -1061,7 +1062,7 @@ function createRendererRecovery({
     if (!canAsk) return null;
     dialogOpen = true;
     try {
-      const result = await (live()
+      const result = await (live() && win.isVisible?.() !== false
         ? dialogApi.showMessageBox(win, options)
         : dialogApi.showMessageBox(options));
       return result && typeof result.response === 'number' ? result.response : null;
@@ -1325,9 +1326,16 @@ async function createWindow() {
   let retryableNavigationFailure = null;
   let initialLoadReady = false;
   let firstPaintReady = false;
+  let startupTimer = null;
+  let startupAbandoned = false;
+  const cancelStartupTimer = () => {
+    if (startupTimer === null) return;
+    clearTimeout(startupTimer);
+    startupTimer = null;
+  };
   let focusWhenReady = false;
   const focusGameWindow = () => {
-    if (win.isDestroyed() || appQuitting || hideEvidenceWindow) return;
+    if (startupAbandoned || win.isDestroyed() || appQuitting || hideEvidenceWindow) return;
     if (win.isMinimized()) win.restore();
     win.focus();
   };
@@ -1421,6 +1429,7 @@ async function createWindow() {
   quitContents.on('render-process-gone', onQuitRendererGone);
   quitContents.on('unresponsive', releaseInterruptedQuit);
   win.once('closed', () => {
+    cancelStartupTimer();
     clearPreparedUpdateQuit();
     windowQuitPreparation.delete(win);
     windowFocusOnRelaunch.delete(win);
@@ -1489,7 +1498,8 @@ async function createWindow() {
     }
   });
   function showReadyWindow() {
-    if (!firstPaintReady || !initialLoadReady || win.isDestroyed()) return;
+    if (startupAbandoned || !firstPaintReady || !initialLoadReady || win.isDestroyed()) return;
+    cancelStartupTimer();
     receipt('window-ready', {
       port,
       backgroundThrottling,
@@ -1538,11 +1548,23 @@ async function createWindow() {
   });
   // One player-facing launch URL: Electron and a browser tab both boot the same game route.
   // Release-only debug stripping is handled by the production bundle, not by a gameplay URL flag.
+  const navigationDeadline = new Promise((_, reject) => {
+    startupTimer = setTimeout(() => {
+      startupTimer = null;
+      startupAbandoned = true;
+      recovery?.dispose();
+      const error = new Error('The game window did not finish opening in time. Close this message and launch SpaceFace again.');
+      error.code = 'SPACEFACE_INITIAL_WINDOW_TIMEOUT';
+      if (initialCanonicalLoadPending) reject(error);
+      else handleWindowCreationFailure(error);
+    }, ELECTRON_STARTUP_TIMEOUT_MS);
+    startupTimer?.unref?.();
+  });
   initialCanonicalLoadPending = true;
   try {
     for (;;) {
       try {
-        await win.loadURL(gameUrl);
+        await Promise.race([win.loadURL(gameUrl), navigationDeadline]);
         break;
       } catch (error) {
         if (isCommittedCanonicalLoadAbort(
@@ -1561,6 +1583,9 @@ async function createWindow() {
         receipt('canonical-navigation-retry', { code: error.code, url: gameUrl });
       }
     }
+  } catch (error) {
+    cancelStartupTimer();
+    throw error;
   } finally {
     initialCanonicalLoadPending = false;
   }
