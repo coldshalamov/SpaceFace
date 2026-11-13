@@ -168,7 +168,7 @@ function rescueActor(h, slot) {
 // leads the story beats, and the firing drills sit behind the first dock (OPENING-1 — the
 // driver walks the same order the player now meets). `choice` stays out: the rescue and
 // missing-three verbs gate it, and this harness owns no offers.
-const DRILL_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock', 'marker', 'focus', 'burst', 'disengage'];
+const DRILL_KEYS = ['tether', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);

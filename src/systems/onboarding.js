@@ -310,17 +310,6 @@ const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long befor
 // the static pacing/one-voice checks still read this literal from source so the audit sees the
 // authored copy, not the imported object.
 export const BEATS = [
-  { // THRUST/BRAKE — twenty seconds of flying first; the premise caption and the bound 47-A
-    // recovery mark are already up when this opens (OPENING-1 item 4).
-    key: 'thrust',
-    line: 'Thrust until speed passes forty.',
-    done: 'speedUp',
-  },
-  {
-    key: 'brake',
-    line: 'Brake below ten.',
-    done: 'speedDown',
-  },
   { // FIRST TETHER — the signature verb. Attach lands inside the first minutes of control.
     key: 'tether',
     line: 'Target the marked derelict.',
@@ -361,6 +350,17 @@ export const BEATS = [
     key: 'dock',
     line: 'Helios. Dock when close.',
     done: 'docked',
+  },
+  { // THRUST/BRAKE — OPENING-1b: no speed drill before the first throw; the rock is on screen at
+    // spawn and the situation teaches flying. These wait behind the first dock with the drills.
+    key: 'thrust',
+    line: 'Thrust until speed passes forty.',
+    done: 'speedUp',
+  },
+  {
+    key: 'brake',
+    line: 'Brake below ten.',
+    done: 'speedDown',
   },
   { // Behind the first dock (the 15–40 minute slot): the firing drills resume one at a time.
     key: 'marker',

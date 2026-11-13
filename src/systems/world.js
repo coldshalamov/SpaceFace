@@ -292,6 +292,7 @@ import {
   upsertResourceBody,
 } from '../world/resourceBodyRecords.js';
 import { advanceResourceBody, advanceWorldRecord } from '../world/worldCatchup.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 import {
   consumeEmbodimentPayload,
   createEmptyEmbodimentCache,
@@ -7248,7 +7249,8 @@ export const world = {
             .replace(/_/g, ' ')
             .replace(/\b\w/g, (c) => c.toUpperCase())
             .trim();
-          this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || p.name || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
+          // OPENING-1b: the first minutes speak with one voice; the landmark is still identified.
+          if (!openingQuiet(state)) this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || p.name || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
         }
       }
     }

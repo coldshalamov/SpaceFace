@@ -180,24 +180,11 @@ function rescueActor(h, slot) {
 function driveToChoiceOffered(h) {
   h.bus.emit('game:started', {});
   h.mark('new game: rescue staged');
-  tick(h); // B0 thrust opens — the premise caption and the bound 47-A mark are already up
-  h.mark('first verb: thrust');
-
-  // Twenty seconds of flying first: past forty, then back under ten.
+  tick(h); // B0 tether opens — no speed drill before the first throw (OPENING-1b)
   const player = playerOf(h);
-  player.vel.x = 41; player.vel.z = 0;
-  tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.thrust != null, 'the rail opens on the thrust beat');
-  h.mark('thrust past forty');
-  settle(h, 5);
-  player.vel.x = 0; player.vel.z = 0;
-  tick(h);
-  assert.ok(h.state.onboarding.beatDoneAt.brake != null, 'the brake beat follows');
-  h.mark('brake below ten');
-
   // The signature latch — the derelict the tether beat staged.
   settle(h, 5);
-  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'tether', 'the latch lesson follows the flight warm-up');
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'tether', 'the latch lesson is the first verb');
   h.mark('first verb: tether');
   const derelictId = h.sys._derelictId;
   assert.ok(derelictId != null, 'tether lesson stages its derelict');
@@ -289,6 +276,14 @@ function driveToDock(h) {
 
   // Behind the first dock (the 15–40 minute slot): marker, focus, burst, disengage — one at
   // a time on their existing gates.
+  settle(h, 5);
+  player.vel.x = 41; player.vel.z = 0;
+  tick(h);
+  assert.ok(h.state.onboarding.beatDoneAt.thrust != null, 'thrust resolves behind the first dock');
+  settle(h, 5);
+  player.vel.x = 0; player.vel.z = 0;
+  tick(h);
+  assert.ok(h.state.onboarding.beatDoneAt.brake != null, 'brake follows');
   settle(h, 5);
   let trainer = h.state.entities.get(h.sys._trainerId);
   assert.ok(trainer, 'the marker beat stages its trainer');
@@ -444,12 +439,12 @@ test('the first ten minutes: the opening timeline on a fixed seed', () => {
 
   // Rail-order bar (OPENING-1): the ship flies first, the story's beats run ahead of the
   // first dock, and the firing drills wait behind it.
-  assert.ok(h.state.onboarding.beatDoneAt.thrust < h.state.onboarding.beatDoneAt.claimed,
-    'the flight warm-up opens the rail');
+  assert.ok(h.state.onboarding.beatDoneAt.tether < h.state.onboarding.beatDoneAt.thrust,
+    'the first latch opens the rail; no speed drill stands before it');
   assert.ok(h.state.onboarding.beatDoneAt.claimed < h.state.onboarding.beatDoneAt.dock,
     'the refusable choice precedes the first dock');
   assert.ok(h.state.onboarding.beatDoneAt.dock < h.state.onboarding.beatDoneAt.marker,
-    'the firing drills sit behind the first dock');
+    'the flight and firing drills sit behind the first dock');
   const kill = milestones.find((m) => m.milestone === 'momentumKill');
   const wanted = milestones.find((m) => m.milestone === 'wantedBeat');
   assert.ok(kill && wanted, 'the thesis milestones fired: momentum kill + wanted beat');

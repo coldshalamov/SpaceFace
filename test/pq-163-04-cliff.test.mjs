@@ -199,7 +199,7 @@ function makeContext(state) {
 }
 
 // The opening rail through the first berth. The swing opens between tether and raid.
-const DRILL_KEYS = ['thrust', 'brake', 'tether', 'raid', 'claimed', 'seam', 'dock'];
+const DRILL_KEYS = ['tether', 'raid', 'claimed', 'seam', 'dock', 'thrust', 'brake'];
 
 function tick(h, dt = 0.25) {
   h.sys.update(dt, h.state);

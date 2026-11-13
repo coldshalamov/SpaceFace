@@ -118,6 +118,7 @@ import { makeShipEntitySpec } from './ships.js';
 import { HEADLINE_TEMPLATES, fillTemplate } from '../data/newsTemplates.js';
 import { BEAMS } from '../data/mining.js';
 import { barkFor } from '../data/barks.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 // INF: a hauler that loads against an empty shelf is the visible end of a broken feeder chain —
 // its miner died before posting a lot, and nothing in the world said so. The berth the run was
@@ -5887,7 +5888,8 @@ export const npcJobsRuntime = {
         sectorId: entry.sectorId || null, simTime: now, via: via || 'threat_clear',
       });
     } catch { /* advisory only */ }
-    if (!quiet) {
+    // OPENING-1b: no crew chatter while the opening rail speaks (the return stays on the record).
+    if (!quiet && !openingQuiet(this.state)) {
       // INF-U6: a worker the PLAYER scattered does not thank the player for cover.
       const threat = entry.threatId != null && this.state.entities
         ? this.state.entities.get(entry.threatId)
