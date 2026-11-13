@@ -377,3 +377,14 @@ No workers launched during this final capture. Continue from the measured reply 
 - `5d2ef99c92eb` reviewed. Valve UVs cover both triangles and preserve shared texture lifetimes. The available flight capture is too dark to establish the authored texture read.
 
 Launched Codex `shared_sim` (spatial hash and activity), `shared_render` (retained batches and bloom fixture), and `cross_mode_probe` (public flight harness and Circuit impacts). No Devin launches. The ongoing cadence defect affects Adventure and Gauntlet. Continue with fixed-step physics and tactical AI, plus the HDR world draw and admission work. Open items include the original retail freeze, drawn rock approach/contact, Circuits scored finish, Gauntlet Retry, and packaged launch. See [QUALITY.md](QUALITY.md) for measurements and exact captures.
+
+### Stand-in log — shared flight follow-up
+
+- `1c5e7bdfa661` fixed. Native physics and projectile sweeps now keep separate static dressing rosters even when their version numbers match. The regression reproduced the wrong roster on baseline.
+- `a8762fb12660` accepted. Helios traffic resolves the claim face by authored slot. The 47-A replay and reload matched 20 times.
+- `f09dfb9255bb` accepted. Authored instance pools reuse their per-owner frustum result and retain their submitted range. No live cadence gain established.
+- `cf1508fed30a` fixed. Background admissions now yield to flight and input at the task scheduler. Adventure p95 moving-mesh gap fell from 170 to 150 ms, with a worse maximum gap in that pair.
+- `2daf823dbc0a` fixed. The existing buffer test now verifies the 30 Hz field surface owner at both skipped and active callbacks. All 59 related tests passed.
+- `5105aa79edac` reviewed. Casket Worm geometry and material ownership were inspected and the lock-protected production camera PNG was opened. Fine surface detail remained hard to see at the production camera distance. Visual acceptance belongs to the lead.
+
+Reassigned Codex `shared_sim` to fixed-step and economy profiling, `shared_render` to shared render traversal, and `cross_mode_probe` to the dressing roster fix. No Devin launches. See [QUALITY.md](QUALITY.md) for pinned comparisons and unfinished routes. The fixed-step and renderer costs still block sustained smoothness.
