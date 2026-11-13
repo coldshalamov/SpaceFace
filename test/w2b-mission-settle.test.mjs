@@ -101,8 +101,7 @@ test('10 sealed + 2 personal units, recovery loss 6: defeat takes the loss once 
   const c = Object.create(combat);
   c.state = state;
   c.bus = new Bus();
-  c.restorePlayerAtRecoveryDock = () => {};
-  state.entities.set(1, { id: 1, pos: { x: 0, z: 0 }, data: {} });
+  state.entities.set(1, { id: 1, alive: false, flags: { defeated: true }, pos: { x: 0, z: 0 }, data: {} });
   c._pendingPlayerRecovery = { playerId: 1, receipt: { recovery: plan } };
   const res = c.recoverPendingPlayer({});
   assert.equal(res.ok, true);
@@ -131,8 +130,9 @@ test('a loss larger than the manifest takes the personal units it should, and no
   // Survivors (6) >= need (4): the contract is NOT failed by this death; the plan alone applies.
   assert.equal(count(bus, 'mission:failed'), 0);
   const c = Object.create(combat);
-  c.state = state; c.bus = new Bus(); c.restorePlayerAtRecoveryDock = () => {};
-  state.entities.set(1, { id: 1, pos: { x: 0, z: 0 }, data: {} });
+  c.state = state;
+  c.bus = new Bus();
+  state.entities.set(1, { id: 1, alive: false, flags: { defeated: true }, pos: { x: 0, z: 0 }, data: {} });
   c._pendingPlayerRecovery = { playerId: 1, receipt: { recovery: plan } };
   assert.equal(c.recoverPendingPlayer({}).ok, true);
   assert.equal(state.player.cargo.items[GOOD], 6, 'one loss of 6 from 12, applied once');

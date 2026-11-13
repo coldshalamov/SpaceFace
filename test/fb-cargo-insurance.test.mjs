@@ -91,8 +91,9 @@ test('an honored claim consumes the policy — a second defeat on the same trip 
   const c = Object.create(combat);
   c.state = state;
   c.bus = { emit() {}, on() {} };
-  c.restorePlayerAtRecoveryDock = () => {};
-  state.entities = new Map([['player', { id: 'player', pos: { x: 0, z: 0 }, data: {} }]]);
+  state.playerId = 'player';
+  state.world.currentSectorId = plan.sectorId;
+  state.entities.set('player', { id: 'player', alive: false, flags: { defeated: true }, pos: { x: 0, z: 0 }, data: {} });
   c._pendingPlayerRecovery = { playerId: 'player', receipt: { recovery: plan } };
   const res = c.recoverPendingPlayer({});
   assert.equal(res.ok, true, 'recovery committed');
