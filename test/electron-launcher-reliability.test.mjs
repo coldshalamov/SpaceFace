@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -238,6 +240,46 @@ assert.equal(installedRuntime.packageJsonPath.endsWith(join('electron', 'package
 const batch = readFileSync(join(ROOT, 'SpaceFace-Desktop.bat'), 'utf8');
 const launcher = readFileSync(join(ROOT, 'scripts/launch-electron.mjs'), 'utf8');
 const main = readFileSync(join(ROOT, 'electron/main.cjs'), 'utf8');
+
+const launcherTmp = mkdtempSync(join(tmpdir(), 'sf-launcher-env-'));
+try {
+  const run = spawnSync(process.execPath, ['--input-type=module', '--eval', `
+    import { EventEmitter } from 'node:events';
+    import { createRequire, syncBuiltinESMExports } from 'node:module';
+    import { writeFileSync } from 'node:fs';
+    const require = createRequire(import.meta.url);
+    require('node:child_process').spawn = (_file, _args, options) => {
+      const child = new EventEmitter();
+      child.unref = () => {};
+      console.log(JSON.stringify({
+        inheritedNodeMode: Object.keys(options.env).find((key) => key.toUpperCase() === 'ELECTRON_RUN_AS_NODE') ?? null,
+        parentNodeMode: process.env.ELECTRON_RUN_AS_NODE,
+        saves: options.env.SPACEFACE_PLAYER_STORE_DIR,
+      }));
+      writeFileSync(options.env.SPACEFACE_LAUNCH_RECEIPT, '{"status":"window-ready","port":41788}\\n');
+      return child;
+    };
+    syncBuiltinESMExports();
+    await import('./scripts/launch-electron.mjs');
+  `], {
+    cwd: ROOT, timeout: 15_000, encoding: 'utf8',
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
+      SPACEFACE_PLAYER_STORE_DIR: launcherTmp,
+      TMPDIR: launcherTmp,
+      TEMP: launcherTmp,
+      TMP: launcherTmp,
+    },
+  });
+  assert.equal(run.status, 0, run.stderr || run.error?.message);
+  const spawnEnvironment = JSON.parse(run.stdout.trim().split(/\r?\n/)[0]);
+  assert.deepEqual(spawnEnvironment, { inheritedNodeMode: null, parentNodeMode: '1', saves: launcherTmp },
+    'the player launch child is GUI Electron even when the caller uses Node mode');
+} finally {
+  rmSync(launcherTmp, { recursive: true, force: true });
+}
+
 assert.match(batch, /node scripts\\launch-electron\.mjs/);
 assert.match(batch, /node_modules\\electron\\package\.json/);
 assert.match(batch, /installed\.version===project\.devDependencies\.electron/,

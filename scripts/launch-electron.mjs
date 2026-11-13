@@ -49,6 +49,17 @@ if (electronRuntime) await launchElectron();
 
 async function launchElectron() {
   const logFd = openSync(logPath, 'a');
+  const env = {
+    ...process.env,
+    SPACEFACE_LAUNCH_RECEIPT: receiptPath,
+    SPACEFACE_LAUNCH_LOG: logPath,
+    SPACEFACE_PLAYER_STORE_DIR: resolvePlayerSaveDir(process.env),
+  };
+  // The desktop launcher must start Electron's application entrypoint.
+  // Windows treats environment keys as case-insensitive.
+  for (const key of Object.keys(env)) {
+    if (key.toUpperCase() === 'ELECTRON_RUN_AS_NODE') delete env[key];
+  }
   let child;
   let spawnError = null;
   let exitCode = null;
@@ -59,12 +70,7 @@ async function launchElectron() {
       detached: true,
       windowsHide: false,
       stdio: ['ignore', logFd, logFd],
-      env: {
-        ...process.env,
-        SPACEFACE_LAUNCH_RECEIPT: receiptPath,
-        SPACEFACE_LAUNCH_LOG: logPath,
-        SPACEFACE_PLAYER_STORE_DIR: resolvePlayerSaveDir(process.env),
-      },
+      env,
     });
   } catch (error) {
     spawnError = error;
