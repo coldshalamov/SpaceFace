@@ -56,8 +56,9 @@ See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
 | QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex |
 | QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | READY |
 | QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex |
-| QUAL-07 | Shared flight holds. Exercise Pause, minimize/return, jump and load while moving. Trace any remaining frozen poses or backwards corrections independently of FPS. | READY |
+| QUAL-07 | Shared flight holds. Run the matched powered turn for the wrapped-heading repair, then exercise Pause, minimize/return, jump and load while moving. Measure pose cadence independently of FPS. | TAKEN Codex |
 | QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
+| QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex |
 
 ## Lane 1 — taste, creative, 3D, architecture, review
 
