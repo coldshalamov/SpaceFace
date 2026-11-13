@@ -70,6 +70,8 @@ ${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-fo
   color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important;
   box-shadow:0 0 14px rgb(242 185 80 / .24);
 }
+/* keyboard focus: the same bone ring the draft's foot keys carry (the shared foot hover/focus rule strips outline). */
+${R} > .k-foot .k-word:focus-visible, ${RP} > .k-foot .k-word:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
 /* one column, one scroller: the ledger and story boxes dissolve so their bands share one order */
 ${R} .sf-crres__stage { display:flex !important; flex-direction:column !important; gap:20px !important; width:100%; max-width:min(600px, 46vw) !important;
   min-height:0 !important; overflow:hidden auto !important; overscroll-behavior:contain; padding:2px 16px 28px 0 !important; margin:0 !important;
