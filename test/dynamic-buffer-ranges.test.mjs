@@ -1224,9 +1224,14 @@ test('active field-device geometry publishes each visible instance prefix', () =
   const requestedBefore = batch.owner.diagnostics.requestedUploadBytes;
   assert.equal(requestedBefore, fullBytes);
 
-  // Moving every field marks only the two position-bearing attributes, and each republishes the
-  // visible 56-instance prefix rather than the 224-instance allocation.
+  // Moving every field marks only the two position-bearing attributes at the next 30 Hz
+  // surface update. No early upload occurs on the intervening 60 Hz callback.
   for (const field of fixture.state.fields.active) { field.center.x += 10; field.center.z += 5; }
+  fixture._updateFieldGeometry(1 / 60);
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  assert.ok(batch.attributes.every(attribute => attribute.updateRanges.length === 0));
+  coordinator.disarm(epoch);
   fixture._updateFieldGeometry(1 / 60);
   epoch = coordinator.arm();
   scene.onBeforeRender({}, scene, camera, null);
