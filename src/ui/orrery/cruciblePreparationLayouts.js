@@ -294,6 +294,10 @@ ${D} .orr-tile::after { content:''; position:absolute; left:8%; right:8%; bottom
 ${D} .orr-tile[aria-pressed=true]::after { transform:scaleX(1); box-shadow:0 0 10px rgb(242 185 80 / .35); }
 ${D} .orr-tile:is(:hover,:focus-visible):not([aria-pressed=true])::after { transform:scaleX(.32); }
 ${D} .orr-tile:is(:hover,:focus-visible) { transform:translateY(-2px) !important; }
+/* ui-polish-522: the tiles wear a chamfer clip-path, and a clip-path clips the element's own outline, so keyboard
+   focus on a mode, stake, arena or hull tile painted nothing at all. A focused tile drops the chamfer and takes the
+   tab strip's rounded bone ring. */
+${D} .orr-tile:focus-visible { clip-path:none !important; border-radius:6px !important; outline:2px solid rgb(${BONE} / .78) !important; outline-offset:3px !important; }
 ${D} .orr-tile:active { transform:translateY(0) !important; transition-duration:.08s !important; }
 /* a locked build refuses: one horizontal shake, never red */
 ${D} .orr-tile.is-denied { animation:orr-deny .32s linear; }
