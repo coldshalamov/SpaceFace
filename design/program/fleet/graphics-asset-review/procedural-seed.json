@@ -1,0 +1,3112 @@
+{
+  "schema": "spaceface.proceduralReviewSeed.v1",
+  "createdAt": "2026-11-13T12:37:40.348Z",
+  "note": "Candidate identities and variants from the 2026-11 graphics review; group rows require individual identity resolution and reachability is unproven.",
+  "proceduralAssets": [
+    {
+      "id": "procedural:ast_common_rock:variant0:lod0",
+      "type": "ast_common_rock",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant0:lod1",
+      "type": "ast_common_rock",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant0:lod2",
+      "type": "ast_common_rock",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant1:lod0",
+      "type": "ast_common_rock",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant1:lod1",
+      "type": "ast_common_rock",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant1:lod2",
+      "type": "ast_common_rock",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant2:lod0",
+      "type": "ast_common_rock",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant2:lod1",
+      "type": "ast_common_rock",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant2:lod2",
+      "type": "ast_common_rock",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant3:lod0",
+      "type": "ast_common_rock",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant3:lod1",
+      "type": "ast_common_rock",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant3:lod2",
+      "type": "ast_common_rock",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant4:lod0",
+      "type": "ast_common_rock",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant4:lod1",
+      "type": "ast_common_rock",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_common_rock:variant4:lod2",
+      "type": "ast_common_rock",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant0:lod0",
+      "type": "ast_metallic",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant0:lod1",
+      "type": "ast_metallic",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant0:lod2",
+      "type": "ast_metallic",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant1:lod0",
+      "type": "ast_metallic",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant1:lod1",
+      "type": "ast_metallic",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant1:lod2",
+      "type": "ast_metallic",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant2:lod0",
+      "type": "ast_metallic",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant2:lod1",
+      "type": "ast_metallic",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant2:lod2",
+      "type": "ast_metallic",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant3:lod0",
+      "type": "ast_metallic",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant3:lod1",
+      "type": "ast_metallic",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant3:lod2",
+      "type": "ast_metallic",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant4:lod0",
+      "type": "ast_metallic",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant4:lod1",
+      "type": "ast_metallic",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_metallic:variant4:lod2",
+      "type": "ast_metallic",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant0:lod0",
+      "type": "ast_icy",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant0:lod1",
+      "type": "ast_icy",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant0:lod2",
+      "type": "ast_icy",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant1:lod0",
+      "type": "ast_icy",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant1:lod1",
+      "type": "ast_icy",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant1:lod2",
+      "type": "ast_icy",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant2:lod0",
+      "type": "ast_icy",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant2:lod1",
+      "type": "ast_icy",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant2:lod2",
+      "type": "ast_icy",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant3:lod0",
+      "type": "ast_icy",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant3:lod1",
+      "type": "ast_icy",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant3:lod2",
+      "type": "ast_icy",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant4:lod0",
+      "type": "ast_icy",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant4:lod1",
+      "type": "ast_icy",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_icy:variant4:lod2",
+      "type": "ast_icy",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant0:lod0",
+      "type": "ast_crystalline",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant0:lod1",
+      "type": "ast_crystalline",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant0:lod2",
+      "type": "ast_crystalline",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant1:lod0",
+      "type": "ast_crystalline",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant1:lod1",
+      "type": "ast_crystalline",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant1:lod2",
+      "type": "ast_crystalline",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant2:lod0",
+      "type": "ast_crystalline",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant2:lod1",
+      "type": "ast_crystalline",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant2:lod2",
+      "type": "ast_crystalline",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant3:lod0",
+      "type": "ast_crystalline",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant3:lod1",
+      "type": "ast_crystalline",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant3:lod2",
+      "type": "ast_crystalline",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant4:lod0",
+      "type": "ast_crystalline",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant4:lod1",
+      "type": "ast_crystalline",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_crystalline:variant4:lod2",
+      "type": "ast_crystalline",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant0:lod0",
+      "type": "ast_gas_cloud",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant0:lod1",
+      "type": "ast_gas_cloud",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant0:lod2",
+      "type": "ast_gas_cloud",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant1:lod0",
+      "type": "ast_gas_cloud",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant1:lod1",
+      "type": "ast_gas_cloud",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant1:lod2",
+      "type": "ast_gas_cloud",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant2:lod0",
+      "type": "ast_gas_cloud",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant2:lod1",
+      "type": "ast_gas_cloud",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant2:lod2",
+      "type": "ast_gas_cloud",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant3:lod0",
+      "type": "ast_gas_cloud",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant3:lod1",
+      "type": "ast_gas_cloud",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant3:lod2",
+      "type": "ast_gas_cloud",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant4:lod0",
+      "type": "ast_gas_cloud",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant4:lod1",
+      "type": "ast_gas_cloud",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_gas_cloud:variant4:lod2",
+      "type": "ast_gas_cloud",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 180,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant0:lod0",
+      "type": "ast_rare_exotic",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant0:lod1",
+      "type": "ast_rare_exotic",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant0:lod2",
+      "type": "ast_rare_exotic",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant1:lod0",
+      "type": "ast_rare_exotic",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant1:lod1",
+      "type": "ast_rare_exotic",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant1:lod2",
+      "type": "ast_rare_exotic",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant2:lod0",
+      "type": "ast_rare_exotic",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant2:lod1",
+      "type": "ast_rare_exotic",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant2:lod2",
+      "type": "ast_rare_exotic",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant3:lod0",
+      "type": "ast_rare_exotic",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant3:lod1",
+      "type": "ast_rare_exotic",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant3:lod2",
+      "type": "ast_rare_exotic",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant4:lod0",
+      "type": "ast_rare_exotic",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant4:lod1",
+      "type": "ast_rare_exotic",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural:ast_rare_exotic:variant4:lod2",
+      "type": "ast_rare_exotic",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/visualFactory.js",
+      "family": "procedural-asteroid",
+      "trianglesBody": 320,
+      "note": "LOD2 hides tagged details; body geometry is shared across LOD states.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant0:lod0",
+      "kind": "stone",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant0:lod1",
+      "kind": "stone",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant0:lod2",
+      "kind": "stone",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant1:lod0",
+      "kind": "stone",
+      "variant": 1,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant1:lod1",
+      "kind": "stone",
+      "variant": 1,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant1:lod2",
+      "kind": "stone",
+      "variant": 1,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant2:lod0",
+      "kind": "stone",
+      "variant": 2,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant2:lod1",
+      "kind": "stone",
+      "variant": 2,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant2:lod2",
+      "kind": "stone",
+      "variant": 2,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant3:lod0",
+      "kind": "stone",
+      "variant": 3,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant3:lod1",
+      "kind": "stone",
+      "variant": 3,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant3:lod2",
+      "kind": "stone",
+      "variant": 3,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant4:lod0",
+      "kind": "stone",
+      "variant": 4,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant4:lod1",
+      "kind": "stone",
+      "variant": 4,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:stone:variant4:lod2",
+      "kind": "stone",
+      "variant": 4,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses the shared common-rock body with a distinct optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:metal:variant0:lod0",
+      "kind": "metal",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:metal:variant0:lod1",
+      "kind": "metal",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:metal:variant0:lod2",
+      "kind": "metal",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:diamond:variant0:lod0",
+      "kind": "diamond",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:diamond:variant0:lod1",
+      "kind": "diamond",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:diamond:variant0:lod2",
+      "kind": "diamond",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:spent:variant0:lod0",
+      "kind": "spent",
+      "variant": 0,
+      "lod": "lod0",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:spent:variant0:lod1",
+      "kind": "spent",
+      "variant": 0,
+      "lod": "lod1",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "optic:spent:variant0:lod2",
+      "kind": "spent",
+      "variant": 0,
+      "lod": "lod2",
+      "source": "src/render/opticCellPresentation.js",
+      "family": "procedural-optic-cell",
+      "note": "Uses shared dedicated mirror/prism geometry and optic material.",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    }
+  ],
+  "proceduralFamilies": [
+    {
+      "id": "fauna:needle_swarm",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 10,
+        "triangles": 230,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:veil_ray",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 512,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:blind_shepherd",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 1240,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:hull_leech",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 8,
+        "triangles": 396,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:lantern_cyst",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 7,
+        "triangles": 492,
+        "materials": 7,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:casket_worm",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 7,
+        "triangles": 84,
+        "materials": 7,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bristle_ram",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 11,
+        "triangles": 276,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:mourning_kite",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 356,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:anchor_beast",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 10,
+        "triangles": 588,
+        "materials": 10,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      },
+      "workerObservation": "Procedural-model worker reports shared-material candidate and a 84-to-42 unique-material model benchmark for the sampled cast; no FPS or draw-count claim."
+    },
+    {
+      "id": "fauna:furnace_maw",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 9,
+        "triangles": 542,
+        "materials": 9,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:glassback",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 6,
+        "triangles": 502,
+        "materials": 6,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:wake_eel",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 9,
+        "triangles": 720,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:spindle_mother",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 20,
+        "triangles": 1620,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:void_carrier",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 20,
+        "triangles": 1620,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:archive_crab",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 11,
+        "triangles": 288,
+        "materials": 8,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:cold_bell",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 8,
+        "triangles": 516,
+        "materials": 8,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:suture_mite",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 4,
+        "triangles": 188,
+        "materials": 4,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:black_sail",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 464,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:stone_lung",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 332,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:pilgrim_spine",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 116,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_knob",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_tendon",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 2,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_tooth",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 6,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_tendril",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 6,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_lantern",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 5,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_fingerling",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 2,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_louse",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 2,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_drum",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_valve",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 2,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_suture",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      },
+      "workerObservation": "Procedural-model worker reports runtime presentation now stages the suture model for a live valve-latch state; current-renderer capture pending."
+    },
+    {
+      "id": "fauna:bolus_glove",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 4,
+        "triangles": 8,
+        "materials": 4,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_hauler",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 7,
+        "triangles": 14,
+        "materials": 7,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_rib",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 480,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_bezoar",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 3,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_mite",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 1,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_nerve",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 2,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_ring",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 144,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_hairball",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 6,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_baleen",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 5,
+        "triangles": 10,
+        "materials": 5,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_floater",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 3,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_blister",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 4,
+        "triangles": 7,
+        "materials": 4,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_cyst",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 5,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_polyp",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_concretion",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 4,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_papilla",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_hush",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_spur",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 1,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_frenum",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 1,
+        "triangles": 2,
+        "materials": 1,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_comb",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 7,
+        "triangles": 8,
+        "materials": 7,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_uvula",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_crook",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_pleat",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_lip",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_scale",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_pearl",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 4,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "fauna:bolus_mote",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "factory fauna dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 3,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:surveyor_prism",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 5,
+        "triangles": 648,
+        "materials": 5,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:custodian",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 12,
+        "triangles": 776,
+        "materials": 9,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:auditor",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 6,
+        "triangles": 824,
+        "materials": 6,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:witness",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 990,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:shepherd",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 5,
+        "triangles": 76,
+        "materials": 5,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:mason",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 5,
+        "triangles": 760,
+        "materials": 5,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:executor",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 5,
+        "triangles": 396,
+        "materials": 5,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:courier",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 16,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:conservator",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 140,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:measure",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 888,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:boundary_walker",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 28,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:appeals_clerk",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 2,
+        "triangles": 36,
+        "materials": 2,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:debris_sorter",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 3,
+        "triangles": 116,
+        "materials": 3,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "machine:sleeping_jury",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "factory machine dispatch; individual spawn frequency not established",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected",
+      "structuralInspection": {
+        "status": "built-in-node",
+        "evidence": ".devshots/fleet/procedural-models/structural-census.json",
+        "meshCount": 4,
+        "triangles": 1188,
+        "materials": 4,
+        "note": "No loaded skin textures; not a player-rendered image or GPU draw count."
+      }
+    },
+    {
+      "id": "procedural-ship:scout",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:fighter",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:freighter",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:miner",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:frigate",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:capital",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:multirole",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:drone_swarm",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:sniper_lance",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:bruiser_armor",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:trader_haul",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:pirate_swoop",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:corsair_blade",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:patrol_interdict",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:dreadnought_enemy",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "procedural-ship:detonator_dart",
+      "source": "src/render/visualFactory.js",
+      "evidence": "procedural hull/role builder, may act as authored fallback",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:station-and-gate",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:drone",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:wreck-and-hulk",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:pickup-and-repair-cell",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:projectile",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:mine",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:vector-mine",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:impulse-charge",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:mass-seed",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:massline-snare-anchor",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:circuit-node",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:beacon",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:volatile-pod",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:brood-remains",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:survivor-pod",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:payload",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "factory:foundry-toy",
+      "source": "src/render/visualFactory.js",
+      "evidence": "entity dispatch or encounter-specific factory branch",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:concussion",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:singularity",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:goo",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:emp",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:thermite",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:scrambler",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "bomb:anchor",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb entity dispatch variant",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:filament-and-membrane",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:node-bulbs",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:cyst-cluster",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:calcified-collar",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:tendrils-and-nerves",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:vents-and-lungs",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:nerve-lace-and-cable",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:red-core",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:memory-knot",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:mirror-membrane",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:dead-crown",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:silt-root",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "alien-growth:sensory-and-mineral-root",
+      "source": "src/render/faunaVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:pylon",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:monolith",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:spine",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:plate",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:husk",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:vault",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:gate_ring",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:marker",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:dock_arm",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "machine-prop:gantry",
+      "source": "src/render/machineVisuals.js",
+      "evidence": "place-prop builder called through parts library",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:rubric",
+      "source": "src/render/characters/rubricModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:ruud",
+      "source": "src/render/characters/ruudModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:solstice",
+      "source": "src/render/characters/solsticeModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:ravel",
+      "source": "src/render/characters/ravelModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:vesper",
+      "source": "src/render/characters/vesperModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:morrow",
+      "source": "src/render/characters/morrowModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:bracket",
+      "source": "src/render/characters/bracketModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "character:ruckus",
+      "source": "src/render/characters/ruckusModel.js",
+      "evidence": "factory character or drone dispatch; some bodies contain packaged assets",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:iron-kraken",
+      "source": "src/render/ironKrakenVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:iron-kraken-wreck",
+      "source": "src/render/ironKrakenWreckVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:nursery",
+      "source": "src/render/veilRayNurseryVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:lantern-ward",
+      "source": "src/render/lanternWardVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:fold-aberrant",
+      "source": "src/render/foldAberrantVisual.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:brood",
+      "source": "src/render/broodPresentation.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:fortress",
+      "source": "src/render/swarmFortifyVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:scenario-47a",
+      "source": "src/render/scenarioProps47a.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:swarm-specialists",
+      "source": "src/render/swarmSpecialistVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:enemy-role-variants",
+      "source": "src/render/enemyRoleVariants.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:planetary-site",
+      "source": "src/render/planetSiteVisual.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:second-rinse",
+      "source": "src/render/secondRinseVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:kilnback",
+      "source": "src/render/kilnbackVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:nest-bay",
+      "source": "src/render/nestBayVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:racing-course",
+      "source": "src/render/racingCourseView.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:asteroid-interior",
+      "source": "src/render/asteroidInteriorPreview.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:forge-regent",
+      "source": "src/render/forgeRegentCrown.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:ceres-workfleet",
+      "source": "src/render/ceresWorkfleetVisuals.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:living-hull",
+      "source": "src/render/livingHullPresentation.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:bolus",
+      "source": "src/render/bolusView.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:arena-finish",
+      "source": "src/render/arenaFinish.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:law-arena-dressing",
+      "source": "src/render/lawArenaDressing.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:menu-world-stage",
+      "source": "src/render/uiStage.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:killcam-stage",
+      "source": "src/render/killcamStage.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:vael-sniper",
+      "source": "src/render/ships/vaelSniper.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:kestrel-hero",
+      "source": "src/render/ships/kestrelHero.js",
+      "evidence": "player-facing presentation source; route and individual variants still need review",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:rig-workshop",
+      "source": "src/features/rigWorkshop/render.js",
+      "evidence": "rig workshop entity and cues",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:asteroid-works",
+      "source": "src/ui/asteroid/asteroidRenderer3d.js",
+      "evidence": "player-facing Works scene and machinery",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:ship-preview",
+      "source": "src/ui/shipPreviewMount.js",
+      "evidence": "player-facing ship preview",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "presentation:orrery-preview",
+      "source": "src/ui/orrery/pipSpannerPreview.js",
+      "evidence": "player-facing orrery preview",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    }
+  ]
+}

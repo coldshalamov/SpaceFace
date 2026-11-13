@@ -1,0 +1,13 @@
+{
+  "route": "The Ceres Towline Table system spawns Kit as the rescue-skiff crew member; the visual driver checks its asset ID and motion nodes.",
+  "deploymentCode": [
+    "src/data/towlineTable.js",
+    "src/systems/towlineTable.js",
+    "src/render/towlineTableVisuals.js",
+    "src/data/wholeShipVisualIdentity.js"
+  ],
+  "authoringCode": [
+    "tools/blender/forge/ships/towline_table.py"
+  ],
+  "status": "source-traced; historical images only, current gameplay review pending"
+}

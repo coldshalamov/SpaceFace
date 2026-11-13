@@ -1,0 +1,9 @@
+{
+  "route": "The modular part library includes fin_wedge in its fin selection; its exact encounter-level frequency is not established.",
+  "deploymentCode": [
+    "src/render/partsLibrary.js",
+    "src/render/assetLoader.js",
+    "src/render/renderPackageManifest.js"
+  ],
+  "status": "part selection traced; candidate preview incomplete and final package unchanged"
+}

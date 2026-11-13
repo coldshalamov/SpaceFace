@@ -1,0 +1,15 @@
+{
+  "route": "The Helios courier traffic role maps to this authored whole ship and runtime asset ID.",
+  "deploymentCode": [
+    "src/data/wholeShipVisualIdentity.js",
+    "src/render/partsLibrary.js",
+    "src/render/assetLoader.js",
+    "src/render/renderPackageManifest.js"
+  ],
+  "authoringCode": [
+    "tools/blender/forge/ships/helios_lark.py",
+    "tools/blender/forge/forge.py",
+    "tools/blender/forge/forge_textures.py"
+  ],
+  "status": "source-traced; ordinary gameplay and final revised package remain unverified"
+}
