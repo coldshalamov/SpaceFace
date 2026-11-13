@@ -50,7 +50,7 @@ const existing = evaluateLaunchOutcome({
 assert.equal(existing.pass, true, 'a second launch must focus and preserve the existing game');
 assert.equal(existing.code, 'existing-instance');
 assert.match(formatLaunchOutcome(existing), /already running/i);
-assert.match(formatLaunchOutcome(existing), /not.*(closed|terminated|killed)/i);
+assert.match(formatLaunchOutcome(existing), /window may still be opening/i);
 
 const automationPort = evaluateLaunchOutcome({
   electronExists: true,

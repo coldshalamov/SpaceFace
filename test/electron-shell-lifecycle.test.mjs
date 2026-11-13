@@ -56,6 +56,7 @@ async function loadMain({
   allowStartupFailure = false,
   updateDialogResponse = null,
   updaterWillQuit = true,
+  deferFirstPaint = false,
 } = {}) {
   const windows = [];
   const commands = [];
@@ -156,6 +157,7 @@ async function loadMain({
       visible: false,
       minimized: false,
       focused: false,
+      focusCount: 0,
       destroyed: false,
       loadRequests: [],
       fullscreen: options?.fullscreen === true,
@@ -170,7 +172,7 @@ async function loadMain({
       hide() { this.visible = false; this.focused = false; this.emit('hide'); },
       minimize() { this.minimized = true; this.emit('minimize'); },
       restore() { this.minimized = false; this.visible = true; this.emit('restore'); },
-      focus() { this.visible = true; this.focused = true; this.emit('focus'); },
+      focus() { this.focusCount += 1; this.visible = true; this.focused = true; this.emit('focus'); },
       blur() { this.focused = false; this.emit('blur'); },
       close() {
         let prevented = false;
@@ -216,6 +218,7 @@ async function loadMain({
           webContents.emit('did-fail-load', {}, error.code, error.message, error.url, true);
           throw error;
         }
+        if (!deferFirstPaint) this.emit('ready-to-show');
       },
     });
     webContents.loadURL = (url) => win.loadURL(url);
@@ -686,6 +689,23 @@ test('a second macOS launch focuses a live window or single-flights its replacem
   assert.equal(h.windows[1].loadedUrl, firstUrl, 'replacement preserves the fixed save origin');
   assert.equal(h.serverStats.created, 1, 'relaunch reuses the process-owned game server');
   assert.equal(h.serverStats.listens, 1, 'relaunch never attempts a rival fixed-port bind');
+});
+
+test('second Windows launch waits for the existing window to finish loading and painting', async () => {
+  const h = await loadMain({ deferFirstPaint: true });
+  assert.equal(h.win.isVisible(), false);
+  h.app.emit('second-instance');
+  h.app.emit('second-instance');
+  assert.equal(h.win.focusCount, 0, 'relaunch leaves the unpainted window hidden');
+  assert.equal(h.win.isVisible(), false);
+  assert.ok(!h.receipts.some(({ status }) => status === 'window-ready'));
+
+  h.win.emit('ready-to-show');
+  assert.equal(h.win.isVisible(), true);
+  assert.equal(h.win.focusCount, 1, 'queued relaunches focus the ready window once');
+  assert.equal(h.windows.length, 1);
+  assert.equal(h.serverStats.listens, 1);
+  assert.equal(h.receipts.filter(({ status }) => status === 'window-ready').length, 1);
 });
 
 test('shutdown never recreates a zero-window application', async () => {

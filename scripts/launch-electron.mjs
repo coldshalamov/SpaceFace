@@ -110,15 +110,12 @@ async function launchElectron() {
 
   child?.unref();
 
-  // 'existing-instance' says another SpaceFace process holds the single-instance lock — but a
-  // wedged or half-dead process holds the lock with no game behind it. Check the game server
-  // actually answers before telling the player a window was focused; when it does not, say
-  // plainly what is wrong instead of claiming success.
+  // Lock contention confirms a first instance, and HTTP can only confirm its listener.
+  // The first instance owns focusing the window once its paint and navigation are ready.
   if (result.pass && result.code === 'existing-instance') {
     const healthy = await existingInstanceIsServing(result.port || 41788);
     if (!healthy) {
-      console.error('Another SpaceFace process is holding the launch lock but is not responding.');
-      console.error('Close any SpaceFace or Electron windows (or end them in Task Manager), then launch again.');
+      console.error('SpaceFace has another launch in progress. Wait for its window to open or close, then try again.');
       process.exitCode = 1;
       return;
     }

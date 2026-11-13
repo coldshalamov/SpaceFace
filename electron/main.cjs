@@ -100,6 +100,7 @@ let appQuitting = false;
 let resolvedUserContentDir;
 let fatalBoxShown = false;
 const windowQuitPreparation = new WeakMap();
+const windowFocusOnRelaunch = new WeakMap();
 
 // User content ("mods") mount, PQ-172.00/.01. Resolved lazily so an isolated-evidence profile's
 // userData override (applied at module scope below) governs the mods home too; isolated evidence
@@ -1324,6 +1325,19 @@ async function createWindow() {
   let retryableNavigationFailure = null;
   let initialLoadReady = false;
   let firstPaintReady = false;
+  let focusWhenReady = false;
+  const focusGameWindow = () => {
+    if (win.isDestroyed() || appQuitting || hideEvidenceWindow) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  };
+  windowFocusOnRelaunch.set(win, () => {
+    if (!firstPaintReady || !initialLoadReady) {
+      focusWhenReady = true;
+      return;
+    }
+    focusGameWindow();
+  });
 
   function canRetryCanonicalNavigation(code, url) {
     return canonicalRetryAvailable && initialCanonicalLoadPending && !canonicalLoadCommitted
@@ -1409,6 +1423,7 @@ async function createWindow() {
   win.once('closed', () => {
     clearPreparedUpdateQuit();
     windowQuitPreparation.delete(win);
+    windowFocusOnRelaunch.delete(win);
     ipcMain.removeListener('spaceface:quit-prepared', onQuitPrepared);
     if (!quitContents.isDestroyed()) {
       quitContents.removeListener('render-process-gone', onQuitRendererGone);
@@ -1482,6 +1497,10 @@ async function createWindow() {
       fullscreen: !launchConfig.isolatedEvidence,
     });
     if (!hideEvidenceWindow) win.show();
+    if (focusWhenReady) {
+      focusWhenReady = false;
+      focusGameWindow();
+    }
   }
   win.once('ready-to-show', () => {
     firstPaintReady = true;
@@ -1619,7 +1638,7 @@ if (process.platform === 'win32' && typeof app.setAppUserModelId === 'function')
 // Single-instance lock: a second launch focuses the existing window instead of starting a rival
 // server that would lose the fixed port (and split saves across origins).
 if (!app.requestSingleInstanceLock()) {
-  receipt('existing-instance');
+  receipt('existing-instance', { port: launchPort });
   app.quit();
 } else if (migratePlayerStore) {
   receipt('starting', {
@@ -1650,8 +1669,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];
     if (w) {
-      if (w.isMinimized()) w.restore();
-      w.focus();
+      windowFocusOnRelaunch.get(w)?.();
     } else {
       // macOS can keep the first application process alive after its last window closes. A later
       // executable launch is still player intent to see the game, so recover through the same

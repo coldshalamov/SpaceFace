@@ -277,7 +277,7 @@ function formatLaunchOutcome(result, { logPath = '' } = {}) {
     case 'launched':
       return `SpaceFace is ready on the stable desktop save route.${log}`;
     case 'existing-instance':
-      return 'SpaceFace is already running. The existing window was focused; it was not closed or terminated.';
+      return 'SpaceFace is already running. Its window may still be opening.';
     case 'spaceface-port-conflict':
       return `Port ${result.port || 41788} is owned by another SpaceFace test or automation run. No process was closed or terminated. Let that run finish, then retry.${log}`;
     case 'port-conflict':
