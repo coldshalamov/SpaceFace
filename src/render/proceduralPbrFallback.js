@@ -73,7 +73,7 @@ function tileNoise(u, v, cellsX, cellsY, seed) {
   return top + (bottom - top) * ty;
 }
 
-function periodicField(u, v, recipe, seed) {
+function periodicField(u, v, recipe, seed, out) {
   const macro = tileNoise(u, v, recipe.macro, recipe.macro + 1, seed + 11) * 2 - 1;
   const meso = tileNoise(u, v, recipe.macro * 3 + 1, recipe.macro * 2 + 3, seed + 37) * 2 - 1;
   // Manufactured recipes intentionally use no fine grain. Do not evaluate an entire
@@ -92,7 +92,11 @@ function periodicField(u, v, recipe, seed) {
   const height = macro * 0.38 + meso * 0.30
     + micro * (0.22 - recipe.directional * 0.08) * grain
     + brushed * recipe.directional * 0.18 + fracture * (recipe.fracture || 0);
-  return { macro, meso, micro, brushed, fracture, height };
+  out.macro = macro;
+  out.meso = meso;
+  out.micro = micro;
+  out.fracture = fracture;
+  out.height = height;
 }
 
 function makeTexture(data, colorSpace, name) {
@@ -117,13 +121,20 @@ function buildBundle(role, variant) {
   const normal = new Uint8Array(SIZE * SIZE * 4);
   const orm = new Uint8Array(SIZE * SIZE * 4);
   const heights = new Float32Array(SIZE * SIZE);
-  const fields = new Array(SIZE * SIZE);
+  // Keep the double precision used by the pixel recipe, without allocating one
+  // temporary object per texel each time a role/variant bundle is first built.
+  const fields = new Float64Array(SIZE * SIZE * 4);
+  const field = { macro: 0, meso: 0, micro: 0, fracture: 0, height: 0 };
 
   for (let y = 0; y < SIZE; y += 1) {
     for (let x = 0; x < SIZE; x += 1) {
       const index = y * SIZE + x;
-      const field = periodicField(x / SIZE, y / SIZE, recipe, seed);
-      fields[index] = field;
+      periodicField(x / SIZE, y / SIZE, recipe, seed, field);
+      const offset = index * 4;
+      fields[offset] = field.macro;
+      fields[offset + 1] = field.meso;
+      fields[offset + 2] = field.micro;
+      fields[offset + 3] = field.fracture;
       heights[index] = field.height;
     }
   }
@@ -132,7 +143,10 @@ function buildBundle(role, variant) {
     for (let x = 0; x < SIZE; x += 1) {
       const index = y * SIZE + x;
       const offset = index * 4;
-      const field = fields[index];
+      const macro = fields[offset];
+      const meso = fields[offset + 1];
+      const micro = fields[offset + 2];
+      const fracture = fields[offset + 3];
       const left = heights[y * SIZE + ((x - 1 + SIZE) % SIZE)];
       const right = heights[y * SIZE + ((x + 1) % SIZE)];
       const down = heights[((y - 1 + SIZE) % SIZE) * SIZE + x];
@@ -148,7 +162,7 @@ function buildBundle(role, variant) {
       const aoFactor = Math.max(0.38, 1.0 - cavity * 1.6);
       const cavityDarken = 1.0 - cavity * 0.32;
 
-      const colorValue = (238 + 255 * recipe.color * (field.macro * 0.58 + field.meso * 0.30 + field.micro * 0.06 * (recipe.grain || 0) - field.fracture * 0.38)) * cavityDarken;
+      const colorValue = (238 + 255 * recipe.color * (macro * 0.58 + meso * 0.30 + micro * 0.06 * (recipe.grain || 0) - fracture * 0.38)) * cavityDarken;
       albedo[offset] = clampByte(colorValue);
       albedo[offset + 1] = clampByte(colorValue);
       albedo[offset + 2] = clampByte(colorValue);
@@ -162,8 +176,8 @@ function buildBundle(role, variant) {
       // glTF/Three multiplies these map channels by the material's authored scalar factor.
       // Keep the maps near unity so the role factor stays authoritative while gaining variation.
       // Red: Ambient Occlusion, Green: Roughness, Blue: Metalness (glTF standard packed ORM)
-      const roughness = 0.82 + recipe.rough * (field.macro * 0.42 + field.meso * 0.30 + field.micro * 0.18 * (recipe.grain || 0) + field.fracture * 0.5);
-      const metallic = recipe.metalMultiplier + recipe.metal * (field.macro * 0.54 - field.fracture * 0.3);
+      const roughness = 0.82 + recipe.rough * (macro * 0.42 + meso * 0.30 + micro * 0.18 * (recipe.grain || 0) + fracture * 0.5);
+      const metallic = recipe.metalMultiplier + recipe.metal * (macro * 0.54 - fracture * 0.3);
       orm[offset] = clampByte(aoFactor * 255);
       orm[offset + 1] = clampByte(roughness * 255);
       orm[offset + 2] = clampByte(metallic * 255);
