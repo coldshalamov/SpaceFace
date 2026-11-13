@@ -1,4 +1,7 @@
-import { Vector3 } from 'three';
+import { Box3, Vector3 } from 'three';
+
+const _box = new Box3();
+const _size = new Vector3();
 import { LOOK_HEADLIGHT } from '../../data/lookMoods.js';
 
 const MAX_SHIPS = 24;
@@ -44,7 +47,7 @@ export class NocturneHeadlightSources {
     this.registry = registry;
     this.look = look;
     this.rows = Array.from({ length: capacity }, (_, i) => ({
-      entity: null, root: null, socket: null, distance: Infinity,
+      entity: null, root: null, socket: null, distance: Infinity, halfLength: 0,
       source: registry.register(`headlight:${i}`, { type: 'spot', intensity: look.intensity,
         color: look.colorHex, range: look.range, decay: look.decay,
         angle: look.angle, penumbra: look.penumbra, enabled: false, priority: 2,
@@ -101,6 +104,14 @@ export class NocturneHeadlightSources {
       if (root !== row.root || (row.socket && !socketVisibleUnderRoot(row.socket, root))) {
         row.root = root; row.socket = null;
         row.socket = findVisibleSocket(root);
+        // No authored HOOK_HEADLIGHT (no hull has one yet): the default lamp rides the drawn hull's own
+        // bounds, not a guess from the sim radius. World box of the frame-local root, measured once.
+        row.halfLength = 0;
+        if (root && !row.socket && root.parent) {
+          root.updateWorldMatrix(true, true);
+          _box.setFromObject(root);
+          if (!_box.isEmpty()) { _box.getSize(_size); row.halfLength = Math.max(_size.x, _size.z) * 0.5; }
+        }
       }
       source.critical = isPlayer;
       source.priority = isPlayer ? 4 : 2;
@@ -125,7 +136,7 @@ export class NocturneHeadlightSources {
         this._forward.set(1, 0, 0).transformDirection(row.socket.matrixWorld);
         source.target.copy(this._forward).multiplyScalar(look.aimDistance).add(source.position);
       } else {
-        const nose = (e.radius > 0 ? e.radius : 8) * look.noseFactor;
+        const nose = row.halfLength > 1 ? row.halfLength * 0.85 : (e.radius > 0 ? e.radius : 8) * look.noseFactor;
         source.position.set(this._local.x + fx * nose, look.height, this._local.z + fz * nose);
         source.target.set(source.position.x + fx * look.aimDistance, look.aimHeight,
           source.position.z + fz * look.aimDistance);
