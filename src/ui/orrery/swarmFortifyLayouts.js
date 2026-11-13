@@ -84,6 +84,20 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close:is(:hover, 
   .sf-fortify-plan svg { min-height:240px; }
   .sf-fortify-shelf { overflow:visible; }
 }
+/* Laptop height (first-hour pass): the title closes up and the device shelf sets two to a row, so all
+   the devices and the Build verb stand inside a 1280x720 window (scrolls only past the last row). */
+@media (min-width:761px) and (min-height:541px) and (max-height:800px) {
+  html body #screens > .k-screen.sf-crucible-fortify { padding:14px 32px 12px !important; gap:8px !important; }
+  .sf-crucible-fortify .k-title h1 { font-size:clamp(26px,3.4vw,36px); }
+  .sf-crucible-fortify .k-title p { margin:4px 0 0; }
+  .sf-fortify-layout { grid-template-columns:minmax(0,1fr) minmax(320px,540px); gap:24px; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf {
+    display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; align-content:start; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device { padding:8px 12px; gap:2px 10px; min-height:0; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device strong { font-size:16px; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device small { font-size:13px; line-height:1.35; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state { grid-column:1 / -1; margin-top:6px; padding-top:8px; }
+}
 /* polish277: the armory's choices read as controls, not loose type. Positions are hairline
    chips, devices hairline cards, built structures framed rows with a hairline Repair/Rearm key,
    and an empty field a dashed well. Radius 8 and faint fills, the same family as the other
