@@ -209,6 +209,37 @@ ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not
 @media (max-height:500px) {
   ${D} .orr-door-hero__words { bottom:110px !important; }
 }
+/* Laptop height (first-hour pass, up to 700 tall): the whole Encounter fits with no inner scroll. The room
+   picture narrows so the choices take the wider column (a stake tile holds its payout on one line, the
+   arena strip sets all rooms in one row), the three tabs' sub-lines and the daily line stand down, and the
+   foot's one-line hint sits beside the verbs instead of under them. Type stays at 12px or more. */
+@media (min-width:1151px) and (max-height:760px) {
+  ${D} .orr-cabinet-preview { width:62%; max-width:250px; }
+  ${D} { grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) !important; gap:8px 32px !important; padding:12px 40px 8px !important; }
+  ${D} > .k-title h1 { font-size:34px !important; }
+  ${D} .sf-crd-sub { display:none !important; }
+  ${D} .orr-prep-nav { gap:22px; }
+  ${D} .orr-prep-tab, ${D} .orr-prep-nextstep { min-height:32px !important; padding:4px 0 !important; }
+  ${D} .orr-prep-daily { display:none !important; }
+  ${D} .orr-prep-settings { gap:6px !important; }
+  ${D} .orr-prep-panel { padding:0 0 2px; }
+  ${D} .sf-crd-stake-sub { display:none !important; }
+  ${D} .k-row > .k-row__name { margin-bottom:4px !important; }
+  ${D} .sf-crd-modes .orr-tile { min-height:44px !important; padding:4px 6px !important; }
+  ${D} .sf-crd-modes .fh-tile-art { display:none !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:0 !important; padding:6px 4px !important; gap:2px !important; }
+  ${D} .orr-prep-stake-number { font-size:20px !important; }
+  ${D} .orr-prep-stake-pressure { margin-top:0 !important; }
+  ${D} .sf-crd-arenas { grid-template-columns:repeat(7,minmax(0,1fr)) !important; gap:6px !important; }
+  ${D} .sf-crd-arenas .orr-tile { min-height:40px !important; padding:4px 2px !important; }
+  ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub) { margin-top:2px !important; font-size:12px !important; line-height:1.3 !important; }
+  ${D} .orr-prep-disclosure { padding:0; min-height:0; }
+  ${D} .orr-prep-disclosure > summary { min-height:30px !important; padding:4px 0 !important; }
+  ${D} > .k-foot { padding:6px 0 0 !important; }
+  ${D} .k-foot .k-words { gap:10px 16px !important; }
+  ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { min-height:42px !important; font-size:17px !important; min-width:200px !important; padding:6px 20px !important; }
+  ${D} .k-foot .orr-door-hint { display:none !important; }
+}
 /* reduced motion: the one transition this sheet adds follows the game's own setting */
 html.sf-reduce-motion ${D} .sf-crd-arenas .fh-tile-art img { transition:none !important; }
 `;
