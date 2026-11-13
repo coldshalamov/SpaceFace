@@ -169,6 +169,49 @@ test('probe irradiance has compact spatial support and true normal-dependent col
   assert.equal(shader.fragmentShader, once);
 });
 
+test('packed probe uniforms preserve the shader floats across admission, reuse and clear', () => {
+  const probes = new NocturneProbes();
+  const shader = { uniforms: {}, fragmentShader: ShaderLib.standard.fragmentShader };
+  installNocturneProbeShader(shader);
+  const { uniforms } = shader;
+  const uniform = (name) => uniforms[`sfNocturneProbe${name}`].value;
+  const assertSlot = (name, slot, expected) => {
+    const values = uniform(name);
+    const offset = slot * expected.length;
+    assert.ok(values instanceof Float32Array);
+    assert.deepEqual(values.slice(offset, offset + expected.length), Float32Array.from(expected), name);
+  };
+  const profile = NOCTURNE_COMPOSITIONS.industrial.probe;
+  const camera = new PerspectiveCamera();
+  camera.position.set(4, 5, 6);
+  camera.updateMatrixWorld(true);
+  const center = new Vector3(123.456, 7, -456.789);
+  const radii = new Vector3(0.5, 2, 3);
+  probes.begin(camera);
+  assert.equal(probes.write(center, radii, profile, 0.75), true);
+  assert.equal(probes.write(center, radii, { intensity: -1, sharpness: 90 }, 1, new Vector3()), true);
+  probes.end();
+  assert.equal(uniform('Count'), 2);
+  assert.ok(uniforms.sfNocturneViewToWorld.value.equals(camera.matrixWorld));
+  assertSlot('Center', 0, center.toArray());
+  assertSlot('InvRadii', 0, [1, 0.5, 1 / 3]);
+  assertSlot('Direction', 0, new Vector3().fromArray(profile.direction).normalize().toArray());
+  assertSlot('Color', 0, new Color(profile.color).toArray());
+  assertSlot('Ambient', 0, new Color(profile.ambient).toArray());
+  assertSlot('Params', 0, [profile.intensity * 0.75, profile.specular * 0.75, profile.sharpness, 1]);
+  assertSlot('Direction', 1, [0, 1, 0]);
+  assertSlot('Params', 1, [0, 0, 64, 1]);
+  const centers = uniform('Center');
+  probes.begin(camera);
+  assert.equal(probes.write(center.set(10, 20, 30), radii, profile), true);
+  probes.end();
+  assert.equal(uniform('Count'), 1, 'previous probe slots no longer participate');
+  assert.equal(uniform('Center'), centers, 'linked shaders retain the same backing array');
+  assertSlot('Center', 0, [10, 20, 30]);
+  probes.clear();
+  assert.equal(uniform('Count'), 0);
+});
+
 test('static reflection binding isolates shared materials and restores/disposes only owned clones', () => {
   const probes = new NocturneProbes(); const root = new Group();
   const material = new MeshStandardMaterial(); const texture = new Texture();

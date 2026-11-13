@@ -2,22 +2,26 @@
 // simulation of dynamic GI or a cubemap of scene geometry. Each ellipsoid carries a low-order
 // directional diffuse field and a roughness-filtered spherical radiance lobe, in linear HDR.
 // Sampling in the physical shader lights moving/instanced objects without material clones.
-import { Color, Matrix4, Vector3, Vector4 } from 'three';
+import { Color, Matrix4, Vector3 } from 'three';
 import { NOCTURNE_CONTENT_LIMITS } from '../../data/nocturneLighting.js';
 
 export const NOCTURNE_PROBE_CAPACITY = NOCTURNE_CONTENT_LIMITS.maxProbes;
 export const NOCTURNE_PROBE_SHADER_KEY = 'nocturne-local-probes-v1';
 const DEFAULT_OPTIONS = Object.freeze({});
-const vectors = (Type) => Array.from({ length: NOCTURNE_PROBE_CAPACITY }, () => new Type());
+const packedVec3 = () => new Float32Array(NOCTURNE_PROBE_CAPACITY * 3);
+const packedParams = new Float32Array(NOCTURNE_PROBE_CAPACITY * 4);
+for (let i = 3; i < packedParams.length; i += 4) packedParams[i] = 1;
+// Three accepts packed numeric uniform arrays directly. Pack once at the
+// producer instead of flattening vectors again for each lit material draw.
 export const NOCTURNE_PROBE_UNIFORMS = Object.freeze({
   sfNocturneProbeCount: { value: 0 },
   sfNocturneViewToWorld: { value: new Matrix4() },
-  sfNocturneProbeCenter: { value: vectors(Vector3) },
-  sfNocturneProbeInvRadii: { value: vectors(Vector3) },
-  sfNocturneProbeDirection: { value: vectors(Vector3) },
-  sfNocturneProbeColor: { value: vectors(Color) },
-  sfNocturneProbeAmbient: { value: vectors(Color) },
-  sfNocturneProbeParams: { value: vectors(Vector4) },
+  sfNocturneProbeCenter: { value: packedVec3() },
+  sfNocturneProbeInvRadii: { value: packedVec3() },
+  sfNocturneProbeDirection: { value: packedVec3() },
+  sfNocturneProbeColor: { value: packedVec3().fill(1) },
+  sfNocturneProbeAmbient: { value: packedVec3().fill(1) },
+  sfNocturneProbeParams: { value: packedParams },
 });
 
 export const NOCTURNE_PROBE_PARS_GLSL = /* glsl */`
@@ -81,11 +85,19 @@ export function installNocturneProbeShader(shader) {
 
 function finite(value, fallback) { return Number.isFinite(value) ? value : fallback; }
 
+function writeVec3(target, offset, x, y, z) {
+  target[offset] = x;
+  target[offset + 1] = y;
+  target[offset + 2] = z;
+}
+
 export class NocturneProbes {
   constructor() {
     this.count = 0;
     this.enabled = true;
     this.uniforms = NOCTURNE_PROBE_UNIFORMS;
+    this._axis = new Vector3();
+    this._color = new Color();
     this._reflectionBindings = new Map();
   }
   begin(camera) {
@@ -96,19 +108,25 @@ export class NocturneProbes {
   write(center, radii, profile, power = 1, direction = null) {
     if (this.count >= NOCTURNE_PROBE_CAPACITY || !profile || !this.enabled || !(power > 0)) return false;
     const i = this.count++;
+    const offset = i * 3;
     const u = this.uniforms;
-    u.sfNocturneProbeCenter.value[i].copy(center);
-    u.sfNocturneProbeInvRadii.value[i].set(1 / Math.max(1, radii.x), 1 / Math.max(1, radii.y), 1 / Math.max(1, radii.z));
-    const axis = u.sfNocturneProbeDirection.value[i];
+    writeVec3(u.sfNocturneProbeCenter.value, offset, center.x, center.y, center.z);
+    writeVec3(u.sfNocturneProbeInvRadii.value, offset,
+      1 / Math.max(1, radii.x), 1 / Math.max(1, radii.y), 1 / Math.max(1, radii.z));
+    const axis = this._axis;
     if (direction) axis.copy(direction); else axis.fromArray(profile.direction || [0, 1, 0]);
     if (axis.lengthSq() < 0.0001) axis.set(0, 1, 0); else axis.normalize();
-    u.sfNocturneProbeColor.value[i].set(profile.color ?? 0xffffff);
-    u.sfNocturneProbeAmbient.value[i].set(profile.ambient ?? 0);
-    u.sfNocturneProbeParams.value[i].set(
-      Math.max(0, finite(profile.intensity, 0)) * power,
-      Math.max(0, finite(profile.specular, 0)) * power,
-      Math.max(1, Math.min(64, finite(profile.sharpness, 12))), 1,
-    );
+    axis.toArray(u.sfNocturneProbeDirection.value, offset);
+    const color = u.sfNocturneProbeColor.value;
+    const ambient = u.sfNocturneProbeAmbient.value;
+    this._color.fromArray(color, offset).set(profile.color ?? 0xffffff).toArray(color, offset);
+    this._color.fromArray(ambient, offset).set(profile.ambient ?? 0).toArray(ambient, offset);
+    const params = u.sfNocturneProbeParams.value;
+    const paramOffset = i * 4;
+    params[paramOffset] = Math.max(0, finite(profile.intensity, 0)) * power;
+    params[paramOffset + 1] = Math.max(0, finite(profile.specular, 0)) * power;
+    params[paramOffset + 2] = Math.max(1, Math.min(64, finite(profile.sharpness, 12)));
+    params[paramOffset + 3] = 1;
     return true;
   }
   end() { this.uniforms.sfNocturneProbeCount.value = this.enabled ? this.count : 0; }
