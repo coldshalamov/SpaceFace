@@ -53,26 +53,38 @@ function geo(key, make) {
 function registerWorkMotion(entity, isWorking, apply) {
   let motionTime = 0;
   let deploy = 0;
+  let lastAbsoluteTime = null;
+  let initialized = false;
   return (arg1, arg2) => {
     let dt = 0.016;
     let live = null;
     if (typeof arg1 === 'number') {
-      dt = arg1;
+      dt = Number.isFinite(arg1) ? arg1 : 0;
       live = arg2;
     } else if (arg1 && typeof arg1 === 'object') {
       live = arg1;
-      if (typeof arg2 === 'number') dt = arg2;
     } else if (typeof arg2 === 'number') {
-      dt = arg2;
+      dt = Number.isFinite(arg2) ? arg2 : 0;
     }
     const current = (live && typeof live === 'object') ? live : (entity && typeof entity === 'object' ? entity : null);
-    if (typeof arg2 === 'number' && typeof arg1 !== 'number') {
+    const working = isWorking(current);
+    if (live && typeof arg2 === 'number' && Number.isFinite(arg2)) {
+      // The renderer passes an absolute authored clock here, not a frame delta.
+      // A newly admitted machine starts at its current state; later changes ease.
+      if (!initialized) deploy = working ? 1 : 0;
+      dt = lastAbsoluteTime == null ? 0 : Math.max(0, arg2 - lastAbsoluteTime);
+      lastAbsoluteTime = arg2;
       motionTime = arg2;
     } else {
-      motionTime += Math.max(0, Math.min(1, dt));
+      lastAbsoluteTime = null;
+      // Preserve the legacy (null, number) form: it uses that number as both
+      // a delta and an absolute animation time.
+      if (!live && typeof arg1 !== 'number' && Number.isFinite(arg2)) motionTime = arg2;
+      else motionTime += Math.max(0, Math.min(1, dt));
     }
     const step = Math.max(0, Math.min(1, dt)) * 3.2;
-    deploy += ((isWorking(current) ? 1 : 0) - deploy) * Math.min(1, step);
+    deploy += ((working ? 1 : 0) - deploy) * Math.min(1, step);
+    initialized = true;
     apply(deploy, motionTime, current);
   };
 }

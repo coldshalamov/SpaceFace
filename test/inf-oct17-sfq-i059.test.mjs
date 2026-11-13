@@ -95,5 +95,7 @@ test('SFQ-I059: renderer calling convention updateAuthoredMotion(entity, authore
 
   entity.data.machine.repairing = false;
   custMesh.userData.updateAuthoredMotion(entity, 120.6, {}, null);
-  assert.ok(tip.material.emissiveIntensity <= 0.35, `idle intensity <= 0.35, got ${tip.material.emissiveIntensity}`);
+  assert.ok(tip.material.emissiveIntensity > 0.35, 'the first idle frame eases rather than snapping');
+  for (let time = 120.7; time <= 122.7; time += 0.1) custMesh.userData.updateAuthoredMotion(entity, time, {}, null);
+  assert.ok(tip.material.emissiveIntensity <= 0.35, `idle intensity settles <= 0.35, got ${tip.material.emissiveIntensity}`);
 });
