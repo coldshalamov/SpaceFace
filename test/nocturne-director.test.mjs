@@ -180,10 +180,38 @@ test('only one real shadow resource is resident and occlusion-required lamps nev
   assert.equal(h.director.slots[1].light.castShadow, false);
   assert.ok(h.director.slots[1].light.angle >= 0.8);
   assert.equal(h.director.slots[1].light.penumbra, 1);
+  assert.equal(h.director.slots[0].light.shadow.intensity, 1);
   advance(h, 30, { shadowEnabled: false });
+  // Shadows off (the default): the structural shadow spot is not wasted. It carries the best lamp
+  // that needs no occlusion, with its never-rendered map muted so it cannot darken the surface.
   assert.equal(h.director.slots[0].light.castShadow, true);
-  assert.equal(h.director.slots[0].light.intensity, 0);
+  assert.equal(h.director.slots[0].source, wide);
+  assert.ok(h.director.slots[0].light.intensity > 0);
+  assert.equal(h.director.slots[0].light.shadow.intensity, 0);
   assert.ok(!h.director.slots.some(s => s.source === required || s.source === player));
+});
+
+test('with shadows off the one real spot still carries the player lamp that does not need occlusion', () => {
+  const h = rig({ pointCount: 0, spotCount: 3, shadowCount: 1 });
+  const bow = source(h.registry, 'bow', { type: 'spot', shadow: true, priority: 4, critical: true });
+  const npc = source(h.registry, 'npc', { type: 'spot', shadow: true, priority: 2 });
+  advance(h, 30, { shadowEnabled: false });
+  assert.ok(h.director.slots.some(s => s.source === bow && s.light.intensity > 0));
+  assert.ok(h.director.slots.some(s => s.source === npc && s.light.intensity > 0), 'a second lamp lands too');
+  assert.equal(h.director.slots[0].light.shadow.intensity, 0);
+});
+
+test('the action focus beats raw camera distance when slots are scarce', () => {
+  const h = rig({ pointCount: 1, spotCount: 0 });
+  const near = source(h.registry, 'near', { position: { x: 200, y: 8, z: 0 }, intensity: 3000, range: 120 });
+  const far = source(h.registry, 'far', { position: { x: -60, y: 8, z: 0 }, intensity: 3000, range: 120 });
+  h.director.setFocus(200, 0, 0);
+  advance(h, 30);
+  assert.equal(h.director.slots[0].source, near);
+  h.director.setFocus(-60, 0, 0);
+  h.director.invalidate();
+  advance(h, 60);
+  assert.equal(h.director.slots[0].source, far);
 });
 
 test('stationary shadows cache until a changed caster, moving lamps update at bounded cadence', () => {

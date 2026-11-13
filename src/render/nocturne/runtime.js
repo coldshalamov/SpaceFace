@@ -61,6 +61,7 @@ export class NocturneRuntime {
     this._proxies = new Map();
     this._lastOrigin = { x: NaN, z: NaN };
     this._originScratch = { x: 0, z: 0 };
+    this._focusScratch = { x: 0, z: 0 };
     this._originGlobal = { x: 0, z: 0 };
     const video = state?.settings?.video || EMPTY;
     this.enabled = video.nocturne !== false;
@@ -153,6 +154,14 @@ export class NocturneRuntime {
       }
       this._lastOrigin.x = this._originScratch.x; this._lastOrigin.z = this._originScratch.z;
     }
+    // The light budget favours what is near the player's hull (the action), not the high camera.
+    const hero = this.state?.entities?.get?.(this.state.playerId);
+    const heroRoot = hero ? meshes?.get?.(hero.id) : null;
+    if (heroRoot?.position) this.director.setFocus(heroRoot.position.x, 0, heroRoot.position.z);
+    else if (hero?.pos && membrane?.toLocal) {
+      membrane.toLocal(hero.pos, this._focusScratch);
+      this.director.setFocus(this._focusScratch.x, 0, this._focusScratch.z);
+    } else this.director.setFocus(NaN, 0, 0);
     const direct = this._directorOptions;
     direct.enabled = enabled; direct.shadowEnabled = this.shadowsEnabled;
     direct.casterEpoch = this.content.casterEpoch;

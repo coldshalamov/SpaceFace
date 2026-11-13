@@ -38,9 +38,9 @@ function census(scene) {
   return counts;
 }
 
-test('real VFX, weapon and engine adapters share three GPU points and one spot', () => {
+test('real VFX, weapon and engine adapters share three GPU points and three spots (one shadow-capable)', () => {
   const h = harness();
-  const expected = { points: 3, spots: 1, shadowSpots: 1 };
+  const expected = { points: 3, spots: 3, shadowSpots: 1 };
   assert.deepEqual(census(h.scene), expected);
   const weapons = new WeaponLightPool(h.scene);
   const overhead = createFlightOverheadPresentation(h.scene);
@@ -114,7 +114,7 @@ test('material contact stays secondary while a gyre payload uses the normalized 
   assert.equal(major.admissionPriority, 0.9);
   assert.equal(major.obj._nocturneSource.priority, 3);
   assert.equal(major.obj._nocturneSource.importance, 1.9);
-  assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
+  assert.deepEqual(census(h.scene), { points: 3, spots: 3, shadowSpots: 1 });
   unregisterMaterialOwner(materialOwner); materialRoot.removeFromParent();
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
@@ -170,7 +170,7 @@ test('manual lighting controls apply to an immediate flush and respect the saved
   h.runtime.setEnabled(false); h.runtime.setEnabled(true); h.runtime.flush(h.camera);
   assert.ok(h.runtime.pointLights.every(light => light.intensity === 0));
   assert.equal(effect.intensity, 8000, 'logical emitter remains authored while contribution is disabled');
-  assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
+  assert.deepEqual(census(h.scene), { points: 3, spots: 3, shadowSpots: 1 });
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
 
@@ -185,7 +185,7 @@ test('actual save, game and sector boundaries clear transient light without remo
     h.bus.emit(event, {});
     assert.equal(effect.intensity, 0, event);
     assert.ok(h.runtime.pointLights.every(light => light.intensity === 0));
-    assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
+    assert.deepEqual(census(h.scene), { points: 3, spots: 3, shadowSpots: 1 });
   }
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
@@ -213,7 +213,7 @@ test('exiting to menu retires VFX CPU envelopes before the next light update', (
   h.runtime.flush(h.camera);
   assert.equal(slot.obj.intensity, 0, 'the next menu update cannot resurrect the old flash');
   assert.ok(h.runtime.pointLights.every(light => light.intensity === 0));
-  assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
+  assert.deepEqual(census(h.scene), { points: 3, spots: 3, shadowSpots: 1 });
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
 

@@ -12,7 +12,9 @@ import * as THREE from 'three';
 import { LOOK_HEADLIGHT } from '../data/lookMoods.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 
-export const HEADLIGHT_POOL_SIZE = 1; // player bow only; NPC lamps were 2 more baked spot lights in every program
+// Real spot lights NOCTURNE multiplexes the logical lamps/floodlights onto: slot 0 is the one shadow-capable
+// spot (the player bow always wins it); slots 1-2 are unshadowed and go to the best NPC lamps/floodlights.
+export const HEADLIGHT_POOL_SIZE = 3;
 // NPC lamp assignment is re-scored a few times a second; poses update every frame.
 const ASSIGN_INTERVAL = 0.25;
 

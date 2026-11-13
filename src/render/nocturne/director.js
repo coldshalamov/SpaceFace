@@ -41,6 +41,10 @@ export class NocturneDirector {
     this._sphere = new THREE.Sphere();
     this._cameraPosition = new THREE.Vector3();
     this._viewPosition = new THREE.Vector3();
+    // The action point (the player's hull, frame-local). Falloff is measured from here, not from
+    // the high chase camera, so the lamps and flashes beside what the player is doing win slots.
+    this._focus = new THREE.Vector3();
+    this._hasFocus = false;
     this._enabled = true;
     this._shadowEnabled = true;
     this._append('point', pointLights, pointCount);
@@ -86,6 +90,12 @@ export class NocturneDirector {
   }
 
   invalidate() { this._clock = Infinity; this.shadowBudget.invalidate(); }
+  /** Frame-local point the light budget favours (the player's hull). Omit/NaN clears it. */
+  setFocus(x, y, z) {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) { this._hasFocus = false; return; }
+    this._focus.set(x, y, z);
+    this._hasFocus = true;
+  }
   getDiagnostics() { return this._diag; }
 
   _score(source, camera) {
@@ -110,8 +120,12 @@ export class NocturneDirector {
     const priority = clamp(finite(source.priority, 2), 0, 4);
     const luminance = Math.max(0.001, source.color.r * 0.2126 + source.color.g * 0.7152 + source.color.b * 0.0722);
     const energy = Math.log2(1 + source.intensity * source.gain * luminance);
-    let score = projected * energy * (2 ** priority) * Math.max(0.001, finite(source.importance, 1))
-      / (1 + Math.sqrt(distance2) / (range * 4));
+    // Near the action a source's own reach is the yardstick: a pool of light a hull-length from the
+    // player outranks a bigger lamp across the arena. Without a focus the camera distance rules.
+    const falloff = this._hasFocus
+      ? 1 + (p.distanceTo(this._focus) / (range * 1.5)) ** 2
+      : 1 + Math.sqrt(distance2) / (range * 4);
+    let score = projected * energy * (2 ** priority) * Math.max(0.001, finite(source.importance, 1)) / falloff;
     if (source.critical) score *= 4;
     for (const slot of this.slots) if (slot.source === source || slot.pending === source) { score *= 1 + this.hysteresis; break; }
     return score;
@@ -134,8 +148,12 @@ export class NocturneDirector {
       const slot = this.slots[i];
       for (const source of this.registry.sources) {
         if (kindFor(source) !== slot.kind || !(source._selectionScore > this._scores[i])) continue;
-        if (slot.shadow && (!this._shadowEnabled || !source.shadow)) continue;
-        if (!slot.shadow && source.requiresOcclusion) continue;
+        // The shadow-capable spot is a structural slot (it keeps the shader's shadow sampler pinned).
+        // While shadows are on it serves only shadow-casting sources. While they are off - the
+        // default - it is an ordinary spot with its map muted (shadow.intensity 0, set in update), so
+        // the one real spot light is never wasted; sources that need occlusion stay dark either way.
+        if (slot.shadow && this._shadowEnabled && !source.shadow) continue;
+        if (source.requiresOcclusion && !(slot.shadow && this._shadowEnabled)) continue;
         let selected = false;
         for (let j = 0; j < i; j++) if (this._selected[j] === source) { selected = true; break; }
         if (selected) continue;
@@ -206,8 +224,9 @@ export class NocturneDirector {
         if (source && enabled) slot.level = source.priority >= 3 ? 1 : Math.min(1, rate);
       }
       const light = slot.light;
-      if (!enabled || !usable(source)
-        || (slot.shadow && !shadowEnabled)) { light.intensity = 0; continue; }
+      if (!enabled || !usable(source)) { light.intensity = 0; continue; }
+      // An unrendered map must never darken the lit surface: mute its comparison, not the lamp.
+      if (slot.shadow) light.shadow.intensity = shadowEnabled ? 1 : 0;
       light.position.copy(source.position);
       light.color.copy(source.color);
       light.decay = Math.max(0, finite(source.decay, 2));
