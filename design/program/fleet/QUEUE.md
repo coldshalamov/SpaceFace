@@ -50,13 +50,13 @@ See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
 
 | ID | Player route and next action | State |
 |---|---|---|
-| QUAL-01 | Windows browser and desktop launch → close → relaunch. Trace the occasional native hidden/minimized first-picture hold and verify the packaged updater. | TAKEN Codex. Injected renderer crash recovery, Quit and relaunch passed. |
+| QUAL-01 | Windows browser and desktop launch → close → relaunch. Trace the occasional native hidden/minimized first-picture hold and verify the packaged updater. | TAKEN Codex. Injected crash recovery, Quit and relaunch passed. Fixed stale first-show visibility in the shell fixture. Live intermittent first picture and packaged updater remain open. |
 | QUAL-02 | Adventure New Game → fly → save/Continue → berth → first story delivery. Verify preserved chart courses, paid jumps and sealed cargo recovery in the ordinary route. | TAKEN Codex. Two public F5/F9 cycles returned to flight in Electron. The berth and story route remain open. |
 | QUAL-03 | Adventure opening and crowded Helios. Isolate the largest repeatable CPU/GPU cost and compare fresh poses and hitches on the same route. | TAKEN Codex |
 | QUAL-04 | Ordinary Swarm round 1 → next round and Retry. Find the early-round pacing loss and verify first-input protection after Retry. | TAKEN Codex |
 | QUAL-05 | Public Gauntlet launch → combat → Retry. Grade camera and motion, then trace the first-visibility pop-ins to their real owner. | READY |
 | QUAL-06 | Public Circuits → choose Time Trial → gate → F8 → gate → finish or leave. Verify the new attempt can earn boost and keeps its own result. | TAKEN Codex. F8 resets the public attempt on its grid. Campaign heading, comms and yard guidance verified absent. Scored finish remains open. |
-| QUAL-07 | World motion freezes during thrust, turning and fire. Measure authoritative ticks, ship pose and draw cadence in Foundry, then cover Pause, minimize/return and load. | TAKEN Codex. Supply Pod combined inputs, Adventure Pause and native Restore verified. Recorded freeze, first-picture hold and live load coverage remain open. See QUALITY.md. |
+| QUAL-07 | World motion freezes during thrust, turning and fire. Measure authoritative ticks, ship pose and draw cadence in Foundry, then cover Pause, minimize/return and load. | TAKEN Codex. Supply Pod combined inputs, Adventure Pause and native Restore verified. Fixed dormant-rock mirror and removed per-tick ledger scan. Verify Ceres pre-contact drawing and capture joint worker/render timing. Recorded freeze and live load coverage remain open. |
 | QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
 | QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex |
 

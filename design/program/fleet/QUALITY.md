@@ -184,3 +184,30 @@ The released checkpoints for flight restore, AI identity and Helios wash used th
 The previous round-20 report remains in `.devshots/fleet/coordination/quality-round20-performance.md`.
 Use it as one stress route. For the separate visual lane, the Yardmaster/Line overlap reproduction
 and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opus.
+
+## Worker ledgers, rendering, and native startup
+
+- `0dbde54a8fc5` connects the worker's dormant asteroid deltas to the renderer's actual spatial
+  table. The old path only updated the private read model. Field rows now enter the render roster
+  before promotion, without becoming live bodies. The 56 focused checks include grid movement,
+  promotion, reused IDs, and coalesced replies. Ceres live contact remains open.
+- `0427216c1975` drains dirty and removed IDs directly. New and replaced tables compare membership
+  once. The 720-tick auxiliary probe had no reader mismatches or missing journal marks. The separate
+  transport threshold failed on this host (2.54 ms p95 against the 0.5 ms per-tick threshold).
+  A matched Node benchmark with 6,000 dormant rows and one change every ten replies measured
+  1.66 to 0.012 ms median in the diff itself, with the same upsert and removal counts. These are
+  isolated owner costs. Evidence: `aux-rock-journal-bench.mjs` and `aux-rock-journal-spike.json`
+  under `.devshots/fleet/coordination/`.
+- `f7294f59cb55` packs Nocturne probe uniforms once per frame. Isolated vendored Three.js uploads
+  with four probes took 3,995 to 313 ms across 720,000 material uploads. The 21 focused tests
+  preserve shader values. `81f1eb4c31ef` reuses measured compact-hull bounds, preserving the native
+  200-tick combat hash and mutable authored hulls. Its isolated benefit was about 0.03 ms per tick.
+  Neither result measures the effect on live frame time.
+- `2562d286fd30` republishes actual Electron window visibility after the first show. An injected
+  missing native `show` event previously left a visible window marked hidden, which cancels
+  presentation and simulation. The regression failed before and passed after. The earlier live
+  Adventure stalls did not record enough native state to attribute them to this race.
+- `64092aa260a1` and `15f2694cd228` capture the same held thrust, turn and primary-fire workload
+  in cadence, worker CPU and Chrome scheduling traces. Use `combined-input-trace.mjs` under
+  `.devshots/fleet/coordination/` with the locked steady-flight probe. Keep the timing of actual
+  moving poses distinct from successful draws and validate that player fire occurred.
