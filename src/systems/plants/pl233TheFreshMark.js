@@ -19,6 +19,7 @@
 // - One working night: the marks are laid once, on the first night after the street exists.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 import { makeShipEntitySpec } from '../ships.js';
 
 export const PL_233_MARKED_EVENT = 'plants:pl233:marked';
@@ -64,21 +65,6 @@ export function inNightBand(simTime, t = FRESH_MARK_TUNING) {
   const len = Math.max(1, t.dayLengthS);
   const phase = ((simTime % len) + len) % len;
   return phase >= len * (1 - t.nightFraction);
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl233TheFreshMark() {

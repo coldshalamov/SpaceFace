@@ -21,6 +21,7 @@
 // - The stare, the tow dispatch, and the shove are each cooldown-gated per visit.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 import { makeShipEntitySpec } from '../ships.js';
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
 
@@ -73,21 +74,6 @@ export function ribStreetFor(origin, t = KEPT_BERTH_TUNING) {
 /** Which berth on the street stands chalked RESERVED. */
 export function reservedBerthIndex(t = KEPT_BERTH_TUNING) {
   return hash32(RESERVED_SALT, t.stationId) % t.streetCount;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl202KeptBerth() {

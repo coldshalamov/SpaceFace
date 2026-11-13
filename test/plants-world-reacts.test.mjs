@@ -8,6 +8,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
+import { plantMapOrder, plantStationById } from '../src/systems/plantEntityViews.js';
 import { traffic } from '../src/systems/traffic.js';
 import { BUS_TUNING } from '../src/systems/plants/busDoesntMove.js';
 import { towLatch, towTargetIdOf } from '../src/systems/plants/towWatch.js';
@@ -791,6 +793,31 @@ test('PL-176 a slow player passes quiet; the same ship will not chirp twice insi
   plant.update();
   assert.equal(alarmEvents.length, 1, 'per-ship chirp cooldown');
   plant.destroy();
+});
+
+test('plant entity reads share canonical Map order and refresh after swap-pop and id reuse', () => {
+  const sim = createSimulation({ systems: [] });
+  const { state, helpers } = sim;
+  const spec = { pos: { x: 0, z: 0 }, hull: 100 };
+  const first = sim.spawn({ ...spec, type: 'ship' });
+  const station = sim.spawn({ ...spec, type: 'station', data: { stationId: 'station_helios' } });
+  const last = sim.spawn({ ...spec, type: 'ship' });
+  const initial = plantMapOrder(state);
+  assert.deepEqual(initial, [first, station, last]);
+  const values = state.entities.values.bind(state.entities);
+  let fullScans = 0;
+  state.entities.values = () => { fullScans++; return values(); };
+  assert.equal(plantMapOrder(state), initial);
+  assert.equal(plantStationById(state, 'station_helios'), station);
+  assert.equal(plantStationById(state, 'station_missing'), null);
+  assert.equal(fullScans, 0, 'an indexed station lookup and stable cursor require no full traversal');
+
+  helpers.removeEntity(first.id, { immediate: true });
+  const replacement = sim.spawn({ ...spec, type: 'ship' });
+  assert.equal(replacement.id, first.id);
+  assert.deepEqual(state.entityList, [last, station, replacement]);
+  assert.deepEqual(plantMapOrder(state), [station, last, replacement]);
+  assert.equal(fullScans, 1, 'same-size membership changes refresh the ordered view once');
 });
 
 // ---------------------------------------------------------------------------

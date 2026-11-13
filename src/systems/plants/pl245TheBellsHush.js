@@ -21,6 +21,7 @@
 // - One hush per ring; the chorus answers at most once per hush.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_245_RING_EVENT = 'plants:pl245:ring';
 export const PL_245_HUSH_EVENT = 'plants:pl245:hush';
@@ -50,21 +51,6 @@ export function bellSpotFor(origin, t = BELLS_HUSH_TUNING) {
     x: origin.x + Math.cos(bearing) * t.bellOffsetWu,
     z: origin.z + Math.sin(bearing) * t.bellOffsetWu,
   };
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl245TheBellsHush() {

@@ -18,6 +18,7 @@
 // (real tether seams via towWatch). A stranger that merely drifts near a dock credits nobody.
 
 import { attachTowWatch, towTargetIdOf } from './towWatch.js';
+import { plantMapOrder } from '../plantEntityViews.js';
 
 export const PLANTS_STRANGER_HAIL_EVENT = 'plants:strangerHail';
 export const PLANTS_STRANGER_DELIVERED_EVENT = 'plants:strangerDelivered';
@@ -149,15 +150,6 @@ export const otherSidePlant = {
     row.lastAt = now;
   },
 
-  _otherSideEntities() {
-    const entities = this.state && this.state.entities;
-    if (!entities) return [];
-    const out = [];
-    if (typeof entities.values === 'function') { for (const e of entities.values()) out.push(e); }
-    else if (Array.isArray(entities)) { for (const e of entities) out.push(e); }
-    return out;
-  },
-
   _otherSideEntityById(id) {
     if (id == null) return null;
     const entities = this.state && this.state.entities;
@@ -177,7 +169,7 @@ export const otherSidePlant = {
     if (!karmaRow) return;
     karmaRow.lastAt = now;
 
-    const ents = this._otherSideEntities();
+    const ents = plantMapOrder(this.state);
     const budget = Math.min(OTHER_SIDE_TUNING.scanBudget, ents.length);
 
     for (let i = 0; i < budget; i += 1) {

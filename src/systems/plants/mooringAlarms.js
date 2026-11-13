@@ -14,6 +14,7 @@
 // - Cooldowns per ship key. All session state lives on `this`, never module-level.
 
 import { hash32 } from '../../core/rng.js';
+import { plantMapOrder } from '../plantEntityViews.js';
 
 export const PLANTS_MOORING_ALARM_EVENT = 'plants:mooringAlarm';
 export const PLANTS_MOORING_WAVE_EVENT = 'plants:mooringComplaintWave';
@@ -114,15 +115,6 @@ export const mooringAlarmsPlant = {
     this._mooringWave = { startAt: -Infinity, alarms: 0, fired: false };
   },
 
-  _mooringEntities() {
-    const entities = this.state && this.state.entities;
-    if (!entities) return [];
-    const out = [];
-    if (typeof entities.values === 'function') { for (const e of entities.values()) out.push(e); }
-    else if (Array.isArray(entities)) { for (const e of entities) out.push(e); }
-    return out;
-  },
-
   update() {
     if (!this.state || (this.state.mode && this.state.mode !== 'flight')) return;
     const now = finite(this.state.simTime, 0);
@@ -131,20 +123,25 @@ export const mooringAlarmsPlant = {
       || (Array.isArray(this.state.entities) ? this.state.entities.find((e) => e.id === this.state.playerId) : null);
     if (!player || player.alive === false) return;
 
-    const ents = this._mooringEntities();
-    if (!ents.length) return;
+    const entities = this.state.entities;
+    const size = Array.isArray(entities) ? entities.length : entities.size;
+    if (!size) return;
 
     // Bounded round-robin scan: at most scanBudget entities per tick, sector-scoped.
-    const budget = Math.min(MOORING_TUNING.scanBudget, ents.length);
+    const budget = Math.min(MOORING_TUNING.scanBudget, size);
+    const start = this._mooringCursor;
+    this._mooringCursor = (start + budget) % size;
+    if (!player.pos || !player.vel
+      || Math.hypot(finite(player.vel.x), finite(player.vel.z)) < MOORING_TUNING.boostSpeedWu) return;
+    const ents = plantMapOrder(this.state);
     const hits = [];
     for (let i = 0; i < budget; i += 1) {
-      const idx = (this._mooringCursor + i) % ents.length;
+      const idx = (start + i) % size;
       const ent = ents[idx];
       if (!isParkedShip(ent, this.state)) continue;
       const hit = mooringAlarmHit(player, ent);
       if (hit) hits.push({ ent, hit });
     }
-    this._mooringCursor = (this._mooringCursor + budget) % Math.max(1, ents.length);
 
     // Nearest first: the alarm wave follows the player across the field.
     hits.sort((a, b) => a.hit.dist - b.hit.dist);
