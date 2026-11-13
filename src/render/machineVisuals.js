@@ -137,9 +137,6 @@ function buildSurveyorPrism(entity = null) {
   ring.scale.setScalar(12);
   ring.rotation.x = Math.PI / 2;
   g.add(ring);
-  const pupil = new THREE.Mesh(geo('prism_pupil', () => new THREE.SphereGeometry(0.16, 10, 8)), lightMat(2.4));
-  pupil.scale.setScalar(12);
-  g.add(pupil);
   const scanArm = buildToolArm(g, { pivot: { y: 4 }, length: 14 });
   g.name = 'SF_Machine_surveyor_prism';
   const scanPeriod = machineKindById('surveyor_prism')?.scanPeriodS || 14;
