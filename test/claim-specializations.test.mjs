@@ -462,6 +462,29 @@ test('fifteen authored claim sites are distributed and reachable across the 24-r
 
 // ── 3. refinery truth through canonical owners ───────────────────────────────────────────────
 
+test('relay delivery moves loose units and leaves sealed freight in the player hold', () => {
+  const h = boot();
+  const relay = commission(h, claimBody(h), 'spec_relay');
+  const commodityId = 'cmdty_alloys';
+  h.state.missions = { active: [{
+    id: 'sealed-alloys', status: 'active', preloadedCargo: true,
+    params: { cmdtyId: commodityId, qty: 6 },
+  }] };
+  assert.equal(addCargo(h.state, commodityId, 8), 8);
+
+  assert.equal(h.sys.deliverToClaim(relay.id, commodityId, 8), 2);
+  assert.equal(relay.spec.store.input[commodityId], 2);
+  assert.equal(h.state.player.cargo.items[commodityId], 6);
+  assert.deepEqual(relay.spec.receipts.filter(row => row.kind === 'delivered').map(row => row.data),
+    [{ goodId: commodityId, qty: 2 }]);
+
+  assert.equal(h.sys.deliverToClaim(relay.id, commodityId, 6), 0);
+  assert.equal(relay.spec.store.input[commodityId], 2);
+  assert.equal(h.state.player.cargo.items[commodityId], 6);
+  assert.equal(relay.spec.receipts.filter(row => row.kind === 'delivered').length, 1);
+  assert.match(events(h, 'toast').at(-1).payload.text, /reserved.*contract/i);
+});
+
 test('refinery input/output/upkeep/storage go through cargo + economy owners with honest numbers', () => {
   const h = boot({ seed: 11 });
   const body = commission(h, claimBody(h), 'spec_refinery');

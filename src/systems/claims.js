@@ -65,7 +65,7 @@ export {
   claimDefenseRating, claimsReadView,
 } from './claimsReadModel.js';
 import { techDisplayName } from '../data/tech.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
 import { ensureShipment, shipmentQty, shipmentUsed, addToShipment, takeFromShipment } from './cargoCustody.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -571,8 +571,8 @@ export const claims = {
     return true;
   },
 
-  // Move goods from the player hold into the site store. Returns units actually moved.
-  // Refinery accepts refinable ore only; relay accepts any freight; bastion takes none.
+  // Move loose goods from the player hold into the site store. Returns units actually moved.
+  // Refinery accepts refinable ore only; relay accepts any loose freight; bastion takes none.
   deliverToClaim(bodyId, goodId, qty) {
     const body = (this.state.claims.bodies || []).find((b) => b.id === bodyId);
     const def = body && body.spec && BODY_SPECIALIZATION_BY_ID.get(body.spec.id);
@@ -588,11 +588,18 @@ export const claims = {
     }
     const cap = def.id === 'spec_refinery' ? def.inputCapU : def.storeCapU;
     const room = Math.max(0, cap - sumStore(body.spec.store.input));
-    const ask = Math.min(ask0, room);
-    if (ask <= 0) {
+    if (room <= 0) {
       this.bus.emit('toast', { text: 'Site storage full on ' + body.name, kind: 'error', ttl: 3 });
       return 0;
     }
+    const available = sellableCargoQuantity(this.state, goodId);
+    if (available <= 0) {
+      if (this.state.player.cargo.items[goodId] > 0) {
+        this.bus.emit('toast', { text: 'This cargo is reserved for a contract.', kind: 'warn', ttl: 3 });
+      }
+      return 0;
+    }
+    const ask = Math.min(ask0, room, available);
     const moved = removeCargo(this.state, goodId, ask);
     if (moved > 0) {
       body.spec.store.input[goodId] = (body.spec.store.input[goodId] || 0) + moved;
