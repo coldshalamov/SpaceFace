@@ -196,6 +196,22 @@ test('late DOM blur cannot override accepted native foreground focus', () => {
   controller.stop();
 });
 
+test('a delayed DOM focus cannot release the hold from a newer native blur', () => {
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const { focusTarget, controller, shell } = createHarness({ state });
+  try {
+    shell({ state: 'foreground-visible', sequence: 1, reason: 'focus' });
+    shell({ state: 'foreground-occluded', sequence: 2, reason: 'blur' });
+    focusTarget.emit('focus');
+    assert.equal(state.timeScale, 0);
+    assert.deepEqual(pausedSources(state), [FOCUS_LOSS_TIME_SOURCE]);
+    shell({ state: 'foreground-visible', sequence: 3, reason: 'focus' });
+    assert.equal(state.timeScale, 1);
+  } finally {
+    controller.stop();
+  }
+});
+
 test('native occlusion pauses without DOM blur and native focus resumes without DOM focus', () => {
   const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
   const { focusTarget, controller, shell } = createHarness({ state });

@@ -801,6 +801,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function onWindowFocus() {
+    // Like blur, this fallback may arrive after a newer native focus transition.
+    if (shellSequence > 0) return;
     onInputResume();
   }
 
