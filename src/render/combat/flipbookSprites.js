@@ -58,7 +58,8 @@ const VERT = /* glsl */`
     vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
     vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
     float c = cos(aSpriteRoll), s = sin(aSpriteRoll);
-    vec2 q = vec2(c * position.x - s * position.y, s * position.x + c * position.y) * aSpriteScale;
+    vec2 p0 = position.xy * aSpriteScale;
+    vec2 q = vec2(c * p0.x - s * p0.y, s * p0.x + c * p0.y);
     vec3 world = aSpritePosition + right * q.x + up * q.y;
     vUv = uv;
     vTint = aSpriteColor;
