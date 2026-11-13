@@ -245,3 +245,23 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   foreground heartbeats with no outstanding ACK. The fixed clock recovered after two fixed-step
   periods. The delayed task could not step again, and pause and shutdown still cancel pending work.
   This mechanism has not been attributed to the retail recording.
+- `44aa8f37f041` fixes a second Ceres visibility gap at dormant-to-live handoff. In the locked
+  diagnostic, rock 299 had an admitted root and its center was on screen, yet the root hid for
+  279 ms across four samples. Its live row was in the newest completed pack while the displayed
+  bracket still preceded its spawn. The existing visible root now keeps the dormant pose through
+  that interval for the verified promotion and exact occupant only. The pose, visibility, bridge,
+  and pool checks passed. The production worker reported the expected promotion receipt and field
+  removal with no journal breaches. Live contact verification is queued under the game lock.
+  The separate Helios rescue rock first-build delay remains open.
+- `14d03ddb7252` rejects distant compound bodies before precise spawn overlap checks. Four matched
+  Foundry worker runs made the same 319 guard decisions, including seven nudges, and finished with
+  the same state hash. Mean guard cost was 218 to 154 ms over 144 ticks. Host contention varied
+  substantially, so this gives directional owner timing only. The rotated offset-body check
+  confirms the guard still detects reachable compound children.
+- `63dc0d82086f` reuses CSS viewport dimensions for projection, verified across a high-DPI resize.
+  `5be2cb0782a6` reuses the static run schema during validation. `3287b160abe1` aligns arena tests
+  with the staged Foundry banks and checks terrain identity, duplicate prevention, and sweep timing.
+- Desktop startup source review found no request to minimize during launch, and the isolated probe
+  did not load remembered window state. The failed screenshot shows the window already minimized
+  at timeout. A subsequent native probe passed Pause and minimize/restore from active flight.
+  The timing of the unexpected startup minimize remains unknown.
