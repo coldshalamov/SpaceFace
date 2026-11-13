@@ -38,11 +38,14 @@ test('Casket Worm finishes stay independent and retire once with their creature'
   for (const material of firstMaterials) material.addEventListener('dispose', () => disposed.set(material, disposed.get(material) + 1));
   let otherDisposals = 0, geometryDisposals = 0, textureDisposals = 0;
   for (const material of otherMaterials) material.addEventListener('dispose', () => otherDisposals++);
-  const sharedGeometry = first.children[0].geometry;
-  assert.equal(sharedGeometry, other.children[0].geometry);
+  const sharedGeometries = [...new Set(first.children.map(child => child.geometry))];
+  assert.equal(sharedGeometries.length, 2);
+  for (let i = 0; i < first.children.length; i++) {
+    assert.equal(first.children[i].geometry, other.children[i].geometry);
+  }
   const geometryListener = () => geometryDisposals++;
   const textureListener = () => textureDisposals++;
-  sharedGeometry.addEventListener('dispose', geometryListener);
+  for (const geometry of sharedGeometries) geometry.addEventListener('dispose', geometryListener);
   skins.tissue.baseColor.addEventListener('dispose', textureListener);
   skins.tissue.normal.addEventListener('dispose', textureListener);
   try {
@@ -58,7 +61,7 @@ test('Casket Worm finishes stay independent and retire once with their creature'
     assert.equal(geometryDisposals, 0);
     assert.equal(textureDisposals, 0);
   } finally {
-    sharedGeometry.removeEventListener('dispose', geometryListener);
+    for (const geometry of sharedGeometries) geometry.removeEventListener('dispose', geometryListener);
     skins.tissue.baseColor.removeEventListener('dispose', textureListener);
     skins.tissue.normal.removeEventListener('dispose', textureListener);
   }

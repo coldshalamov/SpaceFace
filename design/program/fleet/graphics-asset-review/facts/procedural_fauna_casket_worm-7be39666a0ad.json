@@ -1,0 +1,23 @@
+{
+  "route": "Ecology site casts spawn the procedural Casket Worm fauna with each site's strain; this is distinct from the separately authored capital-boss ship of the same name.",
+  "deploymentCode": [
+    "src/data/alienEcology.js",
+    "src/systems/alienEcology.js",
+    "src/render/visualFactory.js",
+    "src/render/faunaVisuals.js"
+  ],
+  "status": "Two site-cast color variants traced in source and sampled at the current gameplay camera after diagnostic relocation; ordinary encounters remain unverified.",
+  "variationDiscovery": "unresolved",
+  "playableVariants": [
+    {
+      "id": "ashfall_choir",
+      "description": "Ashfall Choir tissue and filament colors, spawned by the Breathing Dock, Converted Yards and Towed Moonlet ecology casts.",
+      "evidence": ["src/data/alienEcology.js", "src/systems/alienEcology.js", "src/render/faunaVisuals.js"]
+    },
+    {
+      "id": "charon_grave",
+      "description": "Charon Grave tissue and filament colors, spawned by the Closed Refinery and Red Cable Yard ecology casts.",
+      "evidence": ["src/data/alienEcology.js", "src/systems/alienEcology.js", "src/render/faunaVisuals.js"]
+    }
+  ]
+}

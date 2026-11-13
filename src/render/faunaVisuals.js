@@ -9,6 +9,7 @@ import { alienStrainById } from '../data/alienEcology.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
 import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
+import { createCasketSegmentGeometry, createCasketHeadGeometry } from './casketWormGeometry.js';
 import { readFaunaMotion } from '../data/faunaMotionRead.js';
 
 const TISSUE = 0x9aa08e;
@@ -242,11 +243,7 @@ function buildLanternCyst(colors) {
 // Casket Worm: a low segmented hull-crawler — armored plates, no glow until it moves.
 function buildCasketWorm(colors) {
   const g = new THREE.Group();
-  const seg = geo('cw_seg', () => {
-    const s = new THREE.BoxGeometry(1.4, 0.5, 1.1);
-    s.scale(1, 1, 1);
-    return s;
-  });
+  const seg = geo('cw_seg', createCasketSegmentGeometry);
   // Each finish belongs to this worm; only its repeated plates borrow it.
   const filament = tissueMat(colors.filament);
   const tissue = tissueMat(colors.tissue);
@@ -257,11 +254,7 @@ function buildCasketWorm(colors) {
     m.scale.set(8 - i * 0.6, 6, 8);
     g.add(m);
   }
-  const head = new THREE.Mesh(geo('cw_head', () => {
-    const s = new THREE.ConeGeometry(0.8, 1.6, 6);
-    s.rotateX(Math.PI / 2);
-    return s;
-  }), tissue);
+  const head = new THREE.Mesh(geo('cw_head', createCasketHeadGeometry), tissue);
   head.userData.borrowedGeometryMaterial = true;
   head.position.z = 2.4;
   head.scale.setScalar(8);
