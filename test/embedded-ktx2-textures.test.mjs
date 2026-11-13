@@ -226,7 +226,9 @@ test('extension-decoded bufferViews keep the parser bufferView path and its copy
 test('real render package: KTX2 bytes handed to the transcoder are identical with the direct slice on and off', async () => {
   const { readFileSync } = await import('node:fs');
   const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
-  const glbUrl = new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url);
+  // This real package carries only embedded KTX2 images, so the Node fixture exercises this
+  // plugin without requiring a browser image loader for an unrelated PNG/JPEG material.
+  const glbUrl = new URL('../assets/ships/release/render-packages/ashline-dart/render.glb', import.meta.url);
   const glb = readFileSync(glbUrl);
   const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
   await MeshoptDecoder.ready;
@@ -266,7 +268,7 @@ test('on the vendored loader (#168 in-place GLB body) the direct slice reads the
   const { readFileSync } = await import('node:fs');
   const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
   const { GLTFLoader: VendoredGLTFLoader } = await import('../vendor/addons/loaders/GLTFLoader.js');
-  const glb = readFileSync(new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url));
+  const glb = readFileSync(new URL('../assets/ships/release/render-packages/ashline-dart/render.glb', import.meta.url));
   const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
   await MeshoptDecoder.ready;
 
