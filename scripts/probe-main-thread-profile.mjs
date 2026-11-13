@@ -218,11 +218,15 @@ const TRAVEL_MS = Math.max(0, Number(argValue('--travel-ms')) || 0);
 // --gpu-timers turns the capability-gated GPU timer queries on for the profile window and prints the per-pass report
 // (drawPreparedFrame, bloom passes): which GPU pass the frame is waiting on, where the main thread cannot see it.
 const GPU_TIMERS = process.argv.includes('--gpu-timers');
-// --eval-file=PATH runs a script in the page once the flight has settled (instead of the profile window): the file is
-// one expression that evaluates to a Promise, and its resolved value is saved as eval-result.json. This is how a
-// within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
+// --eval-file=PATH runs a script in the page once the flight has settled. Its resolved value is saved as
+// eval-result.json. With explicit profiling flags, the script replaces the timed steady-flight workload.
 // Eval scripts can await __sfProfileScreenshot(label) to save a compositor screenshot in the output directory.
 const EVAL_FILE = argValue('--eval-file');
+const EVAL_THRUST = process.argv.includes('--eval-thrust') && !process.argv.includes('--eval-brake');
+const WORKER_COST = process.argv.includes('--worker-cost');
+const PROFILE_EVAL = EVAL_FILE && (TRACE || CADENCE_ONLY || WORKER_PROFILE || GPU_TIMERS
+  || WORKER_COST || argValue('--sampling-us') !== null);
+if (EVAL_FILE && FROM_LAUNCH) throw new Error('--eval-file requires steady flight');
 if (SWARM_ROUND !== null && (FROM_LAUNCH || GAUNTLET || RACING)) {
   throw new Error('--swarm-round requires steady Swarm flight');
 }
@@ -271,19 +275,33 @@ const TRACE_CATEGORIES = [
     'disabled-by-default-devtools.timeline.invalidationTracking',
   ] : []),
 ];
+const TRACE_DIAGNOSTIC_CATEGORIES = ['v8', 'disabled-by-default-v8.gc', 'renderer.scheduler', 'sequence_manager'];
 
 async function startTrace(cdp) {
+  const { categories } = await cdp.send('Tracing.getCategories').catch(error => {
+    log(`trace category discovery unavailable: ${error.message}`);
+    return { categories: [] };
+  });
+  const includedCategories = [
+    ...TRACE_CATEGORIES,
+    ...TRACE_DIAGNOSTIC_CATEGORIES.filter(category => categories.includes(category)),
+  ];
   await cdp.send('Tracing.start', {
-    traceConfig: { recordMode: 'recordAsMuchAsPossible', includedCategories: TRACE_CATEGORIES },
+    traceConfig: { recordMode: 'recordAsMuchAsPossible', includedCategories },
     transferMode: 'ReturnAsStream',
     streamFormat: 'json',
   });
+  return includedCategories;
 }
 
-async function stopTraceToFile(cdp, file) {
+async function stopTraceToFile(cdp, file, includedCategories) {
   const complete = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
   await cdp.send('Tracing.end');
-  const { stream } = await complete;
+  const { stream, dataLossOccurred } = await complete;
+  fs.writeFileSync(path.join(path.dirname(file), 'trace-capture.json'), JSON.stringify({
+    includedCategories, dataLossOccurred: dataLossOccurred ?? null,
+  }, null, 2));
+  if (dataLossOccurred) log('Chrome reports trace data loss; trace is incomplete');
   const fd = fs.openSync(file, 'w');
   try {
     for (;;) {
@@ -1717,7 +1735,7 @@ async function runPerfExperiments(page, cdp, seed) {
       // Separate switch setup (including target resize) from the timed window.
       await page.waitForTimeout(1000);
       start = await page.evaluate(() => window.__SF_PROFILE_ARM__.read());
-      if (traced) await startTrace(cdp);
+      const traceCategories = traced ? await startTrace(cdp) : null;
       await cdp.send('Profiler.start');
       await page.evaluate(installGameCadenceProbe);
       if (holdThrust) await page.keyboard.down('KeyW');
@@ -1730,7 +1748,7 @@ async function runPerfExperiments(page, cdp, seed) {
       profile = (await cdp.send('Profiler.stop')).profile;
       if (traced) {
         const traceFile = path.join(OUT_DIR, 'trace.json');
-        await stopTraceToFile(cdp, traceFile);
+        await stopTraceToFile(cdp, traceFile, traceCategories);
         deferredTraceAnalyses.push(() => analyzeExperimentTrace(traceFile));
       }
       end = await page.evaluate(() => window.__SF_PROFILE_ARM__.read());
@@ -1807,6 +1825,64 @@ async function runPerfExperiments(page, cdp, seed) {
   if (!complete) process.exitCode = 1;
 }
 
+async function prepareSteadyEvalWorkload(page) {
+  const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
+  const heldKey = process.argv.includes('--eval-brake') ? 'Digit0' : EVAL_THRUST ? 'KeyW' : null;
+  const turnKey = process.argv.includes('--eval-turn') ? 'KeyD' : null;
+  let screenshotSequence = 0;
+  await page.exposeBinding('__sfProfileScreenshot', async (_source, label) => {
+    if (typeof label !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,47}$/i.test(label)) {
+      throw new Error('Screenshot label must be 1–48 letters, digits, underscores or hyphens');
+    }
+    const filename = `eval-${String(++screenshotSequence).padStart(3, '0')}-${label}.png`;
+    await page.screenshot({ path: path.join(OUT_DIR, filename), timeout: 15_000 });
+    return { path: path.relative(ROOT, path.join(OUT_DIR, filename)).replace(/\\/g, '/') };
+  });
+  if (turnKey) await page.exposeBinding('__sfProfileReleaseTurn', () => page.keyboard.up(turnKey));
+  return async () => {
+    log(`running ${EVAL_FILE} in the page`);
+    try {
+      if (heldKey) await page.keyboard.down(heldKey);
+      if (turnKey) await page.keyboard.down(turnKey);
+      return await page.evaluate(source);
+    } finally {
+      if (turnKey) await page.keyboard.up(turnKey).catch(() => {});
+      if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
+      await page.evaluate(() => {
+        delete window.__sfProfileScreenshot;
+        delete window.__sfProfileReleaseTurn;
+      }).catch(() => {});
+    }
+  };
+}
+
+async function writeSteadyEvalResult(page, result, { launchedSeed, expectedSeed, powerStateStart, powerStateEnd, observer }) {
+  fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
+  const sourceDigestAfter = await digestServedSourcePaths();
+  const evalIdentity = await page.evaluate(() => {
+    const state = window.SF.state;
+    const gl = state.render?.renderer?.getContext();
+    const ext = gl?.getExtension('WEBGL_debug_renderer_info');
+    return {
+      userAgent: navigator.userAgent, gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : null,
+      viewport: [innerWidth, innerHeight], buffer: [gl?.drawingBufferWidth, gl?.drawingBufferHeight],
+      settings: JSON.parse(JSON.stringify(state.settings || {})),
+    };
+  });
+  fs.writeFileSync(path.join(OUT_DIR, 'eval-metadata.json'), JSON.stringify({
+    ...evalIdentity, sourceDigest, sourceDigestAfter, sourceStable: sourceDigest === sourceDigestAfter,
+    powerState: { start: powerStateStart, end: powerStateEnd ?? await captureHostPowerState(page) },
+    sourceOverlay: sourceOverlayMetadata(),
+    probeDigest, displayHz, seed: launchedSeed, requestedSeed: expectedSeed,
+    domainProfileRequested: requestedDomainProfile,
+    domainProfileActual: await page.evaluate(() => window.SF?.simLaneDiag?.()?.domainProfile || 'station')
+      .catch(() => 'station'),
+    mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
+    observer, evalFile: EVAL_FILE,
+  }, null, 1));
+  log(`eval result: ${JSON.stringify(result).slice(0, 3000)}`);
+}
+
 async function runSteadyFlightProfile(page, cdp) {
   await installFlightFailureObserver(page, { timeoutMs: 150_000 });
   try {
@@ -1854,66 +1930,17 @@ async function runSteadyFlightProfile(page, cdp) {
     finally { await page.keyboard.up('KeyW').catch(() => {}); }
   }
   if (PERF_ARMS.length) return runPerfExperiments(page, cdp, launchedSeed);
-  if (EVAL_FILE) {
+  if (EVAL_FILE && !PROFILE_EVAL) {
     const powerStateStart = await captureHostPowerState(page);
-    const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
-    log(`running ${EVAL_FILE} in the page`);
-    const heldKey = process.argv.includes('--eval-brake') ? 'Digit0'
-      : process.argv.includes('--eval-thrust') ? 'KeyW' : null;
-    const turnKey = process.argv.includes('--eval-turn') ? 'KeyD' : null;
-    let screenshotSequence = 0;
-    await page.exposeBinding('__sfProfileScreenshot', async (_source, label) => {
-      if (typeof label !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,47}$/i.test(label)) {
-        throw new Error('Screenshot label must be 1–48 letters, digits, underscores or hyphens');
-      }
-      const filename = `eval-${String(++screenshotSequence).padStart(3, '0')}-${label}.png`;
-      await page.screenshot({ path: path.join(OUT_DIR, filename), timeout: 15_000 });
-      return { path: path.relative(ROOT, path.join(OUT_DIR, filename)).replace(/\\/g, '/') };
+    const evalWorkload = await prepareSteadyEvalWorkload(page);
+    const result = await evalWorkload();
+    await writeSteadyEvalResult(page, result, {
+      launchedSeed, expectedSeed, powerStateStart, observer: 'same-flight-eval',
     });
-    if (turnKey) {
-      await page.exposeBinding('__sfProfileReleaseTurn', () => page.keyboard.up(turnKey));
-    }
-    if (heldKey) await page.keyboard.down(heldKey);
-    let result;
-    try {
-      if (turnKey) await page.keyboard.down(turnKey);
-      result = await page.evaluate(source);
-    }
-    finally {
-      if (turnKey) await page.keyboard.up(turnKey).catch(() => {});
-      if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
-      await page.evaluate(() => {
-        delete window.__sfProfileScreenshot;
-        delete window.__sfProfileReleaseTurn;
-      }).catch(() => {});
-    }
-    fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
-    const sourceDigestAfter = await digestServedSourcePaths();
-    const evalIdentity = await page.evaluate(() => {
-      const state = window.SF.state;
-      const gl = state.render?.renderer?.getContext();
-      const ext = gl?.getExtension('WEBGL_debug_renderer_info');
-      return {
-        userAgent: navigator.userAgent, gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : null,
-        viewport: [innerWidth, innerHeight], buffer: [gl?.drawingBufferWidth, gl?.drawingBufferHeight],
-        settings: JSON.parse(JSON.stringify(state.settings || {})),
-      };
-    });
-    fs.writeFileSync(path.join(OUT_DIR, 'eval-metadata.json'), JSON.stringify({
-      ...evalIdentity, sourceDigest, sourceDigestAfter, sourceStable: sourceDigest === sourceDigestAfter,
-      powerState: { start: powerStateStart, end: await captureHostPowerState(page) },
-      sourceOverlay: sourceOverlayMetadata(),
-      probeDigest, displayHz, seed: launchedSeed, requestedSeed: expectedSeed,
-      domainProfileRequested: requestedDomainProfile,
-      domainProfileActual: await page.evaluate(() => window.SF?.simLaneDiag?.()?.domainProfile || 'station')
-        .catch(() => 'station'),
-      mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
-      observer: 'same-flight-eval', evalFile: EVAL_FILE,
-    }, null, 1));
-    log(`eval result: ${JSON.stringify(result).slice(0, 3000)}`);
     fs.writeFileSync(path.join(OUT_DIR, 'report.md'), ['# Eval run', '', 'See eval-result.json.', ''].join('\n'), 'utf8');
     return;
   }
+  const evalWorkload = PROFILE_EVAL ? await prepareSteadyEvalWorkload(page) : null;
 
   await page.evaluate(() => {
     window.__SF_PROFILE_LONGTASKS__ = [];
@@ -1938,8 +1965,9 @@ async function runSteadyFlightProfile(page, cdp) {
     log(`gpu timers: ${gpuOn}`);
   }
   const powerStateStart = await captureHostPowerState(page);
-  log(`profiling ${WINDOW_MS} ms of ${HOLD_STILL ? 'no-input' : 'held-thrust'} flight`);
-  if (TRACE) await startTrace(cdp);
+  log(evalWorkload ? `profiling ${EVAL_FILE} in steady flight`
+    : `profiling ${WINDOW_MS} ms of ${HOLD_STILL ? 'no-input' : 'held-thrust'} flight`);
+  const traceCategories = TRACE ? await startTrace(cdp) : null;
   const machineStart = os.cpus();
   const identity = await page.evaluate(() => {
     const st = window.SF.state;
@@ -1958,17 +1986,29 @@ async function runSteadyFlightProfile(page, cdp) {
   // after diagnostic setup, so that setup is not reported as a gameplay freeze.
   const clockStart = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
   await page.evaluate(installGameCadenceProbe);
-  if (!HOLD_STILL) await page.keyboard.down('KeyW');
-  try {
-    await page.waitForTimeout(WINDOW_MS);
-  } finally {
-    if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
+  let evalResult, evalFailure;
+  if (evalWorkload) {
+    if (TRACE) await page.evaluate(() => { performance.mark('sf-eval-workload-start'); });
+    try {
+      evalResult = await evalWorkload();
+    } catch (error) {
+      // Retain the capture when the workload fails, then report the original failure.
+      evalFailure = error;
+    }
+  } else {
+    if (!HOLD_STILL) await page.keyboard.down('KeyW');
+    try {
+      await page.waitForTimeout(WINDOW_MS);
+    } finally {
+      if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
+    }
   }
-  const cadence = await page.evaluate(gpuTimers => {
+  const cadence = await page.evaluate(({ gpuTimers, markEvalEnd }) => {
+    if (markEvalEnd) performance.mark('sf-eval-workload-end');
     const record = window.__SF_GAME_CADENCE__.stop();
     if (gpuTimers) window.SF.state.render.gpuTimers?.pauseSubmissions();
     return record;
-  }, GPU_TIMERS);
+  }, { gpuTimers: GPU_TIMERS, markEvalEnd: Boolean(evalWorkload && TRACE) });
   const summaryCadence = summarizeGameCadence(cadence);
   const activeCadenceRows = (cadence.rows || []).filter(row => row.mode === 'flight'
     && row.timeScale > 0 && Number.isSafeInteger(row.tick));
@@ -2017,7 +2057,9 @@ async function runSteadyFlightProfile(page, cdp) {
     domainProfileRequested: requestedDomainProfile,
     domainProfileActual: identity.domainProfileActual,
     requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
-    sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS, holdThrust: !HOLD_STILL,
+    sampleMs: evalWorkload ? cadence.ended - cadence.started : WINDOW_MS,
+    settleMs: SETTLE_MS, travelMs: TRAVEL_MS, holdThrust: evalWorkload ? EVAL_THRUST : !HOLD_STILL,
+    ...(evalWorkload ? { evalFile: EVAL_FILE } : {}),
     clockStart, clockEnd,
     replyApply: replyApply ? {
       count: replyApply.count,
@@ -2028,7 +2070,8 @@ async function runSteadyFlightProfile(page, cdp) {
     } : null,
     observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
       + (TRACE ? '+trace' : '') + (TRACE_STACKS ? '+trace-stacks' : '')
-      + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
+      + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : '')
+      + (evalWorkload ? '+same-flight-eval' : ''),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify({ metadata, summary: summaryCadence, raw: cadence }, null, 1));
   log(`game cadence: ${JSON.stringify(summaryCadence)}`);
@@ -2046,7 +2089,7 @@ async function runSteadyFlightProfile(page, cdp) {
   }
   if (TRACE) {
     const traceFile = path.join(OUT_DIR, 'trace.json');
-    await stopTraceToFile(cdp, traceFile);
+    await stopTraceToFile(cdp, traceFile, traceCategories);
     deferredTraceAnalyses.push(() => {
       const events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
       let fromUs = Infinity, toUs = -Infinity;
@@ -2054,12 +2097,27 @@ async function runSteadyFlightProfile(page, cdp) {
         fromUs = Math.min(fromUs, event.ts);
         toUs = Math.max(toUs, event.ts + (event.dur || 0));
       }
-      const summary = summarizeMainThread(events, { windows: [{ id: 'steady flight', fromUs, toUs }] });
+      if (evalWorkload) {
+        const start = events.find(event => event.name === 'sf-eval-workload-start');
+        const end = events.find(event => event.name === 'sf-eval-workload-end');
+        if (start && end && end.ts > start.ts) {
+          fromUs = start.ts;
+          toUs = end.ts;
+        } else {
+          log('eval trace marks unavailable; summary uses the full recorded time range');
+        }
+      }
+      const summary = summarizeMainThread(events, { windows: [{ id: evalWorkload ? 'eval flight' : 'steady flight', fromUs, toUs }] });
       fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.json'), JSON.stringify(summary, null, 1));
       fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), renderTraceSummaryMarkdown(summary));
     });
   }
-  if (process.argv.includes('--worker-cost')) {
+  if (evalWorkload && !evalFailure) {
+    await writeSteadyEvalResult(page, evalResult, {
+      launchedSeed, expectedSeed, powerStateStart, powerStateEnd, observer: metadata.observer,
+    });
+  }
+  if (WORKER_COST) {
     const workerCost = await page.evaluate(async () => {
       const { laneRpc } = await import('/src/core/simLaneCommands.js');
       return laneRpc('probePerformance', {});
@@ -2149,6 +2207,7 @@ async function runSteadyFlightProfile(page, cdp) {
   const top = summary.entries[0];
   log(`top-level owner: ${top ? `${top[0]} (${((100 * top[1]) / summary.totalMicros).toFixed(1)}%)` : 'none'}`);
   log(`long tasks in window: ${longTasks.length}`);
+  if (evalFailure) throw evalFailure;
 }
 
 /** Main-thread self time per trace event, cut into the same windows as the stage table. */
@@ -2289,7 +2348,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
     await markHeap('before New Game');
   }
   await cdp.send('Profiler.start');
-  if (TRACE) await startTrace(cdp);
+  const traceCategories = TRACE ? await startTrace(cdp) : null;
   // One user-timing mark on both clocks: the trace's monotonic microseconds <-> Date.now().
   const clockSync = TRACE ? await page.evaluate(() => { performance.mark('sf-clock-sync'); return Date.now(); }) : null;
   const profileStartWallMs = Date.now();
@@ -2338,7 +2397,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
     await writeHeapSampling(cdp, heapMarks);
   }
   const traceFile = TRACE ? path.join(OUT_DIR, 'trace.json') : null;
-  if (TRACE) await stopTraceToFile(cdp, traceFile);
+  if (TRACE) await stopTraceToFile(cdp, traceFile, traceCategories);
 
   const atEnd = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
   const runtimeBinding = await page.evaluate(readLaunchRuntimeBindingInPage).catch(() => null);
