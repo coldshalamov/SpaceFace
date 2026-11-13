@@ -1251,10 +1251,13 @@ try {
       staging.ramRelocate = await page.evaluate(async (pose) => {
         const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
         const opts = { reason: 'asteroid-appear-ram-stage' };
-        if (laneCommandSink()) return laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts });
-        return { ok: true, result: window.SF.registry.get('world').relocatePlayerInSector(pose, opts) };
+        if (laneCommandSink()) {
+          const receipt = await laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts });
+          return receipt?.ok === true && receipt.result?.ok === true && receipt.result.result === true;
+        }
+        return window.SF.registry.get('world').relocatePlayerInSector(pose, opts) === true;
       }, ramTarget.approach);
-      if (staging.ramRelocate?.result !== true) throw new Error('Ceres ram staging relocation was refused');
+      if (!staging.ramRelocate) throw new Error('Ceres ram staging relocation was refused');
     }
     console.log(`  ram target id=${ramTarget.id} r=${ramTarget.radius} dist=${ramTarget.dist}`);
     const start = Date.now();
