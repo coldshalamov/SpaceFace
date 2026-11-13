@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3f46654726e577984888b1eac29f2663f342e2fe76e3cc8346a1b457d585e653",
+  "contentHash": "c049af604cff42e8d881b76fbd56667ec89ce2215424a679af9498015f7bcb2f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.engine-vector.node.det-heat-scorch-band.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialHash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.engine-vector.node.det-heat-scorch-band",
@@ -52,7 +52,7 @@
       "id": "sf.render.engine-vector.node.det-heat-streak.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialHash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.engine-vector.node.det-heat-streak",
@@ -77,7 +77,7 @@
       "id": "sf.render.engine-vector.node.hook-drive-core.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "6dc5ad407f2898fa42a2a20ec6cb5ce5f29f338668bf06a805670b89cce0420b",
+      "materialHash": "cf4b0549a85702865035317d9b43d92d594e85b0897d28b4b118e9b073325bd1",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_CORE_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-core",
@@ -102,7 +102,7 @@
       "id": "sf.render.engine-vector.node.hook-drive-fan.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialHash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_FAN_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-fan",
@@ -127,7 +127,7 @@
       "id": "sf.render.engine-vector.node.hook-drive-plume.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "materialHash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_PLUME_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-plume",
@@ -152,7 +152,7 @@
       "id": "sf.render.engine-vector.node.lod0-engine-vector-main.primitive.0",
       "indexCount": 14976,
       "indexed": true,
-      "materialHash": "a755c615d9e1d505b2ae0e446244fafd877c6d3cda85a904b58bc4c4e118e47d",
+      "materialHash": "ab1af4a3e191c3b7e6370527d5cd14f5c554bc73baa958a971fd92f155b4b0cf",
       "materialPipelineKey": "opaque",
       "meshName": "engine_vector_mesh",
       "nodeId": "sf.render.engine-vector.node.lod0-engine-vector-main",
@@ -165,42 +165,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
-      "id": "material:37e121594c0f26add7404499",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "linear",
-          "name": "SF_rough_flat_orm_role",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6dc5ad407f2898fa42a2a20ec6cb5ce5f29f338668bf06a805670b89cce0420b",
-      "id": "material:6dc5ad407f2898fa42a2a20e",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a755c615d9e1d505b2ae0e446244fafd877c6d3cda85a904b58bc4c4e118e47d",
-      "id": "material:a755c615d9e1d505b2ae0e44",
+      "hash": "ab1af4a3e191c3b7e6370527d5cd14f5c554bc73baa958a971fd92f155b4b0cf",
+      "id": "material:ab1af4a3e191c3b7e6370527",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -212,7 +178,41 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
+          "name": "spaceface_neutral_normal_4x4",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c2d55757e92e0673c2615db3490cc27a5da15470f7209c7d2447c85fdf3e28be",
+      "id": "material:c2d55757e92e0673c2615db3",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "SF_rough_flat_orm_role",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4x4",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cf4b0549a85702865035317d9b43d92d594e85b0897d28b4b118e9b073325bd1",
+      "id": "material:cf4b0549a85702865035317d",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4x4",
           "slot": "normal",
           "uri": null
         }
@@ -570,14 +570,14 @@
       "uri": "engine_vector.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 344570,
+      "sha256": "37b151412e9ba78aeb28fad88aaf050f831b23946c16532fb3a321b92619cb6e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 76856,
-    "sha256": "a4c85583bcd8f581fef1370c304dda7d8c3bba43c24b55f31894c7bb5963b60a",
+    "bytes": 76340,
+    "sha256": "fc6529a1d35f3f7d27fd80b325d367b772a60191c15bcca63dcb483e2e38dc79",
     "uri": "render.glb"
   },
   "runtime": {
@@ -872,7 +872,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "cb7b0e0481861562765efe78df6a2d79c2f3b3408c387d7ddd825acb4902c4b5",
+  "runtimeHash": "9e7241cd0782b4f5363cfd03bba643241a51f7dcb36cd8ff4136d48be753e7dc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a951cda0fcc8329263fc40eb04fe80edfc2046cd64e8ae49000bb385875f33e8",
+  "contentHash": "7d170522a081699972158d8421e15a58b6f6d18561fe024d03ffeaf65e4239be",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged.primitive.0",
       "indexCount": 1776,
       "indexed": true,
-      "materialHash": "db6bc38792b1aa8e3650f9f5feff18bde6b0e296580d038ab258642194b04cdf",
+      "materialHash": "344a008719209281820c5f469c45157212f873057db40fe84d13067e8b22cf02",
       "materialPipelineKey": "opaque",
       "meshName": "cockpit_dome_Material_Accent_Merged",
       "nodeId": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged",
@@ -52,7 +52,7 @@
       "id": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged.primitive.0",
       "indexCount": 1572,
       "indexed": true,
-      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
       "materialPipelineKey": "opaque",
       "meshName": "cockpit_dome_Material_Mechanical_Merged",
       "nodeId": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged",
@@ -77,7 +77,7 @@
       "id": "sf.render.cockpit-dome.node.det-collar-seam.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "f86b042e64e8c34a8850af50d39161facd6cb1d04474802070ee3e03e8e905ce",
+      "materialHash": "fb471debc7908fcb08376f490884facea8c2f088e9914cb17dc84c7ec6b142f2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.cockpit-dome.node.det-collar-seam",
@@ -102,7 +102,7 @@
       "id": "sf.render.cockpit-dome.node.det-core-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "db6bc38792b1aa8e3650f9f5feff18bde6b0e296580d038ab258642194b04cdf",
+      "materialHash": "344a008719209281820c5f469c45157212f873057db40fe84d13067e8b22cf02",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.cockpit-dome.node.det-core-stencil",
@@ -127,7 +127,7 @@
       "id": "sf.render.cockpit-dome.node.det-frame-rib-l.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.cockpit-dome.node.det-frame-rib-l",
@@ -152,7 +152,7 @@
       "id": "sf.render.cockpit-dome.node.det-frame-rib-r.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.cockpit-dome.node.det-frame-rib-r",
@@ -177,7 +177,7 @@
       "id": "sf.render.cockpit-dome.node.det-glass-scratch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
+      "materialHash": "4b03b38e584f3bfbfabc18ff1735bbbcacebbafcbc7b202ecbbcdfb81eda5fd2",
       "materialPipelineKey": "blend",
       "meshName": "Cube.004",
       "nodeId": "sf.render.cockpit-dome.node.det-glass-scratch",
@@ -202,7 +202,7 @@
       "id": "sf.render.cockpit-dome.node.det-mount-bolt-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.cockpit-dome.node.det-mount-bolt-001",
@@ -227,7 +227,7 @@
       "id": "sf.render.cockpit-dome.node.det-mount-bolt.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
+      "materialHash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.cockpit-dome.node.det-mount-bolt",
@@ -252,7 +252,7 @@
       "id": "sf.render.cockpit-dome.node.dome-glass.primitive.0",
       "indexCount": 3042,
       "indexed": true,
-      "materialHash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
+      "materialHash": "4b03b38e584f3bfbfabc18ff1735bbbcacebbafcbc7b202ecbbcdfb81eda5fd2",
       "materialPipelineKey": "blend",
       "meshName": "Dome_Glass",
       "nodeId": "sf.render.cockpit-dome.node.dome-glass",
@@ -277,7 +277,7 @@
       "id": "sf.render.cockpit-dome.node.dome-mount-collar.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "f86b042e64e8c34a8850af50d39161facd6cb1d04474802070ee3e03e8e905ce",
+      "materialHash": "fb471debc7908fcb08376f490884facea8c2f088e9914cb17dc84c7ec6b142f2",
       "materialPipelineKey": "opaque",
       "meshName": "Dome_Mount_Collar",
       "nodeId": "sf.render.cockpit-dome.node.dome-mount-collar",
@@ -290,8 +290,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "db6bc38792b1aa8e3650f9f5feff18bde6b0e296580d038ab258642194b04cdf",
-      "id": "material:db6bc38792b1aa8e3650f9f5",
+      "hash": "344a008719209281820c5f469c45157212f873057db40fe84d13067e8b22cf02",
+      "id": "material:344a008719209281820c5f46",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -309,7 +309,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
+          "name": "spaceface_neutral_normal_4x4",
           "slot": "normal",
           "uri": null
         },
@@ -322,8 +322,8 @@
       ]
     },
     {
-      "hash": "eb0947764550c5f0571fb24b7683c0658af1554c4bbbd81b9595a372f2174fda",
-      "id": "material:eb0947764550c5f0571fb24b",
+      "hash": "3be13bfd349463356a72d8e7eb45a0aad08e93d044566de08e96f8b8d0b4d488",
+      "id": "material:3be13bfd349463356a72d8e7",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -341,7 +341,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
+          "name": "spaceface_neutral_normal_4x4",
           "slot": "normal",
           "uri": null
         },
@@ -354,8 +354,8 @@
       ]
     },
     {
-      "hash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
-      "id": "material:edc0a6b05e51ffa8e859178f",
+      "hash": "4b03b38e584f3bfbfabc18ff1735bbbcacebbafcbc7b202ecbbcdfb81eda5fd2",
+      "id": "material:4b03b38e584f3bfbfabc18ff",
       "name": "Material_Glass",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -367,7 +367,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
+          "name": "spaceface_neutral_normal_4x4",
           "slot": "normal",
           "uri": null
         },
@@ -380,8 +380,8 @@
       ]
     },
     {
-      "hash": "f86b042e64e8c34a8850af50d39161facd6cb1d04474802070ee3e03e8e905ce",
-      "id": "material:f86b042e64e8c34a8850af50",
+      "hash": "fb471debc7908fcb08376f490884facea8c2f088e9914cb17dc84c7ec6b142f2",
+      "id": "material:fb471debc7908fcb08376f49",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -399,7 +399,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
+          "name": "spaceface_neutral_normal_4x4",
           "slot": "normal",
           "uri": null
         },
@@ -1596,14 +1596,14 @@
       "uri": "cockpit_dome.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 344570,
+      "sha256": "37b151412e9ba78aeb28fad88aaf050f831b23946c16532fb3a321b92619cb6e",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 125556,
-    "sha256": "8d728406ff2246d1447d59cad8495bffeded834f26abafd6d62a6ec59f007449",
+    "bytes": 125044,
+    "sha256": "03d965fd7b5b8f32828614bf2971182c965307e5e541ebf8220ca0e78baa4c7c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2023,7 +2023,7 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
-  "runtimeHash": "1e7c213e0497dcb1fb2e8d3f2d6e188a83890e97cfeea4e095826428c0ef3c2f",
+  "runtimeHash": "cb47da2703e47d8ce6f6e1e7332739522f688467a70f7d67f09d43c6e730ccbc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

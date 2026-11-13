@@ -19,6 +19,7 @@ import { encodeRenderPackageGlb, externalizeRenderPackageKtx2 } from './renderPa
 import { RELEASE_MESHOPT_OPTIONS } from './releaseMeshoptProfile.mjs';
 import { releasePlaceGeometryCompression } from './releaseStrictClearancePrecision.mjs';
 import { SINGLE_SIDE_REPORT_SCHEMA, singleSideWatertightOpaque } from './singleSideWatertightOpaque.mjs';
+import { compactUniformNormalTextures } from './compactUniformNormal.mjs';
 
 import {
   RENDER_PACKAGE_COMPILER_NAME,
@@ -73,6 +74,7 @@ export async function compileRenderPackage(options = {}) {
   const document = await io.readBinary(new Uint8Array(sourceBytes));
   document.setLogger(new Logger(Logger.Verbosity.SILENT));
   normalizeFinWedgeRuntimeDefaults(document, assetId);
+  compactUniformNormalTextures(document, { preserveKtx2Hashes: options.externalizeKtx2Hashes });
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
   // Quantization otherwise folds its position decode transform into a leaf mesh node.
