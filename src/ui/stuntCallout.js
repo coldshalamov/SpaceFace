@@ -916,14 +916,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     for (const ev of ['run:started', 'game:newGame', 'save:loaded']) unsubs.push(bus.on(ev, () => firstBeatsSaid.clear()));
     const speak = (line) => {
       if (!line) return;
-      if (FIRST_BEAT_NAMES.has(line.name)) {
-        if (firstBeatsSaid.has(line.name)) return;
-        firstBeatsSaid.add(line.name);
-      }
+      if (FIRST_BEAT_NAMES.has(line.name) && firstBeatsSaid.has(line.name)) return;
       // Swarm glass (S2 task 3) + X3 Adventure glass: a moment draws only when it reads as a
       // plain ≤3-word callout — LOG registers, snag/ride/strain telemetry and mass figures never
       // reach the lane in either mode.
       if ((isSwarmGlass(state) || isAdventureFlight(state)) && !plainCallout(line.name)) return;
+      if (FIRST_BEAT_NAMES.has(line.name)) firstBeatsSaid.add(line.name);
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
       sr.textContent = spoken;
