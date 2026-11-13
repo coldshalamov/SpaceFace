@@ -19658,6 +19658,7 @@ export const render = {
     onBus('dock:docked', () => {
       this._posePackEpoch = (this._posePackEpoch | 0) + 1;
     });
+    onBus('world:playerRelocated', () => this._resetRelocatedPlayerPose());
     globalShipMicroMotion.bindEvents(bus);
     globalAsteroidMotion.bindEvents(bus);
     globalPickupMotion.bindEvents(bus);
@@ -28591,6 +28592,11 @@ export const render = {
       return LIVE_POSE_RECOVERY;
     }
     return LIVE_POSE_PUBLICATION;
+  },
+
+  _resetRelocatedPlayerPose() {
+    // A scripted move is a hard pose boundary even when the worker keeps the same player life.
+    this._posePackEpoch = (this._posePackEpoch | 0) + 1;
   },
 
   // The state.render mirror is a stats record, not an event: consumers read the fields

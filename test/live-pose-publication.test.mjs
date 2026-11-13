@@ -249,13 +249,13 @@ test('a stalled same-life worker rebuild keeps the drawn player ahead of the rec
 });
 
 test('a reused player ID or hard lifecycle boundary reseats even during an extrapolation hold', () => {
-  for (const boundary of ['player life', 'sector', 'restore', 'explicit epoch']) {
+  for (const boundary of ['player life', 'sector', 'restore', 'explicit relocation']) {
     const { owner, state, player, world, fence, publish, draw } = rebuildFlightFixture();
     const epoch = fence.newestSnapshot().poseEpoch;
     const playerHandle = world.handleForEntityId(player.id);
     if (boundary === 'player life') player.occupantGeneration++;
     if (boundary === 'sector') state.world.currentSectorId = 'another-sector';
-    if (boundary === 'explicit epoch') owner._posePackEpoch++;
+    if (boundary === 'explicit relocation') owner._resetRelocatedPlayerPose();
     player.pos.x = 806;
     const publication = publish(121, { rebuild: true, lifecycleGeneration: boundary === 'restore' ? 1 : 0 });
     assert.equal(publication.retainedPlayerPose, false, boundary);
