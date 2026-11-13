@@ -757,7 +757,10 @@ function entityInfoBlock(state, entityId, host) {
 // small side channel separately so they never enter the world-mesh collect.
 function collectWeaponVfxProjectiles(state) {
   const out = [];
-  for (const e of state.entityList || []) {
+  const index = state.entityIndex;
+  const projectiles = index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.projectiles)
+    ? index.projectiles : state.entityList || [];
+  for (const e of projectiles) {
     if (!e || !Number.isSafeInteger(e.id) || e.alive === false || e.type !== 'projectile'
       || !projectileSkipsVisualFactoryMesh(e)) continue;
     const pos = e.pos || {};
