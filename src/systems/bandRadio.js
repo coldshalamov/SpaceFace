@@ -126,6 +126,14 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
       // PL-60: You finish a town's first job — Static: "Helios Prime says thanks, whoever you are."
       keys.push('player.town_first_job');
     }
+    if (payload.racingContractId != null && Number(payload.racePosition) > 1
+      && Number(payload.raceEntrants) > 1
+      && state.world && state.world.currentSectorId === 'sector_helios_prime') {
+      // PL-211: beaten to the line at the Helios crescent — a rival took the race. Positions
+      // exist only when real rivals ran (a time trial has no field), and the crescent circuit
+      // is the Slipway's home water; elsewhere a loss is nobody's gossip.
+      keys.push('player.kid_took_a_race');
+    }
     return keys;
   }
   if (event === 'pitborn:cullSettled') {
@@ -196,6 +204,105 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
       && hull / hullMax < 0.25
       ? ['player.dock_heavily_damaged']
       : [];
+  }
+  // --- Lane Nine: the Static reports the deed plants (design/program/INFERENCE_PLANTS.md §E).
+  // Plant receipts first: the emitting plant owns the verdict; the Static only reads it.
+  if (event === 'plants:pl246:taken') {
+    // PL-112: the Io Plume scoured the corridor and took the loose thing — the player rode it.
+    return ['player.rode_the_plume'];
+  }
+  if (event === 'plants:pl181:quenched') {
+    // PL-186: the hot pod made the crossing and Vesta's coolant fall quenched it on the instant.
+    return ['player.quenched_hot_cargo'];
+  }
+  if (event === 'plants:theArch') {
+    // PL-187: the living Charon arch — only the inhale crossing is a story ("if you must").
+    return payload.kind === 'threadedNarrow' ? ['player.threaded_arch_inhale'] : [];
+  }
+  if (event === 'plants:deadLaneRelit') {
+    // PL-209: the player's towed lamp line relit a dark lane's beacon.
+    return ['player.relit_dead_lane'];
+  }
+  if (event === 'plants:weldersSparks') {
+    // PL-210: Slate mended something of the player's overnight. The engraved-stolen variant is
+    // somebody else's property coming home — a different story the row does not claim.
+    return payload.kind === 'mended' ? ['player.slate_mended_overnight'] : [];
+  }
+  if (event === 'plants:chasedThief') {
+    // PL-160: the player lined the chased thief — the stolen load goes home to its owners.
+    return payload.kind === 'lined' ? ['player.returned_stolen_cargo'] : [];
+  }
+  if (event === 'plants:pl146:call') {
+    // PL-134: the first caller left a lamp burning on the player's rock — its first night lit.
+    return Number(payload.visit) === 1 ? ['player.yard_lamp_first_night'] : [];
+  }
+  if (event === 'plants:mistakenTow') {
+    // PL-241: the recovery tug clamped on and towed the player in while they played dead.
+    return ['player.towed_playing_dead'];
+  }
+  if (event === 'plants:figurehead') {
+    // PL-242: a thrown Wasp stuck frozen to the passing Cryo ice barge (kind 'stuck').
+    return payload.kind === 'stuck' ? ['player.froze_wasp_figurehead'] : [];
+  }
+  if (event === 'plants:pl247:scandal') {
+    // PL-254: a whole wreck went on the yard Scale and the yard stopped to watch the number.
+    return ['player.weighed_wreck_on_scale'];
+  }
+  if (event === 'plants:strangerDelivered') {
+    // PL-255: the player pushed a disabled stranger's hull all the way to the dock.
+    return ['player.pushed_stranger_dock'];
+  }
+  // Composed receipts from the radio observer (src/systems/plants/radioObserver.js): the
+  // observer only emits when the whole deed is settled, so the mapping is one-to-one.
+  if (event === 'plants:radio:beatTugToWreck') {
+    // PL-111: the player downed the hull a recovery tug was still approaching. Today, the tug came second.
+    return ['player.beat_tug_to_wreck'];
+  }
+  if (event === 'plants:radio:bellCracked') {
+    // PL-135: the player cracked the Ceres Bell prop — struck by their hull or destroyed by them.
+    return ['player.cracked_ceres_bell'];
+  }
+  if (event === 'plants:radio:threeRaceWins') {
+    // PL-136: three circuit race wins inside one core day.
+    return ['player.three_races_one_day'];
+  }
+  if (event === 'plants:radio:fiveTownsOneDay') {
+    // PL-162: five distinct town docks inside one core day.
+    return ['player.five_towns_one_day'];
+  }
+  if (event === 'plants:radio:markAllTowns') {
+    // PL-240: the same hull mark worn into five distinct towns.
+    return ['player.mark_all_five_towns'];
+  }
+  if (event === 'claim:raidRepelled') {
+    // PL-161: the player's yard held its first raid — claims emits this seam only for a win.
+    return ['player.yard_held_first_raid'];
+  }
+  if (event === 'claim:defenseResolved') {
+    // PL-161: the settlement seam; 'defended' is the win, a loss is the raiders' story.
+    return payload.outcome === 'defended' ? ['player.yard_held_first_raid'] : [];
+  }
+  if (event === 'massline:npcLineCut') {
+    // PL-185: the player's monofilament sweep cut another hull's line — neat work.
+    return ['player.cut_another_tow_line'];
+  }
+  if (event === 'law:fineAssessed') {
+    // PL-256: the pay receipt that charges the fine and clears the warrant — settled in full.
+    // The re-dock echo (alreadySettled) and the shortfall refusal are not settlements.
+    return payload.paid === true && payload.choice === 'pay' && payload.alreadySettled !== true
+      ? ['player.fines_settled_full']
+      : [];
+  }
+  if (event === 'law:obligationPaid') {
+    // PL-113: the itemised restitution list ("Tolliver's list") reads all square when a named
+    // harm is paid at a dock and no composed obligation is left open — the whole list, settled.
+    if (payload.kind !== 'restitution' || payload.status !== 'paid') return [];
+    if (!(state.ui && state.ui.docked === true)) return [];
+    const composed = state.lawSecurity && state.lawSecurity.composed;
+    const rows = composed && typeof composed === 'object' ? Object.values(composed) : null;
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+    if (!rows.some((row) => row && row.kind === 'restitution')) return [];
+    return rows.every((row) => row && row.status === 'paid') ? ['player.settled_whole_list'] : [];
   }
   return [];
 }
@@ -344,7 +451,16 @@ export const bandRadio = {
     };
     this._listen('traffic:nearMiss', onNearMiss);
     this._listen('traffic:nearMissPlant', onNearMiss);
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled', 'heat:changed', 'band:lostWantedSearch']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed', 'line:classChanged', 'player:death', 'pitborn:cullSettled', 'heat:changed', 'band:lostWantedSearch',
+      // Lane Nine plant receipts (the emitting plant owns the verdict) + composed receipts
+      // from plantsRadioObserver + the yard/law/line seams the rows read.
+      'plants:pl246:taken', 'plants:pl181:quenched', 'plants:theArch', 'plants:deadLaneRelit',
+      'plants:weldersSparks', 'plants:chasedThief', 'plants:pl146:call', 'plants:mistakenTow',
+      'plants:figurehead', 'plants:pl247:scandal', 'plants:strangerDelivered',
+      'plants:radio:beatTugToWreck', 'plants:radio:bellCracked', 'plants:radio:threeRaceWins',
+      'plants:radio:fiveTownsOneDay', 'plants:radio:markAllTowns',
+      'claim:raidRepelled', 'claim:defenseResolved', 'massline:npcLineCut',
+      'law:fineAssessed', 'law:obligationPaid']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {
