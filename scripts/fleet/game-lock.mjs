@@ -8,16 +8,23 @@
 //
 // The lock records the holder's pid and start time. A live holder keeps ownership for the
 // full command, including long capture batches. Recover the lock after the holder exits.
+//
+// Waiters are served first come, first served (lead 2026-11-13: with a dozen agents queued the old
+// free-for-all left one run waiting 50+ minutes and timed others out). Each waiter drops a ticket
+// in .devshots/fleet/game-queue/; only the oldest live ticket may take a free lock. Tickets of dead
+// processes are ignored and swept.
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = join(REPO, '.devshots', 'fleet');
 const LOCK = join(DIR, 'game.lock');
-const WAIT_MAX_MIN = 60;
+const QUEUE = join(DIR, 'game-queue');
+// FIFO bounds a wait by the queue ahead of you, so a long queue is not a reason to give up.
+const WAIT_MAX_MIN = 240;
 
 function alive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
@@ -37,6 +44,27 @@ function tryTake(label) {
   const back = readLock();
   return !!back && back.pid === process.pid;
 }
+function ticketPath() {
+  return join(QUEUE, `${String(t0).padStart(15, '0')}-${process.pid}.json`);
+}
+function enqueue(label) {
+  mkdirSync(QUEUE, { recursive: true });
+  writeFileSync(ticketPath(), JSON.stringify({ pid: process.pid, at: t0, label }));
+}
+function dequeue() {
+  try { unlinkSync(ticketPath()); } catch { /* gone */ }
+}
+// The oldest ticket whose process is still alive; dead tickets are swept on the way.
+function headOfQueue() {
+  let names = [];
+  try { names = readdirSync(QUEUE).filter((n) => n.endsWith('.json')).sort(); } catch { return null; }
+  for (const name of names) {
+    const pid = Number(name.slice(name.indexOf('-') + 1, -5));
+    if (Number.isFinite(pid) && alive(pid)) return pid;
+    try { unlinkSync(join(QUEUE, name)); } catch { /* raced */ }
+  }
+  return null;
+}
 function release() {
   const l = readLock();
   if (l && l.pid === process.pid) { try { unlinkSync(LOCK); } catch { /* gone */ } }
@@ -55,14 +83,23 @@ if (args[0] !== 'run' || args[1] !== '--' || !args[2]) {
 const cmd = args.slice(2);
 const label = cmd.join(' ').slice(0, 120);
 const t0 = Date.now();
-while (!tryTake(label)) {
+enqueue(label);
+process.on('exit', dequeue);
+let lastNote = 0;
+while (!(headOfQueue() === process.pid && tryTake(label))) {
   if (Date.now() - t0 > WAIT_MAX_MIN * 60_000) {
     console.error(`[game-lock] waited ${WAIT_MAX_MIN} min; another game is still running (${readLock()?.label}). Giving up.`);
+    dequeue();
     process.exit(3);
   }
-  console.error(`[game-lock] another game is running (${readLock()?.label}); waiting...`);
-  await new Promise((r) => setTimeout(r, 15_000));
+  if (Date.now() - lastNote > 60_000) {
+    lastNote = Date.now();
+    console.error(`[game-lock] another game is running (${readLock()?.label}); waiting...`);
+  }
+  // The head polls fast so a released lock is not left idle; the rest of the queue polls slowly.
+  await new Promise((r) => setTimeout(r, headOfQueue() === process.pid ? 2_000 : 10_000));
 }
+dequeue();
 // npm/npx are .cmd shims on Windows and need a shell; everything else runs directly so arguments
 // are passed untouched. Shell arguments are quoted for cmd.exe.
 const needsShell = process.platform === 'win32' && /^(npm|npx|pnpm|yarn)(\.cmd)?$/i.test(cmd[0]);
