@@ -58,6 +58,8 @@ import {
   UNDERSTORY_SPORE_HEAD,
   UNDERSTORY_BARKS,
 } from '../data/factions/understory.js';
+import { nestOutcomeReceipt, NEST_OUTCOMES } from '../data/nestVisit.js';
+import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 
@@ -721,8 +723,8 @@ export const understoryGardens = {
       this.bus.on('sector:enter', () => this.ensureAuthoredReceiver()),
       this.bus.on('save:restoring', () => { this._saveRestoring = true; }),
       this.bus.on('save:loaded', () => {
-        const { authoredReceiver, drops, seq } = ensureUnderstoryState(this.state);
-        this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq };
+        const { authoredReceiver, drops, seq, rooksideNestReturn } = ensureUnderstoryState(this.state);
+        this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq, rooksideNestReturn };
         // Only deserialize authorizes rebinding to new runtime occupants. A repeated
         // save:loaded must never adopt an id recycled since the first notification.
         if (this._cacheRestorePending) this._restoreCacheBodies();
@@ -773,6 +775,7 @@ export const understoryGardens = {
     const own = u.authoredReceiver || (u.drops.length ? { status: 'unseen' } : null);
     if (!own) return undefined;
     const result = { version: 1, authoredReceiver: { status: own.status } };
+    if (NEST_OUTCOMES.includes(u.rooksideNestReturn)) result.rooksideNestReturn = u.rooksideNestReturn;
     if (own.status === 'destroyed') {
       result.authoredReceiver.terminalGardenData = this._normalizeTerminal(own.terminalGardenData);
       result.authoredReceiver.firstPlayerGrowth = result.authoredReceiver.terminalGardenData?.gardenFirstPlayerGrowth || null;
@@ -845,6 +848,7 @@ export const understoryGardens = {
     if (!row || !['unseen', 'live', 'destroyed', 'unavailable'].includes(row.status)) {
       own.authoredReceiver = { status: 'unavailable' }; return;
     }
+    if (NEST_OUTCOMES.includes(data.rooksideNestReturn)) own.rooksideNestReturn = data.rooksideNestReturn;
     const caches = data.quietCaches;
     if (caches?.version === 1 && Number.isSafeInteger(caches.seq) && caches.seq >= 0 && caches.seq <= 0x7fffffff
       && Array.isArray(caches.drops) && caches.drops.length <= UNDERSTORY_QUIET.maxOpenDrops + UNDERSTORY_QUIET.dropLogKeep) {
@@ -2076,6 +2080,37 @@ export const understoryGardens = {
     }
   },
 
+  /** A return to the real, living receiver closes the Charon excursion. No reward or raid is invented. */
+  _rooksideReturn(gardens) {
+    const s = this.state, u = ensureUnderstoryState(s);
+    if (u.rooksideNestReturn || this._saveRestoring || s.run?.kind !== 'adventure'
+      || s.mode !== 'flight' || s.ui?.docked || s.paused === true
+      || s.world?.currentSectorId !== UNDERSTORY_RECEIVER.sectorId) return;
+    const receipt = nestOutcomeReceipt(s), pilot = s.entities.get(s.playerId);
+    if (!receipt || !pilot || pilot.alive !== true || !(pilot.hull > 0)
+      || sectorMembershipAtGlobal(pilot.pos) !== UNDERSTORY_RECEIVER.sectorId) return;
+    const garden = gardens.find(e => e.data?.gardenId === UNDERSTORY_RECEIVER.gardenId
+      && e.data.authoredUnderstoryReceiver === true && e.alive === true && e.hull > 0
+      && s.entities.get(e.id) === e && e.data.gardenDestroyed !== true
+      && sectorMembershipAtGlobal(e.pos) === UNDERSTORY_RECEIVER.sectorId);
+    if (!garden || !normalizePlayerGardenGrowth(garden.data.gardenFirstPlayerGrowth, UNDERSTORY_RECEIVER.gardenId)
+      || !Number.isFinite(pilot.pos?.x) || !Number.isFinite(pilot.pos?.z)
+      || !Number.isFinite(garden.pos?.x) || !Number.isFinite(garden.pos?.z)
+      || dist2(pilot.pos, garden.pos) > 800 * 800) return;
+    const outcome = {
+      carrier_down: 'The carrier is down. That is one hull, not the whole Reach.',
+      carrier_gutted: 'Three of its own Wasps through the couplings. The carrier is down.',
+      nest_emptied: 'The bays are empty and both baffles are gone. That does not mean the lane is clear.',
+      carrier_escapes: 'You broke contact and came back alive. The carrier is still out there.',
+    }[receipt.outcome];
+    // Commit before callbacks so repeated ticks and callback-time saves cannot repeat the greeting.
+    u.rooksideNestReturn = receipt.outcome;
+    this.bus.emit('comms:log', { speaker: 'Rookside Receiving Garden',
+      text: `${outcome} Your first growth is still in our ledger. ${garden.data.compostRunComplete
+        ? 'Your paid run is already settled. No second invoice.'
+        : 'The paid haul is still optional. Bring more dead mass if you want the work; you owe us no victory.'}` });
+  },
+
   update(dt, state) {
     this.ensureAuthoredReceiver();
     this._reseedDestroyedReceiver();
@@ -2116,6 +2151,7 @@ export const understoryGardens = {
       this._digest(e, rec);
       syncGardenStage(state, e, rec);
     }
+    this._rooksideReturn(gardens);
     this._tendGardeners();
     this._sporeHead();
     this._syncTidePushback();
