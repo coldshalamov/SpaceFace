@@ -1342,6 +1342,13 @@ async function createWindow() {
     quitToken += 1;
     appQuitting = false;
   };
+  const onQuitRendererGone = () => {
+    if (!quitPreparing || win.isDestroyed()) return;
+    // The player has already requested close, and this renderer can no longer save.
+    releaseInterruptedQuit();
+    quitPrepared = true;
+    win.close();
+  };
   const onQuitPrepared = async (event, token, result) => {
     if (event.sender !== quitContents || !quitPreparing || token !== quitToken) return;
     quitPreparing = false;
@@ -1362,17 +1369,20 @@ async function createWindow() {
     } catch (_) { /* the window can close while the dialog is opening */ }
   };
   ipcMain.on('spaceface:quit-prepared', onQuitPrepared);
-  quitContents.on('render-process-gone', releaseInterruptedQuit);
+  quitContents.on('render-process-gone', onQuitRendererGone);
   quitContents.on('unresponsive', releaseInterruptedQuit);
   win.once('closed', () => {
     ipcMain.removeListener('spaceface:quit-prepared', onQuitPrepared);
     if (!quitContents.isDestroyed()) {
-      quitContents.removeListener('render-process-gone', releaseInterruptedQuit);
+      quitContents.removeListener('render-process-gone', onQuitRendererGone);
       quitContents.removeListener('unresponsive', releaseInterruptedQuit);
     }
   });
   win.on('close', (event) => {
-    if (quitPrepared || !canonicalLoadCommitted) return;
+    // A crashed renderer has no save owner to acknowledge a close. Keep the
+    // normal handoff for a healthy renderer, including one that has recovered.
+    if (quitPrepared || !canonicalLoadCommitted || quitContents.isDestroyed()
+      || quitContents.isCrashed?.()) return;
     event.preventDefault();
     if (quitPreparing) return;
     quitPreparing = true;

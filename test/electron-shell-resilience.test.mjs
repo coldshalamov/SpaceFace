@@ -43,6 +43,7 @@ function emitter(base = {}) {
       for (const listener of [...(listeners.get(type) || [])]) listener(...args);
     },
     listenerCount(type) { return listeners.get(type)?.size || 0; },
+    removeListener(type, listener) { listeners.get(type)?.delete(listener); },
   });
 }
 
@@ -81,7 +82,7 @@ async function loadShell({
   probe = 'spaceface',
   loadFailures = [],
   dialogResponses = [],
-  showErrorBoxThrows = false,
+  showMessageBoxThrows = false,
   noDialog = false,
   seed = null,
 } = {}) {
@@ -104,25 +105,20 @@ async function loadShell({
   if (seed) seed({ reportsDir: path.join(paths.userData, 'crashes', 'reports'), clock });
 
   const dialog = {
-    errorBoxes: [],
     messageBoxes: [],
     responses: [...dialogResponses],
-    showErrorBox(title, content) {
-      events.push('showErrorBox');
-      this.errorBoxes.push({ title, content });
-      if (showErrorBoxThrows) throw new Error('native dialog failed');
-    },
     async showMessageBox(...args) {
       const options = args[args.length - 1];
       events.push('showMessageBox');
       this.messageBoxes.push({ options, parented: args.length > 1 });
+      if (showMessageBoxThrows) throw new Error('native dialog failed');
       const response = this.responses.length ? this.responses.shift() : 0;
       return { response, checkboxChecked: false };
     },
   };
 
   const processEvents = emitter({
-    env: { SPACEFACE_BUILD_HASH: 'cafe1234beef' },
+    env: { SPACEFACE_BUILD_HASH: 'cafe1234beef', SPACEFACE_DEV_SIM_WORKER_BUNDLE: '0' },
     platform: 'win32',
     execPath: paths.exe,
     resourcesPath: path.join(tmpRoot, 'resources'),
@@ -145,19 +141,27 @@ async function loadShell({
     setPath(name, value) { paths[name] = value; },
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
-    quit() { quits.count += 1; events.push('app.quit'); this.emit('before-quit'); },
+    quit() {
+      quits.count += 1;
+      events.push('app.quit');
+      this.emit('before-quit');
+      for (const win of windows) if (!win.destroyed) win.close();
+    },
     exit(code) { events.push('app.exit'); exits.push(code); },
   });
 
   function FakeBrowserWindow(options) {
     const webContents = emitter({
       destroyed: false,
+      crashed: false,
       session: { setPermissionCheckHandler() {}, setPermissionRequestHandler() {} },
       forcefulKills: 0,
       isDestroyed() { return this.destroyed; },
+      isCrashed() { return this.crashed; },
       getURL() { return this.url || 'about:blank'; },
       setWindowOpenHandler() {},
-      send() {},
+      sent: [],
+      send(...args) { this.sent.push(args); },
       forcefullyCrashRenderer() { this.forcefulKills += 1; events.push('forcefullyCrashRenderer'); },
     });
     const win = emitter({
@@ -178,12 +182,21 @@ async function loadShell({
       isFocused() { return this.focused; },
       show() { this.visible = true; },
       hide() { this.visible = false; },
+      close() {
+        let prevented = false;
+        this.emit('close', { preventDefault() { prevented = true; } });
+        if (prevented) return;
+        this.destroyed = true;
+        webContents.destroyed = true;
+        this.emit('closed');
+      },
       async loadURL(url) {
         events.push('loadURL');
         this.loads.push(url);
         webContents.url = url;
         const failure = pendingLoadFailures.shift();
         if (failure) throw failure;
+        webContents.crashed = false;
         webContents.emit('did-finish-load');
       },
     });
@@ -268,7 +281,7 @@ async function loadShell({
   vm.runInNewContext(readFileSync(MAIN_PATH, 'utf8'), sandbox, { filename: MAIN_PATH });
   await settle();
   return {
-    app, dialog, events, exits, logs, paths, powerMonitor, processEvents, quits, receipts, switches,
+    app, dialog, events, exits, ipcMain, logs, paths, powerMonitor, processEvents, quits, receipts, switches,
     timers, tmpRoot, windows, clock,
     win: windows[0],
     exports: sandbox.module.exports,
@@ -282,13 +295,13 @@ async function loadShell({
 test('a taken port shows a plain error box that names the crash report, before the app exits', async () => {
   const h = await loadShell({ listenError: 'EADDRINUSE', probe: 'spaceface' });
   try {
-    assert.equal(h.dialog.errorBoxes.length, 1, 'exactly one error box');
-    const { title, content } = h.dialog.errorBoxes[0];
+    assert.equal(h.dialog.messageBoxes.length, 1, 'exactly one error box');
+    const { title, message: content } = h.dialog.messageBoxes[0].options;
     assert.equal(title, 'SpaceFace could not start');
     assert.match(content, /Another copy of SpaceFace, or another program/);
     assert.match(content, /port 41788/);
     assert.match(content, /Close it and try again/);
-    assert.ok(h.events.indexOf('showErrorBox') >= 0 && h.events.indexOf('showErrorBox') < h.events.indexOf('app.exit'),
+    assert.ok(h.events.indexOf('showMessageBox') >= 0 && h.events.indexOf('showMessageBox') < h.events.indexOf('app.exit'),
       `box before exit, got ${h.events.join(',')}`);
     assert.deepEqual(h.exits, [1]);
     assert.equal(h.windows.length, 0, 'no window was ever created');
@@ -311,8 +324,8 @@ test('a taken port shows a plain error box that names the crash report, before t
 test('a port probe that throws still settles the bind: the player gets the box, not a silent hang', async () => {
   const h = await loadShell({ listenError: 'EADDRINUSE', probe: 'throws' });
   try {
-    assert.equal(h.dialog.errorBoxes.length, 1);
-    assert.match(h.dialog.errorBoxes[0].content, /Another copy of SpaceFace/);
+    assert.equal(h.dialog.messageBoxes.length, 1);
+    assert.match(h.dialog.messageBoxes[0].options.message, /Another copy of SpaceFace/);
     assert.deepEqual(h.exits, [1]);
     const conflict = h.receipts.find((entry) => entry.status === 'port-conflict');
     assert.equal(conflict.details.owner, 'unknown');
@@ -325,13 +338,13 @@ test('a failed page load shows the box with the cause and exits', async () => {
   const failure = Object.assign(new Error('net::ERR_CONNECTION_REFUSED loading the game'), { code: 'ERR_CONNECTION_REFUSED' });
   const h = await loadShell({ loadFailures: [failure] });
   try {
-    assert.equal(h.dialog.errorBoxes.length, 1);
-    const { title, content } = h.dialog.errorBoxes[0];
+    assert.equal(h.dialog.messageBoxes.length, 1);
+    const { title, message: content } = h.dialog.messageBoxes[0].options;
     assert.equal(title, 'SpaceFace could not start');
     assert.match(content, /The game window could not be opened\./);
     assert.match(content, /ERR_CONNECTION_REFUSED loading the game/);
     assert.match(content, /A crash report was saved to:/);
-    assert.ok(h.events.indexOf('showErrorBox') < h.events.indexOf('app.exit'));
+    assert.ok(h.events.indexOf('showMessageBox') < h.events.indexOf('app.exit'));
     assert.deepEqual(h.exits, [1]);
   } finally {
     h.cleanup();
@@ -340,7 +353,7 @@ test('a failed page load shows the box with the cause and exits', async () => {
 
 test('a dialog that cannot be shown never stops the exit', async () => {
   const failure = new Error('boom');
-  const throwing = await loadShell({ loadFailures: [failure], showErrorBoxThrows: true });
+  const throwing = await loadShell({ loadFailures: [failure], showMessageBoxThrows: true });
   try {
     assert.deepEqual(throwing.exits, [1], 'a throwing native box still ends in app.exit');
   } finally {
@@ -357,7 +370,7 @@ test('a dialog that cannot be shown never stops the exit', async () => {
 test('isolated evidence never raises a blocking box or recovers over a crash', async () => {
   const failed = await loadShell({ isolatedEvidence: true, loadFailures: [new Error('probe load failed')] });
   try {
-    assert.equal(failed.dialog.errorBoxes.length, 0, 'an unattended probe must not hang on a modal box');
+    assert.equal(failed.dialog.messageBoxes.length, 0, 'an unattended probe must not hang on a modal box');
     assert.deepEqual(failed.exits, [1]);
   } finally {
     failed.cleanup();
@@ -380,20 +393,21 @@ test('an uncaught main-process exception shows one error box before the process 
   const h = await loadShell();
   try {
     h.processEvents.emit('uncaughtException', new Error('kaboom in the main process'));
-    assert.equal(h.dialog.errorBoxes.length, 1);
-    const { title, content } = h.dialog.errorBoxes[0];
+    await settle();
+    assert.equal(h.dialog.messageBoxes.length, 1);
+    const { title, message: content } = h.dialog.messageBoxes[0].options;
     assert.equal(title, 'SpaceFace has stopped');
     assert.match(content, /unexpected problem and has to close/);
     assert.match(content, /kaboom in the main process/);
     const reportPath = /A crash report was saved to:\n(.+)$/m.exec(content)?.[1];
     assert.ok(reportPath && existsSync(reportPath), 'the box names a report that exists');
     assert.equal(JSON.parse(readFileSync(reportPath, 'utf8')).event.reason, 'uncaughtException');
-    assert.deepEqual(h.events.filter((name) => name === 'showErrorBox' || name === 'process.exit'),
-      ['showErrorBox', 'process.exit']);
+    assert.deepEqual(h.events.filter((name) => name === 'showMessageBox' || name === 'process.exit'),
+      ['showMessageBox', 'process.exit']);
     assert.deepEqual(h.processEvents.exitCodes, [1]);
 
     h.processEvents.emit('uncaughtException', new Error('a second fault while dying'));
-    assert.equal(h.dialog.errorBoxes.length, 1, 'never a second stacked box');
+    assert.equal(h.dialog.messageBoxes.length, 1, 'never a second stacked box');
     assert.deepEqual(h.processEvents.exitCodes, [1, 1], 'still exits every time');
   } finally {
     h.cleanup();
@@ -405,7 +419,7 @@ test('a fault while the player is already quitting exits without a box', async (
   try {
     h.app.quit();
     h.processEvents.emit('uncaughtException', new Error('late fault during shutdown'));
-    assert.equal(h.dialog.errorBoxes.length, 0);
+    assert.equal(h.dialog.messageBoxes.length, 0);
     assert.deepEqual(h.processEvents.exitCodes, [1]);
   } finally {
     h.cleanup();
@@ -486,12 +500,55 @@ test('the automatic reload budget comes back after two minutes', async () => {
   }
 });
 
-test('a dead renderer during shutdown is left alone', async () => {
+test('Quit from renderer recovery closes the crashed window without a dead save IPC', async () => {
+  const h = await loadShell({ dialogResponses: [1] });
+  try {
+    const [win] = h.windows;
+    win.webContents.crashed = true;
+    win.webContents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 3 });
+    await settle();
+    assert.equal(win.loads.length, 2, 'first crash recovers on the original origin');
+    assert.equal(win.webContents.isCrashed(), false);
+
+    win.webContents.crashed = true;
+    win.webContents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 3 });
+    await settle();
+    assert.equal(h.quits.count, 1);
+    assert.equal(win.destroyed, true, 'recovery Quit must release the crashed window');
+    assert.equal(win.webContents.sent.some(([channel]) => channel === 'spaceface:prepare-quit'), false);
+  } finally {
+    h.cleanup();
+  }
+});
+
+test('a healthy close still waits for the matching durable save receipt', async () => {
+  const h = await loadShell();
+  try {
+    const [win] = h.windows;
+    const { ipcMain } = h;
+    win.close();
+    assert.equal(win.destroyed, false, 'close is held until the save owner finishes');
+    const prepare = win.webContents.sent.find(([channel]) => channel === 'spaceface:prepare-quit');
+    assert.ok(prepare, 'the save owner receives a prepare-quit request');
+    const [, token] = prepare;
+    ipcMain.emit('spaceface:quit-prepared', { sender: win.webContents }, token + 1, { ok: true });
+    assert.equal(win.destroyed, false);
+    ipcMain.emit('spaceface:quit-prepared', { sender: win.webContents }, token, { ok: true });
+    assert.equal(win.destroyed, true);
+  } finally {
+    h.cleanup();
+  }
+});
+
+test('a renderer crash during the save handoff finishes closing without restarting it', async () => {
   const h = await loadShell();
   try {
     h.app.quit();
+    assert.equal(h.win.destroyed, false, 'healthy renderer first waits for its durable save');
+    h.win.webContents.crashed = true;
     h.win.webContents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 });
     await settle();
+    assert.equal(h.win.destroyed, true, 'shutdown releases the window after the renderer dies');
     assert.equal(h.win.loads.length, 1);
     assert.equal(h.dialog.messageBoxes.length, 0);
   } finally {
