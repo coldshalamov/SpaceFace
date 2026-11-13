@@ -10,6 +10,7 @@ import { buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileSto
 import { paintStructuralFalls } from './siteStructuralModel.js';
 import { validateSurveyTarget } from './siteSurvey.js';
 import { solveRadiatorThermal, radiatorSignature } from './siteRadiatorReadModel.js';
+import { sellableCargoQuantity } from './cargoReservations.js';
 import { SECTORS } from '../data/sectors.js';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
@@ -386,13 +387,11 @@ export const asteroidSiteReadMethods = {
 
   _missingMaterials(site, cost, fundingStores) {
     const missing = {};
-    const cargo = this.state.player && this.state.player.cargo;
     const stores = Array.isArray(fundingStores) ? fundingStores : [];
     for (const goodId of Object.keys(cost || {}).sort()) {
       let need = cost[goodId];
       for (const ls of stores) need -= Math.floor(Math.max(0, Number(ls.store[goodId]) || 0));
-      const held = cargo && cargo.items ? Math.max(0, Math.floor(Number(cargo.items[goodId]) || 0)) : 0;
-      need -= held;
+      need -= sellableCargoQuantity(this.state, goodId);
       if (need > 0) missing[goodId] = need;
     }
     return missing;

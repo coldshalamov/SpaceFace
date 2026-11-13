@@ -30,6 +30,8 @@ import {
   wouldOwnComponent, STORE_NUMERIC_CEILING,
 } from '../src/systems/siteLogistics.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
+import { canInstallAsteroidSiteFromState } from '../src/systems/asteroidSiteReadModel.js';
+import { addCargo } from '../src/systems/cargo.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
 // Hand-copied from SITE_BALANCE (src/data/sites.js). NOT imported — assertions must not track
@@ -649,6 +651,39 @@ test('A10 RULING: construction may draw only from ship cargo plus the lane compo
     'the ship hold pays the FULL cost when no lane would own the install cell');
   assert.equal(far.store.cmdty_regocrete, 50,
     'the disconnected network keeps every unit — remote funding is dead');
+});
+
+test('bore construction and lane deposits preserve the sealed alloy manifest', () => {
+  const { h, siteId, site } = anchoredSite();
+  const commodityId = 'cmdty_alloys';
+  h.state.missions = { active: [{
+    id: 'alloy-run', status: 'active', preloadedCargo: true,
+    params: { cmdtyId: commodityId, qty: 6 },
+  }] };
+  assert.equal(addCargo(h.state, commodityId, 6), 6);
+  const build = { asteroidId: 42, defId: 'sm_auto_drill', col: 14, row: 3 };
+  const cargoBefore = structuredClone(h.state.player.cargo);
+  const machinesBefore = site.machines.length;
+  for (const check of [canInstallAsteroidSiteFromState(h.state, build), h.sys.installMachine(build)]) {
+    assert.equal(check.reason, 'materials');
+    assert.deepEqual(check.missing, { [commodityId]: 1 });
+  }
+  assert.deepEqual(h.state.player.cargo, cargoBefore);
+  assert.equal(site.machines.length, machinesBefore);
+
+  const machine = site.machines.find(row => row.defId === 'sm_extractor');
+  const deposit = qty => h.sys.transferGoods(siteId, machine.id, commodityId, qty, 'deposit');
+  assert.deepEqual(deposit(6), { ok: false, moved: 0, reason: 'no-room-or-cargo' });
+  assert.equal(addCargo(h.state, commodityId, 3), 3);
+  assert.deepEqual(deposit(8), { ok: true, moved: 3, reason: null });
+  assert.deepEqual(deposit(6), { ok: false, moved: 0, reason: 'no-room-or-cargo' });
+  assert.equal(h.state.player.cargo.items[commodityId], 6);
+  assert.deepEqual(h.sys.transferGoods(siteId, machine.id, commodityId, 3, 'withdraw'),
+    { ok: true, moved: 3, reason: null });
+
+  assert.equal(h.sys.installMachine(build).ok, true);
+  assert.equal(site.machines.length, machinesBefore + 1);
+  assert.equal(h.state.player.cargo.items[commodityId], 8);
 });
 
 // ===================================== 13. POSITIVE OWNERSHIP LAW

@@ -26,7 +26,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
 import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
 import {
   addToShipment,
   commitShipmentSale,
@@ -1385,7 +1385,7 @@ export const asteroidSites = {
   /** What part of `cost` cannot be covered by the ELIGIBLE lane stores + ship hold right now. */
   _missingMaterials: asteroidSiteReadMethods._missingMaterials,
 
-  /** Consume install materials: the OWNING network's stores first (physically here), then ship hold. */
+  /** Consume install materials: the owning network's stores first, then the ship's loose cargo. */
   _consumeMaterials(site, cost, fundingStores) {
     const stores = Array.isArray(fundingStores) ? fundingStores : [];
     for (const goodId of Object.keys(cost || {}).sort()) {
@@ -1974,7 +1974,7 @@ export const asteroidSites = {
     if (!want) return { ok: false, moved: 0, reason: 'zero' };
     if (dir === 'deposit') {
       const room = Math.max(0, rt.capacity[compKey] - storeTotal(store));
-      const take = Math.min(want, Math.floor(room));
+      const take = Math.min(want, Math.floor(room), sellableCargoQuantity(this.state, goodId));
       const removed = take > 0 ? removeCargo(this.state, goodId, take) : 0;
       if (removed > 0) store[goodId] = (Number(store[goodId]) || 0) + removed;
       return { ok: removed > 0, moved: removed, reason: removed > 0 ? null : 'no-room-or-cargo' };
