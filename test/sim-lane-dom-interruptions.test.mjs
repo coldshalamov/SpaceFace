@@ -178,7 +178,8 @@ function assertNeutral(state, label) {
 function holdControls(fixture) {
   const { dom } = fixture;
   dom.windowTarget.dispatch('keydown', { code: 'KeyW', target: null });
-  dom.windowTarget.dispatch('keydown', { code: 'ShiftLeft', target: null });
+  // G18-02 (b931aac851fb) moved stock boost to Space in every scheme.
+  dom.windowTarget.dispatch('keydown', { code: 'Space', target: null });
   dom.canvasTarget.dispatch('mousedown', { button: 0, target: dom.canvasTarget, clientX: 640, clientY: 400 });
 }
 
@@ -211,7 +212,7 @@ test('worker DOM adapter forwards interruption releases and capture-phase physic
   await f.tick();
   // A modal/overlay consumes the bubbling phase. Capture listeners still see the physical release.
   f.dom.windowTarget.dispatch('keyup', { code: 'KeyW', target: {} }, { captureOnly: true });
-  f.dom.windowTarget.dispatch('keyup', { code: 'ShiftLeft', target: {} }, { captureOnly: true });
+  f.dom.windowTarget.dispatch('keyup', { code: 'Space', target: {} }, { captureOnly: true });
   f.dom.windowTarget.dispatch('mouseup', { button: 0, target: {} }, { captureOnly: true });
   await f.tick();
   assertNeutral(f.state, 'capture-phase keyup/mouseup');
