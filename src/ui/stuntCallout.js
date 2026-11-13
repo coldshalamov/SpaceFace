@@ -95,6 +95,11 @@ export function handlineSenseLine(eventName, payload) {
   if (eventName === 'tether:snagCleared') {
     return { key: 'line-clear', name: 'LINE CLEAR', detail: '' };
   }
+  // First-hour beat (20_THE_FIRST_HOUR rule 4): the latch gets its word. Said once per run by the
+  // lane's first-beat ledger; repeats stay with the click and the line's own motion.
+  if (eventName === 'tether:latched') {
+    return { key: 'latched', name: 'LATCHED', detail: '' };
+  }
   if (eventName === 'massline:throw') {
     const spd = Number.isFinite(p.payloadSpeed) ? Math.round(p.payloadSpeed) : null;
     const id = p.releaseId != null ? String(p.releaseId) : 'throw';
@@ -904,8 +909,17 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
     // Silent seams: the event itself had no subscriber that a pilot could see or hear.
+    // Rule 4, "once, then quieter": the first latch and the first throw of a run earn a centre word;
+    // after that the sound, the camera and the line itself carry it. Reset with the run.
+    const firstBeatsSaid = new Set();
+    const FIRST_BEAT_NAMES = new Set(['LATCHED', 'THROWN']);
+    for (const ev of ['run:started', 'game:newGame', 'save:loaded']) unsubs.push(bus.on(ev, () => firstBeatsSaid.clear()));
     const speak = (line) => {
       if (!line) return;
+      if (FIRST_BEAT_NAMES.has(line.name)) {
+        if (firstBeatsSaid.has(line.name)) return;
+        firstBeatsSaid.add(line.name);
+      }
       // Swarm glass (S2 task 3) + X3 Adventure glass: a moment draws only when it reads as a
       // plain ≤3-word callout — LOG registers, snag/ride/strain telemetry and mass figures never
       // reach the lane in either mode.
@@ -972,6 +986,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
     unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    // Only the pilot's own latch speaks (a flail or an NPC line is not the player's first success).
+    unsubs.push(bus.on('tether:latched', (payload) => {
+      const st = getState();
+      if (!st || !payload || payload.flail === true || payload.sourceId !== st.playerId) return;
+      onHandlineSense('tether:latched')(payload);
+    }));
     unsubs.push(bus.on('tether:snapCatch', onHandlineSense('tether:snapCatch')));
     unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
     unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
