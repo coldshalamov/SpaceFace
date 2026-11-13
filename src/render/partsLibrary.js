@@ -15821,7 +15821,7 @@ function activatePackageSlotsTransaction(chunk, slots, options = {}) {
       if (!visibleProxyChainReachesOwner(slot.proxy, slot.owner)) continue;
       slot.owner.updateWorldMatrix(true, true);
       if (setInstanceMatrixIfChanged(chunk, slot.index, slot, slot.proxy.matrixWorld)) {
-        chunk.visibleIndices.add(slot.index);
+        showChunkIndex(chunk, slot.index);
         if (!slot.lastSubmitted) slot.ownerState.submittedCount++;
         slot.lastSubmitted = true;
       }
@@ -15873,8 +15873,8 @@ function rollbackPackageSlotMatrices(chunk, snapshots, priorCount, priorVisible)
     slot.matrixElements.set(snapshot.matrixElements);
     slot.lastSubmitted = snapshot.lastSubmitted;
     slot.ownerState.submittedCount = snapshot.ownerSubmittedCount;
-    if (snapshot.visibleIndex) chunk.visibleIndices.add(slot.index);
-    else chunk.visibleIndices.delete(slot.index);
+    if (snapshot.visibleIndex) showChunkIndex(chunk, slot.index);
+    else hideChunkIndex(chunk, slot.index);
     try {
       writeInstanceChunkMatrix(chunk, slot.index, snapshot.matrixInitialized
         ? new THREE.Matrix4().fromArray(snapshot.matrixElements)
@@ -16137,7 +16137,7 @@ function allocateInstance(scene, owner, proxy, geometry, material, label, option
       if (options.initializeVisibleMatrix === true && visibleProxyChainReachesOwner(proxy, owner)) {
         owner.updateWorldMatrix(true, true);
         if (setInstanceMatrixIfChanged(chunk, index, slot, proxy.matrixWorld)) {
-          chunk.visibleIndices.add(index);
+          showChunkIndex(chunk, index);
           ownerState.submittedCount++;
           slot.lastSubmitted = true;
         }
@@ -16184,7 +16184,7 @@ function releaseInstanceSlot(state, pool, slot, options = {}) {
   slot.released = true;
   const { chunk, index, owner, ownerState } = slot;
   if (slot.lastSubmitted) {
-    chunk.visibleIndices.delete(index);
+    hideChunkIndex(chunk, index);
     ownerState.submittedCount = Math.max(0, ownerState.submittedCount - 1);
   }
   slot.lastSubmitted = false;
@@ -16265,6 +16265,7 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
     pool,
     slots: new Map(),
     visibleIndices: new Set(),
+    highestVisibleIndex: -1,
     free: [],
     next: 0,
     dynamicBufferOwner,
@@ -16420,6 +16421,7 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   state.retiringChunks.delete(chunk);
   chunk.slots.clear();
   chunk.visibleIndices.clear();
+  chunk.highestVisibleIndex = -1;
   chunk.free.length = 0;
   const index = pool.chunks.indexOf(chunk);
   if (index >= 0) pool.chunks.splice(index, 1);
@@ -16540,7 +16542,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   if (!visible) {
     if (!slot.lastSubmitted) return false;
     writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
-    chunk.visibleIndices.delete(index);
+    hideChunkIndex(chunk, index);
     slot.ownerState.submittedCount = Math.max(0, slot.ownerState.submittedCount - 1);
     slot.matrixInitialized = false;
     slot.lastSubmitted = false;
@@ -16551,7 +16553,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   if (dirty) stats.matrixUploads++;
   else stats.matrixReuses++;
   if (!slot.lastSubmitted) {
-    chunk.visibleIndices.add(index);
+    showChunkIndex(chunk, index);
     slot.ownerState.submittedCount++;
     dirty = true;
   }
@@ -16617,10 +16619,27 @@ function consolidateOpaqueInstanceChunks(state, context) {
   }
 }
 
+function showChunkIndex(chunk, index) {
+  chunk.visibleIndices.add(index);
+  if (chunk.highestVisibleIndex !== null && index > chunk.highestVisibleIndex) {
+    chunk.highestVisibleIndex = index;
+  }
+}
+
+function hideChunkIndex(chunk, index) {
+  if (chunk.visibleIndices.delete(index) && chunk.highestVisibleIndex === index) {
+    // Recompute only if the tail of the submitted range was removed.
+    chunk.highestVisibleIndex = null;
+  }
+}
+
 function highestSubmittedIndex(chunk) {
-  let highest = -1;
-  for (const index of chunk.visibleIndices) if (index > highest) highest = index;
-  return highest;
+  if (chunk.highestVisibleIndex === null) {
+    let highest = -1;
+    for (const index of chunk.visibleIndices) if (index > highest) highest = index;
+    chunk.highestVisibleIndex = highest;
+  }
+  return chunk.highestVisibleIndex;
 }
 
 function isVisibleToOwner(object, owner, context, stats, record = null, slot = null) {
@@ -16639,7 +16658,7 @@ function isVisibleToOwner(object, owner, context, stats, record = null, slot = n
       if (stats) stats.hiddenInstanceSlots++;
       return false;
     }
-    if (current === owner) return isOwnerInCullContext(owner, context, stats);
+    if (current === owner) return true;
   }
   if (stats) stats.hiddenInstanceSlots++;
   return false;
@@ -17018,7 +17037,7 @@ function captureCullCameraState(camera, snapshot) {
   return changed;
 }
 
-function isOwnerInCullContext(owner, context, stats) {
+function isOwnerInCullContext(owner, context) {
   if (!context || !context.frustum || !context.cameraPosition) return true;
   CULL_SPHERE.center.setFromMatrixPosition(owner.matrixWorld);
   CULL_SPHERE.radius = owner.userData && owner.userData.spacefaceCullRadius || INSTANCE_FRUSTUM_PAD;
@@ -17027,9 +17046,7 @@ function isOwnerInCullContext(owner, context, stats) {
   const dz = CULL_SPHERE.center.z - context.cameraPosition.z;
   const far = (Number.isFinite(context.farCullWu) ? context.farCullWu : INSTANCE_FAR_CULL_RADIUS)
     + CULL_SPHERE.radius;
-  const visible = (dx * dx + dy * dy + dz * dz <= far * far) && context.frustum.intersectsSphere(CULL_SPHERE);
-  if (!visible && stats) stats.culledInstanceSlots++;
-  return visible;
+  return (dx * dx + dy * dy + dz * dz <= far * far) && context.frustum.intersectsSphere(CULL_SPHERE);
 }
 
 // A registration belongs both to the stable boundary and to the particular composed root.
