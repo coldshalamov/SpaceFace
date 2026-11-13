@@ -58,6 +58,7 @@ async function loadMain({
   updaterWillQuit = true,
   deferFirstPaint = false,
   hangInitialNavigation = false,
+  omitShowEvent = false,
 } = {}) {
   const windows = [];
   const commands = [];
@@ -170,7 +171,7 @@ async function loadMain({
       isVisible() { return this.visible; },
       isMinimized() { return this.minimized; },
       isFocused() { return this.focused; },
-      show() { this.visible = true; this.emit('show'); },
+      show() { this.visible = true; if (!omitShowEvent) this.emit('show'); },
       hide() { this.visible = false; this.focused = false; this.emit('hide'); },
       minimize() { this.minimized = true; this.emit('minimize'); },
       restore() { this.minimized = false; this.visible = true; this.emit('restore'); },
@@ -888,6 +889,14 @@ test('window hide, minimize, focus, and blur publish normalized lifecycle states
   for (let index = 1; index < h.commands.length; index++) {
     assert.ok(h.commands[index].sequence > h.commands[index - 1].sequence);
   }
+});
+
+test('the ready window publishes its actual visibility when the native show event is absent', async () => {
+  const h = await loadMain({ deferFirstPaint: true, omitShowEvent: true });
+  assert.equal(h.commands.at(-1)?.state, 'hidden-or-minimized');
+  h.win.emit('ready-to-show');
+  assert.equal(h.win.isVisible(), true);
+  assert.equal(h.commands.at(-1)?.state, 'foreground-occluded');
 });
 
 test('power suspend and screen lock publish system suspension through one listener set', async () => {

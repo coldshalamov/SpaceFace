@@ -1515,6 +1515,9 @@ async function createWindow() {
       focusWhenReady = false;
       focusGameWindow();
     }
+    // The load receipt can describe a still-hidden window. Resample after
+    // opening it so presentation can start even if a native event is omitted.
+    publishWindowLifecycle(win, 'show');
   }
   win.once('ready-to-show', () => {
     firstPaintReady = true;
