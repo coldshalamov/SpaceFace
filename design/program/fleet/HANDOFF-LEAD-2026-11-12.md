@@ -291,3 +291,17 @@ Codex used `economy_perf`, `backend_recon` and `sim_hotpath` for separate naviga
 Codex used `sim_hotpath` for perception and worker regression fixtures, `backend_recon` for the pose rebuild and dormant-rock review, and `economy_perf` for projectile-order investigation and asteroid pool ownership. No Devin workers launched. Opus-owned working changes are still separate.
 
 The locked Supply Pod pair confirmed thrust, turn, and primary fire. Draws rose from 12.0 to 20.2/s and drawn ship gap p95 fell from 129 to 85 ms. The original multi-second freeze did not recur in the comparison. Sustained cadence, long missing-root cases, live dormant contact, and complete save/flight, Circuits, and mobile acceptance remain open. See [the checkpoint](QUALITY.md) for exact runs and artifacts.
+
+### Stand-in log — world ledger and desktop runtime
+
+- `0dbde54a8fc5` fixed. Dormant asteroid poses reach the production render table before contact; identity, grid movement, retirement, and worker reply coalescing passed focused checks.
+- `0427216c1975` accepted. Direct dirty-ID drain replaces repeated roster walks. The 720-tick aux parity probe was clean. Its independent transport budget remains red. A 6,000-row matched owner benchmark measured 1.66 to 0.012 ms median.
+- `994adcf6e5de` fixed. Paused ACK housekeeping publishes any newly observed ledger deltas instead of consuming them silently.
+- `2562d286fd30` fixed. Electron reports the ready window's current state even when native show is absent. The injected regression failed before and passed after. Real intermittent startup stalls remain open.
+- `f7294f59cb55` accepted. Pack shader probe uniforms once; live FPS effect unmeasured.
+- `81f1eb4c31ef` accepted. Reuse immutable compact collision bounds. Native Foundry combat parity held.
+- `64092aa260a1` accepted. The existing profiler can capture the same workload in renderer cadence, worker CPU, and Chrome scheduling.
+- `15f2694cd228` accepted. The profiler can hold the public fire control alongside thrust and turn.
+- `006b297c58d0` accepted. The active queue and quality checkpoint retain the commit IDs and incomplete routes.
+
+Workers were Codex backend_recon (Three.js hot path), sim_hotpath (Rapier and domain mirror), economy_perf (shared-clock tracing), and boot_deadline (Electron startup and SwiftShader fixture). No Devin worker launched. Next live checks use the shared lock for Ceres pre-contact, combined-input motion cadence, and Adventure startup, pause and restore. The original seconds-long freeze, sustained cadence, full load/Continue coverage, and broader route acceptance remain open.
