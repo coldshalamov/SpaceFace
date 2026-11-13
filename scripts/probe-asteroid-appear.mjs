@@ -6,6 +6,7 @@
 //   node scripts/probe-asteroid-appear.mjs              (headed, ~3-4 min)
 //   node scripts/probe-asteroid-appear.mjs --headless
 //   --seed=4242 --flight-ms=175000
+//   --ram-only skips the flyby legs to exercise a dormant ordinary rock.
 //
 // Boot mirrors probe-frame-solid.mjs (shared server.js, system Chrome/Edge,
 // menu -> game:new -> flight). The instrument only observes; flight uses
@@ -30,6 +31,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
+const RAM_ONLY = process.argv.includes('--ram-only');
 const browserPath = process.env.SF_PROBE_BROWSER
   || [
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -836,10 +838,8 @@ try {
     }
   }, STAGE_SECTOR);
   staging.enterSector = 'ok';
-  // Wait for the belt's dormant field to materialize: rocks plus at least one
-  // diamond lattice cell. Dormant rows surface two ways: world.asteroidField.
-  // rocks on the main lane, or fieldResident mirrors inside entityList when the
-  // sim runs on the worker lane (the aux channel).
+  // Wait for the belt's dormant field in the renderer's shared table shape.
+  // Optic cells inside native activation range may already be live bodies.
   const staged = await page.waitForFunction(() => {
     const s = window.SF && window.SF.state;
     if (!s || !s.entityList) return null;
@@ -868,7 +868,7 @@ try {
 
   // Relocate outside the nearest diamond lattice so every cell starts dormant
   // and out of the decode disc, with the lattice dead ahead for the approach.
-  const relocatedTo = await page.evaluate(() => {
+  const relocatedTo = RAM_ONLY ? null : await page.evaluate(() => {
     const s = window.SF.state;
     const p = s.entities.get(s.playerId);
     const eachAsteroid = (cb) => {
@@ -1185,19 +1185,21 @@ try {
   };
 
   // --- Route ----------------------------------------------------------------
-  if (waypoints.diamond) {
+  if (RAM_ONLY) {
+    phases.push({ phase: 'flybys', skipped: 'ram-only' });
+  } else if (waypoints.diamond) {
     await fly({ name: 'diamond-passby', target: waypoints.diamond, pastDist: 400, limitMs: 65_000 });
     await fly({ name: 'diamond-return', target: waypoints.diamond, doneDist: 70, limitMs: 55_000 });
   } else {
     console.log('  no diamond optic lattice found — skipping waypoint 1');
     phases.push({ phase: 'diamond-passby', skipped: 'no diamond lattice found' });
   }
-  if (waypoints.cluster && !routeDeadlineHit) {
+  if (!RAM_ONLY && waypoints.cluster && !routeDeadlineHit) {
     await fly({ name: 'cluster-passby', target: waypoints.cluster, pastDist: 400, limitMs: 55_000 });
     if (!routeDeadlineHit) {
       await fly({ name: 'cluster-return', target: waypoints.cluster, doneDist: 120, limitMs: 45_000 });
     }
-  } else if (!routeDeadlineHit) {
+  } else if (!RAM_ONLY && !routeDeadlineHit) {
     // Fallback: cruise straight ahead through whatever field is there.
     const ahead = await page.evaluate(() => {
       const s = window.SF.state;
@@ -1232,6 +1234,7 @@ try {
     return best ? { id: best.id, x: best.pos.x, z: best.pos.z, radius: best.radius, dist: Math.round(bestD) } : null;
   });
   let ramResult = null;
+  let approachShot = null;
   if (ramTarget && !routeDeadlineHit) {
     await page.evaluate((id) => { window.__SF_ASTEROID_PROBE__.probe.ramTargetId = id; }, ramTarget.id);
     console.log(`  ram target id=${ramTarget.id} r=${ramTarget.radius} dist=${ramTarget.dist}`);
@@ -1268,6 +1271,17 @@ try {
       loggedMode = null;
       if (!Number.isFinite(snap.tx)) { await page.waitForTimeout(POLL_MS); continue; }
       const dist = Math.hypot(snap.tx - snap.px, snap.tz - snap.pz);
+      if (RAM_ONLY && !approachShot && !snap.promoted && dist < 220) {
+        const drawn = await page.evaluate(() => {
+          const row = window.__SF_ASTEROID_PROBE__.rec.ramTimeline.at(-1);
+          return row?.drawn === true && row?.dormant === true;
+        });
+        if (drawn) {
+          approachShot = `${stamp}-ram-approach.png`;
+          await page.screenshot({ path: `${OUT_DIR}/${approachShot}`, timeout: 5000 })
+            .catch(() => { approachShot = null; });
+        }
+      }
       if (!contact && snap.promoted) {
         contact = { at: Date.now() - start, dist: Math.round(dist) };
         contactPos = { x: snap.tx, z: snap.tz };
@@ -1383,7 +1397,7 @@ try {
       const sliced = at != null
         ? tl.filter((r) => r.t >= at - 2000 && r.t <= at + 3000)
         : tl;
-      return { target: ramTarget, result: ramResult, promotedAt: at, timelineRawCount: tl.length, timeline: sliced };
+      return { target: ramTarget, result: ramResult, approachShot, promotedAt: at, timelineRawCount: tl.length, timeline: sliced };
     })(),
     populations: probeOut ? probeOut.rec.populations : null,
     maxOnScreen: probeOut ? probeOut.rec.maxOnScreen : null,
