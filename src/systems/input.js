@@ -1462,9 +1462,27 @@ export const input = {
     const offDeath = bus.on('player:death', () => releaseHullControls('player-death'));
     const offRespawn = bus.on('player:respawn', () => releaseHullControls('player-respawn'));
     const offMode = bus.on('mode:changed', () => { this._combatStickPilotRun = null; });
+    const offPause = bus.on('sim:pause', () => {
+      // A modal can open and close between fixed ticks. Retire the old edges
+      // here as well as in the modal update, without inventing a line release.
+      if (this._keyEdgeQueue) this._keyEdgeQueue.length = 0;
+      this._touchThrow = null;
+      this._cancelPowerHolds(this.state);
+      this.cancelWorldObjectGesture('neutralize');
+      this._m0 = this._m1 = false;
+      const gp = this.gamepad;
+      const lineHeld = this._held(this.state, 'tether')
+        || !!(gp?.isConnected() && gp.actions.massline?.held);
+      this._masslineGrammar?.reset(lineHeld);
+      this._edgePrev = this._edgePrev || {};
+      for (const action of SAMPLED_EDGE_ACTIONS) {
+        if (action !== 'tether') this._edgePrev[action] = this._held(this.state, action);
+      }
+    });
     if (typeof offDeath === 'function') offs.push(offDeath);
     if (typeof offRespawn === 'function') offs.push(offRespawn);
     if (typeof offMode === 'function') offs.push(offMode);
+    if (typeof offPause === 'function') offs.push(offPause);
     this._interruptControlOffs = offs;
   },
 
