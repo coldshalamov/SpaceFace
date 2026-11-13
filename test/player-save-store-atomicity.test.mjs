@@ -93,6 +93,22 @@ test('a healthy promote still replaces the primary atomically', async (t) => {
   assert.deepEqual(noAbandonedTemp(dir), [], 'the temp is gone after a successful promote');
 });
 
+test('an oversized later entry rejects the entire patch before writing or deleting a slot', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'spaceface-store-atomic-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  writePlayerStoreKeysSync(dir, { 'sf.save.auto': ORIGINAL, 'sf.recovery.auto': ORIGINAL });
+  const before = readPlayerStoreKeysSync(dir);
+
+  assert.throws(() => writePlayerStoreKeysSync(dir, {
+    'sf.recovery.auto': null,
+    'sf.save.auto': '{"replacement":true}',
+    'sf.save.quick': 'x'.repeat(6 * 1024 * 1024 + 1),
+  }), /player store value too large: sf\.save\.quick/);
+
+  assert.deepEqual(readPlayerStoreKeysSync(dir), before);
+  assert.deepEqual(noAbandonedTemp(dir), []);
+});
+
 test('empty and blank store dirs never resolve to cwd: read {} and write throws before any disk I/O', async (t) => {
   // path.resolve('') is the cwd — an empty/blank dir used to sail through the root guard and
   // then mkdir+write save files into whatever directory the process happened to be in. The raw

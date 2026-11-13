@@ -128,9 +128,16 @@ function writePlayerStoreKeysSync(dir, patch, { returnKeys = true } = {}) {
   const raw = String(dir || '').trim();
   if (!raw) throw new Error('player store directory is required');
   const root = path.resolve(raw);
-  fs.mkdirSync(root, { recursive: true });
   const entries = patch && typeof patch === 'object' ? Object.entries(patch) : [];
   if (entries.length > MAX_KEYS) throw new Error('player store patch has too many keys');
+  // Reject a malformed batch before touching any slot, even if the offending
+  // value follows a valid write or removal.
+  for (const [key, value] of entries) {
+    if (typeof value === 'string' && value.length > MAX_VALUE_CHARS && isAllowedPlayerStoreKey(key)) {
+      throw new Error(`player store value too large: ${key}`);
+    }
+  }
+  fs.mkdirSync(root, { recursive: true });
   for (const [key, value] of entries) {
     const fileName = fileNameForKey(key);
     if (!fileName) continue;
@@ -140,7 +147,6 @@ function writePlayerStoreKeysSync(dir, patch, { returnKeys = true } = {}) {
       continue;
     }
     if (typeof value !== 'string') continue;
-    if (value.length > MAX_VALUE_CHARS) throw new Error(`player store value too large: ${key}`);
     writeAtomicSync(file, value);
   }
   return returnKeys ? readPlayerStoreKeysSync(root) : undefined;
