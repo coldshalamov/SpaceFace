@@ -145,7 +145,9 @@ function buildSurveyorPrism(entity = null) {
   const scanPeriod = machineKindById('surveyor_prism')?.scanPeriodS || 14;
   g.userData.updateAuthoredMotion = registerWorkMotion(entity,
     (live) => {
-      const sweep = live?.data?.machine?.sweepT;
+      const machine = live?.data?.machine;
+      if (typeof machine?.visualScanWinding === 'boolean') return machine.visualScanWinding;
+      const sweep = machine?.sweepT;
       return typeof sweep === 'number' && sweep > scanPeriod * 0.55;
     },
     (t, time) => {
@@ -510,7 +512,8 @@ function buildDebrisSorter(entity = null) {
   g.add(eye);
   g.name = 'SF_Machine_debris_sorter';
   g.userData.updateAuthoredMotion = registerWorkMotion(entity,
-    (live) => live?.data?.machine?.collectId != null,
+    (live) => typeof live?.data?.machine?.visualCollecting === 'boolean'
+      ? live.data.machine.visualCollecting : live?.data?.machine?.collectId != null,
     (t, time) => {
       spine.scale.z = 14 * (1 + t * 0.8);
       mouth.scale.x = mouth.scale.y = 14 * (1 + t * 0.25);

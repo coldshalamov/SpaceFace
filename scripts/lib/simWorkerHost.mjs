@@ -33,6 +33,7 @@ import { save } from '../../src/save/saveSystem.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
 import { pinEvidence, unpinEvidence, linkEvidence, unlinkEvidence } from '../../src/systems/shipLedger.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
+import { machineKindById } from '../../src/data/precursorMachines.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
 import { isOrchardFrame, isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
@@ -280,6 +281,22 @@ const VITAL_ROT_INDEX = VITAL_FIELDS.indexOf('rot');
 const SWARM_SHADOW_INDEX = VITAL_FIELDS.length + 7;
 const RIDER_SHADOW_INDEX = SWARM_SHADOW_INDEX + 1;
 const AUTHORED_MOTION_FRAME_FIELDS = Object.freeze(['palletJackMotionFrame', 'kilnbackMotionFrame']);
+const SURVEYOR_SCAN_DEPLOY_AT = (machineKindById('surveyor_prism')?.scanPeriodS || 14) * 0.55;
+
+// These are presentation selectors, not simulation state. Send only changes;
+// the surveyor's continuously advancing clock crosses the wire as one edge.
+function faunaVisualLife(e) {
+  return e.type === 'fauna' && e.data?.ecology && Number.isSafeInteger(e.occupantGeneration)
+    && e.occupantGeneration > 0 ? e.occupantGeneration : null;
+}
+function machineVisualLife(e) {
+  return e.type === 'machine' && e.data?.machine && Number.isSafeInteger(e.occupantGeneration)
+    && e.occupantGeneration > 0 ? e.occupantGeneration : null;
+}
+function machineVisualScanning(machine) {
+  return machine.kind === 'surveyor_prism' && typeof machine.sweepT === 'number'
+    && machine.sweepT > SURVEYOR_SCAN_DEPLOY_AT;
+}
 
 // Native effects are replaced on deployment; their wire identity must survive clones.
 const countermeasureEffectIds = new WeakMap();
@@ -333,6 +350,15 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.machineRepairing = Boolean(machine.repairing);
     fields.machineWorking = Boolean(machine.working);
   }
+  const machineLife = machineVisualLife(e);
+  if (machineLife != null) {
+    fields.machineVisualLife = machineLife;
+    fields.machineVisualInterrogating = machine.interrogating === true;
+    fields.machineVisualAwakened = machine.awakened === true;
+    fields.machineVisualAwake = machine.awake === true;
+    fields.machineVisualScanning = machineVisualScanning(machine);
+    fields.machineVisualCollecting = machine.collectId != null;
+  }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
   if (e.type === 'projectile' && e.data?.kind === 'missile') {
     fields.seekerSourceGeneration = e.occupantGeneration ?? null;
@@ -358,6 +384,14 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.ecologyScanLabel = e.data.scanLabel ?? null;
     fields.ecologySignalKind = e.data.scannerSignalKind ?? null;
     fields.ecologyDisguised = ecology.disguised === true;
+  }
+  const faunaLife = faunaVisualLife(e);
+  if (faunaLife != null) {
+    fields.ecologyVisualLife = faunaLife;
+    fields.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
+    fields.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
+    fields.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
+    fields.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
   }
   if (e.data?.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(e.data.livingHull);
   const cm = e.data && e.data.cm;
@@ -487,6 +521,25 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length]
       || (vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length + 1]
       || vitalShadowValue(e.rot) !== shadow[VITAL_ROT_INDEX]) return false;
+  const faunaLife = faunaVisualLife(e);
+  if (faunaLife != null) {
+    const ecology = e.data.ecology;
+    if (shadow.ecologyVisualLife !== faunaLife
+        || shadow.ecologyVisualSpeciesId !== (typeof ecology.speciesId === 'string' ? ecology.speciesId : null)
+        || shadow.ecologyVisualDriveState !== (typeof ecology.driveState === 'string' ? ecology.driveState : null)
+        || shadow.ecologyVisualNurseryMode !== (typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null)
+        || shadow.ecologyVisualMembers !== (Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null)) return false;
+  } else if (Object.hasOwn(shadow, 'ecologyVisualLife')) return false;
+  const machineLife = machineVisualLife(e);
+  if (machineLife != null) {
+    const machine = e.data.machine;
+    if (shadow.machineVisualLife !== machineLife
+        || shadow.machineVisualInterrogating !== (machine.interrogating === true)
+        || shadow.machineVisualAwakened !== (machine.awakened === true)
+        || shadow.machineVisualAwake !== (machine.awake === true)
+        || shadow.machineVisualScanning !== machineVisualScanning(machine)
+        || shadow.machineVisualCollecting !== (machine.collectId != null)) return false;
+  } else if (Object.hasOwn(shadow, 'machineVisualLife')) return false;
   let i = 0;
   for (const key of VITAL_FIELDS) {
     if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
@@ -549,6 +602,31 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
 
 function writeVitalShadow(e, shadow, krakenFrame, state) {
   // Named runtime-only slots preserve every existing positional/tail vital index.
+  const faunaLife = faunaVisualLife(e);
+  if (faunaLife != null) {
+    const ecology = e.data.ecology;
+    shadow.ecologyVisualLife = faunaLife;
+    shadow.ecologyVisualSpeciesId = typeof ecology.speciesId === 'string' ? ecology.speciesId : null;
+    shadow.ecologyVisualDriveState = typeof ecology.driveState === 'string' ? ecology.driveState : null;
+    shadow.ecologyVisualNurseryMode = typeof ecology.nurseryMode === 'string' ? ecology.nurseryMode : null;
+    shadow.ecologyVisualMembers = Number.isFinite(ecology.visibleMembers) ? ecology.visibleMembers : null;
+  } else if (Object.hasOwn(shadow, 'ecologyVisualLife')) {
+    delete shadow.ecologyVisualLife; delete shadow.ecologyVisualSpeciesId; delete shadow.ecologyVisualDriveState;
+    delete shadow.ecologyVisualNurseryMode; delete shadow.ecologyVisualMembers;
+  }
+  const machineLife = machineVisualLife(e);
+  if (machineLife != null) {
+    const machine = e.data.machine;
+    shadow.machineVisualLife = machineLife;
+    shadow.machineVisualInterrogating = machine.interrogating === true;
+    shadow.machineVisualAwakened = machine.awakened === true;
+    shadow.machineVisualAwake = machine.awake === true;
+    shadow.machineVisualScanning = machineVisualScanning(machine);
+    shadow.machineVisualCollecting = machine.collectId != null;
+  } else if (Object.hasOwn(shadow, 'machineVisualLife')) {
+    delete shadow.machineVisualLife; delete shadow.machineVisualInterrogating; delete shadow.machineVisualAwakened;
+    delete shadow.machineVisualAwake; delete shadow.machineVisualScanning; delete shadow.machineVisualCollecting;
+  }
   if (e.type === 'projectile' && e.data?.kind === 'missile') {
     shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
     shadow.seekerTargetId = e.data.targetId ?? null;

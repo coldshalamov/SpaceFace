@@ -62,6 +62,23 @@ function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+const CREATURE_VISUAL_VITAL_KEYS = Object.freeze([
+  'ecologyVisualLife', 'ecologyVisualSpeciesId', 'ecologyVisualDriveState',
+  'ecologyVisualNurseryMode', 'ecologyVisualMembers',
+  'machineVisualLife', 'machineVisualInterrogating', 'machineVisualAwakened',
+  'machineVisualAwake', 'machineVisualScanning', 'machineVisualCollecting',
+]);
+
+// A delayed visual packet must not repaint a new occupant of the same ID.
+function creatureVisualVitalsMatch(row, fields, life = row.occupantGeneration) {
+  const validLife = Number.isSafeInteger(life) && life > 0;
+  if (Object.hasOwn(fields, 'ecologyVisualLife')
+      && (row.type !== 'fauna' || !validLife || fields.ecologyVisualLife !== life)) return false;
+  if (Object.hasOwn(fields, 'machineVisualLife')
+      && (row.type !== 'machine' || !validLife || fields.machineVisualLife !== life)) return false;
+  return true;
+}
+
 // The wire carries scalars; HUD readers use the live entity's nested boost reservoir.
 function foldBoostVitals(row, fields) {
   if (fields.boostEnergy === undefined && fields.boostMax === undefined) return;
@@ -77,6 +94,18 @@ function foldMachineVitals(row, fields) {
   if (!row.data.machine || typeof row.data.machine !== 'object') row.data.machine = {};
   if (fields.machineRepairing !== undefined) row.data.machine.repairing = fields.machineRepairing;
   if (fields.machineWorking !== undefined) row.data.machine.working = fields.machineWorking;
+}
+
+function foldMachineVisualVitals(row, fields) {
+  if (fields.machineVisualLife === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (!row.data.machine || typeof row.data.machine !== 'object') row.data.machine = {};
+  const machine = row.data.machine;
+  if (Object.hasOwn(fields, 'machineVisualInterrogating')) machine.interrogating = fields.machineVisualInterrogating === true;
+  if (Object.hasOwn(fields, 'machineVisualAwakened')) machine.awakened = fields.machineVisualAwakened === true;
+  if (Object.hasOwn(fields, 'machineVisualAwake')) machine.awake = fields.machineVisualAwake === true;
+  if (Object.hasOwn(fields, 'machineVisualScanning')) machine.visualScanWinding = fields.machineVisualScanning === true;
+  if (Object.hasOwn(fields, 'machineVisualCollecting')) machine.visualCollecting = fields.machineVisualCollecting === true;
 }
 
 // Mines arm after their spawn; the halo counts the authoritative nested flag.
@@ -114,6 +143,17 @@ function foldEcologyVitals(row, fields) {
   row.data.scannerSignalKind = fields.ecologySignalKind;
   if (!row.data.ecology || typeof row.data.ecology !== 'object') row.data.ecology = {};
   row.data.ecology.disguised = fields.ecologyDisguised;
+}
+
+function foldFaunaVisualVitals(row, fields) {
+  if (fields.ecologyVisualLife === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (!row.data.ecology || typeof row.data.ecology !== 'object') row.data.ecology = {};
+  const ecology = row.data.ecology;
+  if (Object.hasOwn(fields, 'ecologyVisualSpeciesId')) ecology.speciesId = fields.ecologyVisualSpeciesId;
+  if (Object.hasOwn(fields, 'ecologyVisualDriveState')) ecology.driveState = fields.ecologyVisualDriveState;
+  if (Object.hasOwn(fields, 'ecologyVisualNurseryMode')) ecology.nurseryMode = fields.ecologyVisualNurseryMode;
+  if (Object.hasOwn(fields, 'ecologyVisualMembers')) ecology.visibleMembers = fields.ecologyVisualMembers;
 }
 
 // Decode only changed history, keeping scar arrays stable when other vitals change.
@@ -285,16 +325,23 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
     // Stage-8 vitals: per-entity scalar fields the renderer/UI read off the live
     // entity (hull, shield, fuel, and friends). Shipped on spawn and refreshed by
     // the vitals diff channel; absent fields stay undefined rather than 0.
-    if (info.vitals && typeof info.vitals === 'object') {
+    if (info.vitals && typeof info.vitals === 'object'
+        && creatureVisualVitalsMatch(row, info.vitals, info.occupantGeneration)) {
       foldNemesisHullVitals(row, info.vitals);
-      Object.assign(row, canonicalClone(info.vitals));
+      const copiedVitals = canonicalClone(info.vitals);
+      if (Object.hasOwn(info.vitals, 'ecologyVisualLife') || Object.hasOwn(info.vitals, 'machineVisualLife')) {
+        for (const key of CREATURE_VISUAL_VITAL_KEYS) delete copiedVitals[key];
+      }
+      Object.assign(row, copiedVitals);
       foldBoostVitals(row, info.vitals);
       foldMachineVitals(row, info.vitals);
+      foldMachineVisualVitals(row, info.vitals);
       foldMineVitals(row, info.vitals);
       foldSwarmSpecialistPresentation(row, info.vitals);
       foldRiderTell(row, info.vitals, info.occupantGeneration);
       foldScanLabel(row, info.vitals);
       foldEcologyVitals(row, info.vitals);
+      foldFaunaVisualVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
       foldSeekerVitals(row, info.vitals, info.occupantGeneration);
@@ -385,7 +432,8 @@ export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
 // assigned; 2 = fold-only key (never assigned). The fold functions read only
 // names under these prefixes plus vx/vz, so any other key can skip them.
 const VITAL_KEY_KIND = new Map();
-const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic']);
+const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic',
+  ...CREATURE_VISUAL_VITAL_KEYS]);
 const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
 const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
   'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
@@ -408,6 +456,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     const row = readModel.entities.get(id);
     if (!row) continue;
     if (!seekerVitalsMatch(row, fields)) continue;
+    if (!creatureVisualVitalsMatch(row, fields)) continue;
     // One key pass: plain scalars (hull, shield, pose...) assign directly; only a
     // key from a fold family (prefix table below) arms the fold chain, so the
     // common pose/vitals entry skips a dozen no-op fold calls.
@@ -431,11 +480,13 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     if (!needsFold) continue;
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
+    foldMachineVisualVitals(row, fields);
     foldMineVitals(row, fields);
     foldSwarmSpecialistPresentation(row, fields);
     foldRiderTell(row, fields);
     foldScanLabel(row, fields);
     foldEcologyVitals(row, fields);
+    foldFaunaVisualVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
     foldSeekerVitals(row, fields);
