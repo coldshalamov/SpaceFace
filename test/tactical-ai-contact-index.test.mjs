@@ -210,6 +210,48 @@ test('live perception still expires unseen contacts when the current key set shr
   assert.deepEqual([...memory.byEntity.get('expiry-pilot').contacts.keys()], ['ship|s:current']);
 });
 
+test('live perception keeps duplicate ordering and expires cold contacts across rewound observations', () => {
+  const memory = new PerceptionMemory({ freezeResults: false });
+  const frame = (contacts) => ({ self: { id: 'pilot' }, contacts, events: [] });
+  const contact = (id, x, tags = []) => ({ id, kind: 'hazard', pos: { x, z: 0 }, confidence: 1, tags });
+  const cold = contact('cold', 1, ['cold_dressing']);
+  const reported = contact('reported', 2);
+  const observe = (tick, ...contacts) => memory.observe('pilot', frame(contacts), tick).contacts;
+
+  observe(0, cold, reported);
+  const duplicate = observe(1, reported, contact('reported', 3));
+  assert.deepEqual(duplicate.map(({ id, pos, firstSeenTick, lastSeenTick }) => [id, pos.x, firstSeenTick, lastSeenTick]),
+    [['reported', 3, 0, 1]], 'duplicate keys count once and the last report wins');
+
+  const reinserted = observe(4, cold, reported);
+  assert.deepEqual(reinserted.map(({ id, firstSeenTick }) => [id, firstSeenTick]),
+    [['reported', 0], ['cold', 4]], 'an expired key reenters at the end with its own sighting');
+
+  observe(4, reported);
+  assert.deepEqual(observe(4, reported).map(({ id }) => id), ['reported'], 'a same-tick omission expires cold geometry');
+  observe(10, cold, reported);
+  observe(3, cold, reported);
+  const row = memory.byEntity.get('pilot').contacts.get('hazard|s:cold');
+  assert.equal(row.lastSeenTick, 3, 'a rewind keeps the actual observation tick');
+
+  // A remembered row can carry a future stamp after a rewind or on restore.
+  // Ordinary contacts retain that observation until replaced or aged out.
+  const future = contact('future', 5);
+  const fading = { ...contact('fading', 6), confidence: 0.0799 };
+  observe(10, future, cold, fading);
+  observe(6, cold);
+  assert.ok(memory.byEntity.get('pilot').contacts.has('hazard|s:fading'));
+  assert.equal(observe(10, cold).find(({ id }) => id === 'future')?.lastSeenTick, 10);
+  assert.ok(!memory.byEntity.get('pilot').contacts.has('hazard|s:fading'), 'revisiting a tick cannot mark an absent row as seen');
+  assert.deepEqual(observe(11, reported).map(({ id }) => id), ['reported', 'future']);
+
+  observe(12, cold, reported);
+  const restored = memory.byEntity.get('pilot');
+  restored.tick = 9;
+  delete restored.observedThroughTick; // Restores carry contact stamps, without the runtime high-water mark.
+  assert.deepEqual(observe(12, reported).map(({ id }) => id), ['reported', 'future']);
+});
+
 function makeDirective() {
   return {
     squadId: 'fixture',

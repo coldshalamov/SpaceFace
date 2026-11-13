@@ -21,6 +21,7 @@ export class PerceptionMemory {
         contacts: new Map(),
         events: [],
         tick: normalized.tick,
+        observedThroughTick: -Infinity,
         // Maneuver planning may retain indexes over the live (non-frozen) snapshot. The
         // revision is owned by this memory and advances after every accepted sensor batch,
         // including in-place contact updates and removals.
@@ -31,19 +32,31 @@ export class PerceptionMemory {
       this.byEntity.set(entityId, memory);
     }
     memory.self = normalized.self;
-    memory.tick = normalized.tick;
     memory.events = this.freezeResults ? normalized.events.slice() : normalized.events;
 
+    // A new high-water tick uniquely marks rows seen in this batch. Repeated
+    // or rewound ticks still need explicit membership, as do restored rows
+    // until we have read their last-seen stamps once.
+    if (!this.freezeResults && memory.observedThroughTick === undefined) {
+      memory.observedThroughTick = memory.tick;
+      for (const contact of memory.contacts.values()) {
+        memory.observedThroughTick = Math.max(memory.observedThroughTick, contact.lastSeenTick);
+      }
+    }
+    const useTick = !this.freezeResults && normalized.tick > memory.observedThroughTick;
     const seen = this.seenScratch;
-    seen.clear();
+    if (!useTick) seen.clear();
+    let seenCount = 0;
     for (const contact of normalized.contacts) {
       const key = contactKey(contact);
-      seen.add(key);
+      if (!useTick) seen.add(key);
       let record = memory.contacts.get(key);
       if (!record) {
+        if (useTick) seenCount++;
         record = { ...contact, firstSeenTick: normalized.tick };
         memory.contacts.set(key, record);
       } else {
+        if (useTick && record.lastSeenTick !== normalized.tick) seenCount++;
         Object.assign(record, contact);
       }
       record.lastSeenTick = normalized.tick;
@@ -53,9 +66,9 @@ export class PerceptionMemory {
     // The current rows have all been inserted/updated above. If the map has no additional keys
     // beyond this frame's unique keys, every remembered contact was seen and there is nothing to
     // age out; avoid a second full contact walk on the common stable-frame path.
-    if (memory.contacts.size > seen.size) {
+    if (memory.contacts.size > (useTick ? seenCount : seen.size)) {
       for (const [key, contact] of memory.contacts) {
-        if (seen.has(key)) continue;
+        if (useTick ? contact.lastSeenTick === normalized.tick : seen.has(key)) continue;
         // Cold dressing is a current physical obstacle, not a last-known target.
         // Absence also includes leaving the current query; the next live frame
         // will add it again if it returns within range.
@@ -66,6 +79,8 @@ export class PerceptionMemory {
       }
     }
 
+    memory.tick = normalized.tick;
+    if (useTick) memory.observedThroughTick = normalized.tick;
     memory.revision++;
     const snapshot = this.snapshot(entityId, normalized.tick);
     if (this.trace) {
