@@ -159,6 +159,11 @@ export function createRunState({ kind = 'adventure', ruleset = null, seed = 0 } 
   };
 }
 
+// Validation runs on every active wave. The schema is static, while each
+// caller's run and its nested history still need to be validated in full.
+const REQUIRED_RUN_KEYS = Object.keys(createRunState());
+const REQUIRED_RUN_KEY_SET = new Set(REQUIRED_RUN_KEYS);
+
 export function validateRunState(run) {
   try {
     return validateRunStateInner(run);
@@ -172,15 +177,13 @@ function validateRunStateInner(run) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) {
     return { ok: false, issues: ['(root): expected object'] };
   }
-  const requiredKeys = Object.keys(createRunState());
-  const requiredSet = new Set(requiredKeys);
-  for (const key of requiredKeys) {
+  for (const key of REQUIRED_RUN_KEYS) {
     if (key !== 'retireToken' && !Object.prototype.hasOwnProperty.call(run, key)) {
       issues.push(`${key}: missing`);
     }
   }
   for (const key of Object.keys(run)) {
-    if (!requiredSet.has(key)) issues.push(`${key}: unknown`);
+    if (!REQUIRED_RUN_KEY_SET.has(key)) issues.push(`${key}: unknown`);
   }
 
   if (Object.prototype.hasOwnProperty.call(run, 'schemaVersion')
