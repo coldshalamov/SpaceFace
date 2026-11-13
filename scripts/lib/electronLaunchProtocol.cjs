@@ -210,6 +210,7 @@ function evaluateLaunchOutcome({
   electronExists = true,
   receipts = [],
   exitCode = null,
+  exitSignal = null,
   spawnError = null,
   timedOut = false,
   childRunning = false,
@@ -230,10 +231,11 @@ function evaluateLaunchOutcome({
     return outcome(false, 'startup-failed', last);
   }
 
-  if (timedOut && childRunning) return outcome(false, 'still-starting', { pending: true });
+  if (exitSignal) return outcome(false, 'electron-exited', { exitSignal });
   if (exitCode !== null) {
     return outcome(false, exitCode === 0 ? 'exited-before-ready' : 'electron-exited', { exitCode });
   }
+  if (timedOut && childRunning) return outcome(false, 'still-starting', { pending: true });
   return outcome(false, 'waiting');
 }
 
@@ -285,6 +287,7 @@ function formatLaunchOutcome(result, { logPath = '' } = {}) {
     case 'exited-before-ready':
       return `Electron exited before publishing window readiness.${log}`;
     case 'electron-exited':
+      if (result.exitSignal) return `Electron stopped with signal ${result.exitSignal} before the game window was ready.${log}`;
       return `Electron exited with code ${result.exitCode ?? 'unknown'} before the game window was ready.${log}`;
     default:
       return `SpaceFace startup has not produced a conclusive result.${log}`;

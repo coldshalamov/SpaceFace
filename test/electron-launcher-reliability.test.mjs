@@ -122,6 +122,16 @@ assert.equal(pending.pending, true);
 assert.equal(pending.code, 'still-starting');
 assert.match(formatLaunchOutcome(pending), /left running/i);
 
+const signalExit = evaluateLaunchOutcome({
+  receipts: [{ status: 'server-ready', port: 41788 }],
+  exitCode: null,
+  exitSignal: 'SIGTERM',
+});
+assert.equal(signalExit.code, 'electron-exited',
+  'a terminated child is terminal even when no startup receipt or numeric exit code arrives');
+assert.equal(signalExit.pending, false);
+assert.match(formatLaunchOutcome(signalExit), /SIGTERM/);
+
 const parsed = parseLaunchReceipts([
   JSON.stringify({ status: 'starting' }),
   'not-json',

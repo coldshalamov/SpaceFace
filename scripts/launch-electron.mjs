@@ -52,6 +52,7 @@ async function launchElectron() {
   let child;
   let spawnError = null;
   let exitCode = null;
+  let exitSignal = null;
   try {
     child = spawn(electronRuntime.runtimePath, ['.'], {
       cwd: ROOT,
@@ -73,7 +74,10 @@ async function launchElectron() {
 
   if (child) {
     child.once('error', (error) => { spawnError = error; });
-    child.once('exit', (code) => { exitCode = code; });
+    child.once('exit', (code, signal) => {
+      exitCode = code;
+      exitSignal = signal;
+    });
   }
 
   const deadline = Date.now() + 90_000;
@@ -84,8 +88,8 @@ async function launchElectron() {
       electronExists: true,
       receipts: parsed.receipts,
       exitCode,
+      exitSignal,
       spawnError,
-      childRunning: !!child && exitCode === null && !spawnError,
     });
     if (result.code !== 'waiting') break;
     await delay(100);
@@ -96,9 +100,10 @@ async function launchElectron() {
       electronExists: true,
       receipts: readReceipts().receipts,
       exitCode,
+      exitSignal,
       spawnError,
       timedOut: true,
-      childRunning: !!child && exitCode === null && !spawnError,
+      childRunning: !!child && exitCode === null && exitSignal === null && !spawnError,
     });
   }
 
