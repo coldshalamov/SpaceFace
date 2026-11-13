@@ -3321,6 +3321,13 @@ export class SpaceBackground {
     this.arenaFocus = Number.isFinite(this.arenaFocus)
       ? this.arenaFocus + (arenaTarget - this.arenaFocus) * (1 - Math.exp(-dt / 0.6))
       : arenaTarget;
+    // The resident planet is a sprite at the play-layer scale: dimmed to 0.22 in a Swarm arena it still
+    // read as an object among the rocks (lead census, round 20). In an arena the backdrop is far away or
+    // absent, never in the fight layer, so the planet (and its bounce light) fades out; stars, nebula and
+    // the rest of the deep field keep arenaFocus.
+    this.arenaPlanetFocus = Number.isFinite(this.arenaPlanetFocus)
+      ? this.arenaPlanetFocus + ((arenaRun && arenaRun.kind === 'survival' && this.state.mode === 'flight' ? 0 : 1) - this.arenaPlanetFocus) * (1 - Math.exp(-dt / 0.6))
+      : (arenaRun && arenaRun.kind === 'survival' && this.state.mode === 'flight' ? 0 : 1);
     const sectorTransitionActive = this._sectorTransition.active;
     this._updateSectorVisualTransition(dt);
 
@@ -3544,7 +3551,7 @@ export class SpaceBackground {
       p.sprite.position.x = p.spec.bx - cx * PLANET_PAR;
       p.sprite.position.z = p.spec.bz - cz * PLANET_PAR;
       // Fully integrated landmark (not a washed overlay).
-      p.mat.opacity = Number.isFinite(this.arenaFocus) ? this.arenaFocus : 1.0;
+      p.mat.opacity = Number.isFinite(this.arenaPlanetFocus) ? this.arenaPlanetFocus : 1.0;
     }
     // DUST P3a — drive the planet light from the (single) resident hero. Eased, so admission
     // and retirement of the impostor never pop the scene lighting. The light sits at the
@@ -3553,7 +3560,7 @@ export class SpaceBackground {
     if (this.planetLight) {
       const resident = this.planets[0];
       const wantLevel = resident
-        ? Math.max(0, Math.min(1, (Number.isFinite(this.arenaFocus) ? this.arenaFocus : 1) * this.bgIntensity))
+        ? Math.max(0, Math.min(1, (Number.isFinite(this.arenaPlanetFocus) ? this.arenaPlanetFocus : 1) * this.bgIntensity))
         : 0;
       this._planetLightLevel += (wantLevel - this._planetLightLevel) * Math.min(1, dt * 1.5);
       if (this._planetLightLevel < 0.002 && !resident) this._planetLightLevel = 0;
