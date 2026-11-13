@@ -271,3 +271,18 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   72–73 ms versus 5–10 ms for 20,464 snapshots. The traced workload attributed about 118 ms of
   29.8 s of worker CPU samples to this bridge path. Preserve all effect and gameplay receipts
   under the existing policy. The measured cost cannot account for the original freezes by itself.
+- The lightweight locked Foundry run confirmed 189 player shots while exercising thrust and turn.
+  It measured 8.23 successful world draws/s, 187.7 ms moving ship pose gap p95, and 426.6 ms max.
+  The largest measured stale-tick window was 600 ms. There were zero backtracks in 30 assessable
+  intervals and 235 unknown samples. The capture opened and Electron closed cleanly. It used a
+  different seed from the earlier pinned 12.0 to 20.2/s comparison. A 717 ms reply gap showed the
+  worker 20 ticks ahead of the main mirror, with one outstanding reply and 326 retained rows.
+  That episode was presentation delivery lag. Its worker was advancing and still had a wake.
+  See `round2-post-ledger-light.json` and the matching PNG under `player-freeze/`.
+- Opus's headed Adventure route separately measured 10.5 average callback FPS outside capture
+  intervals and a 167 ms p95 callback gap. It timed out pursuing the 47-A Recovery Site before
+  docking. See `.devshots/fleet/demo/adventure-1/demo-route.json`.
+- The locked Ceres probe opened on the correct sector and its PNG was inspected. It mistook remote
+  activation at 1,230 WU for contact and collected zero on-screen frames for the target. `1c7225d24604`
+  distinguishes close contact from remote activation and stages against the rock's drift position.
+  A corrected Ceres verification is queued. The previous report is `2026-11-13T12-59-43-929Z.json`.
