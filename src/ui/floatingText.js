@@ -196,6 +196,8 @@ export function createFloatingText(ctx) {
   // the round panel or the radar never covers it; the floats keep the layer above.
   if (root && typeof root.insertBefore === 'function' && root.firstChild) root.insertBefore(padLayer, root.firstChild);
   else layer.appendChild(padLayer);
+  const PAD_TAG_REACH = 90;   // world units: price + name appear inside this
+  const PAD_NOTE_REACH = 50;  // ambient flavor labels, tighter
   const padNodes = new Map();   // entityId -> { el, lastText, denied }
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
@@ -208,6 +210,8 @@ export function createFloatingText(ctx) {
     if (!helpers.worldToScreen || typeof state.entities?.values !== 'function') return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     visiblePads.length = 0;
+    const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+    const inArena = state.run?.ruleset === 'swarm' || state.run?.kind === 'survival';
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
@@ -225,13 +229,27 @@ export function createFloatingText(ctx) {
       // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
       // refusedUntil in sim time, so the red reads exactly as long as the pad is lit denied.
       const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
-      if (node.denied !== denied) {
-        node.denied = denied;
-        node.el.className = denied ? 'sf-fp sf-fp--deny' : 'sf-fp';
-      }
       _padWorld.x = e.pos.x; _padWorld.z = e.pos.z;
       const s = helpers.worldToScreen(_padWorld, _padScreen);
-      const show = Number.isFinite(s.x) && Number.isFinite(s.y)
+      // A price tag is for the till you are standing at. Far away a priced pad is a small lit
+      // dot (the body itself carries the glow); an ambient flavor label shows only up close and
+      // never inside an arena run, where the room is the fight (20_THE_FIRST_HOUR rule 3).
+      const priced = rec.kind != null || Number.isFinite(rec.price);
+      const reach = (priced ? PAD_TAG_REACH : PAD_NOTE_REACH) * (node.near ? 1.2 : 1);
+      let near = true;
+      if (player && player.pos) {
+        const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+        near = dx * dx + dz * dz <= reach * reach;
+      }
+      if (denied) near = true;
+      node.near = near;
+      const far = !near && priced;
+      if (node.far !== far || node.denied !== denied) {
+        node.far = far; node.denied = denied; node.w = 0; node.h = 0;
+        node.el.className = 'sf-fp' + (denied ? ' sf-fp--deny' : '') + (far ? ' sf-fp--far' : '');
+      }
+      const quiet = !near && !priced;
+      const show = !(inArena && !priced) && !quiet && Number.isFinite(s.x) && Number.isFinite(s.y)
         && (s.onScreen !== false || s.x !== 0 || s.y !== 0);
       const nextDisplay = show ? 'block' : 'none';
       if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;
@@ -707,6 +725,9 @@ function injectStyle() {
     background:rgb(8 10 14 / .78); border:1px solid rgb(242 185 80 / .42);
     box-shadow:0 0 0 1px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .5);
     text-shadow:var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  /* A priced till out of reach: a small lit dot, no words. */
+  .sf-fp--far { width:8px; height:8px; padding:0; border-radius:50%; font-size:0; line-height:0;
+    overflow:hidden; background:var(--dp-lamp, #f2b950); border-color:rgb(0 0 0 / .55); opacity:.85; }
   .sf-fp--deny { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); border-color:rgb(255 92 92 / .6); }
   `;
   document.head.appendChild(s);
