@@ -76,14 +76,19 @@ function tileNoise(u, v, cellsX, cellsY, seed) {
 function periodicField(u, v, recipe, seed) {
   const macro = tileNoise(u, v, recipe.macro, recipe.macro + 1, seed + 11) * 2 - 1;
   const meso = tileNoise(u, v, recipe.macro * 3 + 1, recipe.macro * 2 + 3, seed + 37) * 2 - 1;
-  const micro = tileNoise(u, v, recipe.micro, recipe.micro + 5, seed + 71) * 2 - 1;
+  // Manufactured recipes intentionally use no fine grain. Do not evaluate an entire
+  // noise field whose contribution to every output channel is multiplied by zero.
+  const grain = recipe.grain || 0;
+  const micro = grain ? tileNoise(u, v, recipe.micro, recipe.micro + 5, seed + 71) * 2 - 1 : 0;
   // Brushed/radiator/docking roles get long irregular grooves rather than a regular sine grating.
   const brushed = tileNoise(u, v, Math.max(2, recipe.macro), recipe.micro + 17, seed + 103) * 2 - 1;
   // Geology uses narrow contour ridges from a separate field, producing broken strata/fracture paths.
-  const fractureNoise = tileNoise(u, v, recipe.macro + 3, recipe.macro * 2 + 5, seed + 151);
-  const ridge = Math.max(0, 1 - Math.abs(fractureNoise - 0.5) * 9);
-  const fracture = recipe.fracture ? ridge * ridge : 0;
-  const grain = recipe.grain || 0;
+  let fracture = 0;
+  if (recipe.fracture) {
+    const fractureNoise = tileNoise(u, v, recipe.macro + 3, recipe.macro * 2 + 5, seed + 151);
+    const ridge = Math.max(0, 1 - Math.abs(fractureNoise - 0.5) * 9);
+    fracture = ridge * ridge;
+  }
   const height = macro * 0.38 + meso * 0.30
     + micro * (0.22 - recipe.directional * 0.08) * grain
     + brushed * recipe.directional * 0.18 + fracture * (recipe.fracture || 0);
