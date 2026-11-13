@@ -1306,6 +1306,15 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform vec2 uUvOffset;
   uniform vec2 uPresentationScale; // presentation pixels per composite pixel (CAS input can be smaller)
 
+  vec3 spaceBloomSoft(sampler2D t, vec2 uv, vec2 texel) {
+    vec2 hi = uUvScale - texel * 0.5;
+    vec3 c = texture2D(t, clamp(uv + vec2( texel.x,  texel.y), vec2(0.0), hi)).rgb;
+    c += texture2D(t, clamp(uv + vec2(-texel.x,  texel.y), vec2(0.0), hi)).rgb;
+    c += texture2D(t, clamp(uv + vec2( texel.x, -texel.y), vec2(0.0), hi)).rgb;
+    c += texture2D(t, clamp(uv + vec2(-texel.x, -texel.y), vec2(0.0), hi)).rgb;
+    return c * 0.25;
+  }
+
   void main() {
     // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
     // still use screen vUv so corner treatment follows the displayed frame, not the RT packing.
@@ -1329,8 +1338,11 @@ const COMPOSITE_FRAG = /* glsl */`
     // These weights are uniform for the whole draw. A disabled pyramid level
     // contributes exactly zero, so avoid its texture read on every output pixel.
     if (uBloomW0 != 0.0) bloom += texture2D(tBloom0, sceneUv).rgb * uBloomW0;
-    if (uBloomW1 != 0.0) bloom += texture2D(tBloom1, sceneUv).rgb * uBloomW1;
-    if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
+    // LOOK-04 (owner: "big square pixel pieces going out from a center"): the mid level is 1/8 and the wide level
+    // 1/16 of the scene, so one bilinear read stretched every halo texel into an 8–16 px square. Four diagonal
+    // bilinear taps one level-texel out average a 4x4 footprint — a soft tent — for 8 extra reads of tiny textures.
+    if (uBloomW1 != 0.0) bloom += spaceBloomSoft(tBloom1, sceneUv, uSceneTexel * 8.0) * uBloomW1;
+    if (uBloomW2 != 0.0) bloom += spaceBloomSoft(tBloom2, sceneUv, uSceneTexel * 16.0) * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy * uPresentationScale, uExposure, uAces,
