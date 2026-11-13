@@ -223,16 +223,8 @@ function ensureRuntime(state) {
       publishedCounts: null,
       reasonsById: new Map(),
       changedIds: [],
-      signaturesById: new Map(),
-      // Perf: per-entity cache of the last activitySignature string and the scalar parts it was
-      // built from, so an unchanged entity between ticks costs zero string builds. The signature
-      // string is a pure function of (simTier, presentationTier, nextEventAtT, pinnedExact,
-      // pins content); reusablePins reports whether pins content changed this pass via
-      // `_pinsChanged`, and the scalars compare directly. Same values in, same string out —
-      // equality decisions and changedIds content are identical to rebuilding every tick.
-      signatureCacheById: new Map(),
-      _pinsChanged: false,
-      pinBuffersById: new Map(),
+      // One record owns the stable pins and last published signature for each live id.
+      activityRecordsById: new Map(),
       currentEntityIds: new Set(),
       frame: null,
       seenEntityIds: new Set(),
@@ -245,7 +237,7 @@ function ensureRuntime(state) {
       classifySeenScratch: new Set(),
       requestedReclassifyIds: new Set(),
       lastLiveCount: 0,
-      // Prune-sweep bookkeeping (D130): the signaturesById prune walks every historical id on
+      // Prune-sweep bookkeeping (D130): the activity-record prune walks every historical id on
       // every classify. Nothing can have become prunable unless sanctioned membership moved —
       // spawn/remove both bump the entity index version — so a steady membership skips the
       // sweep outright. `pruneSweeps` counts actual sweeps for the focused fixture.
@@ -406,62 +398,31 @@ function makeStamp(classified, simTime) {
   };
 }
 
-function reusablePins(runtime, id, pins) {
-  let stable = runtime.pinBuffersById.get(id);
-  if (!stable) {
-    stable = [];
-    runtime.pinBuffersById.set(id, stable);
-  }
+function updateActivityPins(stable, pins) {
   let same = stable.length === pins.length;
   for (let i = 0; same && i < pins.length; i++) {
     if (stable[i] !== pins[i]) same = false;
   }
-  if (!same) {
-    stable.length = 0;
-    for (let i = 0; i < pins.length; i++) stable.push(pins[i]);
-  }
-  // Perf scratch: tells cachedActivitySignature (the only caller between here and the next
-  // reusablePins call) whether the stable pin buffer's CONTENT changed this pass.
-  runtime._pinsChanged = !same;
-  return stable;
+  if (same) return false;
+  stable.length = 0;
+  for (let i = 0; i < pins.length; i++) stable.push(pins[i]);
+  return true;
 }
 
-function activitySignature(stamp) {
-  return `${stamp.simTier}|${stamp.presentationTier}|${stamp.nextEventAtT}|${stamp.pinnedExact ? 1 : 0}|${stamp.pins.join(',')}`;
-}
+function publishActivityChange(runtime, id, record, stamp, pinsChanged) {
+  if (!pinsChanged
+    && record.simTier === stamp.simTier
+    && record.presentationTier === stamp.presentationTier
+    && record.nextEventAtT === stamp.nextEventAtT
+    && record.pinnedExact === stamp.pinnedExact) return;
 
-// Perf: identical output to activitySignature(stamp), but a stable entity between ticks (the
-// common case — the same ~60 actors re-stamp at 60 Hz) reuses the cached string instead of
-// rebuilding a template string + join every pass. Cache entries follow the exact lifecycle of
-// pinBuffersById (deleted when the signature map's end-of-pass cleanup drops the entity).
-function cachedActivitySignature(runtime, id, stamp) {
-  let cache = runtime.signatureCacheById.get(id);
-  if (cache
-    && !runtime._pinsChanged
-    && cache.simTier === stamp.simTier
-    && cache.presentationTier === stamp.presentationTier
-    && cache.nextEventAtT === stamp.nextEventAtT
-    && cache.pinnedExact === stamp.pinnedExact) {
-    return cache.signature;
-  }
-  const signature = activitySignature(stamp);
-  if (!cache) {
-    cache = {
-      simTier: stamp.simTier,
-      presentationTier: stamp.presentationTier,
-      nextEventAtT: stamp.nextEventAtT,
-      pinnedExact: stamp.pinnedExact,
-      signature,
-    };
-    runtime.signatureCacheById.set(id, cache);
-  } else {
-    cache.simTier = stamp.simTier;
-    cache.presentationTier = stamp.presentationTier;
-    cache.nextEventAtT = stamp.nextEventAtT;
-    cache.pinnedExact = stamp.pinnedExact;
-    cache.signature = signature;
-  }
-  return signature;
+  const signature = `${stamp.simTier}|${stamp.presentationTier}|${stamp.nextEventAtT}|${stamp.pinnedExact ? 1 : 0}|${stamp.pins.join(',')}`;
+  if (record.signature !== signature) runtime.changedIds.push(id);
+  record.simTier = stamp.simTier;
+  record.presentationTier = stamp.presentationTier;
+  record.nextEventAtT = stamp.nextEventAtT;
+  record.pinnedExact = stamp.pinnedExact;
+  record.signature = signature;
 }
 
 function attachStamp(entity, rec) {
@@ -1647,7 +1608,7 @@ function flyingRockRetainEligible(runtime, entity, stamp, state, player, origin,
   const dx = px - origin.x;
   const dz = pz - origin.z;
   const dist2 = dx * dx + dz * dz;
-  const visual = Math.max(0, finite(entity.radius));
+  const visual = entityPresenceRadius(entity);
   const onGlass = Math.abs(dx) <= glass.halfX + visual && Math.abs(dz) <= glass.halfZ + visual;
   const submitRunway = Math.abs(dx) <= submit.halfX + visual && Math.abs(dz) <= submit.halfZ + visual;
   const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
@@ -2016,7 +1977,14 @@ function classifyWorld(state, runtime) {
 
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
-    classified.pins = reusablePins(runtime, entity.id, classified.pins);
+    let activityRecord = runtime.activityRecordsById.get(entity.id);
+    if (!activityRecord) {
+      activityRecord = { pins: [], simTier: null, presentationTier: null,
+        nextEventAtT: null, pinnedExact: null, signature: null };
+      runtime.activityRecordsById.set(entity.id, activityRecord);
+    }
+    const pinsChanged = updateActivityPins(activityRecord.pins, classified.pins);
+    classified.pins = activityRecord.pins;
     const stamp = applyStamp(entity, classified, simTime, runtime, canWriteWorld);
     if (worldRec && Number.isFinite(worldRec.nextEventAtT)) {
       stamp.nextEventAtT = worldRec.nextEventAtT;
@@ -2031,13 +1999,8 @@ function classifyWorld(state, runtime) {
         runtime.initialInactiveAiEntities.push(entity);
       }
     }
-    const signature = cachedActivitySignature(runtime, entity.id, stamp);
-    // '' is a valid sentinel: real signatures always contain '|' separators.
-    if ((runtime.signaturesById.get(entity.id) ?? '') !== signature) {
-      runtime.signaturesById.set(entity.id, signature);
-      runtime.changedIds.push(entity.id);
-    }
-    runtime.reasonsById.set(entity.id, stamp.pins);
+    if (activityRecord.signature === null) runtime.reasonsById.set(entity.id, stamp.pins);
+    publishActivityChange(runtime, entity.id, activityRecord, stamp, pinsChanged);
     countTier(counts, stamp.simTier);
     countPresentation(counts, stamp.presentationTier);
     pushActivityIds(runtime, entity, stamp);
@@ -2123,7 +2086,7 @@ function classifyWorld(state, runtime) {
     runtime._lastPruneMembership = pruneMembership;
     runtime._lastPruneLiveCount = list.length;
     const canMapLookup = !!(state.entities && typeof state.entities.get === 'function');
-    for (const id of runtime.signaturesById.keys()) {
+    for (const id of runtime.activityRecordsById.keys()) {
       let stillLive;
       if (pruneLikeIncremental) {
         const e = canMapLookup ? state.entities.get(id) : null;
@@ -2132,10 +2095,8 @@ function classifyWorld(state, runtime) {
         stillLive = runtime.currentEntityIds.has(id);
       }
       if (stillLive) continue;
-      runtime.signaturesById.delete(id);
+      runtime.activityRecordsById.delete(id);
       runtime.reasonsById.delete(id);
-      runtime.pinBuffersById.delete(id);
-      runtime.signatureCacheById.delete(id);
       runtime.seenEntityIds.delete(id);
     }
   }

@@ -1,4 +1,4 @@
-// D130 change-loop leg — classifyWorld's signaturesById prune used to walk every
+// D130 change-loop leg — classifyWorld's activityRecordsById prune used to walk every
 // historical id on every pass, including fully retained frames. Nothing can have
 // become prunable unless sanctioned membership moved (spawn/remove both bump the
 // entity index version), so a steady membership skips the sweep outright. These
@@ -10,6 +10,8 @@ import assert from 'node:assert/strict';
 import {
   ensureActivityClassified,
   setClassifyFrameQuietRetainForBench,
+  setClassifyFlyingRockRetainForBench,
+  simGlassHalfExtentsFromState,
 } from '../src/world/activityRuntime.js';
 import { createSimulation } from '../src/core/sim.js';
 
@@ -103,19 +105,18 @@ test('a sanctioned removal re-arms the sweep and prunes the dead id', () => {
   step(state);
   step(state);
   const rt = ensureActivityClassified(state);
-  assert.ok(rt.signaturesById.has(state.rocks[0].id), 'the rock id is tracked');
-  // These two maps are written unconditionally for every visited entity, so the post-sweep
-  // absence pins below are not vacuous.
+  assert.ok(rt.activityRecordsById.has(state.rocks[0].id), 'the rock id is tracked');
+  // A visited entity publishes the same pin list from both bookkeeping views.
   assert.ok(rt.reasonsById.has(state.rocks[0].id), 'visited entities always carry a reasons entry');
-  assert.ok(rt.signatureCacheById.has(state.rocks[0].id), 'visited entities always carry a signature cache entry');
+  assert.equal(rt.activityRecordsById.get(state.rocks[0].id).pins, rt.reasonsById.get(state.rocks[0].id));
   const before = rt.pruneSweeps;
 
   removeRock(state, state.rocks[0]);
   const after = step(state);
   assert.equal(after.pruneSweeps, before + 1, 'the membership move swept exactly once');
-  // All five bookkeeping structures drop the dead id, not just the two that drive behavior.
-  for (const map of [after.signaturesById, after.reasonsById, after.pinBuffersById, after.signatureCacheById]) {
-    assert.ok(!map.has(state.rocks[0].id), `a stale ${map === after.signaturesById ? 'signature' : 'bookkeeping'} entry survived the sweep`);
+  // Every bookkeeping view drops the dead id together.
+  for (const map of [after.activityRecordsById, after.reasonsById]) {
+    assert.ok(!map.has(state.rocks[0].id), `a stale ${map === after.activityRecordsById ? 'signature' : 'bookkeeping'} entry survived the sweep`);
   }
   assert.ok(!after.seenEntityIds.has(state.rocks[0].id), 'seen-set is pruned with it');
 
@@ -133,7 +134,7 @@ test('a mapped corpse keeps its bookkeeping until the next membership move', () 
   step(state);
   const rt = ensureActivityClassified(state);
   const rock = state.rocks[1];
-  assert.ok(rt.signaturesById.has(rock.id));
+  assert.ok(rt.activityRecordsById.has(rock.id));
 
   // alive=false WITHOUT a sanctioned removal: no index bump, no sweep — the stale
   // bookkeeping is allowed to linger (it is bookkeeping only; a dead entity is never
@@ -143,13 +144,13 @@ test('a mapped corpse keeps its bookkeeping until the next membership move', () 
   step(state);
   assert.equal(ensureActivityClassified(state).pruneSweeps, before,
     'a corpse with steady membership does not trigger a sweep');
-  assert.ok(ensureActivityClassified(state).signaturesById.has(rock.id),
+  assert.ok(ensureActivityClassified(state).activityRecordsById.has(rock.id),
     'the dead id lingers until a real membership move');
 
   removeRock(state, rock);
   const after = step(state);
   assert.equal(after.pruneSweeps, before + 1);
-  assert.ok(!after.signaturesById.has(rock.id),
+  assert.ok(!after.activityRecordsById.has(rock.id),
     'the next membership move collects the lingering entry');
 });
 
@@ -163,7 +164,7 @@ test('the production removal helper re-arms the sweep — not a fixture version 
     const state = sim.state;
     const rock = sim.spawn({ type: 'asteroid', pos: { x: 120, z: 0 }, radius: 8, data: {} });
     const warm = ensureActivityClassified(state);
-    assert.ok(warm.signaturesById.has(rock.id), 'the spawn is visited and tracked');
+    assert.ok(warm.activityRecordsById.has(rock.id), 'the spawn is visited and tracked');
     const before = warm.pruneSweeps;
     const versionBefore = state.entityIndex.version;
 
@@ -176,7 +177,7 @@ test('the production removal helper re-arms the sweep — not a fixture version 
     const after = ensureActivityClassified(state);
     assert.equal(after.pruneSweeps, before + 1,
       'the real removal path must re-arm exactly one sweep');
-    assert.ok(!after.signaturesById.has(rock.id), 'the removed id is pruned');
+    assert.ok(!after.activityRecordsById.has(rock.id), 'the removed id is pruned');
     assert.ok(!after.seenEntityIds.has(rock.id));
   } finally {
     sim.dispose();
@@ -202,7 +203,7 @@ test('a raw list splice without an index bump still sweeps on the length change'
   const after = step(state);
   assert.equal(after.pruneSweeps, before + 1,
     'a length delta alone must re-arm the sweep');
-  assert.ok(!after.signaturesById.has(rock.id));
+  assert.ok(!after.activityRecordsById.has(rock.id));
 });
 
 test('a world with no entity index sweeps every pass — there is no change signal', () => {
@@ -214,4 +215,30 @@ test('a world with no entity index sweeps every pass — there is no change sign
   const third = step(state).pruneSweeps;
   assert.equal(second, first + 1, 'no index → every pass sweeps');
   assert.equal(third, second + 1);
+});
+
+test('flying retain admits a rock as soon as its visual footprint enters glass', () => {
+  setClassifyFlyingRockRetainForBench(true);
+  const state = makeWorld(1);
+  const [rock] = state.rocks;
+  const { halfX } = simGlassHalfExtentsFromState(state);
+  rock.data.visualRadius = 42;
+  rock.pos.x = halfX + rock.data.visualRadius + 10;
+  state.player.vel.x = 1;
+
+  ensureActivityClassified(state);
+  let retained = false;
+  for (let i = 0; i < 8; i++) {
+    state.player.pos.x++;
+    if (step(state).classifyMode === 'flying-frame-retain') retained = true;
+    assert.equal(rock.activity.presentationTier, 'R1_RUNWAY');
+  }
+  assert.equal(retained, true, 'the flying fast path must be active before the boundary');
+
+  state.player.pos.x = 11;
+  assert.ok(rock.pos.x - state.player.pos.x > halfX + rock.radius);
+  const entered = step(state);
+  assert.equal(rock.activity.presentationTier, 'R0_GLASS');
+  assert.ok(entered.glassIds.has(rock.id));
+  assert.ok(rock.activity.pins.includes('VISIBLE_ON_GLASS'));
 });
