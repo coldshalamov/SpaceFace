@@ -292,4 +292,10 @@ and candidate are recorded in `.devshots/fleet/coordination/whole-game/` for Opu
   ranges prove a contiguous, same-lifecycle prefix. Only the real ACK trims the journal. Gaps,
   rebuilds and other transport paths retain their existing rules. The production clock fixture
   failed before the fix and passed after. The 32-test clock suite passed. A same-lock, single-file
-  source comparison is queued as `player-freeze/pair-credit.mjs`.
+  source comparison ran as `player-freeze/pair-credit.mjs`. During the roughly 30 s firing windows,
+  the two arms confirmed 204 and 208 player shots and drew 9.72 and 10.55 world frames/s. Measured
+  over each capture, moving hull gap p95 was 154 to 151 ms, the maximum fell from 525 to 248 ms,
+  and maximum stale-tick time fell from 470 to 302 ms. The callback p95 was 150 ms in both arms.
+  One reply starvation episode during startup became zero. Both pictures were opened and both
+  Electron runs closed cleanly. Combat state evolved differently, and one pair gives directional
+  evidence only. The game still misses a smooth cadence target.
