@@ -40,10 +40,13 @@ const SAB_LAYOUT_VERSION = 2;
 const SAB_HEADER_BYTES = 64;
 const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
 
-export function createLaneSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
+export function createLaneSabJournalArena({ slotCount = 8, recordCap = 4096, envelope = false } = {}) {
   if (typeof SharedArrayBuffer !== 'function') return null;
   const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
-  const sab = new SharedArrayBuffer(sabArenaTotalBytes({ slotCount, recordCap }));
+  const byteLength = envelope
+    ? sabArenaTotalBytes({ slotCount, recordCap })
+    : SAB_HEADER_BYTES + slotCount * slotBytes;
+  const sab = new SharedArrayBuffer(byteLength);
   const header = new Int32Array(sab, 0, SAB_HEADER_INTS);
   header[0] = SAB_HEADER_MAGIC;
   header[1] = SAB_LAYOUT_VERSION;

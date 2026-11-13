@@ -148,7 +148,7 @@ function makeFixture(t, { helpers, sab = false } = {}) {
   };
   const lane = createSimLaneRuntime({
     state, registry: {}, bus,
-    flags: { lane: 'worker', warnings: [], sab },
+    flags: { lane: 'worker', warnings: [], sab, sabEnvelope: sab },
     // Explicit local mode exercises the browser protocol with a deterministic
     // channel while the default injected/manual path remains directive-driven.
     clockMode: 'worker-local',

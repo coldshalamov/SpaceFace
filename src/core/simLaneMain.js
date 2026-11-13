@@ -275,6 +275,7 @@ function applyLaneSaveStorageOps(ops, relayFallback = null, failedWrites = null,
  *                      request that cannot be honored keeps the warn-and-
  *                      fallback transfer channel; the quiet default just
  *                      declines to the same fallback.
+ *   ?simEnvelope=1   — diagnostic opt-in to the fixed-size SAB message rings.
  *   ?simStall=60,60,60,400
  *                    — E1 stall-injection harness: a repeating cycle of worker-side
  *                      stalls (ms, blocking the worker event loop like a heavy step)
@@ -319,8 +320,9 @@ export function resolveSimLaneFlags(search) {
     && typeof SharedArrayBuffer === 'function';
   // The worker lane auto-arms the SAB journal wherever the realm can host it;
   // ?simSab=0 keeps the transfer channel, unrecognized values decline to it.
-  let sab = !sabOptedOut && sabCapable
+  const sab = !sabOptedOut && sabCapable
     && (sabExplicit || (sabParam == null && lane === SIM_LANE.WORKER));
+  const sabEnvelope = sab && params?.get('simEnvelope') === '1';
   if (sabExplicit && !sabCapable) {
     warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
     sab = false;
@@ -354,7 +356,7 @@ export function resolveSimLaneFlags(search) {
     else warnings.push(`simStall='${stallParam}' produced no usable entries — no stalls injected`);
   }
   return {
-    lane, sab, domainProfile, domainProfileRequested: requestedDomainProfile || null,
+    lane, sab, sabEnvelope, domainProfile, domainProfileRequested: requestedDomainProfile || null,
     simStall, warnings,
   };
 }
@@ -2507,11 +2509,10 @@ export function createSimLaneRuntime({
     scenarioContractHash: helpers && helpers.scenarioContractHash ? helpers.scenarioContractHash : null,
     // The worker loads complete measurements in its own realm from the same immutable release.
     modelTruthCensusUrl: helpers?.modelTruthCensusUrl || null,
-    // ?simSab=1 honours the flag: the arena is minted here (crossOriginIsolated
-    // was already resolved into warnings → sab=false when unavailable) and the
-    // worker binds it for journal packs. Attach locally so busy-bit release
-    // works on evicted SAB-backed packs.
-    sabArena: resolved.sab ? createLaneSabJournalArena() : null,
+    // Keep the large numeric journal in shared slots. Message headers, events
+    // and domain data use structured clone by default, without a fixed byte
+    // ceiling or UTF-8 encode/decode on the simulation and render threads.
+    sabArena: resolved.sab ? createLaneSabJournalArena({ envelope: resolved.sabEnvelope === true }) : null,
     // E1 stall harness: the worker blocks its event loop for these ms values in cycle
     // (one per local-clock tick) — the faithful emulation of a heavy authoritative step.
     simStall: Array.isArray(resolved.simStall) ? resolved.simStall : null,

@@ -2,9 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { bindSabEnvelopeChannel } from '../scripts/lib/simSabEnvelope.mjs';
 
 test('ordinary game startup uses the worker simulation authority', () => {
   assert.equal(resolveSimLaneFlags('').lane, 'worker');
+});
+
+test('ordinary worker shares numeric journal slots and sends messages without the fixed envelope ring', t => {
+  const prior = Object.getOwnPropertyDescriptor(globalThis, 'crossOriginIsolated');
+  Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: true });
+  t.after(() => {
+    if (prior) Object.defineProperty(globalThis, 'crossOriginIsolated', prior);
+    else delete globalThis.crossOriginIsolated;
+  });
+  const flags = resolveSimLaneFlags('');
+  assert.equal(flags.sab, true);
+  assert.equal(resolveSimLaneFlags('?simSab=0&simEnvelope=1').sabEnvelope, false);
+  assert.equal(resolveSimLaneFlags('?simEnvelope=1').sabEnvelope, true);
+
+  const posts = [];
+  const lane = createSimLaneRuntime({
+    state: { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
+      tick: 0, simTime: 0, accumulator: 0, timeScale: 1, ui: { screenStack: [] } },
+    registry: {}, bus: createBus(), flags,
+    channelFactory: () => ({ post(msg) { posts.push(msg); }, onMessage() {}, terminate() {} }),
+  });
+  t.after(() => lane.close());
+  lane.readyPromise.catch(() => {});
+  assert.ok(posts[0].sabArena.sab instanceof SharedArrayBuffer);
+  assert.equal(bindSabEnvelopeChannel(posts[0].sabArena), null);
+  assert.equal(lane.getDiagnostics().sabEnvelopeActive, false);
 });
 test('the in-process lane requires explicit escape-hatch selection', () => {
   assert.equal(resolveSimLaneFlags('?simLane=worker').lane, 'worker');
