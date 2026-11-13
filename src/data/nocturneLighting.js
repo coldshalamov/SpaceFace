@@ -21,6 +21,9 @@ const light = (type, color, intensity, range, priority, extra = {}) => ({
 export const NOCTURNE_LIGHT_PROFILES = freeze({
   sodium: light('spot', 0xffb45e, 6400, 250, 2, { angle: 0.65, penumbra: 0.55, shadow: true }),
   work_cyan: light('point', 0x75c8ff, 2100, 150, 2),
+  // Foundry floor: a shop is a pool of warm sodium on indigo shade; the Forge is the hottest thing in the room.
+  shop_amber: light('point', 0xffb45e, 2800, 135, 2),
+  forge_hot: light('point', 0xff7a33, 5200, 170, 3),
   furnace: light('area', 0xff702b, 8500, 210, 2, { angle: 1.05, penumbra: 0.85 }),
   dock: light('spot', 0xffce87, 4800, 220, 2, { angle: 0.72, penumbra: 0.6, shadow: true }),
   gate: light('point', 0x9c83ff, 3800, 220, 2),

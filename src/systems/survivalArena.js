@@ -300,6 +300,24 @@ const FOUNDRY_TOY_SALT = 0x1cd3e17;
  * moving shutters on the shutter phases. `solid: true` toys materialize as immovable room
  * bodies; the shutters materialize dynamic and are commanded only through the SG-02 membrane.
  */
+// Lamps where a working yard would hang them (render-only, `data.nocturne`): a sodium floodlight over
+// each bank plate and a lamp on each arrival-gate post. Small pools on the floor, shade between.
+const FOUNDRY_PLATE_NOCTURNE = Object.freeze({
+  profile: 'dock',
+  lights: Object.freeze([Object.freeze({ id: 'flood', profile: 'shop_amber', offset: Object.freeze([0, 30, 0]), intensity: 2200, range: 150 })]),
+  medium: false,
+});
+const FOUNDRY_GATE_NOCTURNE = Object.freeze({
+  profile: 'dock',
+  lights: Object.freeze([Object.freeze({ id: 'post', profile: 'shop_amber', offset: Object.freeze([0, 30, 0]), intensity: 1800, range: 120 })]),
+  medium: false,
+});
+const FOUNDRY_FURNACE_NOCTURNE = Object.freeze({
+  profile: 'industrial',
+  lights: Object.freeze([Object.freeze({ id: 'pour', profile: 'furnace', offset: Object.freeze([0, 14, 0]), intensity: 8500, range: 210 })]),
+  medium: Object.freeze({ radii: Object.freeze([3.2, 1.2, 3.2]), density: 0.0026, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.45 }),
+});
+
 function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
   const rng = mulberry32((arenaStreamSeed(seed, wave) ^ FOUNDRY_TOY_SALT) >>> 0);
   const toys = [];
@@ -316,6 +334,7 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
       hazardType: 'debris',
       solid: true,
       pos,
+      nocturne: FOUNDRY_PLATE_NOCTURNE,
       normal: { x: (at.x - pos.x) / length, z: (at.z - pos.z) / length },
       halfWidth: 48,
       referenceRadius: 26,
@@ -333,6 +352,7 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
       solid: true,
       pos: point(mouth, across.x * 110 * side, across.z * 110 * side),
       radius: 16,
+      nocturne: FOUNDRY_GATE_NOCTURNE,
     });
   }
   if (phase === 'furnace_active' || phase === 'boss') {
@@ -345,6 +365,9 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
       solid: true,
       pos: { x: at.x, z: at.z },
       radius: 34,
+      // The furnace is the hottest thing in the room: its own light and a short pall of haze
+      // (render-only; src/render/nocturne reads `data.nocturne`). Phones skip it.
+      nocturne: FOUNDRY_FURNACE_NOCTURNE,
     });
   }
   if (phase === 'shutter_slow' || phase === 'shutter_alternating') {
@@ -2214,6 +2237,7 @@ export const survivalArena = {
           roomDynamic: dynamic,
           ...(plate ? { foundryPlate: { referenceRadius: plate.referenceRadius,
             halfWidth: plate.halfWidth, halfDepth: plate.halfDepth, halfHeight: plate.halfHeight } } : {}),
+          ...(toy.nocturne ? { nocturne: toy.nocturne } : {}),
           propRole: typeof toy.propRole === 'string' ? toy.propRole : null,
           surfaceMaterial: typeof toy.material === 'string' && toy.material
             ? toy.material

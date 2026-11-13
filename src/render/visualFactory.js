@@ -3140,7 +3140,8 @@ function buildFoundryToy(e) {
     const shape = furniture.mouth;
     const mouth = new THREE.Mesh(
       getGeometry('foundry:mouth', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)),
-      getMaterial('foundry:ember', () => new THREE.MeshBasicMaterial({ color: 0x6a3014 })),
+      // Small and HOT: an HDR core (x4) the bloom chain spreads into a halo, not a big dim patch.
+      getMaterial('foundry:ember', () => new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff8a3c).multiplyScalar(4) })),
     );
     mouth.position.set(0, furniture.scale * shape.offsetY, furniture.scale * shape.offsetZ);
     mouth.scale.setScalar(furniture.scale);
