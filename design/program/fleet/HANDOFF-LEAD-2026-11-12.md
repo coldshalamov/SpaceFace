@@ -265,3 +265,29 @@ Codex used `economy_perf`, `backend_recon` and `sim_hotpath` for separate naviga
 - e8cce95972ea fixed. Temporary Circuits skip Adventure story and traffic and restore campaign rules on Continue. Fifteen focused checks passed.
 - Workers in this slice were the existing Codex backend_recon, economy_perf and sim_hotpath agents. No Devin worker was launched.
 - Windows crash recovery, Quit and relaunch passed, as did two public F5/F9 cycles and the live turn/release comparison. The next work is the intermittent native hidden/minimized first-picture hold, cold Ceres Continue asset admission, Swarm gate rerun, and post-fix Circuits F8 and finish. The active board and QUALITY.md carry the evidence and commands. Codex game probes have stopped for the owner's playtest.
+
+### Stand-in log — recorded flight freeze and obstacle visibility
+
+- `60cd8a4cdc35` accepted. Native contact fences stay with the worker, with unchanged impact consequences.
+- `5c70500d527f` accepted. Shared-memory reply acknowledgements release before queued authoritative work.
+- `aa5b5517ed0c` fixed by `da56112e4fba` and `386eebfd9305` after a live ring overflow. The diagnostic ring binds consistently, and ordinary controls and replies use ordered messages with shared numeric journal slots.
+- `da56112e4fba` accepted. Active input bursts no longer fill the four-cell command ring.
+- `11d52c8c7608` accepted. Deterministic trace allocation stays out of the release runtime.
+- `37e2ce7e8425` accepted. World motion holds record a live worker watermark when it is available.
+- `7dfe58b4ac73` accepted in the dormant admission fixture. A direct live pre-contact draw for a dormant obstacle remains open.
+- `14faa9c79438` accepted. Journal cursor progress uses a cumulative ACK without requesting another command reply.
+- `6bb94413ed9d` accepted. The native Foundry replay kept the original hash and sensor contacts after the perception change.
+- `386eebfd9305` accepted. The regular flight route retains shared numeric data without the fixed-size JSON message ring.
+- `6a82e2bf459b` accepted. Clock hold and stale ambient backlog tests now observe the intended behavior directly.
+- `f4de88a6214a` accepted. Floor chips measure before placement and keep separate seats. Opened the live Foundry capture.
+- `07df4340e225` accepted in focused checks and a Ceres flight. Rocks keep a direct draw path during pool growth and release their retired instance before ID reuse.
+- `4496a4a001a7` accepted. Piggybacked clock ACKs update the same diagnostic watermark as standalone ACKs.
+- `13d2a084fd8c` accepted. The asteroid probe matches draw receipts to the old or current batch and records missing-root projection inputs.
+- `2c0f3ecd0856` accepted. The drawn player no longer jumps backward when the same live occupant survives a journal rebuild. Hard pose boundaries still reseat.
+- `64678c44a573` accepted. A foreground heartbeat recovers valid lost reply credits before the three-second watchdog. Wrong lifecycle and future watermarks remain rejected.
+- `1c0bc6a49b6d` accepted. Synchronous entity view updates avoid redundant slice-clock polling.
+- `8566b710688a` accepted in focused checks. Temporary Circuits retain gate guidance and suppress campaign tracker and radio UI.
+
+Codex used `sim_hotpath` for perception and worker regression fixtures, `backend_recon` for the pose rebuild and dormant-rock review, and `economy_perf` for projectile-order investigation and asteroid pool ownership. No Devin workers launched. Opus-owned working changes are still separate.
+
+The locked Supply Pod pair confirmed thrust, turn, and primary fire. Draws rose from 12.0 to 20.2/s and drawn ship gap p95 fell from 129 to 85 ms. The original multi-second freeze did not recur in the comparison. Sustained cadence, long missing-root cases, live dormant contact, and complete save/flight, Circuits, and mobile acceptance remain open. See [the checkpoint](QUALITY.md) for exact runs and artifacts.
