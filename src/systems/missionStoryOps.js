@@ -13,6 +13,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { entityIndexVersion, isLivingWorldActor } from '../world/livingWorldViews.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { EGRESS_DISTANCE_WU, EGRESS_FADE_S, fleeOrderActive } from '../ai/egressExit.js';
 import { hash32 } from '../core/rng.js';
 import { counted } from '../core/numberFormat.js';
@@ -2779,6 +2780,7 @@ export const missionStoryOps = {
     this._racingSetPieces?.stop('new_game');
     resetRacingGhostSession(this.state);
     const state = this.state;
+    const racingSession = isRacingCorridorSession(state);
     state.missions.boards = {};
     state.missions.active = [];
     state.missions.completedLog = [];
@@ -2798,12 +2800,13 @@ export const missionStoryOps = {
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [], journeyActs: { seen: [], current: null } };
-    initCampaignSidecar(state, state.simTime || 0);
-    // Act I owns a durable receipt too. The opening direction toast is suppressed while the
-    // tutorial owns the opening, so this persistent line is how a fresh save sees the act.
-    this._announceJourneyAct(journeyActForBeat(state.story.beatIndex));
-    this._installThreadBFragment();
-    this._installContract47aColdStart();
+    if (!racingSession) {
+      initCampaignSidecar(state, state.simTime || 0);
+      // Act I owns a durable receipt even while the tutorial owns opening direction.
+      this._announceJourneyAct(journeyActForBeat(state.story.beatIndex));
+      this._installThreadBFragment();
+      this._installContract47aColdStart();
+    }
     this._spawnSeq = 0;
     if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.clear();
     this._nextMissionSpawnRetryTick = 0;
@@ -2812,6 +2815,7 @@ export const missionStoryOps = {
     this._lastWaypointRouteAt = 0;
     // Session latch — the dock:undocked clear never runs across a quit-while-docked New Game.
     this._lastDockedStation = null;
+    if (racingSession) return;
     const tutorialOwnsOpening = this._tutorialOwnsOpening();
     if (!tutorialOwnsOpening) {
       this._refreshNavigation({ forceStory: true, silent: true });

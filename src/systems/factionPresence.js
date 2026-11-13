@@ -5,6 +5,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { dockIntentStatus } from '../core/dockIntent.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
@@ -559,6 +560,7 @@ export const factionPresence = {
     // existed. Quiet latch short-circuits those scans; wakes on membership, presence wake seq
     // (sector enter / spawn / combat / boarding / save), or 0.5 s rescan. Soft-GPU fps not claimed.
     const state = this.state;
+    if (isRacingCorridorSession(state)) return;
     const own = ensureOwnState(state);
     // Conduct runs on its own slow cadence ahead of the quiet latch: forgiveness is a clock and
     // a berth hulk can be towed off its rack without any shipLike membership change.
@@ -696,8 +698,9 @@ export const factionPresence = {
   // Chunked cook-provider twin: one presence per yield so the sliced census interleaves
   // presentation between hulls; own.active dedupe makes a superseded cook's re-run safe.
   *_onSectorEnterSteps(payload) {
-    this._wakePresenceQuiet();
     const state = this.state;
+    if (isRacingCorridorSession(state)) return;
+    this._wakePresenceQuiet();
     // A tail-drained emit carries the epoch of the enter that minted it: a replayed
     // payload whose enterEpoch no longer matches the world's serial is stale — presence
     // must not mint for it under the live world's id. Synthetic payloads carry no epoch

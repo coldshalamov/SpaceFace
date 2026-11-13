@@ -217,7 +217,7 @@ import { markAuxRowDirty, markAuxRowRemoved } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
 import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
 import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
-import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
+import { isRacingCorridorSession, racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
   materializeAlienEcology,
@@ -4864,6 +4864,7 @@ export const world = {
    * paints inside a dense ambient roll. The sync wrapper drains inline — identical rng draws.
    */
   *_spawnEnemiesChunks(sector, active, rng, stale = null) {
+    if (isRacingCorridorSession(this.state)) return;
     const aborted = () => !!(stale && stale());
     // If sectorSim has drifted this sector while the player was away, use the drifted density/
     // security so re-entering a sector reflects its current state (V2 §33/§35.3). Falls back to the
@@ -5049,6 +5050,7 @@ export const world = {
   // re-entering the sector or reloading a save does not respawn it. Position is offset from the
   // boss POI marker so the fight reads as "at the arena signal", not on top of the entry point.
   _spawnBossIfDue(sector, active, rng) {
+    if (isRacingCorridorSession(this.state)) return;
     const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
     if (!bossPoi) return;
     const disc = this._discoveryFor(sector.id);

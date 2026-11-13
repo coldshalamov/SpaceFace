@@ -3,6 +3,7 @@
 
 import { makeShipEntitySpec } from './ships.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import {
   LINES,
   SECOND_RINSE as C,
@@ -72,7 +73,7 @@ export const secondRinse = {
   },
   place() {
     const state = this.state;
-    if (!this._home()) return null;
+    if (!this._home() || isRacingCorridorSession(state)) return null;
     const existing = indexedWorldRecordEntity(state, C.worldRecordId);
     if (existing) return existing;
     const pocket = secondRinsePocket();

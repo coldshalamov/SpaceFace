@@ -3,6 +3,7 @@
 import { makeShipEntitySpec } from './ships.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 
 const WRECK = 'wreck_choir_tender';
@@ -293,7 +294,7 @@ export function createChoirReliefBerth(owner) {
   };
 
   function sync() {
-    if (isSurvivalRunLive(state.run)) return;
+    if (isSurvivalRunLive(state.run) || isRacingCorridorSession(state)) return;
     const bearing = owner._ensureState().bearings[WRECK];
     if (!bearing || state.world?.currentSectorId !== SECTOR || !helpers.npcJobs || !kernel()) return;
     const relief = own();

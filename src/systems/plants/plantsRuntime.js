@@ -8,6 +8,7 @@
 // child until destroy(); forked sims skip those children rather than stealing subscriptions.
 // Generated from the module directory: add a module file, rerun the generator, done.
 
+import { isRacingCorridorSession } from '../../world/racingCorridor.js';
 import { badMagnetPlant } from './badMagnetPlant.js';
 import { brokenTollPlant } from './brokenTollPlant.js';
 import { broodShortcutPlant } from './broodShortcutPlant.js';
@@ -258,6 +259,7 @@ function safeRun(name, fn) {
 
 const CHILD_OWNERS = new WeakMap();
 const ownsContext = (runtime) => Object.hasOwn(runtime, '_ctx') && runtime._ctx != null;
+const RESET_EVENTS = new Set(['game:new', 'game:newGame', 'save:loaded', 'sector:exit']);
 
 export const plantsRuntime = {
   name: 'plants',
@@ -265,9 +267,16 @@ export const plantsRuntime = {
     if (ownsContext(this)) return;
     this._ctx = ctx;
     this._boundPlants = [];
+    // Campaign plants subscribe to sector entry and gameplay directly. Suppress their
+    // handlers in standalone Circuits while still delivering run and sector cleanup.
+    const plantBus = Object.create(ctx.bus);
+    plantBus.on = (event, listener, options) => ctx.bus.on(event, RESET_EVENTS.has(event) ? listener : (payload) => {
+      if (!isRacingCorridorSession(ctx.state)) return listener(payload);
+    }, options);
+    const plantContext = { ...ctx, bus: plantBus };
     for (const plant of PLANTS) {
       if (typeof plant.init !== 'function' || CHILD_OWNERS.has(plant)) continue;
-      if (safeRun(plant.name, () => plant.init(ctx))) {
+      if (safeRun(plant.name, () => plant.init(plantContext))) {
         CHILD_OWNERS.set(plant, this);
         this._boundPlants.push(plant);
       }
@@ -275,6 +284,7 @@ export const plantsRuntime = {
   },
   update(dt, state) {
     if (!ownsContext(this) || state !== this._ctx.state) return;
+    if (isRacingCorridorSession(state)) return;
     for (const plant of this._boundPlants) {
       if (typeof plant.update !== 'function') continue;
       safeRun(plant.name, () => plant.update(dt, state));

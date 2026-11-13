@@ -48,6 +48,7 @@ import { materializeEndingWorldPresence } from './endingWorldPresence.js';
 import { installCaptainMemory, stampCaptainIdentity, normalizeCaptainRoster, applyCaptainRouteMemory } from './captainMemory.js';
 import { installColdburnRey, normalizeColdburnRey } from './coldburnRey.js';
 import { raceLeaseActive } from './racingSteer.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
@@ -2070,6 +2071,9 @@ export const traffic = {
   // synchronous step (pre-loop); a yield never separates spawnEntity from its record link.
   *_onSectorEnterSteps(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
+    // A standalone circuit has its own grid and scripted crossings. Campaign freighters
+    // would otherwise enter the live course during bootstrap, before racing owns its lease.
+    if (isRacingCorridorSession(this.state)) return;
     // A tail-drained emit carries the epoch of the enter that minted it: a replayed payload
     // whose enterEpoch no longer matches the world's serial is stale — minting/cleanup for
     // it would wipe the live roster and remint the departed sector's hulls. Synthetic
@@ -3974,7 +3978,8 @@ export const traffic = {
   },
 
   update(dt, state) {
-    if (state.mode !== 'flight' || (state.run?.kind === 'survival' && state.run.phase !== 'inactive') || raceLeaseActive(state)) {
+    if (state.mode !== 'flight' || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')
+      || raceLeaseActive(state) || isRacingCorridorSession(state)) {
       cancelAnvilSpillRendezvous(state);
       return;
     }

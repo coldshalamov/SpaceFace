@@ -21,6 +21,7 @@ import {
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 import { PLANET_SITE } from '../data/planets.js';
+import { configureRacingCorridorSession } from '../world/racingCorridor.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
 // envelope from a fixed deps-first registry of systems, writes autosave + manual slots to
 // localStorage and to the shared loopback player store both shells use, plus an exportable
@@ -565,7 +566,10 @@ export const save = {
       // authoritative shared-store flags before downstream Continue/title listeners run.
       this._publishSharedStoreStatus();
     });
-    bus.on('save:restoring', () => { this.state.physicsVenueSession = false; });
+    bus.on('save:restoring', () => {
+      this.state.physicsVenueSession = false;
+      configureRacingCorridorSession(this.state, false);
+    });
     bus.on('race:launchFailed', () => {
       if (!this._ephemeralRacing || this.state?.mode !== 'menu') return;
       this._epochOpenedByNew = false;

@@ -5,6 +5,7 @@
 import { makeShipEntitySpec } from './ships.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 
 /** Declared sub-object. Not registered, so the manifest identity payload stays put. */
@@ -147,7 +148,7 @@ export function createMemorialThief(owner) {
   }
 
   function sync() {
-    if (isSurvivalRunLive(state.run)) return;
+    if (isSurvivalRunLive(state.run) || isRacingCorridorSession(state)) return;
     if (state.world?.currentSectorId !== SECTOR) return;
     const mem = own();
     if (mem.stolen || mem.fled || mem.intercepted) return;

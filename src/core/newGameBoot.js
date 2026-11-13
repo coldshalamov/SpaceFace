@@ -15,7 +15,7 @@ import { resetFreshRunSystems } from './runReset.js';
 import { makeShipEntitySpec } from '../systems/ships.js';
 import { NEW_GAME, resolveNewGameStarter } from '../data/newGameDefaults.js';
 import { applyRacingLoadout } from '../data/racingLoadouts.js';
-import { configureRacingCorridorSession } from '../world/racingCorridor.js';
+import { configureRacingCorridorSession, isRacingCorridorSession } from '../world/racingCorridor.js';
 import { defaultShipAppearance } from './shipAppearance.js';
 import { mark47aPlayerActor, spawn47aOpeningScene } from '../data/scenarios/47aLiveScene.js';
 import { GameStartReadinessError } from './newGameStartTransition.js';
@@ -25,6 +25,7 @@ import { laneInputWrite } from './simLaneCommands.js';
 // Minimal playable scene so the engine is verifiable before subsystems exist:
 // player ship + a station + an asteroid ring.
 export async function runBootstrapScene(state, helpers, bus, registry, options = {}) {
+  const racingSession = isRacingCorridorSession(state);
   const owned = state.player.ownedShips[state.player.activeShipIndex] || null;
   const shipId = (owned && owned.defId) || NEW_GAME.shipId || 'ship_kestrel';
   const fittings = (owned && owned.fittings) || [];
@@ -36,7 +37,7 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   });
   const player = helpers.spawnEntity(playerSpec);
   state.playerId = player.id;
-  mark47aPlayerActor(player);
+  if (!racingSession) mark47aPlayerActor(player);
   state.player.credits = NEW_GAME.credits || 5000;
   const ships = registry.get('ships');
   if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
@@ -53,7 +54,7 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   // Split the two heaviest scene-build halves so the 'preparing' stage gets a paint between
   // world regen and opening composition instead of one frozen monolith.
   if (typeof options.yield === 'function') await options.yield();
-  if (!state.physicsVenueSession) {
+  if (!state.physicsVenueSession && !racingSession) {
     spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
   }
 }
@@ -158,7 +159,12 @@ export async function runNewGameSimBoot({
   if (!isCurrent()) return { aborted: true };
 
   const resetCompleted = resetFreshRunSystems(registry, {
-    afterEach: () => isCurrent(),
+    afterEach: name => {
+      if (!isCurrent()) return false;
+      // Register the fresh sector objects before Adventure missions seed their opening.
+      if (name === 'world') configureRacingCorridorSession(state, opts?.racingSession === true);
+      return true;
+    },
   });
   if (!resetCompleted || !isCurrent()) return { aborted: true };
   // Many systems/VFX listen only to the legacy `game:newGame` alias. The public route emits
@@ -226,7 +232,6 @@ export async function runNewGameSimBoot({
 
   // Create the canonical player and starting sector before readiness waits. This gives the
   // renderer real entity boundaries to upgrade while the route remains frozen in loading.
-  configureRacingCorridorSession(state, opts?.racingSession === true);
   await runBootstrapScene(state, helpers, bus, registry, { yield: () => nextFrameTick() });
   if (!isCurrent()) return { aborted: true };
   // Run-specific loadouts and arena placement must exist before visual/GPU admission.

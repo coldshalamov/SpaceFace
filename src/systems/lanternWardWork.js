@@ -1,6 +1,7 @@
 // The Empty Plinth is an attended job of npcJobsRuntime. This module has no
 // registry entry, clock, motion integration, economy writer or private entities.
 import { lanternWardActorSpec } from '../world/lanternWardActors.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { removeCargo, sellableCargoQty } from './cargo.js';
 import { writeOwnedPhysicsControl, cancelOwnedPhysicsControl, physicsBodyNativeReady, queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { attachmentBindsOccupant } from '../combat/attachments.js';
@@ -30,7 +31,8 @@ const speed = e => Math.hypot(finite(e?.vel?.x), finite(e?.vel?.z));
 const clone = value => value == null ? null : JSON.parse(JSON.stringify(value));
 const now = owner => finite(owner.state?.simTime);
 const tick = owner => Math.max(0, Math.trunc(finite(owner.state?.tick)));
-const wardRuns = run => run?.kind !== 'survival' || run.phase === 'inactive';
+const wardRuns = state => !isRacingCorridorSession(state)
+  && (state.run?.kind !== 'survival' || state.run.phase === 'inactive');
 const position = (anchor, key, x = 0, z = 0) => {
   const p = lanternWardPoint(anchor, key); return { x: p.x + x, z: p.z + z };
 };
@@ -325,9 +327,9 @@ function flyTugHome(owner, tug, anchor, w, obstacle) {
  * an ambient collision to the player. The canonical owner forwards these. */
 export function noteLanternWardInteraction(owner, payload, kind) {
   const state = owner?.state;
-  // Swarm can use the same sector while the story owner is inactive. Receipts there have no
+  // Standalone modes can use the same sector while the story owner is inactive. Receipts there have no
   // Ward work to credit, so they must not look up or bind its missing obstruction.
-  if (!state || !payload || !wardRuns(state.run) || state.world?.currentSectorId !== LANTERN_WARD_SECTOR) return false;
+  if (!state || !payload || !wardRuns(state) || state.world?.currentSectorId !== LANTERN_WARD_SECTOR) return false;
   const obstacle = entityFor(owner, 'obstruction'), player = owner.state.entities?.get(owner.state.playerId);
   if (!obstacle || !player || !nativePose(owner, obstacle)) return false;
   let accepted = false;
@@ -554,7 +556,7 @@ function commitService(owner, lamp, receiver, method) {
 
 export function stepLanternWard(owner, dt) {
   if (!owner?.state || !Number.isFinite(dt) || dt <= 0 || owner.state.mode !== 'flight'
-      || !wardRuns(owner.state.run)) return;
+      || !wardRuns(owner.state)) return;
   dt = Math.min(dt, 1 / 15);
   const w = ward(owner), current = owner.state.world?.currentSectorId;
   if (current !== LANTERN_WARD_SECTOR) {
