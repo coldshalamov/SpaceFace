@@ -581,8 +581,91 @@ function mergeMeshGeometries(rec) {
     return cached;
   }
 
+  // The old merge expanded every indexed triangle into three distinct vertices. Stations and
+  // place props often use cylinders, spheres and rings, so that multiplied their resident
+  // attributes and repeated their vertex work after the merge had reduced draw calls. Compact
+  // only referenced source vertices, then retain the original triangle order with one index.
+  // Non-indexed meshes can join the same batch: their vertices receive sequential indices.
+  // Keep the old non-indexed output when an index would be larger than the bytes it saves.
+  const remaps = new Array(rec.meshes.length);
+  let uniqueVertices = 0;
+  let hasIndexedMesh = false;
+  for (let mi = 0; mi < rec.meshes.length; mi++) {
+    const geometry = rec.meshes[mi].geometry;
+    const position = geometry.getAttribute('position');
+    const index = geometry.index;
+    if (!index) {
+      uniqueVertices += position.count;
+      continue;
+    }
+    hasIndexedMesh = true;
+    const remap = new Uint32Array(position.count);
+    let count = 0;
+    for (let i = 0; i < index.count; i++) {
+      const original = index.getX(i);
+      if (remap[original] === 0) remap[original] = ++count;
+    }
+    remaps[mi] = remap;
+    uniqueVertices += count;
+  }
+  const indexBytes = uniqueVertices > 65535 ? 4 : 2;
+  const bytesPerVertex = attrDefs.reduce((bytes, def) => bytes + def.itemSize * def.Ctor.BYTES_PER_ELEMENT, 0);
+  const indexed = hasIndexedMesh
+    && uniqueVertices * bytesPerVertex + rec.vertexCount * indexBytes < rec.vertexCount * bytesPerVertex;
+  const count = indexed ? uniqueVertices : rec.vertexCount;
   const arrays = new Map();
-  for (const def of attrDefs) arrays.set(def.name, new def.Ctor(rec.vertexCount * def.itemSize));
+  for (const def of attrDefs) arrays.set(def.name, new def.Ctor(count * def.itemSize));
+
+  if (indexed) {
+    const mergedIndex = indexBytes === 2 ? new Uint16Array(rec.vertexCount) : new Uint32Array(rec.vertexCount);
+    let vertexBase = 0;
+    let indexWrite = 0;
+    for (let mi = 0; mi < rec.meshes.length; mi++) {
+      const mesh = rec.meshes[mi];
+      const g = mesh.geometry;
+      const index = g.index;
+      const sourceCount = g.getAttribute('position').count;
+      const remap = remaps[mi];
+      const sources = attrDefs.map((def) => g.getAttribute(def.name));
+      const destinations = attrDefs.map((def) => arrays.get(def.name));
+      _batchLocal.multiplyMatrices(_batchInv, mesh.matrixWorld);
+      _batchNormal.getNormalMatrix(_batchLocal);
+      let meshVertices = 0;
+      for (let sourceIndex = 0; sourceIndex < sourceCount; sourceIndex++) {
+        const mapped = remap ? remap[sourceIndex] : sourceIndex + 1;
+        if (mapped === 0) continue;
+        meshVertices++;
+        const vertex = vertexBase + mapped - 1;
+        for (let ai = 0; ai < attrDefs.length; ai++) {
+          const def = attrDefs[ai], src = sources[ai], dst = destinations[ai];
+          const offset = vertex * def.itemSize;
+          if (def.name === 'position') {
+            _batchPos.fromBufferAttribute(src, sourceIndex).applyMatrix4(_batchLocal);
+            dst[offset] = _batchPos.x; dst[offset + 1] = _batchPos.y; dst[offset + 2] = _batchPos.z;
+          } else if (def.name === 'normal') {
+            _batchNrm.fromBufferAttribute(src, sourceIndex).applyNormalMatrix(_batchNormal);
+            dst[offset] = _batchNrm.x; dst[offset + 1] = _batchNrm.y; dst[offset + 2] = _batchNrm.z;
+          } else {
+            for (let c = 0; c < def.itemSize; c++) dst[offset + c] = src.getComponent(sourceIndex, c);
+          }
+        }
+      }
+      const length = index ? index.count : sourceCount;
+      for (let i = 0; i < length; i++) {
+        mergedIndex[indexWrite++] = vertexBase + (index ? remap[index.getX(i)] - 1 : i);
+      }
+      vertexBase += meshVertices;
+    }
+    const geometry = new THREE.BufferGeometry();
+    for (const def of attrDefs) {
+      geometry.setAttribute(def.name, new THREE.BufferAttribute(arrays.get(def.name), def.itemSize, def.normalized));
+    }
+    geometry.setIndex(new THREE.BufferAttribute(mergedIndex, 1));
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    rememberStaticMergeGeometry(signature, geometry);
+    return geometry;
+  }
 
   let write = 0;
   for (const mesh of rec.meshes) {
@@ -628,7 +711,12 @@ function batchKey(obj, parent) {
     const a = g.attributes[name];
     return `${name}:${a.itemSize}:${a.normalized ? 1 : 0}:${a.array.constructor.name}`;
   }).join('|');
-  const idx = g.index ? `idx:${g.index.array.constructor.name}` : 'noidx';
+  // A first-stage merge used to produce non-indexed geometry regardless of its inputs.
+  // Preserve that logical grouping for the across-root pass, even when we physically
+  // retain indices, so it merges exactly the same material/shadow cohorts as before.
+  const idx = obj.userData?.staticMerge === true
+    ? 'noidx'
+    : (g.index ? `idx:${g.index.array.constructor.name}` : 'noidx');
   const far = isFarDetailSurface(obj) ? 'far' : 'body';
   return `${parent.uuid}|${far}|${obj.material.uuid}|${obj.renderOrder || 0}|${idx}|${attrs}`;
 }
