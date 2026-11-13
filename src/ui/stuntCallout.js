@@ -38,6 +38,7 @@ import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { isAdventureFlight, plainCallout } from './attentionGlass.js';
 import { getStage } from './stage.js';
+import { styleCauseFromKill } from '../systems/survivalStyle.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -912,7 +913,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     // Rule 4, "once, then quieter": the first latch and the first throw of a run earn a centre word;
     // after that the sound, the camera and the line itself carry it. Reset with the run.
     const firstBeatsSaid = new Set();
-    const FIRST_BEAT_NAMES = new Set(['LATCHED', 'THROWN']);
+    const FIRST_BEAT_NAMES = new Set(['LATCHED', 'THROWN', 'CRUSHED']);
     for (const ev of ['run:started', 'game:newGame', 'save:loaded']) unsubs.push(bus.on(ev, () => firstBeatsSaid.clear()));
     const speak = (line) => {
       if (!line) return;
@@ -984,6 +985,17 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
     unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    // First kill by physics (a thrown body, a rock, a wall): CRUSHED, once per run, Adventure only —
+    // Swarm's own cause lane already names every kill. A gun kill keeps the world-anchored DESTROYED.
+    unsubs.push(bus.on('entity:killed', (payload) => {
+      if (destroyed || !payload) return;
+      const st = getState();
+      const scope = calloutScope(st);
+      if (!scope || !scope.adventure || payload.killerId == null || payload.killerId !== st.playerId) return;
+      const cause = styleCauseFromKill(payload);
+      if (cause !== 'collision' && cause !== 'terrain') return;
+      speak({ key: 'first-crushed', name: 'CRUSHED', detail: '' });
+    }));
     // Only the pilot's own latch speaks (a flail or an NPC line is not the player's first success).
     unsubs.push(bus.on('tether:latched', (payload) => {
       const st = getState();

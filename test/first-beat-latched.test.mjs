@@ -53,3 +53,19 @@ test('lane: the second latch and second throw of a run stay quiet', () => {
     assert.doesNotMatch(calloutTextFor(callout.root), /LATCHED|THROWN/);
   } finally { callout.destroy(); }
 });
+
+test('lane: the first physics kill says CRUSHED once; a gun kill stays with DESTROYED', () => {
+  const { bus, callout } = mount();
+  try {
+    bus.emit('entity:killed', { id: 5, killerId: 1, cause: 'bullet' });
+    callout.update(0);
+    assert.doesNotMatch(calloutTextFor(callout.root), /CRUSHED/);
+    bus.emit('entity:killed', { id: 6, killerId: 1, styleCause: 'collision' });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /CRUSHED/);
+    callout.update(1e9);
+    bus.emit('entity:killed', { id: 7, killerId: 1, styleCause: 'collision' });
+    callout.update(1e9 + 1);
+    assert.doesNotMatch(calloutTextFor(callout.root), /CRUSHED/);
+  } finally { callout.destroy(); }
+});
