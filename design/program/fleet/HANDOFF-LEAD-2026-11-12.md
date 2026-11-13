@@ -362,3 +362,18 @@ Completed the two previously queued game-lock checks. No workers launched during
 - `3bf8ef3490ff` accepted. The locked Ceres run did not establish contact visibility. The target activated 1,227 WU away and was never stamped in view. Helios still showed an 891 ms rescue rock admission gap.
 
 No workers launched during this final capture. Continue from the measured reply and pose timing in [QUALITY.md](QUALITY.md).
+
+### Stand-in log — shared flight performance
+
+- `1e66a7186520` accepted. Shared radius query replay retained exact output and reduced query cost. Locked Adventure did not establish a live FPS gain.
+- `fa30330f4048` accepted. Retained opaque batches reuse geometry and skip absent texture checks while still refreshing changed sources.
+- `68fb41cd6a98` fixed. Flying rocks classify by their visible footprint. The new boundary check failed on the old code and passed with the fix. Live approach remains open.
+- `395256f5ff06` accepted. Foreign cargo stops at the Circuit impact owner filter. Native damage and custody checks passed.
+- `745f433d3b66` accepted. Ineligible collision proxy requests skip measured-skin work. Forty-three focused tests passed.
+- `9a4c3b27e2da` fixed. A repeated journal acknowledgement cannot restart paused maintenance. Locked Gauntlet Rearm fell from 387 to 63 worker directives/s. Both arms fired more than 270 shots and reached Rearm.
+- `aee1b488efe5` sent back to the look owner. Fifteen paired composite cases matched every pixel. GPU timing drifted. `b6735b6bf4c5` restored the active LOOK-04 file after the ownership note was identified.
+- `8276b9524eba` accepted. The weapon effects bridge reads the typed projectile lane. The worker fixture verified publication and retirement.
+- `ef197109382d` reviewed. The fin capture shows panel detail and readable trim in the isolated view. The compiler removes marked neutral defaults; asset and manifest hashes changed together. Ordinary in-game fitting is the visual owner's check.
+- `5d2ef99c92eb` reviewed. Valve UVs cover both triangles and preserve shared texture lifetimes. The available flight capture is too dark to establish the authored texture read.
+
+Launched Codex `shared_sim` (spatial hash and activity), `shared_render` (retained batches and bloom fixture), and `cross_mode_probe` (public flight harness and Circuit impacts). No Devin launches. The ongoing cadence defect affects Adventure and Gauntlet. Continue with fixed-step physics and tactical AI, plus the HDR world draw and admission work. Open items include the original retail freeze, drawn rock approach/contact, Circuits scored finish, Gauntlet Retry, and packaged launch. See [QUALITY.md](QUALITY.md) for measurements and exact captures.
