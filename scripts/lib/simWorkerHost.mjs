@@ -751,18 +751,14 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
 // ---------------------------------------------------------------------------
 // Stage 3 — aux-row channel, now journal-fed (stage 6 item D-F2).
 //
-// Producers mark every shipped-field mutation in the table's _auxJournal (see
-// src/world/auxRowJournal.js). Armed tables only re-sign rows the journal names
-// — plus any row absent from the shipped map (presence is the coverage floor a
-// mark can never opt out of). Removals keep the shipped∩!seen formula: a
-// departed row exits the mirror whether or not its producer journaled the
-// removal. An unarmed table (fresh create, post-restore swap) pays one full
-// diff, then arms.
+// Producers journal changes and membership in the table's _auxJournal.
+// The steady-state path visits just those IDs. Fresh or replaced tables are
+// compared once against the previous family's membership, including removals.
 //
 // Under --probe aux the host additionally runs verifyAuxJournal every tick: it
 // re-signs EVERY row and asserts shipped === live post-diff — the byte-
-// identical-output proof for the journal path (breaches are counted and
-// sampled; a missed field write shows up as a breach AND a stale facade row).
+// identical-output check for the journal path. The probe also finds retired
+// IDs that were left in the mirror by a missing removal mark.
 // ---------------------------------------------------------------------------
 
 const AUX_FAMILIES = [
@@ -901,7 +897,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     rebuildReasons: {},
     // stage-3 aux channel (journal-fed since stage 6)
     auxShipped: new Map(),
-    auxSeen: new Set(),
+    auxTables: new Map(),
     auxUpsertsTotal: 0,
     auxRemovalsTotal: 0,
     auxVerify: false,           // --probe aux → full re-sign check per tick
@@ -1019,32 +1015,38 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const world = state && state.world;
     const shipped = host.auxShipped;
     const upserts = [];
-    const removals = [];
-    const seen = host.auxSeen;
-    seen.clear();
+    const retired = new Set();
+    const writeRow = (kind, row, ids) => {
+      if (!row || !Number.isSafeInteger(row.id)) return;
+      ids.add(row.id);
+      retired.delete(row.id);
+      const block = auxRowBlock(kind, row);
+      const sig = `${kind}|${auxSignature(block)}`;
+      if (shipped.get(row.id) !== sig) {
+        shipped.set(row.id, sig);
+        upserts.push(block);
+      }
+    };
     for (const fam of AUX_FAMILIES) {
       const table = world ? fam.table(world) : null;
-      const rows = table ? fam.rows(table) : null;
-      if (!Array.isArray(rows)) continue;
+      const previous = host.auxTables.get(fam.kind);
       const journal = armAuxJournal(table);
-      const journaled = !!(journal && journal.armed);
-      if (journaled) host.auxJournalArmed++;
       if (journal) host.auxJournalDirtyAdds += journal.dirty.size + journal.removed.size;
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || !Number.isSafeInteger(row.id)) continue;
-        seen.add(row.id);
-        // Armed tables re-sign only journal-named rows; a row missing from the
-        // shipped map always signs (insert coverage cannot be journaled away).
-        if (journaled && shipped.has(row.id) && !journal.dirty.has(row.id)) {
-          host.auxJournalSkippedRows++;
-          continue;
+      if (previous?.table === table && journal?.armed && table.byId instanceof Map) {
+        host.auxJournalArmed++;
+        host.auxJournalSkippedRows += Math.max(0, previous.ids.size - journal.dirty.size);
+        for (const id of journal.removed) {
+          if (previous.ids.delete(id)) retired.add(id);
         }
-        const block = auxRowBlock(fam.kind, row);
-        const sig = `${fam.kind}|${auxSignature(block)}`;
-        if (shipped.get(row.id) !== sig) {
-          shipped.set(row.id, sig);
-          upserts.push(block);
+        for (const id of journal.dirty) writeRow(fam.kind, table.byId.get(id), previous.ids);
+      } else {
+        if (previous) for (const id of previous.ids) retired.add(id);
+        if (table) {
+          const ids = new Set();
+          for (const row of fam.rows(table) || []) writeRow(fam.kind, row, ids);
+          host.auxTables.set(fam.kind, { table, ids });
+        } else {
+          host.auxTables.delete(fam.kind);
         }
       }
       if (journal) {
@@ -1053,11 +1055,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         journal.armed = true;
       }
     }
-    for (const id of shipped.keys()) {
-      if (!seen.has(id)) {
-        shipped.delete(id);
-        removals.push(id);
-      }
+    const removals = [];
+    retire: for (const id of retired) {
+      // An ID can move between families in either traversal order.
+      for (const { ids } of host.auxTables.values()) if (ids.has(id)) continue retire;
+      if (shipped.delete(id)) removals.push(id);
     }
     return { upserts, removals };
   }
@@ -1068,12 +1070,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   function verifyAuxJournal(state) {
     const world = state && state.world;
     let breaches = 0;
+    const seen = new Set();
     for (const fam of AUX_FAMILIES) {
       const table = world ? fam.table(world) : null;
       const rows = table ? fam.rows(table) : null;
       if (!Array.isArray(rows)) continue;
       for (const row of rows) {
         if (!row || !Number.isSafeInteger(row.id)) continue;
+        seen.add(row.id);
         const sig = `${fam.kind}|${auxSignature(auxRowBlock(fam.kind, row))}`;
         if (host.auxShipped.get(row.id) !== sig) {
           breaches++;
@@ -1081,6 +1085,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
             host.auxJournalBreachSamples.push({ kind: fam.kind, id: row.id, tick: state.tick });
           }
         }
+      }
+    }
+    for (const id of host.auxShipped.keys()) {
+      if (seen.has(id)) continue;
+      breaches++;
+      if (host.auxJournalBreachSamples.length < 16) {
+        host.auxJournalBreachSamples.push({ kind: 'unretired', id, tick: state.tick });
       }
     }
     host.auxJournalBreaches += breaches;

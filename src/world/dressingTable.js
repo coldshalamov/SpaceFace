@@ -103,6 +103,7 @@ export function markDressingRowPoseDirty(state, id) {
   if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
   table.dirtyPoseIds.add(id);
   table.version++;
+  markAuxRowDirty(table, id);
   return true;
 }
 
