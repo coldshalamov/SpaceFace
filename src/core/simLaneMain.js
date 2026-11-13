@@ -906,18 +906,21 @@ export function createSimLaneRuntime({
   }
 
   function postWorkerClockAck() {
-    if (laneClosed || !ready || workerClockMode !== 'worker-local' || !workerClockAckPending) return false;
+    if (laneClosed || !ready || workerClockMode !== 'worker-local'
+      || (!workerClockAckPending && pendingAckEnd <= 0)) return false;
     const ack = workerClockAckPending;
+    const ackJournalEnd = Math.max(pendingAckEnd, ack?.journalEnd || 0);
     workerClockAckPending = null;
+    pendingAckEnd = 0;
     postLaneDirective({
       kind: 'clockAck',
       seq: nextToken(),
-      clockSequence: ack.clockSequence,
-      ackJournalEnd: ack.journalEnd,
+      clockSequence: ack?.clockSequence ?? 0,
+      ackJournalEnd,
       generation: workerClockGeneration,
       lifecycleGeneration,
     });
-    workerClockLastAckedSequence = Math.max(workerClockLastAckedSequence, ack.clockSequence || 0);
+    workerClockLastAckedSequence = Math.max(workerClockLastAckedSequence, ack?.clockSequence ?? 0);
     return true;
   }
 
@@ -1799,11 +1802,9 @@ export function createSimLaneRuntime({
     const hasClockAck = !!workerClockAckPending;
     if (commands.length === 0 && pendingSteps <= 0 && !hasJournalAck && !hasClockAck && !hasCameraChange) return;
 
-    // A pure presentation acknowledgement does not need a synthetic sim tick.
-    // The worker consumes it on its serial chain and only emits a reply when a
-    // coalesced snapshot is waiting; command and journal acknowledgements ride
-    // a clockCommand so their ordering stays before the next fixed step.
-    if (commands.length === 0 && !hasJournalAck && hasClockAck && !hasCameraChange) {
+    // A pure presentation acknowledgement carries both watermarks without
+    // creating a command whose completion needs another reply.
+    if (commands.length === 0 && pendingSteps <= 0 && !hasCameraChange) {
       postWorkerClockAck();
       return;
     }

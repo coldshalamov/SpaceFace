@@ -1485,7 +1485,7 @@ test('worker-local ACK flushes an unsolicited timer reply while a command is in 
   assert.ok(followUp.commands.some((envelope) => envelope.t === 'dom'));
 });
 
-test('worker-local combined clock command preserves the newer worker journal end', async (t) => {
+test('worker-local cumulative ACK preserves the newer journal end without a command reply', async (t) => {
   const f = makeFixture(t);
   f.lane.runner.setClockActive(true);
 
@@ -1516,17 +1516,17 @@ test('worker-local combined clock command preserves the newer worker journal end
   });
 
   const combined = f.posts.at(-1);
-  assert.equal(combined.kind, 'clockCommand');
-  assert.equal(combined.ackClockSequence, 1);
+  assert.equal(combined.kind, 'clockAck');
+  assert.equal(combined.clockSequence, 1);
   assert.equal(
     combined.ackJournalEnd,
     pack.end,
     'a combined command must carry the worker reply end, not only the older presentation ACK',
   );
-  const postsAfterCombinedAck = f.posts.length;
+  const postsAfterCombinedAck = f.posts.filter(message => message.kind === 'clockAck').length;
   f.lane.runner.prepareWithoutAdvance();
   assert.equal(
-    f.posts.length,
+    f.posts.filter(message => message.kind === 'clockAck').length,
     postsAfterCombinedAck,
     'the combined ACK is consumed once after posting and cannot replay on the next frame',
   );
@@ -1559,8 +1559,8 @@ test('worker-local combined clock command preserves the newer worker journal end
     completedTick: { sequence: 1, tick: 1, journalStart: 0, journalEnd: latePack.end },
   });
   const aheadCombined = g.posts.at(-1);
-  assert.equal(aheadCombined.kind, 'clockCommand');
-  assert.equal(aheadCombined.ackClockSequence, 1);
+  assert.equal(aheadCombined.kind, 'clockAck');
+  assert.equal(aheadCombined.clockSequence, 1);
   assert.equal(aheadCombined.ackJournalEnd, latePack.end + 3);
 });
 
