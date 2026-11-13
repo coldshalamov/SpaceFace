@@ -209,10 +209,23 @@ function meshFromPart(row) {
   return new THREE.Mesh(geometry, material);
 }
 
+function freezeEntryMatches(entry, ent) {
+  return entry.id === ent.id && entry.role === ent.data.bolus.role;
+}
+
+function disposeFreezeEntry(cards, entry) {
+  for (const child of entry.meshes) {
+    child.geometry?.dispose();
+    child.material?.dispose();
+    cards.remove(child);
+  }
+}
+
 function syncFreezeCards(view, state) {
   const cards = view.cards;
   const origin = SECTOR_GLOBAL_ORIGINS[BOLUS_SECTOR_ID];
-  const want = [];
+  const want = view.freezeWanted || (view.freezeWanted = []);
+  const previous = view.freezeEntries || (view.freezeEntries = []);
   // Bolus organs all claim the bolus sector (homeSectorId heads the canonical
   // claim chain) — same bucket conversion as tickBolus: entityList only while
   // the lane is unready.
@@ -225,39 +238,58 @@ function syncFreezeCards(view, state) {
     const ent = list[i];
     if (!ent || !ent.data || !ent.data.bolus || !ent.pos || ent.alive === false) continue;
     if (!FREEZE.has(ent.data.bolus.role)) continue;
-    const vel = ent.vel || { x: 0, z: 0 };
-    if (Math.hypot(vel.x || 0, vel.z || 0) > 0.5) continue;
+    if (Math.hypot(ent.vel?.x || 0, ent.vel?.z || 0) > 0.5) continue;
     want.push(ent);
   }
-  const key = want.map((ent) => ent.id).join(',');
-  if (key === view.freezeKey) {
-    for (let i = 0; i < want.length; i++) {
-      const ent = want[i];
-      const x = ent.pos.x - origin.x;
-      const z = ent.pos.z - origin.z;
-      const left = cards.children[i * 2];
-      const right = cards.children[i * 2 + 1];
-      if (left) left.position.set(x, 8, z);
-      if (right) right.position.set(x, 8, z);
-    }
-    return;
+  let unchanged = previous.length === want.length;
+  for (let i = 0; unchanged && i < want.length; i++) {
+    unchanged = freezeEntryMatches(previous[i], want[i]);
   }
-  view.freezeKey = key;
-  for (let i = cards.children.length - 1; i >= 0; i--) {
-    const child = cards.children[i];
-    if (child.geometry) child.geometry.dispose();
-    if (child.material) child.material.dispose();
-    cards.remove(child);
+
+  let entries = previous;
+  if (!unchanged) {
+    // Entity IDs are unique within the sector index. Splay cards contain no
+    // occupant state, so an ID recycled with the same role can reuse its pair.
+    const available = new Map(previous.map(entry => [entry.id, entry]));
+    entries = [];
+    for (const ent of want) {
+      let entry = available.get(ent.id);
+      if (entry && freezeEntryMatches(entry, ent)) {
+        available.delete(ent.id);
+      } else {
+        const role = ent.data.bolus.role;
+        const recipe = bolusSilhouette(`bolus_${role}`, { stopped: true });
+        const meshes = [];
+        for (const part of recipe.parts) {
+          if (!part.id.startsWith('splay_')) continue;
+          const mesh = meshFromPart(part);
+          mesh.scale.setScalar(14);
+          cards.add(mesh);
+          meshes.push(mesh);
+        }
+        entry = { id: ent.id, role, meshes };
+      }
+      entries.push(entry);
+    }
+    for (const entry of available.values()) disposeFreezeEntry(cards, entry);
+    // Preserve the old entity-list order without detaching unchanged meshes.
+    let cursor = 0;
+    for (const entry of entries) {
+      for (const mesh of entry.meshes) {
+        if (cards.children[cursor] !== mesh) {
+          const from = cards.children.indexOf(mesh, cursor + 1);
+          if (from >= 0) cards.children.splice(cursor, 0, cards.children.splice(from, 1)[0]);
+        }
+        cursor++;
+      }
+    }
+    view.freezeEntries = entries;
   }
   for (let i = 0; i < want.length; i++) {
     const ent = want[i];
-    const recipe = bolusSilhouette(`bolus_${ent.data.bolus.role}`, { stopped: true });
-    const splayed = recipe.parts.filter((part) => part.id.startsWith('splay_'));
-    for (let p = 0; p < splayed.length; p++) {
-      const mesh = meshFromPart(splayed[p]);
-      mesh.position.set(ent.pos.x - origin.x, 8, ent.pos.z - origin.z);
-      mesh.scale.setScalar(14);
-      cards.add(mesh);
-    }
+    const x = ent.pos.x - origin.x;
+    const z = ent.pos.z - origin.z;
+    for (const mesh of entries[i].meshes) mesh.position.set(x, 8, z);
   }
+  want.length = 0;
 }
