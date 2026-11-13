@@ -1220,8 +1220,12 @@ export function createSimLaneRuntime({
         const tracked = ack && pendingRpcs.get(ack.id);
         if (!tracked) continue;
         pendingRpcs.delete(ack.id);
-        if (ack.ok === false) tracked.reject(new Error(ack.reason || `lane rpc ${ack.op || ''} failed`));
-        else tracked.resolve(ack);
+        if (ack.ok === false) {
+          const error = new Error(ack.reason || `lane rpc ${ack.op || ''} failed`);
+          if (typeof ack.code === 'string') error.code = ack.code;
+          if (typeof ack.stage === 'string') error.stage = ack.stage;
+          tracked.reject(error);
+        } else tracked.resolve(ack);
       }
     }
     if (Array.isArray(msg.spawnAcks) && msg.spawnAcks.length) {

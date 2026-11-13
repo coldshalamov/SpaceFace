@@ -2493,7 +2493,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         drain.rpcAcks.push({ id: pending.id, ok: true, result });
         host.lastRpcAck = { op: pending.op, ok: true };
       } catch (e) {
-        drain.rpcAcks.push({ id: pending.id, ok: false, reason: String((e && e.message) || e), op: pending.op });
+        drain.rpcAcks.push({
+          id: pending.id, ok: false, reason: String((e && e.message) || e), op: pending.op,
+          ...(typeof e?.code === 'string' ? { code: e.code } : {}),
+          ...(typeof e?.stage === 'string' ? { stage: e.stage } : {}),
+        });
         host.lastRpcAck = { op: pending.op, ok: false, reason: String((e && e.message) || e) };
       }
     }

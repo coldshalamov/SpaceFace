@@ -248,7 +248,10 @@ export async function runNewGameSimBoot({
       .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
     physicsPrep.catch(() => {});
     if (onPhysicsPrep) onPhysicsPrep(physicsPrep);
-    if (awaitPhysicsPrep) await physicsPrep;
+    if (awaitPhysicsPrep && (await physicsPrep) === false) {
+      throw new GameStartReadinessError('PHYSICS_BACKEND_UNAVAILABLE', 'physics-authority',
+        'The dynamic physics backend did not initialize.');
+    }
   }
   const saveSystem = registry.get('save');
   if (saveSystem && typeof saveSystem.primeAutosaveCapture === 'function') {

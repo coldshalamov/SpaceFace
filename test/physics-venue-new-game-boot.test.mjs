@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bootRealPath } from '../scripts/lib/bench/realPath.mjs';
 import { runNewGameSimBoot } from '../src/core/newGameBoot.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
 import { onboarding } from '../src/systems/onboarding.js';
 import { orbitalGallery } from '../src/gallery/orbital/system.js';
 import { createKineticLeague } from '../src/sports/kineticLeague/system.js';
@@ -29,6 +31,28 @@ function adventureActors(state) {
   return state.entityList.filter(entity => entity.alive !== false && entity.id !== state.playerId
     && (entity.data?.rescue === true || entity.data?.scenarioActorId));
 }
+
+test('worker New Game refuses a physics preparation that settles false', async () => {
+  const state = createGameState(47);
+  const bus = createBus();
+  let primed = false;
+  const systems = new Map([
+    ['world', { enterSector() {} }],
+    ['physics', { async prepareBackend() { return false; } }],
+    ['save', { primeAutosaveCapture() { primed = true; } }],
+  ]);
+  const helpers = { spawnEntity(spec) {
+    const entity = { id: state.nextEntityId++, ...spec };
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+    return entity;
+  } };
+  await assert.rejects(runNewGameSimBoot({ state, bus, helpers, registry: systems,
+    opts: { seed: 47, physicsVenueSession: true }, awaitPhysicsPrep: true }), {
+    code: 'PHYSICS_BACKEND_UNAVAILABLE', stage: 'physics-authority',
+  });
+  assert.equal(primed, false, 'a refused world must not prime an autosave');
+});
 
 for (const [kind, id, systemName] of [
   ['gallery', 'og-a1-straight-cue', 'orbitalGallery'],

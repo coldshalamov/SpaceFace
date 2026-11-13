@@ -78,6 +78,26 @@ test('compressed named Load settles before the real worker reply is structured-c
   } finally { lane.shutdown(); }
 });
 
+test('worker boot reports a refused native backend with its recovery stage', async () => {
+  const lane = await boot();
+  const physics = lane.host.registry.get('physics');
+  const prepare = physics.prepareBackend;
+  try {
+    physics.prepareBackend = async () => false;
+    const reply = await lane.tick({ steps: 0, commands: [{ t: 'rpc', seq: 2, p: {
+      id: 'boot-refused', op: 'newGameBoot', payload: { opts: { seed: 4242 } },
+    } }] });
+    const ack = structuredClone(reply).rpcAcks.find(row => row.id === 'boot-refused');
+    assert.equal(ack.ok, false);
+    assert.equal(ack.code, 'PHYSICS_BACKEND_UNAVAILABLE');
+    assert.equal(ack.stage, 'physics-authority');
+    assert.equal(lane.host.pendingGameStarted, null);
+  } finally {
+    physics.prepareBackend = prepare;
+    lane.shutdown();
+  }
+});
+
 test('main save facade returns the settled owner refusal, not a truthy transport envelope', async () => {
   const lane = await boot();
   const main = mainFacade(lane);
