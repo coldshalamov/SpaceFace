@@ -72,6 +72,8 @@ function makeDom() {
         for (const fn of this.listeners[event && event.type] || []) fn(event);
         return true;
       },
+      // The context wheel (G18-02) builds its dial with insertAdjacentHTML; these presenter tests only need it to exist.
+      insertAdjacentHTML(_where, html) { this.innerHTML = (this.innerHTML || '') + String(html); },
       querySelector() { return make('div'); },
       querySelectorAll() { return []; },
       closest() { return null; },
