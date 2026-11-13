@@ -478,6 +478,46 @@ test('a berth unload settles only the freight that survived aboard', () => {
   } finally { sim.dispose(); }
 });
 
+test('a relay arrival sells its own freight when the same commodity is sealed in the player hold', t => {
+  const sim = bootConvoy();
+  t.after(() => sim.dispose());
+  const { state, bus } = sim;
+  const owner = sim.registry.get('economy');
+  const body = commissionRelay(sim);
+  sim.runTicks(240);
+  const convoy = body.spec.convoy;
+  assert.ok(convoy.manifested);
+  const market = owner.getMarket(convoy.destStationId)[RELAY_GOOD];
+  assert.ok(market.lastSell > 0);
+  const unit = owner.priceOf(convoy.destStationId, RELAY_GOOD, 'sell');
+  assert.ok(unit > 0);
+  const before = state.player.credits;
+  const stock = market.stock;
+
+  assert.equal(addCargo(state, RELAY_GOOD, 6), 6);
+  state.missions.active.push({
+    id: 'sealed-metals', status: 'active', preloadedCargo: true,
+    params: { cmdtyId: RELAY_GOOD, qty: 6 },
+  });
+  assert.equal(owner.quote(convoy.destStationId, RELAY_GOOD, 'sell', 1).reason, 'mission_cargo_locked');
+  const arrival = {
+    event: 'npcjobs:unload', kind: 'hauler', jobId: `job:${convoy.worldRecordId}`,
+    completed: true, destination: `dest:${convoy.destStationId}`,
+    payload: { claimConvoy: { bodyId: body.id, convoyId: convoy.convoyId, destStationId: convoy.destStationId } },
+  };
+  bus.emit('npcjobs:unload', arrival);
+  bus.emit('npcjobs:unload', arrival);
+
+  const sales = body.spec.receipts.filter(row => row.kind === 'convoy_sold');
+  assert.equal(sales.length, 1);
+  const revenue = Math.round(convoy.qty * unit * (1 - 0.2));
+  assert.equal(sales[0].data.revenueCr, revenue);
+  assert.equal(state.player.credits, before + revenue);
+  assert.equal(market.stock, stock + convoy.qty);
+  assert.equal(state.player.cargo.items[RELAY_GOOD], 6);
+  assert.equal(body.spec.store.input[RELAY_GOOD] || 0, 0);
+});
+
 test('an unwitnessed leg still completes abstractly when no hull ever manifested', () => {
   const sim = bootConvoy();
   try {
@@ -535,6 +575,36 @@ test('a refused biohazard sale mints no restocking book — the listing stays em
     assert.equal(state.economy.markets['station_customs']['cmdty_live_specimen'].stock, 0,
       'the refused listing never restocked itself into sellable stock');
   } finally { sim.dispose(); }
+});
+
+test('a relay keeps freight when the listed market refuses its cargo', t => {
+  const sim = bootConvoy();
+  t.after(() => sim.dispose());
+  const { state, bus } = sim;
+  const owner = sim.registry.get('economy');
+  const claimsOwner = sim.registry.get('claims');
+  const body = commissionRelay(sim);
+  const stationId = 'station_customs';
+  const commodityId = 'cmdty_live_specimen';
+  const qty = 25;
+  owner.populateSector({ sectorId: 'sector_tethys_junction' });
+  const quote = owner.quote(stationId, commodityId, 'sell', 1);
+  assert.equal(quote.reason, 'contamination_refusal');
+  const market = owner.getMarket(stationId)[commodityId];
+  assert.ok(market.lastSell > 0, 'the listing exists so the sale reaches policy admission');
+  const stock = market.stock;
+  const credits = state.player.credits;
+  body.spec.convoy = { convoyId: 'quarantine-check', qty, destStationId: stationId, goodId: commodityId };
+  const arrival = { bodyId: body.id, convoyId: 'quarantine-check', stationId, qty };
+  bus.emit('claim:convoyDocked', arrival);
+  bus.emit('claim:convoyDocked', arrival);
+
+  assert.equal(body.spec.convoy, null);
+  assert.equal(body.spec.store.input[commodityId], qty);
+  assert.equal(state.player.credits, credits);
+  assert.equal(market.stock, stock);
+  const returned = claimsOwner.ledger(body.id).receipts.filter(row => row.kind === 'convoy_returned');
+  assert.equal(returned.length, 1);
 });
 
 test('the berth toll collects and names what the wallet actually paid', () => {

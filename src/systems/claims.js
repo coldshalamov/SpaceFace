@@ -1361,8 +1361,9 @@ export const claims = {
     const stationMarket = markets && markets[convoy.destStationId];
     const entry = stationMarket && stationMarket[convoy.goodId];
     const listed = listedMarketSell(entry);
+    // The arrived lot already belongs to the convoy, separate from the player's hold.
     const unit = listed != null && economy && economy.priceOf
-      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell')
+      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell', { operationCustody: true })
       : null;
     if (!(listed > 0) || !(unit > 0)) {
       spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;

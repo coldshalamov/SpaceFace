@@ -6316,10 +6316,10 @@ export const economy = {
   getMarket(stationId) {
     return this.state.economy.markets[stationId] || this.ensureMarket(stationId);
   },
-  priceOf(stationId, commodityId, side) {
+  priceOf(stationId, commodityId, side, opts = null) {
     // A one-unit price has the same rounding, standing, conditions and access rules
     // as the counter. Cached market mids remain non-personal world intelligence.
-    const quoted = this.quote(stationId, commodityId, side, 1);
+    const quoted = this.quote(stationId, commodityId, side, 1, opts);
     return quoted && quoted.ok && quoted.qty === 1 ? quoted.total : null;
   },
 
