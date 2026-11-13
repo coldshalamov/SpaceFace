@@ -341,7 +341,8 @@ function isWorkerDockPresentationWaitingForMirror(owner, token, stationId) {
     && (uiState.docked !== true || uiState.dockedStationId !== stationId));
 }
 
-export function scheduleDockedStationPresentation(owner, stationId, present, releaseFade) {
+export function scheduleDockedStationPresentation(owner, stationId, present, releaseFade, options = {}) {
+  const delayMs = Number.isFinite(options && options.delayMs) ? Math.max(0, options.delayMs) : 400;
   if (!owner) return 0;
   const token = invalidateDockedStationPresentation(owner);
   // Keep this record through the phase-3 hold so a lifecycle transition can release the
@@ -362,7 +363,7 @@ export function scheduleDockedStationPresentation(owner, stationId, present, rel
       owner._pendingDockedStationPresentation = null;
     }
   };
-  pending.timerId = setTimeout(() => {
+  const run = () => {
     pending.timerId = null;
     if (!isCurrentDockedStationPresentation(owner, token, stationId)) {
       if (isWorkerDockPresentationWaitingForMirror(owner, token, stationId)) {
@@ -380,7 +381,15 @@ export function scheduleDockedStationPresentation(owner, stationId, present, rel
     } finally {
       if (!presented || typeof pending.releaseFade !== 'function') pending.finish();
     }
-  }, 400);
+  };
+  // Any key ends the arrival beat early: the same swap, now, instead of at the timer.
+  pending.skip = () => {
+    if (pending.timerId == null || pending.finished) return false;
+    clearTimeout(pending.timerId);
+    run();
+    return true;
+  };
+  pending.timerId = setTimeout(run, delayMs);
   owner._pendingDockedStationPresentation = pending;
   // The worker command that commits ui.docked may reach the main mirror after this presentation
   // timer. Keep the accepted dock intent live for the deferred screen retry until an explicit
@@ -1478,6 +1487,17 @@ export const ui = {
     blackoutStatus.setAttribute('aria-atomic', 'true');
     blackoutStatus.tabIndex = -1;
     dockFade.appendChild(blackoutStatus);
+    // The arrival word: said on the first dock of the session only (20_THE_FIRST_HOUR rule 4).
+    const dockWord = document.createElement('div');
+    dockWord.className = 'sf-dock-word';
+    dockWord.hidden = true;
+    dockWord.setAttribute('role', 'status');
+    dockWord.style.cssText = 'position:absolute;left:0;right:0;top:44%;text-align:center;'
+      + 'font:600 28px/1.2 var(--dp-font-display, system-ui, sans-serif);letter-spacing:0.28em;'
+      + 'text-transform:uppercase;color:var(--dp-lamp, #f2b950);pointer-events:none;';
+    dockFade.appendChild(dockWord);
+    let dockWordSaid = false;
+    let dockSkipOff = null;
     document.getElementById('ui-root').appendChild(dockFade);
     const dockFadeLeases = createFadeLeaseController(dockFade);
     const showDockFade = (reason = 'dock') => dockFadeLeases.acquire(reason);
@@ -1562,6 +1582,33 @@ export const ui = {
       invalidateDockedStationPresentation(this);
       // Phase 1: fade to dark
       showDockFade('dock');
+      // Arrival beat: ~0.9 s of veil (0.35 s under reduced motion) with the berth's name on the
+      // first dock, ended early by any key. The sim is already docked; nothing here blocks it.
+      const reducedDock = !!(this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce)
+        || !!(document.documentElement && document.documentElement.classList
+          && document.documentElement.classList.contains('sf-reduce-motion'));
+      const arrivalMs = reducedDock ? 350 : 900;
+      if (!dockWordSaid) {
+        dockWordSaid = true;
+        const berth = this.state.entities && this.state.entities.get && this.state.entities.get(stationId);
+        dockWord.textContent = String((berth && berth.name) || 'DOCKED');
+        dockWord.hidden = false;
+      }
+      if (dockSkipOff) dockSkipOff();
+      const dockedAt = Date.now();
+      const onSkip = (ev) => {
+        if (ev && ev.repeat) return;
+        if (Date.now() - dockedAt < 250) return;
+        const pendingDock = this._pendingDockedStationPresentation;
+        if (pendingDock && typeof pendingDock.skip === 'function') pendingDock.skip();
+      };
+      window.addEventListener('keydown', onSkip, true);
+      window.addEventListener('pointerdown', onSkip, true);
+      dockSkipOff = () => {
+        window.removeEventListener('keydown', onSkip, true);
+        window.removeEventListener('pointerdown', onSkip, true);
+        dockSkipOff = null;
+      };
 
       // The station hub mounts under the veil: build + one style/layout pass now so the
       // Phase-2 swap flips visibility instead of paying a whole-app mount inside it.
@@ -1576,9 +1623,11 @@ export const ui = {
       // (audioSystem._onDocked: the re-tuned sfx_dock_clunk swell, then a low confirm); no UI cue
       // here, or the chime plays twice (Frontend Task C §1.2).
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
-      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
+      if (camCtrl && typeof camCtrl.pushZoom === 'function' && !reducedDock) camCtrl.pushZoom(0.25, 0.9);
 
       scheduleDockedStationPresentation(this, stationId, (finish) => {
+        dockWord.hidden = true;
+        if (dockSkipOff) dockSkipOff();
         // Phase 2: at peak darkness, do the screen swap. The station screen is a deferred-wave
         // import — if it has not registered yet, wait for it instead of dropping the push (a
         // dropped push while docked leaves the player staring at the fade with dead controls).
@@ -1589,7 +1638,7 @@ export const ui = {
         setTimeout(() => {
           finish();
         }, 50); // brief hold at full dark before fading back
-      }, () => hideDockFade('dock')); // matches the CSS transition duration
+      }, () => { dockWord.hidden = true; if (dockSkipOff) dockSkipOff(); hideDockFade('dock'); }, { delayMs: arrivalMs }); // matches the CSS transition duration
       // Start the screen-only module load under the dock veil. Phase 2 still owns the public open;
       // its retry preserves the first dock intent if the import is slower than the ceremony.
       if (screenPushRequestIsLive(this, 'station')) this._ensureStationScreenRegistered();
