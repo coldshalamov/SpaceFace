@@ -15,6 +15,7 @@
 // the same thing on both sides of the lane.
 
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
+import { sabArenaTotalBytes } from '../../scripts/lib/simSabEnvelope.mjs';
 
 // Layout constants mirror scripts/lib/simWorkerHost.mjs (SAB_JOURNAL_MAGIC /
 // SAB_SLOT_BUSY_BASE / per-slot column layout). Kept local so the main-side
@@ -39,28 +40,10 @@ const SAB_LAYOUT_VERSION = 2;
 const SAB_HEADER_BYTES = 64;
 const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
 
-// Mirror of sabArenaTotalBytes in scripts/lib/simSabEnvelope.mjs — kept local
-// per the main-side graph's no-host-import rule.
-const SAB_ENV_CMD_RING = 4;
-const SAB_ENV_REPLY_RING = 4;
-const SAB_ENV_HEAD_BYTES = 32;
-const SAB_ENV_CMD_PAYLOAD_BYTES = 256 * 1024;
-const SAB_ENV_REPLY_PAYLOAD_BYTES = 64 * 1024 + 640 * 1024;
-function sabEnvelopeTailBytes({ slotCount, recordCap }) {
-  const alignTo = (v, b) => Math.ceil(v / b) * b;
-  const journalEnd = SAB_HEADER_BYTES + slotCount * recordCap * SAB_SLOT_BYTES_PER_RECORD;
-  const cmdBase = alignTo(journalEnd, 8);
-  const cmdCellBytes = alignTo(SAB_ENV_HEAD_BYTES + SAB_ENV_CMD_PAYLOAD_BYTES, 8);
-  const replyBase = alignTo(cmdBase + SAB_ENV_CMD_RING * cmdCellBytes, 8);
-  const replyCellBytes = alignTo(SAB_ENV_HEAD_BYTES + SAB_ENV_REPLY_PAYLOAD_BYTES, 8);
-  const totalBytes = alignTo(replyBase + SAB_ENV_REPLY_RING * replyCellBytes, 8);
-  return totalBytes - journalEnd;
-}
-
 export function createLaneSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
   if (typeof SharedArrayBuffer !== 'function') return null;
   const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
-  const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes + sabEnvelopeTailBytes({ slotCount, recordCap }));
+  const sab = new SharedArrayBuffer(sabArenaTotalBytes({ slotCount, recordCap }));
   const header = new Int32Array(sab, 0, SAB_HEADER_INTS);
   header[0] = SAB_HEADER_MAGIC;
   header[1] = SAB_LAYOUT_VERSION;

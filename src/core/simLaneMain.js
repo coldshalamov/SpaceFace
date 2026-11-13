@@ -680,6 +680,7 @@ export function createSimLaneRuntime({
   let workerClockCommandFlight = null;
   let workerClockLatestCommandFlight = null;
   let sabEnv = null;                    // armed SAB envelope channel (layout v2)
+  let drainingSabReplies = false;
   let laneClosed = false;
   let laneClosedComplete = false;
   let laneError = null;
@@ -719,6 +720,13 @@ export function createSimLaneRuntime({
   function onChannelMessage(msg) {
     if (!msg || typeof msg !== 'object') return;
     if (msg.kind === 'boot') return;
+    if (msg.kind === 'laneHeartbeatSample') {
+      if (openFreeze?.motionSampleId === msg.motionSampleId) {
+        const { kind, ...sample } = msg;
+        openFreeze.workerLive = { ...sample, receivedAtMs: nowMs() };
+      }
+      return;
+    }
     if (msg.kind === 'error') {
       const tracked = pending.get(msg.seq);
       if (tracked) { pending.delete(msg.seq); tracked.reject?.(new Error(msg.message || 'worker error')); }
@@ -833,15 +841,22 @@ export function createSimLaneRuntime({
   // consume call. Where waitAsync is missing the pump degrades to the
   // per-frame drain inside consumeLatestCompletedTick.
   function drainSabRepliesNow() {
-    if (!sabEnv) return;
+    if (!sabEnv || drainingSabReplies) return;
+    let drained = 0;
+    drainingSabReplies = true;
     try {
-      sabEnvelopeDrain(sabEnv, 'reply', (msg, cell, bin) => {
+      drained = sabEnvelopeDrain(sabEnv, 'reply', (msg, cell, bin) => {
         onChannelMessage(decodeReplyFromSab(msg, bin, (slot, count) => journal.sabPackViewsFor(slot, count)));
       });
     } catch (error) {
       failLane(`sim worker envelope reply drain failed: ${(error && error.message) || error}`,
         error && error.stack ? String(error.stack) : null);
+    } finally {
+      drainingSabReplies = false;
     }
+    // The worker can reuse the reply cells now. Send one cumulative ACK for
+    // the drained replies instead of making it publish into cells we still own.
+    if (drained && workerClockMode === 'worker-local') flushDirectives();
   }
 
   function pumpSabReplies() {
@@ -1438,6 +1453,7 @@ export function createSimLaneRuntime({
   let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
+  let motionSampleId = 0;
   // -1 is "no reply applied yet": 0 is a valid early timestamp (page boot, or a
   // mocked clock) and must not read as "never applied".
   let lastAppliedAtMs = -1;
@@ -1665,6 +1681,9 @@ export function createSimLaneRuntime({
     if (advancing && gapMs > FREEZE_GAP_MS) {
       if (!openFreeze) {
         openFreeze = { openedAtMs: nowMs(), gapAtOpenMs: gapMs, snapshot: freezeSnapshot() };
+        if (workerClockMode === 'worker-local') {
+          openFreeze.motionSampleId = ++motionSampleId;
+        }
         freezeEpisodes.push(openFreeze);
         if (freezeEpisodes.length > FREEZE_EPISODE_LIMIT) {
           freezeEpisodes.splice(0, freezeEpisodes.length - FREEZE_EPISODE_LIMIT);
@@ -1747,6 +1766,7 @@ export function createSimLaneRuntime({
   function flushWorkerClockDirectives({ projectCursor = false } = {}) {
     if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
     if (projectCursor) cursorProjectionPending = true;
+    if (drainingSabReplies) return;
     // A timer tick can publish just before a main command reaches the worker's
     // serialized chain. Its reply has commandSequence 0 (or an older command
     // sequence) but still needs an ACK; withholding that ACK while the command
@@ -2211,7 +2231,15 @@ export function createSimLaneRuntime({
     },
     heartbeat() {
       if (workerClockMode !== 'worker-local' || laneClosed || !ready) return;
-      try { channel.post({ kind: 'laneHeartbeat' }); } catch (_) { /* best-effort beat */ }
+      const episode = openFreeze;
+      const sampleId = episode && !episode.sampleRequested ? episode.motionSampleId : null;
+      try {
+        if (sampleId == null) channel.post({ kind: 'laneHeartbeat' });
+        else {
+          channel.post({ kind: 'laneHeartbeat', motionSampleId: sampleId });
+          episode.sampleRequested = true;
+        }
+      } catch (_) { /* best-effort beat */ }
     },
     stepOnce() {
       assertLaneOpen();
@@ -2375,6 +2403,7 @@ export function createSimLaneRuntime({
         lane: 'worker',
         clockOwner: workerClockMode,
         workerClockMode,
+        sabEnvelopeActive: sabEnv !== null,
         workerClockRequested,
         workerClockGeneration,
         workerClockCommandInFlight,
@@ -2384,6 +2413,7 @@ export function createSimLaneRuntime({
         workerClockLastAppliedCommandSequence,
         workerClockLastCommandScale,
         workerClockLastDiagnostics,
+        workerClockLive: openFreeze?.workerLive ?? null,
         workerClockCommandWallMs: workerClockCommandFlight
           ? Math.max(0, nowMs() - workerClockCommandFlight.sentMs) : null,
         workerClockCommandMainThreadDelayedMs: workerClockCommandFlight

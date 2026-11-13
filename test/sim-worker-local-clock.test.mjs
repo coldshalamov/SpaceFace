@@ -19,7 +19,7 @@ import {
 import { crucibleSetupFor } from '../src/ui/crucibleLaunch.js';
 import { createSabJournalArena, SAB_JOURNAL_MAGIC } from '../scripts/lib/simWorkerHost.mjs';
 import { bindSabEnvelopeChannel, sabEnvelopeDrain, sabEnvelopePost,
-  SAB_ENV_KIND, SAB_REPLY_SEQ_INDEX } from '../scripts/lib/simSabEnvelope.mjs';
+  SAB_ENV_KIND, SAB_REPLY_SEQ_INDEX, SAB_REPLY_FREE_INDEX } from '../scripts/lib/simSabEnvelope.mjs';
 import { getPromptDevice, setPromptDevice, getGamepadCaptureHandler, setGamepadCaptureHandler } from '../src/ui/bindings.js';
 
 function waitFor(predicate, timeoutMs = 30000) {
@@ -136,7 +136,7 @@ function sabJournalPack(arena, slot, start, rows) {
   };
 }
 
-function makeFixture(t, { helpers } = {}) {
+function makeFixture(t, { helpers, sab = false } = {}) {
   const posts = [];
   let receive = null;
   const bus = createBus();
@@ -148,7 +148,7 @@ function makeFixture(t, { helpers } = {}) {
   };
   const lane = createSimLaneRuntime({
     state, registry: {}, bus,
-    flags: { lane: 'worker', warnings: [], sab: false },
+    flags: { lane: 'worker', warnings: [], sab },
     // Explicit local mode exercises the browser protocol with a deterministic
     // channel while the default injected/manual path remains directive-driven.
     clockMode: 'worker-local',
@@ -163,6 +163,25 @@ function makeFixture(t, { helpers } = {}) {
   receive({ kind: 'ready', seq: posts[0].seq });
   return { lane, posts, state, receive, bus };
 }
+
+test('the main lane frees SAB reply cells before sending one cumulative ACK', t => {
+  const f = makeFixture(t, { sab: true });
+  const arena = f.posts[0].sabArena;
+  const worker = bindSabEnvelopeChannel(arena);
+  sabEnvelopeDrain(worker, 'cmd', () => {});
+  for (let sequence = 1; sequence <= 4; sequence++) {
+    sabEnvelopePost(worker, 'reply', {
+      kind: 'clockTick', clockSequence: sequence, stateTick: sequence,
+      simTime: sequence / 60, journalEnd: 0,
+    }, SAB_ENV_KIND.TICK_DONE);
+  }
+  f.lane.runner.consumeLatestCompletedTick({});
+  assert.equal(Atomics.load(arena.header, SAB_REPLY_FREE_INDEX), 4);
+  const acks = [];
+  sabEnvelopeDrain(worker, 'cmd', message => acks.push(message));
+  assert.deepEqual(acks.map(message => [message.kind, message.clockSequence]), [['clockAck', 4]]);
+  assert.equal(f.state.tick, 4);
+});
 
 function makeWatchdogFixture(t) {
   let clock = 0;
@@ -2058,6 +2077,21 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
     await waitFor(() => replies.some((reply) => reply.seq === 'after-transition'));
     assert.equal(ackTimersAtFinalize, 1, 'an obsolete command cannot release an ACK past a queued lifecycle transition');
     assert.equal(ackTimers.size, 1);
+
+    send({ kind: 'laneHeartbeat' });
+    assert.equal(replies.some((reply) => reply.kind === 'laneHeartbeatSample'), false);
+    send({ kind: 'laneHeartbeat', motionSampleId: 7 });
+    const sample = replies.at(-1);
+    assert.equal(sample.kind, 'laneHeartbeatSample');
+    assert.equal(sample.motionSampleId, 7);
+    assert.equal(sample.lifecycleGeneration, 1);
+    assert.equal(sample.steps, 0);
+    assert.equal(sample.wakePending, false);
+    assert.equal(sample.appliedCommandSequence, 2);
+    assert.equal(sample.unacked, 1);
+    assert.equal(sample.oldestUnackedSequence, secondReply.clockSequence);
+    assert.equal(sample.replySequence, secondReply.clockSequence);
+    assert.equal(sample.sabReplyFreeCount, sample.sabReplySequence);
   } finally {
     if (replies.some((reply) => reply.kind === 'ready')) {
       post({ kind: 'shutdown', seq: 'sab-early-ack-shutdown' }, SAB_ENV_KIND.SHUTDOWN);
@@ -2299,6 +2333,16 @@ test('freeze recorder opens an episode when applied replies starve during advanc
   assert.equal(episode.snapshot.shedEvents, 2);
   assert.equal(episode.snapshot.retainedRows, 3);
   assert.ok(diag.msSinceLastAppliedReply >= 350);
+  assert.equal(f.posts.some(msg => msg.motionSampleId != null), false,
+    'the freeze sampler never generates an extra presentation heartbeat');
+  f.lane.runner.heartbeat();
+  f.lane.runner.heartbeat();
+  const requests = f.posts.filter(msg => msg.kind === 'laneHeartbeat' && msg.motionSampleId != null);
+  assert.equal(requests.length, 1);
+  f.receive({ kind: 'laneHeartbeatSample', motionSampleId: requests[0].motionSampleId + 1, steps: 10 });
+  assert.equal(f.lane.getDiagnostics().workerClockLive, null, 'a stray sample cannot classify this freeze');
+  f.receive({ kind: 'laneHeartbeatSample', motionSampleId: requests[0].motionSampleId, steps: 11 });
+  assert.equal(f.lane.getDiagnostics().workerClockLive.steps, 11);
 
   // A fresh applied reply closes the episode with a duration and the state at
   // the moment it recovered.
@@ -2309,6 +2353,7 @@ test('freeze recorder opens an episode when applied replies starve during advanc
   assert.equal(after.freezeEpisodes.length, 1, 'a closed freeze stays recorded once');
   assert.ok(after.freezeEpisodes[0].durationMs > 0);
   assert.ok(after.freezeEpisodes[0].closingSnapshot);
+  assert.equal(after.freezeEpisodes[0].workerLive.steps, 11);
 });
 
 test('freeze recorder stays quiet while paused or outside flight', async (t) => {

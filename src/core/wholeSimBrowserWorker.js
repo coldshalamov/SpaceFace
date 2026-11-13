@@ -38,6 +38,8 @@ import {
   SAB_CMD_SEQ_INDEX,
   SAB_ENV_KIND,
   SAB_ENV_STATUS,
+  SAB_REPLY_FREE_INDEX,
+  SAB_REPLY_SEQ_INDEX,
 } from '../../scripts/lib/simSabEnvelope.mjs';
 
 const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
@@ -1483,6 +1485,35 @@ self.onmessage = (event) => {
       if (localClock.wake?.token) cancelLocalClockWake();
       localClock.consecutiveTaskWakes = 0;
       scheduleLocalClock();
+    }
+    if (Number.isSafeInteger(msg.motionSampleId)) {
+      // This path stays out of the directive chain and the SAB reply ring, so
+      // a stalled pose reply cannot also hide the current worker watermarks.
+      const header = sabEnv?.header;
+      self.postMessage({
+        kind: 'laneHeartbeatSample',
+        motionSampleId: msg.motionSampleId,
+        sampledAtMs: now,
+        active: localClock.active,
+        scale: localClock.scale,
+        lifecycleGeneration: localClock.lifecycleGeneration,
+        heartbeatHeld: localClock.heartbeatHeld,
+        steps: localClock.stepCount,
+        directiveTicks: localClock.directiveTick,
+        appliedCommandSequence: localClock.appliedCommandSequence,
+        wakePending: localClock.wake !== null,
+        tickQueued: localClock.tickQueued,
+        backpressured: localClock.backpressured,
+        retainedRows: localClock.durableCount,
+        unacked: localClock.unackedSequences.length,
+        oldestUnackedSequence: localClock.unackedSequences[0] ?? null,
+        replySequence: localClock.replySequence,
+        staleAckRecoveries: localClock.staleAckRecoveries,
+        shedInputPublishes: localClock.shedInputPublishCount || 0,
+        sabCommandSequence: header ? Atomics.load(header, SAB_CMD_SEQ_INDEX) : null,
+        sabReplySequence: header ? Atomics.load(header, SAB_REPLY_SEQ_INDEX) : null,
+        sabReplyFreeCount: header ? Atomics.load(header, SAB_REPLY_FREE_INDEX) : null,
+      });
     }
     return;
   }
