@@ -2473,6 +2473,12 @@ const _impactTraumaCtx = {
 function snapshotImpactPayload(p) {
   return { ...p, pos: { ...p.pos }, normal: { ...p.normal } };
 }
+
+// Only the authority's own pooled receipt has this fixed, clone-safe shape.
+// Synthetic or future producer objects still go through the generic bridge.
+export function snapshotNativePhysicsImpact(payload) {
+  return payload === _impactPayload ? snapshotImpactPayload(payload) : undefined;
+}
 // Optional measurement channels are deliberately NOT owned by the retained literal: an
 // unmeasured receipt field must stay a hole on the wire. `emitPhysicsImpact` writes the
 // key only when a finite value lands and deletes it otherwise, so neither a ghost key

@@ -5,7 +5,8 @@ import { core } from '../src/core/coreSystem.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { Masks } from '../src/core/entity.js';
-import { physics } from '../src/core/physics.js';
+import { physics, snapshotNativePhysicsImpact } from '../src/core/physics.js';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { measuredSkinAllowedFor } from '../src/data/collisionProxyManifests.js';
 import { modelTruthRow } from '../src/data/modelTruth.js';
@@ -265,7 +266,15 @@ test('projectile sweeps and contact receipts see solid dressing rows', () => {
     // Contact receipts: a solver receipt for a row resolves through the dressing table so
     // the impact event still fires with both ids.
     const impacts = [];
-    bus.on('physics:impact', (payload) => impacts.push(payload));
+    bus.on('physics:impact', (payload) => {
+      const native = snapshotNativePhysicsImpact(payload);
+      assert.ok(native, 'the authority owns this pooled payload');
+      assert.deepEqual(native, projectBridgeEvent('physics:impact', payload).flat);
+      assert.notEqual(native.pos, payload.pos);
+      assert.notEqual(native.normal, payload.normal);
+      assert.equal(snapshotNativePhysicsImpact(native), undefined, 'other producers use the generic bridge');
+      impacts.push(native);
+    });
     physics._sg02 = {
       drainContactImpacts: () => [{
         aId: 990002,
@@ -282,6 +291,7 @@ test('projectile sweeps and contact receipts see solid dressing rows', () => {
     assert.equal(emitted, 1, 'receipt against a dressing row emits');
     assert.equal(impacts.length, 1);
     assert.equal(impacts[0].bId, hulk.id);
+    assert.equal(Object.hasOwn(impacts[0], 'solverPlayerHeadingRad'), false);
   } finally {
     core.destroy();
     t.bus.clear();

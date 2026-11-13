@@ -22,7 +22,7 @@ import { presentationAdapters } from '../../src/systems/presentationAdapters.js'
 import { actions } from '../../src/systems/actions.js';
 import { flight } from '../../src/systems/flight.js';
 import { weapons } from '../../src/systems/weapons.js';
-import { physics } from '../../src/core/physics.js';
+import { physics, snapshotNativePhysicsImpact } from '../../src/core/physics.js';
 import { readPhysicsTelemetry } from '../../src/core/physicsAuthority.js';
 import { combat } from '../../src/systems/combat.js';
 import { cargo } from '../../src/systems/cargo.js';
@@ -1331,9 +1331,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         ...(killer ? { killerOccupantGeneration: killer.occupantGeneration ?? null } : {}),
       };
     }
-    const projected = projectBridgeEvent(type, receipt);
+    const nativeImpact = type === 'physics:impact' ? snapshotNativePhysicsImpact(receipt) : undefined;
+    const projected = nativeImpact === undefined ? projectBridgeEvent(type, receipt) : null;
     host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
-    if (projected.dropped) {
+    if (projected?.dropped) {
       host.droppedEventCount++;
       host.droppedEventTypes[type] = (host.droppedEventTypes[type] || 0) + 1;
       if (host.dropSamples.length < 20) {
@@ -1355,8 +1356,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     }
     host.pendingEvents.push({
       t: type,
-      p: projected.flat,
-      lane: projected.lane,
+      p: projected ? projected.flat : nativeImpact,
+      lane: projected ? projected.lane : 'sim',
       // Emit-time sim context: the facade replays whole batches after applying
       // the reply's domain updates, so listeners that branch on state.mode or
       // world.enterSerial would otherwise read the batch's END state for an
