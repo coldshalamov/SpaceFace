@@ -77,6 +77,42 @@ test('contact receipts read native body centers only for missing manifold coordi
   }
 });
 
+test('a merged pair reads only the last accepted ordered manifold', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const queue = owner._eventQueue;
+  const contactPair = owner.world.contactPair;
+  try {
+    owner.syncFromEntities([craft(1, 100, true), craft(2, 200)]);
+    const a = owner.records.get(1).colliders[0];
+    const b = owner.records.get(2).colliders[0];
+    const event = (first, second, force) => ({
+      collider1: () => first.handle, collider2: () => second.handle,
+      totalForceMagnitude: () => force, maxForceDirection: () => ({ x: 1, y: 0, z: 0 }),
+    });
+    owner._eventQueue = { drainContactForceEvents(receive) {
+      receive(event(a, b, 120));
+      receive(event(b, a, 240));
+      receive(event(a, b, 0));
+    } };
+    const queries = [];
+    owner.world.contactPair = (first, second, receive) => {
+      queries.push([first.handle, second.handle]);
+      receive({ numSolverContacts: () => 1,
+        solverContactPoint: () => ({ x: first === b ? 170 : 150, z: 3 }) });
+    };
+    const [receipt] = owner._captureContactImpacts();
+    assert.deepEqual(queries, [[b.handle, a.handle]]);
+    assert.equal(receipt.aId, 1);
+    assert.equal(receipt.bId, 2);
+    assert.equal(receipt.impulse, 6);
+    assert.deepEqual(receipt.pos, { x: 170, z: 3 });
+  } finally {
+    owner._eventQueue = queue;
+    owner.world.contactPair = contactPair;
+    owner.dispose();
+  }
+});
+
 test('batched pose publication matches native rereads through control, teleports, and solver recovery', async () => {
   const owners = await Promise.all([
     createSg02DynamicBodyOwner({ publishTelemetry: false }),

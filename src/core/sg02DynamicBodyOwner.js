@@ -366,7 +366,7 @@ export class Sg02DynamicBodyOwner {
     this._frameOriginSeq = normalizeFrameOriginSeq(options.frameOriginSeq);
     this._frameScratch = { x: 0, z: 0 };
     this._globalScratch = { x: 0, z: 0 };
-    // Contact-impact merge bookkeeping is retained across ticks: aId -> Map<bId, {stamp,receipt}>
+    // Contact-impact merge bookkeeping is retained across ticks: aId -> Map<bId, row>
     // replaces per-event `a\0b` string keys, and the emitted receipt list is a reused scratch.
     this._impactMergeRows = new Map();
     // Inner bucket maps are pooled too: clearing returns them here instead of allocating a
@@ -3465,11 +3465,9 @@ export class Sg02DynamicBodyOwner {
 
   _captureContactImpacts() {
     if (!this._eventQueue || typeof this._eventQueue.drainContactForceEvents !== 'function') return [];
-    // Retained nested-map merge keyed by raw entity ids (aId bucket -> bId -> receipt). Receipt
-    // objects, pos, and normal stay fresh per event -- they escape to drainContactImpacts
-    // callers -- but the merge structure, output array, and manifold point scratch are reused
-    // every step. The final sort is a strict total order on unique (aId,bId) pairs, so bucket
-    // flatten order cannot change the result.
+    // Retained nested-map merge keyed by raw entity ids. A compound pair can emit many
+    // collider events, but only its final accepted event contributes the receipt position.
+    // Keep that event's ordered colliders and read their manifold after the merge.
     const merged = this._impactMergeRows;
     for (const byB of merged.values()) {
       byB.clear();
@@ -3478,7 +3476,6 @@ export class Sg02DynamicBodyOwner {
     merged.clear();
     const receipts = this._impactReceipts;
     receipts.length = 0;
-    const pointScratch = this._contactPointScratch;
     this._eventQueue.drainContactForceEvents((event) => {
       const ownedA = this._colliderOwners.get(event.collider1());
       const ownedB = this._colliderOwners.get(event.collider2());
@@ -3542,20 +3539,6 @@ export class Sg02DynamicBodyOwner {
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
 
-      pointScratch.x = NaN;
-      pointScratch.z = NaN;
-      if (typeof this.world.contactPair === 'function') {
-        this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
-      }
-      // A native solver point normally supplies both coordinates. Read the body centers only
-      // when the point is missing or partial, preserving the per-coordinate midpoint fallback.
-      if (!Number.isFinite(pointScratch.x) || !Number.isFinite(pointScratch.z)) {
-        const translationA = recA.body.translation();
-        const translationB = recB.body.translation();
-        pointScratch.x = finite(pointScratch.x, (finite(translationA.x) + finite(translationB.x)) * 0.5);
-        pointScratch.z = finite(pointScratch.z, (finite(translationA.z) + finite(translationB.z)) * 0.5);
-      }
-      const global = frameToGlobal(pointScratch, this._frameOrigin, this._globalScratch);
       const causalActorId = directContactCausalActorId(
         a.entity.id,
         b.entity.id,
@@ -3571,7 +3554,8 @@ export class Sg02DynamicBodyOwner {
         byB = this._impactByBPool.length ? this._impactByBPool.pop() : new Map();
         merged.set(a.entity.id, byB);
       }
-      const existing = byB.get(b.entity.id);
+      const row = byB.get(b.entity.id);
+      const existing = row?.receipt;
       const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, cap);
       // SFQ-B183 — the receipt normal is published oriented aId→bId, the same convention the
       // custom backend's contactNormalInto already guarantees (and that hullScars.js and feel.js
@@ -3599,7 +3583,7 @@ export class Sg02DynamicBodyOwner {
         aGeneration: a.entity.occupantGeneration,
         bGeneration: b.entity.occupantGeneration,
         impulse,
-        pos: { x: finite(global.x), z: finite(global.z) },
+        pos: null,
         normal,
         causalActorId,
         preSolveClosingSpeed: existing
@@ -3620,13 +3604,41 @@ export class Sg02DynamicBodyOwner {
         receipt.appliedPlayerHeadingRad = 0;
         receipt.appliedPlayerCourseRad = 0;
       }
-      byB.set(b.entity.id, receipt);
+      if (row) {
+        row.receipt = receipt;
+        row.ownedA = ownedA;
+        row.ownedB = ownedB;
+      } else {
+        byB.set(b.entity.id, { receipt, ownedA, ownedB });
+      }
     });
     for (const byB of merged.values()) {
-      for (const receipt of byB.values()) receipts.push(receipt);
+      for (const { receipt, ownedA, ownedB } of byB.values()) {
+        receipt.pos = this._contactImpactPoint(ownedA, ownedB);
+        receipts.push(receipt);
+      }
     }
     receipts.sort((a, b) => compareIds(a.aId, b.aId) || compareIds(a.bId, b.bId));
     return receipts;
+  }
+
+  _contactImpactPoint(ownedA, ownedB) {
+    const point = this._contactPointScratch;
+    point.x = NaN;
+    point.z = NaN;
+    if (typeof this.world.contactPair === 'function') {
+      this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
+    }
+    // A solver point normally supplies both coordinates. For a missing coordinate only,
+    // fall back to the midpoint of the native body centers.
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.z)) {
+      const a = ownedA.rec.body.translation();
+      const b = ownedB.rec.body.translation();
+      point.x = finite(point.x, (finite(a.x) + finite(b.x)) * 0.5);
+      point.z = finite(point.z, (finite(a.z) + finite(b.z)) * 0.5);
+    }
+    const global = frameToGlobal(point, this._frameOrigin, this._globalScratch);
+    return { x: finite(global.x), z: finite(global.z) };
   }
 
   _maybeResyncBodyPose(rec, entity) {
