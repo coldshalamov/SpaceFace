@@ -166,6 +166,10 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
       for (const message of heldAcks.splice(0)) { deliveredAcks++; send(message); }
       await settle();
     },
+    async sampleHeartbeat(clockSequence, ackJournalEnd, lifecycleGeneration) {
+      send({ kind: 'laneHeartbeat', motionSampleId: 1, clockSequence, ackJournalEnd, lifecycleGeneration });
+      await settle();
+    },
     async pause() {
       lane.runner.setClockActive(false);
       await settle();
@@ -230,6 +234,27 @@ test('true one-shot backlog remains bounded and its pressure is reported before 
   assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.backpressureEpisodes >= 1);
   assert.ok(f.clock.backpressureTotalMs > 0);
   assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('a heartbeat recovers a lost reply credit without waiting for a journal rebuild', async t => {
+  const f = await fixture(t, { bodies: 4 });
+  await f.until(500);
+  const applied = f.posts.filter(message => message.kind === 'clockTick').at(-1);
+  assert.ok(applied);
+  assert.equal(f.clock.unackedSequences.length, 4);
+  assert.equal(f.deliveredAcks(), 0);
+  assert.equal(f.state.tick, applied.stateTick);
+  assert.ok(f.clock.stepCount > f.state.tick, 'authoritative motion outlasted the reply window');
+
+  await f.sampleHeartbeat(applied.clockSequence, applied.journalEnd, 1);
+  assert.equal(f.clock.unackedSequences.length, 4, 'a stale lifecycle cannot release current credits');
+  await f.sampleHeartbeat(applied.clockSequence + 1, applied.journalEnd, 0);
+  assert.equal(f.clock.unackedSequences.length, 4, 'a future watermark cannot release current credits');
+  await f.sampleHeartbeat(applied.clockSequence, applied.journalEnd, 0);
+  await f.until(600);
+  assert.ok(f.state.tick > applied.stateTick, 'the next pose arrives without the watchdog');
+  assert.equal(f.clock.staleAckRecoveries, 0);
+  assert.equal(f.deliveredAcks(), 0);
 });
 
 test('delayed reply respects reused entity lives and ancestor domain reset order', async t => {

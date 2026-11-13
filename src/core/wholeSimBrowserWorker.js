@@ -1256,6 +1256,23 @@ function releaseLocalClockAckOnReceipt(msg) {
   });
 }
 
+function recoverClockCreditFromHeartbeat(msg) {
+  if (!localClock.enabled || localClock.stopped
+    || msg.lifecycleGeneration !== localClock.lifecycleGeneration
+    || !Number.isSafeInteger(msg.clockSequence)
+    || msg.clockSequence > localClock.replySequence
+    || !localClock.sentAwaitingAck || msg.clockSequence < localClock.unackedSequences[0]) return;
+  if (sabEnv) {
+    const nextCell = sabEnv.reply.cells[sabEnv.reply.nextWrite];
+    if (Atomics.load(nextCell.head, SAB_ENV_STATUS) !== 0) return;
+  }
+  localReleaseClockAck(msg.clockSequence, msg.ackJournalEnd).then(scheduleLocalClock, error => {
+    self.postMessage({
+      kind: 'error', message: error?.message || String(error), stack: error?.stack || null,
+    });
+  });
+}
+
 async function handleLocalClockAck(msg) {
   if (!localClock.enabled || localClock.stopped) return;
   let retainedReplyPublished = false;
@@ -1514,6 +1531,7 @@ self.onmessage = (event) => {
         sabReplySequence: header ? Atomics.load(header, SAB_REPLY_SEQ_INDEX) : null,
         sabReplyFreeCount: header ? Atomics.load(header, SAB_REPLY_FREE_INDEX) : null,
       });
+      recoverClockCreditFromHeartbeat(msg);
     }
     return;
   }

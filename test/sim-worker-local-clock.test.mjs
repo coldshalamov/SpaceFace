@@ -2293,6 +2293,8 @@ test('freeze recorder opens an episode when applied replies starve during advanc
   f.lane.runner.heartbeat();
   const requests = f.posts.filter(msg => msg.kind === 'laneHeartbeat' && msg.motionSampleId != null);
   assert.equal(requests.length, 1);
+  assert.equal(requests[0].clockSequence, 1, 'the heartbeat can repeat the last applied reply watermark');
+  assert.equal(requests[0].lifecycleGeneration, 0);
   f.receive({ kind: 'laneHeartbeatSample', motionSampleId: requests[0].motionSampleId + 1, steps: 10 });
   assert.equal(f.lane.getDiagnostics().workerClockLive, null, 'a stray sample cannot classify this freeze');
   f.receive({ kind: 'laneHeartbeatSample', motionSampleId: requests[0].motionSampleId, steps: 11 });

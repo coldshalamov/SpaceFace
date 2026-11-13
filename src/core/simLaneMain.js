@@ -748,6 +748,9 @@ export function createSimLaneRuntime({
             clockSequence: msg.clockSequence,
             journalEnd: Number.isSafeInteger(msg.journalEnd) ? msg.journalEnd : 0,
           };
+          workerClockLastReceivedJournalEnd = Math.max(
+            workerClockLastReceivedJournalEnd, workerClockAckPending.journalEnd,
+          );
         }
         // A local-clock reply carries the worker's cumulative completion
         // watermark. Prefer the diagnostic copy because it is explicitly
@@ -1480,6 +1483,7 @@ export function createSimLaneRuntime({
   let workerClockCommandInFlightSequence = 0;
   let workerClockAckPending = null;
   let workerClockLastReceivedSequence = 0;
+  let workerClockLastReceivedJournalEnd = 0;
   let workerClockLastAckedSequence = 0;
   let workerClockLastAppliedCommandSequence = 0;
   let workerClockLastCommandScale = null;
@@ -2239,7 +2243,15 @@ export function createSimLaneRuntime({
       try {
         if (sampleId == null) channel.post({ kind: 'laneHeartbeat' });
         else {
-          channel.post({ kind: 'laneHeartbeat', motionSampleId: sampleId });
+          // A visible stalled flight can repeat the already-applied watermark
+          // on its next heartbeat without waiting for another reply.
+          channel.post({
+            kind: 'laneHeartbeat',
+            motionSampleId: sampleId,
+            clockSequence: workerClockLastReceivedSequence,
+            ackJournalEnd: workerClockLastReceivedJournalEnd,
+            lifecycleGeneration,
+          });
           episode.sampleRequested = true;
         }
       } catch (_) { /* best-effort beat */ }
