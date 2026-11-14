@@ -90,6 +90,9 @@ const FRONTIER_TAG_EVENTS = Object.freeze([
 ]);
 // The player inside this of a live stead hears the household line once.
 const HOUSEHOLD_HELLO_R = 650;
+// A jettisoned food pod must ride the supply ring this long before it lands.
+const FOOD_UNLOAD_S = 2;
+const FOOD_MAX_SPEED = 12;
 // Site seeding — the production spawner for the barn-raising pipeline.
 const FRONTIER_SITE = Object.freeze({
   minR: 1400,        // a site never plants under the player's nose
@@ -559,6 +562,7 @@ export const frontierHomesteads = {
     ensureFrontierState(state);
     // Tag bodies die with the run's entities; the map only needs its ids gone.
     this._receivingTags?.clear();
+    this._foodDwell = null;
   },
 
   _isBarnMission(m) {
@@ -1529,11 +1533,71 @@ export const frontierHomesteads = {
     this._log(state, FRONTIER_HOUSEHOLD_LINES.stores, rec.name);
   },
 
+  /** The one body the player is towing — only ever that one, never a scan. */
+  _playerTowedBody(state) {
+    const tether = state.player?.tether;
+    if (tether && tether.active !== false && tether.targetId != null) {
+      const e = state.entities.get(tether.targetId);
+      if (e && e.alive !== false) return e;
+    }
+    const pEnt = state.entities.get(state.playerId);
+    const pT = pEnt?.tether;
+    if (pT && pT.active !== false && pT.targetId != null) {
+      const e = state.entities.get(pT.targetId);
+      if (e && e.alive !== false) return e;
+    }
+    return null;
+  },
+
+  /** Is this body the player's own jettisoned whole food load? Evaluated once
+   *  per pod identity — the verdict cache is keyed to id + occupant generation
+   *  so a recycled id can never inherit another pod's answer. The canonical
+   *  check is the garden owner's own custody read. */
+  _foodPodVerdict(state, pod) {
+    if (!(this._foodVerdicts instanceof Map)) this._foodVerdicts = new Map();
+    const key = `${pod.id}:${pod.occupantGeneration ?? 0}`;
+    const cached = this._foodVerdicts.get(key);
+    if (cached !== undefined) return cached;
+    const garden = this.ctx?.registry?.get?.('lootShards');
+    const mass = typeof garden?.gardenFeedMass === 'function' ? garden.gardenFeedMass(pod) : null;
+    const ok = Number.isFinite(mass) && mass > 0;
+    if (this._foodVerdicts.size >= 64) this._foodVerdicts.delete(this._foodVerdicts.keys().next().value);
+    this._foodVerdicts.set(key, ok);
+    return ok;
+  },
+
+  /** Food lands exactly like a supply pod — the stead steadies, the board pays,
+   *  and the household hears its own line about it. */
+  _consumeFoodPod(state, f, rec, pod) {
+    if (!pod || pod.alive === false) return;
+    pod.data.understoryConsumed = true; // spent like supplyCargo — no second intake reads it
+    rec.supplies += 1;
+    rec.stranded = false;
+    rec.lastSupplyAt = state.simTime;
+    f.supplyRuns = f.supplyRuns.filter((r) => r.homesteadId !== rec.entityId);
+    this.helpers.removeEntity(pod.id, { reason: 'frontier_food_landed' });
+    this.bus.emit('frontier:supplyDelivered', {
+      homesteadId: rec.entityId, supplies: rec.supplies, tick: state.tick, how: 'food',
+    });
+    this._grant(state, FRONTIER_BOARD.supplyFeeCr * this._tierMult(f),
+      `frontier_supply:${rec.entityId}:${rec.supplies}`);
+    this._rep(state, FRONTIER_BOARD.supplyRep, 'frontier_supply_run');
+    this._verifyLeads(state, 'hungry', { steadId: rec.entityId }, 'supply');
+    this._settleDebtFor(state, rec.entityId, 'covered');
+    this._deed(state, 'supply', rec.entityId);
+    this._log(state, FRONTIER_HOUSEHOLD_LINES.food, rec.name);
+    this._noteStoresAboard(state, rec);
+  },
+
   // ── Raised homesteads persist: traffic on a beat, supply asks when stranded ────
-  _tickHomesteads(state) {
+  _tickHomesteads(state, dt) {
     const f = ensureFrontierState(state);
     let supplyPods = null;
     const playerEnt = state.entities.get(state.playerId);
+    // The player's own towed food pod — one body, resolved once for all steads.
+    const food = this._playerTowedBody(state);
+    const foodOk = food && this._foodPodVerdict(state, food) ? food : null;
+    let foodDwelt = false;
     for (const rec of f.homesteads) {
       if (rec.gone === true) continue;
       const ent = state.entities.get(rec.entityId);
@@ -1554,6 +1618,29 @@ export const frontierHomesteads = {
         if (!isObj(rec.said)) rec.said = {};
         rec.said.household = true;
         this._log(state, FRONTIER_HOUSEHOLD_LINES.household, rec.name);
+      }
+      // A player-towed food pod unloads slowly: it must ride the supply ring a
+      // full beat at hauling pace before the stead takes it aboard.
+      if (foodOk && foodOk.alive !== false
+          && dist2(foodOk.pos, ent.pos) <= FRONTIER_HOMESTEAD.supplyRadius ** 2
+          && Math.hypot((foodOk.vel?.x || 0) - (ent.vel?.x || 0),
+            (foodOk.vel?.z || 0) - (ent.vel?.z || 0)) < FOOD_MAX_SPEED) {
+        foodDwelt = true;
+        const dwell = this._foodDwell;
+        if (dwell && dwell.podId === foodOk.id
+            && dwell.podGen === (foodOk.occupantGeneration ?? null)
+            && dwell.steadId === rec.entityId) {
+          dwell.t += num(dt);
+        } else {
+          this._foodDwell = {
+            podId: foodOk.id, podGen: foodOk.occupantGeneration ?? null,
+            steadId: rec.entityId, t: 0,
+          };
+        }
+        if (this._foodDwell.t >= FOOD_UNLOAD_S) {
+          this._consumeFoodPod(state, f, rec, foodOk);
+          this._foodDwell = null;
+        }
       }
       // Traffic grows on its beat — the homestead is alive on the chart.
       const beats = Math.floor((state.simTime - rec.raisedAt) / FRONTIER_HOMESTEAD.trafficPeriodS);
@@ -1600,6 +1687,8 @@ export const frontierHomesteads = {
         this._noteStoresAboard(state, rec);
       }
     }
+    // Off the ring or too fast: the unload timer starts over next steady beat.
+    if (!foodDwelt) this._foodDwell = null;
   },
 
   // ── The lead wire: rumor that verifies or sours ──────────────────────────────
@@ -2507,7 +2596,7 @@ export const frontierHomesteads = {
     this._tickBarnAttempt(state);
     this._tickSiteSeeding(state);
     this._tickRaising(state, dt);
-    this._tickHomesteads(state);
+    this._tickHomesteads(state, dt);
     this._tickWeldHeads(state, dt);
     this._tickLeads(state);
     this._tickDebts(state);
