@@ -58,6 +58,24 @@ echo "conflicts: $?"                            # 0 = clean; >0 = that many conf
    writes the line for that moment, use that line exactly.
 6. Tests drive the real owner with the payload the game really sends, and would fail on the old code.
 
+## A busy file is never a reason to stop (owner, 2026-11-14 — overrides PROTOCOL rule 2 and any packet line that says "report Blocked" for a file with foreign changes)
+
+Other agents have uncommitted edits all over this checkout. That does not stop you and it is not a
+blocker to report. When a file you need already shows changes in `git diff` that are not yours:
+
+```bash
+bash scripts/fleet/own-commit.sh begin  <path> [<path> ...]        # before you edit it: remember it as it is
+# ... make your edit in the file, alongside their lines; do not touch or "tidy" their lines ...
+bash scripts/fleet/own-commit.sh commit "<message>" <path> [...]   # commits only what you changed since begin
+```
+
+The commit holds `HEAD` plus exactly your change; their edit stays in the working tree, uncommitted,
+untouched. If your change and theirs are on the same lines the tool commits the whole file — that is
+allowed. Use the same command for your clean files in the same commit (list every path). Never wait
+on another agent, never leave a hunk unported, never write "deferred" or "blocked" because a file was
+dirty or a program was running. If the game lock is held, do everything else first, then wait for it.
+The only things that go under "Blocked" are things you tried and could not make work — with what you tried.
+
 ## Check budget (overrides any wider sweep a packet asks for)
 
 This machine is shared and slow. Your packet's **named** test files are mandatory. A packet's
