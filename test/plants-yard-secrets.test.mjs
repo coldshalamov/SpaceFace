@@ -204,6 +204,35 @@ test('PL-146 snuffing the lamp slows the caller permanently', () => {
   assertNoListeners(h.bus);
 });
 
+test('PL-146 save:loaded re-derives the claim from the restored ledger — a foreign slot moves no calls in', () => {
+  const h = harness({ state: { simTime: 0, claims: { bodies: [] } } });
+  const mod = pl146FirstCaller;
+  mod.init(h);
+  h.bus.emit('claim:claimed', { body: { id: 'b1', x: 12, z: 34 } });
+  h.state.simTime = NIGHT;
+  mod.update(0.5, h.state); // the first call lands at (12, 34)
+  assert.equal(eventsOf(h.bus, PL_146_CALL_EVENT).length, 1);
+  assert.equal(mod._claim.bodyId, 'b1');
+  // Loading a different save slot: its claims ledger is empty, so the old claim cannot
+  // survive the load.
+  h.state.claims.bodies = [];
+  h.bus.emit('save:loaded', {});
+  assert.equal(mod._claim, null, 'the stale claim is dropped with the loaded ledger');
+  h.state.simTime = NIGHT + FIRST_CALLER_TUNING.weekS;
+  mod.update(0.5, h.state);
+  assert.equal(eventsOf(h.bus, PL_146_CALL_EVENT).length, 1, 'no call fires at the old coordinates');
+  assert.equal(popups(h.bus).length, 1, 'and no popup either');
+  // When the loaded ledger still carries the body, the claim re-attaches — at the
+  // ledger's coordinates.
+  h.bus.emit('claim:claimed', { body: { id: 'b2', x: 100, z: 200 } });
+  h.state.claims.bodies = [{ id: 'b2', x: 140, z: 260 }];
+  h.bus.emit('save:loaded', {});
+  assert.equal(mod._claim.bodyId, 'b2', 'the claim re-attaches from the ledger');
+  assert.deepEqual({ x: mod._claim.x, z: mod._claim.z }, { x: 140, z: 260 }, 'at the ledger\'s coordinates');
+  mod.destroy();
+  assertNoListeners(h.bus);
+});
+
 // ---------- PL-147 The first part ----------
 
 test('PL-147 the works makes one wrong-size part; scrapping it changes nothing', () => {

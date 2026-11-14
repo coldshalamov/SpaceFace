@@ -407,6 +407,70 @@ test('PL-259 wrong choice: farm it with a fake breakdown — chalks stop, a dock
   assert.equal(station.data[PL_259_PAID_STAMP], undefined, 'the chalks stopped');
 });
 
+test('PL-259 cooldown per hull: the same broken hull re-fed inside the window earns no second deed', () => {
+  const { state, rec, bus } = boot(pl259SpareAndShare);
+  const needy = makeNpc(state, 'npc1', { x: 100, z: 0 }, { data: { trafficRole: 'hauler', disabled: true } });
+  const pod = makePod(state, { x: 10, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: needy.id });
+  assert.equal(eventsOf(rec, PLANTS_SPARE_EVENT).length, 1, 'the deed credits once');
+  // A fresh pod dropped for the SAME hull inside the offer-memory window: no re-credit.
+  const pod2 = makePod(state, { x: 8, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod2.id, collectorId: needy.id });
+  assert.equal(eventsOf(rec, PLANTS_SPARE_EVENT).length, 1, 'no second deed inside the cooldown');
+  // A different hull is a different deed.
+  const other = makeNpc(state, 'npc2', { x: 90, z: 0 }, { data: { trafficRole: 'hauler', disabled: true } });
+  const pod3 = makePod(state, { x: 6, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod3.id, collectorId: other.id });
+  assert.equal(eventsOf(rec, PLANTS_SPARE_EVENT).length, 2, 'another hull can still earn the chalks');
+  // Once the window is past, the same hull earns again.
+  state.simTime += SPARE_TUNING.offerMemoryS + 1;
+  const pod4 = makePod(state, { x: 4, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod4.id, collectorId: needy.id });
+  assert.equal(eventsOf(rec, PLANTS_SPARE_EVENT).length, 3, 'the cooldown expired: the deed credits again');
+});
+
+test('PL-259 the chalk mark expires with its stamp and reset/destroy despawn owned chalks', () => {
+  const { state, rec, bus } = boot(pl259SpareAndShare);
+  const needy = makeNpc(state, 'npc1', { x: 100, z: 0 }, { data: { trafficRole: 'hauler', disabled: true } });
+  const pod = makePod(state, { x: 10, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: needy.id });
+  const station = fixtureStation(state, 'st1', { x: 900, z: 0 });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  const chalk = rec.spawns.find((e) => e.data && e.data.plantsPl259Chalk === true);
+  assert.ok(chalk, 'the chalk mark is visible');
+  assert.ok(Number.isFinite(chalk.data.expireAt), 'the chalk carries its expiry');
+  sweep(pl259SpareAndShare, state, Math.ceil(SPARE_TUNING.paidUntilS / 0.5) + 2, 0.5);
+  assert.ok(rec.removes.includes(chalk.id), 'the expired chalk despawned');
+
+  // A live chalk is session truth: sector:exit takes it off the board.
+  const needy2 = makeNpc(state, 'npc2', { x: 90, z: 0 }, { data: { trafficRole: 'hauler', disabled: true } });
+  const pod2 = makePod(state, { x: 8, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod2.id, collectorId: needy2.id });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  const chalk2 = rec.spawns.filter((e) => e.data && e.data.plantsPl259Chalk === true)[1];
+  assert.ok(chalk2, 'a fresh chalk for the fresh deed');
+  bus.emit('sector:exit', {});
+  assert.ok(rec.removes.includes(chalk2.id), 'reset despawns the owned chalk');
+  assert.equal(pl259SpareAndShare._chalkIds.size, 0, 'the ledger is clear');
+
+  // destroy() despawns whatever chalk is still out.
+  state.simTime += SPARE_TUNING.paidUntilS + 1; // the old PAID stamp on the board laps first
+  const pod3 = makePod(state, { x: 6, z: 0 }, state.playerId);
+  bus.emit('cargo:jettisoned', { commodityId: 'cmdty_ore_iron', amount: 1 });
+  bus.emit('pickup:collected', { pickupId: pod3.id, collectorId: needy2.id });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  const chalk3 = rec.spawns.filter((e) => e.data && e.data.plantsPl259Chalk === true)[2];
+  assert.ok(chalk3, 'a chalk to outlive the plant');
+  pl259SpareAndShare.destroy();
+  assert.ok(rec.removes.includes(chalk3.id), 'destroy despawns the owned chalk');
+});
+
 // ---------------------------------------------------------------- PL-260
 
 test('PL-260 fiftieth visit: the station pays the toll, chalk exact line', () => {
@@ -610,6 +674,48 @@ test('PL-264 wrong choice: jump the count — red all week', () => {
   assert.equal(eventsOf(rec, PLANTS_LIGHT_EVENT, 'green_early').length, 0);
 });
 
+test('PL-264 grudge enforcement: natural greens stay shut and nothing re-grants until the week expires', () => {
+  const { state, rec, player } = boot(pl264LaneLight, { state: { simTime: 0 } });
+  const anchor = laneLightAnchor('s1');
+  player.pos = { ...anchor };
+  player.vel = { x: LANE_LIGHT_TUNING.jumpSpeedWu, z: 0 };
+  sweep(pl264LaneLight, state, 1, 0.5);
+  player.pos = { x: anchor.x + LANE_LIGHT_TUNING.lightRadiusWu * 3, z: anchor.z };
+  sweep(pl264LaneLight, state, 2, 0.5);
+  const jumped = eventsOf(rec, PLANTS_LIGHT_EVENT, 'jumped');
+  assert.equal(jumped.length, 1);
+  const until = jumped[0].payload.until;
+  // Park outside until early in a red phase, then enter and hold through the natural
+  // green: the light must NOT open for you, and holding must re-grant nothing.
+  sweep(pl264LaneLight, state, 46, 0.5); // simTime 24.5 = phase 0.5, red
+  player.pos = { ...anchor };
+  player.vel = { x: 0, z: 0 };
+  sweep(pl264LaneLight, state, 30, 0.5); // holds through the natural green phase at 38.4
+  const light = rec.spawns.find((e) => e.data && e.data.plantsPl264Light === true);
+  assert.ok(light, 'the light is spawned');
+  assert.notEqual(light.data.swarmFloorPad && light.data.swarmFloorPad.label, 'GO',
+    'no natural green opens the light during the week');
+  assert.equal(light.data.lampsFlashing, undefined, 'no green lamps for the jumper');
+  assert.equal(eventsOf(rec, PLANTS_LIGHT_EVENT, 'count_completed').length, 0,
+    'holding under the grudge re-grants nothing');
+  assert.equal(eventsOf(rec, PLANTS_LIGHT_EVENT, 'green_early').length, 0,
+    'green-early is not re-granted during the week');
+  // Wait the week out outside the radius, then hold a fresh count: green works again.
+  player.pos = { x: anchor.x + LANE_LIGHT_TUNING.lightRadiusWu * 3, z: anchor.z };
+  sweep(pl264LaneLight, state, Math.ceil((until - state.simTime) / 0.5) + 2, 0.5);
+  assert.ok(state.simTime >= until, 'the red week has expired');
+  player.pos = { ...anchor };
+  sweep(pl264LaneLight, state, 50, 0.5);
+  assert.equal(eventsOf(rec, PLANTS_LIGHT_EVENT, 'count_completed').length, 1,
+    'the grudge lifted: the full count credits again');
+  player.pos = { x: anchor.x + LANE_LIGHT_TUNING.lightRadiusWu * 2, z: anchor.z };
+  sweep(pl264LaneLight, state, 1, 0.5);
+  player.pos = { ...anchor };
+  sweep(pl264LaneLight, state, 8, 0.5);
+  assert.ok(eventsOf(rec, PLANTS_LIGHT_EVENT, 'green_early').length >= 1,
+    'green one beat early works again');
+});
+
 // ---------------------------------------------------------------- PL-265
 
 test('PL-265 the umbrella: a working tender shields your boosted pass', () => {
@@ -737,6 +843,33 @@ test('PL-267 wrong choice: shout at the overloaded one — PREFERRED becomes LAS
   assert.ok(eventsOf(rec, PLANTS_QUEUE_EVENT, 'last').length === 1);
   sweep(pl267QueuePass, state, 1, 0.5);
   assert.equal(station.data[PL_267_PREFERRED_STAMP], -Infinity, 'never granted');
+});
+
+test('PL-267 the chalk comes off the board with its week stamp; reset despawns owned chalks', () => {
+  const { state, rec, bus } = boot(pl267QueuePass);
+  const station = fixtureStation(state, 'st1', { x: 0, z: 0 });
+  const hauler = makeNpc(state, 'heavy1', { x: 200, z: 0 }, { mass: 80 });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: false });
+  hauler.pos = { x: 40, z: 0 };
+  sweep(pl267QueuePass, state, 1, 0.5); // the hauler takes the berth: PREFERRED + chalk
+  const chalk = rec.spawns.find((e) => e.data && e.data.plantsPl267Chalk === true);
+  assert.ok(chalk, 'the chalk is visible');
+  assert.ok(Number.isFinite(chalk.data.expireAt), 'the chalk carries the week expiry');
+  assert.equal(chalk.data.expireAt, station.data[PL_267_PREFERRED_STAMP], 'same week as the stamp');
+  sweep(pl267QueuePass, state, Math.ceil(QUEUE_TUNING.chalkWeekS / 0.5) + 2, 0.5);
+  assert.ok(rec.removes.includes(chalk.id), 'the expired chalk despawned with its stamp');
+
+  // A live chalk is session truth: sector:exit takes it off the board.
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: false });
+  hauler.pos = { x: 40, z: 0 };
+  sweep(pl267QueuePass, state, 1, 0.5);
+  const chalk2 = rec.spawns.filter((e) => e.data && e.data.plantsPl267Chalk === true)[1];
+  assert.ok(chalk2, 'a fresh chalk for a fresh yield');
+  bus.emit('sector:exit', {});
+  assert.ok(rec.removes.includes(chalk2.id), 'reset despawns the owned chalk');
+  assert.equal(pl267QueuePass._chalkIds.size, 0, 'the ledger is clear');
 });
 
 // ---------------------------------------------------------------- PL-268

@@ -149,7 +149,9 @@ export function createPl264LaneLight() {
 
       if (d <= t.lightRadiusWu) {
         const phase = lightPhaseAt(now, t);
-        const green = phase === 'green' || (this._greensEarly > 0 && now >= this._greenAt);
+        // The grudge outranks the cycle: during the red week no natural green and no
+        // green-early ever opens the light for you.
+        const green = !redForYou && (phase === 'green' || (this._greensEarly > 0 && now >= this._greenAt));
         if (green) {
           // Green for you — one beat early when the light remembers the full counts.
           data.lampsFlashing = true;
@@ -179,7 +181,8 @@ export function createPl264LaneLight() {
         }
         if (speed <= t.holdSpeedWu) {
           this._dwellS += Math.max(0, Number(dt) || 0);
-          if (this._dwellS >= t.cycleS * t.redFrac && !this._heldGranted) {
+          // Holding still under the grudge never credits: no re-grant until the week is out.
+          if (!redForYou && this._dwellS >= t.cycleS * t.redFrac && !this._heldGranted) {
             // Held the full count: the next three crossings run green one beat early.
             this._heldGranted = true;
             this._greensEarly = t.greensEarly;

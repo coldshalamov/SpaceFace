@@ -296,15 +296,19 @@ export function createAnselsDish() {
       this._lastTapHitAt = now;
       this._rings.push(now);
       while (this._rings.length > 4) this._rings.shift();
-      const [a, b] = this._rings;
-      if (this._rings.length >= 2 && b - a <= ANSELS_DISH_TUNING.knockWindowS) {
-        this._rings = [];
-        if (this._eatenNight === dishDayOf(now) && this._thanksNight !== dishDayOf(now)) {
-          this._thanksNight = dishDayOf(now);
-          this._cue('confirm', 0.45);
-          this._popup(`plants:pl273:thanks:${Math.round(now)}`, ANSELS_DISH_TUNING.sender, ANSEL_LINE);
-          this._emit(PL_273_THANKS_EVENT, { t: now });
-        }
+      // Two taps = the LAST two rings inside the window; a stale earlier tap must not
+      // poison the pair.
+      const n = this._rings.length;
+      if (n < 2) return;
+      const b = this._rings[n - 1];
+      const a = this._rings[n - 2];
+      if (b - a > ANSELS_DISH_TUNING.knockWindowS) return;
+      this._rings = [];
+      if (this._eatenNight === dishDayOf(now) && this._thanksNight !== dishDayOf(now)) {
+        this._thanksNight = dishDayOf(now);
+        this._cue('confirm', 0.45);
+        this._popup(`plants:pl273:thanks:${Math.round(now)}`, ANSELS_DISH_TUNING.sender, ANSEL_LINE);
+        this._emit(PL_273_THANKS_EVENT, { t: now });
       }
     },
 

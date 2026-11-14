@@ -63,7 +63,7 @@ export function createPl267QueuePass() {
       this._holding = null;        // { stationId, since }
       this._yields = new Map();    // stationId -> { at, haulerId }
       this._shouts = new Map();    // haulerId -> count
-      this._chalkIds = new Map();  // stationId -> chalk prop id
+      this._chalkIds = new Map();  // chalk prop id -> expireAt (owned marks live and die with the stamp)
       const on = (event, fn) => {
         const off = this.bus && this.bus.on ? this.bus.on(event, fn) : null;
         if (typeof off === 'function') this._unsubs.push(off);
@@ -90,7 +90,18 @@ export function createPl267QueuePass() {
       this._holding = null;
       if (this._yields) this._yields.clear();
       if (this._shouts) this._shouts.clear();
-      if (this._chalkIds) this._chalkIds.clear();
+      this._despawnAllChalks();
+    },
+
+    _despawnChalk(id) {
+      this._chalkIds.delete(id);
+      const rm = this.helpers && this.helpers.removeEntity;
+      if (typeof rm === 'function') rm(id);
+    },
+
+    _despawnAllChalks() {
+      if (!this._chalkIds) return;
+      for (const id of [...this._chalkIds.keys()]) this._despawnChalk(id);
     },
 
     _now() {
@@ -119,6 +130,11 @@ export function createPl267QueuePass() {
       const s = this.state;
       if (!s || s.mode !== 'flight') return;
       const now = this._now();
+      // Expired chalk marks come off the board with their week stamp.
+      for (const [id, expireAt] of this._chalkIds) {
+        if (Number.isFinite(expireAt) && now < expireAt) continue;
+        this._despawnChalk(id);
+      }
       // Did a yielded-to hauler take the berth?
       for (const [stationId, y] of this._yields) {
         if (y.done) continue;
@@ -228,10 +244,12 @@ export function createPl267QueuePass() {
           scanLabel: `The dock board chalk: ${label}`,
           swarmFloorPad: { label },
           masslineTetherable: true,
+          expireAt: now + QUEUE_TUNING.chalkWeekS,
         },
       });
       if (ent && ent.id != null) {
-        this._chalkIds.set((station.data && station.data.stationId) || station.id, ent.id);
+        while (this._chalkIds.size >= QUEUE_TUNING.memoryCap) this._despawnChalk(this._chalkIds.keys().next().value);
+        this._chalkIds.set(ent.id, now + QUEUE_TUNING.chalkWeekS);
       }
     },
   };

@@ -6,10 +6,12 @@
 // only ever emits while the round is still active, so the transition receipt is the real
 // between-rounds seam). The plant parks a scarred drone prop near you, taps your shoulder-lamp
 // twice (two cue ticks at your position, the drone's own lamps pulsing with each), then points:
-// its floor-pad label names the nearest unbought gate solid, and its pointing receipt carries the
-// nearest scrounge pile (a loose floor pickup). Take the hint by flying to the pointed door while
-// the window is open. Ignore the pointing through two windows and the drone retires for the run —
-// somebody else gets the help.
+// its floor-pad label names the nearest gate solid (SEAM NOTE, honest: gate solids carry only
+// roomKind/roomSolidId — survivalArena.js:2303 — and no fortify-to-gate mapping is readable
+// from this plant's permitted seams, so "unbought" stays the row's intent, not a checkable
+// filter), and its pointing receipt carries the nearest scrounge pile (a loose floor pickup).
+// Take the hint by flying to the pointed door while the window is open. Ignore the pointing
+// through two windows and the drone retires for the run — somebody else gets the help.
 //
 // Invariants:
 // - Deterministic: state.simTime / state.tick / hash32 only; no Math.random/Date.now.
@@ -253,7 +255,7 @@ export const veteranTapPlant = {
     if (this._droneId != null) return; // one drone per window
     const player = this._player();
     if (!player || !player.pos) return;
-    const gate = this._findGate();
+    const gate = this._findGate(player.pos);
     const pile = this._findPile(player.pos);
     if (!gate && !pile) return; // honestly inert: nothing to point at
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
@@ -296,19 +298,26 @@ export const veteranTapPlant = {
     });
   },
 
-  _findGate() {
+  /** The nearest gate solid to the pilot within the scan cap (min distance, not first found). */
+  _findGate(playerPos) {
+    if (!playerPos) return null;
     const entities = this.state && this.state.entities;
     if (!entities || typeof entities.values !== 'function') return null;
+    let best = null;
+    let bestSq = Infinity;
     let scanned = 0;
     for (const e of entities.values()) {
-      if (scanned >= VETERAN_TAP_TUNING.scanCap) return null;
+      if (scanned >= VETERAN_TAP_TUNING.scanCap) break;
       scanned += 1;
       const d = e && e.data;
       if (!e || e.alive === false || !e.pos || !d) continue;
       if (d.roomKind !== 'gate') continue; // room solids stamp roomKind (survivalArena.js:2236)
-      return e;
+      const dx = e.pos.x - playerPos.x;
+      const dz = e.pos.z - playerPos.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq < bestSq) { best = e; bestSq = distSq; }
     }
-    return null;
+    return best;
   },
 
   _findPile(pos) {

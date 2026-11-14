@@ -161,6 +161,17 @@ export function createPl146FirstCaller() {
       this._visitor = null;
     },
 
+    /** The durable ledger's copy of a claimed body (claims.js owns state.claims.bodies). */
+    _claimFromBody(bodyId) {
+      const bodies = this.state?.claims?.bodies;
+      if (!Array.isArray(bodies) || bodyId == null) return null;
+      const body = bodies.find((b) => b && b.id === bodyId);
+      if (!body) return null;
+      const x = Number(body.x ?? body.pos?.x);
+      const z = Number(body.z ?? body.pos?.z);
+      return Number.isFinite(x) && Number.isFinite(z) ? { x, z } : null;
+    },
+
     _resyncFromFlags() {
       const flags = this._flags();
       // Durable facts survive a load; the physical lamp does not (a lit bulb is session truth).
@@ -168,6 +179,15 @@ export function createPl146FirstCaller() {
       this._visitor = null;
       this._everSnuffed = flags?.[PL_146_EVER_SNUFFED_FLAG] === true;
       this._plantsPl373Floodlit = flags?.plantsPl373Floodlit === true; // PL-373's durable floodlight verdict
+      // The claim is durable too: re-derive it from the restored ledger. A different save
+      // slot's ledger decides whether — and where — the calls still land.
+      const restored = this._claim ? this._claimFromBody(this._claim.bodyId) : null;
+      if (restored) {
+        this._claim = { bodyId: this._claim.bodyId, x: restored.x, z: restored.z, at: this._claim.at };
+      } else {
+        this._claim = null;
+        this._nextCallAt = null;
+      }
       if (flags && flags[PL_146_FIRST_DONE_FLAG] === true && this._claim) {
         this._nextCallAt = this._now()
           + (this._everSnuffed ? FIRST_CALLER_TUNING.snuffedGapS : FIRST_CALLER_TUNING.weekS);

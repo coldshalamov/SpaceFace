@@ -182,6 +182,7 @@ export const mascotPlant = {
     this._starveRounds = 0;
     this._fed = false;
     this._leaving = false;
+    this._departed = false;
     this._leaveTarget = null;
     this._leaveDeadline = 0;
     this._lapUntil = 0;
@@ -205,6 +206,7 @@ export const mascotPlant = {
   _onWaveStarted(payload) {
     const run = this._liveRun();
     if (!run) return;
+    if (this._departed) return; // it flew to the other fighter: one mascot per run, no re-adopt
     if (this._mascotId != null) return; // one mascot per run
     const player = this._player();
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
@@ -258,8 +260,11 @@ export const mascotPlant = {
     }
     this._starveRounds += 1;
     if (this._starveRounds >= MASCOT_TUNING.starveRounds && !this._leaving) {
-      // Starved of spectacle: it flies across the floor to the other fighter.
+      // Starved of spectacle: it flies across the floor to the other fighter. The run is
+      // through with it — latch the departure so no later wave mints a fresh mascot that
+      // would insta-despawn at this leave deadline.
       this._leaving = true;
+      this._departed = true;
       const player = this._player();
       const origin = player && player.pos ? player.pos : { x: 0, z: 0 };
       const angle = (hash32(String(run.seed), 'pl332', 'leave', this.state.tick) % 6283) / 1000;

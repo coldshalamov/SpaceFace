@@ -262,6 +262,19 @@ test('PL-321: run end despawns the veteran drone — no prop leaks past the run'
   assert.equal(env.ofPlant('pl321').filter((e) => e.alive !== false).length, 1, 'the veteran helps again next window');
 });
 
+test('PL-321: the point names the NEAREST gate solid to you, not the first one in the map', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 44, wave: 2 }) });
+  pilot(env, { x: 0, z: 0 });
+  const far = gateSolid(env, 'survival-room-w2-foundry_gate_a', { x: 800, z: 0 }); // inserted first
+  const near = gateSolid(env, 'survival-room-w2-foundry_gate_b', { x: 120, z: 0 }); // the nearest door
+  env.endRound(2, 'cleanup');
+  env.advance(2, 0.25); // two taps, then the point
+  const pointing = receiptsFor(env, PLANTS_VETERAN_TAP_EVENT).find((r) => r.kind === 'pointing');
+  assert.ok(pointing, 'the point lands');
+  assert.notEqual(pointing.gateId, far.id, 'not just the first gate solid in the map');
+  assert.equal(pointing.gateId, near.id, 'the nearest gate solid wins');
+});
+
 // ---- PL-322 The crowd's coin ------------------------------------------------------------------------------
 
 test('PL-322: a stunt clear throws scrap worth more than the round paid at your feet; take the bow', () => {
@@ -997,6 +1010,23 @@ test('PL-332: starve it of spectacle for two rounds and it flies across the floo
   assert.equal(env.ofPlant('pl332').filter((e) => e.alive !== false).length, 0, 'over with the other fighter now');
   const lastStep = MASCOT_TUNING.leaveSpeedWuS * 0.5;
   assert.ok(Math.hypot(mascot.pos.x - me.pos.x, mascot.pos.z - me.pos.z) >= MASCOT_TUNING.leaveTravelWu - lastStep - 1, 'it really crossed');
+});
+
+test('PL-332: after the starve-leave no later wave mints a fresh mascot — one mascot per run', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 71, wave: 1 }) });
+  pilot(env, { x: 0, z: 0 });
+  env.startRound(1);
+  assert.equal(env.ofPlant('pl332').length, 1, 'it adopts the run');
+  env.emit('run:waveCleared', { wave: 1, completionKind: 'clear', durationTicks: 600 }); // starved
+  env.emit('run:waveCleared', { wave: 1, completionKind: 'clear', durationTicks: 600 }); // it leaves
+  assert.ok(receiptsFor(env, PLANTS_MASCOT_EVENT).some((r) => r.kind === 'flew_to_other_fighter'), 'it left');
+  env.advance(4, 0.5); // it crosses the floor and despawns
+  assert.equal(env.ofPlant('pl332').filter((e) => e.alive !== false).length, 0, 'gone');
+  // The stale leave deadline must not mint a doomed second mascot on the next wave.
+  env.startRound(2);
+  assert.equal(env.ofPlant('pl332').length, 1, 'no second adoption after the departure');
+  env.advance(6, 0.5);
+  assert.equal(env.ofPlant('pl332').filter((e) => e.alive !== false).length, 0, 'still gone: no insta-despawn re-adopt churn');
 });
 
 test('PL-332 negatives: no run, one mascot per run', () => {

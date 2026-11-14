@@ -60,6 +60,7 @@ export function createPl259SpareAndShare() {
       this._offers = new Map();       // podId -> { forHullId, offeredAt }
       this._served = new Set();       // pods already taken once: never a fresh offer again
       this._deeds = new Map();        // hullId -> lastDeedAt (cooldown bookkeeping)
+      this._chalkIds = new Map();     // chalk prop id -> expireAt (owned marks live and die with the stamp)
       this._chalkCredits = 0;
       this._farmUntil = -Infinity;
       const on = (event, fn) => {
@@ -80,6 +81,7 @@ export function createPl259SpareAndShare() {
         try { off(); } catch (err) { /* cleanup must not throw */ }
       }
       this._unsubs = [];
+      this._despawnAllChalks();
       if (this._offers) this._offers.clear();
       if (this._served) this._served.clear();
       if (this._deeds) this._deeds.clear();
@@ -90,6 +92,7 @@ export function createPl259SpareAndShare() {
     },
 
     _reset() {
+      this._despawnAllChalks();
       if (this._offers) this._offers.clear();
       if (this._served) this._served.clear();
       if (this._deeds) this._deeds.clear();
@@ -98,7 +101,25 @@ export function createPl259SpareAndShare() {
     },
 
     update(dt) {
-      // Event-driven: the receipts above carry this plant; the family shape keeps the hook.
+      // Expired chalk marks come off the board with their PAID stamp; otherwise this plant
+      // is event-driven and the receipts above carry it.
+      if (!this._chalkIds || this._chalkIds.size === 0) return;
+      const now = this._now();
+      for (const [id, expireAt] of this._chalkIds) {
+        if (Number.isFinite(expireAt) && now < expireAt) continue;
+        this._despawnChalk(id);
+      }
+    },
+
+    _despawnChalk(id) {
+      this._chalkIds.delete(id);
+      const rm = this.helpers && this.helpers.removeEntity;
+      if (typeof rm === 'function') rm(id);
+    },
+
+    _despawnAllChalks() {
+      if (!this._chalkIds) return;
+      for (const id of [...this._chalkIds.keys()]) this._despawnChalk(id);
     },
 
     _now() {
@@ -184,6 +205,10 @@ export function createPl259SpareAndShare() {
       const now = this._now();
       const collector = s.entities && s.entities.get ? s.entities.get(p.collectorId) : null;
       if (p.collectorId !== s.playerId && isBrokenDown(collector)) {
+        // The cooldown is per hull: a deed is three docks chalked PAID, not three docks per
+        // pod — the same broken hull re-fed inside the offer-memory window earns no more.
+        const lastDeedAt = this._deeds.get(offer.forHullId);
+        if (Number.isFinite(lastDeedAt) && now - lastDeedAt < SPARE_TUNING.offerMemoryS) return;
         // Word outruns you home: the next three docks chalk your berthing PAID.
         this._chalkCredits = Math.min(SPARE_TUNING.chalksPerDeed, this._chalkCredits + SPARE_TUNING.chalksPerDeed);
         while (this._deeds.size >= SPARE_TUNING.memoryCap) this._deeds.delete(this._deeds.keys().next().value);
@@ -249,7 +274,7 @@ export function createPl259SpareAndShare() {
       if (typeof spawnEntity !== 'function' || !station.pos) return;
       const r = this._dockRadius(station);
       const a = (Math.abs(Math.round(now)) % 6283) / 1000;
-      spawnEntity({
+      const ent = spawnEntity({
         type: 'beacon',
         pos: { x: station.pos.x + Math.cos(a) * (r + 14), z: station.pos.z + Math.sin(a) * (r + 14) },
         vel: { x: 0, z: 0 },
@@ -267,6 +292,10 @@ export function createPl259SpareAndShare() {
           expireAt: now + SPARE_TUNING.paidUntilS,
         },
       });
+      if (ent && ent.id != null) {
+        while (this._chalkIds.size >= SPARE_TUNING.memoryCap) this._despawnChalk(this._chalkIds.keys().next().value);
+        this._chalkIds.set(ent.id, now + SPARE_TUNING.paidUntilS);
+      }
     },
   };
 }

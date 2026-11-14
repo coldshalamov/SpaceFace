@@ -253,6 +253,25 @@ test('PL-273 grind: one sustained knock is one tap — the two-tap thanks needs 
   assertNoListeners(h.bus);
 });
 
+test('PL-273 stale tap: the knock window reads the LAST two rings — an old tap cannot poison the pair', () => {
+  const h = harnessFor(anselsDishPlant, ANSELS_DISH_TUNING, { simTime: 185 }); // night band
+  advanceWith(h, 1);
+  const dish = ownedOf(h, 'plantsPl273Dish')[0];
+  teleportPlayer(h, dish.pos.x, dish.pos.z);
+  advanceWith(h, ANSELS_DISH_TUNING.eatS + 1);
+  assert.equal(eventsOf(h.bus, 'plants:pl273:eaten').length, 1);
+  const bell = ownedOf(h, 'plantsPl273Bell')[0];
+  impact(h, bell.id, 100); // tap 1: a stray knock, then left to go stale
+  advanceWith(h, ANSELS_DISH_TUNING.knockWindowS + 1); // well outside the knock window
+  impact(h, bell.id, 100); // tap 2: does not pair with the stale tap 1
+  assert.equal(eventsOf(h.bus, 'plants:pl273:thanks').length, 0, 'the stale tap does not make the pair');
+  advanceWith(h, 1); // taps 2-3 are inside the window
+  impact(h, bell.id, 100); // tap 3
+  assert.equal(eventsOf(h.bus, 'plants:pl273:thanks').length, 1, 'taps 2-3 thank despite the old tap 1');
+  h.plant.destroy();
+  assertNoListeners(h.bus);
+});
+
 test('PL-273 bite + leave: docking while it cools scrapes it (exact line); leaving means dawn recycles it quietly', () => {
   const h = harnessFor(anselsDishPlant, ANSELS_DISH_TUNING, { simTime: 185 });
   advanceWith(h, 1);
