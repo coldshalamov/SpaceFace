@@ -4032,7 +4032,7 @@ export const crucibleResultsScreen = {
     this._regions = { title: h, story, ledger, foot, again };
     rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
-      try { again.focus(); } catch { /* focus is best-effort */ }
+      try { again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
   },
 
@@ -4112,7 +4112,7 @@ export const crucibleResultsScreen = {
     this._regions = { title: h, story, ledger: story, foot, again: keepGoing };
     rootEl.dataset.kReady = '1';
     if (typeof keepGoing.focus === 'function') {
-      try { keepGoing.focus(); } catch { /* focus is best-effort */ }
+      try { keepGoing.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
   },
 

@@ -169,13 +169,17 @@ ${RESULTS_PLATE(R)}
   :is(${R}, ${RP}) .orr-crres-figures { order:2 !important; }
   :is(${R}, ${RP}) > .sf-crres-celebrate { order:3 !important; }
   :is(${R}, ${RP}) > .sf-crres__dial { order:4 !important; }
-  :is(${R}, ${RP}) .sf-crres__band[data-band="story"] { order:5 !important; }
-  :is(${R}, ${RP}) .sf-crres__band[data-band="build"] { order:6 !important; }
-  :is(${R}, ${RP}) .sf-crres__sheet { order:7 !important; }
-  :is(${R}, ${RP}) .sf-crres__ledger > .sf-crres__band:not([data-band]) { order:8 !important; }
-  :is(${R}, ${RP}) .sf-crres__share { order:9 !important; }
-  :is(${R}, ${RP}) .sf-crres__story > details.sf-crres__band { order:10 !important; }
-  :is(${R}, ${RP}) > .k-foot { order:11 !important; }
+  :is(${R}, ${RP}) .sf-crres__band[data-band="story"] { order:6 !important; }
+  :is(${R}, ${RP}) .sf-crres__band[data-band="build"] { order:7 !important; }
+  :is(${R}, ${RP}) .sf-crres__sheet { order:8 !important; }
+  :is(${R}, ${RP}) .sf-crres__ledger > .sf-crres__band:not([data-band]) { order:9 !important; }
+  :is(${R}, ${RP}) .sf-crres__share { order:10 !important; }
+  :is(${R}, ${RP}) .sf-crres__story > details.sf-crres__band { order:11 !important; }
+  /* The ways-out used to dock over the scroll (sticky, opaque) and buried the dial's killer name, vitals
+     and LAST 5 HITS strip at scroll 0 (bench 2026-11-14). They now follow the instrument in the flow, so
+     the run's stats end above them and the longer bands (build, sheet, ledger, share) scroll below. */
+  :is(${R}, ${RP}) > .sf-crres__dial { height:520px !important; }
+  :is(${R}, ${RP}) > .k-foot { order:5 !important; position:relative !important; bottom:auto !important; margin:0 !important; padding:4px 0 12px !important; background:none !important; box-shadow:none !important; }
 }
 @media (max-width:700px) and (max-height:560px) {
   :is(${R}, ${RP}) { gap:10px !important; padding:12px 16px 0 !important; }
@@ -185,7 +189,7 @@ ${RESULTS_PLATE(R)}
   :is(${R}, ${RP}) .orr-crres-figure__w { font-size:12px !important; letter-spacing:.14em !important; margin-top:2px !important; }
   :is(${R}, ${RP}) > .sf-crres-celebrate { margin:0 !important; }
   :is(${R}, ${RP}) > .sf-crres__dial { margin-bottom:10px !important; }
-  :is(${R}, ${RP}) > .k-foot { padding:8px 16px 6px !important; margin-left:-16px !important; margin-right:-16px !important; }
+  :is(${R}, ${RP}) > .k-foot { padding:4px 0 8px !important; }
 }
 @media (max-width:560px) and (min-height:701px) {
   :is(${R}, ${RP}) { gap:12px !important; }
