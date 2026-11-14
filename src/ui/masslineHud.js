@@ -49,6 +49,7 @@ import { formatSpeed } from './units.js';
 import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { isAdventureFlight } from './attentionGlass.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -1512,7 +1513,10 @@ export const masslineHud = {
     // F4: a latchable body with mass answers the swing question on the same caption line.
     const playerMass = finite(player && player.physicsBody && player.physicsBody.mass) || finite(player && player.mass);
     const massRead = massPreviewRead(target, playerMass);
-    const massText = !seedPreview && ready
+    // OPENING-1b: no TOO HEAVY on anything in the opening minutes - the first latch is the
+    // light rock, and a heavy-body verdict would be the wrong first lesson.
+    const heavyHushed = openingQuiet(state) && !!(massRead && massRead.share >= 0.8);
+    const massText = !seedPreview && ready && !heavyHushed
       ? (quietTelemetry
         ? (massRead && massRead.share >= 0.8 ? 'TOO HEAVY' : 'GRAB')
         : massPreviewWord(target, playerMass, state))
