@@ -1,0 +1,256 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "hull_multirole",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.hull-multirole",
+    "dynamicNameIncludes": [],
+    "key": "hull-multirole",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/hull-multirole/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/hull-multirole",
+    "releaseAssetId": "hull_multirole",
+    "releaseBytes": 576952,
+    "releaseSha256": "9dcb2c44f412298f0925cd1aedb464eec305476a139ded445977ed544dde5286",
+    "rootNode": "HULL_MULTIROLE_ROOT",
+    "runtimeAssetId": "SF_HULL_MULTIROLE",
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/hulls/hull_multirole.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 18,
+    "id": "hull_multirole",
+    "kind": "part:hulls",
+    "ktx2Textures": 5,
+    "meshoptBufferViews": 21,
+    "release": "assets/ships/release/parts/hulls/hull_multirole.glb",
+    "releaseBytes": 576952,
+    "releaseSha256": "9dcb2c44f412298f0925cd1aedb464eec305476a139ded445977ed544dde5286",
+    "source": "assets/ships/parts/hulls/hull_multirole.glb",
+    "sourceBytes": 3143036,
+    "sourceSha256": "dca3f1d7f8022adb67fbef40de7eefb5d72fddadb1c21d087bf14dbc042d5d78",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 5
+  },
+  "runtime": {
+    "assetId": "SF_HULL_MULTIROLE",
+    "motionBank": null,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/hulls/hull_multirole.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.hull-multirole.anchor.socket-trail-main",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Main",
+        "parentNodeId": "sf.render.hull-multirole.root"
+      },
+      {
+        "id": "sf.render.hull-multirole.anchor.socket-weapon-front",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Front",
+        "parentNodeId": "sf.render.hull-multirole.root"
+      }
+    ],
+    "assetId": "sf.render.hull-multirole",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [
+      {
+        "id": "sf.render.hull-multirole.Material_Hull",
+        "nodeIds": [
+          "sf.render.hull-multirole.mesh.lod0-det-field-repair",
+          "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel",
+          "sf.render.hull-multirole.mesh.lod0-det-salvage-patch",
+          "sf.render.hull-multirole.mesh.lod0-hull-multirole-main"
+        ]
+      },
+      {
+        "id": "sf.render.hull-multirole.Material_Mechanical",
+        "nodeIds": [
+          "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
+          "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
+          "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
+          "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch"
+        ]
+      }
+    ],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
+        "node": "LOD0_DET_antenna_jury",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
+        "node": "LOD0_DET_cargo_rig",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-field-repair",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Hull",
+        "node": "LOD0_DET_field_repair",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
+        "node": "LOD0_DET_jury_weld",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Hull",
+        "node": "LOD0_DET_mismatched_panel",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Hull",
+        "node": "LOD0_DET_salvage_patch",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
+        "node": "LOD0_DET_smuggler_hatch",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_violet_stripe",
+        "node": "LOD0_DET_violet_stripe",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "hull-multirole-lod0-Material_Hull",
+        "node": "LOD0_HULL_MULTIROLE_MAIN",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod1-hull-multirole-silhouette",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HULL_MULTIROLE_SILHOUETTE",
+        "node": "LOD1_HULL_MULTIROLE_SILHOUETTE",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.mesh.lod2-hull-multirole-silhouette",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_HULL_MULTIROLE_SILHOUETTE",
+        "node": "LOD2_HULL_MULTIROLE_SILHOUETTE",
+        "parentId": "sf.render.hull-multirole.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-multirole.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "HULL_MULTIROLE_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-multirole.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 576952,
+    "sha256": "9dcb2c44f412298f0925cd1aedb464eec305476a139ded445977ed544dde5286",
+    "uri": "assets/ships/release/parts/hulls/hull_multirole.glb"
+  }
+}

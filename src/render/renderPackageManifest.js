@@ -1698,7 +1698,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-multirole",
-    "expectedContentHash": "4cc1f831a0e4e249edf4d8a4287e7f2d9641baf137bacf64590cf686e45f2c03",
+    "expectedContentHash": "5d61b94af689c4e3901111a88ec65e8d6b9d00b8402bc763dd4a28d6048a5cb8",
     "key": "hull-multirole",
     "metadataUrl": "assets/ships/release/render-packages/hull-multirole/render-package.json",
     "runtimeAssetId": "SF_HULL_MULTIROLE",

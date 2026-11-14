@@ -99,183 +99,58 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4cc1f831a0e4e249edf4d8a4287e7f2d9641baf137bacf64590cf686e45f2c03",
+  "contentHash": "5d61b94af689c4e3901111a88ec65e8d6b9d00b8402bc763dd4a28d6048a5cb8",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -0.792217991656553,
-          1.5419999361038208,
-          0.4450117239454179
-        ],
-        "min": [
-          -1.279480018311251,
-          0.9371999502182007,
-          0.26698822884770346
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9d572b3d3acdc41464c2c4edaa43a9f04faca190aeff45cc0c9dbc33a629ab00",
-      "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "161c00d0b69551bcb37db27df12c9355da029837d137d44dcd207c4497ffae5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
-      "primitiveIndex": 0,
-      "vertexCount": 179
-    },
-    {
-      "bounds": {
-        "max": [
-          1.1569068431854248,
-          -0.46146359539928405,
-          -1.0680234349017343
+          4.446040153503418,
+          1.5420549038193807,
+          1.3015360459237386
         ],
         "min": [
           -1.5231280326843262,
-          -0.839336489668465,
-          -1.4239764296765127
+          -0.8394550207398519,
+          -1.4239110573678304
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ce4829dd45bef565d1a519150dbc080b2b2eed8db644fb35b810f7a47ba879c",
-      "id": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig.primitive.0",
-      "indexCount": 324,
+      "geometryHash": "f82aa21b8128fabb9f5c5925ef74366507b327a44229175d203505329d48fc60",
+      "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury.primitive.0",
+      "indexCount": 1296,
       "indexed": true,
       "materialHash": "161c00d0b69551bcb37db27df12c9355da029837d137d44dcd207c4497ffae5a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
+      "meshName": "render:sf.render.hull-multirole.Material_Mechanical",
+      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
       "primitiveIndex": 0,
-      "vertexCount": 179
+      "vertexCount": 716
     },
     {
       "bounds": {
         "max": [
-          -2.741325616836548,
-          0.20009049365738818,
-          -0.3783003025034995
+          6.516976356506348,
+          1.9202938216262353,
+          2.2248920339738665
         ],
         "min": [
-          -4.203162670135498,
-          0.011109453044138476,
-          -0.689699656488505
+          -5.664999961853027,
+          -1.8602938788466943,
+          -2.2248920339738665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b27b1906411c025981d858979f11775574cfc994282ef7a70acaf2640dc2f3f3",
+      "geometryHash": "5ef1dc2f480df7f32b7eb70ba6d49c04828c2d1748e67bd2a01a7912bc267cd2",
       "id": "sf.render.hull-multirole.mesh.lod0-det-field-repair.primitive.0",
-      "indexCount": 324,
+      "indexCount": 6078,
       "indexed": true,
       "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
+      "meshName": "render:sf.render.hull-multirole.Material_Hull",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-field-repair",
       "primitiveIndex": 0,
-      "vertexCount": 178
-    },
-    {
-      "bounds": {
-        "max": [
-          3.5323922634124756,
-          0.10547045398668733,
-          1.3016919435847794
-        ],
-        "min": [
-          -0.731299638748169,
-          -0.04547051120714632,
-          1.1903079209934677
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "611afbaeb1e7819ffca2ecfe1b8fa8bdd26c01137c0983cf71fd7ad0b9e39194",
-      "id": "sf.render.hull-multirole.mesh.lod0-det-jury-weld.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "161c00d0b69551bcb37db27df12c9355da029837d137d44dcd207c4497ffae5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
-      "primitiveIndex": 0,
-      "vertexCount": 179
-    },
-    {
-      "bounds": {
-        "max": [
-          3.7151217460632324,
-          0.6915202166329306,
-          0.5785385041507625
-        ],
-        "min": [
-          2.0096449851989746,
-          0.5024796698798257,
-          -0.13353851130331978
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a2fbd640bc5fef81eeee4689654dd994448c2a106b07a832a486f078cbb696f5",
-      "id": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel",
-      "primitiveIndex": 0,
-      "vertexCount": 179
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.1576688289642334,
-          0.37023835084784634,
-          1.0680092854190142
-        ],
-        "min": [
-          -3.3504245281219482,
-          0.06776159801136844,
-          0.5339905934643476
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cfa97018adfaddb5ccb55908378aa943cfe8d020e33b474d3223e9592613fbb3",
-      "id": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch",
-      "primitiveIndex": 0,
-      "vertexCount": 179
-    },
-    {
-      "bounds": {
-        "max": [
-          4.446040153503418,
-          -0.31020843794425385,
-          0.08901083947526828
-        ],
-        "min": [
-          3.2278428077697754,
-          -0.5369915981046354,
-          -0.5340108323227108
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "180a2ac0cc1d4f382ed1a704cd1d8adc60eaa9ad8eeafe71e2febf793a61820a",
-      "id": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch.primitive.0",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "161c00d0b69551bcb37db27df12c9355da029837d137d44dcd207c4497ffae5a",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch",
-      "primitiveIndex": 0,
-      "vertexCount": 179
+      "vertexCount": 4631
     },
     {
       "bounds": {
@@ -301,31 +176,6 @@
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe",
       "primitiveIndex": 0,
       "vertexCount": 179
-    },
-    {
-      "bounds": {
-        "max": [
-          6.516976356506348,
-          1.9202938216262353,
-          2.2248920339738665
-        ],
-        "min": [
-          -5.664999961853027,
-          -1.8602938788466943,
-          -2.2248920339738665
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cc5d87333c090b4c89fece62cd02bfcc3437d1b1abc5954176ef056f307527b7",
-      "id": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main.primitive.0",
-      "indexCount": 5106,
-      "indexed": true,
-      "materialHash": "749f6c4288b21b8d99380a26a10bb95f88d04883f25e8849aae786182f31aefd",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HULL_STARTER.003",
-      "nodeId": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main",
-      "primitiveIndex": 0,
-      "vertexCount": 4095
     },
     {
       "bounds": {
@@ -483,25 +333,25 @@
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
       "localTransform": [
-        0.30239999294281006,
+        2.984584093093872,
         0,
         0,
         0,
         0,
-        0.30239999294281006,
+        2.984584093093872,
         0,
         0,
         0,
         0,
-        0.30239999294281006,
+        2.984584093093872,
         0,
-        -1.035849004983902,
-        1.2395999431610107,
-        0.35599997639656067,
+        1.461456060409546,
+        0.3512999415397644,
+        -0.0611875057220459,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_antenna_jury",
+      "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
       "nodeName": "LOD0_DET_antenna_jury",
       "nodePath": [
         0,
@@ -511,46 +361,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        0.30239999294281006,
+        2.984584093093872,
         0,
         0,
         0,
         0,
-        0.30239999294281006,
+        2.984584093093872,
         0,
         0,
         0,
         0,
-        0.30239999294281006,
+        2.984584093093872,
         0,
-        -1.035849004983902,
-        1.2395999431610107,
-        0.35599997639656067,
+        1.461456060409546,
+        0.3512999415397644,
+        -0.0611875057220459,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
       "localTransform": [
-        1.3400174379348755,
+        1,
         0,
         0,
         0,
         0,
-        1.3400174379348755,
+        1,
         0,
         0,
         0,
         0,
-        1.3400174379348755,
+        1,
         0,
-        -0.18311059474945068,
-        -0.6504000425338745,
-        -1.2459999322891235,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_cargo_rig",
+      "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
       "nodeName": "LOD0_DET_cargo_rig",
       "nodePath": [
         0,
@@ -560,46 +410,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1.3400174379348755,
+        1,
         0,
         0,
         0,
         0,
-        1.3400174379348755,
+        1,
         0,
         0,
         0,
         0,
-        1.3400174379348755,
+        1,
         0,
-        -0.18311059474945068,
-        -0.6504000425338745,
-        -1.2459999322891235,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-field-repair",
       "localTransform": [
-        0.7309185266494751,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        0.7309185266494751,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        0.7309185266494751,
+        6.0909881591796875,
         0,
-        -3.472244143486023,
-        0.10559997335076332,
-        -0.5339999794960022,
+        0.42598819732666016,
+        0.029999971389770508,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_field_repair",
+      "mergeBoundary": "hull-multirole-lod0-Material_Hull",
       "nodeName": "LOD0_DET_field_repair",
       "nodePath": [
         0,
@@ -609,46 +459,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        0.7309185266494751,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        0.7309185266494751,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        0.7309185266494751,
+        6.0909881591796875,
         0,
-        -3.472244143486023,
-        0.10559997335076332,
-        -0.5339999794960022,
+        0.42598819732666016,
+        0.029999971389770508,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
       "localTransform": [
-        2.1318459510803223,
+        1,
         0,
         0,
         0,
         0,
-        2.1318459510803223,
+        1,
         0,
         0,
         0,
         0,
-        2.1318459510803223,
+        1,
         0,
-        1.4005463123321533,
-        0.029999971389770508,
-        1.2459999322891235,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_jury_weld",
+      "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
       "nodeName": "LOD0_DET_jury_weld",
       "nodePath": [
         0,
@@ -658,46 +508,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        2.1318459510803223,
+        1,
         0,
         0,
         0,
         0,
-        2.1318459510803223,
+        1,
         0,
         0,
         0,
         0,
-        2.1318459510803223,
+        1,
         0,
-        1.4005463123321533,
-        0.029999971389770508,
-        1.2459999322891235,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel",
       "localTransform": [
-        0.8527383804321289,
+        1,
         0,
         0,
         0,
         0,
-        0.8527383804321289,
+        1,
         0,
         0,
         0,
         0,
-        0.8527383804321289,
+        1,
         0,
-        2.8623833656311035,
-        0.5969999432563782,
-        0.2224999964237213,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_mismatched_panel",
+      "mergeBoundary": "hull-multirole-lod0-Material_Hull",
       "nodeName": "LOD0_DET_mismatched_panel",
       "nodePath": [
         0,
@@ -707,46 +557,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        0.8527383804321289,
+        1,
         0,
         0,
         0,
         0,
-        0.8527383804321289,
+        1,
         0,
         0,
         0,
         0,
-        0.8527383804321289,
+        1,
         0,
-        2.8623833656311035,
-        0.5969999432563782,
-        0.2224999964237213,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch",
       "localTransform": [
-        1.0963778495788574,
+        1,
         0,
         0,
         0,
         0,
-        1.0963778495788574,
+        1,
         0,
         0,
         0,
         0,
-        1.0963778495788574,
+        1,
         0,
-        -2.254046678543091,
-        0.2189999744296074,
-        0.8009999394416809,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_salvage_patch",
+      "mergeBoundary": "hull-multirole-lod0-Material_Hull",
       "nodeName": "LOD0_DET_salvage_patch",
       "nodePath": [
         0,
@@ -756,46 +606,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1.0963778495788574,
+        1,
         0,
         0,
         0,
         0,
-        1.0963778495788574,
+        1,
         0,
         0,
         0,
         0,
-        1.0963778495788574,
+        1,
         0,
-        -2.254046678543091,
-        0.2189999744296074,
-        0.8009999394416809,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch",
       "localTransform": [
-        0.6090986728668213,
+        1,
         0,
         0,
         0,
         0,
-        0.6090986728668213,
+        1,
         0,
         0,
         0,
         0,
-        0.6090986728668213,
+        1,
         0,
-        3.8369414806365967,
-        -0.4236000180244446,
-        -0.2224999964237213,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_DET_smuggler_hatch",
+      "mergeBoundary": "hull-multirole-lod0-Material_Mechanical",
       "nodeName": "LOD0_DET_smuggler_hatch",
       "nodePath": [
         0,
@@ -805,21 +655,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        0.6090986728668213,
+        1,
         0,
         0,
         0,
         0,
-        0.6090986728668213,
+        1,
         0,
         0,
         0,
         0,
-        0.6090986728668213,
+        1,
         0,
-        3.8369414806365967,
-        -0.4236000180244446,
-        -0.2224999964237213,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -875,25 +725,25 @@
     {
       "id": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main",
       "localTransform": [
-        6.0909881591796875,
+        1,
         0,
         0,
         0,
         0,
-        6.0909881591796875,
+        1,
         0,
         0,
         0,
         0,
-        6.0909881591796875,
+        1,
         0,
-        0.42598819732666016,
-        0.029999971389770508,
+        0,
+        0,
         0,
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HULL_MULTIROLE_MAIN",
+      "mergeBoundary": "hull-multirole-lod0-Material_Hull",
       "nodeName": "LOD0_HULL_MULTIROLE_MAIN",
       "nodePath": [
         0,
@@ -903,20 +753,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        6.0909881591796875,
+        1,
         0,
         0,
         0,
         0,
-        6.0909881591796875,
+        1,
         0,
         0,
         0,
         0,
-        6.0909881591796875,
+        1,
         0,
-        0.42598819732666016,
-        0.029999971389770508,
+        0,
+        0,
         0,
         1
       ]
@@ -1070,7 +920,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "2ba62fc80c77a8915742dcc484f0e674a1042c5c1b30112174fd1632e6e6b57d"
+      "sha256": "f573299566707bad34ad4f86ecbf5f0956499ef7c7f0aad352b4e0f9b76cd70b"
     },
     "sourceGlb": {
       "bytes": 576952,
@@ -1078,14 +928,14 @@
       "uri": "hull_multirole.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 9527,
+      "sha256": "c61170593972c0840dca7de0cce07a5da091622b478b704789baa070f3bfefcd",
+      "uri": "assets/ships/render-packages/inputs/hull-multirole.json"
     }
   },
   "render": {
-    "bytes": 593636,
-    "sha256": "f8c12f4b4d6883a283154ffcc552a1c468ccfe786af02a79377bf6a2fccae921",
+    "bytes": 588628,
+    "sha256": "4d6327c55fe1fc8cc7f4783e85b6a7c4509b4baa2c2fec3150bd8c11abfd1b99",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1348,8 +1198,8 @@
     ],
     "materialProfileRoles": {
       "accent": 1,
-      "hull": 6,
-      "mechanical": 4
+      "hull": 3,
+      "mechanical": 1
     },
     "materialProfiles": [
       {
@@ -1359,43 +1209,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 3,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 4,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 5,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 9,
         "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1413,21 +1233,21 @@
       {
         "canopy": false,
         "matrix": [
-          0.30239999294281006,
+          2.984584093093872,
           0,
           0,
           0,
           0,
-          0.30239999294281006,
+          2.984584093093872,
           0,
           0,
           0,
           0,
-          0.30239999294281006,
+          2.984584093093872,
           0,
-          -1.035849004983902,
-          1.2395999431610107,
-          0.35599997639656067,
+          1.461456060409546,
+          0.3512999415397644,
+          -0.0611875057220459,
           1
         ],
         "name": "LOD0_DET_antenna_jury",
@@ -1442,170 +1262,25 @@
       {
         "canopy": false,
         "matrix": [
-          1.3400174379348755,
+          6.0909881591796875,
           0,
           0,
           0,
           0,
-          1.3400174379348755,
+          6.0909881591796875,
           0,
           0,
           0,
           0,
-          1.3400174379348755,
+          6.0909881591796875,
           0,
-          -0.18311059474945068,
-          -0.6504000425338745,
-          -1.2459999322891235,
-          1
-        ],
-        "name": "LOD0_DET_cargo_rig",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.7309185266494751,
+          0.42598819732666016,
+          0.029999971389770508,
           0,
-          0,
-          0,
-          0,
-          0.7309185266494751,
-          0,
-          0,
-          0,
-          0,
-          0.7309185266494751,
-          0,
-          -3.472244143486023,
-          0.10559997335076332,
-          -0.5339999794960022,
           1
         ],
         "name": "LOD0_DET_field_repair",
         "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.1318459510803223,
-          0,
-          0,
-          0,
-          0,
-          2.1318459510803223,
-          0,
-          0,
-          0,
-          0,
-          2.1318459510803223,
-          0,
-          1.4005463123321533,
-          0.029999971389770508,
-          1.2459999322891235,
-          1
-        ],
-        "name": "LOD0_DET_jury_weld",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.8527383804321289,
-          0,
-          0,
-          0,
-          0,
-          0.8527383804321289,
-          0,
-          0,
-          0,
-          0,
-          0.8527383804321289,
-          0,
-          2.8623833656311035,
-          0.5969999432563782,
-          0.2224999964237213,
-          1
-        ],
-        "name": "LOD0_DET_mismatched_panel",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.0963778495788574,
-          0,
-          0,
-          0,
-          0,
-          1.0963778495788574,
-          0,
-          0,
-          0,
-          0,
-          1.0963778495788574,
-          0,
-          -2.254046678543091,
-          0.2189999744296074,
-          0.8009999394416809,
-          1
-        ],
-        "name": "LOD0_DET_salvage_patch",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.6090986728668213,
-          0,
-          0,
-          0,
-          0,
-          0.6090986728668213,
-          0,
-          0,
-          0,
-          0,
-          0.6090986728668213,
-          0,
-          3.8369414806365967,
-          -0.4236000180244446,
-          -0.2224999964237213,
-          1
-        ],
-        "name": "LOD0_DET_smuggler_hatch",
-        "planIndex": 8,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1635,35 +1310,6 @@
         ],
         "name": "LOD0_DET_violet_stripe",
         "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.0909881591796875,
-          0,
-          0,
-          0,
-          0,
-          6.0909881591796875,
-          0,
-          0,
-          0,
-          0,
-          6.0909881591796875,
-          0,
-          0.42598819732666016,
-          0.029999971389770508,
-          0,
-          1
-        ],
-        "name": "LOD0_HULL_MULTIROLE_MAIN",
-        "planIndex": 10,
         "tags": {
           "canopy": false,
           "chamfered": true,
@@ -1734,7 +1380,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_multirole.glb"
   },
-  "runtimeHash": "12d2d8b47385081a19cfd429462af45668bb609c013fb865509fc7870a52a377",
+  "runtimeHash": "3c6a9db26548b503b069d33a84cfd99b5143c80e269e28a9a6b988cfd09ecd43",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

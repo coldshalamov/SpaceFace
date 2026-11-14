@@ -19,6 +19,7 @@ import { createPilotInputDescriptor, pilotInputDescriptorBytes, pilotInputDescri
 import { collectRepeatedKtx2PayloadHashes } from './lib/renderPackageStorage.mjs';
 import { configureCockpitDomeStaticMerge } from './lib/cockpitDomeStaticMerge.mjs';
 import { configureCockpitRecessedStaticMerge } from './lib/cockpitRecessedStaticMerge.mjs';
+import { configureHullMultiroleStaticMerge } from './lib/hullMultiroleStaticMerge.mjs';
 import {
   buildRuntimeTableForRenderGlb,
   sealMotionBankRef,
@@ -350,6 +351,8 @@ export async function derivePilotSemanticManifest(pilot, sourcePath, { sourceByt
       kind: 'dynamic-surface',
     }));
   const collisions = deriveCollisionRecords(pilot, meshNodes, byNodeName);
+  const mergeGroups = [];
+  configureHullMultiroleStaticMerge(pilot, meshRecords, meshNodes, mergeGroups);
 
   return {
     schema: RENDER_PACKAGE_SOURCE_SCHEMA,
@@ -368,7 +371,7 @@ export async function derivePilotSemanticManifest(pilot, sourcePath, { sourceByt
     }, ...meshRecords, ...pivotRecords],
     anchors,
     dynamicGroups,
-    mergeGroups: [],
+    mergeGroups,
     lods: [],
     hlods: [],
     collisions,
