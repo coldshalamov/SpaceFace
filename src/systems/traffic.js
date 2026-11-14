@@ -187,6 +187,11 @@ import { twoNamesOps } from './plants/twoNames.js';
 import { witnessOps } from './plants/witness.js';
 import { wrongWayOps } from './plants/wrongWay.js';
 import { yourBerthOps } from './plants/yourBerth.js';
+import { gutterRunOps } from './plants/pl257GutterRun.js'; // PL-257..PL-373: small-mercies plant family
+import { lessonOps } from './plants/pl263LessonAlongside.js';
+import { umbrellaOps } from './plants/pl265Umbrella.js';
+import { spareKitOps } from './plants/pl266SomebodysSpare.js';
+import { wakeOps } from './plants/pl268WakeGift.js';
 import { scramblePlantOps } from './scramblePlant.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
@@ -1679,6 +1684,11 @@ export const traffic = {
   ...witnessOps,
   ...wrongWayOps,
   ...yourBerthOps,
+  ...gutterRunOps,
+  ...lessonOps,
+  ...umbrellaOps,
+  ...spareKitOps,
+  ...wakeOps,
   ...scramblePlantOps,
   ...anvilTrafficMethods,
   name: 'traffic',
@@ -1813,6 +1823,12 @@ export const traffic = {
     this._initWitness(ctx);
     this._initWrongWay(ctx);
     this._initYourBerth(ctx);
+// PL-257..PL-373: small-mercies plants, same guarded-listener pattern.
+    this._initGutterRun(ctx);
+    this._initLesson(ctx);
+    this._initUmbrella(ctx);
+    this._initSpareKit(ctx);
+    this._initWake(ctx);
     this._initScramblePlant(ctx);
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
@@ -4235,6 +4251,27 @@ export const traffic = {
           this._syncTrafficRecordToData(e, rec);
           continue;
         }
+        // PL-257..PL-373: small-mercies reactions — claim a hull only when their row fires.
+        if (this._reactGutterRun(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactLesson(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactUmbrella(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactSpareKit(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+        if (this._reactWake(e, rec, stations, state, player)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
         if (this._reactYourBerth(e, rec, stations, state, player)) {
           this._syncTrafficRecordToData(e, rec);
           continue;
@@ -4326,6 +4363,27 @@ export const traffic = {
         continue;
       }
       if (this._reactWrongWay(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // PL-257..PL-373: small-mercies reactions — claim a hull only when their row fires.
+      if (this._reactGutterRun(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactLesson(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactUmbrella(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactSpareKit(e, rec, stations, state, player)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      if (this._reactWake(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }

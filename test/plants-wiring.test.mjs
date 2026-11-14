@@ -45,6 +45,11 @@ const OPS_MODULES = [
   ['witness', 'witnessOps', 'Witness', false],
   ['wrongWay', 'wrongWayOps', 'WrongWay', true],
   ['yourBerth', 'yourBerthOps', 'YourBerth', true],
+  ['pl257GutterRun', 'gutterRunOps', 'GutterRun', true],
+  ['pl263LessonAlongside', 'lessonOps', 'Lesson', true],
+  ['pl265Umbrella', 'umbrellaOps', 'Umbrella', true],
+  ['pl266SomebodysSpare', 'spareKitOps', 'SpareKit', true],
+  ['pl268WakeGift', 'wakeOps', 'Wake', true],
 ];
 
 test('traffic-family: every ops mixin is installed on the real traffic singleton', () => {
@@ -80,8 +85,11 @@ test('traffic.js sources all 20 ops modules and spreads them into the reaction o
 });
 
 test('plantsRuntime registers every standalone plant module (116)', () => {
-  const files = readdirSync(PLANTS_DIR).filter((f) => f.endsWith('.js') && f !== 'plantsRuntime.js');
-  const expected = files.length - OPS_MODULES.length - 1; // - towWatch.js helper
+  const files = [
+    ...readdirSync(PLANTS_DIR).filter((f) => f.endsWith('.js')).map((f) => f),
+    ...readdirSync(join(PLANTS_DIR, 'mercies')).filter((f) => f.endsWith('.js')).map((f) => 'mercies/' + f),
+  ].filter((f) => f !== 'plantsRuntime.js' && f !== 'towWatch.js' && f !== 'radioObserverMercy.js');
+  const expected = files.length - OPS_MODULES.length; // towWatch/radioObserverMercy already filtered out above
   assert.equal(PLANT_COUNT, expected, `plantsRuntime lists all ${expected} standalone plants`);
   assert.equal(typeof plantsRuntime.init, 'function');
   assert.equal(typeof plantsRuntime.update, 'function');

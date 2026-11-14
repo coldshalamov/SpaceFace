@@ -273,6 +273,26 @@ export default defineFlavorPack({
         { id: 'static_100', eventKey: 'player.weighed_wreck_on_scale', text: 'Somebody weighed a wreck. The Scale held.' },
         { id: 'static_101', eventKey: 'player.pushed_stranger_dock', text: 'Good turn out there. Logged.' },
         { id: 'static_102', eventKey: 'player.fines_settled_full', text: 'Fines settled in full. Unusual.' },
+        // Lane Nine mercy batch (SMALL MERCIES, design/program/INFERENCE_PLANTS.md §E PL-305..PL-320):
+        // the Static reports quiet generosity. Says text is final copy, byte-exact; each eventKey is
+        // the runtime trigger seam mapped in systems/bandRadio.js deriveBandEventKeys (direct
+        // receipts + plantsRadioObserverMercy compositions in plants/radioObserverMercy.js).
+        { id: 'static_103', eventKey: 'player.gave_berth_to_hauler', text: 'Somewhere a dockmaster owes you one.' },
+        { id: 'static_104', eventKey: 'player.left_working_spare', text: 'Left-handed help. The best kind.' },
+        { id: 'static_105', eventKey: 'player.fiftieth_arrival_paid', text: 'Fifty visits. Some places count.' },
+        { id: 'static_106', eventKey: 'player.steadied_rookie_tow', text: "Rookie's station chalked you HELPER. Good look." },
+        { id: 'static_107', eventKey: 'player.towed_stranger_home', text: 'No bounty on that one. Did it anyway.' },
+        { id: 'static_108', eventKey: 'player.fuel_tab_left_open', text: 'Somebody left the tab open. Says nobody.' },
+        { id: 'static_109', eventKey: 'player.returned_lantern_lit', text: 'Lanterns come back lit out there. Rare.' },
+        { id: 'static_110', eventKey: 'player.market_line_three_days', text: 'The chalk seat stays empty. Line knows.' },
+        { id: 'static_111', eventKey: 'player.skiff_towed_home', text: 'Whole lane came out for one skiff.' },
+        { id: 'static_112', eventKey: 'player.repairs_wash_included', text: 'Repairs come washed now. Somebody tips.' },
+        { id: 'static_113', eventKey: 'player.three_yields_one_shift', text: 'Three yields, one shift. Well raised.' },
+        { id: 'static_114', eventKey: 'player.convoy_paced_stranger', text: 'Paced them all the way in. Silent.' },
+        { id: 'static_115', eventKey: 'player.plated_window_flare', text: 'Somebody slept late. Somebody got up.' },
+        { id: 'static_116', eventKey: 'player.callsign_kindness_chalks', text: 'The chalks read like a fan letter.' },
+        { id: 'static_117', eventKey: 'player.took_medal_left_note', text: "Medal's gone, note stays. The deal." },
+        { id: 'static_118', eventKey: 'player.coached_clean_takeoff', text: "Someone's coaching takeoffs again. For free." },
       ],
     },
     {

@@ -27,6 +27,7 @@ import {
   numbersShadowFact,
 } from '../data/numbersShadow.js';
 import { hullInSolidRadarShadow } from '../world/solidDressing.js';
+import { radioObserverMercyPlant } from './plants/radioObserverMercy.js';
 
 export const BAND_STATE_VERSION = 1;
 export const BAND_PRIORITY = 5;
@@ -274,6 +275,96 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // PL-240: the same hull mark worn into five distinct towns.
     return ['player.mark_all_five_towns'];
   }
+  // --- Lane Nine mercy batch (SMALL MERCIES §E PL-305..PL-320): the Static reports quiet
+  // generosity. The mercy plant modules named by the rows had not landed when this battery
+  // ran, so the two rows with a pure single-event read map directly here and the rest read
+  // plantsRadioObserverMercy compositions (plants/radioObserverMercy.js) built from real
+  // seams only; the substitutes are noted per row.
+  if (event === 'tether:snapCatch') {
+    // PL-308: the steadiest catch the telemetry rates ('clean'), in the crescent — the
+    // rookies' home water (the Slipway kids' sector) — reads as a steadied first tow.
+    // Substitute: no rookie identity exists until the pl294 steady-rookie module lands.
+    return payload.rating === 'clean'
+      && state.world && state.world.currentSectorId === 'sector_helios_prime'
+      ? ['player.steadied_rookie_tow']
+      : [];
+  }
+  if (event === 'plants:deadLaneThanks') {
+    // PL-311: the lane leans on its horns in thanks for light carried back into the dark —
+    // the closest real lantern receipt. Substitute: no borrowed-lantern return exists until
+    // the pl288 lantern module lands.
+    return ['player.returned_lantern_lit'];
+  }
+  if (event === 'plants:radioMercy:berthGifted') {
+    // PL-305: a real approach at a town dock given up without docking — the berth handed on.
+    // Substitute: the overloaded hauler's identity waits for the pl267 berth-gift module.
+    return ['player.gave_berth_to_hauler'];
+  }
+  if (event === 'plants:radioMercy:spareLeft') {
+    // PL-306: freight spilled by somebody else's guns and left lying on the lane.
+    // Substitute: the broke-down hull that reaches it waits for the pl259 spare-share module.
+    return ['player.left_working_spare'];
+  }
+  if (event === 'plants:radioMercy:fiftiethArrival') {
+    // PL-307: the fiftieth arrival at one station — some places count.
+    return ['player.fiftieth_arrival_paid'];
+  }
+  if (event === 'plants:radioMercy:leakTowedHome') {
+    // PL-309: the tether:snapCatch tow latch still fresh when the player docked — the
+    // stranger came home under the line, no bounty posted. Substitute: the leak identity
+    // waits for the pl299 rescue module.
+    return ['player.towed_stranger_home'];
+  }
+  if (event === 'plants:radioMercy:darkDockClean') {
+    // PL-310: docked in a dark (low security) sector and no incident opened during the
+    // stay — the tab was left open. Substitute: the unlocked hatch's owner waits for the
+    // mercy module the row names.
+    return ['player.fuel_tab_left_open'];
+  }
+  if (event === 'plants:radioMercy:chalkSeatThreeDays') {
+    // PL-312: the same town dock three core days running — the market line knows them.
+    return ['player.market_line_three_days'];
+  }
+  if (event === 'plants:radioMercy:skiffTowedHome') {
+    // PL-313: the tow owner's own dock:docked receipt (via 'tow') — a crew brought the
+    // player's skiff in.
+    return ['player.skiff_towed_home'];
+  }
+  if (event === 'plants:radioMercy:repairWashed') {
+    // PL-314: a repair receipt followed by a hull wash at the same dock inside one visit —
+    // somebody tips. Substitute: a free wash waits for the pl275 wash-included module.
+    return ['player.repairs_wash_included'];
+  }
+  if (event === 'plants:radioMercy:threeYieldsOneShift') {
+    // PL-315: three real give-ways (dwelt in dock range, left without docking) in one shift.
+    return ['player.three_yields_one_shift'];
+  }
+  if (event === 'plants:radioMercy:convoyPacedHome') {
+    // PL-316: a surrendered stranger tethered, then the line release validated inside dock
+    // range — paced them all the way in, wordless. Substitute: the convoy identity waits
+    // for the pl292 convoy-pace module.
+    return ['player.convoy_paced_stranger'];
+  }
+  if (event === 'plants:radioMercy:dawnWatchHeld') {
+    // PL-317: holding slow station in dock range across a dawn without docking — somebody
+    // kept the watch. Substitute: the window-plating deed waits for the pl289 module.
+    return ['player.plated_window_flare'];
+  }
+  if (event === 'plants:radioMercy:kindnessChalks') {
+    // PL-318: three distinct mercy deeds in one session — the chalks read like a fan letter.
+    return ['player.callsign_kindness_chalks'];
+  }
+  if (event === 'plants:radioMercy:medalLeftNote') {
+    // PL-319: a fresh achievement unlock — the medal taken. Substitute: the note left
+    // behind waits for the pl270 medal-note module.
+    return ['player.took_medal_left_note'];
+  }
+  if (event === 'plants:radioMercy:cleanTakeoffCoached') {
+    // PL-320: left dock range and flew out a full window with no impact — one clean
+    // takeoff off the launch mouth. Substitute: the coached rookie waits for the pl304
+    // takeoff-coach module.
+    return ['player.coached_clean_takeoff'];
+  }
   if (event === 'claim:raidRepelled') {
     // PL-161: the player's yard held its first raid — claims emits this seam only for a win.
     return ['player.yard_held_first_raid'];
@@ -372,6 +463,15 @@ export const bandRadio = {
     this._bearingRequestEmitted = false;
     this._nextLandmarkProximitySampleAtS = 0;
     this._ensureState();
+    // Lane Nine mercy rows (PL-305..PL-320): the radio slice owns its composition observer.
+    // plantsRuntime registration is the plants bank's file, so the band constructs
+    // plantsRadioObserverMercy itself — the observer only emits receipts onto the bus (it
+    // writes nothing), and the batch list above hears them. Re-init is legal; init()
+    // unsubscribes its previous bindings first.
+    if (!this._mercyObserver) {
+      this._mercyObserver = Object.create(radioObserverMercyPlant);
+      this._mercyObserver.init(ctx);
+    }
     this._listen('band:tune', (payload) => this._setChannel(payload && payload.channelId));
     this._listen('band:cycle', () => this._cycleChannel());
     this._listen('band:sourceProximity', (payload) => this._setSourceProximity(payload));
@@ -460,6 +560,14 @@ export const bandRadio = {
       'plants:radio:beatTugToWreck', 'plants:radio:bellCracked', 'plants:radio:threeRaceWins',
       'plants:radio:fiveTownsOneDay', 'plants:radio:markAllTowns',
       'claim:raidRepelled', 'claim:defenseResolved', 'massline:npcLineCut',
+      // Lane Nine mercy batch (PL-305..PL-320): direct seams + plantsRadioObserverMercy
+      // receipts (one per settled deed, emitted at most once per session).
+      'tether:snapCatch', 'plants:deadLaneThanks',
+      'plants:radioMercy:berthGifted', 'plants:radioMercy:spareLeft', 'plants:radioMercy:fiftiethArrival',
+      'plants:radioMercy:leakTowedHome', 'plants:radioMercy:darkDockClean', 'plants:radioMercy:chalkSeatThreeDays',
+      'plants:radioMercy:skiffTowedHome', 'plants:radioMercy:repairWashed', 'plants:radioMercy:threeYieldsOneShift',
+      'plants:radioMercy:convoyPacedHome', 'plants:radioMercy:dawnWatchHeld', 'plants:radioMercy:kindnessChalks',
+      'plants:radioMercy:medalLeftNote', 'plants:radioMercy:cleanTakeoffCoached',
       'law:fineAssessed', 'law:obligationPaid']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
@@ -472,6 +580,8 @@ export const bandRadio = {
 
   newGame() {
     this.state.bandRadio = defaultBandRadioState();
+    // Mercy deed ledger is session state: a fresh run starts with a clean chalk board.
+    if (this._mercyObserver) this._mercyObserver.reset();
     if (this._thrownShips) this._thrownShips.clear();
     if (this._recentNearMissTimes) this._recentNearMissTimes.length = 0;
     this._lastStatusSignature = null;
@@ -509,6 +619,9 @@ export const bandRadio = {
 
   update(_dt, state) {
     if (state) this.state = state;
+    // The mercy observer sweeps its armed windows (clean takeoff, unlooted spill, dawn
+    // watch) ahead of any tuner early-return, so deeds settle in every mode the band runs.
+    if (this._mercyObserver) this._mercyObserver.update(_dt, state);
     const own = this._ensureState();
     const now = Math.max(0, finite(this.state.simTime, 0));
     this._sampleLiveLandmarkProximity(now);
@@ -662,6 +775,11 @@ export const bandRadio = {
   },
 
   destroy() {
+    // Full unsubscribe of the mercy observer's own bus bindings before the band's.
+    if (this._mercyObserver) {
+      this._mercyObserver.destroy();
+      this._mercyObserver = null;
+    }
     if (this._thrownShips) this._thrownShips.clear();
     if (this._recentNearMissTimes) this._recentNearMissTimes.length = 0;
     for (const unsub of this._unsubs || []) {
