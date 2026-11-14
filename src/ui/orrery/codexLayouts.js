@@ -26,11 +26,19 @@
 //    22px section rungs + foot-gap margin and LEDGER paints through ‹ CLOSE (mash area ~1092 at
 //    700×461, ~2376 at 801×461). Lift those compressions through max-height:519 so all ten
 //    section words clear the foot on first paint.
+// 7. CARD FOOT SURVIVES THE FADE. archiveCssSource masks an overflowing reading's last 44px (28px on
+//    short phones) to show there is more, but the mask covered the whole border box, so the card's
+//    hairline sides dissolved and its foot edge vanished — the card read as unfinished, open at the
+//    bottom (1280×720, 960×540). The fade now runs on the inside only; a second mask layer keeps
+//    the 1px border ring opaque, so the card stays closed while the lore still fades under its foot.
 
 const STYLE_ID = 'sf-orrery-codex-layouts';
 const BONE = '236 230 216';
 const INK = 'rgb(248 244 234)';
 const CX = 'html body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const CX_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const FADE_MASK = `linear-gradient(180deg, #000 calc(100% - var(--cx-fade, 44px)), transparent) border-box,
+    linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0) border-box`;
 
 const CSS = `
 /* 1 — the reading gets its measure back where the viewport is a real desktop (1080p and up):
@@ -68,6 +76,12 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX} .cx-index__bar { box-sizing:content-box; width:calc(100% + 2 * clamp(8px, .7vw, 12px)); margin:0;
     border-radius:0; }
 }
+/* 7 — the reading fade stays inside the card; the hairline ring (outer box minus padding box) stays whole */
+${CX} > .k-stage > .sf-codex-entry[data-overflow="1"]:not(.is-at-end),
+${CX_PHONE} > .k-stage > .sf-codex-entry[data-overflow="1"]:not(.is-at-end) {
+  -webkit-mask:${FADE_MASK}; -webkit-mask-composite:source-over, xor;
+  mask:${FADE_MASK}; mask-composite:add, exclude; }
+@media (max-height:560px) { ${CX_PHONE} > .k-stage > .sf-codex-entry { --cx-fade:28px; } }
 @media (min-width:761px) and (max-width:1100px) {
   ${CX} .cx-index__item { min-width:52px; padding:3px 6px 0; }
   ${CX} .cx-index__w { margin-bottom:3px !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 650 !important; }
