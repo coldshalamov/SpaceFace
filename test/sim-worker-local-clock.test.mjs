@@ -2333,6 +2333,72 @@ test('a lost presentation ACK self-heals through a full rebuild instead of freez
   }
 });
 
+test('foreground heartbeats recover an expired reply even when the watchdog timer never runs', async (t) => {
+  const previousSelf = globalThis.self;
+  const replies = [];
+  const worker = { postMessage: reply => replies.push(reply) };
+  globalThis.self = worker;
+  const send = data => worker.onmessage({ data });
+  const lastTick = () => replies.findLast(reply => reply.kind === 'clockTick');
+  const now = performance.now.bind(performance);
+  const setTimer = globalThis.setTimeout;
+  const clearTimer = globalThis.clearTimeout;
+  let wallOffset = 0;
+  let watchdogTimer;
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?stale-ack-beat-${Date.now()}`);
+    send({ kind: 'init', seq: 'stale-beat-init', profile: 'production', clockMode: 'worker-local',
+      timeScale: 1, seed: 4242, settings: {},
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')) });
+    await waitFor(() => replies.some(reply => reply.kind === 'ready'));
+    t.mock.method(performance, 'now', () => now() + wallOffset);
+    t.mock.method(globalThis, 'setTimeout', (fire, delay, ...args) => {
+      if (delay !== 3000) return setTimer(fire, delay, ...args);
+      watchdogTimer = fire;
+      return fire;
+    });
+    t.mock.method(globalThis, 'clearTimeout', timer => {
+      if (typeof timer !== 'function') clearTimer(timer);
+    });
+    send({ kind: 'clockControl', active: true, generation: 1, lifecycleGeneration: 0, timeScale: 1 });
+    const advance = commandSequence => send({ kind: 'clockCommand', commandSequence,
+      lifecycleGeneration: 0, timeScale: 1, steps: 1, commands: [] });
+    advance(1);
+    await waitFor(() => lastTick() && watchdogTimer);
+    wallOffset += 3100;
+    // A real applied watermark on this beat wins over the timeout.
+    send({ kind: 'laneHeartbeat', motionSampleId: 1, lifecycleGeneration: 0,
+      clockSequence: lastTick().clockSequence, ackJournalEnd: lastTick().journalEnd });
+    assert.equal(replies.at(-1).staleAckRecoveries, 0);
+    advance(2);
+    await waitFor(() => lastTick()?.commandSequence === 2);
+    const delayed = watchdogTimer;
+    const wedged = lastTick();
+
+    send({ kind: 'laneHeartbeat', motionSampleId: 2 });
+    assert.equal(replies.at(-1).staleAckRecoveries, 0, 'an unexpired clock keeps its credits');
+    wallOffset += 3100;
+    send({ kind: 'laneHeartbeat', motionSampleId: 3 });
+    assert.equal(replies.at(-1).unacked, 0, 'a foreground beat clears expired credits without the timer');
+    assert.equal(replies.at(-1).staleAckRecoveries, 1);
+    advance(3);
+    await waitFor(() => replies.some(reply => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true && reply.clockSequence > wedged.clockSequence));
+    assert.ok(lastTick().clockDiagnostics.steps > wedged.clockDiagnostics.steps);
+
+    delayed();
+    send({ kind: 'laneHeartbeat', motionSampleId: 4 });
+    assert.equal(replies.at(-1).staleAckRecoveries, 1, 'the old timer cannot expire a replacement reply');
+    assert.ok(replies.at(-1).unacked > 0);
+  } finally {
+    send({ kind: 'shutdown', seq: 'stale-beat-shutdown' });
+    await waitFor(() => replies.some(reply => reply.kind === 'bye'));
+    t.mock.restoreAll();
+    if (previousSelf === undefined) delete globalThis.self;
+    else globalThis.self = previousSelf;
+  }
+});
+
 test('active worker-local commands wait for the next timer tick', { timeout: 60000 }, async () => {
   // This is the bounded queue contract for the next worker-clock repair. An
   // active presentation command must join the next real fixed-step tick; it

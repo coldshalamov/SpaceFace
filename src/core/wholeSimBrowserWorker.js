@@ -162,7 +162,7 @@ const localClock = {
   // sim/wall numerator and denominator the lane attributes.
   owedTicks: 0,
   unackedSequences: [],
-  ackWatchdogTimer: null,
+  ackWatchdog: null,
   staleAckRecoveries: 0,
   shedEventCount: 0,
   shedInputPublishCount: 0,
@@ -760,32 +760,33 @@ function postTickLikeReply(reply) {
 }
 
 function localDisarmStaleAckWatchdog() {
-  if (localClock.ackWatchdogTimer === null) return;
-  clearTimeout(localClock.ackWatchdogTimer);
-  localClock.ackWatchdogTimer = null;
+  const watchdog = localClock.ackWatchdog;
+  if (watchdog === null) return;
+  localClock.ackWatchdog = null;
+  clearTimeout(watchdog.timer);
+}
+
+function localRecoverStaleAck(watchdog) {
+  if (localClock.ackWatchdog !== watchdog) return;
+  localDisarmStaleAckWatchdog();
+  if (localClock.stopped || !localClock.sentAwaitingAck
+    || localClock.unackedSequences[0] !== watchdog.clockSequence) return;
+  // The next tick rebuilds the journal, carrying all retained receipts and
+  // replacing the stale range idempotently even if its apply is still queued.
+  localClock.unackedSequences.length = 0;
+  localClock.postedJournalRanges.clear();
+  localClock.sentAwaitingAck = false;
+  localClock.needsRebuildOnSend = true;
+  localClock.staleAckRecoveries++;
+  localSetBackpressure(false);
+  scheduleLocalClock();
 }
 
 function localArmStaleAckWatchdog(clockSequence) {
   localDisarmStaleAckWatchdog();
-  localClock.ackWatchdogTimer = setTimeout(() => {
-    localClock.ackWatchdogTimer = null;
-    if (localClock.stopped || !localClock.sentAwaitingAck
-      || localClock.unackedSequences[0] !== clockSequence) return;
-    // The publish's ACK never landed — the apply died mid-flight or the
-    // consumer is hopelessly behind. Continuing to retain either hard-stops
-    // the clock at the durable limit or leaves presentation frozen at the
-    // last applied pose while the sim runs blind. Re-baseline instead: the
-    // full rebuild rides the very next tick, carries every retained receipt,
-    // and lands as an idempotent replace even when the original apply is
-    // still queued on main. A late duplicate ACK is sequence-rejected below.
-    localClock.unackedSequences.length = 0;
-    localClock.postedJournalRanges.clear();
-    localClock.sentAwaitingAck = false;
-    localClock.needsRebuildOnSend = true;
-    localClock.staleAckRecoveries++;
-    localSetBackpressure(false);
-    scheduleLocalClock();
-  }, LOCAL_STALE_ACK_MS);
+  const watchdog = { clockSequence, deadlineMs: localNowMs() + LOCAL_STALE_ACK_MS, timer: null };
+  localClock.ackWatchdog = watchdog;
+  watchdog.timer = setTimeout(() => localRecoverStaleAck(watchdog), LOCAL_STALE_ACK_MS);
 }
 
 function localJournalRebuildEnvelope() {
@@ -1561,6 +1562,11 @@ self.onmessage = (event) => {
       // second tick. The task/timer becomes obsolete when fire clears it.
       localClock.wake.fire();
     }
+    // Apply a valid ACK before checking the deadline. A foreground message can
+    // recover an expired credit even when the worker timer queue is delayed.
+    recoverClockCreditFromHeartbeat(msg);
+    const watchdog = localClock.ackWatchdog;
+    if (watchdog !== null && now >= watchdog.deadlineMs) localRecoverStaleAck(watchdog);
     if (Number.isSafeInteger(msg.motionSampleId)) {
       // This path stays out of the directive chain and the SAB reply ring, so
       // a stalled pose reply cannot also hide the current worker watermarks.
@@ -1590,7 +1596,6 @@ self.onmessage = (event) => {
         sabReplyFreeCount: header ? Atomics.load(header, SAB_REPLY_FREE_INDEX) : null,
       });
     }
-    recoverClockCreditFromHeartbeat(msg);
     return;
   }
   releaseLocalClockAckOnReceipt(msg);
