@@ -6,7 +6,9 @@
 // WHAT THIS OWNS — one beacon marking the mouth (same event-driven seams as every one-off:
 // init / deferred sector-enter / save:loaded / newGame) plus the per-tick eat pass. The
 // intake never buys or holds freight — it consumes the body and files the fact.
-import { furnaceMouthGlobal } from '../missions/furnaceWorksite.js';
+import { furnaceMouthGlobal, furnaceReceivingJob } from '../missions/furnaceWorksite.js';
+import { syncFurnaceReceivingLane, noteFurnaceReceivingBrief } from '../missions/furnaceReceivingLane.js';
+import { reconcileFurnaceCasing, noteFurnaceCasingPickup, noteFurnaceCasingBurned } from '../missions/furnaceCasingReturn.js';
 import { FURNACE_INTAKE } from '../data/furnace.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
@@ -60,6 +62,11 @@ export function createFurnaceIntake() {
       on('save:loaded', () => { this._restoring = false; this._sync(); });
       on('mission:accepted', () => this._sync());
       on('game:newGame', () => this._sync());
+      // The receiving lane only changes on mission transitions — never re-derived per tick.
+      on('mission:updated', () => this._syncLane());
+      on('mission:completed', () => this._syncLane());
+      on('mission:failed', () => this._syncLane());
+      on('pickup:collected', (p) => noteFurnaceCasingPickup(this.state, p));
       this._sync();
     },
     destroy() {
@@ -96,8 +103,10 @@ export function createFurnaceIntake() {
     },
     _removeOwned() {
       for (const e of this.state?.entityList || []) {
-        if (e?.alive && e.data?.furnaceIntake === true) this.helpers?.removeEntity?.(e.id);
+        if (e?.alive && (e.data?.furnaceIntake === true || e.data?.furnaceReceivingShoulder === true)) this.helpers?.removeEntity?.(e.id);
       }
+      this._laneGuideId = null;
+      this._laneJobId = null;
     },
     _sync() {
       if (!this.state?.story || this._restoring) return;
@@ -113,6 +122,12 @@ export function createFurnaceIntake() {
           text: FURNACE_INTAKE.announce, ttl: 9, persist: false,
         });
       }
+      this._syncLane();
+      reconcileFurnaceCasing(this);
+    },
+    _syncLane() {
+      if (!this.state || this._restoring) return;
+      syncFurnaceReceivingLane(this, this._adventure() ? furnaceReceivingJob(this.state) : null);
     },
     /** The mouth is a hazard ring: anything edible crossing the lip is taken, whatever
      *  the speed — flinging is the intended delivery. Once per body per tick. */
@@ -128,6 +143,7 @@ export function createFurnaceIntake() {
         const dx = pos.x - mouth.x, dz = pos.z - mouth.z;
         if (dx * dx + dz * dz > r2) continue;
         e._furnaceTaken = true;
+        noteFurnaceCasingBurned(this.state, e);
         const flags = this._flags();
         if (flags) {
           flags[FURNACE_INTAKE.fedFlag] = true;
@@ -148,6 +164,8 @@ export function createFurnaceIntake() {
         });
         this.helpers?.removeEntity?.(e.id);
       }
+      noteFurnaceReceivingBrief(this);
+      reconcileFurnaceCasing(this);
     },
   };
 }

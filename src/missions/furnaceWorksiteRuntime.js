@@ -1,7 +1,7 @@
 import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 // A subroutine of the existing mission owner, not another registered cargo/world owner.
 import { furnaceDetail, authoredFurnaceWorksite, furnaceLots, furnaceLotSpec,
-  furnaceMites, furnaceMiteClearance } from './furnaceWorksite.js';
+  furnaceMites, furnaceMiteClearance, newFurnaceCasingRecord, normalizeFurnaceCasing } from './furnaceWorksite.js';
 function ownedBody(e, m, slot, allowDead = false) {
   return (allowDead || e?.alive !== false) && e?.type === 'payload'
     && e.data?.persistenceOwner === 'missionFurnaceWorksite' && e.data.furnaceLotVersion === 1
@@ -24,7 +24,9 @@ export function retireFurnaceWorksite(owner, m) {
   snapshotFurnaceWorksite(owner, m);
   m.targetEntityIds = [];
   if (m.params?.furnaceWorksiteVersion === 1 && Array.isArray(m.params.furnaceLots)) {
-    owner.state.missions.furnaceWorksiteAftermath = { version: 1, missionId: m.id, lots: m.params.furnaceLots, ...(m.params.furnaceLedgerInvalid ? { invalid: true } : {}) };
+    owner.state.missions.furnaceWorksiteAftermath = { version: 1, missionId: m.id, lots: m.params.furnaceLots,
+      ...(m.params.furnaceCasing ? { casing: m.params.furnaceCasing } : {}),
+      ...(m.params.furnaceLedgerInvalid ? { invalid: true } : {}) };
   }
 }
 export function syncFurnaceWorksite(owner, m) {
@@ -35,6 +37,7 @@ export function syncFurnaceWorksite(owner, m) {
       if (e?.data?.persistenceOwner === 'missionFurnaceWorksite' && e.data.furnaceMissionId === previous.missionId) e.data.furnaceMissionId = m.id;
     }
     m.params.furnaceLots = previous.lots;
+    if (previous.casing) m.params.furnaceCasing = previous.casing;
     if (previous.invalid) m.params.furnaceLedgerInvalid = true;
     m.params.furnaceFeeds = previous.lots.filter(row => row.received).length;
     m.params.furnaceLosses = previous.lots.filter(row => row.lost && !row.received).length;
@@ -103,7 +106,10 @@ export function normalizeFurnaceAftermath(raw) {
       rot: Number.isFinite(row.rot) ? row.rot : 0, angVel: Number.isFinite(row.angVel) ? row.angVel : 0,
       hull: row.hull });
   }
-  return { version: 1, missionId: raw.missionId, lots };
+  const record = { version: 1, missionId: raw.missionId, lots };
+  const casing = normalizeFurnaceCasing(raw.casing);
+  if (casing) record.casing = casing;
+  return record;
 }
 function aftermathMission(record) {
   return { id: record.missionId, status: 'active', storyTag: 'campaign47a:b1:infested',
@@ -138,6 +144,11 @@ export function recordFurnaceAftermathFact(owner, p, kind) {
     || p.lotSlot !== lot.slot || p.sectorId !== 'sector_ceres_belt'))) return false;
   if (kind === 'lost' && e._furnaceTaken) return false;
   lot[kind] = true;
+  // The same validated-third-receipt entitlement applies to aftermath leftovers: when the
+  // worksite's finite record shows all three lots received, it owes exactly one casing.
+  if (kind === 'received' && !record.casing && record.lots.every(row => row.received === true)) {
+    record.casing = newFurnaceCasingRecord();
+  }
   return true;
 }
 

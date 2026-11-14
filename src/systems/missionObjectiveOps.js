@@ -3,7 +3,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
 import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js';
-import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js';
+import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches, furnaceLotCallout, newFurnaceCasingRecord } from '../missions/furnaceWorksite.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { addCargo, releasableContractUnits } from './cargo.js';
@@ -436,16 +436,25 @@ export const missionObjectiveOps = {
       if (authoredFurnaceWorksite(m)) {
         if (!furnaceReceiptMatches(m, p, this.state.entities?.get(p.entityId))) continue;
         furnaceLots(m)[p.lotSlot].received = true;
+        // The owner stamps the casing entitlement at the third validated receipt; the
+        // intake-side reconciler only reads the worksite record this writes. An invalid
+        // saved ledger is paused cargo — it entitles nothing.
+        if (!m.params.furnaceLedgerInvalid && !m.params.furnaceCasing
+          && furnaceLots(m).every(lot => lot.received === true)) {
+          m.params.furnaceCasing = newFurnaceCasingRecord();
+        }
       }
       m.params.furnaceFeeds = Math.min(m.params.furnaceFeedsNeeded, (m.params.furnaceFeeds | 0) + 1);
       delete m._extrasAnnounced;
+      const callout = authoredFurnaceWorksite(m) ? furnaceLotCallout(m, p.lotSlot) : null;
+      if (callout) this._sayStoryLine(callout, 4);
       if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) {
         prepareFurnaceSettlement(this, m);
         this._completeMission(m, i);
       } else {
         this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id, furnaceFeeds: m.params.furnaceFeeds });
-        this._sayStoryLine(`CR-FEED intake: ${m.params.furnaceFeeds}/${m.params.furnaceFeedsNeeded}`, 4);
+        if (!callout) this._sayStoryLine(`CR-FEED intake: ${m.params.furnaceFeeds}/${m.params.furnaceFeedsNeeded}`, 4);
       }
       return;
     }
