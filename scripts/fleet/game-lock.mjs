@@ -44,8 +44,12 @@ function tryTake(label) {
   const back = readLock();
   return !!back && back.pid === process.pid;
 }
+// SF_LOCK_URGENT=1 (lead-granted, for a blocking demo defect) queues ahead of ordinary tickets; urgent
+// tickets still serve each other first come, first served. It never interrupts a running holder.
+const URGENT = process.env.SF_LOCK_URGENT === '1';
 function ticketPath() {
-  return join(QUEUE, `${String(t0).padStart(15, '0')}-${process.pid}.json`);
+  const order = URGENT ? `000${String(t0).padStart(14, '0')}` : `1${String(t0).padStart(14, '0')}`;
+  return join(QUEUE, `${order}-${process.pid}.json`);
 }
 function enqueue(label) {
   mkdirSync(QUEUE, { recursive: true });

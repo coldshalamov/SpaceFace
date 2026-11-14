@@ -25435,15 +25435,11 @@ export const render = {
     const postChanged = ((prevLevel >= 2) !== (level >= 2)) && vd.postFx !== false;
     const rasterChanged = prevScale !== renderState.hitchReliefScale;
     if (!bloomChanged && !postChanged && !rasterChanged) return;
+    // Never an in-play notice: auto quality is logged and surfaced in Settings, not drawn over
+    // the fight or a demo. A bus event carries the fact for any settings surface to read.
     try {
-      this.bus && this.bus.emit('toast', {
-        text: eased
-          ? 'Graphics eased automatically to keep the game responsive'
-          : 'Graphics restored to your settings',
-        kind: 'info',
-        ttl: 5,
-      });
-    } catch (_) { /* toast is best-effort */ }
+      this.bus && this.bus.emit('quality:autoEased', { eased: !!eased, scale: renderState.hitchReliefScale });
+    } catch (_) { /* best-effort */ }
   },
 
   _publishArrivalRoster(exactSectorId) {

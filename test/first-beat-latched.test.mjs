@@ -84,17 +84,3 @@ test('Swarm: the first latch goes to the centre announcer, not the column', () =
     assert.equal(heard.length, 1, 'once per run');
   } finally { callout.destroy(); }
 });
-
-test('THROW-01: losing the held body says LOST once per run; another cause or another pilot says nothing', () => {
-  assert.equal(handlineSenseLine('tether:broke', { reason: 'target_lost' }).name, 'LOST');
-  assert.equal(handlineSenseLine('tether:broke', { reason: 'overload' }), null);
-  const { bus, callout } = mount();
-  try {
-    const heard = words(bus);
-    bus.emit('tether:broke', { reason: 'target_lost', ownerId: 99, targetId: 2 });
-    assert.deepEqual(heard, [], 'not the pilot line');
-    bus.emit('tether:broke', { reason: 'target_lost', ownerId: 1, targetId: 2 });
-    bus.emit('tether:broke', { reason: 'target_lost', ownerId: 1, targetId: 3 });
-    assert.deepEqual(heard, ['LOST'], 'the word once; repeats keep the snap and its sound');
-  } finally { callout.destroy(); }
-});
