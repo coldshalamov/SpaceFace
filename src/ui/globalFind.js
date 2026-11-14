@@ -44,6 +44,7 @@ export function createGlobalFind(ctx) {
   let pane = null;         // .sf-find__pane — the one glass the field, results and hint share
   let input = null;
   let listEl = null;
+  let opener = null;
   let rows = [];
   let selIdx = 0;
   let destroyed = false;
@@ -58,6 +59,7 @@ export function createGlobalFind(ctx) {
     if (!listEl) return;
     listEl.textContent = '';
     if (!rows.length) {
+      input.removeAttribute('aria-activedescendant');
       const q = input && input.value.trim();
       if (q) listEl.appendChild(el('div', 'sf-find__empty k-t-fine', { text: 'Nothing by that name — yet.' }));
       return;
@@ -71,6 +73,8 @@ export function createGlobalFind(ctx) {
         attrs: {
           type: 'button',
           role: 'option',
+          id: 'sf-find-option-' + i,
+          tabindex: '-1',
           ...(opens ? { 'data-entity': row.ref } : {}),
           'aria-selected': i === selIdx ? 'true' : 'false',
         },
@@ -83,6 +87,7 @@ export function createGlobalFind(ctx) {
       // returns refs that resolve.
       listEl.appendChild(btn);
     });
+    input.setAttribute('aria-activedescendant', 'sf-find-option-' + selIdx);
   }
 
   function refresh() {
@@ -96,15 +101,15 @@ export function createGlobalFind(ctx) {
     if (destroyed) return;
     if (panel) { try { input && input.focus(); } catch (_) {} return; }
     const host = activeScreenRoot();
+    opener = document.activeElement;
     const bare = !host;
     panel = el('div', 'sf-find' + (bare ? ' screen sf-find--host' : ''), {
-      attrs: bare
-        ? { role: 'dialog', 'aria-label': 'Find', 'aria-modal': 'true' }
-        : { role: 'dialog', 'aria-label': 'Find' },
+      attrs: { role: 'dialog', 'aria-label': 'Find', 'aria-modal': 'true' },
     });
     input = el('input', 'sf-find__input', {
       attrs: {
-        type: 'text',
+        type: 'text', role: 'combobox', 'aria-expanded': 'true',
+        'aria-controls': 'sf-find-results', 'aria-autocomplete': 'list',
         'aria-label': 'Find anything',
         placeholder: 'Find — a power, a price, a port, a name…',
         autocomplete: 'off',
@@ -112,10 +117,14 @@ export function createGlobalFind(ctx) {
         'data-sf-text': '',
       },
     });
-    listEl = el('div', 'sf-find__results', { attrs: { role: 'listbox', 'aria-label': 'Find results' } });
+    listEl = el('div', 'sf-find__results', { attrs: { id: 'sf-find-results', role: 'listbox', 'aria-label': 'Find results' } });
     const hint = el('div', 'sf-find__hint k-t-fine', { text: '↑↓ pick · Enter opens the dossier · Esc closes' });
     pane = el('div', 'sf-find__pane');
-    pane.append(input, listEl, hint);
+    const field = el('div', 'sf-find__field');
+    const dismiss = el('button', 'sf-find__dismiss', { attrs: { type: 'button', 'aria-label': 'Close find' } });
+    dismiss.addEventListener('click', close);
+    field.append(input, dismiss);
+    pane.append(field, listEl, hint);
     panel.appendChild(pane);
     (host || screensRoot).appendChild(panel);
     if (bare) {
@@ -151,21 +160,38 @@ export function createGlobalFind(ctx) {
   }
 
   function onKey(ev) {
+    // The flight-hosted drawer is a child of the palette. Its controls own their Enter and Tab.
+    if (pane.inert || !pane.contains(ev.target)) return;
+    if (ev.key === 'Tab') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      (document.activeElement === input ? pane.querySelector('.sf-find__dismiss') : input).focus();
+      return;
+    }
     if (ev.key === 'Escape') {
       ev.preventDefault();
       ev.stopPropagation();
       close();
       return;
     }
-    if (!rows.length) return;
+    if (!rows.length || ev.target !== input) return;
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
       ev.preventDefault();
+      ev.stopPropagation();
+      const old = listEl.children[selIdx];
+      old.classList.remove('sf-find__row--sel');
+      old.setAttribute('aria-selected', 'false');
       selIdx = (selIdx + (ev.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
-      paintRows();
+      const next = listEl.children[selIdx];
+      next.classList.add('sf-find__row--sel');
+      next.setAttribute('aria-selected', 'true');
+      input.setAttribute('aria-activedescendant', next.id);
+      next.scrollIntoView({ block: 'nearest' });
       return;
     }
     if (ev.key === 'Enter') {
       ev.preventDefault();
+      ev.stopPropagation();
       activateSelected();
     }
   }
@@ -173,6 +199,8 @@ export function createGlobalFind(ctx) {
   function close() {
     if (!panel) return;
     const p = panel;
+    const restore = p.contains(document.activeElement) ? opener : null;
+    opener = null;
     panel = null;
     input = null;
     listEl = null;
@@ -194,6 +222,7 @@ export function createGlobalFind(ctx) {
         screensRoot.setAttribute('aria-hidden', 'true');
       }
     }
+    if (restore?.isConnected && !restore.closest('[inert]')) restore.focus?.({ preventScroll: true });
   }
 
   const off = bus && bus.on ? bus.on('ui:globalFind', () => open()) : null;
@@ -201,7 +230,10 @@ export function createGlobalFind(ctx) {
   // is up the palette steps back so the drawer reads in front — "the palette waits behind the
   // drawer". entityLinks announces it (ui:entityDrawer); the class carries the recede look.
   const offDrawer = bus && bus.on ? bus.on('ui:entityDrawer', (ev) => {
-    if (panel) panel.classList.toggle('sf-find--recede', !!(ev && ev.open));
+    if (!panel) return;
+    const open = !!ev?.open;
+    pane.inert = open;
+    panel.classList.toggle('sf-find--recede', open);
   }) : null;
 
   return {

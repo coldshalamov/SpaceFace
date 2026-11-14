@@ -16,11 +16,13 @@
    ORRERY Unfold layer (etched edge-light, ladder rows, Hand tick). Flattening it to a bare
    --dp-field slab is what the critic photographed as the generic modal (F1). */
 #screens .sx-berth :is(.sx-pop, .sx-comms__history) {
-  border: 14px solid transparent;
-  border-image: none;
-  border-radius: 0;
-  background: var(--dp-field);
-  box-shadow: none;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--sf-pop-seam);
+  border-top: 2px solid var(--dp-phos);
+  border-radius: 2px;
+  background: var(--sf-pop-glass);
+  box-shadow: var(--sf-pop-shadow);
 }
 
 /* The vitals plate used to be parked absolutely at the top-right of the screen, with the header

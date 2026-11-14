@@ -19,6 +19,8 @@
   right: calc(100vw - var(--sf-rightdock-left, calc(100vw - 250px)) + 14px);
   width: min(328px, calc(100vw - 32px));
   max-height: min(56vh, 540px);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  padding: 2px;
   /* A live decision outranks the receipt lane (toasts x480–800, auto-fading) — an over-tall
      prompt may transiently cover a toast rather than clip its own choices; the deck root is
      pointer-events:none so it still costs the player nothing but the fading line. */
@@ -46,6 +48,7 @@
 /* One glass frame per rendered decision. Kind is carried by the top edge + flag word, never by
    colour alone (the countdown line and the keycaps repeat the state in text). */
 .sf-prompt {
+  flex: 0 0 auto;
   contain: layout paint style;
   box-sizing: border-box;
   pointer-events: auto;
@@ -86,7 +89,7 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
 
 .sf-prompt__headline {
   margin: 4px 0 0;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.25;
   letter-spacing: -0.01em;
   font-weight: 600;
@@ -171,7 +174,7 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
 }
 /* Disabled choices claim no digit — the empty keycap box stays out of the way. */
 .sf-prompt__choice b:empty { visibility: hidden; }
-.sf-prompt__choice span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-prompt__choice span { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .sf-prompt__choice:hover,
 .sf-prompt__choice:focus-visible,
 .sf-prompt__choice.is-highlight {
@@ -189,6 +192,7 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
 
 /* Collapsed decisions: one honest row — keycap + left-aligned name + tabular countdown, click to raise. */
 .sf-prompt-chip {
+  flex: 0 0 auto;
   contain: layout style;
   display: flex;
   align-items: center;
@@ -277,6 +281,7 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
 }
 
 @media (max-width: 420px) {
+  #sf-prompt-deck { width: min(352px, calc(100vw - 24px)); }
   #sf-prompt-deck .sf-prompt__choice span {
     overflow: visible;
     overflow-wrap: anywhere;
@@ -296,23 +301,24 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
    failure), the phosphor means read (countdown, meter). Corners are machined 4px breaks — no 10px
    consumer card radius. ════════════════════════════════════════════════════════════════════════ */
 #sf-prompt-deck .sf-prompt {
-  border: 1px solid rgb(236 230 216 / 0.14);
-  border-radius: 4px;
-  border-image: none;
-  background: linear-gradient(180deg, rgb(18 22 30 / 0.95), rgb(11 14 20 / 0.95)), var(--dp-glass-solid);
+  border: 1px solid var(--sf-pop-seam);
+  border-top: 2px solid var(--dp-phos);
+  border-radius: 2px;
+  background: var(--sf-pop-glass), var(--dp-glass-solid);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 14px 32px -10px rgb(0 0 0 / 0.78);
   color: var(--dp-ink);
 }
 /* Attention states light the bezel itself rather than a consumer accent edge. */
 #sf-prompt-deck .sf-prompt--warn {
   border-image-source: none;
-  border-color: rgb(242 185 80 / 0.34);
+  border-top-color: var(--dp-lamp);
 }
 #sf-prompt-deck .sf-prompt--danger {
   border-image-source: none;
-  border-color: rgb(239 107 99 / 0.44);
+  border-top-color: var(--dp-danger-hot);
 }
 #sf-prompt-deck .sf-prompt__head {
+  gap: 7px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--dp-rule-hi);
   font-family: var(--dp-face-read, "Instrument Sans", sans-serif);
   font-weight: 600;
   font-size: 12px;
@@ -320,12 +326,17 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
   text-transform: uppercase;
   color: var(--dp-ink-mute);
 }
+#sf-prompt-deck .sf-prompt__head::before {
+  content: ""; flex: none; width: 22px; height: 22px; background: var(--sf-pop-record) center / contain no-repeat;
+}
+#sf-prompt-deck .sf-prompt--danger .sf-prompt__head::before { background-image: var(--sf-pop-interlock); }
+#sf-prompt-deck .sf-prompt__sender { flex: 1; white-space: normal; overflow-wrap: anywhere; }
 #sf-prompt-deck .sf-prompt--warn .sf-prompt__head { color: var(--dp-lamp); }
 #sf-prompt-deck .sf-prompt--danger .sf-prompt__head { color: var(--dp-danger-hot); }
 #sf-prompt-deck .sf-prompt__headline {
   font-family: var(--dp-face-read, "Instrument Sans", sans-serif);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: -0.01em;
   text-transform: none;
   color: var(--dp-ink-hi, var(--dp-ink));
@@ -357,10 +368,10 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
   color: var(--dp-ink);
   font-family: var(--dp-face-read, "Instrument Sans", sans-serif);
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
   transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 #sf-prompt-deck .sf-prompt__choice b {

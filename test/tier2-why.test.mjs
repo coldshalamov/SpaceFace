@@ -184,6 +184,19 @@ function carrier(doc, text, tag = 'div') {
   console.log('ok   keyboard focus — same text, anchored, hides on focusout and on foreign focusin');
 }
 
+// A tooltip augments permanent descriptions such as a keyboard binding or an unavailable reason.
+{
+  const doc = installDom();
+  const handle = mountWhyReveal();
+  const field = carrier(doc, 'Requires clearance.', 'button');
+  field.setAttribute('aria-describedby', 'binding-help');
+  fire(doc, 'focusin', field);
+  assert.equal(field.getAttribute('aria-describedby'), 'binding-help sf-why-tip');
+  fire(doc, 'focusout', field, { relatedTarget: doc.body });
+  assert.equal(field.getAttribute('aria-describedby'), 'binding-help');
+  handle.destroy();
+}
+
 // ── 4. enumerated-only: a cause with no phrase renders NOTHING ────────────────────────────────
 {
   const doc = installDom();

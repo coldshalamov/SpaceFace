@@ -104,6 +104,13 @@ jobs:
           route('src/ui/orrery/popupsLayouts.js', 'popup-dossier popup-confirm-danger popup-find')
           route('src/ui/entityLinks.js', 'popup-dossier')
           route('src/ui/globalFind.js', 'popup-find popup-dossier')
+          route('src/ui/confirm.js', 'popup-confirm popup-confirm-danger')
+          route('src/ui/whyReveal.js', 'popup-tooltip')
+          route('src/ui/comms.js', 'popup-story-choice')
+          route('src/ui/promptDeck.js', 'popup-decision')
+          route('src/ui/hud.js src/ui/orrery/hudSkin.js', 'orrery-flight popup-cargo popup-receipt')
+          route('src/ui/screens/base.js src/ui/orrery/baseLayouts.js', 'base base-claimed')
+          route('src/ui/screens/manifest.js src/ui/orrery/manifestLayouts.js', 'manifest manifest-hand')
           route('src/ui/orrery/tech-treeLayouts.js src/ui/screens/techTree.js',
                 'tech-tree tech-tree-progress')
           route('src/ui/orrery/flight-radialsLayouts.js src/ui/orrery/commsLayouts.js',

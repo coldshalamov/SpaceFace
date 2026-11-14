@@ -23,9 +23,8 @@
 //     than the viewport. The layer therefore stretches its host (`.sf-drawerhost`) while open, and
 //     that class is removed on close so no screen is left relaid-out.
 //
-// A DRAWER IS NOT A MODAL (grammar §7: "one click → DRAWER … never opens a second modal"). Clicking
-// a link inside the drawer REPLACES its content and pushes a back step; it never stacks a second
-// surface. An unknown ref does NOTHING — the causeLedger discipline, so a stale tag is inert rather
+// Desktop dossiers sit beside their host. The narrow-screen sheet and a dossier opened above Find
+// own focus while they obscure the original controls. Following a link replaces the same sheet. An unknown ref does NOTHING — the causeLedger discipline, so a stale tag is inert rather
 // than a door into an empty room.
 
 import { resolveEntity } from './entityResolver.js';
@@ -73,6 +72,32 @@ export function createEntityLinks(ctx) {
   let opener = null;       // element that opened the drawer, for focus restore
   const back = [];         // ref trail within one drawer session
   let destroyed = false;
+  const compact = typeof window !== 'undefined' ? window.matchMedia?.('(max-width: 640px)') : null;
+  const covered = new Set();
+
+  function uncoverHost() {
+    for (const sibling of covered) sibling.inert = false;
+    covered.clear();
+  }
+
+  function syncModality() {
+    const drawer = layer?.firstElementChild;
+    if (!drawer) return;
+    const modal = compact?.matches || host.matches('.sf-find--host') || !!host.querySelector('.sf-find');
+    drawer.setAttribute('role', modal ? 'dialog' : 'region');
+    if (!modal) {
+      drawer.removeAttribute('aria-modal');
+      uncoverHost();
+      return;
+    }
+    drawer.setAttribute('aria-modal', 'true');
+    for (const sibling of host.children) {
+      if (sibling === layer || sibling.inert) continue;
+      covered.add(sibling);
+      sibling.inert = true;
+    }
+    if (!drawer.contains(document.activeElement)) drawer.focus({ preventScroll: true });
+  }
 
   /** The screen that owns the stack right now. screenManager marks it aria-modal; reading the DOM
    *  keeps this decoupled from the manager's internals. */
@@ -94,6 +119,7 @@ export function createEntityLinks(ctx) {
   }
 
   function teardownLayer() {
+    uncoverHost();
     if (layer && layer.parentNode) layer.parentNode.removeChild(layer);
     if (host) host.classList.remove('sf-drawerhost');
     layer = null;
@@ -337,6 +363,7 @@ export function createEntityLinks(ctx) {
       attrs: { role: 'region', 'aria-labelledby': headId, tabindex: '-1' },
     });
     layer.appendChild(drawer);
+    syncModality();
     // Announce the drawer so overlays that outrank it can step back — the find palette (which
     // paints at z 4500 over this layer's z 40) recedes while a dossier is up, making "the palette
     // waits behind the drawer" true at the pixels, not just in the Esc order.
@@ -362,7 +389,8 @@ export function createEntityLinks(ctx) {
     const target = opener;
     opener = null;
     if (target && target.isConnected && typeof target.focus === 'function') {
-      try { target.focus({ preventScroll: true }); } catch (_) { try { target.focus(); } catch (__) {} }
+      const destination = target.closest?.('.sf-find__pane')?.querySelector('.sf-find__input') || target;
+      try { destination.focus({ preventScroll: true }); } catch (_) { try { destination.focus(); } catch (__) {} }
     }
   }
 
@@ -382,7 +410,21 @@ export function createEntityLinks(ctx) {
   // Escape must close the DRAWER without also popping the screen behind it. Capture phase beats the
   // screen-level handlers, and stopPropagation there is what keeps one Esc from doing two things.
   const onKeydown = (ev) => {
-    if (ev.key !== 'Escape' || !layer) return;
+    if (!layer) return;
+    const drawer = layer.firstElementChild;
+    if (ev.key === 'Tab' && drawer?.getAttribute('aria-modal') === 'true') {
+      const stops = Array.from(drawer.querySelectorAll('button:not([disabled]), summary, [tabindex="0"]'))
+        .filter(node => node.getClientRects().length);
+      const index = stops.indexOf(document.activeElement);
+      const edge = ev.shiftKey ? index <= 0 : index < 0 || index === stops.length - 1;
+      if (edge) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        (stops[ev.shiftKey ? stops.length - 1 : 0] || drawer).focus();
+      }
+      return;
+    }
+    if (ev.key !== 'Escape') return;
     ev.preventDefault();
     ev.stopPropagation();
     close();
@@ -398,6 +440,7 @@ export function createEntityLinks(ctx) {
     if (ref && open(ref, link)) { ev.preventDefault(); ev.stopPropagation(); }
   };
 
+  compact?.addEventListener?.('change', syncModality);
   screensRoot.addEventListener('click', onClick);
   screensRoot.addEventListener('keydown', onKeydown, true);
   screensRoot.addEventListener('keydown', onActivateKey);
@@ -414,6 +457,7 @@ export function createEntityLinks(ctx) {
     if (destroyed) return;
     destroyed = true;
     if (layer && bus && bus.emit) bus.emit('ui:entityDrawer', { open: false });
+    compact?.removeEventListener?.('change', syncModality);
     screensRoot.removeEventListener('click', onClick);
     screensRoot.removeEventListener('keydown', onKeydown, true);
     screensRoot.removeEventListener('keydown', onActivateKey);

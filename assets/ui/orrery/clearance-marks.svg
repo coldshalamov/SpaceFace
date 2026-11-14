@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" fill="none">
+  <!-- Aperture, interlock, and locating sweep share a machined outer casting. -->
+  <style>.signal { display: none } .signal:target { display: inline }</style>
+  <path d="M13 5h30l8 8v30l-8 8H13l-8-8V13z" fill="#19262f" stroke="#627784"/>
+  <path d="M9 20v-5l6-6h7m25 28v5l-5 5h-7" stroke="#a3c6cd" stroke-width="1.5"/>
+  <path d="M4 28h5m38 0h5M28 4v5m0 38v5" stroke="#769097"/>
+  <g id="seal" class="signal">
+    <circle cx="28" cy="28" r="15" stroke="#6e929b"/>
+    <path d="m28 13 7 8H22l-4 5m24 2-12 12 1-12 5-6m-18 15-2-12 11 8 1 8" fill="#38535f" stroke="#b7ced0" stroke-linejoin="round"/>
+    <path d="m24 27 3 3 7-8" stroke="#f4c483" stroke-width="2.2"/>
+  </g>
+  <g id="interlock" class="signal">
+    <path d="m13 29 8-14h10l-4 7h-3l-4 7 4 7-4 6z" fill="#814b3b" stroke="#e79c79"/>
+    <path d="m43 27-8 14H25l4-7h3l4-7-4-7 4-6z" fill="#5b3f36" stroke="#f6b394"/>
+    <path d="M27 25h3l-2 5h-2zm-2 8h2" stroke="#ffe2b6"/>
+  </g>
+  <g id="sweep" class="signal">
+    <circle cx="26" cy="26" r="12" fill="#243d48" stroke="#b2d6d7"/>
+    <path d="m35 35 8 8m-6-9 7 7" stroke="#eac59a" stroke-width="2"/>
+    <path d="M16 26h5m5-10v5m0 5 8-6" stroke="#8db6c0"/>
+    <circle cx="26" cy="26" r="2.5" fill="#f4c483"/>
+  </g>
+  <g id="record" class="signal">
+    <path d="m15 33 13-7 13 7-13 8z" fill="#2e454d" stroke="#8abac3"/>
+    <path d="m15 27 13-7 13 7-13 8z" fill="#2c4350" stroke="#a1c2c8"/>
+    <path d="m15 21 13-7 13 7-13 8z" fill="#425666" stroke="#d1dedf"/>
+    <path d="m24 21 4-2 4 2-4 2z" fill="#edbe78"/>
+  </g>
+</svg>

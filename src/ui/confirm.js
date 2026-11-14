@@ -2,13 +2,8 @@
 // sell, module unfit, mission abandon, save-overwrite, load (discards current), Pause→Main Menu,
 // market Max-then-Buy. Returns a Promise<boolean>: resolve(true) on confirm, false on dismiss.
 //
-// Design (design/frontend/ORRERY.md §3/§4.24 + the Deckplate control language): the dialog is a
-// printed field on the void — no border, no card radius; its edge is corner ticks and a flag word
-// (CONFIRM / IRREVERSIBLE), so kind never rides on colour alone. The verbs are pressable fields
-// with the one 45° cut: the destructive verb is bone at rest with a red rule — red arrives with
-// intent (hover/focus); a non-danger affirmative is the lamp key. Rules live in styles/kit.css
-// under "Task D additions". Focus-trapped: Tab cycles within the dialog, Esc cancels, focus moves
-// to the safe default on open, and restores to the opener on close. Accessible (role=dialog,
+// The shared clearance plate pairs a distinct seal and flag word with each disposition. Focus
+// moves to the safe default on open, and restores to the opener on close. Accessible (role=dialog,
 // aria-modal, labelled/described). Honors the existing body.ui-modal-open class so the HUD hides
 // underneath. `#sf-confirm-root`, `.sf-confirm`, `.sf-confirm__ok/__cancel`, `#sf-confirm-title/-body`
 // and `sf-confirm__title--danger` are inert hooks the checks and probes query — keep them.
@@ -156,7 +151,11 @@ export function confirm(opts) {
   dialog.querySelector('#sf-confirm-body').textContent = copy.body;
   const noteEl = dialog.querySelector('#sf-confirm-note');
   const note = String(opts.note == null ? '' : opts.note).replace(/[^\S\n]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
-  if (note) { noteEl.textContent = note; noteEl.hidden = false; }
+  if (note) {
+    noteEl.textContent = note;
+    noteEl.hidden = false;
+    dialog.setAttribute('aria-describedby', 'sf-confirm-body sf-confirm-note');
+  }
   dialog.querySelector('.sf-confirm__flag').textContent = opts.danger ? 'Irreversible' : 'Confirm';
   const cancelBtn = dialog.querySelector('.sf-confirm__cancel');
   const okBtn = dialog.querySelector('.sf-confirm__ok');

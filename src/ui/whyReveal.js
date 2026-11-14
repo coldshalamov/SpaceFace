@@ -65,11 +65,19 @@ let describedCarrier = null;
 let tipOwner = null;
 
 function describe(carrier) {
-  if (describedCarrier && describedCarrier !== carrier && typeof describedCarrier.removeAttribute === 'function') {
-    describedCarrier.removeAttribute('aria-describedby');
+  if (describedCarrier === carrier) return;
+  if (describedCarrier) {
+    const others = (describedCarrier.getAttribute('aria-describedby') || '').split(/\s+/)
+      .filter(id => id && id !== TIP_ID);
+    if (others.length) describedCarrier.setAttribute('aria-describedby', others.join(' '));
+    else describedCarrier.removeAttribute('aria-describedby');
   }
   describedCarrier = carrier || null;
-  if (carrier && typeof carrier.setAttribute === 'function') carrier.setAttribute('aria-describedby', TIP_ID);
+  if (carrier) {
+    const ids = (carrier.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (!ids.includes(TIP_ID)) ids.push(TIP_ID);
+    carrier.setAttribute('aria-describedby', ids.join(' '));
+  }
 }
 
 function place(el, x, y, preferAbove) {
@@ -78,11 +86,11 @@ function place(el, x, y, preferAbove) {
   const vh = (typeof window !== 'undefined' && window.innerHeight) || 720;
   const w = el.offsetWidth || 280;
   const h = el.offsetHeight || 40;
-  let left = Math.max(8, Math.min(x + pad, vw - w - 8));
+  const left = Math.max(8, Math.min(x + pad, vw - w - 8));
   let top = preferAbove ? y - pad - h : y + pad;
   if (top + h > vh - 8) top = Math.max(8, y - pad - h);
   el.style.left = Math.round(left) + 'px';
-  el.style.top = Math.round(top) + 'px';
+  el.style.top = Math.round(Math.max(8, Math.min(top, vh - h - 8))) + 'px';
 }
 
 function show(text, x, y, owner, anchorEl) {

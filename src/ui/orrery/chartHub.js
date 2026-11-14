@@ -37,11 +37,11 @@ ${C} .gmh [hidden] { display:none !important; }
 
 /* ===== the hover card ===== */
 ${C} .gmh-card { position:absolute; width:256px; padding:14px 22px 14px 22px; pointer-events:none; --hue:236 230 216;
-  background:rgb(6 8 12 / .93); ${FEATHER(12)} color:rgb(${BONE}); opacity:0; transform:translateY(5px) scale(.985); transform-origin:0 50%;
+  box-sizing:border-box; max-width:100%; background:var(--sf-pop-glass); border:1px solid var(--sf-pop-seam); color:rgb(${BONE}); opacity:0; transform:translateY(5px) scale(.985); transform-origin:0 50%;
   transition:opacity .16s linear, transform .22s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)); }
 ${C} .gmh-card.is-on { opacity:1; transform:none; }
 ${C} .gmh-card__tick { position:absolute; left:10px; top:16px; bottom:16px; width:2px; background:rgb(var(--hue) / .95); box-shadow:0 0 10px 1px rgb(var(--hue) / .55); }
-${C} .gmh-eyebrow { ${LABEL} font-size:12px; line-height:16px; letter-spacing:.16em; color:rgb(${BONE} / .66); }
+${C} .gmh-eyebrow { ${LABEL} font-size:12px; line-height:16px; letter-spacing:.06em; color:rgb(${BONE} / .8); }
 ${C} .gmh-title { margin:4px 0 8px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:20px; line-height:24px; letter-spacing:-.005em; color:rgb(248 244 234); overflow-wrap:anywhere; }
 ${C} .gmh-rows { display:grid; row-gap:4px; margin:0 0 8px; }
 ${C} .gmh-row { display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
@@ -58,7 +58,7 @@ ${C} .gmh-hint { ${LABEL} font-size:12px; line-height:16px; letter-spacing:.1em;
 ${C} .gmh-hint b { font-weight:800; color:rgb(${BONE} / .92); letter-spacing:.08em; }
 
 /* ===== the context menu ===== */
-${C} .gmh-menu { position:absolute; min-width:236px; padding:14px 8px 14px 8px; pointer-events:auto; background:rgb(6 8 12 / .96); ${FEATHER(12)}
+${C} .gmh-menu { position:absolute; min-width:236px; padding:8px; max-width:100%; max-height:100%; overflow:auto; box-sizing:border-box; pointer-events:auto; background:var(--sf-pop-glass); border:1px solid var(--sf-pop-seam); box-shadow:var(--sf-pop-shadow);
   opacity:0; transform:translateY(4px); transition:opacity .12s linear, transform .18s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)); }
 ${C} .gmh-menu.is-on { opacity:1; transform:none; }
 ${C} .gmh-menu .gmh-eyebrow { padding:2px 16px 6px; }
