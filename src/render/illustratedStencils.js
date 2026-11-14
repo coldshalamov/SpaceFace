@@ -135,6 +135,9 @@ function stencilText(ctx, str, u, v, capPx, {
   ctx.textBaseline = 'alphabetic';
   if (spacing != null && 'letterSpacing' in ctx) ctx.letterSpacing = `${Math.round(capPx * spacing)}px`;
   const w = ctx.measureText(str).width;
+  // Hull-space +U points toward the nose; turn each word in place so it reads from the chase view.
+  const cx = align === 'center' ? 0 : align === 'right' ? -w / 2 : w / 2;
+  ctx.translate(cx, -capPx / 2); ctx.rotate(Math.PI); ctx.translate(-cx, capPx / 2);
   if (halo > 0) {
     ctx.save();
     ctx.filter = `blur(${Math.round(capPx * 0.16)}px)`;
