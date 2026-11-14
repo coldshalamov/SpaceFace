@@ -1688,12 +1688,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hull-miner",
-    "expectedContentHash": "cf5d58c405160478231be16d3aa3afca20d26d4718812dd0cb8fbdcdb96c39e4",
+    "expectedContentHash": "3df20b89acdcab253920875d802de7cd9dc0b5c4bd8b0ddddcb80ece56671270",
     "key": "hull-miner",
     "metadataUrl": "assets/ships/release/render-packages/hull-miner/render-package.json",
     "runtimeAssetId": "SF_HULL_MINER",
     "slot": "hull",
-    "sourceSha256": "c3f857bde2c8a30f545ce65bde823460f95aa6b7020ccc78d47fa4310ab0dbb2",
+    "sourceSha256": "819b5eb6fc8d1579bbb12d4093572072044eaef7ea0294322ad4d871c4e83ce3",
     "sourceUrl": "assets/ships/release/parts/hulls/hull_miner.glb"
   },
   {

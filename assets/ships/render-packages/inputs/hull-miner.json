@@ -1,0 +1,237 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "hull_miner",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.hull-miner",
+    "dynamicNameIncludes": [],
+    "key": "hull-miner",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/hull-miner/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/hull-miner",
+    "releaseAssetId": "hull_miner",
+    "releaseBytes": 731600,
+    "releaseSha256": "819b5eb6fc8d1579bbb12d4093572072044eaef7ea0294322ad4d871c4e83ce3",
+    "rootNode": "HULL_MINER_ROOT",
+    "runtimeAssetId": "SF_HULL_MINER",
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/hulls/hull_miner.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 18,
+    "id": "hull_miner",
+    "kind": "part:hulls",
+    "ktx2Textures": 5,
+    "meshoptBufferViews": 19,
+    "release": "assets/ships/release/parts/hulls/hull_miner.glb",
+    "releaseBytes": 731600,
+    "releaseSha256": "819b5eb6fc8d1579bbb12d4093572072044eaef7ea0294322ad4d871c4e83ce3",
+    "source": "assets/ships/parts/hulls/hull_miner.glb",
+    "sourceBytes": 4018732,
+    "sourceSha256": "2440f4b822b018787799eef8134791941b5edcfe517fc4a44f845caaaa2d2028",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 5
+  },
+  "runtime": {
+    "assetId": "SF_HULL_MINER",
+    "motionBank": null,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/hulls/hull_miner.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.hull-miner.anchor.socket-trail-main",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Main",
+        "parentNodeId": "sf.render.hull-miner.root"
+      },
+      {
+        "id": "sf.render.hull-miner.anchor.socket-weapon-front",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Front",
+        "parentNodeId": "sf.render.hull-miner.root"
+      }
+    ],
+    "assetId": "sf.render.hull-miner",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-cargo-latch",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_cargo_latch",
+        "node": "LOD0_DET_cargo_latch",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-chute-scar",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_chute_scar",
+        "node": "LOD0_DET_chute_scar",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-dock-scrape",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_dock_scrape",
+        "node": "LOD0_DET_dock_scrape",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-exhaust-soot",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_exhaust_soot",
+        "node": "LOD0_DET_exhaust_soot",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-hopper-rim",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_hopper_rim",
+        "node": "LOD0_DET_hopper_rim",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-manifest-stencil",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_manifest_stencil",
+        "node": "LOD0_DET_manifest_stencil",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-ore-dust-cake",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_ore_dust_cake",
+        "node": "LOD0_DET_ore_dust_cake",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-det-rust-stripe",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_DET_rust_stripe",
+        "node": "LOD0_DET_rust_stripe",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod0-hull-miner-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HULL_MINER_MAIN",
+        "node": "LOD0_HULL_MINER_MAIN",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod1-hull-miner-silhouette",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HULL_MINER_SILHOUETTE",
+        "node": "LOD1_HULL_MINER_SILHOUETTE",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.mesh.lod2-hull-miner-silhouette",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_HULL_MINER_SILHOUETTE",
+        "node": "LOD2_HULL_MINER_SILHOUETTE",
+        "parentId": "sf.render.hull-miner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hull-miner.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "HULL_MINER_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hull-miner.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 731600,
+    "sha256": "819b5eb6fc8d1579bbb12d4093572072044eaef7ea0294322ad4d871c4e83ce3",
+    "uri": "assets/ships/release/parts/hulls/hull_miner.glb"
+  }
+}

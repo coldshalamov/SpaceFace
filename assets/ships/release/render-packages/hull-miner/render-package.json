@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cf5d58c405160478231be16d3aa3afca20d26d4718812dd0cb8fbdcdb96c39e4",
+  "contentHash": "3df20b89acdcab253920875d802de7cd9dc0b5c4bd8b0ddddcb80ece56671270",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -316,9 +316,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "871bc1d9f88e33ec4ca6b0e3d1410e9dcc041dcbdcdb3a7df787b516fcb0acf3",
+      "geometryHash": "0a0ebcd57b1c75c4096a71f53b8f748d669c2ca4ff66e8004b30ea1d01ddfd33",
       "id": "sf.render.hull-miner.mesh.lod0-hull-miner-main.primitive.0",
-      "indexCount": 25431,
+      "indexCount": 19239,
       "indexed": true,
       "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
@@ -341,9 +341,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3854c1b8fc5ac05ed9e26b29862c4a0bb7ff3a2027e04fcc7453d3ce63be489b",
+      "geometryHash": "7c6689549782c1c212e77173d9d726059459b73d2032561b4f6b6fca03eb00cf",
       "id": "sf.render.hull-miner.mesh.lod1-hull-miner-silhouette.primitive.0",
-      "indexCount": 10182,
+      "indexCount": 9990,
       "indexed": true,
       "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
@@ -1073,19 +1073,19 @@
       "sha256": "499b2f722e23bb8ceea1661e8a8c25604600a6fb5a9cd018158ea1b9e58a5967"
     },
     "sourceGlb": {
-      "bytes": 733588,
-      "sha256": "c3f857bde2c8a30f545ce65bde823460f95aa6b7020ccc78d47fa4310ab0dbb2",
+      "bytes": 731600,
+      "sha256": "819b5eb6fc8d1579bbb12d4093572072044eaef7ea0294322ad4d871c4e83ce3",
       "uri": "hull_miner.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 8399,
+      "sha256": "8ac56d699456eaca097e282d026aea849abaa2dd18d92adf4ab2a889d0be1239",
+      "uri": "assets/ships/render-packages/inputs/hull-miner.json"
     }
   },
   "render": {
-    "bytes": 738008,
-    "sha256": "d6d02cf2846cc2495b45e6b95b2c0ac186b71589e053467fbaf0a00145e80e85",
+    "bytes": 734120,
+    "sha256": "10968e069107f8c0ccb93f88794f7a5d52a4fefe8f14910fc0a41095932f2a84",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_miner.glb"
   },
-  "runtimeHash": "5dd9752d9e7b457a9016bab9e4d60991f9cc2239e45b3bd9af07c917593e86cc",
+  "runtimeHash": "9e3f8688b7638058f12abe4c13e622903184f4eddf9359437dd1156fdfe3c0e8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
