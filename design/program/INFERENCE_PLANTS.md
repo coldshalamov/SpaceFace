@@ -394,6 +394,16 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-229 | **The other name.** The town chalked a name on the board for the day the tug brought you in asleep, and it stuck | Earn a better one; the town will keep both | DRAFT 2026-11-11 |
 | PL-250 | **Known by name.** Near a town that has named you, civilians give you room — your own name, no mark needed | Enjoy it; or exploit it — they let you, muttering | DRAFT 2026-11-11 |
 | PL-251 | **The other side of it.** A disabled stranger hails the nearest good hull, and today that is you | Push them to the dock; or fly past — the next time you are down, nobody comes | DRAFT 2026-11-11 |
+| PL-354 | **The good-hull rate.** The law boards keep quiet hull ratings; hulls that towed strangers dock cheaper everywhere for a month, no sign, no announcement | Earn the rate; or fake rescue receipts — the boards compare notes with the docks, and fakes dock at a premium | DRAFT 2026-11-13 |
+| PL-355 | **The unit.** Help three strangers in one sector and stations start using your callsign as a measure — "one [you] of fuel" meaning a spare tank's worth | Be the unit; or price the unit — it changes to somebody else's name within the week | DRAFT 2026-11-13 |
+| PL-356 | **The parade berth.** Come home off a long deep-route run and your home berth is swept, lit, and stocked by whoever kept the light while you were gone | Dock and let them; or ghost the sector for months first — swept, yes, but cold | DRAFT 2026-11-13 |
+| PL-357 | **The warm grid.** Dock with an empty charge and the berth's grid tops you to launch minimum before the meter even wakes | Take the minimum; or drain the grace daily — the grid meters you from zero, and the grace goes to someone else | DRAFT 2026-11-13 |
+| PL-358 | **The apprentice's return.** An apprentice you were decent to back at Helios turns up at Vesta years later, carrying exactly the part your build has been missing, at their own cost | Pay their price; or haggle them down — apprentices talk to journeymen, and journeymen set prices | DRAFT 2026-11-13 |
+| PL-359 | **The escort's gift.** Walk a slow convoy through dangerous water to the far end and they press their spare countermeasure on you at the gate | Arrive with them; or peel off at the last leg — gifts need arrivals, and convoys remember departures | DRAFT 2026-11-13 |
+| PL-360 | **The rain check.** A station you once saved keeps your docking comped for a year — the chalk is on the board beside the toll, your name on it | Use the chalk; or sell it to another hull — the board keeps the comp, adds a fine, and your name stays up there anyway | DRAFT 2026-11-13 |
+| PL-361 | **The second start.** Hit true bankrupt and a starter kit waits in a locker at your last dock — rope, tank, chalk: FROM THE LANE | Take it and pay it back someday; or go bankrupt twice — the second kit comes with a loan note, in someone's handwriting | DRAFT 2026-11-13 |
+| PL-362 | **The name on the plate.** Wear a mark you earned into its home sector and dock plates greet your hull by name, out loud | Wear what you earned; or counterfeit a mark — the plates greet you by the real owner's name, loudly | DRAFT 2026-11-13 |
+| PL-363 | **The family rate.** Fly one lane long enough and berths quietly go family-rate for you — discounts nobody announces, taken off before you see the total | Stay in the lane; or change hulls to farm it twice — family means the name, and the name only rides one hull | DRAFT 2026-11-13 |
 
 ## I. Secrets, part two
 
@@ -413,6 +423,12 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-175 | **First.** Beat Juno to a place you both marked, and the wall there reads only your tag — with, small, underneath: *J.C.* and nothing else | Leave it as is; or add the plus yourself | DRAFT 2026-11-11 |
 | PL-195 | **The fixed X.** One mark on your Chart is not yours, and never moves: a small X beside nothing, there since your first chart | Go and look: nothing, at first | DRAFT 2026-11-11 |
 | PL-196 | **Ahead of you.** Come back to the mirror rock wearing your marks, and the reflection wears them too — and one more you have not earned yet | Catch it up; or stop looking | DRAFT 2026-11-11 |
+| PL-364 | **The kindness ledger.** A sealed ledger welded to a lane post records every unclaimed kindness done in that lane, and pays the whole book out once a year, in parts, to the names in it | Do the kindnesses and wait for the payout; or forge entries — the ledger pays what each entry weighs, and lies weigh nothing | DRAFT 2026-11-13 |
+| PL-365 | **The lamp garden.** A cluster of rocks at a waystation each carries a name and one working lamp, kept lit by nobody official, for years | Sit with them a while; or salvage the lamps — your hull's lamps run dim at that station, and the keeper of nothing knows | DRAFT 2026-11-13 |
+| PL-366 | **The registry hatch.** A hatch that takes what you have and returns what you need — once, for anyone, ever | Post honestly once; or game it with a token — it returns exactly what you gave, and does not open again for you | DRAFT 2026-11-13 |
+| PL-367 | **The lingering lift.** A dead station's lift still runs — somebody keeps it oiled — hauling small hulls up the spine to a long view and a stashed gift at the top | Ride it and leave the gift for the next hull; or carve your name in the car — it stops at your floor forever after | DRAFT 2026-11-13 |
+| PL-368 | **The thank-you slate.** A slate at a dockside: leave anything on it with your tag, and one day the tag comes back engraved THANKS, with a small part you were short of | Leave something real; or leave junk tagged as treasure — slates engrave what they weigh, and everyone can read the slate | DRAFT 2026-11-13 |
+| PL-369 | **The last allowance.** A dead man's standing order at a depot: one charge cell a month to whoever asks in person, code word required, asked once a month only | Learn the word the slow way, from the old regulars; or brute-force it — the order closes forever, and the depot chalks who closed it | DRAFT 2026-11-13 |
 
 ## J. The yard — street life on your own rock
 
@@ -428,6 +444,10 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-153 | **The minute.** Every shift change your drill head stops dead for one minute, whatever it is in the middle of | Be there for the minute; the drill taps twice, like the rest of the Rock | DRAFT 2026-11-11 |
 | PL-252 | **The regular's hour.** The hauler that first called on your light comes back at the same hour every week, expecting the hopper full | Be full; or miss the hour — it circles once, leaves, and the next call is a long time off | DRAFT 2026-11-11 |
 | PL-253 | **The wall's first dent.** Win your first raid and one wreck stays half-buried in your wall where it hit | Leave it — proof; or feed it to the works | DRAFT 2026-11-11 |
+| PL-370 | **The housewarming part.** The first stranger to dock at your new yard leaves a good part wedged in your airlock frame, no note | Keep it mounted; or charge visitors docking fees from day one — gifts stop, fees don't | DRAFT 2026-11-13 |
+| PL-371 | **The lane tithe.** Haulers who use your freight lane start leaving their overloads in your hopper on the way through — a quiet tithe of the road, nobody discusses it | Let the tithes lie; or bill them for the lane — they route around you, and the lane goes quiet in a week | DRAFT 2026-11-13 |
+| PL-372 | **The wreckers' courtesy.** After you win a raid, their support ship lingers to recover their own wounded. Let it work, and the next raid comes in softer — somebody talked | Let them collect; or shoot the recovery — every future raid hits harder, and every yard on the lane knows why | DRAFT 2026-11-13 |
+| PL-373 | **The hearth lamp.** The first caller's lamp warms any visitor who docks cold at your rock: they stay longer, trade more, tell the next hull | Keep the lamp warm; or turn it into a policing floodlight — visitors dock fast, buy nothing, and the first caller stops coming | DRAFT 2026-11-13 |
 
 ## Suggestions
 
