@@ -530,6 +530,53 @@ test('PL-373 wrong choice: a policing floodlight (defense battery on the rock) d
   plant.destroy();
 });
 
+test('PL-373 session facts: a load drops the claim (no per-tick work), flight/sector gates hold', () => {
+  const { state, bus, helpers } = rig();
+  const plant = boot(pl373HearthLamp, { state, bus, helpers });
+  claimAt(bus, 0, 0);
+  state.entities.set(501, { id: 501, alive: true, pos: { x: 20, z: 0 }, data: { plantsPl146Lamp: true, lampLit: true } });
+  const visitor = { id: 502, alive: true, pos: { x: 10, z: 0 }, data: { plantsPl146Visitor: true, visitUntil: 10 } };
+  state.entities.set(502, visitor);
+  step(plant, state);
+  assert.equal(visitor.data.plantsPl373Warmed, true, 'warm before the load');
+
+  // A save that predates the claim: the load drops it — update() does no per-tick work.
+  bus.emit('save:loaded', {});
+  assert.equal(plant._claim, null, 'the claim is a session fact and does not survive a load');
+  state.simTime += 1;
+  const visitor2 = { id: 503, alive: true, pos: { x: 10, z: 0 }, data: { plantsPl146Visitor: true, visitUntil: 10 } };
+  state.entities.set(503, visitor2);
+  step(plant, state);
+  assert.equal(visitor2.data.plantsPl373Warmed, undefined, 'no warmth after the load: update is gated off');
+  assert.equal(visitor2.data.visitUntil, 10, 'no per-tick visit edits after the load');
+  assert.equal(bus.typesOf(PL_373_WARMED_EVENT).length, 1, 'no second warm event');
+
+  // Re-claiming after the load works: the module still lives.
+  claimAt(bus, 0, 0);
+  step(plant, state);
+  assert.equal(visitor2.data.plantsPl373Warmed, true, 'a fresh claim warms again');
+
+  // Sector gate: the claim belongs to its sector; a hop away does no hospitality work.
+  claimAt(bus, 0, 0); // fresh claim in SKER
+  state.world.currentSectorId = 'sector_elsewhere';
+  state.simTime += 1;
+  const visitor3 = { id: 504, alive: true, pos: { x: 10, z: 0 }, data: { plantsPl146Visitor: true, visitUntil: 10 } };
+  state.entities.set(504, visitor3);
+  step(plant, state);
+  assert.equal(visitor3.data.plantsPl373Warmed, undefined, 'off-sector: no warmth');
+
+  // Mode gate: no warmth outside flight.
+  state.world.currentSectorId = SKER;
+  const savedMode = state.mode;
+  state.mode = 'menu';
+  step(plant, state);
+  assert.equal(visitor3.data.plantsPl373Warmed, undefined, 'out of flight: no warmth');
+  state.mode = savedMode;
+  step(plant, state);
+  assert.equal(visitor3.data.plantsPl373Warmed, true, 'back in flight, in-sector: warmth resumes');
+  plant.destroy();
+});
+
 // ---------- PL-269 The kindness locker ----------
 
 function lockerVisit(plant, state, lockerPos, t) {
@@ -875,6 +922,48 @@ test('PL-365 wrong choice: salvage a lamp and your hull runs dim at that station
   plant.destroy();
 });
 
+test('PL-365 kill gating: an unrelated death brands nobody; a garden rock\u2019s death is the salvage; the tow path still bites', () => {
+  const { state, bus, helpers } = rig({}, SKER);
+  const plant = boot(pl365LampGarden, { state, bus, helpers });
+  advance(plant, state, 1);
+  const rocks = helpers.spawned.filter((e) => e.data.plantsPl365Rock);
+  assert.equal(rocks.length, LAMP_GARDEN_TUNING.rockCount);
+
+  // A pirate drone dying in an unrelated skirmish is not a salvage.
+  const drone = helpers.spawnEntity({ type: 'ship', pos: { x: 5000, z: 5000 }, vel: { x: 0, z: 0 }, data: {} });
+  bus.emit('entity:killed', { id: drone.id });
+  assert.equal(bus.typesOf(PL_365_DIMMED_EVENT).length, 0, 'an unrelated hull\u2019s death brands nobody');
+  assert.equal(state.story.flags.plantsPl365LampsSalvaged, undefined);
+  assert.deepEqual(popupTexts(bus), [], 'no keeper, no deny popup');
+
+  // The player's own death is not a salvage either.
+  bus.emit('entity:killed', { id: state.playerId });
+  assert.equal(bus.typesOf(PL_365_DIMMED_EVENT).length, 0);
+  assert.equal(state.story.flags.plantsPl365LampsSalvaged, undefined);
+
+  // Killing a garden rock is the salvage — the keeper of nothing knows.
+  bus.emit('entity:killed', { id: rocks[0].id });
+  assert.equal(bus.typesOf(PL_365_DIMMED_EVENT).length, 1, 'the rock\u2019s death dims');
+  assert.equal(state.story.flags.plantsPl365LampsSalvaged, true);
+  assert.ok(popupTexts(bus).includes('The keeper of nothing knows.'));
+
+  // Forever, and once: another rock\u2019s death does not re-fire the verdict.
+  bus.emit('entity:killed', { id: rocks[1].id });
+  assert.equal(bus.typesOf(PL_365_DIMMED_EVENT).length, 1, 'the verdict rides once');
+
+  // The tow path still bites on a fresh garden.
+  const fresh = rig({}, SKER);
+  const plant2 = boot(pl365LampGarden, fresh);
+  advance(plant2, fresh.state, 1);
+  const rock2 = fresh.helpers.spawned.find((e) => e.data.plantsPl365Rock);
+  rock2.pos.x += LAMP_GARDEN_TUNING.salvageRangeWu + 40; // towed off its stone
+  step(plant2, fresh.state);
+  assert.equal(fresh.bus.typesOf(PL_365_DIMMED_EVENT).length, 1, 'the tow path still works');
+  assert.equal(fresh.state.story.flags.plantsPl365LampsSalvaged, true);
+  plant.destroy();
+  plant2.destroy();
+});
+
 // ---------- PL-366 The registry hatch ----------
 
 test('PL-366 positive: post honestly once and it returns what you need — then never again', () => {
@@ -1135,7 +1224,7 @@ test('family: destroy unsubscribes every listener and removes owned props', () =
     [pl370HousewarmingPart, ['claim:claimed', PL_146_CALL_EVENT, 'economy:chargeCredits', 'entity:killed']],
     [pl371LaneTithe, ['claim:claimed', 'npcjobs:unload', 'economy:chargeCredits']],
     [pl372WreckersCourtesy, ['claim:claimed', 'claim:defenseResolved', 'claim:raidRepelled', 'entity:killed']],
-    [pl373HearthLamp, ['claim:claimed', PL_146_CALL_EVENT, PL_146_SNUFFED_EVENT, 'claim:moduleBuilt']],
+    [pl373HearthLamp, ['claim:claimed', PL_146_CALL_EVENT, PL_146_SNUFFED_EVENT, 'claim:moduleBuilt', 'save:loaded']],
     [pl269KindnessLocker, ['sector:exit', 'save:loaded', 'game:newGame']],
     [pl270StashedMedal, ['sector:exit', 'save:loaded', 'game:newGame']],
     [pl271MapInTheLid, ['sector:exit', 'save:loaded', 'game:newGame']],

@@ -24,6 +24,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_286_MUG_EVENT = 'plants:pl286:mug';
 export const PL_286_DRUNK_EVENT = 'plants:pl286:drunk';
@@ -74,21 +75,6 @@ export function linePointFor(station, t = OVERTIME_MUG_TUNING) {
     : (station.size === 'L' ? 90 : station.size === 'S' ? 60 : 72);
   const r = base * 1.5; // the foundry line sits at the no-fire ring
   return { x: station.pos.x + Math.cos(a) * r, z: station.pos.z + Math.sin(a) * r };
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createOvertimeMug() {

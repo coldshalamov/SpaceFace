@@ -87,6 +87,7 @@ export function createPl146FirstCaller() {
       this._visits = 0;
       this._lastCallAt = -Infinity;
       this._everSnuffed = false;
+      this._plantsPl373Floodlit = false; // PL-373's floodlight: the first caller stops coming
       this._lampId = null;
       this._visitor = null;        // { id, until, lastAngle, angle }
       const on = (event, fn) => {
@@ -100,6 +101,10 @@ export function createPl146FirstCaller() {
         if (this._nextCallAt != null && Number.isFinite(this.state?.simTime)) {
           this._nextCallAt = Math.max(this._nextCallAt, this.state.simTime + FIRST_CALLER_TUNING.snuffedGapS);
         }
+      });
+      on('plants:pl373:floodlit', () => {
+        // PL-373's documented handoff: under the floodlight, the first caller stops coming.
+        this._plantsPl373Floodlit = true;
       });
       on('sector:exit', () => this._resetVisit());
       on('save:loaded', () => this._resyncFromFlags());
@@ -118,6 +123,7 @@ export function createPl146FirstCaller() {
       this._visits = 0;
       this._lastCallAt = -Infinity;
       this._everSnuffed = false;
+      this._plantsPl373Floodlit = false;
       this._visitor = null;
     },
 
@@ -151,6 +157,7 @@ export function createPl146FirstCaller() {
       this._visits = 0;
       this._lastCallAt = -Infinity;
       this._everSnuffed = false;
+      this._plantsPl373Floodlit = false;
       this._visitor = null;
     },
 
@@ -160,6 +167,7 @@ export function createPl146FirstCaller() {
       this._lampId = null;
       this._visitor = null;
       this._everSnuffed = flags?.[PL_146_EVER_SNUFFED_FLAG] === true;
+      this._plantsPl373Floodlit = flags?.plantsPl373Floodlit === true; // PL-373's durable floodlight verdict
       if (flags && flags[PL_146_FIRST_DONE_FLAG] === true && this._claim) {
         this._nextCallAt = this._now()
           + (this._everSnuffed ? FIRST_CALLER_TUNING.snuffedGapS : FIRST_CALLER_TUNING.weekS);
@@ -194,6 +202,7 @@ export function createPl146FirstCaller() {
 
     _due() {
       if (!this._claim) return false;
+      if (this._plantsPl373Floodlit === true) return false; // floodlit: the first caller stops coming (PL-373)
       if (this._visits > 0 && this._nextCallAt == null) return false;
       const flags = this._flags();
       if (flags?.[PL_151_DARK_SOLD_FLAG] === true) return false; // honest haulers skip this lane

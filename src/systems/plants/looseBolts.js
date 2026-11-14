@@ -23,6 +23,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_281_BOLTS_EVENT = 'plants:pl281:bolts';
 export const PL_281_REFILL_EVENT = 'plants:pl281:refill';
@@ -74,21 +75,6 @@ export function boltSlotsFor(gatePoint, t = LOOSE_BOLTS_TUNING) {
     });
   }
   return slots;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createLooseBolts() {

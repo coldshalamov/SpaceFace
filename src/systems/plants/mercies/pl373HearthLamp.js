@@ -13,9 +13,9 @@
 // claim:moduleBuilt { bodyId, modId } (src/systems/claims.js): mounting mod_defense (a Defense
 // Battery, src/data/claimableBodies.js) on the claim that keeps the hearth is turning hospitality
 // into policing. The bite publishes in two layers: visitors' stays are stamped short here, and
-// PL_373_FLOODLIT_EVENT is emitted for the first caller's owner to consume — pl146 currently
-// subscribes only plants:pl252:missed, so the "first caller stops coming" beat is a documented
-// one-line subscription on pl146's side; this module owns the seam, not pl146's timer.
+// PL_373_FLOODLIT_EVENT is emitted for the first caller's owner to consume — pl146 honors it
+// with a one-line subscription (the first caller stops coming under the floodlight); this
+// module owns the emission, not pl146's timer.
 //
 // Invariants:
 // - Deterministic: state.simTime / state.tick only. No Math.random(), no Date.now().
@@ -85,6 +85,7 @@ export function createPl373HearthLamp() {
       on(PL_146_SNUFFED_EVENT, () => { this._warmed.clear(); });
       on('claim:moduleBuilt', (p = {}) => this._onModuleBuilt(p));
       on('sector:exit', () => this._warmed.clear());
+      on('save:loaded', () => this._onSaveLoaded());
       on('game:newGame', () => this._hardReset());
     },
 
@@ -100,6 +101,13 @@ export function createPl373HearthLamp() {
       this._claim = null;
       this._warmed?.clear();
       this._chatterAt = -Infinity;
+    },
+
+    _onSaveLoaded() {
+      // The claim is a session fact (pl370 resync pattern): a save that predates it
+      // must not leave update() gating on stale claim coordinates or warmed ids.
+      this._claim = null;
+      this._warmed?.clear();
     },
 
     _flags() {
@@ -171,9 +179,12 @@ export function createPl373HearthLamp() {
     update() {
       if (!this._claim) return;
       const s = this.state;
+      if (s?.mode !== 'flight') return;
+      if (s?.world?.currentSectorId !== this._claim.sectorId) return; // claim stores its sector
       if (!s?.entities || typeof s.entities.values !== 'function') return;
       const now = this._now();
       const floodlit = this._flags()?.[PL_373_FLOODLIT_FLAG] === true;
+      let hearthBurning = null; // hoisted: the all-entity lamp scan runs at most once per tick
       for (const ent of s.entities.values()) {
         if (!isCallerVisitor(ent) || !ent.pos) continue;
         if (distSqWu(ent.pos, this._claim) > HEARTH_LAMP_TUNING.warmRangeWu * HEARTH_LAMP_TUNING.warmRangeWu) continue;
@@ -187,7 +198,8 @@ export function createPl373HearthLamp() {
           }
           continue;
         }
-        if (!this._hearthBurning()) continue; // lamp dead: nobody lingers
+        if (hearthBurning === null) hearthBurning = this._hearthBurning();
+        if (!hearthBurning) continue; // lamp dead: nobody lingers
         if (this._warmed.has(ent.id)) continue; // once per visitor
         if (this._warmed.size >= HEARTH_LAMP_TUNING.memoryCap) this._warmed.clear();
         this._warmed.set(ent.id, true);

@@ -23,6 +23,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_275_TIP_EVENT = 'plants:pl275:tip';
 export const PL_275_WASH_EVENT = 'plants:pl275:wash';
@@ -59,21 +60,6 @@ export function jarPointFor(station, t = TIP_JAR_TUNING) {
 /** Day index of the shared plant clock. */
 export function jarDayOf(simTime, t = TIP_JAR_TUNING) {
   return Math.floor((Number.isFinite(simTime) ? simTime : 0) / Math.max(1, t.dayLengthS));
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createTipJar() {

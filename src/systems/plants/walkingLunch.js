@@ -26,6 +26,7 @@
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_278_OFFER_EVENT = 'plants:pl278:offer';
 export const PL_278_TAKEN_EVENT = 'plants:pl278:taken';
@@ -79,21 +80,6 @@ export function cartPointFor(station, t = WALKING_LUNCH_TUNING) {
     : (station.size === 'L' ? 90 : station.size === 'S' ? 60 : 72);
   const r = base * t.cartRadiusMult;
   return { x: station.pos.x + Math.cos(a) * r, z: station.pos.z + Math.sin(a) * r };
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createWalkingLunch() {

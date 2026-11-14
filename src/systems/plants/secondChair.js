@@ -25,6 +25,7 @@
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_277_SERVED_EVENT = 'plants:pl277:served';
 export const PL_277_HOG_EVENT = 'plants:pl277:hog';
@@ -76,21 +77,6 @@ export function chairRowFor(station, t = SECOND_CHAIR_TUNING) {
     window: { x: station.pos.x + dir.x * r, z: station.pos.z + dir.z * r },
     chair: { x: station.pos.x + dir.x * (r + t.chairSpacingWu), z: station.pos.z + dir.z * (r + t.chairSpacingWu) },
   };
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createSecondChair() {

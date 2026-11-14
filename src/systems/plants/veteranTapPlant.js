@@ -208,6 +208,7 @@ export const veteranTapPlant = {
   },
 
   _reset() {
+    this._despawn(); // run end despawns the owned prop (header contract), like round start and destroy
     this._resetRun();
     this._retired = false;
     this._retiredReported = false;

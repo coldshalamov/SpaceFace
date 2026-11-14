@@ -9,7 +9,8 @@
 // rest) inside the garden ring for sitHoldS. Salvaging is physical too: tow any garden lamp
 // beyond salvageRangeWu from its rock — the lamp dies, the garden remembers, and while you are
 // near that station your hull reads dim (a stamp on the player entity
-// data.plantsPl365HullLampsDim that the presentation/lamp shaders read). No economy mutation.
+// data.plantsPl365HullLampsDim — OPEN SEAM: the lamp presentation owner may read this stamp;
+// until wired the dim beat ships as the popup). No economy mutation.
 //
 // Invariants:
 // - Deterministic: state.simTime / state.tick only; hash32 places the rocks and picks names.
@@ -175,8 +176,10 @@ export function createPl365LampGarden() {
       this.bus?.emit(PL_365_DIMMED_EVENT, { pos: gardenPositions().centre, t: now });
     },
 
-    _onRockDestroyed() {
-      if (this._rockIds.size === 0 || this._salvaged()) return;
+    _onRockDestroyed(p = {}) {
+      if (p?.id == null || !this._rockIds.has(p.id)) return; // only a garden rock's death counts
+      this._rockIds.delete(p.id); // each rock can only be salvaged once
+      if (this._salvaged()) return;
       this._dimBySalvage(this._now()); // a destroyed garden lamp is salvaged all the same
     },
 
@@ -233,7 +236,7 @@ export function createPl365LampGarden() {
         const inReach = (cx * cx + cz * cz) <= LAMP_GARDEN_TUNING.dimRadiusWu * LAMP_GARDEN_TUNING.dimRadiusWu;
         player.data = player.data || {};
         if (inReach) {
-          player.data.plantsPl365HullLampsDim = true; // presentation reads this stamp
+          player.data.plantsPl365HullLampsDim = true; // OPEN SEAM: the lamp presentation owner may read this stamp; until wired the dim beat ships as the popup
           if (!this._dimAnnounced) {
             this._dimAnnounced = true;
             this.bus?.emit('comms:popup', {

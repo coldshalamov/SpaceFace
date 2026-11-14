@@ -23,6 +23,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_283_GIFT_EVENT = 'plants:pl283:gift';
 export const PL_283_KEPT_EVENT = 'plants:pl283:kept';
@@ -62,21 +63,6 @@ export function gullPosAt(gullIndex, origin, simTime, radiusWu, t = GULL_DRONE_T
 /** Which shiny thing this gull drops next for a hull (pure, hash pick). */
 export function giftLabelFor(hullId, dropIndex) {
   return GULL_DRONE_TUNING.gifts[hash32(GULL_SALT, 'gift', String(hullId), dropIndex) % GULL_DRONE_TUNING.gifts.length];
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createGullDrone() {

@@ -24,6 +24,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_279_BORROW_EVENT = 'plants:pl279:borrow';
 export const PL_279_RETURNED_EVENT = 'plants:pl279:returned';
@@ -70,21 +71,6 @@ export function ladderDayOf(simTime, t = BORROWED_LADDER_TUNING) {
 export function ladderPhaseOf(simTime, t = BORROWED_LADDER_TUNING) {
   const len = Math.max(1, t.dayLengthS);
   return (((simTime % len) + len) % len) / len;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createBorrowedLadder() {

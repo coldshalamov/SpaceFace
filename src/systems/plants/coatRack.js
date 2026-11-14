@@ -25,6 +25,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_282_DEPOSIT_EVENT = 'plants:pl282:deposit';
 export const PL_282_SWAP_EVENT = 'plants:pl282:swap';
@@ -79,21 +80,6 @@ export function swapLabelFor(hullFrac, salt) {
 /** The keeper's chalk for a hull: deterministic, legible, unique-ish. */
 export function chalkFor(hullId) {
   return `RK-${hash32(RACK_SALT, 'chalk', String(hullId)) % 9000 + 1000}`;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createCoatRack() {

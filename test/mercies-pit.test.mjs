@@ -244,6 +244,24 @@ test('PL-321 negatives: no run, no window, no gate and no pile stay inert', () =
   assert.equal(nearestPile([], { x: 0, z: 0 }), null);
 });
 
+test('PL-321: run end despawns the veteran drone — no prop leaks past the run', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 43, wave: 2 }) });
+  pilot(env, { x: 0, z: 0 });
+  gateSolid(env, 'survival-room-w2-foundry_gate_a', { x: 400, z: 0 });
+  env.endRound(2, 'cleanup');
+  const drone = env.ofPlant('pl321')[0];
+  assert.ok(drone, 'drone spawned in the between-round window');
+
+  env.emit('run:ended', { reason: 'abandoned', tick: env.state.tick });
+  assert.equal(env.ofPlant('pl321').filter((e) => e.alive !== false).length, 0, 'run end despawns the drone');
+  assert.equal(env.state.entities.get(drone.id), undefined, 'the prop is removed from the world, not just forgotten');
+
+  // The reset is bookkeeping, not retirement: the next window still gets its drone.
+  env.startRound(3);
+  env.endRound(3, 'cleanup');
+  assert.equal(env.ofPlant('pl321').filter((e) => e.alive !== false).length, 1, 'the veteran helps again next window');
+});
+
 // ---- PL-322 The crowd's coin ------------------------------------------------------------------------------
 
 test('PL-322: a stunt clear throws scrap worth more than the round paid at your feet; take the bow', () => {
@@ -939,6 +957,35 @@ test('PL-332 negatives: no run, one mascot per run', () => {
   env.startRound(1);
   env.startRound(2);
   assert.equal(env.ofPlant('pl332').length, 1, 'it does not re-adopt mid-run');
+});
+
+test('PL-332 regressions: the perch is found even late in the entity map; perch scans respect the throttle', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 68, wave: 1 }) });
+  pilot(env, { x: 0, z: 0 });
+  env.startRound(1);
+  const mascot = env.ofPlant('pl332')[0];
+  assert.ok(mascot, 'adopted');
+  const plant = env.plants.find((p) => p.name === 'plants332');
+
+  // A fortify piece beyond the old first-96-entries slice: the full-map scan still finds it.
+  for (let i = 0; i < 110; i++) addEntity(env, `filler_${i}`, { pos: { x: 1000 + i, z: 0 } });
+  tapDevice(env, 'late_tap', { x: 300, z: 0 });
+  let scans = 0;
+  const origScan = plant._scanForPerch.bind(plant);
+  plant._scanForPerch = () => { scans += 1; return origScan(); };
+  env.advance(1, 0.5);
+  assert.ok(scans >= 1, 'the perch scan ran');
+  assert.ok(Math.abs(mascot.pos.x - 348) < 60, 'perched a wing off the late Tap, not trailing the hull');
+
+  // Throttle: updates inside the 0.5 s window run one scan; the cache serves the rest.
+  scans = 0;
+  const tickAt = (t, dt = 0.1) => { env.state.simTime = t; env.state.tick = Math.round(t * 60); plant.update(dt); };
+  tickAt(1.6); // past the last window (last scan at 1.0): exactly one rescan
+  tickAt(1.7); // inside the fresh window: cached
+  tickAt(1.8); // still cached
+  assert.equal(scans, 1, 'two-plus updates within 0.5 s -> one scan');
+  tickAt(2.7); // window expired: the scan resumes
+  assert.equal(scans, 2, 'the scan resumes on the throttle');
 });
 
 // ---- cross-run reset -------------------------------------------------------------------------------------------

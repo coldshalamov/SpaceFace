@@ -818,7 +818,7 @@ test('PL-355 the unit: three strangers helped in one sector, the callsign is a m
 });
 
 test('PL-355 wrong choice: price the unit — the measure changes hands within the week', () => {
-  const { state, rec, bus, player } = boot(pl355TheUnit, { player: { hull: 100 } });
+  const { state, rec, bus, player } = boot(pl355TheUnit, { player: { hull: 100 }, playerVel: { x: 60, z: 0 } });
   player.data.callsign = 'TIN SWALLOW';
   for (let i = 0; i < UNIT_TUNING.deedsNeeded; i++) {
     const stranger = makeNpc(state, `npc${i}`, { x: 40 + i * 10, z: 0 }, { data: { trafficRole: 'hauler' } });
@@ -835,6 +835,52 @@ test('PL-355 wrong choice: price the unit — the measure changes hands within t
   state.simTime += UNIT_TUNING.passDelayS + 1;
   pl355TheUnit.update(1 / 60);
   assert.ok(eventsOf(rec, PLANTS_UNIT_PASSED_EVENT).length >= 2, 'somebody else\u2019s name now');
+});
+
+function earnTheUnit({ state, bus, rec }) {
+  const player = state.entities.get(state.playerId);
+  player.data.callsign = 'TIN SWALLOW';
+  for (let i = 0; i < UNIT_TUNING.deedsNeeded; i++) {
+    const stranger = makeNpc(state, `unitNPC${i}`, { x: 40 + i * 10, z: 0 }, { data: { trafficRole: 'hauler' } });
+    bus.emit('tether:snapCatch', { targetId: stranger.id });
+    sweep(pl355TheUnit, state, 10, 1);
+    bus.emit('massline:releaseValidated', { entityId: stranger.id });
+    pl355TheUnit.update(1 / 60);
+  }
+  assert.ok(eventsOf(rec, PLANTS_UNIT_EVENT, 'became').length === 1, 'precondition: the measure rides');
+}
+
+test('PL-355 shove discipline: two rapid impacts price once; a civilian ramming the parked player prices nothing', () => {
+  // The shove direction: the player moving into a resting hull is the actor.
+  const shoving = boot(pl355TheUnit, { playerVel: { x: 60, z: 0 } });
+  earnTheUnit(shoving);
+  const { state, rec, bus } = shoving;
+  const denyCues = () => rec.events.filter((e) => e.event === 'audio:cue' && e.payload && e.payload.id === 'ui_deny').length;
+  const civ = makeNpc(state, 'civ1', { x: 30, z: 0 }, { data: { trafficRole: 'trader' } });
+  const shove = () => bus.emit('physics:impact', { aId: state.playerId, bId: civ.id, impulse: 60, causalActorId: state.playerId });
+
+  shove();
+  shove(); // the same collision storm, half a breath later
+  assert.equal(eventsOf(rec, PLANTS_UNIT_PASSED_EVENT, 'priced').length, 1, 'two rapid impacts, one deny');
+  assert.equal(denyCues(), 1, 'no deny spam');
+  state.simTime += UNIT_TUNING.impactCooldownS - 1;
+  shove();
+  assert.equal(eventsOf(rec, PLANTS_UNIT_PASSED_EVENT, 'priced').length, 1, 'no re-arm inside the cooldown');
+  state.simTime += UNIT_TUNING.impactCooldownS + 1;
+  shove();
+  assert.equal(eventsOf(rec, PLANTS_UNIT_PASSED_EVENT, 'priced').length, 2, 'the cooldown is a cooldown, not a latch');
+
+  // The parked variant: a civilian ramming the STATIONARY player voids nothing.
+  const parked = boot(pl355TheUnit);
+  earnTheUnit(parked);
+  const rammer = makeNpc(parked.state, 'ram1', { x: 20, z: 0 }, { vel: { x: 80, z: 0 }, data: { trafficRole: 'trader' } });
+  parked.bus.emit('physics:impact', { aId: rammer.id, bId: parked.state.playerId, impulse: 90, causalActorId: rammer.id });
+  assert.equal(eventsOf(parked.rec, PLANTS_UNIT_PASSED_EVENT, 'priced').length, 0, 'rammed while parked: the unit stands');
+  assert.equal(parked.rec.events.filter((e) => e.event === 'audio:cue' && e.payload && e.payload.id === 'ui_deny').length, 0,
+    'no deny for being shoved');
+  parked.state.simTime += UNIT_TUNING.passDelayS + 1;
+  pl355TheUnit.update(1 / 60);
+  assert.equal(eventsOf(parked.rec, PLANTS_UNIT_PASSED_EVENT).length, 0, 'nothing passes, nothing voids');
 });
 
 // ---------------------------------------------------------------- PL-356

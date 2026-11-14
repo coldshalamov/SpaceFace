@@ -24,6 +24,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_288_TAKE_EVENT = 'plants:pl288:take';
 export const PL_288_LIT_EVENT = 'plants:pl288:lit';
@@ -68,21 +69,6 @@ export function lanternDayOf(simTime, t = LANTERN_LOAN_TUNING) {
 export function burningAt(lanternData, now) {
   const until = Number(lanternData?.litUntil);
   return Number.isFinite(until) && now < until;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createLanternLoan() {

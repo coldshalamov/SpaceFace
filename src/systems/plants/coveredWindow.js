@@ -26,6 +26,7 @@
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_289_PLATED_EVENT = 'plants:pl289:plated';
 export const PL_289_THANKS_EVENT = 'plants:pl289:thanks';
@@ -87,21 +88,6 @@ export function walkerRouteFor(station, t = COVERED_WINDOW_TUNING) {
     berth,
     to: { x: berth.x - Math.cos(a) * len, z: berth.z - Math.sin(a) * len },
   };
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createCoveredWindow() {

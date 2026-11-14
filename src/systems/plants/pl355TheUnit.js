@@ -29,6 +29,7 @@ export const UNIT_TUNING = Object.freeze({
   unitWeekS: 900,           // the measure rides for a week (table clock)
   passDelayS: 60,           // it changes to somebody else's name within the week
   reBlockS: 1800,           // no re-earning while the new name rides
+  impactCooldownS: 4,       // one collision, one price: no deny spam, no constant re-arming
   giftRangeWu: 260,
   offerMemoryS: 120,
   memoryCap: 12,
@@ -61,6 +62,7 @@ export function createPl355TheUnit() {
       this._unitSector = null;
       this._passAt = null;
       this._reBlockUntil = -Infinity;
+      this._lastPricedAt = -Infinity;
       this._offers = new Map();      // podId -> forHullId
       this._served = new Set();      // pods already given away: never a fresh dump again
       const on = (event, fn) => {
@@ -95,6 +97,7 @@ export function createPl355TheUnit() {
       this._unitSector = null;
       this._passAt = null;
       this._reBlockUntil = -Infinity;
+      this._lastPricedAt = -Infinity;
       if (this._offers) this._offers.clear();
       if (this._served) this._served.clear();
     },
@@ -189,7 +192,7 @@ export function createPl355TheUnit() {
       }
     },
 
-    /** Price the unit (physical substitute): shoving a civilian voids the measure. */
+    /** Price the unit (physical substitute): the player SHOVING a civilian voids the measure. */
     _onImpact(p) {
       const s = this.state;
       if (!s || s.mode !== 'flight') return;
@@ -197,10 +200,17 @@ export function createPl355TheUnit() {
       if (!(this._unitUntil > now)) return;
       const otherId = p.aId === s.playerId ? p.bId : (p.bId === s.playerId ? p.aId : null);
       if (otherId == null) return;
+      if (now - this._lastPricedAt < UNIT_TUNING.impactCooldownS) return; // one collision, one price
       const e = s.entities && s.entities.get ? s.entities.get(otherId) : null;
       if (!e || e.type !== 'ship' || e.alive === false) return;
       const d = e.data || {};
       if (d.isGate || d.isWormhole) return;
+      // The shove has a direction: the player is the actor — their speed must exceed the
+      // other hull's at impact. A civilian ramming the PARKED player prices nothing.
+      const player = s.entities && s.entities.get ? s.entities.get(s.playerId) : null;
+      const speedOf = (v) => (v ? Math.hypot(Number(v.x) || 0, Number(v.z) || 0) : 0);
+      if (speedOf(player && player.vel) <= speedOf(e.vel)) return;
+      this._lastPricedAt = now;
       this._passAt = now + UNIT_TUNING.passDelayS;
       this.bus.emit('audio:cue', { id: 'ui_deny', position: null, gain: 0.5, rate: 0.9 });
       this.bus.emit(PLANTS_UNIT_PASSED_EVENT, { kind: 'priced', at: this._passAt, t: now });

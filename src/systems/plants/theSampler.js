@@ -26,6 +26,7 @@
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_291_TASTE_EVENT = 'plants:pl291:taste';
 export const PL_291_EATEN_EVENT = 'plants:pl291:eaten';
@@ -69,21 +70,6 @@ export function stallPointFor(station, t = THE_SAMPLER_TUNING) {
 /** Day index of the shared plant clock. */
 export function samplerDayOf(simTime, t = THE_SAMPLER_TUNING) {
   return Math.floor((Number.isFinite(simTime) ? simTime : 0) / Math.max(1, t.dayLengthS));
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createTheSampler() {

@@ -124,7 +124,7 @@ export const mascotPlant = {
     }
 
     // Follow: perch on your wall gun when you have one, else trail your hull.
-    const perch = this._perchDevice();
+    const perch = this._perchDevice(now);
     const tx = perch ? perch.pos.x + MASCOT_TUNING.perchOffsetWu : player.pos.x + MASCOT_TUNING.followOffsetWu;
     const tz = perch ? perch.pos.z : player.pos.z;
     const dx = tx - mascot.pos.x;
@@ -184,6 +184,8 @@ export const mascotPlant = {
     this._lapUntil = 0;
     this._expiresAt = 0;
     this._nextBlinkAt = 0;
+    this._perchId = null;
+    this._nextPerchScanAt = 0;
   },
 
   _reset() {
@@ -277,13 +279,24 @@ export const mascotPlant = {
     }
   },
 
-  _perchDevice() {
+  /** The perch target: cached between throttled scans (surrenderDoorPlant scan pattern). */
+  _perchDevice(now) {
+    if (!Number.isFinite(now)) now = this._now();
+    if (now < this._nextPerchScanAt) {
+      const cached = this._entity(this._perchId);
+      return cached && cached.alive !== false ? cached : null;
+    }
+    this._nextPerchScanAt = now + MASCOT_TUNING.scanThrottleS;
+    const found = this._scanForPerch();
+    this._perchId = found ? found.id : null;
+    return found;
+  },
+
+  /** Walk the full entity map: only the player's fortify devices match, and there are few. */
+  _scanForPerch() {
     const entities = this.state && this.state.entities;
     if (!entities || typeof entities.values !== 'function') return null;
-    let scanned = 0;
     for (const e of entities.values()) {
-      if (scanned >= MASCOT_TUNING.deviceScanCap * 8) return null;
-      scanned += 1;
       if (!e || e.alive === false || e.type !== 'beacon' || !e.pos) continue;
       const d = e.data;
       if (!d || !d.swarmFortify || e.ownerId !== this.state.playerId) continue;
