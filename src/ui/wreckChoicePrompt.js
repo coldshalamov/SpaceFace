@@ -20,6 +20,7 @@
 // (no update; event-driven), same posture as moralTrapPrompt/customsPrompt.
 
 import { getPromptDeck } from './promptDeck.js';
+import { survivorRescueQuote } from '../systems/survivorPod.js';
 
 const DECK_PREFIX = 'wreck-choice:';
 
@@ -218,23 +219,36 @@ export const wreckChoicePrompt = {
 
   // ── pod air status ───────────────────────────────────────────────────────────────────────
 
-  /** Whole displayed air second for a tracked pod card; clamps spent clocks to 0 so the
-   *  post-boundary status is a stable value, not a still-moving countdown. */
+  /** Whole air second for a tracked pod card, signed through the boundary — positive while air
+   *  remains, ≤0 once spent. The spent side keeps ticking so the card's decaying price line
+   *  still refreshes once per displayed second. */
   _podAirSecond(tracked) {
     const state = this._state;
     const rec = state && state.survivorPod && state.survivorPod.promotedByPoint
       && state.survivorPod.promotedByPoint[tracked.podId || tracked.salvagePointId];
     const dueAt = rec && Number.isFinite(rec.oxygenDueAt) ? rec.oxygenDueAt : tracked.oxygenDueAt;
     if (!Number.isFinite(dueAt)) return null;
-    return Math.max(0, Math.ceil(dueAt - (state.simTime || 0)));
+    return Math.ceil(dueAt - (state.simTime || 0));
+  },
+
+  /** The spent-clock line is the live rescue quote — the price the choice would commit now.
+   *  A record we cannot read leaves the boarded row's stamped number as the only known price. */
+  _podPaysLabel(tracked) {
+    const pointId = tracked && (tracked.podId || tracked.salvagePointId);
+    const quote = pointId ? survivorRescueQuote(this._state, pointId) : null;
+    let price = quote && Number.isFinite(quote.reward_cr) ? quote.reward_cr : null;
+    if (price == null) {
+      const offer = pointId ? this._boardedOffer(pointId) : null;
+      if (offer && Number.isFinite(offer.reward_cr)) price = offer.reward_cr;
+    }
+    return price == null ? 'AIR SPENT'
+      : `AIR SPENT · PAYS ${Math.max(0, Math.round(price)).toLocaleString('en-US')} cr`;
   },
 
   _podStatus(deckId, second) {
     const tracked = this._live.get(deckId);
     const left = second === undefined ? this._podAirSecond(tracked) : second;
-    // The boarded offer's reward was stamped at offer time — the spent clock changes the
-    // air readout only, never the payout.
-    const air = left == null ? null : left > 0 ? `AIR ${left}s` : 'AIR SPENT · SURVIVOR STABLE';
+    const air = left == null ? null : left > 0 ? `AIR ${left}s` : this._podPaysLabel(tracked);
     return [tracked && tracked.statusFlag, air].filter(Boolean).join(' · ');
   },
 

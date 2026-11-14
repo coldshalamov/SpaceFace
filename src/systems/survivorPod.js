@@ -218,6 +218,31 @@ function countdownLabel(state, rec) {
   return `oxygen ${left}s`;
 }
 
+/**
+ * The live rescue price for one promoted pod — the ONE formula behind both the board stamp
+ * (_stampOffer) and the commit-time re-read (_chooseRescue's survivorPod:rescueSelected
+ * payload). `reward_cr` is max(round(base × floor), round(base × multiplier at state.simTime)).
+ * Pure read: null when there is no live promoted record (missing, stripped, no template).
+ * `decaying` = air spent and not yet at the floor; `atFloor` = multiplier already at the floor.
+ */
+export function survivorRescueQuote(state, salvagePointId) {
+  const own = state && state.survivorPod;
+  const rec = own && own.promotedByPoint && own.promotedByPoint[salvagePointId];
+  if (!rec || rec.stripped) return null;
+  const template = wreckMissionById(MISSION_ID);
+  if (!template) return null;
+  const base = template.reward_cr || 0;
+  const min = Math.max(0, Math.min(1, rec.minRewardMultiplier || MIN_REWARD_MULTIPLIER));
+  const multiplier = rewardMultiplier(state, rec);
+  const atFloor = multiplier <= min;
+  return {
+    reward_cr: Math.max(Math.round(base * min), Math.round(base * multiplier)),
+    base_cr: base,
+    decaying: secondsLeft(state, rec) <= 0 && !atFloor,
+    atFloor,
+  };
+}
+
 function publicMeta(state, rec) {
   const mult = rewardMultiplier(state, rec);
   const left = secondsLeft(state, rec);
@@ -1847,10 +1872,9 @@ export const survivorPod = {
     const point = pointForRec(state, rec);
     const ent = entityForPoint(state, point || rec);
     let meta = mirrorMeta(state, rec, point, ent);
-    const reward = Math.max(
-      Math.round((template.reward_cr || 0) * meta.minRewardMultiplier),
-      Math.round((template.reward_cr || 0) * meta.rewardMultiplier),
-    );
+    const quote = survivorRescueQuote(state, rec.salvagePointId);
+    if (!quote) return;
+    const reward = quote.reward_cr;
 
     offer.id = offer.id || offer.offerId || `survivor_${rec.salvagePointId}`;
     offer.offerId = offer.offerId || offer.id;
@@ -1987,6 +2011,7 @@ export const survivorPod = {
     // state at choice time, and missions' synchronous accept runs inside the emit.
     rec.rescueSelected = true;
     const meta = mirrorMeta(state, rec, point, ent);
+    const quote = survivorRescueQuote(state, rec.salvagePointId);
     if (this._bus && this._bus.emit) {
       this._bus.emit('survivorPod:rescueSelected', {
         ...meta,
@@ -1994,6 +2019,9 @@ export const survivorPod = {
         factionId: CONCORD_FACTION_ID,
         destStationId: rec.destStationId,
         destSectorId: rec.destSectorId || rec.sectorId,
+        // The price re-read at commit time: waiting costs the decay the oxygen clock ran up.
+        // missions can only move the board row's stamped reward DOWN to this, never up.
+        reward_cr: quote ? quote.reward_cr : null,
       });
     }
     // Missions accepts synchronously inside the emit above. A refused accept — standing lost

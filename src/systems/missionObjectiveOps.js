@@ -1517,7 +1517,17 @@ export const missionObjectiveOps = {
     if (!pointId) return false;
     const offer = this._salvageOfferByPoint(pointId);
     if (!offer || offer.type !== 'passenger_transport') return false;
-    return this.acceptMission(offer.id);
+    // The survivor owner re-read its price at commit time: the board row's stamped reward can
+    // only move DOWN to the quote the oxygen decay clock now pays, never up. A refused accept
+    // restores the stamped number — the row still advertises it for the retry.
+    const previous = offer.reward_cr;
+    const quoted = payload.reward_cr;
+    const reprice = Number.isFinite(quoted) && quoted >= 0
+      && Number.isFinite(previous) && quoted < previous;
+    if (reprice) offer.reward_cr = quoted;
+    const accepted = this.acceptMission(offer.id);
+    if (!accepted && reprice) offer.reward_cr = previous;
+    return accepted;
   },
 
   /**

@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createPromptDeck } from '../src/ui/promptDeck.js';
 import { wreckChoicePrompt } from '../src/ui/wreckChoicePrompt.js';
+import { survivorRescueQuote } from '../src/systems/survivorPod.js';
 
 function boot(now = 5, { offer = null, podRecord = true } = {}) {
   const previous = globalThis.document;
   const doc = promptDeckDocument(900, 900); globalThis.document = doc;
   offer = offer || { id: 'rescue-offer', source: 'salvage', salvagePointId: 'pod', title: 'Survivor',
+    reward_cr: 750,
     params: { survivorPodId: 'pod' }, survivorPod: { oxygenDueAt: 10 },
     choice: { prompt: 'Rescue or strip the pod?', options: [{ id: 'rescue', label: 'Rescue' }, { id: 'strip', label: 'Strip' }] } };
   const pointId = offer.salvagePointId || (offer.params && offer.params.salvagePointId);
@@ -31,7 +33,7 @@ test('real deck keeps rescue and strip usable after the oxygen boundary', () => 
     assert.match(f.text(), /AIR 5s/);
     f.state.simTime = 30; f.deck.tick();
     assert.equal(f.deck.size, 1);
-    assert.match(f.text(), /AIR SPENT · SURVIVOR STABLE/);
+    assert.match(f.text(), /AIR SPENT · PAYS 716 cr/);
     const choices = []; f.bus.on('survivorPod:choose', p => choices.push(p));
     f.deck.choose('wreck-choice:rescue-offer', 'rescue', 'test');
     assert.equal(choices[0]?.optionId, 'rescue');
@@ -56,10 +58,17 @@ test('the status string is rebuilt only when the displayed whole second changes'
     assert.equal(patches.length, first + 1, 'crossing the second boundary rebuilds once');
     assert.match(f.text(), /AIR 4s/);
     f.state.simTime = 30; f.deck.tick(); f.deck.tick();
-    assert.match(f.text(), /AIR SPENT · SURVIVOR STABLE/);
+    assert.match(f.text(), /AIR SPENT · PAYS 716 cr/);
     const spent = patches.length;
-    f.state.simTime = 40; f.deck.tick(); f.deck.tick();
-    assert.equal(patches.length, spent, 'a spent clock is a stable status, not a per-tick rewrite');
+    f.state.simTime = 30.4; f.deck.tick(); f.deck.tick();
+    assert.equal(patches.length, spent, 'same displayed second, same rebuild');
+    f.state.simTime = 31.2; f.deck.tick();
+    assert.equal(patches.length, spent + 1, 'the falling price still rebuilds once a second');
+    f.state.simTime = 300; f.deck.tick(); f.deck.tick();
+    assert.match(f.text(), /AIR SPENT · PAYS 338 cr/);
+    const floored = patches.length;
+    f.state.simTime = 320; f.deck.tick(); f.deck.tick();
+    assert.equal(patches.length, floored, 'at the floor the status is a stable value');
   } finally { f.close(); }
 });
 
@@ -69,7 +78,7 @@ test('refused rescue retains latch advice while its oxygen status changes', () =
     f.bus.emit('survivorPod:rescueBlocked', { salvagePointId: 'pod', reason: 'tow_required' });
     f.state.simTime = 30; f.deck.tick();
     assert.match(f.text(), /TETHER REQUIRED/); assert.match(f.text(), /Latch the pod/);
-    assert.match(f.text(), /AIR SPENT · SURVIVOR STABLE/);
+    assert.match(f.text(), /AIR SPENT · PAYS 716 cr/);
     assert.equal(f.deck.size, 1);
   } finally { f.close(); }
 });
@@ -143,7 +152,7 @@ test('a committed rescue annotates the card instead of leaving strip silent', ()
     assert.match(f.text(), /strip claim is spent/);
     f.state.simTime = 30; f.deck.tick();
     assert.match(f.text(), /RESCUE COMMITTED/);
-    assert.match(f.text(), /AIR SPENT · SURVIVOR STABLE/);
+    assert.match(f.text(), /AIR SPENT · PAYS 716 cr/);
     assert.equal(f.deck.size, 1);
   } finally { f.close(); }
 });
@@ -153,9 +162,9 @@ test('the status line crosses the air boundary on a single tick', () => {
   try {
     assert.match(f.text(), /AIR 1s/);
     f.state.simTime = 10; f.deck.tick();
-    assert.match(f.text(), /AIR SPENT · SURVIVOR STABLE/);
+    assert.match(f.text(), /AIR SPENT · PAYS 750 cr/);
     assert.doesNotMatch(f.text(), /AIR \d+s/);
-    assert.doesNotMatch(f.text(), /PAYOUT DECAYING/, 'a boarded offer keeps its stamped reward');
+    assert.doesNotMatch(f.text(), /SURVIVOR STABLE/);
     assert.equal(f.deck.size, 1, 'the decision survives its own boundary tick');
   } finally { f.close(); }
 });
@@ -163,10 +172,11 @@ test('the status line crosses the air boundary on a single tick', () => {
 test('a pod missing its owner record counts down from the offer stamp', () => {
   const f = boot(5, { podRecord: false });
   try {
-    // No promotedByPoint entry: the offer's stamped oxygenDueAt is the only clock.
+    // No promotedByPoint entry: the offer's stamped oxygenDueAt is the only clock, and its
+    // stamped reward_cr is the only price the card can honestly name.
     assert.match(f.text(), /AIR 5s/);
     f.state.simTime = 11; f.deck.tick();
-    assert.match(f.text(), /AIR SPENT · SURVIVOR STABLE/);
+    assert.match(f.text(), /AIR SPENT · PAYS 750 cr/);
     assert.equal(f.deck.size, 1);
   } finally { f.close(); }
 });
@@ -285,7 +295,10 @@ function wreckEntity(id, pointId, pos = { x: 100, z: 0 }) {
   };
 }
 
-test('canonical promoted-pod owner still accepts a tethered rescue after oxygen depletion', async () => {
+// The real promotion route: core+state up, the pod owner promotes a salvage point on
+// salvage:placed, and (with missions up) mission:offered stamps + boards the rescue row so
+// survivorPod:choose commits through missions' synchronous accept — the ordinary player path.
+async function bootPodRoute({ withMissions = true } = {}) {
   const { survivorPod } = await import('../src/systems/survivorPod.js');
   const { createGameState } = await import('../src/core/gameState.js');
   const { core } = await import('../src/core/coreSystem.js');
@@ -293,28 +306,58 @@ test('canonical promoted-pod owner still accepts a tethered rescue after oxygen 
   core.init({ state, bus, helpers });
   core.preStep(1 / 60, state);
   const owner = Object.create(survivorPod);
+  let missionsOwner = null;
+  state.simTime = 100; state.mode = 'flight';
+  state.world.currentSectorId = 'sector_tethys_junction';
+  const player = helpers.spawnEntity({ type: 'ship', pos: { x: 0, z: 0 }, radius: 10,
+    mass: 100, hull: 100, hullMax: 100, data: {} });
+  state.playerId = player.id;
+  state.player.tether = { active: false, targetId: null };
+  const a = wreckEntity(501, 'zone_tethys_derelict:sal0');
+  const b = wreckEntity(502, 'zone_tethys_derelict:sal1', { x: 160, z: 40 });
+  state.entities.set(a.id, a); state.entities.set(b.id, b); state.entityList.push(a, b);
+  state.salvage = {
+    plannedSectorId: 'sector_tethys_junction',
+    points: [
+      { id: 'zone_tethys_derelict:sal0', sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_derelict', pos: { x: a.pos.x, z: a.pos.z }, entityId: a.id, isCommunicator: false, wreckMissionId: null, offered: false },
+      { id: 'zone_tethys_derelict:sal1', sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_derelict', pos: { x: b.pos.x, z: b.pos.z }, entityId: b.id, isCommunicator: false, wreckMissionId: null, offered: false },
+    ],
+  };
+  owner.init({ state, bus, helpers });
+  if (withMissions) {
+    const { missions } = await import('../src/systems/missions.js');
+    missionsOwner = Object.create(missions);
+    missionsOwner.init({ state, bus, helpers, registry: { get: () => null } });
+  }
+  bus.emit('salvage:placed', { sectorId: 'sector_tethys_junction', count: 2, communicators: 0 });
+  const point = state.salvage.points.find(p => p.survivorPod);
+  const rec = point ? state.survivorPod.promotedByPoint[point.id] : null;
+  return { state, bus, owner, missionsOwner, helpers, point, rec,
+    close() { owner.destroy(); missionsOwner && missionsOwner.destroy?.(); core.destroy(); } };
+}
+
+// The ordinary discovery route: salvage emits mission:offered, the pod owner stamps the row
+// (reward included) and missions boards it through _onExternalBoardOffer.
+function boardRescueOffer(state, bus, point, rec) {
+  const offer = { id: 'salvage-rescue-offer', source: 'salvage', salvagePointId: point.id,
+    type: 'passenger_transport', stationId: rec.destStationId || 'station_tethys',
+    params: { salvagePointId: point.id } };
+  bus.emit('mission:offered', offer);
+  return Object.values(state.missions.boards || {})
+    .flatMap(board => (board && board.slots) || [])
+    .find(row => row && row.id === offer.id) || null;
+}
+
+function acceptedPodMission(state, pointId) {
+  return (state.missions.active || []).find(m => m && m.status === 'active'
+    && m.params && m.params.survivorPodId === pointId) || null;
+}
+
+test('canonical promoted-pod owner still accepts a tethered rescue after oxygen depletion', async () => {
+  const f = await bootPodRoute({ withMissions: false });
+  const { state, bus, point, rec } = f;
   try {
-    state.simTime = 100; state.mode = 'flight';
-    state.world.currentSectorId = 'sector_tethys_junction';
-    const player = helpers.spawnEntity({ type: 'ship', pos: { x: 0, z: 0 }, radius: 10,
-      mass: 100, hull: 100, hullMax: 100, data: {} });
-    state.playerId = player.id;
-    state.player.tether = { active: false, targetId: null };
-    const a = wreckEntity(501, 'zone_tethys_derelict:sal0');
-    const b = wreckEntity(502, 'zone_tethys_derelict:sal1', { x: 160, z: 40 });
-    state.entities.set(a.id, a); state.entities.set(b.id, b); state.entityList.push(a, b);
-    state.salvage = {
-      plannedSectorId: 'sector_tethys_junction',
-      points: [
-        { id: 'zone_tethys_derelict:sal0', sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_derelict', pos: { x: a.pos.x, z: a.pos.z }, entityId: a.id, isCommunicator: false, wreckMissionId: null, offered: false },
-        { id: 'zone_tethys_derelict:sal1', sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_derelict', pos: { x: b.pos.x, z: b.pos.z }, entityId: b.id, isCommunicator: false, wreckMissionId: null, offered: false },
-      ],
-    };
-    owner.init({ state, bus, helpers });
-    bus.emit('salvage:placed', { sectorId: 'sector_tethys_junction', count: 2, communicators: 0 });
-    const point = state.salvage.points.find(p => p.survivorPod);
     assert.ok(point);
-    const rec = state.survivorPod.promotedByPoint[point.id];
     state.simTime = rec.oxygenDueAt + 1000;
     state.player.tether = { active: true, targetId: point.entityId };
     bus.on('survivorPod:rescueSelected', p => {
@@ -324,62 +367,95 @@ test('canonical promoted-pod owner still accepts a tethered rescue after oxygen 
     bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
     assert.equal(rec.rescueSelected, true);
     assert.equal(state.missions.active.length, 1);
-  } finally { owner.destroy(); core.destroy(); }
+  } finally { f.close(); }
 });
 
-test('a tethered rescue accepted after oxygen depletion keeps the offer\'s stamped reward', async () => {
-  const { survivorPod } = await import('../src/systems/survivorPod.js');
-  const { missions } = await import('../src/systems/missions.js');
-  const { createGameState } = await import('../src/core/gameState.js');
-  const { core } = await import('../src/core/coreSystem.js');
-  const state = createGameState(991), bus = createBus(), helpers = {};
-  core.init({ state, bus, helpers });
-  core.preStep(1 / 60, state);
-  const owner = Object.create(survivorPod);
-  const missionsOwner = Object.create(missions);
+test('a rescue chosen while air remains pays the full stamped reward', async () => {
+  const f = await bootPodRoute();
+  const { state, bus, point, rec } = f;
   try {
-    state.simTime = 100; state.mode = 'flight';
-    state.world.currentSectorId = 'sector_tethys_junction';
-    const player = helpers.spawnEntity({ type: 'ship', pos: { x: 0, z: 0 }, radius: 10,
-      mass: 100, hull: 100, hullMax: 100, data: {} });
-    state.playerId = player.id;
-    state.player.tether = { active: false, targetId: null };
-    const a = wreckEntity(501, 'zone_tethys_derelict:sal0');
-    const b = wreckEntity(502, 'zone_tethys_derelict:sal1', { x: 160, z: 40 });
-    state.entities.set(a.id, a); state.entities.set(b.id, b); state.entityList.push(a, b);
-    state.salvage = {
-      plannedSectorId: 'sector_tethys_junction',
-      points: [
-        { id: 'zone_tethys_derelict:sal0', sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_derelict', pos: { x: a.pos.x, z: a.pos.z }, entityId: a.id, isCommunicator: false, wreckMissionId: null, offered: false },
-        { id: 'zone_tethys_derelict:sal1', sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_derelict', pos: { x: b.pos.x, z: b.pos.z }, entityId: b.id, isCommunicator: false, wreckMissionId: null, offered: false },
-      ],
-    };
-    owner.init({ state, bus, helpers });
-    missionsOwner.init({ state, bus, helpers, registry: { get: () => null } });
-    bus.emit('salvage:placed', { sectorId: 'sector_tethys_junction', count: 2, communicators: 0 });
-    const point = state.salvage.points.find(p => p.survivorPod);
-    assert.ok(point);
-    const rec = state.survivorPod.promotedByPoint[point.id];
-    // The ordinary discovery route: salvage emits mission:offered, the pod owner stamps the
-    // row (reward included) and missions boards it through _onExternalBoardOffer.
-    const offer = { id: 'salvage-rescue-offer', source: 'salvage', salvagePointId: point.id,
-      type: 'passenger_transport', stationId: rec.destStationId || 'station_tethys',
-      params: { salvagePointId: point.id } };
-    bus.emit('mission:offered', offer);
-    const boarded = Object.values(state.missions.boards || {})
-      .flatMap(board => (board && board.slots) || [])
-      .find(row => row && row.id === offer.id);
+    const boarded = boardRescueOffer(state, bus, point, rec);
     assert.ok(boarded, 'the communicator offer is a real board row');
     const stamped = boarded.reward_cr;
     assert.ok(Number.isFinite(stamped) && stamped > 0, 'the pod owner stamps the reward at offer time');
-    state.simTime = rec.oxygenDueAt + 1000;
+    state.simTime = rec.oxygenDueAt - 30;
+    assert.equal(survivorRescueQuote(state, point.id).reward_cr, stamped,
+      'with air remaining the quote IS the stamped price');
     state.player.tether = { active: true, targetId: point.entityId };
     bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
-    const accepted = (state.missions.active || []).find(m => m && m.status === 'active'
-      && m.params && m.params.survivorPodId === point.id);
+    const accepted = acceptedPodMission(state, point.id);
     assert.ok(accepted, 'the canonical rescue accept runs synchronously inside the choice');
-    // The decayed clock never re-prices a boarded row: the instance keeps the stamped reward.
     assert.equal(accepted.reward_cr, stamped);
     assert.equal(rec.rescueSelected, true);
-  } finally { owner.destroy(); missionsOwner.destroy?.(); core.destroy(); }
+  } finally { f.close(); }
+});
+
+test('a rescue chosen 120 s after the air ran out pays the decayed quote', async () => {
+  const f = await bootPodRoute();
+  const { state, bus, point, rec } = f;
+  try {
+    const boarded = boardRescueOffer(state, bus, point, rec);
+    const stamped = boarded.reward_cr;
+    state.simTime = rec.oxygenDueAt + 120;
+    const quote = survivorRescueQuote(state, point.id);
+    assert.equal(quote.decaying, true);
+    assert.ok(quote.reward_cr < stamped, 'waiting really costs money');
+    assert.ok(quote.reward_cr > Math.round(quote.base_cr * rec.minRewardMultiplier),
+      'mid-decay the quote is still above the floor');
+    state.player.tether = { active: true, targetId: point.entityId };
+    bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
+    const accepted = acceptedPodMission(state, point.id);
+    assert.ok(accepted);
+    assert.equal(accepted.reward_cr, quote.reward_cr,
+      'the contract pays the quote re-read at commit, not the stale stamp');
+    assert.ok(accepted.reward_cr < stamped);
+  } finally { f.close(); }
+});
+
+test('a rescue chosen past the decay window pays exactly the floor', async () => {
+  const f = await bootPodRoute();
+  const { state, bus, point, rec } = f;
+  try {
+    const boarded = boardRescueOffer(state, bus, point, rec);
+    const stamped = boarded.reward_cr;
+    state.simTime = rec.oxygenDueAt + rec.oxygenDecayWindow_s + 60;
+    const quote = survivorRescueQuote(state, point.id);
+    assert.equal(quote.atFloor, true);
+    assert.equal(quote.decaying, false, 'at the floor there is nothing left to decay');
+    assert.equal(quote.reward_cr, Math.round(quote.base_cr * rec.minRewardMultiplier));
+    state.player.tether = { active: true, targetId: point.entityId };
+    bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
+    const accepted = acceptedPodMission(state, point.id);
+    assert.ok(accepted);
+    assert.equal(accepted.reward_cr, quote.reward_cr, 'the payout decays to exactly the floor');
+    assert.ok(accepted.reward_cr < stamped);
+  } finally { f.close(); }
+});
+
+test('a refused rescue accept leaves the board offer\'s stamped reward unchanged', async () => {
+  const f = await bootPodRoute();
+  const { state, bus, point, rec } = f;
+  try {
+    const boarded = boardRescueOffer(state, bus, point, rec);
+    const stamped = boarded.reward_cr;
+    state.simTime = rec.oxygenDueAt + 120;
+    // The refusal fixture: a full contract book makes the real accept path refuse
+    // (acceptMission's maxActive gate) with the offer row still up — the reprice must roll back.
+    const cap = (state.missions.config && state.missions.config.maxActive) || 8;
+    for (let i = 0; i < cap; i++) {
+      state.missions.active.push({ id: `booked_${i}`, status: 'active', params: {} });
+    }
+    state.player.tether = { active: true, targetId: point.entityId };
+    bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
+    assert.equal(boarded.reward_cr, stamped,
+      'the refused commit restores the price the row advertises');
+    assert.equal(rec.rescueSelected, false, 'no contract — the latch rolled back');
+    // The retry proves the row still works: it commits at the quote now live, not the stamp.
+    state.missions.active.length = 0;
+    const retryQuote = survivorRescueQuote(state, point.id);
+    bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
+    const accepted = acceptedPodMission(state, point.id);
+    assert.ok(accepted, 'the retry lands the rescue');
+    assert.equal(accepted.reward_cr, retryQuote.reward_cr);
+  } finally { f.close(); }
 });
