@@ -351,8 +351,9 @@ export const industrialDisasters = {
       case 'replay':
       case 'drill': {
         const id = request.scenarioId || crisis?.scenarioId;
-        if (!getScenario(id) || !site.completed.includes(id)) return { ok: false, reason: 'complete_incident_first' };
-        if (site.drill || crisis?.phase !== 'settled') return { ok: false, reason: 'close_response_first' };
+        const firstRehearsal = crisis?.phase === 'preview' && id === crisis.scenarioId;
+        if (!getScenario(id) || (!firstRehearsal && !site.completed.includes(id))) return { ok: false, reason: 'complete_incident_first' };
+        if (site.drill || (!firstRehearsal && crisis?.phase !== 'settled')) return { ok: false, reason: 'close_response_first' };
         if (this.physical.canSuspend && !this.physical.canSuspend()) return { ok: false, reason: 'release_tethers' };
         this.physical.snapshot(crisis);
         site.returnCrisis = clone(crisis); site.drill = true;

@@ -3,7 +3,7 @@ export const SALVAGE_OUTFITS_VIEW_CAPS = Object.freeze({ meetings: 3, crews: 6, 
 
 const CREW_NAMES = Object.freeze({ keel: 'Keel Union', latch: 'Latchkey', player: 'You' });
 const STATUS_TEXT = Object.freeze({
-  approach: 'Approaching', tow: 'Towing', stalled: 'Tow stalled', idle: 'Looking for work',
+  repair_hold: 'Hull repair stop', approach: 'Approaching', tow: 'Towing', stalled: 'Tow stalled', idle: 'Looking for work',
   departing: 'Heading home', departed: 'Departed', destroyed: 'Hull lost', live: 'Loose salvage', delivered: 'Recovered',
   salvaged: 'Stripped', working: 'Work in progress', complete: 'Job worked',
 });
@@ -89,11 +89,11 @@ export function writeSalvageOutfitsReadModel(state, out = createSalvageOutfitsRe
       const targetEntity = salvageOutfitEntity(state, target);
       row.id = crew.id || id; row.meetingId = meeting.id; row.crewId = id;
       row.entityId = entity?.id ?? null; row.materialized = !!entity;
-      row.name = CREW_NAMES[id] || id; row.status = crew.status;
-      row.statusText = STATUS_TEXT[crew.status] || crew.status;
+      row.name = CREW_NAMES[id] || id; row.status = meeting.status === 'working' && crew.repairHold && crew.status !== 'destroyed' && crew.status !== 'departed' ? 'repair_hold' : crew.status;
+      row.statusText = STATUS_TEXT[row.status] || row.status;
       row.targetId = crew.targetId || null; row.targetLabel = target?.label || null;
       row.targetMaterialized = !!targetEntity;
-      row.loaded = crew.status === 'tow';
+      row.loaded = row.status === 'tow';
       row.hasTarget = !!target && target.status === 'live';
       copyPos(row.pos, entity?.pos || crew.pos);
       copyPos(row.targetPos, targetEntity?.pos || target?.pos);

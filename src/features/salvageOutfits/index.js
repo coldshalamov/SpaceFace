@@ -44,6 +44,7 @@ export const salvageOutfits = {
     on('entity:killed', p => this._lost(this.state.entities.get(p?.targetId ?? p?.entityId ?? p?.id), 'destroyed'));
     on('entity:destroyed', p => this._lost(p?.entity, p?.entity?.data?._salvaged ? 'salvaged' : 'destroyed'));
     on('combat:damage', p => this._damage(p));
+    on('beam:repaired', p => this._repaired(p));
     on('sector:exit', p => this._shelve(p));
     on('sector:enter', () => { this._lastOfferAt = -100; });
     on('save:restoring', () => { this._restoring = true; this._closeOffers(); });
@@ -109,9 +110,17 @@ export const salvageOutfits = {
       const memory = this._row.memory[def.id];
       const unhappy = distrustsPlayer(memory);
       this._say(def.id, unhappy ? memory.lastEvent?.cause === 'player_damage' ? def.damaged : def.cheated
+        : def.id === 'latch' && m.crews.latch.learnedMassLimit
+          ? 'I checked the mass; small work.'
         : memory.lastEvent?.kind === 'kept' && def.kept ? def.kept : memory.helped > 0 ? def.helped : def.greeting);
     }
-    this._say('keel', `${situation(m.variant).line} Receiver is marked nearby. Tow an original in slowly for payment, or beam it for ordinary salvage.`);
+    // Greeting listeners can retarget Kit before this scene summary is composed.
+    const targetLabel = m.bodies[m.crews.latch.targetId]?.label;
+    const learnedWork = targetLabel ? `called the ${targetLabel.toLowerCase()}` : 'is checking for a safe smaller load';
+    const sceneLine = m.variant === 'overreach' && m.crews.latch.learnedMassLimit && !m.crews.latch.cautious
+      ? `Kit left the cradle to Keel and ${learnedWork}.`
+      : situation(m.variant).line;
+    this._say('keel', `${sceneLine} Receiver is marked nearby. Tow an original in slowly for payment, or beam it for ordinary salvage.`);
     this.offer(id);
     this.bus.emit('salvageOutfits:started', { meetingId: id, variant: m.variant, sectorId: m.sectorId });
     return { ok: true, meetingId: id };
@@ -132,7 +141,7 @@ export const salvageOutfits = {
       if (!activeCrew(c)) continue;
       const e = this.physical.ensureActor(m, c, def);
       if (e) { c.entityId = e.id; c.generation = e.occupantGeneration;
-        e.data.scanLabel = `${def.name} · ${c.status} · ${m.bodies[c.targetId]?.label || 'awaiting the next load'}`; }
+        e.data.scanLabel = `${def.name} · ${c.repairHold ? 'repair stop' : c.status} · ${m.bodies[c.targetId]?.label || 'awaiting the next load'}`; }
     }
   },
   _label(m, b, e) {
@@ -192,6 +201,8 @@ export const salvageOutfits = {
       this._materialize(m); this._capture(m);
       if (m.status === 'complete') { this._depart(m); continue; }
       for (const def of OUTFITS) this._work(m, def, step);
+      if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+        || this._row.meetings[m.id] !== m) return;
       this._receivePlayer(m);
       this._settleAgreement(m);
       if (Object.values(m.bodies).every(b => !activeBody(b))) {
@@ -215,6 +226,12 @@ export const salvageOutfits = {
       const actor = this.physical.find(c.key);
       if (!actor) continue;
       c.status = 'departing'; c.targetId = null;
+      if (c.repairHold) {
+        c.repairHold = false;
+        this._say(c.id, 'Heading back without a load; hull still needs repair.');
+        if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+          || this._row.meetings[m.id] !== m || this.physical.find(c.key) !== actor) return;
+      }
       const destination = { x: m.receiver.x + 900, z: m.receiver.z + (c.id === 'keel' ? -120 : 120) };
       const result = this.physical.navigate(actor, destination);
       if (result.arrived && distance(this._player()?.pos, actor.pos) > 700
@@ -231,8 +248,8 @@ export const salvageOutfits = {
     const order = c.id === 'keel' ? ['core', 'frame', 'cache'] : ['cache', 'frame', 'core'];
     const available = order.filter(id => {
       const b = m.bodies[id];
-      if (!activeBody(b) || b.claim === 'player' || (c.favorsPlayer && id === 'cache')) return false;
-      if (c.cautious && piece(id).mass > outfit(c.id).safeMass) return false;
+      if (!activeBody(b) || b.claim === 'player' || (c.favorsPlayer && id === 'cache' && b.claim !== c.id)) return false;
+      if ((c.cautious || c.learnedMassLimit) && piece(id).mass > outfit(c.id).safeMass) return false;
       if (m.agreement?.status === 'active' && b.claim && b.claim !== c.id) return false;
       if (m.agreement?.status === 'active' && m.agreement.type === 'cooperate' && id !== 'core') return false;
       return !Object.values(m.crews).some(other => other !== c && other.targetId === id
@@ -245,9 +262,35 @@ export const salvageOutfits = {
       this._say(c.id, `Changing course: ${m.bodies[c.targetId].label}. You can see my approach.`);
     }
   },
+  // Decide the repair stop once per call site event or slow check. Callers revalidate the
+  // world after this — the radio line can carry a synchronous callback.
+  _repairHold(c, actor) {
+    if (!actor || !(actor.hullMax > 0)) return;
+    const ratio = actor.hull / actor.hullMax;
+    if (!c.repairHold && ratio > 0 && ratio <= 0.35) {
+      c.repairHold = true;
+      this._say(c.id, 'Hull below working margin; braking off the cable.', 'warn');
+    } else if (c.repairHold && ratio >= 0.6) {
+      c.repairHold = false;
+      if (c.status === 'tow') c.status = 'approach';
+      this._say(c.id, c.status === 'stalled'
+        ? 'Hull back; still too much for my cable.'
+        : 'Hull back above margin; resuming the job.');
+    }
+  },
   _work(m, def, dt) {
     const c = m.crews[def.id], actor = this.physical.find(c.key);
-    if (!activeCrew(c) || !actor || this._now() < c.startsAt) return;
+    if (this.state.mode !== 'flight' || this.state.timeScale === 0 || !activeCrew(c) || !actor || this._now() < c.startsAt) return;
+    // A damaged workboat stands down instead of dying on the job. The hold is decided on
+    // combat:damage / beam:repaired events and this existing slow cadence — hull is never
+    // scanned every tick. Hysteresis keeps small repairs from chattering the tow.
+    if (this._now() - (c.lastHoldCheckAt ?? -10) >= 0.5) {
+      c.lastHoldCheckAt = this._now();
+      this._repairHold(c, actor);
+      if (this._destroyed || this._restoring || this.state.mode !== 'flight' || this.state.timeScale === 0
+        || this._row.meetings[m.id] !== m || this.physical.find(c.key) !== actor) return;
+    }
+    if (c.repairHold) { this.physical.stop(actor); return; }
     if (c.status === 'stalled') { this.physical.stop(actor); return; }
     if (c.status === 'idle' || !activeBody(m.bodies[c.targetId])) {
       this.physical.cancelTow(actor); this._retarget(m, c);
@@ -298,6 +341,20 @@ export const salvageOutfits = {
     if (!player) return;
     for (const b of Object.values(m.bodies)) {
       const e = activeBody(b) && this.physical.find(b.key);
+      if (e && this.physical.playerLine(e) && this.physical.nativeReady(e)
+        && this.physical.nativeReady(player) && distance(player.pos, m.receiver) <= 220
+        && distance(e.pos, m.receiver) <= 260) {
+        const callId = `${m.id}:receiving-call:${b.id}`;
+        const speaker = ['keel', 'latch'].find(id => activeCrew(m.crews[id])
+          && this.physical.find(m.crews[id].key));
+        if (speaker && !m.receipts[callId]) {
+          // Remember before radio callbacks: this is advice about an observed original,
+          // not a delivery receipt, payment, or reservation of the other crews' work.
+          m.receipts[callId] = { id: callId, amount: 0, at: this._now(), kind: 'receiving_call' };
+          this._say(speaker, `${b.label} on your cable. Keep the cable on; bring ship AND load in slowly.`);
+          if (this._destroyed || this._restoring || this._row.meetings[m.id] !== m) return;
+        }
+      }
       if (e && this.physical.withinDelivery(player, e, m.receiver)) this._deliver(m, b, 'player', player);
     }
   },
@@ -336,6 +393,25 @@ export const salvageOutfits = {
     } finally { this._busy = false; }
   },
 
+  _canKeelRelief(m) {
+    if (this._restoring || this._destroyed || this.state.mode !== 'flight' || this._row.meetings[m.id] !== m || !this._reachable(m)
+      || m.crews.latch.status !== 'stalled' || !activeCrew(m.crews.keel)
+      || distrustsPlayer(this._row.memory.keel) || !activeBody(m.bodies.core)
+      || !activeBody(m.bodies.frame) || !activeBody(m.bodies.cache)) return false;
+    const keel = this.physical.find(m.crews.keel.key), latch = this.physical.find(m.crews.latch.key);
+    const core = this.physical.find(m.bodies.core.key), frame = this.physical.find(m.bodies.frame.key);
+    const cache = this.physical.find(m.bodies.cache.key);
+    return !!(keel && latch && core && frame && cache && Number.isFinite(core.mass) && core.mass > 0
+      && core.mass <= outfit('keel').safeMass && !this.physical.playerLine(core));
+  },
+
+  _canThreeWay(m) {
+    const cache = this.physical.find(m.bodies.cache.key);
+    return this._canKeelRelief(m) && !distrustsPlayer(this._row.memory.latch)
+      && cache && Number.isFinite(cache.mass) && cache.mass > 0
+      && cache.mass <= outfit('latch').safeMass && !this.physical.playerLine(cache);
+  },
+
   offer(meetingId, kind = null) {
     const m = this._row.meetings[meetingId];
     if (!m || m.status === 'complete' || this._restoring || this.state.mode !== 'flight'
@@ -353,6 +429,13 @@ export const salvageOutfits = {
       choices = [publicChoice('rescue', 'TAKE THE RESCUE', 'No up-front fee. The original cradle must arrive intact enough to recover.'),
         publicChoice('refuse', 'LEAVE IT TO THEM', 'No hostility; the loose original stays in the world.'),
         publicChoice('cancel', 'CLOSE RADIO', 'Keep flying. No agreement.', true)];
+      if (this._canKeelRelief(m)) {
+        choices.splice(1, 0, publicChoice('keel_relief', 'LET KEEL LIFT · TAKE THE SMALL WORK',
+          'Keel tows the cradle; both small originals are yours.'));
+        if (this._canThreeWay(m)) choices.splice(2, 0, publicChoice('three_way', 'THREE WAY · LEAVE KIT THE TOOLING',
+          'Keel takes the cradle, Kit the tools, you the radiator.'));
+        detail += ' Or let Keel lift the cradle while you split the rest.';
+      }
     } else {
       crewId = 'keel'; title = 'Divide the work before the cables cross';
       detail = distrust
@@ -394,6 +477,34 @@ export const salvageOutfits = {
       return { ok: false, reason: 'stale_or_distant_offer' };
     }
     const choice = payload.choiceId;
+    if (choice === 'keel_relief' || choice === 'three_way') {
+      const threeWay = choice === 'three_way';
+      const ready = () => threeWay ? this._canThreeWay(m) : this._canKeelRelief(m);
+      if (!ready()) { this._closeOffer(m); return { ok: false, reason: 'relief_changed' }; }
+      this._busy = true;
+      try {
+        this._closeOffer(m);
+        for (const c of Object.values(m.crews)) {
+          const actor = this.physical.find(c.key); if (actor) this.physical.cancelTow(actor);
+        }
+        // Closing UI and cancelling native jobs emit callbacks. Revalidate the actual people,
+        // originals and trust once at this boundary before promising work.
+        if (!ready()) return { ok: false, reason: 'relief_changed' };
+        m.agreement = { type: threeWay ? 'three_way' : 'split', status: 'active', crewId: 'keel', pieceId: 'frame',
+          acceptedAt: this._now(), bonus: 0, receiptId: `${m.id}:agreement:${threeWay ? 'three_way' : 'split'}` };
+        m.bodies.core.claim = 'keel'; m.bodies.frame.claim = 'player';
+        if (activeBody(m.bodies.cache)) m.bodies.cache.claim = threeWay ? 'latch' : 'player';
+        Object.assign(m.crews.keel, { targetId: 'core', status: 'approach', startsAt: this._now(), towSeconds: 0 });
+        Object.assign(m.crews.latch, { targetId: null, status: 'idle' });
+        if (threeWay) {
+          Object.assign(m.crews.latch, { status: 'approach', targetId: 'cache', startsAt: this._now(), towSeconds: 0 });
+          this._say('latch', "Tooling's mine; radiator's yours.");
+        } else this._say('keel', 'Hawser takes the cradle; the small pieces are yours.');
+        if (this._row.meetings[m.id] === m && !this._destroyed && !this._restoring)
+          this.bus.emit('salvageOutfits:agreement', { meetingId: m.id, ...m.agreement });
+        return { ok: true, committed: true, agreement: cloneSalvageOutfits(m.agreement) };
+      } finally { this._busy = false; }
+    }
     if (['cancel', 'refuse'].includes(choice)) {
       this._closeOffer(m); this._lastOfferAt = this._now();
       if (choice === 'refuse') this._say(offer.crewId, 'Understood. We keep working. Take your own line.');
@@ -436,6 +547,19 @@ export const salvageOutfits = {
     const a = m.agreement;
     if (!a || a.status !== 'active') return;
     const core = m.bodies.core, frame = m.bodies.frame;
+    if (a.type === 'three_way') {
+      const cache = m.bodies.cache;
+      if (core.status === 'delivered' && core.deliveredBy === 'keel'
+        && cache.status === 'delivered' && cache.deliveredBy === 'latch'
+        && (frame.status === 'salvaged' || (frame.status === 'delivered' && frame.deliveredBy === 'player'))) {
+        a.status = 'complete';
+        this._memory('keel', 'kept', m, 'three_way_kept');
+        this._memory('latch', 'kept', m, 'three_way_kept');
+        this._say('latch', 'Three shares home; next job I check mass.');
+      } else if ((!activeBody(core) && core.deliveredBy !== 'keel')
+        || (!activeBody(cache) && cache.deliveredBy !== 'latch') || frame.status === 'destroyed') a.status = 'broken';
+      return;
+    }
     if (a.type === 'split') {
       if (core.status === 'delivered' && core.deliveredBy === 'keel'
         && [frame, m.bodies.cache].some(b => ['delivered', 'salvaged'].includes(b.status))) {
@@ -468,7 +592,14 @@ export const salvageOutfits = {
   },
   _breach(m, b, crewId) {
     const a = m.agreement;
-    if (!a || a.status !== 'active' || !['split', 'cooperate'].includes(a.type) || b.id !== 'core' || crewId !== 'keel') return;
+    if (!a || a.status !== 'active') return;
+    if (a.type === 'three_way') {
+      if (!((b.id === 'core' && crewId === 'keel') || (b.id === 'cache' && crewId === 'latch'))) return;
+      a.status = 'broken'; this._memory(crewId, 'cheated', m, 'three_way_broken');
+      this._say(crewId, "That was my share; deal's off.", 'warn');
+      return;
+    }
+    if (!['split', 'cooperate'].includes(a.type) || b.id !== 'core' || crewId !== 'keel') return;
     a.status = 'broken'; this._memory('keel', 'cheated', m, 'promise_broken');
     this._say('keel', 'That was the cradle you promised us. I am cancelling the deal. We will remember; we are not starting a gunfight.', 'warn');
   },
@@ -514,13 +645,25 @@ export const salvageOutfits = {
     this._closeOffer(m);
   },
   _damage(p) {
-    if (this._restoring || (p?.sourceId ?? p?.attackerId) !== this.state.playerId) return;
+    if (this._restoring) return;
     const e = this.state.entities.get(p?.targetId ?? p?.entityId);
     if (e?.data?.salvageOutfitKind !== 'crew') return;
     const m = this._row.meetings[e.data.salvageOutfitMeetingId], c = m?.crews[e.data.salvageOutfitCrewId];
-    if (!c || c.lastProtestAt != null && this._now() - c.lastProtestAt < 12) return;
+    if (!c || c.key !== e.data.salvageOutfitKey || c.entityId !== e.id) return;
+    // Any attacker can ground a workboat; only the player is protested and remembered.
+    if (activeCrew(c)) this._repairHold(c, e);
+    if ((p?.sourceId ?? p?.attackerId) !== this.state.playerId) return;
+    if (c.lastProtestAt != null && this._now() - c.lastProtestAt < 12) return;
     c.lastProtestAt = this._now(); this._memory(c.id, 'cheated', m, 'player_damage');
     this._say(c.id, 'We are here for salvage. Stop firing. Your violence is still subject to the local law.', 'warn');
+  },
+  _repaired(p) {
+    if (this._restoring || this._destroyed) return;
+    const e = this.state.entities.get(p?.targetId);
+    if (e?.data?.salvageOutfitKind !== 'crew') return;
+    const m = this._row.meetings[e.data.salvageOutfitMeetingId], c = m?.crews[e.data.salvageOutfitCrewId];
+    if (!c || c.key !== e.data.salvageOutfitKey || c.entityId !== e.id || !activeCrew(c)) return;
+    this._repairHold(c, e);
   },
   _scan(entityId) {
     const e = this.state.entities.get(entityId);
@@ -528,12 +671,17 @@ export const salvageOutfits = {
     if (!m) m = Object.values(this._row.meetings).find(row => row.sectorId === this.state.world?.currentSectorId
       && distance(this._player()?.pos, row.anchor) <= L.offerRange);
     if (!m) return;
+    const stopped = Object.values(m.crews).find(c => c.repairHold && activeCrew(c) && this.physical.find(c.key) === e);
+    if (stopped) {
+      this._say(stopped.id, 'Stopped for repairs; beam my hull to sixty.');
+      return;
+    }
     if (m.status === 'complete') {
       if (!m.heardReturn) { m.heardReturn = true;
         const text = Object.values(m.bodies).map(b => `${b.label}: ${b.status === 'delivered' ? `received by ${outfit(b.deliveredBy)?.name || 'you'}` : b.status}`).join('; ');
         this._say('keel', text); }
     } else if (m.agreement?.status === 'active') {
-      this._say(m.agreement.crewId, m.agreement.type === 'split' ? 'Your two small pieces are marked. Our cradle stays on our line.'
+      this._say(m.agreement.crewId, m.agreement.type === 'three_way' ? "Keel takes cradle, Kit tools; radiator's yours." : m.agreement.type === 'split' ? 'Your two small pieces are marked. Our cradle stays on our line.'
         : `Still waiting for the original ${piece(m.agreement.pieceId).label}. Receiver is marked; bring both ends in slowly.`);
     } else this.offer(m.id);
   },
