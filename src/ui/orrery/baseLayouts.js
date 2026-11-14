@@ -11,6 +11,7 @@ ${screen} {
   --base-panel: #17222b;
   --base-water: #a1d6d4;
   --base-gold: var(--dp-lamp, #f2b950);
+  --k-signal: var(--dp-lamp);
   --base-pad: clamp(16px, 2.5vw, 32px);
   width:min(96vw, 1160px); min-width:0; max-width:96vw; max-height:92vh; max-height:92dvh;
   padding:0; gap:0; overflow:hidden; isolation:isolate; z-index:101;
