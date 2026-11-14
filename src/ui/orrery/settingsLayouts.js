@@ -85,6 +85,11 @@ ${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:st
 /* The focused channel owns the mixer's caption. Inner ring spacing becomes smaller than a
    label at laptop sizes; keep every ring, and reveal its name as its control is focused. */
 ${S} .orr-set-mixer .orr-set-ch:not(.is-focus) .orr-set-mixer__lab { visibility:hidden; }
+/* ui-polish-480: the hub caption (MASTER · OUT) hangs below the numeral, out where the inner rings
+   run, so the innermost lit arc struck through OUT at every width (1920, 1280, 960). It sits on its
+   own small dark chip with a hairline edge, so the rings pass behind it instead of through it. */
+${S} .orr-set-mixer__outlab { padding:2px 7px; border:1px solid rgb(${BONE} / .16); border-radius:4px;
+  background:rgb(7 9 12 / .92); line-height:1.25; }
 
 /* ------------------------------------------------ the category ladder -------------------------- */
 ${S} > .k-hang { overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
