@@ -1,6 +1,6 @@
 {
   "modelId": "runtime:SF_FIN_RADIATOR_GRID:fin_radiator_grid",
-  "reviewStatus": "The modular port fin now mirrors outward in diagnostic synthetic and Lamplighter-wayfarer compositions. Other angles, root fit, variations and an ordinary encounter remain open.",
+  "reviewStatus": "The modular port fin now mirrors outward in diagnostic synthetic and Lamplighter-wayfarer compositions. Its slats and frame still read as flat tan bars. A generated metal map reached the slats but added little visible detail at gameplay scale, so it remains scratch-only. Root fit, construction, variations and an ordinary encounter remain open.",
   "variationDiscovery": "unresolved",
   "route": "The modular preload selector chooses the radiator for the sampled production Lamplighter-wayfarer identity. The composition was instantiated diagnostically from that real spawn specification.",
   "deploymentCode": ["src/render/partsLibrary.js", "src/render/modularFinHandedness.js"],
@@ -8,7 +8,8 @@
     ".devshots/fleet/modular-assembly-investigation/REPORT.md",
     ".devshots/fleet/modular-assembly-investigation/IMPLEMENTED.md",
     ".devshots/fleet/modular-assembly-investigation/fixed/render.json",
-    ".devshots/fleet/modular-assembly-investigation/lifetime/render.json"
+    ".devshots/fleet/modular-assembly-investigation/lifetime/render.json",
+    ".devshots/fleet/fighter-radiator-material/admitted-render/report.json"
   ],
   "risks": [
     "Root connection remains visually weak on the sampled fighter hull.",
