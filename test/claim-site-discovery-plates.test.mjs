@@ -78,7 +78,7 @@ function fakeEl(tag) {
     set textContent(v) { el._text = String(v); el.children = []; },
     get textContent() { return el._text; },
     parent: null,
-    // base.js clears a re-render with childNodes + remove() (it keeps its preserved lattice canvas)
+    // base.js clears a re-render with childNodes + remove()
     get childNodes() { return el.children; },
     remove() { if (el.parent) el.parent.children = el.parent.children.filter((c) => c !== el); el.parent = null; },
     appendChild(child) { child.parent = el; el.children.push(child); return child; },
@@ -119,7 +119,8 @@ try {
 
   const wrap = rootEl.children.find((child) => child.id === 'sf-base');
   assert.ok(wrap, 'base render builds the #sf-base column');
-  const subs = wrap.children.filter((child) => child.className === 'base-sub');
+  const header = wrap.children.find((child) => child.tagName === 'header');
+  const subs = header.children.filter((child) => child.className === 'base-sub');
   assert.equal(subs.length, 2, 'claimed body renders the slot line plus one why-line');
   assert.match(subs[0]._text, /L-class body/, 'first .base-sub stays the slot/sector line');
   assert.equal(subs[1]._text, cinder.why, 'second .base-sub is the site\u2019s authored why');
@@ -140,7 +141,8 @@ try {
   };
   baseScreen._render();
   const staleWrap = rootEl.children.find((child) => child.id === 'sf-base');
-  const staleSubs = staleWrap.children.filter((child) => child.className === 'base-sub');
+  const staleHeader = staleWrap.children.find((child) => child.tagName === 'header');
+  const staleSubs = staleHeader.children.filter((child) => child.className === 'base-sub');
   assert.equal(staleSubs.length, 1, 'unmatched poiId renders no why-line (old saves safe)');
 } finally {
   if (previousDocument === undefined) delete globalThis.document;
