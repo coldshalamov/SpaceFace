@@ -133,10 +133,11 @@ test('production sensor batches reuse ephemeral containers without changing dura
   }
 });
 
-test('squad command aggregation leaves member-only hazard perception untouched', () => {
-  const commander = new SquadCommander({ seed: 47, config: { minTacticTicks: 0 } });
-  commander.registerSquad({
-    id: 'hazard_boundary_wing',
+test('squad command keeps pilot-only contacts local and preserves debug counts', () => {
+  const config = { minTacticTicks: 0, freezeResults: false };
+  const commander = new SquadCommander({ seed: 47, config });
+  const squad = {
+    id: 'contact_boundary_wing',
     doctrine: 'scavenger',
     faction: 'fixture',
     members: [{
@@ -144,21 +145,18 @@ test('squad command aggregation leaves member-only hazard perception untouched',
       preferredRole: 'leader',
       capabilities: ['drive', 'sensor', 'weapon'],
     }],
-  });
+  };
+  commander.registerSquad(squad);
 
   let commandPayloadReads = 0;
-  const memberHazard = {};
-  Object.defineProperties(memberHazard, {
-    id: { value: 9900, enumerable: true },
-    kind: { value: 'hazard', enumerable: true },
-    confidence: {
-      enumerable: true,
-      get() {
+  const pilotContacts = ['hazard', 'projectile', 'waypoint'].map((kind, index) => (
+    { kind, id: 9900 + index, hostile: true,
+      get confidence() {
         commandPayloadReads++;
         return 1;
       },
-    },
-  });
+    }
+  ));
   const perception = {
     tick: 60,
     self: {
@@ -173,18 +171,26 @@ test('squad command aggregation leaves member-only hazard perception untouched',
       capabilities: ['drive', 'sensor', 'weapon'],
       factionBehavior: null,
     },
-    contacts: [memberHazard],
+    contacts: pilotContacts.slice(),
     events: [],
   };
 
-  const result = commander.update('hazard_boundary_wing', 60, new Map([[700, perception]]));
+  const perceptions = new Map([[700, perception]]);
+  const result = commander.update(squad.id, 60, perceptions);
 
   assert.equal(result.tactic, 'hold_formation',
-    'member-only obstacles must not alter the squad command picture');
+    'member-only contacts must not alter the squad command picture');
   assert.equal(commandPayloadReads, 0,
-    'squad aggregation must not materialize payload fields from member-only hazards');
-  assert.equal(perception.contacts[0], memberHazard,
-    'the member perception remains intact for ManeuverPlanner obstacle avoidance');
+    'live squad aggregation avoids reading pilot-only payloads');
+  assert.deepEqual(perception.contacts, pilotContacts,
+    'pilot perception still carries hazards, projectiles, and waypoints');
+
+  let trace;
+  const traced = new SquadCommander({ seed: 47, config, trace: { emit: (entry) => { trace = entry; } } });
+  traced.registerSquad(squad);
+  assert.deepEqual(traced.update(squad.id, 60, perceptions), result);
+  assert.equal(trace.context.hostileContacts, 2,
+    'the detailed trace still counts hostile projectiles and waypoints');
 });
 
 test('live roster retain keeps identity while propagating pos/activity refreshes', () => {

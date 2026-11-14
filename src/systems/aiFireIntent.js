@@ -4,10 +4,9 @@ import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import {
   assessFriendlyFireLane,
-  assessOpticSplinterReturn,
+  assessOpticAttack,
   mountFollowsAimAngle,
   opticPrismableMountTracking,
-  planOpticBankShot,
 } from '../ai/fireDiscipline.js';
 import { GIMBAL_ARC_DEFAULT } from './ships.js';
 import {
@@ -227,7 +226,7 @@ export function applyAIFiringIntent(decision, state) {
   // Optic fire discipline: an energy volley that would prism a diamond and throw the splinter
   // ring back through the shooter or a same-team hull is refused — the lattice is terrain, not
   // scenery. Kinetic-only hulls skip the scan entirely; an empty collidable bucket keeps CLEAR.
-  const splinterLane = assessOpticSplinterReturn({
+  const { lane: splinterLane, bank } = assessOpticAttack({
     shooter: e,
     target,
     aimAngle,
@@ -246,13 +245,6 @@ export function applyAIFiringIntent(decision, state) {
   // the wasted bolt into a fuse shot. The planner rejects any cascade that lands on the shooter
   // or a same-team hull, so a bank can never route around the refusal above — it only replaces
   // a geometrically dead lane.
-  const bank = planOpticBankShot({
-    shooter: e,
-    target,
-    aimAngle,
-    entities: opticLaneBodiesWithShelved(state),
-    weapons: data.weapons,
-  });
   let bankAim = null;
   if (bank) {
     // A bank bearing only counts if a mount that follows the aim can actually bear it: fixed
@@ -343,9 +335,7 @@ function shelvedOpticLaneRecords(state) {
  * The optic callsites' lane view: promoted collidables (index order) followed by shelved optic
  * records (record order), replayable and allocation-free — shelved records already carry the
  * {id, pos, radius, collides, data} shape the lane scans consume. The wrapper is pooled per
- * state: fireDiscipline's flat-corpus scratch is WeakMap-keyed on the iterable's identity and
- * two identical callsites fire per armed shooter per tick — a fresh wrapper would defeat that
- * scratch and double the per-tick allocs the lane cache exists to kill.
+ * state so armed shooters can share the flat-corpus scratch keyed on the iterable's identity.
  */
 const OPTIC_SHELVED_WRAPPER = new WeakMap();
 

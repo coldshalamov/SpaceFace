@@ -120,7 +120,8 @@ export class SquadCommander {
       const perception = perceptionsByMember.get(member.id);
       if (perception && perception.self) perceptions.push(perception);
     }
-    const contacts = mergeContacts(perceptions, this.freeze, squad.contactMergeScratch, squad.contactsScratch);
+    const contacts = mergeContacts(perceptions, this.freeze, squad.contactMergeScratch,
+      squad.contactsScratch, Boolean(this.trace));
     const focus = selectFocusTarget(
       perceptions,
       contacts,
@@ -445,16 +446,17 @@ function applyTwistWeights(squad, candidates) {
   }
 }
 
-function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null, outScratch = null) {
-  const merged = mergeScratch || new Map();
+function mergeContacts(perceptions, freeze, merged, out, traceContacts) {
   merged.clear();
+  out.length = 0;
   for (const perception of perceptions) {
     for (const contact of perception.contacts) {
-      // Hazards remain in each member's perception for ManeuverPlanner obstacle avoidance. Squad
-      // command consumers only reason about ships, objectives, and tethers, so merging every
-      // asteroid/station/wreck across every member is redundant command work.
-      if (contact.kind === ContactKind.HAZARD) continue;
-      const key = `${contact.kind}|${stableId(contact.id)}`;
+      // Squad command uses ships, objectives, and tethers. Member-only contacts remain in
+      // pilot perception. Squad traces still count every previously recorded non-hazard kind.
+      const kind = contact.kind;
+      if (kind === ContactKind.HAZARD || (!traceContacts && kind !== ContactKind.SHIP
+        && kind !== ContactKind.OBJECTIVE && kind !== ContactKind.TETHER)) continue;
+      const key = `${kind}|${stableId(contact.id)}`;
       let record = merged.get(key);
       if (!record) {
         record = {
@@ -470,6 +472,7 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
           observationTracked: false,
         };
         merged.set(key, record);
+        out.push(record);
       }
       record.confidenceTotal += contact.confidence;
       record.confidenceSamples++;
@@ -481,11 +484,10 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
       if (contact.confidence > record.confidence) Object.assign(record, contact);
     }
   }
-  const out = outScratch || [];
-  out.length = 0;
-  for (const record of merged.values()) {
+  for (let i = 0; i < out.length; i++) {
+    const record = out[i];
     record.confidence = saturate(record.confidenceTotal / Math.max(1, record.confidenceSamples));
-    out.push(freeze(record));
+    freeze(record);
   }
   merged.clear();
   if (freeze === Object.freeze) {

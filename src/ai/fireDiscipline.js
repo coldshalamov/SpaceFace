@@ -14,6 +14,7 @@ import { WEAPONS } from '../data/weapons.js';
 
 export const FRIENDLY_FIRE_CORRIDOR_WU = 6;
 const CLEAR = Object.freeze({ clear: true, blockerId: null, reason: null });
+const CLEAR_OPTIC_ATTACK = Object.freeze({ lane: CLEAR, bank: null });
 
 /**
  * Pure ballistic-lane gate. The firing adapter supplies its exact lead angle; this function checks
@@ -228,66 +229,87 @@ function cascadeThreatensOwnSide(entity, shooter) {
     && entity.team != null && entity.team === shooter.team;
 }
 
-/**
- * Optic fire discipline — the "don't light the field in your own face" gate. When an
- * energy-armed shooter's firing lane strikes a pale diamond, that diamond throws an eight-way
- * splinter ring (and chained diamonds re-prism down the fuse, one prism per surface per shot —
- * the same book-keeping `settleOpticContact` applies at impact). This gate replays that cascade
- * with the grammar's own `traceOpticRay` and holds fire when a live splinter corridor lands on
- * the shooter's own position or a same-team hull. A ring that dies in the stone border, or one
- * that reaches the target, is a safe shot and stays clear.
- *
- * `entities` is every body a bolt or splinter could meet — the live collidable index or the
- * entity list in minimal states. Iterated twice; never copied. Only reachable from
- * `applyAIFiringIntent`, which owns aimAngle.
- */
-export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities, weapons } = {}) {
-  if (!shooter || !shooter.pos || !target || !target.pos || !Number.isFinite(aimAngle)) return CLEAR;
-  if (!firesPrismableSalvo(weapons)) return CLEAR;
-  const dx = target.pos.x - shooter.pos.x;
-  const dz = target.pos.z - shooter.pos.z;
-  const targetRange = Math.hypot(dx, dz);
-  if (!(targetRange > 1e-6)) return CLEAR;
-  const dirX = Math.cos(aimAngle);
-  const dirZ = Math.sin(aimAngle);
+// The refusal historically orders intersecting hull centers. The bank planner orders the
+// entry surface, which can be earlier even for a hull whose center lies beyond the target.
+// Rank both in one walk without changing either rule or its equal-distance tie order.
+function scanOpticLane(shooter, target, aimAngle, entities, weapons, checkReturn, checkBank) {
+  if (!shooter?.pos || !target?.pos || !Number.isFinite(aimAngle)) return null;
+  if (!firesPrismableSalvo(weapons)) return null;
+  const origin = shooter.pos;
+  const targetRange = Math.hypot(target.pos.x - origin.x, target.pos.z - origin.z);
+  if (!(targetRange > 1e-6)) return null;
   const muzzleClear = Math.max(1, Number(shooter.radius) || 0);
-  // A bolt flies to the target; a beam ray terminates at its own range whether or not the
-  // target is that far. The refusal must cover a diamond inside EITHER mount's reach.
   let laneEnd = 0;
-  let hasBolt = false;
-  let beamReach = 0;
-  for (const w of weapons || []) {
-    if (isOpticVolleyWeapon(w)) hasBolt = true;
-    else if (isOpticBeamWeapon(w)) {
-      const r = prismableShotRange(w);
-      if (r > beamReach) beamReach = r;
+  if (checkReturn) {
+    // The bolt covers the target's far edge. The beam always covers its own authored reach.
+    for (const weapon of weapons) {
+      if (isOpticVolleyWeapon(weapon)) {
+        laneEnd = Math.max(laneEnd, targetRange + Math.max(0, Number(target.radius) || 0));
+      } else if (isOpticBeamWeapon(weapon)) {
+        laneEnd = Math.max(laneEnd, prismableShotRange(weapon));
+      }
     }
   }
-  if (hasBolt) laneEnd = targetRange + Math.max(0, Number(target.radius) || 0);
-  if (beamReach > laneEnd) laneEnd = beamReach;
-  if (!(laneEnd > muzzleClear)) return CLEAR;
-
-  // First contact on the firing lane. A bolt absorbed by stone or stopped by any nearer body
-  // never reaches a diamond, so only the closest hit on the segment decides.
+  const rankCenters = laneEnd > muzzleClear;
+  const targetEntry = checkBank ? targetRange - ((Number(target.radius) || 0) + OPTIC_RAY_RADIUS) : 0;
+  const rankEntries = checkBank && !(targetEntry <= muzzleClear);
+  if (!rankCenters && !rankEntries) return null;
+  const dirX = Math.cos(aimAngle);
+  const dirZ = Math.sin(aimAngle);
   let firstOptic = null;
   let firstOpticAlong = Infinity;
   let firstSolidAlong = Infinity;
-  for (const body of opticLaneIterable(entities)) {
-    if (!splinterBody(body) || body === shooter || body === target) continue;
-    const bx = body.pos.x - shooter.pos.x;
-    const bz = body.pos.z - shooter.pos.z;
+  let firstEntrySolid = null;
+  let firstEntry = Infinity;
+  for (const entity of opticLaneIterable(entities)) {
+    if (entity === shooter || entity === target || !splinterBody(entity)) continue;
+    const bx = entity.pos.x - origin.x;
+    const bz = entity.pos.z - origin.z;
     const along = bx * dirX + bz * dirZ;
-    if (along <= muzzleClear || along >= laneEnd || along >= firstSolidAlong) continue;
+    if (along <= muzzleClear) continue;
+    const rankCenter = rankCenters && !(along >= laneEnd || along >= firstSolidAlong);
+    if (!rankCenter && !rankEntries) continue;
     const lateralSq = Math.max(0, bx * bx + bz * bz - along * along);
-    const reach = (Number(body.radius) || 0) + OPTIC_RAY_RADIUS;
-    if (lateralSq > reach * reach) continue;
-    firstSolidAlong = along;
-    if (opticMaterialOf(body)) {
-      firstOptic = body;
-      firstOpticAlong = along;
+    const reach = (Number(entity.radius) || 0) + OPTIC_RAY_RADIUS;
+    const reachSq = reach * reach;
+    if (lateralSq > reachSq) continue;
+    if (rankCenter) {
+      firstSolidAlong = along;
+      if (opticMaterialOf(entity)) {
+        firstOptic = entity;
+        firstOpticAlong = along;
+      }
+    }
+    if (rankEntries) {
+      const entry = along - Math.sqrt(reachSq - lateralSq);
+      if (entry <= muzzleClear || entry >= targetEntry) continue;
+      if (entry < firstEntry) {
+        firstEntry = entry;
+        firstEntrySolid = entity;
+      }
     }
   }
-  if (!firstOptic || firstOpticAlong > firstSolidAlong) return CLEAR;
+  return { firstOptic: firstOpticAlong > firstSolidAlong ? null : firstOptic, firstEntrySolid };
+}
+
+/** Production firing adapter uses both rules on the same roster and firing corridor. */
+export function assessOpticAttack({ shooter, target, aimAngle, entities, weapons } = {}) {
+  const result = scanOpticLane(shooter, target, aimAngle, entities, weapons, true, true);
+  if (!result) return CLEAR_OPTIC_ATTACK;
+  const lane = opticReturnOnFirstContact(shooter, entities, result.firstOptic);
+  const bank = lane.clear || target?.type === 'projectile'
+    ? opticBankOnBlockedLane(shooter, target, entities, weapons, result.firstEntrySolid) : null;
+  return { lane, bank };
+}
+
+/** Check whether the center-ordered first hit returns splinters to the shooter or its allies. */
+export function assessOpticSplinterReturn({ shooter, target, aimAngle, entities, weapons } = {}) {
+  const result = scanOpticLane(shooter, target, aimAngle, entities, weapons, true, false);
+  return opticReturnOnFirstContact(shooter, entities, result?.firstOptic);
+}
+
+function opticReturnOnFirstContact(shooter, entities, firstOptic) {
+  if (!firstOptic) return CLEAR;
   const material = opticMaterialOf(firstOptic);
   if (!material || material.response !== 'prism') return CLEAR;
 
@@ -383,31 +405,11 @@ function opticLaneCorpus(entities) {
  * order, which is deterministic for a fixed spawn pass.
  */
 export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons } = {}) {
-  if (!shooter || !shooter.pos || !target || !target.pos || !Number.isFinite(aimAngle)) return null;
-  if (!firesPrismableSalvo(weapons)) return null;
-  const dirX = Math.cos(aimAngle);
-  const dirZ = Math.sin(aimAngle);
-  const targetRange = Math.hypot(target.pos.x - shooter.pos.x, target.pos.z - shooter.pos.z);
-  if (!(targetRange > 1e-6)) return null;
-  const muzzleClear = Math.max(1, Number(shooter.radius) || 0);
-  // The aimed bolt reaches the target only if nothing's entry distance beats the target's own:
-  // center projection would let a big body parked past the target but leaning back over the
-  // lane count as nothing while the bolt strikes its edge first.
-  const targetEntry = targetRange - ((Number(target.radius) || 0) + OPTIC_RAY_RADIUS);
-  let firstSolid = null;
-  let firstEntry = Infinity;
-  for (const entity of opticLaneIterable(entities)) {
-    if (!splinterBody(entity) || entity === shooter || entity === target) continue;
-    const bx = entity.pos.x - shooter.pos.x;
-    const bz = entity.pos.z - shooter.pos.z;
-    const along = bx * dirX + bz * dirZ;
-    const lateralSq = Math.max(0, bx * bx + bz * bz - along * along);
-    const reach = (Number(entity.radius) || 0) + OPTIC_RAY_RADIUS;
-    if (lateralSq > reach * reach) continue;
-    const entry = along - Math.sqrt(reach * reach - lateralSq);
-    if (entry <= muzzleClear || entry >= targetEntry) continue;
-    if (entry < firstEntry) { firstEntry = entry; firstSolid = entity; }
-  }
+  const result = scanOpticLane(shooter, target, aimAngle, entities, weapons, false, true);
+  return opticBankOnBlockedLane(shooter, target, entities, weapons, result?.firstEntrySolid);
+}
+
+function opticBankOnBlockedLane(shooter, target, entities, weapons, firstSolid) {
   if (!firstSolid) return null;
   const firstMaterial = opticMaterialOf(firstSolid);
   if (firstMaterial && firstMaterial.response === 'prism') return null;
@@ -421,6 +423,7 @@ export function planOpticBankShot({ shooter, target, aimAngle, entities, weapons
     if (r > maxBoltRange) maxBoltRange = r;
   }
   const boltReach = maxBoltRange > 0 ? Math.min(maxBoltRange, OPTIC_RAY_RANGE) : OPTIC_RAY_RANGE;
+  const muzzleClear = Math.max(1, Number(shooter.radius) || 0);
 
   // Direct fire is a wasted bolt. The replay needs the flat body set — build it only now.
   const corpus = opticLaneCorpus(entities);
