@@ -226,6 +226,8 @@ ${S} :focus-visible { outline:none !important; }
   ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:22px !important; font-size:12px !important; letter-spacing:.08em !important; padding-left:12px !important; }
   ${S} .fp-answer .k-word.orr-lampkey { min-height:28px !important; font-size:12px !important; margin:1px 0 2px !important; }
   ${S} .fp-answer .k-word-sub { font-size:12px !important; line-height:1.25 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  /* ui-polish-487: the record's readings each take a full row so Titles and Ship ledger print whole, not "Thunder…" / "Nothing writte…" */
+  ${S} .fp-dossier { grid-template-columns:minmax(0, 1fr); gap:2px 0; }
   ${S} .fp-hint { display:none; }
   /* the rule along the bottom gap tracks tighter so it ends before the WANTED word */
   ${S} .fp-engrave--rule text { letter-spacing:.16em; }
