@@ -50,11 +50,13 @@ import {
   FRONTIER_WELD_HEAD,
   FRONTIER_HOMESTEAD,
   FRONTIER_BARKS,
+  FRONTIER_HOUSEHOLD_LINES,
 } from '../data/factions/free.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { strideDt } from '../core/catchupPolicy.js';
 import { counted } from '../core/numberFormat.js';
+import { queryAsteroidField } from '../world/asteroidField.js';
 
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
@@ -80,6 +82,11 @@ const FRONTIER_SITE = Object.freeze({
   replantS: 600,     // a destroyed frame re-plants on this cooldown
   restockS: 90,      // a lost module re-stocks on this clock
 });
+
+// Staging rings outside a stead's own ring — the first crate and aid markers
+// wait in clear pockets out here, never under a hull.
+const FIRST_PROVISION_RINGS = Object.freeze([320, 420, 520]);
+const RING_OFFSETS = Object.freeze([0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8]);
 
 // ── The board: lead wire ───────────────────────────────────────────────────────
 // A raised, crewed stead posts a lead on its own beat. Leads are the frontier's
@@ -479,6 +486,9 @@ export const frontierHomesteads = {
       // 'game:new' at the trigger, 'game:newGame' after resetRunState.
       this.bus.on('game:new', () => this._clearBoard()),
       this.bus.on('game:newGame', () => this._clearBoard()),
+      // Crossing into the frame's sector is a transition: the owed first crate
+      // checks again here, never on the per-tick path.
+      this.bus.on('sector:enter', () => this._onSectorEnter()),
     ];
   },
 
@@ -522,6 +532,7 @@ export const frontierHomesteads = {
     this._restoredFromSave = false;
     ensureFrontierState(state);
     this._rebindGenerations(state);
+    this._stageFirstProvision(state);
   },
 
   /** New run boundary: the board's bag is run-scoped. Clearing to null lets
@@ -577,6 +588,10 @@ export const frontierHomesteads = {
         || !this._validBarnReceipt(attempt, receipt)) return;
     attempt.status = 'completed';
     attempt.completedAt = num(this.state.simTime);
+    // A newly validated completion owes the house its first crate. A completed
+    // attempt loaded from an old save carries no such field and never mints one.
+    if (attempt.adoptedSite === false) attempt.firstProvision = 'pending';
+    this._stageFirstProvision(this.state);
   },
 
   _validBarnReceipt(attempt, receipt) {
@@ -604,6 +619,82 @@ export const frontierHomesteads = {
           || frame.data?.slots?.[module.id] !== id || !rec.modules.includes(module.id)) return false;
     }
     return true;
+  },
+
+  _onSectorEnter() {
+    this._stageFirstProvision(this.state);
+  },
+
+  /** The first crate waits outside the ring — staged on real transitions only:
+   *  the completion handler, sector:enter, _afterRestore. A pending attempt with
+   *  a blocked ring simply waits for the next of those; it never scans per tick. */
+  _stageFirstProvision(state) {
+    const attempt = state?.frontier?.barnAttempt;
+    if (!attempt || attempt.firstProvision !== 'pending' || attempt.status !== 'completed'
+        || attempt.adoptedSite !== false) return;
+    if (state.world?.currentSectorId !== attempt.sectorId) return;
+    const frame = state.entities?.get(attempt.frameId);
+    if (!frame || frame.alive === false || frame.occupantGeneration !== attempt.frameGen
+        || frame.data?.homestead !== true || frame.data?.frontierMissionId !== attempt.missionId
+        || frame.data?.frontierSite !== attempt.siteId) return;
+    const rec = this._steadRec(state, attempt.frameId);
+    if (!rec || rec.partial === true || rec.gen !== attempt.frameGen
+        || rec.frontierMissionId !== attempt.missionId || rec.frontierSite !== attempt.siteId) return;
+    // Stock already riding this site counts as staged — never double a gift.
+    for (const e of state.entityList || []) {
+      if (e && e.alive !== false && e.data?.supplyCargo === true
+          && e.data?.frontierSite === attempt.siteId) {
+        attempt.firstProvision = 'issued';
+        return;
+      }
+    }
+    const baseAngle = frac('first-crate-ang', attempt.missionId, attempt.siteId) * Math.PI * 2;
+    const pos = this._clearRingSpot(state, frame.pos, baseAngle, FIRST_PROVISION_RINGS, 90);
+    if (!pos) return; // a blocked ring waits for the next transition
+    const pod = this.helpers.spawnEntity({
+      type: 'payload', team: 0, factionId: FACTION_ID,
+      pos, vel: { x: 0, z: 0 }, radius: 6, mass: 10, hull: 10, hullMax: 10, collides: true,
+      physicsBody: { shape: 'ball', radius: 6, mass: 10, dynamic: true },
+      flags: { persistent: true }, homeSectorId: attempt.sectorId,
+      data: {
+        supplyCargo: true, frontierSite: attempt.siteId,
+        name: 'Homestead Supplies', scannable: true, masslineTetherable: true,
+        scanLabel: 'HOMESTEAD SUPPLIES · 10t',
+      },
+    });
+    // Issued only after the spawn returned a body — a failed spawn stays pending.
+    if (!pod) return;
+    attempt.firstProvision = 'issued';
+    this._log(state, FRONTIER_HOUSEHOLD_LINES.firstCrate, rec.name);
+  },
+
+  /** First clear pocket on the staging rings — a bounded transition-time probe,
+   *  not a tick scan. `reject` vetoes a candidate spot; clearance counts live
+   *  bodies and asteroid-field records within `pad` of each hull's radius. */
+  _clearRingSpot(state, center, baseAngle, rings, pad, reject = null) {
+    if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
+    const clearOf = (p) => {
+      for (const e of state.entityList || []) {
+        if (!e || e.alive === false || e.collides === false) continue;
+        if (e.type === 'fx' || e.type === 'projectile' || e.type === 'pickup') continue;
+        if (!Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)) continue;
+        if (dist2(e.pos, p) < ((Number(e.radius) || 0) + pad) ** 2) return false;
+      }
+      for (const rock of queryAsteroidField(state, p, 100, [])) {
+        if (rock && rock.alive !== false && Number.isFinite(rock.pos?.x)
+            && dist2(rock.pos, p) < ((Number(rock.radius) || 0) + pad) ** 2) return false;
+      }
+      return true;
+    };
+    for (const radius of rings) {
+      for (let i = 0; i < RING_OFFSETS.length; i++) {
+        const a = baseAngle + RING_OFFSETS[i] * Math.PI / 8;
+        const p = { x: center.x + Math.cos(a) * radius, z: center.z + Math.sin(a) * radius };
+        if (reject && reject(p)) continue;
+        if (clearOf(p)) return p;
+      }
+    }
+    return null;
   },
 
   _tickBarnAttempt(state) {

@@ -63,6 +63,12 @@ export const FRONTIER_BARN_RAISING = Object.freeze({
   strandedLine: 'We\'ll owe you. We always owe somebody.',
 });
 
+// The household voice — one short line per moment, each said once and remembered
+// in rec.said / attempt.said so a restored session never hears it twice.
+export const FRONTIER_HOUSEHOLD_LINES = Object.freeze({
+  firstCrate: 'First crate\'s outside the ring.',
+});
+
 // Signature toy: the Weld Head — it welds the held object wherever it touches. Build a
 // wall, armour a station with a rock, stick a container shut.
 export const FRONTIER_WELD_HEAD = Object.freeze({
