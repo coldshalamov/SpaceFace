@@ -34,12 +34,17 @@ export const wreckChoicePrompt = {
     this._state = ctx && ctx.state;
     // deckId → { offerId, salvagePointId, pod } — the live cards this adapter owns.
     this._live = new Map();
+    // offerIds the player answered LEAVE IT this session — a completed re-entry seam
+    // rebuilds live board offers, but not a card the player already declined here.
+    this._dismissed = new Set();
     this._onFound = (p) => this._offerForPointEvent(p);
     this._onAccepted = (p) => this._resolveOnAccepted(p);
     this._onPodTerminal = (p) => this._resolveForPoint(p && p.salvagePointId);
     this._onPodBlocked = (p) => this._annotateBlocked(p);
     this._onClear = () => this._resolveAll();
-    this._onRestore = () => this._restore();
+    this._onReentry = () => this._restore({ skipDismissed: true });
+    this._onNewGame = () => { this._dismissed.clear(); this._resolveAll(); };
+    this._onRestore = () => { this._dismissed.clear(); this._restore(); };
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:communicatorFound', this._onFound);
       this._bus.on('mission:accepted', this._onAccepted);
@@ -50,10 +55,16 @@ export const wreckChoicePrompt = {
       // annotation (D133 — a refused rescue used to close the card with no contract).
       this._bus.on('survivorPod:stripped', this._onPodTerminal);
       this._bus.on('survivorPod:rescueBlocked', this._onPodBlocked);
+      this._bus.on('survivorPod:stripBlocked', this._onPodBlocked);
       this._bus.on('sector:exit', this._onClear);
       this._bus.on('dock:docked', this._onClear);
+      // sector:enter / dock:undocked are the completed re-entry seams: the board offer still
+      // exists (salvage never re-discovers it) so the live choice is rebuilt here, honoring
+      // this session's explicit dismissals.
+      this._bus.on('sector:enter', this._onReentry);
+      this._bus.on('dock:undocked', this._onReentry);
       this._bus.on('save:loaded', this._onRestore);
-      this._bus.on('game:new', this._onClear);
+      this._bus.on('game:new', this._onNewGame);
     }
   },
 
@@ -103,19 +114,26 @@ export const wreckChoicePrompt = {
       offerId: offer.id,
       salvagePointId: offer.salvagePointId || (offer.params && offer.params.salvagePointId) || null,
       pod: isPod,
+      podId: (offer.params && offer.params.survivorPodId) || null,
+      oxygenDueAt: podDueAt,
+      statusFlag: isPod ? 'LIFE SIGNS · CHOOSE' : null,
+      lastSecond: null,
+      lastStatus: null,
     });
     return deck.offerDecision({
       id: deckId,
       kind: isPod ? 'warn' : 'info',
       sender: String(offer.giver || 'WRECK TRANSMITTER'),
-      statusFlag: isPod ? 'LIFE SIGNS · CHOOSE' : 'CONTRACT SIGNAL',
+      statusFlag: isPod ? this._podStatus(deckId) : 'CONTRACT SIGNAL',
       headline: String(offer.title || 'Wreck claim'),
       detail: String((offer.choice && offer.choice.prompt) || offer.summary || 'A contract rides on this wreck.'),
-      // The pod's oxygen clock is the real deadline (producer-owned); other offers stand.
-      deadlineAt: podDueAt,
+      // The pod's oxygen clock is display status, never a decision deadline — the survivor
+      // stays stable when it runs out and the boarded offer keeps its stamped reward.
+      deadlineAt: null,
       choices,
       onChoose: (choiceId, source) => this._choose(offer.id, choiceId, source),
       onExpire: () => { this._live.delete(deckId); },
+      onTick: isPod ? () => this._refreshPodStatus(deckId) : null,
     });
   },
 
@@ -124,6 +142,7 @@ export const wreckChoicePrompt = {
     const tracked = this._live.get(deckId);
     const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
     if (choiceId === 'leave') {
+      this._dismissed.add(offerId);
       this._live.delete(deckId);
       if (deck) deck.resolveDecision(deckId);
       return;
@@ -180,14 +199,56 @@ export const wreckChoicePrompt = {
     if (!deck) return;
     // A refused rescue keeps the card: tow_missing still asks for the latch, and a refused
     // contract accept says the filing desk itself would not take the rescue (D133).
-    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED' : 'TETHER REQUIRED';
+    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED'
+      : payload.reason === 'rescue_committed' ? 'RESCUE COMMITTED'
+      : 'TETHER REQUIRED';
     const detail = payload.reason === 'accept_refused'
       ? 'The destination desk will not take this rescue — check your standing, then choose again.'
+      : payload.reason === 'rescue_committed'
+      ? 'The rescue contract is already live — the strip claim is spent. Fly the delivery.'
       : 'Latch the pod to your massline first, then tow it out.';
     for (const [deckId, rec] of [...this._live]) {
       if (rec.salvagePointId !== payload.salvagePointId) continue;
-      deck.updateDecision(deckId, { statusFlag: flag, detail });
+      rec.statusFlag = flag;
+      rec.lastSecond = this._podAirSecond(rec);
+      rec.lastStatus = this._podStatus(deckId, rec.lastSecond);
+      deck.updateDecision(deckId, { statusFlag: rec.lastStatus, detail });
     }
+  },
+
+  // ── pod air status ───────────────────────────────────────────────────────────────────────
+
+  /** Whole displayed air second for a tracked pod card; clamps spent clocks to 0 so the
+   *  post-boundary status is a stable value, not a still-moving countdown. */
+  _podAirSecond(tracked) {
+    const state = this._state;
+    const rec = state && state.survivorPod && state.survivorPod.promotedByPoint
+      && state.survivorPod.promotedByPoint[tracked.podId || tracked.salvagePointId];
+    const dueAt = rec && Number.isFinite(rec.oxygenDueAt) ? rec.oxygenDueAt : tracked.oxygenDueAt;
+    if (!Number.isFinite(dueAt)) return null;
+    return Math.max(0, Math.ceil(dueAt - (state.simTime || 0)));
+  },
+
+  _podStatus(deckId, second) {
+    const tracked = this._live.get(deckId);
+    const left = second === undefined ? this._podAirSecond(tracked) : second;
+    // The boarded offer's reward was stamped at offer time — the spent clock changes the
+    // air readout only, never the payout.
+    const air = left == null ? null : left > 0 ? `AIR ${left}s` : 'AIR SPENT · SURVIVOR STABLE';
+    return [tracked && tracked.statusFlag, air].filter(Boolean).join(' · ');
+  },
+
+  _refreshPodStatus(deckId) {
+    const tracked = this._live.get(deckId);
+    if (!tracked) return;
+    const second = this._podAirSecond(tracked);
+    if (second === tracked.lastSecond) return;
+    tracked.lastSecond = second;
+    const status = this._podStatus(deckId, second);
+    if (status === tracked.lastStatus) return;
+    tracked.lastStatus = status;
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck) deck.updateDecision(deckId, { statusFlag: status });
   },
 
   _resolveAll() {
@@ -198,8 +259,10 @@ export const wreckChoicePrompt = {
     this._live.clear();
   },
 
-  /** Continue / sector re-entry: a live pod offer still on the board deserves its card back. */
-  _restore() {
+  /** Continue / sector re-entry: a live pod offer still on the board deserves its card back.
+   *  save:loaded restores every eligible card exactly as before; the completed re-entry seams
+   *  (sector:enter, dock:undocked) honor this session's explicit LEAVE IT dismissals. */
+  _restore({ skipDismissed = false } = {}) {
     this._resolveAll();
     const boards = (this._state && this._state.missions && this._state.missions.boards) || {};
     const sectorId = this._state && this._state.world && this._state.world.currentSectorId;
@@ -208,6 +271,7 @@ export const wreckChoicePrompt = {
         if (!offer || offer.source !== 'salvage') continue;
         const podId = offer.params && offer.params.survivorPodId;
         if (!podId) continue;
+        if (skipDismissed && this._dismissed.has(offer.id)) continue;
         // Only a pod still aboard in THIS sector re-prompts; a stripped/rescued record's offer
         // is gone already (missions withdrew it on survivorPod:stripped / accept).
         const rec = this._state.survivorPod && this._state.survivorPod.promotedByPoint
@@ -226,17 +290,25 @@ export const wreckChoicePrompt = {
       if (this._onPodTerminal) {
         this._bus.off('survivorPod:stripped', this._onPodTerminal);
       }
-      if (this._onPodBlocked) this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);
+      if (this._onPodBlocked) {
+        this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);
+        this._bus.off('survivorPod:stripBlocked', this._onPodBlocked);
+      }
       if (this._onClear) {
         this._bus.off('sector:exit', this._onClear);
         this._bus.off('dock:docked', this._onClear);
-        this._bus.off('game:new', this._onClear);
       }
+      if (this._onReentry) {
+        this._bus.off('sector:enter', this._onReentry);
+        this._bus.off('dock:undocked', this._onReentry);
+      }
+      if (this._onNewGame) this._bus.off('game:new', this._onNewGame);
       if (this._onRestore) this._bus.off('save:loaded', this._onRestore);
     }
+    this._dismissed.clear();
     this._resolveAll();
     this._onFound = this._onAccepted = this._onPodTerminal = this._onPodBlocked = null;
-    this._onClear = this._onRestore = null;
+    this._onClear = this._onReentry = this._onNewGame = this._onRestore = null;
   },
 };
 
