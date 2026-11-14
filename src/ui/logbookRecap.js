@@ -31,7 +31,9 @@ export function createLogbookRecap(ctx, options = {}) {
   const release = () => { if (seat) { seat.clear({ keepEl: true }); seat = null; } };
   const hide = () => { pending = false; if (root) root.hidden = true; release(); };
   const on = (type, fn) => { const off = bus?.on?.(type, fn); if (typeof off === 'function') offs.push(off); };
-  on('save:loaded', () => { entries = logbookRecap(state); pending = true; shown = -1; clock.reset(); media.reload(); });
+  // OPENING-1b: a run with no history has only the placeholder 'opening' page, and a recap of
+  // nothing must never greet a fresh New Game (it did when an autosave restore raced the launch).
+  on('save:loaded', () => { entries = logbookRecap(state).filter(entry => entry.id !== 'opening'); pending = entries.length > 0; shown = -1; clock.reset(); media.reload(); });
   for (const event of ['game:new', 'game:load', 'save:restoring', 'game:exitToMenu', 'player:death']) on(event, hide);
   const paint = entry => {
     if (!doc?.getElementById('ui-root')) return;

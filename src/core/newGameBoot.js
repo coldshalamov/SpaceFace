@@ -66,6 +66,7 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
 // first frame draws, so the field is alive and the eye has somewhere to go. Live route only (the
 // deterministic 47-A harness never calls this); gentle, below the old thrust-drill speed.
 export const OPENING_DRIFT_WU_S = 26;
+export const OPENING_DRIFT_GRACE_S = 7;
 export function drift47aOpeningTowardMark(state, player, helpers = null) {
   if (!state || !player || !player.pos || !player.vel) return false;
   // The marked boulder is a shelf record until something approaches it: wake the nearest authored
@@ -93,6 +94,8 @@ export function drift47aOpeningTowardMark(state, player, helpers = null) {
   const d = Math.sqrt(bestD2);
   player.vel.x = ((best.pos.x - player.pos.x) / d) * OPENING_DRIFT_WU_S;
   player.vel.z = ((best.pos.z - player.pos.z) / d) * OPENING_DRIFT_WU_S;
+  // Flight-assist owner (flightV3) keeps the drift until the first drive input or this many seconds.
+  state.openingDriftGrace = { untilSimTime: (Number(state.simTime) || 0) + OPENING_DRIFT_GRACE_S };
   return true;
 }
 

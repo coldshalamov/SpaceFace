@@ -2124,7 +2124,21 @@ function distance2(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
 }
 
+// OPENING-1b: for the first seconds of a New Game (or until the pilot's first input) the ship
+// keeps the drift it spawned with, so "already drifting toward the rock" carries instead of
+// being braked to rest by the assist. Set by newGameBoot (live route only); never saved.
+function openingDriftGraceLive(entity, state, raw) {
+  const g = state && state.openingDriftGrace;
+  if (!g || !entity || entity.id !== state.playerId) return false;
+  const pressed = raw && (Math.abs(raw.moveX || 0) > 0.01 || Math.abs(raw.moveZ || 0) > 0.01
+    || raw.brake || raw.boost
+    || Math.abs(raw.throttle || 0) > 0.01 || Math.abs(raw.strafe || 0) > 0.01);
+  if (pressed || !(Number(state.simTime) < g.untilSimTime)) { state.openingDriftGrace = null; return false; }
+  return true;
+}
+
 function resolveAssistMode(entity, state, raw) {
+  if (openingDriftGraceLive(entity, state, raw)) return 'drift';
   const explicit = raw.assistMode || raw.flightMode || entity.flightAssistMode;
   if (explicit === 'assisted' || explicit === 'drift' || explicit === 'newtonian') return explicit;
   const controls = state.settings && state.settings.controls;

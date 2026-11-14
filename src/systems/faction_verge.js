@@ -53,6 +53,7 @@ import {
 } from '../data/factions/vergelayers.js';
 import { rankForState } from './factions.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 
@@ -554,6 +555,7 @@ export const vergeCourt = {
   },
 
   _log(state, text, speaker) {
+    if (openingQuiet(state)) return; // OPENING-1b: no border chatter while the opening rail speaks
     this.bus.emit('comms:log', { text, speaker: speaker || 'Verge machine' });
   },
 
