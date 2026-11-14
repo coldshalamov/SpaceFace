@@ -118,14 +118,9 @@ ${F}::before { inset:-34px -52px -28px -44px; border-radius:0;
     repeating-linear-gradient(90deg, rgb(232 226 212 / .34) 0 1.5px, transparent 1.5px 13px)
       26px 0 / calc(100% - 40px) 5px no-repeat,
     linear-gradient(163deg, rgb(5 7 11 / .97), rgb(4 6 10 / .94) 46%, rgb(6 8 13 / .96)); }
-${F}::after { content:""; position:absolute; inset:-34px -52px -28px -44px; z-index:-1; pointer-events:none;
-  clip-path:polygon(24px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 24px),
-    calc(100% - 24px) 100%, 10px 100%, 0 calc(100% - 10px), 0 24px);
-  box-shadow:inset 0 0 0 1.4px rgb(232 226 212 / .34),
-    inset 4px 4px 0 -2.4px rgb(255 246 226 / .5),
-    inset -4px -4px 0 -2.4px rgb(232 226 212 / .13); }
-html:root[data-sf-mobile="1"] body #sf-commsfan::after { inset:-28px -28px -24px -28px; }
-@media (forced-colors:active) { ${F}::after { display:none; } }
+/* No etched rim on the pool: consoleStandard seats the fan on its own hairline float card and
+   turns this plate back into a feathered shade, so a rim traced at the pool's outer bounds read
+   as a loose second frame about 40px outside the card (bench comms-radial, ui-polish-527). */
 
 /* ── one Hand per screen: while the contact plate is under the pointer (its "HAIL DECK" hint is
    the amber then), the verb holding keyboard focus stands down — the mirror of the wedge-side
