@@ -558,3 +558,20 @@ max. No signed backsteps across 67 assessable intervals. The active worker windo
 32.18 ms p50 and 41.27 ms p95 per step with no reply watchdog recovery or backpressure.
 The combat PNG was opened and cleanup passed. This run started before the rock-classification
 change was finalized and is a separate reservation from the earlier Foundry pair.
+
+The locked `activity-field-pair-pair-summary.json` comparison pinned the worker clock, activity
+classification, field transport and field owner files at `1af30d8c0b99` and `ed036f7a2fe7`.
+All four public seed-4242 routes registered simultaneous thrust, turn and primary fire.
+Both Adventure arms ended in flight and both Gauntlet arms reached Rearm. Opened all four PNGs.
+
+| Route | Active world draws/s | Moving mesh gap p95 / max | Shots |
+| --- | ---: | ---: | ---: |
+| Adventure, 18 s | 8.17 to 8.79 | 216 / 514 ms to 174 / 530 ms | 36 to 36 |
+| Gauntlet, first wave | 17.31 to 15.90 | 113 / 217 ms to 126 / 270 ms | 177 to 173 |
+
+Gauntlet's fixed first 10 s drew 14.67 to 14.16/s. Adventure peak sampled stale simulation
+fell from 793 to 526 ms, and the most recently reported step window changed from 28.66 / 43.85 ms
+p50/p95 to 27.61 / 41.23 ms. Both rates are slower than the 16.67 ms step budget. No arm captured
+the recorded seconds-long hold alongside continuing draws or a signed backtrack. The cadence
+measurements are world submissions and mesh poses, with no display scanout sampling. Unpinned
+content can evolve in the shared checkout, and both encounters evolved differently during play.
