@@ -58,6 +58,15 @@ echo "conflicts: $?"                            # 0 = clean; >0 = that many conf
    writes the line for that moment, use that line exactly.
 6. Tests drive the real owner with the payload the game really sends, and would fail on the old code.
 
+## Check budget (overrides any wider sweep a packet asks for)
+
+This machine is shared and slow. Your packet's **named** test files are mandatory. A packet's
+"then every existing test that names X" sweep is capped: run at most the **twelve** files closest to the
+modules you edited, in one `node --test` call, and list the ones you left out. Any single test file or
+call still running after **four minutes**: stop it, name it under "What I could not look at or verify",
+and move on — never wait on it, never re-run it. Commit as soon as the named tests pass; do the capped
+sweep after the commit and fix forward if it finds something you caused.
+
 ## Order (lead keeps this current)
 
 Landed: #921 #923 #926(tests) #941 #1113, the ui-polish wall (see `.devshots/pr-intake/batch*-report.md`),
