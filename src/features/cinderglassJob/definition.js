@@ -35,8 +35,10 @@ const LOCAL = {
   pullOff: [-1600, 800],
   marshal: [1350, 1450],
   bend: [-620, -240],
-  escortBuoyA: [-1720, 960],
-  escortBuoyB: [-1460, 620],
+  // Outer perimeter: escorts guard the approach lanes while the Mule works the layby.
+  // Real travel and sightlines remain active; the original pod supplies close blind-side cover.
+  escortBuoyA: [-2050, 1100],
+  escortBuoyB: [-1200, 650],
   cradle: [-430, 1540],
   broker: [-1790, 260],
 };
@@ -50,7 +52,7 @@ export const CINDERGLASS_JOB_POINTS = Object.freeze(
 
 /* ── Route: four authored legs, ~2.5–3.5 min at working speed ──
    leg 0 freight approach: marshal formup -> pull-off
-   leg 1 inspection layby: hold at the pull-off (real pause; escorts stand at buoys)
+   leg 1 inspection layby: hold at the pull-off (real pause; escorts cover separated outer-perimeter buoys)
    leg 2 outbound bend: pull-off -> bend by the weigh-slip line
    leg 3 return: bend -> marshal (run ends; consignment delivered to buyer) */
 export const CINDERGLASS_JOB_ROUTE = Object.freeze([
@@ -182,6 +184,7 @@ export const CINDERGLASS_JOB_RELEASE_QUIET = 'service_release';
 // source template and its values with the shared localization runtime at the DOM boundary.
 export const CINDERGLASS_JOB_TERMS_COPY = Object.freeze({
   template: 'Convoy: one Mule, two escorts, four legs through the layby at the far pull-off. ' +
+    'If the run completes with CG-7 aboard, the recovery closes for this campaign. ' +
     'Bring a scanner — you need a real read on the pod before anyone talks. A starter Massline tows the 18t pod home. Force is unlawful; this is no warrant. ' +
     'Intact controller: {intactCr}CR. Damaged but whole: {damagedCr}CR. ' +
     'Dask will hear {depositCr}CR against release; that comes back to you when I accept the pod.',
@@ -203,7 +206,7 @@ export const CINDERGLASS_JOB_TEXT = Object.freeze({
   negotiateLine: 'Dask is on the layby. You could put the offer to him — clean title dispute, paid release.',
   serviceLine: 'The rack latch is aft. Unwatched, close aboard, under drift — five seconds of service cuts it free.',
   serviceInterrupted: 'Service broken off. The latch is untouched.',
-  watchedLine: 'Too many eyes on the rack. Wait for the gap.',
+  watchedLine: 'The rack is watched — break sightlines before trying again.',
   tooFastLine: 'Too much speed. Match the Mule and drift in.',
   releasedNegotiated: 'Dask cut the pod loose under seal. Tow it to my cradle — slow, gentle.',
   releasedQuiet: 'Latch opened. The pod is adrift — same as it ever was.',
