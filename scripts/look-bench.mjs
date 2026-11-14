@@ -8,6 +8,7 @@
 //   node scripts/look-bench.mjs --moods=arcade,neon_noir --bodies=kestrel,hornet --view=inspect
 //   node scripts/look-bench.mjs --vary=scratch/coat.json     # [{ "name": "coat 0.6", "mood": "arcade",
 //                                                            #    "tune": { "surface": { "coat": 0.6 } },
+//                                                            #    "ab": { "emissive": 0.5 },
 //                                                            #    "post": { "bloomStrength": 0.8 },
 //                                                            #    "lights": { "key": 3.0 }, "sector": "sector_sker_haven" }]
 //   node scripts/look-bench.mjs --cost ...                   # also print GPU ms/frame per cell
@@ -106,7 +107,8 @@ try {
       const entry = FLEET[body];
       if (!entry) { console.log('unknown body', body); continue; }
       const dir = entry.layout === 'place' ? (entry.parts_dir || 'places') : 'wholeships';
-      const spec = { file: `${dir}/${entry.file}.glb`, view: VIEW, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0) };
+      const spec = { file: `${dir}/${entry.file}.glb`, view: VIEW, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0),
+        ...(variation.ab ? { ab: variation.ab } : {}) };
       // Sector first (its isolate() re-applies rig + mood on the next shot), one settle frame, then
       // the mood and single-value patches over the settled state, then the real frame.
       await page.evaluate((id) => window.SF_fleetLook.setSector(id), variation.sector || 'sector_helios_prime');
