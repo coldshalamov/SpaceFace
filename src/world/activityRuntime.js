@@ -1532,17 +1532,7 @@ function armClassifyFrameVisit(runtime, visit) {
   retain.framePrimed = true;
 }
 
-/**
- * Flying / rescan residual under #138: when parked globals do not match (player moving or
- * origin drifted) but this rock's membership + pins + sim tier would be unchanged, republish
- * the prior stamp. Cheap geometry + pin-bit compare replaces resolvePins/normalize/classify/
- * applyStamp/signature. Dirty-wake: pose, facts revision, glass/runway size, glass membership
- * flip, pin input flip, sim-tier boundary, scheduled wake, grace, first observation.
- */
-/**
- * Pre-clear flying frame retain: visit set is rock-only and each rock passes flying
- * eligibility. Keeps prior lists (no clear/republish). Any non-rock or failed rock aborts.
- */
+/** Pre-clear flying frame retain keeps the prior lists if every visitor is still eligible. */
 function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, glass, submit, prefetchR, facts, reach, simTime) {
   const retain = runtime._rockVisitRetain;
   if (!retain || !retain.poseKeys) return false;
@@ -1557,6 +1547,9 @@ function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, gla
   // exact id lists cannot survive under a smaller visit.
   const ids = retain.frameVisitIds;
   if (!Array.isArray(ids) || (retain.frameVisitCount | 0) !== n) return false;
+  // Check visit identity and moving craft before evaluating rock geometry and pins.
+  // A late moving craft would otherwise discard that work and the fallback would
+  // immediately evaluate the same rocks again.
   for (let i = 0; i < n; i++) {
     const entity = visit[i];
     if (!entity || entity.alive === false) return false;
@@ -1566,22 +1559,21 @@ function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, gla
     if (partition !== 0 && partition !== 1 && partition !== 2) return false;
     if (ids[i] !== entity.id) return false;
     const type = entity.type;
-    if (type !== 'asteroid' && type !== 'payload') {
-      // Player moves every flying tick — pose key always changes. Player is always S0 /
-      // on-glass at the classify origin, so the prior stamp stays valid without a pose check.
-      // Any other non-rock (NPC ship/drone) must stay pose-stable or we fall through.
-      if (entity.isPlayer === true || (player && entity.id === player.id)) continue;
-      const stamp = entity.activity;
-      if (!stamp || !stamp.simTier || !stamp.presentationTier) return false;
-      if (stamp.graceUntilT >= 0) return false;
-      const data = entity.data || {};
-      if (dueAt(stamp.nextEventAtT, simTime) != null || dueAt(data.nextEventAtT, simTime) != null) {
-        return false;
-      }
-      if (retain.poseKeys.get(entity.id) !== rockPoseRetainKey(entity)) return false;
-      continue;
+    if (type === 'asteroid' || type === 'payload') continue;
+    // The moving player is always exact and on-glass at the classify origin.
+    if (entity.isPlayer === true || (player && entity.id === player.id)) continue;
+    const stamp = entity.activity;
+    if (!stamp || !stamp.simTier || !stamp.presentationTier) return false;
+    if (stamp.graceUntilT >= 0) return false;
+    const data = entity.data || {};
+    if (dueAt(stamp.nextEventAtT, simTime) != null || dueAt(data.nextEventAtT, simTime) != null) {
+      return false;
     }
-    if (!flyingRockRetainEligible(
+    if (retain.poseKeys.get(entity.id) !== rockPoseRetainKey(entity)) return false;
+  }
+  for (let i = 0; i < n; i++) {
+    const entity = visit[i];
+    if ((entity.type === 'asteroid' || entity.type === 'payload') && !flyingRockRetainEligible(
       runtime, entity, entity.activity, state, player, origin, glass, submit, prefetchR,
       facts, reach, simTime,
     )) return false;
@@ -1594,6 +1586,7 @@ function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, gla
   return true;
 }
 
+// A moving player changes relative visibility, pins and physics reach even for stationary rocks.
 function flyingRockRetainEligible(runtime, entity, stamp, state, player, origin, glass, submit, prefetchR, facts, reach, simTime) {
   if (!stamp || !stamp.simTier || !stamp.presentationTier) return false;
   const retain = runtime._rockVisitRetain;

@@ -108,6 +108,32 @@ test('flying retain wakes on rock pose jump', () => {
   assert.notEqual(after, before, 'pose jump must reclassify presentation tier');
 });
 
+test('a moving craft after the rock field falls through before checking every rock', () => {
+  const state = makeWorld(48);
+  const craft = { id: 400, type: 'ship', alive: true, pos: { x: 30, z: 85 },
+    vel: { x: 0, z: 0 }, radius: 8, data: { ai: { passive: true } }, flags: {} };
+  state.entityList.push(craft);
+  state.entities.set(craft.id, craft);
+  let retained = false;
+  for (let i = 0; i < 8; i++) {
+    if (flyStep(state).classifyMode === 'flying-frame-retain') {
+      retained = true;
+      break;
+    }
+  }
+  assert.ok(retained);
+
+  const rock = state.rocks[0];
+  let reads = 0;
+  Object.defineProperty(rock.data, 'visualRadius', { get() { reads++; return 0; } });
+  craft.pos.z += 1;
+  const result = flyStep(state);
+  assert.equal(result.classifyMode, 'incremental');
+  assert.equal(reads, 1, 'fallback checks the rock envelope once after the later craft moves');
+  assert.ok(result.glassIds.has(craft.id));
+  assert.ok(result.glassIds.has(rock.id));
+});
+
 test('flying retain wakes on mining pin fact', () => {
   setClassifyFlyingRockRetainForBench(true);
   const state = makeWorld();
