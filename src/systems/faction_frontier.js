@@ -1955,6 +1955,14 @@ export const frontierHomesteads = {
           state: 'open',
         };
         wd.frontierDisputeId = id;
+        // A claimed wreck must survive Save/Continue or the dispute row would
+        // dangle. Pin only an unpersisted hulk — never touch a body another
+        // owner already keeps.
+        if (w.flags?.persistent !== true && wd.persistenceOwner == null) {
+          if (!isObj(w.flags)) w.flags = {};
+          w.flags.persistent = true;
+          wd.persistenceOwner = 'frontierClaim';
+        }
         f.disputes.push(dispute);
         this.bus.emit('frontier:disputePosted', {
           disputeId: id, wreckId: w.id, steadIds: [...dispute.steadIds],
@@ -2036,7 +2044,13 @@ export const frontierHomesteads = {
     d.state = 'settled';
     d.settledBy = 'stead';
     d.settledAt = num(state.simTime);
-    if (wreck && wreck.data) wreck.data.frontierDisputeId = null;
+    if (wreck && wreck.data) {
+      wreck.data.frontierDisputeId = null;
+      if (wreck.data.persistenceOwner === 'frontierClaim') {
+        wreck.data.persistenceOwner = null;
+        if (wreck.flags) wreck.flags.persistent = false;
+      }
+    }
     // The stead strips the hulk — it is supplies and scrap now. A durable world
     // body keeps its record unless told: entity:destroyed does not mark records,
     // and a live record rematerializes the same hulk for the next claim round.
@@ -2073,7 +2087,14 @@ export const frontierHomesteads = {
     d.state = outcome;
     d.settledAt = num(state.simTime);
     const w = state.entities.get(d.wreckId);
-    if (w && w.data && w.data.frontierDisputeId === d.id) w.data.frontierDisputeId = null;
+    if (w && w.data && w.data.frontierDisputeId === d.id) {
+      w.data.frontierDisputeId = null;
+      // Our persistence pin leaves with the claim; another owner's stays.
+      if (w.data.persistenceOwner === 'frontierClaim') {
+        w.data.persistenceOwner = null;
+        if (w.flags) w.flags.persistent = false;
+      }
+    }
     if (outcome === 'jumped') {
       if (this._paidOnce(f, `jumped:${d.id}`)) {
         this._rep(state, FRONTIER_SALVAGE_CLAIMS.jumpedRep, 'frontier_claim_jumped');

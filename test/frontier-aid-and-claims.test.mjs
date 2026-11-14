@@ -140,6 +140,113 @@ test('no clear pocket beside the creditor posts no debt this time', () => {
   } finally { h.sim.dispose(); }
 });
 
+test('an open dispute pins an unpersisted wreck and releases it on close', () => {
+  const h = boot();
+  try {
+    raiseStead(h.sim, 0, 0);
+    raiseStead(h.sim, 800, 0);
+    const f = ensureFrontierState(h.state);
+    const wreck = h.sim.spawn({
+      type: 'wreck', team: 0, pos: { x: 400, z: 0 }, radius: 24, mass: 400,
+      hull: 200, hullMax: 200, collides: true, data: { name: 'DRIFTING HULK' },
+    });
+    assert.equal(wreck.flags?.persistent ?? false, false, 'unpersisted to start');
+    h.owner._tickDisputes(h.state);
+    const d = f.disputes.find((r) => r.state === 'open');
+    assert.ok(d, 'the wreck is contested ground');
+    assert.equal(d.wreckId, wreck.id);
+    assert.equal(d.steadIds.length, 2, 'both steads filed');
+    assert.equal(wreck.flags?.persistent, true, 'the claim pins the hulk');
+    assert.equal(wreck.data.persistenceOwner, 'frontierClaim');
+    // Lapse: the pin leaves with the claim; the hulk drifts free again.
+    h.owner._closeDispute(h.state, d, 'lapsed', null);
+    assert.equal(wreck.data.persistenceOwner, null);
+    assert.equal(wreck.flags?.persistent, false);
+    assert.equal(wreck.data.frontierDisputeId, null);
+  } finally { h.sim.dispose(); }
+});
+
+test('a wreck another owner already persists is never repinned or touched', () => {
+  const h = boot();
+  try {
+    raiseStead(h.sim, 0, 0);
+    raiseStead(h.sim, 800, 0);
+    const f = ensureFrontierState(h.state);
+    // persistenceOwner set without flags.persistent — the claimable scan still
+    // admits it, but the pin must not overwrite the other owner's mark.
+    const wreck = h.sim.spawn({
+      type: 'wreck', team: 0, pos: { x: 400, z: 0 }, radius: 24, mass: 400,
+      hull: 200, hullMax: 200, collides: true,
+      data: { name: 'SALVAGE YARD HULK', persistenceOwner: 'salvageYard' },
+    });
+    h.owner._tickDisputes(h.state);
+    const d = f.disputes.find((r) => r.state === 'open');
+    assert.ok(d, 'the dispute still opens on the claimable hulk');
+    assert.equal(wreck.data.persistenceOwner, 'salvageYard', 'the other owner stays');
+    assert.notEqual(wreck.flags?.persistent, true, 'no frontier pin over it');
+    h.owner._closeDispute(h.state, d, 'lapsed', null);
+    assert.equal(wreck.data.persistenceOwner, 'salvageYard', 'closing touches nothing');
+  } finally { h.sim.dispose(); }
+});
+
+test('a claimed wreck survives Save/Continue and the dispute re-finds it', async () => {
+  const { save } = await import('../src/save/saveSystem.js');
+  const h = boot();
+  const fresh = boot();
+  try {
+    const a = raiseStead(h.sim, 0, 0);
+    const b = raiseStead(h.sim, 800, 0);
+    a.flags = { ...(a.flags || {}), persistent: true };
+    b.flags = { ...(b.flags || {}), persistent: true };
+    const f = ensureFrontierState(h.state);
+    const wreck = h.sim.spawn({
+      type: 'wreck', team: 0, pos: { x: 400, z: 0 }, radius: 24, mass: 400,
+      hull: 200, hullMax: 200, collides: true, data: { name: 'DRIFTING HULK' },
+    });
+    h.owner._tickDisputes(h.state);
+    const d = f.disputes.find((r) => r.state === 'open');
+    assert.ok(d);
+    assert.equal(wreck.flags?.persistent, true, 'pinned for the claim');
+    // Serialize the live world and restore it into a fresh session — the pin
+    // is what carries the hulk through the persistent-entity list.
+    const saver = Object.assign(Object.create(save), {
+      state: h.state, bus: h.bus, helpers: h.sim.helpers, registry: h.sim.registry,
+    });
+    const rows = saver._serializeEntities().persistent;
+    const wreckRow = rows.find((r) => r.id === wreck.id);
+    assert.ok(wreckRow, 'the pinned hulk rides the persistent list');
+    const data = structuredClone(h.owner.serialize());
+    const remap = new Map();
+    const restorer = Object.assign(Object.create(save), {
+      state: fresh.state, bus: fresh.bus, helpers: fresh.sim.helpers, registry: fresh.sim.registry,
+    });
+    for (let cursor = 0; cursor < rows.length;) {
+      const next = restorer._spawnPersistentEntities(
+        structuredClone(rows), remap, { startIndex: cursor, clearStale: cursor === 0 });
+      assert.ok(next > cursor);
+      cursor = next;
+    }
+    const fo = fresh.owner;
+    fo.deserialize(data);
+    fresh.state.sessionEntityIdRemap = remap;
+    fresh.bus.emit('save:loaded', {});
+    // The restored world still has the hulk under its restored id, and the
+    // open dispute row re-found it through the remap.
+    const fd = fresh.state.frontier.disputes.find((r) => r.id === d.id);
+    assert.ok(fd, 'the dispute row survived');
+    assert.equal(fd.state, 'open');
+    const live = fresh.state.entities.get(fd.wreckId);
+    assert.ok(live && live.alive !== false, 'the same hulk is still there');
+    assert.equal(live.data.frontierDisputeId, fd.id, 'its claim tag is intact');
+    assert.equal(live.data.persistenceOwner, 'frontierClaim', 'the pin persisted');
+    assert.equal(live.flags?.persistent, true);
+    // A tick on the restored world neither removes the hulk nor lapses the row.
+    fo._tickDisputes(fresh.state);
+    assert.equal(fd.state, 'open');
+    assert.equal(live.alive !== false, true, 'the hulk stays in the world');
+  } finally { h.sim.dispose(); fresh.sim.dispose(); }
+});
+
 test('the two-rings line speaks once when both claimant rings hold the haul', () => {
   const h = boot();
   try {
