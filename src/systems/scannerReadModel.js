@@ -1,5 +1,5 @@
 import { authoritativeAssignmentTargetId } from '../ai/doctrine.js';
-import { CONTACT_HAIL_RANGE } from '../data/contactHail.js';
+import { CONTACT_HAIL_RANGE } from '../data/contactHailConstants.js';
 import { isPlayerWanted } from './heat.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;

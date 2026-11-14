@@ -1,4 +1,6 @@
 import { playerBearingHyphen } from '../core/playerCompass.js';
+import { CONTACT_HAIL_RANGE, CONTACT_HAIL_REQUEST_TTL_S, CONTACT_HAIL_RECEIPT_TTL_S } from './contactHailConstants.js';
+export { CONTACT_HAIL_RANGE, CONTACT_HAIL_REQUEST_TTL_S, CONTACT_HAIL_RECEIPT_TTL_S } from './contactHailConstants.js';
 import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { pallasShiftStatus } from './pallasWorkShift.js';
@@ -69,9 +71,6 @@ function hailAsteroidsOf(state) {
   return cache.list;
 }
 
-export const CONTACT_HAIL_RANGE = 5200;
-export const CONTACT_HAIL_REQUEST_TTL_S = 8;
-export const CONTACT_HAIL_RECEIPT_TTL_S = 4;
 export const CONTACT_HAIL_ACTION_HEAVE_TO = 'heave_to';
 export const CONTACT_HAIL_ACTION_HELP = 'help';
 export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
