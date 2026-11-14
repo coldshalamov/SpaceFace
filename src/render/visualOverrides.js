@@ -33,6 +33,7 @@ import {
   admissionOwnerInactive,
   authoredReadmissionStatus,
   boundaryLiveEntity,
+  applyAuthoredSurfaceTint,
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildFallbackPlaceProp,
@@ -68,6 +69,8 @@ import { notePacedFrameSpend } from './decodeTaskBudget.js';
 import { attachNestBayIndicators } from './nestBayVisuals.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
 import { ironKrakenWreckProfileFor } from './ironKrakenWreckVisuals.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
+import { protectSharedGpuResource } from './assetResidency.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -880,6 +883,93 @@ const PACKAGED_FIT_CENTER = new THREE.Vector3();
 const PACKAGED_FIT_SIZE = new THREE.Vector3();
 const PACKAGED_FIT_SCRATCH = new THREE.Box3();
 const SCENARIO_PROP_KEEP_VISIBLE = new Set(['HandoffBeacon_Zone_Disc']);
+// A family band shares its source package's lifetime, not an individual pod's.
+// Weak keys also let abandoned context-loss packages and their variants be collected.
+const CARGO_FAMILY_MATERIALS = new WeakMap();
+
+function cargoSharedMaterial(source, key, configure) {
+  let variants = CARGO_FAMILY_MATERIALS.get(source);
+  if (!variants) {
+    variants = new Map();
+    CARGO_FAMILY_MATERIALS.set(source, variants);
+    const retire = () => {
+      CARGO_FAMILY_MATERIALS.delete(source);
+      source.removeEventListener('dispose', retire);
+      for (const entry of variants.values()) entry.dispose.call(entry.material);
+      variants.clear();
+    };
+    source.addEventListener('dispose', retire);
+  }
+  let entry = variants.get(key);
+  if (!entry) {
+    const material = configure(cloneMaterialPreservingShaderHooks(source));
+    material.userData.spacefaceBatchKey = `${source.uuid}|cargo:${key}`;
+    entry = { material, dispose: material.dispose };
+    protectSharedGpuResource(material);
+    variants.set(key, entry);
+  }
+  return entry.material;
+}
+
+function cargoFamilyMaterial(source, family, color) {
+  return cargoSharedMaterial(source, `family:${family}:${color}`,
+    material => applyAuthoredSurfaceTint(material, color, 'accent', true));
+}
+
+function isGenericCargoPresentation(entity, spec) {
+  const data = entity.data || {};
+  // Explicit recipes, even one naming the generic file, retain their authored paint.
+  return entity.type === 'payload' && spec.file === GENERIC_TOW_PACKAGED_PROP.file
+    && !data.packagedPropFile && !data.assetRef && !data.authoredPayloadAssetId;
+}
+
+function preserveGenericCargoFamily(packaged, root, entity, spec) {
+  if (!isGenericCargoPresentation(entity, spec)) return;
+  const family = root.userData.commodityPresentationId;
+  const color = root.userData.commodityPresentationColor;
+  if (!family || typeof color !== 'string' || !/^#[\da-f]{6}$/i.test(color)) return;
+  const paint = material => {
+    const name = material?.userData?.spacefaceAuthoredMaterialName || material?.name;
+    return name === 'Material_Accent' ? cargoFamilyMaterial(material, family, color) : material;
+  };
+  packaged.traverse(object => {
+    if (!object.isMesh) return;
+    object.material = Array.isArray(object.material) ? object.material.map(paint) : paint(object.material);
+  });
+}
+
+function prepareGenericCargoClaimLamp(packaged, root, entity, spec) {
+  const previous = root.userData.jettisonClaimLamp;
+  if (!isGenericCargoPresentation(entity, spec)) return null;
+  let source = null;
+  packaged.traverse(object => {
+    if (!object.isMesh || source) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    source = materials.find(material =>
+      (material?.userData?.spacefaceAuthoredMaterialName || material?.name) === 'Material_Emissive_Cyan') || null;
+  });
+  if (!source) return null;
+  const signal = cargoSharedMaterial(source, 'signal', material => {
+    // Leave room for the existing claim gain without saturating the cyan ring.
+    material.emissiveIntensity = 0.12;
+    return material;
+  });
+  // Only the active claim lamp is private; the freight bands and anonymous lamps
+  // remain shared. Do not rebind the live animation until publication succeeds.
+  const material = previous ? cloneMaterialPreservingShaderHooks(signal) : signal;
+  if (previous) {
+    material.userData.spacefaceSharedAsset = false;
+    material.userData.spacefaceRenderPackageImmutable = false;
+    delete material.userData.spacefaceBatchKey;
+  }
+  packaged.traverse(object => {
+    if (!object.isMesh) return;
+    object.material = Array.isArray(object.material)
+      ? object.material.map(value => value === source ? material : value)
+      : object.material === source ? material : object.material;
+  });
+  return previous ? { previous, next: { ...previous, material, base: signal.emissiveIntensity } } : null;
+}
 
 function packagedPartUrl(relativeFile) {
   return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
@@ -952,6 +1042,9 @@ export function packagedPropSpec(entity) {
     // and lamp, and gives the rendered object a different collision silhouette.
     // Explicit authored recipes above retain their normal admission priority.
     if (isLanternWardHardwareEntity(entity)) return null;
+    // The producer's containment bottle carries the volatile class in its shape
+    // and lamp. A generic freight replacement would hide both warnings.
+    if (data.volatileClass || data.volatileLamp) return null;
     return {
       file: GENERIC_TOW_PACKAGED_PROP.file,
       slot: GENERIC_TOW_PACKAGED_PROP.slot,
@@ -1312,6 +1405,8 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
+      preserveGenericCargoFamily(packaged, root, liveEntity, spec);
+      const claimLamp = prepareGenericCargoClaimLamp(packaged, root, liveEntity, spec);
       // One released latch's painted shell; clone before tinting so shared steel and
       // every other salvage clamp retain their authored materials.
       if (liveEntity?.data?.cinderglassRole === 'latch') packaged.traverse(object => {
@@ -1407,6 +1502,12 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
+      if (claimLamp && root.userData.jettisonClaimLamp === claimLamp.previous) {
+        // The claim can expire while admission waits; never revive a retired record.
+        claimLamp.next.material.emissiveIntensity = claimLamp.next.base
+          + Math.max(0, claimLamp.previous.material.emissiveIntensity - claimLamp.previous.base);
+        root.userData.jettisonClaimLamp = claimLamp.next;
+      }
       carryAdmittedOnceStamp(packaged, root);
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
       // (owner chain, final visibility). One exact-target re-touch here pays any residual link
