@@ -11,7 +11,10 @@ const PORT = 8172;
 const mode = process.argv[2] || 'swarm';
 const out = process.argv[3] || `.devshots/fleet/looks/light/tune-${mode}`;
 const arg = process.argv[4];
-const variants = (process.argv[5] || '25200,12000,6000,3000').split(',').map(Number);
+// variants: intensity[:hexcolour[:angle[:penumbra]]], comma separated. Add --rock to park the player 50 WU off a big rock.
+import { existsSync, readFileSync } from 'node:fs';
+const variantFile = process.argv.find((a) => a.startsWith('--variants='))?.slice(11) || '.devshots/fleet/looks/t2-variants.txt';
+const variants = (variantFile && existsSync(variantFile) ? readFileSync(variantFile, 'utf8').trim() : (process.argv[5] || '25200,12000,6000,3000')).split(',');
 mkdirSync(dirname(out), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore' });
@@ -38,20 +41,38 @@ try {
     await sleep(1500);
   }
   await sleep(5000);
-  await page.evaluate(() => {
+  await page.evaluate((rock) => {
     const SF = window.SF; SF.timeEffects.set('bench:freeze', { scale: 0 });
     const n = SF.state.render.nocturne;
+    if (rock) {
+      const st = SF.state, p = st.entities.get(st.playerId);
+      let best = null, bd = 1e9;
+      for (const e of st.entityList) if (e.type === 'asteroid' && e.alive !== false && e.radius > 25) {
+        const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); if (d < bd) { bd = d; best = e; }
+      }
+      if (best) {
+        const gap = best.radius + 50, ang = Math.atan2(best.pos.z - p.pos.z, best.pos.x - p.pos.x);
+        p.pos.x = best.pos.x - Math.cos(ang) * gap; p.pos.z = best.pos.z - Math.sin(ang) * gap; p.rot = ang;
+        if (p.vel) { p.vel.x = 0; p.vel.z = 0; }
+      }
+    }
     n.__look = n.headlights.look; n.__update = n.headlights.update.bind(n.headlights);
-  });
+  }, process.argv.includes('--rock'));
   await sleep(2500);
-  const phase = async (label, intensity) => {
-    const rep = await page.evaluate(async ({ intensity }) => {
+  const phase = async (label, spec) => {
+    const [iStr, hex, ang, pen, dec] = String(spec).split(':'); const intensity = Number(iStr);
+    const rep = await page.evaluate(async ({ intensity, hex, ang, pen, dec }) => {
       const n = window.SF.state.render.nocturne, t = window.SF.state.render.gpuTimers;
       if (intensity === 0) {
         n.headlights.update = (...a) => { n.__update(...a); for (const r of n.headlights.rows) if (r.source) r.source.enabled = false; };
       } else {
         n.headlights.update = n.__update;
         n.headlights.look = { ...n.__look, intensity };
+        for (const r of n.headlights.rows) if (r.source) {
+          if (hex) r.source.color.set('#' + hex); else r.source.color.set(n.__look.colorHex);
+          if (ang) r.source.angle = ang; if (pen) r.source.penumbra = pen;
+          r.source.decay = dec || n.__look.decay;
+        }
       }
       n.director.invalidate();
       await new Promise((r) => setTimeout(r, 3500));
@@ -62,12 +83,12 @@ try {
       for (const [k, v] of Object.entries(rep.passes)) if (v.samples) { passes[k] = +v.avg.toFixed(2); total += v.avg; }
       const spots = n.director.slots.filter((s) => s.kind === 'spot').map((s) => `${s.source && s.source.id}:${Math.round(s.light.intensity)}`);
       return { scale: window.SF.state.timeScale, valid: rep.captureValid, totalMs: +total.toFixed(2), passes, spots };
-    }, { intensity });
+    }, { intensity, hex, ang: ang && Number(ang), pen: pen && Number(pen), dec: dec && Number(dec) });
     await page.screenshot({ path: `${out}-${label}.png` });
     console.log(label, JSON.stringify(rep));
   };
-  await phase('off', 0);
-  for (const v of variants) await phase(`i${v}`, v);
-  await phase('off2', 0);
+  await phase('off', '0');
+  for (const v of variants) await phase(`i${v.replace(/:/g, '_')}`, v);
+  await phase('off2', '0');
   await browser.close();
 } finally { server.kill(); setTimeout(() => process.exit(0), 500); }
