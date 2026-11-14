@@ -6527,7 +6527,8 @@ export const world = {
       // was written for every named zone, emitted on this same event, and read by nobody.
       // Once per zone per session: every crossing already re-announces the name; the
       // sentence returns with the next visit.
-      if (zone.reason) {
+      // OPENING-1b: unheard until the opening rail is done, so the sentence still arrives later.
+      if (zone.reason && !openingQuiet(state)) {
         const heard = this._zoneReasonsHeard || (this._zoneReasonsHeard = new Set());
         if (!heard.has(zone.id)) {
           heard.add(zone.id);

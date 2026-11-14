@@ -18,6 +18,7 @@ import { applyRacingLoadout } from '../data/racingLoadouts.js';
 import { configureRacingCorridorSession, isRacingCorridorSession } from '../world/racingCorridor.js';
 import { defaultShipAppearance } from './shipAppearance.js';
 import { mark47aPlayerActor, spawn47aOpeningScene } from '../data/scenarios/47aLiveScene.js';
+import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { GameStartReadinessError } from './newGameStartTransition.js';
 import { shouldGrantKeepsake } from './newGamePlus.js';
 import { laneInputWrite } from './simLaneCommands.js';
@@ -57,7 +58,7 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   if (!state.physicsVenueSession && !racingSession) {
     const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
     light47aOpeningLandmarks(scene);
-    drift47aOpeningTowardMark(state, player);
+    drift47aOpeningTowardMark(state, player, helpers);
   }
 }
 
@@ -65,11 +66,25 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
 // first frame draws, so the field is alive and the eye has somewhere to go. Live route only (the
 // deterministic 47-A harness never calls this); gentle, below the old thrust-drill speed.
 export const OPENING_DRIFT_WU_S = 26;
-export function drift47aOpeningTowardMark(state, player) {
+export function drift47aOpeningTowardMark(state, player, helpers = null) {
   if (!state || !player || !player.pos || !player.vel) return false;
+  // The marked boulder is a shelf record until something approaches it: wake the nearest authored
+  // one now so it is a live, lit, on-screen body at the first frame (and a legal first 47-A pick).
+  const field = state.world && state.world.asteroidField;
+  if (field && field.byId && helpers) {
+    let rec = null; let recD2 = Infinity;
+    for (const row of field.byId.values()) {
+      if (!row || row.alive === false || !row.pos || !(row.data && row.data.authoredBoulderId)) continue;
+      if (!String(row.data.authoredBoulderId).startsWith('helios_boulder_')) continue;
+      const dx = row.pos.x - player.pos.x; const dz = row.pos.z - player.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < recD2) { recD2 = d2; rec = row; }
+    }
+    if (rec && rec.id != null) promoteAsteroidFieldRock(state, rec.id, helpers, '47a-opening');
+  }
   let best = null; let bestD2 = Infinity;
   for (const e of state.entityList || []) {
-    if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos || !(e.data && e.data.authoredBoulderId)) continue;
+    if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos || !String(e.data && e.data.authoredBoulderId || '').startsWith('helios_boulder_')) continue;
     const dx = e.pos.x - player.pos.x; const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 < bestD2) { bestD2 = d2; best = e; }

@@ -3154,7 +3154,7 @@ export const missions = {
       if (d2 < nearestD2) { nearestD2 = d2; nearest = entity; }
       // OPENING-1b: a first pick prefers the starter seam's authored heavy boulder when it is
       // on the pilot's doorstep, so the marked rock is the one placed on screen at spawn.
-      if (!saved && data.authoredBoulderId && d2 < OPENING_BOULDER_PICK_WU * OPENING_BOULDER_PICK_WU
+      if (!saved && String(data.authoredBoulderId || '').startsWith('helios_boulder_') && d2 < OPENING_BOULDER_PICK_WU * OPENING_BOULDER_PICK_WU
         && d2 < boulderD2) { boulderD2 = d2; boulder = entity; }
     }
     if (!saved && boulder) { nearest = boulder; nearestD2 = boulderD2; }
