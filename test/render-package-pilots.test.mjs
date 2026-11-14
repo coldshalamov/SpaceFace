@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
+import { WebGLRenderer as RetailWebGLRenderer } from '../vendor/three.module.js';
 
 import {
   derivePilotSemanticManifest,
@@ -136,7 +137,7 @@ function createEventCanvas() {
   };
 }
 
-function createDeterministicWebGl2Context(canvas) {
+function createDeterministicWebGl2Context(canvas, activeAttributes = []) {
   let nextConstant = 1;
   const constants = new Map([['SAMPLER_2D', 0x8b5e]]);
   const namesByConstant = new Map([[0x8b5e, 'SAMPLER_2D']]);
@@ -186,9 +187,9 @@ function createDeterministicWebGl2Context(canvas) {
     createTexture: () => ({}),
     createVertexArray: () => ({}),
     fenceSync: () => ({}),
-    getActiveAttrib: () => null,
+    getActiveAttrib: (_program, index) => activeAttributes[index],
     getActiveUniform: () => ({ name: 'map', type: 0x8b5e, size: 1 }),
-    getAttribLocation: () => 0,
+    getAttribLocation: (_program, name) => activeAttributes.find((attribute) => attribute.name === name).location,
     getContextAttributes: () => ({
       alpha: true,
       antialias: false,
@@ -207,7 +208,7 @@ function createDeterministicWebGl2Context(canvas) {
     getProgramInfoLog: () => '',
     getProgramParameter(_program, value) {
       const name = namesByConstant.get(value);
-      if (name === 'ACTIVE_ATTRIBUTES') return 0;
+      if (name === 'ACTIVE_ATTRIBUTES') return activeAttributes.length;
       if (name === 'ACTIVE_UNIFORMS') return 1;
       if (name === 'LINK_STATUS' || name === 'VALIDATE_STATUS') return true;
       return true;
@@ -233,6 +234,142 @@ function createDeterministicWebGl2Context(canvas) {
     },
   });
 }
+
+test('retail Three keeps warm vertex bindings and rebinds changed buffers', () => {
+  const canvas = createEventCanvas();
+  const activeAttributes = [
+    { name: 'position', location: 0 },
+    { name: 'normal', location: 1 },
+    { name: 'instanceMatrix', location: 2 },
+    { name: 'instanceColor', location: 6 },
+    { name: 'inactiveAttribute', location: -1 },
+  ];
+  const context = createDeterministicWebGl2Context(canvas, activeAttributes);
+  for (const attribute of activeAttributes) {
+    attribute.type = attribute.name === 'instanceMatrix' ? context.FLOAT_MAT4 : context.FLOAT_VEC3;
+  }
+  const bindings = [];
+  let indexBinds = 0;
+  let uploads = 0;
+  context.vertexAttribPointer = (location) => bindings.push(location);
+  context.bindBuffer = (target) => {
+    if (target === context.ELEMENT_ARRAY_BUFFER) indexBinds++;
+  };
+  context.bufferSubData = () => uploads++;
+  const renderer = new RetailWebGLRenderer({ canvas, context });
+  const geometry = new THREE.BufferGeometry();
+  const makePosition = () => new THREE.Float32BufferAttribute([
+    -0.5, -0.5, 0, 0.5, -0.5, 0, 0, 0.5, 0,
+  ], 3);
+  const makeNormals = () => new THREE.InterleavedBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]), 3);
+  const normals = new THREE.InterleavedBufferAttribute(makeNormals(), 3, 0);
+  geometry.setAttribute('position', makePosition());
+  geometry.setAttribute('normal', normals);
+  geometry.setIndex([0, 1, 2]);
+
+  const material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(geometry, material, 1);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array([1, 1, 1]), 3);
+  mesh.frustumCulled = false;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+  camera.position.z = 2;
+  scene.add(mesh);
+
+  function draw(expectedBindings, expectedIndexBinds, expectedUploads = 0) {
+    bindings.length = 0;
+    indexBinds = 0;
+    uploads = 0;
+    renderer.render(scene, camera);
+    assert.equal(renderer.info.render.calls, 1);
+    assert.deepEqual(bindings, expectedBindings);
+    assert.equal(indexBinds, expectedIndexBinds);
+    assert.equal(uploads, expectedUploads);
+  }
+
+  const allLocations = [0, 1, 2, 3, 4, 5, 6];
+  draw(allLocations, 2);
+  draw([], 0);
+  geometry.setAttribute('inactiveAttribute', makePosition());
+  draw([], 0);
+  normals.data.needsUpdate = true;
+  draw([], 0, 1);
+  normals.data = makeNormals();
+  draw(allLocations, 1);
+  geometry.setAttribute('position', makePosition());
+  draw(allLocations, 1);
+  mesh.instanceMatrix = mesh.instanceMatrix.clone();
+  mesh.instanceColor = mesh.instanceColor.clone();
+  draw(allLocations, 1);
+  geometry.setIndex([2, 1, 0]);
+  draw(allLocations, 2);
+  draw([], 0);
+  renderer.resetState();
+  draw(allLocations, 1);
+  draw([], 0);
+
+  mesh.dispose();
+  geometry.dispose();
+  material.dispose();
+  renderer.dispose();
+});
+
+test('retail Three keeps clip-depth ordering for meshes, instance bounds and sprites', () => {
+  const canvas = createEventCanvas();
+  const renderer = new RetailWebGLRenderer({ canvas, context: createDeterministicWebGl2Context(canvas) });
+  renderer.setOpaqueSort((a, b) => a.z - b.z);
+  renderer.setTransparentSort((a, b) => b.z - a.z);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  camera.position.set(2, 3, 10);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const material = new THREE.MeshBasicMaterial();
+  const spriteMaterial = new THREE.SpriteMaterial();
+  const geometry = new THREE.BufferGeometry();
+  const positions = new THREE.Float32BufferAttribute([0, 0, 0, 2, 0, 0, 0, 2, 0], 3);
+  geometry.setAttribute('position', positions);
+  geometry.computeBoundingSphere();
+  const mesh = new THREE.Mesh(geometry, material);
+  const instanced = new THREE.InstancedMesh(geometry, material, 1);
+  instanced.setMatrixAt(0, new THREE.Matrix4().makeTranslation(4, -3, -6));
+  instanced.computeBoundingSphere();
+  const sprite = new THREE.Sprite(spriteMaterial);
+  const nearSprite = new THREE.Sprite(spriteMaterial);
+  mesh.position.set(1, 2, -1);
+  mesh.rotation.set(0.4, 1, 0.2);
+  mesh.scale.set(2, 0.5, 1.5);
+  instanced.position.set(-3, 2, -2);
+  sprite.position.set(2, 1, -3);
+  nearSprite.position.set(-1, 1, 3);
+  for (const object of [mesh, instanced, sprite, nearSprite]) object.frustumCulled = false;
+  scene.add(instanced, nearSprite, sprite, mesh);
+  // Upload callbacks can change the bounds between frustum rejection and sorting.
+  positions.onUpload(() => geometry.boundingSphere.center.set(2, 3, 4));
+
+  const rendered = renderer.renderAndCaptureList(scene, camera);
+  const meshDepth = (object, center) => new THREE.Vector4().copy(center)
+    .applyMatrix4(object.matrixWorld).applyMatrix4(projection).z;
+  const spriteDepth = (object) => new THREE.Vector4().setFromMatrixPosition(object.matrixWorld)
+    .applyMatrix4(projection).z;
+  const depthOf = new Map([
+    [mesh, meshDepth(mesh, geometry.boundingSphere.center)],
+    [instanced, meshDepth(instanced, instanced.boundingSphere.center)],
+    [sprite, spriteDepth(sprite)],
+    [nearSprite, spriteDepth(nearSprite)],
+  ]);
+  assert.deepEqual(rendered.opaque.map(({ object }) => object), [mesh, instanced]);
+  assert.deepEqual(rendered.transparent.map(({ object }) => object), [sprite, nearSprite]);
+  for (const { object, z } of [...rendered.opaque, ...rendered.transparent]) {
+    assert.equal(z, depthOf.get(object));
+  }
+  instanced.dispose();
+  geometry.dispose();
+  material.dispose();
+  spriteMaterial.dispose();
+  renderer.dispose();
+});
 
 async function createActualMinifiedThreeRenderer() {
   if (!minifiedThreeRendererModulePromise) {

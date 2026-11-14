@@ -1977,7 +1977,7 @@ function WebGLBindingStates( gl, attributes ) {
 			enabledAttributes: enabledAttributes,
 			attributeDivisors: attributeDivisors,
 			object: vao,
-			attributes: {},
+			attributes: [],
 			index: null
 
 		};
@@ -1988,90 +1988,51 @@ function WebGLBindingStates( gl, attributes ) {
 
 		const cachedAttributes = currentState.attributes;
 		const geometryAttributes = geometry.attributes;
+		const programAttributes = program.getActiveAttributeNames();
 
-		let attributesNum = 0;
+		if ( cachedAttributes.length !== programAttributes.length * 2 || currentState.index !== index ) return true;
 
-		const programAttributes = program.getAttributes();
+		// SpaceFace: linked attribute order is fixed for this VAO's program. Walk the
+		// schema directly and still check live geometry, instance and interleaved owners.
+		for ( let i = 0; i < programAttributes.length; i ++ ) {
 
-		for ( const name in programAttributes ) {
-
-			const programAttribute = programAttributes[ name ];
-
-			if ( programAttribute.location >= 0 ) {
-
-				const cachedAttribute = cachedAttributes[ name ];
-				let geometryAttribute = geometryAttributes[ name ];
-
-				if ( geometryAttribute === undefined ) {
-
-					if ( name === 'instanceMatrix' && object.instanceMatrix ) geometryAttribute = object.instanceMatrix;
-					if ( name === 'instanceColor' && object.instanceColor ) geometryAttribute = object.instanceColor;
-
-				}
-
-				if ( cachedAttribute === undefined ) return true;
-
-				if ( cachedAttribute.attribute !== geometryAttribute ) return true;
-
-				if ( geometryAttribute && cachedAttribute.data !== geometryAttribute.data ) return true;
-
-				attributesNum ++;
-
-			}
+			const name = programAttributes[ i ];
+			const attribute = geometryAttributeFor( object, geometryAttributes, name );
+			const offset = i * 2;
+			if ( cachedAttributes[ offset ] !== attribute ) return true;
+			if ( attribute && cachedAttributes[ offset + 1 ] !== attribute.data ) return true;
 
 		}
-
-		if ( currentState.attributesNum !== attributesNum ) return true;
-
-		if ( currentState.index !== index ) return true;
 
 		return false;
 
 	}
 
+	function geometryAttributeFor( object, attributes, name ) {
+
+		const attribute = attributes[ name ];
+		if ( attribute !== undefined ) return attribute;
+		if ( name === 'instanceMatrix' && object.instanceMatrix ) return object.instanceMatrix;
+		if ( name === 'instanceColor' && object.instanceColor ) return object.instanceColor;
+
+	}
+
 	function saveCache( object, geometry, program, index ) {
 
-		const cache = {};
+		const cache = currentState.attributes;
 		const attributes = geometry.attributes;
-		let attributesNum = 0;
+		const programAttributes = program.getActiveAttributeNames();
 
-		const programAttributes = program.getAttributes();
+		for ( let i = 0; i < programAttributes.length; i ++ ) {
 
-		for ( const name in programAttributes ) {
-
-			const programAttribute = programAttributes[ name ];
-
-			if ( programAttribute.location >= 0 ) {
-
-				let attribute = attributes[ name ];
-
-				if ( attribute === undefined ) {
-
-					if ( name === 'instanceMatrix' && object.instanceMatrix ) attribute = object.instanceMatrix;
-					if ( name === 'instanceColor' && object.instanceColor ) attribute = object.instanceColor;
-
-				}
-
-				const data = {};
-				data.attribute = attribute;
-
-				if ( attribute && attribute.data ) {
-
-					data.data = attribute.data;
-
-				}
-
-				cache[ name ] = data;
-
-				attributesNum ++;
-
-			}
+			const attribute = geometryAttributeFor( object, attributes, programAttributes[ i ] );
+			const offset = i * 2;
+			cache[ offset ] = attribute;
+			cache[ offset + 1 ] = attribute && attribute.data || undefined;
 
 		}
 
-		currentState.attributes = cache;
-		currentState.attributesNum = attributesNum;
-
+		cache.length = programAttributes.length * 2;
 		currentState.index = index;
 
 	}
@@ -7467,6 +7428,25 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 	// set up caching for attribute locations
 
 	let cachedAttributes;
+	let activeAttributeNames;
+
+	this.getActiveAttributeNames = function () {
+
+		if ( activeAttributeNames === undefined ) {
+
+			const attributes = this.getAttributes();
+			activeAttributeNames = [];
+			for ( const name in attributes ) {
+
+				if ( attributes[ name ].location >= 0 ) activeAttributeNames.push( name );
+
+			}
+
+		}
+
+		return activeAttributeNames;
+
+	};
 
 	this.getAttributes = function () {
 
@@ -16581,7 +16561,7 @@ class WebGLRenderer {
 
 		const _vector3 = new Vector3();
 
-		const _vector4 = new Vector4();
+		let _projectedZ = 0;
 
 		const _emptyScene = { background: null, fog: null, environment: null, overrideMaterial: null, isScene: true };
 
@@ -18356,6 +18336,26 @@ class WebGLRenderer {
 
 		};
 
+		// The render list only sorts on clip-space z. Keep the original world product
+		// and projection row ordering without calculating unused clip x, y and w.
+		function projectSortZ( projection, x, y, z, w ) {
+
+			return projection[ 2 ] * x + projection[ 6 ] * y + projection[ 10 ] * z + projection[ 14 ] * w;
+
+		}
+
+		function projectObjectSortZ( center, matrixWorld ) {
+
+			const x = center.x, y = center.y, z = center.z, w = center.w !== undefined ? center.w : 1;
+			const matrix = matrixWorld.elements;
+			return projectSortZ( _projScreenMatrix.elements,
+				matrix[ 0 ] * x + matrix[ 4 ] * y + matrix[ 8 ] * z + matrix[ 12 ] * w,
+				matrix[ 1 ] * x + matrix[ 5 ] * y + matrix[ 9 ] * z + matrix[ 13 ] * w,
+				matrix[ 2 ] * x + matrix[ 6 ] * y + matrix[ 10 ] * z + matrix[ 14 ] * w,
+				matrix[ 3 ] * x + matrix[ 7 ] * y + matrix[ 11 ] * z + matrix[ 15 ] * w );
+
+		}
+
 		function projectObject( object, camera, groupOrder, sortObjects ) {
 
 			if ( object.visible === false ) return;
@@ -18392,8 +18392,8 @@ class WebGLRenderer {
 
 						if ( sortObjects ) {
 
-							_vector4.setFromMatrixPosition( object.matrixWorld )
-								.applyMatrix4( _projScreenMatrix );
+							const matrix = object.matrixWorld.elements;
+							_projectedZ = projectSortZ( _projScreenMatrix.elements, matrix[ 12 ], matrix[ 13 ], matrix[ 14 ], matrix[ 15 ] );
 
 						}
 
@@ -18402,7 +18402,7 @@ class WebGLRenderer {
 
 						if ( material.visible ) {
 
-							currentRenderList.push( object, geometry, material, groupOrder, _vector4.z, null );
+							currentRenderList.push( object, geometry, material, groupOrder, _projectedZ, null );
 
 						}
 
@@ -18423,21 +18423,20 @@ class WebGLRenderer {
 
 						if ( sortObjects ) {
 
+							let center;
 							if ( object.boundingSphere !== undefined ) {
 
 								if ( object.boundingSphere === null ) object.computeBoundingSphere();
-								_vector4.copy( object.boundingSphere.center );
+								center = object.boundingSphere.center;
 
 							} else {
 
 								if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
-								_vector4.copy( geometry.boundingSphere.center );
+								center = geometry.boundingSphere.center;
 
 							}
 
-							_vector4
-								.applyMatrix4( object.matrixWorld )
-								.applyMatrix4( _projScreenMatrix );
+							_projectedZ = projectObjectSortZ( center, object.matrixWorld );
 
 						}
 
@@ -18452,7 +18451,7 @@ class WebGLRenderer {
 
 								if ( groupMaterial && groupMaterial.visible ) {
 
-									currentRenderList.push( object, geometry, groupMaterial, groupOrder, _vector4.z, group );
+									currentRenderList.push( object, geometry, groupMaterial, groupOrder, _projectedZ, group );
 
 								}
 
@@ -18460,7 +18459,7 @@ class WebGLRenderer {
 
 						} else if ( material.visible ) {
 
-							currentRenderList.push( object, geometry, material, groupOrder, _vector4.z, null );
+							currentRenderList.push( object, geometry, material, groupOrder, _projectedZ, null );
 
 						}
 
