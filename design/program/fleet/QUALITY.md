@@ -575,3 +575,52 @@ p50/p95 to 27.61 / 41.23 ms. Both rates are slower than the 16.67 ms step budget
 the recorded seconds-long hold alongside continuing draws or a signed backtrack. The cadence
 measurements are world submissions and mesh poses, with no display scanout sampling. Unpinned
 content can evolve in the shared checkout, and both encounters evolved differently during play.
+
+## Worker, launcher, and render follow-up
+
+- `87e3cb31bfc2` reads live collision material and dynamic status without allocating a whole
+  body substance record. In the 120-body fixture, median native sync took 0.332 to 0.235 ms.
+  A 220-tick replay with live authorship changes matched poses, proxy choices and 6,775 contacts.
+  The 47-A deterministic replay and reload matched. Turning off CCD just for zero-collision
+  projectiles changed solid-body pose at tick 31 and changed the contact count. That experiment
+  was discarded. Reproduction is `bench-physics-projectile-ccd.mjs` in the coordination folder.
+- `7617ae84a1d1` caches static domain-path rules and immediately re-enumerates a node whose
+  children were discarded on collapse. With live mutable rules and domain data, wire output
+  matched and the two 330-pass fixtures took 274 to 224 ms and 191 to 162 ms. Final lifecycle
+  and wire-parity checks passed.
+- `857afa9d90eb` skips entity-reference traversal for the native scalar contact receipt. Synthetic
+  impacts continue to rehydrate live references. Listener order and emit-time mode and sector
+  context are preserved. All 21 bridge and solid-dressing checks passed. The old retail receipt
+  replayed 1,271 events in 55 ms in one reply. These changes do not bound the listener cost of
+  such a burst. The same test command exposed two `run:ended` listener errors in the concurrent
+  untracked crowd coin and shadow coach plants. Their lead has the failing event and lines.
+- `123143341f73` reused the six packed Nocturne probe uniforms within each linked GPU program
+  and producer revision. The fixture observed 924,000 to 25,200 uniform calls and passed 47
+  checks. In the locked Adventure pair, the two pinned renderer files drew 10.91 to 9.33/s and
+  moving mesh gaps went from 156 to 169 ms p95 and 446 to 431 ms max. Both arms fired 36 shots,
+  had no signed backsteps or one-second holds with ongoing draws, and closed cleanly. Opened
+  both PNGs. `3ba59ed7f8cd` removed the candidate after the live pacing decline. The GPU call
+  count alone did not establish a player benefit. See `nocturne-uniform-pair-pair-summary.json`.
+- `c4da41846047` lets the desktop launcher retry once when its renderer dies before initial
+  navigation settles. It keeps the same save origin and deadline and waits for a fresh first paint.
+  All 52 shell checks and launch policy passed. Real crash injection was through the shell fixture.
+- `abb428bcdcd5` rejects field auras on bodies outside the field contact reach. The previously
+  failing distance test passed, alongside 39 other field, particle, and material checks.
+- `32d2c479cbef` charges authored ship admission for its synchronous slices rather than counting
+  waits between presents, and cancels the losing frame/timer callback. The injected test waited
+  multiple seconds while correctly recording 3 ms of CPU work. All 93 focused checks passed.
+
+`followup-fixed-work-pair-summary.json` pins the five physics, mirror, and bridge files at
+`f57a05d6fb0e` and `857afa9d90eb`. Both seed-4242 modes confirmed thrust, turn, fire and visible
+ship motion. Both Adventure arms fired 36 times. Gauntlet fired 188 and 163 times and cleared the
+first wave in both arms. All four captures were opened and all four profiles closed cleanly.
+
+| Public route | Active world draws/s | Moving mesh gap p95 / max | Worker step p50 / p95 |
+| --- | ---: | ---: | ---: |
+| Adventure, 18 s | 8.77 to 8.48 | 211 / 556 ms to 178 / 555 ms | 29.45 / 49.08 ms to 27.51 / 38.94 ms |
+| Gauntlet, first wave | 15.65 to 15.26 | 105 / 414 ms to 121 / 220 ms | 11.54 / 18.89 ms to 10.03 / 17.39 ms |
+
+Gauntlet drew 12.74 to 14.55/s over its first 10 s, and the two encounters cleared at different
+times. Adventure advanced 0.47 to 0.52 seconds of simulation per wall second. Neither route
+showed a seconds-long position freeze with drawing still active. Sustained cadence and the
+original retail freeze are still open. Unpinned content comes from the shared checkout.
