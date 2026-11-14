@@ -95,6 +95,15 @@ values in the receipt came from the last delivered reply, so they cannot establi
 worker's current timer had stopped. Clip samples and the matching receipt are under
 `.devshots/fleet/coordination/player-freeze/`.
 
+The Foundry round-two candidate reproduced the Supply Pod event with seed 1. It registered 342
+shots and 10.76 draws/s over 51.9 s of active round time. The widest observed moving hull gap
+was 209 ms and stale simulation age reached 465 ms. Zero backtracks across 103 assessable
+intervals and zero stale-ACK watchdog recoveries during active round two. Simulation advanced
+0.56 s per wall second. Opened the flight PNG and confirmed clean shutdown. The baseline
+attempt had its Armory launch click intercepted by the boot overlay. The corrected harness
+waits for that overlay to lift. Its paired verification is queued with the Adventure retry.
+The candidate run uses a temporary Electron profile and a diagnostic round-two entry.
+
 - `aa5b5517ed0c` unified main and worker shared-memory layout sizing. The old main allocation
   silently prevented the envelope ring from binding. Activating the ring exposed a second issue
   in live combat, where four queued command batches could stop flight. `da56112e4fba` uses the
