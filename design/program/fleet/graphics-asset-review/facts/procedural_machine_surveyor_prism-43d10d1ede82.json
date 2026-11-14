@@ -6,15 +6,18 @@
     "src/render/visualFactory.js",
     "src/render/machineVisuals.js"
   ],
-  "status": "Builder and site casts traced; the plastic-looking decorative ring was removed after the owner rejected it. The existing faceted body and scan animation remain live; a more complete instrument and surface redesign is still being reviewed in scratch.",
+  "status": "The decorative ring was removed, and the production builder now uses a manufactured prism body, connected sensor and shared generated surface. The scanner's existing motion and activation remain in use; the visual endpoint was shortened. Further variation and natural-encounter review remain open.",
   "variationDiscovery": "unresolved",
-  "caveat": "Ringless production-builder controls were rendered in Helios and Veil, including a Veil chase view. These are diagnostic views; a natural encounter and live frame-time impact remain unverified.",
+  "caveat": "Actual production-factory controls were rendered in Helios and Veil with loaded and fallback surfaces. A real context-loss/restore probe passed after an earlier immediate-restore probe timed out. Three target draws match the ringless control, while shared geometry rises from 408 to 1,534 triangles and the new 256px texture adds estimated GPU residency. A natural encounter and live frame-time impact remain unverified.",
   "diagnostics": [
     ".devshots/fleet/surveyor-astra/check-v1.json",
     ".devshots/fleet/surveyor-astra/fleetlook-v1/report.json",
     ".devshots/fleet/surveyor-astra/camera-v1-playertruth/observations.json",
     ".devshots/fleet/surveyor-astra/fleetlook-shipping/report.json",
     "test/surveyor-prism-visuals.test.mjs",
-    ".devshots/fleet/surveyor-redesign/capture-v13/report.json"
+    ".devshots/fleet/surveyor-redesign/capture-v13/report.json",
+    ".devshots/fleet/surveyor-redesign/capture-native/report.json",
+    ".devshots/fleet/surveyor-redesign/capture-native-lifecycle/report.json",
+    "test/surveyor-surface-library.test.mjs"
   ]
 }

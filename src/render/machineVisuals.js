@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { machineKindById } from '../data/precursorMachines.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
 import { getSurveyorGeometries } from './surveyorGeometry.js';
+import { attachSurveyorSurface } from './surveyorSurfaceLibrary.js';
 
 const PALE_METAL = 0xb9c4bd;   // nacre-adjacent pale metal
 const DARK_SEAM = 0x2a3430;    // recessed seam material
@@ -92,7 +93,7 @@ function registerWorkMotion(entity, isWorking, apply) {
 
 // A slim articulated arm segment that can stow folded and extend while working.
 function buildToolArm(parent, { pivot, stowRotX = 0.5, workRotX = -0.6, length = 16, tipScale = 5,
-  tipIntensity = 2.0, armGeometry = null, tipGeometry = null } = {}) {
+  tipIntensity = 2.0, armGeometry = null, tipGeometry = null, armMaterial = null } = {}) {
   const root = new THREE.Group();
   root.position.set(pivot.x || 0, pivot.y || 0, pivot.z || 0);
   if (pivot.rotY != null) root.rotation.y = pivot.rotY;
@@ -100,7 +101,7 @@ function buildToolArm(parent, { pivot, stowRotX = 0.5, workRotX = -0.6, length =
     const s = new THREE.BoxGeometry(0.14, 0.1, 1.6);
     s.translate(0, 0, -0.8);
     return s;
-  }), seamMat());
+  }), armMaterial || seamMat());
   arm.scale.setScalar(length / 1.6);
   const tipMat = lightMat(tipIntensity);
   const tip = new THREE.Mesh(tipGeometry || geo('tool_arm_tip', () => new THREE.OctahedronGeometry(0.16, 0)), tipMat);
@@ -139,16 +140,22 @@ function buildToolSpindle(parent, { length = 18, y = 0, tipScale = 5, tipIntensi
 function buildSurveyorPrism(entity = null) {
   const g = new THREE.Group();
   const geometry = getSurveyorGeometries(THREE);
-  const body = new THREE.Mesh(
-    geometry.body,
-    metalMat(),
-  );
-  // The nacre's original normal strength overpowers the deliberately subtle panel facets.
-  body.material.normalScale.set(0.3, 0.3);
+  const instrumentMaterial = () => new THREE.MeshStandardMaterial({
+    color: 0xffffff, vertexColors: true, roughness: 0.52, metalness: 0.55,
+  });
+  const body = new THREE.Mesh(geometry.body, instrumentMaterial());
+  body.name = 'Surveyor_PrismBody';
   body.scale.setScalar(12);
+  attachSurveyorSurface(body);
   g.add(body);
-  const scanArm = buildToolArm(g, { pivot: { y: 4 }, length: 14,
-    armGeometry: geometry.arm, tipGeometry: geometry.tip });
+  // Tip position is visual-only; simulation scans resolve from the entity, not mesh endpoints.
+  const scanArm = buildToolArm(g, { pivot: { y: 4 }, length: 6.65,
+    armGeometry: geometry.arm, tipGeometry: geometry.tip, armMaterial: instrumentMaterial() });
+  const arm = scanArm.root.children[0], tip = scanArm.root.children[1];
+  arm.name = 'Surveyor_ScannerArm';
+  tip.name = 'Surveyor_ScanOptic';
+  attachSurveyorSurface(arm);
+  scanArm.tipMat.emissive.setHex(0x78c7b3);
   g.name = 'SF_Machine_surveyor_prism';
   const scanPeriod = machineKindById('surveyor_prism')?.scanPeriodS || 14;
   g.userData.updateAuthoredMotion = registerWorkMotion(entity,
@@ -160,7 +167,7 @@ function buildSurveyorPrism(entity = null) {
     },
     (t, time) => {
       scanArm.apply(t);
-      scanArm.tipMat.emissiveIntensity = 1.2 + t * (1.2 + Math.sin(time * 9) * 0.4);
+      scanArm.tipMat.emissiveIntensity = (1.2 + t * (1.2 + Math.sin(time * 9) * 0.4)) * 0.38;
       scanArm.root.rotation.y = time * 0.7;
     });
   return g;

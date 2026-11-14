@@ -50,6 +50,7 @@ import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/u
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import { getReadyRockFamilies, rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import { getReadyVolatileSurface, preloadVolatileSurface } from './volatileSurfaceLibrary.js';
+import { preloadSurveyorSurface, surveyorSurfaceRendererLifecycle } from './surveyorSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -7679,6 +7680,8 @@ export function buildMawWorksiteVisual(entity) {
 }
 
 export function createVisualFactory({ renderer = null, readyPackagedBodies = null, planetDetailAdmission = null } = {}) {
+  // Optional independent prewarm: a missing Surveyor map never joins opening waits.
+  if (renderer) void preloadSurveyorSurface(renderer);
   if (renderer) preloadVolatileSurface(renderer).then((texture) => {
     if (!texture) return;
     for (const material of _pendingVolatileMaterials) applyVolatileSurface(material, texture);
@@ -7687,7 +7690,10 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
   const readyBodies = readyPackagedBodies || (renderer
     ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
   return {
-    clearReadyPackagedBodies(reason) { readyBodies?.clear(reason); },
+    clearReadyPackagedBodies(reason) {
+      surveyorSurfaceRendererLifecycle(renderer, reason);
+      readyBodies?.clear(reason);
+    },
     readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
       if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));

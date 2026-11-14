@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "generator": "OpenAI built-in imagegen",
+  "date": "2026-11-14",
+  "prompt": "tools/art/source_assets/surveyor-prism/prompt.txt",
+  "source": "tools/art/source_assets/surveyor-prism/generated-original.png",
+  "sourceSha256": "dd57db0d7371a75f2f9abd41b4d13afc47aa554cca82067d9e1781241e4fe48b",
+  "reference": "tools/art/source_assets/surveyor-prism/reference-receiver-original.png",
+  "selected": "Instrument metal V4, reviewed on Surveyor design V13; 256px selected against 512px",
+  "rejected": "Earlier ceramic map read as stone paving; earlier weak-detail maps read as flat plastic.",
+  "processing": "Sharp resize from original to 256x256; WebP quality92. No normal/ORM maps. Embedded fallback: decoded final WebP downsampled32px RGBA, bottom row first.",
+  "files": [
+    {
+      "file": "surface_basecolor.webp",
+      "subject": "Precision satin titanium/ceramic service cladding",
+      "sha256": "4454e8463af2f42f27430002d275f540945ba9ac8913d70ff8bdd3367261efbe",
+      "width": 256,
+      "height": 256,
+      "alphaFromSource": false
+    }
+  ],
+  "staticFrameCalibration": {
+    "rgb": [
+      158,
+      156,
+      154
+    ],
+    "uv": [
+      0.873046875,
+      0.349609375
+    ],
+    "roughness": 0.52,
+    "metalness": 0.55
+  },
+  "limitations": "Optional shared map; existing nacre remains for other machines. Three target draws, no measured FPS or first-sight timing claim.",
+  "referenceSha256": "ae6e5cd5332ba33d8c66043d2abfda47644818630a0984b1c15f22591fef94e6"
+}
