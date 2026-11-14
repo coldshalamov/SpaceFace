@@ -185,6 +185,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'contactHail:availability': SILENT('Hail availability is bookkeeping.'),
   'contactHail:clear': SILENT('Clearing a hail is bookkeeping.'),
   'contactHail:handoff': SILENT('The handoff is bookkeeping between comms speakers.'),
+  'stationContact:hailSpoken': SILENT('Radio speech is a memory record; the reply line already spoke.'),
   hail: SILENT('The hail is the comms voice line, not a second sting.'),
   // The NPC's own greeting lands as the bark voice on the same tick.
   'npc:hailed': SILENT('The hail speaks as its bark; a sting would double the greeting.'),

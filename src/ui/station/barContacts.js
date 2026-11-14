@@ -517,7 +517,6 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // nudges a procedural patron out rather than crowding the bar past four.
   let insertAt = 1;
   for (const canonical of canonicalContactsForStation(stationId)) {
-    canonical.line = stationResidentLine(state, stationId, canonical);
     if (canonical.canonicalKey === 'kessler') {
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
       const workChoice = kesslerStarterWorkChoice(state, stationId);
@@ -574,6 +573,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
         && state.story.flags.eris_choir_bar_service.served === true,
     }] : [];
   const wardResident = stationId === 'station_helios' ? lanternWardResidentFor(state) : null;
+  for (const contact of contacts) {
+    if (contact?.canonicalKey) contact.line = stationResidentLine(state, stationId, contact);
+  }
   const listed = [
     ...(wardResident ? [wardResident] : []),
     ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
