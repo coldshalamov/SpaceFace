@@ -31,13 +31,14 @@ MATERIAL_NAMES = {
     'ceramic': 'Material_Ceramic', 'hazard': 'Material_Warning', 'glass': 'Material_Canopy',
     'glow_drive': 'Material_Thruster', 'glow_cyan': 'Material_Emissive_Cyan', 'glow_red': 'Material_Emissive_NavRed',
     'glow_green': 'Material_Emissive_NavGreen', 'glow_warm': 'Material_Emissive_Warm',
-    'glow_amber': 'Material_Emissive_Amber', 'stone': 'Material_Stone',
+    'glow_amber': 'Material_Emissive_Amber', 'glow_trim': 'Material_Emissive_Trim', 'stone': 'Material_Stone',
 }
 MESH_NAMES = {
     'paint': 'Hull', 'paint2': 'Armor', 'stripe': 'Livery', 'gunmetal': 'Mechanical', 'dark': 'MechanicalDark',
     'bare': 'BrushedMetal', 'ceramic': 'Ceramic', 'hazard': 'Warning', 'glass': 'CANOPY', 'stone': 'Stone',
     'glow_drive': 'HOOK_DRIVE_CORE', 'glow_cyan': 'Lights_Cyan', 'glow_red': 'HOOK_NAV_PORT',
     'glow_green': 'HOOK_NAV_STARBOARD', 'glow_warm': 'Lights_Warm', 'glow_amber': 'Beacon_Amber',
+    'glow_trim': 'Lights_Trim',
 }
 LOD_RATIOS = {1: 0.40, 2: 0.18}
 

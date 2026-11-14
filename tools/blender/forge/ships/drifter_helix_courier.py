@@ -16,7 +16,7 @@ COLORS = {
     'dark': '#141820',
     'paint.patch': '#57677f',      # Helix repaint is total — no mismatched field patches
     'paint.primer': '#4a586e',
-    'glow_cyan.copper': '#cfe4ff', # the livery rings go cold white-blue
+    'glow_trim.copper': '#cfe4ff', # the livery rings go cold white-blue
 }
 
 if __name__ == '__main__':

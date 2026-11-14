@@ -16,7 +16,7 @@ COLORS = {
     'dark': '#0e0c14',
     'paint.patch': '#2c2344',      # even field repairs are rebound in Archive cloth
     'paint.primer': '#231c38',
-    'glow_cyan.copper': '#9a8ae0', # the livery rings turn to reading-lamp violet
+    'glow_trim.copper': '#9a8ae0', # the livery rings turn to reading-lamp violet
 }
 
 if __name__ == '__main__':

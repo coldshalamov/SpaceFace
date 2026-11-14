@@ -49,6 +49,8 @@ FINISHES = {
     'stone':      dict(role='geology',    rough=0.92, metal=0.00, tex=None),
     'glow_drive': dict(role='drive',      rough=0.40, metal=0.00, tex=None, emit=6.0),
     'glow_cyan':  dict(role='signal',     rough=0.40, metal=0.00, tex=None, emit=3.0),
+    # Opt in only for decorative light, never navigation, weapons, or working lamps.
+    'glow_trim':  dict(role='signal',     rough=0.40, metal=0.00, tex=None, emit=3.0),
     'glow_red':   dict(role='signal',     rough=0.40, metal=0.00, tex=None, emit=3.0),
     'glow_green': dict(role='signal',     rough=0.40, metal=0.00, tex=None, emit=3.0),
     'glow_warm':  dict(role='signal',     rough=0.40, metal=0.00, tex=None, emit=2.2),
@@ -59,6 +61,7 @@ DEFAULT_COLORS = {
     'gunmetal': '#4a5058', 'dark': '#1d2127', 'bare': '#9aa2aa', 'ceramic': '#6c6660',
     'hazard': '#e0a526', 'glass': '#0f2a3a', 'stone': '#8a8378', 'glow_drive': '#7fd8ff', 'glow_cyan': '#5fe8ff',
     'glow_red': '#ff3a2a', 'glow_green': '#3dff7a', 'glow_warm': '#ffc27a', 'glow_amber': '#ffae2a',
+    'glow_trim': '#ff8a3c',
 }
 
 
