@@ -14,13 +14,19 @@ const PAD_POSITIONS = Object.freeze([
   [-.24, .13, -.34], [-.24, .13, .34], [.12, .14, -.31], [.12, .14, .31], [-.48, .16, 0],
 ]);
 
-export function lineHardwarePart(record, name, materials) {
+export function lineHardwarePart(record, name, materials, sharedMaterials = null) {
   const root = new THREE.Group(); root.name = name;
   for (const primitive of record?.primitives || []) {
     if (/^LOD[1-9]/i.test(primitive.name || '')) continue;
     const source = Array.isArray(primitive.material) ? primitive.material : [primitive.material];
     const owned = source.map(material => {
-      const clone = cloneMaterialPreservingShaderHooks(material); materials.push(clone); return clone;
+      let clone = sharedMaterials?.get(material);
+      if (!clone) {
+        clone = cloneMaterialPreservingShaderHooks(material);
+        materials.push(clone);
+        sharedMaterials?.set(material, clone);
+      }
+      return clone;
     });
     const mesh = new THREE.Mesh(primitive.geometry, Array.isArray(primitive.material) ? owned : owned[0]);
     mesh.name = primitive.name || name;
@@ -42,7 +48,7 @@ export function createLineHardware(state, options = {}) {
   const admission = createAsyncAdmission({ label: 'line-class-hardware', timeoutMs: 120000 });
   const renderer = state?.render?.renderer;
   const owner = Object.freeze({ type: 'line-hardware' });
-  const materials = [], scratch = {}, hot = new THREE.Color(0xff521c), classColor = new THREE.Color();
+  const materials = [], sharedMaterials = new Map(), scratch = {}, hot = new THREE.Color(0xff521c), classColor = new THREE.Color();
   // G19-01: the class-up moment. The new colour reads in immediately; a 0.6 s bright pulse
   // marks the crossing itself on the winch and pads (the rope re-reads its width on its own frame).
   const white = new THREE.Color(0xffffff), pulseColor = new THREE.Color();
@@ -62,8 +68,8 @@ export function createLineHardware(state, options = {}) {
       const records = await admission.wait(Promise.all(LINE_HARDWARE_PARTS.map(load)));
       admission.assertActive();
       if (!records[0] || !records[1]) return false;
-      headMount.add(lineHardwarePart(records[0], 'LineWinchHead', materials));
-      for (const mount of padMounts) mount.add(lineHardwarePart(records[1], mount.name + '_plate', materials));
+      headMount.add(lineHardwarePart(records[0], 'LineWinchHead', materials, sharedMaterials));
+      for (const mount of padMounts) mount.add(lineHardwarePart(records[1], mount.name + '_plate', materials, sharedMaterials));
       // The real renderer's residency and compile lanes own admission before this rig is revealed.
       if (typeof state?.render?.prepareAuthoredGpuResidency === 'function') {
         await admission.wait(state.render.prepareAuthoredGpuResidency(root));
@@ -121,6 +127,7 @@ export function createLineHardware(state, options = {}) {
       disposed = true; admission.abort('line hardware disposed'); admission.finish();
       root.removeFromParent(); root.clear();
       for (const material of materials) material.dispose(); materials.length = 0;
+      sharedMaterials.clear();
       getAssetResidency(renderer)?.releaseOwner(owner, 'line-hardware-disposed');
     },
   };
