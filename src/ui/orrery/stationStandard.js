@@ -242,22 +242,47 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
   ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
   ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
-  /* The crown is ~587px here: the five readings fit ONE row (hull, fuel, hold, ledger, munitions), so FUEL, HOLD and
+  /* The crown is ~493–587px here: the five readings fit ONE row (hull, fuel, hold, ledger, munitions), so FUEL, HOLD and
      MUNITIONS stand in the head's visible band. In the two-row grid above they sat on a second row under the head's
-     32vh scrollport (ships: 145px), so a player at 960x540 saw only the hull and ledger. Cell widths follow each
-     reading's own ink (label + figure, or the 92px Repair/Rearm key); 901-959 keeps the two rows, where five do not fit. */
+     32vh scrollport (ships: 145px), so a player at 960x540 saw only the hull and ledger. Absolute side-by-side values
+     (base .sxb-vital__value) need ~92px for "Fuel"+"100 / 100" but the fuel/hold fr tracks land ~83–84px, so the figure
+     printed on top of its label (ui-bench tangled at 960×540). Stack the three tight cells' figures under their labels —
+     same densify as the 651–800 short-berth one-row crown — so every reading stays in the visible band without tangled ink.
+     Hull keeps the absolute figure (short label + Repair key already set the cell width). */
   ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,106fr) minmax(0,100fr) minmax(0,98fr) minmax(0,116fr) minmax(0,134fr) !important;
     grid-template-areas:"hull fuel hold note muni" !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__label {
+    font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important;
+    max-width:100% !important; overflow:visible !important; text-overflow:unset !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value {
+    position:static !important; inset:auto !important; width:max-content !important; max-width:100% !important;
+    display:inline-flex !important; flex-direction:row !important; align-items:baseline !important; gap:2px !important;
+    margin:2px 0 0 !important; white-space:nowrap !important; font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vnum,
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vden { font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold) .sxb-vital__head { min-height:0 !important; }
 }
 
 /* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
    ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
    to 12px, the cells follow each reading's own ink, so FUEL, HOLD and MUNITIONS stand in the visible band. */
 @media (min-width:901px) and (max-width:959px) and (min-height:461px) and (max-height:640px) {
+  /* Same one-row densify as 960–1100: the ~530px crown is even tighter, so absolute side-by-side figures tangle.
+     Stack fuel/hold/muni figures under their labels (651–800 pattern). */
   ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,91fr) minmax(0,85fr) minmax(0,83fr) minmax(0,125fr) minmax(0,125fr) !important;
     grid-template-areas:"hull fuel hold note muni" !important; gap:4px 5px !important; }
   ${P} .sxb-crown .sxb-vital__head { column-gap:4px !important; }
   ${P} .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__label {
+    font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important;
+    max-width:100% !important; overflow:visible !important; text-overflow:unset !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value {
+    position:static !important; inset:auto !important; width:max-content !important; max-width:100% !important;
+    display:inline-flex !important; flex-direction:row !important; align-items:baseline !important; gap:2px !important;
+    margin:2px 0 0 !important; white-space:nowrap !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vnum,
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vden { font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold) .sxb-vital__head { min-height:0 !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
