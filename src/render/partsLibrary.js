@@ -8565,8 +8565,9 @@ function endAdmissionPhase(timings, phase, startedAtMs) {
   timings[`${phase}Ms`] = Math.max(0, monotonicNow() - startedAtMs);
 }
 
-function recordAdmissionSlice(startedAtMs, hitchOwner = null) {
-  const elapsedMs = monotonicNow() - startedAtMs;
+function recordAdmissionWork(elapsedMs, hitchOwner = null) {
+  // Phase receipts still track end-to-end latency. Frame accounting only owns
+  // time spent executing a synchronous slice in this callback or task.
   const perf = authoredRuntimeState()?.perfRuntime;
   if (perf && typeof perf.recordAdmissionWork === 'function') {
     perf.recordAdmissionWork(elapsedMs);
@@ -9715,7 +9716,6 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       authored = await buildComposedShipAsync(entity, library, scene, boundary, options);
     } finally {
       restoreComposePhase();
-      recordAdmissionSlice(compositionStartedAtMs, 'compose');
       endAdmissionPhase(phaseTimings, 'compose', compositionStartedAtMs);
       const tier1 = tier1CausalCounters();
       if (tier1) tier1.countAuthoredAdmissionJob('composition');
@@ -9752,7 +9752,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       try {
         pipelineReady = prepareAuthoredShipVisualPipelines(authored, options, restorePipelinePhase.update);
       } finally {
-        recordAdmissionSlice(pipelineStartedAtMs);
+        recordAdmissionWork(monotonicNow() - pipelineStartedAtMs);
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('pipeline-prepare');
       }
@@ -9798,7 +9798,6 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
           });
         }
       } finally {
-        recordAdmissionSlice(commitStartedAtMs);
         endAdmissionPhase(phaseTimings, 'commit', commitStartedAtMs);
         const tier1 = tier1CausalCounters();
         if (tier1) tier1.countAuthoredAdmissionJob('commit');
@@ -10775,7 +10774,9 @@ async function commitAuthoredBoundary(
   // The graft (remove+add) must stay atomic — a boundary empty for a present is a pop-out — but the
   // legs around it can yield; a stale verdict before the graft still bails
   // the same way the post-compose gate above does.
-  notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  const preGraftMs = monotonicNow() - commitLegStarted;
+  notePacedFrameSpend(preGraftMs);
+  recordAdmissionWork(preGraftMs);
   await composeYield();
   commitLegStarted = monotonicNow();
   if ((options.admissionEpoch != null && boundary.userData.admissionEpoch != null
@@ -10880,7 +10881,9 @@ async function commitAuthoredBoundary(
   } else {
     publish();
   }
-  notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  const graftMs = monotonicNow() - commitLegStarted;
+  notePacedFrameSpend(graftMs);
+  recordAdmissionWork(graftMs);
   // The publish touch drew the authored subtree on the exact target and the fallback's
   // subtree dispose is a second GPU stage — when the caller paces stage joins (flight),
   // the dispose waits one present so the pair can't land inside one presented frame.
@@ -10909,7 +10912,9 @@ async function commitAuthoredBoundary(
         authoredDisposeLedgerSkips = 0;
         // Per-slice debit with the restamp after the wait — a multi-present
         // dispose charges its real work, not the spans between presents.
-        notePacedFrameSpend(monotonicNow() - commitLegStarted);
+        const disposeMs = monotonicNow() - commitLegStarted;
+        notePacedFrameSpend(disposeMs);
+        recordAdmissionWork(disposeMs);
         commitLegStarted = monotonicNow();
         if (disposeStep.done) break;
         if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
@@ -12074,13 +12079,19 @@ function composeYield() {
       // continuation races the compositor beat and lands the next leg inside the
       // present it was meant to escape (the yieldToNextPresent contract).
       let fired = false;
+      let timer = null;
+      let frame = null;
       const fire = () => {
         if (fired) return;
         fired = true;
+        if (timer !== null) clearTimeout(timer);
+        if (frame !== null && typeof globalThis.cancelAnimationFrame === 'function') {
+          globalThis.cancelAnimationFrame(frame);
+        }
         postTaskAtBackgroundPriorityBounded(resolve);
       };
-      globalThis.requestAnimationFrame(fire);
-      setTimeout(fire, 48);
+      frame = globalThis.requestAnimationFrame(fire);
+      if (!fired) timer = setTimeout(fire, 48);
     });
   }
   return Promise.resolve();
@@ -12121,6 +12132,7 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
       // Report the slice's cost before yielding: other frame-paced slicers (the compile drain)
       // read the ledger later this frame and stand down instead of stacking their own budget.
       notePacedFrameSpend(sliceMs);
+      recordAdmissionWork(sliceMs, 'compose');
       await composeYield();
       sliceStarted = now();
       // A re-admission, stall-abort, owner death, or boundary detach that lands mid-compose
@@ -12155,7 +12167,9 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
     }
     step = steps.next();
   }
-  notePacedFrameSpend(now() - sliceStarted);
+  const finalSliceMs = now() - sliceStarted;
+  notePacedFrameSpend(finalSliceMs);
+  recordAdmissionWork(finalSliceMs, 'compose');
   return step.value;
   } catch (error) {
     let cleanupError = null;

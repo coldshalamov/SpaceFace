@@ -324,6 +324,52 @@ test('a 47-A Reaver interceptor Wasp publishes the rig when assetRef is present 
   }
 });
 
+test('whole-ship admission charges synchronous slices without charging time spent waiting for frames', async (t) => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const entity = makeWasp('admission-cpu-receipt');
+  const harness = installFlightQueueHarness(scene);
+  const samples = [];
+  const fallbackTimers = new Set();
+  let now = performance.now();
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  t.mock.method(performance, 'now', () => now);
+  t.mock.method(globalThis, 'setTimeout', (callback, delay, ...args) => {
+    if (delay !== 48) return originalSetTimeout(callback, delay, ...args);
+    const timer = { unref() {} };
+    fallbackTimers.add(timer);
+    return timer;
+  });
+  t.mock.method(globalThis, 'clearTimeout', timer => {
+    if (!fallbackTimers.delete(timer)) originalClearTimeout(timer);
+  });
+  globalThis.window.SF.state.perfRuntime = { recordAdmissionWork: ms => samples.push(ms) };
+  const options = { releaseMode: true, loadAuthoredPart: async url => makeRecord(url), requiredWholeShip: true,
+    onSwap: () => { now += 3; } };
+  try {
+    await preloadAuthoredPartLibrary(renderer, options);
+    const boundary = wrapShipWithAuthoredParts(entity, emptySubstrate(), options);
+    entity.mesh = boundary;
+    scene.add(boundary);
+    boundary.userData.requestAuthoredUpgrade(renderer, scene);
+    for (let turn = 0; turn < 200; turn++) {
+      await Promise.resolve();
+      if (harness.scheduledFrames.length) {
+        now += 1000;
+        harness.scheduledFrames.shift()();
+      }
+    }
+    assert.equal(boundary.userData.authoredAssetState, 'authored');
+    assert.equal(fallbackTimers.size, 0, 'successful frame and task callbacks cancel their losing timers');
+    assert.equal(samples.reduce((total, ms) => total + ms, 0), 3, 'only the injected swap cost is charged');
+  } finally {
+    t.mock.restoreAll();
+    harness.restore();
+    invalidatePartsLibraryCaches(renderer);
+  }
+});
+
 test('a required whole-ship that does not load is a failed check, not a passing warning', async () => {
   const renderer = {};
   const scene = new THREE.Scene();
