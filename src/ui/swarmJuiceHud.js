@@ -78,12 +78,12 @@ export function swarmSlamSub({ boss = null, newcomer = null } = {}) {
 }
 
 /** The tier label the hero carries, with the next mark the player is chasing. */
-export function swarmHeroTierText(chain) {
+export function swarmHeroTierText(chain, { phone = false } = {}) {
   const tier = swarmChainTier(chain);
   const next = swarmChainNextTier(chain);
   // The chase target only speaks when it is within reach (the player can act on it); a far
   // mark is noise in the centre column.
-  const close = next && next.at - (Number(chain) || 0) <= NEXT_MARK_REACH;
+  const close = !phone && next && next.at - (Number(chain) || 0) <= NEXT_MARK_REACH;
   if (tier && close) return `${tier.name} · next ${next.name} ${next.at}`;
   if (tier) return tier.name;
   if (close) return `next ${next.name} ${next.at}`;
@@ -198,7 +198,7 @@ export const swarmJuiceHud = {
       if (dom.hero.dataset.tier !== tierId) dom.hero.dataset.tier = tierId;
       this._text(dom.heroTier, this._tierName && simNow < this._tierUntil
         ? this._tierName
-        : swarmHeroTierText(this._chain));
+        : swarmHeroTierText(this._chain, { phone: document.documentElement.getAttribute('data-sf-mobile-flight') === '1' }));
       // inf-overdrive-mark: the window keeps its word on the hero — the tier line says it once
       // here, not just in the one-shot announcement — until the chain breaks or the run ends.
       const overdrive = this._overdriveRate > 0;
