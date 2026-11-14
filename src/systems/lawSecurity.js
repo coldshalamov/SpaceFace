@@ -95,6 +95,7 @@ import {
 } from '../world/livingWorldViews.js';
 import { strideDt } from '../core/catchupPolicy.js';
 import { counted } from '../core/numberFormat.js';
+import { openingBeforeClaim } from '../onboarding/openingQuiet.js';
 
 
 export const LAW_SECURITY_VERSION = 2;
@@ -2838,6 +2839,7 @@ export const lawSecurity = {
     if (!payload) return null;
     const state = this.state;
     if (!state || state.playerId == null) return null;
+    if (openingBeforeClaim(state)) return null; // OPENING-1b: no intercept before the 3:00 choice
     return this._reportStolenCargoPod(entityById(state, payload.targetId));
   },
 
