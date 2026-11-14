@@ -6,6 +6,30 @@ import {globalPickupMotion} from '../src/render/pickupMotionPresentation.js';
 
 const entity = (id, volatileClass='explosive', type='payload') => ({id, type, alive:true, radius:6, pos:{x:0,z:0}, vel:{x:0,z:0}, rot:0, data:{volatileClass}});
 
+test('payload sphere normals are smooth while pickup geometry, hard collar and bounds remain unchanged', () => {
+  const factory=createVisualFactory();
+  try {
+    const pickup=factory.build(entity('flat-pickup','corrosive','pickup')).children[0];
+    const payload=factory.build(entity('smooth-payload','corrosive')).children[0];
+    const a=pickup.geometry,b=payload.geometry;
+    assert.notEqual(a,b,'payload normals never mutate the shared pickup recipe');
+    assert.equal(a.index,null);assert.equal(b.index,null);
+    assert.deepEqual(b.attributes.position.array,a.attributes.position.array);
+    assert.deepEqual(b.attributes.uv.array,a.attributes.uv.array);
+    assert.equal(b.attributes.position.count,1152,'384 existing shell/collar triangles');
+    assert.deepEqual(b.boundingSphere,a.boundingSphere);
+    // The existing 12 by 9 sphere contributes 192 triangles; the collar follows it.
+    assert.deepEqual(b.attributes.normal.array.slice(576*3),a.attributes.normal.array.slice(576*3));
+    for(let i=0;i<576;i++){
+      const p=new THREE.Vector3().fromBufferAttribute(b.attributes.position,i).normalize();
+      const n=new THREE.Vector3().fromBufferAttribute(b.attributes.normal,i);
+      assert.ok(p.distanceTo(n)<1e-6,'sphere normals remain radial across triangle seams');
+    }
+    assert.equal(payload.children[0].geometry,pickup.children[0].geometry,'hard cage is still shared');
+    assert.equal(factory.build(entity('another-payload','superdense')).children[0].geometry,b,'all payload classes share smooth geometry');
+  } finally {invalidateVisualFactoryCaches();}
+});
+
 test('volatile vessel fittings stay inside the unchanged radius and follow the original animated body', () => {
   const e=entity('vessel-motion','explosive','pickup');
   const before=JSON.stringify(e);
@@ -66,11 +90,18 @@ test('many volatile vessels share fittings and safe disposal while retaining exi
     for(const [klass,color] of [['explosive',0xffb340],['corrosive',0x7dd66a],['superdense',0xa77dff]]){
       const body=factory.build(entity(klass,klass)).children[0];
       assert.equal(body.material.emissive.getHex(),color);
-      assert.equal(body.material.emissiveIntensity,.55);
+      assert.equal(body.material.color.getHex(),color,'hazard color is also carried by diffuse paint');
+      assert.equal(body.material.emissiveIntensity,.12,'restrained emission keeps the shell shaded');
       assert.equal(body.material.roughness,.42);
       assert.equal(body.material.metalness,.55);
       assert.equal(body.children[0].material.emissiveIntensity,1);
       assert.equal(body.children[0].material.emissive.getHex(),0,'containment never adds a second warning color');
+    }
+    for(const [lamp,color] of [['amber',0xffb340],['green',0x7dd66a],['violet',0xa77dff],['red',0xff5c4a]]){
+      const e=entity(`lamp-${lamp}`);e.data={volatileLamp:lamp};
+      const body=factory.build(e).children[0];
+      assert.equal(body.material.color.getHex(),color,'lamp-only classes cannot reuse a different cached hazard paint');
+      assert.equal(body.material.emissive.getHex(),color);
     }
     invalidateVisualFactoryCaches();
     const refreshed=factory.build(entity('after-context-restore')).children[0];

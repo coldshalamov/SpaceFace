@@ -7048,15 +7048,36 @@ function volatileLampColor(e) {
   return VOLATILE_LAMP_COLOR[lamp] || VOLATILE_LAMP_COLOR.default;
 }
 
+function buildVolatilePayloadGeometry() {
+  const geometry = buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE);
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  // The existing non-indexed recipe contains a sphere and a hard toroidal collar.
+  // Only sphere triangles have all three vertices at the same radius. Restore
+  // their radial normals without welding the collar or changing any positions.
+  for (let i = 0; i < position.count; i += 3) {
+    const lengths = [0, 1, 2].map(j => Math.hypot(
+      position.getX(i + j), position.getY(i + j), position.getZ(i + j)));
+    if (Math.min(...lengths) <= 0 || Math.max(...lengths) - Math.min(...lengths) > 1e-5) continue;
+    for (let j = 0; j < 3; j++) normal.setXYZ(i + j,
+      position.getX(i + j) / lengths[j], position.getY(i + j) / lengths[j], position.getZ(i + j) / lengths[j]);
+  }
+  return geometry;
+}
+
 function buildVolatilePod(e) {
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const lamp = volatileLampColor(e);
   const bottle = new THREE.Mesh(
-    getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
-    getMaterial(`payload:volatile:${e.data.volatileClass || 'any'}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: 0x2a2f33, roughness: 0.42, metalness: 0.55,
-      emissive: new THREE.Color(lamp), emissiveIntensity: 0.55,
+    e.type === 'payload'
+      ? getGeometry('payload:volatile:smooth-shell', buildVolatilePayloadGeometry)
+      : getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
+    getMaterial(`payload:volatile:${lamp}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      // Hazard paint carries the class color; restrained emission leaves the
+      // pressure shell and containment hardware readable under flight lighting.
+      color: lamp, roughness: 0.42, metalness: 0.55,
+      emissive: new THREE.Color(lamp), emissiveIntensity: 0.12,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
   bottle.name = 'VolatilePod_Bottle';
