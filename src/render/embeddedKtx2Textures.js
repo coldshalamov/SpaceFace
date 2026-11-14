@@ -34,6 +34,28 @@ const EXTENSION = 'KHR_texture_basisu';
 // Records which userData keys a document's image extras applied, so a dedupe-shared clone can drop
 // the first document's extras before stamping its own.
 const APPLIED_EXTRAS_KEY = 'spacefaceAppliedImageExtras';
+// A loader's simultaneous documents can request identical bytes before either transcode claims
+// the shared source. Coalesce that window per loader (different GPU capabilities may differ).
+const inFlightDecodes = new WeakMap();
+
+async function sharedOrDecodedTexture(key, bytes, loader) {
+  const cached = sharedImageTextureFor(key);
+  if (cached) return cached;
+  let pending = inFlightDecodes.get(loader);
+  if (!pending) { pending = new Map(); inFlightDecodes.set(loader, pending); }
+  const existing = pending.get(key);
+  if (existing) {
+    await existing;
+    // The owner may have been disposed or CPU-detached before this waiter resumed.
+    const shared = sharedImageTextureFor(key);
+    if (shared) return shared;
+  }
+  const decode = new Promise((resolve, reject) => loader.parse(bytes, resolve, reject))
+    .then((texture) => claimSharedImageTexture(key, texture));
+  pending.set(key, decode);
+  try { return await decode; }
+  finally { if (pending.get(key) === decode) pending.delete(key); }
+}
 
 const WEBGL_FILTERS = {
   9728: NearestFilter,
@@ -158,11 +180,7 @@ function decodeEmbeddedSource(parser, sourceDef, loader) {
         ? new Uint8Array(bytes)
         : new Uint8Array(bytes.buffer, bytes.byteOffset || 0, bytes.byteLength);
       const key = await imageSourceKeyAsync(view, bytes.byteLength, sourceDef.mimeType || 'image/ktx2');
-      const shared = sharedImageTextureFor(key);
-      if (shared) return shared;
-      return new Promise((resolve, reject) => {
-        loader.parse(bytes, resolve, reject);
-      }).then((texture) => claimSharedImageTexture(key, texture));
+      return sharedOrDecodedTexture(key, bytes, loader);
     })
     .then((texture) => {
       // A dedupe-hit clone deep-copied the first document's userData — including its extras. Clear
