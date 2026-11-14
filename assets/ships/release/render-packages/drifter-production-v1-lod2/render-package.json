@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4efdef2fc22af33db7b43897e6c208b55926a1db77c27b5866ae71b31a60a40c",
+  "contentHash": "256d4690b0f0771678a57e02ac675b1ae4fe6e306213361d128aef5473eaf35b",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.dynamic",
@@ -1207,7 +1207,7 @@
       "id": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-lights-cyan-copper.primitive.0",
       "indexCount": 1611,
       "indexed": true,
-      "materialHash": "6274993a00ad6b202292ce73be078f87b0dda1589bbb951a75544b557f0f1d50",
+      "materialHash": "4b41610e2efcc4691222f49013f94702a82b94f66c88ca77c5f9d3dddca0eb27",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_copper.002",
       "nodeId": "sf.render.drifter-production-v1-lod2.mesh.lod0-motion-hull-core-lights-cyan-copper",
@@ -1430,9 +1430,9 @@
       ]
     },
     {
-      "hash": "6274993a00ad6b202292ce73be078f87b0dda1589bbb951a75544b557f0f1d50",
-      "id": "material:6274993a00ad6b202292ce73",
-      "name": "Material_Emissive_Cyan_copper",
+      "hash": "4b41610e2efcc4691222f49013f94702a82b94f66c88ca77c5f9d3dddca0eb27",
+      "id": "material:4b41610e2efcc4691222f490",
+      "name": "Material_Emissive_Trim_copper",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -3111,18 +3111,18 @@
     },
     "sourceGlb": {
       "bytes": 462972,
-      "sha256": "ce5daef7508933dd04d05a17e804899b14ce71f1cef79be44f58c6140f0b53a8",
+      "sha256": "c0920e48fa8877158c733a164ff5caaba19e62b8062dc29d9fd088cd2de8f335",
       "uri": "drifter_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 25614,
+      "sha256": "e08ba982ad6cadfafafbb8d53134294f05cb993000f5e4add2f4a64b4e0e8dc9",
+      "uri": "assets/ships/render-packages/inputs/drifter-production-v1-lod2.json"
     }
   },
   "render": {
     "bytes": 473284,
-    "sha256": "f130637f0179aa80e65c1aaadf36c4710fcf0dbe72050eba9a8946dc7f2ffa08",
+    "sha256": "f5177b6775da5c2a299fc2d77057b7940bdd945eb11378dd75eecd1c67c3fe89",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5266,7 +5266,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
   },
-  "runtimeHash": "c8a1551b45b4aa21304e70967fbc1657f7e97e509b28475c1f257ef4c2f88156",
+  "runtimeHash": "49f3ea3c7786c266645a508012fac0552fcfdb882c597b3f4ce4d7342712de1e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
