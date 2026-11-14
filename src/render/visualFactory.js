@@ -7038,14 +7038,16 @@ function laneTrafficVisualEntity(e) {
 // carried in the collar material so the warning survives the chase camera.
 const VOLATILE_LAMP_COLOR = Object.freeze({
   // keyed by class id and by the stamped lamp name — the sim writes both
-  explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff,
-  amber: 0xffb340, green: 0x7dd66a, violet: 0xa77dff, red: 0xff5c4a,
+  explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff, cryogenic: 0x8fe1fa,
+  amber: 0xffb340, green: 0x7dd66a, violet: 0xa77dff, cyan: 0x8fe1fa, red: 0xff5c4a,
   default: 0xffb340,
 });
 
 function volatileLampColor(e) {
-  const lamp = e && e.data && (e.data.volatileClass || e.data.volatileLamp);
-  return VOLATILE_LAMP_COLOR[lamp] || VOLATILE_LAMP_COLOR.default;
+  const data = e && e.data;
+  return VOLATILE_LAMP_COLOR[data?.volatileClass]
+    || VOLATILE_LAMP_COLOR[data?.volatileLamp]
+    || VOLATILE_LAMP_COLOR.default;
 }
 
 function buildVolatilePayloadGeometry() {
