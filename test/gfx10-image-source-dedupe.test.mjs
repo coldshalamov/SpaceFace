@@ -89,6 +89,22 @@ test('a rebuilt decode after full disposal registers a fresh entry', async () =>
   assert.notEqual(second.source, first.source, 'a re-decode owns a new source, not a disposed one');
 });
 
+test('disposing an old generation cannot evict a replacement for the same key', () => {
+  const key = 'same-content-key';
+  const old = claimSharedImageTexture(key, decodedTexture(1));
+  // Model a registry reset while an older texture is still held by a consumer.
+  resetImageSourceDedupeForTests();
+  const replacement = claimSharedImageTexture(key, decodedTexture(2));
+
+  old.dispose();
+  assert.equal(imageSourceDedupeStats().entries, 1);
+  const clone = sharedImageTextureFor(key);
+  assert.equal(clone.source, replacement.source);
+  replacement.dispose();
+  clone.dispose();
+  assert.equal(imageSourceDedupeStats().entries, 0);
+});
+
 function fakeParsedGltf({ imageBytes, mimeType = 'image/png', extraTexture = null }) {
   const body = new ArrayBuffer(imageBytes.byteLength);
   new Uint8Array(body).set(imageBytes);

@@ -193,13 +193,10 @@ export function imageSourceKeyAsync(bytes, byteLength, mimeType) {
   return promise;
 }
 
-function releaseUser(entry, texture) {
+function releaseUser(entry, key, texture) {
   if (!entry.users.delete(texture)) return;
-  if (entry.users.size === 0) {
-    for (const [key, candidate] of entries) {
-      if (candidate === entry) { entries.delete(key); break; }
-    }
-  }
+  // A later generation may already own the same key; an old texture must not evict it.
+  if (entry.users.size === 0 && entries.get(key) === entry) entries.delete(key);
 }
 
 function adoptUser(entry, key, texture) {
@@ -214,7 +211,7 @@ function adoptUser(entry, key, texture) {
     ? texture.dispose.bind(texture)
     : null;
   texture.dispose = function disposeSharedImageTexture() {
-    releaseUser(entry, texture);
+    releaseUser(entry, key, texture);
     if (originalDispose) return originalDispose();
     return undefined;
   };
