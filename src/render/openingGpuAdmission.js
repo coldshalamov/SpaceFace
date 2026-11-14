@@ -698,7 +698,7 @@ export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
   return { scene, drawables };
 }
 
-export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
+function keepForExactTargetSubjects(subjects) {
   // `keep` scopes to THIS call's subjects: whileRevealedGroup now holds reveals
   // across suspension, so a session-accumulated keep re-draws every prior
   // batch's subjects inside each later absorbed pass (≈N²/48 subject-draws per
@@ -714,6 +714,11 @@ export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
     for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
     if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
+  return keep;
+}
+
+export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
+  const keep = keepForExactTargetSubjects(subjects);
   const saved = [];
   if (session) {
     for (const object of session.drawables) {
@@ -905,7 +910,11 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
     if (drawableSubjects.length > 0) {
-      withOnlySubjectsDrawable(lightingScene, drawableSubjects, () => {
+      // A topology change since a session's census could leave a new peer visible in its hide
+      // pass. Keep that existing session behavior and use the native filter for full-census touches.
+      const nativeDrawableFilter = !options.drawableSession
+        && renderer.canFilterExactTargetDrawables?.(lightingScene, camera) === true;
+      const draw = () => {
         for (const item of drawableSubjects) {
           if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
           // The bloom frame hides these for the aspect-flip hold. This touch is a
@@ -957,13 +966,21 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
           if (!ready) { pendingPrograms.add(program); return true; }
           return false;
         };
-        try { renderer.render(lightingScene, camera); }
+        try {
+          if (nativeDrawableFilter) {
+            renderer.renderExactTargetDrawables(lightingScene, camera, keepForExactTargetSubjects(drawableSubjects));
+          } else {
+            renderer.render(lightingScene, camera);
+          }
+        }
         finally {
           if (hadDepth) renderer.__sfUnreadyDrawGuardDepth = previousDepth; else delete renderer.__sfUnreadyDrawGuardDepth;
           if (hadDefer) renderer.__sfDeferSelectedProgram = previousDefer; else delete renderer.__sfDeferSelectedProgram;
           if (hadExact) renderer.__sfExactTargetTouch = previousExact; else delete renderer.__sfExactTargetTouch;
         }
-      }, options.drawableSession);
+      };
+      if (nativeDrawableFilter) draw();
+      else withOnlySubjectsDrawable(lightingScene, drawableSubjects, draw, options.drawableSession);
       drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
     }
     return {

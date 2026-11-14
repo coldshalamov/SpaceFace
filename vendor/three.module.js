@@ -9376,7 +9376,7 @@ function WebGLShadowMap( renderer, objects, capabilities ) {
 	this.type = PCFShadowMap;
 	let _previousType = this.type;
 
-	this.render = function ( lights, scene, camera ) {
+	this.render = function ( lights, scene, camera, exactTargetDrawables = null ) {
 
 		if ( scope.enabled === false ) return;
 		if ( scope.autoUpdate === false && scope.needsUpdate === false ) return;
@@ -9640,7 +9640,7 @@ function WebGLShadowMap( renderer, objects, capabilities ) {
 				// receiveShadow-only objects the registry does not track.
 				if ( this.type !== VSMShadowMap ) {
 
-					renderShadowCasters( scene, camera, shadow.camera, light, this.type );
+					renderShadowCasters( scene, camera, shadow.camera, light, this.type, exactTargetDrawables );
 
 				} else {
 
@@ -9822,11 +9822,16 @@ function WebGLShadowMap( renderer, objects, capabilities ) {
 	// same per-object gates renderObject runs; ancestor visibility and scene membership come
 	// from eachShadowCaster instead of recursion. getDepthMaterial is untouched, so depth /
 	// distance material variants (skinning, morphs, clip shadows, alpha) are identical.
-	function renderShadowCasters( scene, camera, shadowCamera, light, type ) {
+	function renderShadowCasters( scene, camera, shadowCamera, light, type, exactTargetDrawables ) {
 
 		if ( scene.visible === false ) return;
 
-		eachShadowCaster( scene, ( object ) => renderShadowCaster( object, camera, shadowCamera, light, type ) );
+		eachShadowCaster( scene, ( object ) => {
+
+			if ( exactTargetDrawables !== null && ! exactTargetDrawables.has( object ) ) return;
+			renderShadowCaster( object, camera, shadowCamera, light, type );
+
+		} );
 
 	}
 
@@ -17805,6 +17810,35 @@ class WebGLRenderer {
 
 		// Rendering
 
+		let _exactTargetDrawables = null;
+
+		this.canFilterExactTargetDrawables = function ( scene, camera ) {
+
+			return scene.isScene === true && scene.matrixWorldAutoUpdate === false && camera?.isCamera === true &&
+				scene.onBeforeRender === Object3D.prototype.onBeforeRender &&
+				scene.onAfterRender === Object3D.prototype.onAfterRender &&
+				xr.isPresenting === false && _nodesHandler === null && shadowMap.type !== VSMShadowMap;
+
+		};
+
+		this.renderExactTargetDrawables = function ( scene, camera, drawables ) {
+
+			// The next native render consumes this before invoking any callback, so a nested
+			// renderer.render() uses its own ordinary drawable set. Keep this.render as the
+			// entry point so the game's render error and diagnostics wrappers still run.
+			_exactTargetDrawables = drawables;
+			try {
+
+				return this.render( scene, camera );
+
+			} finally {
+
+				_exactTargetDrawables = null;
+
+			}
+
+		};
+
 		/**
 		 * Renders the given scene (or other type of 3D object) using the given camera.
 		 *
@@ -17820,6 +17854,9 @@ class WebGLRenderer {
 		 * @param {Camera} camera - The camera.
 		 */
 		this.render = function ( scene, camera, capturedList ) {
+
+			const exactTargetDrawables = _exactTargetDrawables;
+			_exactTargetDrawables = null;
 
 			if ( camera !== undefined && camera.isCamera !== true ) {
 
@@ -17896,7 +17933,7 @@ class WebGLRenderer {
 
 				if ( depthSensingMesh !== null ) {
 
-					projectObject( depthSensingMesh, camera, - Infinity, _this.sortObjects );
+					projectObject( depthSensingMesh, camera, - Infinity, _this.sortObjects, null );
 
 				}
 
@@ -17930,7 +17967,7 @@ class WebGLRenderer {
 
 			} else {
 
-				projectObject( scene, camera, 0, _this.sortObjects );
+				projectObject( scene, camera, 0, _this.sortObjects, exactTargetDrawables );
 
 				currentRenderList.finish();
 
@@ -17981,7 +18018,7 @@ class WebGLRenderer {
 
 			const shadowsArray = currentRenderState.state.shadowsArray;
 
-			shadowMap.render( shadowsArray, scene, camera );
+			shadowMap.render( shadowsArray, scene, camera, exactTargetDrawables );
 
 			if ( _clippingEnabled === true ) clipping.endShadows();
 
@@ -18356,9 +18393,13 @@ class WebGLRenderer {
 
 		}
 
-		function projectObject( object, camera, groupOrder, sortObjects ) {
+		function projectObject( object, camera, groupOrder, sortObjects, exactTargetDrawables ) {
 
 			if ( object.visible === false ) return;
+			// An excluded drawable previously had visible=false for the touch, hiding its
+			// entire branch. Keep the ordinary light census and group/LOD traversal intact.
+			if ( exactTargetDrawables !== null && ( object.isMesh || object.isLine || object.isPoints || object.isSprite )
+				&& ! exactTargetDrawables.has( object ) ) return;
 
 			const visible = object.layers.test( camera.layers );
 
@@ -18475,7 +18516,7 @@ class WebGLRenderer {
 
 			for ( let i = 0, l = children.length; i < l; i ++ ) {
 
-				projectObject( children[ i ], camera, groupOrder, sortObjects );
+				projectObject( children[ i ], camera, groupOrder, sortObjects, exactTargetDrawables );
 
 			}
 

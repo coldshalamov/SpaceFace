@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
-import { WebGLRenderer as RetailWebGLRenderer } from '../vendor/three.module.js';
+import * as RetailTHREE from '../vendor/three.module.js';
 
 import {
   derivePilotSemanticManifest,
@@ -35,6 +35,7 @@ import {
 } from '../src/render/partsLibrary.js';
 import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 import { detachStaleWebGlDisposeListeners } from '../src/render/contextResourceLifecycle.js';
+import { drawableHideSession, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import {
   RENDER_PACKAGE_PILOTS,
   renderPackagePilotForAssetId,
@@ -256,7 +257,7 @@ test('retail Three keeps warm vertex bindings and rebinds changed buffers', () =
     if (target === context.ELEMENT_ARRAY_BUFFER) indexBinds++;
   };
   context.bufferSubData = () => uploads++;
-  const renderer = new RetailWebGLRenderer({ canvas, context });
+  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context });
   const geometry = new THREE.BufferGeometry();
   const makePosition = () => new THREE.Float32BufferAttribute([
     -0.5, -0.5, 0, 0.5, -0.5, 0, 0, 0.5, 0,
@@ -316,7 +317,7 @@ test('retail Three keeps warm vertex bindings and rebinds changed buffers', () =
 
 test('retail Three keeps clip-depth ordering for meshes, instance bounds and sprites', () => {
   const canvas = createEventCanvas();
-  const renderer = new RetailWebGLRenderer({ canvas, context: createDeterministicWebGl2Context(canvas) });
+  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context: createDeterministicWebGl2Context(canvas) });
   renderer.setOpaqueSort((a, b) => a.z - b.z);
   renderer.setTransparentSort((a, b) => b.z - a.z);
   const scene = new THREE.Scene();
@@ -368,6 +369,93 @@ test('retail Three keeps clip-depth ordering for meshes, instance bounds and spr
   geometry.dispose();
   material.dispose();
   spriteMaterial.dispose();
+  renderer.dispose();
+});
+
+test('retail exact-target admission filters color and shadow draws for a single render', () => {
+  const canvas = createEventCanvas();
+  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context: createDeterministicWebGl2Context(canvas) });
+  const scene = new RetailTHREE.Scene();
+  scene.matrixWorldAutoUpdate = false;
+  const camera = new RetailTHREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.z = 5;
+  const light = new RetailTHREE.DirectionalLight(0xffffff, 1);
+  light.position.z = 4;
+  light.castShadow = true;
+  light.shadow.mapSize.set(4, 4);
+  const lightHolder = new RetailTHREE.Group();
+  lightHolder.add(light, light.target);
+  const geometry = new RetailTHREE.BoxGeometry();
+  const excludedGeometry = new RetailTHREE.BoxGeometry();
+  const material = new RetailTHREE.MeshStandardMaterial();
+  const selected = new RetailTHREE.Mesh(geometry, material);
+  const parent = new RetailTHREE.Mesh(geometry, material);
+  const excluded = new RetailTHREE.Mesh(excludedGeometry, material);
+  const excludedChild = new RetailTHREE.Mesh(excludedGeometry, material);
+  excluded.add(excludedChild);
+  parent.add(selected);
+  scene.add(parent, excluded, lightHolder);
+  scene.updateMatrixWorld(true);
+  renderer.shadowMap.enabled = true;
+  const color = [];
+  const depth = [];
+  let excludedUploads = 0;
+  excludedGeometry.attributes.position.onUpload(() => excludedUploads++);
+  for (const [name, object] of Object.entries({ parent, selected, excluded, excludedChild })) {
+    object.castShadow = true;
+    object.frustumCulled = false;
+    object.onBeforeShadow = () => depth.push(name);
+    object.onBeforeRender = () => color.push(name);
+  }
+  selected.onBeforeRender = () => {
+    color.push('selected');
+    // The subset belongs to the exact touch. No visibility change on unrelated objects.
+    if (renderer.__sfExactTargetTouch === true) assert.equal(excluded.visible, true);
+  };
+  let calls = 0;
+  const render = renderer.render.bind(renderer);
+  renderer.render = (activeScene, activeCamera) => {
+    calls++;
+    return render(activeScene, activeCamera);
+  };
+  assert.equal(renderer.canFilterExactTargetDrawables(scene, camera), true);
+  assert.equal(touchSubjectOnExactTarget(renderer, null, selected, camera, scene).skipped, false);
+  assert.equal(calls, 1, 'the ordinary renderer wrapper handles the exact touch');
+  assert.deepEqual([...color].sort(), ['parent', 'selected']);
+  assert.deepEqual([...depth].sort(), ['parent', 'selected'], 'visible lights outside the selected root still light the touch');
+  assert.equal(excludedUploads, 0);
+  assert.equal(excluded.visible, true);
+
+  color.length = 0;
+  depth.length = 0;
+  renderer.render(scene, camera);
+  assert.deepEqual([...color].sort(), ['excluded', 'excludedChild', 'parent', 'selected']);
+  assert.deepEqual([...depth].sort(), ['excluded', 'excludedChild', 'parent', 'selected']);
+  assert.equal(excludedUploads, 1);
+
+  const session = drawableHideSession(scene);
+  const laterPeer = new RetailTHREE.Mesh(geometry, material);
+  laterPeer.frustumCulled = false;
+  let laterPeerDraws = 0;
+  laterPeer.onBeforeRender = () => laterPeerDraws++;
+  scene.add(laterPeer);
+  selected.onBeforeRender = () => assert.equal(excluded.visible, false);
+  touchSubjectOnExactTarget(renderer, null, selected, camera, scene, { drawableSession: session });
+  assert.equal(laterPeerDraws, 1, 'a reusable hide session keeps its existing behavior for new members');
+
+  // An independent scene hook sees the compatibility path's physically hidden objects.
+  let visibilityInHook;
+  scene.onBeforeRender = () => { visibilityInHook = excluded.visible; };
+  selected.onBeforeRender = () => {};
+  assert.equal(renderer.canFilterExactTargetDrawables(scene, camera), false);
+  touchSubjectOnExactTarget(renderer, null, selected, camera, scene);
+  assert.equal(visibilityInHook, false);
+  assert.equal(excluded.visible, true);
+
+  light.shadow.dispose();
+  geometry.dispose();
+  excludedGeometry.dispose();
+  material.dispose();
   renderer.dispose();
 });
 
