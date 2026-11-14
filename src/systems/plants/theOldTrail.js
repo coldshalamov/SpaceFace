@@ -78,7 +78,11 @@ export const theOldTrailPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('massline:throw', (p) => this._onThrow(p));
-    on('sector:exit', () => { this._progress = 0; this._throughDone = false; this._bothDone = false; this._revealed = false; this._ploughPoses = []; this._despawnOwned(); });
+    on('sector:exit', () => this._resetVisit());
+    // game:newGame: no sector:exit fires at the boot boundary, so the trail's markers,
+    // rest lamp and progress flags would survive into the new game — the trail and lamp
+    // never respawn and _followedThrough stamps lamps on a live reused id-holder.
+    on('game:newGame', () => this._resetVisit());
   },
 
   update(dt) {
@@ -287,6 +291,15 @@ export const theOldTrailPlant = {
         kind: 'bothTrails', ownMarkers: this._ownLineIds.length, t: Number.isFinite(s.simTime) ? s.simTime : 0,
       });
     }
+  },
+
+  _resetVisit() {
+    this._progress = 0;
+    this._throughDone = false;
+    this._bothDone = false;
+    this._revealed = false;
+    this._ploughPoses = [];
+    this._despawnOwned();
   },
 
   _spawn(spec) {

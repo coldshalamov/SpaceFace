@@ -84,6 +84,7 @@ export const ratRunPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('sector:exit', () => this._cleanup());
+    on('game:newGame', () => this._resetForNewGame());
   },
 
   update(dt) {
@@ -326,5 +327,24 @@ export const ratRunPlant = {
     this._running = false;
     this._route = [];
     this._cornersHit = new Set();
+  },
+
+  // game:newGame: the previous run's entities are already gone. Drop the ids, the day
+  // stamp and the day receipts WITHOUT removing — the run's ids are reused by the new
+  // game's own spawns, and a stale `_despawnRunProps` at the first Drift visit would
+  // delete live new-game entities.
+  _resetForNewGame() {
+    this._skiffId = null;
+    this._plateIds = [];
+    this._chalkId = null;
+    this._ownedIds = new Set();
+    this._lastDay = -1;
+    this._dayReceipts = new Map();
+    this._running = false;
+    this._route = [];
+    this._cornerIdx = 0;
+    this._cornersHit = new Set();
+    this._cutDone = false;
+    this._runT = 0;
   },
 };

@@ -97,6 +97,7 @@ import {
 } from '../src/systems/plants/pl362NameOnPlate.js';
 import {
   FAMILY_TUNING, PLANTS_FAMILY_EVENT, PLANTS_FARMED_EVENT,
+  FAMILY_GIFT_LINE, FAMILY_GIFT_SENDER,
   PL_363_FAMILY_STAMP, PL_363_FARMED_STAMP, pl363FamilyRate,
 } from '../src/systems/plants/pl363FamilyRate.js';
 
@@ -344,8 +345,15 @@ test('PL-258 tow-along: an unmarked hauler falls in, peels off at the berth ligh
   state.simTime += TOW_ALONG_TUNING.peelDelayS + 0.1;
   pl258TowAlong.update(1 / 60);
   assert.ok(hauler.data.lampsFlashing === true, 'farewell lamps');
-  assert.ok(rec.removes.includes(hauler.id), 'peels off and is gone');
   assert.ok(eventsOf(rec, PLANTS_TOW_ALONG_EVENT, 'peeled_off').length === 1);
+  // The lamps are SEEABLE: the hauler holds in the lane while they flash (~0.9 s), then goes.
+  assert.equal(rec.removes.includes(hauler.id), false, 'not yanked while the lamps play');
+  assert.ok(state.entities.get(hauler.id), 'still on screen under the farewell lamps');
+  assert.ok(hauler.data.lampFlashUntil <= state.simTime + TOW_ALONG_TUNING.lampFlashS + 1e-9);
+  state.simTime += TOW_ALONG_TUNING.lampFlashS + 0.1;
+  pl258TowAlong.update(1 / 60);
+  assert.ok(rec.removes.includes(hauler.id), 'peels off and is gone once the lamps have played');
+  assert.equal(state.entities.get(hauler.id), undefined);
 });
 
 test('PL-258 wrong choice: try to latch them — gone between one ping and the next', () => {
@@ -366,6 +374,26 @@ test('PL-258 wrong choice: try to latch them — gone between one ping and the n
   sweep(pl258TowAlong, state, 3, 1);
   assert.equal(lastSpawn(rec, (e) => e.data && e.data.plantsPl258Hauler === true), hauler,
     'no second helper while the grudge rides');
+});
+
+test('PL-258 a new game wipes the grudge: the tow-along can fall in again', () => {
+  const { state, rec, bus } = boot(pl258TowAlong, {
+    state: { simTime: 10 }, player: { hull: 30, hullMax: 100 }, playerVel: { x: 10, z: 0 },
+  });
+  fixtureStation(state, 'st1', { x: 500, z: 0 });
+  sweep(pl258TowAlong, state, 2, 1);
+  const hauler = lastSpawn(rec, (e) => e.data && e.data.plantsPl258Hauler === true);
+  assert.ok(hauler);
+  bus.emit('tether:snapCatch', { targetId: hauler.id });
+  pl258TowAlong.update(1 / 60);
+  assert.ok(eventsOf(rec, PLANTS_TOW_ALONG_GONE_EVENT).length === 1, 'the grudge rides');
+  // A new game: simTime restarts near 0, entity ids restart at 1 — and the grudge row
+  // (until ~now + 1800 s) must NOT cover the whole fresh early game.
+  bus.emit('game:newGame', {});
+  state.simTime = 5;
+  sweep(pl258TowAlong, state, 3, 1);
+  const again = lastSpawn(rec, (e) => e.data && e.data.plantsPl258Hauler === true);
+  assert.ok(again && again !== hauler, 'a fresh unmarked hauler falls in after the new game');
 });
 
 // ---------------------------------------------------------------- PL-259
@@ -1436,6 +1464,61 @@ test('PL-363 wrong choice: change hulls to farm it — the name only rides one h
   assert.equal(st1.data[PL_363_FAMILY_STAMP], -Infinity, 'the lane\u2019s rate is voided');
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.equal(st1.data[PL_363_FAMILY_STAMP], -Infinity, 'no family rate while farmed');
+});
+
+test('PL-363 the rate is delivered in kind: a berth-attendant gift pod on the first dock of a visit', () => {
+  const { state, rec, bus } = boot(pl363FamilyRate);
+  const st1 = fixtureStation(state, 'st1', { x: 0, z: 0 });
+  fixtureStation(state, 'st2', { x: 400, z: 0 });
+  fixtureStation(state, 'st3', { x: 800, z: 0 });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  bus.emit('dock:range', { stationId: 'st2', shipId: state.playerId, inRange: true });
+  bus.emit('dock:range', { stationId: 'st3', shipId: state.playerId, inRange: true });
+  assert.equal(rec.spawns.some((e) => e.data && e.data.plantsPl363Gift), false, 'no gift before the rate');
+  sweep(pl363FamilyRate, state, FAMILY_TUNING.laneTenureS + 1, 1);
+  assert.ok(eventsOf(rec, PLANTS_FAMILY_EVENT, 'earned').length === 1);
+  // First dock:range arrival at the station while the rate rides: the attendant hands the
+  // discount over IN KIND — goods plus words.
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  const gift = rec.spawns.find((e) => e.data && e.data.plantsPl363Gift);
+  assert.ok(gift, 'the gift pod is physical');
+  assert.equal(gift.data.commodityId, FAMILY_TUNING.giftCommodityId, 'berth goods');
+  assert.equal(gift.data.amount, FAMILY_TUNING.giftUnits, 'a modest amount');
+  assert.equal(gift.data.plantsPl363Gift.stationId, 'st1');
+  const lines = commsOf(rec, FAMILY_GIFT_LINE);
+  assert.equal(lines.length, 1, 'the berth-office words, exactly once');
+  assert.equal(lines[0].payload.sender, FAMILY_GIFT_SENDER, 'from the berth office');
+  assert.ok(eventsOf(rec, PLANTS_FAMILY_EVENT, 'gift_pod').length === 1);
+  assert.ok(st1.data[PL_363_FAMILY_STAMP] > state.simTime, 'the stamp stays for the economy handoff');
+  // Second dock, same visit: no second gift.
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  assert.equal(rec.spawns.filter((e) => e.data && e.data.plantsPl363Gift).length, 1, 'once per station-visit');
+  assert.equal(commsOf(rec, FAMILY_GIFT_LINE).length, 1);
+  // Leave and come back while the rate still rides: a fresh visit gifts again.
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: false });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  assert.equal(rec.spawns.filter((e) => e.data && e.data.plantsPl363Gift).length, 2, 'a fresh visit is a fresh gift');
+});
+
+test('PL-363 farm bite: the berth office gives nothing while the name is farmed', () => {
+  const { state, rec, bus, player } = boot(pl363FamilyRate);
+  fixtureStation(state, 'st1', { x: 0, z: 0 });
+  fixtureStation(state, 'st2', { x: 400, z: 0 });
+  fixtureStation(state, 'st3', { x: 800, z: 0 });
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  bus.emit('dock:range', { stationId: 'st2', shipId: state.playerId, inRange: true });
+  bus.emit('dock:range', { stationId: 'st3', shipId: state.playerId, inRange: true });
+  sweep(pl363FamilyRate, state, FAMILY_TUNING.laneTenureS + 1, 1);
+  // Farm it FIRST: the hull changes while the rate rides, so the rate is voided before
+  // any post-tenure dock — the attendant never shows up.
+  const newHull = { ...player, hullMax: 400, hull: 400 };
+  state.entities.set(state.playerId, newHull);
+  sweep(pl363FamilyRate, state, 1, 1);
+  assert.ok(eventsOf(rec, PLANTS_FARMED_EVENT).length === 1, 'farmed');
+  bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  assert.equal(rec.spawns.some((e) => e.data && e.data.plantsPl363Gift), false, 'no gift while farmed');
+  assert.equal(commsOf(rec, FAMILY_GIFT_LINE).length, 0, 'no berth-office words either');
+  assert.ok(commsOf(rec, 'Family means the name, and the name only rides one hull.').length === 1);
 });
 
 // ---------------------------------------------------------------- cooldown / cap / cleanup

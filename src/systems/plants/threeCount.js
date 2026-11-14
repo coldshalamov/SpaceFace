@@ -83,6 +83,10 @@ export const threeCountPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('sector:exit', () => this._cleanup());
+    // game:newGame: _cleanup drops the stale _sabineId/_markId (its removals no-op — the
+    // old entities are already gone), and the absolute stamps _crossCooldown/_counterUntil
+    // reset, or crossings stay unjudged for ~33 min and one safe-cross comes unearned.
+    on('game:newGame', () => { this._cleanup(); this._crossCooldown = 0; this._counterUntil = 0; });
   },
 
   update(dt) {

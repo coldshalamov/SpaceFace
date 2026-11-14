@@ -67,6 +67,9 @@ export const glassPaysPlant = {
     };
     on('pickup:collected', (p) => this._onCollected(p));
     on('physics:impact', (p) => this._onImpact(p));
+    // game:newGame: the cooldown ledger holds absolute simTimes — with simTime back near
+    // zero, `now - last` goes negative and collect/ring keys stay blocked early in the run.
+    on('game:newGame', () => this._cooldowns.clear());
   },
 
   update() { /* event-driven; the Pulse is read at judgment time */ },

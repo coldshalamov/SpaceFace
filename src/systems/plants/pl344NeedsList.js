@@ -17,7 +17,9 @@
 // - Deterministic: state.simTime / state.tick only. No Math.random(), no Date.now().
 // - No Three.js, no DOM imports.
 // - Session state on `this`; destroy()/sector:exit despawn the owned post (RESET not
-//   unsubscribe). Bounded per-hull ledgers (tuning.memoryCap); one fill per pod.
+//   unsubscribe). Bounded per-hull ledgers (tuning.memoryCap); one fill per pod. The
+//   filled-pod set resets with the session (game:new / game:newGame): nextEntityId restarts
+//   at 1, so a stale-game pod id must never silently kill a new game's fill.
 // - spawnJettisonedCargoPod is the only spawn seam for tips (the ordinary pickup route).
 
 import { hash32 } from '../../core/rng.js';
@@ -128,6 +130,7 @@ export const pl344NeedsList = {
   _resetSession() {
     this._lowballedUntil.clear();
     this._toldLowballAt.clear();
+    if (this._filledPods) this._filledPods.clear();   // entity ids are reused across games
     this._drop();
   },
 
@@ -250,6 +253,9 @@ export const pl344NeedsList = {
         const commodityId = typeof e.data?.commodityId === 'string' ? e.data.commodityId : null;
         if (!commodityId) continue;
         this._filledPods.add(e.id);
+        while (this._filledPods.size > NEEDS_LIST_TUNING.memoryCap) {
+          this._filledPods.delete(this._filledPods.keys().next().value);   // FIFO bound
+        }
         if (needs.includes(commodityId)) {
           // Fill a need: the tip above market rate, paid in goods by the post.
           if (typeof this.helpers?.removeEntity === 'function') this.helpers.removeEntity(e.id);

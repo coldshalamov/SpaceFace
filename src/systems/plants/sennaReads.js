@@ -69,6 +69,16 @@ export const sennaReadsPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('sector:exit', () => this._onSectorExit());
+    // game:newGame: the lamp ledger is only ever cleared in destroy, so `have = size`
+    // would count wiped lamps and _hangLamps would spawn none or fewer forever; the arc
+    // fields carry the prior run's session. Removals no-op — entities are already gone.
+    on('game:newGame', () => {
+      this._despawnOwned();
+      this._completedSittings = 0;
+      this._readYours = false;
+      this._pastIt = false;
+      this._reading = null;
+    });
   },
 
   update(dt) {

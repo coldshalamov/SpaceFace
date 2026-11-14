@@ -81,6 +81,12 @@ export const twicePlant = {
     };
     on('combat:fire', (p) => this._onShot(p));
     on('sector:exit', () => this._cleanup());
+    // game:newGame: the old session's entities are already gone, so _cleanup's removals
+    // no-op and only the stale ids/ledgers drop — a stale _larkId must not survive into
+    // the new run or _paceLark drags a reused live id-holder down her lane. _lastAttempt
+    // is an absolute stamp the cooldown gate reads; rewound clocks would block attempts
+    // until it caught up.
+    on('game:newGame', () => { this._cleanup(); this._lastAttempt = 0; });
   },
 
   update(dt) {
@@ -220,6 +226,11 @@ export const twicePlant = {
     if (dist > TWICE_TUNING.shotRangeWu) return;
     const now = Number.isFinite(s.simTime) ? s.simTime : 0;
     if (!larkLightsOff(now)) return;        // flash at her as she passes lights-off
+    // One attempt per cooldown — delivered here so rapid-fire spam cannot re-trigger the
+    // far answerer. A shot that completes the double window is the twice itself, not
+    // spam: it goes through, and everything after it waits out the cooldown.
+    if (now - this._lastAttempt < TWICE_TUNING.attemptCooldownS
+      && !isDoubleFlash([...this._shotTimes, now], now)) return;
 
     this._shotTimes.push(now);
     this._shotTimes = this._shotTimes.filter((t) => now - t <= TWICE_TUNING.doubleWindowS);

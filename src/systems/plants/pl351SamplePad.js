@@ -265,6 +265,15 @@ export const pl351SamplePad = {
     const hullKey = this._hullKey(s, player);
     const day = Math.floor(now / t.MERCY_DAY_S);
 
+    // Prune destroyed crates out of the ledger each pass — a dead id must never hold the
+    // restock check hostage (combat debris dies where it sits; the id would linger forever).
+    if (this._crateIds.length > 0 && typeof s.entities?.get === 'function') {
+      this._crateIds = this._crateIds.filter((id) => {
+        const e = s.entities.get(id);
+        return e != null && e.alive !== false;
+      });
+    }
+
     // Restock per dawn: the pad's day stock (bare for a sweeper until the flag expires).
     if (this._stockDay !== day && this._crateIds.length === 0) {
       this._stockDayCrates(s, now, day, pos, hullKey);

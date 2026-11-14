@@ -73,6 +73,10 @@ export const theWindowThatDoesntPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('sector:exit', () => { this._lookDone = false; this._lookLitUntil = 0; });
+    // game:newGame: the window row's ids survive every sector:exit by design, so without
+    // this drop the row never respawns in the new game and _lightNext stamps lamps/pads
+    // on live entities holding reused ids. The removals no-op — entities are already gone.
+    on('game:newGame', () => this._despawnOwned());
   },
 
   update(dt) {

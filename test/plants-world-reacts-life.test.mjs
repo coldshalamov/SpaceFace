@@ -142,6 +142,69 @@ import {
   otherSidePlant,
 } from '../src/systems/plants/otherSide.js';
 
+import {
+  RAT_RUN_TUNING,
+  ratRunPlant,
+} from '../src/systems/plants/ratRun.js';
+
+import {
+  BRIGHT_ONE_TUNING,
+  theBrightOnePlant,
+} from '../src/systems/plants/theBrightOne.js';
+
+import {
+  PLANTS_TWICE_EVENT,
+  TWICE_TUNING,
+  twicePlant,
+} from '../src/systems/plants/twice.js';
+
+import {
+  PLANTS_PIPS_EVENT,
+  PIPS_TUNING,
+  buoyLineEndpoints,
+  nearestOnSegment,
+  pipsCountsPlant,
+} from '../src/systems/plants/pipsCounts.js';
+
+import {
+  PLANTS_ARCH_EVENT,
+  ARCH_TUNING,
+  theArchPlant,
+} from '../src/systems/plants/theArch.js';
+
+import {
+  DARK_WINDOW_TUNING,
+  theWindowThatDoesntPlant,
+} from '../src/systems/plants/theWindowThatDoesnt.js';
+
+import {
+  PLANTS_SENNA_EVENT,
+  SENNA_TUNING,
+  sennaReadsPlant,
+} from '../src/systems/plants/sennaReads.js';
+
+import {
+  PLANTS_THREE_COUNT_EVENT,
+  THREE_COUNT_TUNING,
+  threeCountPlant,
+} from '../src/systems/plants/threeCount.js';
+
+import {
+  TWO_ROPES_TUNING,
+  twoRopesPlant,
+} from '../src/systems/plants/twoRopes.js';
+
+import {
+  OLD_TRAIL_TUNING,
+  trailLine,
+  theOldTrailPlant,
+} from '../src/systems/plants/theOldTrail.js';
+
+import {
+  GLASS_TUNING,
+  glassPaysPlant,
+} from '../src/systems/plants/glassPays.js';
+
 // ---------------------------------------------------------------------------
 // PL-121 Your berth
 // ---------------------------------------------------------------------------
@@ -1095,4 +1158,588 @@ test('PL-198 a new game clears the stale session row and sector stamp; the wreck
   host._reactOrphanWreck(filer, { role: 'courier' }, [], state, player);
   assert.equal(spawnEvents.length, 2, 'the fresh session spawns its own wreck on schedule');
   assert.notEqual(spawnEvents[1].wreckId, oldWreckId);
+});
+
+// ---------------------------------------------------------------------------
+// New-game boundary (round-10 stale-session sweep): a new game clears the entities,
+// resets nextEntityId (ids are REUSED), rewinds simTime to 0 and never fires
+// sector:exit — any plant holding spawned-entity ids or absolute-simTime stamps from
+// the old session misbehaves at the new game's first visit to its sector: stale
+// removeEntity calls delete LIVE new-game entities, and stale `now - stamp` gates
+// stay blocked for most of a run. Each test here establishes the old session's stale
+// state, emits the game:newGame boundary, then triggers the module's beat with the
+// stale ids reused by live entities and asserts nothing stale lands on them.
+// ---------------------------------------------------------------------------
+
+// Puts live entities holding the stale ids back into the cleared entities map (the boot
+// resets nextEntityId, so the new game reuses those ids for its own early spawns).
+function reuseAsLive(state, staleIds) {
+  const reused = new Map(staleIds.filter((id) => id != null).map((id) => [id, makeBeacon(id, {})]));
+  for (const [id, ent] of reused) {
+    ent.pos = { x: 999, z: 999 };
+    state.entities.set(id, ent);
+  }
+  return reused;
+}
+
+function noStaleRemovals(removed, atBoundary, reused, label) {
+  const after = removed.slice(atBoundary).filter((id) => reused.has(id));
+  assert.deepEqual(after, [], label);
+}
+
+test('PL-165 a new game drops the run\u2019s stale ids and day receipts; the first Drift visit spawns fresh, removing nothing live', () => {
+  const bus = createBus();
+  const player = makePlayer({});
+  const station = makeStation('station_drift', { x: 0, z: 0 });
+  const state = makeState({ simTime: 600, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.world.currentSectorId = RAT_RUN_TUNING.sectorId;
+  const { host, removed, helpers } = makeHost(bus, state, ratRunPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: a run started on the sector-day clock — skiff and plates are live.
+  host.update(0.5);
+  assert.ok(host._skiffId != null && host._plateIds.length > 0, 'the old session spawned the run');
+  const staleIds = [host._skiffId, ...host._plateIds];
+  assert.ok(staleIds.every((id) => state.entities.has(id)), 'the stale props are live');
+
+  // New game: the boot clears entities and rewinds the clock, then emits the boundary.
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  assert.equal(host._skiffId, null, 'the stale skiff id dropped');
+  assert.deepEqual(host._plateIds, [], 'the stale plate ids dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._lastDay, -1, 'the stale day stamp dropped');
+  assert.equal(host._dayReceipts.size, 0, 'the stale day receipts dropped');
+
+  // The new game's first Drift visit: the run respawns on its own schedule and no stale
+  // id is removed into a live entity by the fresh _startRun's despawn sweep.
+  state.world.currentSectorId = RAT_RUN_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  host.update(0.5);
+  assert.ok(host._skiffId != null && !reused.has(host._skiffId), 'the fresh visit spawned its own skiff');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  for (const id of reused.keys()) assert.ok(state.entities.has(id), 'the reused live entity survived');
+  host.destroy();
+});
+
+test('PL-166 a new game drops the tow\u2019s stale ids, nod stamp and receipts; the fresh passing spawns clean and the nod is not free', () => {
+  const bus = createBus();
+  const player = makePlayer({});
+  const station = makeStation('station_drift', { x: 0, z: 0 });
+  const state = makeState({ simTime: 601, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.world.currentSectorId = BRIGHT_ONE_TUNING.sectorId;
+  const { host, removed, popups, helpers } = makeHost(bus, state, theBrightOnePlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: day 1's tow passes, one flash — the nod banks at the passing's end.
+  host.update(0.5);
+  const tow = state.entities.get(host._towId);
+  assert.ok(tow, 'the tow is mid-pass');
+  bus.emit('combat:fire', { ownerId: 'p1', origin: { x: tow.pos.x, z: tow.pos.z } });
+  state.simTime = 631;
+  host.update(0.5);
+  assert.ok(host._nodUntil > 0, 'the nod was earned this session');
+  assert.equal(host._receipts.get(1), 'flashed');
+  // Day 2's tow passes: live props carrying the stale stamps alongside.
+  state.simTime = 1201;
+  host.update(0.5);
+  const staleIds = [...host._ownedIds];
+  assert.ok(host._towId != null && state.entities.has(host._towId), 'day two\u2019s tow is live');
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._towId, null, 'the stale tow id dropped');
+  assert.equal(host._strangerId, null, 'the stale stranger id dropped');
+  assert.equal(host._plateId, null, 'the stale plate id dropped');
+  assert.equal(host._rememberId, null, 'the stale remembered plate id dropped');
+  assert.equal(host._nodUntil, 0, 'the stale nod stamp dropped');
+  assert.equal(host._receipts.size, 0, 'the stale tow receipts dropped');
+  assert.equal(host._lastTowDay, -1, 'the stale tow-day stamp dropped');
+
+  // The new run: no free nod from the old stamp, and the first passing spawns fresh.
+  state.world.currentSectorId = BRIGHT_ONE_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  const popupsAtBoundary = popups.length;
+  bus.emit('dock:range', { stationId: 'station_drift', inRange: true });
+  assert.equal(popups.length, popupsAtBoundary, 'no free nod off the old session\u2019s stamp');
+  state.simTime = 2;
+  host.update(0.5);
+  assert.ok(host._towId != null && !reused.has(host._towId), 'the fresh passing spawned its own tow');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-142 a new game drops Lark\u2019s stale ids and attempt stamp; rapid shots meet the delivered attempt cooldown', () => {
+  const bus = createBus();
+  const flashEvents = [];
+  bus.on(PLANTS_TWICE_EVENT, (p) => flashEvents.push(p));
+  const player = makePlayer({});
+  const station = makeStation('station_nyx_march', { x: 0, z: 0 });
+  const state = makeState({ simTime: 125, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the station seam reads the entity list
+  state.world.currentSectorId = TWICE_TUNING.sectorId;
+  const { host, removed, helpers } = makeHost(bus, state, twicePlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: Lark mid-pass lights-off; a double flash summoned the far answerer.
+  host.update(0.5);
+  const lark = state.entities.get(host._larkId);
+  assert.ok(lark, 'the old session spawned Lark');
+  const shot = { ownerId: 'p1', origin: { x: lark.pos.x, z: lark.pos.z } };
+  bus.emit('combat:fire', shot);
+  state.simTime = 126;
+  bus.emit('combat:fire', shot);
+  assert.ok(host._answererId != null, 'the double flash summoned the far answerer');
+  const staleIds = [...host._ownedIds];
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  assert.equal(host._larkId, null, 'the stale Lark id dropped');
+  assert.equal(host._answererId, null, 'the stale answerer id dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._answers.size, 0, 'the stale answer ledger dropped');
+  assert.equal(host._lastAttempt, 0, 'the stale attempt stamp dropped with the clock');
+
+  // The new run: Lark respawns fresh and the cooldown gate works on the fresh clock —
+  // one flash-back per attemptCooldownS, not rapid-fire.
+  state.world.currentSectorId = TWICE_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  state.simTime = 5;
+  host.update(0.5);
+  const freshLark = state.entities.get(host._larkId);
+  assert.ok(freshLark && !reused.has(host._larkId), 'the fresh pass spawned its own Lark');
+  const flashBacksBefore = flashEvents.filter((p) => p.kind === 'flashBack').length;
+  const answeredBefore = flashEvents.filter((p) => p.kind === 'farAnsweredTwice').length;
+  const shotAt = (t) => {
+    state.simTime = t;
+    bus.emit('combat:fire', { ownerId: 'p1', origin: { x: freshLark.pos.x, z: freshLark.pos.z } });
+  };
+  shotAt(6);   // flashBack, and the attempt stamp arms
+  shotAt(7);   // completes the double window: the twice itself answers, once
+  shotAt(8);   // inside attemptCooldownS: ignored — spam does not re-trigger
+  shotAt(10);  // cooldown elapsed since the answer: flashBack again
+  assert.equal(flashEvents.filter((p) => p.kind === 'flashBack').length, flashBacksBefore + 2,
+    'one flash-back per cooldown window');
+  assert.equal(flashEvents.filter((p) => p.kind === 'farAnsweredTwice').length, answeredBefore + 1,
+    'the cooldown did not invite a second answer');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-118 a new game drops the built line and the pass ledger; the buoy line respawns and the fresh crossing counts', () => {
+  const bus = createBus();
+  const pipsEvents = [];
+  bus.on(PLANTS_PIPS_EVENT, (p) => pipsEvents.push(p));
+  const player = makePlayer({ x: 0, z: 30 });
+  const station = makeStation('station_veil', { x: 0, z: 0 });
+  const state = makeState({ simTime: 1000, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.world.currentSectorId = PIPS_TUNING.sectorId;
+  const { host, spawns, removed, helpers } = makeHost(bus, state, pipsCountsPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: the buoy line is built and a crossing counted.
+  host.update(1);
+  player.pos = { x: 0, z: -30 };
+  host.update(1);
+  assert.equal(pipsEvents.length, 1, 'the old session counted its pass');
+  assert.equal(host._propsBuilt, true);
+  const stalePipsId = host._pipsId;
+  const staleIds = [...host._ownedIds];
+  assert.ok(staleIds.length > 0, 'the old line holds ids');
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  const atSpawns = spawns.length;
+  assert.equal(host._propsBuilt, false, 'the built flag dropped — the line respawns');
+  assert.equal(host._pipsId, null, 'the stale pips id dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._passTimes.size, 0, 'the stale pass ledger dropped');
+
+  // The fresh visit: the line rebuilds, the fresh crossing counts, and the reused live
+  // id-holder is neither removed nor dragged down the line.
+  state.world.currentSectorId = PIPS_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  player.pos = { x: 0, z: 30 };
+  host.update(1);
+  player.pos = { x: 0, z: -30 };
+  host.update(1);
+  assert.ok(host._propsBuilt && !reused.has(host._pipsId), 'the fresh visit rebuilt the buoy line');
+  assert.equal(spawns.length - atSpawns, PIPS_TUNING.buoyCount + 1, 'the line respawned in full');
+  assert.equal(pipsEvents.length, 2, 'the fresh crossing counted on the new clock');
+  const line = buoyLineEndpoints(station.pos, 7, PIPS_TUNING.sectorId);
+  assert.notDeepEqual(reused.get(stalePipsId).pos,
+    (({ x, z }) => ({ x, z }))(nearestOnSegment({ x: 0, z: 30 }, line.a, line.b)),
+    'the reused live id-holder was not dragged down the line');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-167 a new game drops the mouths and the cross stamp; threading is available early in the fresh run', () => {
+  const bus = createBus();
+  const archEvents = [];
+  bus.on(PLANTS_ARCH_EVENT, (p) => archEvents.push(p));
+  const player = makePlayer({ x: 30, z: 60 });
+  const station = makeStation('station_expanse', { x: 0, z: 0 });
+  const state = makeState({ simTime: 900, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the station seam reads the entity list
+  state.world.currentSectorId = ARCH_TUNING.sectorId;
+  const { host, removed, helpers } = makeHost(bus, state, theArchPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: the mouths are live and a threading spent the cross stamp.
+  host.update(0.5);
+  const staleIds = [...host._ownedIds];
+  assert.ok(host._portId != null && host._starId != null, 'the old session grew the arch');
+  player.pos = { x: 30, z: -60 };
+  state.simTime = 901;
+  host.update(0.5);
+  assert.equal(archEvents.length, 1, 'the old session threaded once');
+  assert.equal(host._lastCross, 901, 'the cross stamp is an absolute simTime');
+  assert.equal(host._armed, false);
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  assert.equal(host._portId, null, 'the stale port mouth id dropped');
+  assert.equal(host._starId, null, 'the stale starboard mouth id dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._lastCross, 0, 'the stale cross stamp dropped — _cleanup never touched it');
+  assert.equal(host._armed, true, 'the thread re-armed with the session');
+
+  // The fresh visit: the mouths regrow, the reused id-holders are not dragged to the
+  // mouth coordinates, and a crossing after crossCooldownS threads on the fresh clock.
+  state.world.currentSectorId = ARCH_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  state.simTime = 3;
+  host.update(0.5);
+  assert.ok(host._portId != null && !reused.has(host._portId), 'the fresh visit regrew the arch');
+  player.pos = { x: 30, z: 60 };
+  state.simTime = 11;
+  host.update(0.5);
+  player.pos = { x: 30, z: -60 };
+  state.simTime = 12;
+  host.update(0.5);
+  assert.equal(archEvents.length, 2, 'the fresh crossing threaded — the stale stamp no longer blocks it');
+  for (const ent of reused.values()) {
+    assert.deepEqual(ent.pos, { x: 999, z: 999 }, 'the reused live id-holder was not pos-set to the mouth');
+  }
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-170 a new game drops the window row; the row respawns and Wick\u2019s lamps stamp fresh windows only', () => {
+  const bus = createBus();
+  const player = makePlayer({ x: 10, z: 0 });
+  const station = makeStation('station_ashcache', { x: 0, z: 0 });
+  const state = makeState({ simTime: 650, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the station seam reads the entity list
+  state.world.currentSectorId = DARK_WINDOW_TUNING.sectorId;
+  const { host, spawns, removed, helpers } = makeHost(bus, state, theWindowThatDoesntPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: the row is up and one relief run has lit (the ids survive sector
+  // exits by design — only a new game may drop them).
+  host.update(1);
+  state.simTime = 1205;
+  host.update(1);
+  assert.equal(host._windowIds.length, DARK_WINDOW_TUNING.windows, 'the row is up');
+  assert.equal(host._litCount, 1, 'one window lit this session');
+  assert.equal(host._lastRelief, 2);
+  const staleLitId = host._windowIds[0];
+  const staleIds = [...host._ownedIds];
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  const atSpawns = spawns.length;
+  assert.deepEqual(host._windowIds, [], 'the stale row dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._litCount, 0, 'the lit count reset');
+  assert.equal(host._lastRelief, -1, 'the relief stamp reset');
+
+  // The fresh visit: the row respawns and the first relief lights a fresh window —
+  // the reused live id-holders get no lamps stamped on them.
+  state.world.currentSectorId = DARK_WINDOW_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  host.update(1);
+  assert.equal(spawns.length - atSpawns, DARK_WINDOW_TUNING.windows, 'the row respawned');
+  state.simTime = 601;
+  host.update(1);
+  assert.equal(host._litCount, 1, 'the fresh relief lit its first window');
+  assert.equal(state.entities.get(host._windowIds[0]).data.lampsFlashing, true, 'a fresh window carries the lamp');
+  assert.notEqual(reused.get(staleLitId).data.lampsFlashing, true, 'no lamp stamped on a reused live id-holder');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-120 a new game drops the lamp ledger and the arc; Senna hangs a fresh row and can read yours again', () => {
+  const bus = createBus();
+  const sennaEvents = [];
+  bus.on(PLANTS_SENNA_EVENT, (p) => sennaEvents.push(p));
+  const player = makePlayer({ x: 40, z: 0 });
+  const station = makeStation('station_sedna', { x: 0, z: 0 });
+  const state = makeState({ simTime: 485, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.world.currentSectorId = SENNA_TUNING.sectorId;
+  const { host, spawns, removed, helpers } = makeHost(bus, state, sennaReadsPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: two sittings completed (lamps hang, she reads yours), then a
+  // third reading walked out of — she is past it.
+  host.update(1);
+  state.simTime = 515;
+  host.update(1);
+  assert.equal(host._completedSittings, 1, 'the first night sat out');
+  state.simTime = 1085;
+  host.update(1);
+  state.simTime = 1115;
+  host.update(1);
+  assert.equal(host._completedSittings, 2, 'the second night sat out');
+  assert.equal(host._readYours, true, 'she read yours');
+  state.simTime = 1685;
+  host.update(1);
+  player.pos = { x: 4000, z: 0 };
+  host.update(1);
+  assert.equal(host._pastIt, true, 'left mid-reading: past it');
+  const staleIds = [...host._ownedIds];
+  assert.ok(staleIds.length >= SENNA_TUNING.lampBase, 'the lamp row hangs');
+  const readingStartsBefore = sennaEvents.filter((p) => p.kind === 'readingStarts').length;
+  assert.equal(readingStartsBefore, 3, 'three nights opened a reading this session');
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  const atSpawns = spawns.length;
+  assert.equal(host._ownedIds.size, 0, 'the stale lamp ledger dropped');
+  assert.equal(host._completedSittings, 0, 'the stale sittings dropped');
+  assert.equal(host._readYours, false, 'the read-yours arc dropped');
+  assert.equal(host._pastIt, false, 'the past-it arc dropped');
+  assert.equal(host._reading, null, 'the stale reading dropped');
+
+  // The fresh visit: the next night hangs a fresh row — `have = size` counts anew.
+  state.world.currentSectorId = SENNA_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  player.pos = { x: 40, z: 0 };
+  state.simTime = 485;
+  host.update(1);
+  assert.equal(spawns.length - atSpawns, SENNA_TUNING.lampBase, 'a full fresh row hung — not suppressed by wiped lamps');
+  assert.equal(sennaEvents.filter((p) => p.kind === 'readingStarts').length, readingStartsBefore + 1,
+    'the fresh night opened its own reading — the prior run\u2019s arc did not carry');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-141 a new game drops the stale rock ids and beam stamps; a fresh crossing is judged at once', () => {
+  const bus = createBus();
+  const player = makePlayer({ x: 0, z: 60 });
+  const station = makeStation('station_eris_margin', { x: 0, z: 0 });
+  const state = makeState({ simTime: 1000, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the station seam reads the entity list
+  state.world.currentSectorId = THREE_COUNT_TUNING.sectorId;
+  const { host, removed, helpers } = makeHost(bus, state, threeCountPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: props live, a crossing was judged — the cooldown is armed far out.
+  host.update(0.5);
+  const staleIds = [...host._ownedIds];
+  assert.ok(host._sabineId != null && host._markId != null, 'the old session spawned Sabine and the mark');
+  host._crossCooldown = 1005;
+  host._counterUntil = 1003;
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  assert.equal(host._sabineId, null, 'the stale Sabine id dropped');
+  assert.equal(host._markId, null, 'the stale mark id dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._crossCooldown, 0, 'the stale cross cooldown dropped');
+  assert.equal(host._counterUntil, 0, 'the stale counter window dropped');
+
+  // The fresh visit: a crossing at t≈1.5 is judged immediately (the cooldown re-arms
+  // from the fresh clock) instead of staying blocked until the old stamp caught up.
+  state.world.currentSectorId = THREE_COUNT_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  state.simTime = 1;
+  host.update(0.5);
+  player.pos = { x: 0, z: -60 };
+  state.simTime = 1.5;
+  host.update(0.5);
+  assert.equal(host._crossCooldown, 9.5, 'the fresh crossing was judged and re-armed the cooldown');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  for (const id of reused.keys()) assert.ok(state.entities.has(id), 'the reused live entity survived');
+  host.destroy();
+});
+
+test('PL-138 a new game drops the winch ids, the quiet gate and the hail memory; the Well groans again', () => {
+  const bus = createBus();
+  const player = makePlayer({ x: 0, z: 0 });
+  const station = makeStation('station_proteus', { x: 0, z: 0 });
+  const state = makeState({ simTime: 0, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the station seam reads the entity list
+  state.world.currentSectorId = TWO_ROPES_TUNING.sectorId;
+  const { host, cues, removed, helpers } = makeHost(bus, state, twoRopesPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: winch and catch live; a full haul earns hailed-first.
+  for (let i = 0; i < 150; i++) {
+    state.simTime = i;
+    host.update(1);
+  }
+  assert.ok(host._colmId != null && host._catchId != null, 'winch and catch are live');
+  const staleIds = [...host._ownedIds];
+  bus.emit('massline:throw', { pos: { x: 0, z: 0 } });
+  assert.equal(host._hauling, true, 'your rope is on');
+  for (let i = 0; i < 12; i++) {
+    state.simTime = 149.5 + i * 0.5;
+    host.update(0.5);
+  }
+  assert.equal(host._hailedFirst, true, 'the haul resolved: hailed first next time');
+  // A second groan, a second rope, then let go: the Well goes quiet for a day.
+  for (let i = 0; i < 150; i++) {
+    state.simTime = 156 + i;
+    host.update(1);
+  }
+  bus.emit('massline:throw', { pos: { x: 0, z: 0 } });
+  assert.equal(host._hauling, true, 'the second rope is on');
+  player.pos = { x: 600, z: 0 };
+  state.simTime = 307;
+  host.update(0.5);
+  assert.ok(host._quietUntil > 307, 'the Well went quiet for a day');
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  const cuesAtBoundary = cues.length;
+  assert.equal(host._colmId, null, 'the stale winch id dropped');
+  assert.equal(host._catchId, null, 'the stale catch id dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._quietUntil, 0, 'the stale quiet gate dropped');
+  assert.equal(host._hailedFirst, false, 'the hail memory dropped with the session');
+
+  // The fresh visit: winch and catch respawn and the Well groans on its own period
+  // instead of staying groan-dead behind the old quiet stamp.
+  state.world.currentSectorId = TWO_ROPES_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  host.update(1);
+  assert.ok(host._colmId != null && !reused.has(host._colmId), 'the fresh visit respawned the winch');
+  for (let i = 0; i < 150; i++) {
+    state.simTime = 2 + i;
+    host.update(1);
+  }
+  assert.ok(cues.slice(cuesAtBoundary).some((c) => c.id === 'sfx_vent_chime'), 'the Well groaned again');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-169 a new game drops the trail, the rest lamp and the progress flags; the trail respawns for the fresh run', () => {
+  const bus = createBus();
+  const player = makePlayer({ x: 4000, z: 0 });
+  const station = makeStation('station_ashcache', { x: 0, z: 0 });
+  const state = makeState({ simTime: 10, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the station seam reads the entity list
+  state.world.currentSectorId = OLD_TRAIL_TUNING.sectorId;
+  const { host, spawns, removed, helpers } = makeHost(bus, state, theOldTrailPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: the trail is live, followed through, and a line ploughed beside it.
+  host.update(1);
+  const line = trailLine(station.pos, 7, OLD_TRAIL_TUNING.sectorId);
+  for (let i = 0; i < line.pts.length; i++) {
+    player.pos = line.pts[i];
+    state.simTime = 10 + i;
+    host.update(1);
+  }
+  assert.equal(host._throughDone, true, 'the old session followed it through');
+  assert.equal(host._revealed, true, 'the out-trail revealed');
+  bus.emit('massline:throw', { pos: line.pts[0] });
+  bus.emit('massline:throw', { pos: { x: line.pts[0].x + 100, z: line.pts[0].z } });
+  assert.equal(host._bothDone, true, 'both trails stayed');
+  assert.equal(host._progress, OLD_TRAIL_TUNING.markers);
+  const staleLampId = host._lampId;
+  const staleIds = [...host._ownedIds];
+
+  state.entities.clear();
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  const atBoundary = removed.length;
+  const atSpawns = spawns.length;
+  assert.deepEqual(host._markerIds, [], 'the stale trail dropped');
+  assert.equal(host._lampId, null, 'the stale rest lamp id dropped');
+  assert.deepEqual(host._ownLineIds, [], 'the stale own line dropped');
+  assert.equal(host._ownedIds.size, 0, 'the stale ownership ledger dropped');
+  assert.equal(host._progress, 0, 'the trail progress dropped');
+  assert.equal(host._throughDone, false, 'the through flag dropped');
+  assert.equal(host._bothDone, false, 'the both flag dropped');
+  assert.deepEqual(host._ploughPoses, [], 'the ploughed line dropped');
+
+  // The fresh visit: trail and rest lamp respawn, nothing lands on reused live ids.
+  state.world.currentSectorId = OLD_TRAIL_TUNING.sectorId;
+  const reused = reuseAsLive(state, staleIds);
+  state.entities.set('p1', player);
+  state.entities.set('st1', station);
+  host.update(1);
+  assert.equal(spawns.length - atSpawns, OLD_TRAIL_TUNING.markers + 1, 'trail and rest lamp respawned');
+  assert.ok(host._lampId != null && !reused.has(host._lampId), 'the fresh lamp is its own id');
+  noStaleRemovals(removed, atBoundary, reused, 'no stale id removed into a live entity');
+  host.destroy();
+});
+
+test('PL-140 a new game clears the cooldown ledger; collect keys judge on the fresh clock', () => {
+  const bus = createBus();
+  const paid = [];
+  bus.on('economy:grantCredits', (p) => paid.push(p));
+  const player = makePlayer({ x: 10, z: 0 });
+  const station = makeStation('station_haumea_rift', { x: 0, z: 0 });
+  const state = makeState({ simTime: 1000, entities: new Map([['p1', player], ['st1', station]]) });
+  state.meta = { seed: 7 };
+  state.entityList = [player, station];   // the anchor seam reads the entity list
+  state.world.currentSectorId = GLASS_TUNING.sectorId;
+  const { host, helpers } = makeHost(bus, state, glassPaysPlant, (h) => h.init({ bus, state, helpers: h.helpers }));
+
+  // The old session: a shard collected stamps its cooldown key far out on the clock.
+  bus.emit('pickup:collected', { commodityId: 'cmdty_ice_shard' });
+  assert.equal(paid.length, 1, 'the old session was paid');
+  assert.ok(host._cooldowns.has('collect:cmdty_ice_shard'), 'the cooldown key is stamped');
+
+  // New game: simTime back near zero — `now - last` would go negative and block.
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  assert.equal(host._cooldowns.size, 0, 'the stale cooldown ledger dropped');
+
+  // The fresh run pays on its first collect — no negative-delta gate stays stuck.
+  bus.emit('pickup:collected', { commodityId: 'cmdty_ice_shard' });
+  assert.equal(paid.length, 2, 'the fresh collect was judged, not blocked by the stale stamp');
+  assert.equal(host._cooldowns.get('collect:cmdty_ice_shard'), 1, 'the fresh stamp is on the new clock');
+  host.destroy();
 });

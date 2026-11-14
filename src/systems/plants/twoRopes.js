@@ -74,6 +74,10 @@ export const twoRopesPlant = {
     };
     on('massline:throw', (p) => this._onThrow(p));
     on('sector:exit', () => this._cleanup());
+    // game:newGame: _cleanup drops the stale _colmId/_catchId (its removals no-op — the
+    // old entities are already gone) so _ensureProps respawns; the Well's quiet gate and
+    // the hailed-first memory are the prior session's and drop with it.
+    on('game:newGame', () => { this._cleanup(); this._quietUntil = 0; this._hailedFirst = false; });
   },
 
   update(dt) {

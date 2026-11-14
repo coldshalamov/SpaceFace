@@ -82,6 +82,7 @@ export const theBrightOnePlant = {
     on('combat:fire', (p) => this._onShot(p));
     on('dock:range', (p) => this._onDockRange(p));
     on('sector:exit', () => this._cleanup());
+    on('game:newGame', () => this._resetForNewGame());
   },
 
   update(dt) {
@@ -363,5 +364,22 @@ export const theBrightOnePlant = {
     this._wasPassing = false;
     this._shotTimes = [];
     this._nodUntil = 0;
+  },
+
+  // game:newGame: the previous run's street props are already gone — drop the ids and
+  // stamps WITHOUT removing, so the new run's first passing spawns fresh and no stale
+  // id is removed into a reused live entity at the next sector:exit.
+  _resetForNewGame() {
+    this._ownedIds = new Set();
+    this._towId = null;
+    this._strangerId = null;
+    this._plateId = null;
+    this._rememberId = null;
+    this._lastTowDay = -1;
+    this._wasPassing = false;
+    this._shotTimes = [];
+    this._flashedOnce = false;
+    this._nodUntil = 0;
+    this._receipts = new Map();
   },
 };

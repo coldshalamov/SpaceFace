@@ -723,6 +723,49 @@ test('PL-344: fill a need and the tip is above market; lowball the list and offe
   h.plant.destroy();
 });
 
+test('PL-344: a new game clears the filled-pod set — a reused pod id fills normally', () => {
+  const h = boot(pl344NeedsList, { sectorId: NEEDS_LIST_TUNING.sectorId, stationId: NEEDS_LIST_TUNING.stationId });
+  drive(h, 2);
+  const post = propOf(h.helpers, 'plantsPl344Post');
+  const day = Math.floor(h.state.simTime / NEEDS_LIST_TUNING.MERCY_DAY_S);
+  const needs = needsForDay(day, NEEDS_LIST_TUNING);
+  // Fill one need in the old game: the pod id lands in the filled set.
+  const stale = addPod(h.state, { pos: { x: post.pos.x + 20, z: post.pos.z }, commodityId: needs[0] });
+  moveTo(h.state, { x: 5000, z: 5000 });
+  drive(h, 2);
+  assert.ok(countOf(h.bus, PL_344_FILLED_EVENT) >= 1, 'the old-game fill lands');
+  assert.ok(h.plant._filledPods.has(stale.id), 'the fill is remembered');
+
+  // game:newGame: the boot resets nextEntityId to 1, so a fresh pod can carry the stale id.
+  h.bus.emit('game:newGame', {});
+  assert.equal(h.plant._filledPods.size, 0, 'the session reset clears the filled set');
+  const fresh = addPod(h.state, { pos: { x: post.pos.x + 20, z: post.pos.z }, commodityId: needs[1] });
+  h.state.entities.delete(fresh.id);
+  fresh.id = stale.id;                     // the id the new game hands back out
+  h.state.entities.set(fresh.id, fresh);
+  drive(h, 2);
+  const fills = h.bus.of(PL_344_FILLED_EVENT);
+  assert.equal(fills.length, 2, 'the reused id fills normally — no silent skip');
+  assert.equal(fills[fills.length - 1].payload.need, needs[1], 'and it fills the current need');
+
+  h.plant.destroy();
+});
+
+test('PL-344: the filled-pod ledger is bounded FIFO at memoryCap', () => {
+  const h = boot(pl344NeedsList, { sectorId: NEEDS_LIST_TUNING.sectorId, stationId: NEEDS_LIST_TUNING.stationId });
+  drive(h, 2);
+  const post = propOf(h.helpers, 'plantsPl344Post');
+  moveTo(h.state, { x: 5000, z: 5000 });
+  // More offers than the cap: each one is consumed once, and the ledger stays bounded.
+  const offers = NEEDS_LIST_TUNING.memoryCap + 3;
+  for (let i = 0; i < offers; i++) {
+    addPod(h.state, { pos: { x: post.pos.x + 20 + i, z: post.pos.z + i }, commodityId: 'cmdty_textiles' });
+  }
+  drive(h, offers * 2 + 2);
+  assert.ok(h.plant._filledPods.size <= NEEDS_LIST_TUNING.memoryCap, 'the filled set never grows past the cap');
+  h.plant.destroy();
+});
+
 // ---------- PL-345 The kettle window ----------
 
 test('PL-345: one cup, no charge; ask for fuel too every night and the kettle cools for you', () => {
@@ -1142,6 +1185,36 @@ test('PL-351: take one mislabeled part; clear the pad and your next part is labe
   assert.match(dangerPod.data.scanLabel, /DANGER: the label lies/);
   assert.equal(owesDanger(h.plant._mislabelUntil, String(PLAYER_ID), h.state.simTime), true, 'the memory lasts');
   assert.equal(dangerousSample().danger, true);
+
+  h.plant.destroy();
+});
+
+test('PL-351: destroyed crates are pruned — one dead id no longer blanks the pad for the session', () => {
+  const h = boot(pl351SamplePad, { sectorId: SAMPLE_PAD_TUNING.sectorId, stationId: SAMPLE_PAD_TUNING.stationId });
+  drive(h, 2);
+  const crates = h.helpers.spawned.filter((e) => e.data && e.data.plantsPl351Sample);
+  assert.equal(crates.length, SAMPLE_PAD_TUNING.samplesPerDay, "the day's mislabeled stock");
+
+  // Take one crate (spliced out), then the other dies in combat where it sits.
+  moveTo(h.state, crates[0].pos);
+  drive(h, 1.5);
+  assert.ok(countOf(h.bus, PL_351_TAKEN_EVENT) >= 1, 'taken event');
+  const survivor = h.helpers.spawned.filter((e) => e.data && e.data.plantsPl351Sample).pop();
+  survivor.alive = false;                  // combat debris: hull 20, killed without a take
+  moveTo(h.state, { x: 5000, z: 5000 });
+  assert.ok(h.plant._crateIds.includes(survivor.id), 'the dead id is still on the ledger before the pass');
+
+  // Next restock cycle: the pad stocks again — the destroyed crate cannot hold it blank.
+  drive(h, SAMPLE_PAD_TUNING.MERCY_DAY_S + 2);
+  const nextDay = Math.floor(h.state.simTime / SAMPLE_PAD_TUNING.MERCY_DAY_S);
+  const restocked = h.helpers.spawned.filter((e) => e.data && e.data.plantsPl351Sample
+    && e.data.plantsPl351Sample.day === nextDay);
+  assert.ok(restocked.length >= 1, 'the pad restocks — the dead id was pruned');
+  assert.equal(h.plant._stockDay, nextDay, 'the restock cycle ran');
+  assert.ok(h.plant._crateIds.every((id) => {
+    const e = h.state.entities.get(id);
+    return e != null && e.alive !== false;
+  }), 'no dead ids linger in the crate ledger');
 
   h.plant.destroy();
 });

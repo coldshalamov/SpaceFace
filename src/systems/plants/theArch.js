@@ -88,6 +88,10 @@ export const theArchPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('sector:exit', () => this._cleanup());
+    // game:newGame: the old session's mouths are already gone, so _cleanup's removals
+    // no-op and they respawn fresh; _lastCross is an absolute stamp _cleanup never
+    // touches — a stale one would block threading early in the new run.
+    on('game:newGame', () => { this._cleanup(); this._lastCross = 0; });
   },
 
   update(dt) {
