@@ -118,7 +118,7 @@ export const swarmJuiceHud = {
     this._unsubs.push(this.bus.on('swarm:bossIntro', (p) => this._onBossIntro(p)));
     this._unsubs.push(this.bus.on('swarm:bossHp', (p) => this._onBossHp(p)));
     this._unsubs.push(this.bus.on('swarm:bossDown', (p) => this._onBossDown(p)));
-    this._unsubs.push(this.bus.on('swarm:bossMove', (p) => { this._bossMove = p && typeof p.word === 'string' ? p.word : ''; }));
+    this._unsubs.push(this.bus.on('swarm:bossMove', (p) => { this._bossMove = p && typeof p.word === 'string' ? p.word : ''; this._bossMoveUntil = p && Number.isFinite(p.ttl) && this.state && Number.isFinite(this.state.simTime) ? this.state.simTime + p.ttl : 0; }));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
     this._unsubs.push(this.bus.on('swarm:chainTier', (p) => this._onChainTier(p)));

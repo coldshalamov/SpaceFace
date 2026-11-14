@@ -774,7 +774,16 @@ export function bindCapitalBossReceipts(bus, getState) {
   const disarmed = new Set();
   const castTitles = new Map();
   const toast = (receipt) => {
-    if (receipt && typeof bus.emit === 'function') bus.emit('toast', receipt);
+    if (!receipt || typeof bus.emit !== 'function') return;
+    // Phone Swarm: boss receipts are one compact clause on the boss bar, not a card in the lane.
+    const st = typeof getState === 'function' ? getState() : null;
+    if (isSwarmGlass(st) && typeof document !== 'undefined'
+      && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') {
+      const word = String(receipt.text || '').replace(/\s+—\s+[^.]*\.\s*/, ' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+      bus.emit('swarm:bossMove', { word: word.length > 32 ? `${word.slice(0, 31).trim()}…` : word, ttl: 3 });
+      return;
+    }
+    bus.emit('toast', receipt);
   };
   const playerId = () => {
     const state = typeof getState === 'function' ? getState() : null;
