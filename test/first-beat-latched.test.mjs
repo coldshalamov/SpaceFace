@@ -8,12 +8,11 @@ test('the first latch has a centre word; the throw keeps its own', () => {
 });
 
 import { createStuntCallout, calloutTextFor } from '../src/ui/stuntCallout.js';
-import { readFileSync } from 'node:fs';
+import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { makeCalloutMount } from './helpers/calloutSeam.mjs';
 
-// Reuse the existing seam harness (fake document + bus) without copying it.
-const src = readFileSync(new URL('./handline-inference-senses.test.mjs', import.meta.url), 'utf8');
-const harness = src.slice(src.indexOf('function fakeDocument'), src.indexOf("test('massline:releaseWindow"));
-const { mount } = new Function('createStuntCallout', 'SEED', `${harness}; return { mount };`)(createStuntCallout, 4242);
+// The shared seam harness (fake document + bus) mounts the real createStuntCallout wiring.
+const mount = makeCalloutMount({ createStuntCallout, seed: 4242 });
 
 function words(bus) { const heard = []; bus.on('callout:firstBeat', (p) => heard.push(p.text)); return heard; }
 
@@ -67,9 +66,8 @@ test('the centre presenter shows a first-beat word, claims the one voice, and ha
   } finally { presenter.destroy(); resetCalloutVoice(); releaseFirstBeatCentre(); }
 });
 
-import { SWARM_RULESET } from '../src/data/swarmMode.js';
-const swarmHarness = harness.replace('run: null', "run: { kind: 'survival', phase: 'wave', ruleset: SWARM_RULESET }");
-const { mount: mountSwarm } = new Function('createStuntCallout', 'SEED', 'SWARM_RULESET', `${swarmHarness}; return { mount };`)(createStuntCallout, 4242, SWARM_RULESET);
+const mountSwarm = makeCalloutMount({ createStuntCallout, seed: 4242,
+  run: { kind: 'survival', phase: 'wave', ruleset: SWARM_RULESET } });
 
 test('Swarm: the first latch goes to the centre announcer, not the column', () => {
   const { bus, callout } = mountSwarm();

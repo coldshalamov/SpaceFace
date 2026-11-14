@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { resolveStartSectorId } from '../src/systems/world.js';
+import { applyDevSectorJump } from '../src/systems/devSectorJump.js';
 import { SECTORS } from '../src/data/sectors.js';
 
 test('resolveStartSectorId handles canonical sector IDs', () => {
@@ -54,12 +54,9 @@ test('resolveStartSectorId returns null for invalid or missing inputs', () => {
   assert.equal(resolveStartSectorId('sector_does_not_exist'), null);
 });
 
-// FIX-R4b: dev ?sector= route must leave ordinary boot untouched on invalid sector ID
-const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-const fnMatch = mainSource.match(/(async function applyDevSectorJump\([\s\S]*?\n    \})\n\n    \/\/ Dev-only/);
-assert.ok(fnMatch, 'applyDevSectorJump must be declared in src/main.js');
-const applyDevSectorJump = new Function(`return (${fnMatch[1]})`)();
-
+// FIX-R4b: dev ?sector= route must leave ordinary boot untouched on invalid sector ID.
+// The real applyDevSectorJump (src/systems/devSectorJump.js) is imported above — same function
+// src/main.js calls on the dev route, no source-slice evaluation.
 function createTestHarness() {
   const emittedEvents = [];
   const sessionData = new Map();
