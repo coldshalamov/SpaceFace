@@ -38,13 +38,55 @@ function stablePreviewId(defId) {
 }
 
 let renderSystem = null;
-function renderOnce(renderer, scene, cam) {
+export function renderOnce(renderer, scene, cam, owner = renderSystem) {
   if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
-  // The shipping post route (bloom / crease ink / tone) when available, so the look matches flight.
-  if (renderSystem && typeof renderSystem._renderPostRoute === 'function') {
-    try { renderSystem._renderPostRoute(renderSystem._selectPostRoute(), scene, cam, 0); return; } catch (_) {}
+  // Never turn a failed production post route into a convincing but misleading raw screenshot.
+  if (typeof owner?._selectPostRoute !== 'function' || typeof owner?._renderPostRoute !== 'function') {
+    throw new Error('fleet-look shipping post route unavailable');
   }
-  renderer.render(scene, cam);
+  try {
+    return owner._renderPostRoute(owner._selectPostRoute(), scene, cam, 0);
+  } catch (cause) {
+    throw new Error(`fleet-look shipping post route failed: ${cause?.message || cause}`, { cause });
+  }
+}
+
+// A preview can contain many meshes backed by the same cached material. Apply a
+// factor once per material and only during this synchronous draw; otherwise an
+// A/B shot compounds the factor per mesh and changes later shots or live assets.
+export function withFleetLookMaterialFactors(root, ab, draw) {
+  if (!root || !ab) return draw();
+  const originals = new Map();
+  try {
+    root.traverse((object) => {
+      const materials = Array.isArray(object.material) ? object.material
+        : object.material ? [object.material] : [];
+      for (const material of materials) {
+        if (!material || originals.has(material)) continue;
+        const saved = {};
+        originals.set(material, saved);
+        if (Number.isFinite(ab.env) && 'envMapIntensity' in material) {
+          saved.envMapIntensity = material.envMapIntensity;
+          material.envMapIntensity *= ab.env;
+        }
+        if (Number.isFinite(ab.emissive) && 'emissiveIntensity' in material) {
+          saved.emissiveIntensity = material.emissiveIntensity;
+          material.emissiveIntensity *= ab.emissive;
+        }
+        if (Number.isFinite(ab.color) && material.color) {
+          saved.color = material.color.clone();
+          material.color.multiplyScalar(ab.color);
+        }
+      }
+    });
+    return draw();
+  } finally {
+    for (const [material, saved] of originals) {
+      if ('envMapIntensity' in saved) material.envMapIntensity = saved.envMapIntensity;
+      if ('emissiveIntensity' in saved) material.emissiveIntensity = saved.emissiveIntensity;
+      if (saved.color) material.color.copy(saved.color);
+    }
+  }
 }
 
 // Flight lights, not the boot rig: the resolved sector profile is what the player sees.
@@ -335,77 +377,78 @@ export function installFleetLook(SF) {
     const built = await build(opts);
     if (!built.root.parent) holder.add(built.root);
     built.root.rotation.y = (opts.yaw || 0) * Math.PI / 180;
-    // A/B bench: scale one material factor across the shot (env / emissive / colour) and
-    // optionally hide the scene environment, so a blowout can be traced to one term.
-    if (opts.ab) {
-      const ab = opts.ab;
-      built.root.traverse((o) => {
-        for (const m of (Array.isArray(o.material) ? o.material : o.material ? [o.material] : [])) {
-          if (Number.isFinite(ab.env) && 'envMapIntensity' in m) m.envMapIntensity *= ab.env;
-          if (Number.isFinite(ab.emissive) && 'emissiveIntensity' in m) m.emissiveIntensity *= ab.emissive;
-          if (Number.isFinite(ab.color) && m.color) m.color.multiplyScalar(ab.color);
+    const previousEnvironment = scene.environment;
+    const previousBackground = scene.background;
+    const restoreEnvironment = !!opts.ab?.noEnvironment;
+    const restoreBackground = !!opts.ab?.noBackground;
+    try {
+      // A/B bench: scale one material factor across the shot (env / emissive / colour) and
+      // optionally hide the scene environment, so a blowout can be traced to one term.
+      if (opts.ab) {
+        const ab = opts.ab;
+        if (ab.noEnvironment) scene.environment = null;
+        if (ab.noBackground) scene.background = null;
+      }
+      holder.updateMatrixWorld(true);
+      let verdict = { ready: true, pending: [], failed: [], targetMeshes: 0 };
+      // Yield one frame before either settle wait: the authored boundary stamps its pending
+      // state asynchronously, and checked too early waitForAuthored sees no pending flags —
+      // the pose below then measures an empty pre-upgrade marker and the frame ships blank.
+      await wait(120);
+      if (opts.defId || opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
+      if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
+      const box = new THREE.Box3().setFromObject(built.root);
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const radius = opts.radius || sphere.radius || built.radius || 6;
+      built.root.position.sub(new THREE.Vector3(sphere.center.x, 0, sphere.center.z));
+      // After the XZ recentre the bounding-sphere centre sits at (0, sphereY, 0) — the `place`
+      // view frames and aims at that, so a tall station's mid-volume is what fills the picture.
+      const placeCenter = new THREE.Vector3(0, sphere.center.y, 0);
+      poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      built.root.traverse((c) => {
+        const m = c.material;
+        if (!m) return;
+        for (const t of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.emissiveMap, m.aoMap]) {
+          if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
         }
       });
-      if (ab.noEnvironment) { opts._env = scene.environment; scene.environment = null; }
-      if (ab.noBackground) { opts._bg = scene.background; scene.background = null; }
-    }
-    holder.updateMatrixWorld(true);
-    let verdict = { ready: true, pending: [], failed: [], targetMeshes: 0 };
-    // Yield one frame before either settle wait: the authored boundary stamps its pending
-    // state asynchronously, and checked too early waitForAuthored sees no pending flags —
-    // the pose below then measures an empty pre-upgrade marker and the frame ships blank.
-    await wait(120);
-    if (opts.defId || opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
-    if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
-    const box = new THREE.Box3().setFromObject(built.root);
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    const radius = opts.radius || sphere.radius || built.radius || 6;
-    built.root.position.sub(new THREE.Vector3(sphere.center.x, 0, sphere.center.z));
-    // After the XZ recentre the bounding-sphere centre sits at (0, sphereY, 0) — the `place`
-    // view frames and aims at that, so a tall station's mid-volume is what fills the picture.
-    const placeCenter = new THREE.Vector3(0, sphere.center.y, 0);
-    poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
-    built.root.traverse((c) => {
-      const m = c.material;
-      if (!m) return;
-      for (const t of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.emissiveMap, m.aoMap]) {
-        if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
+      // File previews can also expose authored boundaries; settle those before joining the
+      // strict renderer admission (compile, upload and exact-target touch).
+      if (opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
+      if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
+      const admit = state.render.compileObjectPipelines;
+      if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
+      const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
+        isActive: () => built.root.parent === holder });
+      if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
+        throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
       }
-    });
-    // File previews can also expose authored boundaries; settle those before joining the
-    // strict renderer admission (compile, upload and exact-target touch).
-    if (opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
-    if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
-    const admit = state.render.compileObjectPipelines;
-    if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
-    const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
-      isActive: () => built.root.parent === holder });
-    if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
-      throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
+      // Draw through the normal route with the same private camera used for this view.
+      const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      const finalFrame = await captureReadyFleetLookFrame({
+        root: built.root,
+        isActive: () => built.root.parent === holder,
+        draw: () => {
+          pose();
+          scene.updateMatrixWorld(true);
+          return withFleetLookMaterialFactors(built.root, opts.ab, () =>
+            observePreviewDraw(renderer, built.root, () => renderOnce(renderer, scene, cam)));
+        },
+        capture: () => renderer.domElement.toDataURL('image/png'),
+      });
+      const { url, drawObservation } = finalFrame;
+      verdict = finalFrame.verdict;
+      lastPose = pose;
+      lastCamera = cam;
+      return {
+        url, ok: verdict.ready, radius, diagNames: built.diagNames, drawObservation, authoredVerdict: verdict,
+        size: box.getSize(new THREE.Vector3()).toArray(),
+        materials: withFleetLookMaterialFactors(built.root, opts.ab, () => collectMaterials(built.root)),
+      };
+    } finally {
+      if (restoreEnvironment) scene.environment = previousEnvironment;
+      if (restoreBackground) scene.background = previousBackground;
     }
-    // Draw through the normal route with the same private camera used for this view.
-    const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
-    const finalFrame = await captureReadyFleetLookFrame({
-      root: built.root,
-      isActive: () => built.root.parent === holder,
-      draw: () => {
-        pose();
-        scene.updateMatrixWorld(true);
-        return observePreviewDraw(renderer, built.root, () => renderOnce(renderer, scene, cam));
-      },
-      capture: () => renderer.domElement.toDataURL('image/png'),
-    });
-    const { url, drawObservation } = finalFrame;
-    verdict = finalFrame.verdict;
-    lastPose = pose;
-    lastCamera = cam;
-    if (opts.ab?.noEnvironment) scene.environment = opts._env;
-    if (opts.ab?.noBackground) scene.background = opts._bg;
-    return {
-      url, ok: verdict.ready, radius, diagNames: built.diagNames, drawObservation, authoredVerdict: verdict,
-      size: box.getSize(new THREE.Vector3()).toArray(),
-      materials: collectMaterials(built.root),
-    };
   }
 
   // Draw `frames` through the shipping post route with a blocking GPU flush after each. This is
