@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -41,6 +41,139 @@ test('the game lock still protects a live owner after thirty minutes', (t) => {
   const exited = spawnSync(process.execPath, ['--eval', 'process.exit(0)']);
   assert.equal(exited.status, 0);
   assert.match(status(exited.pid), /stale \(long-running screen capture\)/);
+});
+
+function lockFixture(t) {
+  const root = tempRoot(t);
+  const scripts = join(root, 'scripts', 'fleet');
+  mkdirSync(scripts, { recursive: true });
+  const entry = join(scripts, 'game-lock.mjs');
+  copyFileSync(new URL('../scripts/fleet/game-lock.mjs', import.meta.url), entry);
+  const env = { ...process.env };
+  delete env.SPACEFACE_GAME_LOCK_OWNER;
+  const run = (...args) => spawn(process.execPath, [entry, 'run', '--', ...args], {
+    cwd: root, env, stdio: 'ignore', windowsHide: true,
+  });
+  return { root, scripts, entry, env, run, lock: join(root, '.devshots', 'fleet', 'game.lock'),
+    queue: join(root, '.devshots', 'fleet', 'game-queue') };
+}
+
+async function waitForFixture(predicate, description) {
+  const deadline = Date.now() + 12000;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`timed out waiting for ${description}`);
+}
+
+function waitForChild(child) {
+  return new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', (code, signal) => resolve({ code, signal }));
+  });
+}
+
+test('a nested lock fails promptly and an independent contender remains queued until the outer command exits', async (t) => {
+  const f = lockFixture(t);
+  const nestedReport = join(f.root, 'nested.json');
+  const outerRelease = join(f.root, 'release-outer');
+  const contenderStarted = join(f.root, 'contender-started');
+  const childScript = join(f.root, 'outer.cjs');
+  writeFileSync(childScript, `
+    const { spawnSync } = require('node:child_process');
+    const { existsSync, readFileSync, writeFileSync } = require('node:fs');
+    const [entry, report, lock, release] = process.argv.slice(2);
+    const nested = spawnSync(process.execPath, [entry, 'run', '--', process.execPath, '-e', 'process.exit(0)'],
+      { encoding: 'utf8', timeout: 2500, windowsHide: true });
+    writeFileSync(report, JSON.stringify({ code: nested.status, stderr: nested.stderr,
+      timedOut: nested.error?.code === 'ETIMEDOUT', owner: JSON.parse(readFileSync(lock, 'utf8')).pid }));
+    const timer = setInterval(() => { if (existsSync(release)) { clearInterval(timer); process.exit(0); } }, 20);
+  `);
+  const outer = f.run(process.execPath, childScript, f.entry, nestedReport, f.lock, outerRelease);
+  const outerDone = waitForChild(outer);
+  let contender;
+  let contenderDone;
+  try {
+    await waitForFixture(() => existsSync(nestedReport), 'nested lock result');
+    const nested = JSON.parse(readFileSync(nestedReport, 'utf8'));
+    assert.notEqual(nested.code, 0);
+    assert.equal(nested.timedOut, false, 'the nested request is rejected without waiting for its parent');
+    assert.match(nested.stderr, /nested.*game.lock|game.lock.*nested/i);
+    assert.equal(nested.owner, outer.pid, 'the inner request did not remove or replace its owner');
+    assert.equal(JSON.parse(readFileSync(f.lock, 'utf8')).pid, outer.pid);
+
+    contender = f.run(process.execPath, '-e', `require('node:fs').writeFileSync(process.argv[1], 'started')`, contenderStarted);
+    contenderDone = waitForChild(contender);
+    await waitForFixture(() => existsSync(f.queue) && readdirSync(f.queue).some(name => name.endsWith(`-${contender.pid}.json`)),
+      'independent contender ticket');
+    assert.equal(existsSync(contenderStarted), false, 'independent work cannot overlap the outer command');
+    assert.equal(JSON.parse(readFileSync(f.lock, 'utf8')).pid, outer.pid);
+    writeFileSync(outerRelease, 'go');
+    assert.equal((await outerDone).code, 0);
+    assert.equal((await contenderDone).code, 0);
+    assert.equal(existsSync(contenderStarted), true);
+    assert.equal(existsSync(f.lock), false);
+  } finally {
+    if (!existsSync(outerRelease)) writeFileSync(outerRelease, 'go');
+    if (outer.exitCode === null && !outer.killed) outer.kill();
+    if (contender && contender.exitCode === null && !contender.killed) contender.kill();
+    await Promise.allSettled([outerDone, contenderDone].filter(Boolean));
+  }
+});
+
+test('the exact npm gate command runs under its existing lock and forwards arguments', async (t) => {
+  const f = lockFixture(t);
+  const gateStarted = join(f.root, 'gate-started.json');
+  const gateRelease = join(f.root, 'release-gate');
+  writeFileSync(join(f.root, 'package.json'), JSON.stringify({ scripts: {
+    gate: 'node scripts/fleet/game-lock.mjs run -- node scripts/fleet/gate.mjs',
+  } }));
+  writeFileSync(join(f.scripts, 'gate.mjs'), `
+    import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+    const [marker, lock, release] = ${JSON.stringify([gateStarted, f.lock, gateRelease])};
+    writeFileSync(marker, JSON.stringify({ args: process.argv.slice(2), owner: JSON.parse(readFileSync(lock, 'utf8')).pid }));
+    const timer = setInterval(() => { if (existsSync(release)) { clearInterval(timer); process.exit(0); } }, 20);
+  `);
+  const outer = f.run('npm', 'run', 'gate', '--', '--quick');
+  const done = waitForChild(outer);
+  try {
+    await waitForFixture(() => existsSync(gateStarted), 'gate under outer lock');
+    const started = JSON.parse(readFileSync(gateStarted, 'utf8'));
+    assert.deepEqual(started.args, ['--quick']);
+    assert.equal(started.owner, outer.pid);
+    assert.equal(JSON.parse(readFileSync(f.lock, 'utf8')).pid, outer.pid);
+    writeFileSync(gateRelease, 'go');
+    assert.equal((await done).code, 0);
+    assert.equal(existsSync(f.lock), false);
+  } finally {
+    if (!existsSync(gateRelease)) writeFileSync(gateRelease, 'go');
+    if (outer.exitCode === null && !outer.killed) outer.kill();
+    await Promise.allSettled([done]);
+  }
+});
+
+test('npm gate lifecycle hooks are not bypassed by the nested-lock shortcut', async (t) => {
+  const f = lockFixture(t);
+  const hook = join(f.root, 'hook-ran');
+  const gate = join(f.root, 'gate-ran');
+  f.env.npm_config_ignore_scripts = 'false';
+  writeFileSync(join(f.root, 'package.json'), JSON.stringify({ scripts: {
+    pregate: 'node pregate.cjs',
+    gate: 'node scripts/fleet/game-lock.mjs run -- node scripts/fleet/gate.mjs',
+  } }));
+  writeFileSync(join(f.root, 'pregate.cjs'), `require('node:fs').writeFileSync(${JSON.stringify(hook)}, 'yes');`);
+  writeFileSync(join(f.scripts, 'gate.mjs'), `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(gate)}, 'yes');`);
+  const outer = f.run('npm', 'run', 'gate');
+  try {
+    const result = await waitForChild(outer);
+    assert.notEqual(result.code, 0, 'a nested gate with hooks is rejected, not silently bypassed');
+    assert.equal(existsSync(hook), true, 'npm ran its declared lifecycle hook');
+    assert.equal(existsSync(gate), false, 'the nested gate body never ran without its own lock');
+    assert.equal(existsSync(f.lock), false);
+  } finally {
+    if (outer.exitCode === null && !outer.killed) outer.kill();
+  }
 });
 
 function verdictPath(step) {

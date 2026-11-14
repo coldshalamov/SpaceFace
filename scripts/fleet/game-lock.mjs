@@ -23,6 +23,7 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = join(REPO, '.devshots', 'fleet');
 const LOCK = join(DIR, 'game.lock');
 const QUEUE = join(DIR, 'game-queue');
+const OWNER_ENV = 'SPACEFACE_GAME_LOCK_OWNER';
 // FIFO bounds a wait by the queue ahead of you, so a long queue is not a reason to give up.
 const WAIT_MAX_MIN = 240;
 
@@ -73,6 +74,35 @@ function release() {
   const l = readLock();
   if (l && l.pid === process.pid) { try { unlinkSync(LOCK); } catch { /* gone */ } }
 }
+function samePath(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const left = resolve(a), right = resolve(b);
+  return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+
+// This inherited marker only rejects nested acquisitions; it never grants access to a lock.
+// Match the current holder and timestamp so stale child environments cannot block later runs.
+function inheritedOwnerHoldsLock() {
+  let inherited;
+  try { inherited = JSON.parse(process.env[OWNER_ENV] || 'null'); } catch { return false; }
+  const current = readLock();
+  return !!inherited && samePath(inherited.path, LOCK) && !!current && !stale(current)
+    && inherited.pid === current.pid && inherited.at === current.at;
+}
+
+// `npm run gate` already invokes this lock. If an outer lock was explicitly requested for
+// that exact checked-in script, run its gate body directly under the outer owner instead.
+// Check the package script and lifecycle hooks so other npm scripts keep npm's normal behavior.
+function commandForHeldLock(command) {
+  if (!/^npm(?:\.cmd)?$/i.test(command[0]) || command[1] !== 'run' || command[2] !== 'gate'
+      || (command.length > 3 && command[3] !== '--')) return command;
+  if (!samePath(process.cwd(), REPO)) return command;
+  let scripts;
+  try { scripts = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).scripts; } catch { return command; }
+  if (scripts?.gate !== 'node scripts/fleet/game-lock.mjs run -- node scripts/fleet/gate.mjs'
+      || scripts.pregate || scripts.postgate) return command;
+  return ['node', join(REPO, 'scripts', 'fleet', 'gate.mjs'), ...command.slice(4)];
+}
 
 const args = process.argv.slice(2);
 if (args[0] === 'status') {
@@ -91,6 +121,10 @@ const label = cmd.join(' ').slice(0, 120);
 const serverOnlyBench = cmd.length === 2 && cmd[0] === 'node' && cmd[1] === 'scripts/ui-bench.mjs';
 const t0 = Date.now();
 if (!serverOnlyBench) {
+  if (inheritedOwnerHoldsLock()) {
+    console.error('[game-lock] nested game-lock request would wait for its own parent; run the inner command directly under the existing lock.');
+    process.exit(4);
+  }
   enqueue(label);
   process.on('exit', dequeue);
   let lastNote = 0;
@@ -109,13 +143,25 @@ if (!serverOnlyBench) {
   }
   dequeue();
 }
+const childEnv = { ...process.env };
+let executionCmd = cmd;
+if (!serverOnlyBench) {
+  const held = readLock();
+  if (!held || held.pid !== process.pid) {
+    console.error('[game-lock] ownership changed before the command could start.');
+    process.exit(5);
+  }
+  childEnv[OWNER_ENV] = JSON.stringify({ path: LOCK, pid: held.pid, at: held.at });
+  executionCmd = commandForHeldLock(cmd);
+}
 // npm/npx are .cmd shims on Windows and need a shell; everything else runs directly so arguments
 // are passed untouched. Shell arguments are quoted for cmd.exe.
-const needsShell = process.platform === 'win32' && /^(npm|npx|pnpm|yarn)(\.cmd)?$/i.test(cmd[0]);
+const needsShell = process.platform === 'win32' && /^(npm|npx|pnpm|yarn)(\.cmd)?$/i.test(executionCmd[0]);
 const q = (a) => (/^[\w.\/:=@-]+$/.test(a) ? a : `"${a.replace(/"/g, '\\"')}"`);
 const child = needsShell
-  ? spawn(cmd.map(q).join(' '), { cwd: process.cwd(), stdio: 'inherit', shell: true })
-  : spawn(cmd[0] === 'node' ? process.execPath : cmd[0], cmd.slice(1), { cwd: process.cwd(), stdio: 'inherit' });
+  ? spawn(executionCmd.map(q).join(' '), { cwd: process.cwd(), env: childEnv, stdio: 'inherit', shell: true })
+  : spawn(executionCmd[0] === 'node' ? process.execPath : executionCmd[0], executionCmd.slice(1),
+    { cwd: process.cwd(), env: childEnv, stdio: 'inherit' });
 const done = (code) => { release(); process.exit(code ?? 1); };
 child.on('close', done);
 child.on('error', (e) => { console.error(`[game-lock] ${e.message}`); done(1); });
