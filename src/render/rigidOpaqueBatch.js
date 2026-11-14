@@ -667,6 +667,7 @@ function buildCandidate(scene, plan, options) {
             instanceId,
             parent: source.parent,
             originalVisible: source.visible !== false,
+            layerSuppressed: false,
             geometry: source.geometry,
             material: source.material,
             materialVisible: source.material ? source.material.visible !== false : false,
@@ -772,17 +773,18 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     && check('cache-key-swap', !material || material.customProgramCacheKey === entry.customProgramCacheKey);
 }
 
-function restoreSources(entries) {
-  for (const entry of entries || EMPTY_ARRAY) {
-    if (!entry || !entry.source) continue;
-    // Admission only masked the layer set — source.visible was never written by this path.
-    // Writing the admission-time snapshot back would resurrect a source a live owner hid
-    // while the batch was active (damage hide, scripted removal), and the planner would
-    // re-admit it on the next sync.
-    if (entry.source.layers && Number.isFinite(entry.layersMask)) {
-      entry.source.layers.mask = entry.layersMask;
-    }
+function restoreSourceLayer(entry) {
+  if (!entry || !entry.source || entry.layerSuppressed !== true) return;
+  // Only undo this batch's own suppression. A pending candidate never changed the source, and a
+  // nonzero mask written while active belongs to the live source owner, not this snapshot.
+  if (entry.source.layers && entry.source.layers.mask === 0 && Number.isFinite(entry.layersMask)) {
+    entry.source.layers.mask = entry.layersMask;
   }
+  entry.layerSuppressed = false;
+}
+
+function restoreSources(entries) {
+  for (const entry of entries || EMPTY_ARRAY) restoreSourceLayer(entry);
 }
 
 function releaseCandidate(candidate, scene, restore = true) {
@@ -1056,9 +1058,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         // full rollback path, which restores all remaining source state before rebuilding.
         return false;
       }
-      if (entry.source.layers && Number.isFinite(entry.layersMask)) {
-        entry.source.layers.mask = entry.layersMask;
-      }
+      restoreSourceLayer(entry);
       if (entry.visible) entry.batch.visibleCount = Math.max(0, entry.batch.visibleCount - 1);
       entry.removed = true;
       entriesRemoved = true;
@@ -1121,9 +1121,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       if (entry.removed || !shouldDetach(entry)) continue;
       try { entry.batch.mesh.deleteInstance(entry.instanceId); }
       catch (_) { return false; }
-      if (restoreDirectSources && entry.source?.layers && Number.isFinite(entry.layersMask)) {
-        entry.source.layers.mask = entry.layersMask;
-      }
+      if (restoreDirectSources) restoreSourceLayer(entry);
       if (entry.visible) entry.batch.visibleCount = Math.max(0, entry.batch.visibleCount - 1);
       entry.removed = true;
       removedCount += 1;
@@ -1644,7 +1642,10 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           // Keep the canonical source visible to clearance/picking/player-truth traversals. The
           // ordinary camera uses layer 0, so mask 0 suppresses its direct draw without removing
           // the mesh from those semantic readers. dispose/rollback restores the authored mask.
-          if (entry.source.layers) entry.source.layers.mask = 0;
+          if (entry.source.layers) {
+            entry.source.layers.mask = 0;
+            entry.layerSuppressed = true;
+          }
           const visible = ancestorVisibleAndAttached(entry.source.parent, scene);
           entry.visible = visible;
           try { entry.batch.mesh.setVisibleAt(entry.instanceId, visible); } catch (_) { /* validated next sync */ }

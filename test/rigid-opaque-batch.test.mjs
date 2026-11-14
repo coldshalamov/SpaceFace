@@ -740,6 +740,51 @@ test('retained rigid batches wait for residency before suppressing direct source
   b.material.dispose();
 });
 
+test('a canceled candidate preserves layer changes made while preparation was pending', async () => {
+  const { root, a, b } = makeRoot();
+  const scene = new THREE.Scene();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let finish;
+  const preparing = new Promise((resolve) => { finish = resolve; });
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => preparing });
+  try {
+    const pending = controller.sync(root);
+    await Promise.resolve();
+    a.layers.set(2);
+    b.layers.mask = 0;
+    finish({ ready: true });
+    const result = await pending;
+    assert.notEqual(result.status, 'active');
+    assert.equal(a.layers.mask, 4, 'the owner\'s new layer survives aborted preparation');
+    assert.equal(b.layers.mask, 0, 'a live owner\'s hidden layer is not restored from an old snapshot');
+    assert.equal(scene.children.some((child) => child.isBatchedMesh), false);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('active batch rollback preserves a source layer written by another owner', async () => {
+  const { root, a, b } = makeRoot();
+  const scene = new THREE.Scene();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    assert.equal((await controller.sync(root)).status, 'active');
+    assert.equal(a.layers.mask, 0);
+    a.layers.set(2);
+    await controller.sync(root);
+    assert.equal(a.layers.mask, 4, 'rollback leaves the new owner-authored layer intact');
+    assert.equal(b.layers.mask, 1, 'unchanged suppressed sources return to their original layer');
+    assert.equal(scene.children.some((child) => child.isBatchedMesh), false);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
 test('context restore retires disposed retained batches and canonical sync rebuilds them', async () => {
   const { root, a, b } = makeRoot();
   const scene = new THREE.Scene();
