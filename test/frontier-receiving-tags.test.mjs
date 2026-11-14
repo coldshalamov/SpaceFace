@@ -156,7 +156,7 @@ test('an open aid marker draws AID RECEIVING at the debtor and retires on settle
     h.sim.step();
     const tag = tagFor(h, `aid:${debt.id}`);
     assert.ok(tag, 'the debtor wears the receiving ring');
-    assert.equal(tag.data.scanLabel, 'AID RECEIVING · marker center inside ring');
+    assert.equal(tag.data.scanLabel, 'AID · bring the marker');
     assert.equal(tag.data.ringRadius, FRONTIER_MUTUAL_AID.settleR + a.radius);
     assert.ok(Math.abs(tag.pos.x - a.pos.x) < 1, 'the tag is on the debtor, not the marker');
     // Settle it — the ring retires with the row.
@@ -185,7 +185,7 @@ test('an open dispute draws CLAIM RECEIVING on each claimant', () => {
     for (const sid of d.steadIds) {
       const tag = tagFor(h, `claim:${d.id}:${sid}`);
       assert.ok(tag, `claimant ${sid} wears its filed-wreck ring`);
-      assert.equal(tag.data.scanLabel, 'CLAIM RECEIVING · tow filed wreck here');
+      assert.equal(tag.data.scanLabel, `CLAIM · ${h.state.frontier.homesteads.find((r) => r.entityId === sid).name}`);
       const ent = h.state.entities.get(sid);
       assert.equal(tag.data.ringRadius, FRONTIER_SALVAGE_CLAIMS.settleRadius + ent.radius);
     }

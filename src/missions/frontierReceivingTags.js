@@ -105,7 +105,7 @@ function wantedFrontierReceivingTags(owner, state) {
   for (const d of f.debts || []) {
     if (!d || d.state !== 'open') continue;
     const ent = owner._steadEnt(state, owner._steadRec(state, d.debtorId));
-    add(`aid:${d.id}`, ent, 'AID RECEIVING · marker center inside ring',
+    add(`aid:${d.id}`, ent, 'AID · bring the marker',
       FRONTIER_MUTUAL_AID.settleR + (Number(ent?.radius) || 0));
   }
 
@@ -113,8 +113,9 @@ function wantedFrontierReceivingTags(owner, state) {
   for (const d of f.disputes || []) {
     if (!d || d.state !== 'open' || !Array.isArray(d.steadIds)) continue;
     for (const sid of d.steadIds) {
-      const ent = owner._steadEnt(state, owner._steadRec(state, sid));
-      add(`claim:${d.id}:${sid}`, ent, 'CLAIM RECEIVING · tow filed wreck here',
+      const rec = owner._steadRec(state, sid);
+      const ent = owner._steadEnt(state, rec);
+      add(`claim:${d.id}:${sid}`, ent, `CLAIM · ${rec?.name || 'homestead'}`,
         FRONTIER_SALVAGE_CLAIMS.settleRadius + (Number(ent?.radius) || 0));
     }
   }
