@@ -441,3 +441,19 @@ No additional workers launched. The ordinary Adventure and diagnostic Foundry be
 - `50e4420b91af` accepted. Recorded the matched Adventure and Gauntlet pair. Personally opened all four captures and the final Foundry flight PNG.
 
 Reassigned the Codex workers `ai_cut` and `render_cut` for a second pass. No additional worker accounts launched. The retail reproduction used the default profile, while all locked interventions used disposable profiles. The original multi-second continuing-draw freeze remains unconfirmed after the fixes. Measured worker throughput and live rendering costs still exceed budget. The lead has the title door and overlay observations. See [QUALITY.md](QUALITY.md) for the latest before/after movement and footage receipts.
+
+### Stand-in log — worker hot paths, launcher recovery, and flight holds
+
+- `87e3cb31bfc2` accepted. Read live collision material and body mode without allocating a full substance record. Matched deterministic poses, collider choices, and contacts.
+- `7617ae84a1d1` fixed. Reused worker domain metadata and repaired the expanded-to-collapsed-to-expanded lifecycle crash.
+- `857afa9d90eb` accepted. Native impact receipts skip reference traversal. Synthetic events, storage ordering, and listener context retain their existing behavior.
+- `123143341f73` sent back after the locked Adventure pair drew slower. `3ba59ed7f8cd` fixed the regression by removing the candidate.
+- `c4da41846047` fixed. Retry a renderer death before navigation settles once within the same deadline and wait for fresh first paint.
+- `abb428bcdcd5` fixed. Stop drawing field auras beyond authored contact reach.
+- `32d2c479cbef` fixed. Measure synchronous asset admission work and cancel the unused wait callback.
+- `1e845a6433c9` accepted. Recorded matched locked motion, focused backend checks, and the withdrawn render candidate.
+- `1377d0994a92` accepted. Recorded successful public Adventure Resume and native restore with fresh steering.
+
+Reassigned Codex `physics_cut`, `ai_cut`, and `render_cut`. No Devin launches. A second physics worker experiment disabling CCD just for ghost projectiles was discarded because it changed solid-body contacts and movement.
+
+The original retail freeze is still open. The combined-input Adventure and Gauntlet pair measured ticks and visible hull positions alongside draw rate. After changes those routes drew about 8.5 and 15.3 times per second. Adventure's p95 ship-motion gap improved to 178 ms and Gauntlet's worst gap improved to 220 ms, with a worse Gauntlet p95. Opened the flight captures. The post-minimize run moved 129 world units while thrusting and turning. A separate run moved 1.44 units under straight thrust beside a large rock, with ticks and draws running. The cause of that earlier case remains open. The packaged launcher/updater, the two concurrent plant callback errors, and sustained cross-mode cadence still need work. See [QUALITY.md](QUALITY.md) for baselines and capture locations.
