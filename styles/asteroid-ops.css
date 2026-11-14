@@ -452,7 +452,9 @@
   /* The edge is a scale tick in bone — the screen's rule language (.aw-key, .aw-crest-name) —
      never amber: amber on this screen is the one verb's channel, and the verb word below carries
      it. */
+  border: 1px solid rgb(236 230 216 / .16);
   border-left: 2px solid rgb(236 230 216 / .55);
+  border-radius: 0 8px 8px 0;
   background: var(--dp-glass-deep);
   color: var(--dp-ink);
   pointer-events: auto;
@@ -535,8 +537,8 @@
 }
 
 /* ---------------------------------------------------------------- §6.2 rig cluster */
-/* ORRERY Surface 1 (F5): the rig is an instrument on borderless glass — the Arc Gauge
-   pair floats over a deep tint whose edge is implied by corner ticks, never a plate. */
+/* ORRERY Surface 1 (F5): the rig is an instrument on glass — the Arc Gauge pair sits on a deep
+   tint inside one hairline edge, never a heavy plate. */
 /* Scoped under `.ast-screen`, not left bare, because asteroidScreen.js marks this element with
    the kit's own `fh-plate` family and index.html loads kit.css AFTER this sheet: at a bare
    (0,1,0) this rule TIES `.fh-plate` and loses the tie, so the cluster would silently take the
@@ -553,39 +555,11 @@
   padding: 12px 14px 10px;
   box-sizing: border-box;
   background: rgb(8 11 16 / .66);
-  border: 0;
+  /* A hairline card edge (bone ~20%, radius 10) like the rest of the menus' cards. The four bone
+     corner ticks it used to wear read as loose brackets floating over the stage. */
+  border: 1px solid rgb(236 230 216 / .2);
+  border-radius: 10px;
   box-shadow: none;
-}
-.ast-screen .aw-rig::before,
-.ast-screen .aw-rig::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 10px;
-  pointer-events: none;
-}
-.ast-screen .aw-rig::before {
-  top: 0;
-  background-image:
-    linear-gradient(90deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
-    linear-gradient(180deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
-    linear-gradient(90deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0),
-    linear-gradient(180deg, rgb(236 230 216 / .8) 0 2px, transparent 2px);
-  background-size: 2px 10px, 14px 2px, 2px 10px, 14px 2px;
-  background-position: left top, left top, right top, right top;
-  background-repeat: no-repeat;
-}
-.ast-screen .aw-rig::after {
-  bottom: 0;
-  background-image:
-    linear-gradient(90deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
-    linear-gradient(180deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0),
-    linear-gradient(90deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0),
-    linear-gradient(180deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0);
-  background-size: 2px 10px, 14px 2px, 2px 10px, 14px 2px;
-  background-position: left bottom, left bottom, right bottom, right bottom;
-  background-repeat: no-repeat;
 }
 .aw-gauge { display: flex; align-items: center; gap: 10px; }
 /* The reading's name: small, dim, equipment-tagged. The value keeps full ink so the
