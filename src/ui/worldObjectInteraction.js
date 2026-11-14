@@ -1,4 +1,5 @@
 import { isSwarmGlass } from './swarmGlass.js';
+import { verbChip } from './controlPrompts.js';
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -7,7 +8,6 @@ import { isBeamTargetEligible, beamRangeFor } from '../systems/miningBeamTargeti
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { classifyPickIntent } from '../combat/targetAcquisition.js';
 import { DENIAL, denialText, intentDenial } from '../combat/contactClassifier.js';
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
@@ -463,15 +463,14 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     const lane = initialMouseToolLane(state, entity && entity.id);
     if (lane === 'sling') {
       // G18-02: RMB is the Line — while a throwable is latched it arms the throw.
-      return { sling: true, text: 'RMB hold — aim the throw · release to sling', beam: false };
+      return { sling: true, text: verbChip(state, 'tether', 'THROW'), beam: false };
     }
     if (lane !== 'beam') {
       // Packet 02: say what the press COMMITS to before it happens — an attack target takes the guns,
       // a prop only selects a tool subject, a friendly or neutral hull only informs. RMB still
       // selects under the cursor; under G18-02 the same press also fires the Line.
-      const intent = classifyPickIntent(entity, !!(player && isHostileToPlayer(entity, player.team, state)));
-      const word = intent === 'attack' ? 'RMB Line + lock target' : intent === 'info' ? 'RMB Line + inspect' : 'RMB Line + select';
-      return { sling: false, text: word, beam: false };
+      // One verb chip, whatever the pick intent: the press latches the Line (guns still lock).
+      return { sling: false, text: verbChip(state, 'tether', 'LATCH'), beam: false };
     }
     // Packet 02: say WHY at the point of intent, in the shared denial vocabulary, in the order the
     // player can fix it — you cannot beam what your sensors do not hold. The beam itself now lives
@@ -526,7 +525,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     const key = [name, classWord(entity), relation, rangeTxt, hint.text, status || '', fight ? 'fight' : '', selected ? 'sel' : ''].join('|');
     if (key !== previewTextKey) {
       previewTextKey = key;
-      tag.nameEl.textContent = name;
+      tag.nameEl.textContent = fight ? '' : name;
       tag.metaEl.textContent = fight ? '' : classWord(entity) + ' · ' + relation + rangeTxt
         + (status ? ' · ' + status : '');
       tag.hintEl.textContent = hint.text;

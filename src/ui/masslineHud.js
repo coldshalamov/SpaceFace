@@ -48,6 +48,7 @@ import { announceStrokeGrade } from './stuntCallout.js';
 import { formatSpeed } from './units.js';
 import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
+import { verbChip } from './controlPrompts.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
 
@@ -1518,7 +1519,7 @@ export const masslineHud = {
     const heavyHushed = openingQuiet(state) && !!(massRead && massRead.share >= 0.8);
     const massText = !seedPreview && ready && !heavyHushed
       ? (quietTelemetry
-        ? (massRead && massRead.share >= 0.8 ? 'TOO HEAVY' : 'GRAB')
+        ? (massRead && massRead.share >= 0.8 ? 'TOO HEAVY' : verbChip(state, 'tether', 'LATCH'))
         : massPreviewWord(target, playerMass, state))
       : '';
     const text = seedText || massText || bracketReadText(read);

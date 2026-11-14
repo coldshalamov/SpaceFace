@@ -1192,7 +1192,8 @@ export function noteFirstCargoLanding(state, { wasEmpty = false, cargo = null, b
   if (!shouldShowFirstUseHint(state.player.hints, 'firstCargoManifest')) return '';
   const key = String(bindingLabel || '').trim();
   const line = key ? `Cargo aboard. Manifest ${key}.` : 'Cargo aboard. Open the manifest.';
-  if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow() }).admit) return '';
+  // state is passed so a live Swarm round (no open-world notices) refuses it and the hint stays unspent.
+  if (!admitReceipt({ text: line, kind: 'info', combat: receiptCombatNow(), state }).admit) return '';
   state.player.hints = markFirstUseHint(state.player.hints, 'firstCargoManifest');
   return line;
 }
@@ -2578,6 +2579,9 @@ export function createHud(ctx, alerts) {
   const firstUseProjectionScreen = { x: 0, y: 0, onScreen: false };
   on('hud:firstUse', (payload) => {
     if (!payload || !payload.text) return;
+    // A Swarm round has no open-world first-use notices (research, outfit, cargo…): the arena teaches
+    // through the one verb chip and the one objective line.
+    if (isSwarmGlass(state)) return;
     const kind = firstUseAttachKind(payload.verbId);
     // G13: a HUD string is not a caption on the player's hull. A hint whose only anchor is the
     // player ("Research unlocked gear.", "Fit the module.") goes to the ordinary receipt line;

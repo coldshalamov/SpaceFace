@@ -1,5 +1,5 @@
 import { BINDINGS } from './bindings.js';
-import { gamepadGlyphForAction } from './bindings.js';
+import { gamepadGlyphForAction, getPromptDevice } from './bindings.js';
 import {
   formatBindingCode,
   resolveActionCodes,
@@ -179,4 +179,18 @@ export function controlPrompt(key, modality = 'kbm', state = null) {
   }
   const prompts = CONTROL_PROMPTS[modality] || CONTROL_PROMPTS.kbm;
   return prompts[key] || CONTROL_PROMPTS.kbm[key] || '';
+}
+
+/**
+ * The one verb chip (20_THE_FIRST_HOUR rule 2): "<live key> · VERB", e.g. `RMB · LATCH`. The key is the
+ * player's current binding for the action (rebinds, gamepad glyph or touch included), never a
+ * hardcoded name. Falls back to the bare verb when no key can be named.
+ */
+export function verbChip(state, action, verb) {
+  const device = getPromptDevice();
+  let key = '';
+  if (device === 'gamepad') key = gamepadGlyphForAction(action) || '';
+  else if (device === 'touch') key = 'TAP';
+  else key = resolveActionLabel(state || _promptState || defaultPromptState(_kbmScheme), action, { arrows: 'word' }) || '';
+  return key ? `${key} · ${verb}` : verb;
 }

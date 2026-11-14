@@ -1066,7 +1066,12 @@ export const crucibleDraftScreen = {
         hold: el('p', 'orr-armory-reading__hold', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, parts.demo, parts.hold);
+      // One primary per card (Install) plus Launch round: the demo flight and the hold are secondary
+      // options folded behind one quiet "More" disclosure, never a row of buttons under Install.
+      const more = el('details', 'orr-armory-reading__more');
+      more.append(el('summary', 'orr-armory-reading__more-word', 'More'), parts.demo, parts.hold);
+      parts.more = more;
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, more);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -1860,6 +1865,8 @@ export const crucibleDraftScreen = {
       });
       parts.hold.appendChild(hold);
     }
+    parts.more.hidden = !parts.demo.firstChild && !parts.hold.firstChild;
+    if (parts.more.hidden) parts.more.open = false;
     this._syncRailScale();
   },
 
