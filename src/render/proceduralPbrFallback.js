@@ -23,6 +23,10 @@ const ROLE_RECIPES = Object.freeze({
 });
 
 const cache = new Map();
+// A material-profile pass is synchronous. Reuse its last partial bundle's field for a sibling
+// material, but release the temporary arrays at the end of the turn rather than retaining them.
+let recentField = null;
+let fieldReleaseScheduled = false;
 
 function hashToken(token) {
   let hash = 2166136261;
@@ -50,42 +54,49 @@ function latticeHash(x, y, seed) {
   return (value >>> 0) / 0xffffffff;
 }
 
-function wrap(value, period) {
-  const remainder = value % period;
-  return remainder < 0 ? remainder + period : remainder;
-}
-
-function tileNoise(u, v, cellsX, cellsY, seed) {
+function makeLattice(cellsX, cellsY, seed) {
   const px = Math.max(1, Math.round(cellsX));
   const py = Math.max(1, Math.round(cellsY));
+  const values = new Float64Array(px * py);
+  for (let y = 0; y < py; y += 1) {
+    for (let x = 0; x < px; x += 1) values[y * px + x] = latticeHash(x, y, seed);
+  }
+  return { px, py, values };
+}
+
+// Bundle texels are sampled within [0, 1); the lattice's final edge wraps to its first row/column.
+function tileNoise(u, v, lattice) {
+  const { px, py, values } = lattice;
   const sx = u * px;
   const sy = v * py;
   const x0 = Math.floor(sx);
   const y0 = Math.floor(sy);
+  const x1 = x0 + 1 === px ? 0 : x0 + 1;
+  const y1 = y0 + 1 === py ? 0 : y0 + 1;
   const tx = smooth(sx - x0);
   const ty = smooth(sy - y0);
-  const a = latticeHash(wrap(x0, px), wrap(y0, py), seed);
-  const b = latticeHash(wrap(x0 + 1, px), wrap(y0, py), seed);
-  const c = latticeHash(wrap(x0, px), wrap(y0 + 1, py), seed);
-  const d = latticeHash(wrap(x0 + 1, px), wrap(y0 + 1, py), seed);
+  const a = values[y0 * px + x0];
+  const b = values[y0 * px + x1];
+  const c = values[y1 * px + x0];
+  const d = values[y1 * px + x1];
   const top = a + (b - a) * tx;
   const bottom = c + (d - c) * tx;
   return top + (bottom - top) * ty;
 }
 
-function periodicField(u, v, recipe, seed, out) {
-  const macro = tileNoise(u, v, recipe.macro, recipe.macro + 1, seed + 11) * 2 - 1;
-  const meso = tileNoise(u, v, recipe.macro * 3 + 1, recipe.macro * 2 + 3, seed + 37) * 2 - 1;
+function periodicField(u, v, recipe, lattices, out) {
+  const macro = tileNoise(u, v, lattices.macro) * 2 - 1;
+  const meso = tileNoise(u, v, lattices.meso) * 2 - 1;
   // Manufactured recipes intentionally use no fine grain. Do not evaluate an entire
   // noise field whose contribution to every output channel is multiplied by zero.
   const grain = recipe.grain || 0;
-  const micro = grain ? tileNoise(u, v, recipe.micro, recipe.micro + 5, seed + 71) * 2 - 1 : 0;
+  const micro = grain ? tileNoise(u, v, lattices.micro) * 2 - 1 : 0;
   // Brushed/radiator/docking roles get long irregular grooves rather than a regular sine grating.
-  const brushed = tileNoise(u, v, Math.max(2, recipe.macro), recipe.micro + 17, seed + 103) * 2 - 1;
+  const brushed = tileNoise(u, v, lattices.brushed) * 2 - 1;
   // Geology uses narrow contour ridges from a separate field, producing broken strata/fracture paths.
   let fracture = 0;
   if (recipe.fracture) {
-    const fractureNoise = tileNoise(u, v, recipe.macro + 3, recipe.macro * 2 + 5, seed + 151);
+    const fractureNoise = tileNoise(u, v, lattices.fracture);
     const ridge = Math.max(0, 1 - Math.abs(fractureNoise - 0.5) * 9);
     fracture = ridge * ridge;
   }
@@ -114,28 +125,41 @@ function makeTexture(data, colorSpace, name) {
   return texture;
 }
 
-function buildBundle(role, variant) {
+function buildBundle(role, variant, requested) {
   const recipe = ROLE_RECIPES[role];
   const seed = hashToken(`${role}:${variant}`);
-  const albedo = new Uint8Array(SIZE * SIZE * 4);
-  const normal = new Uint8Array(SIZE * SIZE * 4);
-  const orm = new Uint8Array(SIZE * SIZE * 4);
-  const heights = new Float32Array(SIZE * SIZE);
+  const key = `${role}:${variant}`;
+  const reusable = recentField?.key === key ? recentField : null;
+  const albedo = requested.albedo ? new Uint8Array(SIZE * SIZE * 4) : null;
+  const normal = requested.normal ? new Uint8Array(SIZE * SIZE * 4) : null;
+  const orm = requested.orm ? new Uint8Array(SIZE * SIZE * 4) : null;
+  const heights = reusable?.heights || new Float32Array(SIZE * SIZE);
   // Keep the double precision used by the pixel recipe, without allocating one
   // temporary object per texel each time a role/variant bundle is first built.
-  const fields = new Float64Array(SIZE * SIZE * 4);
+  const fields = reusable?.fields || new Float64Array(SIZE * SIZE * 4);
   const field = { macro: 0, meso: 0, micro: 0, fracture: 0, height: 0 };
 
-  for (let y = 0; y < SIZE; y += 1) {
-    for (let x = 0; x < SIZE; x += 1) {
-      const index = y * SIZE + x;
-      periodicField(x / SIZE, y / SIZE, recipe, seed, field);
-      const offset = index * 4;
-      fields[offset] = field.macro;
-      fields[offset + 1] = field.meso;
-      fields[offset + 2] = field.micro;
-      fields[offset + 3] = field.fracture;
-      heights[index] = field.height;
+  if (!reusable) {
+    // Each lattice point is sampled many times. Hash it once per bundle instead of four times
+    // per field, per pixel; Float64 preserves the original interpolation inputs exactly.
+    const lattices = {
+      macro: makeLattice(recipe.macro, recipe.macro + 1, seed + 11),
+      meso: makeLattice(recipe.macro * 3 + 1, recipe.macro * 2 + 3, seed + 37),
+      micro: recipe.grain ? makeLattice(recipe.micro, recipe.micro + 5, seed + 71) : null,
+      brushed: makeLattice(Math.max(2, recipe.macro), recipe.micro + 17, seed + 103),
+      fracture: recipe.fracture ? makeLattice(recipe.macro + 3, recipe.macro * 2 + 5, seed + 151) : null,
+    };
+    for (let y = 0; y < SIZE; y += 1) {
+      for (let x = 0; x < SIZE; x += 1) {
+        const index = y * SIZE + x;
+        periodicField(x / SIZE, y / SIZE, recipe, lattices, field);
+        const offset = index * 4;
+        fields[offset] = field.macro;
+        fields[offset + 1] = field.meso;
+        fields[offset + 2] = field.micro;
+        fields[offset + 3] = field.fracture;
+        heights[index] = field.height;
+      }
     }
   }
 
@@ -143,61 +167,89 @@ function buildBundle(role, variant) {
     for (let x = 0; x < SIZE; x += 1) {
       const index = y * SIZE + x;
       const offset = index * 4;
-      const macro = fields[offset];
-      const meso = fields[offset + 1];
-      const micro = fields[offset + 2];
-      const fracture = fields[offset + 3];
       const left = heights[y * SIZE + ((x - 1 + SIZE) % SIZE)];
       const right = heights[y * SIZE + ((x + 1) % SIZE)];
       const down = heights[((y - 1 + SIZE) % SIZE) * SIZE + x];
       const up = heights[((y + 1) % SIZE) * SIZE + x];
-      const gradientScale = recipe.fracture ? 1.8 : (recipe.directional > 0.7 ? 2.6 : 3.0);
-      const dx = (right - left) * gradientScale;
-      const dy = (up - down) * gradientScale;
-      const invLength = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+      if (normal) {
+        const gradientScale = recipe.fracture ? 1.8 : (recipe.directional > 0.7 ? 2.6 : 3.0);
+        const dx = (right - left) * gradientScale;
+        const dy = (up - down) * gradientScale;
+        const invLength = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+        normal[offset] = clampByte(128 + (-dx * invLength) * 127);
+        normal[offset + 1] = clampByte(128 + (-dy * invLength) * 127);
+        normal[offset + 2] = clampByte(invLength * 255);
+        normal[offset + 3] = 255;
+      }
 
-      // Cavity AO from local height Laplacian: depressions and crevices receive natural contact shading
-      const laplacian = (left + right + up + down) * 0.25 - heights[index];
-      const cavity = Math.max(0, laplacian * (recipe.fracture ? 1.5 : 1.1));
-      const aoFactor = Math.max(0.38, 1.0 - cavity * 1.6);
-      const cavityDarken = 1.0 - cavity * 0.32;
-
-      const colorValue = (238 + 255 * recipe.color * (macro * 0.58 + meso * 0.30 + micro * 0.06 * (recipe.grain || 0) - fracture * 0.38)) * cavityDarken;
-      albedo[offset] = clampByte(colorValue);
-      albedo[offset + 1] = clampByte(colorValue);
-      albedo[offset + 2] = clampByte(colorValue);
-      albedo[offset + 3] = 255;
-
-      normal[offset] = clampByte(128 + (-dx * invLength) * 127);
-      normal[offset + 1] = clampByte(128 + (-dy * invLength) * 127);
-      normal[offset + 2] = clampByte(invLength * 255);
-      normal[offset + 3] = 255;
-
-      // glTF/Three multiplies these map channels by the material's authored scalar factor.
-      // Keep the maps near unity so the role factor stays authoritative while gaining variation.
-      // Red: Ambient Occlusion, Green: Roughness, Blue: Metalness (glTF standard packed ORM)
-      const roughness = 0.82 + recipe.rough * (macro * 0.42 + meso * 0.30 + micro * 0.18 * (recipe.grain || 0) + fracture * 0.5);
-      const metallic = recipe.metalMultiplier + recipe.metal * (macro * 0.54 - fracture * 0.3);
-      orm[offset] = clampByte(aoFactor * 255);
-      orm[offset + 1] = clampByte(roughness * 255);
-      orm[offset + 2] = clampByte(metallic * 255);
-      orm[offset + 3] = 255;
+      if (albedo || orm) {
+        const macro = fields[offset];
+        const meso = fields[offset + 1];
+        const micro = fields[offset + 2];
+        const fracture = fields[offset + 3];
+        // Cavity AO from local height Laplacian supplies contact shading to color and ORM.
+        const laplacian = (left + right + up + down) * 0.25 - heights[index];
+        const cavity = Math.max(0, laplacian * (recipe.fracture ? 1.5 : 1.1));
+        if (albedo) {
+          const cavityDarken = 1.0 - cavity * 0.32;
+          const colorValue = (238 + 255 * recipe.color * (macro * 0.58 + meso * 0.30 + micro * 0.06 * (recipe.grain || 0) - fracture * 0.38)) * cavityDarken;
+          albedo[offset] = clampByte(colorValue);
+          albedo[offset + 1] = clampByte(colorValue);
+          albedo[offset + 2] = clampByte(colorValue);
+          albedo[offset + 3] = 255;
+        }
+        if (orm) {
+          // glTF packs ambient occlusion, roughness and metalness into red, green and blue.
+          const aoFactor = Math.max(0.38, 1.0 - cavity * 1.6);
+          const roughness = 0.82 + recipe.rough * (macro * 0.42 + meso * 0.30 + micro * 0.18 * (recipe.grain || 0) + fracture * 0.5);
+          const metallic = recipe.metalMultiplier + recipe.metal * (macro * 0.54 - fracture * 0.3);
+          orm[offset] = clampByte(aoFactor * 255);
+          orm[offset + 1] = clampByte(roughness * 255);
+          orm[offset + 2] = clampByte(metallic * 255);
+          orm[offset + 3] = 255;
+        }
+      }
     }
   }
 
   const prefix = `SF_RuntimePbr_${role}_v${variant}`;
-  return Object.freeze({
-    albedo: makeTexture(albedo, THREE.SRGBColorSpace, `${prefix}_BaseColor`),
-    normal: makeTexture(normal, THREE.NoColorSpace, `${prefix}_Normal`),
-    orm: makeTexture(orm, THREE.NoColorSpace, `${prefix}_ORM`),
-  });
+  const bundle = {};
+  if (albedo) bundle.albedo = makeTexture(albedo, THREE.SRGBColorSpace, `${prefix}_BaseColor`);
+  if (normal) bundle.normal = makeTexture(normal, THREE.NoColorSpace, `${prefix}_Normal`);
+  if (orm) bundle.orm = makeTexture(orm, THREE.NoColorSpace, `${prefix}_ORM`);
+  return { bundle, fieldData: reusable || { key, heights, fields } };
 }
 
-function bundleFor(role, materialName, assetId) {
+function bundleFor(role, materialName, assetId, missing) {
   const variant = hashToken(`${assetId || 'asset'}:${materialName || role}`) % VARIANT_COUNT;
   const key = `${role}:${variant}`;
-  if (!cache.has(key)) cache.set(key, buildBundle(role, variant));
-  return { bundle: cache.get(key), variant };
+  let bundle = cache.get(key);
+  const requested = {
+    albedo: missing.baseColor && !bundle?.albedo,
+    normal: missing.normal && !bundle?.normal,
+    orm: (missing.roughness || missing.metalness) && !bundle?.orm,
+  };
+  if (requested.albedo || requested.normal || requested.orm) {
+    const { bundle: generated, fieldData } = buildBundle(role, variant, requested);
+    if (bundle) Object.assign(bundle, generated);
+    else {
+      bundle = generated;
+      cache.set(key, bundle);
+    }
+    if (!bundle.albedo || !bundle.normal || !bundle.orm) {
+      recentField = fieldData;
+      if (!fieldReleaseScheduled) {
+        fieldReleaseScheduled = true;
+        queueMicrotask(() => {
+          recentField = null;
+          fieldReleaseScheduled = false;
+        });
+      }
+    } else if (recentField?.key === key) {
+      recentField = null;
+    }
+  }
+  return { bundle, variant };
 }
 
 export function supportsProceduralPbrFallback(role) {
@@ -214,7 +266,7 @@ export function applyProceduralPbrFallback(material, role, { assetId = null, all
   };
   if (!Object.values(missing).some(Boolean)) return false;
 
-  const { bundle, variant } = bundleFor(role, material.name, assetId);
+  const { bundle, variant } = bundleFor(role, material.name, assetId, missing);
   if (missing.baseColor) material.map = bundle.albedo;
   if (missing.normal) {
     material.normalMap = bundle.normal;
@@ -239,9 +291,21 @@ export function applyProceduralPbrFallback(material, role, { assetId = null, all
 }
 
 export function proceduralPbrFallbackDiagnostics() {
-  return Object.freeze({ bundles: cache.size, maxBundles: Object.keys(ROLE_RECIPES).length * VARIANT_COUNT, textureSize: SIZE });
+  let textures = 0;
+  for (const bundle of cache.values()) {
+    textures += Number(!!bundle.albedo) + Number(!!bundle.normal) + Number(!!bundle.orm);
+  }
+  const temporaryFieldBytes = recentField ? recentField.heights.byteLength + recentField.fields.byteLength : 0;
+  return Object.freeze({
+    bundles: cache.size,
+    textures,
+    temporaryFieldBytes,
+    maxBundles: Object.keys(ROLE_RECIPES).length * VARIANT_COUNT,
+    textureSize: SIZE,
+  });
 }
 
 export function _resetProceduralPbrFallbackForTest() {
   cache.clear();
+  recentField = null;
 }
