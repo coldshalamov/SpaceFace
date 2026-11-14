@@ -9,6 +9,7 @@
 //   --viewport=1280x720       default 1280x720
 //   --headed                  show the browser (default headless)
 //   --intro=play|skip         adventure plays the intro through (timed, 120 s cap), swarm skips it with Space
+//   --keep-saves              use the real saved-games store (default: an empty one, like a first-time player)
 //   --max-min=N               wall cap in minutes (swarm 15, adventure 12)
 //
 // Writes <out>/demo-route.json, <out>/report.md and <out>/NN-<screen>.png. Observers read window.SF (as a
@@ -140,7 +141,12 @@ const HOOK = () => {
 };
 
 // ---------------------------------------------------------------- server + browser
-const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore' });
+// A clean profile: the server keeps player saves on disk, and a save turns the ADVENTURE door into CONTINUE, so
+// point this server at an empty store (a first-time player has none). --keep-saves uses the real store.
+const STORE = join(OUT, '_clean-player-store');
+if (argv['keep-saves'] !== true) mkdirSync(STORE, { recursive: true });
+const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore',
+  env: argv['keep-saves'] === true ? process.env : { ...process.env, SPACEFACE_PLAYER_STORE_DIR: STORE } });
 let browser; let page; let shotN = 0; let nav = { t0Set: false };
 const slug = (s) => String(s || 'screen').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'screen';
 
