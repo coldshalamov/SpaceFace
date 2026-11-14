@@ -3,7 +3,6 @@
 // Decides which mission to surface when the player docks and whether the Missions tab
 // should pulse / auto-open so they are not hunting for "Contracts".
 
-import { recommendMissionBoardOffer } from '../ui/station/stationMissionModel.js';
 import { releasableContractUnits, sellableCargoQuantity } from '../systems/cargo.js';
 import { unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import { partialDeliverySettlement, isMutationRecovery, mutationPartialSettlement } from '../systems/missionShared.js';
@@ -22,11 +21,13 @@ const TURN_IN_TYPES = new Set([
 // The desk row the board itself recommends, when the model names one. The 600 s epoch rebuild
 // reorders nothing but re-posts rows — attention reading offers[0] could refocus a procedural row
 // over the authored one; preferring the recommended row keeps the surface on the desk's row when
-// no active work claims it. Read-only: the model mutates nothing.
-function recommendedBoardRow(state, offers) {
-  if (!offers || !offers.length) return null;
+// no active work claims it. Read-only: the model mutates nothing. The recommender is the
+// station screen's model, so the dock passes it in (options.recommend); a simulation-side
+// reader (the flight radio) runs without it and never imports screen code.
+function recommendedBoardRow(state, offers, recommend) {
+  if (typeof recommend !== 'function' || !offers || !offers.length) return null;
   try {
-    const pick = recommendMissionBoardOffer(offers, state);
+    const pick = recommend(offers, state);
     return pick && pick.mission ? pick.mission : null;
   } catch {
     return null;
@@ -176,7 +177,7 @@ export function missionDockAttention(state, stationId, options = {}) {
   // 4) First-hour / empty log: board has work and the player has none — invite accept.
   // Auto-open only when the hold is empty so a cargo-sell first-dock step is not yanked away.
   if (!active.length && offers.length) {
-    const offer = recommendedBoardRow(state, offers) || offers[0];
+    const offer = recommendedBoardRow(state, offers, options.recommend) || offers[0];
     const holdUsed = Number(state.player && state.player.cargo && state.player.cargo.usedVolume) || 0;
     return {
       focusMissionId: String(mid(offer)),
@@ -191,7 +192,7 @@ export function missionDockAttention(state, stationId, options = {}) {
 
   // 5) Soft: board has offers while already flying jobs — badge only, do not auto-open.
   if (offers.length) {
-    const offer = recommendedBoardRow(state, offers) || offers[0];
+    const offer = recommendedBoardRow(state, offers, options.recommend) || offers[0];
     return {
       focusMissionId: String(mid(offer)),
       kind: 'accept',

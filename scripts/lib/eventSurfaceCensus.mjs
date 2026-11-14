@@ -525,6 +525,9 @@ const DYNAMIC_FORWARD = [
   { type: 'ui:talkContact', emitters: ['src/systems/barContacts.js'], note: 'emit via resolved event const' },
   { type: 'orrinWitness:submitEvidence', emitters: ['src/systems/barContacts.js'], note: 'emit via ORRIN_WITNESS_SUBMISSION_EVENT const; story.js:240 subscribes via the same const' },
   { type: 'claim:defenseIgnore', emitters: ['src/ui/galaxyMap.js'], note: 'verb.event / action.event.name emit' },
+  ...['claim:defenseGo', 'claim:defenseDelegate'].map(type => ({
+    type, emitters: ['src/ui/encounterChoicePrompt.js'], note: 'defense-warning deck choice: the event name is picked by a ternary into a const, then emitted; claims.js subscribes to both',
+  })),
   { type: 'nav:engageRoute', emitters: ['src/ui/galaxyMap.js'], note: 'action.event emit' },
   { type: 'nav:abortRoute', emitters: ['src/ui/galaxyMap.js'], note: 'action.event emit' },
   { type: 'ui:endgameUnfiledJumpConfirm', emitters: ['src/systems/comms.js'], note: 'intentEvent emit' },
