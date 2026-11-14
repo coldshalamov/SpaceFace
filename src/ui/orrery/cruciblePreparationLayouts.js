@@ -210,6 +210,7 @@ ${A} .orr-armory-reading__more { margin:6px 0 0; }
 ${A} .orr-armory-reading__more[hidden] { display:none; }
 ${A} .orr-armory-reading__more-word { font:500 13px var(--dp-face-label); color:var(--dp-ink-dim); cursor:pointer; min-height:32px; padding:6px 0; list-style:none; }
 ${A} .orr-armory-reading__more-word::-webkit-details-marker { display:none; }
+${A} .orr-armory-reading__more:not([open]) > :not(.orr-armory-reading__more-word) { display:none !important; }
 ${A} .orr-armory-reading__more[open] > .orr-armory-reading__more-word { color:var(--dp-ink); }
 ${A} .sf-cru-note { min-height:24px; margin:8px 0 0 !important; font:400 13px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink) !important; }
 ${A} .orr-armory-empty { padding:36px 12px; color:var(--dp-ink-dim); font-size:15px; line-height:1.5; }
