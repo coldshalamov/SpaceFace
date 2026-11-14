@@ -76,7 +76,14 @@ test('decoded skins are configured, warmed once each, and worn by every species 
     builtFauna++;
     const bodies = meshMaterials(root).filter((material) => material.map === skins.tissue.baseColor);
     assert.ok(bodies.length > 0, `${speciesId} must wear the tissue skin`);
-    for (const material of bodies) assert.equal(material.normalMap, skins.tissue.normal);
+    for (const material of bodies) {
+      // The translucent Lantern sac deliberately keeps the tissue color without the leathery normal.
+      if (speciesId === 'lantern_cyst' && material === root.children[0].material) {
+        assert.equal(material.normalMap, null);
+      } else {
+        assert.equal(material.normalMap, skins.tissue.normal);
+      }
+    }
   }
   assert.ok(builtFauna >= 18, `expected nearly every species to build, got ${builtFauna}`);
   // Most machines are pale-metal bodies; a few are built wholly from light or seam materials and wear no plating.
