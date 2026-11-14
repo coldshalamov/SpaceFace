@@ -20,6 +20,8 @@ const DOOR_BTN = `${T} .of-title-actions :is(li:has(> [data-action="newGame"]), 
 const ROW_BTN = `${T} .of-title-actions :is(li:has(> [data-action="continue"]), li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) > button`;
 
 export const TITLE_DOORS_LAYOUT_CSS = `
+/* the phone column lists every word already; the toggle is the desktop's */
+html body .of-title.orr-title--phone .of-title-more { display:none !important; }
 /* the column becomes one grid: two doors (two columns each), then a row of four small words */
 ${T} .of-title-actions {
   display:grid !important; grid-template-columns:repeat(24, minmax(0, 1fr)) !important; gap:14px 0 !important; column-gap:0 !important;
@@ -31,25 +33,31 @@ ${T} .of-title-actions > ul { display:contents !important; list-style:none; marg
 ${T} .of-title-actions li { margin:0 !important; padding:0 !important; list-style:none; min-width:0; position:static !important; width:auto !important; max-width:none !important; }
 ${T} .of-title-actions li[hidden] { display:none !important; }
 /* the doors */
-${LI('newGame')} { grid-column:1 / span 12; grid-row:1; padding-right:7px !important; }
-${LI('swarm')} { grid-column:13 / span 12; grid-row:1; padding-left:7px !important; }
-${DOOR_BTN} {
-  display:flex !important; flex-direction:column; align-items:flex-start; justify-content:flex-end; gap:6px;
-  width:100% !important; min-height:clamp(132px, 21vh, 190px); padding:18px 22px 50px !important; box-sizing:border-box;
-  text-align:left; cursor:pointer; color:rgb(248 244 234) !important;
-  background:linear-gradient(0deg, rgb(8 10 14 / .86), rgb(8 10 14 / .5)) !important;
-  border:1px solid rgb(${BONE} / .34) !important; border-radius:2px !important;
+${LI('newGame')} { grid-column:1 / span 12; grid-row:1; }
+${LI('swarm')} { grid-column:13 / span 12; grid-row:1; }
+/* the door is the list item: border, glass and the notch on it; the word and its line sit inside in flow */
+${DOOR_LI} {
+  display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(132px, 21vh, 190px);
+  padding:18px 22px 16px !important; box-sizing:border-box; position:relative !important;
+  background:linear-gradient(0deg, rgb(8 10 14 / .86), rgb(8 10 14 / .5));
+  border:1px solid rgb(${BONE} / .34); border-radius:2px;
   clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
-  font:800 clamp(30px, 4.4vh, 44px)/1 var(--dp-face-display, 'Archivo') !important; letter-spacing:.03em !important; text-transform:uppercase;
-  text-shadow:0 1px 0 rgb(0 0 0 / .6);
   transition:border-color .16s linear, background .16s linear, box-shadow .16s linear; }
-${DOOR_BTN}:is(:hover, :focus-visible, [data-awake]) {
-  border-color:var(--dp-hand, #f2b950) !important; box-shadow:0 0 22px rgb(242 185 80 / .2);
-  background:linear-gradient(0deg, rgb(26 20 10 / .88), rgb(8 10 14 / .55)) !important; outline:none !important; }
-${DOOR_LI} { position:relative !important; }
+${LI('newGame')} { margin:0 7px 0 0 !important; }
+${LI('swarm')} { margin:0 0 0 7px !important; }
+${DOOR_LI}:is(:hover, :focus-within) {
+  border-color:var(--dp-hand, #f2b950); box-shadow:0 0 22px rgb(242 185 80 / .2);
+  background:linear-gradient(0deg, rgb(26 20 10 / .88), rgb(8 10 14 / .55)); }
+${DOOR_BTN} {
+  display:block !important; width:100% !important; padding:0 !important; margin:0 !important; text-align:left; cursor:pointer;
+  color:rgb(248 244 234) !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  font:800 clamp(30px, 4.4vh, 44px)/1 var(--dp-face-display, 'Archivo') !important; letter-spacing:.03em !important; text-transform:uppercase;
+  text-shadow:0 1px 0 rgb(0 0 0 / .6); }
+${DOOR_BTN}:is(:hover, :focus-visible, [data-awake]) { outline:none !important; background:none !important; }
+${DOOR_LI}:has(> button:focus-visible) { outline:2px solid var(--k-bone, #e8e2d4); outline-offset:3px; }
 ${DOOR_LI} .dp-lit__note {
-  display:block !important; position:absolute !important; left:23px !important; right:20px !important; bottom:14px !important; z-index:1; pointer-events:none; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
-  overflow:visible !important; margin:0 !important; font:400 14px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
+  display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
+  overflow:visible !important; margin:8px 0 0 !important; font:400 14px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
   letter-spacing:0 !important; text-transform:none; color:rgb(${BONE} / .82) !important; }
 /* the small row: Continue, Settings, Help, Quit */
 /* the small row is centred by mainMenu.js (it sets each visible word's column from how many show);
